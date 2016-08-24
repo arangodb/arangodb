@@ -95,7 +95,10 @@ struct config_t {
 
   /// @brief move assignment operator 
   config_t& operator= (config_t&&);
-  
+
+
+  /// @brief update leadership changes
+  void update(query_t const&);
 
   /// @brief agent id
   std::string id() const;
@@ -138,8 +141,8 @@ struct config_t {
 
 
   /// @brief of active agents
-  query_t const activeToBuilder () const;
-  query_t const poolToBuilder () const;
+  query_t activeToBuilder () const;
+  query_t poolToBuilder () const;
 
   
   /// @brief override this configuration with prevailing opinion (startup)
@@ -147,7 +150,7 @@ struct config_t {
 
   
   /// @brief vpack representation
-  query_t const toBuilder() const;
+  query_t toBuilder() const;
 
 
   /// @brief set id

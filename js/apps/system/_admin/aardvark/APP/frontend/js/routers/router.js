@@ -824,15 +824,16 @@
         this.waitForInit(this.graphManagement.bind(this));
         return;
       }
-      if (!this.graphManagementView) {
-        this.graphManagementView =
-          new window.GraphManagementView(
-            {
-              collection: new window.GraphCollection(),
-              collectionCollection: this.arangoCollectionsStore
-            }
-        );
+      if (this.graphManagementView) {
+        this.graphManagementView.undelegateEvents();
       }
+      this.graphManagementView =
+        new window.GraphManagementView(
+          {
+            collection: new window.GraphCollection(),
+            collectionCollection: this.arangoCollectionsStore
+          }
+      );
       this.graphManagementView.render();
     },
 

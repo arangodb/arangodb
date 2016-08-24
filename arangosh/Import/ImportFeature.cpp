@@ -142,7 +142,7 @@ void ImportFeature::collectOptions(
       "action to perform when a unique key constraint "
       "violation occurs. Possible values: " +
           actionsJoined,
-      new DiscreteValuesParameter<StringParameter>(&_typeImport, actions));
+      new DiscreteValuesParameter<StringParameter>(&_onDuplicateAction, actions));
 }
 
 void ImportFeature::validateOptions(

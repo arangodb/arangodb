@@ -130,20 +130,24 @@ RestHandler::status RestAgencyPrivHandler::execute() {
           return reportBadQuery();  // bad query
         }
       } else if (_request->suffix()[0] == "gossip") {
-        //if (_agent->serveActiveAgent()) { // only during startup (see Agent)
-          arangodb::velocypack::Options options;
-          query_t query = _request->toVelocyPackBuilderPtr(&options);
-          try {
-            query_t ret = _agent->gossip(query);
-            result.add("id",ret->slice().get("id"));
-            result.add("endpoint",ret->slice().get("endpoint"));
-            result.add("pool",ret->slice().get("pool"));
-          } catch (std::exception const& e) {
-            return reportBadQuery(e.what());
-          }
-          //} else {                         // Gone!
-          // return reportGone();
-          // }
+        arangodb::velocypack::Options options;
+        query_t query = _request->toVelocyPackBuilderPtr(&options);
+        try {
+          query_t ret = _agent->gossip(query);
+          result.add("id",ret->slice().get("id"));
+          result.add("endpoint",ret->slice().get("endpoint"));
+          result.add("pool",ret->slice().get("pool"));
+        } catch (std::exception const& e) {
+          return reportBadQuery(e.what());
+        }
+      } else if (_request->suffix()[0] == "inform") {
+        arangodb::velocypack::Options options;
+        query_t query = _request->toVelocyPackBuilderPtr(&options);
+        try {
+          _agent->notify(query);
+        } catch (std::exception const& e) {
+          return reportBadQuery(e.what());
+        }
       } else {
         generateError(rest::ResponseCode::NOT_FOUND,
                       404);  // nothing else here

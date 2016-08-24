@@ -133,15 +133,26 @@ RestHandler::status RestAgencyHandler::handleWrite() {
     if (query->slice().length() == 0) {
       Builder body;
       body.openObject();
-      body.add(
-        "message", VPackValue("Empty request."));
+      body.add("message", VPackValue("Empty request."));
       body.close();
       generateResult(rest::ResponseCode::BAD, body.slice());
       return status::DONE;
     }
 
+    auto s = std::chrono::system_clock::now(); // Leadership established?
+    std::chrono::seconds timeout(1);
     while(_agent->size() > 1 && _agent->leaderID() == "") {
       std::this_thread::sleep_for(duration_t(100));
+      if ((std::chrono::system_clock::now()-s) > timeout) {
+        Builder body;
+        body.openObject();
+        body.add("message", VPackValue("No leader"));
+        body.close();
+        generateResult(GeneralResponse::ResponseCode::SERVICE_UNAVAILABLE,
+                       body.slice());
+        LOG_TOPIC(ERR, Logger::AGENCY) << "We don't know who the leader is";
+        return status::DONE;
+      }
     }
 
     write_ret_t ret = _agent->write(query);
@@ -215,8 +226,20 @@ inline RestHandler::status RestAgencyHandler::handleRead() {
       return status::DONE;
     }
 
+    auto s = std::chrono::system_clock::now(); // Leadership established?
+    std::chrono::seconds timeout(1);
     while(_agent->size() > 1 && _agent->leaderID() == "") {
       std::this_thread::sleep_for(duration_t(100));
+      if ((std::chrono::system_clock::now()-s) > timeout) {
+        Builder body;
+        body.openObject();
+        body.add("message", VPackValue("No leader"));
+        body.close();
+        generateResult(GeneralResponse::ResponseCode::SERVICE_UNAVAILABLE,
+                       body.slice());
+        LOG_TOPIC(ERR, Logger::AGENCY) << "We don't know who the leader is";
+        return status::DONE;
+      }
     }
 
     read_ret_t ret = _agent->read(query);
