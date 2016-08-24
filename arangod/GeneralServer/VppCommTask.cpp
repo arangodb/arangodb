@@ -204,6 +204,8 @@ void VppCommTask::addResponse(VppResponse* response) {
   auto buffer = createChunkForNetworkSingle(slices, id);
 
   addWriteBuffer(std::move(buffer));
+  processRead();  // do not remove this line - or multiple requests in one
+                  // message will break
 }
 
 VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
@@ -294,8 +296,7 @@ bool VppCommTask::processRead() {
       closeTask(rest::ResponseCode::BAD);
       return false;
     } catch (...) {
-      handleSimpleError(rest::ResponseCode::BAD,
-                        chunkHeader._messageID);
+      handleSimpleError(rest::ResponseCode::BAD, chunkHeader._messageID);
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VPack Validation failed!";
       closeTask(rest::ResponseCode::BAD);
       return false;
@@ -368,8 +369,7 @@ bool VppCommTask::processRead() {
         closeTask(rest::ResponseCode::BAD);
         return false;
       } catch (...) {
-        handleSimpleError(rest::ResponseCode::BAD,
-                          chunkHeader._messageID);
+        handleSimpleError(rest::ResponseCode::BAD, chunkHeader._messageID);
         LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VPack Validation failed!";
         closeTask(rest::ResponseCode::BAD);
         return false;
@@ -428,9 +428,8 @@ bool VppCommTask::processRead() {
         request->setClientTaskId(_taskId);
         _protocolVersion = request->protocolVersion();
 
-        std::unique_ptr<VppResponse> response(
-            new VppResponse(rest::ResponseCode::SERVER_ERROR,
-                            chunkHeader._messageID));
+        std::unique_ptr<VppResponse> response(new VppResponse(
+            rest::ResponseCode::SERVER_ERROR, chunkHeader._messageID));
         response->setHeaderOptions(&_headerOptions);
         executeRequest(std::move(request), std::move(response));
       }
@@ -459,8 +458,7 @@ void VppCommTask::closeTask(rest::ResponseCode code) {
   _clientClosed = true;
 }
 
-rest::ResponseCode VppCommTask::authenticateRequest(
-    GeneralRequest* request) {
+rest::ResponseCode VppCommTask::authenticateRequest(GeneralRequest* request) {
   auto context = (request == nullptr) ? nullptr : request->requestContext();
 
   if (context == nullptr && request != nullptr) {
