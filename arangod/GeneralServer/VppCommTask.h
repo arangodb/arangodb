@@ -113,7 +113,6 @@ class VppCommTask : public GeneralCommTask {
                                  // will be cleaned
   };
   ProcessReadVariables _processReadVariables;
-  velocypack::Options _headerOptions;
 
   struct ChunkHeader {
     std::size_t _headerLength;
