@@ -369,8 +369,6 @@
       // clear events
       var c = document.getElementsByClassName('sigma-mouse')[0];
       c.removeEventListener('mousemove', self.drawLine.bind(this), false);
-
-      // clear info div
     },
 
     trackCursorPosition: function (e) {
@@ -1032,6 +1030,7 @@
             self.contextState.fromY = y;
 
             var c = document.getElementsByClassName('sigma-mouse')[0];
+            self.drawHelp('Now click destination node, or click background to cancel.');
             c.addEventListener('mousemove', self.drawLine.bind(this), false);
 
             self.clearOldContextMenu();
@@ -1043,7 +1042,22 @@
             self.expandNode(nodeId);
           };
 
-          // on hover
+          // add menu hover functions
+
+          var descriptions = [
+            'Edit the node.',
+            'Delete node.',
+            'Set as startnode.',
+            'Draw edge.',
+            'Expand the node.'
+          ];
+
+          // hover functions
+          _.each(descriptions, function (val, key) {
+            wheel.navItems[key].navTitle.mouseover(function () { self.drawHelp(val); });
+            wheel.navItems[key].navTitle.mouseout(function () { self.removeHelp(); });
+          });
+
           /* TODO
           wheel.navItems[0].navSlice.mouseover(function (a) {
             $(a.target).css('opacity', '1');
@@ -1070,6 +1084,20 @@
       $('#nodeContextMenu').css('top', y + offset.top - radius);
 
       generateMenu(e, nodeId);
+    },
+
+    drawHelp: function (val) {
+      if (document.getElementById('helpTooltip') === null) {
+        $(this.el).append('<div id="helpTooltip" class="helpTooltip"><span>' + val + '</span></div>');
+      } else {
+        $('#helpTooltip span').text(val);
+      }
+
+      $('#helpTooltip').show();
+    },
+
+    removeHelp: function () {
+      $('#helpTooltip').remove();
     },
 
     clearMouseCanvas: function () {
@@ -1188,7 +1216,7 @@
     */
 
     drawLine: function (e) {
-      var context = window.App.graphViewer2.contextState;
+      var context = window.App.graphViewer.contextState;
 
       if (context.createEdge) {
         var fromX = context.fromX;
@@ -1535,6 +1563,9 @@
 
         s.bind('clickNode', function (e) {
           if (self.contextState.createEdge === true) {
+            self.clearMouseCanvas();
+            self.removeHelp();
+
             // create the edge
             self.contextState._to = e.data.node.id;
             var fromCollection = self.contextState._from.split('/')[0];
@@ -1543,6 +1574,7 @@
             // validate edgeDefinitions
             var foundEdgeDefinitions = self.getEdgeDefinitionCollections(fromCollection, toCollection);
             self.addEdgeModal(foundEdgeDefinitions, self.contextState._from, self.contextState._to);
+            self.clearOldContextMenu(true);
           } else {
             if (!self.dragging) {
               if (self.contextState.createEdge === true) {
@@ -1580,6 +1612,10 @@
           if (e.data.captor.isDragging) {
             self.clearOldContextMenu(true);
             self.clearMouseCanvas();
+          } else if (self.contextState.createEdge === true) {
+            self.clearOldContextMenu(true);
+            self.clearMouseCanvas();
+            self.removeHelp();
           } else {
             // stage menu
             if (!$('#nodeContextMenu').is(':visible')) {

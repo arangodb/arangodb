@@ -246,3 +246,19 @@
     padding-right: 10px;
   }
 }
+
+.helpTooltip {
+  position: fixed;
+  right: 0;
+  text-align: center;
+  top: 120px;
+  width: 100%;
+
+  span {
+    background-color: $c-bluegrey-dark;
+    border-radius: 2px;
+    color: $c-white;
+    padding: 10px;
+    padding-left: 150px;
+  }
+}
