@@ -869,14 +869,14 @@ int CollectorThread::transferMarkers(Logfile* logfile,
              << document->_info.name()
              << "', totalOperationsCount: " << totalOperationsCount;
 
-  CollectorCache* cache =
+  std::unique_ptr<CollectorCache> cache(
       new CollectorCache(collectionId, databaseId, logfile,
-                         totalOperationsCount, operations.size());
+                         totalOperationsCount, operations.size()));
 
   int res = TRI_ERROR_INTERNAL;
 
   try {
-    res = executeTransferMarkers(collection, cache, operations);
+    res = executeTransferMarkers(collection, cache.get(), operations);
     
     TRI_IF_FAILURE("transferMarkersCrash") {
       // intentionally kill the server
@@ -900,11 +900,6 @@ int CollectorThread::transferMarkers(Logfile* logfile,
     res = ex.code();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
-  }
-
-  if (cache != nullptr) {
-    // prevent memleak
-    delete cache;
   }
 
   return res;
@@ -969,8 +964,11 @@ int CollectorThread::executeTransferMarkers(LogicalCollection* collection,
 
 /// @brief insert the collect operations into a per-collection queue
 int CollectorThread::queueOperations(arangodb::wal::Logfile* logfile,
-                                     CollectorCache*& cache) {
+                                     std::unique_ptr<CollectorCache>& cache) {
+  TRI_ASSERT(cache != nullptr);
+
   TRI_voc_cid_t cid = cache->collectionId;
+  uint64_t numOperations = cache->operations->size();
   uint64_t maxNumPendingOperations = _logfileManager->throttleWhenPending();
 
   TRI_ASSERT(!cache->operations->empty());
@@ -983,12 +981,14 @@ int CollectorThread::queueOperations(arangodb::wal::Logfile* logfile,
         // it is only safe to access the queue if this flag is not set
         auto it = _operationsQueue.find(cid);
         if (it == _operationsQueue.end()) {
-          _operationsQueue.emplace(cid, std::vector<CollectorCache*>({cache}));
+          _operationsQueue.emplace(cid, std::vector<CollectorCache*>({cache.get()}));
           _logfileManager->increaseCollectQueueSize(logfile);
         } else {
-          (*it).second.push_back(cache);
+          (*it).second.push_back(cache.get());
           _logfileManager->increaseCollectQueueSize(logfile);
         }
+        // now _operationsQueue is responsible for managing the cache entry
+        cache.release();
 
         // exit the loop
         break;
@@ -998,8 +998,6 @@ int CollectorThread::queueOperations(arangodb::wal::Logfile* logfile,
     // wait outside the mutex for the flag to be cleared
     usleep(10000);
   }
-
-  uint64_t numOperations = cache->operations->size();
 
   if (maxNumPendingOperations > 0 &&
       _numPendingOperations < maxNumPendingOperations &&
@@ -1012,10 +1010,6 @@ int CollectorThread::queueOperations(arangodb::wal::Logfile* logfile,
   }
 
   _numPendingOperations += numOperations;
-
-  // we have put the object into the queue successfully
-  // now set the original pointer to null so it isn't double-freed
-  cache = nullptr;
 
   return TRI_ERROR_NO_ERROR;
 }

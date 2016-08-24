@@ -53,6 +53,9 @@ class PhysicalCollection {
   virtual void figures(std::shared_ptr<arangodb::velocypack::Builder>&) = 0;
   
   virtual int close() = 0;
+  
+  virtual int applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
+                                std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) = 0;
 
   /// @brief rotate the active journal - will do nothing if there is no journal
   virtual int rotateActiveJournal() = 0;

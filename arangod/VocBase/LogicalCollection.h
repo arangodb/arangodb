@@ -204,8 +204,9 @@ class LogicalCollection {
     return getPhysical()->closeDatafiles(files);
   }
   
-  std::vector<DatafileDescription> datafilesInRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax) {
-    return getPhysical()->datafilesInRange(dataMin, dataMax);
+  int applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
+                        std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) {
+    return getPhysical()->applyForTickRange(dataMin, dataMax, callback);
   }
 
 

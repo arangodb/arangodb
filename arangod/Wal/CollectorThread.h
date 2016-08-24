@@ -203,7 +203,7 @@ class CollectorThread : public Thread {
                              OperationsType const&);
 
   /// @brief insert the collect operations into a per-collection queue
-  int queueOperations(arangodb::wal::Logfile*, CollectorCache*&);
+  int queueOperations(arangodb::wal::Logfile*, std::unique_ptr<CollectorCache>&);
 
   /// @brief update a collection's datafile information
   int updateDatafileStatistics(TRI_collection_t*, CollectorCache*);

@@ -394,132 +394,34 @@ static int DumpCollection(TRI_replication_dump_t* dump,
                           bool withTicks) {
   LOG(TRACE) << "dumping collection " << collection->cid() << ", tick range " << dataMin << " - " << dataMax;
 
-  TRI_collection_t* document = collection->_collection;
-  TRI_string_buffer_t* buffer = dump->_buffer;
-
-  std::vector<DatafileDescription> datafiles;
-
-  try {
-    LOG(TRACE) << "getting datafiles in data range " << dataMin << " - " << dataMax;
-    datafiles = collection->datafilesInRange(dataMin, dataMax);
-  } catch (...) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-  
-  bool const isEdgeCollection = (document->_info.type() == TRI_COL_TYPE_EDGE);
+  bool const isEdgeCollection = (collection->_collection->_info.type() == TRI_COL_TYPE_EDGE);
 
   // setup some iteration state
   TRI_voc_tick_t lastFoundTick = 0;
-  int res = TRI_ERROR_NO_ERROR;
-  bool hasMore = true;
   bool bufferFull = false;
 
-  size_t const n = datafiles.size();
+  auto callback = [&dump, &lastFoundTick, &databaseId, &collectionId, &withTicks, &isEdgeCollection, &bufferFull](TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker) {
+    // note the last tick we processed
+    lastFoundTick = foundTick;
 
-  for (size_t i = 0; i < n; ++i) {
-    auto const& e = datafiles[i];
-    TRI_datafile_t const* datafile = e._data;
+    int res = StringifyMarker(dump, databaseId, collectionId, marker, true, withTicks, isEdgeCollection);
 
-    // we are reading from a journal that might be modified in parallel
-    // so we must read-lock it
-#warning FIXME
-//    CONDITIONAL_READ_LOCKER(readLocker, document->_filesLock, e._isJournal); 
-
-    if (!e._isJournal) {
-      TRI_ASSERT(datafile->_isSealed);
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
     }
-
-    char const* ptr = datafile->_data;
-    char const* end;
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      // no error so far. start iterating
-      end = ptr + datafile->_currentSize;
-    } else {
-      // some error occurred. don't iterate
-      end = ptr;
-    }
-
-    while (ptr < end) {
-      auto const* marker = reinterpret_cast<TRI_df_marker_t const*>(ptr);
-
-      if (marker->getSize() == 0) {
-        // end of datafile
-        break;
-      }
       
-      TRI_df_marker_type_t type = marker->getType();
-        
-      if (type <= TRI_DF_MARKER_MIN) {
-        break;
-      }
-
-      ptr += DatafileHelper::AlignedMarkerSize<size_t>(marker);
-
-      if (type == TRI_DF_MARKER_BLANK) {
-        // fully ignore these marker types. they don't need to be replicated,
-        // but we also cannot stop iteration if we find one of these
-        continue;
-      }
-
-      // get the marker's tick and check whether we should include it
-      TRI_voc_tick_t foundTick = marker->getTick();
-
-      if (foundTick <= dataMin) {
-        // marker too old
-        continue;
-      }
-
-      if (foundTick > dataMax) {
-        // marker too new
-        hasMore = false;
-        goto NEXT_DF;
-      }
-
-      if (type != TRI_DF_MARKER_VPACK_DOCUMENT &&
-          type != TRI_DF_MARKER_VPACK_REMOVE) {
-        // found a non-data marker...
-
-        // check if we can abort searching
-        if (foundTick >= dataMax || (foundTick > e._tickMax && i == (n - 1))) {
-          // fetched the last available marker
-          hasMore = false;
-          goto NEXT_DF;
-        }
-
-        continue;
-      }
-
-      // note the last tick we processed
-      lastFoundTick = foundTick;
-
-      res = StringifyMarker(dump, databaseId, collectionId, marker, true, withTicks, isEdgeCollection);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        break;  // will go to NEXT_DF
-      }
-
-      if (foundTick >= dataMax || (foundTick >= e._tickMax && i == (n - 1))) {
-        // fetched the last available marker
-        hasMore = false;
-        goto NEXT_DF;
-      }
-
-      if (static_cast<uint64_t>(TRI_LengthStringBuffer(buffer)) > dump->_chunkSize) {
-        // abort the iteration
-        bufferFull = true;
-
-        goto NEXT_DF;
-      }
+    if (static_cast<uint64_t>(TRI_LengthStringBuffer(dump->_buffer)) > dump->_chunkSize) {
+      // abort the iteration
+      bufferFull = true;
+      return false; // stop iterating
     }
 
-  NEXT_DF:
-    if (res != TRI_ERROR_NO_ERROR || !hasMore || bufferFull) {
-      break;
-    }
-  }
+    return true; // continue iterating
+  };
 
-  if (res == TRI_ERROR_NO_ERROR) {
+  try {
+    bool hasMore = collection->applyForTickRange(dataMin, dataMax, callback);
+    
     if (lastFoundTick > 0) {
       // data available for requested range
       dump->_lastFoundTick = lastFoundTick;
@@ -531,9 +433,13 @@ static int DumpCollection(TRI_replication_dump_t* dump,
       dump->_hasMore = false;
       dump->_bufferFull = false;
     }
-  }
 
-  return res;
+    return TRI_ERROR_NO_ERROR;
+  } catch (basics::Exception const& ex) {
+    return ex.code();
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

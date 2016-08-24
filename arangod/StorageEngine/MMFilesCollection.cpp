@@ -640,33 +640,131 @@ void MMFilesCollection::figures(std::shared_ptr<arangodb::velocypack::Builder>& 
 std::vector<DatafileDescription> MMFilesCollection::datafilesInRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax) {
   std::vector<DatafileDescription> result;
 
-  READ_LOCKER(readLocker, _filesLock); 
+  auto apply = [&dataMin, &dataMax, &result](TRI_datafile_t const* datafile, bool isJournal) {
+    DatafileDescription entry = {datafile, datafile->_dataMin, datafile->_dataMax, datafile->_tickMax, isJournal};
+    LOG(TRACE) << "checking datafile " << datafile->_fid << " with data range " << datafile->_dataMin << " - " << datafile->_dataMax << ", tick max: " << datafile->_tickMax;
 
-  for (auto& it : _datafiles) {
-    DatafileDescription entry = {it, it->_dataMin, it->_dataMax, it->_tickMax, false};
-    LOG(TRACE) << "checking datafile " << it->_fid << " with data range " << it->_dataMin << " - " << it->_dataMax << ", tick max: " << it->_tickMax;
-
-    if (it->_dataMin == 0 || it->_dataMax == 0) {
+    if (datafile->_dataMin == 0 || datafile->_dataMax == 0) {
       // datafile doesn't have any data
-      continue;
+      return;
     }
 
-    TRI_ASSERT(it->_tickMin <= it->_tickMax);
-    TRI_ASSERT(it->_dataMin <= it->_dataMax);
+    TRI_ASSERT(datafile->_tickMin <= datafile->_tickMax);
+    TRI_ASSERT(datafile->_dataMin <= datafile->_dataMax);
 
-    if (dataMax < it->_dataMin) {
+    if (dataMax < datafile->_dataMin) {
       // datafile is newer than requested range
-      continue;
+      return;
     }
 
-    if (dataMin > it->_dataMax) {
+    if (dataMin > datafile->_dataMax) {
       // datafile is older than requested range
-      continue;
+      return;
     }
 
     result.emplace_back(entry);
+  };
+
+  READ_LOCKER(readLocker, _filesLock); 
+
+  for (auto& it : _datafiles) {
+    apply(it, false);
+  }
+  for (auto& it : _journals) {
+    apply(it, true);
   }
 
   return result;
+}
+
+int MMFilesCollection::applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
+                        std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) {
+  LOG(TRACE) << "getting datafiles in data range " << dataMin << " - " << dataMax;
+
+  std::vector<DatafileDescription> datafiles = datafilesInRange(dataMin, dataMax);
+  // now we have a list of datafiles...
+ 
+  size_t const n = datafiles.size();
+  for (size_t i = 0; i < n; ++i) {
+    auto const& e = datafiles[i];
+    TRI_datafile_t const* datafile = e._data;
+
+    // we are reading from a journal that might be modified in parallel
+    // so we must read-lock it
+    CONDITIONAL_READ_LOCKER(readLocker, _filesLock, e._isJournal); 
+    
+    if (!e._isJournal) {
+      TRI_ASSERT(datafile->_isSealed);
+    }
+    
+    char const* ptr = datafile->_data;
+    char const* end = ptr + datafile->_currentSize;
+
+    while (ptr < end) {
+      auto const* marker = reinterpret_cast<TRI_df_marker_t const*>(ptr);
+
+      if (marker->getSize() == 0) {
+        // end of datafile
+        break;
+      }
+      
+      TRI_df_marker_type_t type = marker->getType();
+        
+      if (type <= TRI_DF_MARKER_MIN) {
+        break;
+      }
+
+      ptr += DatafileHelper::AlignedMarkerSize<size_t>(marker);
+
+      if (type == TRI_DF_MARKER_BLANK) {
+        // fully ignore these marker types. they don't need to be replicated,
+        // but we also cannot stop iteration if we find one of these
+        continue;
+      }
+
+      // get the marker's tick and check whether we should include it
+      TRI_voc_tick_t foundTick = marker->getTick();
+
+      if (foundTick <= dataMin) {
+        // marker too old
+        continue; 
+      }
+
+      if (foundTick > dataMax) {
+        // marker too new
+        return false; // hasMore = false 
+      }
+
+      if (type != TRI_DF_MARKER_VPACK_DOCUMENT &&
+          type != TRI_DF_MARKER_VPACK_REMOVE) {
+        // found a non-data marker...
+
+        // check if we can abort searching
+        if (foundTick >= dataMax || (foundTick > e._tickMax && i == (n - 1))) {
+          // fetched the last available marker
+          return false; // hasMore = false
+        }
+
+        continue;
+      }
+
+      // note the last tick we processed
+      bool doAbort = false;
+      if (!callback(foundTick, marker)) {
+        doAbort = true;
+      } 
+      
+      if (foundTick >= dataMax || (foundTick >= e._tickMax && i == (n - 1))) {
+        // fetched the last available marker
+        return false; // hasMore = false
+      }
+
+      if (doAbort) {
+        return true; // hasMore = true
+      }
+    } // next marker in datafile
+  } // next datafile
+
+  return false; // hasMore = false
 }
 
