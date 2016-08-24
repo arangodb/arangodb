@@ -329,8 +329,9 @@ function optimizerRuleTestSuite() {
         hasIndexNodeWithRanges(result);
 
         result = AQL_EXPLAIN(query, { }, paramIndexRangeSortFilter);
-        assertEqual([ IndexesRule, FilterRemoveRule ], 
-          removeAlwaysOnClusterRules(result.plan.rules), query);
+        var rules = removeAlwaysOnClusterRules(result.plan.rules);
+        assertNotEqual(-1, rules.indexOf(IndexesRule)); 
+        assertNotEqual(-1, rules.indexOf(FilterRemoveRule)); 
         hasNoFilterNode(result);
         hasIndexNodeWithRanges(result);
 

@@ -49,6 +49,8 @@ function agencyTestSuite () {
   var whoseTurn = 0;
   var request = require("@arangodb/request");
 
+  wait(2);
+
   function readAgency(list) {
     // We simply try all agency servers in turn until one gives us an HTTP
     // response:
@@ -97,14 +99,6 @@ function agencyTestSuite () {
     tearDown : function () {
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief startup timing
-////////////////////////////////////////////////////////////////////////////////
-
-    testStartup : function () {
-      assertEqual(readAndCheck([["/x"]]), [{}]);
-    },
-    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test to write a single top level key
 ////////////////////////////////////////////////////////////////////////////////

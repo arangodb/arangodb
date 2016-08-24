@@ -44,41 +44,56 @@ var lessons = [
       '  number = number * 10;'
   },
   {
+    title: 'Shell History',
+    text: 'You can access previously run commands using the up and down keys.\n' +
+      "It saves you from retyping 'tutorial' every time for instance."
+  },
+  {
     title: 'Running Complex Instructions',
     text: 'You can also run more complex instructions, such as for loops:\n\n' +
-      '  for (i = 0; i < 10; i++) { number = number + 1; }'
+      '  for (var i = 0; i < 10; i++) { number = number + 1; }'
   },
   {
     title: 'Printing Results',
-    text: 'As you can see, the result of the last command executed is printed automatically. ' +
+    text: 'As you see, the result of the last command executed is printed automatically.\n' +
       'To explicitly print a value at any other time, there is the print function:\n\n' +
-      '  for (i = 0; i < 5; ++i) { print("I am a JavaScript shell"); }'
+      '  for (var i = 0; i < 5; ++i) { print("I am a JavaScript shell"); }'
   },
   {
     title: 'Creating Collections',
-    text: 'ArangoDB is a document database. This means that we store data as documents ' +
-      "(which are similar to JavaScript objects) in so-called 'collections'. " +
+    text: 'ArangoDB is primarily a document database. This means that we store data as\n' +
+      "documents (which are similar to JavaScript objects) in so-called 'collections'.\n" +
       "Let's create a collection named 'places' now:\n\n" +
       "  db._create('places');\n\n" +
-      'Note: each collection is identified by a unique name. Trying to create a ' +
+      'Note: each collection is identified by a unique name. Trying to create a\n' +
       'collection that already exists will produce an error.'
   },
   {
     title: 'Displaying Collections',
     text: 'Now you can take a look at the collection(s) you just created:\n\n' +
       '  db._collections();\n\n' +
-      "Please note that all collections will be returned, including ArangoDB's pre-defined " +
-      'system collections.'
+      "Please note that all collections will be returned, including ArangoDB's\n" +
+      'pre-defined system collections.'
+  },
+  {
+    title: 'Accessing a single collection',
+    text: 'If you want to access a particular collection, you can either write:\n\n' +
+      '  db.places;\n\n' +
+      'or the more elaborate alternative:\n\n' +
+      "  db._collection('places');\n\n" +
+      'Both return a collection object (if the specified collection exists).'
   },
   {
     title: 'Creating Documents',
-    text: "Now we have a collection, but it is empty. So let's create some documents!\n\n" +
+    text: "We have a collection, but it is empty. So let's create some documents!\n\n" +
       '  db.places.save({ _key : "foo", city : "foo-city" });\n' +
-      '  for (i = 0; i <= 10; i++) { db.places.save({ _key: "example" + i, zipcode: i }) };'
+      '  for (var i = 0; i <= 10; i++) {\n' +
+      '    db.places.save({ _key: "example" + i, zipcode: i })\n' +
+      '  };'
   },
   {
     title: 'Displaying All Documents',
-    text: 'You want to take a look at your docs? No problem:\n\n' +
+    text: 'You want to take a look at your documents? No problem:\n\n' +
       '  db.places.toArray();'
   },
   {
@@ -89,37 +104,40 @@ var lessons = [
   {
     title: 'Retrieving Single Documents',
     text: "As you can see, each document has some meta attributes '_id', '_key' and '_rev'.\n" +
-      "The '_key' attribute can be used to quickly retrieve a single document from " +
+      "The '_key' attribute can be used to quickly retrieve a single document from\n" +
       'a collection:\n\n' +
       '  db.places.document("foo");\n' +
       '  db.places.document("example5");'
   },
   {
     title: 'Retrieving Single Documents',
-    text: "The '_id' attribute can also be used to retrieve documents using the 'db' object:\n\n" +
+    text: "The '_id' attribute can also be used to retrieve documents using the\n" +
+      "'db' object:\n\n" +
       '  db._document("places/foo");\n' +
       '  db._document("places/example5");'
   },
   {
     title: 'Modifying Documents',
-    text: 'You can modify existing documents. Try to add a new attribute to a document and ' +
+    text: 'You can modify existing documents. Try to add a new attribute to a document and\n' +
       'verify whether it has been added:\n\n' +
       '  db._update("places/foo", { zipcode: 39535 });\n' +
       '  db._document("places/foo");'
   },
   {
     title: 'Document Revisions',
-    text: "Note that after updating the document, its '_rev' attribute changed automatically.\n" +
-      "The '_rev' attribute contains a document revision number, and it can be used for " +
-      "conditional modifications. Here's an example of how to avoid lost updates in case " +
-      'multiple clients are accessing the documents in parallel:\n\n' +
+    text: "Note that after updating the document, its '_rev' attribute changed\n" +
+      'automatically.\n\n' +
+      "The '_rev' attribute contains a document revision number, and it can be used\n" +
+      "for conditional modifications. Here's an example of how to avoid lost updates\n" +
+      'in case multiple clients are accessing the documents in parallel:\n\n' +
       '  doc = db._document("places/example1");\n' +
       '  db._update("places/example1", { someValue: 23 });\n' +
       '  db._update(doc, { someValue: 42 });\n\n' +
-      'Note that the first update will succeed because it was unconditional. The second ' +
-      "update however is conditional because we're also passing the document's revision " +
-      "id in the first parameter to _update. As the revision id we're passing to update " +
-      "does not match the document's current revision anymore, the update is rejected."
+      'Note that the first update will succeed because it was unconditional.\n\n' +
+      "The second update however is conditional because we're also passing the\n" +
+      "document's revision id in the first parameter to _update. As the revision id\n" +
+      "we're passing to update does not match the document's current revision anymore,\n" +
+      'the update is rejected.'
   },
   {
     title: 'Removing Documents',
@@ -130,28 +148,41 @@ var lessons = [
   },
   {
     title: 'Searching Documents',
-    text: 'Searching for documents with specific attributes can be done by using the ' +
-      'byExample method:\n\n' +
+    text: 'Searching for documents with specific attributes can be done by using the\n' +
+      "'byExample' method:\n\n" +
       '  db._create("users");\n' +
-      '  for (i = 0; i < 10; ++i) { ' +
-      'db.users.save({ name: "username" + i, active: (i % 3 == 0), age: 30 + i }); }\n' +
+      '  for (var i = 0; i < 10; ++i) {\n' +
+      '    db.users.save({ name: "username" + i, active: (i % 3 == 0), age: 30 + i });\n' +
+      '  }\n' +
       '  db.users.byExample({ active: false }).toArray();\n' +
-      '  db.users.byExample({ name: "username3", active: true }).toArray();\n'
+      '  db.users.byExample({ name: "username3", active: true }).toArray();'
   },
   {
     title: 'Running AQL Queries',
-    text: 'ArangoDB also provides a query language for more complex matching:\n\n' +
-      '  db._query("FOR u IN users FILTER u.active == true && u.age >= 33 ' +
-      'RETURN { username: u.name, age: u.age }").toArray();'
+    text: 'ArangoDB also provides a query language (AQL) for more complex matching:\n\n' +
+      '  db._query(`\n' +
+      '    FOR u IN users\n' +
+      '      FILTER u.active == true && u.age >= 33\n' +
+      '      RETURN { username: u.name, age: u.age }\n' +
+      '  `).toArray();\n\n' +
+      'Wrapping multi-line queries in backticks is the most convenient way in\n' +
+      "today's JavaScript.\n\n" +
+      'See our online documentation for more details on AQL:\n' +
+      'https://docs.arangodb.com/'
   },
   {
     title: 'Using Databases',
-    text: 'By default, the ArangoShell connects to the default database. The default database ' +
-      "is named '_system'. To create another database, use the '_createDatabase' method of the " +
-      "'db' object. To switch into an existing database, use '_useDatabase'. To get rid of a " +
-      "database and all of its collections, use '_dropDatabase':\n\n" +
+    text: 'By default, the ArangoShell connects to the default database.\n' +
+      "The default database is named '_system'. To create another database, use the\n" +
+      "'_createDatabase' method of the 'db' object. To switch to an existing database,\n" +
+      "use '_useDatabase':\n\n" +
       '  db._createDatabase("mydb");\n' +
-      '  db._useDatabase("mydb");\n' +
+      '  db._useDatabase("mydb");'
+  },
+  {
+    title: 'Removing Databases',
+    text:  "To get rid of a database and all of its collections, use '_dropDatabase'.\n" +
+      "It needs to be called from within the '_system' database:\n\n" +
       '  db._useDatabase("_system");\n' +
       '  db._dropDatabase("mydb");'
   }

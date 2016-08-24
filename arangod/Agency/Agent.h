@@ -151,12 +151,19 @@ class Agent : public arangodb::Thread {
   /// @brief Serve active agent interface
   bool serveActiveAgent();
 
+  /// @brief Start constituent
   void startConstituent();
+
+  /// @brief Get notification as inactve pool member
+  void notify(query_t const&);
   
   /// State reads persisted state and prepares the agent
   friend class State;
 
  private:
+
+  /// @brief Notify inactive pool members of changes in configuration
+  void notifyInactive() const;
 
   /// @brief Activate this agent in single agent mode.
   bool activateAgency();

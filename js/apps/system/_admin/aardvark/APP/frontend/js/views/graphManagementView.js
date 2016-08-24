@@ -55,7 +55,6 @@
       e.preventDefault();
       var name = $(e.currentTarget).parent().parent().attr('id');
       name = name.substr(0, name.length - 5);
-      console.log(name);
       window.App.navigate('graph2/' + encodeURIComponent(name), {trigger: true});
     },
 
