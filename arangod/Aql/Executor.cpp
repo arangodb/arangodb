@@ -79,24 +79,37 @@ V8Expression* Executor::generateExpression(AstNode const* node) {
     constantValues->ForceSet(TRI_V8_STD_STRING(name), toV8(isolate, it.first));
   }
 
-  // compile the expression
-  v8::Handle<v8::Value> func(compileExpression());
+  TRI_ASSERT(_buffer != nullptr);
 
-  // exit early if an error occurred
-  HandleV8Error(tryCatch, func);
+  v8::Handle<v8::Script> compiled = v8::Script::Compile(
+      TRI_V8_STD_STRING((*_buffer)), TRI_V8_ASCII_STRING("--script--"));
 
-  // a "simple" expression here is any expression that will only return
-  // non-cyclic
-  // data and will not return any special JavaScript types such as Date, RegExp
-  // or
-  // Function
-  // as we know that all built-in AQL functions are simple but do not know
-  // anything
-  // about user-defined functions, so we expect them to be non-simple
-  bool const isSimple = (!node->callsUserDefinedFunction());
+  if (! compiled.IsEmpty()) {
+    v8::Handle<v8::Value> func(compiled->Run());
 
-  return new V8Expression(isolate, v8::Handle<v8::Function>::Cast(func),
-                          constantValues, isSimple);
+    // exit early if an error occurred
+    HandleV8Error(tryCatch, func,  _buffer, false);
+
+    // a "simple" expression here is any expression that will only return
+    // non-cyclic
+    // data and will not return any special JavaScript types such as Date, RegExp
+    // or
+    // Function
+    // as we know that all built-in AQL functions are simple but do not know
+    // anything
+    // about user-defined functions, so we expect them to be non-simple
+    bool const isSimple = (!node->callsUserDefinedFunction());
+
+    return new V8Expression(isolate, v8::Handle<v8::Function>::Cast(func),
+                            constantValues, isSimple);
+  }
+  else {
+    v8::Handle<v8::Value> empty;
+    HandleV8Error(tryCatch, empty,  _buffer, true);
+    
+    // well we're almost sure we never reach this since the above call should throw:
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
 }
 
 /// @brief executes an expression directly
@@ -114,43 +127,56 @@ int Executor::executeExpression(Query* query, AstNode const* node,
   v8::HandleScope scope(isolate);
   v8::TryCatch tryCatch;
 
-  // compile the expression
-  v8::Handle<v8::Value> func(compileExpression());
 
-  // exit early if an error occurred
-  HandleV8Error(tryCatch, func);
+  TRI_ASSERT(_buffer != nullptr);
 
-  TRI_ASSERT(query != nullptr);
+  v8::Handle<v8::Script> compiled = v8::Script::Compile(
+      TRI_V8_STD_STRING((*_buffer)), TRI_V8_ASCII_STRING("--script--"));
 
-  TRI_GET_GLOBALS();
-  v8::Handle<v8::Value> result;
-  auto old = v8g->_query;
+  if (! compiled.IsEmpty()) {
 
-  try {
-    v8g->_query = static_cast<void*>(query);
-    TRI_ASSERT(v8g->_query != nullptr);
+    v8::Handle<v8::Value> func(compiled->Run());
 
-    // execute the function
-    v8::Handle<v8::Value> args[] = { v8::Object::New(isolate), v8::Object::New(isolate) };
-    result = v8::Handle<v8::Function>::Cast(func)
-                 ->Call(v8::Object::New(isolate), 2, args);
+    // exit early if an error occurred
+    HandleV8Error(tryCatch, func,  _buffer, false);
 
-    v8g->_query = old;
+    TRI_ASSERT(query != nullptr);
 
-    // exit if execution raised an error
-    HandleV8Error(tryCatch, result);
-  } catch (...) {
-    v8g->_query = old;
-    throw;
+    TRI_GET_GLOBALS();
+    v8::Handle<v8::Value> result;
+    auto old = v8g->_query;
+
+    try {
+      v8g->_query = static_cast<void*>(query);
+      TRI_ASSERT(v8g->_query != nullptr);
+
+      // execute the function
+      v8::Handle<v8::Value> args[] = { v8::Object::New(isolate), v8::Object::New(isolate) };
+      result = v8::Handle<v8::Function>::Cast(func)
+        ->Call(v8::Object::New(isolate), 2, args);
+
+      v8g->_query = old;
+
+      // exit if execution raised an error
+      HandleV8Error(tryCatch, result,  _buffer, false);
+    } catch (...) {
+      v8g->_query = old;
+      throw;
+    }
+    if (result->IsUndefined()) {
+      // undefined => null
+      builder.add(VPackValue(VPackValueType::Null));
+      return TRI_ERROR_NO_ERROR;
+    }
+    return TRI_V8ToVPack(isolate, builder, result, false);
   }
+  else {
+    v8::Handle<v8::Value> empty;
+    HandleV8Error(tryCatch, empty, _buffer, true);
 
-  if (result->IsUndefined()) {
-    // undefined => null
-    builder.add(VPackValue(VPackValueType::Null));
-    return TRI_ERROR_NO_ERROR;
-  } 
-  
-  return TRI_V8ToVPack(isolate, builder, result, false);
+    // well we're almost sure we never reach this since the above call should throw:
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
 }
 
 /// @brief returns a reference to a built-in function
@@ -277,7 +303,9 @@ v8::Handle<v8::Value> Executor::toV8(v8::Isolate* isolate,
 /// @brief checks if a V8 exception has occurred and throws an appropriate C++
 /// exception from it if so
 void Executor::HandleV8Error(v8::TryCatch& tryCatch,
-                             v8::Handle<v8::Value>& result) {
+                             v8::Handle<v8::Value>& result,
+                             arangodb::basics::StringBuffer* const buffer,
+                             bool duringCompile) {
   ISOLATE;
 
   if (tryCatch.HasCaught()) {
@@ -326,6 +354,11 @@ void Executor::HandleV8Error(v8::TryCatch& tryCatch,
       // exception is no ArangoError
       std::string details(TRI_ObjectToString(tryCatch.Exception()));
 
+      if (buffer) {
+        std::string script(buffer->c_str(), buffer->length());
+        LOG(ERR) << details << " " << script;
+        details += "\nSee log for more details";
+      }
       if (*stacktrace && stacktrace.length() > 0) {
         details += "\nstacktrace of offending AQL function: ";
         details += *stacktrace;
@@ -334,33 +367,34 @@ void Executor::HandleV8Error(v8::TryCatch& tryCatch,
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_SCRIPT, details);
     }
 
+    std::string msg("unknown error in scripting");
+    if (duringCompile) {
+      msg += " (during compilation)";
+    }
+    if (buffer) {
+      std::string script(buffer->c_str(), buffer->length());
+      LOG(ERR) << msg << " " << script;
+      msg += " See log for details";
+    }
     // we can't figure out what kind of error occurred and throw a generic error
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "unknown error in scripting");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
   }
 
   if (result.IsEmpty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "unknown error in scripting");
+    std::string msg("unknown error in scripting");
+    if (duringCompile) {
+      msg += " (during compilation)";
+    }
+    if (buffer) {
+      std::string script(buffer->c_str(), buffer->length());
+      LOG(ERR) << msg << " " << script;
+      msg += " See log for details";
+    }
+
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
   }
 
   // if we get here, no exception has been raised
-}
-
-/// @brief compile a V8 function from the code contained in the buffer
-v8::Handle<v8::Value> Executor::compileExpression() {
-  TRI_ASSERT(_buffer != nullptr);
-  ISOLATE;
-
-  v8::Handle<v8::Script> compiled = v8::Script::Compile(
-      TRI_V8_STD_STRING((*_buffer)), TRI_V8_ASCII_STRING("--script--"));
-
-  if (compiled.IsEmpty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "unable to compile v8 expression");
-  }
-
-  return compiled->Run();
 }
 
 /// @brief generate JavaScript code for an arbitrary expression

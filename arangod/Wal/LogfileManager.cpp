@@ -441,6 +441,9 @@ bool LogfileManager::open() {
 
   return true;
 }
+    
+void LogfileManager::stop() {
+}
 
 void LogfileManager::unprepare() {
   _shutdown = 1;
@@ -1612,6 +1615,17 @@ void LogfileManager::removeLogfile(Logfile* logfile) {
   }
 }
 
+void LogfileManager::waitForCollector() {
+  if (_collectorThread == nullptr) {
+    return;
+  }
+
+  while (_collectorThread->hasQueuedOperations()) {
+    LOG(TRACE) << "waiting for WAL collector";
+    usleep(50000);
+  }
+}
+
 // wait until a specific logfile has been collected
 int LogfileManager::waitForCollector(Logfile::IdType logfileId,
                                      double maxWaitTime) {
@@ -1885,43 +1899,45 @@ int LogfileManager::startCollectorThread() {
 
 // stop the collector thread
 void LogfileManager::stopCollectorThread() {
-  if (_collectorThread != nullptr) {
-    LOG(TRACE) << "stopping WAL collector thread";
- 
-    // wait for at most 5 seconds for the collector 
-    // to catch up
-    double const end = TRI_microtime() + 5.0;  
-    while (TRI_microtime() < end) {
-      bool canAbort = true;
-      {
-        READ_LOCKER(readLocker, _logfilesLock);
-        for (auto& it : _logfiles) {
-          Logfile* logfile = it.second;
+  if (_collectorThread == nullptr) {
+    return;
+  }
 
-          if (logfile == nullptr) {
-           continue;
-          }
+  LOG(TRACE) << "stopping WAL collector thread";
 
-          Logfile::StatusType status = logfile->status();
+  // wait for at most 5 seconds for the collector 
+  // to catch up
+  double const end = TRI_microtime() + 5.0;  
+  while (TRI_microtime() < end) {
+    bool canAbort = true;
+    {
+      READ_LOCKER(readLocker, _logfilesLock);
+      for (auto& it : _logfiles) {
+        Logfile* logfile = it.second;
 
-          if (status == Logfile::StatusType::SEAL_REQUESTED) {
-            canAbort = false;
-          }
+        if (logfile == nullptr) {
+          continue;
+        }
+
+        Logfile::StatusType status = logfile->status();
+
+        if (status == Logfile::StatusType::SEAL_REQUESTED) {
+          canAbort = false;
         }
       }
-
-      if (canAbort) {
-        MUTEX_LOCKER(mutexLocker, _idLock);
-        if (_lastSealedId == _lastCollectedId) {
-          break;
-        }
-      }
-
-      usleep(50000);
     }
 
-    _collectorThread->beginShutdown();
+    if (canAbort) {
+      MUTEX_LOCKER(mutexLocker, _idLock);
+      if (_lastSealedId == _lastCollectedId) {
+        break;
+      }
+    }
+
+    usleep(50000);
   }
+
+  _collectorThread->beginShutdown();
 }
 
 // start the remover thread

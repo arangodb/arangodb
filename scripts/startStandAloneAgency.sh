@@ -56,7 +56,6 @@ for aid in `seq 0 $(( $POOLSZ - 1 ))`; do
         --server.endpoint tcp://0.0.0.0:$port \
         --server.statistics false \
         --agency.compaction-step-size $COMP \
-        --log.level agency=debug \
         --log.force-direct true \
         > agency/$port.stdout 2>&1 &
 done

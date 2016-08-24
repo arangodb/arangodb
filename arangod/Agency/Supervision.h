@@ -108,6 +108,9 @@ class Supervision : public arangodb::Thread {
   void wakeUp();
 
  private:
+  static constexpr const char* HEALTH_STATUS_GOOD = "GOOD";
+  static constexpr const char* HEALTH_STATUS_BAD = "BAD";
+  static constexpr const char* HEALTH_STATUS_FAILED = "FAILED";
 
   /// @brief Update agency prefix from agency itself
   bool updateAgencyPrefix (size_t nTries = 10, int intervalSec = 1);
@@ -164,6 +167,8 @@ class Supervision : public arangodb::Thread {
   long _gracePeriod;
   uint64_t _jobId;
   uint64_t _jobIdMax;
+
+  bool serverGood(const std::string&);
 
   static std::string _agencyPrefix;
 };

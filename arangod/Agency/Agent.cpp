@@ -347,7 +347,7 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(std::string const& follower_id) {
     arangodb::rest::RequestType::POST, path.str(),
     std::make_shared<std::string>(builder.toJson()), headerFields,
     std::make_shared<AgentCallback>(this, follower_id, highest),
-    0.5*_config.minPing(), true, 0.75*_config.minPing());
+    0.1*_config.minPing(), true, 0.05*_config.minPing());
 
   _lastSent[follower_id] = std::chrono::system_clock::now();
   _lastHighest[follower_id] = highest;
@@ -418,7 +418,6 @@ bool Agent::load() {
   _spearhead.start();
   _readDB.start();
 
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting constituent personality.";
   TRI_ASSERT(queryRegistry != nullptr);
   if (size() == 1) {
     activateAgency();
@@ -554,9 +553,83 @@ bool Agent::lead() {
   // Wake up supervision
   _supervision.wakeUp();
 
+  // Notify inactive pool
+  notifyInactive();
+  
   return true;
   
 }
+
+
+// Notify inactive pool members of configuration change()
+void Agent::notifyInactive() const {
+
+  if (_config.poolSize() > _config.size()) {
+    
+    size_t size = _config.size(),
+      counter = 0;
+    std::map<std::string,std::string> pool = _config.pool();
+    std::string path = "/_api/agency_priv/inform";
+
+    Builder out;
+    out.openObject();
+    out.add("term", VPackValue(term()));
+    out.add("id", VPackValue(id()));
+    out.add("active", _config.activeToBuilder()->slice());
+    out.add("pool", _config.poolToBuilder()->slice());
+    out.close();
+    
+    for (auto const& p : pool) {
+      ++counter;
+      if (counter > size) {
+        auto headerFields =
+          std::make_unique<std::unordered_map<std::string, std::string>>();
+        arangodb::ClusterComm::instance()->asyncRequest(
+          "1", 1, p.second, arangodb::rest::RequestType::POST,
+          path, std::make_shared<std::string>(out.toJson()), headerFields,
+          nullptr, 1.0, true);
+      }
+    }
+    
+  }
+    
+}
+
+
+void Agent::notify(query_t const& message) {
+
+  VPackSlice slice = message->slice();
+
+  if (!slice.isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      20011, std::string("Inform message must be an object. Incoming type is ")
+      + slice.typeName());
+  }
+
+  if (!slice.hasKey("id") || !slice.get("id").isString()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      20013, "Inform message must contain string parameter 'id'");
+  }
+  if (!slice.hasKey("term")) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      20012, "Inform message must contain uint parameter 'term'");
+  }
+  _constituent.update(slice.get("id").copyString(), slice.get("term").getUInt());
+  
+  if (!slice.hasKey("active") || !slice.get("active").isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      20014, "Inform message must contain array 'active'");
+  }
+  if (!slice.hasKey("pool") || !slice.get("pool").isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      20015, "Inform message must contain object 'pool'");
+  }
+
+  _config.update(message);
+  _state.persistActiveAgents(_config.activeToBuilder(), _config.poolToBuilder());
+
+}
+
 
 // Rebuild key value stores
 bool Agent::rebuildDBs() {
