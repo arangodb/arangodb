@@ -1452,7 +1452,7 @@ function startInstanceAgency (instanceInfo, protocol, options,
     }
     let dir = fs.join(rootDir, 'agency-' + i);
     fs.makeDirectoryRecursive(dir);
-
+    fs.makeDirectoryRecursive(instanceArgs['database.directory']);
     instanceInfo.arangods.push(startArango(protocol, options, instanceArgs, rootDir, 'agent'));
 
   }
@@ -2658,8 +2658,7 @@ testFuncs.dfdb = function (options) {
 
   fs.makeDirectoryRecursive(dataDir);
   let results = {};
-  print(options)
-  print(args)
+
   results.dfdb = executeAndWait(ARANGOD_BIN, args, options, 'dfdb');
 
   print();
