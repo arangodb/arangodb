@@ -2656,8 +2656,10 @@ testFuncs.dfdb = function (options) {
   const dataDir = fs.getTempFile();
   const args = ['-c', 'etc/relative/arango-dfdb.conf', dataDir];
 
+  fs.makeDirectoryRecursive(dataDir);
   let results = {};
-
+  print(options)
+  print(args)
   results.dfdb = executeAndWait(ARANGOD_BIN, args, options, 'dfdb');
 
   print();

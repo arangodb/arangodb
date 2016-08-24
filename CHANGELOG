@@ -46,6 +46,10 @@ devel
 v3.0.6 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #2018
+
+* fixed wrong default value for arangoimp's `--on-duplicate` value
+
 * fix execution of AQL traversal expressions when there are multiple
   conditions that refer to variables set outside the traversal
 

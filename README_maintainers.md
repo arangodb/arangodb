@@ -320,6 +320,8 @@ ________________________________________________________________________________
 
 Linux Cordeumps
 ===============
+Hint: on Ubuntu the `apport` package may interfere with this.
+
 So that the unit testing framework can autorun gdb it needs to reliably find the corefiles.
 In Linux this is configured via the `/proc` filesystem, you can make this reboot permanent by
 creating the file `/etc/sysctl.d/corepattern.conf` (or add the following lines to `/etc/sysctl.conf`)
