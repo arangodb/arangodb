@@ -70,9 +70,9 @@ VPackMessageNoOwnBuffer VppResponse::prepareForNetwork() {
   // initalize builder with vpackbuffer. then we do not need to
   // steal the header and can avoid the shared pointer
   VPackBuilder builder;
-  builder.openObject();
+  builder.openArray();
   builder.add("version", VPackValue(int(1)));
-  builder.add("type", VPackValue(int(1)));  // 2 == response
+  builder.add("type", VPackValue(int(2)));  // 2 == response
   builder.add(
       "responseCode",
       VPackValue(static_cast<int>(meta::underlyingValue(_responseCode))));
