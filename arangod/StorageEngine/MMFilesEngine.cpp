@@ -1750,7 +1750,7 @@ int MMFilesEngine::stopCompactor(TRI_vocbase_t* vocbase) {
 }
 
 /// @brief checks a collection
-int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, TRI_collection_t* collection, bool ignoreErrors) {
+int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* collection, bool ignoreErrors) {
   LOG_TOPIC(TRACE, Logger::DATAFILES) << "check collection directory '"
                                       << collection->path() << "'";
 
@@ -1761,7 +1761,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, TRI_collection_t* coll
   std::vector<TRI_datafile_t*> sealed;
   bool stop = false;
 
-  TRI_ASSERT(collection->_info.id() != 0);
+  TRI_ASSERT(collection->cid() != 0);
 
   // check files within the directory
   std::vector<std::string> files = TRI_FilesDirectory(collection->path().c_str());
@@ -1885,9 +1885,9 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, TRI_collection_t* coll
         break;
       }
 
-      if (cm->_cid != collection->_info.id()) {
+      if (cm->_cid != collection->cid()) {
         LOG(ERR) << "collection identifier mismatch, expected "
-                 << collection->_info.id() << ", found " << cm->_cid;
+                 << collection->cid() << ", found " << cm->_cid;
 
         stop = true;
         break;
@@ -1974,10 +1974,11 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, TRI_collection_t* coll
   std::sort(journals.begin(), journals.end(), DatafileComparator());
   std::sort(compactors.begin(), compactors.end(), DatafileComparator());
 
+  MMFilesCollection* physical = static_cast<MMFilesCollection*>(collection->getPhysical());
   // add the datafiles and journals
-  collection->_datafiles = datafiles;
-  collection->_journals = journals;
-  collection->_compactors = compactors;
+  physical->_datafiles = datafiles;
+  physical->_journals = journals;
+  physical->_compactors = compactors;
 
   return TRI_ERROR_NO_ERROR;
 }

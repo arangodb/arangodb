@@ -27,10 +27,15 @@
 #include "Basics/Common.h"
 #include "VocBase/voc-types.h"
 
+struct TRI_datafile_t;
+struct TRI_df_marker_t;
+
 namespace arangodb {
+class LogicalCollection;
+
 class PhysicalCollection {
  protected:
-  PhysicalCollection() {}
+  PhysicalCollection(LogicalCollection* collection) : _logicalCollection(collection) {}
 
  public:
   virtual ~PhysicalCollection() = default;
@@ -41,6 +46,50 @@ class PhysicalCollection {
   virtual void setRevision(TRI_voc_rid_t revision, bool force) = 0;
   
   virtual int64_t initialCount() const = 0;
+  
+  virtual int close() = 0;
+
+  /// @brief rotate the active journal - will do nothing if there is no journal
+  virtual int rotateActiveJournal() = 0;
+  
+  /// @brief sync the active journal - will do nothing if there is no journal
+  /// or if the journal is volatile
+  virtual int syncActiveJournal() = 0;
+
+  /// @brief reserve space in the current journal. if no create exists or the
+  /// current journal cannot provide enough space, close the old journal and
+  /// create a new one
+  virtual int reserveJournalSpace(TRI_voc_tick_t tick, TRI_voc_size_t size,
+                                  char*& resultPosition, TRI_datafile_t*& resultDatafile) = 0;
+  
+  /// @brief create compactor file
+  virtual TRI_datafile_t* createCompactor(TRI_voc_fid_t fid, TRI_voc_size_t maximalSize) = 0;
+  
+  /// @brief close an existing compactor
+  virtual int closeCompactor(TRI_datafile_t* datafile) = 0;
+  
+  /// @brief replace a datafile with a compactor
+  virtual int replaceDatafileWithCompactor(TRI_datafile_t* datafile, TRI_datafile_t* compactor) = 0;
+  
+  virtual bool removeCompactor(TRI_datafile_t*) = 0;
+  virtual bool removeDatafile(TRI_datafile_t*) = 0;
+  
+  /// @brief seal a datafile
+  virtual int sealDatafile(TRI_datafile_t* datafile, bool isCompactor) = 0;
+  
+  /// @brief creates a datafile
+  virtual TRI_datafile_t* createDatafile(TRI_voc_fid_t fid,
+                                         TRI_voc_size_t journalSize, 
+                                         bool isCompactor) = 0;
+
+  /// @brief closes the datafiles passed in the vector
+  virtual bool closeDatafiles(std::vector<TRI_datafile_t*> const& files) = 0;
+  
+  /// @brief iterates over a collection
+  virtual bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb) = 0;
+  
+ protected:
+  LogicalCollection* _logicalCollection;
 };
 
 } // namespace arangodb

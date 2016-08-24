@@ -84,12 +84,12 @@ CompactionDitch::CompactionDitch(Ditches* ditches, char const* filename,
 CompactionDitch::~CompactionDitch() {}
 
 DropDatafileDitch::DropDatafileDitch(
-    Ditches* ditches, TRI_datafile_t* datafile, void* data,
-    std::function<void(TRI_datafile_t*, void*)> callback, char const* filename,
+    Ditches* ditches, TRI_datafile_t* datafile, LogicalCollection* collection,
+    std::function<void(TRI_datafile_t*, LogicalCollection*)> callback, char const* filename,
     int line)
     : Ditch(ditches, filename, line),
       _datafile(datafile),
-      _data(data),
+      _collection(collection),
       _callback(callback) {}
 
 DropDatafileDitch::~DropDatafileDitch() {}
@@ -106,12 +106,11 @@ RenameDatafileDitch::RenameDatafileDitch(
 RenameDatafileDitch::~RenameDatafileDitch() {}
 
 UnloadCollectionDitch::UnloadCollectionDitch(
-    Ditches* ditches, TRI_collection_t* collection, void* data,
-    std::function<bool(TRI_collection_t*, void*)> callback,
+    Ditches* ditches, LogicalCollection* collection,
+    std::function<bool(LogicalCollection*)> callback,
     char const* filename, int line)
     : Ditch(ditches, filename, line),
       _collection(collection),
-      _data(data),
       _callback(callback) {}
 
 UnloadCollectionDitch::~UnloadCollectionDitch() {}
@@ -417,12 +416,12 @@ CompactionDitch* Ditches::createCompactionDitch(char const* filename,
 ////////////////////////////////////////////////////////////////////////////////
 
 DropDatafileDitch* Ditches::createDropDatafileDitch(
-    TRI_datafile_t* datafile, void* data,
-    std::function<void(struct TRI_datafile_t*, void*)> callback,
+    TRI_datafile_t* datafile, LogicalCollection* collection, 
+    std::function<void(struct TRI_datafile_t*, LogicalCollection*)> callback,
     char const* filename, int line) {
   try {
     auto ditch =
-        new DropDatafileDitch(this, datafile, data, callback, filename, line);
+        new DropDatafileDitch(this, datafile, collection, callback, filename, line);
     link(ditch);
 
     return ditch;
@@ -455,11 +454,11 @@ RenameDatafileDitch* Ditches::createRenameDatafileDitch(
 ////////////////////////////////////////////////////////////////////////////////
 
 UnloadCollectionDitch* Ditches::createUnloadCollectionDitch(
-    TRI_collection_t* collection, void* data,
-    std::function<bool(TRI_collection_t*, void*)> callback,
+    LogicalCollection* collection, 
+    std::function<bool(LogicalCollection*)> callback,
     char const* filename, int line) {
   try {
-    auto ditch = new UnloadCollectionDitch(this, collection, data, callback,
+    auto ditch = new UnloadCollectionDitch(this, collection, callback,
                                            filename, line);
     link(ditch);
 

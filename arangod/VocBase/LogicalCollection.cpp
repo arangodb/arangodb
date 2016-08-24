@@ -140,9 +140,9 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _isSystem(TRI_collection_t::IsSystemName(name)),
       _isVolatile(false),
       _waitForSync(false),
-      _journalSize(0),
+      _journalSize(TRI_JOURNAL_DEFAULT_SIZE),
       _keyOptions(nullptr),
-      _indexBuckets(1),
+      _indexBuckets(DatabaseFeature::DefaultIndexBuckets),
       _replicationFactor(0),
       _numberOfShards(1),
       _allowUserKeys(true),
@@ -153,6 +153,10 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _collection(nullptr),
       _lock() {
   createPhysical();
+      
+  auto database = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+  _waitForSync = database->waitForSync();
+  _journalSize = static_cast<TRI_voc_size_t>(database->maximalJournalSize());
 }
 
 /// @brief This the "copy" constructor used in the cluster
@@ -543,10 +547,10 @@ int LogicalCollection::update(VPackSlice const& slice, bool preferDefaults) {
     _waitForSync = Helper::getBooleanValue(slice, "waitForSync", false);
     if (slice.hasKey("journalSize")) {
       _journalSize = Helper::getNumericValue<TRI_voc_size_t>(
-          slice, "journalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
+          slice, "journalSize", TRI_JOURNAL_DEFAULT_SIZE);
     } else {
       _journalSize = Helper::getNumericValue<TRI_voc_size_t>(
-          slice, "maximalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
+          slice, "maximalSize", TRI_JOURNAL_DEFAULT_SIZE);
     }
     _indexBuckets = Helper::getNumericValue<uint32_t>(
         slice, "indexBuckets", DatabaseFeature::DefaultIndexBuckets);
@@ -581,3 +585,34 @@ PhysicalCollection* LogicalCollection::createPhysical() {
   return _physical;
 }
 
+/// @brief opens an existing collection
+int LogicalCollection::open(bool ignoreErrors) {
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  double start = TRI_microtime();
+
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+      << "open-collection { collection: " << _vocbase->name() << "/" << name();
+
+  try {
+    // check for journals and datafiles
+    int res = engine->openCollection(_vocbase, this, ignoreErrors);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG(DEBUG) << "cannot open '" << _path << "', check failed";
+      return TRI_ERROR_INTERNAL;
+    }
+
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+        << "[timer] " << Logger::FIXED(TRI_microtime() - start)
+        << " s, open-collection { collection: " << _vocbase->name() << "/"
+        << name() << " }";
+
+    return TRI_ERROR_NO_ERROR;
+  } catch (basics::Exception const& ex) {
+    LOG(ERR) << "cannot load collection parameter file '" << _path << "': " << ex.what();
+    return ex.code();
+  } catch (std::exception const& ex) {
+    LOG(ERR) << "cannot load collection parameter file '" << _path << "': " << ex.what();
+    return TRI_ERROR_INTERNAL;
+  }
+}

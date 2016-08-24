@@ -25,6 +25,7 @@
 #define ARANGOD_VOCBASE_LOGICAL_COLLECTION_H 1
 
 #include "Basics/Common.h"
+#include "VocBase/PhysicalCollection.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -40,8 +41,6 @@ typedef std::string DatabaseID;    // ID/name of a database
 typedef std::string CollectionID;  // ID of a collection
 typedef std::string ShardID;       // ID of a shard
 typedef std::unordered_map<ShardID, std::vector<ServerID>> ShardMap;
-
-class PhysicalCollection;
 
 class LogicalCollection {
  public:
@@ -138,6 +137,71 @@ class LogicalCollection {
   void increaseVersion();
   int update(arangodb::velocypack::Slice const&, bool);
   int update(VocbaseCollectionInfo const&);
+
+  
+  /// @brief iterates over a collection
+  bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb) {
+    return getPhysical()->iterateDatafiles(cb);
+  }
+
+  /// @brief opens an existing collection
+  int open(bool ignoreErrors);
+
+  /// @brief closes an open collection
+  int close() {
+    return getPhysical()->close();
+  }
+
+  /// datafile management
+
+  /// @brief rotate the active journal - will do nothing if there is no journal
+  int rotateActiveJournal() {
+    return getPhysical()->rotateActiveJournal();
+  }
+  
+  /// @brief sync the active journal - will do nothing if there is no journal
+  /// or if the journal is volatile
+  int syncActiveJournal() {
+    return getPhysical()->syncActiveJournal();
+  }
+  
+  /// @brief reserve space in the current journal. if no create exists or the
+  /// current journal cannot provide enough space, close the old journal and
+  /// create a new one
+  int reserveJournalSpace(TRI_voc_tick_t tick, TRI_voc_size_t size,
+                          char*& resultPosition, TRI_datafile_t*& resultDatafile) {
+    return getPhysical()->reserveJournalSpace(tick, size, resultPosition, resultDatafile);
+  }
+  
+  /// @brief create compactor file
+  TRI_datafile_t* createCompactor(TRI_voc_fid_t fid, TRI_voc_size_t maximalSize) {
+    return getPhysical()->createCompactor(fid, maximalSize);
+  }
+  
+  /// @brief close an existing compactor
+  int closeCompactor(TRI_datafile_t* datafile) {
+    return getPhysical()->closeCompactor(datafile);
+  }
+  
+  bool removeCompactor(TRI_datafile_t* datafile) {
+    return getPhysical()->removeCompactor(datafile);
+  }
+
+  bool removeDatafile(TRI_datafile_t* datafile) {
+    return getPhysical()->removeDatafile(datafile);
+  }
+  
+  /// @brief replace a datafile with a compactor
+  int replaceDatafileWithCompactor(TRI_datafile_t* datafile, TRI_datafile_t* compactor) {
+    return getPhysical()->replaceDatafileWithCompactor(datafile, compactor);
+  }
+  
+  /// @brief closes the datafiles passed in the vector
+  bool closeDatafiles(std::vector<TRI_datafile_t*> const& files) {
+    return getPhysical()->closeDatafiles(files);
+  }
+
+
 
   PhysicalCollection* getPhysical() const {
     TRI_ASSERT(_physical != nullptr);

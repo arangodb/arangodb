@@ -25,12 +25,19 @@
 #define ARANGOD_STORAGE_ENGINE_MM_FILES_COLLECTION_H 1
 
 #include "Basics/Common.h"
+#include "Basics/ReadWriteLock.h"
 #include "VocBase/PhysicalCollection.h"
+
+struct TRI_datafile_t;
+struct TRI_df_marker_t;
 
 namespace arangodb {
 class LogicalCollection;
 
-class MMFilesCollection : public PhysicalCollection {
+class MMFilesCollection final : public PhysicalCollection {
+ friend class MMFilesCompactorThread;
+ friend class MMFilesEngine;
+
  public:
   explicit MMFilesCollection(LogicalCollection*);
   ~MMFilesCollection();
@@ -40,6 +47,57 @@ class MMFilesCollection : public PhysicalCollection {
   void setRevision(TRI_voc_rid_t revision, bool force) override;
 
   int64_t initialCount() const override;
+  
+  // datafile management
+
+  /// @brief closes an open collection
+  int close() override;
+  
+  /// @brief rotate the active journal - will do nothing if there is no journal
+  int rotateActiveJournal() override;
+
+  /// @brief sync the active journal - will do nothing if there is no journal
+  /// or if the journal is volatile
+  int syncActiveJournal() override;
+
+  int reserveJournalSpace(TRI_voc_tick_t tick, TRI_voc_size_t size,
+                          char*& resultPosition, TRI_datafile_t*& resultDatafile) override;
+
+  /// @brief create compactor file
+  TRI_datafile_t* createCompactor(TRI_voc_fid_t fid, TRI_voc_size_t maximalSize) override;
+  
+  /// @brief close an existing compactor
+  int closeCompactor(TRI_datafile_t* datafile) override;
+
+  /// @brief replace a datafile with a compactor
+  int replaceDatafileWithCompactor(TRI_datafile_t* datafile, TRI_datafile_t* compactor) override;
+
+  bool removeCompactor(TRI_datafile_t*) override;
+  bool removeDatafile(TRI_datafile_t*) override;
+  
+  /// @brief seal a datafile
+  int sealDatafile(TRI_datafile_t* datafile, bool isCompactor) override;
+
+  /// @brief creates a datafile
+  TRI_datafile_t* createDatafile(TRI_voc_fid_t fid,
+                                 TRI_voc_size_t journalSize, 
+                                 bool isCompactor) override;
+
+  /// @brief closes the datafiles passed in the vector
+  bool closeDatafiles(std::vector<TRI_datafile_t*> const& files) override;
+
+  /// @brief iterates over a collection
+  bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb) override;
+  
+ private:
+  bool iterateDatafilesVector(std::vector<TRI_datafile_t*> const& files,
+                              std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb);
+
+ private:
+  arangodb::basics::ReadWriteLock _filesLock;
+  std::vector<TRI_datafile_t*> _datafiles;   // all datafiles
+  std::vector<TRI_datafile_t*> _journals;    // all journals
+  std::vector<TRI_datafile_t*> _compactors;  // all compactor files
 };
 
 }

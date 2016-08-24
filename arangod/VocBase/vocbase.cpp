@@ -195,8 +195,7 @@ bool TRI_vocbase_t::unregisterCollection(arangodb::LogicalCollection* collection
 }
 
 /// @brief callback for unloading a collection
-bool TRI_vocbase_t::UnloadCollectionCallback(TRI_collection_t* col, void* data) {
-  arangodb::LogicalCollection* collection = static_cast<arangodb::LogicalCollection*>(data);
+bool TRI_vocbase_t::UnloadCollectionCallback(LogicalCollection* collection) {
   TRI_ASSERT(collection != nullptr);
 
   WRITE_LOCKER_EVENTUAL(locker, collection->_lock, 1000);
@@ -230,6 +229,7 @@ bool TRI_vocbase_t::UnloadCollectionCallback(TRI_collection_t* col, void* data) 
   TRI_ASSERT(document != nullptr);
 
   int res = document->unload(true);
+  collection->close();
 
   if (res != TRI_ERROR_NO_ERROR) {
     std::string const colName(collection->name());
@@ -264,6 +264,7 @@ bool TRI_vocbase_t::DropCollectionCallback(arangodb::LogicalCollection* collecti
       TRI_collection_t* document = collection->_collection;
 
       int res = document->unload(false);
+      collection->close();
 
       if (res != TRI_ERROR_NO_ERROR) {
         LOG(ERR) << "failed to close collection '" << name
@@ -345,6 +346,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
 
   if (collection == nullptr) {
     document->unload(false);
+    collection->close();
     delete document;
     // TODO: does the collection directory need to be removed?
     return nullptr;
@@ -916,7 +918,7 @@ int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection, boo
     TRI_ASSERT(collection->_collection != nullptr);
     // add callback for unload
     collection->_collection->ditches()->createUnloadCollectionDitch(
-        collection->_collection, collection, UnloadCollectionCallback, __FILE__,
+        collection, UnloadCollectionCallback, __FILE__,
         __LINE__);
   } // release locks
 

@@ -147,19 +147,21 @@ static void IterateDatafiles(std::vector<TRI_datafile_t*> const& datafiles,
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::vector<df_entry_t> GetRangeDatafiles(
-    TRI_collection_t* document, TRI_voc_tick_t dataMin,
+    LogicalCollection* collection, TRI_voc_tick_t dataMin,
     TRI_voc_tick_t dataMax) {
   LOG(TRACE) << "getting datafiles in data range " << dataMin << " - " << dataMax;
 
   std::vector<df_entry_t> datafiles;
 
+#warning FIXME
+/*
   {
     READ_LOCKER(readLocker, document->_filesLock); 
 
     IterateDatafiles(document->_datafiles, datafiles, dataMin, dataMax, false);
     IterateDatafiles(document->_journals, datafiles, dataMin, dataMax, true);
   }
-
+*/
   return datafiles;
 }
 
@@ -458,18 +460,19 @@ static bool MustReplicateWalMarker(
 ////////////////////////////////////////////////////////////////////////////////
 
 static int DumpCollection(TRI_replication_dump_t* dump,
-                          TRI_collection_t* document,
+                          LogicalCollection* collection,
                           TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
                           TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
                           bool withTicks) {
-  LOG(TRACE) << "dumping collection " << document->_info.id() << ", tick range " << dataMin << " - " << dataMax;
+  LOG(TRACE) << "dumping collection " << collection->cid() << ", tick range " << dataMin << " - " << dataMax;
 
+  TRI_collection_t* document = collection->_collection;
   TRI_string_buffer_t* buffer = dump->_buffer;
 
   std::vector<df_entry_t> datafiles;
 
   try {
-    datafiles = GetRangeDatafiles(document, dataMin, dataMax);
+    datafiles = GetRangeDatafiles(collection, dataMin, dataMax);
   } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -490,7 +493,8 @@ static int DumpCollection(TRI_replication_dump_t* dump,
 
     // we are reading from a journal that might be modified in parallel
     // so we must read-lock it
-    CONDITIONAL_READ_LOCKER(readLocker, document->_filesLock, e._isJournal); 
+#warning FIXME
+//    CONDITIONAL_READ_LOCKER(readLocker, document->_filesLock, e._isJournal); 
 
     if (!e._isJournal) {
       TRI_ASSERT(datafile->_isSealed);
@@ -634,7 +638,7 @@ int TRI_DumpCollectionReplication(TRI_replication_dump_t* dump,
     READ_LOCKER(locker, document->_compactionLock);
 
     try {
-      res = DumpCollection(dump, document, document->_vocbase->id(), document->_info.id(), dataMin, dataMax, withTicks);
+      res = DumpCollection(dump, col, document->_vocbase->id(), document->_info.id(), dataMin, dataMax, withTicks);
     } catch (...) {
       res = TRI_ERROR_INTERNAL;
     }

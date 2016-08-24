@@ -180,8 +180,8 @@ class CompactionDitch : public Ditch {
 class DropDatafileDitch : public Ditch {
  public:
   DropDatafileDitch(Ditches* ditches, struct TRI_datafile_t* datafile,
-                    void* data,
-                    std::function<void(struct TRI_datafile_t*, void*)>,
+                    LogicalCollection* collection,
+                    std::function<void(struct TRI_datafile_t*, LogicalCollection*)>,
                     char const* filename, int line);
 
   ~DropDatafileDitch();
@@ -191,12 +191,12 @@ class DropDatafileDitch : public Ditch {
 
   char const* typeName() const override final { return "datafile-drop"; }
 
-  void executeCallback() { _callback(_datafile, _data); }
+  void executeCallback() { _callback(_datafile, _collection); }
 
  private:
   struct TRI_datafile_t* _datafile;
-  void* _data;
-  std::function<void(struct TRI_datafile_t*, void*)> _callback;
+  LogicalCollection* _collection;
+  std::function<void(struct TRI_datafile_t*, LogicalCollection*)> _callback;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -232,8 +232,8 @@ class RenameDatafileDitch : public Ditch {
 class UnloadCollectionDitch : public Ditch {
  public:
   UnloadCollectionDitch(
-      Ditches* ditches, struct TRI_collection_t* collection, void* data,
-      std::function<bool(struct TRI_collection_t*, void*)> callback,
+      Ditches* ditches, LogicalCollection* collection,
+      std::function<bool(LogicalCollection*)> callback,
       char const* filename, int line);
 
   ~UnloadCollectionDitch();
@@ -242,12 +242,11 @@ class UnloadCollectionDitch : public Ditch {
 
   char const* typeName() const override final { return "collection-unload"; }
 
-  bool executeCallback() { return _callback(_collection, _data); }
+  bool executeCallback() { return _callback(_collection); }
 
  private:
-  struct TRI_collection_t* _collection;
-  void* _data;
-  std::function<bool(struct TRI_collection_t*, void*)> _callback;
+  LogicalCollection* _collection;
+  std::function<bool(LogicalCollection*)> _callback;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -371,8 +370,8 @@ class Ditches {
   //////////////////////////////////////////////////////////////////////////////
 
   DropDatafileDitch* createDropDatafileDitch(
-      struct TRI_datafile_t* datafile, void* data,
-      std::function<void(struct TRI_datafile_t*, void*)> callback,
+      struct TRI_datafile_t* datafile, LogicalCollection* collection, 
+      std::function<void(struct TRI_datafile_t*, LogicalCollection*)> callback,
       char const* filename, int line);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -389,8 +388,8 @@ class Ditches {
   //////////////////////////////////////////////////////////////////////////////
 
   UnloadCollectionDitch* createUnloadCollectionDitch(
-      struct TRI_collection_t* collection, void* data,
-      std::function<bool(struct TRI_collection_t*, void*)> callback,
+      LogicalCollection* collection,
+      std::function<bool(LogicalCollection*)> callback,
       char const* filename, int line);
 
   //////////////////////////////////////////////////////////////////////////////

@@ -2055,7 +2055,7 @@ static void JS_RotateVocbaseCol(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  res = collection->_collection->rotateActiveJournal();
+  res = collection->rotateActiveJournal();
 
   trx.finish(res);
 

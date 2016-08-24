@@ -247,7 +247,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   
   virtual int shutdownDatabase(TRI_vocbase_t* vocbase) = 0; 
   
-  virtual int openCollection(TRI_vocbase_t* vocbase, TRI_collection_t* collection, bool ignoreErrors) = 0;
+  virtual int openCollection(TRI_vocbase_t* vocbase, LogicalCollection* collection, bool ignoreErrors) = 0;
   
  protected:
   arangodb::LogicalCollection* registerCollection(bool doLock, TRI_vocbase_t* vocbase, TRI_col_type_e type, TRI_voc_cid_t cid, 

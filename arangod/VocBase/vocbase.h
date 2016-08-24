@@ -79,7 +79,7 @@ constexpr size_t TRI_COL_NAME_LENGTH = 64;
 /// @brief default maximal collection journal size
 ////////////////////////////////////////////////////////////////////////////////
 
-constexpr size_t TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE = 1024 * 1024 * 32; // 32 MB
+constexpr size_t TRI_JOURNAL_DEFAULT_SIZE = 1024 * 1024 * 32; // 32 MB
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief minimal collection journal size (for testing, we allow very small
@@ -324,7 +324,7 @@ struct TRI_vocbase_t {
   int unloadCollection(arangodb::LogicalCollection* collection, bool force);
   
   /// @brief callback for unloading a collection
-  static bool UnloadCollectionCallback(TRI_collection_t* col, void* data);
+  static bool UnloadCollectionCallback(arangodb::LogicalCollection* collection);
 
   /// @brief locks a collection for usage, loading or manifesting it
   /// Note that this will READ lock the collection you have to release the
