@@ -31,6 +31,7 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "Rest/CommonDefines.h"
 #include "Logger/LoggerFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -160,12 +161,15 @@ std::unique_ptr<basics::StringBuffer> createChunkForNetworkSingle(
 VppCommTask::VppCommTask(GeneralServer* server, TRI_socket_t sock,
                          ConnectionInfo&& info, double timeout)
     : Task("VppCommTask"),
-      GeneralCommTask(server, sock, std::move(info), timeout) {
+      GeneralCommTask(server, sock, std::move(info), timeout),
+      _headerOptions(VPackOptions::Defaults) {
   _protocol = "vpp";
   _readBuffer->reserve(
       _bufferLength);  // ATTENTION <- this is required so we do not
                        // loose information during a resize
                        // connectionStatisticsAgentSetVpp();
+  _headerOptions.attributeTranslator =
+      basics::VelocyPackHelper::getHeaderTranslator();
 }
 
 void VppCommTask::addResponse(VppResponse* response) {
@@ -397,10 +401,10 @@ bool VppCommTask::processRead() {
   if (doExecute) {
     VPackSlice header = message.header();
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-        << "got request:" << header.toJson();
+        << "got request:" << header.toJson(&_headerOptions);
     int type = meta::underlyingValue(rest::RequestType::ILLEGAL);
     try {
-      type = header.get("type").getInt();
+      type = header.get("type", &_headerOptions).getInt();
     } catch (std::exception const& e) {
       throw std::runtime_error(
           std::string("Error during Parsing of VppHeader: ") + e.what());
@@ -412,6 +416,7 @@ bool VppCommTask::processRead() {
       // the handler will take ownersip of this pointer
       std::unique_ptr<VppRequest> request(new VppRequest(
           _connectionInfo, std::move(message), chunkHeader._messageID));
+      request->setHeaderOptions(&_headerOptions);
       GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request.get());
       // make sure we have a database
       if (request->requestContext() == nullptr) {
@@ -426,6 +431,7 @@ bool VppCommTask::processRead() {
         std::unique_ptr<VppResponse> response(
             new VppResponse(rest::ResponseCode::SERVER_ERROR,
                             chunkHeader._messageID));
+        response->setHeaderOptions(&_headerOptions);
         executeRequest(std::move(request), std::move(response));
       }
     }

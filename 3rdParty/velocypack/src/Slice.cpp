@@ -54,7 +54,7 @@ ValueLength const SliceStaticData::FixedTypeLengths[256] = {
     /* 0x16 */ 0,                    /* 0x17 */ 1,
     /* 0x18 */ 1,                    /* 0x19 */ 1,
     /* 0x1a */ 1,                    /* 0x1b */ 1 + sizeof(double),
-    /* 0x1c */ 1 + sizeof(int64_t),  /* 0x1d */ 1 + sizeof(char*), 
+    /* 0x1c */ 1 + sizeof(int64_t),  /* 0x1d */ 1 + sizeof(char*),
     /* 0x1e */ 1,                    /* 0x1f */ 1,
     /* 0x20 */ 2,                    /* 0x21 */ 3,
     /* 0x22 */ 4,                    /* 0x23 */ 5,
@@ -140,26 +140,26 @@ ValueLength const SliceStaticData::FixedTypeLengths[256] = {
     /* 0xc2 */ 0,                    /* 0xc3 */ 0,
     /* 0xc4 */ 0,                    /* 0xc5 */ 0,
     /* 0xc6 */ 0,                    /* 0xc7 */ 0,
-    /* 0xc8 */ 0,                    /* 0xc9 */ 0,        
-    /* 0xca */ 0,                    /* 0xcb */ 0,        
-    /* 0xcc */ 0,                    /* 0xcd */ 0,        
-    /* 0xce */ 0,                    /* 0xcf */ 0,        
-    /* 0xd0 */ 0,                    /* 0xd1 */ 0,        
-    /* 0xd2 */ 0,                    /* 0xd3 */ 0,        
-    /* 0xd4 */ 0,                    /* 0xd5 */ 0,        
-    /* 0xd6 */ 0,                    /* 0xd7 */ 0,        
-    /* 0xd8 */ 0,                    /* 0xd9 */ 0,       
-    /* 0xda */ 0,                    /* 0xdb */ 0,       
-    /* 0xdc */ 0,                    /* 0xdd */ 0,       
-    /* 0xde */ 0,                    /* 0xdf */ 0,       
-    /* 0xe0 */ 0,                    /* 0xe1 */ 0,       
-    /* 0xe2 */ 0,                    /* 0xe3 */ 0,       
-    /* 0xe4 */ 0,                    /* 0xe5 */ 0,       
-    /* 0xe6 */ 0,                    /* 0xe7 */ 0,       
-    /* 0xe8 */ 0,                    /* 0xe9 */ 0,       
-    /* 0xea */ 0,                    /* 0xeb */ 0,       
-    /* 0xec */ 0,                    /* 0xed */ 0,       
-    /* 0xee */ 0,                    /* 0xef */ 0,       
+    /* 0xc8 */ 0,                    /* 0xc9 */ 0,
+    /* 0xca */ 0,                    /* 0xcb */ 0,
+    /* 0xcc */ 0,                    /* 0xcd */ 0,
+    /* 0xce */ 0,                    /* 0xcf */ 0,
+    /* 0xd0 */ 0,                    /* 0xd1 */ 0,
+    /* 0xd2 */ 0,                    /* 0xd3 */ 0,
+    /* 0xd4 */ 0,                    /* 0xd5 */ 0,
+    /* 0xd6 */ 0,                    /* 0xd7 */ 0,
+    /* 0xd8 */ 0,                    /* 0xd9 */ 0,
+    /* 0xda */ 0,                    /* 0xdb */ 0,
+    /* 0xdc */ 0,                    /* 0xdd */ 0,
+    /* 0xde */ 0,                    /* 0xdf */ 0,
+    /* 0xe0 */ 0,                    /* 0xe1 */ 0,
+    /* 0xe2 */ 0,                    /* 0xe3 */ 0,
+    /* 0xe4 */ 0,                    /* 0xe5 */ 0,
+    /* 0xe6 */ 0,                    /* 0xe7 */ 0,
+    /* 0xe8 */ 0,                    /* 0xe9 */ 0,
+    /* 0xea */ 0,                    /* 0xeb */ 0,
+    /* 0xec */ 0,                    /* 0xed */ 0,
+    /* 0xee */ 0,                    /* 0xef */ 0,
     /* 0xf0 */ 2,                    /* 0xf1 */ 3,
     /* 0xf2 */ 5,                    /* 0xf3 */ 9,
     /* 0xf4 */ 0,                    /* 0xf5 */ 0,
@@ -168,7 +168,7 @@ ValueLength const SliceStaticData::FixedTypeLengths[256] = {
     /* 0xfa */ 0,                    /* 0xfb */ 0,
     /* 0xfc */ 0,                    /* 0xfd */ 0,
     /* 0xfe */ 0,                    /* 0xff */ 0};
- 
+
 VT const SliceStaticData::TypeMap[256] = {
     /* 0x00 */ VT::None,     /* 0x01 */ VT::Array,
     /* 0x02 */ VT::Array,    /* 0x03 */ VT::Array,
@@ -382,8 +382,8 @@ uint64_t Slice::getUIntUnchecked() const {
 }
 
 // translates an integer key into a string, without checks
-Slice Slice::translateUnchecked() const {
-  uint8_t const* result = Options::Defaults.attributeTranslator->translate(getUIntUnchecked());
+Slice Slice::translateUnchecked(Options const* options) const {
+  uint8_t const* result = options->attributeTranslator->translate(getUIntUnchecked());
   if (result != nullptr) {
     return Slice(result);
   }
@@ -410,7 +410,7 @@ std::string Slice::toString(Options const* options) const {
 }
 
 std::string Slice::hexType() const { return HexDump::toHex(head()); }
-  
+
 uint64_t Slice::normalizedHash(uint64_t seed) const {
   uint64_t value;
 
@@ -447,7 +447,7 @@ uint64_t Slice::normalizedHash(uint64_t seed) const {
 
 // look for the specified attribute inside an Object
 // returns a Slice(ValueType::None) if not found
-Slice Slice::get(std::string const& attribute) const {
+Slice Slice::get(std::string const& attribute, Options const* options) const {
   if (!isObject()) {
     throw Exception(Exception::InvalidValueType, "Expecting Object");
   }
@@ -485,10 +485,10 @@ Slice Slice::get(std::string const& attribute) const {
       // fall through to returning None Slice below
     } else if (key.isSmallInt() || key.isUInt()) {
       // translate key
-      if (Options::Defaults.attributeTranslator == nullptr) {
+      if (options->attributeTranslator == nullptr) {
         throw Exception(Exception::NeedAttributeTranslator);
       }
-      if (key.translateUnchecked().isEqualString(attribute)) {
+      if (key.translateUnchecked(options).isEqualString(attribute)) {
         return Slice(key.start() + key.byteSize());
       }
     }
@@ -649,7 +649,7 @@ ValueLength Slice::getNthOffset(ValueLength index) const {
     // compact Array or Object
     return getNthOffsetFromCompact(index);
   }
-  
+
   if (h == 0x01 || h == 0x0a) {
     // special case: empty Array or empty Object
     throw Exception(Exception::IndexOutOfBounds);

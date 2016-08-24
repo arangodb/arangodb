@@ -93,28 +93,28 @@ class Slice {
 
   // creates a slice of type None
   static Slice noneSlice() noexcept { return Slice("\x00"); }
-  
+
   // creates a slice of type Illegal
   static Slice illegalSlice() noexcept { return Slice("\x17"); }
 
   // creates a slice of type Null
   static Slice nullSlice() noexcept { return Slice("\x18"); }
-  
+
   // creates a slice of type Boolean with false value
   static Slice falseSlice() noexcept { return Slice("\x19"); }
 
   // creates a slice of type Boolean with true value
   static Slice trueSlice() noexcept { return Slice("\x1a"); }
-  
+
   // creates a slice of type Smallint(0)
   static Slice zeroSlice() noexcept { return Slice("\x30"); }
-  
+
   // creates a slice of type Array, empty
   static Slice emptyArraySlice() noexcept { return Slice("\x01"); }
-  
+
   // creates a slice of type Object, empty
   static Slice emptyObjectSlice() noexcept { return Slice("\x0a"); }
-  
+
   // creates a slice of type MinKey
   static Slice minKeySlice() noexcept { return Slice("\x1e"); }
 
@@ -124,7 +124,7 @@ class Slice {
   // creates a Slice from Json and adds it to a scope
   static Slice fromJson(SliceScope& scope, std::string const& json,
                         Options const* options = &Options::Defaults);
-  
+
   // creates a Slice from a pointer to a uint8_t array
   explicit Slice(uint8_t const* start) noexcept
       : _start(start) {}
@@ -188,7 +188,7 @@ class Slice {
 
   // check if slice is a None object
   bool isNone() const noexcept { return isType(ValueType::None); }
-  
+
   // check if slice is an Illegal object
   bool isIllegal() const noexcept { return isType(ValueType::Illegal); }
 
@@ -377,7 +377,7 @@ class Slice {
     Slice key = getNthKey(index, false);
     return Slice(key.start() + key.byteSize());
   }
-  
+
   // extract the nth value from an Object
   Slice getNthValue(ValueLength index) const {
     Slice key = getNthKey(index, false);
@@ -386,7 +386,7 @@ class Slice {
 
   // look for the specified attribute path inside an Object
   // returns a Slice(ValueType::None) if not found
-  Slice get(std::vector<std::string> const& attributes, 
+  Slice get(std::vector<std::string> const& attributes,
             bool resolveExternals = false) const {
     size_t const n = attributes.size();
     if (n == 0) {
@@ -414,7 +414,7 @@ class Slice {
 
     return last;
   }
-  
+
   // look for the specified attribute path inside an Object
   // returns a Slice(ValueType::None) if not found
   Slice get(std::vector<char const*> const& attributes) const {
@@ -440,8 +440,9 @@ class Slice {
 
   // look for the specified attribute inside an Object
   // returns a Slice(ValueType::None) if not found
-  Slice get(std::string const& attribute) const;
-  
+  Slice get(std::string const& attribute,
+            Options const* options = &Options::Defaults) const;
+
   // look for the specified attribute inside an Object
   // returns a Slice(ValueType::None) if not found
   Slice get(char const* attribute) const {
@@ -469,7 +470,7 @@ class Slice {
     }
     return extractValue<char const*>();
   }
-  
+
   // returns the Slice managed by an External or the Slice itself if it's not
   // an External
   Slice resolveExternal() const {
@@ -478,7 +479,7 @@ class Slice {
     }
     return *this;
   }
- 
+
   // returns the Slice managed by an External or the Slice itself if it's not
   // an External, recursive version
   Slice resolveExternals() const {
@@ -497,7 +498,7 @@ class Slice {
 
   // translates an integer key into a string
   Slice translate() const;
- 
+
   // return the value for an Int object
   int64_t getInt() const;
 
@@ -758,26 +759,26 @@ class Slice {
         auto const h = head();
         VELOCYPACK_ASSERT(h >= 0xf4);
         switch (h) {
-          case 0xf4: 
-          case 0xf5: 
+          case 0xf4:
+          case 0xf5:
           case 0xf6: {
             return 2 + readInteger<ValueLength>(_start + 1, 1);
           }
 
-          case 0xf7: 
-          case 0xf8: 
+          case 0xf7:
+          case 0xf8:
           case 0xf9:  {
             return 3 + readInteger<ValueLength>(_start + 1, 2);
           }
-          
-          case 0xfa: 
-          case 0xfb: 
+
+          case 0xfa:
+          case 0xfb:
           case 0xfc: {
             return 5 + readInteger<ValueLength>(_start + 1, 4);
           }
-          
-          case 0xfd: 
-          case 0xfe: 
+
+          case 0xfd:
+          case 0xfe:
           case 0xff: {
             return 9 + readInteger<ValueLength>(_start + 1, 8);
           }
@@ -794,7 +795,7 @@ class Slice {
 
     throw Exception(Exception::InternalError);
   }
-  
+
   ValueLength findDataOffset(uint8_t head) const noexcept {
     // Must be called for a nonempty array or object at start():
     VELOCYPACK_ASSERT(head <= 0x12);
@@ -810,7 +811,7 @@ class Slice {
     }
     return 9;
   }
-  
+
   // get the offset for the nth member from an Array type
   ValueLength getNthOffset(ValueLength index) const;
 
@@ -834,7 +835,7 @@ class Slice {
     return (memcmp(start(), other.start(),
                   arangodb::velocypack::checkOverflow(size)) == 0);
   }
-  
+
   bool operator==(Slice const& other) const { return equals(other); }
   bool operator!=(Slice const& other) const { return !equals(other); }
 
@@ -845,10 +846,10 @@ class Slice {
   std::string toJson(Options const* options = &Options::Defaults) const;
   std::string toString(Options const* options = &Options::Defaults) const;
   std::string hexType() const;
-  
+
  private:
   // get the total byte size for a String slice, including the head byte
-  // not check is done if the type of the slice is actually String 
+  // not check is done if the type of the slice is actually String
   ValueLength stringSliceLength() const noexcept {
     // check if the type has a fixed length first
     auto const h = head();
@@ -865,7 +866,7 @@ class Slice {
   uint64_t getUIntUnchecked() const;
 
   // translates an integer key into a string, without checks
-  Slice translateUnchecked() const;
+  Slice translateUnchecked(Options const* = &Options::Defaults) const;
 
   Slice getFromCompactObject(std::string const& attribute) const;
 

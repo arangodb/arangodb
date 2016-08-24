@@ -49,6 +49,7 @@ enum class RequestType {
   ILLEGAL  // must be last
 };
 
+
 enum class ContentType {
   CUSTOM,  // use Content-Type from _headers
   JSON,    // application/json
@@ -58,6 +59,7 @@ enum class ContentType {
   DUMP,    // application/x-arango-dump
   UNSET
 };
+
 
 enum class ProtocolVersion { HTTP_1_0, HTTP_1_1, VPP_1_0, UNKNOWN };
 
