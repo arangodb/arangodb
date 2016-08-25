@@ -276,6 +276,9 @@ int CollectorThread::waitForResult(uint64_t timeout) {
 void CollectorThread::beginShutdown() {
   Thread::beginShutdown();
 
+  // deactivate write-throttling on shutdown
+  _logfileManager->throttleWhenPending(0); 
+
   CONDITION_LOCKER(guard, _condition);
   guard.signal();
 }
@@ -655,6 +658,7 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
               true);  // already locked by guard above
   trx.addHint(TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK,
               true);  // already locked above
+  trx.addHint(TRI_TRANSACTION_HINT_NO_THROTTLING, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_TRY_LOCK, true);
@@ -1001,12 +1005,15 @@ int CollectorThread::queueOperations(arangodb::wal::Logfile* logfile,
 
   if (maxNumPendingOperations > 0 &&
       _numPendingOperations < maxNumPendingOperations &&
-      (_numPendingOperations + numOperations) >= maxNumPendingOperations) {
+      (_numPendingOperations + numOperations) >= maxNumPendingOperations &&
+      !isStopping()) {
     // activate write-throttling!
     _logfileManager->activateWriteThrottling();
     LOG_TOPIC(WARN, Logger::COLLECTOR)
         << "queued more than " << maxNumPendingOperations
-        << " pending WAL collector operations. now activating write-throttling";
+        << " pending WAL collector operations." 
+        << " current queue size: " << (_numPendingOperations + numOperations) 
+        << ". now activating write-throttling";
   }
 
   _numPendingOperations += numOperations;

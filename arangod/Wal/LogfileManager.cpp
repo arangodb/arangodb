@@ -107,7 +107,7 @@ LogfileManager::LogfileManager(ApplicationServer* server)
       _droppedCollections(),
       _droppedDatabases(),
       _idLock(),
-      _writeThrottled(0),
+      _writeThrottled(false),
       _shutdown(0) {
   LOG(TRACE) << "creating WAL logfile manager";
   TRI_ASSERT(!_allowWrites);
@@ -442,10 +442,21 @@ bool LogfileManager::open() {
   return true;
 }
     
-void LogfileManager::stop() {
+void LogfileManager::stop() { 
+  // deactivate write-throttling (again) on shutdown in case it was set again
+  // after beginShutdown
+  throttleWhenPending(0); 
+}
+
+void LogfileManager::beginShutdown() {
+  throttleWhenPending(0); // deactivate write-throttling on shutdown
 }
 
 void LogfileManager::unprepare() {
+  // deactivate write-throttling (again) on shutdown in case it was set again
+  // after beginShutdown
+  throttleWhenPending(0); 
+  
   _shutdown = 1;
 
   LOG(TRACE) << "shutting down WAL";
