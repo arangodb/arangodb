@@ -3223,8 +3223,7 @@ void RestReplicationHandler::handleCommandDump() {
 
     // set headers
     _response->setHeaderNC(
-        TRI_REPLICATION_HEADER_CHECKMORE,
-        ((dump._hasMore || dump._bufferFull) ? "true" : "false"));
+        TRI_REPLICATION_HEADER_CHECKMORE, (dump._hasMore ? "true" : "false"));
 
     _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
                            StringUtils::itoa(dump._lastFoundTick));
