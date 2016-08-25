@@ -118,7 +118,7 @@ KeyGenerator* KeyGenerator::factory(VPackSlice const& options) {
   }
 
   if (type == TYPE_UNKNOWN) {
-    return nullptr;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, "invalid key generator type");
   }
 
   bool allowUserKeys = true;
@@ -144,13 +144,13 @@ KeyGenerator* KeyGenerator::factory(VPackSlice const& options) {
         double v = incrementSlice.getNumericValue<double>();
         if (v <= 0.0) {
           // negative or 0 increment is not allowed
-          return nullptr;
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, "increment value must be greater than zero");
         }
 
         increment = incrementSlice.getNumericValue<uint64_t>();
 
         if (increment == 0 || increment >= (1ULL << 16)) {
-          return nullptr;
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, "increment value must be greater than zero");
         }
       }
 
@@ -160,13 +160,13 @@ KeyGenerator* KeyGenerator::factory(VPackSlice const& options) {
         double v = offsetSlice.getNumericValue<double>();
         if (v < 0.0) {
           // negative or 0 offset is not allowed
-          return nullptr;
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, "offset value must be zero or greater");
         }
 
         offset = offsetSlice.getNumericValue<uint64_t>();
 
         if (offset >= UINT64_MAX) {
-          return nullptr;
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, "offset value is too high");
         }
       }
     }
@@ -174,7 +174,8 @@ KeyGenerator* KeyGenerator::factory(VPackSlice const& options) {
     return new AutoIncrementKeyGenerator(allowUserKeys, offset, increment);
   }
 
-  return nullptr;
+  // unknown key generator type
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, "invalid key generator type");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
