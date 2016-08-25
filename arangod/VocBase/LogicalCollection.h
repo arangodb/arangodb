@@ -186,19 +186,6 @@ class LogicalCollection {
     return getPhysical()->closeCompactor(datafile);
   }
   
-  bool removeCompactor(TRI_datafile_t* datafile) {
-    return getPhysical()->removeCompactor(datafile);
-  }
-
-  bool removeDatafile(TRI_datafile_t* datafile) {
-    return getPhysical()->removeDatafile(datafile);
-  }
-  
-  /// @brief replace a datafile with a compactor
-  int replaceDatafileWithCompactor(TRI_datafile_t* datafile, TRI_datafile_t* compactor) {
-    return getPhysical()->replaceDatafileWithCompactor(datafile, compactor);
-  }
-  
   int applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
                         std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) {
     return getPhysical()->applyForTickRange(dataMin, dataMax, callback);

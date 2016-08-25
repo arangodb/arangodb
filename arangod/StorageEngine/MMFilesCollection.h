@@ -75,10 +75,10 @@ class MMFilesCollection final : public PhysicalCollection {
   int closeCompactor(TRI_datafile_t* datafile) override;
 
   /// @brief replace a datafile with a compactor
-  int replaceDatafileWithCompactor(TRI_datafile_t* datafile, TRI_datafile_t* compactor) override;
+  int replaceDatafileWithCompactor(TRI_datafile_t* datafile, TRI_datafile_t* compactor);
 
-  bool removeCompactor(TRI_datafile_t*) override;
-  bool removeDatafile(TRI_datafile_t*) override;
+  bool removeCompactor(TRI_datafile_t*);
+  bool removeDatafile(TRI_datafile_t*);
   
   /// @brief seal a datafile
   int sealDatafile(TRI_datafile_t* datafile, bool isCompactor) override;

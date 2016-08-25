@@ -76,12 +76,6 @@ class PhysicalCollection {
   /// @brief close an existing compactor
   virtual int closeCompactor(TRI_datafile_t* datafile) = 0;
   
-  /// @brief replace a datafile with a compactor
-  virtual int replaceDatafileWithCompactor(TRI_datafile_t* datafile, TRI_datafile_t* compactor) = 0;
-  
-  virtual bool removeCompactor(TRI_datafile_t*) = 0;
-  virtual bool removeDatafile(TRI_datafile_t*) = 0;
-  
   /// @brief seal a datafile
   virtual int sealDatafile(TRI_datafile_t* datafile, bool isCompactor) = 0;
   
