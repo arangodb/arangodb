@@ -257,8 +257,28 @@ class MMFilesEngine final : public StorageEngine {
   int shutdownDatabase(TRI_vocbase_t* vocbase) override;
   
   int openCollection(TRI_vocbase_t* vocbase, LogicalCollection* collection, bool ignoreErrors) override;
+  
+  /// @brief transfer markers into a collection
+  int transferMarkers(LogicalCollection* collection, wal::CollectorCache*,
+                      wal::OperationsType const&) override;
 
  private:
+  /// @brief transfer markers into a collection, worker function
+  int transferMarkersWorker(LogicalCollection* collection, wal::CollectorCache*,
+                            wal::OperationsType const&);
+
+  /// @brief sync the active journal of a collection
+  int syncJournalCollection(LogicalCollection* collection);
+  
+  /// @brief get the next free position for a new marker of the specified size
+  char* nextFreeMarkerPosition(LogicalCollection* collection,
+                               TRI_voc_tick_t, TRI_df_marker_type_t,
+                               TRI_voc_size_t, wal::CollectorCache*);
+
+  /// @brief set the tick of a marker and calculate its CRC value
+  void finishMarker(char const*, char*, LogicalCollection* collection,
+                    TRI_voc_tick_t, wal::CollectorCache*);
+
   void verifyDirectories(); 
   std::vector<std::string> getDatabaseNames() const;
 
@@ -309,6 +329,7 @@ class MMFilesEngine final : public StorageEngine {
                           TRI_voc_cid_t id,
                           arangodb::VocbaseCollectionInfo const& parameters,
                           bool forceSync) const;
+
   VocbaseCollectionInfo loadCollectionInfo(TRI_vocbase_t* vocbase,
     std::string const& collectionName, std::string const& path, bool versionWarning);
   
