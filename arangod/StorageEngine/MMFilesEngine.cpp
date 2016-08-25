@@ -1200,7 +1200,7 @@ std::string MMFilesEngine::collectionDirectory(TRI_voc_tick_t databaseId, TRI_vo
   auto it = _collectionPaths.find(databaseId);
 
   if (it == _collectionPaths.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "trying to determine directory for unknown collection"); 
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "trying to determine directory for unknown database"); 
   }
 
   auto it2 = (*it).second.find(id);
@@ -1357,7 +1357,7 @@ void MMFilesEngine::unregisterCollectionPath(TRI_voc_tick_t databaseId, TRI_voc_
   if (it == _collectionPaths.end()) {
     return;
   }
-  (*it).second.erase(id);
+//  (*it).second.erase(id);
 }
 
 void MMFilesEngine::saveCollectionInfo(TRI_vocbase_t* vocbase,

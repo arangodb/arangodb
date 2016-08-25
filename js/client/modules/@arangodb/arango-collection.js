@@ -425,8 +425,13 @@ ArangoCollection.prototype.revision = function () {
 // / @brief drops a collection
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.drop = function () {
-  var requestResult = this._database._connection.DELETE(this._baseurl());
+ArangoCollection.prototype.drop = function (options) {
+  var requestResult;
+  if (typeof options === 'object' && options.isSystem) {
+    requestResult = this._database._connection.DELETE(this._baseurl() + '?isSystem=true');
+  } else {
+    requestResult = this._database._connection.DELETE(this._baseurl());
+  }
 
   if (requestResult !== null
     && requestResult.error === true

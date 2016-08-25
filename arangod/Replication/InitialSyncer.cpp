@@ -1757,7 +1757,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
           // regular collection
           setProgress("dropping " + collectionMsg);
 
-          int res = _vocbase->dropCollection(col, true);
+          int res = _vocbase->dropCollection(col, true, true);
 
           if (res != TRI_ERROR_NO_ERROR) {
             errorMsg = "unable to drop " + collectionMsg + ": " +

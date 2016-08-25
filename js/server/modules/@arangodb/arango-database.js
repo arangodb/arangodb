@@ -118,7 +118,7 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
 // / @brief was docuBlock collectionDatabaseDrop
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._drop = function (name) {
+ArangoDatabase.prototype._drop = function (name, options) {
   var collection = name;
 
   if (!(name instanceof ArangoCollection)) {
@@ -130,7 +130,7 @@ ArangoDatabase.prototype._drop = function (name) {
   }
 
   try {
-    return collection.drop();
+    return collection.drop(options);
   } catch (err) {
     // ignore if the collection does not exist
     if (err instanceof ArangoError &&

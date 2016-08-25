@@ -1572,7 +1572,7 @@ int RestReplicationHandler::processRestoreCollection(
   // drop an existing collection if it exists
   if (col != nullptr) {
     if (dropExisting) {
-      int res = _vocbase->dropCollection(col, true);
+      int res = _vocbase->dropCollection(col, true, true);
 
       if (res == TRI_ERROR_FORBIDDEN) {
         // some collections must not be dropped
