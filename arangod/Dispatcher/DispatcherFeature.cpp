@@ -43,7 +43,7 @@ DispatcherFeature::DispatcherFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Dispatcher"),
       _nrStandardThreads(0),
-      _nrExtraThreads(0),
+      _nrExtraThreads(-1),
       _nrAqlThreads(0),
       _queueSize(16384),
       _dispatcher(nullptr) {
@@ -72,7 +72,7 @@ void DispatcherFeature::collectOptions(
   
   options->addHiddenOption("--server.extra-threads",
                            "number of extra threads that can additionally be created when all regular threads are blocked and the client requests thread creation",
-                           new Int64Parameter(&_nrExtraThreadsArgument));
+                           new Int64Parameter(&_nrExtraThreads));
 
   options->addHiddenOption("--server.aql-threads",
                            "number of threads for basic operations (0 = automatic)",
@@ -102,10 +102,8 @@ void DispatcherFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   
   TRI_ASSERT(_nrAqlThreads >= 1);
 
-  if (_nrExtraThreadsArgument < 0) {
+  if (_nrExtraThreads < 0) {
     _nrExtraThreads = _nrStandardThreads;
-  } else {
-    _nrExtraThreads = static_cast<uint64_t>(_nrExtraThreadsArgument);
   }
 
   if (_queueSize <= 128) {
