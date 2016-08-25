@@ -229,8 +229,16 @@ void AgencyFeature::start() {
   _agent->load();
 }
 
-void AgencyFeature::unprepare() {
+void AgencyFeature::beginShutdown() {
+  if (!isEnabled()) {
+    return;
+  }
+ 
+  // pass shutdown event to _agent so it can notify all its sub-threads 
+  _agent->beginShutdown();
+}
 
+void AgencyFeature::unprepare() {
   if (!isEnabled()) {
     return;
   }
