@@ -4910,6 +4910,137 @@ function transactionServerFailuresSuite () {
       }
       catch (err) {
         // ignore the intentional error
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+      }
+      
+      internal.debugClearFailAt();
+
+      testHelper.waitUnload(c);
+
+      assertEqual(100, c.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: cannot write begin marker for trx
+////////////////////////////////////////////////////////////////////////////////
+
+    testNoBeginMarkerThrow : function () {
+      internal.debugClearFailAt();
+
+      db._drop(cn);
+      c = db._create(cn);
+      
+      var i;
+      for (i = 0; i < 100; ++i) {
+        c.save({ _key: "test" + i, a: i });
+      } 
+      assertEqual(100, c.count());
+
+      internal.wal.flush(true, true);
+      internal.debugSetFailAt("TransactionWriteBeginMarkerThrow");
+        
+      try {
+        TRANSACTION({ 
+          collections: {
+            write: [ cn ],
+          },
+          action: function () {
+            c.save({ _key: "test100" });
+            fail();
+          }
+        });
+        fail();
+      }
+      catch (err) {
+        assertEqual(internal.errors.ERROR_INTERNAL.code, err.errorNum);
+      }
+
+      assertEqual(100, c.count());
+      internal.debugClearFailAt();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: cannot write commit marker for trx
+////////////////////////////////////////////////////////////////////////////////
+
+    testNoCommitMarkerThrow : function () {
+      internal.debugClearFailAt();
+
+      db._drop(cn);
+      c = db._create(cn);
+      
+      var i;
+      for (i = 0; i < 100; ++i) {
+        c.save({ _key: "test" + i, a: i });
+      } 
+      assertEqual(100, c.count());
+
+      internal.wal.flush(true, true);
+      internal.debugSetFailAt("TransactionWriteCommitMarkerThrow");
+        
+      try {
+        TRANSACTION({ 
+          collections: {
+            write: [ cn ],
+          },
+          action: function () {
+            var i;
+            for (i = 100; i < 1000; ++i) {
+              c.save({ _key: "test" + i, a: i });
+            }
+
+            assertEqual(1000, c.count());
+          }
+        });
+        fail();
+      }
+      catch (err) {
+        assertEqual(internal.errors.ERROR_INTERNAL.code, err.errorNum);
+      }
+
+      assertEqual(100, c.count());
+      internal.debugClearFailAt();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: cannot write abort marker for trx
+////////////////////////////////////////////////////////////////////////////////
+
+    testNoAbortMarkerThrow : function () {
+      internal.debugClearFailAt();
+
+      db._drop(cn);
+      c = db._create(cn);
+      
+      var i;
+      for (i = 0; i < 100; ++i) {
+        c.save({ _key: "test" + i, a: i });
+      } 
+      assertEqual(100, c.count());
+
+      internal.wal.flush(true, true);
+      internal.debugSetFailAt("TransactionWriteAbortMarkerThrow");
+        
+      try {
+        TRANSACTION({ 
+          collections: {
+            write: [ cn ],
+          },
+          action: function () {
+            var i;
+            for (i = 100; i < 1000; ++i) {
+              c.save({ _key: "test" + i, a: i });
+            }
+
+            assertEqual(1000, c.count());
+
+            throw "rollback!";
+          }
+        });
+      }
+      catch (err) {
+        // ignore the intentional error
+        assertEqual(internal.errors.ERROR_INTERNAL.code, err.errorNum);
       }
       
       internal.debugClearFailAt();
