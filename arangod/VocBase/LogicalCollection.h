@@ -144,11 +144,6 @@ class LogicalCollection {
   std::shared_ptr<arangodb::velocypack::Builder> figures();
   
   
-  /// @brief iterates over a collection
-  bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb) {
-    return getPhysical()->iterateDatafiles(cb);
-  }
-
   /// @brief opens an existing collection
   int open(bool ignoreErrors);
 
@@ -166,6 +161,11 @@ class LogicalCollection {
   /// or if the journal is volatile
   int syncActiveJournal() {
     return getPhysical()->syncActiveJournal();
+  }
+  
+  /// @brief iterates over a collection
+  bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& callback) {
+    return getPhysical()->iterateDatafiles(callback);
   }
   
   /// @brief reserve space in the current journal. if no create exists or the
