@@ -69,16 +69,16 @@ class MMFilesCollection final : public PhysicalCollection {
                           char*& resultPosition, TRI_datafile_t*& resultDatafile) override;
 
   /// @brief create compactor file
-  TRI_datafile_t* createCompactor(TRI_voc_fid_t fid, TRI_voc_size_t maximalSize) override;
+  TRI_datafile_t* createCompactor(TRI_voc_fid_t fid, TRI_voc_size_t maximalSize);
   
   /// @brief close an existing compactor
-  int closeCompactor(TRI_datafile_t* datafile) override;
+  int closeCompactor(TRI_datafile_t* datafile);
 
   /// @brief replace a datafile with a compactor
-  int replaceDatafileWithCompactor(TRI_datafile_t* datafile, TRI_datafile_t* compactor) override;
+  int replaceDatafileWithCompactor(TRI_datafile_t* datafile, TRI_datafile_t* compactor);
 
-  bool removeCompactor(TRI_datafile_t*) override;
-  bool removeDatafile(TRI_datafile_t*) override;
+  bool removeCompactor(TRI_datafile_t*);
+  bool removeDatafile(TRI_datafile_t*);
   
   /// @brief seal a datafile
   int sealDatafile(TRI_datafile_t* datafile, bool isCompactor) override;
@@ -88,9 +88,6 @@ class MMFilesCollection final : public PhysicalCollection {
                                  TRI_voc_size_t journalSize, 
                                  bool isCompactor) override;
 
-  /// @brief closes the datafiles passed in the vector
-  bool closeDatafiles(std::vector<TRI_datafile_t*> const& files) override;
-
   /// @brief iterates over a collection
   bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb) override;
 
@@ -99,6 +96,9 @@ class MMFilesCollection final : public PhysicalCollection {
   std::vector<DatafileDescription> datafilesInRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax) override;
   
  private:
+  /// @brief closes the datafiles passed in the vector
+  bool closeDatafiles(std::vector<TRI_datafile_t*> const& files);
+
   bool iterateDatafilesVector(std::vector<TRI_datafile_t*> const& files,
                               std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb);
 

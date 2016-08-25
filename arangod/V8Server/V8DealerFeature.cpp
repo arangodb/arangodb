@@ -154,7 +154,7 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
   
-  ctx->getCheckPath(_startupPath, "javascript.startup-directory");
+  ctx->getCheckPath(_startupPath, "javascript.startup-directory", true);
   
   _startupLoader.setDirectory(_startupPath);
   ServerState::instance()->setJavaScriptPath(_startupPath);
@@ -165,7 +165,7 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  ctx->getCheckPath(_appPath, "javascript.app-directory");
+  ctx->getCheckPath(_appPath, "javascript.app-directory", true);
   
   // use a minimum of 1 second for GC
   if (_gcFrequency < 1) {
