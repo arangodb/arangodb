@@ -26,12 +26,12 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Meta/conversion.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/LoggerFeature.h"
+#include "Meta/conversion.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/ticks.h"
@@ -278,6 +278,7 @@ bool VppCommTask::processRead() {
 
   // CASE 1: message is in one chunk
   if (chunkHeader._isFirst && chunkHeader._chunk == 1) {
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "chunk contains single message";
     std::size_t payloads = 0;
 
     try {
@@ -306,17 +307,19 @@ bool VppCommTask::processRead() {
     // }
 
     doExecute = true;
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "CASE 1";
   }
   // CASE 2:  message is in multiple chunks
   auto incompleteMessageItr = _incompleteMessages.find(chunkHeader._messageID);
 
   // CASE 2a: chunk starts new message
   if (chunkHeader._isFirst) {  // first chunk of multi chunk message
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "chunk starts a new message";
     if (incompleteMessageItr != _incompleteMessages.end()) {
-      throw std::logic_error(
-          "Message should be first but is already in the Map of incomplete "
-          "messages");
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+          << "Message should be first but is already in the Map of incomplete "
+             "messages";
+      closeTask(rest::ResponseCode::BAD);
+      return false;
     }
 
     // TODO: is a 32bit value sufficient for the messageLength here?
@@ -327,17 +330,19 @@ bool VppCommTask::processRead() {
     auto insertPair = _incompleteMessages.emplace(
         std::make_pair(chunkHeader._messageID, std::move(message)));
     if (!insertPair.second) {
-      throw std::logic_error("insert failed");
-      closeTask();
+      LOG_TOPIC(WARNING, Logger::COMMUNICATION) << "insert failed";
+      closeTask(rest::ResponseCode::BAD);
+      return false;
     }
-
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "CASE 2a";
 
     // CASE 2b: chunk continues a message
   } else {  // followup chunk of some mesage
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "chunk continues a message";
     if (incompleteMessageItr == _incompleteMessages.end()) {
-      throw std::logic_error("found message without previous part");
-      closeTask();
+      LOG_TOPIC(WARNING, Logger::COMMUNICATION)
+          << "found message without previous part";
+      closeTask(rest::ResponseCode::BAD);
+      return false;
     }
     auto& im = incompleteMessageItr->second;  // incomplete Message
     im._currentChunk++;
@@ -347,6 +352,7 @@ bool VppCommTask::processRead() {
 
     // MESSAGE COMPLETE
     if (im._currentChunk == im._numberOfChunks - 1 /* zero based counting */) {
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "chunk completes a message";
       std::size_t payloads = 0;
 
       try {
@@ -374,9 +380,9 @@ bool VppCommTask::processRead() {
       // check length
 
       doExecute = true;
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "CASE 2b - complete";
     }
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "CASE 2b - still incomplete";
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+        << "chunk does not complete a message";
   }
 
   read_maybe_only_part_of_buffer = true;
@@ -394,14 +400,17 @@ bool VppCommTask::processRead() {
 
   if (doExecute) {
     VPackSlice header = message.header();
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-        << "got request:" << header.toJson();
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "got request:"
+                                            << header.toJson();
     int type = meta::underlyingValue(rest::RequestType::ILLEGAL);
     try {
       type = header.at(1).getInt();
     } catch (std::exception const& e) {
-      throw std::runtime_error(
-          std::string("Error during Parsing of VppHeader: ") + e.what());
+      handleSimpleError(rest::ResponseCode::BAD, chunkHeader._messageID);
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+          << "VPack Validation failed!" + e.what();
+      closeTask(rest::ResponseCode::BAD);
+      return false;
     }
     if (type == 1000) {
       // do auth
