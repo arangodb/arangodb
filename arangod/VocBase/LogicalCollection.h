@@ -144,11 +144,6 @@ class LogicalCollection {
   std::shared_ptr<arangodb::velocypack::Builder> figures();
   
   
-  /// @brief iterates over a collection
-  bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb) {
-    return getPhysical()->iterateDatafiles(cb);
-  }
-
   /// @brief opens an existing collection
   int open(bool ignoreErrors);
 
@@ -168,40 +163,17 @@ class LogicalCollection {
     return getPhysical()->syncActiveJournal();
   }
   
+  /// @brief iterates over a collection
+  bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& callback) {
+    return getPhysical()->iterateDatafiles(callback);
+  }
+  
   /// @brief reserve space in the current journal. if no create exists or the
   /// current journal cannot provide enough space, close the old journal and
   /// create a new one
   int reserveJournalSpace(TRI_voc_tick_t tick, TRI_voc_size_t size,
                           char*& resultPosition, TRI_datafile_t*& resultDatafile) {
     return getPhysical()->reserveJournalSpace(tick, size, resultPosition, resultDatafile);
-  }
-  
-  /// @brief create compactor file
-  TRI_datafile_t* createCompactor(TRI_voc_fid_t fid, TRI_voc_size_t maximalSize) {
-    return getPhysical()->createCompactor(fid, maximalSize);
-  }
-  
-  /// @brief close an existing compactor
-  int closeCompactor(TRI_datafile_t* datafile) {
-    return getPhysical()->closeCompactor(datafile);
-  }
-  
-  bool removeCompactor(TRI_datafile_t* datafile) {
-    return getPhysical()->removeCompactor(datafile);
-  }
-
-  bool removeDatafile(TRI_datafile_t* datafile) {
-    return getPhysical()->removeDatafile(datafile);
-  }
-  
-  /// @brief replace a datafile with a compactor
-  int replaceDatafileWithCompactor(TRI_datafile_t* datafile, TRI_datafile_t* compactor) {
-    return getPhysical()->replaceDatafileWithCompactor(datafile, compactor);
-  }
-  
-  /// @brief closes the datafiles passed in the vector
-  bool closeDatafiles(std::vector<TRI_datafile_t*> const& files) {
-    return getPhysical()->closeDatafiles(files);
   }
   
   int applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,

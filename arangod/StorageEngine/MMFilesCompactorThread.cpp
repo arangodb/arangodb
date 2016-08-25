@@ -170,7 +170,7 @@ void MMFilesCompactorThread::RenameDatafileCallback(TRI_datafile_t* datafile, vo
   }
 
   if (ok) {
-    int res = collection->replaceDatafileWithCompactor(datafile, compactor);
+    int res = static_cast<MMFilesCollection*>(collection->getPhysical())->replaceDatafileWithCompactor(datafile, compactor);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC(ERR, Logger::COMPACTOR) << "logic error: could not swap datafile and compactor files";
@@ -185,12 +185,12 @@ void MMFilesCompactorThread::RenameDatafileCallback(TRI_datafile_t* datafile, vo
 
 
 /// @brief remove an empty compactor file
-int MMFilesCompactorThread::removeCompactorFile(LogicalCollection* collection,
-                                                TRI_datafile_t* compactor) {
+int MMFilesCompactorThread::removeCompactor(LogicalCollection* collection,
+                                            TRI_datafile_t* compactor) {
   LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "removing empty compaction file '" << compactor->getName(compactor) << "'";
 
   // remove the compactor from the list of compactors
-  bool ok = collection->removeCompactor(compactor);
+  bool ok = static_cast<MMFilesCollection*>(collection->getPhysical())->removeCompactor(compactor);
 
   if (!ok) {
     LOG_TOPIC(ERR, Logger::COMPACTOR) << "logic error: could not locate compactor";
@@ -218,7 +218,7 @@ int MMFilesCompactorThread::removeDatafile(LogicalCollection* collection,
                                            TRI_datafile_t* df) {
   LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "removing empty datafile '" << df->getName(df) << "'";
 
-  bool ok = collection->removeDatafile(df);
+  bool ok = static_cast<MMFilesCollection*>(collection->getPhysical())->removeDatafile(df);
 
   if (!ok) {
     LOG_TOPIC(ERR, Logger::COMPACTOR) << "logic error: could not locate datafile";
@@ -438,7 +438,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
   // now create a new compactor file
   // we are re-using the _fid of the first original datafile!
-  compactor = collection->createCompactor(initial._fid, static_cast<TRI_voc_size_t>(initial._targetSize));
+  compactor = static_cast<MMFilesCollection*>(collection->getPhysical())->createCompactor(initial._fid, static_cast<TRI_voc_size_t>(initial._targetSize));
 
   if (compactor == nullptr) {
     // some error occurred
@@ -495,7 +495,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
     document->_datafileStatistics.remove(compaction._datafile->_fid);
   }
 
-  if (collection->closeCompactor(compactor) != TRI_ERROR_NO_ERROR) {
+  if (static_cast<MMFilesCollection*>(collection->getPhysical())->closeCompactor(compactor) != TRI_ERROR_NO_ERROR) {
     LOG_TOPIC(ERR, Logger::COMPACTOR) << "could not close compactor file";
     // TODO: how do we recover from this state?
     return;
@@ -520,7 +520,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
     }
 
     // compactor is fully empty. remove it
-    removeCompactorFile(collection, compactor);
+    removeCompactor(collection, compactor);
 
     for (size_t i = 0; i < n; ++i) {
       auto compaction = toCompact[i];

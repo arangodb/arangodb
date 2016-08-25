@@ -70,18 +70,6 @@ class PhysicalCollection {
   virtual int reserveJournalSpace(TRI_voc_tick_t tick, TRI_voc_size_t size,
                                   char*& resultPosition, TRI_datafile_t*& resultDatafile) = 0;
   
-  /// @brief create compactor file
-  virtual TRI_datafile_t* createCompactor(TRI_voc_fid_t fid, TRI_voc_size_t maximalSize) = 0;
-  
-  /// @brief close an existing compactor
-  virtual int closeCompactor(TRI_datafile_t* datafile) = 0;
-  
-  /// @brief replace a datafile with a compactor
-  virtual int replaceDatafileWithCompactor(TRI_datafile_t* datafile, TRI_datafile_t* compactor) = 0;
-  
-  virtual bool removeCompactor(TRI_datafile_t*) = 0;
-  virtual bool removeDatafile(TRI_datafile_t*) = 0;
-  
   /// @brief seal a datafile
   virtual int sealDatafile(TRI_datafile_t* datafile, bool isCompactor) = 0;
   
@@ -90,9 +78,6 @@ class PhysicalCollection {
                                          TRI_voc_size_t journalSize, 
                                          bool isCompactor) = 0;
 
-  /// @brief closes the datafiles passed in the vector
-  virtual bool closeDatafiles(std::vector<TRI_datafile_t*> const& files) = 0;
-  
   /// @brief iterates over a collection
   virtual bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb) = 0;
 
