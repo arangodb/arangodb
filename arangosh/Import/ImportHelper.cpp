@@ -515,7 +515,7 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
       if (fieldLength > 8) {
         // long integer numbers might be problematic. check if we get out of
         // range
-        std::stoll(std::string(
+        (void) std::stoll(std::string(
             field,
             fieldLength));  // this will fail if the number cannot be converted
       }
