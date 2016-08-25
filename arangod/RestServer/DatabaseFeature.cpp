@@ -137,7 +137,7 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  ctx->getCheckPath(_databasePath, "database.directory");
+  ctx->getCheckPath(_databasePath, "database.directory", false);
 
   if (_maximalJournalSize < TRI_JOURNAL_MINIMAL_SIZE) {
     LOG(FATAL) << "invalid value for '--database.maximal-journal-size'. "

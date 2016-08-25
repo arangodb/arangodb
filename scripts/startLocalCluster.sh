@@ -54,6 +54,9 @@ BASE=4001
 NATH=$(( $NRDBSERVERS + $NRCOORDINATORS + $NRAGENTS ))
 
 rm -rf cluster
+if [ -d cluster-init ];then
+  cp -a cluster-init cluster
+fi
 mkdir -p cluster
 echo Starting agency ... 
 for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do

@@ -817,7 +817,7 @@ void V8ShellFeature::initGlobals() {
     FATAL_ERROR_EXIT();
   }
 
-   ctx->getCheckPath(_startupDirectory, "javascript.startup-directory");
+  ctx->getCheckPath(_startupDirectory, "javascript.startup-directory", true);
 
   // initialize standard modules
   std::string modules =

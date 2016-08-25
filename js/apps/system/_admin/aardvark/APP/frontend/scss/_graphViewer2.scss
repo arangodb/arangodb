@@ -45,7 +45,7 @@
 
 .nodeInfoDiv {
   border-radius: 3px;
-  bottom: 0;
+  bottom: 4px;
   color: $c-bluegrey-dark;
   font-weight: 500;
   height: 25px;
@@ -63,16 +63,31 @@
     font-weight: 100;
     margin-right: 5px;
     padding: 2px 5px;
+
+    &::selection {
+      background: rgba(64, 74, 83, .8);
+    }
+
+    &::-moz-selection {
+      background: rgba(64, 74, 83, .8);
+    }
   }
 
   .nodeId {
     background-color: $c-positive;
   }
 
+  span {
+    float: left;
+    margin-bottom: 10px;
+    margin-right: 5px;
+  }
+
 }
 
 .nodeContextMenu {
 
+  animation-duration: .15s !important;
   position: fixed;
 
   svg {
@@ -122,8 +137,9 @@
   min-width: 400px;
   position: fixed;
   right: -1px;
-  top: 103px;
+  top: 100px;
   width: 400px;
+  z-index: 10;
 
   .pure-g {
 
@@ -153,6 +169,8 @@
     }
 
     .pure-u-1-3 {
+      font-size: 9pt;
+      font-weight: 100;
       line-height: 30px;
     }
 
@@ -169,9 +187,17 @@
     }
 
     .heading {
-      border-bottom: 1px solid $c-white;
+      background: rgba(0, 0, 0, .3);
+      border-bottom: 1px solid rgba(255, 255, 255, .2);
+      border-top: 1px solid rgba(255, 255, 255, .2);
+      font-size: 12pt;
+      font-weight: 100;
       height: 10px;
+      line-height: 9pt;
       margin-bottom: 15px;
+      margin-left: -10px;
+      padding-left: 10px;
+      padding-right: 10px;
     }
 
     .rangeLabel {
@@ -215,7 +241,24 @@
   }
 
   .pure-table {
+    overflow-x: hidden;
     padding-left: 10px;
     padding-right: 10px;
+  }
+}
+
+.helpTooltip {
+  position: fixed;
+  right: 0;
+  text-align: center;
+  top: 120px;
+  width: 100%;
+
+  span {
+    background-color: $c-bluegrey-dark;
+    border-radius: 2px;
+    color: $c-white;
+    padding: 10px;
+    padding-left: 150px;
   }
 }
