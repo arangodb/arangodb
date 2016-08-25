@@ -24,12 +24,12 @@
 #ifndef ARANGODB_REST_VPP_MESSAGE_H
 #define ARANGODB_REST_VPP_MESSAGE_H 1
 
-#include "Basics/StringBuffer.h"
-#include <velocypack/Options.h>
 #include <velocypack/Buffer.h>
+#include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 #include <iterator>
+#include "Basics/StringBuffer.h"
 
 namespace arangodb {
 namespace rest {
@@ -71,11 +71,7 @@ struct VppInputMessage {
     return VPackSlice{};
   }
 
-  std::vector<VPackSlice> const& payloads() const {
-    if (!_payload.empty()) {
-      return _payload;
-    }
-  }
+  std::vector<VPackSlice> const& payloads() const { return _payload; }
 
  private:
   VPackBuffer<uint8_t> _buffer;
