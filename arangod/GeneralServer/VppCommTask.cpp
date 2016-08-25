@@ -26,12 +26,12 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Meta/conversion.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/LoggerFeature.h"
+#include "Meta/conversion.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/ticks.h"
@@ -258,6 +258,8 @@ bool VppCommTask::processRead() {
   // TODO FIXME
   // - in case of error send an operation failed to all incomplete messages /
   //   operation and close connection (implement resetState/resetCommtask)
+  //
+  RequestStatisticsAgent agent(true);
 
   auto& prv = _processReadVariables;
   if (!prv._readBufferCursor) {
@@ -394,8 +396,8 @@ bool VppCommTask::processRead() {
 
   if (doExecute) {
     VPackSlice header = message.header();
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-        << "got request:" << header.toJson();
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "got request:"
+                                            << header.toJson();
     int type = meta::underlyingValue(rest::RequestType::ILLEGAL);
     try {
       type = header.at(1).getInt();

@@ -128,7 +128,9 @@ bool GeneralServer::handleRequestAsync(GeneralCommTask* task,
   // execute the handler using the dispatcher
   std::unique_ptr<Job> job =
       std::make_unique<HttpServerJob>(this, handler, true);
-  task->RequestStatisticsAgent::transferTo(job.get());
+
+  auto messageId = handler->request()->messageId();
+  task->getAgent(messageId)->transferTo(job.get());
 
   // register the job with the job manager
   if (jobId != nullptr) {
@@ -143,7 +145,7 @@ bool GeneralServer::handleRequestAsync(GeneralCommTask* task,
   // could not add job to job queue
   if (res != TRI_ERROR_NO_ERROR) {
     job->requestStatisticsAgentSetExecuteError();
-    job->RequestStatisticsAgent::transferTo(task);
+    job->RequestStatisticsAgent::transferTo(task->getAgent(messageId));
     if (res != TRI_ERROR_DISPATCHER_IS_STOPPING) {
       LOG(WARN) << "unable to add job to the job queue: "
                 << TRI_errno_string(res);
@@ -172,7 +174,8 @@ bool GeneralServer::handleRequest(GeneralCommTask* task,
 
   // use a dispatcher queue, handler belongs to the job
   std::unique_ptr<Job> job = std::make_unique<HttpServerJob>(this, handler);
-  task->RequestStatisticsAgent::transferTo(job.get());
+  auto messageId = handler->request()->messageId();
+  task->getAgent(messageId)->transferTo(job.get());
 
   LOG(TRACE) << "GeneralCommTask " << (void*)task << " created HttpServerJob "
              << (void*)job.get();
@@ -235,9 +238,10 @@ void GeneralServer::handleRequestDirectly(GeneralCommTask* task,
                                           WorkItem::uptr<RestHandler> handler) {
   HandlerWorkStack work(std::move(handler));
 
-  task->RequestStatisticsAgent::transferTo(work.handler());
+  auto messageId = handler->request()->messageId();
+  task->getAgent(messageId)->transferTo(work.handler());
   RestHandler::status result = work.handler()->executeFull();
-  work.handler()->RequestStatisticsAgent::transferTo(task);
+  work.handler()->RequestStatisticsAgent::transferTo(task->getAgent(messageId));
 
   switch (result) {
     case RestHandler::status::FAILED:

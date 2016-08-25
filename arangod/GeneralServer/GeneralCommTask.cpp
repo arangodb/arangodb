@@ -46,12 +46,14 @@ GeneralCommTask::GeneralCommTask(GeneralServer* server, TRI_socket_t socket,
                                  ConnectionInfo&& info, double keepAliveTimeout)
     : Task("GeneralCommTask"),
       SocketTask(socket, std::move(info), keepAliveTimeout),
-      _server(server) {}
+      _server(server),
+      _agents(){};
 
 void GeneralCommTask::signalTask(TaskData* data) {
   // data response
   if (data->_type == TaskData::TASK_DATA_RESPONSE) {
-    data->RequestStatisticsAgent::transferTo(this);
+    data->RequestStatisticsAgent::transferTo(
+        getAgent(data->_response->messageId()));
 
     processResponse(data->_response.get());
   }
@@ -95,7 +97,7 @@ void GeneralCommTask::executeRequest(
   bool ok = false;
 
   if (found && (asyncExecution == "true" || asyncExecution == "store")) {
-    requestStatisticsAgentSetAsync();
+    getAgent(request->messageId())->requestStatisticsAgentSetAsync();
     uint64_t jobId = 0;
 
     if (asyncExecution == "store") {
