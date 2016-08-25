@@ -610,18 +610,25 @@ static int WriteBeginMarker(TRI_transaction_t* trx) {
   try {
     arangodb::wal::TransactionMarker marker(TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION, trx->_vocbase->_id, trx->_id);
     res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
+    
+    TRI_IF_FAILURE("TransactionWriteBeginMarkerThrow") { 
+      throw std::bad_alloc();
+    }
 
     if (res == TRI_ERROR_NO_ERROR) {
       trx->_beginWritten = true;
+    } else {
+      THROW_ARANGO_EXCEPTION(res);
     }
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
+    LOG(WARN) << "could not save transaction begin marker in log: " << ex.what();
+  } catch (std::exception const& ex) {
+    res = TRI_ERROR_INTERNAL;
+    LOG(WARN) << "could not save transaction begin marker in log: " << ex.what();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG(WARN) << "could not save transaction begin marker in log: " << TRI_errno_string(res);
+    LOG(WARN) << "could not save transaction begin marker in log: unknown exception";
   }
 
   return res;
@@ -649,14 +656,23 @@ static int WriteAbortMarker(TRI_transaction_t* trx) {
   try {
     arangodb::wal::TransactionMarker marker(TRI_DF_MARKER_VPACK_ABORT_TRANSACTION, trx->_vocbase->_id, trx->_id);
     res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
+    
+    TRI_IF_FAILURE("TransactionWriteAbortMarkerThrow") { 
+      throw std::bad_alloc();
+    }
+  
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
+    LOG(WARN) << "could not save transaction abort marker in log: " << ex.what();
+  } catch (std::exception const& ex) {
+    res = TRI_ERROR_INTERNAL;
+    LOG(WARN) << "could not save transaction abort marker in log: " << ex.what();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG(WARN) << "could not save transaction abort marker in log: " << TRI_errno_string(res);
+    LOG(WARN) << "could not save transaction abort marker in log: unknown exception";
   }
 
   return res;
@@ -692,15 +708,24 @@ static int WriteCommitMarker(TRI_transaction_t* trx) {
       // also sync RocksDB WAL
       RocksDBFeature::syncWal();
     }
+    
+    TRI_IF_FAILURE("TransactionWriteCommitMarkerThrow") { 
+      throw std::bad_alloc();
+    }
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
 #endif
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
+    LOG(WARN) << "could not save transaction commit marker in log: " << ex.what();
+  } catch (std::exception const& ex) {
+    res = TRI_ERROR_INTERNAL;
+    LOG(WARN) << "could not save transaction commit marker in log: " << ex.what();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG(WARN) << "could not save transaction commit marker in log: " << TRI_errno_string(res);
+    LOG(WARN) << "could not save transaction commit marker in log: unknown exception";
   }
 
   return res;
