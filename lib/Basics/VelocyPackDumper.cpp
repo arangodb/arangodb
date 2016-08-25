@@ -35,6 +35,8 @@
 
 using namespace arangodb::basics;
 
+static size_t const MinReserveValue = 32;
+
 void VelocyPackDumper::handleUnsupportedType(VPackSlice const* slice) {
   TRI_string_buffer_t* buffer = _buffer->stringBuffer(); 
 
@@ -42,6 +44,9 @@ void VelocyPackDumper::handleUnsupportedType(VPackSlice const* slice) {
     TRI_AppendStringUnsafeStringBuffer(buffer, "null", 4);
     return;
   } else if (options->unsupportedTypeBehavior == VPackOptions::ConvertUnsupportedType) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(strlen("\"(non-representable type)\"") + 1 < MinReserveValue);
+#endif
     TRI_AppendStringUnsafeStringBuffer(buffer, "\"(non-representable type)\"");
     return;
   }
@@ -52,7 +57,8 @@ void VelocyPackDumper::handleUnsupportedType(VPackSlice const* slice) {
 void VelocyPackDumper::appendUInt(uint64_t v) {
   TRI_string_buffer_t* buffer = _buffer->stringBuffer(); 
     
-  int res = TRI_ReserveStringBuffer(buffer, 21);
+  TRI_ASSERT(MinReserveValue > 20); 
+  int res = TRI_ReserveStringBuffer(buffer, MinReserveValue);
      
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -141,8 +147,9 @@ void VelocyPackDumper::dumpInteger(VPackSlice const* slice) {
     appendUInt(v);
   } else if (slice->isType(VPackValueType::Int)) {
     TRI_string_buffer_t* buffer = _buffer->stringBuffer(); 
-    
-    int res = TRI_ReserveStringBuffer(buffer, 21);
+   
+    TRI_ASSERT(MinReserveValue > 20); 
+    int res = TRI_ReserveStringBuffer(buffer, MinReserveValue);
      
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
@@ -218,7 +225,8 @@ void VelocyPackDumper::dumpInteger(VPackSlice const* slice) {
   } else if (slice->isType(VPackValueType::SmallInt)) {
     TRI_string_buffer_t* buffer = _buffer->stringBuffer(); 
     
-    int res = TRI_ReserveStringBuffer(buffer, 21);
+    TRI_ASSERT(MinReserveValue > 20); 
+    int res = TRI_ReserveStringBuffer(buffer, MinReserveValue);
      
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
@@ -390,9 +398,9 @@ void VelocyPackDumper::dumpValue(VPackSlice const* slice, VPackSlice const* base
   }
   
   TRI_string_buffer_t* buffer = _buffer->stringBuffer(); 
-    
-  // alloc at least 16 bytes  
-  int res = TRI_ReserveStringBuffer(buffer, 16);
+  
+  // alloc at least 32 bytes  
+  int res = TRI_ReserveStringBuffer(buffer, 32);
      
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);

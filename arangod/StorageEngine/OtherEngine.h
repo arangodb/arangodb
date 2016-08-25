@@ -50,6 +50,9 @@ class OtherEngine final : public StorageEngine {
   // the storage engine must not start any threads here or write any files
   void prepare() override;
   
+  // create storage-engine specific collection
+  PhysicalCollection* createPhysicalCollection(LogicalCollection*) override;
+  
   // inventory functionality
   // -----------------------
 
@@ -240,7 +243,7 @@ class OtherEngine final : public StorageEngine {
     return TRI_ERROR_NO_ERROR;
   }
 
-  int openCollection(TRI_vocbase_t* vocbase, TRI_collection_t* collection, bool ignoreErrors) override {
+  int openCollection(TRI_vocbase_t* vocbase, LogicalCollection* collection, bool ignoreErrors) override {
     return TRI_ERROR_NO_ERROR;
   }
 

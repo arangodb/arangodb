@@ -11,8 +11,8 @@ the server on port 8529 on the localhost. For more information see the
 unix> ./arangosh --server.endpoint tcp://127.0.0.1:8529 --server.username root
 ```
 
-The shell will print its own version number and – if successfully connected
-to a server – the version number of the ArangoDB server.
+The shell will print its own version number and if successfully connected
+to a server the version number of the ArangoDB server.
 
 !SECTION Command-Line Options
 
@@ -73,3 +73,22 @@ for (i = 0; i < 100000; i++) {
 
 Since the *arangosh* version will be doing around 100k HTTP requests, and the
 *arangod* version will directly write to the database.
+
+!SECTION Using `arangosh` via unix shebang mechanisms
+In unix operating systems you can start scripts by specifying the interpreter in the first line of the script.
+This is commonly called `shebang` or `hash bang`. You can also do that with `arangosh`, i.e. create `~/test.js`:
+
+    #!/usr/bin/arangosh --javascript.execute 
+    require("internal").print("hello world")
+    db._query("FOR x IN test RETURN x").toArray()
+
+Note that the first line has to end with a blank in order to make it work.
+Mark it executable to the OS: 
+
+    #> chmod a+x ~/test.js
+
+and finaly try it out:
+
+    #> ~/test.js
+
+

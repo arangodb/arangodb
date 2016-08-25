@@ -1799,7 +1799,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
     auto const& indexes = indexNode->getIndexes();
     auto cond = indexNode->condition();
     TRI_ASSERT(cond != nullptr);
-          
+
     Variable const* outVariable = indexNode->outVariable();
     TRI_ASSERT(outVariable != nullptr);
 
@@ -1818,7 +1818,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         return true;
       }
 
-      if (!isSparse) {
+      if (isSparse) {
         return true;
       }
 
@@ -1832,6 +1832,8 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       // all indexes use the same attributes and index conditions guarantee
       // sorted output
     }
+      
+    TRI_ASSERT(indexes.size() == 1 || cond->isSorted());
 
     // if we get here, we either have one index or multiple indexes on the same
     // attributes
@@ -1879,10 +1881,15 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
           if (numCovered == sortCondition.numAttributes() &&
               sortCondition.isUnidirectional() &&
-              (isSorted || fields.size() == sortCondition.numAttributes())) {
+              (isSorted || fields.size() >= sortCondition.numAttributes())) {
             // no need to sort
             _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
             indexNode->reverse(sortCondition.isDescending());
+            _modified = true;
+          } else if (numCovered > 0 && sortCondition.isUnidirectional()) {
+            // remove the first few attributes if they are constant
+            SortNode* sortNode = static_cast<SortNode*>(_plan->getNodeById(_sortNode->id()));
+            sortNode->removeConditions(numCovered);
             _modified = true;
           }
         }

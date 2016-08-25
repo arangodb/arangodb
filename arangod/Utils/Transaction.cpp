@@ -1393,7 +1393,7 @@ OperationResult Transaction::documentCoordinator(std::string const& collectionNa
                                                  VPackSlice const value,
                                                  OperationOptions& options) {
   auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-  GeneralResponse::ResponseCode responseCode;
+  rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
 
@@ -1408,12 +1408,12 @@ OperationResult Transaction::documentCoordinator(std::string const& collectionNa
       _vocbase->name(), collectionName, value, options, headers, responseCode, errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    if (responseCode == GeneralResponse::ResponseCode::OK ||
-        responseCode == GeneralResponse::ResponseCode::PRECONDITION_FAILED) {
+    if (responseCode == rest::ResponseCode::OK ||
+        responseCode == rest::ResponseCode::PRECONDITION_FAILED) {
       return OperationResult(resultBody->steal(), nullptr, "", 
-          responseCode == GeneralResponse::ResponseCode::OK ?
+          responseCode == rest::ResponseCode::OK ?
           TRI_ERROR_NO_ERROR : TRI_ERROR_ARANGO_CONFLICT, false, errorCounter);
-    } else if (responseCode == GeneralResponse::ResponseCode::NOT_FOUND) {
+    } else if (responseCode == rest::ResponseCode::NOT_FOUND) {
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     } else {
       return OperationResult(TRI_ERROR_INTERNAL);
@@ -1550,7 +1550,7 @@ OperationResult Transaction::insertCoordinator(std::string const& collectionName
                                                VPackSlice const value,
                                                OperationOptions& options) {
 
-  GeneralResponse::ResponseCode responseCode;
+  rest::ResponseCode responseCode;
 
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
@@ -1560,18 +1560,18 @@ OperationResult Transaction::insertCoordinator(std::string const& collectionName
       errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    if (responseCode == GeneralResponse::ResponseCode::ACCEPTED ||
-        responseCode == GeneralResponse::ResponseCode::CREATED) {
+    if (responseCode == rest::ResponseCode::ACCEPTED ||
+        responseCode == rest::ResponseCode::CREATED) {
       return OperationResult(
           resultBody->steal(), nullptr, "", TRI_ERROR_NO_ERROR,
-          responseCode == GeneralResponse::ResponseCode::CREATED, errorCounter);
-    } else if (responseCode == GeneralResponse::ResponseCode::PRECONDITION_FAILED) {
+          responseCode == rest::ResponseCode::CREATED, errorCounter);
+    } else if (responseCode == rest::ResponseCode::PRECONDITION_FAILED) {
       return OperationResult(TRI_ERROR_ARANGO_CONFLICT);
-    } else if (responseCode == GeneralResponse::ResponseCode::BAD) {
+    } else if (responseCode == rest::ResponseCode::BAD) {
       return DBServerResponseBad(resultBody);
-    } else if (responseCode == GeneralResponse::ResponseCode::NOT_FOUND) {
+    } else if (responseCode == rest::ResponseCode::NOT_FOUND) {
       return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-    } else if (responseCode == GeneralResponse::ResponseCode::CONFLICT) {
+    } else if (responseCode == rest::ResponseCode::CONFLICT) {
       return OperationResult(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
     } else {
       return OperationResult(TRI_ERROR_INTERNAL);
@@ -1593,7 +1593,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   // TODO Temporary until the move to LogicalCollection is completed
   LogicalCollection* collection = documentCollection(trxCollection(cid));
-  TRI_collection_t* document = collection->collection();
+  TRI_collection_t* document = collection->_collection;
   TRI_ASSERT(document != nullptr);
 
   // First see whether or not we have to do synchronous replication:
@@ -1734,7 +1734,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
       std::vector<ClusterCommRequest> requests;
       for (auto const& f : *followers) {
         requests.emplace_back("server:" + f, 
-                              arangodb::GeneralRequest::RequestType::POST,
+                              arangodb::rest::RequestType::POST,
                               path, body);
       }
       auto cc = arangodb::ClusterComm::instance();
@@ -1748,9 +1748,9 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
               = requests[i].done &&
                 requests[i].result.status == CL_COMM_RECEIVED &&
                 (requests[i].result.answer_code == 
-                     GeneralResponse::ResponseCode::ACCEPTED ||
+                     rest::ResponseCode::ACCEPTED ||
                  requests[i].result.answer_code == 
-                     GeneralResponse::ResponseCode::CREATED);
+                     rest::ResponseCode::CREATED);
           if (replicationWorked) {
             bool found;
             requests[i].result.answer->header(StaticStrings::ErrorCodes, found);
@@ -1816,7 +1816,7 @@ OperationResult Transaction::updateCoordinator(std::string const& collectionName
                                                OperationOptions& options) {
 
   auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-  GeneralResponse::ResponseCode responseCode;
+  rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
 
@@ -1828,23 +1828,23 @@ OperationResult Transaction::updateCoordinator(std::string const& collectionName
   if (res == TRI_ERROR_NO_ERROR) {
     int errorCode = TRI_ERROR_NO_ERROR;
     switch (responseCode) {
-      case GeneralResponse::ResponseCode::CONFLICT:
+      case rest::ResponseCode::CONFLICT:
         errorCode = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
         // Fall through
-      case GeneralResponse::ResponseCode::PRECONDITION_FAILED:
+      case rest::ResponseCode::PRECONDITION_FAILED:
         if (errorCode == TRI_ERROR_NO_ERROR) {
           errorCode = TRI_ERROR_ARANGO_CONFLICT;
         }
         // Fall through
-      case GeneralResponse::ResponseCode::ACCEPTED:
-      case GeneralResponse::ResponseCode::CREATED:
+      case rest::ResponseCode::ACCEPTED:
+      case rest::ResponseCode::CREATED:
         return OperationResult(
             resultBody->steal(), nullptr, "", errorCode,
-            responseCode == GeneralResponse::ResponseCode::CREATED,
+            responseCode == rest::ResponseCode::CREATED,
             errorCounter);
-      case GeneralResponse::ResponseCode::BAD:
+      case rest::ResponseCode::BAD:
         return DBServerResponseBad(resultBody);
-      case GeneralResponse::ResponseCode::NOT_FOUND:
+      case rest::ResponseCode::NOT_FOUND:
         return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
       default:
         return OperationResult(TRI_ERROR_INTERNAL);
@@ -1889,7 +1889,7 @@ OperationResult Transaction::replaceCoordinator(std::string const& collectionNam
                                                 VPackSlice const newValue,
                                                 OperationOptions& options) {
   auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-  GeneralResponse::ResponseCode responseCode;
+  rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
 
@@ -1901,22 +1901,22 @@ OperationResult Transaction::replaceCoordinator(std::string const& collectionNam
   if (res == TRI_ERROR_NO_ERROR) {
     int errorCode = TRI_ERROR_NO_ERROR;
     switch (responseCode) {
-      case GeneralResponse::ResponseCode::CONFLICT:
+      case rest::ResponseCode::CONFLICT:
         errorCode = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
-      case GeneralResponse::ResponseCode::PRECONDITION_FAILED:
+      case rest::ResponseCode::PRECONDITION_FAILED:
         if (errorCode == TRI_ERROR_NO_ERROR) {
           errorCode = TRI_ERROR_ARANGO_CONFLICT;
         }
         // Fall through
-      case GeneralResponse::ResponseCode::ACCEPTED:
-      case GeneralResponse::ResponseCode::CREATED:
+      case rest::ResponseCode::ACCEPTED:
+      case rest::ResponseCode::CREATED:
         return OperationResult(
             resultBody->steal(), nullptr, "", errorCode,
-            responseCode == GeneralResponse::ResponseCode::CREATED,
+            responseCode == rest::ResponseCode::CREATED,
             errorCounter);
-      case GeneralResponse::ResponseCode::BAD:
+      case rest::ResponseCode::BAD:
         return DBServerResponseBad(resultBody);
-      case GeneralResponse::ResponseCode::NOT_FOUND:
+      case rest::ResponseCode::NOT_FOUND:
         return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
       default:
         return OperationResult(TRI_ERROR_INTERNAL);
@@ -1940,7 +1940,7 @@ OperationResult Transaction::modifyLocal(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   // TODO Temporary until the move to LogicalCollection is completed
   LogicalCollection* collection = documentCollection(trxCollection(cid));
-  TRI_collection_t* document = collection->collection();
+  TRI_collection_t* document = collection->_collection;
   TRI_ASSERT(document != nullptr);
   
   if (options.returnOld || options.returnNew) {
@@ -2092,8 +2092,8 @@ OperationResult Transaction::modifyLocal(
     for (auto const& f : *followers) {
       requests.emplace_back("server:" + f, 
           operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE ?
-          arangodb::GeneralRequest::RequestType::PUT :
-          arangodb::GeneralRequest::RequestType::PATCH,
+          arangodb::rest::RequestType::PUT :
+          arangodb::rest::RequestType::PATCH,
           path, body);
     }
     size_t nrDone = 0;
@@ -2106,9 +2106,9 @@ OperationResult Transaction::modifyLocal(
             = requests[i].done &&
               requests[i].result.status == CL_COMM_RECEIVED &&
               (requests[i].result.answer_code == 
-                   GeneralResponse::ResponseCode::ACCEPTED ||
+                   rest::ResponseCode::ACCEPTED ||
                requests[i].result.answer_code == 
-                   GeneralResponse::ResponseCode::OK);
+                   rest::ResponseCode::OK);
         if (replicationWorked) {
           bool found;
           requests[i].result.answer->header(StaticStrings::ErrorCodes, found);
@@ -2169,7 +2169,7 @@ OperationResult Transaction::removeCoordinator(std::string const& collectionName
                                                VPackSlice const value,
                                                OperationOptions& options) {
 
-  GeneralResponse::ResponseCode responseCode;
+  rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
 
@@ -2178,19 +2178,19 @@ OperationResult Transaction::removeCoordinator(std::string const& collectionName
       errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    if (responseCode == GeneralResponse::ResponseCode::OK ||
-        responseCode == GeneralResponse::ResponseCode::ACCEPTED ||
-        responseCode == GeneralResponse::ResponseCode::PRECONDITION_FAILED) {
+    if (responseCode == rest::ResponseCode::OK ||
+        responseCode == rest::ResponseCode::ACCEPTED ||
+        responseCode == rest::ResponseCode::PRECONDITION_FAILED) {
       return OperationResult(
           resultBody->steal(), nullptr, "",
-          responseCode == GeneralResponse::ResponseCode::PRECONDITION_FAILED
+          responseCode == rest::ResponseCode::PRECONDITION_FAILED
               ? TRI_ERROR_ARANGO_CONFLICT
               : TRI_ERROR_NO_ERROR,
-          responseCode != GeneralResponse::ResponseCode::ACCEPTED,
+          responseCode != rest::ResponseCode::ACCEPTED,
           errorCounter);
-    } else if (responseCode == GeneralResponse::ResponseCode::BAD) {
+    } else if (responseCode == rest::ResponseCode::BAD) {
       return DBServerResponseBad(resultBody);
-    } else if (responseCode == GeneralResponse::ResponseCode::NOT_FOUND) {
+    } else if (responseCode == rest::ResponseCode::NOT_FOUND) {
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     } else {
       return OperationResult(TRI_ERROR_INTERNAL);
@@ -2211,7 +2211,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   // TODO Temporary until the move to LogicalCollection is completed
   LogicalCollection* collection = documentCollection(trxCollection(cid));
-  TRI_collection_t* document = collection->collection();
+  TRI_collection_t* document = collection->_collection;
   TRI_ASSERT(document != nullptr);
   
   if (options.returnOld) {
@@ -2356,7 +2356,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
     std::vector<ClusterCommRequest> requests;
     for (auto const& f : *followers) {
       requests.emplace_back("server:" + f, 
-                            arangodb::GeneralRequest::RequestType::DELETE_REQ,
+                            arangodb::rest::RequestType::DELETE_REQ,
                             path, body);
     }
     size_t nrDone = 0;
@@ -2369,9 +2369,9 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
             = requests[i].done &&
               requests[i].result.status == CL_COMM_RECEIVED &&
               (requests[i].result.answer_code == 
-                   GeneralResponse::ResponseCode::ACCEPTED ||
+                   rest::ResponseCode::ACCEPTED ||
                requests[i].result.answer_code == 
-                   GeneralResponse::ResponseCode::OK);
+                   rest::ResponseCode::OK);
         if (replicationWorked) {
           bool found;
           requests[i].result.answer->header(StaticStrings::ErrorCodes, found);
@@ -2521,7 +2521,7 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
  
   // TODO Temporary until the move to LogicalCollection is completed
   LogicalCollection* collection = documentCollection(trxCollection(cid));
-  TRI_collection_t* document = collection->collection();
+  TRI_collection_t* document = collection->_collection;
   TRI_ASSERT(document != nullptr);
   
   VPackBuilder keyBuilder;
@@ -2575,7 +2575,7 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
       std::vector<ClusterCommRequest> requests;
       for (auto const& f : *followers) {
         requests.emplace_back("server:" + f, 
-                              arangodb::GeneralRequest::RequestType::PUT,
+                              arangodb::rest::RequestType::PUT,
                               path, body);
       }
       size_t nrDone = 0;
@@ -2588,9 +2588,9 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
               = requests[i].done &&
                 requests[i].result.status == CL_COMM_RECEIVED &&
                 (requests[i].result.answer_code == 
-                     GeneralResponse::ResponseCode::ACCEPTED ||
+                     rest::ResponseCode::ACCEPTED ||
                  requests[i].result.answer_code == 
-                     GeneralResponse::ResponseCode::OK);
+                     rest::ResponseCode::OK);
           if (!replicationWorked) {
             auto const& followerInfo = document->followers();
             followerInfo->remove((*followers)[i]);
@@ -2659,11 +2659,9 @@ OperationResult Transaction::countLocal(std::string const& collectionName) {
   }
  
   // TODO Temporary until the move to LogicalCollection is completed
-  LogicalCollection* logical = documentCollection(trxCollection(cid));
-  TRI_collection_t* document = logical->collection();
-  TRI_ASSERT(document != nullptr);
+  LogicalCollection* collection = documentCollection(trxCollection(cid));
 
-  uint64_t num = document->_numberDocuments;
+  uint64_t num = collection->_numberDocuments;
 
   res = unlock(trxCollection(cid), TRI_TRANSACTION_READ);
   

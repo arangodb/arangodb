@@ -27,7 +27,7 @@
 using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 
-GossipCallback::GossipCallback(Agent*) {}
+GossipCallback::GossipCallback(Agent*) : _agent(nullptr) {}
 
 bool GossipCallback::operator()(arangodb::ClusterCommResult* res) {
   if (res->status == CL_COMM_SENT && res->result->getHttpReturnCode() == 200) {

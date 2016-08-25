@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STORAGE_ENGINE_CLEANUP_THREAD_H
-#define ARANGOD_STORAGE_ENGINE_CLEANUP_THREAD_H 1
+#ifndef ARANGOD_STORAGE_ENGINE_MM_FILES_CLEANUP_THREAD_H
+#define ARANGOD_STORAGE_ENGINE_MM_FILES_CLEANUP_THREAD_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
@@ -34,10 +34,10 @@ struct TRI_vocbase_t;
 namespace arangodb {
 class LogicalCollection;
 
-class CleanupThread : public Thread {
+class MMFilesCleanupThread : public Thread {
  public:
-  explicit CleanupThread(TRI_vocbase_t* vocbase);
-  ~CleanupThread();
+  explicit MMFilesCleanupThread(TRI_vocbase_t* vocbase);
+  ~MMFilesCleanupThread();
 
   void signal();
 

@@ -115,7 +115,7 @@ void GeneralServer::stopListening() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool GeneralServer::handleRequestAsync(GeneralCommTask* task,
-                                       WorkItem::uptr<RestHandler>& handler,
+                                       WorkItem::uptr<RestHandler> handler,
                                        uint64_t* jobId) {
   bool startThread = handler->needsOwnThread();
 
@@ -148,7 +148,7 @@ bool GeneralServer::handleRequestAsync(GeneralCommTask* task,
       LOG(WARN) << "unable to add job to the job queue: "
                 << TRI_errno_string(res);
     }
-    // todo send info to async work manager?
+    // TODO send info to async work manager?
     return false;
   }
 
@@ -161,12 +161,10 @@ bool GeneralServer::handleRequestAsync(GeneralCommTask* task,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool GeneralServer::handleRequest(GeneralCommTask* task,
-                                  WorkItem::uptr<RestHandler>& handler) {
+                                  WorkItem::uptr<RestHandler> handler) {
   // direct handlers
   if (handler->isDirect()) {
-    HandlerWorkStack work(handler);
-    handleRequestDirectly(work.handler(), task);
-
+    handleRequestDirectly(task, std::move(handler));
     return true;
   }
 
@@ -191,23 +189,23 @@ bool GeneralServer::handleRequest(GeneralCommTask* task,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool GeneralServer::openEndpoint(Endpoint* endpoint) {
-  ConnectionType connectionType;
+  ProtocolType protocolType;
 
   if (endpoint->transport() == Endpoint::TransportType::HTTP) {
     if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-      connectionType = ConnectionType::HTTPS;
+      protocolType = ProtocolType::HTTPS;
     } else {
-      connectionType = ConnectionType::HTTP;
+      protocolType = ProtocolType::HTTP;
     }
   } else {
     if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-      connectionType = ConnectionType::VPPS;
+      protocolType = ProtocolType::VPPS;
     } else {
-      connectionType = ConnectionType::VPP;
+      protocolType = ProtocolType::VPP;
     }
   }
 
-  ListenTask* task = new GeneralListenTask(this, endpoint, connectionType);
+  ListenTask* task = new GeneralListenTask(this, endpoint, protocolType);
 
   // ...................................................................
   // For some reason we have failed in our endeavor to bind to the socket -
@@ -233,23 +231,23 @@ bool GeneralServer::openEndpoint(Endpoint* endpoint) {
 /// @brief handle request directly
 ////////////////////////////////////////////////////////////////////////////////
 
-void GeneralServer::handleRequestDirectly(RestHandler* handler,
-                                          GeneralCommTask* task) {
-  task->RequestStatisticsAgent::transferTo(handler);
-  RestHandler::status result = handler->executeFull();
-  handler->RequestStatisticsAgent::transferTo(task);
+void GeneralServer::handleRequestDirectly(GeneralCommTask* task,
+                                          WorkItem::uptr<RestHandler> handler) {
+  HandlerWorkStack work(std::move(handler));
+
+  task->RequestStatisticsAgent::transferTo(work.handler());
+  RestHandler::status result = work.handler()->executeFull();
+  work.handler()->RequestStatisticsAgent::transferTo(task);
 
   switch (result) {
     case RestHandler::status::FAILED:
     case RestHandler::status::DONE: {
-      // auto response = dynamic_cast<HttpResponse*>(handler->response());
-      // task->addResponse(response, false);
-      task->addResponse(handler->response(), false);
+      task->addResponse(work.handler()->response());
       break;
     }
 
     case RestHandler::status::ASYNC:
-      // do nothing, just wait
+      handler.release();
       break;
   }
 }

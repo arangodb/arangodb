@@ -259,6 +259,7 @@ add_executable(${BIN_ARANGOD}
   RestServer/UnitTestsFeature.cpp
   RestServer/UpgradeFeature.cpp
   RestServer/VocbaseContext.cpp
+  RestServer/WorkMonitorFeature.cpp
   RestServer/arangod.cpp
   Scheduler/ListenTask.cpp
   Scheduler/PeriodicTask.cpp
@@ -273,9 +274,10 @@ add_executable(${BIN_ARANGOD}
   Scheduler/TimerTask.cpp
   Statistics/StatisticsFeature.cpp
   Statistics/statistics.cpp
-  StorageEngine/CleanupThread.cpp
-  StorageEngine/CompactorThread.cpp
   StorageEngine/EngineSelectorFeature.cpp
+  StorageEngine/MMFilesCleanupThread.cpp
+  StorageEngine/MMFilesCollection.cpp
+  StorageEngine/MMFilesCompactorThread.cpp
   StorageEngine/MMFilesEngine.cpp
   StorageEngine/OtherEngine.cpp
   Utils/AqlTransaction.cpp

@@ -5,7 +5,20 @@ if python -c "import sys ; sys.exit(sys.platform != 'cygwin')"; then
     echo "can't work with cygwin python - move it away!"
     exit 1
 fi
-                                                                     
+
+
+#          debian          mac   
+for f in /usr/bin/md5sum /sbin/md5; do 
+    if test -e ${f}; then
+        MD5=${f}
+        break
+    fi
+done
+if test -z "${f}"; then
+    echo "didn't find a valid MD5SUM binary!"
+    exit 1
+fi
+    
 if test -f /scripts/prepare_buildenv.sh; then
     echo "Sourcing docker container environment settings"
     . /scripts/prepare_buildenv.sh
@@ -123,9 +136,9 @@ PACKAGE_MAKE=make
 MAKE_PARAMS=""
 MAKE_CMD_PREFIX=""
 CONFIGURE_OPTIONS="-DCMAKE_INSTALL_PREFIX=/ $CMAKE_OPENSSL"
-# -DCMAKE_INSTALL_LOCALSTATEDIR=/var"
 MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=off"
 
+TAR_SUFFIX=""
 TARGET_DIR=""
 CLANG36=0
 CLANG=0
@@ -199,11 +212,13 @@ while [ $# -gt 0 ];  do
             ;;
 
         --sanitize)
+            TAR_SUFFIX="-sanitize"
             SANITIZE=1
             shift
             ;;
 
         --coverage)
+            TAR_SUFFIX="-coverage"
             COVERAGE=1
             shift
             ;;
@@ -407,7 +422,7 @@ if test -n "${TARGET_DIR}";  then
     echo "building distribution tarball"
     mkdir -p "${TARGET_DIR}"
     dir="${TARGET_DIR}"
-    TARFILE=arangodb.tar.gz
+    TARFILE=arangodb-`uname`${TAR_SUFFIX}.tar.gz
     TARFILE_TMP=`pwd`/arangodb.tar.$$
 
     mkdir -p ${dir}
@@ -451,5 +466,5 @@ if test -n "${TARGET_DIR}";  then
     fi
 
     gzip < ${TARFILE_TMP} > ${dir}/${TARFILE}
-    md5sum < ${dir}/${TARFILE} > ${dir}/${TARFILE}.md5
+    ${MD5} < ${dir}/${TARFILE} > ${dir}/${TARFILE}.md5
 fi

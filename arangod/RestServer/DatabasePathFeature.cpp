@@ -23,6 +23,7 @@
 #include "DatabasePathFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -74,6 +75,15 @@ void DatabasePathFeature::validateOptions(std::shared_ptr<ProgramOptions> option
 
   // strip trailing separators
   _directory = basics::StringUtils::rTrim(_directory, TRI_DIR_SEPARATOR_STR);
+  
+  auto ctx = ArangoGlobalContext::CONTEXT;
+    
+  if (ctx == nullptr) {
+    LOG(ERR) << "failed to get global context.";
+    FATAL_ERROR_EXIT();
+  }
+
+  ctx->getCheckPath(_directory, "database.directory");
 }
 
 void DatabasePathFeature::start() {

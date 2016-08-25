@@ -870,14 +870,14 @@ int CollectorThread::transferMarkers(Logfile* logfile,
              << document->_info.name()
              << "', totalOperationsCount: " << totalOperationsCount;
 
-  CollectorCache* cache =
+  std::unique_ptr<CollectorCache> cache(
       new CollectorCache(collectionId, databaseId, logfile,
-                         totalOperationsCount, operations.size());
+                         totalOperationsCount, operations.size()));
 
   int res = TRI_ERROR_INTERNAL;
 
   try {
-    res = executeTransferMarkers(document, cache, operations);
+    res = executeTransferMarkers(collection, cache.get(), operations);
     
     TRI_IF_FAILURE("transferMarkersCrash") {
       // intentionally kill the server
@@ -886,7 +886,7 @@ int CollectorThread::transferMarkers(Logfile* logfile,
 
     if (res == TRI_ERROR_NO_ERROR && !cache->operations->empty()) {
       // now sync the datafile
-      res = syncJournalCollection(document);
+      res = syncJournalCollection(collection);
 
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
@@ -903,23 +903,18 @@ int CollectorThread::transferMarkers(Logfile* logfile,
     res = TRI_ERROR_INTERNAL;
   }
 
-  if (cache != nullptr) {
-    // prevent memleak
-    delete cache;
-  }
-
   return res;
 }
 
 /// @brief transfer markers into a collection, actual work
 /// the collection must have been prepared to call this function
-int CollectorThread::executeTransferMarkers(TRI_collection_t* document,
+int CollectorThread::executeTransferMarkers(LogicalCollection* collection,
                                             CollectorCache* cache,
                                             OperationsType const& operations) {
   // used only for crash / recovery tests
   int numMarkers = 0;
 
-  TRI_voc_tick_t const minTransferTick = document->_tickMax;
+  TRI_voc_tick_t const minTransferTick = collection->_collection->_tickMax;
   TRI_ASSERT(!operations.empty());
 
   for (auto it2 = operations.begin(); it2 != operations.end(); ++it2) {
@@ -945,7 +940,7 @@ int CollectorThread::executeTransferMarkers(TRI_collection_t* document,
         type == TRI_DF_MARKER_VPACK_REMOVE) {
       TRI_voc_size_t const size = source->getSize();
 
-      char* dst = nextFreeMarkerPosition(document, tick, type, size, cache);
+      char* dst = nextFreeMarkerPosition(collection, tick, type, size, cache);
 
       if (dst == nullptr) {
         return TRI_ERROR_OUT_OF_MEMORY;
@@ -956,7 +951,7 @@ int CollectorThread::executeTransferMarkers(TRI_collection_t* document,
 
       memcpy(dst, source, size);
 
-      finishMarker(reinterpret_cast<char const*>(source), dst, document, tick, cache);
+      finishMarker(reinterpret_cast<char const*>(source), dst, collection, tick, cache);
     }
   }
 
@@ -970,8 +965,11 @@ int CollectorThread::executeTransferMarkers(TRI_collection_t* document,
 
 /// @brief insert the collect operations into a per-collection queue
 int CollectorThread::queueOperations(arangodb::wal::Logfile* logfile,
-                                     CollectorCache*& cache) {
+                                     std::unique_ptr<CollectorCache>& cache) {
+  TRI_ASSERT(cache != nullptr);
+
   TRI_voc_cid_t cid = cache->collectionId;
+  uint64_t numOperations = cache->operations->size();
   uint64_t maxNumPendingOperations = _logfileManager->throttleWhenPending();
 
   TRI_ASSERT(!cache->operations->empty());
@@ -984,12 +982,14 @@ int CollectorThread::queueOperations(arangodb::wal::Logfile* logfile,
         // it is only safe to access the queue if this flag is not set
         auto it = _operationsQueue.find(cid);
         if (it == _operationsQueue.end()) {
-          _operationsQueue.emplace(cid, std::vector<CollectorCache*>({cache}));
+          _operationsQueue.emplace(cid, std::vector<CollectorCache*>({cache.get()}));
           _logfileManager->increaseCollectQueueSize(logfile);
         } else {
-          (*it).second.push_back(cache);
+          (*it).second.push_back(cache.get());
           _logfileManager->increaseCollectQueueSize(logfile);
         }
+        // now _operationsQueue is responsible for managing the cache entry
+        cache.release();
 
         // exit the loop
         break;
@@ -999,8 +999,6 @@ int CollectorThread::queueOperations(arangodb::wal::Logfile* logfile,
     // wait outside the mutex for the flag to be cleared
     usleep(10000);
   }
-
-  uint64_t numOperations = cache->operations->size();
 
   if (maxNumPendingOperations > 0 &&
       _numPendingOperations < maxNumPendingOperations &&
@@ -1013,10 +1011,6 @@ int CollectorThread::queueOperations(arangodb::wal::Logfile* logfile,
   }
 
   _numPendingOperations += numOperations;
-
-  // we have put the object into the queue successfully
-  // now set the original pointer to null so it isn't double-freed
-  cache = nullptr;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1040,17 +1034,17 @@ int CollectorThread::updateDatafileStatistics(
 
 /// @brief sync all journals of a collection
 int CollectorThread::syncJournalCollection(
-    TRI_collection_t* document) {
+    LogicalCollection* collection) {
   TRI_IF_FAILURE("CollectorThread::syncDatafileCollection") {
     return TRI_ERROR_DEBUG;
   }
 
-  return document->syncActiveJournal();
+  return collection->syncActiveJournal();
 }
 
 /// @brief get the next position for a marker of the specified size
 char* CollectorThread::nextFreeMarkerPosition(
-    TRI_collection_t* document, TRI_voc_tick_t tick,
+    LogicalCollection* collection, TRI_voc_tick_t tick,
     TRI_df_marker_type_t type, TRI_voc_size_t size, CollectorCache* cache) {
   
   // align the specified size
@@ -1058,7 +1052,7 @@ char* CollectorThread::nextFreeMarkerPosition(
 
   char* dst = nullptr; // will be modified by reserveJournalSpace()
   TRI_datafile_t* datafile = nullptr; // will be modified by reserveJournalSpace()
-  int res = document->reserveJournalSpace(tick, size, dst, datafile);
+  int res = collection->reserveJournalSpace(tick, size, dst, datafile);
 
   if (res != TRI_ERROR_NO_ERROR) {
     // could not reserve space, for whatever reason
@@ -1073,7 +1067,7 @@ char* CollectorThread::nextFreeMarkerPosition(
     if (cache->lastFid > 0) {
       // rotated the existing journal... now update the old journal's stats
       auto& dfi = createDfi(cache, cache->lastFid);
-      document->_datafileStatistics.increaseUncollected(cache->lastFid,
+      collection->_collection->_datafileStatistics.increaseUncollected(cache->lastFid,
                                                         dfi.numberUncollected);
       // and reset them afterwards
       dfi.numberUncollected = 0;
@@ -1089,7 +1083,7 @@ char* CollectorThread::nextFreeMarkerPosition(
     // we only need the ditches when we are outside the recovery
     // the compactor will not run during recovery
     auto ditch =
-        document->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
+        collection->_collection->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
 
     if (ditch == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -1108,7 +1102,7 @@ char* CollectorThread::nextFreeMarkerPosition(
 /// @brief set the tick of a marker and calculate its CRC value
 void CollectorThread::finishMarker(char const* walPosition,
                                    char* datafilePosition,
-                                   TRI_collection_t* document,
+                                   LogicalCollection* collection,
                                    TRI_voc_tick_t tick, CollectorCache* cache) {
   TRI_df_marker_t* marker =
       reinterpret_cast<TRI_df_marker_t*>(datafilePosition);
@@ -1119,8 +1113,8 @@ void CollectorThread::finishMarker(char const* walPosition,
   // update ticks
   TRI_UpdateTicksDatafile(datafile, marker);
 
-  TRI_ASSERT(document->_tickMax < tick);
-  document->_tickMax = tick;
+  TRI_ASSERT(collection->_collection->_tickMax < tick);
+  collection->_collection->_tickMax = tick;
 
   cache->operations->emplace_back(CollectorOperation(
       datafilePosition, marker->getSize(), walPosition, cache->lastFid));

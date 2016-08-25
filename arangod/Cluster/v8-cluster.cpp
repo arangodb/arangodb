@@ -705,7 +705,7 @@ static void JS_GetCollectionInfoClusterInfo(
   result->Set(TRI_V8_ASCII_STRING("waitForSync"),
               v8::Boolean::New(isolate, ci->waitForSync()));
   result->Set(TRI_V8_ASCII_STRING("journalSize"),
-              v8::Number::New(isolate, ci->journalSize()));
+              v8::Number::New(isolate, static_cast<double>(ci->journalSize())));
   result->Set(TRI_V8_ASCII_STRING("replicationFactor"),
               v8::Number::New(isolate, ci->replicationFactor()));
 
@@ -1464,7 +1464,7 @@ static void JS_StatusServerState(
 
 static void PrepareClusterCommRequest(
     v8::FunctionCallbackInfo<v8::Value> const& args,
-    arangodb::GeneralRequest::RequestType& reqType, std::string& destination,
+    arangodb::rest::RequestType& reqType, std::string& destination,
     std::string& path, std::string& body,
     std::unordered_map<std::string, std::string>& headerFields,
     ClientTransactionID& clientTransactionID,
@@ -1476,13 +1476,13 @@ static void PrepareClusterCommRequest(
   ONLY_IN_CLUSTER
   TRI_ASSERT(args.Length() >= 4);
 
-  reqType = arangodb::GeneralRequest::RequestType::GET;
+  reqType = arangodb::rest::RequestType::GET;
   if (args[0]->IsString()) {
     TRI_Utf8ValueNFC UTF8(TRI_UNKNOWN_MEM_ZONE, args[0]);
     std::string methstring = *UTF8;
     reqType = arangodb::HttpRequest::translateMethod(methstring);
-    if (reqType == arangodb::GeneralRequest::RequestType::ILLEGAL) {
-      reqType = arangodb::GeneralRequest::RequestType::GET;
+    if (reqType == arangodb::rest::RequestType::ILLEGAL) {
+      reqType = arangodb::rest::RequestType::GET;
     }
   }
 
@@ -1730,7 +1730,7 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "clustercomm object not found");
   }
 
-  arangodb::GeneralRequest::RequestType reqType;
+  arangodb::rest::RequestType reqType;
   std::string destination;
   std::string path;
   auto body = std::make_shared<std::string>();
@@ -1796,7 +1796,7 @@ static void JS_SyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "clustercomm object not found");
   }
 
-  arangodb::GeneralRequest::RequestType reqType;
+  arangodb::rest::RequestType reqType;
   std::string destination;
   std::string path;
   std::string body;

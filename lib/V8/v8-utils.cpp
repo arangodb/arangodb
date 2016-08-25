@@ -619,7 +619,7 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   double timeout = 10.0;
   bool returnBodyAsBuffer = false;
   bool followRedirects = true;
-  GeneralRequest::RequestType method = GeneralRequest::RequestType::GET;
+  rest::RequestType method = rest::RequestType::GET;
   bool returnBodyOnError = false;
   int maxRedirects = 5;
 
@@ -691,8 +691,8 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
           options->Get(TRI_V8_ASCII_STRING("maxRedirects")));
     }
 
-    if (!body.empty() && (method == GeneralRequest::RequestType::GET ||
-                          method == GeneralRequest::RequestType::HEAD)) {
+    if (!body.empty() && (method == rest::RequestType::GET ||
+                          method == rest::RequestType::HEAD)) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
           "should not provide a body value for this request method");

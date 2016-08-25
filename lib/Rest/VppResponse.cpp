@@ -46,13 +46,13 @@ bool VppResponse::HIDE_PRODUCT_HEADER = false;
 VppResponse::VppResponse(ResponseCode code, uint64_t id)
     : GeneralResponse(code), _header(nullptr), _payload(), _messageId(id) {
   _contentType = ContentType::VPACK;
-  _connectionType = CONNECTION_KEEP_ALIVE;
+  _connectionType = rest::CONNECTION_KEEP_ALIVE;
 }
 
 void VppResponse::reset(ResponseCode code) {
   _responseCode = code;
   _headers.clear();
-  _connectionType = CONNECTION_KEEP_ALIVE;
+  _connectionType = rest::CONNECTION_KEEP_ALIVE;
   _contentType = ContentType::TEXT;
   _generateBody = false;  // payload has to be set
 }
@@ -67,12 +67,13 @@ void VppResponse::setPayload(arangodb::velocypack::Slice const& slice,
 };
 
 VPackMessageNoOwnBuffer VppResponse::prepareForNetwork() {
+  // initalize builder with vpackbuffer. then we do not need to
+  // steal the header and can avoid the shared pointer
   VPackBuilder builder;
-  builder.openObject();
-  builder.add("version", VPackValue(int(1)));
-  builder.add("type", VPackValue(int(1)));  // 2 == response
+  builder.openArray();
+  builder.add(VPackValue(int(1)));
+  builder.add(VPackValue(int(2)));  // 2 == response
   builder.add(
-      "responseCode",
       VPackValue(static_cast<int>(meta::underlyingValue(_responseCode))));
   builder.close();
   _header = builder.steal();

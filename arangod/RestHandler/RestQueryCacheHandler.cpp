@@ -41,13 +41,13 @@ RestHandler::status RestQueryCacheHandler::execute() {
   auto const type = _request->requestType();
 
   switch (type) {
-    case GeneralRequest::RequestType::DELETE_REQ:
+    case rest::RequestType::DELETE_REQ:
       clearCache();
       break;
-    case GeneralRequest::RequestType::GET:
+    case rest::RequestType::GET:
       readProperties();
       break;
-    case GeneralRequest::RequestType::PUT:
+    case rest::RequestType::PUT:
       replaceProperties();
       break;
     default:
@@ -70,9 +70,9 @@ bool RestQueryCacheHandler::clearCache() {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
     result.add("error", VPackValue(false));
-    result.add("code", VPackValue((int)GeneralResponse::ResponseCode::OK));
+    result.add("code", VPackValue((int)rest::ResponseCode::OK));
     result.close();
-    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
+    generateResult(rest::ResponseCode::OK, result.slice());
   } catch (...) {
     // Ignore the error
   }
@@ -88,7 +88,7 @@ bool RestQueryCacheHandler::readProperties() {
     auto queryCache = arangodb::aql::QueryCache::instance();
 
     VPackBuilder result = queryCache->properties();
-    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
+    generateResult(rest::ResponseCode::OK, result.slice());
   } catch (Exception const& err) {
     handleError(err);
   } catch (std::exception const& ex) {
@@ -111,7 +111,7 @@ bool RestQueryCacheHandler::replaceProperties() {
   auto const& suffix = _request->suffix();
 
   if (suffix.size() != 1 || suffix[0] != "properties") {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/query-cache/properties");
     return true;
@@ -127,7 +127,7 @@ bool RestQueryCacheHandler::replaceProperties() {
   VPackSlice body = parsedBody.get()->slice();
 
   if (!body.isObject()) {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER, "expecting a JSON-Object body");
     return true;
   }

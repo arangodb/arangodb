@@ -159,7 +159,7 @@ std::string GeneralResponse::responseString(ResponseCode code) {
   return StringUtils::itoa((int)code) + " Unknown";
 }
 
-GeneralResponse::ResponseCode GeneralResponse::responseCode(
+rest::ResponseCode GeneralResponse::responseCode(
     std::string const& str) {
   int number = ::atoi(str.c_str());
 
@@ -268,7 +268,7 @@ GeneralResponse::ResponseCode GeneralResponse::responseCode(
   }
 }
 
-GeneralResponse::ResponseCode GeneralResponse::responseCode(int code) {
+rest::ResponseCode GeneralResponse::responseCode(int code) {
   TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
 
   switch (code) {
@@ -416,4 +416,5 @@ GeneralResponse::ResponseCode GeneralResponse::responseCode(int code) {
 GeneralResponse::GeneralResponse(ResponseCode responseCode)
     : _responseCode(responseCode),
       _contentType(ContentType::UNSET),
-      _connectionType(ConnectionType::CONNECTION_NONE) {}
+      _connectionType(ConnectionType::CONNECTION_NONE),
+      _options(velocypack::Options::Defaults) {}

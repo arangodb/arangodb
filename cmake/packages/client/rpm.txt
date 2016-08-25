@@ -40,7 +40,7 @@ set(PROJECT_SOURCE_DIR @PROJECT_SOURCE_DIR@)
 ################################################################################
 # Get the final values for cpack:
 ################################################################################
-set(CPACK_GENERATOR "DEB")
+set(CPACK_GENERATOR "RPM")
 set(CPACK_PACKAGE_VERSION "${ARANGODB_VERSION}")
 set(CPACK_PACKAGE_NAME "arangodb3-client")
 set(CPACK_PACKAGE_CONTACT ${ARANGODB_PACKAGE_CONTACT})

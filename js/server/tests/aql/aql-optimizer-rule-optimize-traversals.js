@@ -256,7 +256,56 @@ function optimizerRuleTestSuite () {
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
         assertEqual(simplePlan[2].type, "NoResultsNode");
       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple conditions 
+////////////////////////////////////////////////////////////////////////////////
+
+    testCondVars1 : function () {
+      var queries = [ 
+        "LET data = (FOR i IN 1..1 RETURN i) FOR v, e, p IN 1..10 OUTBOUND data GRAPH '" + graphName + "' FILTER p.vertices[0]._id == '123' FILTER p.vertices[1]._id != null FILTER p.edges[0]._id IN data[*].foo.bar RETURN 1"
+      ];
+
+      queries.forEach(function(query) {
+        var result = AQL_EXPLAIN(query);
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        assertEqual(0, AQL_EXECUTE(query).json.length);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple conditions 
+////////////////////////////////////////////////////////////////////////////////
+
+    testCondVars2 : function () {
+      var queries = [ 
+        "LET data = (FOR i IN 1..1 RETURN i) FOR v, e, p IN 1..10 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.vertices[0]._id == '123' FILTER p.vertices[1]._id != null FILTER p.edges[0]._id IN data[*].foo.bar RETURN 1"
+      ];
+
+      queries.forEach(function(query) {
+        var result = AQL_EXPLAIN(query);
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        assertEqual(0, AQL_EXECUTE(query).json.length);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple conditions 
+////////////////////////////////////////////////////////////////////////////////
+
+    testCondVars3 : function () {
+      var queries = [ 
+        "LET data = (FOR i IN 1..1 RETURN i) FOR v, e, p IN 1..10 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.vertices[0]._id == '123' FILTER p.vertices[1]._id != null FILTER p.edges[0]._id IN data[*].foo.bar FILTER p.edges[1]._key IN data[*].bar.baz._id RETURN 1"
+      ];
+
+      queries.forEach(function(query) {
+        var result = AQL_EXPLAIN(query);
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        assertEqual(0, AQL_EXECUTE(query).json.length);
+      });
     }
+
   };
 }
 

@@ -25,7 +25,9 @@
 #define ARANGOD_VOCBASE_LOGICAL_COLLECTION_H 1
 
 #include "Basics/Common.h"
+#include "VocBase/DatafileDescription.h"
 #include "VocBase/MasterPointers.h"
+#include "VocBase/PhysicalCollection.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -59,11 +61,11 @@ class LogicalCollection {
 
   LogicalCollection(TRI_vocbase_t* vocbase, TRI_col_type_e type,
                     TRI_voc_cid_t cid, std::string const& name, TRI_voc_cid_t planId,
-                    std::string const& path, bool isLocal);
+                    std::string const& path, bool isVolatile, bool isLocal);
 
   LogicalCollection(TRI_vocbase_t*, arangodb::velocypack::Slice);
 
-  LogicalCollection(std::shared_ptr<LogicalCollection> const);
+  explicit LogicalCollection(std::shared_ptr<LogicalCollection> const&);
 
   ~LogicalCollection();
 
@@ -105,7 +107,7 @@ class LogicalCollection {
   /// the boolean value will be set to true if the lock could be acquired
   /// if the boolean is false, the return value is always TRI_VOC_COL_STATUS_CORRUPTED 
   TRI_vocbase_col_status_e tryFetchStatus(bool&);
-  std::string const statusString();
+  std::string statusString();
 
   // TODO this should be part of physical collection!
   size_t journalSize() const;
@@ -169,12 +171,80 @@ class LogicalCollection {
   int update(arangodb::velocypack::Slice const&, bool);
   int update(VocbaseCollectionInfo const&);
 
-  PhysicalCollection* getPhysical() const;
-  TRI_collection_t* collection() const {
-    return _collection;
+  /// @brief return the figures for a collection
+  std::shared_ptr<arangodb::velocypack::Builder> figures();
+  
+  
+  /// @brief iterates over a collection
+  bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb) {
+    return getPhysical()->iterateDatafiles(cb);
   }
 
-  int open(bool);
+  /// @brief opens an existing collection
+  int open(bool ignoreErrors);
+
+  /// @brief closes an open collection
+  int close();
+
+  /// datafile management
+
+  /// @brief rotate the active journal - will do nothing if there is no journal
+  int rotateActiveJournal() {
+    return getPhysical()->rotateActiveJournal();
+  }
+  
+  /// @brief sync the active journal - will do nothing if there is no journal
+  /// or if the journal is volatile
+  int syncActiveJournal() {
+    return getPhysical()->syncActiveJournal();
+  }
+  
+  /// @brief reserve space in the current journal. if no create exists or the
+  /// current journal cannot provide enough space, close the old journal and
+  /// create a new one
+  int reserveJournalSpace(TRI_voc_tick_t tick, TRI_voc_size_t size,
+                          char*& resultPosition, TRI_datafile_t*& resultDatafile) {
+    return getPhysical()->reserveJournalSpace(tick, size, resultPosition, resultDatafile);
+  }
+  
+  /// @brief create compactor file
+  TRI_datafile_t* createCompactor(TRI_voc_fid_t fid, TRI_voc_size_t maximalSize) {
+    return getPhysical()->createCompactor(fid, maximalSize);
+  }
+  
+  /// @brief close an existing compactor
+  int closeCompactor(TRI_datafile_t* datafile) {
+    return getPhysical()->closeCompactor(datafile);
+  }
+  
+  bool removeCompactor(TRI_datafile_t* datafile) {
+    return getPhysical()->removeCompactor(datafile);
+  }
+
+  bool removeDatafile(TRI_datafile_t* datafile) {
+    return getPhysical()->removeDatafile(datafile);
+  }
+  
+  /// @brief replace a datafile with a compactor
+  int replaceDatafileWithCompactor(TRI_datafile_t* datafile, TRI_datafile_t* compactor) {
+    return getPhysical()->replaceDatafileWithCompactor(datafile, compactor);
+  }
+  
+  /// @brief closes the datafiles passed in the vector
+  bool closeDatafiles(std::vector<TRI_datafile_t*> const& files) {
+    return getPhysical()->closeDatafiles(files);
+  }
+  
+  int applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
+                        std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) {
+    return getPhysical()->applyForTickRange(dataMin, dataMax, callback);
+  }
+
+
+  PhysicalCollection* getPhysical() const {
+    TRI_ASSERT(_physical != nullptr);
+    return _physical;
+  }
 
   // SECTION: Indexes
 
@@ -230,6 +300,8 @@ class LogicalCollection {
 
  private:
   // SECTION: Private functions
+
+  PhysicalCollection* createPhysical();
 
   // SECTION: Index creation
 

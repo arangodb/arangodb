@@ -73,33 +73,6 @@ struct DocumentOperation;
 /// @brief predefined collection name for users
 #define TRI_COL_NAME_USERS "_users"
 
-/// @brief collection info
-struct TRI_doc_collection_info_t {
-  TRI_voc_ssize_t _numberDatafiles;
-  TRI_voc_ssize_t _numberJournalfiles;
-  TRI_voc_ssize_t _numberCompactorfiles;
-
-  TRI_voc_ssize_t _numberAlive;
-  TRI_voc_ssize_t _numberDead;
-  TRI_voc_ssize_t _numberDeletions;
-  TRI_voc_ssize_t _numberIndexes;
-
-  int64_t _sizeAlive;
-  int64_t _sizeDead;
-  int64_t _sizeIndexes;
-
-  int64_t _datafileSize;
-  int64_t _journalfileSize;
-  int64_t _compactorfileSize;
-
-  TRI_voc_tick_t _tickMax;
-  uint64_t _uncollectedLogfileEntries;
-  uint64_t _numberDocumentDitches;
-  char const* _waitingForDitch;
-  char const* _lastCompactionStatus;
-  char _lastCompactionStamp[21];
-};
-
 namespace arangodb {
 
 /// @brief collection info block saved to disk as json
@@ -262,7 +235,7 @@ struct TRI_collection_t {
   void setCompactionStatus(char const*);
   void getCompactionStatus(char const*&, char*, size_t);
   
-  TRI_doc_collection_info_t* figures();
+  void figures(std::shared_ptr<arangodb::velocypack::Builder>& result);
 
   int beginRead();
   int endRead();
@@ -273,25 +246,6 @@ struct TRI_collection_t {
 
   // datafile management
   
-  /// @brief rotate the active journal - will do nothing if there is no journal
-  int rotateActiveJournal();
-
-  /// @brief sync the active journal - will do nothing if there is no journal
-  /// or if the journal is volatile
-  int syncActiveJournal();
-
-  int reserveJournalSpace(TRI_voc_tick_t tick, TRI_voc_size_t size,
-                          char*& resultPosition, TRI_datafile_t*& resultDatafile);
-
-  /// @brief create compactor file
-  TRI_datafile_t* createCompactor(TRI_voc_fid_t fid, TRI_voc_size_t maximalSize);
-  /// @brief close an existing compactor
-  int closeCompactor(TRI_datafile_t* datafile);
-  /// @brief replace a datafile with a compactor
-  int replaceDatafileWithCompactor(TRI_datafile_t* datafile, TRI_datafile_t* compactor);
-
-  bool removeCompactor(TRI_datafile_t*);
-  bool removeDatafile(TRI_datafile_t*);
   std::string const& path() const { return _path; }
   std::string label() const;
 
@@ -309,17 +263,8 @@ struct TRI_collection_t {
   /// @brief renames a collection
   int rename(std::string const& name);
 
-  /// @brief iterates over a collection
-  bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const&);
-
-  /// @brief opens an existing collection
-  int open(bool ignoreErrors);
-
   /// @brief closes an open collection
-  int close();
-  
-  /// @brief closes an open collection
-  int unload(bool updateStatus);
+  int unload();
 
  private:
   bool openIndex(VPackSlice const& description, arangodb::Transaction* trx);
@@ -327,23 +272,9 @@ struct TRI_collection_t {
   /// @brief enumerate all indexes of the collection, but don't fill them yet
   int detectIndexes(arangodb::Transaction*);
 
-  /// @brief seal a datafile
-  int sealDatafile(TRI_datafile_t* datafile, bool isCompactor);
-
-  /// @brief creates a datafile
-  TRI_datafile_t* createDatafile(TRI_voc_fid_t fid,
-                                 TRI_voc_size_t journalSize, 
-                                 bool isCompactor);
-
   /// @brief creates the initial indexes for the collection
   int createInitialIndexes();
 
-  /// @brief closes the datafiles passed in the vector
-  bool closeDataFiles(std::vector<TRI_datafile_t*> const& files);
-  
-  bool iterateDatafilesVector(std::vector<TRI_datafile_t*> const& files,
-                              std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb);
- 
   int deleteSecondaryIndexes(arangodb::Transaction*, TRI_doc_mptr_t const*,
                              bool);
 
@@ -364,11 +295,6 @@ struct TRI_collection_t {
   std::unique_ptr<arangodb::FollowerInfo> _followers;
 
  public:
-  arangodb::basics::ReadWriteLock _filesLock;
-  std::vector<TRI_datafile_t*> _datafiles;   // all datafiles
-  std::vector<TRI_datafile_t*> _journals;    // all journals
-  std::vector<TRI_datafile_t*> _compactors;  // all compactor files
-  
   arangodb::DatafileStatistics _datafileStatistics;
   
   arangodb::MasterPointers _masterPointers;

@@ -31,9 +31,10 @@
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "StorageEngine/CleanupThread.h"
-#include "StorageEngine/CompactorThread.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/MMFilesCleanupThread.h"
+#include "StorageEngine/MMFilesCompactorThread.h"
+#include "StorageEngine/MMFilesCollection.h"
 #include "VocBase/collection.h"
 #include "VocBase/datafile.h"
 #include "VocBase/LogicalCollection.h"
@@ -185,6 +186,12 @@ void MMFilesEngine::start() {
 // write requests to the storage engine after this call
 void MMFilesEngine::stop() {
   TRI_ASSERT(EngineSelectorFeature::ENGINE = this);
+}
+
+// create storage-engine specific collection
+PhysicalCollection* MMFilesEngine::createPhysicalCollection(LogicalCollection* collection) {
+  TRI_ASSERT(EngineSelectorFeature::ENGINE = this);
+  return new MMFilesCollection(collection);
 }
 
 void MMFilesEngine::recoveryDone(TRI_vocbase_t* vocbase) {    
@@ -1244,7 +1251,7 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
 
     TRI_ASSERT(info.id() != 0);
     try {
-      c = StorageEngine::registerCollection(ConditionalWriteLocker::DoLock(), vocbase.get(), info.type(), info.id(), info.name(), info.planId(), directory);
+      c = StorageEngine::registerCollection(ConditionalWriteLocker::DoLock(), vocbase.get(), info.type(), info.id(), info.name(), info.planId(), directory, info.isVolatile());
       registerCollectionPath(vocbase->id(), info.id(), directory);
     } catch (...) {
       // if we caught an exception, c is still a nullptr
@@ -1606,12 +1613,12 @@ int MMFilesEngine::shutdownDatabase(TRI_vocbase_t* vocbase) {
 
 // start the cleanup thread for the database 
 int MMFilesEngine::startCleanup(TRI_vocbase_t* vocbase) {
-  std::unique_ptr<CleanupThread> thread;
+  std::unique_ptr<MMFilesCleanupThread> thread;
 
   {
     MUTEX_LOCKER(locker, _threadsLock);
 
-    thread.reset(new CleanupThread(vocbase));
+    thread.reset(new MMFilesCleanupThread(vocbase));
     _cleanupThreads.emplace(vocbase, thread.get());
   }
   
@@ -1628,7 +1635,7 @@ int MMFilesEngine::startCleanup(TRI_vocbase_t* vocbase) {
 
 // stop and delete the cleanup thread for the database
 int MMFilesEngine::stopCleanup(TRI_vocbase_t* vocbase) {
-  CleanupThread* thread = nullptr;
+  MMFilesCleanupThread* thread = nullptr;
   
   {
     MUTEX_LOCKER(locker, _threadsLock);
@@ -1660,7 +1667,7 @@ int MMFilesEngine::stopCleanup(TRI_vocbase_t* vocbase) {
 
 // start the compactor thread for the database 
 int MMFilesEngine::startCompactor(TRI_vocbase_t* vocbase) {
-  std::unique_ptr<CompactorThread> thread;
+  std::unique_ptr<MMFilesCompactorThread> thread;
 
   {
     MUTEX_LOCKER(locker, _threadsLock);
@@ -1670,7 +1677,7 @@ int MMFilesEngine::startCompactor(TRI_vocbase_t* vocbase) {
       return TRI_ERROR_INTERNAL;
     }
 
-    thread.reset(new CompactorThread(vocbase));
+    thread.reset(new MMFilesCompactorThread(vocbase));
     _compactorThreads.emplace(vocbase, thread.get());
   }
 
@@ -1687,7 +1694,7 @@ int MMFilesEngine::startCompactor(TRI_vocbase_t* vocbase) {
 
 // signal the compactor thread to stop
 int MMFilesEngine::beginShutdownCompactor(TRI_vocbase_t* vocbase) {
-  CompactorThread* thread = nullptr;
+  MMFilesCompactorThread* thread = nullptr;
   
   {
     MUTEX_LOCKER(locker, _threadsLock);
@@ -1712,7 +1719,7 @@ int MMFilesEngine::beginShutdownCompactor(TRI_vocbase_t* vocbase) {
 
 // stop and delete the compactor thread for the database
 int MMFilesEngine::stopCompactor(TRI_vocbase_t* vocbase) {
-  CompactorThread* thread = nullptr;
+  MMFilesCompactorThread* thread = nullptr;
   
   {
     MUTEX_LOCKER(locker, _threadsLock);
@@ -1743,7 +1750,7 @@ int MMFilesEngine::stopCompactor(TRI_vocbase_t* vocbase) {
 }
 
 /// @brief checks a collection
-int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, TRI_collection_t* collection, bool ignoreErrors) {
+int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* collection, bool ignoreErrors) {
   LOG_TOPIC(TRACE, Logger::DATAFILES) << "check collection directory '"
                                       << collection->path() << "'";
 
@@ -1754,7 +1761,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, TRI_collection_t* coll
   std::vector<TRI_datafile_t*> sealed;
   bool stop = false;
 
-  TRI_ASSERT(collection->_info.id() != 0);
+  TRI_ASSERT(collection->cid() != 0);
 
   // check files within the directory
   std::vector<std::string> files = TRI_FilesDirectory(collection->path().c_str());
@@ -1878,9 +1885,9 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, TRI_collection_t* coll
         break;
       }
 
-      if (cm->_cid != collection->_info.id()) {
+      if (cm->_cid != collection->cid()) {
         LOG(ERR) << "collection identifier mismatch, expected "
-                 << collection->_info.id() << ", found " << cm->_cid;
+                 << collection->cid() << ", found " << cm->_cid;
 
         stop = true;
         break;
@@ -1967,10 +1974,11 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, TRI_collection_t* coll
   std::sort(journals.begin(), journals.end(), DatafileComparator());
   std::sort(compactors.begin(), compactors.end(), DatafileComparator());
 
+  MMFilesCollection* physical = static_cast<MMFilesCollection*>(collection->getPhysical());
   // add the datafiles and journals
-  collection->_datafiles = datafiles;
-  collection->_journals = journals;
-  collection->_compactors = compactors;
+  physical->_datafiles = datafiles;
+  physical->_journals = journals;
+  physical->_compactors = compactors;
 
   return TRI_ERROR_NO_ERROR;
 }

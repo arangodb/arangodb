@@ -185,7 +185,7 @@ int Syncer::sendCreateBarrier(std::string& errorMsg, TRI_voc_tick_t minTick) {
 
   // send request
   std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
-      GeneralRequest::RequestType::POST, url, body.c_str(), body.size()));
+      rest::RequestType::POST, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "could not connect to master at " + _masterInfo._endpoint +
@@ -248,7 +248,7 @@ int Syncer::sendExtendBarrier(TRI_voc_tick_t tick) {
 
   // send request
   std::unique_ptr<SimpleHttpResult> response(_client->request(
-      GeneralRequest::RequestType::PUT, url, body.c_str(), body.size()));
+      rest::RequestType::PUT, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -282,7 +282,7 @@ int Syncer::sendRemoveBarrier() {
 
     // send request
     std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
-        GeneralRequest::RequestType::DELETE_REQ, url, nullptr, 0));
+        rest::RequestType::DELETE_REQ, url, nullptr, 0));
 
     if (response == nullptr || !response->isComplete()) {
       return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -479,8 +479,8 @@ int Syncer::createCollection(VPackSlice const& slice, arangodb::LogicalCollectio
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  TRI_col_type_e const type = VelocyPackHelper::getNumericValue<TRI_col_type_e>(
-      slice, "type", TRI_COL_TYPE_DOCUMENT);
+  TRI_col_type_e const type = static_cast<TRI_col_type_e>(VelocyPackHelper::getNumericValue<int>(
+      slice, "type", TRI_COL_TYPE_DOCUMENT));
 
   arangodb::LogicalCollection* col = getCollectionByIdOrName(cid, name);
 
@@ -552,7 +552,7 @@ int Syncer::createIndex(VPackSlice const& slice) {
   }
 
   try {
-    CollectionGuard guard(_vocbase, cid, cname);
+    CollectionGuard guard(_vocbase, cid, std::string(cname));
 
     if (guard.collection() == nullptr) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -610,7 +610,7 @@ int Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
   }
 
   try {
-    CollectionGuard guard(_vocbase, cid, cname);
+    CollectionGuard guard(_vocbase, cid, std::string(cname));
 
     if (guard.collection() == nullptr) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -649,7 +649,7 @@ int Syncer::getMasterState(std::string& errorMsg) {
   _client->_retryWaitTime = 500 * 1000;
 
   std::unique_ptr<SimpleHttpResult> response(
-      _client->retryRequest(GeneralRequest::RequestType::GET, url, nullptr, 0));
+      _client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
 
   // restore old settings
   _client->_maxRetries = static_cast<size_t>(maxRetries);

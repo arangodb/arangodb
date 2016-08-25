@@ -215,7 +215,7 @@ void DatabaseManagerThread::run() {
 
 DatabaseFeature::DatabaseFeature(ApplicationServer* server)
     : ApplicationFeature(server, "Database"),
-      _maximalJournalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
+      _maximalJournalSize(TRI_JOURNAL_DEFAULT_SIZE),
       _defaultWaitForSync(false),
       _forceSyncProperties(true),
       _ignoreDatafileErrors(false),
@@ -346,6 +346,12 @@ void DatabaseFeature::start() {
   
   // update all v8 contexts
   updateContexts();
+}
+
+void DatabaseFeature::stop() {
+  auto logfileManager = arangodb::wal::LogfileManager::instance();
+  logfileManager->flush(true, true, false);
+  logfileManager->waitForCollector();
 }
 
 void DatabaseFeature::unprepare() {

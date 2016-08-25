@@ -76,7 +76,7 @@ RevisionReader GlobalRevisionCacheChunk::storeAndLease(uint64_t collectionId, ui
 // the collection id is prepended to the actual data in order to quickly access
 // the shard-local hash for the revision when cleaning up the chunk 
 uint32_t GlobalRevisionCacheChunk::store(uint64_t collectionId, uint8_t const* data, size_t length) {
-  uint32_t const offset = adjustWritePosition(physicalSize(length));
+  uint32_t const offset = adjustWritePosition(static_cast<uint32_t>(physicalSize(length)));
 
   // we can copy the data into the chunk without the lock
   storeAtOffset(offset, collectionId, data, length);
@@ -86,7 +86,7 @@ uint32_t GlobalRevisionCacheChunk::store(uint64_t collectionId, uint8_t const* d
 // return the physical size for a piece of data
 // this adds required padding plus the required size for the collection id
 size_t GlobalRevisionCacheChunk::physicalSize(size_t dataLength) noexcept {
-  return AlignSize(sizeof(uint64_t) + dataLength);
+  return AlignSize(static_cast<uint32_t>(sizeof(uint64_t) + dataLength));
 }
   
 // garbage collects a chunk
@@ -109,7 +109,7 @@ void GlobalRevisionCacheChunk::garbageCollect(GarbageCollectionCallback const& c
     arangodb::velocypack::Slice slice(ptr + sizeof(uint64_t));
 
     callback(collectionId, slice);
-    ptr += AlignSize(sizeof(uint64_t) + slice.byteSize());
+    ptr += AlignSize(static_cast<uint32_t>(sizeof(uint64_t) + slice.byteSize()));
   }
 
   // done collecting. now reset the cache and reset the write position

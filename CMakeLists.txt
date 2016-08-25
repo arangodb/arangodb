@@ -26,7 +26,7 @@ if (NOT (CMAKE_BUILD_TYPE STREQUAL "Debug"
   message(FATAL_ERROR "expecting CMAKE_BUILD_TYPE: None Debug Release RelWithDebInfo MinSizeRel, got ${CMAKE_BUILD_TYPE}.")
 endif ()
 
-set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "deployment target for MacOSX")
+set(CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE STRING "deployment target for MacOSX; adjust to your sysem")
 
 if (WIN32)
   project(arangodb3 CXX C)

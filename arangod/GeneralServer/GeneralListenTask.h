@@ -43,14 +43,14 @@ class GeneralListenTask : public ListenTask {
 
  public:
   GeneralListenTask(GeneralServer* server, Endpoint* endpoint,
-                    ConnectionType connectionType);
+                    ProtocolType connectionType);
 
  protected:
   bool handleConnected(TRI_socket_t s, ConnectionInfo&& info) override;
 
  private:
   GeneralServer* _server;
-  ConnectionType _connectionType;
+  ProtocolType _connectionType;
   double _keepAliveTimeout = 300.0;
   SSL_CTX* _sslContext = nullptr;
   int _verificationMode = SSL_VERIFY_NONE;

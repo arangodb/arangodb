@@ -147,7 +147,7 @@ std::string Thread::stringify(ThreadState state) {
 /// @brief constructs a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-Thread::Thread(std::string const& name) 
+Thread::Thread(std::string const& name)
     : _name(name),
       _thread(),
       _threadNumber(0),
@@ -156,7 +156,6 @@ Thread::Thread(std::string const& name)
       _state(ThreadState::CREATED),
       _affinity(-1),
       _workDescription(nullptr) {
-  
   TRI_InitThread(&_thread);
 }
 
@@ -180,7 +179,8 @@ Thread::~Thread() {
   }
 
   state = _state.load();
-  if (state != ThreadState::DETACHED) {
+
+  if (state != ThreadState::DETACHED && state != ThreadState::CREATED) {
     LOG(FATAL) << "thread is not detached but " << stringify(state)
                << ". shutting down hard";
     FATAL_ERROR_EXIT();
@@ -263,7 +263,7 @@ bool Thread::isStopping() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Thread::start(ConditionVariable* finishedCondition) {
-  if (!isSystem() && ! ApplicationServer::isPrepared()) {
+  if (!isSystem() && !ApplicationServer::isPrepared()) {
     LOG(FATAL) << "trying to start a thread '" << _name
                << "' before prepare has finished, current state: "
                << (ApplicationServer::server == nullptr

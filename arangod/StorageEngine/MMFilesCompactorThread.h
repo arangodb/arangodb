@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STORAGE_ENGINE_COMPACTOR_THREAD_H
-#define ARANGOD_STORAGE_ENGINE_COMPACTOR_THREAD_H 1
+#ifndef ARANGOD_STORAGE_ENGINE_MM_FILES_COMPACTOR_THREAD_H
+#define ARANGOD_STORAGE_ENGINE_MM_FILES_COMPACTOR_THREAD_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
@@ -36,9 +36,10 @@ struct TRI_df_marker_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class LogicalCollection;
 class Transaction;
 
-class CompactorThread : public Thread {
+class MMFilesCompactorThread : public Thread {
  private:
   /// @brief compaction instruction for a single datafile
   struct compaction_info_t {
@@ -49,35 +50,24 @@ class CompactorThread : public Thread {
   /// @brief auxiliary struct used when initializing compaction
   struct compaction_initial_context_t {
     arangodb::Transaction* _trx;
-    TRI_collection_t* _document;
+    LogicalCollection* _collection;
     int64_t _targetSize;
     TRI_voc_fid_t _fid;
     bool _keepDeletions;
     bool _failed;
 
-    compaction_initial_context_t(arangodb::Transaction* trx, TRI_collection_t* document)
-        : _trx(trx), _document(document), _targetSize(0), _fid(0), _keepDeletions(false), _failed(false) {}
-  };
-
-  /// @brief compaction state
-  struct compaction_context_t {
-    arangodb::Transaction* _trx;
-    TRI_collection_t* _document;
-    TRI_datafile_t* _compactor;
-    DatafileStatisticsContainer _dfi;
-    bool _keepDeletions;
-
-    compaction_context_t() : _trx(nullptr), _document(nullptr), _compactor(nullptr), _dfi(), _keepDeletions(true) {}
+    compaction_initial_context_t(arangodb::Transaction* trx, LogicalCollection* collection)
+        : _trx(trx), _collection(collection), _targetSize(0), _fid(0), _keepDeletions(false), _failed(false) {}
   };
 
  public:
-  explicit CompactorThread(TRI_vocbase_t* vocbase);
-  ~CompactorThread();
+  explicit MMFilesCompactorThread(TRI_vocbase_t* vocbase);
+  ~MMFilesCompactorThread();
 
   void signal();
 
   /// @brief callback to drop a datafile
-  static void DropDatafileCallback(TRI_datafile_t* datafile, void*);
+  static void DropDatafileCallback(TRI_datafile_t* datafile, LogicalCollection* collection);
   /// @brief callback to rename a datafile
   static void RenameDatafileCallback(TRI_datafile_t* datafile, void*);
 
@@ -87,19 +77,19 @@ class CompactorThread : public Thread {
  private:
   /// @brief calculate the target size for the compactor to be created
   compaction_initial_context_t getCompactionContext(
-    arangodb::Transaction* trx, TRI_collection_t* document,
+    arangodb::Transaction* trx, LogicalCollection* collection,
     std::vector<compaction_info_t> const& toCompact);
 
   /// @brief compact the specified datafiles
-  void compactDatafiles(TRI_collection_t*, std::vector<compaction_info_t> const&);
+  void compactDatafiles(LogicalCollection* collection, std::vector<compaction_info_t> const&);
 
   /// @brief checks all datafiles of a collection
-  bool compactCollection(TRI_collection_t*, bool& wasBlocked);
+  bool compactCollection(LogicalCollection* collection, bool& wasBlocked);
 
-  int removeCompactorFile(TRI_collection_t* document, TRI_datafile_t* datafile);
+  int removeCompactorFile(LogicalCollection* collection, TRI_datafile_t* datafile);
 
   /// @brief remove an empty datafile
-  int removeDatafile(TRI_collection_t* document, TRI_datafile_t* datafile);
+  int removeDatafile(LogicalCollection* collection, TRI_datafile_t* datafile);
 
   /// @brief determine the number of documents in the collection
   uint64_t getNumberOfDocuments(TRI_collection_t* document);

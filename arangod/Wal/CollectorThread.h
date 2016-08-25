@@ -199,25 +199,25 @@ class CollectorThread : public Thread {
                       int64_t, OperationsType const&);
 
   /// @brief transfer markers into a collection
-  int executeTransferMarkers(TRI_collection_t*, CollectorCache*,
+  int executeTransferMarkers(LogicalCollection* collection, CollectorCache*,
                              OperationsType const&);
 
   /// @brief insert the collect operations into a per-collection queue
-  int queueOperations(arangodb::wal::Logfile*, CollectorCache*&);
+  int queueOperations(arangodb::wal::Logfile*, std::unique_ptr<CollectorCache>&);
 
   /// @brief update a collection's datafile information
   int updateDatafileStatistics(TRI_collection_t*, CollectorCache*);
 
   /// @brief sync the journal of a collection
-  int syncJournalCollection(TRI_collection_t*);
+  int syncJournalCollection(LogicalCollection* collection);
 
   /// @brief get the next free position for a new marker of the specified size
-  char* nextFreeMarkerPosition(TRI_collection_t*,
+  char* nextFreeMarkerPosition(LogicalCollection* collection,
                                TRI_voc_tick_t, TRI_df_marker_type_t,
                                TRI_voc_size_t, CollectorCache*);
 
   /// @brief set the tick of a marker and calculate its CRC value
-  void finishMarker(char const*, char*, TRI_collection_t*,
+  void finishMarker(char const*, char*, LogicalCollection* collection,
                     TRI_voc_tick_t, CollectorCache*);
 
  private:

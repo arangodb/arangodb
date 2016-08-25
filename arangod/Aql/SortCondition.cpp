@@ -160,21 +160,21 @@ size_t SortCondition::coveredAttributes(
     // no match
     bool isConstant = false;
 
-    if (IsContained(_constAttributes, indexAttributes[i])) {
+    if (IsContained(indexAttributes, field.second) &&
+        IsContained(_constAttributes, field.second)) {
+      // no field match, but a constant attribute
+      isConstant = true;
+      ++fieldsPosition;
+      ++numCovered;
+    }
+    
+    if (!isConstant &&
+        IsContained(_constAttributes, indexAttributes[i])) {
       // no field match, but a constant attribute
       isConstant = true;
       ++i; // next index field
     }
 
-    if (!isConstant) {
-      if (IsContained(indexAttributes, field.second) &&
-          IsContained(_constAttributes, field.second)) {
-        // no field match, but a constant attribute
-        isConstant = true;
-        ++fieldsPosition;
-        ++numCovered;
-      }
-    }
           
     if (!isConstant) {
       break;

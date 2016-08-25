@@ -37,15 +37,6 @@ var url = require('url');
 var querystring = require('querystring');
 var qs = require('qs');
 
-var print = require("internal").print;
-
-var print_vpack_as_json = function(data){
-  print(JSON.stringify(VPACK_TO_V8(data)));
-};
-var print_body_as_json = function(data){
-  print(JSON.stringify(JSON.parse(data)));
-};
-
 var buildUrl = function (append, base) {
   base = base === false ? '' : '/_admin/echo';
   append = append || '';
@@ -164,7 +155,6 @@ function echoVpackVpack () {
   expect(res).to.be.a(request.Response);
   expect(res.body).to.be.a('string');
   expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
-  print(res.body);
   //var obj = JSON.parse(res.body);
   //print_vpack_as_json(res.body);
   //expect(VPACK_TO_V8().to.equal();

@@ -41,7 +41,7 @@ class CollectionReadLocker {
   CollectionReadLocker(LogicalCollection* collection, bool doLock)
       : _collection(collection), _doLock(false) {
     if (doLock) {
-      int res = _collection->collection()->beginReadTimed(
+      int res = _collection->_collection->beginReadTimed(
           0, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -58,7 +58,7 @@ class CollectionReadLocker {
   /// @brief release the lock
   inline void unlock() {
     if (_doLock) {
-      _collection->collection()->endRead();
+      _collection->_collection->endRead();
       _doLock = false;
     }
   }

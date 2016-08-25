@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
+#include "Basics/directories.h"
 #include "Basics/tri-strings.h"
 
 #include "Actions/ActionFeature.h"
@@ -41,7 +42,6 @@
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
-#include "ApplicationFeatures/WorkMonitorFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Cluster/ClusterFeature.h"
 #include "Dispatcher/DispatcherFeature.h"
@@ -67,6 +67,7 @@
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/UnitTestsFeature.h"
 #include "RestServer/UpgradeFeature.h"
+#include "RestServer/WorkMonitorFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Ssl/SslFeature.h"
 #include "Ssl/SslServerFeature.h"
@@ -88,7 +89,7 @@ using namespace arangodb;
 using namespace arangodb::wal;
 
 static int runServer(int argc, char** argv) {
-  ArangoGlobalContext context(argc, argv);
+  ArangoGlobalContext context(argc, argv, SBIN_DIRECTORY);
   context.installSegv();
   context.runStartupChecks();
 
@@ -100,14 +101,10 @@ static int runServer(int argc, char** argv) {
   application_features::ApplicationServer server(options);
 
   std::vector<std::string> nonServerFeatures = {
-      "Action",        "Affinity",
-      "Agency",        "Cluster",
-      "Daemon",        "Dispatcher",
-      "Endpoint",      "FoxxQueues",
-      "GeneralServer", "LoggerBufferFeature",
-      "Server",        "Scheduler",
-      "SslServer",     "Statistics",
-      "Supervisor"};
+      "Action",        "Affinity",            "Agency",    "Cluster",
+      "Daemon",        "Dispatcher",          "Endpoint",  "FoxxQueues",
+      "GeneralServer", "LoggerBufferFeature", "Server",    "Scheduler",
+      "SslServer",     "Statistics",          "Supervisor"};
 
   int ret = EXIT_FAILURE;
 
@@ -177,7 +174,8 @@ static int runServer(int argc, char** argv) {
 
   // storage engines
   server.addFeature(new MMFilesEngine(&server));
-  server.addFeature(new OtherEngine(&server)); // TODO: just for testing - remove this!
+  server.addFeature(
+      new OtherEngine(&server));  // TODO: just for testing - remove this!
 
   try {
     server.run(argc, argv);

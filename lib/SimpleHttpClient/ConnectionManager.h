@@ -205,7 +205,11 @@ class ConnectionManager {
   //////////////////////////////////////////////////////////////////////////////
 
   // We keep connections to servers open:
+#ifdef _WIN32
+  struct ConnectionsBucket {
+#else
   struct alignas(64) ConnectionsBucket {
+#endif
     std::unordered_map<std::string, ServerConnections*> _connections;
 
     arangodb::basics::ReadWriteLock _lock;

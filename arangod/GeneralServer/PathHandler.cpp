@@ -24,10 +24,10 @@
 #include "PathHandler.h"
 
 #include "Basics/FileUtils.h"
-#include "Logger/Logger.h"
-#include "Basics/mimetypes.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
+#include "Basics/mimetypes.h"
+#include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 
@@ -66,8 +66,8 @@ PathHandler::PathHandler(GeneralRequest* request, GeneralResponse* response,
 // -----------------------------------------------------------------------------
 
 RestHandler::status PathHandler::execute() {
-  // TODO needs to generalized
-  auto response = dynamic_cast<HttpResponse*>(_response);
+  // TODO needs to handle VPP
+  auto response = dynamic_cast<HttpResponse*>(_response.get());
 
   if (response == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -85,10 +85,10 @@ RestHandler::status PathHandler::execute() {
     }
     url += defaultFile;
 
-    setResponseCode(GeneralResponse::ResponseCode::MOVED_PERMANENTLY);
+    setResponseCode(rest::ResponseCode::MOVED_PERMANENTLY);
 
     response->setHeaderNC(StaticStrings::Location, url);
-    response->setContentType(HttpResponse::ContentType::HTML);
+    response->setContentType(rest::ContentType::HTML);
 
     response->body().appendText(
         "<html><head><title>Moved</title></head><body><h1>Moved</h1><p>This "
@@ -108,7 +108,7 @@ RestHandler::status PathHandler::execute() {
     if (next == ".") {
       LOG(WARN) << "file '" << name << "' contains '.'";
 
-      setResponseCode(GeneralResponse::ResponseCode::FORBIDDEN);
+      setResponseCode(rest::ResponseCode::FORBIDDEN);
       response->body().appendText("path contains '.'");
       return status::DONE;
     }
@@ -116,7 +116,7 @@ RestHandler::status PathHandler::execute() {
     if (next == "..") {
       LOG(WARN) << "file '" << name << "' contains '..'";
 
-      setResponseCode(GeneralResponse::ResponseCode::FORBIDDEN);
+      setResponseCode(rest::ResponseCode::FORBIDDEN);
       response->body().appendText("path contains '..'");
       return status::DONE;
     }
@@ -126,7 +126,7 @@ RestHandler::status PathHandler::execute() {
     if (sc != std::string::npos) {
       LOG(WARN) << "file '" << name << "' contains illegal character";
 
-      setResponseCode(GeneralResponse::ResponseCode::FORBIDDEN);
+      setResponseCode(rest::ResponseCode::FORBIDDEN);
       response->body().appendText("path contains illegal character '" +
                                   std::string(1, next[sc]) + "'");
       return status::DONE;
@@ -136,7 +136,7 @@ RestHandler::status PathHandler::execute() {
       if (!FileUtils::isDirectory(path)) {
         LOG(WARN) << "file '" << name << "' not found";
 
-        setResponseCode(GeneralResponse::ResponseCode::NOT_FOUND);
+        setResponseCode(rest::ResponseCode::NOT_FOUND);
         response->body().appendText("file not found");
         return status::DONE;
       }
@@ -148,7 +148,7 @@ RestHandler::status PathHandler::execute() {
     if (!allowSymbolicLink && FileUtils::isSymbolicLink(name)) {
       LOG(WARN) << "file '" << name << "' contains symbolic link";
 
-      setResponseCode(GeneralResponse::ResponseCode::FORBIDDEN);
+      setResponseCode(rest::ResponseCode::FORBIDDEN);
       response->body().appendText("symbolic links are not allowed");
       return status::DONE;
     }
@@ -157,26 +157,26 @@ RestHandler::status PathHandler::execute() {
   if (!FileUtils::isRegularFile(name)) {
     LOG(WARN) << "file '" << name << "' not found";
 
-    setResponseCode(GeneralResponse::ResponseCode::NOT_FOUND);
+    setResponseCode(rest::ResponseCode::NOT_FOUND);
     response->body().appendText("file not found");
     return status::DONE;
   }
 
-  setResponseCode(GeneralResponse::ResponseCode::OK);
+  setResponseCode(rest::ResponseCode::OK);
 
   try {
     FileUtils::slurp(name, response->body());
   } catch (...) {
     LOG(WARN) << "file '" << name << "' not readable";
 
-    setResponseCode(GeneralResponse::ResponseCode::NOT_FOUND);
+    setResponseCode(rest::ResponseCode::NOT_FOUND);
     response->body().appendText("file not readable");
     return status::DONE;
   }
 
   // check if we should use caching and this is an HTTP GET request
   if (cacheMaxAge > 0 &&
-      _request->requestType() == GeneralRequest::RequestType::GET) {
+      _request->requestType() == rest::RequestType::GET) {
     // yes, then set a pro-caching header
     response->setHeaderNC(StaticStrings::CacheControl, maxAgeHeader);
   }
@@ -208,7 +208,7 @@ RestHandler::status PathHandler::execute() {
 }
 
 void PathHandler::handleError(Exception const&) {
-  setResponseCode(GeneralResponse::ResponseCode::SERVER_ERROR);
+  setResponseCode(rest::ResponseCode::SERVER_ERROR);
 }
 }
 }

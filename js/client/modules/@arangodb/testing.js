@@ -645,6 +645,10 @@ function runThere (options, instanceInfo, file) {
         'return runTest(' + JSON.stringify(file) + ', true);';
     }
 
+    if (options.propagateInstanceInfo) {
+      testCode = 'global.instanceInfo = ' + JSON.stringify(instanceInfo) + ';\n' + testCode;
+    }
+
     let httpOptions = makeAuthorizationHeaders(options);
     httpOptions.method = 'POST';
     httpOptions.timeout = 3600;
@@ -1448,7 +1452,7 @@ function startInstanceAgency (instanceInfo, protocol, options,
     }
     let dir = fs.join(rootDir, 'agency-' + i);
     fs.makeDirectoryRecursive(dir);
-
+    fs.makeDirectoryRecursive(instanceArgs['database.directory']);
     instanceInfo.arangods.push(startArango(protocol, options, instanceArgs, rootDir, 'agent'));
 
   }
@@ -2652,6 +2656,7 @@ testFuncs.dfdb = function (options) {
   const dataDir = fs.getTempFile();
   const args = ['-c', 'etc/relative/arango-dfdb.conf', dataDir];
 
+  fs.makeDirectoryRecursive(dataDir);
   let results = {};
 
   results.dfdb = executeAndWait(ARANGOD_BIN, args, options, 'dfdb');
@@ -3370,6 +3375,7 @@ testFuncs.replication_sync = function (options) {
 testFuncs.resilience = function (options) {
   findTests();
   options.cluster = true;
+  options.propagateInstanceInfo = true;
   if (options.dbServers < 5) {
     options.dbServers = 5;
   }
@@ -3431,6 +3437,7 @@ testFuncs.server_http = function (options) {
 
 testFuncs.shell_server = function (options) {
   findTests();
+  options.propagateInstanceInfo = true;
 
   return performTests(options, testsCases.server, 'shell_server', runThere);
 };

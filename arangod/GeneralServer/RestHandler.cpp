@@ -50,11 +50,6 @@ RestHandler::RestHandler(GeneralRequest* request, GeneralResponse* response)
   }
 }
 
-RestHandler::~RestHandler() {
-  delete _request;
-  delete _response;
-}
-
 void RestHandler::setTaskId(uint64_t id, EventLoop loop) {
   _taskId = id;
   _loop = loop;
@@ -122,19 +117,7 @@ RestHandler::status RestHandler::executeFull() {
   return result;
 }
 
-GeneralRequest* RestHandler::stealRequest() {
-  GeneralRequest* tmp = _request;
-  _request = nullptr;
-  return tmp;
-}
-
-GeneralResponse* RestHandler::stealResponse() {
-  GeneralResponse* tmp = _response;
-  _response = nullptr;
-  return tmp;
-}
-
-void RestHandler::setResponseCode(GeneralResponse::ResponseCode code) {
+void RestHandler::setResponseCode(rest::ResponseCode code) {
   TRI_ASSERT(_response != nullptr);
   _response->reset(code);
 }

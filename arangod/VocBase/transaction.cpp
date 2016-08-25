@@ -1085,14 +1085,14 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
         trx->_vocbase, collection->name());
 
 // FIXME
-    ++(collection->collection()->_uncollectedLogfileEntries);
+    ++(collection->_collection->_uncollectedLogfileEntries);
 
     if (operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
         operation.type == TRI_VOC_DOCUMENT_OPERATION_REPLACE ||
         operation.type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
       // update datafile statistics for the old header
 // FIXME
-      collection->collection()->_datafileStatistics.increaseDead(
+      collection->_collection->_datafileStatistics.increaseDead(
           operation.oldHeader.getFid(), 1, static_cast<int64_t>(operation.oldHeader.alignedMarkerSize()));
     }
   } else {
@@ -1125,7 +1125,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
   }
 
 // FIXME
-  collection->collection()->setLastRevision(operation.rid, false);
+  collection->_collection->setLastRevision(operation.rid, false);
 
   TRI_IF_FAILURE("TransactionOperationAtEnd") { return TRI_ERROR_DEBUG; }
 

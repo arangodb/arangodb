@@ -27,6 +27,7 @@
 #include <tchar.h>
 #endif
 
+#include "Basics/directories.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
@@ -1647,6 +1648,9 @@ std::string TRI_LocateBinaryPath(char const* argv0) {
       binaryPath = TRI_DuplicateString("");
       TRI_FreeString(TRI_CORE_MEM_ZONE, dir);
     }
+    else {
+      binaryPath = dir;
+    }
   }
 
   // check PATH variable
@@ -1689,6 +1693,34 @@ std::string TRI_LocateBinaryPath(char const* argv0) {
   }
 
   return result;
+}
+
+std::string TRI_GetInstallRoot(std::string const& binaryPath,
+                               char const *installBinaryPath) {
+  // First lets remove trailing (back) slashes from the bill:
+  long ibpLength = strlen(installBinaryPath);
+
+  if (installBinaryPath[ibpLength - 1] == TRI_DIR_SEPARATOR_CHAR) {
+    ibpLength --;
+  }
+  
+  long bpLength = binaryPath.length();
+  const char *pbPath = binaryPath.c_str();
+
+  if (pbPath[bpLength - 1] == TRI_DIR_SEPARATOR_CHAR) {
+    bpLength --;
+  }
+  
+  if (ibpLength > bpLength) {
+    return TRI_DIR_SEPARATOR_STR;
+  }
+
+  for (int i = 1; i < ibpLength; i ++) {
+    if (pbPath[bpLength -i] != installBinaryPath[ibpLength - i]) {
+      return TRI_DIR_SEPARATOR_STR;
+    }
+  }
+  return std::string(pbPath, bpLength - ibpLength);
 }
 
 static bool CopyFileContents(int srcFD, int dstFD, ssize_t fileSize,
@@ -2327,11 +2359,7 @@ char* TRI_LocateConfigDirectory() {
 
   std::string r = TRI_LocateInstallDirectory();
 
-#ifdef _SYSCONFDIR_
   r += _SYSCONFDIR_;
-#else
-  r += "etc\\arangodb3";
-#endif
 
   r += std::string(1, TRI_DIR_SEPARATOR_CHAR);
 

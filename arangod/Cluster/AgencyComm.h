@@ -723,7 +723,7 @@ class AgencyComm {
   //////////////////////////////////////////////////////////////////////////////
 
   AgencyCommResult sendWithFailover(
-      arangodb::GeneralRequest::RequestType,
+      arangodb::rest::RequestType,
       double,
       std::string const&,
       std::string const&,
@@ -735,7 +735,7 @@ class AgencyComm {
   //////////////////////////////////////////////////////////////////////////////
 
   AgencyCommResult send(arangodb::httpclient::GeneralClientConnection*,
-            arangodb::GeneralRequest::RequestType, double,
+            arangodb::rest::RequestType, double,
             std::string const&, std::string const&);
   
   //////////////////////////////////////////////////////////////////////////////

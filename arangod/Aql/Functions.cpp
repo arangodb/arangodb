@@ -682,6 +682,10 @@ static AqlValue MergeParameters(arangodb::aql::Query* query,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
   }
+  if (n == 1) {
+    // only one parameter. now add original document
+    builder.add(initialSlice);
+  }
   return AqlValue(builder);
 }
 
@@ -3348,14 +3352,14 @@ AqlValue Functions::CollectionCount(
   trx->addCollectionAtRuntime(cid, collectionName);
   auto document = trx->documentCollection(cid);
 
-  if (document == nullptr || document->collection() == nullptr) {
+  if (document == nullptr) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                                   "'%s'", collectionName.c_str());
   }
 
   TransactionBuilderLeaser builder(trx);
   // TODO Temporary until move to LogicalCollection is complete
-  builder->add(VPackValue(document->collection()->_numberDocuments));
+  builder->add(VPackValue(document->_numberDocuments));
   return AqlValue(builder.get());
 }
 

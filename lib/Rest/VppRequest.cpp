@@ -39,6 +39,8 @@
 #include "Meta/conversion.h"
 #include "Logger/Logger.h"
 
+#include <stdexcept>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -58,7 +60,7 @@ std::string const& lookupStringInMap(
 }
 
 VppRequest::VppRequest(ConnectionInfo const& connectionInfo,
-                       VPackMessage&& message, uint64_t messageId)
+                       VppInputMessage&& message, uint64_t messageId)
     : GeneralRequest(connectionInfo),
       _message(std::move(message)),
       _headers(nullptr),
@@ -71,7 +73,7 @@ VppRequest::VppRequest(ConnectionInfo const& connectionInfo,
 }
 
 VPackSlice VppRequest::payload(VPackOptions const* options) {
-  return _message._payload;
+  return _message.payload();
 }
 
 std::unordered_map<std::string, std::string> const& VppRequest::headers()
@@ -79,9 +81,11 @@ std::unordered_map<std::string, std::string> const& VppRequest::headers()
   if (!_headers) {
     using namespace std;
     _headers = make_unique<unordered_map<string, string>>();
-    VPackSlice meta = _message._header.get("meta");
+    VPackSlice meta = _message.header().at(6);  // get meta
     for (auto const& it : VPackObjectIterator(meta)) {
-      _headers->emplace(it.key.copyString(), it.value.copyString());
+      // must lower-case the header key
+      _headers->emplace(StringUtils::tolower(it.key.copyString()),
+                        it.value.copyString());
     }
   }
   return *_headers;
@@ -100,23 +104,30 @@ std::string const& VppRequest::header(std::string const& key) const {
 
 void VppRequest::parseHeaderInformation() {
   using namespace std;
-  auto& vHeader = _message._header;
+  auto vHeader = _message.header();
+  try {
+    TRI_ASSERT(vHeader.isArray());
+    // vHeader.at(0).getInt()  //version
+    // vHeader.at(1).getInt()  //type
+    _databaseName = vHeader.at(2).copyString();                 // database
+    _type = meta::toEnum<RequestType>(vHeader.at(3).getInt());  // request type
+    _requestPath = vHeader.at(4).copyString();  // request (path)
+    VPackSlice params = vHeader.at(5);          // parameter
 
-  _databaseName = vHeader.get("database").copyString();
-  _requestPath = vHeader.get("request").copyString();
-  _type = meta::toEnum<RequestType>(vHeader.get("requestType").getInt());
-
-  VPackSlice params = _message._header.get("parameter");
-  for (auto const& it : VPackObjectIterator(params)) {
-    if (it.value.isArray()) {
-      vector<string> tmp;
-      for (auto const& itInner : VPackArrayIterator(it.value)) {
-        tmp.emplace_back(itInner.copyString());
+    for (auto const& it : VPackObjectIterator(params)) {
+      if (it.value.isArray()) {
+        vector<string> tmp;
+        for (auto const& itInner : VPackArrayIterator(it.value)) {
+          tmp.emplace_back(itInner.copyString());
+        }
+        _arrayValues.emplace(it.key.copyString(), move(tmp));
+      } else {
+        _values.emplace(it.key.copyString(), it.value.copyString());
       }
-      _arrayValues.emplace(it.key.copyString(), move(tmp));
-    } else {
-      _values.emplace(it.key.copyString(), it.value.copyString());
     }
+  } catch (std::exception const& e) {
+    throw std::runtime_error(
+        std::string("Error during Parsing of VppHeader: ") + e.what());
   }
 }
 

@@ -43,7 +43,8 @@ RestUploadHandler::~RestUploadHandler() {}
 
 RestHandler::status RestUploadHandler::execute() {
   // cast is ok because http requst is required
-  HttpRequest* request = dynamic_cast<HttpRequest*>(_request);
+  HttpRequest* request = dynamic_cast<HttpRequest*>(_request.get());
+
   if (request == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
@@ -51,8 +52,8 @@ RestHandler::status RestUploadHandler::execute() {
   // extract the request type
   auto const type = request->requestType();
 
-  if (type != GeneralRequest::RequestType::POST) {
-    generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
+  if (type != rest::RequestType::POST) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 
     return status::DONE;
@@ -65,7 +66,7 @@ RestHandler::status RestUploadHandler::execute() {
   if (TRI_GetTempName("uploads", &filename, false, systemError, errorMessage) !=
       TRI_ERROR_NO_ERROR) {
     errorMessage = "could not generate temp file: " + errorMessage;
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+    generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL, errorMessage);
     return status::FAILED;
   }
@@ -89,7 +90,7 @@ RestHandler::status RestUploadHandler::execute() {
       if (!parseMultiPart(body, bodySize)) {
         TRI_Free(TRI_CORE_MEM_ZONE, relative);
         TRI_Free(TRI_CORE_MEM_ZONE, filename);
-        generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+        generateError(rest::ResponseCode::SERVER_ERROR,
                       TRI_ERROR_INTERNAL, "invalid multipart request");
         return status::FAILED;
       }
@@ -102,7 +103,7 @@ RestHandler::status RestUploadHandler::execute() {
   } catch (...) {
     TRI_Free(TRI_CORE_MEM_ZONE, relative);
     TRI_Free(TRI_CORE_MEM_ZONE, filename);
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+    generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL, "could not save file");
     return status::FAILED;
   }
@@ -111,7 +112,7 @@ RestHandler::status RestUploadHandler::execute() {
   TRI_Free(TRI_CORE_MEM_ZONE, relative);
 
   // create the response
-  setResponseCode(GeneralResponse::ResponseCode::CREATED);
+  setResponseCode(rest::ResponseCode::CREATED);
 
   VPackBuilder b;
 
@@ -122,7 +123,7 @@ RestHandler::status RestUploadHandler::execute() {
 
   VPackSlice s = b.slice();
 
-  generateResult(GeneralResponse::ResponseCode::CREATED, s);
+  generateResult(rest::ResponseCode::CREATED, s);
 
   // success
   return status::DONE;
@@ -135,7 +136,8 @@ RestHandler::status RestUploadHandler::execute() {
 
 bool RestUploadHandler::parseMultiPart(char const*& body, size_t& length) {
   // cast is ok because http requst is required
-  HttpRequest* request = dynamic_cast<HttpRequest*>(_request);
+  HttpRequest* request = dynamic_cast<HttpRequest*>(_request.get());
+
   if (request == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }

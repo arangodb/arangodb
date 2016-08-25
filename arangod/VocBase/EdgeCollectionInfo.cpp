@@ -85,7 +85,7 @@ std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
 int EdgeCollectionInfo::getEdgesCoordinator(VPackSlice const& vertexId,
                                             VPackBuilder& result) {
   TRI_ASSERT(result.isEmpty());
-  arangodb::GeneralResponse::ResponseCode responseCode;
+  arangodb::rest::ResponseCode responseCode;
   result.openObject();
   int res = getFilteredEdgesOnCoordinator(
       _trx->vocbase()->name(), _collectionName, vertexId.copyString(),
@@ -123,7 +123,7 @@ std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getReverseEdges(
 int EdgeCollectionInfo::getReverseEdgesCoordinator(VPackSlice const& vertexId,
                                                    VPackBuilder& result) {
   TRI_ASSERT(result.isEmpty());
-  arangodb::GeneralResponse::ResponseCode responseCode;
+  arangodb::rest::ResponseCode responseCode;
   result.openObject();
   int res = getFilteredEdgesOnCoordinator(
       _trx->vocbase()->name(), _collectionName, vertexId.copyString(),

@@ -51,7 +51,7 @@ CollectionExport::CollectionExport(TRI_vocbase_t* vocbase,
   _guard = new arangodb::CollectionGuard(vocbase, _name.c_str(), false);
 
   _collection = _guard->collection();
-  _document = _collection->collection();
+  _document = _collection->_collection;
   TRI_ASSERT(_document != nullptr);
 }
 

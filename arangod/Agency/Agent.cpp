@@ -63,7 +63,7 @@ std::string Agent::id() const {
 
 
 /// Agent's id is set once from state machine
-bool Agent::id(arangodb::consensus::id_t const& id) {
+bool Agent::id(std::string const& id) {
   bool success;
   if ((success = _config.setId(id))) {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "My id is " << id;
@@ -122,7 +122,7 @@ std::string Agent::endpoint() const {
 
 /// Handle voting
 priv_rpc_ret_t Agent::requestVote(
-  term_t t, arangodb::consensus::id_t id, index_t lastLogIndex,
+  term_t t, std::string const& id, index_t lastLogIndex,
   index_t lastLogTerm, query_t const& query) {
   return priv_rpc_ret_t(
     _constituent.vote(t, id, lastLogIndex, lastLogTerm), this->term());
@@ -136,7 +136,7 @@ config_t const Agent::config() const {
 
 
 /// Leader's id
-arangodb::consensus::id_t Agent::leaderID() const {
+std::string Agent::leaderID() const {
   return _constituent.leaderID();
 }
 
@@ -148,8 +148,9 @@ bool Agent::leading() const {
 
 
 void Agent::startConstituent() {
+
   activateAgency();
-  
+
   auto database = ApplicationServer::getFeature<DatabaseFeature>("Database");
   auto vocbase = database->systemDatabase();
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
@@ -194,7 +195,7 @@ bool Agent::waitFor(index_t index, double timeout) {
 
 
 //  AgentCallback reports id of follower and its highest processed index
-void Agent::reportIn(arangodb::consensus::id_t id, index_t index) {
+void Agent::reportIn(std::string const& id, index_t index) {
 
   MUTEX_LOCKER(mutexLocker, _ioLock);
 
@@ -238,11 +239,9 @@ void Agent::reportIn(arangodb::consensus::id_t id, index_t index) {
 
 
 /// Followers' append entries
-bool Agent::recvAppendEntriesRPC(term_t term,
-                                 arangodb::consensus::id_t leaderId,
-                                 index_t prevIndex, term_t prevTerm,
-                                 index_t leaderCommitIndex,
-                                 query_t const& queries) {
+bool Agent::recvAppendEntriesRPC(
+  term_t term, std::string const& leaderId, index_t prevIndex, term_t prevTerm,
+  index_t leaderCommitIndex, query_t const& queries) {
 
   // Update commit index
   if (queries->slice().type() != VPackValueType::Array) {
@@ -295,8 +294,7 @@ bool Agent::recvAppendEntriesRPC(term_t term,
 
 
 /// Leader's append entries
-priv_rpc_ret_t Agent::sendAppendEntriesRPC(
-    arangodb::consensus::id_t follower_id) {
+priv_rpc_ret_t Agent::sendAppendEntriesRPC(std::string const& follower_id) {
   
   term_t t(0);
   {
@@ -346,10 +344,10 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(
     std::make_unique<std::unordered_map<std::string, std::string>>();
   arangodb::ClusterComm::instance()->asyncRequest(
     "1", 1, _config.poolAt(follower_id),
-    arangodb::GeneralRequest::RequestType::POST, path.str(),
+    arangodb::rest::RequestType::POST, path.str(),
     std::make_shared<std::string>(builder.toJson()), headerFields,
     std::make_shared<AgentCallback>(this, follower_id, highest),
-    0.5*_config.minPing(), true, 0.75*_config.minPing());
+    0.1*_config.minPing(), true, 0.05*_config.minPing());
 
   _lastSent[follower_id] = std::chrono::system_clock::now();
   _lastHighest[follower_id] = highest;
@@ -420,7 +418,6 @@ bool Agent::load() {
   _spearhead.start();
   _readDB.start();
 
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting constituent personality.";
   TRI_ASSERT(queryRegistry != nullptr);
   if (size() == 1) {
     activateAgency();
@@ -556,9 +553,83 @@ bool Agent::lead() {
   // Wake up supervision
   _supervision.wakeUp();
 
+  // Notify inactive pool
+  notifyInactive();
+  
   return true;
   
 }
+
+
+// Notify inactive pool members of configuration change()
+void Agent::notifyInactive() const {
+
+  if (_config.poolSize() > _config.size()) {
+    
+    size_t size = _config.size(),
+      counter = 0;
+    std::map<std::string,std::string> pool = _config.pool();
+    std::string path = "/_api/agency_priv/inform";
+
+    Builder out;
+    out.openObject();
+    out.add("term", VPackValue(term()));
+    out.add("id", VPackValue(id()));
+    out.add("active", _config.activeToBuilder()->slice());
+    out.add("pool", _config.poolToBuilder()->slice());
+    out.close();
+    
+    for (auto const& p : pool) {
+      ++counter;
+      if (counter > size) {
+        auto headerFields =
+          std::make_unique<std::unordered_map<std::string, std::string>>();
+        arangodb::ClusterComm::instance()->asyncRequest(
+          "1", 1, p.second, arangodb::rest::RequestType::POST,
+          path, std::make_shared<std::string>(out.toJson()), headerFields,
+          nullptr, 1.0, true);
+      }
+    }
+    
+  }
+    
+}
+
+
+void Agent::notify(query_t const& message) {
+
+  VPackSlice slice = message->slice();
+
+  if (!slice.isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      20011, std::string("Inform message must be an object. Incoming type is ")
+      + slice.typeName());
+  }
+
+  if (!slice.hasKey("id") || !slice.get("id").isString()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      20013, "Inform message must contain string parameter 'id'");
+  }
+  if (!slice.hasKey("term")) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      20012, "Inform message must contain uint parameter 'term'");
+  }
+  _constituent.update(slice.get("id").copyString(), slice.get("term").getUInt());
+  
+  if (!slice.hasKey("active") || !slice.get("active").isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      20014, "Inform message must contain array 'active'");
+  }
+  if (!slice.hasKey("pool") || !slice.get("pool").isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      20015, "Inform message must contain object 'pool'");
+  }
+
+  _config.update(message);
+  _state.persistActiveAgents(_config.activeToBuilder(), _config.poolToBuilder());
+
+}
+
 
 // Rebuild key value stores
 bool Agent::rebuildDBs() {
@@ -645,7 +716,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
       20002, "Gossip message must contain string parameter 'id'");
   }
-  std::string id = slice.get("id").copyString();
+  //std::string id = slice.get("id").copyString();
   
   if (!slice.hasKey("endpoint") || !slice.get("endpoint").isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -653,7 +724,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback) {
   }
   std::string endpoint = slice.get("endpoint").copyString();
     
-  LOG_TOPIC(DEBUG, Logger::AGENCY)
+  LOG_TOPIC(TRACE, Logger::AGENCY)
     << "Gossip " << ((isCallback) ? "callback" : "call") << " from " << endpoint;
   
   if (!slice.hasKey("pool") || !slice.get("pool").isObject()) {
@@ -662,7 +733,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback) {
   }
   VPackSlice pslice = slice.get("pool");
 
-  LOG_TOPIC(DEBUG, Logger::AGENCY) <<"Received gossip " << slice.toJson();
+  LOG_TOPIC(TRACE, Logger::AGENCY) <<"Received gossip " << slice.toJson();
 
   std::map<std::string,std::string> incoming;
   for (auto const& pair : VPackObjectIterator(pslice)) {
@@ -715,7 +786,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback) {
   }
   out->close();
 
-  LOG_TOPIC(DEBUG, Logger::AGENCY)
+  LOG_TOPIC(TRACE, Logger::AGENCY)
     << "Answering with gossip " << out->slice().toJson();
   return out;
   

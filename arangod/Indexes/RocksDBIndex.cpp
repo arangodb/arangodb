@@ -391,9 +391,6 @@ int RocksDBIndex::insert(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
       if (uniqueConstraintViolated) {
         // duplicate key
         res = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
-        // TODO this is a temporary work-around until Phys. Collection
-        // is finished.
-        TRI_ASSERT(_collection->collection() != nullptr);
         if (!_collection->useSecondaryIndexes()) {
           // suppress the error during recovery
           res = TRI_ERROR_NO_ERROR;

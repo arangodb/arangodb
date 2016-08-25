@@ -25,6 +25,29 @@
 #define ARANGODB_REST_COMMON_DEFINES_H 1
 
 namespace arangodb {
+namespace rest {
+
+// VSTREAM_CRED: This method is used for sending Authentication
+// request,i.e; username and password.
+//
+// VSTREAM_REGISTER: This Method is used for registering event of
+// some kind
+//
+// VSTREAM_STATUS: Returns STATUS code and message for a given
+// request
+enum class RequestType {
+  DELETE_REQ = 0,  // windows redefines DELETE
+  GET,
+  POST,
+  PUT,
+  HEAD,
+  PATCH,
+  OPTIONS,
+  VSTREAM_CRED,
+  VSTREAM_REGISTER,
+  VSTREAM_STATUS,
+  ILLEGAL  // must be last
+};
 
 enum class ContentType {
   CUSTOM,  // use Content-Type from _headers
@@ -42,27 +65,6 @@ enum ConnectionType {
   CONNECTION_NONE,
   CONNECTION_KEEP_ALIVE,
   CONNECTION_CLOSE
-};
-// VSTREAM_CRED: This method is used for sending Authentication
-// request,i.e; username and password.
-//
-// VSTREAM_REGISTER: This Method is used for registering event of
-// some kind
-//
-// VSTREAM_STATUS: Returns STATUS code and message for a given
-// request
-enum class RequestType {
-  DELETE_REQ = 0,  // windows redefines DELETE
-  GET,
-  HEAD,
-  OPTIONS,
-  POST,
-  PUT,
-  PATCH,
-  VSTREAM_CRED,
-  VSTREAM_REGISTER,
-  VSTREAM_STATUS,
-  ILLEGAL  // must be last
 };
 
 enum class ResponseCode {
@@ -118,5 +120,6 @@ enum class ResponseCode {
   BANDWIDTH_LIMIT_EXCEEDED = 509,
   NOT_EXTENDED = 510
 };
+}
 }
 #endif

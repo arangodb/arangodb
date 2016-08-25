@@ -1171,7 +1171,7 @@ int ContinuousSyncer::fetchMasterState(std::string& errorMsg,
 
   // send request
   std::unique_ptr<SimpleHttpResult> response(
-      _client->request(GeneralRequest::RequestType::GET, url, nullptr, 0));
+      _client->request(rest::RequestType::GET, url, nullptr, 0));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "got invalid response from master at " +
@@ -1330,8 +1330,8 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
   }
 
   std::unique_ptr<SimpleHttpResult> response(
-      _client->request(_masterIs27OrHigher ? GeneralRequest::RequestType::PUT
-                                           : GeneralRequest::RequestType::GET,
+      _client->request(_masterIs27OrHigher ? rest::RequestType::PUT
+                                           : rest::RequestType::GET,
                        url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {

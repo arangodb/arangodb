@@ -82,7 +82,7 @@ RestHandler::status RestAdminLogHandler::execute() {
     } else if (logLevel == "trace" || logLevel == "5") {
       ul = LogLevel::TRACE;
     } else {
-      generateError(GeneralResponse::ResponseCode::BAD,
+      generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("unknown '") + (found2 ? "level" : "upto") +
                         "' log level: '" + logLevel + "'");
@@ -240,7 +240,7 @@ RestHandler::status RestAdminLogHandler::execute() {
 
     result.close();  // Close the result object
 
-    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
+    generateResult(rest::ResponseCode::OK, result.slice());
   } catch (...) {
     // Not Enough memory to build everything up
     // Has been ignored thus far

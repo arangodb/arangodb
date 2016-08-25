@@ -48,6 +48,7 @@
 #include "Utils/CollectionReadLocker.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/CollectionWriteLocker.h"
+#include "VocBase/PhysicalCollection.h"
 #include "VocBase/collection.h"
 #include "VocBase/IndexPoolFeature.h"
 #include "VocBase/KeyGenerator.h"
@@ -93,12 +94,23 @@ class IndexFiller {
   std::function<void(int)> _callback;
 };
 
+namespace {
+
 template <typename T>
 static T ReadNumericValue(VPackSlice info, std::string const& name, T def) {
   if (!info.isObject()) {
     return def;
   }
   return Helper::getNumericValue<T>(info, name.c_str(), def);
+}
+
+template <typename T, typename BaseType>
+static T ReadNumericValue(VPackSlice info, std::string const& name, T def) {
+  if (!info.isObject()) {
+    return def;
+  }
+  // nice extra conversion required for Visual Studio pickyness
+  return static_cast<T>(Helper::getNumericValue<BaseType>(info, name.c_str(), static_cast<BaseType>(def)));
 }
 
 static bool ReadBooleanValue(VPackSlice info, std::string const& name,
@@ -160,12 +172,15 @@ static int GetObjectLength(VPackSlice info, std::string const& name, int def) {
   return static_cast<int>(info.length());
 }
 
+}
+
 // @brief Constructor used in DBServer/SingleServer case.
 LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
                                      TRI_col_type_e type, TRI_voc_cid_t cid,
                                      std::string const& name,
                                      TRI_voc_cid_t planId,
-                                     std::string const& path, bool isLocal)
+                                     std::string const& path, 
+                                     bool isVolatile, bool isLocal)
     : _internalVersion(0),
       _cid(cid),
       _planId(planId),
@@ -177,11 +192,11 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _isDeleted(false),
       _doCompact(false),
       _isSystem(LogicalCollection::IsSystemName(name)),
-      _isVolatile(false),
+      _isVolatile(isVolatile),
       _waitForSync(false),
-      _journalSize(0),
+      _journalSize(TRI_JOURNAL_DEFAULT_SIZE),
       _keyOptions(nullptr),
-      _indexBuckets(1),
+      _indexBuckets(DatabaseFeature::DefaultIndexBuckets),
       _replicationFactor(0),
       _numberOfShards(1),
       _allowUserKeys(true),
@@ -195,34 +210,41 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _masterPointers(),
       _useSecondaryIndexes(true),
       _collection(nullptr),
-      _lock() {}
+      _lock() {
+  createPhysical();
+      
+  auto database = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+  _waitForSync = database->waitForSync();
+  _journalSize = static_cast<TRI_voc_size_t>(database->maximalJournalSize());
+}
 
 /// @brief This the "copy" constructor used in the cluster
 ///        it is required to create objects that survive plan
 ///        modifications and can be freed
 ///        Can only be given to V8, cannot be used for functionality.
 LogicalCollection::LogicalCollection(
-    std::shared_ptr<LogicalCollection> const other)
+    std::shared_ptr<LogicalCollection> const& other)
     : _internalVersion(0),
-      _cid(other->_cid),
-      _planId(other->_planId),
-      _type(other->_type),
-      _name(other->_name),
-      _status(other->_status),
+      _cid(other->cid()),
+      _planId(other->planId()),
+      _type(other->type()),
+      _name(other->name()),
+      _status(other->status()),
       _isLocal(false),
       _isDeleted(other->_isDeleted),
-      _doCompact(other->_doCompact),
-      _isSystem(other->_isSystem),
-      _isVolatile(other->_isVolatile),
-      _waitForSync(other->_waitForSync),
-      _journalSize(other->_journalSize),
+      _doCompact(other->doCompact()),
+      _isSystem(other->isSystem()),
+      _isVolatile(other->isVolatile()),
+      _waitForSync(other->waitForSync()),
+      _journalSize(other->journalSize()),
       _keyOptions(nullptr),  // Not needed
-      _indexBuckets(other->_indexBuckets),
-      _replicationFactor(other->_replicationFactor),
-      _numberOfShards(other->_numberOfShards),
-      _allowUserKeys(other->_allowUserKeys),
+      _indexBuckets(other->indexBuckets()),
+      _indexes(),  // Not needed
+      _replicationFactor(other->replicationFactor()),
+      _numberOfShards(other->numberOfShards()),
+      _allowUserKeys(other->allowUserKeys()),
       _shardIds(new ShardMap()),  // Not needed
-      _vocbase(other->_vocbase),
+      _vocbase(other->vocbase()),
       _cleanupIndexes(0),
       _persistentIndexes(0),
       _physical(nullptr),
@@ -230,7 +252,7 @@ LogicalCollection::LogicalCollection(
       _useSecondaryIndexes(true),
       _collection(nullptr),
       _lock() {
-  // _indexes is empty on purpose.
+  createPhysical();
 }
 
 // @brief Constructor used in coordinator case.
@@ -241,9 +263,9 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
       _cid(ReadCid(info)),
       _planId(_cid),
       _type(
-          ReadNumericValue<TRI_col_type_e>(info, "type", TRI_COL_TYPE_UNKNOWN)),
+          ReadNumericValue<TRI_col_type_e, int>(info, "type", TRI_COL_TYPE_UNKNOWN)),
       _name(ReadStringValue(info, "name", "")),
-      _status(ReadNumericValue<TRI_vocbase_col_status_e>(
+      _status(ReadNumericValue<TRI_vocbase_col_status_e, int>(
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
       _isLocal(false),
       _isDeleted(ReadBooleanValue(info, "deleted", false)),
@@ -305,10 +327,12 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
       }
     }
   }
+  
+  createPhysical();
 }
 
 LogicalCollection::~LogicalCollection() {
-  // TODO Do we have to free _physical?
+  delete _physical;
 }
 
 size_t LogicalCollection::journalSize() const {
@@ -372,7 +396,7 @@ TRI_vocbase_col_status_e LogicalCollection::tryFetchStatus(bool& didFetch) {
 }
 
 /// @brief returns a translation of a collection status
-std::string const LogicalCollection::statusString() {
+std::string LogicalCollection::statusString() {
   READ_LOCKER(readLocker, _lock);
   switch (_status) {
     case TRI_VOC_COL_STATUS_UNLOADED:
@@ -456,7 +480,6 @@ void LogicalCollection::getIndexesVPack(VPackBuilder& result,
 
 
 // SECTION: Replication
-
 int LogicalCollection::replicationFactor() const {
   return _replicationFactor;
 }
@@ -539,6 +562,21 @@ int LogicalCollection::rename(std::string const& newName) {
   // CHECK if this ordering is okay. Before change the version was increased after swapping in vocbase mapping.
   increaseVersion();
   return TRI_ERROR_NO_ERROR;
+}
+
+int LogicalCollection::close() {
+  TRI_ASSERT(_collection != nullptr);
+
+  int res = _collection->unload();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+  
+  delete _collection;
+  _collection = nullptr;
+
+  return getPhysical()->close();
 }
 
 void LogicalCollection::drop() {
@@ -625,10 +663,10 @@ int LogicalCollection::update(VPackSlice const& slice, bool preferDefaults) {
     _waitForSync = Helper::getBooleanValue(slice, "waitForSync", false);
     if (slice.hasKey("journalSize")) {
       _journalSize = Helper::getNumericValue<TRI_voc_size_t>(
-          slice, "journalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
+          slice, "journalSize", TRI_JOURNAL_DEFAULT_SIZE);
     } else {
       _journalSize = Helper::getNumericValue<TRI_voc_size_t>(
-          slice, "maximalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
+          slice, "maximalSize", TRI_JOURNAL_DEFAULT_SIZE);
     }
     _indexBuckets = Helper::getNumericValue<uint32_t>(
         slice, "indexBuckets", DatabaseFeature::DefaultIndexBuckets);
@@ -652,6 +690,88 @@ int LogicalCollection::update(VPackSlice const& slice, bool preferDefaults) {
   }
 
   return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief return the figures for a collection
+std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() {
+  auto builder = std::make_shared<VPackBuilder>();
+  
+  if (ServerState::instance()->isCoordinator()) {
+    builder->openObject();
+    builder->close();
+
+    int res = figuresOnCoordinator(dbName(), cid_as_string(), builder); 
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+  } else {
+    TRI_ASSERT(_collection != nullptr);
+    // add figures from TRI_collection_t
+    builder->openObject();
+    _collection->figures(builder);
+
+      // add index information
+    size_t sizeIndexes = _masterPointers.memory();
+    size_t numIndexes = 0;
+    for (auto const& idx : _indexes) {
+      sizeIndexes += static_cast<size_t>(idx->memory());
+      ++numIndexes;
+    }
+
+    builder->add("indexes", VPackValue(VPackValueType::Object));
+    builder->add("count", VPackValue(numIndexes));
+    builder->add("size", VPackValue(sizeIndexes));
+    builder->close(); // indexes
+
+
+    // add engine-specific figures
+    getPhysical()->figures(builder);
+    builder->close();
+  }
+
+  return builder;
+}
+
+PhysicalCollection* LogicalCollection::createPhysical() {
+  TRI_ASSERT(_physical == nullptr);
+  
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  _physical = engine->createPhysicalCollection(this);
+
+  return _physical;
+}
+
+/// @brief opens an existing collection
+int LogicalCollection::open(bool ignoreErrors) {
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  double start = TRI_microtime();
+
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+      << "open-collection { collection: " << _vocbase->name() << "/" << name();
+
+  try {
+    // check for journals and datafiles
+    int res = engine->openCollection(_vocbase, this, ignoreErrors);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG(DEBUG) << "cannot open '" << _path << "', check failed";
+      return TRI_ERROR_INTERNAL;
+    }
+
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+        << "[timer] " << Logger::FIXED(TRI_microtime() - start)
+        << " s, open-collection { collection: " << _vocbase->name() << "/"
+        << name() << " }";
+
+    return TRI_ERROR_NO_ERROR;
+  } catch (basics::Exception const& ex) {
+    LOG(ERR) << "cannot load collection parameter file '" << _path << "': " << ex.what();
+    return ex.code();
+  } catch (std::exception const& ex) {
+    LOG(ERR) << "cannot load collection parameter file '" << _path << "': " << ex.what();
+    return TRI_ERROR_INTERNAL;
+  }
 }
 
 /// SECTION Indexes
@@ -693,40 +813,6 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(VPackSlice const& info) co
   }
   return nullptr;
 }
-
-/// @brief opens an existing collection
-int LogicalCollection::open(bool ignoreErrors) {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  double start = TRI_microtime();
-
-  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "open-collection { collection: " << _vocbase->name() << "/"
-      << name();
-
-  try {
-    // check for journals and datafiles
-    int res = engine->openCollection(_vocbase, collection(), ignoreErrors);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG(DEBUG) << "cannot open '" << _path << "', check failed";
-      return TRI_ERROR_INTERNAL;
-    }
-
-    LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-        << "[timer] " << Logger::FIXED(TRI_microtime() - start)
-        << " s, open-collection { collection: " << _vocbase->name() << "/"
-        << name() << " }";
-
-    return TRI_ERROR_NO_ERROR;
-  } catch (basics::Exception const& ex) {
-    LOG(ERR) << "cannot load collection parameter file '" << _path << "': " << ex.what();
-    return ex.code();
-  } catch (std::exception const& ex) {
-    LOG(ERR) << "cannot load collection parameter file '" << _path << "': " << ex.what();
-    return TRI_ERROR_INTERNAL;
-  }
-}
-
 
 std::shared_ptr<Index> LogicalCollection::createIndex(Transaction* trx,
                                                       VPackSlice const& info) {
@@ -1347,7 +1433,7 @@ int LogicalCollection::insert(Transaction* trx, VPackSlice const slice,
     }
     
     // TODO Temporary until collection is fully deleted.
-    arangodb::CollectionWriteLocker collectionLocker(collection(), lock);
+    arangodb::CollectionWriteLocker collectionLocker(_collection, lock);
 
     // create a new header
     TRI_doc_mptr_t* header = operation.header = _masterPointers.request();
@@ -1425,7 +1511,7 @@ int LogicalCollection::update(Transaction* trx, VPackSlice const newSlice,
     TRI_IF_FAILURE("UpdateDocumentNoLock") { return TRI_ERROR_DEBUG; }
 
     // TODO Temporary until TRI_collection_t is moved
-    arangodb::CollectionWriteLocker collectionLocker(collection(), lock);
+    arangodb::CollectionWriteLocker collectionLocker(_collection, lock);
     
     // get the header pointer of the previous revision
     TRI_doc_mptr_t* oldHeader;
@@ -1571,7 +1657,7 @@ int LogicalCollection::replace(Transaction* trx, VPackSlice const newSlice,
   {
     TRI_IF_FAILURE("ReplaceDocumentNoLock") { return TRI_ERROR_DEBUG; }
 
-    arangodb::CollectionWriteLocker collectionLocker(collection(), lock);
+    arangodb::CollectionWriteLocker collectionLocker(_collection, lock);
     
     // get the header pointer of the previous revision
     TRI_doc_mptr_t* oldHeader;
@@ -1730,7 +1816,7 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
     TRI_ASSERT(!key.isNone());
     
     // Only temporary until TRI_collection_t is removed
-    arangodb::CollectionWriteLocker collectionLocker(collection(), lock);
+    arangodb::CollectionWriteLocker collectionLocker(_collection, lock);
     
     // get the header pointer of the previous revision
     TRI_doc_mptr_t* oldHeader = nullptr;

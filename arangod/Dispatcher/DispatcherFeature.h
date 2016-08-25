@@ -52,6 +52,7 @@ class DispatcherFeature final
   void unprepare() override final;
 
  private:
+  int64_t _nrExtraThreadsArgument;
   uint64_t _nrStandardThreads;
   uint64_t _nrExtraThreads;
   uint64_t _nrAqlThreads;

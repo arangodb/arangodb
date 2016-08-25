@@ -33,6 +33,8 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb {
+class LogicalCollection;
+class PhysicalCollection;
 class VocbaseCollectionInfo;
 
 class StorageEngine : public application_features::ApplicationFeature {
@@ -57,13 +59,18 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void start() {}
   virtual void stop() {}
   virtual void recoveryDone(TRI_vocbase_t* vocbase) {} 
+  
+  
+  // create storage-engine specific collection
+  virtual PhysicalCollection* createPhysicalCollection(LogicalCollection*) = 0;
+  
 
   // status functionality
   // --------------------
 
   // return the name of the storage engine
   char const* typeName() const { return _typeName.c_str(); }
-  
+
   // inventory functionality
   // -----------------------
 
@@ -240,12 +247,12 @@ class StorageEngine : public application_features::ApplicationFeature {
   
   virtual int shutdownDatabase(TRI_vocbase_t* vocbase) = 0; 
   
-  virtual int openCollection(TRI_vocbase_t* vocbase, TRI_collection_t* collection, bool ignoreErrors) = 0;
+  virtual int openCollection(TRI_vocbase_t* vocbase, LogicalCollection* collection, bool ignoreErrors) = 0;
   
  protected:
   arangodb::LogicalCollection* registerCollection(bool doLock, TRI_vocbase_t* vocbase, TRI_col_type_e type, TRI_voc_cid_t cid, 
-                                        std::string const& name, TRI_voc_cid_t planId, std::string const& path) {
-    return vocbase->registerCollection(doLock, type, cid, name, planId, path);
+                                        std::string const& name, TRI_voc_cid_t planId, std::string const& path, bool isVolatile) {
+    return vocbase->registerCollection(doLock, type, cid, name, planId, path, isVolatile);
   }
  
  private:
