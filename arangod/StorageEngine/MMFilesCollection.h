@@ -88,9 +88,6 @@ class MMFilesCollection final : public PhysicalCollection {
                                  TRI_voc_size_t journalSize, 
                                  bool isCompactor) override;
 
-  /// @brief closes the datafiles passed in the vector
-  bool closeDatafiles(std::vector<TRI_datafile_t*> const& files) override;
-
   /// @brief iterates over a collection
   bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb) override;
 
@@ -99,6 +96,9 @@ class MMFilesCollection final : public PhysicalCollection {
   std::vector<DatafileDescription> datafilesInRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax) override;
   
  private:
+  /// @brief closes the datafiles passed in the vector
+  bool closeDatafiles(std::vector<TRI_datafile_t*> const& files);
+
   bool iterateDatafilesVector(std::vector<TRI_datafile_t*> const& files,
                               std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb);
 

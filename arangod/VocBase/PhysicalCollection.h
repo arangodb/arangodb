@@ -90,9 +90,6 @@ class PhysicalCollection {
                                          TRI_voc_size_t journalSize, 
                                          bool isCompactor) = 0;
 
-  /// @brief closes the datafiles passed in the vector
-  virtual bool closeDatafiles(std::vector<TRI_datafile_t*> const& files) = 0;
-  
   /// @brief iterates over a collection
   virtual bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb) = 0;
 
