@@ -438,7 +438,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
   // now create a new compactor file
   // we are re-using the _fid of the first original datafile!
-  compactor = collection->createCompactor(initial._fid, static_cast<TRI_voc_size_t>(initial._targetSize));
+  compactor = static_cast<MMFilesCollection*>(collection->getPhysical())->createCompactor(initial._fid, static_cast<TRI_voc_size_t>(initial._targetSize));
 
   if (compactor == nullptr) {
     // some error occurred
@@ -495,7 +495,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
     document->_datafileStatistics.remove(compaction._datafile->_fid);
   }
 
-  if (collection->closeCompactor(compactor) != TRI_ERROR_NO_ERROR) {
+  if (static_cast<MMFilesCollection*>(collection->getPhysical())->closeCompactor(compactor) != TRI_ERROR_NO_ERROR) {
     LOG_TOPIC(ERR, Logger::COMPACTOR) << "could not close compactor file";
     // TODO: how do we recover from this state?
     return;

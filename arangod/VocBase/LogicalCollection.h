@@ -176,16 +176,6 @@ class LogicalCollection {
     return getPhysical()->reserveJournalSpace(tick, size, resultPosition, resultDatafile);
   }
   
-  /// @brief create compactor file
-  TRI_datafile_t* createCompactor(TRI_voc_fid_t fid, TRI_voc_size_t maximalSize) {
-    return getPhysical()->createCompactor(fid, maximalSize);
-  }
-  
-  /// @brief close an existing compactor
-  int closeCompactor(TRI_datafile_t* datafile) {
-    return getPhysical()->closeCompactor(datafile);
-  }
-  
   int applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
                         std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) {
     return getPhysical()->applyForTickRange(dataMin, dataMax, callback);

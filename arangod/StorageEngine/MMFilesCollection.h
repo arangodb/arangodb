@@ -69,10 +69,10 @@ class MMFilesCollection final : public PhysicalCollection {
                           char*& resultPosition, TRI_datafile_t*& resultDatafile) override;
 
   /// @brief create compactor file
-  TRI_datafile_t* createCompactor(TRI_voc_fid_t fid, TRI_voc_size_t maximalSize) override;
+  TRI_datafile_t* createCompactor(TRI_voc_fid_t fid, TRI_voc_size_t maximalSize);
   
   /// @brief close an existing compactor
-  int closeCompactor(TRI_datafile_t* datafile) override;
+  int closeCompactor(TRI_datafile_t* datafile);
 
   /// @brief replace a datafile with a compactor
   int replaceDatafileWithCompactor(TRI_datafile_t* datafile, TRI_datafile_t* compactor);
