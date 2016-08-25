@@ -263,9 +263,6 @@ struct TRI_collection_t {
   /// @brief renames a collection
   int rename(std::string const& name);
 
-  /// @brief closes an open collection
-  int unload();
-
  private:
   bool openIndex(VPackSlice const& description, arangodb::Transaction* trx);
 

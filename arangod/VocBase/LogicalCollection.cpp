@@ -180,6 +180,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
                                      std::string const& name,
                                      TRI_voc_cid_t planId,
                                      std::string const& path, 
+                                     std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const>& keyOpts,
                                      bool isVolatile, bool isLocal)
     : _internalVersion(0),
       _cid(cid),
@@ -195,7 +196,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _isVolatile(isVolatile),
       _waitForSync(false),
       _journalSize(TRI_JOURNAL_DEFAULT_SIZE),
-      _keyOptions(nullptr),
+      _keyOptions(keyOpts),
       _indexBuckets(DatabaseFeature::DefaultIndexBuckets),
       _replicationFactor(0),
       _numberOfShards(1),
@@ -216,6 +217,20 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
   auto database = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
   _waitForSync = database->waitForSync();
   _journalSize = static_cast<TRI_voc_size_t>(database->maximalJournalSize());
+
+  VPackSlice slice;
+  if (keyOpts != nullptr) {
+    slice = VPackSlice(keyOpts->data());
+  }
+  
+  std::unique_ptr<KeyGenerator> keyGenerator(KeyGenerator::factory(slice));
+
+  if (keyGenerator == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR);
+  }
+
+  _keyGenerator.reset(keyGenerator.release());
+
 }
 
 /// @brief This the "copy" constructor used in the cluster
@@ -567,12 +582,17 @@ int LogicalCollection::rename(std::string const& newName) {
 int LogicalCollection::close() {
   TRI_ASSERT(_collection != nullptr);
 
-  int res = _collection->unload();
+  // This was unload
+  auto primIdx = primaryIndex();
+  auto idxSize = primIdx->size();
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+  if (!_isDeleted &&
+      _collection->_info.initialCount() != static_cast<int64_t>(idxSize)) {
+    _collection->_info.updateCount(idxSize);
   }
-  
+
+  _numberDocuments = 0;
+
   delete _collection;
   _collection = nullptr;
 
@@ -580,8 +600,8 @@ int LogicalCollection::close() {
 }
 
 void LogicalCollection::drop() {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   _isDeleted = true;
+  // TODO Do we need to do more or does the Engine do it?
 }
 
 void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
@@ -648,6 +668,7 @@ void LogicalCollection::increaseVersion() {
 }
 
 int LogicalCollection::update(VPackSlice const& slice, bool preferDefaults) {
+  LOG(ERR) << slice.toJson();
   // the following collection properties are intentionally not updated as
   // updating
   // them would be very complicated:
@@ -805,7 +826,7 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(VPackSlice const& info) co
   for (auto const& idx : _indexes) {
     if (idx->type() == type) {
       // Only check relevant indices
-      if (idx->matchesDefinition(value)) {
+      if (idx->matchesDefinition(info)) {
         // We found an index for this definition.
         return idx;
       }

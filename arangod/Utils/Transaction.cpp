@@ -3153,8 +3153,6 @@ std::shared_ptr<Index> Transaction::indexForCollectionCoordinator(
 
 std::vector<std::shared_ptr<Index>>
 Transaction::indexesForCollectionCoordinator(std::string const& name) const {
-  std::vector<std::shared_ptr<Index>> indexes;
-
   auto clusterInfo = arangodb::ClusterInfo::instance();
   auto collectionInfo =
       clusterInfo->getCollection(_vocbase->name(), name);

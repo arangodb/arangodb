@@ -1079,7 +1079,7 @@ static void JS_PropertiesVocbaseCol(
   v8::HandleScope scope(isolate);
   TRI_GET_GLOBALS();
 
-  arangodb::LogicalCollection const* collection =
+  arangodb::LogicalCollection* collection =
       TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == nullptr) {
@@ -1241,8 +1241,7 @@ static void JS_PropertiesVocbaseCol(
 
       // try to write new parameter to file
       bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-#warning Needs merge with Jan
-      // res = document->update(slice, doSync);
+      res = collection->update(slice, doSync);
 
       if (res != TRI_ERROR_NO_ERROR) {
         TRI_V8_THROW_EXCEPTION(res);

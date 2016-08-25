@@ -1251,7 +1251,10 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
 
     TRI_ASSERT(info.id() != 0);
     try {
-      c = StorageEngine::registerCollection(ConditionalWriteLocker::DoLock(), vocbase.get(), info.type(), info.id(), info.name(), info.planId(), directory, info.isVolatile());
+      c = StorageEngine::registerCollection(
+          ConditionalWriteLocker::DoLock(), vocbase.get(), info.type(),
+          info.id(), info.name(), info.planId(), directory, info.keyOptions(),
+          info.isVolatile());
       registerCollectionPath(vocbase->id(), info.id(), directory);
     } catch (...) {
       // if we caught an exception, c is still a nullptr

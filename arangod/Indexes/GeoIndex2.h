@@ -107,12 +107,12 @@ class GeoIndex2 final : public Index {
   GeoCoordinates* nearQuery(arangodb::Transaction*, double, double,
                             size_t) const;
 
-  bool isSame(std::vector<std::string> location, bool geoJson) const {
+  bool isSame(std::vector<std::string> const& location, bool geoJson) const {
     return (!_location.empty() && _location == location && _geoJson == geoJson);
   }
 
-  bool isSame(std::vector<std::string> latitude,
-              std::vector<std::string> longitude) const {
+  bool isSame(std::vector<std::string> const& latitude,
+              std::vector<std::string> const& longitude) const {
     return (!_latitude.empty() && !_longitude.empty() &&
             _latitude == latitude && _longitude == longitude);
   }

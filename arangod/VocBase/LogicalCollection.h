@@ -58,10 +58,11 @@ class Transaction;
 
 class LogicalCollection {
  public:
-
-  LogicalCollection(TRI_vocbase_t* vocbase, TRI_col_type_e type,
-                    TRI_voc_cid_t cid, std::string const& name, TRI_voc_cid_t planId,
-                    std::string const& path, bool isVolatile, bool isLocal);
+  LogicalCollection(
+      TRI_vocbase_t* vocbase, TRI_col_type_e type, TRI_voc_cid_t cid,
+      std::string const& name, TRI_voc_cid_t planId, std::string const& path,
+      std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const>& keyOpts,
+      bool isVolatile, bool isLocal);
 
   LogicalCollection(TRI_vocbase_t*, arangodb::velocypack::Slice);
 

@@ -356,6 +356,7 @@ struct TRI_vocbase_t {
   arangodb::LogicalCollection* registerCollection(
       bool doLock, TRI_col_type_e type, TRI_voc_cid_t cid,
       std::string const& name, TRI_voc_cid_t planId, std::string const& path,
+      std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const> keyOpts,
       bool isVolatile);
 
   /// @brief removes a collection from the global list of collections

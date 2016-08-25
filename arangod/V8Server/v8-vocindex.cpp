@@ -535,11 +535,13 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
     }
   }
   TransactionBuilderLeaser builder(&trx);
+  builder->openObject();
   try {
     idx->toVelocyPack(*(builder.get()), false);
   } catch (...) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
+  builder->close();
 
   v8::Handle<v8::Value> ret =
       IndexRep(isolate, collection->name(), builder->slice());
@@ -1116,7 +1118,9 @@ static void JS_GetIndexesVocbaseCol(
   for (size_t i = 0; i < n; ++i) {
     auto const& idx = indexes[i];
     builder->clear();
+    builder->openObject();
     idx->toVelocyPack(*(builder.get()), withFigures);
+    builder->close();
     result->Set(static_cast<uint32_t>(i),
                 IndexRep(isolate, collectionName, builder->slice()));
   }

@@ -458,7 +458,25 @@ void Index::toVelocyPackFigures(VPackBuilder& builder) const {
 
 /// @brief default implementation for matchesDefinition
 bool Index::matchesDefinition(VPackSlice const& info) const {
-  auto value = info.get("fields");
+  TRI_ASSERT(info.isObject());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  VPackSlice typeSlice = info.get("type");
+  TRI_ASSERT(typeSlice.isString());
+  StringRef typeStr(typeSlice);
+  TRI_ASSERT(typeStr == typeName());
+#endif
+  auto value = info.get("id");
+  if (!value.isNone()) {
+    // We already have an id.
+    if(!value.isString()) {
+      // Invalid ID
+      return false;
+    }
+    // Short circuit. If id is correct the index is identical.
+    StringRef idRef(value);
+    return idRef == std::to_string(_iid);
+  }
+  value = info.get("fields");
   if (!value.isArray()) {
     return false;
   }

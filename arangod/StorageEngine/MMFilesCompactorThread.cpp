@@ -265,7 +265,7 @@ MMFilesCompactorThread::compaction_initial_context_t MMFilesCompactorThread::get
 
     /// @brief datafile iterator, calculates necessary total size
     auto calculateSize = [&context](TRI_df_marker_t const* marker, TRI_datafile_t* datafile) -> bool {
-      TRI_collection_t* document = context._collection->_collection;
+      LogicalCollection* collection = context._collection;
       TRI_df_marker_type_t const type = marker->getType();
 
       // new or updated document
@@ -276,9 +276,7 @@ MMFilesCompactorThread::compaction_initial_context_t MMFilesCompactorThread::get
         VPackSlice keySlice = Transaction::extractKeyFromDocument(slice);
 
         // check if the document is still active
-#warning This does not work. Needs merge.
-        // auto primaryIndex = document->primaryIndex();
-        arangodb::PrimaryIndex* primaryIndex = nullptr;
+        auto primaryIndex = collection->primaryIndex();
         auto found = primaryIndex->lookupKey(context._trx, keySlice);
         bool deleted = (found == nullptr || marker != found->getMarkerPtr());
 
@@ -362,9 +360,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       VPackSlice keySlice = Transaction::extractKeyFromDocument(slice);
 
       // check if the document is still active
-#warning This does not work. Needs merge.
-      // auto primaryIndex = document->primaryIndex();
-      arangodb::PrimaryIndex* primaryIndex = nullptr;
+      auto primaryIndex = collection->primaryIndex();
       auto found = primaryIndex->lookupKey(context._trx, keySlice);
       bool deleted = (found == nullptr || marker != found->getMarkerPtr());
 

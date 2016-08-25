@@ -75,12 +75,13 @@ void TRI_vocbase_t::signalCleanup() {
 arangodb::LogicalCollection* TRI_vocbase_t::registerCollection(
     bool doLock, TRI_col_type_e type, TRI_voc_cid_t cid,
     std::string const& name, TRI_voc_cid_t planId, std::string const& path,
+    std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const> keyOpts,
     bool isVolatile) {
   TRI_ASSERT(cid != 0);
 
   // create a new proxy
   auto collection = std::make_unique<arangodb::LogicalCollection>(
-      this, type, cid, name, planId, path, isVolatile, true);
+      this, type, cid, name, planId, path, keyOpts, isVolatile, true);
 
   {
     CONDITIONAL_WRITE_LOCKER(writeLocker, _collectionsLock, doLock);
@@ -325,21 +326,18 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
   
   arangodb::LogicalCollection* collection = nullptr;
   try {
-    collection = registerCollection(ConditionalWriteLocker::DoNotLock(), document->_info.type(), document->_info.id(), document->_info.name(), planId, document->path(), document->_info.isVolatile());
+    collection = registerCollection(ConditionalWriteLocker::DoNotLock(), document->_info.type(), document->_info.id(), document->_info.name(), planId, document->path(), document->_info.keyOptions(), document->_info.isVolatile());
   } catch (...) {
     // if an exception is caught, collection will be a nullptr
   }
 
 #warning
   // FIXME
-  /*
   if (collection == nullptr) {
-    document->unload();
     delete document;
     // TODO: does the collection directory need to be removed?
     return nullptr;
   }
-  */
 
   // FIXME Taken out of TRI_collection_t* create()
   // Maybe the ordering is broken now
@@ -590,12 +588,17 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
 
     bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
     doSync = (doSync && !arangodb::wal::LogfileManager::instance()->isInRecovery());
-    VPackSlice slice;
-    int res = collection->update(slice, doSync);
+
+#warning FIXME This behaviour should write the info to file.
+    /*
+    VPackBuilder builder;
+    engine->getCollectionInfo(this, collection->cid(), builder, false, 0);
+    int res = collection->update(builder.slice().get("parameters"), doSync);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
+*/
 
     collection->setStatus(TRI_VOC_COL_STATUS_DELETED);
     unregisterCollection(collection);

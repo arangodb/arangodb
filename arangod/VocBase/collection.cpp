@@ -1431,21 +1431,3 @@ TRI_collection_t* TRI_collection_t::open(TRI_vocbase_t* vocbase,
 
   return collection.release();
 }
-
-/// @brief closes an open collection
-int TRI_collection_t::unload() {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  /*
-  auto primaryIndex = this->primaryIndex();
-  auto idxSize = primaryIndex->size();
-
-  if (!_info.deleted() &&
-      _info.initialCount() != static_cast<int64_t>(idxSize)) {
-    _info.updateCount(idxSize);
-  }
-
-  _numberDocuments = 0;
-
-  return TRI_ERROR_NO_ERROR;
-  */
-}
