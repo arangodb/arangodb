@@ -356,6 +356,7 @@ v8::Handle<v8::Value> Executor::compileExpression() {
       TRI_V8_STD_STRING((*_buffer)), TRI_V8_ASCII_STRING("--script--"));
 
   if (compiled.IsEmpty()) {
+    LOG(ERR) << "unable to compile V8 expression: " << std::string(_buffer->begin(), _buffer->length());
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "unable to compile v8 expression");
   }
