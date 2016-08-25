@@ -1467,7 +1467,7 @@ exports.flatten = function(obj, seen) {
     seen = [];
   }
 
-  var result = Object.create(null),
+  var result = Object.create({}),
     src = obj,
     keys,
     key,
@@ -1490,7 +1490,7 @@ exports.flatten = function(obj, seen) {
       if (typeof src !== 'function' || (
           key !== 'arguments' && key !== 'caller' && key !== 'callee'
         )) {
-        if (key.charAt(0) !== '_' && !hasOwnProperty(result, key)) {
+        if (key.charAt(0) !== '_' && !result.hasOwnProperty(key)) {
           val = obj[key];
           if (seen.indexOf(val) !== -1 && (
               typeof val === 'object' || typeof val === 'function'
