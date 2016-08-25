@@ -5011,7 +5011,6 @@ function transactionServerFailuresSuite () {
       }
       catch (err) {
         // ignore the intentional error
-        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
       
       internal.debugClearFailAt();
@@ -5141,7 +5140,6 @@ function transactionServerFailuresSuite () {
       }
       catch (err) {
         // ignore the intentional error
-        assertEqual(internal.errors.ERROR_INTERNAL.code, err.errorNum);
       }
       
       internal.debugClearFailAt();
