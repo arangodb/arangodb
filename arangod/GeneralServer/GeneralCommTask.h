@@ -140,7 +140,7 @@ class GeneralCommTask : public SocketTask {
     if (agentIt != _agents.end()) {
       return &(agentIt->second);
     } else {
-      return nullptr;
+      throw std::logic_error("there should be an agent for every request");
     }
   }
 

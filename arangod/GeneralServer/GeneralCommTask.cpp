@@ -78,7 +78,15 @@ void GeneralCommTask::executeRequest(
       request->header(StaticStrings::Async, found);
 
   // store the message id for error handling
-  auto messageId = response->messageId();
+  uint64_t messageId = 0UL;
+  if (request) {
+    messageId = request->messageId();
+  } else if (response) {
+    messageId = response->messageId();
+  } else {
+    LOG_TOPIC(WARN, Logger::COMMUNICATION)
+        << "could not find corresponding request/response";
+  }
 
   // create a handler, this takes ownership of request and response
   WorkItem::uptr<RestHandler> handler(
@@ -97,7 +105,7 @@ void GeneralCommTask::executeRequest(
   bool ok = false;
 
   if (found && (asyncExecution == "true" || asyncExecution == "store")) {
-    getAgent(request->messageId())->requestStatisticsAgentSetAsync();
+    getAgent(messageId)->requestStatisticsAgentSetAsync();
     uint64_t jobId = 0;
 
     if (asyncExecution == "store") {

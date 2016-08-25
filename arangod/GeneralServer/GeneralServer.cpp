@@ -117,6 +117,7 @@ void GeneralServer::stopListening() {
 bool GeneralServer::handleRequestAsync(GeneralCommTask* task,
                                        WorkItem::uptr<RestHandler> handler,
                                        uint64_t* jobId) {
+  auto messageId = handler->request()->messageId();
   bool startThread = handler->needsOwnThread();
 
   // extract the coordinator flag
@@ -126,10 +127,9 @@ bool GeneralServer::handleRequestAsync(GeneralCommTask* task,
   char const* hdr = found ? hdrStr.c_str() : nullptr;
 
   // execute the handler using the dispatcher
-  std::unique_ptr<Job> job =
-      std::make_unique<HttpServerJob>(this, handler, true);
+  std::unique_ptr<Job> job = std::make_unique<HttpServerJob>(
+      this, handler, true);  // hander gets moved!!!
 
-  auto messageId = handler->request()->messageId();
   task->getAgent(messageId)->transferTo(job.get());
 
   // register the job with the job manager
@@ -164,6 +164,8 @@ bool GeneralServer::handleRequestAsync(GeneralCommTask* task,
 
 bool GeneralServer::handleRequest(GeneralCommTask* task,
                                   WorkItem::uptr<RestHandler> handler) {
+  TRI_ASSERT(handler != nullptr);
+
   // direct handlers
   if (handler->isDirect()) {
     handleRequestDirectly(task, std::move(handler));
@@ -171,10 +173,11 @@ bool GeneralServer::handleRequest(GeneralCommTask* task,
   }
 
   bool startThread = handler->needsOwnThread();
+  auto messageId = handler->request()->messageId();
 
   // use a dispatcher queue, handler belongs to the job
-  std::unique_ptr<Job> job = std::make_unique<HttpServerJob>(this, handler);
-  auto messageId = handler->request()->messageId();
+  std::unique_ptr<Job> job = std::make_unique<HttpServerJob>(
+      this, handler);  // handler is uique_ptr that gets moved
   task->getAgent(messageId)->transferTo(job.get());
 
   LOG(TRACE) << "GeneralCommTask " << (void*)task << " created HttpServerJob "
@@ -236,9 +239,19 @@ bool GeneralServer::openEndpoint(Endpoint* endpoint) {
 
 void GeneralServer::handleRequestDirectly(GeneralCommTask* task,
                                           WorkItem::uptr<RestHandler> handler) {
-  HandlerWorkStack work(std::move(handler));
+  uint64_t messageId = 0UL;
+  auto req = handler->request();
+  auto res = handler->response();
+  if (req) {
+    messageId = req->messageId();
+  } else if (res) {
+    messageId = res->messageId();
+  } else {
+    LOG_TOPIC(WARN, Logger::COMMUNICATION)
+        << "could not find corresponding request/response";
+  }
 
-  auto messageId = handler->request()->messageId();
+  HandlerWorkStack work(std::move(handler));
   task->getAgent(messageId)->transferTo(work.handler());
   RestHandler::status result = work.handler()->executeFull();
   work.handler()->RequestStatisticsAgent::transferTo(task->getAgent(messageId));
