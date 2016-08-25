@@ -29,7 +29,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Utils/TransactionContext.h"
-#include "VocBase/collection.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/transaction.h"
 
 #include <velocypack/Iterator.h>
@@ -452,7 +452,7 @@ HashIndex::MultiArray::~MultiArray() {
 ////////////////////////////////////////////////////////////////////////////////
 
 HashIndex::HashIndex(
-    TRI_idx_iid_t iid, TRI_collection_t* collection,
+    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     bool unique, bool sparse)
     : PathBasedIndex(iid, collection, fields, unique, sparse, false),
@@ -461,13 +461,54 @@ HashIndex::HashIndex(
 
   if (collection != nullptr) {
     // document is a nullptr in the coordinator case
-    indexBuckets = collection->_info.indexBuckets();
+    indexBuckets = collection->indexBuckets();
   }
 
   auto func = std::make_unique<HashElementFunc>(_paths.size());
   auto compare = std::make_unique<IsEqualElementElementByKey>(_paths.size());
 
   if (unique) {
+    auto array = std::make_unique<TRI_HashArray_t>(
+        HashKey, *(func.get()), IsEqualKeyElementHash, IsEqualElementElement,
+        *(compare.get()), indexBuckets,
+        []() -> std::string { return "unique hash-array"; });
+
+    _uniqueArray =
+        new HashIndex::UniqueArray(array.get(), func.get(), compare.get());
+    array.release();
+  } else {
+    _multiArray = nullptr;
+
+    auto array = std::make_unique<TRI_HashArrayMulti_t>(
+        HashKey, *(func.get()), IsEqualKeyElement, IsEqualElementElement,
+        *(compare.get()), indexBuckets, 64,
+        []() -> std::string { return "multi hash-array"; });
+
+    _multiArray =
+        new HashIndex::MultiArray(array.get(), func.get(), compare.get());
+
+    array.release();
+  }
+  compare.release();
+
+  func.release();
+}
+
+HashIndex::HashIndex(TRI_idx_iid_t iid, LogicalCollection* collection,
+                     VPackSlice const& info)
+    : PathBasedIndex(iid, collection, info, false), _uniqueArray(nullptr) {
+  uint32_t indexBuckets = 1;
+
+  if (collection != nullptr) {
+    // document is a nullptr in the coordinator case
+    // TODO: That ain't true any more
+    indexBuckets = collection->indexBuckets();
+  }
+
+  auto func = std::make_unique<HashElementFunc>(_paths.size());
+  auto compare = std::make_unique<IsEqualElementElementByKey>(_paths.size());
+
+  if (_unique) {
     auto array = std::make_unique<TRI_HashArray_t>(
         HashKey, *(func.get()), IsEqualKeyElementHash, IsEqualElementElement,
         *(compare.get()), indexBuckets,

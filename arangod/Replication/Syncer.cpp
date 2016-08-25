@@ -558,7 +558,7 @@ int Syncer::createIndex(VPackSlice const& slice) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
-    TRI_collection_t* document = guard.collection()->_collection;
+    LogicalCollection* collection = guard.collection();
 
     SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), guard.collection()->cid(), TRI_TRANSACTION_WRITE);
 
@@ -568,11 +568,11 @@ int Syncer::createIndex(VPackSlice const& slice) {
       return res;
     }
 
-    arangodb::Index* idx = nullptr;
-    res = document->indexFromVelocyPack(&trx, indexSlice, &idx);
+    std::shared_ptr<arangodb::Index> idx;
+    res = collection->restoreIndex(&trx, indexSlice, idx);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      res = document->saveIndex(idx, true);
+      res = collection->saveIndex(idx.get(), true);
     }
 
     res = trx.finish(res);
@@ -616,9 +616,9 @@ int Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
-    TRI_collection_t* document = guard.collection()->_collection;
+    LogicalCollection* collection = guard.collection();
 
-    bool result = document->dropIndex(iid, true);
+    bool result = collection->dropIndex(iid, true);
 
     if (!result) {
       return TRI_ERROR_NO_ERROR;

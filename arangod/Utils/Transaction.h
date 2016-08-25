@@ -597,7 +597,7 @@ class Transaction {
   /// @brief test if a collection is already locked
   //////////////////////////////////////////////////////////////////////////////
 
-  bool isLocked(TRI_collection_t*, TRI_transaction_type_e);
+  bool isLocked(arangodb::LogicalCollection*, TRI_transaction_type_e);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the setup state
@@ -605,7 +605,7 @@ class Transaction {
 
   int setupState() { return _setupState; }
   
-  TRI_collection_t* documentCollection(TRI_voc_cid_t) const;
+  arangodb::LogicalCollection* documentCollection(TRI_voc_cid_t) const;
   
 //////////////////////////////////////////////////////////////////////////////
 /// @brief get the index by it's identifier. Will either throw or
@@ -638,11 +638,9 @@ class Transaction {
   /// argument as a single object.
   //////////////////////////////////////////////////////////////////////////////
 
-  void buildDocumentIdentity(TRI_collection_t* document,
-                             VPackBuilder& builder,
-                             TRI_voc_cid_t cid,
-                             StringRef const& key,
-                             VPackSlice const rid,
+  void buildDocumentIdentity(arangodb::LogicalCollection* collection,
+                             VPackBuilder& builder, TRI_voc_cid_t cid,
+                             StringRef const& key, VPackSlice const rid,
                              VPackSlice const oldRid,
                              TRI_doc_mptr_t const* oldMptr,
                              TRI_doc_mptr_t const* newMptr);
@@ -719,7 +717,7 @@ class Transaction {
   /// @brief return the collection
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_collection_t* documentCollection(
+  arangodb::LogicalCollection* documentCollection(
       TRI_transaction_collection_t const*) const;
   
   //////////////////////////////////////////////////////////////////////////////

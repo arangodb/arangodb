@@ -265,7 +265,9 @@ CompactorThread::compaction_initial_context_t CompactorThread::getCompactionCont
         VPackSlice keySlice = Transaction::extractKeyFromDocument(slice);
 
         // check if the document is still active
-        auto primaryIndex = document->primaryIndex();
+#warning This does not work. Needs merge.
+        // auto primaryIndex = document->primaryIndex();
+        arangodb::PrimaryIndex* primaryIndex = nullptr;
         auto found = primaryIndex->lookupKey(context._trx, keySlice);
         bool deleted = (found == nullptr || marker != found->getMarkerPtr());
 
@@ -347,7 +349,9 @@ void CompactorThread::compactDatafiles(TRI_collection_t* document,
       VPackSlice keySlice = Transaction::extractKeyFromDocument(slice);
 
       // check if the document is still active
-      auto primaryIndex = document->primaryIndex();
+#warning This does not work. Needs merge.
+      // auto primaryIndex = document->primaryIndex();
+      arangodb::PrimaryIndex* primaryIndex = nullptr;
       auto found = primaryIndex->lookupKey(context._trx, keySlice);
       bool deleted = (found == nullptr || marker != found->getMarkerPtr());
 

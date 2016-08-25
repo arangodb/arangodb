@@ -494,93 +494,12 @@ static void EnsureIndexCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
-                             arangodb::LogicalCollection const* collection,
+                             arangodb::LogicalCollection* collection,
                              VPackSlice const& slice, bool create) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
   TRI_ASSERT(collection != nullptr);
-  if (!slice.isObject()) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
-
-  // extract type
-  VPackSlice value = slice.get("type");
-
-  if (!value.isString()) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
-
-  std::string tmp = value.copyString();
-  arangodb::Index::IndexType const type = arangodb::Index::type(tmp.c_str());
-
-  // extract unique flag
-  bool unique = arangodb::basics::VelocyPackHelper::getBooleanValue(
-      slice, "unique", false);
-
-  // extract sparse flag
-  bool sparse = false;
-  int sparsity = -1;  // not set
-  value = slice.get("sparse");
-  if (value.isBoolean()) {
-    sparse = value.getBoolean();
-    sparsity = sparse ? 1 : 0;
-  }
-
-  // extract id
-  TRI_idx_iid_t iid = 0;
-  value = slice.get("id");
-  if (value.isString()) {
-    std::string tmp = value.copyString();
-    iid = StringUtils::uint64(tmp);
-  }
-
-  std::vector<std::string> attributes;
-
-  // extract fields
-  value = slice.get("fields");
-  if (value.isArray()) {
-    // note: "fields" is not mandatory for all index types
-
-    // copy all field names (attributes)
-    for (auto const& v : VPackArrayIterator(value)) {
-      if (v.isString()) {
-        std::string val = v.copyString();
-
-        if (val.find("[*]") != std::string::npos) {
-          if (type != arangodb::Index::TRI_IDX_TYPE_HASH_INDEX &&
-              type != arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX &&
-              type != arangodb::Index::TRI_IDX_TYPE_ROCKSDB_INDEX) {
-            // expansion used in index type that does not support it
-            TRI_V8_THROW_EXCEPTION_MESSAGE(
-                TRI_ERROR_BAD_PARAMETER,
-                "cannot use [*] expansion for this type of index");
-          } else {
-            // expansion used in index type that supports it
-
-            // count number of [*] occurrences
-            size_t found = 0;
-            size_t offset = 0;
-
-            while ((offset = val.find("[*]", offset)) != std::string::npos) {
-              ++found;
-              offset += strlen("[*]");
-            }
-
-            // only one occurrence is allowed
-            if (found > 1) {
-              TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                             "cannot use multiple [*] "
-                                             "expansions for a single index "
-                                             "field");
-            }
-          }
-        }
-        attributes.emplace_back(val);
-      }
-    }
-  }
-  
   READ_LOCKER(readLocker, collection->vocbase()->_inventoryLock);
 
   SingleCollectionTransaction trx(
@@ -593,175 +512,41 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  TRI_collection_t* document = trx.documentCollection();
-  std::string const collectionName(collection->name());
-
   // disallow index creation in read-only mode
-  if (!TRI_collection_t::IsSystemName(collectionName) && create &&
+  if (!collection->isSystem() && create &&
       TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
   }
 
-  bool created = false;
-  arangodb::Index* idx = nullptr;
-
-  switch (type) {
-    case arangodb::Index::TRI_IDX_TYPE_UNKNOWN:
-    case arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX:
-    case arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX: {
-      // these indexes cannot be created directly
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+  std::shared_ptr<arangodb::Index> idx;
+  if (create) {
+    // TODO Encapsulate in try{}catch(){} instead of errno()
+    idx = collection->createIndex(&trx, slice);
+    if (idx == nullptr) {
+      // something went wrong during creation
+      int res = TRI_errno();
+      TRI_V8_THROW_EXCEPTION(res);
     }
-
-    case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX: {
-      if (attributes.size() != 1) {
-        TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
-      }
-
-      bool geoJson = arangodb::basics::VelocyPackHelper::getBooleanValue(
-          slice, "geoJson", false);
-
-      if (create) {
-        idx = static_cast<arangodb::GeoIndex2*>(
-            document->ensureGeoIndex1(
-                &trx, iid, attributes[0], geoJson, created));
-      } else {
-        std::vector<std::string> location =
-            arangodb::basics::StringUtils::split(attributes[0], ".");
-        idx = static_cast<arangodb::GeoIndex2*>(
-            document->lookupGeoIndex1(location, geoJson));
-      }
-      break;
-    }
-
-    case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX: {
-      if (attributes.size() != 2) {
-        TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
-      }
-
-      if (create) {
-        idx = static_cast<arangodb::GeoIndex2*>(
-            document->ensureGeoIndex2(
-                &trx, iid, attributes[0], attributes[1], created));
-      } else {
-        std::vector<std::string> lat =
-            arangodb::basics::StringUtils::split(attributes[0], ".");
-        std::vector<std::string> lon =
-            arangodb::basics::StringUtils::split(attributes[0], ".");
-        idx = static_cast<arangodb::GeoIndex2*>(
-            document->lookupGeoIndex2(lon, lat));
-      }
-      break;
-    }
-
-    case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
-      if (attributes.empty()) {
-        TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
-      }
-
-      if (create) {
-        idx = static_cast<arangodb::HashIndex*>(
-            document->ensureHashIndex(&trx, iid, attributes, sparse, unique, created));
-      } else {
-        idx = static_cast<arangodb::HashIndex*>(
-            document->lookupHashIndex(attributes, sparsity, unique));
-      }
-
-      break;
-    }
-
-    case arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX: {
-      if (attributes.empty()) {
-        TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
-      }
-
-      if (create) {
-        idx = static_cast<arangodb::SkiplistIndex*>(
-            document->ensureSkiplistIndex(
-                &trx, iid, attributes, sparse, unique, created));
-      } else {
-        idx = static_cast<arangodb::SkiplistIndex*>(
-            document->lookupSkiplistIndex(attributes, sparsity, unique));
-      }
-      break;
-    }
-    
-    case arangodb::Index::TRI_IDX_TYPE_ROCKSDB_INDEX: {
-      if (attributes.empty()) {
-        TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
-      }
-
-#ifdef ARANGODB_ENABLE_ROCKSDB
-      if (create) {
-        idx = static_cast<arangodb::RocksDBIndex*>(
-            document->ensureRocksDBIndex(
-                &trx, iid, attributes, sparse, unique, created));
-      } else {
-        idx = static_cast<arangodb::RocksDBIndex*>(
-            document->lookupRocksDBIndex(attributes, sparsity, unique));
-      }
-      break;
-#else
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "index type not supported in this build");
-#endif
-    }
-
-    case arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX: {
-      if (attributes.size() != 1) {
-        TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
-      }
-
-      int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
-      VPackSlice const value = slice.get("minLength");
-      if (value.isNumber()) {
-        minWordLength = value.getNumericValue<int>();
-      } else if (!value.isNone()) {
-        // minLength defined but no number
-        TRI_V8_THROW_EXCEPTION_PARAMETER("<minLength> must be a number");
-      }
-
-      if (create) {
-        idx = static_cast<arangodb::FulltextIndex*>(
-            document->ensureFulltextIndex(
-                &trx, iid, attributes[0], minWordLength, created));
-      } else {
-        idx = static_cast<arangodb::FulltextIndex*>(
-            document->lookupFulltextIndex(attributes[0], minWordLength));
-      }
-      break;
+  } else {
+    idx = collection->lookupIndex(slice);
+    if (idx == nullptr) {
+      // Index not found
+      TRI_V8_RETURN_NULL();
     }
   }
-
-  if (idx == nullptr && create) {
-    // something went wrong during creation
-    int res = TRI_errno();
-
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
-  if (idx == nullptr && !create) {
-    // no index found
-    TRI_V8_RETURN_NULL();
-  }
-
-  // found some index to return
-  std::shared_ptr<VPackBuilder> indexVPack;
+  TransactionBuilderLeaser builder(&trx);
   try {
-    indexVPack = idx->toVelocyPack(false);
+    idx->toVelocyPack(*(builder.get()), false);
   } catch (...) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
-  if (indexVPack == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
-
   v8::Handle<v8::Value> ret =
-      IndexRep(isolate, collectionName, indexVPack->slice());
+      IndexRep(isolate, collection->name(), builder->slice());
 
   if (ret->IsObject()) {
     ret->ToObject()->Set(TRI_V8_ASCII_STRING("isNewlyCreated"),
-                         v8::Boolean::New(isolate, create && created));
+                         v8::Boolean::New(isolate, create));
   }
 
   TRI_V8_RETURN(ret);
@@ -1058,7 +843,7 @@ static void CreateCollectionCoordinator(
       ArrayBuilder ab(&velocy, "indexes");
 
       // create a dummy primary index
-      TRI_collection_t* doc = nullptr;
+      arangodb::LogicalCollection* doc = nullptr;
       std::unique_ptr<arangodb::PrimaryIndex> primaryIndex(
           new arangodb::PrimaryIndex(doc));
 
@@ -1213,7 +998,7 @@ static void JS_DropIndexVocbaseCol(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  TRI_collection_t* document = trx.documentCollection();
+  LogicalCollection* col = trx.documentCollection();
 
   auto idx = TRI_LookupIndexByHandle(isolate, trx.resolver(), collection,
                                      args[0], true);
@@ -1226,7 +1011,7 @@ static void JS_DropIndexVocbaseCol(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  bool ok = document->dropIndex(idx->id(), true);
+  bool ok = col->dropIndex(idx->id(), true);
 
   if (ok) {
     TRI_V8_RETURN_TRUE();
@@ -1260,7 +1045,9 @@ static void GetIndexesCoordinator(
 
   v8::Handle<v8::Array> ret = v8::Array::New(isolate);
 
-  VPackSlice slice = c->getIndexes();
+  VPackBuilder tmp;
+  c->getIndexesVPack(tmp, true);
+  VPackSlice slice = tmp.slice();
 
   if (slice.isArray()) {
     uint32_t j = 0;
@@ -1313,11 +1100,12 @@ static void JS_GetIndexesVocbaseCol(
   // READ-LOCK start
   trx.lockRead();
 
-  TRI_collection_t* document = trx.documentCollection();
-  std::string const collectionName(collection->name());
+  arangodb::LogicalCollection* col = trx.documentCollection();
+  std::string const collectionName(col->name());
 
   // get list of indexes
-  auto indexes(document->indexesToVelocyPack(withFigures));
+  TransactionBuilderLeaser builder(&trx);
+  auto indexes = col->getIndexes();
 
   trx.finish(res);
   // READ-LOCK end
@@ -1327,9 +1115,10 @@ static void JS_GetIndexesVocbaseCol(
 
   for (size_t i = 0; i < n; ++i) {
     auto const& idx = indexes[i];
-
+    builder->clear();
+    idx->toVelocyPack(*(builder.get()), withFigures);
     result->Set(static_cast<uint32_t>(i),
-                IndexRep(isolate, collectionName, idx->slice()));
+                IndexRep(isolate, collectionName, builder->slice()));
   }
 
   TRI_V8_RETURN(result);
@@ -1340,10 +1129,10 @@ static void JS_GetIndexesVocbaseCol(
 /// @brief looks up an index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::Index* TRI_LookupIndexByHandle(
+std::shared_ptr<arangodb::Index> TRI_LookupIndexByHandle(
     v8::Isolate* isolate, arangodb::CollectionNameResolver const* resolver,
-    arangodb::LogicalCollection const* collection, v8::Handle<v8::Value> const val,
-    bool ignoreNotFound) {
+    arangodb::LogicalCollection const* collection,
+    v8::Handle<v8::Value> const val, bool ignoreNotFound) {
   // reset the collection identifier
   std::string collectionName;
   TRI_idx_iid_t iid = 0;
@@ -1383,7 +1172,7 @@ arangodb::Index* TRI_LookupIndexByHandle(
     }
   }
 
-  auto idx = collection->_collection->lookupIndex(iid);
+  auto idx = collection->lookupIndex(iid);
 
   if (idx == nullptr) {
     if (!ignoreNotFound) {

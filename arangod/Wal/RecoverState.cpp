@@ -206,11 +206,8 @@ arangodb::LogicalCollection* RecoverState::useCollection(
     return nullptr;
   }
 
-  TRI_collection_t* document = collection->_collection;
-  TRI_ASSERT(document != nullptr);
-
   // disable secondary indexes for the moment
-  document->useSecondaryIndexes(false);
+  collection->useSecondaryIndexes(false);
 
   openedCollections.emplace(collectionId, collection);
   res = TRI_ERROR_NO_ERROR;
@@ -221,7 +218,7 @@ arangodb::LogicalCollection* RecoverState::useCollection(
 /// the collection will be opened after this call and inserted into a local
 /// cache for faster lookups
 /// returns nullptr if the collection does not exist
-TRI_collection_t* RecoverState::getCollection(
+LogicalCollection* RecoverState::getCollection(
     TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
   TRI_vocbase_t* vocbase = useDatabase(databaseId);
 
@@ -237,11 +234,7 @@ TRI_collection_t* RecoverState::getCollection(
     LOG(TRACE) << "collection " << collectionId << " of database " << databaseId << " not found";
     return nullptr;
   }
-
-  TRI_collection_t* document = collection->_collection;
-  TRI_ASSERT(document != nullptr);
-
-  return document;
+  return collection;
 }
 
 /// @brief executes a single operation inside a transaction
@@ -435,13 +428,13 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         int res = state->executeSingleOperation(
             databaseId, collectionId, marker, datafile->_fid,
             [&](SingleCollectionTransaction* trx, MarkerEnvelope* envelope) -> int {
-              if (trx->documentCollection()->_info.isVolatile()) {
+              if (trx->documentCollection()->isVolatile()) {
                 return TRI_ERROR_NO_ERROR;
               }
 
               TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(envelope->mem());
 
-              std::string const collectionName = trx->documentCollection()->_info.name();
+              std::string const collectionName = trx->documentCollection()->name();
               uint8_t const* ptr = reinterpret_cast<uint8_t const*>(marker) + DatafileHelper::VPackOffset(type);
 
               OperationOptions options;
@@ -498,13 +491,13 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         int res = state->executeSingleOperation(
             databaseId, collectionId, marker, datafile->_fid,
             [&](SingleCollectionTransaction* trx, MarkerEnvelope* envelope) -> int {
-              if (trx->documentCollection()->_info.isVolatile()) {
+              if (trx->documentCollection()->isVolatile()) {
                 return TRI_ERROR_NO_ERROR;
               }
               
               TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(envelope->mem());
 
-              std::string const collectionName = trx->documentCollection()->_info.name();
+              std::string const collectionName = trx->documentCollection()->name();
               uint8_t const* ptr = reinterpret_cast<uint8_t const*>(marker) + DatafileHelper::VPackOffset(type);
 
               OperationOptions options;
@@ -635,10 +628,10 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           return true;
         }
 
-        TRI_collection_t* document =
+        LogicalCollection* collection =
             state->getCollection(databaseId, collectionId);
 
-        if (document == nullptr) {
+        if (collection == nullptr) {
           // if the underlying collection is gone, we can go on
           LOG(TRACE) << "cannot change properties of collection " << collectionId << " in database " << databaseId << ": " << TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
           return true;
@@ -647,7 +640,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         // turn off sync temporarily if the database or collection are going to be
         // dropped later
         bool const forceSync = state->willBeDropped(databaseId, collectionId);
-        int res = document->updateCollectionInfo(vocbase, payloadSlice, forceSync);
+        int res = collection->update(payloadSlice, forceSync);
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG(WARN) << "cannot change collection properties for collection " << collectionId << " in database " << databaseId << ": " << TRI_errno_string(res);
@@ -685,15 +678,6 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           return true;
         }
 
-        TRI_collection_t* document =
-            state->getCollection(databaseId, collectionId);
-
-        if (document == nullptr) {
-          // if the underlying collection is gone, we can go on
-          LOG(TRACE) << "cannot create index for collection " << collectionId << " in database " << databaseId << ": " << TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-          return true;
-        }
-        
         arangodb::LogicalCollection* col = vocbase->lookupCollection(collectionId);
 
         if (col == nullptr) {
@@ -718,9 +702,11 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           ++state->errorCount;
           return state->canContinue();
         } else {
-          arangodb::SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(vocbase),
-            collectionId, TRI_TRANSACTION_WRITE);
-          int res = document->indexFromVelocyPack(&trx, payloadSlice, nullptr);
+          arangodb::SingleCollectionTransaction trx(
+              arangodb::StandaloneTransactionContext::Create(vocbase),
+              collectionId, TRI_TRANSACTION_WRITE);
+          std::shared_ptr<arangodb::Index> unused;
+          int res = col->restoreIndex(&trx, payloadSlice, unused);
 
           if (res != TRI_ERROR_NO_ERROR) {
             LOG(WARN) << "cannot create index " << indexId << ", collection " << collectionId << " in database " << databaseId;
@@ -920,13 +906,6 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
           return true;
         }
 
-        TRI_collection_t* document =
-            state->getCollection(databaseId, collectionId);
-        if (document == nullptr) {
-          // if the underlying collection gone, we can go on
-          return true;
-        }
-
         arangodb::LogicalCollection* col = vocbase->lookupCollection(collectionId);
 
         if (col == nullptr) {
@@ -935,7 +914,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         }
 
         // ignore any potential error returned by this call
-        document->dropIndex(indexId, false);
+        col->dropIndex(indexId, false);
 
 #ifdef ARANGODB_ENABLE_ROCKSDB
         RocksDBFeature::dropIndex(databaseId, collectionId, indexId);
@@ -1144,17 +1123,15 @@ int RecoverState::fillIndexes() {
   for (auto it = openedCollections.begin(); it != openedCollections.end();
        ++it) {
     arangodb::LogicalCollection* collection = (*it).second;
-    TRI_collection_t* document = collection->_collection;
-
-    TRI_ASSERT(document != nullptr);
 
     // activate secondary indexes
-    document->useSecondaryIndexes(true);
+    collection->useSecondaryIndexes(true);
 
-    arangodb::SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(collection->vocbase()),
-        document->_info.id(), TRI_TRANSACTION_WRITE);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::StandaloneTransactionContext::Create(collection->vocbase()),
+        collection->cid(), TRI_TRANSACTION_WRITE);
 
-    int res = document->fillIndexes(&trx, collection);
+    int res = collection->fillIndexes(&trx);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;

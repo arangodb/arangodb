@@ -41,7 +41,6 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _size(1),
       _minElectionTimeout(0.5),
       _maxElectionTimeout(2.5),
-      _notify(false),
       _supervision(false),
       _waitForSync(true),
       _supervisionFrequency(5.0),

@@ -34,7 +34,7 @@ using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 
 GeoIndex2::GeoIndex2(
-    TRI_idx_iid_t iid, TRI_collection_t* collection,
+    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     std::vector<std::string> const& path, bool geoJson)
     : Index(iid, collection, fields, false, true),
@@ -57,7 +57,7 @@ GeoIndex2::GeoIndex2(
 ////////////////////////////////////////////////////////////////////////////////
 
 GeoIndex2::GeoIndex2(
-    TRI_idx_iid_t iid, TRI_collection_t* collection,
+    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     std::vector<std::vector<std::string>> const& paths)
     : Index(iid, collection, fields, false, true),
@@ -67,6 +67,53 @@ GeoIndex2::GeoIndex2(
       _geoJson(false),
       _geoIndex(nullptr) {
   TRI_ASSERT(iid != 0);
+
+  _geoIndex = GeoIndex_new();
+
+  if (_geoIndex == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+}
+
+/// @brief create a new geo index, type "geo2"
+
+GeoIndex2::GeoIndex2(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
+                     VPackSlice const& info)
+    : Index(iid, collection, info, false),
+      _variant(INDEX_GEO_INDIVIDUAL_LAT_LON),
+      _geoJson(false),
+      _geoIndex(nullptr) {
+  TRI_ASSERT(iid != 0);
+  _unique = false;
+  _sparse = true;
+
+  if (_fields.size() == 1) {
+    _geoJson = arangodb::basics::VelocyPackHelper::getBooleanValue(
+        info, "geoJson", false);
+    auto& loc = _fields[0];
+    _location.reserve(loc.size());
+    for (auto const& it : loc) {
+      _location.emplace_back(it.name);
+    }
+    _variant =
+        _geoJson ? INDEX_GEO_COMBINED_LAT_LON : INDEX_GEO_COMBINED_LON_LAT;
+  } else if (_fields.size() == 2) {
+    _variant = INDEX_GEO_INDIVIDUAL_LAT_LON;
+    auto& lat = _fields[0];
+    _latitude.reserve(lat.size());
+    for (auto const& it : lat) {
+      _latitude.emplace_back(it.name);
+    }
+    auto& lon = _fields[1];
+    _longitude.reserve(lon.size());
+    for (auto const& it : lon) {
+      _longitude.emplace_back(it.name);
+    }
+  } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "GeoIndex can only be created with one or two fields.");
+  }
 
   _geoIndex = GeoIndex_new();
 

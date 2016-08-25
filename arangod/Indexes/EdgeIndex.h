@@ -103,7 +103,7 @@ class EdgeIndex final : public Index {
  public:
   EdgeIndex() = delete;
 
-  EdgeIndex(TRI_idx_iid_t, TRI_collection_t*);
+  EdgeIndex(TRI_idx_iid_t, arangodb::LogicalCollection*);
 
   explicit EdgeIndex(VPackSlice const&);
 

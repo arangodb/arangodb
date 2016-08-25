@@ -565,7 +565,7 @@ size_t CollectorThread::numQueuedOperations() {
 /// @brief process a single marker in collector step 2
 void CollectorThread::processCollectionMarker(
     arangodb::SingleCollectionTransaction& trx,
-    TRI_collection_t* document, CollectorCache* cache,
+    LogicalCollection* colection, CollectorCache* cache,
     CollectorOperation const& operation) {
   auto const* walMarker = reinterpret_cast<TRI_df_marker_t const*>(operation.walPosition);
   TRI_ASSERT(walMarker != nullptr);
@@ -587,7 +587,7 @@ void CollectorThread::processCollectionMarker(
     TRI_voc_rid_t revisionId = 0;
     Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
   
-    auto found = document->primaryIndex()->lookupKey(&trx, keySlice);
+    auto found = colection->primaryIndex()->lookupKey(&trx, keySlice);
 
     if (found == nullptr || found->revisionId() != revisionId ||
         found->getMarkerPtr() != walMarker) {
@@ -615,7 +615,7 @@ void CollectorThread::processCollectionMarker(
     TRI_voc_rid_t revisionId = 0;
     Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
 
-    auto found = document->primaryIndex()->lookupKey(&trx, keySlice);
+    auto found = colection->primaryIndex()->lookupKey(&trx, keySlice);
 
     if (found != nullptr && found->revisionId() > revisionId) {
       // somebody re-created the document with a newer revision
@@ -649,8 +649,9 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
     return TRI_ERROR_LOCK_TIMEOUT;
   }
 
-  arangodb::SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(document->_vocbase), 
-      document->_info.id(), TRI_TRANSACTION_WRITE);
+  arangodb::SingleCollectionTransaction trx(
+      arangodb::StandaloneTransactionContext::Create(collection->vocbase()),
+      collection->cid(), TRI_TRANSACTION_WRITE);
   trx.addHint(TRI_TRANSACTION_HINT_NO_USAGE_LOCK,
               true);  // already locked by guard above
   trx.addHint(TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK,
@@ -664,7 +665,7 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
   if (res != TRI_ERROR_NO_ERROR) {
     // this includes TRI_ERROR_LOCK_TIMEOUT!
     LOG_TOPIC(TRACE, Logger::COLLECTOR) << "wal collector couldn't acquire write lock for collection '"
-               << document->_info.name() << "': " << TRI_errno_string(res);
+               << collection->name() << "': " << TRI_errno_string(res);
 
     return res;
   }
@@ -672,17 +673,17 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
   try {
     // now we have the write lock on the collection
     LOG_TOPIC(TRACE, Logger::COLLECTOR) << "wal collector processing operations for collection '"
-               << document->_info.name() << "'";
+               << collection->name() << "'";
 
     TRI_ASSERT(!cache->operations->empty());
 
     for (auto const& it : *(cache->operations)) {
-      processCollectionMarker(trx, document, cache, it);
+      processCollectionMarker(trx, collection, cache, it);
     }
 
     // finally update all datafile statistics
     LOG_TOPIC(TRACE, Logger::COLLECTOR) << "updating datafile statistics for collection '"
-               << document->_info.name() << "'";
+               << collection->name() << "'";
     updateDatafileStatistics(document, cache);
 
     document->_uncollectedLogfileEntries -= cache->totalOperationsCount;
@@ -701,7 +702,7 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
   trx.finish(res);
 
   LOG_TOPIC(TRACE, Logger::COLLECTOR) << "wal collector processed operations for collection '"
-             << document->_info.name() << "' with status: " << TRI_errno_string(res);
+             << collection->name() << "' with status: " << TRI_errno_string(res);
 
   return res;
 }

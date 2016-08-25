@@ -473,7 +473,7 @@ static int UseCollections(TRI_transaction_t* trx, int nestingLevel) {
 
       if (trxCollection->_accessType == TRI_TRANSACTION_WRITE &&
           TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE &&
-          !TRI_collection_t::IsSystemName(
+          !LogicalCollection::IsSystemName(
               trxCollection->_collection->_collection->_info.name())) {
         return TRI_ERROR_ARANGO_READ_ONLY;
       }
@@ -974,7 +974,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
                                 bool& waitForSync) {
   TRI_ASSERT(operation.header != nullptr);
 
-  TRI_collection_t* document = operation.document;
+  LogicalCollection* collection = operation.collection;
   bool const isSingleOperationTransaction = IsSingleOperationTransaction(trx);
 
   if (HasHint(trx, TRI_TRANSACTION_HINT_RECOVERY)) {
@@ -982,7 +982,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     waitForSync = false;
   } else if (!waitForSync) {
     // upgrade the info for the transaction based on the collection's settings
-    waitForSync |= document->_info.waitForSync();
+    waitForSync |= collection->waitForSync();
   }
 
   if (waitForSync) {
@@ -1029,7 +1029,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
 
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(
-            trx->_vocbase->id(), document->_info.id(), 
+            trx->_vocbase->id(), collection->cid(), 
             operation.marker, wakeUpSynchronizer,
             localWaitForSync, waitForTick);
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
@@ -1082,21 +1082,23 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     operation.handle();
 
     arangodb::aql::QueryCache::instance()->invalidate(
-        trx->_vocbase, document->_info.name());
+        trx->_vocbase, collection->name());
 
-    ++document->_uncollectedLogfileEntries;
+// FIXME
+    ++(collection->collection()->_uncollectedLogfileEntries);
 
     if (operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
         operation.type == TRI_VOC_DOCUMENT_OPERATION_REPLACE ||
         operation.type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
       // update datafile statistics for the old header
-      document->_datafileStatistics.increaseDead(
+// FIXME
+      collection->collection()->_datafileStatistics.increaseDead(
           operation.oldHeader.getFid(), 1, static_cast<int64_t>(operation.oldHeader.alignedMarkerSize()));
     }
   } else {
     // operation is buffered and might be rolled back
     TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(
-        trx, document->_info.id(), TRI_TRANSACTION_WRITE);
+        trx, collection->cid(), TRI_TRANSACTION_WRITE);
     if (trxCollection->_operations == nullptr) {
       trxCollection->_operations = new std::vector<arangodb::wal::DocumentOperation*>;
       trxCollection->_operations->reserve(16);
@@ -1122,7 +1124,8 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     copy->handle();
   }
 
-  document->setLastRevision(operation.rid, false);
+// FIXME
+  collection->collection()->setLastRevision(operation.rid, false);
 
   TRI_IF_FAILURE("TransactionOperationAtEnd") { return TRI_ERROR_DEBUG; }
 

@@ -30,7 +30,7 @@
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Utils/Transaction.h"
 #include "Utils/TransactionContext.h"
-#include "VocBase/collection.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/transaction.h"
 
 #include <velocypack/Builder.h>
@@ -150,17 +150,17 @@ void AnyIndexIterator::reset() {
 }
 
 
-PrimaryIndex::PrimaryIndex(TRI_collection_t* collection)
+PrimaryIndex::PrimaryIndex(arangodb::LogicalCollection* collection)
     : Index(0, collection,
             std::vector<std::vector<arangodb::basics::AttributeName>>(
-                {{{StaticStrings::KeyString, false}}}),
+                {{arangodb::basics::AttributeName(StaticStrings::KeyString, false)}}),
             true, false),
       _primaryIndex(nullptr) {
   uint32_t indexBuckets = 1;
 
   if (collection != nullptr) {
     // document is a nullptr in the coordinator case
-    indexBuckets = collection->_info.indexBuckets();
+    indexBuckets = collection->indexBuckets();
   }
 
   _primaryIndex = new TRI_PrimaryIndex_t(
@@ -528,13 +528,13 @@ void PrimaryIndex::handleValNode(IndexIteratorContext* context,
     TRI_ASSERT(cid != 0);
     TRI_ASSERT(key != nullptr);
 
-    if (!context->isCluster() && cid != _collection->_info.id()) {
+    if (!context->isCluster() && cid != _collection->cid()) {
       // only continue lookup if the id value is syntactically correct and
       // refers to "our" collection, using local collection id
       return;
     }
 
-    if (context->isCluster() && cid != _collection->_info.planId()) {
+    if (context->isCluster() && cid != _collection->planId()) {
       // only continue lookup if the id value is syntactically correct and
       // refers to "our" collection, using cluster collection id
       return;

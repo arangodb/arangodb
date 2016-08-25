@@ -73,10 +73,10 @@ int AqlTransaction::processCollectionNormal(aql::Collection* collection) {
   return res;
 }
 
-TRI_collection_t* AqlTransaction::documentCollection(TRI_voc_cid_t cid) {
+LogicalCollection* AqlTransaction::documentCollection(TRI_voc_cid_t cid) {
   TRI_transaction_collection_t* trxColl = this->trxCollection(cid);
   TRI_ASSERT(trxColl != nullptr);
-  return trxColl->_collection->_collection;
+  return trxColl->_collection;
   }
 
 

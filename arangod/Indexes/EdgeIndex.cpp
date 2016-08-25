@@ -32,7 +32,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
 #include "Utils/TransactionContext.h"
-#include "VocBase/collection.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/transaction.h"
 
 #include <velocypack/Iterator.h>
@@ -308,11 +308,11 @@ void AnyDirectionEdgeIndexIterator::reset() {
 }
 
 
-EdgeIndex::EdgeIndex(TRI_idx_iid_t iid, TRI_collection_t* collection)
+EdgeIndex::EdgeIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection)
     : Index(iid, collection,
             std::vector<std::vector<arangodb::basics::AttributeName>>(
-                {{{StaticStrings::FromString, false}},
-                 {{StaticStrings::ToString, false}}}),
+                {{arangodb::basics::AttributeName(StaticStrings::FromString, false)},
+                 {arangodb::basics::AttributeName(StaticStrings::ToString, false)}}),
             false, false),
       _edgesFrom(nullptr),
       _edgesTo(nullptr),
@@ -321,7 +321,7 @@ EdgeIndex::EdgeIndex(TRI_idx_iid_t iid, TRI_collection_t* collection)
 
   if (collection != nullptr) {
     // document is a nullptr in the coordinator case
-    _numBuckets = static_cast<size_t>(collection->_info.indexBuckets());
+    _numBuckets = static_cast<size_t>(collection->indexBuckets());
   }
 
   auto context = [this]() -> std::string { return this->context(); };

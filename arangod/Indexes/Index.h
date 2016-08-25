@@ -33,9 +33,9 @@
 
 #include <iosfwd>
 
-struct TRI_collection_t;
-
 namespace arangodb {
+
+class LogicalCollection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Forward Declarations
@@ -137,9 +137,12 @@ class Index {
   Index(Index const&) = delete;
   Index& operator=(Index const&) = delete;
 
-  Index(TRI_idx_iid_t, TRI_collection_t*,
+  Index(TRI_idx_iid_t, LogicalCollection*,
         std::vector<std::vector<arangodb::basics::AttributeName>> const&,
         bool unique, bool sparse);
+
+  Index(TRI_idx_iid_t, LogicalCollection*, arangodb::velocypack::Slice const&,
+        bool);
 
   explicit Index(arangodb::velocypack::Slice const&);
 
@@ -254,7 +257,7 @@ class Index {
   /// @brief return the underlying collection
   //////////////////////////////////////////////////////////////////////////////
 
-  inline TRI_collection_t* collection() const {
+  inline LogicalCollection* collection() const {
     return _collection;
   }
 
@@ -322,6 +325,8 @@ class Index {
   virtual IndexType type() const = 0;
   virtual bool isPersistent() const { return false; }
   virtual bool canBeDropped() const = 0;
+
+  virtual bool matchesDefinition(arangodb::velocypack::Slice const&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the index is sorted
@@ -400,13 +405,13 @@ class Index {
  protected:
   TRI_idx_iid_t const _iid;
 
-  TRI_collection_t* _collection;
+  LogicalCollection* _collection;
 
   std::vector<std::vector<arangodb::basics::AttributeName>> _fields;
 
-  bool const _unique;
+  mutable bool _unique;
 
-  bool const _sparse;
+  mutable bool _sparse;
 
   double _selectivityEstimate;
 };

@@ -26,9 +26,10 @@
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
-#include "Basics/VelocyPackHelper.h"
+#include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
-#include "VocBase/collection.h"
+#include "Basics/VelocyPackHelper.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
 #include <ostream>
@@ -38,7 +39,7 @@
 using namespace arangodb;
 
 Index::Index(
-    TRI_idx_iid_t iid, TRI_collection_t* collection,
+    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     bool unique, bool sparse)
     : _iid(iid),
@@ -49,6 +50,43 @@ Index::Index(
       _selectivityEstimate(0.0) {
   // note: _collection can be a nullptr in the cluster coordinator case!!
   // note: _selectivityEstimate is only used in cluster coordinator case
+}
+
+Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
+             VPackSlice const& slice,
+             bool allowExpansion)
+    : _iid(iid),
+      _collection(collection),
+      _fields(),
+      _unique(arangodb::basics::VelocyPackHelper::getBooleanValue(
+          slice, "unique", false)),
+      _sparse(arangodb::basics::VelocyPackHelper::getBooleanValue(
+          slice, "sparse", false)),
+      _selectivityEstimate(0.0) {
+  VPackSlice const fields = slice.get("fields");
+
+  if (fields.isArray()) {
+    size_t const n = static_cast<size_t>(fields.length());
+    _fields.reserve(n);
+
+    for (auto const& name : VPackArrayIterator(fields)) {
+      if (!name.isString()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "invalid index description");
+      }
+
+      std::vector<arangodb::basics::AttributeName> parsedAttributes;
+      TRI_ParseAttributeString(name.copyString(), parsedAttributes, allowExpansion);
+      _fields.emplace_back(std::move(parsedAttributes));
+    }
+  } else if (!fields.isNone()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "invalid index description");
+  }
+  // fields is NOT mandatory for all indexes.
+  // But if it is contained it has to be an array.
+  // Every index has to validate in it's own constructor if _fields
+  // is correct.
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -84,7 +122,7 @@ Index::Index(VPackSlice const& slice)
     }
 
     std::vector<arangodb::basics::AttributeName> parsedAttributes;
-    TRI_ParseAttributeString(name.copyString(), parsedAttributes);
+    TRI_ParseAttributeString(name.copyString(), parsedAttributes, true);
     _fields.emplace_back(std::move(parsedAttributes));
   }
 
@@ -334,8 +372,8 @@ std::string Index::context() const {
   std::ostringstream result;
 
   result << "index { id: " << id() << ", type: " << typeName()
-         << ", collection: " << _collection->_vocbase->name() << "/"
-         << _collection->_info.name()
+         << ", collection: " << _collection->dbName() << "/"
+         << _collection->name()
          << ", unique: " << (_unique ? "true" : "false") << ", fields: ";
   result << "[";
   for (size_t i = 0; i < _fields.size(); ++i) {
@@ -416,6 +454,44 @@ std::shared_ptr<VPackBuilder> Index::toVelocyPackFigures() const {
 void Index::toVelocyPackFigures(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add("memory", VPackValue(memory()));
+}
+
+/// @brief default implementation for matchesDefinition
+bool Index::matchesDefinition(VPackSlice const& info) const {
+  auto value = info.get("fields");
+  if (!value.isArray()) {
+    return false;
+  }
+
+  size_t const n = static_cast<size_t>(value.length());
+  if (n != _fields.size()) {
+    return false;
+  }
+  if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
+                     info, "unique", false)) {
+    return false;
+  }
+  if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
+                     info, "sparse", false)) {
+    return false;
+  }
+  // This check takes ordering of attributes into account.
+  std::vector<arangodb::basics::AttributeName> translate;
+  for (size_t i = 0; i < n; ++i) {
+    translate.clear();
+    VPackSlice f = value.at(i);
+    if (!f.isString()) {
+      // Invalid field definition!
+      return false;
+    }
+    arangodb::StringRef in(f);
+    TRI_ParseAttributeString(in, translate, true);
+    if (!arangodb::basics::AttributeName::isIdentical(_fields[i], translate,
+                                                      false)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

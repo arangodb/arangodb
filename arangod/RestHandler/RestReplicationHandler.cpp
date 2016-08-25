@@ -1768,7 +1768,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
 
     // create a dummy primary index
     {
-      TRI_collection_t* doc = nullptr;
+      arangodb::LogicalCollection* doc = nullptr;
       std::unique_ptr<arangodb::PrimaryIndex> primaryIndex(
           new arangodb::PrimaryIndex(doc));
       toMerge.openObject();
@@ -1875,10 +1875,10 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
   try {
     CollectionGuard guard(_vocbase, name.c_str());
 
-    TRI_collection_t* document = guard.collection()->_collection;
+    LogicalCollection* collection = guard.collection();
 
     SingleCollectionTransaction trx(
-        StandaloneTransactionContext::Create(_vocbase), document->_info.id(),
+        StandaloneTransactionContext::Create(_vocbase), collection->cid(),
         TRI_TRANSACTION_WRITE);
 
     int res = trx.begin();
@@ -1890,11 +1890,11 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
     }
 
     for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
-      arangodb::Index* idx = nullptr;
+      std::shared_ptr<arangodb::Index> idx;
 
       // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
 
-      res = document->indexFromVelocyPack(&trx, idxDef, &idx);
+      res = collection->restoreIndex(&trx, idxDef, idx);
 
       if (res == TRI_ERROR_NOT_IMPLEMENTED) {
         continue;
@@ -1907,7 +1907,7 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
       } else {
         TRI_ASSERT(idx != nullptr);
 
-        res = document->saveIndex(idx, true);
+        res = collection->saveIndex(idx.get(), true);
 
         if (res != TRI_ERROR_NO_ERROR) {
           errorMsg =

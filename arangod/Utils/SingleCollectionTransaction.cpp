@@ -81,10 +81,9 @@ TRI_transaction_collection_t* SingleCollectionTransaction::trxCollection() {
     _trxCollection =
         TRI_GetCollectionTransaction(_trx, _cid, _accessType);
 
-    if (_trxCollection != nullptr &&
-        _trxCollection->_collection != nullptr) {
+    if (_trxCollection != nullptr) {
       _documentCollection =
-          _trxCollection->_collection->_collection;
+          _trxCollection->_collection;
     }
   }
 
@@ -98,7 +97,7 @@ TRI_transaction_collection_t* SingleCollectionTransaction::trxCollection() {
 /// in two different situations
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_collection_t* SingleCollectionTransaction::documentCollection() {
+LogicalCollection* SingleCollectionTransaction::documentCollection() {
   if (_documentCollection != nullptr) {
     return _documentCollection;
   }

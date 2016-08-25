@@ -63,11 +63,11 @@ static void ExtractWords(std::vector<std::string>& words,
 }
 
 FulltextIndex::FulltextIndex(TRI_idx_iid_t iid,
-                             TRI_collection_t* collection,
+                             arangodb::LogicalCollection* collection,
                              std::string const& attribute, int minWordLength)
     : Index(iid, collection,
             std::vector<std::vector<arangodb::basics::AttributeName>>{
-                {{attribute, false}}},
+                {arangodb::basics::AttributeName(attribute, false)}},
             false, true),
       _fulltextIndex(nullptr),
       _minWordLength(minWordLength > 0 ? minWordLength : 1) {
@@ -81,6 +81,48 @@ FulltextIndex::FulltextIndex(TRI_idx_iid_t iid,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 }
+
+FulltextIndex::FulltextIndex(TRI_idx_iid_t iid,
+                             arangodb::LogicalCollection* collection,
+                             VPackSlice const& info)
+    : Index(iid, collection, info, false),
+      _fulltextIndex(nullptr),
+      _minWordLength(TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT) {
+  TRI_ASSERT(iid != 0);
+
+  VPackSlice const value = info.get("minLength");
+
+  if (value.isNumber()) {
+    _minWordLength = value.getNumericValue<int>();
+    if (_minWordLength <= 0) { 
+      // The min length cannot be negative.
+      _minWordLength = 1;
+    }
+  } else if (!value.isNone()) {
+    // minLength defined but no number
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "<minLength> must be a number");
+  }
+  _unique = false;
+  _sparse = true;
+  if (_fields.size() != 1) {
+    // We need exactly 1 attribute
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+  auto& attribute = _fields[0];
+  _attr.reserve(attribute.size());
+  for (auto& a : attribute) {
+    _attr.emplace_back(a.name);
+  }
+
+  _fulltextIndex = TRI_CreateFtsIndex(2048, 1, 1);
+
+  if (_fulltextIndex == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+}
+
+
 
 FulltextIndex::~FulltextIndex() {
   if (_fulltextIndex != nullptr) {

@@ -1487,7 +1487,7 @@ int ClusterInfo::ensureIndexCoordinator(
     }
     
     std::shared_ptr<VPackBuilder> tmp = std::make_shared<VPackBuilder>();
-    tmp->add(c->getIndexes());
+    c->getIndexesVPack(*(tmp.get()), true);
     MUTEX_LOCKER(guard, numberOfShardsMutex);
     {
       numberOfShards = c->numberOfShards();
@@ -1722,6 +1722,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   // we first get the previous value and then do a compare and swap operation.
 
   
+  VPackBuilder tmp;
   VPackSlice indexes;
   {
     std::shared_ptr<LogicalCollection> c =
@@ -1732,7 +1733,8 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
     if (c == nullptr) {
       return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
     }
-    indexes = c->getIndexes();
+    c->getIndexesVPack(tmp, true);
+    indexes = tmp.slice();
     
     if (!indexes.isArray()) {
       // no indexes present, so we can't delete our index

@@ -727,8 +727,9 @@ static void JS_GetCollectionInfoClusterInfo(
     shardIds->Set(TRI_V8_STD_STRING(p.first), list);
   }
   result->Set(TRI_V8_ASCII_STRING("shards"), shardIds);
-
-  v8::Handle<v8::Value> indexes = TRI_VPackToV8(isolate, ci->getIndexes());
+  VPackBuilder tmp;
+  ci->getIndexesVPack(tmp, true);
+  v8::Handle<v8::Value> indexes = TRI_VPackToV8(isolate, tmp.slice());
   result->Set(TRI_V8_ASCII_STRING("indexes"), indexes);
 
   TRI_V8_RETURN(result);

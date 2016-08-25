@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "VocBase/collection.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/transaction.h"
 
 namespace arangodb {
@@ -37,10 +38,11 @@ class CollectionReadLocker {
   CollectionReadLocker& operator=(CollectionReadLocker const&) = delete;
 
   /// @brief create the locker
-  CollectionReadLocker(TRI_collection_t* document, bool doLock)
-      : _document(document), _doLock(false) {
+  CollectionReadLocker(LogicalCollection* collection, bool doLock)
+      : _collection(collection), _doLock(false) {
     if (doLock) {
-      int res = _document->beginReadTimed(0, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
+      int res = _collection->collection()->beginReadTimed(
+          0, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
 
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
@@ -56,14 +58,14 @@ class CollectionReadLocker {
   /// @brief release the lock
   inline void unlock() {
     if (_doLock) {
-      _document->endRead();
+      _collection->collection()->endRead();
       _doLock = false;
     }
   }
 
  private:
   /// @brief collection pointer
-  TRI_collection_t* _document;
+  LogicalCollection* _collection;
 
   /// @brief lock flag
   bool _doLock;

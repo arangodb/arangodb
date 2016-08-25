@@ -25,6 +25,7 @@
 #define ARANGOD_VOCBASE_LOGICAL_COLLECTION_H 1
 
 #include "Basics/Common.h"
+#include "VocBase/MasterPointers.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -35,13 +36,23 @@ namespace velocypack {
 class Slice;
 }
 
+namespace wal {
+struct DocumentOperation;
+}
+
 typedef std::string ServerID;      // ID of a server
 typedef std::string DatabaseID;    // ID/name of a database
 typedef std::string CollectionID;  // ID of a collection
 typedef std::string ShardID;       // ID of a shard
 typedef std::unordered_map<ShardID, std::vector<ServerID>> ShardMap;
 
+class Index;
+class KeyGenerator;
+struct OperationOptions;
 class PhysicalCollection;
+class PrimaryIndex;
+class StringRef;
+class Transaction;
 
 class LogicalCollection {
  public:
@@ -60,6 +71,15 @@ class LogicalCollection {
   LogicalCollection& operator=(LogicalCollection const&) = delete;
   LogicalCollection() = delete;
 
+  /// @brief determine whether a collection name is a system collection name
+  static inline bool IsSystemName(std::string const& name) {
+    if (name.empty()) {
+      return false;
+    }
+    return name[0] == '_';
+  }
+
+ 
   // SECTION: Meta Information
   uint32_t version() const;
 
@@ -70,6 +90,10 @@ class LogicalCollection {
 
   TRI_col_type_e type() const;
 
+  inline bool useSecondaryIndexes() const { return _useSecondaryIndexes; }
+
+  void useSecondaryIndexes(bool value) { _useSecondaryIndexes = value; }
+  
   std::string name() const;
   std::string dbName() const;
   std::string const& path() const;
@@ -100,7 +124,13 @@ class LogicalCollection {
   // SECTION: Indexes
   uint32_t indexBuckets() const;
 
-  arangodb::velocypack::Slice getIndexes() const;
+  std::vector<std::shared_ptr<arangodb::Index>> const& getIndexes() const;
+
+  // WARNING: Make sure that this LogicalCollection Instance
+  // is somehow protected. If it goes out of all scopes
+  // or it's indexes are freed the pointer returned will get invalidated.
+  arangodb::PrimaryIndex* primaryIndex() const;
+  void getIndexesVPack(arangodb::velocypack::Builder&, bool) const;
 
   // SECTION: Replication
   int replicationFactor() const;
@@ -140,76 +170,242 @@ class LogicalCollection {
   int update(VocbaseCollectionInfo const&);
 
   PhysicalCollection* getPhysical() const;
+  TRI_collection_t* collection() const {
+    return _collection;
+  }
 
- private:
-  // SECTION: Private variables
-
-  // SECTION: Meta Information
-  //
-  // @brief Internal version used for caching
-  uint32_t _internalVersion;
-
-  // @brief Local collection id
-  TRI_voc_cid_t const _cid;
-
-  // @brief Global collection id
-  TRI_voc_cid_t const _planId;
-
-  // @brief Collection type
-  TRI_col_type_e const _type;
-
-  // @brief Collection Name
-  std::string _name;
-
-  // @brief Current state of this colletion
-  TRI_vocbase_col_status_e _status;
-
-  // SECTION: Properties
-  bool _isLocal;
-  bool _isDeleted;
-  bool _doCompact;
-  bool const _isSystem;
-  bool const _isVolatile;
-  bool _waitForSync;
-  TRI_voc_size_t _journalSize;
-
-  // SECTION: Key Options
-  // TODO Really VPack?
-  std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const>
-      _keyOptions;  // options for key creation
+  int open(bool);
 
   // SECTION: Indexes
-  uint32_t _indexBuckets;
 
-  // TODO Really VPack?
-  std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const>
-      _indexes;  // options for key creation
+  /// @brief Create a new Index based on VelocyPack description
+  std::shared_ptr<arangodb::Index> createIndex(
+      arangodb::Transaction*, arangodb::velocypack::Slice const&);
 
+  /// @brief Find index by definition
+  std::shared_ptr<Index> lookupIndex(arangodb::velocypack::Slice const&) const;
 
-  // SECTION: Replication
-  int const _replicationFactor;
+  /// @brief Find index by iid
+  std::shared_ptr<Index> lookupIndex(TRI_idx_iid_t) const;
 
-  // SECTION: Sharding
-  int const _numberOfShards;
-  bool const _allowUserKeys;
-  std::vector<std::string> _shardKeys;
-  // This is shared_ptr because it is thread-safe
-  // A thread takes a copy of this, another one updates this
-  // the first one still has a valid copy
-  std::shared_ptr<ShardMap> _shardIds;
+  // SECTION: Indexes (local only)
 
-  TRI_vocbase_t* _vocbase;
+  /// @brief Restores an index from VelocyPack.
+  int restoreIndex(arangodb::Transaction*, arangodb::velocypack::Slice const&,
+                   std::shared_ptr<arangodb::Index>&);
 
-  // SECTION: Local Only
-  std::string const _path;
-  PhysicalCollection* _physical;
+  /// @brief Fill indexes used in recovery
+  int fillIndexes(arangodb::Transaction*);
 
-// TODO REMOVE ME!
+  /// @brief Saves Index to file
+  int saveIndex(arangodb::Index* idx, bool writeMarker);
+
+  bool dropIndex(TRI_idx_iid_t iid, bool writeMarker);
+
+  int cleanupIndexes();
+
+  // SECTION: Index access (local only)
+  
+  int read(arangodb::Transaction*, std::string const&, TRI_doc_mptr_t*, bool);
+  int read(arangodb::Transaction*, arangodb::StringRef const&, TRI_doc_mptr_t*, bool);
+  int insert(arangodb::Transaction*, arangodb::velocypack::Slice const,
+             TRI_doc_mptr_t*, arangodb::OperationOptions&, TRI_voc_tick_t&, bool);
+  int update(arangodb::Transaction*, arangodb::velocypack::Slice const,
+             TRI_doc_mptr_t*, arangodb::OperationOptions&, TRI_voc_tick_t&, bool,
+             VPackSlice&, TRI_doc_mptr_t&);
+  int replace(arangodb::Transaction*, arangodb::velocypack::Slice const,
+             TRI_doc_mptr_t*, arangodb::OperationOptions&, TRI_voc_tick_t&, bool,
+             VPackSlice&, TRI_doc_mptr_t&);
+  int remove(arangodb::Transaction*, arangodb::velocypack::Slice const,
+             arangodb::OperationOptions&, TRI_voc_tick_t&, bool, 
+             VPackSlice&, TRI_doc_mptr_t&);
+
+  int rollbackOperation(arangodb::Transaction*, TRI_voc_document_operation_e, 
+                        TRI_doc_mptr_t*, TRI_doc_mptr_t const*);
+
+  // TODO Make Private and IndexFiller als friend
+  /// @brief initializes an index with all existing documents
+  int fillIndex(arangodb::Transaction*, arangodb::Index*,
+                bool skipPersistent = true);
+
+ private:
+  // SECTION: Private functions
+
+  // SECTION: Index creation
+
+  /// @brief creates the initial indexes for the collection
  public:
-  TRI_collection_t* _collection;
+  // FIXME Should be private
+  int createInitialIndexes();
+ private:
 
-  mutable arangodb::basics::ReadWriteLock _lock;  // lock protecting the status and name
+  bool removeIndex(TRI_idx_iid_t iid);
 
+  // TODO: THROW OR RETURN ERROR?
+  void addIndex(std::shared_ptr<arangodb::Index>);
+  void addIndexCoordinator(arangodb::velocypack::Slice);
+
+  // SECTION: Indexes (local only)
+
+  /// @brief fill an index in batches
+  int fillIndexBatch(arangodb::Transaction* trx, arangodb::Index* idx);
+
+  /// @brief fill an index sequentially
+  int fillIndexSequential(arangodb::Transaction* trx, arangodb::Index* idx);
+
+  // SECTION: Index access (local only)
+  int lookupDocument(arangodb::Transaction*, VPackSlice const,
+                     TRI_doc_mptr_t*&);
+
+  int checkRevision(arangodb::Transaction*, arangodb::velocypack::Slice const,
+                    arangodb::velocypack::Slice const);
+
+  int updateDocument(arangodb::Transaction*, TRI_voc_rid_t, TRI_doc_mptr_t*,
+                     arangodb::wal::DocumentOperation&,
+                     TRI_doc_mptr_t*, bool&);
+  int insertDocument(arangodb::Transaction*, TRI_doc_mptr_t*,
+                     arangodb::wal::DocumentOperation&, TRI_doc_mptr_t*,
+                     bool&);
+
+  int insertPrimaryIndex(arangodb::Transaction*, TRI_doc_mptr_t*);
+ public:
+  // FIXME needs to be private
+  int deletePrimaryIndex(arangodb::Transaction*, TRI_doc_mptr_t const*);
+ private:
+
+  int insertSecondaryIndexes(arangodb::Transaction*, TRI_doc_mptr_t const*,
+                             bool);
+
+  int deleteSecondaryIndexes(arangodb::Transaction*, TRI_doc_mptr_t const*,
+                             bool);
+
+  // SECTION: Document pre commit preperation (only local)
+
+  /// @brief new object for insert, value must have _key set correctly.
+  int newObjectForInsert(
+      arangodb::Transaction* trx,
+      arangodb::velocypack::Slice const& value,
+      arangodb::velocypack::Slice const& fromSlice,
+      arangodb::velocypack::Slice const& toSlice,
+      bool isEdgeCollection,
+      uint64_t& hash,
+      arangodb::velocypack::Builder& builder,
+      bool isRestore);
+
+  /// @brief new object for replace
+  void newObjectForReplace(
+      arangodb::Transaction* trx,
+      arangodb::velocypack::Slice const& oldValue,
+      arangodb::velocypack::Slice const& newValue,
+      arangodb::velocypack::Slice const& fromSlice,
+      arangodb::velocypack::Slice const& toSlice,
+      bool isEdgeCollection,
+      std::string const& rev,
+      arangodb::velocypack::Builder& builder);
+
+  /// @brief merge two objects for update
+  void mergeObjectsForUpdate(
+      arangodb::Transaction* trx,
+      arangodb::velocypack::Slice const& oldValue,
+      arangodb::velocypack::Slice const& newValue,
+      bool isEdgeCollection,
+      std::string const& rev,
+      bool mergeObjects, bool keepNull,
+      arangodb::velocypack::Builder& b);
+
+  /// @brief new object for remove, must have _key set
+  void newObjectForRemove(
+      arangodb::Transaction* trx,
+      arangodb::velocypack::Slice const& oldValue,
+      std::string const& rev,
+      arangodb::velocypack::Builder& builder);
+
+
+
+   private:
+    // SECTION: Private variables
+
+    // SECTION: Meta Information
+    //
+    // @brief Internal version used for caching
+    uint32_t _internalVersion;
+
+    // @brief Local collection id
+    TRI_voc_cid_t const _cid;
+
+    // @brief Global collection id
+    TRI_voc_cid_t const _planId;
+
+    // @brief Collection type
+    TRI_col_type_e const _type;
+
+    // @brief Collection Name
+    std::string _name;
+
+    // @brief Current state of this colletion
+    TRI_vocbase_col_status_e _status;
+
+    // SECTION: Properties
+    bool _isLocal;
+    bool _isDeleted;
+    bool _doCompact;
+    bool const _isSystem;
+    bool const _isVolatile;
+    bool _waitForSync;
+    TRI_voc_size_t _journalSize;
+
+    // SECTION: Key Options
+    // TODO Really VPack?
+    std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const>
+        _keyOptions;  // options for key creation
+
+    // SECTION: Indexes
+    uint32_t _indexBuckets;
+
+    std::vector<std::shared_ptr<arangodb::Index>> _indexes;
+
+    // SECTION: Replication
+    int const _replicationFactor;
+
+    // SECTION: Sharding
+    int const _numberOfShards;
+    bool const _allowUserKeys;
+    std::vector<std::string> _shardKeys;
+    // This is shared_ptr because it is thread-safe
+    // A thread takes a copy of this, another one updates this
+    // the first one still has a valid copy
+    std::shared_ptr<ShardMap> _shardIds;
+
+    TRI_vocbase_t* _vocbase;
+
+    // SECTION: Local Only
+    size_t _cleanupIndexes;
+    size_t _persistentIndexes;
+    std::string const _path;
+    PhysicalCollection* _physical;
+    public:
+    // FIXME Must be private. OpenIterator uses this.
+    arangodb::MasterPointers _masterPointers;
+    private:
+
+    // whether or not secondary indexes should be filled
+    bool _useSecondaryIndexes;
+
+    // FIXME Both of them are not initialized properly!
+    public:
+    // FIXME Must be private. OpenIterator uses this.
+    int64_t _numberDocuments;
+    private:
+    std::unique_ptr<arangodb::KeyGenerator> _keyGenerator;
+
+    // TODO REMOVE ME!
+   public:
+    TRI_collection_t* _collection;
+
+    mutable arangodb::basics::ReadWriteLock
+        _lock;  // lock protecting the status and name
+    mutable arangodb::basics::ReadWriteLock
+        _idxLock;  // lock protecting the indexes
 };
 }  // namespace arangodb
 

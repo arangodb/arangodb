@@ -83,8 +83,8 @@ void CleanupThread::run() {
 
       for (auto& collection : collections) {
         TRI_ASSERT(collection != nullptr);
-        TRI_collection_t* document;
 
+        TRI_collection_t* document = nullptr;
         {
           READ_LOCKER(readLocker, collection->_lock);
           document = collection->_collection;
@@ -103,7 +103,7 @@ void CleanupThread::run() {
         // maybe cleanup indexes, unload the collection or some datafiles
         // clean indexes?
         if (iterations % cleanupIndexIterations() == 0) {
-          document->cleanupIndexes();
+          collection->cleanupIndexes();
         }
 
         cleanupCollection(collection, document);

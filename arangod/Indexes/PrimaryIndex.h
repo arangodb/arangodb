@@ -122,7 +122,7 @@ class PrimaryIndex final : public Index {
  public:
   PrimaryIndex() = delete;
 
-  explicit PrimaryIndex(TRI_collection_t*);
+  explicit PrimaryIndex(arangodb::LogicalCollection*);
 
   explicit PrimaryIndex(VPackSlice const&);
 

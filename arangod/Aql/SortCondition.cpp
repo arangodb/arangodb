@@ -78,7 +78,7 @@ SortCondition::SortCondition(
         
         while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           fieldNames.emplace_back(
-              arangodb::basics::AttributeName(node->getString()));
+              arangodb::basics::AttributeName(node->getString(), false));
           node = node->getMember(0);
         }
 

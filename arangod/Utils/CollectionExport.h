@@ -62,7 +62,8 @@ class CollectionExport {
 
  private:
   arangodb::CollectionGuard* _guard;
-  struct TRI_collection_t* _document;
+  LogicalCollection* _collection;
+  TRI_collection_t* _document;
   arangodb::DocumentDitch* _ditch;
   std::string const _name;
   arangodb::CollectionNameResolver _resolver;

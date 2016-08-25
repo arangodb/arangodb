@@ -38,7 +38,7 @@ class LogicalCollection;
 /// @brief looks up a index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::Index* TRI_LookupIndexByHandle(
+std::shared_ptr<arangodb::Index> TRI_LookupIndexByHandle(
     v8::Isolate* isolate, arangodb::CollectionNameResolver const* resolver,
     arangodb::LogicalCollection const* collection, v8::Handle<v8::Value> const val,
     bool ignoreNotFound);

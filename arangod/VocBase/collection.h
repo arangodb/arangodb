@@ -249,15 +249,7 @@ struct TRI_collection_t {
   /// @brief opens an existing collection
   static TRI_collection_t* open(TRI_vocbase_t*, arangodb::LogicalCollection*, bool);
 
-  /// @brief determine whether a collection name is a system collection name
-  static inline bool IsSystemName(std::string const& name) {
-    if (name.empty()) {
-      return false;
-    }
-    return name[0] == '_';
-  }
-
-  /// @brief checks if a collection name is allowed
+ /// @brief checks if a collection name is allowed
   /// returns true if the name is allowed and false otherwise
   static bool IsAllowedName(bool isSystem, std::string const& name);
   
@@ -270,11 +262,6 @@ struct TRI_collection_t {
   void setCompactionStatus(char const*);
   void getCompactionStatus(char const*&, char*, size_t);
   
-  void addIndex(arangodb::Index*);
-  std::vector<arangodb::Index*> const& allIndexes() const;
-  arangodb::Index* lookupIndex(TRI_idx_iid_t) const;
-  arangodb::PrimaryIndex* primaryIndex();
- 
   TRI_doc_collection_info_t* figures();
 
   int beginRead();
@@ -283,10 +270,6 @@ struct TRI_collection_t {
   int endWrite();
   int beginReadTimed(uint64_t, uint64_t);
   int beginWriteTimed(uint64_t, uint64_t);
-
-  /// @brief updates the parameter info block
-  int updateCollectionInfo(TRI_vocbase_t* vocbase,
-                           arangodb::velocypack::Slice const& slice, bool doSync);
 
   // datafile management
   
@@ -321,10 +304,6 @@ struct TRI_collection_t {
   
   arangodb::Ditches* ditches() { return &_ditches; }
   
-  inline bool useSecondaryIndexes() const { return _useSecondaryIndexes; }
-
-  void useSecondaryIndexes(bool value) { _useSecondaryIndexes = value; }
-  
   void setPath(std::string const& path) { _path = path; }
 
   /// @brief renames a collection
@@ -339,96 +318,6 @@ struct TRI_collection_t {
   /// @brief closes an open collection
   int close();
   
-  int deletePrimaryIndex(arangodb::Transaction*, TRI_doc_mptr_t const*);
-  
-  // function that is called to garbage-collect the collection's indexes
-  int cleanupIndexes();
-
-  int read(arangodb::Transaction*, std::string const&, TRI_doc_mptr_t*, bool);
-  int read(arangodb::Transaction*, arangodb::StringRef const&, TRI_doc_mptr_t*, bool);
-  int insert(arangodb::Transaction*, arangodb::velocypack::Slice const,
-             TRI_doc_mptr_t*, arangodb::OperationOptions&, TRI_voc_tick_t&, bool);
-  int update(arangodb::Transaction*, arangodb::velocypack::Slice const,
-             TRI_doc_mptr_t*, arangodb::OperationOptions&, TRI_voc_tick_t&, bool,
-             VPackSlice&, TRI_doc_mptr_t&);
-  int replace(arangodb::Transaction*, arangodb::velocypack::Slice const,
-             TRI_doc_mptr_t*, arangodb::OperationOptions&, TRI_voc_tick_t&, bool,
-             VPackSlice&, TRI_doc_mptr_t&);
-  int remove(arangodb::Transaction*, arangodb::velocypack::Slice const,
-             arangodb::OperationOptions&, TRI_voc_tick_t&, bool, 
-             VPackSlice&, TRI_doc_mptr_t&);
-
-  int rollbackOperation(arangodb::Transaction*, TRI_voc_document_operation_e, 
-                        TRI_doc_mptr_t*, TRI_doc_mptr_t const*);
-
-  /// @brief fill the additional (non-primary) indexes
-  int fillIndexes(arangodb::Transaction* trx,
-                  arangodb::LogicalCollection* collection);
-
-  /// @brief initializes an index with all existing documents
-  int fillIndex(arangodb::Transaction* trx,
-                arangodb::Index* idx,
-                bool skipPersistent = true);
-
-  /// @brief saves an index
-  int saveIndex(arangodb::Index* idx, bool writeMarker);
-
-  /// @brief returns a description of all indexes
-  /// the caller must have read-locked the underyling collection!
-  std::vector<std::shared_ptr<arangodb::velocypack::Builder>>
-  indexesToVelocyPack(bool withFigures);
-
-  /// @brief drops an index, including index file removal and replication
-  bool dropIndex(TRI_idx_iid_t iid, bool writeMarker);
-
-  /// @brief finds a geo index, list style
-  /// Note that the caller must hold at least a read-lock.
-  arangodb::Index* lookupGeoIndex1(std::vector<std::string> const&, bool);
-
-  /// @brief finds a geo index, attribute style
-  arangodb::Index* lookupGeoIndex2(std::vector<std::string> const&,
-    std::vector<std::string> const&);
-
-  /// @brief ensures that a geo index exists, list style
-  arangodb::Index* ensureGeoIndex1(arangodb::Transaction*, TRI_idx_iid_t,
-    std::string const&, bool, bool&);
-
-  /// @brief ensures that a geo index exists, attribute style
-  arangodb::Index* ensureGeoIndex2(arangodb::Transaction*, TRI_idx_iid_t,
-    std::string const&, std::string const&, bool&);
-
-  /// @brief finds a hash index
-  arangodb::Index* lookupHashIndex(std::vector<std::string> const&, int, bool);
-
-  /// @brief ensures that a hash index exists
-  arangodb::Index* ensureHashIndex(arangodb::Transaction* trx, TRI_idx_iid_t,
-    std::vector<std::string> const&, bool, bool, bool&);
-
-  /// @brief finds a skiplist index
-  arangodb::Index* lookupSkiplistIndex(std::vector<std::string> const&, int, bool);
-
-  /// @brief ensures that a skiplist index exists
-  arangodb::Index* ensureSkiplistIndex(arangodb::Transaction* trx, TRI_idx_iid_t,
-    std::vector<std::string> const&, bool, bool, bool&);
-
-  /// @brief finds a RocksDB index
-  arangodb::Index* lookupRocksDBIndex(std::vector<std::string> const&, int, bool);
-
-  /// @brief ensures that a RocksDB index exists
-  arangodb::Index* ensureRocksDBIndex(arangodb::Transaction* trx, TRI_idx_iid_t,
-    std::vector<std::string> const&, bool, bool, bool&);
-  
-  /// @brief finds a fulltext index
-  arangodb::Index* lookupFulltextIndex(std::string const&, int);
-
-  /// @brief ensures that a fulltext index exists
-  arangodb::Index* ensureFulltextIndex(arangodb::Transaction* trx, TRI_idx_iid_t,
-    std::string const&, int, bool&);
-
-  /// @brief create an index, based on a VelocyPack description
-  int indexFromVelocyPack(arangodb::Transaction* trx, 
-      VPackSlice const& slice, arangodb::Index** idx);
-
   /// @brief closes an open collection
   int unload(bool updateStatus);
 
@@ -438,21 +327,6 @@ struct TRI_collection_t {
   /// @brief enumerate all indexes of the collection, but don't fill them yet
   int detectIndexes(arangodb::Transaction*);
 
-  arangodb::Index* removeIndex(TRI_idx_iid_t);
-
-  int lookupDocument(arangodb::Transaction*, arangodb::velocypack::Slice const,
-                     TRI_doc_mptr_t*&);
-  int checkRevision(arangodb::Transaction*, arangodb::velocypack::Slice const,
-                    arangodb::velocypack::Slice const);
-  int updateDocument(arangodb::Transaction*, TRI_voc_rid_t, TRI_doc_mptr_t*,
-                     arangodb::wal::DocumentOperation&,
-                     TRI_doc_mptr_t*, bool&);
-  int insertDocument(arangodb::Transaction*, TRI_doc_mptr_t*,
-                     arangodb::wal::DocumentOperation&, TRI_doc_mptr_t*,
-                     bool&);
-  int insertPrimaryIndex(arangodb::Transaction*, TRI_doc_mptr_t*);
-  int insertSecondaryIndexes(arangodb::Transaction*, TRI_doc_mptr_t const*,
-                             bool);
   /// @brief seal a datafile
   int sealDatafile(TRI_datafile_t* datafile, bool isCompactor);
 
@@ -472,51 +346,6 @@ struct TRI_collection_t {
  
   int deleteSecondaryIndexes(arangodb::Transaction*, TRI_doc_mptr_t const*,
                              bool);
-
-  /// @brief new object for insert, value must have _key set correctly.
-  int newObjectForInsert(
-      arangodb::Transaction* trx,
-      arangodb::velocypack::Slice const& value,
-      arangodb::velocypack::Slice const& fromSlice,
-      arangodb::velocypack::Slice const& toSlice,
-      bool isEdgeCollection,
-      uint64_t& hash,
-      arangodb::velocypack::Builder& builder,
-      bool isRestore);
-
-  /// @brief new object for replace
-  void newObjectForReplace(
-      arangodb::Transaction* trx,
-      arangodb::velocypack::Slice const& oldValue,
-      arangodb::velocypack::Slice const& newValue,
-      arangodb::velocypack::Slice const& fromSlice,
-      arangodb::velocypack::Slice const& toSlice,
-      bool isEdgeCollection,
-      std::string const& rev,
-      arangodb::velocypack::Builder& builder);
-
-  /// @brief merge two objects for update
-  void mergeObjectsForUpdate(
-      arangodb::Transaction* trx,
-      arangodb::velocypack::Slice const& oldValue,
-      arangodb::velocypack::Slice const& newValue,
-      bool isEdgeCollection,
-      std::string const& rev,
-      bool mergeObjects, bool keepNull,
-      arangodb::velocypack::Builder& b);
-
-  /// @brief new object for remove, must have _key set
-  void newObjectForRemove(
-      arangodb::Transaction* trx,
-      arangodb::velocypack::Slice const& oldValue,
-      std::string const& rev,
-      arangodb::velocypack::Builder& builder);
-
-  /// @brief fill an index in batches
-  int fillIndexBatch(arangodb::Transaction* trx, arangodb::Index* idx);
-
-  /// @brief fill an index sequentially
-  int fillIndexSequential(arangodb::Transaction* trx, arangodb::Index* idx);
 
  public:
   TRI_vocbase_t* _vocbase;
@@ -552,29 +381,13 @@ struct TRI_collection_t {
   
  private:
   mutable arangodb::Ditches _ditches;
-
-  std::vector<arangodb::Index*> _indexes;
-
-  // whether or not any of the indexes may need to be garbage-collected
-  // this flag may be modifying when an index is added to a collection
-  // if true, the cleanup thread will periodically call the cleanup functions of
-  // the collection's indexes that support cleanup
-  size_t _cleanupIndexes;
-
-  // number of persistent indexes
-  size_t _persistentIndexes;
+  mutable arangodb::basics::ReadWriteLock _lock;  // lock protecting the indexes
 
   arangodb::Mutex _compactionStatusLock;
   size_t _nextCompactionStartIndex;
   char const* _lastCompactionStatus;
   char _lastCompactionStamp[21];
   double _lastCompaction;
-
-  // whether or not secondary indexes should be filled
-  bool _useSecondaryIndexes;
-  
-  // lock for indexes
-  arangodb::basics::ReadWriteLock _lock;
 };
 
 #endif

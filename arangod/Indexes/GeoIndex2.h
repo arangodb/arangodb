@@ -39,11 +39,14 @@ class GeoIndex2 final : public Index {
  public:
   GeoIndex2() = delete;
 
-  GeoIndex2(TRI_idx_iid_t, TRI_collection_t*,
+  GeoIndex2(TRI_idx_iid_t, LogicalCollection*,
+            arangodb::velocypack::Slice const&);
+
+  GeoIndex2(TRI_idx_iid_t, arangodb::LogicalCollection*,
             std::vector<std::vector<arangodb::basics::AttributeName>> const&,
             std::vector<std::string> const&, bool);
 
-  GeoIndex2(TRI_idx_iid_t, TRI_collection_t*,
+  GeoIndex2(TRI_idx_iid_t, arangodb::LogicalCollection*,
             std::vector<std::vector<arangodb::basics::AttributeName>> const&,
             std::vector<std::vector<std::string>> const&);
 
@@ -128,7 +131,7 @@ class GeoIndex2 final : public Index {
   /// @brief the geo index variant (geo1 or geo2)
   //////////////////////////////////////////////////////////////////////////////
 
-  IndexVariant const _variant;
+  IndexVariant _variant;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether the index is a geoJson index (latitude / longitude

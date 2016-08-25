@@ -40,7 +40,7 @@ CollectionExport::CollectionExport(TRI_vocbase_t* vocbase,
                                    std::string const& name,
                                    Restrictions const& restrictions)
     : _guard(nullptr),
-      _document(nullptr),
+      _collection(nullptr),
       _ditch(nullptr),
       _name(name),
       _resolver(vocbase),
@@ -50,7 +50,8 @@ CollectionExport::CollectionExport(TRI_vocbase_t* vocbase,
   // this may throw
   _guard = new arangodb::CollectionGuard(vocbase, _name.c_str(), false);
 
-  _document = _guard->collection()->_collection;
+  _collection = _guard->collection();
+  _document = _collection->collection();
   TRI_ASSERT(_document != nullptr);
 }
 
@@ -69,7 +70,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
   // try to acquire the exclusive lock on the compaction
-  engine->preventCompaction(_document->_vocbase, [this](TRI_vocbase_t* vocbase) {
+  engine->preventCompaction(_collection->vocbase(), [this](TRI_vocbase_t* vocbase) {
     // create a ditch under the compaction lock
     _ditch = _document->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
   });
@@ -97,8 +98,9 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
   }
 
   {
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_document->_vocbase),
-                                            _name, TRI_TRANSACTION_READ);
+    SingleCollectionTransaction trx(
+        StandaloneTransactionContext::Create(_collection->vocbase()), _name,
+        TRI_TRANSACTION_READ);
 
     // already locked by guard above
     trx.addHint(TRI_TRANSACTION_HINT_NO_USAGE_LOCK, true);
@@ -108,7 +110,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
       THROW_ARANGO_EXCEPTION(res);
     }
     
-    size_t maxDocuments = _document->primaryIndex()->size();
+    size_t maxDocuments = _collection->primaryIndex()->size();
     if (limit > 0 && limit < maxDocuments) {
       maxDocuments = limit;
     } else {
@@ -116,7 +118,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
     }
     _documents->reserve(maxDocuments);
 
-    trx.invokeOnAllElements(_document->_info.name(), [this, &limit](TRI_doc_mptr_t const* mptr) {
+    trx.invokeOnAllElements(_collection->name(), [this, &limit](TRI_doc_mptr_t const* mptr) {
       if (limit == 0) {
         return false;
       }

@@ -40,6 +40,8 @@ struct TRI_datafile_t;
 struct TRI_df_marker_t;
 
 namespace arangodb {
+class LogicalCollection;
+
 namespace wal {
 
 class LogfileManager;
@@ -175,7 +177,7 @@ class CollectorThread : public Thread {
   /// @brief process a single marker in collector step 2
   void processCollectionMarker(
       arangodb::SingleCollectionTransaction&,
-      TRI_collection_t*, CollectorCache*, CollectorOperation const&);
+      arangodb::LogicalCollection*, CollectorCache*, CollectorOperation const&);
 
   /// @brief return the number of queued operations
   size_t numQueuedOperations();

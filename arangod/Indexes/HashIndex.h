@@ -151,9 +151,12 @@ class HashIndex final : public PathBasedIndex {
  public:
   HashIndex() = delete;
 
-  HashIndex(TRI_idx_iid_t, TRI_collection_t*,
+  HashIndex(TRI_idx_iid_t, arangodb::LogicalCollection*,
             std::vector<std::vector<arangodb::basics::AttributeName>> const&,
             bool, bool);
+
+  HashIndex(TRI_idx_iid_t, LogicalCollection*,
+            arangodb::velocypack::Slice const&);
 
   explicit HashIndex(VPackSlice const&);
 

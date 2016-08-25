@@ -1070,7 +1070,8 @@ static void JS_LeaderResign(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
-    TRI_collection_t* docColl = trx.documentCollection();
+    // TODO Temporary until move to LogicalCollection is finished.
+    TRI_collection_t* docColl = trx.documentCollection()->collection();
     docColl->followers()->clear();
   }
 
@@ -1374,7 +1375,8 @@ static void JS_PropertiesVocbaseCol(
 
       // try to write new parameter to file
       bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-      res = document->updateCollectionInfo(document->_vocbase, slice, doSync);
+#warning Needs merge with Jan
+      // res = document->update(slice, doSync);
 
       if (res != TRI_ERROR_NO_ERROR) {
         TRI_V8_THROW_EXCEPTION(res);

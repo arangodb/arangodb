@@ -49,7 +49,6 @@ class AgencyFeature : virtual public application_features::ApplicationFeature {
   std::string _agentId;
   double _minElectionTimeout;                 // min election timeout
   double _maxElectionTimeout;                 // max election timeout
-  bool _notify;  // interval between retry to slaves
   bool _supervision;
   bool _waitForSync;
   double _supervisionFrequency;

@@ -349,8 +349,11 @@ class SkiplistIndex final : public PathBasedIndex {
  public:
   SkiplistIndex() = delete;
 
+  SkiplistIndex(TRI_idx_iid_t, LogicalCollection*,
+                arangodb::velocypack::Slice const&);
+
   SkiplistIndex(
-      TRI_idx_iid_t, TRI_collection_t*,
+      TRI_idx_iid_t, arangodb::LogicalCollection*,
       std::vector<std::vector<arangodb::basics::AttributeName>> const&, bool,
       bool);
 

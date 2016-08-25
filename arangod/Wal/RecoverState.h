@@ -125,7 +125,7 @@ struct RecoverState {
   /// the collection will be opened after this call and inserted into a local
   /// cache for faster lookups
   /// returns nullptr if the collection does not exist
-  TRI_collection_t* getCollection(TRI_voc_tick_t, TRI_voc_cid_t);
+  arangodb::LogicalCollection* getCollection(TRI_voc_tick_t, TRI_voc_cid_t);
 
   /// @brief executes a single operation inside a transaction
   int executeSingleOperation(

@@ -229,6 +229,9 @@ bool TRI_vocbase_t::UnloadCollectionCallback(TRI_collection_t* col, void* data) 
 
   TRI_ASSERT(document != nullptr);
 
+#warning
+  // TODO FIXME
+  /*
   int res = document->unload(true);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -239,6 +242,7 @@ bool TRI_vocbase_t::UnloadCollectionCallback(TRI_collection_t* col, void* data) 
     collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
     return true;
   }
+  */
 
   delete document;
 
@@ -263,6 +267,9 @@ bool TRI_vocbase_t::DropCollectionCallback(arangodb::LogicalCollection* collecti
     if (collection->_collection != nullptr) {
       TRI_collection_t* document = collection->_collection;
 
+#warning
+      // FIXME
+      /*
       int res = document->unload(false);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -270,6 +277,7 @@ bool TRI_vocbase_t::DropCollectionCallback(arangodb::LogicalCollection* collecti
                 << "': " << TRI_last_error();
         return false;
       }
+      */
 
       delete document;
 
@@ -343,13 +351,27 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
     // if an exception is caught, collection will be a nullptr
   }
 
+#warning
+  // FIXME
+  /*
   if (collection == nullptr) {
     document->unload(false);
     delete document;
     // TODO: does the collection directory need to be removed?
     return nullptr;
   }
+  */
 
+  // FIXME Taken out of TRI_collection_t* create()
+  // Maybe the ordering is broken now
+  // create document collection
+  int res = collection->createInitialIndexes();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(ERR) << "cannot initialize collection";
+    return nullptr;
+  }
+  
   // cid might have been assigned
   cid = col->_info.id();
 
@@ -487,7 +509,9 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
 
     TRI_collection_t* document = nullptr;
     try {
-      document = TRI_collection_t::open(this, collection, ignoreDatafileErrors);
+#warning
+      // FIXME
+      // document = TRI_collection_t::open(_vocbase, this, ignoreDatafileErrors);
     } catch (...) {
     }
 
@@ -588,7 +612,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
     bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
     doSync = (doSync && !arangodb::wal::LogfileManager::instance()->isInRecovery());
     VPackSlice slice;
-    int res = collection->_collection->updateCollectionInfo(this, slice, doSync);
+    int res = collection->update(slice, doSync);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -991,13 +1015,13 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
 
   if (!doOverride) {
     bool isSystem;
-    isSystem = TRI_collection_t::IsSystemName(oldName);
+    isSystem = LogicalCollection::IsSystemName(oldName);
 
-    if (isSystem && !TRI_collection_t::IsSystemName(newName)) {
+    if (isSystem && !LogicalCollection::IsSystemName(newName)) {
       // a system collection shall not be renamed to a non-system collection
       // name
       return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    } else if (!isSystem && TRI_collection_t::IsSystemName(newName)) {
+    } else if (!isSystem && LogicalCollection::IsSystemName(newName)) {
       // a non-system collection shall not be renamed to a system collection
       // name
       return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
