@@ -398,7 +398,7 @@ bool VppCommTask::processRead() {
         << "got request:" << header.toJson();
     int type = meta::underlyingValue(rest::RequestType::ILLEGAL);
     try {
-      type = header.get("type").getInt();
+      type = header.at(1).getInt();
     } catch (std::exception const& e) {
       throw std::runtime_error(
           std::string("Error during Parsing of VppHeader: ") + e.what());
