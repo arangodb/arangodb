@@ -136,7 +136,7 @@ struct CollectorCache {
   TRI_datafile_t* lastDatafile;
 };
 
-class CollectorThread : public Thread {
+class CollectorThread final : public Thread {
   CollectorThread(CollectorThread const&) = delete;
   CollectorThread& operator=(CollectorThread const&) = delete;
 

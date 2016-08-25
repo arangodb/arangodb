@@ -31,7 +31,7 @@
 namespace arangodb {
 struct LogMessage;
 
-class LogThread : public Thread {
+class LogThread final : public Thread {
  public:
   static void log(std::unique_ptr<LogMessage>&);
   static void flush();

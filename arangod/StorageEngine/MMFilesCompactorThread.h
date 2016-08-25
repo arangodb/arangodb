@@ -39,7 +39,7 @@ namespace arangodb {
 class LogicalCollection;
 class Transaction;
 
-class MMFilesCompactorThread : public Thread {
+class MMFilesCompactorThread final : public Thread {
  private:
   /// @brief compaction instruction for a single datafile
   struct compaction_info_t {
