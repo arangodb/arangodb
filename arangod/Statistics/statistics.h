@@ -76,11 +76,11 @@ struct TRI_request_statistics_t {
 #endif
   }
 
-  double _readStart;
-  double _readEnd;
-  double _queueStart;
-  double _queueEnd;
-  double _requestStart;
+  double _readStart;     // CommTask::processRead - read first byte of message
+  double _readEnd;       // CommTask::processRead - message complete
+  double _queueStart;    // addJob to queue GeneralServer::handleRequest
+  double _queueEnd;      // exit queue DispatcherThread::handleJob
+  double _requestStart;  // GeneralServerJob::work
   double _requestEnd;
   double _writeStart;
   double _writeEnd;
