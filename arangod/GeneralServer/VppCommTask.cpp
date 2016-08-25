@@ -330,7 +330,7 @@ bool VppCommTask::processRead() {
     auto insertPair = _incompleteMessages.emplace(
         std::make_pair(chunkHeader._messageID, std::move(message)));
     if (!insertPair.second) {
-      LOG_TOPIC(WARNING, Logger::COMMUNICATION) << "insert failed";
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "insert failed";
       closeTask(rest::ResponseCode::BAD);
       return false;
     }
@@ -339,7 +339,7 @@ bool VppCommTask::processRead() {
   } else {  // followup chunk of some mesage
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "chunk continues a message";
     if (incompleteMessageItr == _incompleteMessages.end()) {
-      LOG_TOPIC(WARNING, Logger::COMMUNICATION)
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
           << "found message without previous part";
       closeTask(rest::ResponseCode::BAD);
       return false;
@@ -408,7 +408,7 @@ bool VppCommTask::processRead() {
     } catch (std::exception const& e) {
       handleSimpleError(rest::ResponseCode::BAD, chunkHeader._messageID);
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-          << "VPack Validation failed!" + e.what();
+          << std::string("VPack Validation failed!") + e.what();
       closeTask(rest::ResponseCode::BAD);
       return false;
     }
