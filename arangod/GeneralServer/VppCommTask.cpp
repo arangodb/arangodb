@@ -166,6 +166,7 @@ VppCommTask::VppCommTask(GeneralServer* server, TRI_socket_t sock,
       _bufferLength);  // ATTENTION <- this is required so we do not
                        // loose information during a resize
                        // connectionStatisticsAgentSetVpp();
+  _agents.emplace(std::make_pair(0UL, RequestStatisticsAgent(true)));
 }
 
 void VppCommTask::addResponse(VppResponse* response) {
@@ -201,7 +202,12 @@ void VppCommTask::addResponse(VppResponse* response) {
   // used with _writeBuffers
   auto buffer = createChunkForNetworkSingle(slices, id);
 
-  addWriteBuffer(std::move(buffer));
+  addWriteBuffer(std::move(buffer), getAgent(id));
+
+  _agents.erase(id);
+  if (!id) {
+    _agents.emplace(std::make_pair(0UL, RequestStatisticsAgent(true)));
+  }
 }
 
 VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
@@ -278,6 +284,9 @@ bool VppCommTask::processRead() {
 
   // CASE 1: message is in one chunk
   if (chunkHeader._isFirst && chunkHeader._chunk == 1) {
+    _agents.emplace(
+        std::make_pair(chunkHeader._messageID, RequestStatisticsAgent(true)));
+    getAgent(chunkHeader._messageID)->requestStatisticsAgentSetReadStart();
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "chunk contains single message";
     std::size_t payloads = 0;
 
@@ -308,12 +317,16 @@ bool VppCommTask::processRead() {
     // }
 
     doExecute = true;
+    getAgent(chunkHeader._messageID)->requestStatisticsAgentSetReadEnd();
   }
   // CASE 2:  message is in multiple chunks
   auto incompleteMessageItr = _incompleteMessages.find(chunkHeader._messageID);
 
   // CASE 2a: chunk starts new message
   if (chunkHeader._isFirst) {  // first chunk of multi chunk message
+    _agents.emplace(
+        std::make_pair(chunkHeader._messageID, RequestStatisticsAgent(true)));
+    getAgent(chunkHeader._messageID)->requestStatisticsAgentSetReadStart();
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "chunk starts a new message";
     if (incompleteMessageItr != _incompleteMessages.end()) {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
@@ -382,6 +395,7 @@ bool VppCommTask::processRead() {
       // check length
 
       doExecute = true;
+      getAgent(chunkHeader._messageID)->requestStatisticsAgentSetReadEnd();
     }
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
         << "chunk does not complete a message";
