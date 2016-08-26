@@ -285,9 +285,7 @@ bool TRI_vocbase_t::DropCollectionCallback(arangodb::LogicalCollection* collecti
     } catch (...) {
     }
   }
-      
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->dropCollection(vocbase, collection);
+  collection->drop();
 
   return true;
 }

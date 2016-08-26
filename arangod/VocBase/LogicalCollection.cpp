@@ -603,8 +603,10 @@ int LogicalCollection::close() {
 }
 
 void LogicalCollection::drop() {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->dropCollection(_vocbase, this);
   _isDeleted = true;
-  // TODO Do we need to do more or does the Engine do it?
 }
 
 void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
@@ -901,9 +903,9 @@ std::shared_ptr<Index> LogicalCollection::createIndex(Transaction* trx,
       break;
     }
   }
-  // TODO fillIndexes
 
   addIndex(newIdx);
+  fillIndex(trx, newIdx.get(), false);
   return newIdx;
 }
 
