@@ -140,8 +140,6 @@ static void JS_WriteAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
       std::string("couldn't access agency feature: ") + e.what());
   }
 
-  v8::Handle<v8::Object> r = v8::Object::New(isolate);
-
   query_t query = std::make_shared<Builder>();
   int res = TRI_V8ToVPack(isolate, *query, args[0], false);
 
