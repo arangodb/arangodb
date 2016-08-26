@@ -90,7 +90,7 @@ static uint64_t getNumericFilenamePartFromDatabase(std::string const& filename) 
 }
 
 static uint64_t getNumericFilenamePartFromDatafile(TRI_datafile_t const* datafile) {
-  return getNumericFilenamePartFromDatafile(datafile->getName(datafile));
+  return getNumericFilenamePartFromDatafile(datafile->getName());
 }
 
 
@@ -1303,12 +1303,11 @@ bool MMFilesEngine::iterateFiles(std::vector<std::string> const& files) {
   for (auto const& filename : files) {
     LOG(DEBUG) << "iterating over collection journal file '" << filename << "'";
 
-    TRI_datafile_t* datafile = TRI_OpenDatafile(filename.c_str(), true);
+    TRI_datafile_t* datafile = TRI_OpenDatafile(filename, true);
 
     if (datafile != nullptr) {
       TRI_IterateDatafile(datafile, cb);
-      TRI_CloseDatafile(datafile);
-      TRI_FreeDatafile(datafile);
+      delete datafile;
     }
   }
 
@@ -1855,7 +1854,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
       }
 
       TRI_datafile_t* datafile =
-          TRI_OpenDatafile(filename.c_str(), ignoreErrors);
+          TRI_OpenDatafile(filename, ignoreErrors);
 
       if (datafile == nullptr) {
         LOG_TOPIC(ERR, Logger::DATAFILES) << "cannot open datafile '"
@@ -1960,10 +1959,8 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
   // stop if necessary
   if (stop) {
     for (auto& datafile : all) {
-      LOG(TRACE) << "closing datafile '" << datafile->_filename << "'";
-
-      TRI_CloseDatafile(datafile);
-      TRI_FreeDatafile(datafile);
+      LOG(TRACE) << "closing datafile '" << datafile->getName() << "'";
+      delete datafile;
     }
 
     return TRI_ERROR_INTERNAL;

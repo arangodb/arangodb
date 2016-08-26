@@ -35,17 +35,13 @@ Logfile::Logfile(Logfile::IdType id, TRI_datafile_t* df, StatusType status)
 
 /// @brief destroy the logfile
 Logfile::~Logfile() {
-  if (_df != nullptr) {
-    TRI_CloseDatafile(_df);
-    TRI_FreeDatafile(_df);
-  }
+  delete _df;
 }
 
 /// @brief create a new logfile
 Logfile* Logfile::createNew(std::string const& filename, Logfile::IdType id,
                             uint32_t size) {
-  TRI_datafile_t* df = TRI_CreateDatafile(
-      filename.c_str(), id, static_cast<TRI_voc_size_t>(size), false);
+  TRI_datafile_t* df = TRI_CreateDatafile(filename, id, static_cast<TRI_voc_size_t>(size), false);
 
   if (df == nullptr) {
     int res = TRI_errno();
@@ -62,7 +58,7 @@ Logfile* Logfile::createNew(std::string const& filename, Logfile::IdType id,
 /// @brief open an existing logfile
 Logfile* Logfile::openExisting(std::string const& filename, Logfile::IdType id,
                                bool wasCollected, bool ignoreErrors) {
-  TRI_datafile_t* df = TRI_OpenDatafile(filename.c_str(), ignoreErrors);
+  TRI_datafile_t* df = TRI_OpenDatafile(filename, ignoreErrors);
 
   if (df == nullptr) {
     int res = TRI_errno();

@@ -38,6 +38,14 @@ class MMFilesCollection final : public PhysicalCollection {
  friend class MMFilesCompactorThread;
  friend class MMFilesEngine;
 
+  struct DatafileDescription {
+    TRI_datafile_t const* _data;
+    TRI_voc_tick_t _dataMin;
+    TRI_voc_tick_t _dataMax;
+    TRI_voc_tick_t _tickMax;
+    bool _isJournal;
+  };
+
  public:
   explicit MMFilesCollection(LogicalCollection*);
   ~MMFilesCollection();

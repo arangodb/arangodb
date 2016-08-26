@@ -37,8 +37,6 @@
 #include "Wal/Logfile.h"
 
 struct TRI_collection_t;
-struct TRI_datafile_t;
-struct TRI_df_marker_t;
 
 namespace arangodb {
 class LogicalCollection;

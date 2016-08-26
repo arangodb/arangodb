@@ -76,7 +76,7 @@ class Logfile {
     if (_df == nullptr) {
       return "";
     }
-    return _df->getName(_df);
+    return _df->getName();
   }
 
   /// @brief return the datafile pointer

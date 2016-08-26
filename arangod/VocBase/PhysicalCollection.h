@@ -25,7 +25,6 @@
 #define ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/DatafileDescription.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>

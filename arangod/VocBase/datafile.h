@@ -153,6 +153,30 @@ typedef uint32_t TRI_df_version_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_datafile_t {
+  TRI_datafile_t(std::string const& filename, int fd, void* mmHandle, TRI_voc_size_t maximalSize,
+                 TRI_voc_size_t currentsize, TRI_voc_fid_t fid, char* data);
+  ~TRI_datafile_t();
+
+  /// @brief return whether the datafile is a physical file (true) or an
+  /// anonymous mapped region (false)
+  inline bool isPhysical() const { return !_filename.empty(); }
+
+  /// @brief return the name of a datafile
+  std::string getName() const;
+
+  /// @brief close a datafile
+  int close();
+
+  /// @brief destroy a datafile
+  void destroy();
+ 
+  /// @brief sync the data of a datafile
+  bool sync(char const* begin, char const* end); 
+
+  /// @brief seals a datafile, writes a footer, sets it to read-only
+  int seal();
+
+
   TRI_voc_fid_t _fid;  // datafile identifier
 
   TRI_df_state_e _state;  // state of the datafile (READ or WRITE)
@@ -174,24 +198,12 @@ struct TRI_datafile_t {
   TRI_voc_tick_t _dataMin;  // minimum tick value of document/edge marker
   TRI_voc_tick_t _dataMax;  // maximum tick value of document/edge marker
 
-  char* _filename;  // underlying filename
-
-  // function pointers
-  bool (*isPhysical)(struct TRI_datafile_t const*);  // returns true if
-                                                     // the datafile is a
-                                                     // physical file
-  char const* (*getName)(
-      struct TRI_datafile_t const*);        // returns the name of a datafile
-  void (*close)(struct TRI_datafile_t*);    // close the datafile
-  void (*destroy)(struct TRI_datafile_t*);  // destroys the datafile
-  bool (*sync)(struct TRI_datafile_t*, char const*,
-               char const*);  // syncs the datafile
+  std::string _filename;  // underlying filename
 
   int _lastError;  // last (critical) error
   bool _full;  // at least one request was rejected because there is not enough
                // room
   bool _isSealed;  // true, if footer has been written
-
   // .............................................................................
   // access to the following attributes must be protected by a _lock
   // .............................................................................
@@ -385,20 +397,8 @@ struct TRI_col_header_marker_t {
 /// ref TRI_CreatePhysicalDatafile, based on the first parameter
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* TRI_CreateDatafile(char const*, TRI_voc_fid_t fid,
-                                   TRI_voc_size_t, bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees the memory allocated, but does not free the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyDatafile(TRI_datafile_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees the memory allocated and but frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeDatafile(TRI_datafile_t*);
+TRI_datafile_t* TRI_CreateDatafile(std::string const& filename, TRI_voc_fid_t fid,
+                                   TRI_voc_size_t maximalSize, bool withInitialMarkers);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the name for a marker
@@ -460,19 +460,7 @@ bool TRI_IterateDatafile(TRI_datafile_t*,
 /// @brief opens an existing datafile read-only
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* TRI_OpenDatafile(char const*, bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief closes a datafile and all memory regions
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_CloseDatafile(TRI_datafile_t* datafile);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief seals a database, writes a footer, sets it to read-only
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_SealDatafile(TRI_datafile_t* datafile) TRI_WARN_UNUSED_RESULT;
+TRI_datafile_t* TRI_OpenDatafile(std::string const& filename, bool ignoreFailures);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a datafile
@@ -484,7 +472,7 @@ int TRI_RenameDatafile(TRI_datafile_t* datafile, char const* filename);
 /// @brief truncates a datafile and seals it, only called by arango-dfdd
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_TruncateDatafile(char const* path, TRI_voc_size_t position);
+int TRI_TruncateDatafile(std::string const& path, TRI_voc_size_t position);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief try to repair a datafile, only called by arango-dfdd
