@@ -24,6 +24,7 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Agency/v8-agency.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/v8-cluster.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -219,6 +220,7 @@ void DatabaseFeature::updateContexts() {
                             i);
         TRI_InitV8Queries(isolate, context);
         TRI_InitV8Cluster(isolate, context);
+        TRI_InitV8Agency(isolate, context);
       },
       vocbase);
 }
