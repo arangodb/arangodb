@@ -40,7 +40,7 @@ class GeneralServerJob : public Job {
   GeneralServerJob& operator=(GeneralServerJob const&) = delete;
 
  public:
-  GeneralServerJob(GeneralServer*, arangodb::WorkItem::uptr<RestHandler>&,
+  GeneralServerJob(GeneralServer*, arangodb::WorkItem::uptr<RestHandler>,
                    bool isAsync = false);
 
   ~GeneralServerJob();

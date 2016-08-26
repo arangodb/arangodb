@@ -43,13 +43,13 @@ using namespace arangodb::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 GeneralServerJob::GeneralServerJob(GeneralServer* server,
-                                   WorkItem::uptr<RestHandler>& handler,
+                                   WorkItem::uptr<RestHandler> handler,
                                    bool isAsync)
     : Job("GeneralServerJob"),
       _server(server),
       _workDesc(nullptr),
       _isAsync(isAsync) {
-  _handler.swap(handler);
+  _handler = std::move(handler);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
