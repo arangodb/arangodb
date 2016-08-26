@@ -33,7 +33,7 @@
 #include "GeneralServer/GeneralCommTask.h"
 #include "GeneralServer/GeneralListenTask.h"
 #include "GeneralServer/GeneralServerFeature.h"
-#include "GeneralServer/HttpServerJob.h"
+#include "GeneralServer/GeneralServerJob.h"
 #include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
 #include "Scheduler/ListenTask.h"
@@ -127,15 +127,21 @@ bool GeneralServer::handleRequestAsync(GeneralCommTask* task,
   char const* hdr = found ? hdrStr.c_str() : nullptr;
 
   // execute the handler using the dispatcher
+<<<<<<< HEAD
   std::unique_ptr<Job> job = std::make_unique<HttpServerJob>(
       this, handler, true);  // hander gets moved!!!
 
   task->getAgent(messageId)->transferTo(job.get());
+=======
+  std::unique_ptr<Job> job =
+      std::make_unique<GeneralServerJob>(this, std::move(handler), true);
+  task->RequestStatisticsAgent::transferTo(job.get());
+>>>>>>> obi-velocystream
 
   // register the job with the job manager
   if (jobId != nullptr) {
     GeneralServerFeature::JOB_MANAGER->initAsyncJob(
-        static_cast<HttpServerJob*>(job.get()), hdr);
+        static_cast<GeneralServerJob*>(job.get()), hdr);
     *jobId = job->jobId();
   }
 
@@ -176,12 +182,12 @@ bool GeneralServer::handleRequest(GeneralCommTask* task,
   auto messageId = handler->request()->messageId();
 
   // use a dispatcher queue, handler belongs to the job
-  std::unique_ptr<Job> job = std::make_unique<HttpServerJob>(
-      this, handler);  // handler is uique_ptr that gets moved
+  std::unique_ptr<Job> job =
+      std::make_unique<GeneralServerJob>(this, std::move(handler));
   task->getAgent(messageId)->transferTo(job.get());
 
-  LOG(TRACE) << "GeneralCommTask " << (void*)task << " created HttpServerJob "
-             << (void*)job.get();
+  LOG(TRACE) << "GeneralCommTask " << (void*)task
+             << " created GeneralServerJob " << (void*)job.get();
 
   // add the job to the dispatcher
   int res = DispatcherFeature::DISPATCHER->addJob(job, startThread);
