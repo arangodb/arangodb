@@ -25,7 +25,7 @@
 
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "GeneralServer/HttpServerJob.h"
+#include "GeneralServer/GeneralServerJob.h"
 #include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
 #include "Rest/GeneralResponse.h"
@@ -260,7 +260,7 @@ std::vector<AsyncJobResult::IdType> AsyncJobManager::byStatus(
 /// @brief initializes an async job
 ////////////////////////////////////////////////////////////////////////////////
 
-void AsyncJobManager::initAsyncJob(HttpServerJob* job, char const* hdr) {
+void AsyncJobManager::initAsyncJob(GeneralServerJob* job, char const* hdr) {
   AsyncCallbackContext* ctx = nullptr;
 
   if (hdr != nullptr) {

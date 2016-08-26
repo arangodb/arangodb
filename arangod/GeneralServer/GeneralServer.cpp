@@ -33,7 +33,7 @@
 #include "GeneralServer/GeneralCommTask.h"
 #include "GeneralServer/GeneralListenTask.h"
 #include "GeneralServer/GeneralServerFeature.h"
-#include "GeneralServer/HttpServerJob.h"
+#include "GeneralServer/GeneralServerJob.h"
 #include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
 #include "Scheduler/ListenTask.h"
@@ -127,13 +127,13 @@ bool GeneralServer::handleRequestAsync(GeneralCommTask* task,
 
   // execute the handler using the dispatcher
   std::unique_ptr<Job> job =
-      std::make_unique<HttpServerJob>(this, handler, true);
+      std::make_unique<GeneralServerJob>(this, std::move(handler), true);
   task->RequestStatisticsAgent::transferTo(job.get());
 
   // register the job with the job manager
   if (jobId != nullptr) {
     GeneralServerFeature::JOB_MANAGER->initAsyncJob(
-        static_cast<HttpServerJob*>(job.get()), hdr);
+        static_cast<GeneralServerJob*>(job.get()), hdr);
     *jobId = job->jobId();
   }
 
@@ -171,11 +171,12 @@ bool GeneralServer::handleRequest(GeneralCommTask* task,
   bool startThread = handler->needsOwnThread();
 
   // use a dispatcher queue, handler belongs to the job
-  std::unique_ptr<Job> job = std::make_unique<HttpServerJob>(this, handler);
+  std::unique_ptr<Job> job =
+      std::make_unique<GeneralServerJob>(this, std::move(handler));
   task->RequestStatisticsAgent::transferTo(job.get());
 
-  LOG(TRACE) << "GeneralCommTask " << (void*)task << " created HttpServerJob "
-             << (void*)job.get();
+  LOG(TRACE) << "GeneralCommTask " << (void*)task
+             << " created GeneralServerJob " << (void*)job.get();
 
   // add the job to the dispatcher
   int res = DispatcherFeature::DISPATCHER->addJob(job, startThread);
