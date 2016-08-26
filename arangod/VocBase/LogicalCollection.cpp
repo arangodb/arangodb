@@ -911,7 +911,7 @@ std::shared_ptr<Index> LogicalCollection::createIndex(Transaction* trx,
       newIdx.reset(new arangodb::RocksDBIndex(iid, this, info));
       break;
 #else
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                      "index type not supported in this build");
 #endif
     }
