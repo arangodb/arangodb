@@ -86,26 +86,6 @@ using namespace arangodb::basics;
 int TRI_AddOperationTransaction(TRI_transaction_t*,
                                 arangodb::wal::DocumentOperation&, bool&);
 
-/// @brief extracts a field list from a VelocyPack object
-///        Does not copy any data, caller has to make sure that data
-///        in slice stays valid until this return value is destroyed.
-static VPackSlice ExtractFields(VPackSlice const& slice, TRI_idx_iid_t iid) {
-  VPackSlice fld = slice.get("fields");
-  if (!fld.isArray()) {
-    LOG(ERR) << "ignoring index " << iid << ", 'fields' must be an array";
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-  }
-
-  for (auto const& sub : VPackArrayIterator(fld)) {
-    if (!sub.isString()) {
-      LOG(ERR) << "ignoring index " << iid
-               << ", 'fields' must be an array of attribute paths";
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-    }
-  }
-  return fld;
-}
-
 TRI_collection_t::TRI_collection_t(TRI_vocbase_t* vocbase, 
                                    arangodb::VocbaseCollectionInfo const& parameters)
       : _vocbase(vocbase), 
@@ -1004,10 +984,12 @@ struct OpenIteratorState {
   uint64_t _documents;
   int64_t _initialCount;
 
-  OpenIteratorState(LogicalCollection* collection,
+  // NOTE We need to hand in both because in some situation the collection_t  is not
+  // yet attached to the LogicalCollection.
+  OpenIteratorState(LogicalCollection* collection, TRI_collection_t* document,
                     TRI_vocbase_t* vocbase)
       : _collection(collection),
-        _document(collection->_collection),
+        _document(document),
         _tid(0),
         _fid(0),
         _stats(),
@@ -1016,7 +998,10 @@ struct OpenIteratorState {
         _trx(nullptr),
         _deletions(0),
         _documents(0),
-        _initialCount(-1) {}
+        _initialCount(-1) {
+    TRI_ASSERT(collection != nullptr);
+    TRI_ASSERT(document != nullptr);
+  }
 
   ~OpenIteratorState() {
     for (auto& it : _stats) {
@@ -1263,11 +1248,12 @@ static bool OpenIterator(TRI_df_marker_t const* marker, OpenIteratorState* data,
 
 /// @brief iterate all markers of the collection
 static int IterateMarkersCollection(arangodb::Transaction* trx,
-                                    LogicalCollection* collection) {
+                                    LogicalCollection* collection,
+                                    TRI_collection_t* document) {
 
   // FIXME All still reference collection()->_info.
   // initialize state for iteration
-  OpenIteratorState openState(collection, collection->vocbase());
+  OpenIteratorState openState(collection, document, collection->vocbase());
 
   if (collection->getPhysical()->initialCount() != -1) {
     auto primaryIndex = collection->primaryIndex();
@@ -1295,7 +1281,7 @@ static int IterateMarkersCollection(arangodb::Transaction* trx,
   // update the real statistics for the collection
   try {
     for (auto& it : openState._stats) {
-      collection->_collection->_datafileStatistics.create(it.first, *(it.second));
+      document->_datafileStatistics.create(it.first, *(it.second));
     }
   } catch (basics::Exception const& ex) {
     return ex.code();
@@ -1342,6 +1328,7 @@ TRI_collection_t* TRI_collection_t::open(TRI_vocbase_t* vocbase,
   auto collection = std::make_unique<TRI_collection_t>(vocbase, parameters);
 
   double start = TRI_microtime();
+
   LOG_TOPIC(TRACE, Logger::PERFORMANCE)
       << "open-document-collection { collection: " << vocbase->name() << "/"
       << col->name() << " }";
@@ -1362,8 +1349,6 @@ TRI_collection_t* TRI_collection_t::open(TRI_vocbase_t* vocbase,
     return nullptr;
   }
   
-  col->_collection = collection.get();
-
   arangodb::SingleCollectionTransaction trx(
       arangodb::StandaloneTransactionContext::Create(vocbase),
       collection->_info.id(), TRI_TRANSACTION_WRITE);
@@ -1379,7 +1364,7 @@ TRI_collection_t* TRI_collection_t::open(TRI_vocbase_t* vocbase,
         << collection->_info.name() << " }";
 
     // iterate over all markers of the collection
-    res = IterateMarkersCollection(&trx, col);
+    res = IterateMarkersCollection(&trx, col, collection.get());
 
     LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::FIXED(TRI_microtime() - start) << " s, iterate-markers { collection: " << vocbase->name() << "/" << collection->_info.name() << " }";
   } catch (arangodb::basics::Exception const& ex) {
