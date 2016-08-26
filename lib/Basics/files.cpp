@@ -2424,3 +2424,16 @@ void TRI_InitializeFiles() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownFiles() {}
+
+
+
+#if _WIN32
+bool TRI_PathIsAbsolute(const std::string &path) {
+  return !PathIsRelative(path.c_str());
+}
+
+#else  
+bool TRI_PathIsAbsolute(const std::string &path) {
+  return path.c_str()[0] == '/';
+}
+#endif
