@@ -130,11 +130,20 @@ find_program (GIT_EXE git)
 if (DEFINED GIT_EXE AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/.git")
   execute_process(
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    
     COMMAND ${GIT_EXE} describe --all --tags --long --dirty=-dirty
     OUTPUT_VARIABLE GIT_OUTPUT)
-  string(STRIP ${GIT_OUTPUT} REPOSITORY_VERSION)
-  set(ARANGODB_BUILD_REPOSITORY ${REPOSITORY_VERSION})
-  set(HAVE_ARANGODB_BUILD_REPOSITORY "1")
+
+  # this may fail on shallow clones that only knows about a limited number of commits.
+  # if there is an older merged revision the head, it may not be available to git.
+  if (NOT GIT_OUTPUT)
+      set(ARANGODB_BUILD_REPOSITORY "GIT FAILED TO RETRIEVE THE VERSION - SHALLOW CLONE?")
+      set(HAVE_ARANGODB_BUILD_REPOSITORY "1")
+    else()
+      string(STRIP ${GIT_OUTPUT} REPOSITORY_VERSION)
+      set(ARANGODB_BUILD_REPOSITORY ${REPOSITORY_VERSION})
+      set(HAVE_ARANGODB_BUILD_REPOSITORY "1")
+    endif()
 else ()
   set(ARANGODB_BUILD_REPOSITORY "")
   set(HAVE_ARANGODB_BUILD_REPOSITORY "0")
@@ -889,3 +898,5 @@ endif()
 add_custom_target(packages
   DEPENDS ${PACKAGES_LIST}
   )
+
+message(INFO " Building for git revision: ${ARANGODB_BUILD_REPOSITORY}")

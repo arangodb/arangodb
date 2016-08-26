@@ -315,7 +315,7 @@ struct TRI_vocbase_t {
       bool writeMarker);
 
   /// @brief drops a collection
-  int dropCollection(arangodb::LogicalCollection* collection, bool writeMarker);
+  int dropCollection(arangodb::LogicalCollection* collection, bool allowDropSystem, bool writeMarker);
 
   /// @brief callback for collection dropping
   static bool DropCollectionCallback(arangodb::LogicalCollection* collection);

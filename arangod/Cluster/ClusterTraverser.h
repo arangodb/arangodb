@@ -39,7 +39,7 @@ class ClusterTraverser final : public Traverser {
 
  public:
   ClusterTraverser(
-      std::vector<std::string> edgeCollections, TraverserOptions& opts,
+      std::vector<std::string> const& edgeCollections, TraverserOptions& opts,
       std::string const& dbname, Transaction* trx)
       : Traverser(opts),
         _edgeCols(edgeCollections),

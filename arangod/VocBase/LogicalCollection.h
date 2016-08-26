@@ -33,6 +33,9 @@
 
 #include <velocypack/Buffer.h>
 
+struct TRI_datafile_t;
+struct TRI_df_marker_t;
+
 namespace arangodb {
 namespace velocypack {
 class Slice;
@@ -163,9 +166,6 @@ class LogicalCollection {
 
   // Only Local
   void updateCount(size_t);
-  // Path will be taken from physical
-  // Probably this can be handled internally only!
-  int saveToFile(bool) const;
 
   // Update this collection.
   void increaseVersion();
@@ -189,23 +189,9 @@ class LogicalCollection {
     return getPhysical()->rotateActiveJournal();
   }
   
-  /// @brief sync the active journal - will do nothing if there is no journal
-  /// or if the journal is volatile
-  int syncActiveJournal() {
-    return getPhysical()->syncActiveJournal();
-  }
-  
   /// @brief iterates over a collection
   bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& callback) {
     return getPhysical()->iterateDatafiles(callback);
-  }
-  
-  /// @brief reserve space in the current journal. if no create exists or the
-  /// current journal cannot provide enough space, close the old journal and
-  /// create a new one
-  int reserveJournalSpace(TRI_voc_tick_t tick, TRI_voc_size_t size,
-                          char*& resultPosition, TRI_datafile_t*& resultDatafile) {
-    return getPhysical()->reserveJournalSpace(tick, size, resultPosition, resultDatafile);
   }
   
   int applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,

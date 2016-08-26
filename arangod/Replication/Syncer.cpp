@@ -406,13 +406,15 @@ int Syncer::applyCollectionDumpMarker(
       res = opRes.code;
     } catch (arangodb::basics::Exception const& ex) {
       res = ex.code();
-    } catch (...) {
-      res = TRI_ERROR_INTERNAL;
-    }
-
-    if (res != TRI_ERROR_NO_ERROR) {
       errorMsg = "document insert/replace operation failed: " +
                  std::string(TRI_errno_string(res));
+    } catch (std::exception const& ex) {
+      res = TRI_ERROR_INTERNAL;
+      errorMsg = "document insert/replace operation failed: " +
+                 std::string(ex.what());
+    } catch (...) {
+      res = TRI_ERROR_INTERNAL;
+      errorMsg = "document insert/replace operation failed: unknown exception";
     }
 
     return res;
@@ -436,15 +438,16 @@ int Syncer::applyCollectionDumpMarker(
       res = opRes.code;
     } catch (arangodb::basics::Exception const& ex) {
       res = ex.code();
-    } catch (...) {
-      res = TRI_ERROR_INTERNAL;
-    }
-    
-    if (res != TRI_ERROR_NO_ERROR) {
       errorMsg = "document remove operation failed: " +
                  std::string(TRI_errno_string(res));
+    } catch (std::exception const& ex) {
+      errorMsg = "document remove operation failed: " +
+                 std::string(ex.what());
+    } catch (...) {
+      res = TRI_ERROR_INTERNAL;
+      errorMsg = "document remove operation failed: unknown exception";
     }
-
+    
     return res;
   }
     
@@ -527,7 +530,7 @@ int Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  return _vocbase->dropCollection(col, true);
+  return _vocbase->dropCollection(col, true, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

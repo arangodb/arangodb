@@ -253,7 +253,7 @@ class SkiplistIterator2 : public IndexIterator {
   SkiplistIterator2(
       TRI_Skiplist const* skiplist,
       std::function<int(TRI_index_element_t const*, TRI_index_element_t const*,
-                        arangodb::basics::SkipListCmpType)> CmpElmElm,
+                        arangodb::basics::SkipListCmpType)> const& CmpElmElm,
       bool reverse, BaseSkiplistLookupBuilder* builder)
       : _skiplistIndex(skiplist),
         _reverse(reverse),

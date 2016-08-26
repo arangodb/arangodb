@@ -1572,7 +1572,7 @@ int RestReplicationHandler::processRestoreCollection(
   // drop an existing collection if it exists
   if (col != nullptr) {
     if (dropExisting) {
-      int res = _vocbase->dropCollection(col, true);
+      int res = _vocbase->dropCollection(col, true, true);
 
       if (res == TRI_ERROR_FORBIDDEN) {
         // some collections must not be dropped
@@ -3223,8 +3223,7 @@ void RestReplicationHandler::handleCommandDump() {
 
     // set headers
     _response->setHeaderNC(
-        TRI_REPLICATION_HEADER_CHECKMORE,
-        ((dump._hasMore || dump._bufferFull) ? "true" : "false"));
+        TRI_REPLICATION_HEADER_CHECKMORE, (dump._hasMore ? "true" : "false"));
 
     _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
                            StringUtils::itoa(dump._lastFoundTick));

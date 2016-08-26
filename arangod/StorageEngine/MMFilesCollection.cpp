@@ -685,6 +685,7 @@ int MMFilesCollection::applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t 
   // now we have a list of datafiles...
  
   size_t const n = datafiles.size();
+
   for (size_t i = 0; i < n; ++i) {
     auto const& e = datafiles[i];
     TRI_datafile_t const* datafile = e._data;

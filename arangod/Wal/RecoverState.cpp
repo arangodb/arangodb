@@ -590,7 +590,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         if (other != nullptr) {
           TRI_voc_cid_t otherCid = other->cid();
           state->releaseCollection(otherCid);
-          vocbase->dropCollection(other, false);
+          vocbase->dropCollection(other, true, false);
         }
 
         int res = vocbase->renameCollection(collection, name, true, false);
@@ -754,7 +754,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         
         if (collection != nullptr) {
           // drop an existing collection
-          vocbase->dropCollection(collection, false);
+          vocbase->dropCollection(collection, true, false);
         }
 
 #ifdef ARANGODB_ENABLE_ROCKSDB
@@ -774,7 +774,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
             TRI_voc_cid_t otherCid = collection->cid();
 
             state->releaseCollection(otherCid);
-            vocbase->dropCollection(collection, false);
+            vocbase->dropCollection(collection, true, false);
           }
         } else {
           LOG(WARN) << "empty name attribute in create collection marker for collection " << collectionId << " and database " << databaseId;
@@ -952,7 +952,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         }
 
         if (collection != nullptr) {
-          vocbase->dropCollection(collection, false);
+          vocbase->dropCollection(collection, true, false);
         }
 #ifdef ARANGODB_ENABLE_ROCKSDB
         RocksDBFeature::dropCollection(databaseId, collectionId);

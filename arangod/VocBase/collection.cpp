@@ -1289,7 +1289,8 @@ static int IterateMarkersCollection(arangodb::Transaction* trx,
 
   collection->iterateDatafiles(cb);
 
-  LOG(TRACE) << "found " << openState._documents << " document markers, " << openState._deletions << " deletion markers for collection '" << collection->name() << "'";
+  LOG(TRACE) << "found " << openState._documents << " document markers, " 
+             << openState._deletions << " deletion markers for collection '" << collection->name() << "'";
   
   // update the real statistics for the collection
   try {
