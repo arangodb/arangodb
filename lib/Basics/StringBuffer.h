@@ -210,22 +210,34 @@ int TRI_AppendString2StringBuffer(TRI_string_buffer_t* self, char const* str,
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline void TRI_AppendCharUnsafeStringBuffer(TRI_string_buffer_t* self, char chr) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(self->_len - static_cast<size_t>(self->_current - self->_buffer) > 0);
+#endif
   *self->_current++ = chr;
 }
 
 static inline void TRI_AppendStringUnsafeStringBuffer(TRI_string_buffer_t* self, char const* str) {
   size_t len = strlen(str);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(self->_len - static_cast<size_t>(self->_current - self->_buffer) >= len);
+#endif
   memcpy(self->_current, str, len);
   self->_current += len;
 }
 
 static inline void TRI_AppendStringUnsafeStringBuffer(TRI_string_buffer_t* self, char const* str,
                                                       size_t len) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(self->_len - static_cast<size_t>(self->_current - self->_buffer) >= len);
+#endif
   memcpy(self->_current, str, len);
   self->_current += len;
 }
 
 static inline void TRI_AppendStringUnsafeStringBuffer(TRI_string_buffer_t* self, std::string const& str) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(self->_len - static_cast<size_t>(self->_current - self->_buffer) >= str.size());
+#endif
   memcpy(self->_current, str.c_str(), str.size());
   self->_current += str.size();
 }
