@@ -1,6 +1,8 @@
 v2.8.12 (XXXX-XX-XX)
 --------------------
 
+* slightly better error diagnostics for some replication errors
+
 * fixed issue #1977
 
 * fixed issue in `INTERSECTION` AQL function with duplicate elements

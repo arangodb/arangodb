@@ -450,6 +450,10 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
         // update
         res = TRI_UpdateShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &mptr, shaped, &_policy, ! isLocked, false);
       }
+    
+      if (res != TRI_ERROR_NO_ERROR) {
+        errorMsg = "document insert/update operation failed: " + string(TRI_errno_string(res));
+      }
 
       TRI_FreeShapedJson(zone, shaped);
 
@@ -457,10 +461,19 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
     }
     catch (triagens::basics::Exception const& ex) {
       TRI_FreeShapedJson(zone, shaped);
+      errorMsg = "document insert/update operation failed: ";
+      errorMsg.append(ex.what());
       return ex.code();
+    }
+    catch (std::exception const& ex) {
+      TRI_FreeShapedJson(zone, shaped);
+      errorMsg = "document insert/update operation failed: ";
+      errorMsg.append(ex.what());
+      return TRI_ERROR_INTERNAL;
     }
     catch (...) {
       TRI_FreeShapedJson(zone, shaped);
+      errorMsg = "document insert/update operation failed: unknown exception";
       return TRI_ERROR_INTERNAL;
     }
   }
@@ -468,29 +481,36 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
   else if (type == REPLICATION_MARKER_REMOVE) {
     // {"type":2402,"key":"592063"}
 
-    int res = TRI_ERROR_INTERNAL;
     bool const isLocked = TRI_IsLockedCollectionTransaction(trxCollection);
 
     try {
-      res = TRI_RemoveShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &_policy, ! isLocked, false);
+      int res = TRI_RemoveShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &_policy, ! isLocked, false);
 
       if (res != TRI_ERROR_NO_ERROR && res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // ignore this error
         res = TRI_ERROR_NO_ERROR;
       }
+        
+      if (res != TRI_ERROR_NO_ERROR) {
+        errorMsg = "document removal operation failed: " + string(TRI_errno_string(res));
+      }
+
+      return res;
     }
     catch (triagens::basics::Exception const& ex) {
-      res = ex.code();
+      errorMsg = "document removal operation failed: ";
+      errorMsg.append(ex.what());
+      return ex.code();
+    }
+    catch (std::exception const& ex) {
+      errorMsg = "document removal operation failed: ";
+      errorMsg.append(ex.what());
+      return TRI_ERROR_INTERNAL;
     }
     catch (...) {
-      res = TRI_ERROR_INTERNAL;
+      errorMsg = "document removal operation failed: unknown exception";
+      return TRI_ERROR_INTERNAL;
     }
-        
-    if (res != TRI_ERROR_NO_ERROR) {
-      errorMsg = "document removal operation failed: " + string(TRI_errno_string(res));
-    }
-
-    return res;
   }
 
   else {
