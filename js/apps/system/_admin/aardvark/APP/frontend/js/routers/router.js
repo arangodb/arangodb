@@ -40,8 +40,8 @@
       'node/:name': 'node',
       'logs': 'logs',
       'helpus': 'helpUs',
-      'graph2/:name': 'graph2',
-      'graph2/:name/settings': 'graph2settings',
+      'graph/:name': 'graph',
+      'graph/:name/settings': 'graphSettings',
       'support': 'support'
     },
 
@@ -54,9 +54,9 @@
         callback.apply(this, args);
       }
 
-      if (this.graphViewer2) {
-        if (this.graphViewer2.graphSettingsView) {
-          this.graphViewer2.graphSettingsView.hide();
+      if (this.graphViewer) {
+        if (this.graphViewer.graphSettingsView) {
+          this.graphViewer.graphSettingsView.hide();
         }
       }
     },
@@ -681,31 +681,31 @@
       this.queryView.render();
     },
 
-    graph2: function (name, initialized) {
+    graph: function (name, initialized) {
       this.checkUser();
       if (!initialized) {
-        this.waitForInit(this.graph2.bind(this), name);
+        this.waitForInit(this.graph.bind(this), name);
         return;
       }
-      if (this.graphViewer2) {
-        if (this.graphViewer2.graphSettingsView) {
-          this.graphViewer2.graphSettingsView.remove();
+      if (this.graphViewer) {
+        if (this.graphViewer.graphSettingsView) {
+          this.graphViewer.graphSettingsView.remove();
         }
-        this.graphViewer2.remove();
+        this.graphViewer.remove();
       }
-      this.graphViewer2 = new window.GraphViewer2({
+      this.graphViewer = new window.GraphViewer2({
         name: name,
         documentStore: this.arangoDocumentStore,
         collection: new window.GraphCollection(),
         userConfig: this.userConfig
       });
-      this.graphViewer2.render();
+      this.graphViewer.render();
     },
 
-    graph2settings: function (name, initialized) {
+    graphSettings: function (name, initialized) {
       this.checkUser();
       if (!initialized) {
-        this.waitForInit(this.graph2settings.bind(this), name);
+        this.waitForInit(this.graphSettings.bind(this), name);
         return;
       }
       if (this.graphSettingsView) {
@@ -824,15 +824,16 @@
         this.waitForInit(this.graphManagement.bind(this));
         return;
       }
-      if (!this.graphManagementView) {
-        this.graphManagementView =
-          new window.GraphManagementView(
-            {
-              collection: new window.GraphCollection(),
-              collectionCollection: this.arangoCollectionsStore
-            }
-        );
+      if (this.graphManagementView) {
+        this.graphManagementView.undelegateEvents();
       }
+      this.graphManagementView =
+        new window.GraphManagementView(
+          {
+            collection: new window.GraphCollection(),
+            collectionCollection: this.arangoCollectionsStore
+          }
+      );
       this.graphManagementView.render();
     },
 
@@ -892,8 +893,8 @@
       if (this.naviView) {
         this.naviView.resize();
       }
-      if (this.graphViewer2) {
-        this.graphViewer2.resize();
+      if (this.graphViewer) {
+        this.graphViewer.resize();
       }
       if (this.documentsView) {
         this.documentsView.resize();

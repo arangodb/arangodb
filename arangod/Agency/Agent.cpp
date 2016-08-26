@@ -253,15 +253,28 @@ bool Agent::recvAppendEntriesRPC(
 
   MUTEX_LOCKER(mutexLocker, _ioLock);
 
+<<<<<<< HEAD
   if (this->term() > term) {
     if (leaderCommitIndex >= _lastCommitIndex) {
+=======
+  if (this->term() > term) { // peer at higher term 
+    if (leaderCommitIndex >= _lastCommitIndex) { // 
+>>>>>>> fb6e651525ad11e915ba2f7ff9019fa052f8b4f4
       _constituent.follow(term);
     } else {
       LOG_TOPIC(WARN, Logger::AGENCY) << "I have a higher term than RPC caller.";
       return false;
     }
+<<<<<<< HEAD
+=======
   }
-
+  
+  if (!_constituent.vote(term, leaderId, prevIndex, prevTerm, true)) {
+    LOG_TOPIC(WARN, Logger::AGENCY) << "Not voting for " << leaderId;
+    return false;
+>>>>>>> fb6e651525ad11e915ba2f7ff9019fa052f8b4f4
+  }
+  
   if (!_constituent.vote(term, leaderId, prevIndex, prevTerm, true)) {
     LOG_TOPIC(WARN, Logger::AGENCY) << "Not voting for " << leaderId;
     return false;

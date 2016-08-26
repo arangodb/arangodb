@@ -102,6 +102,10 @@
         sigma.classes.graph.addMethod('getNodeEdgesCount', function (id) {
           return this.allNeighborsCount[id];
         });
+
+        sigma.classes.graph.addMethod('getNodesCount', function () {
+          return this.nodesArray.length;
+        });
       } catch (ignore) {}
     },
 
@@ -118,7 +122,7 @@
     resize: function () {
       // adjust container widht + height
       $('#graph-container').width($('.centralContent').width());
-      $('#graph-container').height($('.centralRow').height() - 150);
+      $('#graph-container').height($('.centralRow').height() - 155);
     },
 
     toggleSettings: function () {
@@ -352,7 +356,7 @@
 
       // clear dom
       $('#nodeContextMenu').remove();
-      var string = '<div id="nodeContextMenu" class="nodeContextMenu"></div>';
+      var string = '<div id="nodeContextMenu" class="nodeContextMenu animated zoomIn"></div>';
       $('#graph-container').append(string);
 
       // clear state
@@ -365,8 +369,6 @@
       // clear events
       var c = document.getElementsByClassName('sigma-mouse')[0];
       c.removeEventListener('mousemove', self.drawLine.bind(this), false);
-
-      // clear info div
     },
 
     trackCursorPosition: function (e) {
@@ -503,7 +505,6 @@
 
     addNode: function () {
       var self = this;
-
       var x = self.addNodeX / 100;
       var y = self.addNodeY / 100;
 
@@ -518,7 +519,7 @@
           self.currentGraph.graph.addNode({
             id: id,
             label: id.split('/')[1] || '',
-            size: self.graphConfig.nodeSize || Math.random(),
+            size: self.graphConfig.nodeSize || 15,
             color: self.graphConfig.nodeColor || '#2ecc71',
             x: x,
             y: y
@@ -776,64 +777,67 @@
       });
     },
 
-    // right click nodes context menu
-    createNodesContextMenu: function (e) {
+    nodesContextMenuCheck: function (e) {
+      this.nodesContextEventState = e;
+      this.openNodesDate = new Date();
+    },
+
+    // click nodes context menu
+    /*
+    createNodesContextMenu: function () {
       var self = this;
+      var e = self.nodesContextEventState;
 
-      // if right click
-      if (e.which === 3) {
-        var x = e.clientX - 50;
-        var y = e.clientY - 50;
-        this.clearOldContextMenu();
+      var x = e.clientX - 50;
+      var y = e.clientY - 50;
+      self.clearOldContextMenu();
 
-        var generateMenu = function (e) {
-          var Wheelnav = wheelnav;
+      var generateMenu = function (e) {
+        var Wheelnav = wheelnav;
 
-          var wheel = new Wheelnav('nodeContextMenu');
-          wheel.maxPercent = 1.0;
-          wheel.wheelRadius = 50;
-          wheel.clockwise = false;
-          wheel.colors = self.colors.hotaru;
-          wheel.multiSelect = true;
-          wheel.clickModeRotate = false;
-          wheel.slicePathFunction = slicePath().DonutSlice;
-          if (self.viewStates.captureMode) {
-            wheel.createWheel([icon.plus, icon.trash]);
-          } else {
-            wheel.createWheel([icon.trash, icon.arrowleft2]);
-          }
+        var wheel = new Wheelnav('nodeContextMenu');
+        wheel.maxPercent = 1.0;
+        wheel.wheelRadius = 50;
+        wheel.clockwise = false;
+        wheel.colors = self.colors.hotaru;
+        wheel.multiSelect = true;
+        wheel.clickModeRotate = false;
+        wheel.slicePathFunction = slicePath().DonutSlice;
+        if (self.viewStates.captureMode) {
+          wheel.createWheel([icon.plus, icon.trash]);
+        } else {
+          wheel.createWheel([icon.trash, icon.arrowleft2]);
+        }
 
-          wheel.navItems[0].selected = false;
-          wheel.navItems[0].hovered = false;
-          // add menu events
+        wheel.navItems[0].selected = false;
+        wheel.navItems[0].hovered = false;
+        // add menu events
 
-          // function 0: remove all selectedNodes
-          wheel.navItems[0].navigateFunction = function (e) {
-            self.clearOldContextMenu();
-            self.deleteNodesModal();
-          };
-
-          // function 1: clear contextmenu
-          wheel.navItems[1].navigateFunction = function (e) {
-            self.clearOldContextMenu();
-          };
-
-          // deselect active default entry
-          wheel.navItems[0].selected = false;
-          wheel.navItems[0].hovered = false;
+        // function 0: remove all selectedNodes
+        wheel.navItems[0].navigateFunction = function (e) {
+          self.clearOldContextMenu();
+          self.deleteNodesModal();
         };
 
-        $('#nodeContextMenu').css('position', 'fixed');
-        $('#nodeContextMenu').css('left', x);
-        $('#nodeContextMenu').css('top', y);
-        $('#nodeContextMenu').width(100);
-        $('#nodeContextMenu').height(100);
+        // function 1: clear contextmenu
+        wheel.navItems[1].navigateFunction = function (e) {
+          self.clearOldContextMenu();
+        };
 
-        generateMenu(e);
-      } else {
-        self.clearOldContextMenu();
-      }
+        // deselect active default entry
+        wheel.navItems[0].selected = false;
+        wheel.navItems[0].hovered = false;
+      };
+
+      $('#nodeContextMenu').css('position', 'fixed');
+      $('#nodeContextMenu').css('left', x);
+      $('#nodeContextMenu').css('top', y);
+      $('#nodeContextMenu').width(100);
+      $('#nodeContextMenu').height(100);
+
+      generateMenu(e);
     },
+    */
 
     // right click background context menu
     createContextMenu: function (e) {
@@ -884,7 +888,7 @@
       generateMenu(e);
     },
 
-    // right click edge context menu
+    // click edge context menu
     createEdgeContextMenu: function (edgeId, e) {
       var self = this;
       var x = this.cursorX - 165;
@@ -936,7 +940,7 @@
       generateMenu(e, edgeId);
     },
 
-    // right click node context menu
+    // click node context menu
     createNodeContextMenu: function (nodeId, e) {
       var self = this;
       var x; var y; var size;
@@ -987,7 +991,15 @@
         wheel.clickModeRotate = false;
         wheel.sliceHoverAttr = {stroke: '#fff', 'stroke-width': 2};
         wheel.slicePathFunction = slicePath().DonutSlice;
-        wheel.createWheel([icon.edit, icon.trash, icon.flag, icon.connect, icon.expand]);
+        wheel.createWheel([
+          'imgsrc:img/gv_edit.png',
+          'imgsrc:img/gv_trash.png',
+          'imgsrc:img/gv_flag.png',
+          'imgsrc:img/gv_link.png',
+          'imgsrc:img/gv_expand.png'
+        ]);
+
+        $('#nodeContextMenu').addClass('animated bounceIn');
 
         window.setTimeout(function () {
           // add menu events
@@ -1018,6 +1030,7 @@
             self.contextState.fromY = y;
 
             var c = document.getElementsByClassName('sigma-mouse')[0];
+            self.drawHelp('Now click destination node, or click background to cancel.');
             c.addEventListener('mousemove', self.drawLine.bind(this), false);
 
             self.clearOldContextMenu();
@@ -1029,7 +1042,22 @@
             self.expandNode(nodeId);
           };
 
-          // on hover
+          // add menu hover functions
+
+          var descriptions = [
+            'Edit the node.',
+            'Delete node.',
+            'Set as startnode.',
+            'Draw edge.',
+            'Expand the node.'
+          ];
+
+          // hover functions
+          _.each(descriptions, function (val, key) {
+            wheel.navItems[key].navTitle.mouseover(function () { self.drawHelp(val); });
+            wheel.navItems[key].navTitle.mouseout(function () { self.removeHelp(); });
+          });
+
           /* TODO
           wheel.navItems[0].navSlice.mouseover(function (a) {
             $(a.target).css('opacity', '1');
@@ -1056,6 +1084,20 @@
       $('#nodeContextMenu').css('top', y + offset.top - radius);
 
       generateMenu(e, nodeId);
+    },
+
+    drawHelp: function (val) {
+      if (document.getElementById('helpTooltip') === null) {
+        $(this.el).append('<div id="helpTooltip" class="helpTooltip"><span>' + val + '</span></div>');
+      } else {
+        $('#helpTooltip span').text(val);
+      }
+
+      $('#helpTooltip').show();
+    },
+
+    removeHelp: function () {
+      $('#helpTooltip').remove();
     },
 
     clearMouseCanvas: function () {
@@ -1133,8 +1175,8 @@
         }
       });
 
-      $('#nodesCount').text(parseInt($('#nodesCount').text()) + newNodeCounter);
-      $('#edgesCount').text(parseInt($('#edgesCount').text()) + newEdgeCounter);
+      $('#nodesCount').text(parseInt($('#nodesCount').text(), 10) + newNodeCounter);
+      $('#edgesCount').text(parseInt($('#edgesCount').text(), 10) + newEdgeCounter);
 
       // rerender graph
       if (newNodeCounter > 0 || newEdgeCounter > 0) {
@@ -1174,7 +1216,7 @@
     */
 
     drawLine: function (e) {
-      var context = window.App.graphViewer2.contextState;
+      var context = window.App.graphViewer.contextState;
 
       if (context.createEdge) {
         var fromX = context.fromX;
@@ -1284,6 +1326,16 @@
           });
         }
 
+        var style = 'position: absolute; right: 25px; bottom: 45px;';
+
+        if (!$('#deleteNodes').is(':visible')) {
+          $(self.el).append(
+            '<button style=" ' + style + ' "id="deleteNodes" class="button-danger fadeIn animated">Delete selected nodes</button>'
+          );
+          var c = document.getElementById('deleteNodes');
+          c.addEventListener('click', self.deleteNodesModal.bind(self), false);
+        }
+
         self.activeNodes = nodes;
         sigmaInstance.refresh();
       });
@@ -1309,13 +1361,13 @@
             });
           }
 
-          var style = 'position: absolute; left: 25px; bottom: 45px;';
+          var style = 'position: absolute; left: 25px; bottom: 50px;';
           if (this.aqlMode) {
             style = 'position: absolute; left: 30px; margin-top: -37px;';
           }
 
           $(this.el).append(
-            '<div style="' + style + '">' +
+            '<div style="' + style + ' animated fadeIn">' +
               '<span style="margin-right: 10px" class="arangoState"><span id="nodesCount">' + graph.nodes.length + '</span> nodes</span>' +
                 '<span class="arangoState"><span id="edgesCount">' + graph.edges.length + '</span> edges</span>' +
                   '</div>'
@@ -1349,7 +1401,7 @@
         defaultNodeBorderColor: '#8c8c8c',
         doubleClickEnabled: false,
         minNodeSize: 5,
-        labelThreshold: 15,
+        labelThreshold: 10,
         maxNodeSize: 15,
         batchEdgesDrawing: true,
         minEdgeSize: 10,
@@ -1370,11 +1422,12 @@
       };
 
       // halo settings
-      settings.nodeHaloColor = '#FF7A7A';
+      // settings.nodeHaloColor = '#FF7A7A';
+      settings.nodeHaloColor = 'rgba(146,197,192, 0.8)';
       settings.nodeHaloStroke = false;
       settings.nodeHaloStrokeColor = '#000';
-      settings.nodeHaloStrokeWidth = 0.5;
-      settings.nodeHaloSize = 15;
+      settings.nodeHaloStrokeWidth = 0;
+      settings.nodeHaloSize = 25;
       settings.nodeHaloClustering = false;
       settings.nodeHaloClusteringMaxRadius = 1000;
       settings.edgeHaloColor = '#fff';
@@ -1483,18 +1536,19 @@
               var callback = function (error, data) {
                 if (!error) {
                   var attributes = '';
-                  attributes += 'ID <span class="nodeId">' + data._id + '</span>';
+                  attributes += '<span>ID </span> <span class="nodeId">' + data._id + '</span>';
                   if (Object.keys(data).length > 3) {
-                    attributes += 'KEYS ';
+                    attributes += '<span>KEYS </span>';
                   }
                   _.each(data, function (value, key) {
                     if (key !== '_key' && key !== '_id' && key !== '_rev' && key !== '_from' && key !== '_to') {
                       attributes += '<span class="nodeAttribute">' + key + '</span>';
                     }
                   });
-                  var string = '<div id="nodeInfoDiv" class="nodeInfoDiv">' + attributes + '</div>';
+                  var string = '<div id="nodeInfoDiv" class="nodeInfoDiv" style="display: none;">' + attributes + '</div>';
 
                   $(self.el).append(string);
+                  $('#nodeInfoDiv').fadeIn('slow');
                 }
               };
 
@@ -1507,20 +1561,11 @@
           }
         };
 
-        s.bind('rightClickStage', function (e) {
-          self.addNodeX = e.data.captor.x;
-          self.addNodeY = e.data.captor.y;
-          self.createContextMenu(e);
-          self.clearMouseCanvas();
-        });
-
-        s.bind('rightClickNode', function (e) {
-          var nodeId = e.data.node.id;
-          self.createNodeContextMenu(nodeId, e);
-        });
-
         s.bind('clickNode', function (e) {
           if (self.contextState.createEdge === true) {
+            self.clearMouseCanvas();
+            self.removeHelp();
+
             // create the edge
             self.contextState._to = e.data.node.id;
             var fromCollection = self.contextState._from.split('/')[0];
@@ -1529,8 +1574,15 @@
             // validate edgeDefinitions
             var foundEdgeDefinitions = self.getEdgeDefinitionCollections(fromCollection, toCollection);
             self.addEdgeModal(foundEdgeDefinitions, self.contextState._from, self.contextState._to);
+            self.clearOldContextMenu(true);
           } else {
             if (!self.dragging) {
+              if (self.contextState.createEdge === true) {
+                self.newEdgeColor = '#ff0000';
+              } else {
+                self.newEdgeColor = '#000000';
+              }
+
               // halo on active nodes:
               if (renderer === 'canvas') {
                 self.currentGraph.renderers[0].halo({
@@ -1548,33 +1600,45 @@
                   nodes: [e.data.node]
                 });
               }
+
+              if (!this.aqlMode) {
+                self.createNodeContextMenu(e.data.node.id, e);
+              }
             }
           }
         });
 
-        s.bind('clickStage', function () {
-          self.clearOldContextMenu(true);
-          self.clearMouseCanvas();
-          s.renderers[0].halo({
-            nodes: self.activeNodes
-          });
+        s.bind('clickStage', function (e) {
+          if (e.data.captor.isDragging) {
+            self.clearOldContextMenu(true);
+            self.clearMouseCanvas();
+          } else if (self.contextState.createEdge === true) {
+            self.clearOldContextMenu(true);
+            self.clearMouseCanvas();
+            self.removeHelp();
+          } else {
+            // stage menu
+            if (!$('#nodeContextMenu').is(':visible')) {
+              var offset = $('#graph-container').offset();
+              self.addNodeX = sigma.utils.getX(e) - offset.left / 2;
+              self.addNodeY = sigma.utils.getY(e) - offset.top / 2;
+              // self.addNodeX = e.data.captor.x;
+              // self.addNodeY = e.data.captor.y;
+              self.createContextMenu(e);
+              self.clearMouseCanvas();
+            } else {
+              // cleanup
+              self.clearOldContextMenu(true);
+              self.clearMouseCanvas();
+            }
+
+            // remember halo
+            s.renderers[0].halo({
+              nodes: self.activeNodes
+            });
+          }
         });
       }
-
-      s.bind('doubleClickStage', function () {
-        self.activeNodes = [];
-
-        s.graph.nodes().forEach(function (n) {
-          n.color = n.originalColor;
-        });
-
-        s.graph.edges().forEach(function (e) {
-          e.color = e.originalColor;
-        });
-
-        $('.nodeInfoDiv').remove();
-        s.refresh();
-      });
 
       if (renderer === 'canvas') {
         // render parallel edges
@@ -1584,57 +1648,70 @@
           }
         }
 
-        s.bind('overNode', function (e) {
-          if (self.contextState.createEdge === true) {
-            self.newEdgeColor = '#ff0000';
-          } else {
-            self.newEdgeColor = '#000000';
-          }
-        });
-
         s.bind('clickEdge', function (e) {
           showAttributes(e, false);
         });
 
-        s.bind('doubleClickNode', function (e) {
-          var nodeId = e.data.node.id;
-          var toKeep = s.graph.neighbors(nodeId);
-          toKeep[nodeId] = e.data.node;
-
-          s.graph.nodes().forEach(function (n) {
-            if (toKeep[n.id]) {
-              n.color = n.originalColor;
-            } else {
-              n.color = '#eee';
-            }
-          });
-
-          s.graph.edges().forEach(function (e) {
-            if (toKeep[e.source] && toKeep[e.target]) {
-              e.color = 'rgb(64, 74, 83)';
-            } else {
-              e.color = '#eee';
-            }
-          });
-
-          s.refresh();
-        });
         s.renderers[0].bind('render', function (e) {
           s.renderers[0].halo({
             nodes: self.activeNodes
           });
         });
 
-        if (!this.aqlMode) {
-          s.bind('rightClickNode', function (e) {
+        var unhighlightNodes = function () {
+          self.nodeHighlighted = false;
+          if (s.graph.getNodesCount() < 250) {
+            self.activeNodes = [];
+
+            s.graph.nodes().forEach(function (n) {
+              n.color = n.originalColor;
+            });
+
+            s.graph.edges().forEach(function (e) {
+              e.color = e.originalColor;
+            });
+
+            s.refresh({ skipIndexation: true });
+          }
+        };
+
+        s.bind('rightClickStage', function (e) {
+          unhighlightNodes();
+          self.nodeHighlighted = 'undefinedid';
+        });
+
+        s.bind('rightClickNode', function (e) {
+          if (self.nodeHighlighted !== e.data.node.id) {
             var nodeId = e.data.node.id;
-            self.createNodeContextMenu(nodeId, e);
-          });
-        }
+            var toKeep = s.graph.neighbors(nodeId);
+            toKeep[nodeId] = e.data.node;
+
+            s.graph.nodes().forEach(function (n) {
+              if (toKeep[n.id]) {
+                n.color = n.originalColor;
+              } else {
+                n.color = '#eee';
+              }
+            });
+
+            s.graph.edges().forEach(function (e) {
+              if (toKeep[e.source] && toKeep[e.target]) {
+                e.color = 'rgb(64, 74, 83)';
+              } else {
+                e.color = '#eee';
+              }
+            });
+
+            self.nodeHighlighted = true;
+            s.refresh({ skipIndexation: true });
+          } else {
+            unhighlightNodes();
+          }
+        });
 
         if (this.graphConfig) {
           if (this.graphConfig.edgeEditable) {
-            s.bind('rightClickEdge', function (e) {
+            s.bind('clickEdge', function (e) {
               var edgeId = e.data.edge.id;
               self.createEdgeContextMenu(edgeId, e);
             });
@@ -1781,10 +1858,16 @@
     },
 
     toggleLasso: function () {
+      var self = this;
+
       if (this.graphLasso.isActive) {
+        var y = document.getElementById('deleteNodes');
+        y.removeEventListener('click', self.deleteNodesModal, false);
+        $('#deleteNodes').remove();
+
         // remove event
         var c = document.getElementsByClassName('sigma-lasso')[0];
-        c.removeEventListener('mouseup', this.createNodesContextMenu.bind(this), false);
+        c.removeEventListener('mouseup', this.nodesContextMenuCheck.bind(this), false);
 
         $('#selectNodes').removeClass('activated');
         this.graphLasso.deactivate();
@@ -1792,14 +1875,14 @@
         // clear selected nodes state
         this.selectedNodes = {};
         this.activeNodes = [];
-        this.currentGraph.refresh();
+        this.currentGraph.refresh({ skipIndexation: true });
       } else {
         $('#selectNodes').addClass('activated');
         this.graphLasso.activate();
 
         // add event
         var x = document.getElementsByClassName('sigma-lasso')[0];
-        x.addEventListener('mouseup', this.createNodesContextMenu.bind(this), false);
+        x.addEventListener('mouseup', self.nodesContextMenuCheck.bind(this), false);
       }
     },
 

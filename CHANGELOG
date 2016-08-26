@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #2012
+
 * added a memory expection in case V8 memory gets too low
 
 * fixed epoch computation in hybrid logical clock
@@ -45,6 +47,16 @@ devel
 
 v3.0.6 (XXXX-XX-XX)
 -------------------
+
+* slightly better error diagnostics for AQL query compilation and replication
+
+* fixed issue #2018
+
+* fixed issue #2015
+
+* fixed issue #2012
+
+* fixed wrong default value for arangoimp's `--on-duplicate` value
 
 * fix execution of AQL traversal expressions when there are multiple
   conditions that refer to variables set outside the traversal

@@ -568,6 +568,8 @@ if (WIN32)
     DESTINATION "bin/share/arangodb/"
     RENAME ${ICU_DT_DEST})
 else()
+  # other platforms don't install ICU:
+  set(ICU_DT_DEST "" PARENT_SCOPE)
   add_custom_target(nonthinV8
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../Installation/archive-de-thinner.sh ${V8_REL_TARGET_PATH}
     COMMENT de-thins V8 .a files)

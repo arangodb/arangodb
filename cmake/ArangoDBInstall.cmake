@@ -16,10 +16,6 @@ endif ()
 set(CMAKE_INSTALL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_SYSCONFDIR}/arangodb3")
 set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_FULL_SYSCONFDIR}/arangodb3")
 
-file(TO_NATIVE_PATH "${CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO}" ETCDIR_NATIVE)
-STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ETCDIR_ESCAPED "${ETCDIR_NATIVE}")
-add_definitions("-D_SYSCONFDIR_=\"${ETCDIR_ESCAPED}\"")
-
 # database directory 
 FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb3")
 
@@ -84,6 +80,15 @@ install(
   DIRECTORY ${PROJECT_BINARY_DIR}/var/lib/arangodb3-apps
   DESTINATION ${CMAKE_INSTALL_LOCALSTATEDIR}/lib)
 
+################################################################################
+### @brief propagate the locations into our programms:
+################################################################################
+
+configure_file (
+  "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/directories.h.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/directories.h"
+  NEWLINE_STYLE UNIX
+)
 
 # sub directories --------------------------------------------------------------
 

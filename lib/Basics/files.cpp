@@ -25,8 +25,10 @@
 
 #ifdef _WIN32
 #include <tchar.h>
+#include <Shlwapi.h>
 #endif
 
+#include "Basics/directories.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
@@ -1647,6 +1649,9 @@ std::string TRI_LocateBinaryPath(char const* argv0) {
       binaryPath = TRI_DuplicateString("");
       TRI_FreeString(TRI_CORE_MEM_ZONE, dir);
     }
+    else {
+      binaryPath = dir;
+    }
   }
 
   // check PATH variable
@@ -1691,6 +1696,34 @@ std::string TRI_LocateBinaryPath(char const* argv0) {
   }
 
   return result;
+}
+
+std::string TRI_GetInstallRoot(std::string const& binaryPath,
+                               char const *installBinaryPath) {
+  // First lets remove trailing (back) slashes from the bill:
+  size_t ibpLength = strlen(installBinaryPath);
+
+  if (installBinaryPath[ibpLength - 1] == TRI_DIR_SEPARATOR_CHAR) {
+    ibpLength --;
+  }
+  
+  size_t bpLength = binaryPath.length();
+  char const* pbPath = binaryPath.c_str();
+
+  if (pbPath[bpLength - 1] == TRI_DIR_SEPARATOR_CHAR) {
+    --bpLength;
+  }
+  
+  if (ibpLength > bpLength) {
+    return TRI_DIR_SEPARATOR_STR;
+  }
+
+  for (size_t i = 1; i < ibpLength; ++i) {
+    if (pbPath[bpLength - i] != installBinaryPath[ibpLength - i]) {
+      return TRI_DIR_SEPARATOR_STR;
+    }
+  }
+  return std::string(pbPath, bpLength - ibpLength);
 }
 
 static bool CopyFileContents(int srcFD, int dstFD, ssize_t fileSize,
@@ -2329,11 +2362,7 @@ char* TRI_LocateConfigDirectory() {
 
   std::string r = TRI_LocateInstallDirectory();
 
-#ifdef _SYSCONFDIR_
   r += _SYSCONFDIR_;
-#else
-  r += "etc\\arangodb3";
-#endif
 
   r += std::string(1, TRI_DIR_SEPARATOR_CHAR);
 
@@ -2396,3 +2425,16 @@ void TRI_InitializeFiles() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownFiles() {}
+
+
+
+#if _WIN32
+bool TRI_PathIsAbsolute(const std::string &path) {
+  return !PathIsRelative(path.c_str());
+}
+
+#else  
+bool TRI_PathIsAbsolute(const std::string &path) {
+  return path.c_str()[0] == '/';
+}
+#endif

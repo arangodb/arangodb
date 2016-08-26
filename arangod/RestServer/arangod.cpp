@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
+#include "Basics/directories.h"
 #include "Basics/tri-strings.h"
 
 #include "Actions/ActionFeature.h"
@@ -80,7 +81,7 @@ using namespace arangodb;
 using namespace arangodb::wal;
 
 static int runServer(int argc, char** argv) {
-  ArangoGlobalContext context(argc, argv);
+  ArangoGlobalContext context(argc, argv, SBIN_DIRECTORY);
   context.installSegv();
   context.runStartupChecks();
 

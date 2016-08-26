@@ -53,7 +53,7 @@ class DispatcherFeature final
 
  private:
   uint64_t _nrStandardThreads;
-  uint64_t _nrExtraThreads;
+  int64_t _nrExtraThreads;
   uint64_t _nrAqlThreads;
   uint64_t _queueSize;
 

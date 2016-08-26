@@ -28,6 +28,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WorkMonitor.h"
+#include "Basics/ArangoGlobalContext.h"
 #include "Cluster/ServerState.h"
 #include "Dispatcher/DispatcherFeature.h"
 #include "Dispatcher/DispatcherThread.h"
@@ -147,6 +148,15 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // remove trailing / from path and set path
   _startupPath = StringUtils::rTrim(_startupPath, TRI_DIR_SEPARATOR_STR);
 
+  auto ctx = ArangoGlobalContext::CONTEXT;
+    
+  if (ctx == nullptr) {
+    LOG(ERR) << "failed to get global context.  ";
+    FATAL_ERROR_EXIT();
+  }
+  
+  ctx->getCheckPath(_startupPath, "javascript.startup-directory", true);
+  
   _startupLoader.setDirectory(_startupPath);
   ServerState::instance()->setJavaScriptPath(_startupPath);
 
@@ -156,6 +166,8 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
+  ctx->getCheckPath(_appPath, "javascript.app-directory", true);
+  
   // use a minimum of 1 second for GC
   if (_gcFrequency < 1) {
     _gcFrequency = 1;

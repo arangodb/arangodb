@@ -681,6 +681,10 @@ static AqlValue MergeParameters(arangodb::aql::Query* query,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
   }
+  if (n == 1) {
+    // only one parameter. now add original document
+    builder.add(initialSlice);
+  }
   return AqlValue(builder);
 }
 

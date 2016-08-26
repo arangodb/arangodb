@@ -68,10 +68,6 @@ Function disableBackButton
      EnableWindow $0 0
 FunctionEnd
 
-SetShellVarContext all
-FunctionEnd
-
-
   !include Sections.nsh
 
 ;--- Component support macros: ---

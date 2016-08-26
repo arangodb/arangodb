@@ -23,6 +23,8 @@
 #include "DatabaseFeature.h"
 
 #include "Basics/StringUtils.h"
+#include "Basics/ArangoGlobalContext.h"
+#include "Agency/v8-agency.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/v8-cluster.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -129,6 +131,15 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // strip trailing separators
   _databasePath = StringUtils::rTrim(_directory, TRI_DIR_SEPARATOR_STR);
 
+  auto ctx = ArangoGlobalContext::CONTEXT;
+    
+  if (ctx == nullptr) {
+    LOG(ERR) << "failed to get global context.  ";
+    FATAL_ERROR_EXIT();
+  }
+
+  ctx->getCheckPath(_databasePath, "database.directory", false);
+
   if (_maximalJournalSize < TRI_JOURNAL_MINIMAL_SIZE) {
     LOG(FATAL) << "invalid value for '--database.maximal-journal-size'. "
                   "expected at least "
@@ -209,6 +220,7 @@ void DatabaseFeature::updateContexts() {
                             i);
         TRI_InitV8Queries(isolate, context);
         TRI_InitV8Cluster(isolate, context);
+        TRI_InitV8Agency(isolate, context);
       },
       vocbase);
 }
