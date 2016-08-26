@@ -1,6 +1,8 @@
 v3.0.6 (XXXX-XX-XX)
 -------------------
 
+* slightly better error diagnostics for AQL query compilation and replication
+
 * fixed issue #2018
 
 * fixed issue #2015
