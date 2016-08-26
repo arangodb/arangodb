@@ -874,7 +874,17 @@ std::shared_ptr<Index> LogicalCollection::createIndex(Transaction* trx,
 
   std::shared_ptr<Index> newIdx;
 
-  TRI_idx_iid_t iid = arangodb::Index::generateId();
+  TRI_idx_iid_t iid = 0;
+  value = info.get("id");
+  if (value.isString()) {
+    iid = basics::StringUtils::uint64(value.copyString());
+  } 
+  if (iid == 0) {
+    iid = arangodb::Index::generateId();
+  }
+  
+  Helper::getNumericValue<TRI_idx_iid_t>(
+      info, "id", arangodb::Index::generateId());
 
   switch (type) {
     case arangodb::Index::TRI_IDX_TYPE_UNKNOWN:
@@ -901,7 +911,7 @@ std::shared_ptr<Index> LogicalCollection::createIndex(Transaction* trx,
       newIdx.reset(new arangodb::RocksDBIndex(iid, this, info));
       break;
 #else
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                      "index type not supported in this build");
 #endif
     }
@@ -1163,7 +1173,11 @@ bool LogicalCollection::dropIndex(TRI_idx_iid_t iid, bool writeMarker) {
 
 /// @brief creates the initial indexes for the collection
 int LogicalCollection::createInitialIndexes() {
-  TRI_ASSERT(_indexes.empty());
+  // TODO Properly fix this. The outside should make sure that only NEW collections
+  // try to create the indexes.
+  if (!_indexes.empty()) {
+    return TRI_ERROR_NO_ERROR;
+  }
 
   // create primary index
   auto primaryIndex = std::make_shared<arangodb::PrimaryIndex>(this);
