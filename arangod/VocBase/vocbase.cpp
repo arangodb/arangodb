@@ -311,7 +311,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
   }
 
   // ok, construct the collection
-  TRI_collection_t* document = TRI_collection_t::create(this, parameters, cid);
+  std::unique_ptr<TRI_collection_t> document(TRI_collection_t::create(this, parameters, cid));
 
   if (document == nullptr) {
     return nullptr;
@@ -331,32 +331,36 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
 
   // FIXME
   if (collection == nullptr) {
-    delete document;
     // TODO: does the collection directory need to be removed?
     return nullptr;
   }
 
-  // FIXME Taken out of TRI_collection_t* create()
-  // Maybe the ordering is broken now
-  // create document collection
-  int res = collection->createInitialIndexes();
+  try {
+    // FIXME Taken out of TRI_collection_t* create()
+    // Maybe the ordering is broken now
+    // create document collection
+    int res = collection->createInitialIndexes();
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot initialize collection";
-    return nullptr;
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    
+    // cid might have been assigned
+    cid = document->_info.id();
+
+    collection->setStatus(TRI_VOC_COL_STATUS_LOADED);
+
+    if (writeMarker) {
+      document->_info.toVelocyPack(builder);
+    }
+    
+    collection->_collection = document.release();
+
+    return collection;
+  } catch (...) {
+    unregisterCollection(collection);
+    throw;
   }
-  
-  // cid might have been assigned
-  cid = document->_info.id();
-
-  collection->setStatus(TRI_VOC_COL_STATUS_LOADED);
-  collection->_collection = document;
-
-  if (writeMarker) {
-    document->_info.toVelocyPack(builder);
-  }
-
-  return collection;
 }
 
 /// @brief loads an existing collection
