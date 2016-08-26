@@ -225,7 +225,7 @@ int MMFilesCompactorThread::removeDatafile(LogicalCollection* collection,
   }
 
   // update dfi
-  collection->_collection->_datafileStatistics.remove(df->_fid);
+  static_cast<MMFilesCollection*>(collection->getPhysical())->_datafileStatistics.remove(df->_fid);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -484,14 +484,14 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
   }  // next file
 
-  document->_datafileStatistics.replace(compactor->_fid, context._dfi);
+  static_cast<MMFilesCollection*>(collection->getPhysical())->_datafileStatistics.replace(compactor->_fid, context._dfi);
 
   trx.commit();
 
   // remove all datafile statistics that we don't need anymore
   for (size_t i = 1; i < n; ++i) {
     auto compaction = toCompact[i];
-    document->_datafileStatistics.remove(compaction._datafile->_fid);
+    static_cast<MMFilesCollection*>(collection->getPhysical())->_datafileStatistics.remove(compaction._datafile->_fid);
   }
 
   if (static_cast<MMFilesCollection*>(collection->getPhysical())->closeCompactor(compactor) != TRI_ERROR_NO_ERROR) {
@@ -675,8 +675,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
     TRI_datafile_t* df = datafiles[i];
     TRI_ASSERT(df != nullptr);
 
-    DatafileStatisticsContainer dfi =
-        document->_datafileStatistics.get(df->_fid);
+    DatafileStatisticsContainer dfi = static_cast<MMFilesCollection*>(collection->getPhysical())->_datafileStatistics.get(df->_fid);
 
     if (dfi.numberUncollected > 0) {
       LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "cannot compact datafile " << df->_fid << " of collection '" << collection->name() << "' because it still has uncollected entries";

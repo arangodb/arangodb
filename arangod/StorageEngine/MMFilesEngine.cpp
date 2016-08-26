@@ -2090,8 +2090,7 @@ char* MMFilesEngine::nextFreeMarkerPosition(
     if (cache->lastFid > 0) {
       // rotated the existing journal... now update the old journal's stats
       auto& dfi = cache->createDfi(cache->lastFid);
-      collection->_collection->_datafileStatistics.increaseUncollected(cache->lastFid,
-                                                        dfi.numberUncollected);
+      static_cast<MMFilesCollection*>(collection->getPhysical())->_datafileStatistics.increaseUncollected(cache->lastFid, dfi.numberUncollected);
       // and reset them afterwards
       dfi.numberUncollected = 0;
     }

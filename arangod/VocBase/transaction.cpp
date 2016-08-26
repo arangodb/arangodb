@@ -221,8 +221,7 @@ static void FreeOperations(TRI_transaction_t* trx) {
 
       // now update the stats for all datafiles of the collection in one go
       for (auto const& it : stats) {
-        document->_datafileStatistics.increaseDead(it.first, it.second.first,
-                                                   it.second.second);
+        trxCollection->_collection->increaseDeadStats(it.first, it.second.first, it.second.second);
       }
     }
 
@@ -1116,9 +1115,8 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
         operation.type == TRI_VOC_DOCUMENT_OPERATION_REPLACE ||
         operation.type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
       // update datafile statistics for the old header
-// FIXME
-      collection->_collection->_datafileStatistics.increaseDead(
-          operation.oldHeader.getFid(), 1, static_cast<int64_t>(operation.oldHeader.alignedMarkerSize()));
+      
+      collection->increaseDeadStats(operation.oldHeader.getFid(), 1, static_cast<int64_t>(operation.oldHeader.alignedMarkerSize()));
     }
   } else {
     // operation is buffered and might be rolled back

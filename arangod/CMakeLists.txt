@@ -279,6 +279,7 @@ add_executable(${BIN_ARANGOD}
   StorageEngine/MMFilesCleanupThread.cpp
   StorageEngine/MMFilesCollection.cpp
   StorageEngine/MMFilesCompactorThread.cpp
+  StorageEngine/MMFilesDatafileStatistics.cpp
   StorageEngine/MMFilesEngine.cpp
   StorageEngine/OtherEngine.cpp
   Utils/AqlTransaction.cpp
@@ -316,7 +317,7 @@ add_executable(${BIN_ARANGOD}
   V8Server/v8-voccursor.cpp
   V8Server/v8-vocindex.cpp
   VocBase/AuthInfo.cpp
-  VocBase/DatafileStatistics.cpp
+  VocBase/DatafileStatisticsContainer.cpp
   VocBase/Ditch.cpp
   VocBase/EdgeCollectionInfo.cpp
   VocBase/Graphs.cpp

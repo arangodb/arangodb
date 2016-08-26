@@ -457,19 +457,6 @@ int TRI_collection_t::beginWriteTimed(uint64_t timeout,
 }
 
 void TRI_collection_t::figures(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
-  DatafileStatisticsContainer dfi = _datafileStatistics.all();
-
-  builder->add("alive", VPackValue(VPackValueType::Object));
-  builder->add("count", VPackValue(dfi.numberAlive));
-  builder->add("size", VPackValue(dfi.sizeAlive));
-  builder->close(); // alive
-  
-  builder->add("dead", VPackValue(VPackValueType::Object));
-  builder->add("count", VPackValue(dfi.numberDead));
-  builder->add("size", VPackValue(dfi.sizeDead));
-  builder->add("deletion", VPackValue(dfi.numberDeletions));
-  builder->close(); // dead
-
   builder->add("uncollectedLogfileEntries", VPackValue(_uncollectedLogfileEntries));
   builder->add("lastTick", VPackValue(_tickMax));
 
@@ -1281,7 +1268,7 @@ static int IterateMarkersCollection(arangodb::Transaction* trx,
   // update the real statistics for the collection
   try {
     for (auto& it : openState._stats) {
-      document->_datafileStatistics.create(it.first, *(it.second));
+      collection->createStats(it.first, *(it.second));
     }
   } catch (basics::Exception const& ex) {
     return ex.code();

@@ -25,7 +25,7 @@
 #define ARANGOD_WAL_COLLECTOR_CACHE_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/DatafileStatistics.h"
+#include "VocBase/DatafileStatisticsContainer.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/voc-types.h"
 

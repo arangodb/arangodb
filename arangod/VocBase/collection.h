@@ -27,30 +27,10 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/ClusterInfo.h"
-#include "VocBase/DatafileStatistics.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/MasterPointer.h"
 #include "VocBase/MasterPointers.h"
 #include "VocBase/vocbase.h"
-
-////////////////////////////////////////////////////////////////////////////////
-/// Data is stored in datafiles. A set of datafiles forms a collection. A
-/// datafile can be read-only and sealed or read-write. All datafiles of a
-/// collection are stored in a directory. This directory contains the following
-/// files:
-///
-/// - parameter.json: The parameters of a collection.
-///
-/// - datafile-NNN.db: A read-only datafile. The number NNN is the datafile
-///     identifier, see @ref TRI_datafile_t.
-///
-/// - journal-NNN.db: A read-write datafile used as journal. All new entries
-///     of a collection are appended to a journal. The number NNN is the
-///     datafile identifier, see @ref TRI_datafile_t.
-///
-/// - index-NNN.json: An index description. The number NNN is the index
-///     identifier, see @ref TRI_index_t.
-////////////////////////////////////////////////////////////////////////////////
 
 namespace arangodb {
 class EdgeIndex;
@@ -287,8 +267,6 @@ struct TRI_collection_t {
   std::unique_ptr<arangodb::FollowerInfo> _followers;
 
  public:
-  arangodb::DatafileStatistics _datafileStatistics;
-  
   std::unique_ptr<arangodb::KeyGenerator> _keyGenerator;
 
   std::atomic<int64_t> _uncollectedLogfileEntries;

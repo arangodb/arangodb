@@ -21,39 +21,23 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_DATAFILE_STATISTICS_H
-#define ARANGOD_VOC_BASE_DATAFILE_STATISTICS_H 1
+#ifndef ARANGOD_STORAGE_ENGINE_MMFILES_DATAFILE_STATISTICS_H
+#define ARANGOD_STORAGE_ENGINE_MMFILES_DATAFILE_STATISTICS_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "VocBase/DatafileStatisticsContainer.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
 
-/// @brief datafile statistics
-struct DatafileStatisticsContainer {
-  DatafileStatisticsContainer();
-
-  void update(DatafileStatisticsContainer const&);
-  void reset();
-
-  int64_t numberAlive;
-  int64_t numberDead;
-  int64_t numberDeletions;
-
-  int64_t sizeAlive;
-  int64_t sizeDead;
-
-  int64_t numberUncollected;
-};
-
 /// @brief datafile statistics manager for a single collection
-class DatafileStatistics {
+class MMFilesDatafileStatistics {
  public:
-  DatafileStatistics(DatafileStatistics const&) = delete;
-  DatafileStatistics& operator=(DatafileStatistics const&) = delete;
-  DatafileStatistics();
-  ~DatafileStatistics();
+  MMFilesDatafileStatistics(MMFilesDatafileStatistics const&) = delete;
+  MMFilesDatafileStatistics& operator=(MMFilesDatafileStatistics const&) = delete;
+  MMFilesDatafileStatistics();
+  ~MMFilesDatafileStatistics();
 
  public:
   /// @brief create (empty) statistics for a datafile

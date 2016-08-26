@@ -25,6 +25,7 @@
 #define ARANGOD_VOCBASE_LOGICAL_COLLECTION_H 1
 
 #include "Basics/Common.h"
+#include "VocBase/DatafileStatisticsContainer.h"
 #include "VocBase/MasterPointers.h"
 #include "VocBase/PhysicalCollection.h"
 #include "VocBase/voc-types.h"
@@ -192,6 +193,22 @@ class LogicalCollection {
   bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& callback) {
     return getPhysical()->iterateDatafiles(callback);
   }
+  
+  /// @brief increase dead stats for a datafile, if it exists
+  void increaseDeadStats(TRI_voc_fid_t fid, int64_t number, int64_t size) {
+    return getPhysical()->increaseDeadStats(fid, number, size);
+  }
+  
+  /// @brief increase dead stats for a datafile, if it exists
+  void updateStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) {
+    return getPhysical()->updateStats(fid, values);
+  }
+  
+  /// @brief create statistics for a datafile, using the stats provided
+  void createStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) {
+    return getPhysical()->createStats(fid, values);
+  }
+
   
   int applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
                         std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) {

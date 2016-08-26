@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "DatafileStatistics.h"
+#include "MMFilesDatafileStatistics.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
 #include "Basics/ReadLocker.h"
@@ -30,56 +30,11 @@
 
 using namespace arangodb;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an empty datafile statistics container
-////////////////////////////////////////////////////////////////////////////////
-
-DatafileStatisticsContainer::DatafileStatisticsContainer()
-    : numberAlive(0),
-      numberDead(0),
-      numberDeletions(0),
-      sizeAlive(0),
-      sizeDead(0),
-      numberUncollected(0) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update statistics from another container
-////////////////////////////////////////////////////////////////////////////////
-
-void DatafileStatisticsContainer::update(
-    DatafileStatisticsContainer const& other) {
-  numberAlive += other.numberAlive;
-  numberDead += other.numberDead;
-  numberDeletions += other.numberDeletions;
-  sizeAlive += other.sizeAlive;
-  sizeDead += other.sizeDead;
-  numberUncollected += other.numberUncollected;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief flush the statistics values
-////////////////////////////////////////////////////////////////////////////////
-
-void DatafileStatisticsContainer::reset() {
-  numberAlive = 0;
-  numberDead = 0;
-  numberDeletions = 0;
-  sizeAlive = 0;
-  sizeDead = 0;
-  numberUncollected = 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create statistics manager for a collection
-////////////////////////////////////////////////////////////////////////////////
+MMFilesDatafileStatistics::MMFilesDatafileStatistics() : _lock(), _stats() {}
 
-DatafileStatistics::DatafileStatistics() : _lock(), _stats() {}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy statistics manager
-////////////////////////////////////////////////////////////////////////////////
-
-DatafileStatistics::~DatafileStatistics() {
+MMFilesDatafileStatistics::~MMFilesDatafileStatistics() {
   WRITE_LOCKER(writeLocker, _lock);
 
   for (auto& it : _stats) {
@@ -87,11 +42,8 @@ DatafileStatistics::~DatafileStatistics() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an empty statistics container for a file
-////////////////////////////////////////////////////////////////////////////////
-
-void DatafileStatistics::create(TRI_voc_fid_t fid) {
+void MMFilesDatafileStatistics::create(TRI_voc_fid_t fid) {
   auto stats = std::make_unique<DatafileStatisticsContainer>();
 
   WRITE_LOCKER(writeLocker, _lock);
@@ -108,11 +60,8 @@ void DatafileStatistics::create(TRI_voc_fid_t fid) {
   stats.release();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create statistics for a datafile, using the stats provided
-////////////////////////////////////////////////////////////////////////////////
-
-void DatafileStatistics::create(TRI_voc_fid_t fid,
+void MMFilesDatafileStatistics::create(TRI_voc_fid_t fid,
                                 DatafileStatisticsContainer const& src) {
   auto stats = std::make_unique<DatafileStatisticsContainer>();
   *stats = src;
@@ -132,11 +81,8 @@ void DatafileStatistics::create(TRI_voc_fid_t fid,
   stats.release();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief remove statistics for a file
-////////////////////////////////////////////////////////////////////////////////
-
-void DatafileStatistics::remove(TRI_voc_fid_t fid) {
+void MMFilesDatafileStatistics::remove(TRI_voc_fid_t fid) {
   LOG(TRACE) << "removing statistics for datafile " << fid;
 
   DatafileStatisticsContainer* found = nullptr;
@@ -154,11 +100,8 @@ void DatafileStatistics::remove(TRI_voc_fid_t fid) {
   delete found;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief merge statistics for a file
-////////////////////////////////////////////////////////////////////////////////
-
-void DatafileStatistics::update(TRI_voc_fid_t fid,
+void MMFilesDatafileStatistics::update(TRI_voc_fid_t fid,
                                 DatafileStatisticsContainer const& src) {
   WRITE_LOCKER(writeLocker, _lock);
 
@@ -176,11 +119,8 @@ void DatafileStatistics::update(TRI_voc_fid_t fid,
   dst->update(src);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief merge statistics for a file, by copying the stats from another
-////////////////////////////////////////////////////////////////////////////////
-
-void DatafileStatistics::update(TRI_voc_fid_t fid, TRI_voc_fid_t src) {
+void MMFilesDatafileStatistics::update(TRI_voc_fid_t fid, TRI_voc_fid_t src) {
   WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _stats.find(fid);
@@ -205,11 +145,8 @@ void DatafileStatistics::update(TRI_voc_fid_t fid, TRI_voc_fid_t src) {
   dst->update(*(*it).second);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief replace statistics for a file
-////////////////////////////////////////////////////////////////////////////////
-
-void DatafileStatistics::replace(TRI_voc_fid_t fid,
+void MMFilesDatafileStatistics::replace(TRI_voc_fid_t fid,
                                  DatafileStatisticsContainer const& src) {
   WRITE_LOCKER(writeLocker, _lock);
 
@@ -227,11 +164,8 @@ void DatafileStatistics::replace(TRI_voc_fid_t fid,
   LOG(TRACE) << "replacing statistics for datafile " << fid;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
 /// @brief increase dead stats for a datafile, if it exists
-/////////////////////////////////////////////////////////////////////////////////
-
-void DatafileStatistics::increaseDead(TRI_voc_fid_t fid, int64_t number,
+void MMFilesDatafileStatistics::increaseDead(TRI_voc_fid_t fid, int64_t number,
                                       int64_t size) {
   WRITE_LOCKER(writeLocker, _lock);
 
@@ -249,11 +183,8 @@ void DatafileStatistics::increaseDead(TRI_voc_fid_t fid, int64_t number,
   dst->sizeAlive -= size;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
 /// @brief increase number of uncollected entries
-/////////////////////////////////////////////////////////////////////////////////
-
-void DatafileStatistics::increaseUncollected(TRI_voc_fid_t fid,
+void MMFilesDatafileStatistics::increaseUncollected(TRI_voc_fid_t fid,
                                              int64_t number) {
   WRITE_LOCKER(writeLocker, _lock);
 
@@ -270,11 +201,8 @@ void DatafileStatistics::increaseUncollected(TRI_voc_fid_t fid,
   LOG(TRACE) << "increasing uncollected count for datafile " << fid;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a copy of the datafile statistics for a file
-////////////////////////////////////////////////////////////////////////////////
-
-DatafileStatisticsContainer DatafileStatistics::get(TRI_voc_fid_t fid) {
+DatafileStatisticsContainer MMFilesDatafileStatistics::get(TRI_voc_fid_t fid) {
   DatafileStatisticsContainer result;
   {
     READ_LOCKER(readLocker, _lock);
@@ -293,11 +221,8 @@ DatafileStatisticsContainer DatafileStatistics::get(TRI_voc_fid_t fid) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a copy of the datafile statistics for a file
-////////////////////////////////////////////////////////////////////////////////
-
-DatafileStatisticsContainer DatafileStatistics::all() {
+DatafileStatisticsContainer MMFilesDatafileStatistics::all() {
   DatafileStatisticsContainer result;
   {
     READ_LOCKER(readLocker, _lock);

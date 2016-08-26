@@ -384,7 +384,7 @@ TRI_datafile_t* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
 
   // create an entry for the new datafile
   try {
-    _logicalCollection->_collection->_datafileStatistics.create(fid);
+    _datafileStatistics.create(fid);
   } catch (...) {
     EnsureErrorCode(TRI_ERROR_OUT_OF_MEMORY);
     return nullptr;
@@ -604,6 +604,21 @@ bool MMFilesCollection::closeDatafiles(std::vector<TRI_datafile_t*> const& files
 }
   
 void MMFilesCollection::figures(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
+  // add datafile statistics
+  DatafileStatisticsContainer dfi = _datafileStatistics.all();
+
+  builder->add("alive", VPackValue(VPackValueType::Object));
+  builder->add("count", VPackValue(dfi.numberAlive));
+  builder->add("size", VPackValue(dfi.sizeAlive));
+  builder->close(); // alive
+  
+  builder->add("dead", VPackValue(VPackValueType::Object));
+  builder->add("count", VPackValue(dfi.numberDead));
+  builder->add("size", VPackValue(dfi.sizeDead));
+  builder->add("deletion", VPackValue(dfi.numberDeletions));
+  builder->close(); // dead
+
+  // add file statistics
   READ_LOCKER(readLocker, _filesLock); 
   
   size_t sizeDatafiles = 0;

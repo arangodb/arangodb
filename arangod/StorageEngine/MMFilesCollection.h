@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "StorageEngine/MMFilesDatafileStatistics.h"
 #include "VocBase/PhysicalCollection.h"
 
 struct TRI_datafile_t;
@@ -93,6 +94,21 @@ class MMFilesCollection final : public PhysicalCollection {
 
   /// @brief iterates over a collection
   bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb) override;
+  
+  /// @brief increase dead stats for a datafile, if it exists
+  void increaseDeadStats(TRI_voc_fid_t fid, int64_t number, int64_t size) override {
+    _datafileStatistics.increaseDead(fid, number, size);
+  }
+  
+  /// @brief increase dead stats for a datafile, if it exists
+  void updateStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) override {
+    _datafileStatistics.update(fid, values);
+  }
+
+  /// @brief create statistics for a datafile, using the stats provided
+  void createStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) override {
+    _datafileStatistics.create(fid, values);
+  }
 
   void preventCompaction() override;
   bool tryPreventCompaction() override;
@@ -124,6 +140,8 @@ class MMFilesCollection final : public PhysicalCollection {
   std::vector<TRI_datafile_t*> _compactors;  // all compactor files
   
   arangodb::basics::ReadWriteLock _compactionLock;
+  
+  MMFilesDatafileStatistics _datafileStatistics;
 };
 
 }

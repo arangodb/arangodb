@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
-#include "VocBase/DatafileStatistics.h"
 #include "VocBase/voc-types.h"
 
 struct TRI_collection_t;
