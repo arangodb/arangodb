@@ -1058,6 +1058,10 @@ void Executor::generateCodeNode(AstNode const* node) {
 arangodb::basics::StringBuffer* Executor::initializeBuffer() {
   if (_buffer == nullptr) {
     _buffer = new arangodb::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE, 512, false);
+
+    if (_buffer->stringBuffer()->_buffer == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
   } else {
     _buffer->clear();
   }
