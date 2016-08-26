@@ -22,7 +22,7 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "HttpServerJob.h"
+#include "GeneralServerJob.h"
 
 #include "Basics/WorkMonitor.h"
 #include "Dispatcher/DispatcherQueue.h"
@@ -42,28 +42,29 @@ using namespace arangodb::rest;
 /// @brief constructs a new server job
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpServerJob::HttpServerJob(GeneralServer* server,
-                             WorkItem::uptr<RestHandler>& handler, bool isAsync)
-    : Job("HttpServerJob"),
+GeneralServerJob::GeneralServerJob(GeneralServer* server,
+                                   WorkItem::uptr<RestHandler> handler,
+                                   bool isAsync)
+    : Job("GeneralServerJob"),
       _server(server),
       _workDesc(nullptr),
       _isAsync(isAsync) {
-  _handler.swap(handler);
+  _handler = std::move(handler);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs a server job
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpServerJob::~HttpServerJob() {
+GeneralServerJob::~GeneralServerJob() {
   if (_workDesc != nullptr) {
     WorkMonitor::freeWorkDescription(_workDesc);
   }
 }
 
-size_t HttpServerJob::queue() const { return _handler->queue(); }
+size_t GeneralServerJob::queue() const { return _handler->queue(); }
 
-void HttpServerJob::work() {
+void GeneralServerJob::work() {
   TRI_ASSERT(_handler.get() != nullptr);
   RequestStatisticsAgent::transferTo(_handler.get());
 
@@ -106,13 +107,13 @@ void HttpServerJob::work() {
   _workDesc = WorkMonitor::popHandler(_handler.release(), false);
 }
 
-bool HttpServerJob::cancel() { return _handler->cancel(); }
+bool GeneralServerJob::cancel() { return _handler->cancel(); }
 
-void HttpServerJob::cleanup(DispatcherQueue* queue) {
+void GeneralServerJob::cleanup(DispatcherQueue* queue) {
   queue->removeJob(this);
   delete this;
 }
 
-void HttpServerJob::handleError(arangodb::basics::Exception const& ex) {
+void GeneralServerJob::handleError(arangodb::basics::Exception const& ex) {
   _handler->handleError(ex);
 }
