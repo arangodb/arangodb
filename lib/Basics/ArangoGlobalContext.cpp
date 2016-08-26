@@ -284,6 +284,12 @@ void ArangoGlobalContext::getCheckPath(std::string &path, const char *whichPath,
       LOG(ERR) << "failed to locate " << whichPath << " directory, its neither available in  '" << path << "' nor in '" << directory << "'";
       FATAL_ERROR_EXIT();
     }
+    arangodb::basics::FileUtils::normalizePath(directory);
     path = directory;
+  }
+  else {
+    if (!TRI_PathIsAbsolute(path)) {
+      arangodb::basics::FileUtils::makePathAbsolute(path);
+    }
   }
 }
