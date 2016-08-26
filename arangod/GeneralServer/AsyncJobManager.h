@@ -32,7 +32,7 @@ class GeneralResponse;
 
 namespace rest {
 class AsyncCallbackContext;
-class HttpServerJob;
+class GeneralServerJob;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief AsyncJobResult
@@ -133,7 +133,7 @@ class AsyncJobManager {
   /// @brief initializes an async job
   //////////////////////////////////////////////////////////////////////////////
 
-  void initAsyncJob(HttpServerJob*, char const*);
+  void initAsyncJob(GeneralServerJob*, char const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finishes the execution of an async job

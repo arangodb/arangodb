@@ -35,15 +35,15 @@ namespace rest {
 class RestHandler;
 class GeneralServer;
 
-class HttpServerJob : public Job {
-  HttpServerJob(HttpServerJob const&) = delete;
-  HttpServerJob& operator=(HttpServerJob const&) = delete;
+class GeneralServerJob : public Job {
+  GeneralServerJob(GeneralServerJob const&) = delete;
+  GeneralServerJob& operator=(GeneralServerJob const&) = delete;
 
  public:
-  HttpServerJob(GeneralServer*, arangodb::WorkItem::uptr<RestHandler>&,
-                bool isAsync = false);
+  GeneralServerJob(GeneralServer*, arangodb::WorkItem::uptr<RestHandler>&,
+                   bool isAsync = false);
 
-  ~HttpServerJob();
+  ~GeneralServerJob();
 
  public:
   RestHandler* handler() const { return _handler.get(); }
