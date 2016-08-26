@@ -62,6 +62,27 @@ class PhysicalCollection {
   /// @brief iterates over a collection
   virtual bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb) = 0;
 
+  /// @brief disallow compaction of the collection 
+  /// after this call it is guaranteed that no compaction will be started until allowCompaction() is called
+  virtual void preventCompaction() = 0;
+
+  /// @brief try disallowing compaction of the collection 
+  /// returns true if compaction is disallowed, and false if not
+  virtual bool tryPreventCompaction() = 0;
+
+  /// @brief re-allow compaction of the collection 
+  virtual void allowCompaction() = 0;
+  
+  /// @brief exclusively lock the collection for compaction
+  virtual void lockForCompaction() = 0;
+  
+  /// @brief try to exclusively lock the collection for compaction
+  /// after this call it is guaranteed that no compaction will be started until allowCompaction() is called
+  virtual bool tryLockForCompaction() = 0;
+
+  /// @brief signal that compaction is finished
+  virtual void finishCompaction() = 0;
+
  protected:
   LogicalCollection* _logicalCollection;
 };

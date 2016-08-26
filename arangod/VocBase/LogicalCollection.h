@@ -166,6 +166,17 @@ class LogicalCollection {
     return getPhysical()->applyForTickRange(dataMin, dataMax, callback);
   }
 
+  /// @brief disallow starting the compaction of the collection
+  void preventCompaction() { getPhysical()->preventCompaction(); }
+  bool tryPreventCompaction() { return getPhysical()->tryPreventCompaction(); }
+  /// @brief re-allow starting the compaction of the collection
+  void allowCompaction() { getPhysical()->allowCompaction(); }
+
+  /// @brief compaction finished
+  void lockForCompaction() { getPhysical()->lockForCompaction(); }
+  bool tryLockForCompaction() { return getPhysical()->tryLockForCompaction(); }
+  void finishCompaction() { getPhysical()->finishCompaction(); }
+
 
   PhysicalCollection* getPhysical() const {
     TRI_ASSERT(_physical != nullptr);
@@ -245,6 +256,7 @@ class LogicalCollection {
   mutable arangodb::basics::ReadWriteLock _lock;  // lock protecting the status and name
 
 };
+
 }  // namespace arangodb
 
 #endif

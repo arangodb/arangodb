@@ -36,9 +36,10 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
+#include "VocBase/CompactionLocker.h"
 #include "VocBase/DatafileHelper.h"
-#include "VocBase/collection.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/collection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -875,9 +876,9 @@ void MMFilesCompactorThread::run() {
             // check whether someone else holds a read-lock on the compaction
             // lock
 
-            TRY_WRITE_LOCKER(locker, document->_compactionLock);
+            TryCompactionLocker compactionLocker(collection);
 
-            if (!locker.isLocked()) {
+            if (!compactionLocker.isLocked()) {
               // someone else is holding the compactor lock, we'll not compact
               continue;
             }

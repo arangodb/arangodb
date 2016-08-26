@@ -94,6 +94,13 @@ class MMFilesCollection final : public PhysicalCollection {
   /// @brief iterates over a collection
   bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb) override;
 
+  void preventCompaction() override;
+  bool tryPreventCompaction() override;
+  void allowCompaction() override;
+  void lockForCompaction() override;
+  bool tryLockForCompaction() override;
+  void finishCompaction() override;
+
  private:
   /// @brief creates a datafile
   TRI_datafile_t* createDatafile(TRI_voc_fid_t fid,
@@ -115,6 +122,8 @@ class MMFilesCollection final : public PhysicalCollection {
   std::vector<TRI_datafile_t*> _datafiles;   // all datafiles
   std::vector<TRI_datafile_t*> _journals;    // all journals
   std::vector<TRI_datafile_t*> _compactors;  // all compactor files
+  
+  arangodb::basics::ReadWriteLock _compactionLock;
 };
 
 }

@@ -491,7 +491,7 @@ static int UseCollections(TRI_transaction_t* trx, int nestingLevel) {
       // read-lock the compaction lock
       if (!HasHint(trx, TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK)) {
         if (!trxCollection->_compactionLocked) {
-          trxCollection->_collection->_collection->_compactionLock.readLock();
+          trxCollection->_collection->preventCompaction();
           trxCollection->_compactionLocked = true;
         }
       }
@@ -548,7 +548,7 @@ static int UnuseCollections(TRI_transaction_t* trx, int nestingLevel) {
         if (trxCollection->_accessType == TRI_TRANSACTION_WRITE &&
             trxCollection->_compactionLocked) {
           // read-unlock the compaction lock
-          trxCollection->_collection->_collection->_compactionLock.unlock();
+          trxCollection->_collection->allowCompaction();
           trxCollection->_compactionLocked = false;
         }
       }

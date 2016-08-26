@@ -475,7 +475,6 @@ struct TRI_collection_t {
 
   std::atomic<int64_t> _uncollectedLogfileEntries;
   int64_t _numberDocuments;
-  arangodb::basics::ReadWriteLock _compactionLock;
   
  private:
   mutable arangodb::Ditches _ditches;
