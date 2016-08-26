@@ -329,7 +329,6 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
     // if an exception is caught, collection will be a nullptr
   }
 
-#warning
   // FIXME
   if (collection == nullptr) {
     delete document;
