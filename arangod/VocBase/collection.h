@@ -264,11 +264,6 @@ struct TRI_collection_t {
   int rename(std::string const& name);
 
  private:
-  bool openIndex(VPackSlice const& description, arangodb::Transaction* trx);
-
-  /// @brief enumerate all indexes of the collection, but don't fill them yet
-  int detectIndexes(arangodb::Transaction*);
-
   /// @brief creates the initial indexes for the collection
   int createInitialIndexes();
 
@@ -294,12 +289,9 @@ struct TRI_collection_t {
  public:
   arangodb::DatafileStatistics _datafileStatistics;
   
-  arangodb::MasterPointers _masterPointers;
-
   std::unique_ptr<arangodb::KeyGenerator> _keyGenerator;
 
   std::atomic<int64_t> _uncollectedLogfileEntries;
-  int64_t _numberDocuments;
   arangodb::basics::ReadWriteLock _compactionLock;
   
  private:

@@ -84,9 +84,8 @@ size_t Collection::count() const {
       numDocuments = static_cast<int64_t>(result);
     } else {
       // local case
-      auto document = documentCollection();
       // cache the result
-      numDocuments = static_cast<int64_t>(document->_numberDocuments);
+      numDocuments = static_cast<int64_t>(collection->_numberDocuments);
     }
   }
 
@@ -121,8 +120,8 @@ std::vector<std::string> Collection::shardKeys() const {
 
   std::string id;
   if (arangodb::ServerState::instance()->isDBServer() &&
-      documentCollection()->_info.planId() > 0) {
-    id = std::to_string(documentCollection()->_info.planId());
+      collection->planId() > 0) {
+    id = std::to_string(collection->planId());
   } else {
     id = name;
   }

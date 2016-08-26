@@ -92,7 +92,7 @@ class MMFilesCompactorThread : public Thread {
   int removeDatafile(LogicalCollection* collection, TRI_datafile_t* datafile);
 
   /// @brief determine the number of documents in the collection
-  uint64_t getNumberOfDocuments(TRI_collection_t* document);
+  uint64_t getNumberOfDocuments(LogicalCollection* collection);
 
   /// @brief write a copy of the marker into the datafile
   int copyMarker(TRI_collection_t* document,

@@ -486,9 +486,8 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
 
     TRI_collection_t* document = nullptr;
     try {
-#warning
-      // FIXME
-      // document = TRI_collection_t::open(_vocbase, this, ignoreDatafileErrors);
+      document = TRI_collection_t::open(collection->vocbase(), collection,
+                                        ignoreDatafileErrors);
     } catch (...) {
     }
 
@@ -589,16 +588,14 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
     bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
     doSync = (doSync && !arangodb::wal::LogfileManager::instance()->isInRecovery());
 
-#warning FIXME This behaviour should write the info to file.
-    /*
     VPackBuilder builder;
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
     engine->getCollectionInfo(this, collection->cid(), builder, false, 0);
     int res = collection->update(builder.slice().get("parameters"), doSync);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
-*/
 
     collection->setStatus(TRI_VOC_COL_STATUS_DELETED);
     unregisterCollection(collection);

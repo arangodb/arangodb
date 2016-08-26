@@ -112,7 +112,6 @@ TRI_collection_t::TRI_collection_t(TRI_vocbase_t* vocbase,
         _tickMax(0),
         _info(parameters), 
         _uncollectedLogfileEntries(0),
-        _numberDocuments(0),
         _ditches(this),
         _nextCompactionStartIndex(0),
         _lastCompactionStatus(nullptr),
@@ -1094,13 +1093,12 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
     int res = primaryIndex->insertKey(trx, header, &result);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      document->_masterPointers.release(header);
+      collection->_masterPointers.release(header);
       LOG(ERR) << "inserting document into primary index failed with error: " << TRI_errno_string(res);
 
       return res;
     }
-
-    ++document->_numberDocuments;
+    ++collection->_numberDocuments;
 
     // update the datafile info
     state->_dfi->numberAlive++;
@@ -1201,6 +1199,7 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
     state->_dfi->numberDeletions++;
 
     collection->deletePrimaryIndex(trx, found);
+
     --collection->_numberDocuments;
 
     // free the header
@@ -1397,21 +1396,19 @@ TRI_collection_t* TRI_collection_t::open(TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
-#warning
-  /* FIXME This has to be reimplemented at the correct position
   // build the indexes meta-data, but do not fill the indexes yet
   {
-    auto old = collection->useSecondaryIndexes();
+    auto old = col->useSecondaryIndexes();
 
     // turn filling of secondary indexes off. we're now only interested in getting
     // the indexes' definition. we'll fill them below ourselves.
-    collection->useSecondaryIndexes(false);
+    col->useSecondaryIndexes(false);
 
     try {
-      collection->detectIndexes(&trx);
-      collection->useSecondaryIndexes(old);
+      col->detectIndexes(&trx);
+      col->useSecondaryIndexes(old);
     } catch (...) {
-      collection->useSecondaryIndexes(old);
+      col->useSecondaryIndexes(old);
       LOG(ERR) << "cannot initialize collection indexes";
       return nullptr;
     }
@@ -1420,14 +1417,13 @@ TRI_collection_t* TRI_collection_t::open(TRI_vocbase_t* vocbase,
 
   if (!arangodb::wal::LogfileManager::instance()->isInRecovery()) {
     // build the index structures, and fill the indexes
-    collection->fillIndexes(&trx, col);
+    col->fillIndexes(&trx);
   }
 
   LOG_TOPIC(TRACE, Logger::PERFORMANCE)
       << "[timer] " << Logger::FIXED(TRI_microtime() - start)
       << " s, open-document-collection { collection: " << vocbase->name() << "/"
       << collection->_info.name() << " }";
-  */
 
   return collection.release();
 }

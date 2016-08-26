@@ -210,6 +210,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _physical(nullptr),
       _masterPointers(),
       _useSecondaryIndexes(true),
+      _numberDocuments(0),
       _collection(nullptr),
       _lock() {
   createPhysical();
@@ -265,6 +266,7 @@ LogicalCollection::LogicalCollection(
       _physical(nullptr),
       _masterPointers(),
       _useSecondaryIndexes(true),
+      _numberDocuments(0),
       _collection(nullptr),
       _lock() {
   createPhysical();
@@ -301,6 +303,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
       _physical(nullptr),
       _masterPointers(),
       _useSecondaryIndexes(true),
+      _numberDocuments(0),
       _collection(nullptr),
       _lock() {
   if (info.isObject()) {
@@ -667,8 +670,7 @@ void LogicalCollection::increaseVersion() {
   ++_internalVersion;
 }
 
-int LogicalCollection::update(VPackSlice const& slice, bool preferDefaults) {
-  LOG(ERR) << slice.toJson();
+int LogicalCollection::update(VPackSlice const& slice, bool doSync) {
   // the following collection properties are intentionally not updated as
   // updating
   // them would be very complicated:
@@ -679,35 +681,34 @@ int LogicalCollection::update(VPackSlice const& slice, bool preferDefaults) {
   // - _isVolatile
   // ... probably a few others missing here ...
 
-  if (preferDefaults) {
-    _doCompact = Helper::getBooleanValue(slice, "doCompact", true);
-    _waitForSync = Helper::getBooleanValue(slice, "waitForSync", false);
-    if (slice.hasKey("journalSize")) {
-      _journalSize = Helper::getNumericValue<TRI_voc_size_t>(
-          slice, "journalSize", TRI_JOURNAL_DEFAULT_SIZE);
-    } else {
-      _journalSize = Helper::getNumericValue<TRI_voc_size_t>(
-          slice, "maximalSize", TRI_JOURNAL_DEFAULT_SIZE);
-    }
-    _indexBuckets = Helper::getNumericValue<uint32_t>(
-        slice, "indexBuckets", DatabaseFeature::DefaultIndexBuckets);
+  _doCompact = Helper::getBooleanValue(slice, "doCompact", _doCompact);
+  _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
+  if (slice.hasKey("journalSize")) {
+    _journalSize = Helper::getNumericValue<TRI_voc_size_t>(slice, "journalSize",
+                                                           _journalSize);
   } else {
-    _doCompact = Helper::getBooleanValue(slice, "doCompact", _doCompact);
-    _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
-    if (slice.hasKey("journalSize")) {
-      _journalSize = Helper::getNumericValue<TRI_voc_size_t>(
-          slice, "journalSize", _journalSize);
-    } else {
-      _journalSize = Helper::getNumericValue<TRI_voc_size_t>(
-          slice, "maximalSize", _journalSize);
-    }
-    _indexBuckets =
-        Helper::getNumericValue<uint32_t>(slice, "indexBuckets", _indexBuckets);
+    _journalSize = Helper::getNumericValue<TRI_voc_size_t>(slice, "maximalSize",
+                                                           _journalSize);
   }
+  _indexBuckets =
+      Helper::getNumericValue<uint32_t>(slice, "indexBuckets", _indexBuckets);
   if (!_isLocal) {
     // We need to inform the cluster as well
     return ClusterInfo::instance()->setCollectionPropertiesCoordinator(
         _vocbase->name(), cid_as_string(), this);
+  } else {
+    TRI_ASSERT(_collection != nullptr);
+    WRITE_LOCKER(writeLocker, _collection->_infoLock);
+
+    if (!slice.isNone()) {
+      try {
+        _collection->_info.update(slice, false, _vocbase);
+      } catch (...) {
+        return TRI_ERROR_INTERNAL;
+      }
+    }
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    engine->changeCollection(_vocbase, _cid, _collection->_info, doSync);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -1174,6 +1175,41 @@ int LogicalCollection::createInitialIndexes() {
       addIndex(edgeIndex);
     } catch (...) {
       return TRI_ERROR_OUT_OF_MEMORY;
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief iterator for index open
+bool LogicalCollection::openIndex(VPackSlice const& description, arangodb::Transaction* trx) {
+  // VelocyPack must be an index description
+  if (!description.isObject()) {
+    return false;
+  }
+
+  auto idx = createIndex(trx, description);
+
+  if (idx == nullptr) {
+    // error was already printed if we get here
+    return false;
+  }
+
+  return true;
+}
+
+/// @brief enumerate all indexes of the collection, but don't fill them yet
+int LogicalCollection::detectIndexes(arangodb::Transaction* trx) {
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  VPackBuilder builder;
+  engine->getCollectionInfo(_vocbase, _cid, builder, true, UINT64_MAX);
+
+  // iterate over all index files
+  for (auto const& it : VPackArrayIterator(builder.slice().get("indexes"))) {
+    bool ok = openIndex(it, trx);
+
+    if (!ok) {
+      LOG(ERR) << "cannot load index for collection '" << name() << "'";
     }
   }
 

@@ -639,15 +639,15 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
 
   // now we have datafiles that we can process 
   size_t const n = datafiles.size();
-  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "inspecting datafiles of collection '" << document->_info.name() << "' for compaction opportunities";
+  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "inspecting datafiles of collection '" << collection->name() << "' for compaction opportunities";
 
   size_t start = document->getNextCompactionStartIndex();
 
   // get number of documents from collection
-  uint64_t const numDocuments = getNumberOfDocuments(document);
+  uint64_t const numDocuments = getNumberOfDocuments(collection);
 
   // get maximum size of result file
-  uint64_t maxSize = maxSizeFactor() * (uint64_t)document->_info.maximalSize();
+  uint64_t maxSize = maxSizeFactor() * (uint64_t)collection->journalSize();
   if (maxSize < 8 * 1024 * 1024) {
     maxSize = 8 * 1024 * 1024;
   }
@@ -680,7 +680,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
         document->_datafileStatistics.get(df->_fid);
 
     if (dfi.numberUncollected > 0) {
-      LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "cannot compact datafile " << df->_fid << " of collection '" << document->_info.name() << "' because it still has uncollected entries";
+      LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "cannot compact datafile " << df->_fid << " of collection '" << collection->name() << "' because it still has uncollected entries";
       start = i + 1;
       break;
     }
@@ -951,8 +951,10 @@ void MMFilesCompactorThread::run() {
 }
 
 /// @brief determine the number of documents in the collection
-uint64_t MMFilesCompactorThread::getNumberOfDocuments(TRI_collection_t* document) {
-  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), document->_info.id(), TRI_TRANSACTION_READ);
+uint64_t MMFilesCompactorThread::getNumberOfDocuments(LogicalCollection* collection) {
+  SingleCollectionTransaction trx(
+      StandaloneTransactionContext::Create(_vocbase), collection->cid(),
+      TRI_TRANSACTION_READ);
   // only try to acquire the lock here
   // if lock acquisition fails, we go on and report an (arbitrary) positive number
   trx.addHint(TRI_TRANSACTION_HINT_TRY_LOCK, false); 
@@ -963,7 +965,7 @@ uint64_t MMFilesCompactorThread::getNumberOfDocuments(TRI_collection_t* document
     return 16384; // assume some positive value 
   }
    
-  return static_cast<int64_t>(document->_numberDocuments);
+  return static_cast<int64_t>(collection->_numberDocuments);
 }
 
 /// @brief write a copy of the marker into the datafile

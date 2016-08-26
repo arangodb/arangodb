@@ -233,6 +233,9 @@ class LogicalCollection {
 
   // SECTION: Indexes (local only)
 
+  /// @brief Detect all indexes form file
+  int detectIndexes(arangodb::Transaction* trx);
+
   /// @brief Restores an index from VelocyPack.
   int restoreIndex(arangodb::Transaction*, arangodb::velocypack::Slice const&,
                    std::shared_ptr<arangodb::Index>&);
@@ -292,6 +295,9 @@ class LogicalCollection {
 
   // SECTION: Indexes (local only)
 
+  // @brief create index with the given definition.
+
+  bool openIndex(arangodb::velocypack::Slice const&, arangodb::Transaction*);
   /// @brief fill an index in batches
   int fillIndexBatch(arangodb::Transaction* trx, arangodb::Index* idx);
 
