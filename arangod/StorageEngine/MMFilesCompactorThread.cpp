@@ -422,6 +422,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK, true);
+  trx.addHint(TRI_TRANSACTION_HINT_NO_THROTTLING, true);
 
   compaction_initial_context_t initial = getCompactionContext(&trx, collection, toCompact);
 
@@ -953,6 +954,7 @@ uint64_t MMFilesCompactorThread::getNumberOfDocuments(TRI_collection_t* document
   // only try to acquire the lock here
   // if lock acquisition fails, we go on and report an (arbitrary) positive number
   trx.addHint(TRI_TRANSACTION_HINT_TRY_LOCK, false); 
+  trx.addHint(TRI_TRANSACTION_HINT_NO_THROTTLING, true);
 
   int res = trx.begin();
 
