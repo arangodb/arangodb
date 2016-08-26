@@ -182,10 +182,6 @@ void VppCommTask::addResponse(VppResponse* response) {
     slices.push_back(builder.slice());
   }
 
-  // FIXME (obi)
-  // If the message is big we will create many small chunks in a loop.
-  // For the first tests we just send single Messages
-
   LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "got response:";
   for (auto const& slice : slices) {
     try {
@@ -193,7 +189,13 @@ void VppCommTask::addResponse(VppResponse* response) {
     } catch (arangodb::velocypack::Exception const& e) {
       std::cout << e.what() << std::endl;
     }
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "--";
   }
+  LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "response -- end";
+
+  // FIXME (obi)
+  // If the message is big we will create many small chunks in a loop.
+  // For the first tests we just send single Messages
 
   // adds chunk header infromation and creates SingBuffer* that can be
   // used with _writeBuffers
@@ -255,10 +257,6 @@ bool VppCommTask::isChunkComplete(char* start) {
 
 // reads data from the socket
 bool VppCommTask::processRead() {
-  // TODO FIXME
-  // - in case of error send an operation failed to all incomplete messages /
-  //   operation and close connection (implement resetState/resetCommtask)
-  //
   RequestStatisticsAgent agent(true);
 
   auto& prv = _processReadVariables;
@@ -289,7 +287,8 @@ bool VppCommTask::processRead() {
       handleSimpleError(rest::ResponseCode::BAD,
                         TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, e.what(),
                         chunkHeader._messageID);
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VPack Validation failed!";
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VPack Validation failed!"
+                                              << e.what();
       closeTask(rest::ResponseCode::BAD);
       return false;
     } catch (...) {
@@ -367,7 +366,8 @@ bool VppCommTask::processRead() {
         handleSimpleError(rest::ResponseCode::BAD,
                           TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, e.what(),
                           chunkHeader._messageID);
-        LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VPack Validation failed!";
+        LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VPack Validation failed!"
+                                                << e.what();
         closeTask(rest::ResponseCode::BAD);
         return false;
       } catch (...) {
