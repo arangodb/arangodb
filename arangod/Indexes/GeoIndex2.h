@@ -90,6 +90,8 @@ class GeoIndex2 final : public Index {
   int remove(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
 
+  int unload() override final;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief looks up all points within a given radius
   //////////////////////////////////////////////////////////////////////////////

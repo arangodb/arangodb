@@ -242,10 +242,26 @@ int GeoIndex2::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up all points within a given radius
-////////////////////////////////////////////////////////////////////////////////
+int GeoIndex2::unload() {
+  // create a new, empty index
+  auto empty = GeoIndex_new();
 
+  if (empty == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  
+  // free the old one
+  if (_geoIndex != nullptr) {
+    GeoIndex_free(_geoIndex);
+  }
+
+  // and assign it
+  _geoIndex = empty;
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief looks up all points within a given radius
 GeoCoordinates* GeoIndex2::withinQuery(arangodb::Transaction* trx, double lat,
                                        double lon, double radius) const {
   GeoCoordinate gc;

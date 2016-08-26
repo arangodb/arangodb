@@ -24,12 +24,13 @@
 #include "fulltext-index.h"
 
 #include "Basics/locks.h"
+#include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
 
-#include "fulltext-handles.h"
-#include "fulltext-list.h"
-#include "fulltext-query.h"
-#include "fulltext-result.h"
+#include "FulltextIndex/fulltext-handles.h"
+#include "FulltextIndex/fulltext-list.h"
+#include "FulltextIndex/fulltext-query.h"
+#include "FulltextIndex/fulltext-result.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief use padding for pointers in binary data
@@ -1285,6 +1286,45 @@ void TRI_FreeFtsIndex(TRI_fts_index_t* ftx) {
 
   // free index itself
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
+}
+
+void TRI_TruncateFulltextIndex(TRI_fts_index_t* ftx) {
+  index__t* idx = (index__t*)ftx;
+
+  // free root node (this will recursively free all other nodes)
+  FreeNode(idx, idx->_root);
+  
+  // free handles
+  TRI_FreeHandlesFulltextIndex(idx->_handles);
+  idx->_handles = nullptr;
+  
+  idx->_memoryAllocated = sizeof(index__t);
+#if TRI_FULLTEXT_DEBUG
+  idx->_memoryBase = sizeof(index__t);
+  idx->_memoryNodes = 0;
+  idx->_memoryFollowers = 0;
+  idx->_nodesAllocated = 0;
+#endif
+  
+  // create the root node
+  idx->_root = CreateNode(idx);
+  if (idx->_root == nullptr) {
+    // out of memory
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  // create an instance for managing document handles
+  idx->_handles = TRI_CreateHandlesFulltextIndex(2048);
+  if (idx->_handles == nullptr) {
+    // out of memory
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx->_root);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  idx->_memoryAllocated += sizeof(TRI_fulltext_handles_t);
+#if TRI_FULLTEXT_DEBUG
+  idx->_memoryBase += sizeof(TRI_fulltext_handles_t);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
