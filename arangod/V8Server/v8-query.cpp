@@ -373,10 +373,10 @@ static void JS_ChecksumCollection(
   trx.orderDitch(col->cid()); // will throw when it fails
   
   // get last tick
-#warning FIXME
-  // LogicalCollection* collection = trx.documentCollection();
-  // std::string const revisionId = std::to_string(collection->revision());
-  std::string const revisionId = "UNKNOWN";
+  LogicalCollection* collection = trx.documentCollection();
+  auto physical = collection->getPhysical();
+  TRI_ASSERT(physical != nullptr);
+  std::string const revisionId = std::to_string(physical->revision());
   uint64_t hash = 0;
         
   trx.invokeOnAllElements(col->name(), [&hash, &withData, &withRevisions](TRI_doc_mptr_t const* mptr) {

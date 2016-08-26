@@ -594,6 +594,9 @@ int LogicalCollection::close() {
     _collection->_info.updateCount(idxSize);
   }
 
+  // We also have to throw away the indexes.
+  _indexes.clear();
+
   _numberDocuments = 0;
 
   delete _collection;

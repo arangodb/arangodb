@@ -20,7 +20,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Michael hackstein
+/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_BASICS_ASSOC_UNIQUE_H
