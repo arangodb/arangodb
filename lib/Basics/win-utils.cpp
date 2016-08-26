@@ -325,7 +325,9 @@ void TRI_FixIcuDataEnv() {
     putenv(e.c_str());
   } else {
 #ifdef _SYSCONFDIR_
-    std::string e = "ICU_DATA=" + std::string(_SYSCONFDIR_) + "..\\..\\bin";
+    std::string SCDIR(_SYSCONFDIR_);
+    SCDIR = StringUtils::replace(SCDIR, "/", "\\\\");
+    std::string e = "ICU_DATA=" + SCDIR + "..\\..\\bin";
     e = StringUtils::replace(e, "\\", "\\\\");
     putenv(e.c_str());
 #else
