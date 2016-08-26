@@ -231,7 +231,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
   }
 
   _keyGenerator.reset(keyGenerator.release());
-
 }
 
 /// @brief This the "copy" constructor used in the cluster

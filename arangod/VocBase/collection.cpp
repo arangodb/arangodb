@@ -106,14 +106,6 @@ TRI_collection_t::TRI_collection_t(TRI_vocbase_t* vocbase,
     slice = VPackSlice(buffer->data());
   }
   
-  std::unique_ptr<KeyGenerator> keyGenerator(KeyGenerator::factory(slice));
-
-  if (keyGenerator == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR);
-  }
-
-  _keyGenerator.reset(keyGenerator.release());
-
   setCompactionStatus("compaction not yet started");
   if (ServerState::instance()->isDBServer()) {
     _followers.reset(new FollowerInfo(this));
@@ -1032,7 +1024,7 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
   document->setLastRevision(revisionId, false);
   VPackValueLength length;
   char const* p = keySlice.getString(length);
-  document->_keyGenerator->track(p, length);
+  collection->keyGenerator()->track(p, length);
 
   ++state->_documents;
  
@@ -1128,7 +1120,7 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
   document->setLastRevision(revisionId, false);
   VPackValueLength length;
   char const* p = keySlice.getString(length);
-  document->_keyGenerator->track(p, length);
+  collection->keyGenerator()->track(p, length);
 
   ++state->_deletions;
 

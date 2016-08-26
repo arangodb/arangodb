@@ -35,7 +35,6 @@
 namespace arangodb {
 class EdgeIndex;
 class Index;
-class KeyGenerator;
 struct OperationOptions;
 class PrimaryIndex;
 class StringRef;
@@ -267,8 +266,6 @@ struct TRI_collection_t {
   std::unique_ptr<arangodb::FollowerInfo> _followers;
 
  public:
-  std::unique_ptr<arangodb::KeyGenerator> _keyGenerator;
-
   std::atomic<int64_t> _uncollectedLogfileEntries;
   
  private:

@@ -85,6 +85,10 @@ class LogicalCollection {
     return name[0] == '_';
   }
 
+  KeyGenerator* keyGenerator() const {
+    TRI_ASSERT(_keyGenerator != nullptr);
+    return _keyGenerator.get();
+  }
  
   // SECTION: Meta Information
   uint32_t version() const;
@@ -386,90 +390,90 @@ class LogicalCollection {
 
 
 
-   private:
-    // SECTION: Private variables
+ private:
+  // SECTION: Private variables
 
-    // SECTION: Meta Information
-    //
-    // @brief Internal version used for caching
-    uint32_t _internalVersion;
+  // SECTION: Meta Information
+  //
+  // @brief Internal version used for caching
+  uint32_t _internalVersion;
 
-    // @brief Local collection id
-    TRI_voc_cid_t const _cid;
+  // @brief Local collection id
+  TRI_voc_cid_t const _cid;
 
-    // @brief Global collection id
-    TRI_voc_cid_t const _planId;
+  // @brief Global collection id
+  TRI_voc_cid_t const _planId;
 
-    // @brief Collection type
-    TRI_col_type_e const _type;
+  // @brief Collection type
+  TRI_col_type_e const _type;
 
-    // @brief Collection Name
-    std::string _name;
+  // @brief Collection Name
+  std::string _name;
 
-    // @brief Current state of this colletion
-    TRI_vocbase_col_status_e _status;
+  // @brief Current state of this colletion
+  TRI_vocbase_col_status_e _status;
 
-    // SECTION: Properties
-    bool _isLocal;
-    bool _isDeleted;
-    bool _doCompact;
-    bool const _isSystem;
-    bool const _isVolatile;
-    bool _waitForSync;
-    TRI_voc_size_t _journalSize;
+  // SECTION: Properties
+  bool _isLocal;
+  bool _isDeleted;
+  bool _doCompact;
+  bool const _isSystem;
+  bool const _isVolatile;
+  bool _waitForSync;
+  TRI_voc_size_t _journalSize;
 
-    // SECTION: Key Options
-    // TODO Really VPack?
-    std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const>
-        _keyOptions;  // options for key creation
+  // SECTION: Key Options
+  // TODO Really VPack?
+  std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const>
+      _keyOptions;  // options for key creation
 
-    // SECTION: Indexes
-    uint32_t _indexBuckets;
+  // SECTION: Indexes
+  uint32_t _indexBuckets;
 
-    std::vector<std::shared_ptr<arangodb::Index>> _indexes;
+  std::vector<std::shared_ptr<arangodb::Index>> _indexes;
 
-    // SECTION: Replication
-    int const _replicationFactor;
+  // SECTION: Replication
+  int const _replicationFactor;
 
-    // SECTION: Sharding
-    int const _numberOfShards;
-    bool const _allowUserKeys;
-    std::vector<std::string> _shardKeys;
-    // This is shared_ptr because it is thread-safe
-    // A thread takes a copy of this, another one updates this
-    // the first one still has a valid copy
-    std::shared_ptr<ShardMap> _shardIds;
+  // SECTION: Sharding
+  int const _numberOfShards;
+  bool const _allowUserKeys;
+  std::vector<std::string> _shardKeys;
+  // This is shared_ptr because it is thread-safe
+  // A thread takes a copy of this, another one updates this
+  // the first one still has a valid copy
+  std::shared_ptr<ShardMap> _shardIds;
 
-    TRI_vocbase_t* _vocbase;
+  TRI_vocbase_t* _vocbase;
 
-    // SECTION: Local Only
-    size_t _cleanupIndexes;
-    size_t _persistentIndexes;
-    std::string const _path;
-    PhysicalCollection* _physical;
-    public:
-    // FIXME Must be private. OpenIterator uses this.
-    arangodb::MasterPointers _masterPointers;
-    private:
+  // SECTION: Local Only
+  size_t _cleanupIndexes;
+  size_t _persistentIndexes;
+  std::string const _path;
+  PhysicalCollection* _physical;
+ public:
+  // FIXME Must be private. OpenIterator uses this.
+  arangodb::MasterPointers _masterPointers;
+ private:
 
-    // whether or not secondary indexes should be filled
-    bool _useSecondaryIndexes;
+  // whether or not secondary indexes should be filled
+  bool _useSecondaryIndexes;
 
-    // FIXME Both of them are not initialized properly!
-    public:
-    // FIXME Must be private. OpenIterator uses this.
-    int64_t _numberDocuments;
-    private:
-    std::unique_ptr<arangodb::KeyGenerator> _keyGenerator;
+  // FIXME Both of them are not initialized properly!
+ public:
+  // FIXME Must be private. OpenIterator uses this.
+  int64_t _numberDocuments;
+ private:
+  std::unique_ptr<arangodb::KeyGenerator> _keyGenerator;
 
-    // TODO REMOVE ME!
-   public:
-    TRI_collection_t* _collection;
+  // TODO REMOVE ME!
+ public:
+  TRI_collection_t* _collection;
 
-    mutable arangodb::basics::ReadWriteLock
-        _lock;  // lock protecting the status and name
-    mutable arangodb::basics::ReadWriteLock
-        _idxLock;  // lock protecting the indexes
+  mutable arangodb::basics::ReadWriteLock
+      _lock;  // lock protecting the status and name
+  mutable arangodb::basics::ReadWriteLock
+      _idxLock;  // lock protecting the indexes
 };
 
 }  // namespace arangodb

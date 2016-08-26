@@ -1312,7 +1312,7 @@ static void JS_PropertiesVocbaseCol(
   try {
     VPackBuilder optionsBuilder;
     optionsBuilder.openObject();
-    document->_keyGenerator->toVelocyPack(optionsBuilder);
+    collection->keyGenerator()->toVelocyPack(optionsBuilder);
     optionsBuilder.close();
     result->Set(KeyOptionsKey,
                 TRI_VPackToV8(isolate, optionsBuilder.slice())->ToObject());
