@@ -127,16 +127,9 @@ bool GeneralServer::handleRequestAsync(GeneralCommTask* task,
   char const* hdr = found ? hdrStr.c_str() : nullptr;
 
   // execute the handler using the dispatcher
-<<<<<<< HEAD
-  std::unique_ptr<Job> job = std::make_unique<HttpServerJob>(
-      this, handler, true);  // hander gets moved!!!
-
-  task->getAgent(messageId)->transferTo(job.get());
-=======
   std::unique_ptr<Job> job =
       std::make_unique<GeneralServerJob>(this, std::move(handler), true);
-  task->RequestStatisticsAgent::transferTo(job.get());
->>>>>>> obi-velocystream
+  task->getAgent(messageId)->transferTo(job.get());
 
   // register the job with the job manager
   if (jobId != nullptr) {

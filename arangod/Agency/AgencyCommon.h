@@ -63,7 +63,7 @@ struct read_ret_t {
   std::string redirect;  ///< @brief If not accepted redirect id
   std::vector<bool> success; ///< @brief Query's precond OK
   query_t result;  ///< @brief Query result
-  read_ret_t(bool a, std::string id, std::vector<bool> suc = std::vector<bool>(),
+  read_ret_t(bool a, std::string const& id, std::vector<bool> const& suc = std::vector<bool>(),
              query_t res = nullptr)
       : accepted(a), redirect(id), success(suc), result(res) {}
 };
@@ -76,8 +76,8 @@ struct write_ret_t {
   std::vector<bool> applied;
   std::vector<index_t> indices;  // Indices of log entries (if any) to wait for
   write_ret_t() : accepted(false), redirect("") {}
-  write_ret_t(bool a, std::string id) : accepted(a), redirect(id) {}
-  write_ret_t(bool a, std::string id, std::vector<bool> const& app,
+  write_ret_t(bool a, std::string const& id) : accepted(a), redirect(id) {}
+  write_ret_t(bool a, std::string const& id, std::vector<bool> const& app,
               std::vector<index_t> const& idx)
       : accepted(a), redirect(id), applied(app), indices(idx) {}
 };

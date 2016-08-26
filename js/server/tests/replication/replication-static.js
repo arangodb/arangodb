@@ -187,7 +187,7 @@ function ReplicationSuite() {
 
       db._drop(cn);
       db._drop(cn2);
-      db._drop("_test");
+      db._drop("_test", { isSystem: true });
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -199,14 +199,14 @@ function ReplicationSuite() {
 
       db._drop(cn);
       db._drop(cn2);
-      db._drop("_test");
+      db._drop("_test", { isSystem: true });
 
       connectToSlave();
       replication.applier.stop();
       replication.applier.forget();
       db._drop(cn);
       db._drop(cn2);
-      db._drop("_test");
+      db._drop("_test", { isSystem: true });
     },
 
     ////////////////////////////////////////////////////////////////////////////////

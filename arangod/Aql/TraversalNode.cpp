@@ -251,7 +251,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
 TraversalNode::TraversalNode(
     ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
     std::vector<std::string> const& edgeColls, Variable const* inVariable,
-    std::string const& vertexId, std::vector<TRI_edge_direction_e> directions,
+    std::string const& vertexId, std::vector<TRI_edge_direction_e> const& directions,
     uint64_t minDepth, uint64_t maxDepth, TraversalOptions const& options)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),

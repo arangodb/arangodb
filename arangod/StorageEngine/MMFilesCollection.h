@@ -38,6 +38,14 @@ class MMFilesCollection final : public PhysicalCollection {
  friend class MMFilesCompactorThread;
  friend class MMFilesEngine;
 
+  struct DatafileDescription {
+    TRI_datafile_t const* _data;
+    TRI_voc_tick_t _dataMin;
+    TRI_voc_tick_t _dataMax;
+    TRI_voc_tick_t _tickMax;
+    bool _isJournal;
+  };
+
  public:
   explicit MMFilesCollection(LogicalCollection*);
   ~MMFilesCollection();
@@ -63,42 +71,42 @@ class MMFilesCollection final : public PhysicalCollection {
 
   /// @brief sync the active journal - will do nothing if there is no journal
   /// or if the journal is volatile
-  int syncActiveJournal() override;
+  int syncActiveJournal();
 
   int reserveJournalSpace(TRI_voc_tick_t tick, TRI_voc_size_t size,
-                          char*& resultPosition, TRI_datafile_t*& resultDatafile) override;
+                          char*& resultPosition, TRI_datafile_t*& resultDatafile);
 
   /// @brief create compactor file
-  TRI_datafile_t* createCompactor(TRI_voc_fid_t fid, TRI_voc_size_t maximalSize) override;
+  TRI_datafile_t* createCompactor(TRI_voc_fid_t fid, TRI_voc_size_t maximalSize);
   
   /// @brief close an existing compactor
-  int closeCompactor(TRI_datafile_t* datafile) override;
+  int closeCompactor(TRI_datafile_t* datafile);
 
   /// @brief replace a datafile with a compactor
-  int replaceDatafileWithCompactor(TRI_datafile_t* datafile, TRI_datafile_t* compactor) override;
+  int replaceDatafileWithCompactor(TRI_datafile_t* datafile, TRI_datafile_t* compactor);
 
-  bool removeCompactor(TRI_datafile_t*) override;
-  bool removeDatafile(TRI_datafile_t*) override;
+  bool removeCompactor(TRI_datafile_t*);
+  bool removeDatafile(TRI_datafile_t*);
   
   /// @brief seal a datafile
-  int sealDatafile(TRI_datafile_t* datafile, bool isCompactor) override;
-
-  /// @brief creates a datafile
-  TRI_datafile_t* createDatafile(TRI_voc_fid_t fid,
-                                 TRI_voc_size_t journalSize, 
-                                 bool isCompactor) override;
-
-  /// @brief closes the datafiles passed in the vector
-  bool closeDatafiles(std::vector<TRI_datafile_t*> const& files) override;
+  int sealDatafile(TRI_datafile_t* datafile, bool isCompactor);
 
   /// @brief iterates over a collection
   bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb) override;
 
+ private:
+  /// @brief creates a datafile
+  TRI_datafile_t* createDatafile(TRI_voc_fid_t fid,
+                                 TRI_voc_size_t journalSize, 
+                                 bool isCompactor);
+
   /// @brief iterate over a vector of datafiles and pick those with a specific
   /// data range
-  std::vector<DatafileDescription> datafilesInRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax) override;
+  std::vector<DatafileDescription> datafilesInRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax);
   
- private:
+  /// @brief closes the datafiles passed in the vector
+  bool closeDatafiles(std::vector<TRI_datafile_t*> const& files);
+
   bool iterateDatafilesVector(std::vector<TRI_datafile_t*> const& files,
                               std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb);
 

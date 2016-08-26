@@ -25,7 +25,6 @@
 #define ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/DatafileDescription.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -54,50 +53,15 @@ class PhysicalCollection {
   
   virtual int close() = 0;
   
-  virtual int applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
-                                std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) = 0;
-
   /// @brief rotate the active journal - will do nothing if there is no journal
   virtual int rotateActiveJournal() = 0;
   
-  /// @brief sync the active journal - will do nothing if there is no journal
-  /// or if the journal is volatile
-  virtual int syncActiveJournal() = 0;
+  virtual int applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
+                                std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) = 0;
 
-  /// @brief reserve space in the current journal. if no create exists or the
-  /// current journal cannot provide enough space, close the old journal and
-  /// create a new one
-  virtual int reserveJournalSpace(TRI_voc_tick_t tick, TRI_voc_size_t size,
-                                  char*& resultPosition, TRI_datafile_t*& resultDatafile) = 0;
-  
-  /// @brief create compactor file
-  virtual TRI_datafile_t* createCompactor(TRI_voc_fid_t fid, TRI_voc_size_t maximalSize) = 0;
-  
-  /// @brief close an existing compactor
-  virtual int closeCompactor(TRI_datafile_t* datafile) = 0;
-  
-  /// @brief replace a datafile with a compactor
-  virtual int replaceDatafileWithCompactor(TRI_datafile_t* datafile, TRI_datafile_t* compactor) = 0;
-  
-  virtual bool removeCompactor(TRI_datafile_t*) = 0;
-  virtual bool removeDatafile(TRI_datafile_t*) = 0;
-  
-  /// @brief seal a datafile
-  virtual int sealDatafile(TRI_datafile_t* datafile, bool isCompactor) = 0;
-  
-  /// @brief creates a datafile
-  virtual TRI_datafile_t* createDatafile(TRI_voc_fid_t fid,
-                                         TRI_voc_size_t journalSize, 
-                                         bool isCompactor) = 0;
-
-  /// @brief closes the datafiles passed in the vector
-  virtual bool closeDatafiles(std::vector<TRI_datafile_t*> const& files) = 0;
-  
   /// @brief iterates over a collection
   virtual bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb) = 0;
 
-  virtual std::vector<DatafileDescription> datafilesInRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax) = 0;
-  
  protected:
   LogicalCollection* _logicalCollection;
 };

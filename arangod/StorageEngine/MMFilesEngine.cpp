@@ -35,9 +35,10 @@
 #include "StorageEngine/MMFilesCleanupThread.h"
 #include "StorageEngine/MMFilesCompactorThread.h"
 #include "StorageEngine/MMFilesCollection.h"
+#include "VocBase/DatafileHelper.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/collection.h"
 #include "VocBase/datafile.h"
-#include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 #include "Wal/LogfileManager.h"
@@ -89,7 +90,7 @@ static uint64_t getNumericFilenamePartFromDatabase(std::string const& filename) 
 }
 
 static uint64_t getNumericFilenamePartFromDatafile(TRI_datafile_t const* datafile) {
-  return getNumericFilenamePartFromDatafile(datafile->getName(datafile));
+  return getNumericFilenamePartFromDatafile(datafile->getName());
 }
 
 
@@ -1200,7 +1201,7 @@ std::string MMFilesEngine::collectionDirectory(TRI_voc_tick_t databaseId, TRI_vo
   auto it = _collectionPaths.find(databaseId);
 
   if (it == _collectionPaths.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "trying to determine directory for unknown collection"); 
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "trying to determine directory for unknown database"); 
   }
 
   auto it2 = (*it).second.find(id);
@@ -1302,12 +1303,11 @@ bool MMFilesEngine::iterateFiles(std::vector<std::string> const& files) {
   for (auto const& filename : files) {
     LOG(DEBUG) << "iterating over collection journal file '" << filename << "'";
 
-    TRI_datafile_t* datafile = TRI_OpenDatafile(filename.c_str(), true);
+    TRI_datafile_t* datafile = TRI_OpenDatafile(filename, true);
 
     if (datafile != nullptr) {
       TRI_IterateDatafile(datafile, cb);
-      TRI_CloseDatafile(datafile);
-      TRI_FreeDatafile(datafile);
+      delete datafile;
     }
   }
 
@@ -1357,7 +1357,7 @@ void MMFilesEngine::unregisterCollectionPath(TRI_voc_tick_t databaseId, TRI_voc_
   if (it == _collectionPaths.end()) {
     return;
   }
-  (*it).second.erase(id);
+//  (*it).second.erase(id);
 }
 
 void MMFilesEngine::saveCollectionInfo(TRI_vocbase_t* vocbase,
@@ -1854,7 +1854,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
       }
 
       TRI_datafile_t* datafile =
-          TRI_OpenDatafile(filename.c_str(), ignoreErrors);
+          TRI_OpenDatafile(filename, ignoreErrors);
 
       if (datafile == nullptr) {
         LOG_TOPIC(ERR, Logger::DATAFILES) << "cannot open datafile '"
@@ -1959,10 +1959,8 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
   // stop if necessary
   if (stop) {
     for (auto& datafile : all) {
-      LOG(TRACE) << "closing datafile '" << datafile->_filename << "'";
-
-      TRI_CloseDatafile(datafile);
-      TRI_FreeDatafile(datafile);
+      LOG(TRACE) << "closing datafile '" << datafile->getName() << "'";
+      delete datafile;
     }
 
     return TRI_ERROR_INTERNAL;
@@ -1981,4 +1979,172 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
   physical->_compactors = compactors;
 
   return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief transfer markers into a collection, actual work
+/// the collection must have been prepared to call this function
+int MMFilesEngine::transferMarkers(LogicalCollection* collection,
+                                   wal::CollectorCache* cache,
+                                   wal::OperationsType const& operations) {
+  int res = transferMarkersWorker(collection, cache, operations);
+    
+  TRI_IF_FAILURE("transferMarkersCrash") {
+    // intentionally kill the server
+    TRI_SegfaultDebugging("CollectorThreadTransfer");
+  }
+    
+  if (res == TRI_ERROR_NO_ERROR && !cache->operations->empty()) {
+    // now sync the datafile
+    res = syncJournalCollection(collection);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+  }
+
+  return res;
+}
+
+/// @brief transfer markers into a collection, actual work
+/// the collection must have been prepared to call this function
+int MMFilesEngine::transferMarkersWorker(LogicalCollection* collection,
+                                         wal::CollectorCache* cache,
+                                         wal::OperationsType const& operations) {
+  // used only for crash / recovery tests
+  int numMarkers = 0;
+
+  TRI_voc_tick_t const minTransferTick = collection->_collection->_tickMax;
+  TRI_ASSERT(!operations.empty());
+
+  for (auto it2 = operations.begin(); it2 != operations.end(); ++it2) {
+    TRI_df_marker_t const* source = (*it2);
+    TRI_voc_tick_t const tick = source->getTick();
+
+    if (tick <= minTransferTick) {
+      // we have already transferred this marker in a previous run, nothing to
+      // do
+      continue;
+    }
+
+    TRI_IF_FAILURE("CollectorThreadTransfer") {
+      if (++numMarkers > 5) {
+        // intentionally kill the server
+        TRI_SegfaultDebugging("CollectorThreadTransfer");
+      }
+    }
+
+    TRI_df_marker_type_t const type = source->getType();
+
+    if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
+        type == TRI_DF_MARKER_VPACK_REMOVE) {
+      TRI_voc_size_t const size = source->getSize();
+
+      char* dst = nextFreeMarkerPosition(collection, tick, type, size, cache);
+
+      if (dst == nullptr) {
+        return TRI_ERROR_OUT_OF_MEMORY;
+      }
+
+      auto& dfi = cache->getDfi(cache->lastFid);
+      dfi.numberUncollected++;
+
+      memcpy(dst, source, size);
+
+      finishMarker(reinterpret_cast<char const*>(source), dst, collection, tick, cache);
+    }
+  }
+
+  TRI_IF_FAILURE("CollectorThreadTransferFinal") {
+    // intentionally kill the server
+    TRI_SegfaultDebugging("CollectorThreadTransferFinal");
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief get the next position for a marker of the specified size
+char* MMFilesEngine::nextFreeMarkerPosition(
+    LogicalCollection* collection, TRI_voc_tick_t tick,
+    TRI_df_marker_type_t type, TRI_voc_size_t size, wal::CollectorCache* cache) {
+  
+  // align the specified size
+  size = DatafileHelper::AlignedSize<TRI_voc_size_t>(size);
+
+  char* dst = nullptr; // will be modified by reserveJournalSpace()
+  TRI_datafile_t* datafile = nullptr; // will be modified by reserveJournalSpace()
+  int res = static_cast<MMFilesCollection*>(collection->getPhysical())->reserveJournalSpace(tick, size, dst, datafile);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    // could not reserve space, for whatever reason
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_NO_JOURNAL);
+  }
+
+  // if we get here, we successfully reserved space in the datafile
+
+  TRI_ASSERT(datafile != nullptr);
+
+  if (cache->lastFid != datafile->_fid) {
+    if (cache->lastFid > 0) {
+      // rotated the existing journal... now update the old journal's stats
+      auto& dfi = cache->createDfi(cache->lastFid);
+      collection->_collection->_datafileStatistics.increaseUncollected(cache->lastFid,
+                                                        dfi.numberUncollected);
+      // and reset them afterwards
+      dfi.numberUncollected = 0;
+    }
+ 
+    // reset datafile in cache   
+    cache->lastDatafile = datafile;
+    cache->lastFid = datafile->_fid;
+    
+    // create a local datafile info struct
+    cache->createDfi(datafile->_fid);
+
+    // we only need the ditches when we are outside the recovery
+    // the compactor will not run during recovery
+    auto ditch =
+        collection->_collection->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
+
+    if (ditch == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+
+    cache->addDitch(ditch);
+  }
+  
+  TRI_ASSERT(dst != nullptr);
+  
+  DatafileHelper::InitMarker(reinterpret_cast<TRI_df_marker_t*>(dst), type, size);
+
+  return dst;
+}
+
+/// @brief set the tick of a marker and calculate its CRC value
+void MMFilesEngine::finishMarker(char const* walPosition,
+                                 char* datafilePosition,
+                                 LogicalCollection* collection,
+                                 TRI_voc_tick_t tick, wal::CollectorCache* cache) {
+  TRI_df_marker_t* marker =
+      reinterpret_cast<TRI_df_marker_t*>(datafilePosition);
+
+  TRI_datafile_t* datafile = cache->lastDatafile;
+  TRI_ASSERT(datafile != nullptr);
+
+  // update ticks
+  TRI_UpdateTicksDatafile(datafile, marker);
+
+  TRI_ASSERT(collection->_collection->_tickMax < tick);
+  collection->_collection->_tickMax = tick;
+
+  cache->operations->emplace_back(wal::CollectorOperation(
+      datafilePosition, marker->getSize(), walPosition, cache->lastFid));
+}
+
+/// @brief sync all journals of a collection
+int MMFilesEngine::syncJournalCollection(LogicalCollection* collection) {
+  TRI_IF_FAILURE("CollectorThread::syncDatafileCollection") {
+    return TRI_ERROR_DEBUG;
+  }
+
+  return static_cast<MMFilesCollection*>(collection->getPhysical())->syncActiveJournal();
 }

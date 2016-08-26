@@ -64,12 +64,6 @@ class LogicalCollection;
 constexpr auto TRI_VOC_SYSTEM_DATABASE = "_system";
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief maximal path length
-////////////////////////////////////////////////////////////////////////////////
-
-constexpr size_t TRI_COL_PATH_LENGTH = 512;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief maximal name length
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -315,7 +309,7 @@ struct TRI_vocbase_t {
       bool writeMarker);
 
   /// @brief drops a collection
-  int dropCollection(arangodb::LogicalCollection* collection, bool writeMarker);
+  int dropCollection(arangodb::LogicalCollection* collection, bool allowDropSystem, bool writeMarker);
 
   /// @brief callback for collection dropping
   static bool DropCollectionCallback(arangodb::LogicalCollection* collection);

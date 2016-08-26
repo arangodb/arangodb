@@ -34,7 +34,7 @@ struct TRI_vocbase_t;
 namespace arangodb {
 class LogicalCollection;
 
-class MMFilesCleanupThread : public Thread {
+class MMFilesCleanupThread final : public Thread {
  public:
   explicit MMFilesCleanupThread(TRI_vocbase_t* vocbase);
   ~MMFilesCleanupThread();

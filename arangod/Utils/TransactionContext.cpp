@@ -38,7 +38,7 @@
 using namespace arangodb;
 
 // custom type value handler, used for deciphering the _id attribute
-struct CustomTypeHandler : public VPackCustomTypeHandler {
+struct CustomTypeHandler final : public VPackCustomTypeHandler {
   CustomTypeHandler(TRI_vocbase_t* vocbase, CollectionNameResolver const* resolver)
       : vocbase(vocbase), resolver(resolver) {}
 

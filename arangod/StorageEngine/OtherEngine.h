@@ -246,6 +246,12 @@ class OtherEngine final : public StorageEngine {
   int openCollection(TRI_vocbase_t* vocbase, LogicalCollection* collection, bool ignoreErrors) override {
     return TRI_ERROR_NO_ERROR;
   }
+  
+  /// @brief transfer markers into a collection
+  int transferMarkers(LogicalCollection* collection, wal::CollectorCache*,
+                      wal::OperationsType const&) override {
+    return TRI_ERROR_NO_ERROR;
+  }
 
  public:
   static std::string const EngineName;

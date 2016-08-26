@@ -34,7 +34,7 @@ namespace consensus {
 
 class NotifyCallback : public arangodb::ClusterCommCallback {
  public:
-  explicit NotifyCallback(std::function<void(bool)>);
+  explicit NotifyCallback(std::function<void(bool)> const&);
 
   virtual bool operator()(arangodb::ClusterCommResult*) override final;
 

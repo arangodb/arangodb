@@ -181,7 +181,7 @@ class DropDatafileDitch : public Ditch {
  public:
   DropDatafileDitch(Ditches* ditches, struct TRI_datafile_t* datafile,
                     LogicalCollection* collection,
-                    std::function<void(struct TRI_datafile_t*, LogicalCollection*)>,
+                    std::function<void(struct TRI_datafile_t*, LogicalCollection*)> const& callback,
                     char const* filename, int line);
 
   ~DropDatafileDitch();
@@ -207,7 +207,7 @@ class RenameDatafileDitch : public Ditch {
  public:
   RenameDatafileDitch(Ditches* ditches, struct TRI_datafile_t* datafile,
                       void* data,
-                      std::function<void(struct TRI_datafile_t*, void*)>,
+                      std::function<void(struct TRI_datafile_t*, void*)> const& callback,
                       char const* filename, int line);
 
   ~RenameDatafileDitch();
@@ -233,7 +233,7 @@ class UnloadCollectionDitch : public Ditch {
  public:
   UnloadCollectionDitch(
       Ditches* ditches, LogicalCollection* collection,
-      std::function<bool(LogicalCollection*)> callback,
+      std::function<bool(LogicalCollection*)> const& callback,
       char const* filename, int line);
 
   ~UnloadCollectionDitch();
@@ -371,7 +371,7 @@ class Ditches {
 
   DropDatafileDitch* createDropDatafileDitch(
       struct TRI_datafile_t* datafile, LogicalCollection* collection, 
-      std::function<void(struct TRI_datafile_t*, LogicalCollection*)> callback,
+      std::function<void(struct TRI_datafile_t*, LogicalCollection*)> const& callback,
       char const* filename, int line);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -380,7 +380,7 @@ class Ditches {
 
   RenameDatafileDitch* createRenameDatafileDitch(
       struct TRI_datafile_t* datafile, void* data,
-      std::function<void(struct TRI_datafile_t*, void*)> callback,
+      std::function<void(struct TRI_datafile_t*, void*)> const& callback,
       char const* filename, int line);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -389,7 +389,7 @@ class Ditches {
 
   UnloadCollectionDitch* createUnloadCollectionDitch(
       LogicalCollection* collection,
-      std::function<bool(LogicalCollection*)> callback,
+      std::function<bool(LogicalCollection*)> const& callback,
       char const* filename, int line);
 
   //////////////////////////////////////////////////////////////////////////////

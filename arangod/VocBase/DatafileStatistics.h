@@ -28,8 +28,6 @@
 #include "Basics/ReadWriteLock.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_datafile_t;
-
 namespace arangodb {
 
 /// @brief datafile statistics

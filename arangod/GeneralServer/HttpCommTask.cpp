@@ -477,6 +477,7 @@ bool HttpCommTask::processRead() {
   // keep-alive handling
   // .............................................................................
 
+  // header value can have any case. we'll lower-case it now
   std::string connectionType = StringUtils::tolower(
       _incompleteRequest->header(StaticStrings::Connection));
 

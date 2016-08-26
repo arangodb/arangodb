@@ -86,7 +86,7 @@ class VocbaseCollectionInfo {
   int64_t _initialCount;        // initial count, used when loading a collection
   uint32_t _indexBuckets;  // number of buckets used in hash tables for indexes
 
-  char _name[TRI_COL_PATH_LENGTH];  // name of the collection
+  char _name[512];  // name of the collection
   std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const>
       _keyOptions;  // options for key creation
 

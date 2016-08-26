@@ -601,7 +601,15 @@ function delete_api_collection (req, res) {
           id: collection._id
         };
 
-        collection.drop();
+        var options = {};
+        if (req.parameters.hasOwnProperty('isSystem')) {
+          // are we allowed to drop system collections?
+          var value = req.parameters.isSystem.toLowerCase();
+          if (value === 'true' || value === 'yes' || value === 'on' || value === 'y' || value === '1') {
+            options.isSystem = true;
+          }
+        }
+        collection.drop(options);
 
         actions.resultOk(req, res, actions.HTTP_OK, result);
       } catch (err) {

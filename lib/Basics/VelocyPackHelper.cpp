@@ -47,13 +47,28 @@ unsigned long long XXH64(const void* input, size_t length,
                          unsigned long long seed);
 }
 
+using namespace arangodb;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 static std::unique_ptr<VPackAttributeTranslator> Translator;
 static std::unique_ptr<VPackAttributeExcludeHandler> ExcludeHandler;
+static std::unique_ptr<VPackCustomTypeHandler> CustomTypeHandler;
+
+// a default custom type handler that prevents throwing exceptions when
+// custom types are encountered during Slice.toJson() and family
+struct DefaultCustomTypeHandler final : public VPackCustomTypeHandler {
+  void dump(VPackSlice const&, VPackDumper* dumper, VPackSlice const&) override {
+    LOG(WARN) << "DefaultCustomTypeHandler called";
+    dumper->appendString("hello from CustomTypeHandler");
+  }
+  std::string toString(VPackSlice const&, VPackOptions const*, VPackSlice const&) override {
+    LOG(WARN) << "DefaultCustomTypeHandler called";
+    return "hello from CustomTypeHandler";
+  }
+};
 
 // attribute exclude handler for skipping over system attributes
-struct SystemAttributeExcludeHandler : public VPackAttributeExcludeHandler {
+struct SystemAttributeExcludeHandler final : public VPackAttributeExcludeHandler {
   bool shouldExclude(VPackSlice const& key, int nesting) override final {
     VPackValueLength keyLength;
     char const* p = key.getString(keyLength);
@@ -81,10 +96,7 @@ struct SystemAttributeExcludeHandler : public VPackAttributeExcludeHandler {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief static initializer for all VPack values
-////////////////////////////////////////////////////////////////////////////////
-
 void VelocyPackHelper::initialize() {
   LOG(TRACE) << "initializing vpack";
 
@@ -104,6 +116,11 @@ void VelocyPackHelper::initialize() {
   VPackOptions::Defaults.attributeTranslator = Translator.get();
   VPackOptions::Defaults.unsupportedTypeBehavior =
       VPackOptions::ConvertUnsupportedType;
+  
+  
+  CustomTypeHandler.reset(new DefaultCustomTypeHandler);
+
+  VPackOptions::Defaults.customTypeHandler = CustomTypeHandler.get();
   VPackOptions::Defaults.escapeUnicode = false;  // false here, but will be set
                                                  // when converting to JSON for
                                                  // HTTP xfer

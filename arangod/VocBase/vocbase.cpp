@@ -915,11 +915,13 @@ int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection, boo
 }
 
 /// @brief drops a collection
-int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection, bool writeMarker) {
+int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection, bool allowDropSystem, bool writeMarker) {
   TRI_ASSERT(collection != nullptr);
 
-  if (collection->isSystem() &&
+  if (!allowDropSystem && 
+      collection->isSystem() &&
       !arangodb::wal::LogfileManager::instance()->isInRecovery()) {
+    // prevent dropping of system collections
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
   }
 

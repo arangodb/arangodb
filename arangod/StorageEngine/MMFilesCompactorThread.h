@@ -39,7 +39,7 @@ namespace arangodb {
 class LogicalCollection;
 class Transaction;
 
-class MMFilesCompactorThread : public Thread {
+class MMFilesCompactorThread final : public Thread {
  private:
   /// @brief compaction instruction for a single datafile
   struct compaction_info_t {
@@ -86,7 +86,7 @@ class MMFilesCompactorThread : public Thread {
   /// @brief checks all datafiles of a collection
   bool compactCollection(LogicalCollection* collection, bool& wasBlocked);
 
-  int removeCompactorFile(LogicalCollection* collection, TRI_datafile_t* datafile);
+  int removeCompactor(LogicalCollection* collection, TRI_datafile_t* datafile);
 
   /// @brief remove an empty datafile
   int removeDatafile(LogicalCollection* collection, TRI_datafile_t* datafile);

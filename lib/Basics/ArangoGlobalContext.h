@@ -37,7 +37,7 @@ class ArangoGlobalContext {
  public:
   std::string binaryName() { return _binaryName; }
   std::string runRoot() { return _runRoot; }
-  void getCheckPath(std::string &path, const char *whichPath);
+  void getCheckPath(std::string &path, const char *whichPath, bool fatal);
   int exit(int ret);
   void installHup();
   void installSegv();
