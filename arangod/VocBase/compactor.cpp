@@ -185,6 +185,7 @@ static uint64_t GetNumberOfDocuments(TRI_document_collection_t* document) {
   // only try to acquire the lock here
   // if lock acquisition fails, we go on and report an (arbitrary) positive number
   trx.addHint(TRI_TRANSACTION_HINT_TRY_LOCK, false); 
+  trx.addHint(TRI_TRANSACTION_HINT_NO_THROTTLING, false); 
 
   int res = trx.begin();
 
@@ -579,6 +580,7 @@ static void CompactifyDatafiles(
   trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK, true);
+  trx.addHint(TRI_TRANSACTION_HINT_NO_THROTTLING, true); 
 
   compaction_initial_context_t initial =
       InitCompaction(&trx, document, toCompact);
