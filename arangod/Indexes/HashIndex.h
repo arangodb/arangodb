@@ -180,6 +180,8 @@ class HashIndex final : public PathBasedIndex {
   void toVelocyPack(VPackBuilder&, bool) const override final;
   void toVelocyPackFigures(VPackBuilder&) const override final;
 
+  bool matchesDefinition(VPackSlice const& info) const override final;
+
   int insert(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
 

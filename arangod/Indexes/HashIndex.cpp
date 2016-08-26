@@ -614,6 +614,74 @@ void HashIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   }
 }
 
+/// @brief Test if this index matches the definition
+bool HashIndex::matchesDefinition(VPackSlice const& info) const {
+  TRI_ASSERT(info.isObject());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  VPackSlice typeSlice = info.get("type");
+  TRI_ASSERT(typeSlice.isString());
+  StringRef typeStr(typeSlice);
+  TRI_ASSERT(typeStr == typeName());
+#endif
+  auto value = info.get("id");
+  if (!value.isNone()) {
+    // We already have an id.
+    if(!value.isString()) {
+      // Invalid ID
+      return false;
+    }
+    // Short circuit. If id is correct the index is identical.
+    StringRef idRef(value);
+    return idRef == std::to_string(_iid);
+  }
+
+  value = info.get("fields");
+  if (!value.isArray()) {
+    return false;
+  }
+
+  size_t const n = static_cast<size_t>(value.length());
+  if (n != _fields.size()) {
+    return false;
+  }
+  if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
+                     info, "unique", false)) {
+    return false;
+  }
+  if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
+                     info, "sparse", false)) {
+    return false;
+  }
+
+  // This check does not take ordering of attributes into account.
+  std::vector<arangodb::basics::AttributeName> translate;
+  for (auto const& f : VPackArrayIterator(value)) {
+    bool found = false;
+    if (!f.isString()) {
+      // Invalid field definition!
+      return false;
+    }
+    translate.clear();
+    arangodb::StringRef in(f);
+    TRI_ParseAttributeString(in, translate, true);
+
+    for (size_t i = 0; i < n; ++i) {
+      if (arangodb::basics::AttributeName::isIdentical(_fields[i], translate,
+                                                        false)) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      return false;
+    }
+  }
+  return true;
+}
+
+
+
+
 int HashIndex::insert(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
                       bool isRollback) {
   if (_unique) {

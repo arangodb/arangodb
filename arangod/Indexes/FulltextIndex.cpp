@@ -23,6 +23,7 @@
 
 #include "FulltextIndex.h"
 #include "Logger/Logger.h"
+#include "Basics/StringRef.h"
 #include "Basics/Utf8Helper.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "VocBase/collection.h"
@@ -146,6 +147,83 @@ void FulltextIndex::toVelocyPack(VPackBuilder& builder,
   builder.add("sparse", VPackValue(true));
   builder.add("minLength", VPackValue(_minWordLength));
 }
+
+/// @brief Test if this index matches the definition
+bool FulltextIndex::matchesDefinition(VPackSlice const& info) const {
+  TRI_ASSERT(info.isObject());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  VPackSlice typeSlice = info.get("type");
+  TRI_ASSERT(typeSlice.isString());
+  StringRef typeStr(typeSlice);
+  TRI_ASSERT(typeStr == typeName());
+#endif
+  auto value = info.get("id");
+  if (!value.isNone()) {
+    // We already have an id.
+    if(!value.isString()) {
+      // Invalid ID
+      return false;
+    }
+    // Short circuit. If id is correct the index is identical.
+    StringRef idRef(value);
+    return idRef == std::to_string(_iid);
+  }
+
+  value = info.get("minLength");
+  if (value.isNumber()) {
+    int cmp = value.getNumericValue<int>();
+    if (cmp <= 0) {
+      if (_minWordLength != 1) {
+        return false;
+      }
+    } else {
+      if (_minWordLength != cmp) {
+        return false;
+      }
+    }
+  } else if (!value.isNone()) {
+    // Illegal minLength
+    return false;
+  }
+
+
+  value = info.get("fields");
+  if (!value.isArray()) {
+    return false;
+  }
+
+  size_t const n = static_cast<size_t>(value.length());
+  if (n != _fields.size()) {
+    return false;
+  }
+  if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
+                     info, "unique", false)) {
+    return false;
+  }
+  if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
+                     info, "sparse", true)) {
+    return false;
+  }
+
+  // This check takes ordering of attributes into account.
+  std::vector<arangodb::basics::AttributeName> translate;
+  for (size_t i = 0; i < n; ++i) {
+    translate.clear();
+    VPackSlice f = value.at(i);
+    if (!f.isString()) {
+      // Invalid field definition!
+      return false;
+    }
+    arangodb::StringRef in(f);
+    TRI_ParseAttributeString(in, translate, true);
+    if (!arangodb::basics::AttributeName::isIdentical(_fields[i], translate,
+                                                      false)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 
 int FulltextIndex::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
                           bool isRollback) {

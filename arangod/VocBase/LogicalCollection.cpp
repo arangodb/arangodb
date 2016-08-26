@@ -842,12 +842,14 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(VPackSlice const& info) co
 }
 
 std::shared_ptr<Index> LogicalCollection::createIndex(Transaction* trx,
-                                                      VPackSlice const& info) {
+                                                      VPackSlice const& info,
+                                                      bool& created) {
   // TODO Coordinator case!
   // TODO Get LOCK for the vocbase
 
   auto idx = lookupIndex(info);
   if (idx != nullptr) {
+    created = false;
     // We already have this index.
     // Should we throw instead?
     return idx;
@@ -909,6 +911,7 @@ std::shared_ptr<Index> LogicalCollection::createIndex(Transaction* trx,
 
   addIndex(newIdx);
   fillIndex(trx, newIdx.get(), false);
+  created = true;
   return newIdx;
 }
 
@@ -1193,7 +1196,8 @@ bool LogicalCollection::openIndex(VPackSlice const& description, arangodb::Trans
     return false;
   }
 
-  auto idx = createIndex(trx, description);
+  bool unused = false;
+  auto idx = createIndex(trx, description, unused);
 
   if (idx == nullptr) {
     // error was already printed if we get here

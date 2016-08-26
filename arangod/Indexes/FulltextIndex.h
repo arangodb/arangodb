@@ -65,6 +65,8 @@ class FulltextIndex final : public Index {
   void toVelocyPack(VPackBuilder&, bool) const override final;
   // Uses default toVelocyPackFigures
 
+  bool matchesDefinition(VPackSlice const&) const override final;
+
   int insert(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
 

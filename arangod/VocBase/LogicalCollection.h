@@ -219,7 +219,7 @@ class LogicalCollection {
 
   /// @brief Create a new Index based on VelocyPack description
   std::shared_ptr<arangodb::Index> createIndex(
-      arangodb::Transaction*, arangodb::velocypack::Slice const&);
+      arangodb::Transaction*, arangodb::velocypack::Slice const&, bool&);
 
   /// @brief Find index by definition
   std::shared_ptr<Index> lookupIndex(arangodb::velocypack::Slice const&) const;

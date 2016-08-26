@@ -518,10 +518,11 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
   }
 
+  bool created = false;
   std::shared_ptr<arangodb::Index> idx;
   if (create) {
     // TODO Encapsulate in try{}catch(){} instead of errno()
-    idx = collection->createIndex(&trx, slice);
+    idx = collection->createIndex(&trx, slice, created);
     if (idx == nullptr) {
       // something went wrong during creation
       int res = TRI_errno();
@@ -548,7 +549,7 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
 
   if (ret->IsObject()) {
     ret->ToObject()->Set(TRI_V8_ASCII_STRING("isNewlyCreated"),
-                         v8::Boolean::New(isolate, create));
+                         v8::Boolean::New(isolate, created));
   }
 
   TRI_V8_RETURN(ret);

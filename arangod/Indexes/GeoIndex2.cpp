@@ -23,6 +23,7 @@
 
 #include "GeoIndex2.h"
 #include "Logger/Logger.h"
+#include "Basics/StringRef.h"
 #include "VocBase/collection.h"
 #include "VocBase/transaction.h"
 
@@ -154,6 +155,72 @@ void GeoIndex2::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
   builder.add("ignoreNull", VPackValue(true));
   builder.add("sparse", VPackValue(true));
 }
+
+/// @brief Test if this index matches the definition
+bool GeoIndex2::matchesDefinition(VPackSlice const& info) const {
+  TRI_ASSERT(info.isObject());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  VPackSlice typeSlice = info.get("type");
+  TRI_ASSERT(typeSlice.isString());
+  StringRef typeStr(typeSlice);
+  TRI_ASSERT(typeStr == typeName());
+#endif
+  auto value = info.get("id");
+  if (!value.isNone()) {
+    // We already have an id.
+    if(!value.isString()) {
+      // Invalid ID
+      return false;
+    }
+    // Short circuit. If id is correct the index is identical.
+    StringRef idRef(value);
+    return idRef == std::to_string(_iid);
+  }
+  value = info.get("fields");
+  if (!value.isArray()) {
+    return false;
+  }
+
+  size_t const n = static_cast<size_t>(value.length());
+  if (n != _fields.size()) {
+    return false;
+  }
+  if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
+                     info, "unique", false)) {
+    return false;
+  }
+  if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
+                     info, "sparse", true)) {
+    return false;
+  }
+
+  if (n == 1) {
+    if (_geoJson != arangodb::basics::VelocyPackHelper::getBooleanValue(
+        info, "geoJson", false)) {
+      return false;
+    }
+  }
+
+  // This check takes ordering of attributes into account.
+  std::vector<arangodb::basics::AttributeName> translate;
+  for (size_t i = 0; i < n; ++i) {
+    translate.clear();
+    VPackSlice f = value.at(i);
+    if (!f.isString()) {
+      // Invalid field definition!
+      return false;
+    }
+    arangodb::StringRef in(f);
+    TRI_ParseAttributeString(in, translate, true);
+    if (!arangodb::basics::AttributeName::isIdentical(_fields[i], translate,
+                                                      false)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+
 
 int GeoIndex2::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
   TRI_ASSERT(doc != nullptr);
