@@ -947,11 +947,10 @@ static TRI_datafile_t* OpenDatafile(std::string const& filename, bool ignoreErro
 
   if (!ok) {
     if (IsMarker28(ptr)) {
+      TRI_CLOSE(fd);
       LOG(ERR) << "datafile found from older version of ArangoDB. "
                << "Please dump data from that version with arangodump "
                << "and reload it into this ArangoDB instance with arangorestore";
-      TRI_CLOSE(fd);
-      TRI_set_errno(TRI_ERROR_NOT_IMPLEMENTED);
       FATAL_ERROR_EXIT();
     }
 
