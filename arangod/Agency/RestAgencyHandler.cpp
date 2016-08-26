@@ -140,9 +140,8 @@ RestHandler::status RestAgencyHandler::handleWrite() {
     }
 
     auto s = std::chrono::system_clock::now(); // Leadership established?
-    std::chrono::seconds timeout(1);
+    std::chrono::seconds timeout(0);
     while(_agent->size() > 1 && _agent->leaderID() == "") {
-      std::this_thread::sleep_for(duration_t(100));
       if ((std::chrono::system_clock::now()-s) > timeout) {
         Builder body;
         body.openObject();
@@ -153,6 +152,7 @@ RestHandler::status RestAgencyHandler::handleWrite() {
         LOG_TOPIC(ERR, Logger::AGENCY) << "We don't know who the leader is";
         return status::DONE;
       }
+      std::this_thread::sleep_for(duration_t(100));
     }
 
     write_ret_t ret = _agent->write(query);
@@ -227,9 +227,8 @@ inline RestHandler::status RestAgencyHandler::handleRead() {
     }
 
     auto s = std::chrono::system_clock::now(); // Leadership established?
-    std::chrono::seconds timeout(1);
+    std::chrono::seconds timeout(0);
     while(_agent->size() > 1 && _agent->leaderID() == "") {
-      std::this_thread::sleep_for(duration_t(100));
       if ((std::chrono::system_clock::now()-s) > timeout) {
         Builder body;
         body.openObject();
@@ -240,6 +239,7 @@ inline RestHandler::status RestAgencyHandler::handleRead() {
         LOG_TOPIC(ERR, Logger::AGENCY) << "We don't know who the leader is";
         return status::DONE;
       }
+      std::this_thread::sleep_for(duration_t(100));
     }
 
     read_ret_t ret = _agent->read(query);

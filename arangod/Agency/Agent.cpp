@@ -354,7 +354,7 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(std::string const& follower_id) {
     std::make_shared<std::string>(builder.toJson()), headerFields,
     std::make_shared<AgentCallback>(this, follower_id, highest),
     0.1*_config.minPing(), true, 0.05*_config.minPing());
-
+  
   _lastSent[follower_id] = std::chrono::system_clock::now();
   _lastHighest[follower_id] = highest;
   
