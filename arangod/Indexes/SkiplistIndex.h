@@ -168,7 +168,7 @@ class SkiplistInLookupBuilder : public BaseSkiplistLookupBuilder {
 /// are non-empty.
 ////////////////////////////////////////////////////////////////////////////////
 
-class SkiplistIterator : public IndexIterator {
+class SkiplistIterator final : public IndexIterator {
  private:
   friend class SkiplistIndex;
 
@@ -223,7 +223,7 @@ class SkiplistIterator : public IndexIterator {
 /// are non-empty.
 ////////////////////////////////////////////////////////////////////////////////
 
-class SkiplistIterator2 : public IndexIterator {
+class SkiplistIterator2 final : public IndexIterator {
  private:
   // Shorthand for the skiplist node
   typedef arangodb::basics::SkipListNode<VPackSlice,
@@ -379,6 +379,8 @@ class SkiplistIndex final : public PathBasedIndex {
 
   int remove(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
+  
+  int unload() override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief attempts to locate an entry in the skip list index

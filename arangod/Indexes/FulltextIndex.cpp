@@ -134,6 +134,11 @@ int FulltextIndex::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
   return TRI_ERROR_NO_ERROR;
 }
 
+int FulltextIndex::unload() {
+  TRI_TruncateFulltextIndex(_fulltextIndex);
+  return TRI_ERROR_NO_ERROR;
+}
+
 int FulltextIndex::cleanup() {
   LOG(TRACE) << "fulltext cleanup called";
 
