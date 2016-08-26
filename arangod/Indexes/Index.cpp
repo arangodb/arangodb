@@ -71,6 +71,8 @@ Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
 
     for (auto const& name : VPackArrayIterator(fields)) {
       if (!name.isString()) {
+        LOG(ERR) << "ignoring index " << iid
+                 << ", 'fields' must be an array of attribute paths";
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "invalid index description");
       }
@@ -80,6 +82,7 @@ Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
       _fields.emplace_back(std::move(parsedAttributes));
     }
   } else if (!fields.isNone()) {
+    LOG(ERR) << "ignoring index " << iid << ", 'fields' must be an array";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "invalid index description");
   }
