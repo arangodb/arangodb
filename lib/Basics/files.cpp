@@ -25,6 +25,7 @@
 
 #ifdef _WIN32
 #include <tchar.h>
+#include <Shlwapi.h>
 #endif
 
 #include "Basics/directories.h"
@@ -1700,13 +1701,13 @@ std::string TRI_LocateBinaryPath(char const* argv0) {
 std::string TRI_GetInstallRoot(std::string const& binaryPath,
                                char const *installBinaryPath) {
   // First lets remove trailing (back) slashes from the bill:
-  long ibpLength = strlen(installBinaryPath);
+  size_t ibpLength = strlen(installBinaryPath);
 
   if (installBinaryPath[ibpLength - 1] == TRI_DIR_SEPARATOR_CHAR) {
     ibpLength --;
   }
   
-  long bpLength = binaryPath.length();
+  size_t bpLength = binaryPath.length();
   const char *pbPath = binaryPath.c_str();
 
   if (pbPath[bpLength - 1] == TRI_DIR_SEPARATOR_CHAR) {
