@@ -25,7 +25,6 @@
 #define ARANGOD_VOCBASE_LOGICAL_COLLECTION_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/DatafileDescription.h"
 #include "VocBase/MasterPointers.h"
 #include "VocBase/PhysicalCollection.h"
 #include "VocBase/voc-types.h"
@@ -198,6 +197,17 @@ class LogicalCollection {
                         std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) {
     return getPhysical()->applyForTickRange(dataMin, dataMax, callback);
   }
+
+  /// @brief disallow starting the compaction of the collection
+  void preventCompaction() { getPhysical()->preventCompaction(); }
+  bool tryPreventCompaction() { return getPhysical()->tryPreventCompaction(); }
+  /// @brief re-allow starting the compaction of the collection
+  void allowCompaction() { getPhysical()->allowCompaction(); }
+
+  /// @brief compaction finished
+  void lockForCompaction() { getPhysical()->lockForCompaction(); }
+  bool tryLockForCompaction() { return getPhysical()->tryLockForCompaction(); }
+  void finishCompaction() { getPhysical()->finishCompaction(); }
 
 
   PhysicalCollection* getPhysical() const {
@@ -444,6 +454,7 @@ class LogicalCollection {
     mutable arangodb::basics::ReadWriteLock
         _idxLock;  // lock protecting the indexes
 };
+
 }  // namespace arangodb
 
 #endif

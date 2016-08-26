@@ -25,11 +25,12 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Logger/Logger.h"
-#include "VocBase/collection.h"
+#include "VocBase/CompactionLocker.h"
 #include "VocBase/DatafileHelper.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/collection.h"
 #include "VocBase/datafile.h"
 #include "VocBase/collection.h"
-#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "Wal/Logfile.h"
 #include "Wal/LogfileManager.h"
@@ -447,17 +448,17 @@ static int DumpCollection(TRI_replication_dump_t* dump,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DumpCollectionReplication(TRI_replication_dump_t* dump,
-                                  arangodb::LogicalCollection* col,
+                                  arangodb::LogicalCollection* collection,
                                   TRI_voc_tick_t dataMin,
                                   TRI_voc_tick_t dataMax, bool withTicks) {
-  TRI_ASSERT(col != nullptr);
-  TRI_ASSERT(col->_collection != nullptr);
+  TRI_ASSERT(collection != nullptr);
+  TRI_ASSERT(collection->_collection != nullptr);
   
   // get a custom type handler
   auto customTypeHandler = dump->_transactionContext->orderCustomTypeHandler();
   dump->_vpackOptions.customTypeHandler = customTypeHandler.get();
 
-  TRI_collection_t* document = col->_collection;
+  TRI_collection_t* document = collection->_collection;
   TRI_ASSERT(document != nullptr);
 
   // create a barrier so the underlying collection is not unloaded
@@ -470,10 +471,10 @@ int TRI_DumpCollectionReplication(TRI_replication_dump_t* dump,
   // block compaction
   int res;
   {
-    READ_LOCKER(locker, document->_compactionLock);
+    CompactionPreventer compactionPreventer(collection);
 
     try {
-      res = DumpCollection(dump, col, document->_vocbase->id(), document->_info.id(), dataMin, dataMax, withTicks);
+      res = DumpCollection(dump, collection, collection->vocbase()->id(), collection->cid(), dataMin, dataMax, withTicks);
     } catch (...) {
       res = TRI_ERROR_INTERNAL;
     }

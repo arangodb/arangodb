@@ -36,9 +36,10 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
+#include "VocBase/CompactionLocker.h"
 #include "VocBase/DatafileHelper.h"
-#include "VocBase/collection.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/collection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -84,7 +85,7 @@ void MMFilesCompactorThread::DropDatafileCallback(TRI_datafile_t* datafile, Logi
   std::string name("deleted-" + std::to_string(fid) + ".db");
   std::string filename = arangodb::basics::FileUtils::buildFilename(collection->path(), name);
 
-  if (datafile->isPhysical(datafile)) {
+  if (datafile->isPhysical()) {
     // copy the current filename
     copy = datafile->_filename;
 
@@ -95,19 +96,19 @@ void MMFilesCompactorThread::DropDatafileCallback(TRI_datafile_t* datafile, Logi
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "finished compacting datafile '" << datafile->getName(datafile) << "'";
+  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "finished compacting datafile '" << datafile->getName() << "'";
 
-  int res = TRI_CloseDatafile(datafile);
+  int res = datafile->close();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, Logger::COMPACTOR) << "cannot close obsolete datafile '" << datafile->getName(datafile) << "': " << TRI_errno_string(res);
-  } else if (datafile->isPhysical(datafile)) {
+    LOG_TOPIC(ERR, Logger::COMPACTOR) << "cannot close obsolete datafile '" << datafile->getName() << "': " << TRI_errno_string(res);
+  } else if (datafile->isPhysical()) {
     LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "wiping compacted datafile from disk";
 
     res = TRI_UnlinkFile(filename.c_str());
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, Logger::COMPACTOR) << "cannot wipe obsolete datafile '" << datafile->getName(datafile) << "': " << TRI_errno_string(res);
+      LOG_TOPIC(ERR, Logger::COMPACTOR) << "cannot wipe obsolete datafile '" << datafile->getName() << "': " << TRI_errno_string(res);
     }
 
     // check for .dead files
@@ -122,7 +123,7 @@ void MMFilesCompactorThread::DropDatafileCallback(TRI_datafile_t* datafile, Logi
     }
   }
 
-  TRI_FreeDatafile(datafile);
+  delete datafile;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -146,7 +147,7 @@ void MMFilesCompactorThread::RenameDatafileCallback(TRI_datafile_t* datafile, vo
   bool ok = false;
   TRI_ASSERT(datafile->_fid == compactor->_fid);
 
-  if (datafile->isPhysical(datafile)) {
+  if (datafile->isPhysical()) {
     // construct a suitable tempname
     std::string jname("temp-" + std::to_string(datafile->_fid) + ".db");
     std::string tempFilename = arangodb::basics::FileUtils::buildFilename(collection->path(), jname);
@@ -155,12 +156,12 @@ void MMFilesCompactorThread::RenameDatafileCallback(TRI_datafile_t* datafile, vo
     int res = TRI_RenameDatafile(datafile, tempFilename.c_str());
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, Logger::COMPACTOR) << "unable to rename datafile '" << datafile->getName(datafile) << "' to '" << tempFilename << "': " << TRI_errno_string(res);
+      LOG_TOPIC(ERR, Logger::COMPACTOR) << "unable to rename datafile '" << datafile->getName() << "' to '" << tempFilename << "': " << TRI_errno_string(res);
     } else {
       res = TRI_RenameDatafile(compactor, realName.c_str());
 
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG_TOPIC(ERR, Logger::COMPACTOR) << "unable to rename compaction file '" << compactor->getName(compactor) << "' to '" << realName << "': " << TRI_errno_string(res);
+        LOG_TOPIC(ERR, Logger::COMPACTOR) << "unable to rename compaction file '" << compactor->getName() << "' to '" << realName << "': " << TRI_errno_string(res);
       }
     }
 
@@ -187,7 +188,7 @@ void MMFilesCompactorThread::RenameDatafileCallback(TRI_datafile_t* datafile, vo
 /// @brief remove an empty compactor file
 int MMFilesCompactorThread::removeCompactor(LogicalCollection* collection,
                                             TRI_datafile_t* compactor) {
-  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "removing empty compaction file '" << compactor->getName(compactor) << "'";
+  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "removing empty compaction file '" << compactor->getName() << "'";
 
   // remove the compactor from the list of compactors
   bool ok = static_cast<MMFilesCollection*>(collection->getPhysical())->removeCompactor(compactor);
@@ -199,15 +200,12 @@ int MMFilesCompactorThread::removeCompactor(LogicalCollection* collection,
   }
 
   // close the file & remove it
-  if (compactor->isPhysical(compactor)) {
-    std::string filename = compactor->getName(compactor);
-    TRI_CloseDatafile(compactor);
-    TRI_FreeDatafile(compactor);
-
+  if (compactor->isPhysical()) {
+    std::string filename = compactor->getName();
+    delete compactor;
     TRI_UnlinkFile(filename.c_str());
   } else {
-    TRI_CloseDatafile(compactor);
-    TRI_FreeDatafile(compactor);
+    delete compactor;
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -216,7 +214,7 @@ int MMFilesCompactorThread::removeCompactor(LogicalCollection* collection,
 /// @brief remove an empty datafile
 int MMFilesCompactorThread::removeDatafile(LogicalCollection* collection,
                                            TRI_datafile_t* df) {
-  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "removing empty datafile '" << df->getName(df) << "'";
+  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "removing empty datafile '" << df->getName() << "'";
 
   bool ok = static_cast<MMFilesCollection*>(collection->getPhysical())->removeDatafile(df);
 
@@ -251,7 +249,7 @@ MMFilesCompactorThread::compaction_initial_context_t MMFilesCompactorThread::get
     TRI_datafile_t* df = compaction._datafile;
 
     // We will sequentially scan the logfile for collection:
-    if (df->isPhysical(df)) {
+    if (df->isPhysical()) {
       TRI_MMFileAdvise(df->_data, df->_maximalSize, TRI_MADVISE_SEQUENTIAL);
       TRI_MMFileAdvise(df->_data, df->_maximalSize, TRI_MADVISE_WILLNEED);
     }
@@ -317,7 +315,7 @@ MMFilesCompactorThread::compaction_initial_context_t MMFilesCompactorThread::get
       }
     }
 
-    if (df->isPhysical(df)) {
+    if (df->isPhysical()) {
       TRI_MMFileAdvise(df->_data, df->_maximalSize, TRI_MADVISE_RANDOM);
     }
 
@@ -425,6 +423,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK, true);
+  trx.addHint(TRI_TRANSACTION_HINT_NO_THROTTLING, true);
 
   compaction_initial_context_t initial = getCompactionContext(&trx, collection, toCompact);
 
@@ -446,7 +445,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
     return;
   }
 
-  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "created new compactor file '" << compactor->getName(compactor) << "'";
+  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "created new compactor file '" << compactor->getName() << "'";
 
   // these attributes remain the same for all datafiles we collect
   context._collection = collection;
@@ -465,7 +464,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
     auto compaction = toCompact[i];
     TRI_datafile_t* df = compaction._datafile;
 
-    LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "compacting datafile '" << df->getName(df) << "' into '" << compactor->getName(compactor) << "', number: " << i << ", keep deletions: " << compaction._keepDeletions;
+    LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "compacting datafile '" << df->getName() << "' into '" << compactor->getName() << "', number: " << i << ", keep deletions: " << compaction._keepDeletions;
 
     // if this is the first datafile in the list of datafiles, we can also
     // collect
@@ -476,7 +475,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
     bool ok = TRI_IterateDatafile(df, compactifier);
 
     if (!ok) {
-      LOG_TOPIC(WARN, Logger::COMPACTOR) << "failed to compact datafile '" << df->getName(df) << "'";
+      LOG_TOPIC(WARN, Logger::COMPACTOR) << "failed to compact datafile '" << df->getName() << "'";
       // compactor file does not need to be removed now. will be removed on next
       // startup
       // TODO: Remove file
@@ -510,8 +509,8 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
         auto compaction = toCompact[i];
         TRI_datafile_t* datafile = compaction._datafile;
 
-        if (datafile->isPhysical(datafile)) {
-          std::string filename(datafile->getName(datafile));
+        if (datafile->isPhysical()) {
+          std::string filename(datafile->getName());
           filename.append(".dead");
 
           TRI_WriteFile(filename.c_str(), "", 0);
@@ -544,8 +543,8 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
         auto compaction = toCompact[i];
         TRI_datafile_t* datafile = compaction._datafile;
 
-        if (datafile->isPhysical(datafile)) {
-          std::string filename(datafile->getName(datafile));
+        if (datafile->isPhysical()) {
+          std::string filename(datafile->getName());
           filename.append(".dead");
 
           TRI_WriteFile(filename.c_str(), "", 0);
@@ -877,9 +876,9 @@ void MMFilesCompactorThread::run() {
             // check whether someone else holds a read-lock on the compaction
             // lock
 
-            TRY_WRITE_LOCKER(locker, document->_compactionLock);
+            TryCompactionLocker compactionLocker(collection);
 
-            if (!locker.isLocked()) {
+            if (!compactionLocker.isLocked()) {
               // someone else is holding the compactor lock, we'll not compact
               continue;
             }
@@ -958,6 +957,7 @@ uint64_t MMFilesCompactorThread::getNumberOfDocuments(LogicalCollection* collect
   // only try to acquire the lock here
   // if lock acquisition fails, we go on and report an (arbitrary) positive number
   trx.addHint(TRI_TRANSACTION_HINT_TRY_LOCK, false); 
+  trx.addHint(TRI_TRANSACTION_HINT_NO_THROTTLING, true);
 
   int res = trx.begin();
 

@@ -37,10 +37,11 @@
 #include "Utils/DatabaseGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
+#include "VocBase/CompactionLocker.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/DatafileStatistics.h"
-#include "VocBase/collection.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/collection.h"
 #include "Wal/Logfile.h"
 #include "Wal/LogfileManager.h"
 
@@ -626,10 +627,9 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
   // first try to read-lock the compactor-lock, afterwards try to write-lock the
   // collection
   // if any locking attempt fails, release and try again next time
-
-  TRY_READ_LOCKER(locker, document->_compactionLock);
+  TryCompactionPreventer compactionPreventer(collection);
   
-  if (!locker.isLocked()) {
+  if (!compactionPreventer.isLocked()) {
     return TRI_ERROR_LOCK_TIMEOUT;
   }
 
