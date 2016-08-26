@@ -74,6 +74,7 @@ class HttpResponse : public GeneralResponse {
  public:
   void reset(ResponseCode code) override final;
 
+  void addPayloadPostHook(VPackOptions const* options);
   void setPayload(arangodb::velocypack::Slice const&, bool generateBody,
                   arangodb::velocypack::Options const&) override final;
 
@@ -90,6 +91,7 @@ class HttpResponse : public GeneralResponse {
   std::vector<std::string> _cookies;
   basics::StringBuffer _body;
   size_t _bodySize;
+  bool _generateBody;
 };
 }
 

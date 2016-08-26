@@ -127,15 +127,16 @@ class GeneralResponse {
                           arangodb::velocypack::Options const& =
                               arangodb::velocypack::Options::Defaults) = 0;
 
-  virtual void addPayload(VPackSlice const& slice) {
-    // this is slower as it has an extra copy!!
-    _vpackPayloads.emplace_back(slice.byteSize());
-    std::memcpy(&_vpackPayloads.back(), slice.start(), slice.byteSize());
-  };
+  virtual void addPayloadPreHook(bool& resolve_externals){};
+  virtual void addPayloadPostHook(
+      arangodb::velocypack::Options const* options){};
 
-  virtual void addPayload(VPackBuffer<uint8_t>&& buffer) {
-    _vpackPayloads.push_back(std::move(buffer));
-  };
+  void addPayload(VPackSlice const& slice,
+                  arangodb::velocypack::Options const* options = nullptr,
+                  bool resolve_externals = true);
+  void addPayload(VPackBuffer<uint8_t>&& buffer,
+                  arangodb::velocypack::Options const* options = nullptr,
+                  bool resolve_externals = true);
 
   void setOptions(VPackOptions options) { _options = std::move(options); };
 

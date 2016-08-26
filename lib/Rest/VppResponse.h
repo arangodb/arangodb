@@ -64,7 +64,6 @@ class VppResponse : public GeneralResponse {
   //_headers        - from Base
   std::shared_ptr<VPackBuffer<uint8_t>>
       _header;  // generated form _headers when prepared for network
-  VPackBuffer<uint8_t> _payload;
   uint64_t _messageId;
   bool _generateBody;  // this must be true if payload should be send
 };

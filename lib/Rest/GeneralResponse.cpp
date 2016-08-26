@@ -25,9 +25,51 @@
 #include "GeneralResponse.h"
 
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
+
+void GeneralResponse::addPayload(VPackSlice const& slice,
+                                 arangodb::velocypack::Options const* options,
+                                 bool resolve_externals) {
+  if (!options) {
+    options = &arangodb::velocypack::Options::Defaults;
+  }
+
+  if (resolve_externals) {
+    auto tmpBuffer =
+        basics::VelocyPackHelper::sanitizeExternalsChecked(slice, options);
+    _vpackPayloads.push_back(std::move(tmpBuffer));
+  } else {
+    // just copy
+    _vpackPayloads.emplace_back(slice.byteSize());
+    std::memcpy(&_vpackPayloads.back(), slice.start(), slice.byteSize());
+  }
+  addPayloadPostHook(options);
+};
+
+void GeneralResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
+                                 arangodb::velocypack::Options const* options,
+                                 bool resolve_externals) {
+  // TODO
+  // skip sanatizing here for http if conent type is json because it will
+  // be dumped anyway -- check with jsteemann
+  addPayloadPreHook(resolve_externals);
+
+  if (!options) {
+    options = &arangodb::velocypack::Options::Defaults;
+  }
+
+  if (resolve_externals) {
+    auto tmpBuffer = basics::VelocyPackHelper::sanitizeExternalsChecked(
+        VPackSlice(buffer.data()), options);
+    _vpackPayloads.push_back(std::move(tmpBuffer));
+  } else {
+    _vpackPayloads.push_back(std::move(buffer));
+  }
+  addPayloadPostHook(options);
+};
 
 std::string GeneralResponse::responseString(ResponseCode code) {
   switch (code) {
@@ -159,8 +201,7 @@ std::string GeneralResponse::responseString(ResponseCode code) {
   return StringUtils::itoa((int)code) + " Unknown";
 }
 
-rest::ResponseCode GeneralResponse::responseCode(
-    std::string const& str) {
+rest::ResponseCode GeneralResponse::responseCode(std::string const& str) {
   int number = ::atoi(str.c_str());
 
   switch (number) {

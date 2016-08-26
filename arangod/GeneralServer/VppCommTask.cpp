@@ -176,13 +176,7 @@ void VppCommTask::addResponse(VppResponse* response) {
 
   std::vector<VPackSlice> slices;
   slices.push_back(response_message._header);
-
-  VPackBuilder builder;
-  if (response_message._generateBody) {
-    builder = basics::VelocyPackHelper::sanitizeExternalsChecked(
-        response_message._payload);
-    slices.push_back(builder.slice());
-  }
+  slices.push_back(response_message._payload);
 
   LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
                                           << "created response:";
