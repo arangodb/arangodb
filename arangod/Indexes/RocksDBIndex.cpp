@@ -490,22 +490,20 @@ int RocksDBIndex::remove(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief called when the index is dropped
-////////////////////////////////////////////////////////////////////////////////
+int RocksDBIndex::unload() {
+  // nothing to do
+  return TRI_ERROR_NO_ERROR;
+}
 
+/// @brief called when the index is dropped
 int RocksDBIndex::drop() {
   return RocksDBFeature::instance()->dropIndex(_collection->vocbase()->id(),
                                                _collection->cid(), _iid);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief attempts to locate an entry in the index
-///
 /// Warning: who ever calls this function is responsible for destroying
 /// the RocksDBIterator* results
-////////////////////////////////////////////////////////////////////////////////
-
 RocksDBIterator* RocksDBIndex::lookup(arangodb::Transaction* trx,
                                       VPackSlice const searchValues,
                                       bool reverse) const {

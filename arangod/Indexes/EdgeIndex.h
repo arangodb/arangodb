@@ -158,6 +158,8 @@ class EdgeIndex final : public Index {
   int batchInsert(arangodb::Transaction*,
                   std::vector<TRI_doc_mptr_t const*> const*,
                   size_t) override final;
+  
+  int unload() override final;
 
   int sizeHint(arangodb::Transaction*, size_t) override final;
 

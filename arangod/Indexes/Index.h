@@ -355,6 +355,8 @@ class Index {
   virtual int batchInsert(arangodb::Transaction*,
                           std::vector<TRI_doc_mptr_t const*> const*, size_t);
 
+  virtual int unload() = 0;
+
   // a garbage collection function for the index
   virtual int cleanup();
   // called when the index is dropped

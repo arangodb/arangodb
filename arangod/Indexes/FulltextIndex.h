@@ -73,6 +73,8 @@ class FulltextIndex final : public Index {
   int remove(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
 
+  int unload() override final;
+
   int cleanup() override final;
 
   bool isSame(std::string const& field, int minWordLength) const {

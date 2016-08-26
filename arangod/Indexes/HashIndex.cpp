@@ -713,6 +713,15 @@ int HashIndex::batchInsert(arangodb::Transaction* trx,
 
   return batchInsertMulti(trx, documents, numThreads);
 }
+  
+int HashIndex::unload() {
+  if (_unique) {
+    _uniqueArray->_hashArray->truncate(FreeElement);
+  } else {
+    _multiArray->_hashArray->truncate(FreeElement);
+  }
+  return TRI_ERROR_NO_ERROR;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief provides a size hint for the hash index

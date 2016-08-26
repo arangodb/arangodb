@@ -95,6 +95,7 @@ add_executable(${BIN_ARANGOD}
   Agency/State.cpp
   Agency/Store.cpp
   Agency/StoreCallback.cpp
+  Agency/v8-agency.cpp
   Aql/Aggregator.cpp
   Aql/AqlItemBlock.cpp
   Aql/AqlItemBlockManager.cpp
