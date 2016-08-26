@@ -1173,7 +1173,11 @@ bool LogicalCollection::dropIndex(TRI_idx_iid_t iid, bool writeMarker) {
 
 /// @brief creates the initial indexes for the collection
 int LogicalCollection::createInitialIndexes() {
-  TRI_ASSERT(_indexes.empty());
+  // TODO Properly fix this. The outside should make sure that only NEW collections
+  // try to create the indexes.
+  if (!_indexes.empty()) {
+    return TRI_ERROR_NO_ERROR;
+  }
 
   // create primary index
   auto primaryIndex = std::make_shared<arangodb::PrimaryIndex>(this);
