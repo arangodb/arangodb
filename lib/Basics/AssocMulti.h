@@ -169,6 +169,7 @@ class AssocMulti {
   IsEqualElementElementFuncType const _isEqualElementElementByKey;
 
   std::function<std::string()> _contextCallback;
+  IndexType _initialSize;
 
  public:
   AssocMulti(HashKeyFuncType hashKey, HashElementFuncType hashElement,
@@ -193,7 +194,8 @@ class AssocMulti {
         _isEqualKeyElement(isEqualKeyElement),
         _isEqualElementElement(isEqualElementElement),
         _isEqualElementElementByKey(isEqualElementElementByKey),
-        _contextCallback(contextCallback) {
+        _contextCallback(contextCallback),
+        _initialSize(initialSize) {
 
     // Make the number of buckets a power of two:
     size_t ex = 0;
@@ -508,27 +510,66 @@ class AssocMulti {
     }
     return res.load();
   }
+  
+  void truncate(CallbackElementFuncType callback) {
+    std::vector<EntryType*> empty;
+    empty.reserve(_buckets.size());
+    
+    try {
+      for (size_t i = 0; i < _buckets.size(); ++i) {
+        empty.emplace_back(new EntryType[static_cast<size_t>(_initialSize)]);
+      }
 
-  //////////////////////////////////////////////////////////////////////////////
+      size_t i = 0;
+      for (auto& b : _buckets) {
+        invokeOnAllElements(callback, b);
+
+        // now bucket is empty
+        delete[] b._table;
+        b._table = empty[i];
+        b._nrAlloc = _initialSize;
+        b._nrUsed = 0;
+
+        empty[i] = nullptr; // pass ownership
+        ++i;
+      }
+    } catch (...) {
+      // prevent leaks
+      for (auto& it : empty) {
+        delete[] it;
+      }
+      throw;
+    }
+  }
+
   /// @brief a method to iterate over all elements in the hash
-  //////////////////////////////////////////////////////////////////////////////
-
-  void invokeOnAllElements(CallbackElementFuncType callback) {
+  void invokeOnAllElements(CallbackElementFuncType const& callback) {
     for (auto& b : _buckets) {
       if (b._table == nullptr) {
         continue;
       }
 
-      for (size_t i = 0; i < b._nrAlloc; ++i) {
-        if (b._table[i].ptr == nullptr) {
-          continue;
-        }
-        if (!callback(b._table[i].ptr)) {
-          return;
-        }
+      if (!invokeOnAllElements(callback, b)) {
+        return;
       }
     }
   }
+
+  /// @brief a method to iterate over all elements in the hash
+  bool invokeOnAllElements(CallbackElementFuncType const& callback, Bucket& b) {
+    for (size_t i = 0; i < b._nrAlloc; ++i) {
+      if (b._table[i].ptr == nullptr) {
+        continue;
+      }
+      if (!callback(b._table[i].ptr)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+ private:
+  //////////////////////////////////////////////////////////////////////////////
 
  private:
   //////////////////////////////////////////////////////////////////////////////

@@ -202,10 +202,7 @@ void PrimaryIndex::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
   builder.add("sparse", VPackValue(false));
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a VelocyPack representation of the index figures
-////////////////////////////////////////////////////////////////////////////////
-
 void PrimaryIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   Index::toVelocyPackFigures(builder);
   _primaryIndex->appendToVelocyPack(builder);
@@ -219,10 +216,13 @@ int PrimaryIndex::remove(arangodb::Transaction*, TRI_doc_mptr_t const*, bool) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up an element given a key
-////////////////////////////////////////////////////////////////////////////////
+/// @brief unload the index data from memory
+int PrimaryIndex::unload() {
+  _primaryIndex->truncate([](TRI_doc_mptr_t*) -> bool { return true; });
+  return TRI_ERROR_NO_ERROR;
+}
 
+/// @brief looks up an element given a key
 TRI_doc_mptr_t* PrimaryIndex::lookup(arangodb::Transaction* trx,
                                      VPackSlice const& slice) const {
   TRI_ASSERT(slice.isArray() && slice.length() == 1);
@@ -232,10 +232,7 @@ TRI_doc_mptr_t* PrimaryIndex::lookup(arangodb::Transaction* trx,
   return _primaryIndex->findByKey(trx, tmp.begin());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an element given a key
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_doc_mptr_t* PrimaryIndex::lookupKey(arangodb::Transaction* trx,
                                         VPackSlice const& key) const {
   TRI_ASSERT(key.isString());

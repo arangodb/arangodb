@@ -559,6 +559,14 @@ int EdgeIndex::batchInsert(arangodb::Transaction* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
+/// @brief unload the index data from memory
+int EdgeIndex::unload() {
+  _edgesFrom->truncate([](TRI_doc_mptr_t*) -> bool { return true; });
+  _edgesTo->truncate([](TRI_doc_mptr_t*) -> bool { return true; });
+
+  return TRI_ERROR_NO_ERROR;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief provides a size hint for the edge index
 ////////////////////////////////////////////////////////////////////////////////

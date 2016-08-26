@@ -160,6 +160,8 @@ class PrimaryIndex final : public Index {
   int remove(arangodb::Transaction*, TRI_doc_mptr_t const*,
              bool) override final;
 
+  int unload() override final;
+
  public:
   TRI_doc_mptr_t* lookupKey(arangodb::Transaction*, VPackSlice const&) const;
 

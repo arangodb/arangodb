@@ -56,7 +56,7 @@ class Transaction;
 /// @brief Iterator structure for RocksDB. We require a start and stop node
 ////////////////////////////////////////////////////////////////////////////////
 
-class RocksDBIterator : public IndexIterator {
+class RocksDBIterator final : public IndexIterator {
  private:
   friend class RocksDBIndex;
 
@@ -163,6 +163,8 @@ class RocksDBIndex final : public PathBasedIndex {
 
   int remove(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
+
+  int unload() override final;
 
   int drop() override final;
 
