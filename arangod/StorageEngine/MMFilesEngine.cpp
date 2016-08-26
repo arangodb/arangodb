@@ -1856,10 +1856,9 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
         filename = newName;
       }
 
-      TRI_datafile_t* datafile =
-          TRI_OpenDatafile(filename, ignoreErrors);
+      std::unique_ptr<TRI_datafile_t> df(TRI_OpenDatafile(filename, ignoreErrors));
 
-      if (datafile == nullptr) {
+      if (df == nullptr) {
         LOG_TOPIC(ERR, Logger::DATAFILES) << "cannot open datafile '"
                                           << filename
                                           << "': " << TRI_last_error();
@@ -1868,7 +1867,8 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
         break;
       }
 
-      all.emplace_back(datafile);
+      all.emplace_back(df.get());
+      TRI_datafile_t* datafile = df.release();
 
       // check the document header
       char const* ptr = datafile->_data;

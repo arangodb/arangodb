@@ -1895,7 +1895,7 @@ int TRI_datafile_t::close() {
   } 
   
   if (_state == TRI_DF_STATE_CLOSED) {
-    LOG(WARN) << "closing an already closed datafile '" << getName() << "'";
+    LOG(TRACE) << "closing an already closed datafile '" << getName() << "'";
     return TRI_ERROR_NO_ERROR;
   } 
   

@@ -56,16 +56,6 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* collection)
 
 MMFilesCollection::~MMFilesCollection() {
   close();
-
-  for (auto& it : _datafiles) {
-    delete it;
-  }
-  for (auto& it : _journals) {
-    delete it;
-  }
-  for (auto& it : _compactors) {
-    delete it;
-  }
 }
   
 TRI_voc_rid_t MMFilesCollection::revision() const { 
@@ -83,14 +73,23 @@ int64_t MMFilesCollection::initialCount() const {
 int MMFilesCollection::close() {
   // close compactor files
   closeDatafiles(_compactors);
+  for (auto& it : _compactors) {
+    delete it;
+  }
   _compactors.clear();
 
   // close journal files
   closeDatafiles(_journals);
+  for (auto& it : _journals) {
+    delete it;
+  }
   _journals.clear();
 
   // close datafiles
   closeDatafiles(_datafiles);
+  for (auto& it : _datafiles) {
+    delete it;
+  }
   _datafiles.clear();
 
   return TRI_ERROR_NO_ERROR;

@@ -876,7 +876,7 @@ int SkiplistIndex::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
 }
 
 int SkiplistIndex::unload() {
-  _skiplistIndex->truncate();
+  _skiplistIndex->truncate(true);
   return TRI_ERROR_NO_ERROR;
 }
 
