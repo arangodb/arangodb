@@ -129,15 +129,17 @@ class GeneralResponse {
 
   virtual int reservePayload(std::size_t size) { return size; }
   void addPayloadPreconditions() { TRI_ASSERT(_vpackPayloads.size() == 0); };
-  virtual void addPayloadPreHook(bool inputIsBuffer, bool& resolveExternals){};
-  virtual void addPayloadPostHook(
-      arangodb::velocypack::Options const* options){};
-  void addPayload(VPackSlice const& slice,
-                  arangodb::velocypack::Options const* options = nullptr,
+  virtual void addPayloadPreHook(bool inputIsBuffer, bool& resolveExternals,
+                                 bool& skipBody){};
+  void addPayload(VPackSlice const&,
+                  arangodb::velocypack::Options const* = nullptr,
                   bool resolve_externals = true);
-  void addPayload(VPackBuffer<uint8_t>&& buffer,
-                  arangodb::velocypack::Options const* options = nullptr,
+  void addPayload(VPackBuffer<uint8_t>&&,
+                  arangodb::velocypack::Options const* = nullptr,
                   bool resolve_externals = true);
+  virtual void addPayloadPostHook(VPackSlice const&,
+                                  arangodb::velocypack::Options const*,
+                                  bool resolveExternals){};
 
   void setOptions(VPackOptions options) { _options = std::move(options); };
 

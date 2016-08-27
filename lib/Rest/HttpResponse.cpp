@@ -300,9 +300,9 @@ void HttpResponse::writeHeader(StringBuffer* output) {
   // end of header, body to follow
 }
 
-void HttpResponse::addPayloadPostHook(VPackOptions const* options) {
-  VPackSlice slice(_vpackPayloads.front().data());
-
+void HttpResponse::addPayloadPostHook(VPackSlice const& slice,
+                                      VPackOptions const* options,
+                                      bool resolveExternals) {
   switch (_contentType) {
     case rest::ContentType::VPACK: {
       size_t length = static_cast<size_t>(slice.byteSize());

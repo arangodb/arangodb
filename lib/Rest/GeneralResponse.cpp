@@ -32,46 +32,50 @@ using namespace arangodb::basics;
 
 void GeneralResponse::addPayload(VPackSlice const& slice,
                                  arangodb::velocypack::Options const* options,
-                                 bool resolve_externals) {
-  addPayloadPreconditions();
-  addPayloadPreHook(false, resolve_externals);
-  if (!options) {
+                                 bool resolveExternals) {
+  if (!options) {  // like this because nullptr is easier to pass than
+                   // VPackOptions::Options::Defaults
     options = &arangodb::velocypack::Options::Defaults;
   }
-
-  if (resolve_externals) {
-    auto tmpBuffer =
-        basics::VelocyPackHelper::sanitizeExternalsChecked(slice, options);
-    _vpackPayloads.push_back(std::move(tmpBuffer));
-  } else {
-    // just copy
-    _vpackPayloads.emplace_back(slice.byteSize());
-    std::memcpy(&_vpackPayloads.back(), slice.start(), slice.byteSize());
+  addPayloadPreconditions();
+  bool skipBody = false;
+  addPayloadPreHook(true, resolveExternals, skipBody);
+  if (!skipBody) {
+    if (resolveExternals) {
+      auto tmpBuffer =
+          basics::VelocyPackHelper::sanitizeExternalsChecked(slice, options);
+      _vpackPayloads.push_back(std::move(tmpBuffer));
+    } else {
+      // just copy
+      _vpackPayloads.emplace_back(slice.byteSize());
+      std::memcpy(&_vpackPayloads.back(), slice.start(), slice.byteSize());
+    }
+    addPayloadPostHook(slice, options, resolveExternals);
   }
-  addPayloadPostHook(options);
 };
 
 void GeneralResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
                                  arangodb::velocypack::Options const* options,
-                                 bool resolve_externals) {
+                                 bool resolveExternals) {
   addPayloadPreconditions();
-  // TODO
-  // skip sanatizing here for http if conent type is json because it will
-  // be dumped anyway -- check with jsteemann
-  addPayloadPreHook(true, resolve_externals);
-
   if (!options) {
     options = &arangodb::velocypack::Options::Defaults;
   }
-
-  if (resolve_externals) {
-    auto tmpBuffer = basics::VelocyPackHelper::sanitizeExternalsChecked(
-        VPackSlice(buffer.data()), options);
-    _vpackPayloads.push_back(std::move(tmpBuffer));
-  } else {
-    _vpackPayloads.push_back(std::move(buffer));
+  // TODO
+  // skip sanatizing here for http if conent type is json because it will
+  // be dumped anyway -- check with jsteemann
+  bool skipBody = false;
+  addPayloadPreHook(true, resolveExternals, skipBody);
+  if (!skipBody) {
+    if (resolveExternals) {
+      auto tmpBuffer = basics::VelocyPackHelper::sanitizeExternalsChecked(
+          VPackSlice(buffer.data()), options);
+      _vpackPayloads.push_back(std::move(tmpBuffer));
+    } else {
+      _vpackPayloads.push_back(std::move(buffer));
+    }
   }
-  addPayloadPostHook(options);
+  addPayloadPostHook(VPackSlice(buffer.data()), options, resolveExternals);
 };
 
 std::string GeneralResponse::responseString(ResponseCode code) {
