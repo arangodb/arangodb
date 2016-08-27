@@ -74,7 +74,16 @@ class HttpResponse : public GeneralResponse {
  public:
   void reset(ResponseCode code) override final;
 
-  void addPayloadPostHook(VPackOptions const* options);
+  void addPayloadPreHook(bool inputIsBuffer, bool& resolveExternals) override {
+    if (_contentType == ContentType::JSON) {
+      // resolveExternals = false;  // they get resolved during dump in post
+      // hook
+      // this optimization leads to bad bas crahses
+    }
+  };
+
+  int reservePayload(std::size_t size) override { return _body.reserve(size); }
+  void addPayloadPostHook(VPackOptions const* options) override;
   void setPayload(arangodb::velocypack::Slice const&, bool generateBody,
                   arangodb::velocypack::Options const&) override final;
 

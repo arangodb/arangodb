@@ -127,10 +127,11 @@ class GeneralResponse {
                           arangodb::velocypack::Options const& =
                               arangodb::velocypack::Options::Defaults) = 0;
 
-  virtual void addPayloadPreHook(bool& resolve_externals){};
+  virtual int reservePayload(std::size_t size) { return size; }
+  void addPayloadPreconditions() { TRI_ASSERT(_vpackPayloads.size() == 0); };
+  virtual void addPayloadPreHook(bool inputIsBuffer, bool& resolveExternals){};
   virtual void addPayloadPostHook(
       arangodb::velocypack::Options const* options){};
-
   void addPayload(VPackSlice const& slice,
                   arangodb::velocypack::Options const* options = nullptr,
                   bool resolve_externals = true);

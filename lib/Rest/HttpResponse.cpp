@@ -334,6 +334,7 @@ void HttpResponse::addPayloadPostHook(VPackOptions const* options) {
       }
     }
   }
+  //_vpackPayloads.clear();
 }
 
 void HttpResponse::setPayload(arangodb::velocypack::Slice const& slice,

@@ -33,6 +33,8 @@ using namespace arangodb::basics;
 void GeneralResponse::addPayload(VPackSlice const& slice,
                                  arangodb::velocypack::Options const* options,
                                  bool resolve_externals) {
+  addPayloadPreconditions();
+  addPayloadPreHook(false, resolve_externals);
   if (!options) {
     options = &arangodb::velocypack::Options::Defaults;
   }
@@ -52,10 +54,11 @@ void GeneralResponse::addPayload(VPackSlice const& slice,
 void GeneralResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
                                  arangodb::velocypack::Options const* options,
                                  bool resolve_externals) {
+  addPayloadPreconditions();
   // TODO
   // skip sanatizing here for http if conent type is json because it will
   // be dumped anyway -- check with jsteemann
-  addPayloadPreHook(resolve_externals);
+  addPayloadPreHook(true, resolve_externals);
 
   if (!options) {
     options = &arangodb::velocypack::Options::Defaults;
