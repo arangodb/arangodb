@@ -708,7 +708,7 @@ if (NOT USE_BOOST_UNITTESTS)
   message(STATUS "BOOST unit-tests are disabled")
 endif ()
 
-include_directories(${Boost_INCLUDE_DIR})
+include_directories(SYSTEM ${Boost_INCLUDE_DIR})
 add_definitions(-DARANGODB_BOOST_VERSION=\"${Boost_VERSION}\")
 
 ################################################################################
