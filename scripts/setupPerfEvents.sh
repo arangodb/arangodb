@@ -36,10 +36,10 @@
 #
 
 main(){
-  local ARANGOD_EXECUTABLE=build/bin/arangod
+  local ARANGOD_EXECUTABLE=${1-build/bin/arangod}
 
   #delete all existing events
-  perf probe -x $ARANGOD_EXECUTABLE -d "probe_arangod:*" || exit 1
+  perf probe -x $ARANGOD_EXECUTABLE -d "probe_arangod:*"
 
   echo "Adding events, this takes a few seconds..."
 
