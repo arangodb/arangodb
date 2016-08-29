@@ -162,7 +162,7 @@ void SimpleHttpResult::addHeaderField(char const* key, size_t keyLength,
 
           if (_returnCode == 204) {
             // HTTP 204 = No content. Assume we will have a content-length of 0.
-            // note that will value can be overridden later if the response has the content-length
+            // note that the value can be overridden later if the response has the content-length
             // header set to some other value
             setContentLength(0);
           }

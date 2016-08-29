@@ -35,6 +35,7 @@
 #include "VocBase/ticks.h"
 
 #include <sstream>
+#include <iomanip>
 
 // #define DEBUG_DATAFILE 1
 
@@ -622,7 +623,7 @@ static bool CheckDatafile(TRI_datafile_t* datafile, bool ignoreFailures) {
         bool nextMarkerOk = false;
 
         if (size > 0) {
-          auto next = reinterpret_cast<char const*>(marker) + size;
+          auto next = reinterpret_cast<char const*>(marker) + DatafileHelper::AlignedSize<size_t>(size);
           auto p = next;
 
           if (p < end) {
@@ -649,7 +650,7 @@ static bool CheckDatafile(TRI_datafile_t* datafile, bool ignoreFailures) {
                 // there is a next marker
                 auto nextMarker =
                     reinterpret_cast<TRI_df_marker_t const*>(next);
-
+                
                 if (nextMarker->getType() != 0 &&
                     nextMarker->getSize() >= sizeof(TRI_df_marker_t) &&
                     next + nextMarker->getSize() <= end &&
@@ -676,10 +677,67 @@ static bool CheckDatafile(TRI_datafile_t* datafile, bool ignoreFailures) {
         datafile->_next = datafile->_data + datafile->_currentSize;
         datafile->_state = TRI_DF_STATE_OPEN_ERROR;
 
-        LOG(WARN) << "crc mismatch found in datafile '" << datafile->getName() << "' at position " << currentSize << ". expected crc: " << CalculateCrcValue(marker) << ", actual crc: " << marker->getCrc();
+        LOG(WARN) << "crc mismatch found in datafile '" << datafile->getName() << "' of size "
+                  << datafile->_maximalSize << ", at position " << currentSize;
+
+        LOG(WARN) << "crc mismatch found inside marker of type '" << TRI_NameMarkerDatafile(marker) 
+                  << "' and size " << size
+                  << ". expected crc: " << CalculateCrcValue(marker) << ", actual crc: " << marker->getCrc();
+ 
+        {
+          LOG(INFO) << "raw marker data following:";
+          char const* p = reinterpret_cast<char const*>(marker);
+          char const* e = reinterpret_cast<char const*>(marker) + DatafileHelper::AlignedSize<size_t>(size);
+          std::string line;
+          std::string raw;
+          size_t printed = 0;
+          while (p < e) {
+            // print offset
+            line.append("0x");
+            uintptr_t offset = static_cast<uintptr_t>(p - datafile->_data);
+            for (size_t i = 0; i < 8; ++i) {
+              uint8_t c = static_cast<uint8_t>((offset & (0xFFULL << 8 * (7 - i))) >> 8 * (7 - i));
+              uint8_t n1 = c >> 4;
+              uint8_t n2 = c & 0x0F;
+
+              line.push_back((n1 < 10) ? ('0' + n1) : 'A' + n1 - 10);
+              line.push_back((n2 < 10) ? ('0' + n2) : 'A' + n2 - 10);
+            }
+
+            // print data
+            line.append(": ");
+            for (size_t i = 0; i < 16; ++i) {
+              if (p >= e) {
+                line.append("   ");
+              } else {
+                uint8_t c = static_cast<uint8_t>(*p++);
+                uint8_t n1 = c >> 4;
+                uint8_t n2 = c & 0x0F;
+
+                line.push_back((n1 < 10) ? ('0' + n1) : 'A' + n1 - 10);
+                line.push_back((n2 < 10) ? ('0' + n2) : 'A' + n2 - 10);
+                line.push_back(' ');
+
+                raw.push_back((c < 32 || c >= 127) ? '.' : static_cast<unsigned char>(c));
+
+                ++printed;
+              }
+            }
+
+            LOG(INFO) << line << "  " << raw;
+            line.clear();
+            raw.clear();
+
+            if (printed >= 2048) {
+              LOG(INFO) << "(output truncated due to excessive length)";
+              break;
+            }
+          }
+        }
 
         if (nextMarkerOk) {
           LOG(INFO) << "data directly following this marker looks ok so repairing the marker may recover it";
+          LOG(INFO) << "please restart the server with the parameter '--wal.ignore-logfile-errors true' to repair the marker";
         } else {
           LOG(WARN) << "data directly following this marker cannot be analyzed";
         }
