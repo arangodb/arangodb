@@ -213,8 +213,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _numberDocuments(0),
       _collection(nullptr),
       _lock() {
-  createPhysical();
-      
   auto database = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
   _waitForSync = database->waitForSync();
   _journalSize = static_cast<TRI_voc_size_t>(database->maximalJournalSize());
@@ -224,13 +222,9 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
     slice = VPackSlice(keyOpts->data());
   }
   
-  std::unique_ptr<KeyGenerator> keyGenerator(KeyGenerator::factory(slice));
-
-  if (keyGenerator == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR);
-  }
-
-  _keyGenerator.reset(keyGenerator.release());
+  _keyGenerator.reset(KeyGenerator::factory(slice));
+  
+  createPhysical();
 }
 
 /// @brief This the "copy" constructor used in the cluster
@@ -268,6 +262,9 @@ LogicalCollection::LogicalCollection(
       _numberDocuments(0),
       _collection(nullptr),
       _lock() {
+        
+  _keyGenerator.reset(KeyGenerator::factory(other->keyOptions()));
+  
   createPhysical();
 }
 
@@ -344,6 +341,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
       }
     }
   }
+  
+  _keyGenerator.reset(KeyGenerator::factory(info));
   
   createPhysical();
 }

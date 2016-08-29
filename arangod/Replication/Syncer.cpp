@@ -502,11 +502,20 @@ int Syncer::createCollection(VPackSlice const& slice, arangodb::LogicalCollectio
 
   VocbaseCollectionInfo params(_vocbase, name.c_str(), merged.slice(), true);
 
-  col = _vocbase->createCollection(params, cid, true);
-
-  if (col == nullptr) {
-    return TRI_errno();
+  int res = TRI_ERROR_NO_ERROR;
+  try {
+    col = _vocbase->createCollection(params, cid, true);
+  } catch (basics::Exception const& ex) {
+    res = ex.code();
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
   }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  TRI_ASSERT(col != nullptr);
 
   if (dst != nullptr) {
     *dst = col;

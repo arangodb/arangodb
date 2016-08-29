@@ -797,20 +797,28 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
 
         arangodb::VocbaseCollectionInfo info(vocbase, name.c_str(), b2.slice(), isSystemValue);
 
-        if (state->willBeDropped(collectionId)) {
-          // in case we detect that this collection is going to be deleted anyway,
-          // set the sync properties to false temporarily
-          bool oldSync = state->databaseFeature->forceSyncProperties();
-          state->databaseFeature->forceSyncProperties(false);
-          collection = vocbase->createCollection(info, collectionId, false);
-          state->databaseFeature->forceSyncProperties(oldSync);
-        } else {
-          // collection will be kept
-          collection = vocbase->createCollection(info, collectionId, false);
+        int res = TRI_ERROR_NO_ERROR;
+        try {
+          if (state->willBeDropped(collectionId)) {
+            // in case we detect that this collection is going to be deleted anyway,
+            // set the sync properties to false temporarily
+            bool oldSync = state->databaseFeature->forceSyncProperties();
+            state->databaseFeature->forceSyncProperties(false);
+            collection = vocbase->createCollection(info, collectionId, false);
+            state->databaseFeature->forceSyncProperties(oldSync);
+          } else {
+            // collection will be kept
+            collection = vocbase->createCollection(info, collectionId, false);
+          }
+          TRI_ASSERT(collection != nullptr);
+        } catch (basics::Exception const& ex) {
+          res = ex.code();
+        } catch (...) {
+          res = TRI_ERROR_INTERNAL;
         }
 
-        if (collection == nullptr) {
-          LOG(WARN) << "cannot create collection " << collectionId << " in database " << databaseId << ": " << TRI_last_error();
+        if (res != TRI_ERROR_NO_ERROR) {
+          LOG(WARN) << "cannot create collection " << collectionId << " in database " << databaseId << ": " << TRI_errno_string(res);
           ++state->errorCount;
           return state->canContinue();
         }

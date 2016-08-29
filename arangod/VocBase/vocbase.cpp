@@ -95,9 +95,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::registerCollection(
               << " has same name as already added collection "
               << _collectionsByName[name]->cid();
 
-      TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
-
-      return nullptr;
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
     }
 
     // check collection identifier
@@ -111,14 +109,12 @@ arangodb::LogicalCollection* TRI_vocbase_t::registerCollection(
         LOG(ERR) << "duplicate collection identifier " << collection->cid()
                 << " for name '" << name << "'";
 
-        TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
-
-        return nullptr;
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
       }
     }
     catch (...) {
       _collectionsByName.erase(name);
-      return nullptr;
+      throw;
     }
 
     TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
@@ -129,7 +125,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::registerCollection(
     catch (...) {
       _collectionsByName.erase(name);
       _collectionsById.erase(cid);
-      return nullptr;
+      throw;
     }
   }
 
@@ -306,34 +302,24 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
   auto it = _collectionsByName.find(name);
 
   if (it != _collectionsByName.end()) {
-    TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
-    return nullptr;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
   }
 
   // ok, construct the collection
   std::unique_ptr<TRI_collection_t> document(TRI_collection_t::create(this, parameters, cid));
 
-  if (document == nullptr) {
-    return nullptr;
-  }
+  TRI_ASSERT(document != nullptr);
 
   TRI_voc_cid_t planId = parameters.planId();
   document->_info.setPlanId(planId);
 
   TRI_ASSERT(document->_info.id() != 0);
   
-  arangodb::LogicalCollection* collection = nullptr;
-  try {
-    collection = registerCollection(ConditionalWriteLocker::DoNotLock(), document->_info.type(), document->_info.id(), document->_info.name(), planId, document->path(), document->_info.keyOptions(), document->_info.isVolatile());
-  } catch (...) {
-    // if an exception is caught, collection will be a nullptr
-  }
+  // TODO: change to Slice constructor 
+  arangodb::LogicalCollection* collection = registerCollection(ConditionalWriteLocker::DoNotLock(), document->_info.type(), document->_info.id(), document->_info.name(), planId, document->path(), document->_info.keyOptions(), document->_info.isVolatile());
+  collection->waitForSync(parameters.waitForSync()); 
 
-  // FIXME
-  if (collection == nullptr) {
-    // TODO: does the collection directory need to be removed?
-    return nullptr;
-  }
+  TRI_ASSERT(collection != nullptr);
 
   try {
     // FIXME Taken out of TRI_collection_t* create()
@@ -796,9 +782,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
   // check that the name does not contain any strange characters
   if (!TRI_collection_t::IsAllowedName(parameters.isSystem(),
                                        parameters.name())) {
-    TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-
-    return nullptr;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
   
   arangodb::LogicalCollection* collection = nullptr;
@@ -809,15 +793,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
   {
     VPackObjectBuilder b(&builder);
     // note: cid may be modified by this function call
-    try {
-      collection = createCollectionWorker(parameters, cid, writeMarker, builder);
-    } catch (basics::Exception const& ex) {
-      TRI_set_errno(ex.code());
-      return nullptr;
-    } catch (...) {
-      TRI_set_errno(TRI_ERROR_INTERNAL);
-      return nullptr;
-    }
+    collection = createCollectionWorker(parameters, cid, writeMarker, builder);
   }
 
   if (!writeMarker) {

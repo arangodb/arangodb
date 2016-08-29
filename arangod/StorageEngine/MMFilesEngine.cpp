@@ -1248,20 +1248,16 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
     
     // we found a collection that is still active
     std::string const directory = it.get("path").copyString();
-    arangodb::LogicalCollection* c = nullptr;
 
     TRI_ASSERT(info.id() != 0);
     try {
-      c = StorageEngine::registerCollection(
+      StorageEngine::registerCollection(
           ConditionalWriteLocker::DoLock(), vocbase.get(), info.type(),
           info.id(), info.name(), info.planId(), directory, info.keyOptions(),
           info.isVolatile());
       registerCollectionPath(vocbase->id(), info.id(), directory);
     } catch (...) {
-      // if we caught an exception, c is still a nullptr
-    }
-
-    if (c == nullptr) {
+      // if we caught an exception,  is still a nullptr
       LOG(ERR) << "failed to add document collection '" << info.name() << "'";
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
     }

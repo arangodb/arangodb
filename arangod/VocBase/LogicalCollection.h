@@ -127,6 +127,8 @@ class LogicalCollection {
   bool isSystem() const;
   bool isVolatile() const;
   bool waitForSync() const;
+  
+  void waitForSync(bool value) { _waitForSync = value; }
 
   // SECTION: Key Options
   arangodb::velocypack::Slice keyOptions() const;

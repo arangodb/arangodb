@@ -1261,20 +1261,24 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
     return;
   }
 
-  arangodb::LogicalCollection const* collection =
-      vocbase->createCollection(parameters, parameters.id(), true);
-
-  if (collection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), "cannot create collection");
+  try {
+    arangodb::LogicalCollection const* collection =
+        vocbase->createCollection(parameters, parameters.id(), true);
+    TRI_ASSERT(collection != nullptr);
+  
+    v8::Handle<v8::Value> result = WrapCollection(isolate, collection);
+    if (result.IsEmpty()) {
+      TRI_V8_THROW_EXCEPTION_MEMORY();
+    }
+  
+    TRI_V8_RETURN(result);
+  } catch (basics::Exception const& ex) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot create collection");
   }
-
-  v8::Handle<v8::Value> result = WrapCollection(isolate, collection);
-
-  if (result.IsEmpty()) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
-
-  TRI_V8_RETURN(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
