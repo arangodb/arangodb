@@ -190,7 +190,6 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
       } catch (...) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
-
       generateResult(rest::ResponseCode::CREATED, result.slice(),
                      queryResult.context);
       return;
@@ -214,12 +213,15 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     try {
       VPackBuilder result;
       result.openObject();
-      cursor->dump(result);
       result.add("error", VPackValue(false));
       result.add("code", VPackValue((int)_response->responseCode()));
+      cursor->dump(result);
       result.close();
+
+      _response->setContentType(rest::ContentType::JSON);
       generateResult(_response->responseCode(), result.slice(),
                      cursor->result()->context);
+
       cursors->release(cursor);
     } catch (...) {
       cursors->release(cursor);
@@ -385,6 +387,11 @@ std::shared_ptr<VPackBuilder> RestCursorHandler::buildExtra(
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestCursorHandler::createCursor() {
+  if (_request->payload().isEmptyObject()) {
+    generateError(rest::ResponseCode::BAD, 600);
+    return;
+  }
+
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
@@ -458,9 +465,9 @@ void RestCursorHandler::modifyCursor() {
   try {
     VPackBuilder builder;
     builder.openObject();
-    builder.add("id", VPackValue(id));
     builder.add("error", VPackValue(false));
     builder.add("code", VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+    cursor->dump(builder);
     builder.close();
 
     _response->setContentType(rest::ContentType::JSON);
@@ -474,7 +481,6 @@ void RestCursorHandler::modifyCursor() {
                   ex.what());
   } catch (...) {
     cursors->release(cursor);
-
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL);
   }
 }

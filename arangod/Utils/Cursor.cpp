@@ -110,6 +110,7 @@ size_t VelocyPackCursor::count() const { return _iterator.size(); }
 ////////////////////////////////////////////////////////////////////////////////
 
 void VelocyPackCursor::dump(arangodb::basics::StringBuffer& buffer) {
+  TRI_ASSERT(false);  // this should not be used anymore
   buffer.appendText("\"result\":[");
 
   size_t const n = batchSize();
@@ -212,9 +213,12 @@ void VelocyPackCursor::dump(VPackBuilder& builder) {
     }
     builder.close();
 
+    // builder.add("hasMore", VPackValue(hasNext() ? "true" : "false"));
+    // //shoudl not be string
     builder.add("hasMore", VPackValue(hasNext()));
+
     if (hasNext()) {
-      builder.add("id", VPackValue(id()));
+      builder.add("id", VPackValue(std::to_string(id())));
     }
 
     if (hasCount()) {
@@ -222,11 +226,10 @@ void VelocyPackCursor::dump(VPackBuilder& builder) {
     }
 
     if (extra().isObject()) {
-      builder.add("count", extra());
+      builder.add("extra", extra());
     }
 
     builder.add("cached", VPackValue(_cached));
-    builder.close();
 
     if (!hasNext()) {
       // mark the cursor as deleted
@@ -311,6 +314,7 @@ static bool IncludeAttribute(
 ////////////////////////////////////////////////////////////////////////////////
 
 void ExportCursor::dump(arangodb::basics::StringBuffer& buffer) {
+  TRI_ASSERT(false);  // this should not be used anymore
   auto transactionContext =
       std::make_shared<StandaloneTransactionContext>(_vocbaseGuard.vocbase());
   VPackOptions* options = transactionContext->getVPackOptions();
@@ -443,10 +447,12 @@ void ExportCursor::dump(VPackBuilder& builder) {
     }
     builder.close();  // close Array
 
+    // builder.add("hasMore", VPackValue(hasNext() ? "true" : "false"));
+    // //should not be string
     builder.add("hasMore", VPackValue(hasNext()));
 
     if (hasNext()) {
-      builder.add("id", VPackValue(id()));
+      builder.add("id", VPackValue(std::to_string(id())));
     }
 
     if (hasCount()) {
@@ -454,7 +460,7 @@ void ExportCursor::dump(VPackBuilder& builder) {
     }
 
     if (extra().isObject()) {
-      builder.add("count", extra());
+      builder.add("extra", extra());
     }
 
     if (!hasNext()) {

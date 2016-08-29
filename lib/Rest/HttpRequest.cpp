@@ -739,18 +739,21 @@ void HttpRequest::setBody(char const* body, size_t length) {
 }
 
 VPackSlice HttpRequest::payload(VPackOptions const* options) {
-  TRI_ASSERT(_vpackBuilder == nullptr);
   // check options for nullptr?
 
   if (_contentType == ContentType::JSON) {
-    // if (body().length() > 0){
-    VPackParser parser(options);
-    parser.parse(body());
-    _vpackBuilder = parser.steal();
-    return VPackSlice(_vpackBuilder->slice());
-    //} else {
-    //  return VPackSlice::emptyObjectSlice(); //or empty object
-    //}
+    if (body().length() > 0) {
+      if (_vpackBuilder == nullptr) {
+        VPackParser parser(options);
+        parser.parse(body());
+        _vpackBuilder = parser.steal();
+        return VPackSlice(_vpackBuilder->slice());
+      } else {
+        return VPackSlice(_vpackBuilder->slice());
+      }
+    } else {
+      return VPackSlice::emptyObjectSlice();  // or empty object
+    }
   } else /*VPACK*/ {
     VPackValidator validator;
     validator.validate(body().c_str(), body().length());
