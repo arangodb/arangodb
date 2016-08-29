@@ -41,9 +41,9 @@ using namespace arangodb::rest;
 /// @brief static initializers
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t const HttpCommTask::MaximalHeaderSize = 1 * 1024 * 1024;       //   1 MB
-size_t const HttpCommTask::MaximalBodySize = 512 * 1024 * 1024;       // 512 MB
-size_t const HttpCommTask::MaximalPipelineSize = 512 * 1024 * 1024;   // 512 MB
+size_t const HttpCommTask::MaximalHeaderSize = 2 * 1024 * 1024;      //   1 MB
+size_t const HttpCommTask::MaximalBodySize = 1024 * 1024 * 1024;      // 1024 MB
+size_t const HttpCommTask::MaximalPipelineSize = 1024 * 1024 * 1024;  // 512 MB
 size_t const HttpCommTask::RunCompactEvery = 500;
 
 ////////////////////////////////////////////////////////////////////////////////

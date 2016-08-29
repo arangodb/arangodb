@@ -151,6 +151,16 @@ void ImportFeature::validateOptions(
                       StringUtils::join(positionals, ", ");
     FATAL_ERROR_EXIT();
   }
+
+  static unsigned const MaxBatchSize = 768 * 1024 * 1024;
+  
+  if (_chunkSize > MaxBatchSize) {
+    // it's not sensible to raise the batch size beyond this value 
+    // because the server has a built-in limit for the batch size too 
+    // and will reject bigger HTTP request bodies
+    LOG(WARN) << "capping --batch-size value to " << MaxBatchSize;
+   _chunkSize = MaxBatchSize;
+  }
 }
 
 void ImportFeature::start() {
