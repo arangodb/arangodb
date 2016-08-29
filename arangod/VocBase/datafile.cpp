@@ -1015,7 +1015,6 @@ static TRI_datafile_t* OpenDatafile(std::string const& filename, bool ignoreErro
 TRI_datafile_t* TRI_CreateDatafile(std::string const& filename, TRI_voc_fid_t fid,
                                    TRI_voc_size_t maximalSize,
                                    bool withInitialMarkers) {
-  TRI_datafile_t* datafile;
   size_t pageSize = PageSizeFeature::getPageSize();
 
   TRI_ASSERT(pageSize >= 256);
@@ -1034,15 +1033,16 @@ TRI_datafile_t* TRI_CreateDatafile(std::string const& filename, TRI_voc_fid_t fi
   }
 
   // create either an anonymous or a physical datafile
+  std::unique_ptr<TRI_datafile_t> datafile;
   if (filename.empty()) {
 #ifdef TRI_HAVE_ANONYMOUS_MMAP
-    datafile = CreateAnonymousDatafile(fid, maximalSize);
+    datafile.reset(CreateAnonymousDatafile(fid, maximalSize));
 #else
     // system does not support anonymous mmap
     return nullptr;
 #endif
   } else {
-    datafile = CreatePhysicalDatafile(filename, fid, maximalSize);
+    datafile.reset(CreatePhysicalDatafile(filename, fid, maximalSize));
   }
 
   if (datafile == nullptr) {
@@ -1053,7 +1053,7 @@ TRI_datafile_t* TRI_CreateDatafile(std::string const& filename, TRI_voc_fid_t fi
   datafile->_state = TRI_DF_STATE_WRITE;
 
   if (withInitialMarkers) {
-    int res = WriteInitialHeaderMarker(datafile, fid, maximalSize);
+    int res = WriteInitialHeaderMarker(datafile.get(), fid, maximalSize);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG(ERR) << "cannot write header to datafile '" << datafile->getName() << "'";
@@ -1061,15 +1061,13 @@ TRI_datafile_t* TRI_CreateDatafile(std::string const& filename, TRI_voc_fid_t fi
                    &datafile->_mmHandle);
 
       datafile->close();
-      delete datafile;
-
       return nullptr;
     }
   }
 
   LOG(DEBUG) << "created datafile '" << datafile->getName() << "' of size " << maximalSize << " and page-size " << pageSize;
 
-  return datafile;
+  return datafile.release();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -349,6 +349,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
 
 LogicalCollection::~LogicalCollection() {
   delete _physical;
+  delete _collection;
 }
 
 size_t LogicalCollection::journalSize() const {
@@ -618,6 +619,8 @@ void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
   if (status == TRI_VOC_COL_STATUS_LOADED) {
     _internalVersion = 0;
   } else if (status == TRI_VOC_COL_STATUS_UNLOADED) {
+    // TODO: do we need to delete _collection here?
+    delete _collection;
     _collection = nullptr;
   }
 }
