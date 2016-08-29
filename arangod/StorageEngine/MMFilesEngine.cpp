@@ -814,7 +814,7 @@ void MMFilesEngine::renameCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
 // the WAL entry for the propery change will be written *after* the call
 // to "changeCollection" returns
 void MMFilesEngine::changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                                     arangodb::VocbaseCollectionInfo const& parameters,
+                                     arangodb::LogicalCollection const* parameters,
                                      bool doSync) {
   saveCollectionInfo(vocbase, id, parameters, doSync);
 }
@@ -1363,6 +1363,7 @@ void MMFilesEngine::unregisterCollectionPath(TRI_voc_tick_t databaseId, TRI_voc_
 //  (*it).second.erase(id);
 }
 
+// FIXME DEPRECATED
 void MMFilesEngine::saveCollectionInfo(TRI_vocbase_t* vocbase,
                                        TRI_voc_cid_t id,
                                        arangodb::VocbaseCollectionInfo const& parameters,
@@ -1385,6 +1386,31 @@ void MMFilesEngine::saveCollectionInfo(TRI_vocbase_t* vocbase,
                                    filename + "': " + TRI_errno_string(res));
   }
 }
+
+void MMFilesEngine::saveCollectionInfo(TRI_vocbase_t* vocbase,
+                                       TRI_voc_cid_t id,
+                                       arangodb::LogicalCollection const* parameters,
+                                       bool forceSync) const {
+  std::string const filename = collectionParametersFilename(vocbase->id(), id);
+
+  VPackBuilder builder;
+  builder.openObject();
+  parameters->toVelocyPack(builder);
+  builder.close();
+
+  TRI_ASSERT(id != 0);
+
+  bool ok = VelocyPackHelper::velocyPackToFile(filename,
+                                               builder.slice(), forceSync);
+
+  if (!ok) {
+    int res = TRI_errno();
+    THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string("cannot save collection properties file '") + 
+                                   filename + "': " + TRI_errno_string(res));
+  }
+}
+
+
 
 VocbaseCollectionInfo MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase,
     std::string const& collectionName, std::string const& path, bool versionWarning) {

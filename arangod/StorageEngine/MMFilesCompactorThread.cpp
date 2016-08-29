@@ -298,9 +298,8 @@ MMFilesCompactorThread::compaction_initial_context_t MMFilesCompactorThread::get
 
 
     bool ok;
-    TRI_collection_t* document = collection->_collection;
     {
-      int res = document->beginRead();
+      int res = collection->beginRead();
 
       if (res != TRI_ERROR_NO_ERROR) {
         ok = false;
@@ -311,7 +310,7 @@ MMFilesCompactorThread::compaction_initial_context_t MMFilesCompactorThread::get
         } catch (...) {
           ok = false;
         }
-        document->endRead();
+        collection->endRead();
       }
     }
 
@@ -417,9 +416,8 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
     return true;
   };
 
-  TRI_collection_t* document = collection->_collection;
-  arangodb::SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(document->_vocbase), 
-      document->_info.id(), TRI_TRANSACTION_WRITE);
+  arangodb::SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(collection->vocbase()), 
+      collection->cid(), TRI_TRANSACTION_WRITE);
   trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK, true);
@@ -433,7 +431,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
     return;
   }
 
-  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "compactify called for collection '" << document->_info.id() << "' for " << n << " datafiles of total size " << initial._targetSize;
+  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "compactify called for collection '" << collection->cid() << "' for " << n << " datafiles of total size " << initial._targetSize;
 
   // now create a new compactor file
   // we are re-using the _fid of the first original datafile!
@@ -484,6 +482,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
   }  // next file
 
+  TRI_collection_t* document = collection->_collection;
   document->_datafileStatistics.replace(compactor->_fid, context._dfi);
 
   trx.commit();
@@ -869,7 +868,7 @@ void MMFilesCompactorThread::run() {
           }
 
           worked = false;
-          bool doCompact = document->_info.doCompact();
+          bool doCompact = collection->doCompact();
 
           // for document collection, compactify datafiles
           if (collection->status() == TRI_VOC_COL_STATUS_LOADED && doCompact) {

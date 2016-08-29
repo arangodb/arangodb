@@ -28,6 +28,7 @@
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/collection.h"
+#include "VocBase/LogicalCollection.h"
 #include "Wal/LogfileManager.h"
 
 #include <velocypack/Builder.h>
@@ -120,8 +121,9 @@ VPackCustomTypeHandler* TransactionContext::createCustomTypeHandler(TRI_vocbase_
 /// function will return a nullptr!
 //////////////////////////////////////////////////////////////////////////////
 
-DocumentDitch* TransactionContext::orderDitch(TRI_collection_t* document) {
-  TRI_voc_cid_t cid = document->_info.id();
+DocumentDitch* TransactionContext::orderDitch(LogicalCollection* collection) {
+
+  TRI_voc_cid_t cid = collection->cid();
 
   auto it = _ditches.find(cid);
 
@@ -133,6 +135,8 @@ DocumentDitch* TransactionContext::orderDitch(TRI_collection_t* document) {
     return (*it).second;
   }
 
+  TRI_collection_t* document = collection->_collection;
+  TRI_ASSERT(document != nullptr);
   // this method will not throw, but may return a nullptr
   auto ditch = document->ditches()->createDocumentDitch(true, __FILE__, __LINE__);
 

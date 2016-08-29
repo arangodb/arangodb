@@ -50,6 +50,7 @@ typedef std::string CollectionID;  // ID of a collection
 typedef std::string ShardID;       // ID of a shard
 typedef std::unordered_map<ShardID, std::vector<ServerID>> ShardMap;
 
+class FollowerInfo;
 class Index;
 class KeyGenerator;
 struct OperationOptions;
@@ -116,6 +117,7 @@ class LogicalCollection {
   size_t journalSize() const;
 
   // SECTION: Properties
+  TRI_voc_rid_t revision() const;
   bool isLocal() const;
   bool deleted() const;
   bool doCompact() const;
@@ -123,8 +125,17 @@ class LogicalCollection {
   bool isVolatile() const;
   bool waitForSync() const;
 
+  std::unique_ptr<arangodb::FollowerInfo> const& followers() const;
+
+  void setDeleted(bool);
+  void setRevision(TRI_voc_rid_t, bool);
+
   // SECTION: Key Options
   arangodb::velocypack::Slice keyOptions() const;
+
+  // Get a reference to this KeyGenerator.
+  // Caller is not allowed to free it.
+  arangodb::KeyGenerator* keyGenerator() const;
 
   // SECTION: Indexes
   uint32_t indexBuckets() const;
@@ -270,6 +281,15 @@ class LogicalCollection {
   int fillIndex(arangodb::Transaction*, arangodb::Index*,
                 bool skipPersistent = true);
 
+  int beginRead();
+  int endRead();
+  int beginWrite();
+  int endWrite();
+  int beginReadTimed(uint64_t, uint64_t);
+  int beginWriteTimed(uint64_t, uint64_t);
+
+
+
  private:
   // SECTION: Private functions
 
@@ -401,6 +421,11 @@ class LogicalCollection {
     bool _waitForSync;
     TRI_voc_size_t _journalSize;
 
+    // the following contains in the cluster/DBserver case the information
+    // which other servers are in sync with this shard. It is unset in all
+    // other cases.
+    std::unique_ptr<arangodb::FollowerInfo> _followers;
+
     // SECTION: Key Options
     // TODO Really VPack?
     std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const>
@@ -453,6 +478,8 @@ class LogicalCollection {
         _lock;  // lock protecting the status and name
     mutable arangodb::basics::ReadWriteLock
         _idxLock;  // lock protecting the indexes
+    mutable arangodb::basics::ReadWriteLock
+        _infoLock;  // lock protecting the info
 };
 
 }  // namespace arangodb

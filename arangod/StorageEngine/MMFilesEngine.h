@@ -179,7 +179,7 @@ class MMFilesEngine final : public StorageEngine {
   // the WAL entry for the propery change will be written *after* the call
   // to "changeCollection" returns
   void changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                        arangodb::VocbaseCollectionInfo const& parameters,
+                        arangodb::LogicalCollection const* parameters,
                         bool doSync) override;
   
   // asks the storage engine to create an index as specified in the VPack
@@ -325,9 +325,15 @@ class MMFilesEngine final : public StorageEngine {
   void registerCollectionPath(TRI_voc_tick_t databaseId, TRI_voc_cid_t id, std::string const& path);
   void unregisterCollectionPath(TRI_voc_tick_t databaseId, TRI_voc_cid_t id);
 
+  // FIXME DEPRECATED
   void saveCollectionInfo(TRI_vocbase_t* vocbase,
                           TRI_voc_cid_t id,
                           arangodb::VocbaseCollectionInfo const& parameters,
+                          bool forceSync) const;
+
+  void saveCollectionInfo(TRI_vocbase_t* vocbase,
+                          TRI_voc_cid_t id,
+                          arangodb::LogicalCollection const* parameters,
                           bool forceSync) const;
 
   VocbaseCollectionInfo loadCollectionInfo(TRI_vocbase_t* vocbase,

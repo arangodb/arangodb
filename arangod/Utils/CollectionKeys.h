@@ -116,7 +116,7 @@ class CollectionKeys {
  private:
   struct TRI_vocbase_t* _vocbase;
   arangodb::CollectionGuard* _guard;
-  struct TRI_collection_t* _document;
+  arangodb::LogicalCollection* _collection;
   arangodb::DocumentDitch* _ditch;
   std::string const _name;
   arangodb::CollectionNameResolver _resolver;

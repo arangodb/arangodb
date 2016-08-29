@@ -232,6 +232,10 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
 
   _keyGenerator.reset(keyGenerator.release());
 
+  // TODO Only DBServer? Is this correct?
+  if (ServerState::instance()->isDBServer()) {
+    _followers.reset(new FollowerInfo(this));
+  }
 }
 
 /// @brief This the "copy" constructor used in the cluster
@@ -270,6 +274,11 @@ LogicalCollection::LogicalCollection(
       _collection(nullptr),
       _lock() {
   createPhysical();
+
+  // TODO Only DBServer? Is this correct?
+  if (ServerState::instance()->isDBServer()) {
+    _followers.reset(new FollowerInfo(this));
+  }
 }
 
 // @brief Constructor used in coordinator case.
@@ -347,6 +356,11 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
   }
   
   createPhysical();
+
+  // TODO Only DBServer? Is this correct?
+  if (ServerState::instance()->isDBServer()) {
+    _followers.reset(new FollowerInfo(this));
+  }
 }
 
 LogicalCollection::~LogicalCollection() {
@@ -435,6 +449,11 @@ std::string LogicalCollection::statusString() {
 }
 
 // SECTION: Properties
+TRI_voc_rid_t LogicalCollection::revision() const {
+  // TODO CoordinatorCase
+  TRI_ASSERT(_physical != nullptr);
+  return _physical->revision();
+}
 
 bool LogicalCollection::isLocal() const {
   return _isLocal;
@@ -460,11 +479,32 @@ bool LogicalCollection::waitForSync() const {
   return _waitForSync;
 }
 
+std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
+  return _followers;
+}
+
+
+void LogicalCollection::setDeleted(bool newValue) {
+  _isDeleted = newValue;
+}
+
+/// @brief update statistics for a collection
+void LogicalCollection::setRevision(TRI_voc_rid_t revision, bool force) {
+  if (revision > 0) {
+    // TODO Is this still true?
+    /// note: Old version the write-lock for the collection must be held to call this
+    _physical->setRevision(revision, force);
+  }
+}
 
 // SECTION: Key Options
 VPackSlice LogicalCollection::keyOptions() const {
   // TODO Maybe we can directly include the KeyGenerator here?!
   return VPackSlice(_keyOptions->data());
+}
+
+arangodb::KeyGenerator* LogicalCollection::keyGenerator() const {
+  return _keyGenerator.get();
 }
 
 // SECTION: Indexes
@@ -549,21 +589,11 @@ int LogicalCollection::rename(std::string const& newName) {
     return TRI_ERROR_ARANGO_DUPLICATE_NAME;
   }
 
-  // actually rename.
   switch (_status) {
     case TRI_VOC_COL_STATUS_UNLOADED:
-      // Nothing to do for this state
-      break;
     case TRI_VOC_COL_STATUS_LOADED:
     case TRI_VOC_COL_STATUS_UNLOADING:
     case TRI_VOC_COL_STATUS_LOADING: {
-      // TODO This will be removed. _collection ain't dead yet.
-      TRI_ASSERT(_collection != nullptr);
-      int res = _collection->rename(newName);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        return res;
-      }
       break;
     }
     default:
@@ -571,10 +601,16 @@ int LogicalCollection::rename(std::string const& newName) {
       return TRI_ERROR_INTERNAL;
   }
 
-
   // Okay we can finally rename safely
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->renameCollection(_vocbase, _cid, newName); 
+  try {
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    engine->renameCollection(_vocbase, _cid, newName); 
+  } catch (basics::Exception const& ex) {
+    // Engine Rename somehow failed. Just report.
+    return ex.code();
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
+  }
   _name = newName;
 
   // CHECK if this ordering is okay. Before change the version was increased after swapping in vocbase mapping.
@@ -583,15 +619,15 @@ int LogicalCollection::rename(std::string const& newName) {
 }
 
 int LogicalCollection::close() {
-  TRI_ASSERT(_collection != nullptr);
+  TRI_ASSERT(_physical != nullptr);
 
   // This was unload
   auto primIdx = primaryIndex();
   auto idxSize = primIdx->size();
 
   if (!_isDeleted &&
-      _collection->_info.initialCount() != static_cast<int64_t>(idxSize)) {
-    _collection->_info.updateCount(idxSize);
+      _physical->initialCount() != static_cast<int64_t>(idxSize)) {
+    _physical->updateCount(idxSize);
   }
 
   // We also have to unload the indexes.
@@ -688,6 +724,7 @@ int LogicalCollection::update(VPackSlice const& slice, bool doSync) {
   // - _isVolatile
   // ... probably a few others missing here ...
 
+  WRITE_LOCKER(writeLocker, _infoLock);
   _doCompact = Helper::getBooleanValue(slice, "doCompact", _doCompact);
   _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
   if (slice.hasKey("journalSize")) {
@@ -703,20 +740,16 @@ int LogicalCollection::update(VPackSlice const& slice, bool doSync) {
     // We need to inform the cluster as well
     return ClusterInfo::instance()->setCollectionPropertiesCoordinator(
         _vocbase->name(), cid_as_string(), this);
-  } else {
-    TRI_ASSERT(_collection != nullptr);
-    WRITE_LOCKER(writeLocker, _collection->_infoLock);
-
-    if (!slice.isNone()) {
-      try {
-        _collection->_info.update(slice, false, _vocbase);
-      } catch (...) {
-        return TRI_ERROR_INTERNAL;
-      }
-    }
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    engine->changeCollection(_vocbase, _cid, _collection->_info, doSync);
   }
+
+  TRI_ASSERT(_physical != nullptr);
+  int64_t count = arangodb::basics::VelocyPackHelper::getNumericValue<int64_t>(
+      slice, "count", _physical->initialCount());
+  if (count != _physical->initialCount()) {
+    _physical->updateCount(count);
+  }
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->changeCollection(_vocbase, _cid, this, doSync);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1516,8 +1549,7 @@ int LogicalCollection::insert(Transaction* trx, VPackSlice const slice,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
     
-    // TODO Temporary until collection is fully deleted.
-    arangodb::CollectionWriteLocker collectionLocker(_collection, lock);
+    arangodb::CollectionWriteLocker collectionLocker(this, lock);
 
     // create a new header
     TRI_doc_mptr_t* header = operation.header = _masterPointers.request();
@@ -1594,8 +1626,7 @@ int LogicalCollection::update(Transaction* trx, VPackSlice const newSlice,
   {
     TRI_IF_FAILURE("UpdateDocumentNoLock") { return TRI_ERROR_DEBUG; }
 
-    // TODO Temporary until TRI_collection_t is moved
-    arangodb::CollectionWriteLocker collectionLocker(_collection, lock);
+    arangodb::CollectionWriteLocker collectionLocker(this, lock);
     
     // get the header pointer of the previous revision
     TRI_doc_mptr_t* oldHeader;
@@ -1741,7 +1772,7 @@ int LogicalCollection::replace(Transaction* trx, VPackSlice const newSlice,
   {
     TRI_IF_FAILURE("ReplaceDocumentNoLock") { return TRI_ERROR_DEBUG; }
 
-    arangodb::CollectionWriteLocker collectionLocker(_collection, lock);
+    arangodb::CollectionWriteLocker collectionLocker(this, lock);
     
     // get the header pointer of the previous revision
     TRI_doc_mptr_t* oldHeader;
@@ -1899,8 +1930,7 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
     }
     TRI_ASSERT(!key.isNone());
     
-    // Only temporary until TRI_collection_t is removed
-    arangodb::CollectionWriteLocker collectionLocker(_collection, lock);
+    arangodb::CollectionWriteLocker collectionLocker(this, lock);
     
     // get the header pointer of the previous revision
     TRI_doc_mptr_t* oldHeader = nullptr;
@@ -2183,6 +2213,280 @@ int LogicalCollection::fillIndexSequential(arangodb::Transaction* trx,
 
   return TRI_ERROR_NO_ERROR;
 }
+
+/// @brief read locks a collection
+int LogicalCollection::beginRead() {
+  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
+    auto it = arangodb::Transaction::_makeNolockHeaders->find(name());
+    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "BeginRead blocked: " << _name <<
+      // std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+  // LOCKING-DEBUG
+  // std::cout << "BeginRead: " << _name << std::endl;
+  READ_LOCKER(locker, _idxLock);
+
+  try {
+    _vocbase->_deadlockDetector.addReader(this, false);
+  } catch (...) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  locker.steal();
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief read unlocks a collection
+int LogicalCollection::endRead() {
+  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
+    auto it = arangodb::Transaction::_makeNolockHeaders->find(name());
+    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "EndRead blocked: " << _name << std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+
+  try {
+    _vocbase->_deadlockDetector.unsetReader(this);
+  } catch (...) {
+  }
+
+  // LOCKING-DEBUG
+  // std::cout << "EndRead: " << _name << std::endl;
+  _idxLock.unlockRead();
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief write locks a collection
+int LogicalCollection::beginWrite() {
+  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
+    auto it = arangodb::Transaction::_makeNolockHeaders->find(name());
+    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "BeginWrite blocked: " << _name <<
+      // std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+  // LOCKING_DEBUG
+  // std::cout << "BeginWrite: " << _name << std::endl;
+  WRITE_LOCKER(locker, _idxLock);
+
+  // register writer
+  try {
+    _vocbase->_deadlockDetector.addWriter(this, false);
+  } catch (...) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  locker.steal();
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief write unlocks a collection
+int LogicalCollection::endWrite() {
+  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
+    auto it = arangodb::Transaction::_makeNolockHeaders->find(name());
+    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "EndWrite blocked: " << _name <<
+      // std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+
+  // unregister writer
+  try {
+    _vocbase->_deadlockDetector.unsetWriter(this);
+  } catch (...) {
+    // must go on here to unlock the lock
+  }
+
+  // LOCKING-DEBUG
+  // std::cout << "EndWrite: " << _name << std::endl;
+  _idxLock.unlockWrite();
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief read locks a collection, with a timeout (in µseconds)
+int LogicalCollection::beginReadTimed(uint64_t timeout,
+                                     uint64_t sleepPeriod) {
+  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
+    auto it = arangodb::Transaction::_makeNolockHeaders->find(name());
+    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "BeginReadTimed blocked: " << _name <<
+      // std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+  uint64_t waited = 0;
+  if (timeout == 0) {
+    // we don't allow looping forever. limit waiting to 15 minutes max.
+    timeout = 15 * 60 * 1000 * 1000;
+  }
+
+  // LOCKING-DEBUG
+  // std::cout << "BeginReadTimed: " << _name << std::endl;
+  int iterations = 0;
+  bool wasBlocked = false;
+
+  while (true) {
+    TRY_READ_LOCKER(locker, _idxLock);
+
+    if (locker.isLocked()) {
+      // when we are here, we've got the read lock
+      _vocbase->_deadlockDetector.addReader(this, wasBlocked);
+      
+      // keep lock and exit loop
+      locker.steal();
+      return TRI_ERROR_NO_ERROR;
+    }
+
+    try {
+      if (!wasBlocked) {
+        // insert reader
+        wasBlocked = true;
+        if (_vocbase->_deadlockDetector.setReaderBlocked(this) ==
+            TRI_ERROR_DEADLOCK) {
+          // deadlock
+          LOG(TRACE) << "deadlock detected while trying to acquire read-lock on collection '" << name() << "'";
+          return TRI_ERROR_DEADLOCK;
+        }
+        LOG(TRACE) << "waiting for read-lock on collection '" << name() << "'";
+      } else if (++iterations >= 5) {
+        // periodically check for deadlocks
+        TRI_ASSERT(wasBlocked);
+        iterations = 0;
+        if (_vocbase->_deadlockDetector.detectDeadlock(this, false) ==
+            TRI_ERROR_DEADLOCK) {
+          // deadlock
+          _vocbase->_deadlockDetector.unsetReaderBlocked(this);
+          LOG(TRACE) << "deadlock detected while trying to acquire read-lock on collection '" << name() << "'";
+          return TRI_ERROR_DEADLOCK;
+        }
+      }
+    } catch (...) {
+      // clean up!
+      if (wasBlocked) {
+        _vocbase->_deadlockDetector.unsetReaderBlocked(this);
+      }
+      // always exit
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+
+#ifdef _WIN32
+    usleep((unsigned long)sleepPeriod);
+#else
+    usleep((useconds_t)sleepPeriod);
+#endif
+
+    waited += sleepPeriod;
+
+    if (waited > timeout) {
+      _vocbase->_deadlockDetector.unsetReaderBlocked(this);
+      LOG(TRACE) << "timed out waiting for read-lock on collection '" << name() << "'";
+      return TRI_ERROR_LOCK_TIMEOUT;
+    }
+  }
+}
+
+/// @brief write locks a collection, with a timeout
+int LogicalCollection::beginWriteTimed(uint64_t timeout, uint64_t sleepPeriod) {
+  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
+    auto it = arangodb::Transaction::_makeNolockHeaders->find(name());
+    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "BeginWriteTimed blocked: " << _name <<
+      // std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+  uint64_t waited = 0;
+  if (timeout == 0) {
+    // we don't allow looping forever. limit waiting to 15 minutes max.
+    timeout = 15 * 60 * 1000 * 1000;
+  }
+
+  // LOCKING-DEBUG
+  // std::cout << "BeginWriteTimed: " << document->_info._name << std::endl;
+  int iterations = 0;
+  bool wasBlocked = false;
+
+  while (true) {
+    TRY_WRITE_LOCKER(locker, _idxLock);
+
+    if (locker.isLocked()) {
+      // register writer
+      _vocbase->_deadlockDetector.addWriter(this, wasBlocked);
+      // keep lock and exit loop
+      locker.steal();
+      return TRI_ERROR_NO_ERROR;
+    }
+
+    try {
+      if (!wasBlocked) {
+        // insert writer
+        wasBlocked = true;
+        if (_vocbase->_deadlockDetector.setWriterBlocked(this) ==
+            TRI_ERROR_DEADLOCK) {
+          // deadlock
+          LOG(TRACE) << "deadlock detected while trying to acquire write-lock on collection '" << name() << "'";
+          return TRI_ERROR_DEADLOCK;
+        }
+        LOG(TRACE) << "waiting for write-lock on collection '" << name() << "'";
+      } else if (++iterations >= 5) {
+        // periodically check for deadlocks
+        TRI_ASSERT(wasBlocked);
+        iterations = 0;
+        if (_vocbase->_deadlockDetector.detectDeadlock(this, true) ==
+            TRI_ERROR_DEADLOCK) {
+          // deadlock
+          _vocbase->_deadlockDetector.unsetWriterBlocked(this);
+          LOG(TRACE) << "deadlock detected while trying to acquire write-lock on collection '" << name() << "'";
+          return TRI_ERROR_DEADLOCK;
+        }
+      }
+    } catch (...) {
+      // clean up!
+      if (wasBlocked) {
+        _vocbase->_deadlockDetector.unsetWriterBlocked(this);
+      }
+      // always exit
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+
+#ifdef _WIN32
+    usleep((unsigned long)sleepPeriod);
+#else
+    usleep((useconds_t)sleepPeriod);
+#endif
+
+    waited += sleepPeriod;
+
+    if (waited > timeout) {
+      _vocbase->_deadlockDetector.unsetWriterBlocked(this);
+      LOG(TRACE) << "timed out waiting for write-lock on collection '" << name() << "'";
+      return TRI_ERROR_LOCK_TIMEOUT;
+    }
+  }
+}
+
+
 
 /// @brief looks up a document by key, low level worker
 /// the caller must make sure the read lock on the collection is held

@@ -589,11 +589,7 @@ DocumentDitch* Transaction::orderDitch(TRI_voc_cid_t cid) {
 
   TRI_ASSERT(trxCollection->_collection != nullptr);
 
-  TRI_collection_t* document =
-      trxCollection->_collection->_collection;
-  TRI_ASSERT(document != nullptr);
-
-  DocumentDitch* ditch = _transactionContext->orderDitch(document);
+  DocumentDitch* ditch = _transactionContext->orderDitch(trxCollection->_collection);
 
   if (ditch == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -1591,17 +1587,14 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
                                          OperationOptions& options) {
   TIMER_START(TRANSACTION_INSERT_LOCAL);
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
-  // TODO Temporary until the move to LogicalCollection is completed
   LogicalCollection* collection = documentCollection(trxCollection(cid));
-  TRI_collection_t* document = collection->_collection;
-  TRI_ASSERT(document != nullptr);
 
   // First see whether or not we have to do synchronous replication:
   std::shared_ptr<std::vector<ServerID> const> followers;
   bool doingSynchronousReplication = false;
   if (ServerState::isDBServer(_serverRole)) {
     // Now replicate the same operation on all followers:
-    auto const& followerInfo = document->followers();
+    auto const& followerInfo = collection->followers();
     followers = followerInfo->get();
     doingSynchronousReplication = followers->size() > 0;
   }
@@ -1757,7 +1750,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
             replicationWorked = !found;
           }
           if (!replicationWorked) {
-            auto const& followerInfo = document->followers();
+            auto const& followerInfo = collection->followers();
             followerInfo->remove((*followers)[i]);
             LOG_TOPIC(ERR, Logger::REPLICATION)
                 << "insertLocal: dropping follower "
@@ -1938,10 +1931,7 @@ OperationResult Transaction::modifyLocal(
     TRI_voc_document_operation_e operation) {
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
-  // TODO Temporary until the move to LogicalCollection is completed
   LogicalCollection* collection = documentCollection(trxCollection(cid));
-  TRI_collection_t* document = collection->_collection;
-  TRI_ASSERT(document != nullptr);
   
   if (options.returnOld || options.returnNew) {
     orderDitch(cid); // will throw when it fails 
@@ -1952,7 +1942,7 @@ OperationResult Transaction::modifyLocal(
   bool doingSynchronousReplication = false;
   if (ServerState::isDBServer(_serverRole)) {
     // Now replicate the same operation on all followers:
-    auto const& followerInfo = document->followers();
+    auto const& followerInfo = collection->followers();
     followers = followerInfo->get();
     doingSynchronousReplication = followers->size() > 0;
   }
@@ -2053,7 +2043,7 @@ OperationResult Transaction::modifyLocal(
         = "/_db/" +
           arangodb::basics::StringUtils::urlEncode(_vocbase->name()) +
           "/_api/document/" +
-          arangodb::basics::StringUtils::urlEncode(document->_info.name())
+          arangodb::basics::StringUtils::urlEncode(collection->name())
           + "?isRestore=true";
 
     VPackBuilder payload;
@@ -2115,7 +2105,7 @@ OperationResult Transaction::modifyLocal(
           replicationWorked = !found;
         }
         if (!replicationWorked) {
-          auto const& followerInfo = document->followers();
+          auto const& followerInfo = collection->followers();
           followerInfo->remove((*followers)[i]);
           LOG_TOPIC(ERR, Logger::REPLICATION)
               << "modifyLocal: dropping follower "
@@ -2209,10 +2199,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
                                          VPackSlice const value,
                                          OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
-  // TODO Temporary until the move to LogicalCollection is completed
   LogicalCollection* collection = documentCollection(trxCollection(cid));
-  TRI_collection_t* document = collection->_collection;
-  TRI_ASSERT(document != nullptr);
   
   if (options.returnOld) {
     orderDitch(cid); // will throw when it fails 
@@ -2223,7 +2210,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
   bool doingSynchronousReplication = false;
   if (ServerState::isDBServer(_serverRole)) {
     // Now replicate the same operation on all followers:
-    auto const& followerInfo = document->followers();
+    auto const& followerInfo = collection->followers();
     followers = followerInfo->get();
     doingSynchronousReplication = followers->size() > 0;
   }
@@ -2318,7 +2305,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
         = "/_db/" +
           arangodb::basics::StringUtils::urlEncode(_vocbase->name()) +
           "/_api/document/" +
-          arangodb::basics::StringUtils::urlEncode(document->_info.name())
+          arangodb::basics::StringUtils::urlEncode(collection->name())
           + "?isRestore=true";
 
     VPackBuilder payload;
@@ -2378,7 +2365,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
           replicationWorked = !found;
         }
         if (!replicationWorked) {
-          auto const& followerInfo = document->followers();
+          auto const& followerInfo = collection->followers();
           followerInfo->remove((*followers)[i]);
           LOG_TOPIC(ERR, Logger::REPLICATION)
               << "removeLocal: dropping follower "
@@ -2519,10 +2506,7 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
     return OperationResult(res);
   }
  
-  // TODO Temporary until the move to LogicalCollection is completed
   LogicalCollection* collection = documentCollection(trxCollection(cid));
-  TRI_collection_t* document = collection->_collection;
-  TRI_ASSERT(document != nullptr);
   
   VPackBuilder keyBuilder;
   auto primaryIndex = collection->primaryIndex();
@@ -2557,7 +2541,7 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
   if (ServerState::isDBServer(_serverRole)) {
     std::shared_ptr<std::vector<ServerID> const> followers;
     // Now replicate the same operation on all followers:
-    auto const& followerInfo = document->followers();
+    auto const& followerInfo = collection->followers();
     followers = followerInfo->get();
     if (followers->size() > 0) {
 
@@ -2592,7 +2576,7 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
                  requests[i].result.answer_code == 
                      rest::ResponseCode::OK);
           if (!replicationWorked) {
-            auto const& followerInfo = document->followers();
+            auto const& followerInfo = collection->followers();
             followerInfo->remove((*followers)[i]);
             LOG_TOPIC(ERR, Logger::REPLICATION)
                 << "truncateLocal: dropping follower "

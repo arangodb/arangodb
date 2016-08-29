@@ -3860,16 +3860,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  TRI_collection_t* docColl = col->_collection;
-  if (docColl == nullptr) {
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED,
-                  "collection not loaded");
-    return;
-  }
-
-  TRI_ASSERT(docColl != nullptr);
-  docColl->followers()->add(followerId.copyString());
+  col->followers()->add(followerId.copyString());
 
   VPackBuilder b;
   {
@@ -3917,16 +3908,7 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
     return;
   }
 
-  TRI_collection_t* docColl = col->_collection;
-  if (docColl == nullptr) {
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED,
-                  "collection not loaded");
-    return;
-  }
-
-  TRI_ASSERT(docColl != nullptr);
-  docColl->followers()->remove(followerId.copyString());
+  col->followers()->remove(followerId.copyString());
 
   VPackBuilder b;
   {

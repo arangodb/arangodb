@@ -50,9 +50,8 @@ static void EnsureErrorCode(int code) {
 
 }
 
-
-MMFilesCollection::MMFilesCollection(LogicalCollection* collection) 
-    : PhysicalCollection(collection) {}
+MMFilesCollection::MMFilesCollection(LogicalCollection* collection)
+    : PhysicalCollection(collection), _initialCount(0) {}
 
 MMFilesCollection::~MMFilesCollection() {
   close();
@@ -66,7 +65,11 @@ void MMFilesCollection::setRevision(TRI_voc_rid_t revision, bool force) {
 }
 
 int64_t MMFilesCollection::initialCount() const { 
-  return 0; 
+  return _initialCount;
+}
+
+void MMFilesCollection::updateCount(int64_t count) {
+  _initialCount = count;
 }
 
 /// @brief closes an open collection

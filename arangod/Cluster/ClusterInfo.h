@@ -649,11 +649,11 @@ class ClusterInfo {
 class FollowerInfo {
   std::shared_ptr<std::vector<ServerID> const> _followers;
   Mutex                                        _mutex;
-  TRI_collection_t*                            _docColl;
+  arangodb::LogicalCollection*                 _docColl;
 
  public:
 
-  explicit FollowerInfo(TRI_collection_t* d) 
+  explicit FollowerInfo(arangodb::LogicalCollection* d) 
     : _followers(new std::vector<ServerID>()), _docColl(d) { }
 
   //////////////////////////////////////////////////////////////////////////////

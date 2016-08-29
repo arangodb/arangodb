@@ -2427,11 +2427,11 @@ void FollowerInfo::add(ServerID const& sid) {
   // Now tell the agency, path is
   //   Current/Collections/<dbName>/<collectionID>/<shardID>
   std::string path = "Current/Collections/";
-  path += _docColl->_vocbase->name();
+  path += _docColl->vocbase()->name();
   path += "/";
-  path += std::to_string(_docColl->_info.planId());
+  path += std::to_string(_docColl->planId());
   path += "/";
-  path += _docColl->_info.name();
+  path += _docColl->name();
   AgencyComm ac;
   double startTime = TRI_microtime();
   bool success = false;
@@ -2444,9 +2444,9 @@ void FollowerInfo::add(ServerID const& sid) {
       velocypack::Slice currentEntry =
         res.slice()[0].get(std::vector<std::string>(
           {AgencyComm::prefix(), "Current", "Collections",
-              _docColl->_vocbase->name(),
-              std::to_string(_docColl->_info.planId()),
-              _docColl->_info.name()}));
+              _docColl->vocbase()->name(),
+              std::to_string(_docColl->planId()),
+              _docColl->name()}));
       
       if (!currentEntry.isObject()) {
         LOG(ERR) << "FollowerInfo::add, did not find object in " << path;
@@ -2456,9 +2456,9 @@ void FollowerInfo::add(ServerID const& sid) {
       } else {
         auto newValue = newShardEntry(currentEntry, sid, true);
         std::string key = "Current/Collections/" +
-                          _docColl->_vocbase->name() + "/" +
-                          std::to_string(_docColl->_info.planId()) + "/" +
-                          _docColl->_info.name();
+                          _docColl->vocbase()->name() + "/" +
+                          std::to_string(_docColl->planId()) + "/" +
+                          _docColl->name();
         AgencyWriteTransaction trx;
         trx.preconditions.push_back(
             AgencyPrecondition(key, AgencyPrecondition::VALUE, currentEntry));
@@ -2509,11 +2509,11 @@ void FollowerInfo::remove(ServerID const& sid) {
   // Now tell the agency, path is
   //   Current/Collections/<dbName>/<collectionID>/<shardID>
   std::string path = "Current/Collections/";
-  path += _docColl->_vocbase->name();
+  path += _docColl->vocbase()->name();
   path += "/";
-  path += std::to_string(_docColl->_info.planId());
+  path += std::to_string(_docColl->planId());
   path += "/";
-  path += _docColl->_info.name();
+  path += _docColl->name();
   AgencyComm ac;
   double startTime = TRI_microtime();
   bool success = false;
@@ -2525,9 +2525,9 @@ void FollowerInfo::remove(ServerID const& sid) {
       velocypack::Slice currentEntry =
         res.slice()[0].get(std::vector<std::string>(
           {AgencyComm::prefix(), "Current", "Collections",
-              _docColl->_vocbase->name(),
-              std::to_string(_docColl->_info.planId()),
-              _docColl->_info.name()}));
+              _docColl->vocbase()->name(),
+              std::to_string(_docColl->planId()),
+              _docColl->name()}));
 
       if (!currentEntry.isObject()) {
         LOG(ERR) << "FollowerInfo::remove, did not find object in " << path;
@@ -2537,9 +2537,9 @@ void FollowerInfo::remove(ServerID const& sid) {
       } else {
         auto newValue = newShardEntry(currentEntry, sid, false);
         std::string key = "Current/Collections/" +
-                          _docColl->_vocbase->name() + "/" +
-                          std::to_string(_docColl->_info.planId()) + "/" +
-                          _docColl->_info.name();
+                          _docColl->vocbase()->name() + "/" +
+                          std::to_string(_docColl->planId()) + "/" +
+                          _docColl->name();
         AgencyWriteTransaction trx;
         trx.preconditions.push_back(
             AgencyPrecondition(key, AgencyPrecondition::VALUE, currentEntry));

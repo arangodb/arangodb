@@ -55,6 +55,7 @@ class MMFilesCollection final : public PhysicalCollection {
   void setRevision(TRI_voc_rid_t revision, bool force) override;
 
   int64_t initialCount() const override;
+  void updateCount(int64_t) override;
   
   /// @brief return engine-specific figures
   void figures(std::shared_ptr<arangodb::velocypack::Builder>&) override;
@@ -124,6 +125,7 @@ class MMFilesCollection final : public PhysicalCollection {
   std::vector<TRI_datafile_t*> _compactors;  // all compactor files
   
   arangodb::basics::ReadWriteLock _compactionLock;
+  int64_t _initialCount;
 };
 
 }

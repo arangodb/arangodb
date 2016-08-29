@@ -182,7 +182,7 @@ struct TRI_vocbase_t {
       _replicationClients;
 
  public:
-  arangodb::basics::DeadlockDetector<TRI_collection_t>
+  arangodb::basics::DeadlockDetector<arangodb::LogicalCollection>
       _deadlockDetector;
   arangodb::basics::ReadWriteLock _inventoryLock;  // object lock needed when
                                                    // replication is assessing

@@ -226,8 +226,6 @@ struct TRI_collection_t {
   /// returns true if the name is allowed and false otherwise
   static bool IsAllowedName(bool isSystem, std::string const& name);
   
-  void setLastRevision(TRI_voc_rid_t, bool force);
-
   bool isFullyCollected();
 
   void setNextCompactionStartIndex(size_t);
@@ -237,13 +235,6 @@ struct TRI_collection_t {
   
   void figures(std::shared_ptr<arangodb::velocypack::Builder>& result);
 
-  int beginRead();
-  int endRead();
-  int beginWrite();
-  int endWrite();
-  int beginReadTimed(uint64_t, uint64_t);
-  int beginWriteTimed(uint64_t, uint64_t);
-
   // datafile management
   
   std::string const& path() const { return _path; }
@@ -251,10 +242,6 @@ struct TRI_collection_t {
 
   double lastCompaction() const { return _lastCompaction; }
   void lastCompaction(double value) { _lastCompaction = value; }
-  
-  std::unique_ptr<arangodb::FollowerInfo> const& followers() const {
-    return _followers;
-  }
   
   arangodb::Ditches* ditches() { return &_ditches; }
   
@@ -276,15 +263,10 @@ struct TRI_collection_t {
  
   /// @brief a lock protecting the _info structure
   arangodb::basics::ReadWriteLock _infoLock;
-  arangodb::VocbaseCollectionInfo _info;
+  // arangodb::VocbaseCollectionInfo _info;
 
  private: 
   std::string _path;
-
-  // the following contains in the cluster/DBserver case the information
-  // which other servers are in sync with this shard. It is unset in all
-  // other cases.
-  std::unique_ptr<arangodb::FollowerInfo> _followers;
 
  public:
   arangodb::DatafileStatistics _datafileStatistics;

@@ -395,7 +395,7 @@ static int DumpCollection(TRI_replication_dump_t* dump,
                           bool withTicks) {
   LOG(TRACE) << "dumping collection " << collection->cid() << ", tick range " << dataMin << " - " << dataMax;
 
-  bool const isEdgeCollection = (collection->_collection->_info.type() == TRI_COL_TYPE_EDGE);
+  bool const isEdgeCollection = (collection->type() == TRI_COL_TYPE_EDGE);
 
   // setup some iteration state
   TRI_voc_tick_t lastFoundTick = 0;

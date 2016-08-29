@@ -175,7 +175,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // the WAL entry for the propery change will be written *after* the call
   // to "changeCollection" returns
   virtual void changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                                arangodb::VocbaseCollectionInfo const& parameters,
+                                arangodb::LogicalCollection const* parameters,
                                 bool doSync) = 0;
   
   // asks the storage engine to create an index as specified in the VPack

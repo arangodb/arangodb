@@ -90,7 +90,6 @@ TRI_collection_t::TRI_collection_t(TRI_vocbase_t* vocbase,
                                    arangodb::VocbaseCollectionInfo const& parameters)
       : _vocbase(vocbase), 
         _tickMax(0),
-        _info(parameters), 
         _uncollectedLogfileEntries(0),
         _ditches(this),
         _nextCompactionStartIndex(0),
@@ -115,23 +114,10 @@ TRI_collection_t::TRI_collection_t(TRI_vocbase_t* vocbase,
   _keyGenerator.reset(keyGenerator.release());
 
   setCompactionStatus("compaction not yet started");
-  if (ServerState::instance()->isDBServer()) {
-    _followers.reset(new FollowerInfo(this));
-  }
 }
   
 TRI_collection_t::~TRI_collection_t() {
   _ditches.destroy();
-
-  _info.clearKeyOptions();
-}
-
-/// @brief update statistics for a collection
-/// note: the write-lock for the collection must be held to call this
-void TRI_collection_t::setLastRevision(TRI_voc_rid_t rid, bool force) {
-  if (rid > 0) {
-    _info.setRevision(rid, force);
-  }
 }
 
 /// @brief whether or not a collection is fully collected
@@ -175,285 +161,6 @@ void TRI_collection_t::getCompactionStatus(char const*& reason,
   MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
   reason = _lastCompactionStatus;
   memcpy(dst, &_lastCompactionStamp[0], maxSize);
-}
-
-/// @brief read locks a collection
-int TRI_collection_t::beginRead() {
-  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
-    std::string collName(_info.name());
-    auto it = arangodb::Transaction::_makeNolockHeaders->find(collName);
-    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "BeginRead blocked: " << document->_info._name <<
-      // std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-  // LOCKING-DEBUG
-  // std::cout << "BeginRead: " << document->_info._name << std::endl;
-  READ_LOCKER(locker, _lock);
-
-  try {
-    _vocbase->_deadlockDetector.addReader(this, false);
-  } catch (...) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  locker.steal();
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief read unlocks a collection
-int TRI_collection_t::endRead() {
-  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
-    std::string collName(_info.name());
-    auto it = arangodb::Transaction::_makeNolockHeaders->find(collName);
-    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "EndRead blocked: " << document->_info._name << std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-
-  try {
-    _vocbase->_deadlockDetector.unsetReader(this);
-  } catch (...) {
-  }
-
-  // LOCKING-DEBUG
-  // std::cout << "EndRead: " << document->_info._name << std::endl;
-  _lock.unlockRead();
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief write locks a collection
-int TRI_collection_t::beginWrite() {
-  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
-    std::string collName(_info.name());
-    auto it = arangodb::Transaction::_makeNolockHeaders->find(collName);
-    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "BeginWrite blocked: " << document->_info._name <<
-      // std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-  // LOCKING_DEBUG
-  // std::cout << "BeginWrite: " << document->_info._name << std::endl;
-  WRITE_LOCKER(locker, _lock);
-
-  // register writer
-  try {
-    _vocbase->_deadlockDetector.addWriter(this, false);
-  } catch (...) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  locker.steal();
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief write unlocks a collection
-int TRI_collection_t::endWrite() {
-  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
-    std::string collName(_info.name());
-    auto it = arangodb::Transaction::_makeNolockHeaders->find(collName);
-    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "EndWrite blocked: " << document->_info._name <<
-      // std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-
-  // unregister writer
-  try {
-    _vocbase->_deadlockDetector.unsetWriter(this);
-  } catch (...) {
-    // must go on here to unlock the lock
-  }
-
-  // LOCKING-DEBUG
-  // std::cout << "EndWrite: " << document->_info._name << std::endl;
-  _lock.unlockWrite();
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief read locks a collection, with a timeout (in µseconds)
-int TRI_collection_t::beginReadTimed(uint64_t timeout,
-                                     uint64_t sleepPeriod) {
-  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
-    std::string collName(_info.name());
-    auto it = arangodb::Transaction::_makeNolockHeaders->find(collName);
-    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "BeginReadTimed blocked: " << document->_info._name <<
-      // std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-  uint64_t waited = 0;
-  if (timeout == 0) {
-    // we don't allow looping forever. limit waiting to 15 minutes max.
-    timeout = 15 * 60 * 1000 * 1000;
-  }
-
-  // LOCKING-DEBUG
-  // std::cout << "BeginReadTimed: " << document->_info._name << std::endl;
-  int iterations = 0;
-  bool wasBlocked = false;
-
-  while (true) {
-    TRY_READ_LOCKER(locker, _lock);
-
-    if (locker.isLocked()) {
-      // when we are here, we've got the read lock
-      _vocbase->_deadlockDetector.addReader(this, wasBlocked);
-      
-      // keep lock and exit loop
-      locker.steal();
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    try {
-      if (!wasBlocked) {
-        // insert reader
-        wasBlocked = true;
-        if (_vocbase->_deadlockDetector.setReaderBlocked(this) ==
-            TRI_ERROR_DEADLOCK) {
-          // deadlock
-          LOG(TRACE) << "deadlock detected while trying to acquire read-lock on collection '" << _info.name() << "'";
-          return TRI_ERROR_DEADLOCK;
-        }
-        LOG(TRACE) << "waiting for read-lock on collection '" << _info.name() << "'";
-      } else if (++iterations >= 5) {
-        // periodically check for deadlocks
-        TRI_ASSERT(wasBlocked);
-        iterations = 0;
-        if (_vocbase->_deadlockDetector.detectDeadlock(this, false) ==
-            TRI_ERROR_DEADLOCK) {
-          // deadlock
-          _vocbase->_deadlockDetector.unsetReaderBlocked(this);
-          LOG(TRACE) << "deadlock detected while trying to acquire read-lock on collection '" << _info.name() << "'";
-          return TRI_ERROR_DEADLOCK;
-        }
-      }
-    } catch (...) {
-      // clean up!
-      if (wasBlocked) {
-        _vocbase->_deadlockDetector.unsetReaderBlocked(this);
-      }
-      // always exit
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-#ifdef _WIN32
-    usleep((unsigned long)sleepPeriod);
-#else
-    usleep((useconds_t)sleepPeriod);
-#endif
-
-    waited += sleepPeriod;
-
-    if (waited > timeout) {
-      _vocbase->_deadlockDetector.unsetReaderBlocked(this);
-      LOG(TRACE) << "timed out waiting for read-lock on collection '" << _info.name() << "'";
-      return TRI_ERROR_LOCK_TIMEOUT;
-    }
-  }
-}
-
-/// @brief write locks a collection, with a timeout
-int TRI_collection_t::beginWriteTimed(uint64_t timeout,
-                                      uint64_t sleepPeriod) {
-  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
-    std::string collName(_info.name());
-    auto it = arangodb::Transaction::_makeNolockHeaders->find(collName);
-    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "BeginWriteTimed blocked: " << document->_info._name <<
-      // std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-  uint64_t waited = 0;
-  if (timeout == 0) {
-    // we don't allow looping forever. limit waiting to 15 minutes max.
-    timeout = 15 * 60 * 1000 * 1000;
-  }
-
-  // LOCKING-DEBUG
-  // std::cout << "BeginWriteTimed: " << document->_info._name << std::endl;
-  int iterations = 0;
-  bool wasBlocked = false;
-
-  while (true) {
-    TRY_WRITE_LOCKER(locker, _lock);
-
-    if (locker.isLocked()) {
-      // register writer
-      _vocbase->_deadlockDetector.addWriter(this, wasBlocked);
-      // keep lock and exit loop
-      locker.steal();
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    try {
-      if (!wasBlocked) {
-        // insert writer
-        wasBlocked = true;
-        if (_vocbase->_deadlockDetector.setWriterBlocked(this) ==
-            TRI_ERROR_DEADLOCK) {
-          // deadlock
-          LOG(TRACE) << "deadlock detected while trying to acquire write-lock on collection '" << _info.name() << "'";
-          return TRI_ERROR_DEADLOCK;
-        }
-        LOG(TRACE) << "waiting for write-lock on collection '" << _info.name() << "'";
-      } else if (++iterations >= 5) {
-        // periodically check for deadlocks
-        TRI_ASSERT(wasBlocked);
-        iterations = 0;
-        if (_vocbase->_deadlockDetector.detectDeadlock(this, true) ==
-            TRI_ERROR_DEADLOCK) {
-          // deadlock
-          _vocbase->_deadlockDetector.unsetWriterBlocked(this);
-          LOG(TRACE) << "deadlock detected while trying to acquire write-lock on collection '" << _info.name() << "'";
-          return TRI_ERROR_DEADLOCK;
-        }
-      }
-    } catch (...) {
-      // clean up!
-      if (wasBlocked) {
-        _vocbase->_deadlockDetector.unsetWriterBlocked(this);
-      }
-      // always exit
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-#ifdef _WIN32
-    usleep((unsigned long)sleepPeriod);
-#else
-    usleep((useconds_t)sleepPeriod);
-#endif
-
-    waited += sleepPeriod;
-
-    if (waited > timeout) {
-      _vocbase->_deadlockDetector.unsetWriterBlocked(this);
-      LOG(TRACE) << "timed out waiting for write-lock on collection '" << _info.name() << "'";
-      return TRI_ERROR_LOCK_TIMEOUT;
-    }
-  }
 }
 
 void TRI_collection_t::figures(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
@@ -534,10 +241,6 @@ bool TRI_collection_t::IsAllowedName(bool allowSystem, std::string const& name) 
   return true;
 }
 
-std::string TRI_collection_t::label() const {
-  return _vocbase->name() + " / " + _info.name();
-}
-  
 VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
                                              std::string const& name,
                                              TRI_col_type_e type,
@@ -946,30 +649,6 @@ void VocbaseCollectionInfo::toVelocyPack(VPackBuilder& builder) const {
   }
 }
 
-/// @brief renames a collection
-int TRI_collection_t::rename(std::string const& name) {
-  // Save name for rollback
-  std::string const oldName = _info.name();
-  _info.rename(name);
-  
-  int res = TRI_ERROR_NO_ERROR;
-  try {
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    engine->renameCollection(_vocbase, _info.id(), name);
-  } catch (basics::Exception const& ex) {
-    res = ex.code();
-  } catch (...) {
-    res = TRI_ERROR_INTERNAL;
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    // Rollback
-    _info.rename(oldName);
-  }
-
-  return res;
-}
-
 /// @brief state during opening of a collection
 struct OpenIteratorState {
   LogicalCollection* _collection;
@@ -1042,7 +721,7 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
 
   Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
  
-  document->setLastRevision(revisionId, false);
+  collection->setRevision(revisionId, false);
   VPackValueLength length;
   char const* p = keySlice.getString(length);
   document->_keyGenerator->track(p, length);
@@ -1128,7 +807,6 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
                                             TRI_datafile_t* datafile,
                                             OpenIteratorState* state) {
   LogicalCollection* collection = state->_collection;
-  TRI_collection_t* document = state->_document;
   arangodb::Transaction* trx = state->_trx;
 
   VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_REMOVE));
@@ -1138,10 +816,10 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
 
   Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
  
-  document->setLastRevision(revisionId, false);
+  collection->setRevision(revisionId, false);
   VPackValueLength length;
   char const* p = keySlice.getString(length);
-  document->_keyGenerator->track(p, length);
+  collection->keyGenerator()->track(p, length);
 
   ++state->_deletions;
 
@@ -1351,7 +1029,7 @@ TRI_collection_t* TRI_collection_t::open(TRI_vocbase_t* vocbase,
   
   arangodb::SingleCollectionTransaction trx(
       arangodb::StandaloneTransactionContext::Create(vocbase),
-      collection->_info.id(), TRI_TRANSACTION_WRITE);
+      col->cid(), TRI_TRANSACTION_WRITE);
 
   // build the primary index
   res = TRI_ERROR_INTERNAL;
@@ -1361,12 +1039,12 @@ TRI_collection_t* TRI_collection_t::open(TRI_vocbase_t* vocbase,
 
     LOG_TOPIC(TRACE, Logger::PERFORMANCE)
         << "iterate-markers { collection: " << vocbase->name() << "/"
-        << collection->_info.name() << " }";
+        << col->name() << " }";
 
     // iterate over all markers of the collection
     res = IterateMarkersCollection(&trx, col, collection.get());
 
-    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::FIXED(TRI_microtime() - start) << " s, iterate-markers { collection: " << vocbase->name() << "/" << collection->_info.name() << " }";
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::FIXED(TRI_microtime() - start) << " s, iterate-markers { collection: " << vocbase->name() << "/" << col->name() << " }";
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (std::bad_alloc const&) {
@@ -1409,7 +1087,7 @@ TRI_collection_t* TRI_collection_t::open(TRI_vocbase_t* vocbase,
   LOG_TOPIC(TRACE, Logger::PERFORMANCE)
       << "[timer] " << Logger::FIXED(TRI_microtime() - start)
       << " s, open-document-collection { collection: " << vocbase->name() << "/"
-      << collection->_info.name() << " }";
+      << col->name() << " }";
 
   return collection.release();
 }

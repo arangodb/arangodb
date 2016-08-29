@@ -49,6 +49,8 @@ class PhysicalCollection {
   
   virtual int64_t initialCount() const = 0;
 
+  virtual void updateCount(int64_t) = 0;
+
   virtual void figures(std::shared_ptr<arangodb::velocypack::Builder>&) = 0;
   
   virtual int close() = 0;

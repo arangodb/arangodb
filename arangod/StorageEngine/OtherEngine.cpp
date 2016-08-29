@@ -152,7 +152,7 @@ void OtherEngine::renameCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
 // the WAL entry for the propery change will be written *after* the call
 // to "changeCollection" returns
 void OtherEngine::changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                                   arangodb::VocbaseCollectionInfo const& parameters,
+                                   arangodb::LogicalCollection const* parameters,
                                    bool doSync) {
 }
 

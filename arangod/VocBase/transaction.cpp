@@ -184,8 +184,8 @@ static void FreeOperations(TRI_transaction_t* trx) {
       continue;
     }
 
-    TRI_collection_t* document =
-        trxCollection->_collection->_collection;
+    arangodb::LogicalCollection* collection = trxCollection->_collection;
+    TRI_collection_t* document = collection->_collection;
 
     if (mustRollback) {
       // revert all operations
@@ -234,8 +234,8 @@ static void FreeOperations(TRI_transaction_t* trx) {
     }
 
     if (mustRollback) {
-      document->_info.setRevision(trxCollection->_originalRevision, true);
-    } else if (!document->_info.isVolatile() && !isSingleOperation) {
+      collection->setRevision(trxCollection->_originalRevision, true);
+    } else if (!collection->isVolatile() && !isSingleOperation) {
       // only count logfileEntries if the collection is durable
       document->_uncollectedLogfileEntries +=
           trxCollection->_operations->size();
@@ -349,11 +349,10 @@ static int LockCollection(TRI_transaction_collection_t* trxCollection,
     }
   }
 
-  TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
   TRI_ASSERT(!IsLocked(trxCollection));
 
-  TRI_collection_t* document = trxCollection->_collection->_collection;
-  TRI_ASSERT(document != nullptr);
+  LogicalCollection* collection = trxCollection->_collection;
+  TRI_ASSERT(collection != nullptr);
   uint64_t timeout = trx->_timeout;
   if (HasHint(trxCollection->_transaction, TRI_TRANSACTION_HINT_TRY_LOCK)) {
     // give up if we cannot acquire the lock instantly
@@ -363,12 +362,13 @@ static int LockCollection(TRI_transaction_collection_t* trxCollection,
   int res;
   if (type == TRI_TRANSACTION_READ) {
     LOG_TRX(trx, nestingLevel) << "read-locking collection " << trxCollection->_cid;
-    res = document->beginReadTimed(timeout,
-                                   TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
+    res = collection->beginReadTimed(timeout,
+                                     TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
   } else {
-    LOG_TRX(trx, nestingLevel) << "write-locking collection " << trxCollection->_cid;
-    res = document->beginWriteTimed(timeout,
-                                    TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
+    LOG_TRX(trx, nestingLevel) << "write-locking collection "
+                               << trxCollection->_cid;
+    res = collection->beginWriteTimed(timeout,
+                                      TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -425,14 +425,14 @@ static int UnlockCollection(TRI_transaction_collection_t* trxCollection,
     return TRI_ERROR_INTERNAL;
   }
 
-  TRI_collection_t* document = trxCollection->_collection->_collection;
-  TRI_ASSERT(document != nullptr);
+  LogicalCollection* collection = trxCollection->_collection;
+  TRI_ASSERT(collection != nullptr);
   if (trxCollection->_lockType == TRI_TRANSACTION_READ) {
     LOG_TRX(trxCollection->_transaction, nestingLevel) << "read-unlocking collection " << trxCollection->_cid;
-    document->endRead();
+    collection->endRead();
   } else {
     LOG_TRX(trxCollection->_transaction, nestingLevel) << "write-unlocking collection " << trxCollection->_cid;
-    document->endWrite();
+    collection->endWrite();
   }
 
   trxCollection->_lockType = TRI_TRANSACTION_NONE;
@@ -474,13 +474,13 @@ static int UseCollections(TRI_transaction_t* trx, int nestingLevel) {
       if (trxCollection->_accessType == TRI_TRANSACTION_WRITE &&
           TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE &&
           !LogicalCollection::IsSystemName(
-              trxCollection->_collection->_collection->_info.name())) {
+              trxCollection->_collection->name())) {
         return TRI_ERROR_ARANGO_READ_ONLY;
       }
 
       // store the waitForSync property
       trxCollection->_waitForSync =
-          trxCollection->_collection->_collection->_info.waitForSync();
+          trxCollection->_collection->waitForSync();
     }
 
     TRI_ASSERT(trxCollection->_collection != nullptr);
@@ -501,7 +501,7 @@ static int UseCollections(TRI_transaction_t* trx, int nestingLevel) {
         trxCollection->_originalRevision == 0) {
       // store original revision at transaction start
       trxCollection->_originalRevision =
-          trxCollection->_collection->_collection->_info.revision();
+          trxCollection->_collection->revision();
     }
 
     bool shouldLock = HasHint(trx, TRI_TRANSACTION_HINT_LOCK_ENTIRELY);
@@ -1149,8 +1149,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     copy->handle();
   }
 
-// FIXME
-  collection->_collection->setLastRevision(operation.rid, false);
+  collection->setRevision(operation.rid, false);
 
   TRI_IF_FAILURE("TransactionOperationAtEnd") { return TRI_ERROR_DEBUG; }
 

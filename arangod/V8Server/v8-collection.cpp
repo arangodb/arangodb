@@ -951,9 +951,7 @@ static void JS_LeaderResign(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
-    // TODO Temporary until move to LogicalCollection is finished.
-    TRI_collection_t* docColl = trx.documentCollection()->_collection;
-    docColl->followers()->clear();
+    trx.documentCollection()->followers()->clear();
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -1228,17 +1226,17 @@ static void JS_PropertiesVocbaseCol(
         // only work under the lock
         WRITE_LOCKER(writeLocker, document->_infoLock);
 
-        if (document->_info.isVolatile() &&
+        if (collection->isVolatile() &&
             arangodb::basics::VelocyPackHelper::getBooleanValue(
-                slice, "waitForSync", document->_info.waitForSync())) {
+                slice, "waitForSync", collection->waitForSync())) {
           // the combination of waitForSync and isVolatile makes no sense
           TRI_V8_THROW_EXCEPTION_PARAMETER(
               "volatile collections do not support the waitForSync option");
         }
 
-        if (document->_info.isVolatile() !=
+        if (collection->isVolatile() !=
             arangodb::basics::VelocyPackHelper::getBooleanValue(
-                slice, "isVolatile", document->_info.isVolatile())) {
+                slice, "isVolatile", collection->isVolatile())) {
           TRI_V8_THROW_EXCEPTION_PARAMETER(
               "isVolatile option cannot be changed at runtime");
         }
@@ -1265,13 +1263,13 @@ static void JS_PropertiesVocbaseCol(
       try {
         VPackBuilder infoBuilder;
         infoBuilder.openObject();
-        document->_info.toVelocyPack(infoBuilder);
+        collection->toVelocyPack(infoBuilder);
         infoBuilder.close();
 
         // now log the property changes
         res = TRI_ERROR_NO_ERROR;
 
-        arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_CHANGE_COLLECTION, document->_vocbase->id(), document->_info.id(), infoBuilder.slice());
+        arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_CHANGE_COLLECTION, collection->vocbase()->id(), collection->cid(), infoBuilder.slice());
         arangodb::wal::SlotInfoCopy slotInfo =
             arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
 
@@ -1299,30 +1297,26 @@ static void JS_PropertiesVocbaseCol(
   TRI_GET_GLOBAL_STRING(IsSystemKey);
   TRI_GET_GLOBAL_STRING(IsVolatileKey);
   TRI_GET_GLOBAL_STRING(JournalSizeKey);
-  result->Set(DoCompactKey, v8::Boolean::New(isolate, document->_info.doCompact()));
-  result->Set(IsSystemKey, v8::Boolean::New(isolate, document->_info.isSystem()));
+  result->Set(DoCompactKey, v8::Boolean::New(isolate, collection->doCompact()));
+  result->Set(IsSystemKey, v8::Boolean::New(isolate, collection->isSystem()));
   result->Set(IsVolatileKey,
-              v8::Boolean::New(isolate, document->_info.isVolatile()));
+              v8::Boolean::New(isolate, collection->isVolatile()));
   result->Set(JournalSizeKey,
-              v8::Number::New(isolate, document->_info.maximalSize()));
+              v8::Number::New(isolate, collection->journalSize()));
   result->Set(TRI_V8_ASCII_STRING("indexBuckets"),
-              v8::Number::New(isolate, document->_info.indexBuckets()));
+              v8::Number::New(isolate, collection->indexBuckets()));
 
   TRI_GET_GLOBAL_STRING(KeyOptionsKey);
   try {
-    VPackBuilder optionsBuilder;
-    optionsBuilder.openObject();
-    document->_keyGenerator->toVelocyPack(optionsBuilder);
-    optionsBuilder.close();
     result->Set(KeyOptionsKey,
-                TRI_VPackToV8(isolate, optionsBuilder.slice())->ToObject());
+                TRI_VPackToV8(isolate, collection->keyOptions())->ToObject());
   } catch (...) {
     // Could not build the VPack
     result->Set(KeyOptionsKey, v8::Array::New(isolate));
   }
   TRI_GET_GLOBAL_STRING(WaitForSyncKey);
   result->Set(WaitForSyncKey,
-              v8::Boolean::New(isolate, document->_info.waitForSync()));
+              v8::Boolean::New(isolate, collection->waitForSync()));
 
   trx.finish(res);
 
@@ -1843,10 +1837,9 @@ static int GetRevision(arangodb::LogicalCollection* collection, TRI_voc_rid_t& r
     return res;
   }
 
-  TRI_ASSERT(collection->_collection != nullptr);
   // READ-LOCK start
   trx.lockRead();
-  rid = collection->_collection->_info.revision();
+  rid = collection->revision();
   trx.finish(res);
   // READ-LOCK end
 

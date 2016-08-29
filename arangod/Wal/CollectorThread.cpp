@@ -848,11 +848,8 @@ int CollectorThread::transferMarkers(Logfile* logfile,
   arangodb::LogicalCollection* collection = collectionGuard.collection();
   TRI_ASSERT(collection != nullptr);
 
-  TRI_collection_t* document = collection->_collection;
-  TRI_ASSERT(document != nullptr);
-
   LOG_TOPIC(TRACE, Logger::COLLECTOR) << "collector transferring markers for '"
-             << document->_info.name()
+             << collection->name()
              << "', totalOperationsCount: " << totalOperationsCount;
 
   std::unique_ptr<CollectorCache> cache(

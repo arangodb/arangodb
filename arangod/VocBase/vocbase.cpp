@@ -317,14 +317,24 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
     return nullptr;
   }
 
+  // TODO PlanId has to be taken in for LogicalCollection
   TRI_voc_cid_t planId = parameters.planId();
-  document->_info.setPlanId(planId);
+  // document->_info.setPlanId(planId);
 
-  TRI_ASSERT(document->_info.id() != 0);
-  
+#warning FIXME
+  // TRI_ASSERT(document->_info.id() != 0);
+  // type = document->_info.type();
+  // cid = document->_info.id();
+  // name = document->_info.name();
+  // keyOpts = document->_info.keyOptions(),
+  // isVolatile = document->_info.isVolatile());
+  TRI_col_type_e type = TRI_COL_TYPE_DOCUMENT;
+  std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const> keyOpts;
+  bool isVolatile = false;
   arangodb::LogicalCollection* collection = nullptr;
   try {
-    collection = registerCollection(ConditionalWriteLocker::DoNotLock(), document->_info.type(), document->_info.id(), document->_info.name(), planId, document->path(), document->_info.keyOptions(), document->_info.isVolatile());
+    collection = registerCollection(ConditionalWriteLocker::DoNotLock(), type,
+                                    cid, name, planId, document->path(), keyOpts, isVolatile);
   } catch (...) {
     // if an exception is caught, collection will be a nullptr
   }
@@ -346,12 +356,12 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
     }
     
     // cid might have been assigned
-    cid = document->_info.id();
+    cid = collection->cid();
 
     collection->setStatus(TRI_VOC_COL_STATUS_LOADED);
 
     if (writeMarker) {
-      document->_info.toVelocyPack(builder);
+      collection->toVelocyPack(builder);
     }
     
     collection->_collection = document.release();
@@ -551,7 +561,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       info.setDeleted(true);
  
       try { 
-        engine->changeCollection(this, collection->cid(), info, doSync);
+        engine->changeCollection(this, collection->cid(), collection, doSync);
       } catch (arangodb::basics::Exception const& ex) {
         info.setDeleted(false);
         return ex.code();
@@ -583,8 +593,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
   // collection is loaded
   if (collection->status() == TRI_VOC_COL_STATUS_LOADED ||
       collection->status() == TRI_VOC_COL_STATUS_UNLOADING) {
-    TRI_ASSERT(collection->_collection != nullptr);
-    collection->_collection->_info.setDeleted(true);
+    collection->setDeleted(true);
 
     bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
     doSync = (doSync && !arangodb::wal::LogfileManager::instance()->isInRecovery());
