@@ -1020,23 +1020,21 @@ int RecoverState::replayLogfile(Logfile* logfile, int number) {
 
   int const n = static_cast<int>(logfilesToProcess.size());
 
-  LOG(INFO) << "replaying WAL logfile '" << logfileName << "' (" << number + 1 << " of " << n << ")";
+  LOG(INFO) << "replaying WAL logfile '" << logfileName << "' (" << (number + 1) << " of " << n << ")";
+
+  TRI_datafile_t* df = logfile->df();
 
   // Advise on sequential use:
-  TRI_MMFileAdvise(logfile->df()->_data, logfile->df()->_maximalSize,
-                   TRI_MADVISE_SEQUENTIAL);
-  TRI_MMFileAdvise(logfile->df()->_data, logfile->df()->_maximalSize,
-                   TRI_MADVISE_WILLNEED);
+  TRI_MMFileAdvise(df->_data, df->maximalSize(), TRI_MADVISE_SEQUENTIAL);
+  TRI_MMFileAdvise(df->_data, df->maximalSize(), TRI_MADVISE_WILLNEED);
 
-  if (!TRI_IterateDatafile(logfile->df(), &RecoverState::ReplayMarker,
-                           static_cast<void*>(this))) {
+  if (!TRI_IterateDatafile(df, &RecoverState::ReplayMarker, static_cast<void*>(this))) {
     LOG(WARN) << "WAL inspection failed when scanning logfile '" << logfileName << "'";
     return TRI_ERROR_ARANGO_RECOVERY;
   }
 
   // Advise on random access use:
-  TRI_MMFileAdvise(logfile->df()->_data, logfile->df()->_maximalSize,
-                   TRI_MADVISE_RANDOM);
+  TRI_MMFileAdvise(df->_data, df->maximalSize(), TRI_MADVISE_RANDOM);
 
   return TRI_ERROR_NO_ERROR;
 }
