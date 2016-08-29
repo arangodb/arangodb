@@ -96,7 +96,6 @@ class Cursor {
 
   virtual size_t count() const = 0;
 
-  virtual void dump(arangodb::basics::StringBuffer&) = 0;
   virtual void dump(VPackBuilder&) = 0;
 
  protected:
@@ -128,7 +127,6 @@ class VelocyPackCursor : public Cursor {
 
   size_t count() const override final;
 
-  void dump(arangodb::basics::StringBuffer&) override final;
   void dump(VPackBuilder&) override final;
 
  private:
@@ -152,7 +150,6 @@ class ExportCursor : public Cursor {
 
   size_t count() const override final;
 
-  void dump(arangodb::basics::StringBuffer&) override final;
   void dump(VPackBuilder&) override final;
 
  private:
