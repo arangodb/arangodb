@@ -118,14 +118,6 @@ TRI_collection_t::~TRI_collection_t() {
   _info.clearKeyOptions();
 }
 
-/// @brief update statistics for a collection
-/// note: the write-lock for the collection must be held to call this
-void TRI_collection_t::setLastRevision(TRI_voc_rid_t rid, bool force) {
-  if (rid > 0) {
-    _info.setRevision(rid, force);
-  }
-}
-
 /// @brief whether or not a collection is fully collected
 bool TRI_collection_t::isFullyCollected() {
   READ_LOCKER(readLocker, _lock);
@@ -523,7 +515,6 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
                                              TRI_voc_size_t maximalSize,
                                              VPackSlice const& keyOptions)
     : _type(type),
-      _revision(0),
       _cid(0),
       _planId(0),
       _maximalSize(32 * 1024 * 1024), // just to have a default
@@ -569,7 +560,6 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
                                              VPackSlice const& options,
                                              bool forceIsSystem)
     : _type(type),
-      _revision(0),
       _cid(0),
       _planId(0),
       _maximalSize(32 * 1024 * 1024), // just to have a default
@@ -735,9 +725,6 @@ TRI_voc_cid_t VocbaseCollectionInfo::id() const { return _cid; }
 // cluster-wide collection identifier
 TRI_voc_cid_t VocbaseCollectionInfo::planId() const { return _planId; }
 
-// last revision id written
-TRI_voc_rid_t VocbaseCollectionInfo::revision() const { return _revision; }
-
 // maximal size of memory mapped file
 TRI_voc_size_t VocbaseCollectionInfo::maximalSize() const {
   return _maximalSize;
@@ -775,12 +762,6 @@ bool VocbaseCollectionInfo::waitForSync() const { return _waitForSync; }
 
 void VocbaseCollectionInfo::rename(std::string const& name) {
   TRI_CopyString(_name, name.c_str(), sizeof(_name) - 1);
-}
-
-void VocbaseCollectionInfo::setRevision(TRI_voc_rid_t rid, bool force) {
-  if (force || rid > _revision) {
-    _revision = rid;
-  }
 }
 
 void VocbaseCollectionInfo::setCollectionId(TRI_voc_cid_t cid) { _cid = cid; }
@@ -868,7 +849,6 @@ void VocbaseCollectionInfo::update(VocbaseCollectionInfo const& other) {
   _type = other.type();
   _cid = other.id();
   _planId = other.planId();
-  _revision = other.revision();
   _maximalSize = other.maximalSize();
   _initialCount = other.initialCount();
   _indexBuckets = other.indexBuckets();
@@ -1012,7 +992,6 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
                                             OpenIteratorState* state) {
   auto const fid = datafile->fid();
   LogicalCollection* collection = state->_collection;
-  TRI_collection_t* document = state->_document;
   arangodb::Transaction* trx = state->_trx;
 
   VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
@@ -1021,7 +1000,7 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
 
   Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
  
-  document->setLastRevision(revisionId, false);
+  collection->getPhysical()->setRevision(revisionId, false);
   VPackValueLength length;
   char const* p = keySlice.getString(length);
   collection->keyGenerator()->track(p, length);
@@ -1107,7 +1086,6 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
                                             TRI_datafile_t* datafile,
                                             OpenIteratorState* state) {
   LogicalCollection* collection = state->_collection;
-  TRI_collection_t* document = state->_document;
   arangodb::Transaction* trx = state->_trx;
 
   VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_REMOVE));
@@ -1117,7 +1095,7 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
 
   Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
  
-  document->setLastRevision(revisionId, false);
+  collection->getPhysical()->setRevision(revisionId, false);
   VPackValueLength length;
   char const* p = keySlice.getString(length);
   collection->keyGenerator()->track(p, length);

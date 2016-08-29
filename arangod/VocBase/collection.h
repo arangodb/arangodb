@@ -58,7 +58,6 @@ namespace arangodb {
 class VocbaseCollectionInfo {
  private:
   TRI_col_type_e _type;         // collection type
-  TRI_voc_rid_t _revision;      // last revision id written
   TRI_voc_cid_t _cid;           // local collection identifier
   TRI_voc_cid_t _planId;        // cluster-wide collection identifier
   TRI_voc_size_t _maximalSize;  // maximal size of memory mapped file
@@ -148,8 +147,6 @@ class VocbaseCollectionInfo {
   // Use with caution!
   void rename(std::string const&);
 
-  void setRevision(TRI_voc_rid_t, bool);
-
   void setCollectionId(TRI_voc_cid_t);
 
   void setPlanId(TRI_voc_cid_t);
@@ -205,8 +202,6 @@ struct TRI_collection_t {
   /// returns true if the name is allowed and false otherwise
   static bool IsAllowedName(bool isSystem, std::string const& name);
   
-  void setLastRevision(TRI_voc_rid_t, bool force);
-
   bool isFullyCollected();
 
   void setNextCompactionStartIndex(size_t);

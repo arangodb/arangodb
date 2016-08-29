@@ -142,6 +142,8 @@ class MMFilesCollection final : public PhysicalCollection {
   arangodb::basics::ReadWriteLock _compactionLock;
   
   MMFilesDatafileStatistics _datafileStatistics;
+
+  TRI_voc_rid_t _revision;
 };
 
 }

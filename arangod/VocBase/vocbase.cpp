@@ -634,6 +634,7 @@ void TRI_vocbase_t::shutdown() {
   setState(TRI_vocbase_t::State::SHUTDOWN_COMPACTOR);
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  // shutdownDatabase() stops all threads 
   engine->shutdownDatabase(this);
 
   // this will signal the cleanup thread to do one last iteration

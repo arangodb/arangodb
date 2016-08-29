@@ -52,17 +52,21 @@ static void EnsureErrorCode(int code) {
 
 
 MMFilesCollection::MMFilesCollection(LogicalCollection* collection) 
-    : PhysicalCollection(collection) {}
+    : PhysicalCollection(collection),
+      _revision(0) {}
 
 MMFilesCollection::~MMFilesCollection() {
   close();
 }
   
 TRI_voc_rid_t MMFilesCollection::revision() const { 
-  return 0; 
+  return _revision; 
 }
 
 void MMFilesCollection::setRevision(TRI_voc_rid_t revision, bool force) {
+  if (force || revision > _revision) {
+    _revision = revision;
+  }
 }
 
 int64_t MMFilesCollection::initialCount() const { 
@@ -91,6 +95,8 @@ int MMFilesCollection::close() {
     delete it;
   }
   _datafiles.clear();
+
+  _revision = 0;
 
   return TRI_ERROR_NO_ERROR;
 }

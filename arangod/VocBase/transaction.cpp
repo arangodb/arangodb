@@ -233,7 +233,7 @@ static void FreeOperations(TRI_transaction_t* trx) {
     }
 
     if (mustRollback) {
-      document->_info.setRevision(trxCollection->_originalRevision, true);
+      trxCollection->_collection->getPhysical()->setRevision(trxCollection->_originalRevision, true);
     } else if (!document->_info.isVolatile() && !isSingleOperation) {
       // only count logfileEntries if the collection is durable
       document->_uncollectedLogfileEntries +=
@@ -499,8 +499,7 @@ static int UseCollections(TRI_transaction_t* trx, int nestingLevel) {
     if (trxCollection->_accessType == TRI_TRANSACTION_WRITE &&
         trxCollection->_originalRevision == 0) {
       // store original revision at transaction start
-      trxCollection->_originalRevision =
-          trxCollection->_collection->_collection->_info.revision();
+      trxCollection->_originalRevision = trxCollection->_collection->getPhysical()->revision();
     }
 
     bool shouldLock = HasHint(trx, TRI_TRANSACTION_HINT_LOCK_ENTIRELY);
@@ -1147,8 +1146,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     copy->handle();
   }
 
-// FIXME
-  collection->_collection->setLastRevision(operation.rid, false);
+  collection->getPhysical()->setRevision(operation.rid, false);
 
   TRI_IF_FAILURE("TransactionOperationAtEnd") { return TRI_ERROR_DEBUG; }
 
