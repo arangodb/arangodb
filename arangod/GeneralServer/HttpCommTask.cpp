@@ -36,9 +36,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-size_t const HttpCommTask::MaximalHeaderSize = 1 * 1024 * 1024;      //   1 MB
-size_t const HttpCommTask::MaximalBodySize = 512 * 1024 * 1024;      // 512 MB
-size_t const HttpCommTask::MaximalPipelineSize = 512 * 1024 * 1024;  // 512 MB
+size_t const HttpCommTask::MaximalHeaderSize = 2 * 1024 * 1024;       //  2 MB
+size_t const HttpCommTask::MaximalBodySize = 1024 * 1024 * 1024;      //  1 GB
+size_t const HttpCommTask::MaximalPipelineSize = 1024 * 1024 * 1024;  //  1 GB
 size_t const HttpCommTask::RunCompactEvery = 500;
 
 HttpCommTask::HttpCommTask(GeneralServer* server, TRI_socket_t sock,
