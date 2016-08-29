@@ -49,7 +49,7 @@ function agencyTestSuite () {
   var whoseTurn = 0;
   var request = require("@arangodb/request");
 
-  wait(2);
+  wait(3.0);
 
   function readAgency(list) {
     // We simply try all agency servers in turn until one gives us an HTTP

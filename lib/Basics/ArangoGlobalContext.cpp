@@ -273,14 +273,23 @@ void ArangoGlobalContext::tempPathAvailable() {
 #endif
 }
 
-void ArangoGlobalContext::getCheckPath(std::string &path, const char *whichPath) {
+void ArangoGlobalContext::getCheckPath(std::string &path, const char *whichPath, bool fatal) {
   if (!arangodb::basics::FileUtils::exists(path)) {
     std::string directory;
     directory = arangodb::basics::FileUtils::buildFilename(_runRoot, path);
     if (!arangodb::basics::FileUtils::exists(directory)) {
+      if (!fatal) {
+        return;
+      }
       LOG(ERR) << "failed to locate " << whichPath << " directory, its neither available in  '" << path << "' nor in '" << directory << "'";
       FATAL_ERROR_EXIT();
     }
+    arangodb::basics::FileUtils::normalizePath(directory);
     path = directory;
+  }
+  else {
+    if (!TRI_PathIsAbsolute(path)) {
+      arangodb::basics::FileUtils::makePathAbsolute(path);
+    }
   }
 }

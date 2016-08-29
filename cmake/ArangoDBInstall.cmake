@@ -16,8 +16,6 @@ endif ()
 set(CMAKE_INSTALL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_SYSCONFDIR}/arangodb3")
 set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_FULL_SYSCONFDIR}/arangodb3")
 
-file(TO_NATIVE_PATH "${CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO}" ETCDIR_NATIVE)
-
 # database directory 
 FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb3")
 
@@ -113,8 +111,8 @@ configure_file (
 
 
 #--------------------------------------------------------------------------------
-get_cmake_property(_variableNames VARIABLES)
-foreach (_variableName ${_variableNames})
-    message(STATUS "${_variableName}=${${_variableName}}")
-endforeach()
+#get_cmake_property(_variableNames VARIABLES)
+#foreach (_variableName ${_variableNames})
+#    message(STATUS "${_variableName}=${${_variableName}}")
+#endforeach()
 #--------------------------------------------------------------------------------

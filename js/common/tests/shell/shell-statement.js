@@ -615,6 +615,23 @@ function StatementSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test potentially unsupported types
+////////////////////////////////////////////////////////////////////////////////
+
+    testUnsupportedTypes : function () {
+      var st = db._createStatement({ query : "LET d = (FOR doc IN _apps LIMIT 1 RETURN MERGE(doc)) RETURN d" });
+      var result = st.execute();
+
+      var docs = [ ];
+      while (result.hasNext()) {
+        docs.push(result.next());
+      }
+
+      assertEqual(1, docs.length);
+      assertTrue(typeof docs[0] === 'object');
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test bind method
 ////////////////////////////////////////////////////////////////////////////////
 

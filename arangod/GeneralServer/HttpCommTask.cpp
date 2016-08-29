@@ -484,7 +484,7 @@ bool HttpCommTask::processRead() {
     LOG(DEBUG) << "connection close requested by client";
     _closeRequested = true;
   } else if (_requestAsHttp()->isHttp10() && connectionType != "keep-alive") {
-    // HTTP 1.0 request, and no "Connection: Keep-Alive" header sent
+    // HTTP 1.0 request, and no "Connection: keep-alive" header sent
     // we should close the connection
     LOG(DEBUG) << "no keep-alive, connection close requested by client";
     _closeRequested = true;
