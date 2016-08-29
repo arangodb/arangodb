@@ -604,14 +604,14 @@ int MMFilesEngine::waitUntilDeletion(TRI_voc_tick_t id, bool force) {
 // the WAL entry for the collection creation will be written *after* the call
 // to "createCollection" returns
 std::string MMFilesEngine::createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                                            arangodb::VocbaseCollectionInfo const& parameters) {
+                                            arangodb::LogicalCollection const* parameters) {
   std::string const path = databasePath(vocbase);
 
   // sanity check
-  if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) > parameters.maximalSize()) {
-    LOG(ERR) << "cannot create datafile '" << parameters.name() << "' in '"
+  if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) > parameters->journalSize()) {
+    LOG(ERR) << "cannot create datafile '" << parameters->name() << "' in '"
              << path << "', maximal size '"
-             << parameters.maximalSize() << "' is too small";
+             << parameters->journalSize() << "' is too small";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATAFILE_FULL);
   }
 
@@ -626,7 +626,7 @@ std::string MMFilesEngine::createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_
 
   // directory must not exist
   if (TRI_ExistsFile(dirname.c_str())) {
-    LOG(ERR) << "cannot create collection '" << parameters.name()
+    LOG(ERR) << "cannot create collection '" << parameters->name()
              << "' in directory '" << dirname << "': directory already exists";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS);
   }
@@ -641,7 +641,7 @@ std::string MMFilesEngine::createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_
   int res = TRI_CreateDirectory(tmpname.c_str(), systemError, errorMessage);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot create collection '" << parameters.name()
+    LOG(ERR) << "cannot create collection '" << parameters->name()
              << "' in directory '" << path << "': " << TRI_errno_string(res)
              << " - " << systemError << " - " << errorMessage;
     THROW_ARANGO_EXCEPTION(res);
@@ -661,7 +661,7 @@ std::string MMFilesEngine::createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_
   TRI_IF_FAILURE("CreateCollection::tempFile") { THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot create collection '" << parameters.name()
+    LOG(ERR) << "cannot create collection '" << parameters->name()
              << "' in directory '" << path << "': " << TRI_errno_string(res)
              << " - " << systemError << " - " << errorMessage;
     TRI_RemoveDirectory(tmpname.c_str());
@@ -673,7 +673,7 @@ std::string MMFilesEngine::createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_
   res = TRI_RenameFile(tmpname.c_str(), dirname.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot create collection '" << parameters.name()
+    LOG(ERR) << "cannot create collection '" << parameters->name()
              << "' in directory '" << path << "': " << TRI_errno_string(res)
              << " - " << systemError << " - " << errorMessage;
     TRI_RemoveDirectory(tmpname.c_str());
@@ -786,25 +786,6 @@ void MMFilesEngine::dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalColl
       }
     }
   }
-}
-
-// asks the storage engine to rename the collection as specified in the VPack
-// Slice object and persist the renaming info. It is guaranteed by the server 
-// that no other active collection with the same name and id exists in the same
-// database when this function is called. If this operation fails somewhere in 
-// the middle, the storage engine is required to fully revert the rename operation
-// and throw only then, so that subsequent collection creation/rename requests will 
-// not fail. the WAL entry for the rename will be written *after* the call
-// to "renameCollection" returns
-void MMFilesEngine::renameCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                                     std::string const& name) {
-  std::string const path = collectionPath(vocbase, id);
-  
-  arangodb::VocbaseCollectionInfo parameters = loadCollectionInfo(vocbase, name, path, true); 
-  parameters.rename(name);
-
-  bool const doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-  saveCollectionInfo(vocbase, id, parameters, doSync);
 }
 
 // asks the storage engine to change properties of the collection as specified in 
@@ -1244,35 +1225,35 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
   TRI_ASSERT(slice.isArray());
 
   for (auto const& it : VPackArrayIterator(slice)) {
-    arangodb::VocbaseCollectionInfo info(vocbase.get(), it.get("name").copyString(), it, true);
     
     // we found a collection that is still active
-    std::string const directory = it.get("path").copyString();
     arangodb::LogicalCollection* c = nullptr;
 
-    TRI_ASSERT(info.id() != 0);
+    TRI_ASSERT(!it.get("cid").isNone());
     try {
-      c = StorageEngine::registerCollection(
-          ConditionalWriteLocker::DoLock(), vocbase.get(), info.type(),
-          info.id(), info.name(), info.planId(), directory, info.keyOptions(),
-          info.isVolatile());
-      registerCollectionPath(vocbase->id(), info.id(), directory);
+      c = StorageEngine::registerCollection(ConditionalWriteLocker::DoLock(),
+                                            vocbase.get(), it);
+      if (c == nullptr) {
+        LOG(ERR) << TRI_last_error();
+      }
     } catch (...) {
       // if we caught an exception, c is still a nullptr
     }
 
     if (c == nullptr) {
-      LOG(ERR) << "failed to add document collection '" << info.name() << "'";
+      LOG(ERR) << "failed to add document collection '" << it.get("name").copyString() << "'";
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
     }
+
+    registerCollectionPath(vocbase->id(), c->cid(), c->path());
 
     if (!wasCleanShutdown) {
       // iterating markers may be time-consuming. we'll only do it if
       // we have to
-      findMaxTickInJournals(directory);
+      findMaxTickInJournals(c->path());
     }
 
-    LOG(DEBUG) << "added document collection '" << info.name() << "'";
+    LOG(DEBUG) << "added document collection '" << c->name() << "'";
   }
 
   // start cleanup thread
@@ -1363,30 +1344,6 @@ void MMFilesEngine::unregisterCollectionPath(TRI_voc_tick_t databaseId, TRI_voc_
 //  (*it).second.erase(id);
 }
 
-// FIXME DEPRECATED
-void MMFilesEngine::saveCollectionInfo(TRI_vocbase_t* vocbase,
-                                       TRI_voc_cid_t id,
-                                       arangodb::VocbaseCollectionInfo const& parameters,
-                                       bool forceSync) const {
-  std::string const filename = collectionParametersFilename(vocbase->id(), id);
-
-  VPackBuilder builder;
-  builder.openObject();
-  parameters.toVelocyPack(builder);
-  builder.close();
-
-  TRI_ASSERT(id != 0);
-
-  bool ok = VelocyPackHelper::velocyPackToFile(filename,
-                                               builder.slice(), forceSync);
-
-  if (!ok) {
-    int res = TRI_errno();
-    THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string("cannot save collection properties file '") + 
-                                   filename + "': " + TRI_errno_string(res));
-  }
-}
-
 void MMFilesEngine::saveCollectionInfo(TRI_vocbase_t* vocbase,
                                        TRI_voc_cid_t id,
                                        arangodb::LogicalCollection const* parameters,
@@ -1394,9 +1351,7 @@ void MMFilesEngine::saveCollectionInfo(TRI_vocbase_t* vocbase,
   std::string const filename = collectionParametersFilename(vocbase->id(), id);
 
   VPackBuilder builder;
-  builder.openObject();
   parameters->toVelocyPack(builder);
-  builder.close();
 
   TRI_ASSERT(id != 0);
 

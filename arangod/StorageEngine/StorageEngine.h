@@ -142,7 +142,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // the WAL entry for the collection creation will be written *after* the call
   // to "createCollection" returns
   virtual std::string createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                                       arangodb::VocbaseCollectionInfo const& parameters) = 0;
+                                       arangodb::LogicalCollection const* parameters) = 0;
   
   // asks the storage engine to drop the specified collection and persist the 
   // deletion info. Note that physical deletion of the collection data must not 
@@ -156,17 +156,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   
   // perform a physical deletion of the collection
   virtual void dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) = 0; 
-  
-  // asks the storage engine to rename the collection as specified in the VPack
-  // Slice object and persist the renaming info. It is guaranteed by the server 
-  // that no other active collection with the same name and id exists in the same
-  // database when this function is called. If this operation fails somewhere in 
-  // the middle, the storage engine is required to fully revert the rename operation
-  // and throw only then, so that subsequent collection creation/rename requests will 
-  // not fail. the WAL entry for the rename will be written *after* the call
-  // to "renameCollection" returns
-  virtual void renameCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                                std::string const& name) = 0;
   
   // asks the storage engine to change properties of the collection as specified in 
   // the VPack Slice object and persist them. If this operation fails 
@@ -257,12 +246,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   
  protected:
   arangodb::LogicalCollection* registerCollection(
-      bool doLock, TRI_vocbase_t* vocbase, TRI_col_type_e type,
-      TRI_voc_cid_t cid, std::string const& name, TRI_voc_cid_t planId,
-      std::string const& path,
-      std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const> keyOptions,
-      bool isVolatile) {
-    return vocbase->registerCollection(doLock, type, cid, name, planId, path, keyOptions, isVolatile);
+      bool doLock, TRI_vocbase_t* vocbase, arangodb::velocypack::Slice params) {
+    return vocbase->registerCollection(doLock, params);
   }
  
  private:

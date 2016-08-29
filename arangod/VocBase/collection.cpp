@@ -86,8 +86,7 @@ using namespace arangodb::basics;
 int TRI_AddOperationTransaction(TRI_transaction_t*,
                                 arangodb::wal::DocumentOperation&, bool&);
 
-TRI_collection_t::TRI_collection_t(TRI_vocbase_t* vocbase, 
-                                   arangodb::VocbaseCollectionInfo const& parameters)
+TRI_collection_t::TRI_collection_t(TRI_vocbase_t* vocbase)
       : _vocbase(vocbase), 
         _tickMax(0),
         _uncollectedLogfileEntries(0),
@@ -95,24 +94,6 @@ TRI_collection_t::TRI_collection_t(TRI_vocbase_t* vocbase,
         _nextCompactionStartIndex(0),
         _lastCompactionStatus(nullptr),
         _lastCompaction(0.0) {
-
-  // check if we can generate the key generator
-  std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const> buffer =
-      parameters.keyOptions();
-
-  VPackSlice slice;
-  if (buffer != nullptr) {
-    slice = VPackSlice(buffer->data());
-  }
-  
-  std::unique_ptr<KeyGenerator> keyGenerator(KeyGenerator::factory(slice));
-
-  if (keyGenerator == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR);
-  }
-
-  _keyGenerator.reset(keyGenerator.release());
-
   setCompactionStatus("compaction not yet started");
 }
   
@@ -972,22 +953,10 @@ static int IterateMarkersCollection(arangodb::Transaction* trx,
 
 /// @brief creates a new collection
 TRI_collection_t* TRI_collection_t::create(
-    TRI_vocbase_t* vocbase, VocbaseCollectionInfo& parameters,
+    TRI_vocbase_t* vocbase,
     TRI_voc_cid_t cid) {
-  if (cid > 0) {
-    TRI_UpdateTickServer(cid);
-  } else {
-    cid = TRI_NewTickServer();
-  }
-
-  parameters.setCollectionId(cid);
-      
-  auto collection = std::make_unique<TRI_collection_t>(vocbase, parameters); 
-
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  std::string const path = engine->createCollection(vocbase, cid, parameters);
-  collection->setPath(path);
-  
+  TRI_ASSERT(cid != 0);
+  auto collection = std::make_unique<TRI_collection_t>(vocbase); 
   return collection.release();
 }
 
@@ -999,11 +968,8 @@ TRI_collection_t* TRI_collection_t::open(TRI_vocbase_t* vocbase,
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->getCollectionInfo(vocbase, col->cid(), builder, false, 0);
 
-  VocbaseCollectionInfo parameters(vocbase, col->name(), builder.slice().get("parameters"), true); 
-  TRI_ASSERT(parameters.id() != 0);
-  
   // open the collection
-  auto collection = std::make_unique<TRI_collection_t>(vocbase, parameters);
+  auto collection = std::make_unique<TRI_collection_t>(vocbase);
 
   double start = TRI_microtime();
 

@@ -73,16 +73,17 @@ void TRI_vocbase_t::signalCleanup() {
 /// @brief adds a new collection
 /// caller must hold _collectionsLock in write mode or set doLock
 arangodb::LogicalCollection* TRI_vocbase_t::registerCollection(
-    bool doLock, TRI_col_type_e type, TRI_voc_cid_t cid,
-    std::string const& name, TRI_voc_cid_t planId, std::string const& path,
-    std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const> keyOpts,
-    bool isVolatile) {
-  TRI_ASSERT(cid != 0);
-
+    bool doLock, VPackSlice parameters) {
   // create a new proxy
-  auto collection = std::make_unique<arangodb::LogicalCollection>(
-      this, type, cid, name, planId, path, keyOpts, isVolatile, true);
-
+  std::unique_ptr<arangodb::LogicalCollection> collection;
+  try {
+    collection = std::make_unique<arangodb::LogicalCollection>(this, parameters);
+  } catch (arangodb::basics::Exception const& e) {
+    TRI_set_errno(e.code());
+    return nullptr;
+  }
+  std::string name = collection->name();
+  TRI_voc_cid_t cid = collection->cid();
   {
     CONDITIONAL_WRITE_LOCKER(writeLocker, _collectionsLock, doLock);
 
@@ -101,7 +102,6 @@ arangodb::LogicalCollection* TRI_vocbase_t::registerCollection(
     }
 
     // check collection identifier
-    TRI_ASSERT(collection->cid() == cid);
     try {
       auto it2 = _collectionsById.emplace(cid, collection.get());
 
@@ -174,11 +174,10 @@ int TRI_vocbase_t::writeDropCollectionMarker(TRI_voc_cid_t collectionId,
 
 /// @brief removes a collection name from the global list of collections
 /// This function is called when a collection is dropped.
+/// NOTE: You need a writelock on _collectionsLock
 bool TRI_vocbase_t::unregisterCollection(arangodb::LogicalCollection* collection) {
   TRI_ASSERT(collection != nullptr);
   std::string const colName(collection->name());
-
-  WRITE_LOCKER(writeLocker, _collectionsLock);
 
   // pre-condition
   TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
@@ -292,10 +291,10 @@ bool TRI_vocbase_t::DropCollectionCallback(arangodb::LogicalCollection* collecti
 
 /// @brief creates a new collection, worker function
 arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
-    arangodb::VocbaseCollectionInfo& parameters, TRI_voc_cid_t& cid,
+    VPackSlice parameters, TRI_voc_cid_t& cid,
     bool writeMarker, VPackBuilder& builder) {
-  TRI_ASSERT(!builder.isClosed());
-  std::string name = parameters.name();
+  std::string name = arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name" , "");
+  TRI_ASSERT(!name.empty());
     
   WRITE_LOCKER(writeLocker, _collectionsLock);
 
@@ -310,31 +309,9 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
     return nullptr;
   }
 
-  // ok, construct the collection
-  std::unique_ptr<TRI_collection_t> document(TRI_collection_t::create(this, parameters, cid));
-
-  if (document == nullptr) {
-    return nullptr;
-  }
-
-  // TODO PlanId has to be taken in for LogicalCollection
-  TRI_voc_cid_t planId = parameters.planId();
-  // document->_info.setPlanId(planId);
-
-#warning FIXME
-  // TRI_ASSERT(document->_info.id() != 0);
-  // type = document->_info.type();
-  // cid = document->_info.id();
-  // name = document->_info.name();
-  // keyOpts = document->_info.keyOptions(),
-  // isVolatile = document->_info.isVolatile());
-  TRI_col_type_e type = TRI_COL_TYPE_DOCUMENT;
-  std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const> keyOpts;
-  bool isVolatile = false;
   arangodb::LogicalCollection* collection = nullptr;
   try {
-    collection = registerCollection(ConditionalWriteLocker::DoNotLock(), type,
-                                    cid, name, planId, document->path(), keyOpts, isVolatile);
+    collection = registerCollection(ConditionalWriteLocker::DoNotLock(), parameters);
   } catch (...) {
     // if an exception is caught, collection will be a nullptr
   }
@@ -363,7 +340,14 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
     if (writeMarker) {
       collection->toVelocyPack(builder);
     }
-    
+    // FIXME Temporary until move is finished
+    // ok, construct the collection
+    std::unique_ptr<TRI_collection_t> document(TRI_collection_t::create(this, cid));
+
+    if (document == nullptr) {
+      return nullptr;
+    }
+   
     collection->_collection = document.release();
 
     return collection;
@@ -551,19 +535,14 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
     bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
     doSync = (doSync && !arangodb::wal::LogfileManager::instance()->isInRecovery());
     
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    VPackBuilder builder;
-    engine->getCollectionInfo(this, collection->cid(), builder, false, 0);
-
-    arangodb::VocbaseCollectionInfo info(this, collection->name(), builder.slice().get("parameters"), true);
-
-    if (!info.deleted()) {
-      info.setDeleted(true);
+    if (!collection->deleted()) {
+      collection->setDeleted(true);
  
       try { 
+        StorageEngine* engine = EngineSelectorFeature::ENGINE;
         engine->changeCollection(this, collection->cid(), collection, doSync);
       } catch (arangodb::basics::Exception const& ex) {
-        info.setDeleted(false);
+        collection->setDeleted(false);
         return ex.code();
       }
     }
@@ -800,13 +779,11 @@ LogicalCollection* TRI_vocbase_t::lookupCollection(TRI_voc_cid_t id) {
 /// using a cid of > 0 is supported to import dumps from other servers etc.
 /// but the functionality is not advertised
 arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
-    arangodb::VocbaseCollectionInfo& parameters,
+    VPackSlice parameters,
     TRI_voc_cid_t cid, bool writeMarker) {
   // check that the name does not contain any strange characters
-  if (!TRI_collection_t::IsAllowedName(parameters.isSystem(),
-                                       parameters.name())) {
+  if (!LogicalCollection::IsAllowedName(parameters)) {
     TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-
     return nullptr;
   }
   
@@ -816,7 +793,6 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
   READ_LOCKER(readLocker, _inventoryLock);
 
   {
-    VPackObjectBuilder b(&builder);
     // note: cid may be modified by this function call
     try {
       collection = createCollectionWorker(parameters, cid, writeMarker, builder);

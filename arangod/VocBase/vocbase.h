@@ -43,12 +43,12 @@ class TRI_replication_applier_t;
 namespace arangodb {
 namespace velocypack {
 class Builder;
+class Slice;
 }
 namespace aql {
 class QueryList;
 }
 class CollectionNameResolver;
-class VocbaseCollectionInfo;
 class CollectionKeysRepository;
 class CursorRepository;
 class StorageEngine;
@@ -305,7 +305,7 @@ struct TRI_vocbase_t {
   /// using a cid of > 0 is supported to import dumps from other servers etc.
   /// but the functionality is not advertised
   arangodb::LogicalCollection* createCollection(
-      arangodb::VocbaseCollectionInfo& parameters, TRI_voc_cid_t cid,
+      arangodb::velocypack::Slice parameters, TRI_voc_cid_t cid,
       bool writeMarker);
 
   /// @brief drops a collection
@@ -348,10 +348,7 @@ struct TRI_vocbase_t {
   /// @brief adds a new collection
   /// caller must hold _collectionsLock in write mode or set doLock
   arangodb::LogicalCollection* registerCollection(
-      bool doLock, TRI_col_type_e type, TRI_voc_cid_t cid,
-      std::string const& name, TRI_voc_cid_t planId, std::string const& path,
-      std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const> keyOpts,
-      bool isVolatile);
+      bool doLock, arangodb::velocypack::Slice parameters);
 
   /// @brief removes a collection from the global list of collections
   /// This function is called when a collection is dropped.
@@ -359,7 +356,7 @@ struct TRI_vocbase_t {
 
   /// @brief creates a new collection, worker function
   arangodb::LogicalCollection* createCollectionWorker(
-      arangodb::VocbaseCollectionInfo& parameters, TRI_voc_cid_t& cid,
+      arangodb::velocypack::Slice parameters, TRI_voc_cid_t& cid,
       bool writeMarker, VPackBuilder& builder);
 
   /// @brief drops a collection, worker function

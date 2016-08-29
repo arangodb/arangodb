@@ -114,7 +114,7 @@ int OtherEngine::waitUntilDeletion(TRI_voc_tick_t id, bool force) {
 // the WAL entry for the collection creation will be written *after* the call
 // to "createCollection" returns
 std::string OtherEngine::createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                                          arangodb::VocbaseCollectionInfo const& parameters) {
+                                          arangodb::LogicalCollection const* parameters) {
   return "test";
 }
   
@@ -131,18 +131,6 @@ void OtherEngine::prepareDropCollection(TRI_vocbase_t* vocbase, arangodb::Logica
 
 // perform a physical deletion of the collection
 void OtherEngine::dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) {
-}
-
-// asks the storage engine to rename the collection as specified in the VPack
-// Slice object and persist the renaming info. It is guaranteed by the server 
-// that no other active collection with the same name and id exists in the same
-// database when this function is called. If this operation fails somewhere in 
-// the middle, the storage engine is required to fully revert the rename operation
-// and throw only then, so that subsequent collection creation/rename requests will 
-// not fail. the WAL entry for the rename will be written *after* the call
-// to "renameCollection" returns
-void OtherEngine::renameCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                                   std::string const& name) {
 }
 
 // asks the storage engine to change properties of the collection as specified in 

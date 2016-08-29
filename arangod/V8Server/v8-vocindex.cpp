@@ -1237,8 +1237,13 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
     if (!args[1]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
     }
+    v8::Handle<v8::Object> obj = args[1]->ToObject();
+    // Add the type and name into the object. Easier in v8 than in VPack
+    obj->Set(TRI_V8_ASCII_STRING("type"),
+             v8::Number::New(isolate, static_cast<int>(collectionType)));
+    obj->Set(TRI_V8_ASCII_STRING("name"), TRI_V8_STD_STRING(name));
 
-    int res = TRI_V8ToVPack(isolate, builder, args[1], false);
+    int res = TRI_V8ToVPack(isolate, builder, obj, false);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -1247,22 +1252,25 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   } else {
     // create an empty properties object
     builder.openObject();
+    builder.add("type", VPackValue(static_cast<int>(collectionType)));
+    builder.add("name", VPackValue(name));
     builder.close();
   }
     
   infoSlice = builder.slice();
 
-  VocbaseCollectionInfo parameters(vocbase, name.c_str(), collectionType,
-                                   infoSlice, false);
-
   if (ServerState::instance()->isCoordinator()) {
+    //TODO FIXME
+    VocbaseCollectionInfo parameters(vocbase, name.c_str(), collectionType,
+                                     infoSlice, false);
     CreateCollectionCoordinator(args, collectionType, vocbase->name(),
                                 parameters, vocbase);
     return;
   }
 
+  TRI_voc_cid_t cid = 0;
   arangodb::LogicalCollection const* collection =
-      vocbase->createCollection(parameters, parameters.id(), true);
+      vocbase->createCollection(infoSlice, cid, true);
 
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), "cannot create collection");

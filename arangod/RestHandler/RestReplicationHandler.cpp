@@ -1319,22 +1319,23 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
     return TRI_ERROR_NO_ERROR;
   }
 
-  VocbaseCollectionInfo params(_vocbase, name.c_str(), slice, true);
+  col = _vocbase->createCollection(slice, cid, true);
+
   /* Temporary ASSERTS to prove correctness of new constructor */
-  TRI_ASSERT(params.doCompact() ==
+  TRI_ASSERT(col->doCompact() ==
              arangodb::basics::VelocyPackHelper::getBooleanValue(
                  slice, "doCompact", true));
   TRI_ASSERT(
-      params.waitForSync() ==
+      col->waitForSync() ==
       arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, "waitForSync",
           application_features::ApplicationServer::getFeature<DatabaseFeature>(
               "Database")->waitForSync()));
-  TRI_ASSERT(params.isVolatile() ==
+  TRI_ASSERT(col->isVolatile() ==
              arangodb::basics::VelocyPackHelper::getBooleanValue(
                  slice, "isVolatile", false));
-  TRI_ASSERT(params.isSystem() == (name[0] == '_'));
-  TRI_ASSERT(params.indexBuckets() ==
+  TRI_ASSERT(col->isSystem() == (name[0] == '_'));
+  TRI_ASSERT(col->indexBuckets() ==
              arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
                  slice, "indexBuckets", DatabaseFeature::DefaultIndexBuckets));
   TRI_voc_cid_t planId = 0;
@@ -1348,12 +1349,10 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
   }
 
   if (planId > 0) {
-    TRI_ASSERT(params.planId() == planId);
+    TRI_ASSERT(col->planId() == planId);
   } else {
-    TRI_ASSERT(params.planId() == 0);
+    TRI_ASSERT(col->planId() == 0);
   }
-
-  col = _vocbase->createCollection(params, cid, true);
 
   if (col == nullptr) {
     return TRI_errno();

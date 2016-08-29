@@ -795,18 +795,16 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         VPackSlice isSystem = bx.slice();
         VPackBuilder b2 = VPackCollection::merge(payloadSlice, isSystem, false);
 
-        arangodb::VocbaseCollectionInfo info(vocbase, name.c_str(), b2.slice(), isSystemValue);
-
         if (state->willBeDropped(collectionId)) {
           // in case we detect that this collection is going to be deleted anyway,
           // set the sync properties to false temporarily
           bool oldSync = state->databaseFeature->forceSyncProperties();
           state->databaseFeature->forceSyncProperties(false);
-          collection = vocbase->createCollection(info, collectionId, false);
+          collection = vocbase->createCollection(b2.slice(), collectionId, false);
           state->databaseFeature->forceSyncProperties(oldSync);
         } else {
           // collection will be kept
-          collection = vocbase->createCollection(info, collectionId, false);
+          collection = vocbase->createCollection(b2.slice(), collectionId, false);
         }
 
         if (collection == nullptr) {

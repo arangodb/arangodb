@@ -212,12 +212,12 @@ struct TRI_collection_t {
   TRI_collection_t& operator=(TRI_collection_t const&) = delete;
   TRI_collection_t() = delete;
   
-  TRI_collection_t(TRI_vocbase_t* vocbase, arangodb::VocbaseCollectionInfo const& parameters);
+  explicit TRI_collection_t(TRI_vocbase_t* vocbase);
   ~TRI_collection_t();
 
  public:
   /// @brief create a new collection
-  static TRI_collection_t* create(TRI_vocbase_t*, arangodb::VocbaseCollectionInfo&, TRI_voc_cid_t);
+  static TRI_collection_t* create(TRI_vocbase_t*, TRI_voc_cid_t);
 
   /// @brief opens an existing collection
   static TRI_collection_t* open(TRI_vocbase_t*, arangodb::LogicalCollection*, bool);

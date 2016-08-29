@@ -500,9 +500,7 @@ int Syncer::createCollection(VPackSlice const& slice, arangodb::LogicalCollectio
 
   VPackBuilder merged = VPackCollection::merge(s.slice(), slice, true);
 
-  VocbaseCollectionInfo params(_vocbase, name.c_str(), merged.slice(), true);
-
-  col = _vocbase->createCollection(params, cid, true);
+  col = _vocbase->createCollection(merged.slice(), cid, true);
 
   if (col == nullptr) {
     return TRI_errno();

@@ -126,18 +126,21 @@ static TRI_voc_cid_t ReadCid(VPackSlice info) {
     // ERROR CASE
     return 0;
   }
-  info = info.get("id");
-
-  if (info.isNumber()) {
-    return info.getNumericValue<TRI_voc_cid_t>();
+  auto value = info.get("cid");
+  if (value.isNone()) {
+    // Compatibility. The pre 3.1 agency did store 'id' instead of 'cid'.
+    value = info.get("id");
   }
 
-  if (info.isString()) {
-    return basics::StringUtils::uint64(info.copyString());
+  if (value.isNumber()) {
+    return value.getNumericValue<TRI_voc_cid_t>();
   }
 
-  // ERROR CASE
-  return 0;
+  if (value.isString()) {
+    return basics::StringUtils::uint64(value.copyString());
+  }
+
+  return TRI_NewTickServer();
 }
 
 static std::string const ReadStringValue(VPackSlice info,
@@ -288,26 +291,28 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
     : _internalVersion(0),
       _cid(ReadCid(info)),
       _planId(_cid),
-      _type(
-          ReadNumericValue<TRI_col_type_e, int>(info, "type", TRI_COL_TYPE_UNKNOWN)),
+      _type(ReadNumericValue<TRI_col_type_e, int>(info, "type",
+                                                  TRI_COL_TYPE_UNKNOWN)),
       _name(ReadStringValue(info, "name", "")),
       _status(ReadNumericValue<TRI_vocbase_col_status_e, int>(
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
-      _isLocal(false),
+      _isLocal(!ServerState::instance()->isCoordinator()),
       _isDeleted(ReadBooleanValue(info, "deleted", false)),
       _doCompact(ReadBooleanValue(info, "doCompact", false)),
       _isSystem(ReadBooleanValue(info, "isSystem", false)),
       _isVolatile(ReadBooleanValue(info, "isVolatile", false)),
       _waitForSync(ReadBooleanValue(info, "waitForSync", false)),
-      _journalSize(ReadNumericValue<TRI_voc_size_t>(info, "journalSize", 0)),
+      _journalSize(ReadNumericValue<TRI_voc_size_t>(
+          info, "maximalSize", // Backwards compatibility. Agency uses journalSize. paramters.json uses maximalSize
+          ReadNumericValue<TRI_voc_size_t>(info, "journalSize", TRI_JOURNAL_DEFAULT_SIZE))),
       _keyOptions(CopySliceValue(info, "keyOptions")),
       _indexBuckets(ReadNumericValue<uint32_t>(info, "indexBuckets", 1)),
       _replicationFactor(ReadNumericValue<int>(info, "replicationFactor", 1)),
-      _numberOfShards(GetObjectLength(info, "shards", 0)),
+      _numberOfShards(GetObjectLength(info, "shards", 1)),
       _allowUserKeys(ReadBooleanValue(info, "allowUserKeys", true)),
       _shardIds(new ShardMap()),
       _vocbase(vocbase),
-      _cleanupIndexes(0), 
+      _cleanupIndexes(0),
       _persistentIndexes(0),
       _physical(nullptr),
       _masterPointers(),
@@ -344,7 +349,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
     if (indexesSlice.isArray()) {
       for (auto const& v : VPackArrayIterator(indexesSlice)) {
         if (arangodb::basics::VelocyPackHelper::getBooleanValue(
-                indexesSlice, "error", false)) {
+                v, "error", false)) {
           // We have an error here.
           // Do not add index.
           // TODO Handle Properly
@@ -353,10 +358,31 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
         addIndexCoordinator(v);
       }
     }
+
+    if (!ServerState::instance()->isCoordinator()) {
+      // If we are not in the coordinator we need a path
+      // to the physical data.
+      StorageEngine* engine = EngineSelectorFeature::ENGINE;
+      _path = engine->createCollection(_vocbase, _cid, this);
+    }
   }
   
   createPhysical();
 
+  VPackSlice slice;
+  if (_keyOptions != nullptr) {
+    slice = VPackSlice(_keyOptions->data());
+  }
+  
+  std::unique_ptr<KeyGenerator> keyGenerator(KeyGenerator::factory(slice));
+
+  if (keyGenerator == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR);
+  }
+
+  _keyGenerator.reset(keyGenerator.release());
+
+ 
   // TODO Only DBServer? Is this correct?
   if (ServerState::instance()->isDBServer()) {
     _followers.reset(new FollowerInfo(this));
@@ -365,6 +391,47 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
 
 LogicalCollection::~LogicalCollection() {
   delete _physical;
+}
+
+bool LogicalCollection::IsAllowedName(VPackSlice parameters) {
+  bool allowSystem = ReadBooleanValue(parameters, "isSystem", false);
+  std::string name = ReadStringValue(parameters, "name", "");
+  if (name.empty()) {
+    return false;
+  }
+
+  bool ok;
+  char const* ptr;
+  size_t length = 0;
+
+  // check allow characters: must start with letter or underscore if system is
+  // allowed
+  for (ptr = name.c_str(); *ptr; ++ptr) {
+    if (length == 0) {
+      if (allowSystem) {
+        ok = (*ptr == '_') || ('a' <= *ptr && *ptr <= 'z') ||
+             ('A' <= *ptr && *ptr <= 'Z');
+      } else {
+        ok = ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
+      }
+    } else {
+      ok = (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9') ||
+           ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
+    }
+
+    if (!ok) {
+      return false;
+    }
+
+    ++length;
+  }
+
+  // invalid name length
+  if (length == 0 || length > TRI_COL_NAME_LENGTH) {
+    return false;
+  }
+
+  return true;
 }
 
 size_t LogicalCollection::journalSize() const {
@@ -499,7 +566,9 @@ void LogicalCollection::setRevision(TRI_voc_rid_t revision, bool force) {
 
 // SECTION: Key Options
 VPackSlice LogicalCollection::keyOptions() const {
-  // TODO Maybe we can directly include the KeyGenerator here?!
+  if (_keyOptions == nullptr) {
+    return Helper::NullValue();
+  }
   return VPackSlice(_keyOptions->data());
 }
 
@@ -531,7 +600,9 @@ void LogicalCollection::getIndexesVPack(VPackBuilder& result,
                                         bool withFigures) const {
   result.openArray();
   for (auto const& idx : _indexes) {
+    result.openObject();
     idx->toVelocyPack(result, withFigures);
+    result.close();
   }
   result.close();
 }
@@ -565,6 +636,16 @@ std::shared_ptr<ShardMap> LogicalCollection::shardIds() const {
 }
 
 // SECTION: Modification Functions
+
+// asks the storage engine to rename the collection to the given name
+// and persist the renaming info. It is guaranteed by the server 
+// that no other active collection with the same name and id exists in the same
+// database when this function is called. If this operation fails somewhere in 
+// the middle, the storage engine is required to fully revert the rename operation
+// and throw only then, so that subsequent collection creation/rename requests will 
+// not fail. the WAL entry for the rename will be written *after* the call
+// to "renameCollection" returns
+
 int LogicalCollection::rename(std::string const& newName) {
   // Should only be called from inside vocbase.
   // Otherwise caching is destroyed.
@@ -601,17 +682,25 @@ int LogicalCollection::rename(std::string const& newName) {
       return TRI_ERROR_INTERNAL;
   }
 
+  std::string oldName = _name;
+  _name = newName;
   // Okay we can finally rename safely
   try {
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    engine->renameCollection(_vocbase, _cid, newName); 
+    bool const doSync =
+        application_features::ApplicationServer::getFeature<DatabaseFeature>(
+            "Database")
+            ->forceSyncProperties();
+    engine->changeCollection(_vocbase, _cid, this, doSync);
   } catch (basics::Exception const& ex) {
-    // Engine Rename somehow failed. Just report.
+    // Engine Rename somehow failed. Reset to old name
+    _name = oldName;
     return ex.code();
   } catch (...) {
+    // Engine Rename somehow failed. Reset to old name
+    _name = oldName;
     return TRI_ERROR_INTERNAL;
   }
-  _name = newName;
 
   // CHECK if this ordering is okay. Before change the version was increased after swapping in vocbase mapping.
   increaseVersion();
@@ -670,7 +759,10 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result) const {
   result.add("isSystem", VPackValue(_isSystem));
   result.add("isVolatile", VPackValue(_isVolatile));
   result.add("waitForSync", VPackValue(_waitForSync));
-  result.add("keyOptions", VPackSlice(_keyOptions->data()));
+  if (_keyOptions != nullptr) {
+    result.add("keyOptions", VPackSlice(_keyOptions->data()));
+  }
+
   result.add("indexBuckets", VPackValue(_indexBuckets));
   result.add(VPackValue("indexes"));
   getIndexesVPack(result, true);
@@ -699,7 +791,6 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result) const {
 void LogicalCollection::toVelocyPack(VPackBuilder& builder, bool includeIndexes,
                                      TRI_voc_tick_t maxTick) {
   TRI_ASSERT(!builder.isClosed());
-  
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->getCollectionInfo(_vocbase, _cid, builder, includeIndexes, maxTick);
 }

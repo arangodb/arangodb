@@ -43,6 +43,7 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/collection.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
 #include <boost/uuid/uuid.hpp>            // uuid class
@@ -378,12 +379,14 @@ bool State::checkCollection(std::string const& name) {
 bool State::createCollection(std::string const& name) {
   Builder body;
   body.add(VPackValue(VPackValueType::Object));
+  body.add("type", VPackValue(static_cast<int>(TRI_COL_TYPE_DOCUMENT))); 
+  body.add("name", VPackValue(name));
+  body.add("isSystem", VPackValue(LogicalCollection::IsSystemName(name)));
   body.close();
 
-  VocbaseCollectionInfo parameters(_vocbase, name.c_str(),
-                                   TRI_COL_TYPE_DOCUMENT, body.slice(), false);
+  TRI_voc_cid_t cid = 0;
   arangodb::LogicalCollection const* collection =
-      _vocbase->createCollection(parameters, parameters.id(), true);
+      _vocbase->createCollection(body.slice(), cid, true);
 
   if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_errno(), "cannot create collection");

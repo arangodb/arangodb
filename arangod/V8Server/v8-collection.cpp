@@ -1262,9 +1262,7 @@ static void JS_PropertiesVocbaseCol(
 
       try {
         VPackBuilder infoBuilder;
-        infoBuilder.openObject();
         collection->toVelocyPack(infoBuilder);
-        infoBuilder.close();
 
         // now log the property changes
         res = TRI_ERROR_NO_ERROR;
@@ -1308,8 +1306,13 @@ static void JS_PropertiesVocbaseCol(
 
   TRI_GET_GLOBAL_STRING(KeyOptionsKey);
   try {
-    result->Set(KeyOptionsKey,
-                TRI_VPackToV8(isolate, collection->keyOptions())->ToObject());
+    VPackSlice opts = collection->keyOptions();
+    if (opts.isNull()) {
+      result->Set(KeyOptionsKey, v8::Array::New(isolate));
+    } else {
+      result->Set(KeyOptionsKey,
+                  TRI_VPackToV8(isolate, collection->keyOptions())->ToObject());
+    }
   } catch (...) {
     // Could not build the VPack
     result->Set(KeyOptionsKey, v8::Array::New(isolate));

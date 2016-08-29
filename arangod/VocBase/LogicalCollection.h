@@ -85,6 +85,7 @@ class LogicalCollection {
     return name[0] == '_';
   }
 
+  static bool IsAllowedName(arangodb::velocypack::Slice parameters);
  
   // SECTION: Meta Information
   uint32_t version() const;
@@ -180,7 +181,6 @@ class LogicalCollection {
   // Update this collection.
   void increaseVersion();
   int update(arangodb::velocypack::Slice const&, bool);
-  int update(VocbaseCollectionInfo const&);
 
   /// @brief return the figures for a collection
   std::shared_ptr<arangodb::velocypack::Builder> figures();
@@ -453,7 +453,7 @@ class LogicalCollection {
     // SECTION: Local Only
     size_t _cleanupIndexes;
     size_t _persistentIndexes;
-    std::string const _path;
+    std::string _path;
     PhysicalCollection* _physical;
     public:
     // FIXME Must be private. OpenIterator uses this.
