@@ -118,6 +118,8 @@ class VelocyPackCursor : public Cursor {
   ~VelocyPackCursor() = default;
 
  public:
+  aql::QueryResult const* result() const { return &_result; }
+
   bool hasNext() override final;
 
   arangodb::velocypack::Slice next() override final;
