@@ -80,7 +80,7 @@ int TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_ProtectMMFile(void* memoryAddress, size_t numOfBytesToProtect,
-                      int flags, int fileDescriptor, void** mmHandle);
+                      int flags, int fileDescriptor);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gives hints about upcoming memory usage

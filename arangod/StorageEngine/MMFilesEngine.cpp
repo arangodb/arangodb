@@ -858,7 +858,7 @@ void MMFilesEngine::dropIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId
   int res = TRI_UnlinkFile(filename.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot remove index definition: " << TRI_errno_string(res);
+    LOG(ERR) << "cannot remove index definition in file '" << filename << "': " << TRI_errno_string(res);
   }
 }
   
@@ -1302,11 +1302,10 @@ bool MMFilesEngine::iterateFiles(std::vector<std::string> const& files) {
   for (auto const& filename : files) {
     LOG(DEBUG) << "iterating over collection journal file '" << filename << "'";
 
-    TRI_datafile_t* datafile = TRI_OpenDatafile(filename, true);
+    std::unique_ptr<TRI_datafile_t> datafile(TRI_datafile_t::open(filename, true));
 
     if (datafile != nullptr) {
-      TRI_IterateDatafile(datafile, cb);
-      delete datafile;
+      TRI_IterateDatafile(datafile.get(), cb);
     }
   }
 
@@ -1852,7 +1851,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
         filename = newName;
       }
 
-      std::unique_ptr<TRI_datafile_t> df(TRI_OpenDatafile(filename, ignoreErrors));
+      std::unique_ptr<TRI_datafile_t> df(TRI_datafile_t::open(filename, ignoreErrors));
 
       if (df == nullptr) {
         LOG_TOPIC(ERR, Logger::DATAFILES) << "cannot open datafile '"
@@ -1895,7 +1894,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
       // file is a journal
       if (filetype == "journal") {
         if (datafile->_isSealed) {
-          if (datafile->_state != TRI_DF_STATE_READ) {
+          if (datafile->state() != TRI_DF_STATE_READ) {
             LOG_TOPIC(WARN, Logger::DATAFILES)
                 << "strange, journal '" << filename
                 << "' is already sealed; must be a left over; will use "
@@ -1938,10 +1937,10 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
   // convert the sealed journals into datafiles
   if (!stop) {
     for (auto& datafile : sealed) {
-      std::string dname("datafile-" + std::to_string(datafile->_fid) + ".db");
+      std::string dname("datafile-" + std::to_string(datafile->fid()) + ".db");
       std::string filename = arangodb::basics::FileUtils::buildFilename(collection->path(), dname);
 
-      int res = TRI_RenameDatafile(datafile, filename.c_str());
+      int res = datafile->rename(filename);
 
       if (res == TRI_ERROR_NO_ERROR) {
         datafiles.emplace_back(datafile);
@@ -2082,7 +2081,7 @@ char* MMFilesEngine::nextFreeMarkerPosition(
 
   TRI_ASSERT(datafile != nullptr);
 
-  if (cache->lastFid != datafile->_fid) {
+  if (cache->lastFid != datafile->fid()) {
     if (cache->lastFid > 0) {
       // rotated the existing journal... now update the old journal's stats
       auto& dfi = cache->createDfi(cache->lastFid);
@@ -2093,10 +2092,10 @@ char* MMFilesEngine::nextFreeMarkerPosition(
  
     // reset datafile in cache   
     cache->lastDatafile = datafile;
-    cache->lastFid = datafile->_fid;
+    cache->lastFid = datafile->fid();
     
     // create a local datafile info struct
-    cache->createDfi(datafile->_fid);
+    cache->createDfi(datafile->fid());
 
     // we only need the ditches when we are outside the recovery
     // the compactor will not run during recovery

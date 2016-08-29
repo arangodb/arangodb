@@ -1010,7 +1010,7 @@ static DatafileStatisticsContainer* FindDatafileStats(
 static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
                                             TRI_datafile_t* datafile,
                                             OpenIteratorState* state) {
-  auto const fid = datafile->_fid;
+  auto const fid = datafile->fid();
   LogicalCollection* collection = state->_collection;
   TRI_collection_t* document = state->_document;
   arangodb::Transaction* trx = state->_trx;
@@ -1124,10 +1124,10 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
 
   ++state->_deletions;
 
-  if (state->_fid != datafile->_fid) {
+  if (state->_fid != datafile->fid()) {
     // update the state
-    state->_fid = datafile->_fid;
-    state->_dfi = FindDatafileStats(state, datafile->_fid);
+    state->_fid = datafile->fid();
+    state->_dfi = FindDatafileStats(state, datafile->fid());
   }
 
   // no primary index lock required here because we are the only ones reading
@@ -1198,7 +1198,7 @@ static bool OpenIterator(TRI_df_marker_t const* marker, OpenIteratorState* data,
     if (type == TRI_DF_MARKER_HEADER) {
       // ensure there is a datafile info entry for each datafile of the
       // collection
-      FindDatafileStats(data, datafile->_fid);
+      FindDatafileStats(data, datafile->fid());
     }
 
     LOG(TRACE) << "skipping marker type " << TRI_NameMarkerDatafile(marker);

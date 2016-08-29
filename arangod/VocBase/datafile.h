@@ -27,7 +27,95 @@
 #include "Basics/Common.h"
 #include "VocBase/vocbase.h"
 
-struct TRI_datafile_t;
+struct TRI_df_marker_t;
+
+/// @brief state of the datafile
+enum TRI_df_state_e {
+  TRI_DF_STATE_CLOSED = 1,       // datafile is closed
+  TRI_DF_STATE_READ = 2,         // datafile is opened read only
+  TRI_DF_STATE_WRITE = 3,        // datafile is opened read/append
+  TRI_DF_STATE_OPEN_ERROR = 4,   // an error has occurred while opening
+  TRI_DF_STATE_WRITE_ERROR = 5,  // an error has occurred while writing
+  TRI_DF_STATE_RENAME_ERROR = 6  // an error has occurred while renaming
+};
+
+/// @brief type of the marker
+enum TRI_df_marker_type_t : uint8_t {
+  TRI_DF_MARKER_MIN = 9,  // not a real marker type,
+                          // but used for bounds checking
+
+  TRI_DF_MARKER_HEADER = 10,
+  TRI_DF_MARKER_FOOTER = 11,
+  TRI_DF_MARKER_BLANK = 12,
+  
+  TRI_DF_MARKER_COL_HEADER = 20,
+  TRI_DF_MARKER_PROLOGUE = 25,
+
+  TRI_DF_MARKER_VPACK_DOCUMENT = 30,
+  TRI_DF_MARKER_VPACK_REMOVE = 31,
+
+  TRI_DF_MARKER_VPACK_CREATE_COLLECTION = 40,
+  TRI_DF_MARKER_VPACK_DROP_COLLECTION = 41,
+  TRI_DF_MARKER_VPACK_RENAME_COLLECTION = 42,
+  TRI_DF_MARKER_VPACK_CHANGE_COLLECTION = 43,
+  TRI_DF_MARKER_VPACK_CREATE_INDEX = 50,
+  TRI_DF_MARKER_VPACK_DROP_INDEX = 51,
+  TRI_DF_MARKER_VPACK_CREATE_DATABASE = 60,
+  TRI_DF_MARKER_VPACK_DROP_DATABASE = 61,
+  TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION = 70,
+  TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION = 71,
+  TRI_DF_MARKER_VPACK_ABORT_TRANSACTION = 72,
+
+  TRI_DF_MARKER_MAX  // again, this is not a real
+                     // marker, but we use it for
+                     // bounds checking
+};
+
+/// @brief scan result entry
+/// status:
+///   1 - entry ok
+///   2 - empty entry
+///   3 - empty size
+///   4 - size too small
+///   5 - CRC failed
+struct DatafileScanEntry {
+  DatafileScanEntry() 
+      : position(0), size(0), realSize(0), tick(0), type(TRI_DF_MARKER_MIN), 
+        status(0), typeName(nullptr) {}
+  
+  ~DatafileScanEntry() = default;
+
+  TRI_voc_size_t position;
+  TRI_voc_size_t size;
+  TRI_voc_size_t realSize;
+  TRI_voc_tick_t tick;
+
+  TRI_df_marker_type_t type;
+  uint32_t status;
+
+  char const* typeName;
+  std::string key;
+  std::string diagnosis;
+};
+
+/// @brief scan result
+struct DatafileScan {
+  DatafileScan() 
+      : currentSize(0), maximalSize(0), endPosition(0), numberMarkers(0),
+        status(1), isSealed(false) {
+    entries.reserve(2048);
+  }
+
+  TRI_voc_size_t currentSize;
+  TRI_voc_size_t maximalSize;
+  TRI_voc_size_t endPosition;
+  TRI_voc_size_t numberMarkers;
+
+  std::vector<DatafileScanEntry> entries;
+
+  uint32_t status;
+  bool isSealed;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Datafiles
@@ -84,74 +172,13 @@ struct TRI_datafile_t;
 /// @copydetails TRI_CreateDatafile
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile version
-////////////////////////////////////////////////////////////////////////////////
-
 #define TRI_DF_VERSION (2)
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief maximum size of a single marker (in bytes)
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief state of the datafile
-////////////////////////////////////////////////////////////////////////////////
-
-enum TRI_df_state_e {
-  TRI_DF_STATE_CLOSED = 1,       // datafile is closed
-  TRI_DF_STATE_READ = 2,         // datafile is opened read only
-  TRI_DF_STATE_WRITE = 3,        // datafile is opened read/append
-  TRI_DF_STATE_OPEN_ERROR = 4,   // an error has occurred while opening
-  TRI_DF_STATE_WRITE_ERROR = 5,  // an error has occurred while writing
-  TRI_DF_STATE_RENAME_ERROR = 6  // an error has occurred while renaming
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief type of the marker
-////////////////////////////////////////////////////////////////////////////////
-
-enum TRI_df_marker_type_t : uint8_t {
-  TRI_DF_MARKER_MIN = 9,  // not a real marker type,
-                          // but used for bounds checking
-
-  TRI_DF_MARKER_HEADER = 10,
-  TRI_DF_MARKER_FOOTER = 11,
-  TRI_DF_MARKER_BLANK = 12,
-  
-  TRI_DF_MARKER_COL_HEADER = 20,
-  TRI_DF_MARKER_PROLOGUE = 25,
-
-  TRI_DF_MARKER_VPACK_DOCUMENT = 30,
-  TRI_DF_MARKER_VPACK_REMOVE = 31,
-
-  TRI_DF_MARKER_VPACK_CREATE_COLLECTION = 40,
-  TRI_DF_MARKER_VPACK_DROP_COLLECTION = 41,
-  TRI_DF_MARKER_VPACK_RENAME_COLLECTION = 42,
-  TRI_DF_MARKER_VPACK_CHANGE_COLLECTION = 43,
-  TRI_DF_MARKER_VPACK_CREATE_INDEX = 50,
-  TRI_DF_MARKER_VPACK_DROP_INDEX = 51,
-  TRI_DF_MARKER_VPACK_CREATE_DATABASE = 60,
-  TRI_DF_MARKER_VPACK_DROP_DATABASE = 61,
-  TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION = 70,
-  TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION = 71,
-  TRI_DF_MARKER_VPACK_ABORT_TRANSACTION = 72,
-
-  TRI_DF_MARKER_MAX  // again, this is not a real
-                     // marker, but we use it for
-                     // bounds checking
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile version
-////////////////////////////////////////////////////////////////////////////////
-
 typedef uint32_t TRI_df_version_t;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile
-////////////////////////////////////////////////////////////////////////////////
-
 struct TRI_datafile_t {
   TRI_datafile_t(std::string const& filename, int fd, void* mmHandle, TRI_voc_size_t maximalSize,
                  TRI_voc_size_t currentsize, TRI_voc_fid_t fid, char* data);
@@ -164,26 +191,87 @@ struct TRI_datafile_t {
   /// @brief return the name of a datafile
   std::string getName() const;
 
+  /// @brief rename a datafile
+  int rename(std::string const& filename);
+
+  /// @brief truncates a datafile and seals it, only called by arango-dfdd
+  static int truncate(std::string const& path, TRI_voc_size_t position);
+
+  /// @brief creates either an anonymous or a physical datafile
+  static TRI_datafile_t* create(std::string const& filename, TRI_voc_fid_t fid,
+                                TRI_voc_size_t maximalSize,
+                                bool withInitialMarkers);
+
   /// @brief close a datafile
   int close();
 
-  /// @brief destroy a datafile
-  void destroy();
- 
   /// @brief sync the data of a datafile
   bool sync(char const* begin, char const* end); 
 
   /// @brief seals a datafile, writes a footer, sets it to read-only
   int seal();
+  
+  /// @brief scans a datafile
+  static DatafileScan scan(std::string const& path);
 
+  /// @brief try to repair a datafile
+  static bool tryRepair(std::string const& path);
+  
+  /// @brief opens a datafile
+  static TRI_datafile_t* open(std::string const& filename, bool ignoreErrors);
 
-  TRI_voc_fid_t _fid;  // datafile identifier
+  /// @brief writes a marker to the datafile
+  /// this function will write the marker as-is, without any CRC or tick updates
+  int writeElement(void* position, TRI_df_marker_t const* marker, bool sync);
 
+  /// @brief checksums and writes a marker to the datafile
+  int writeCrcElement(void* position, TRI_df_marker_t* marker, bool sync);
+  
+  /// @brief reserves room for an element, advances the pointer
+  int reserveElement(TRI_voc_size_t size, TRI_df_marker_t** position,
+                     TRI_voc_size_t maximalJournalSize);
+
+  TRI_voc_fid_t fid() const { return _fid; }
+  TRI_df_state_e state() const { return _state; }
+  int fd() const { return _fd; }
+  void* mmHandle() const { return _mmHandle; }
+  TRI_voc_size_t initSize() const { return _initSize; }
+  TRI_voc_size_t maximalSize() const { return _maximalSize; }
+  TRI_voc_size_t currentSize() const { return _currentSize; }
+  TRI_voc_size_t footerSize() const { return _footerSize; }
+  
+  void setState(TRI_df_state_e state) { _state = state; }
+  
+ private:
+  /// @brief returns information about the datafile
+  DatafileScan scanHelper();
+  
+  int truncateAndSeal(TRI_voc_size_t position);
+
+  /// @brief checks a datafile 
+  bool check(bool ignoreFailures);
+
+  /// @brief fixes a corrupted datafile
+  bool fix(TRI_voc_size_t currentSize);
+
+  /// @brief opens a datafile
+  static TRI_datafile_t* openHelper(std::string const& filename, bool ignoreErrors);
+
+  /// @brief create the initial datafile header marker
+  int writeInitialHeaderMarker(TRI_voc_fid_t fid, TRI_voc_size_t maximalSize);
+
+  /// @brief tries to repair a datafile
+  bool tryRepair();
+
+ private:
+  std::string _filename;  // underlying filename
+  TRI_voc_fid_t const _fid;  // datafile identifier
   TRI_df_state_e _state;  // state of the datafile (READ or WRITE)
   int _fd;                // underlying file descriptor
 
   void* _mmHandle;  // underlying memory map object handle (windows only)
 
+ public:
   TRI_voc_size_t _initSize;     // initial size of the datafile (constant)
   TRI_voc_size_t _maximalSize;  // maximal size of the datafile (adjusted
                                 // (=reduced) at runtime)
@@ -197,8 +285,6 @@ struct TRI_datafile_t {
   TRI_voc_tick_t _tickMax;  // maximum tick value contained
   TRI_voc_tick_t _dataMin;  // minimum tick value of document/edge marker
   TRI_voc_tick_t _dataMax;  // maximum tick value of document/edge marker
-
-  std::string _filename;  // underlying filename
 
   int _lastError;  // last (critical) error
   bool _full;  // at least one request was rejected because there is not enough
@@ -339,10 +425,7 @@ struct TRI_df_header_marker_t {
   TRI_voc_tick_t _fid;          //  8 bytes
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief datafile footer marker
-////////////////////////////////////////////////////////////////////////////////
-
+/// @brief datafile prologue marker
 struct TRI_df_prologue_marker_t {
   TRI_df_marker_t base;  // 16 bytes
 
@@ -350,55 +433,17 @@ struct TRI_df_prologue_marker_t {
   TRI_voc_cid_t _collectionId; // 8 bytes
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile footer marker
-///
-/// The last entry in a full datafile is always a TRI_df_footer_marker_t.
-/// The footer contains the maximal size of the datafile and it total
-/// size.
-///
-/// <table border>
-///   <tr>
-///     <td>TRI_voc_size_t</td>
-///     <td>_maximalSize</td>
-///     <td>The maximal size to which a datafile can grow. This should match
-///         the maximal stored in the @ref TRI_df_header_marker_t.</td>
-///   </tr>
-///   <tr>
-///     <td>TRI_voc_size_t</td>
-///     <td>_totalSize</td>
-///     <td>The real size of the datafile. Should always be less than or equal
-///         to the _maximalSize.</td>
-///   </tr>
-/// </table>
-///
-/// It is not possible to append entries after a footer. A datafile which
-/// contains a footer is sealed and read-only.
-////////////////////////////////////////////////////////////////////////////////
-
 struct TRI_df_footer_marker_t {
   TRI_df_marker_t base;  // 16 bytes
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief document datafile header marker
-////////////////////////////////////////////////////////////////////////////////
-
 struct TRI_col_header_marker_t {
   TRI_df_marker_t base;  // 16 bytes
 
   TRI_voc_cid_t _cid;  //  8 bytes
 };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new datafile
-///
-/// This either creates a datafile using TRI_CreateAnonymousDatafile or
-/// ref TRI_CreatePhysicalDatafile, based on the first parameter
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_datafile_t* TRI_CreateDatafile(std::string const& filename, TRI_voc_fid_t fid,
-                                   TRI_voc_size_t maximalSize, bool withInitialMarkers);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the name for a marker
@@ -411,31 +456,6 @@ char const* TRI_NameMarkerDatafile(TRI_df_marker_t const*);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsValidMarkerDatafile(TRI_df_marker_t const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reserves room for an element, advances the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_ReserveElementDatafile(
-    TRI_datafile_t* datafile, TRI_voc_size_t size, TRI_df_marker_t** position,
-    TRI_voc_size_t maximalJournalSize) TRI_WARN_UNUSED_RESULT;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief writes a marker to the datafile
-/// this function will write the marker as-is, without any CRC or tick updates
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_WriteElementDatafile(TRI_datafile_t* datafile, void* position,
-                             TRI_df_marker_t const* marker,
-                             bool sync) TRI_WARN_UNUSED_RESULT;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checksums and writes a marker to the datafile
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_WriteCrcElementDatafile(TRI_datafile_t* datafile, void* position,
-                                TRI_df_marker_t* marker,
-                                bool sync) TRI_WARN_UNUSED_RESULT;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update tick values for a datafile
@@ -455,88 +475,5 @@ bool TRI_IterateDatafile(TRI_datafile_t*,
                              
 bool TRI_IterateDatafile(TRI_datafile_t*,
                          std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief opens an existing datafile read-only
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_datafile_t* TRI_OpenDatafile(std::string const& filename, bool ignoreFailures);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief renames a datafile
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_RenameDatafile(TRI_datafile_t* datafile, char const* filename);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief truncates a datafile and seals it, only called by arango-dfdd
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_TruncateDatafile(std::string const& path, TRI_voc_size_t position);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief try to repair a datafile, only called by arango-dfdd
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_TryRepairDatafile(char const* path);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief scan result entry
-///
-/// status:
-///   1 - entry ok
-///   2 - empty entry
-///   3 - empty size
-///   4 - size too small
-///   5 - CRC failed
-////////////////////////////////////////////////////////////////////////////////
-
-struct DatafileScanEntry {
-  DatafileScanEntry() 
-      : position(0), size(0), realSize(0), tick(0), type(TRI_DF_MARKER_MIN), 
-        status(0), typeName(nullptr) {}
-  
-  ~DatafileScanEntry() = default;
-
-  TRI_voc_size_t position;
-  TRI_voc_size_t size;
-  TRI_voc_size_t realSize;
-  TRI_voc_tick_t tick;
-
-  TRI_df_marker_type_t type;
-  uint32_t status;
-
-  char const* typeName;
-  std::string key;
-  std::string diagnosis;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief scan result
-////////////////////////////////////////////////////////////////////////////////
-
-struct DatafileScan {
-  DatafileScan() 
-      : currentSize(0), maximalSize(0), endPosition(0), numberMarkers(0),
-        status(1), isSealed(false) {
-    entries.reserve(2048);
-  }
-
-  TRI_voc_size_t currentSize;
-  TRI_voc_size_t maximalSize;
-  TRI_voc_size_t endPosition;
-  TRI_voc_size_t numberMarkers;
-
-  std::vector<DatafileScanEntry> entries;
-
-  uint32_t status;
-  bool isSealed;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns information about the datafile, only called by arango-dfdd
-////////////////////////////////////////////////////////////////////////////////
-
-DatafileScan TRI_ScanDatafile(char const* path);
 
 #endif

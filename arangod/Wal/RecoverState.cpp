@@ -426,7 +426,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         LOG(TRACE) << "found document marker. databaseId: " << databaseId << ", collectionId: " << collectionId << ", transactionId: " << tid;
 
         int res = state->executeSingleOperation(
-            databaseId, collectionId, marker, datafile->_fid,
+            databaseId, collectionId, marker, datafile->fid(),
             [&](SingleCollectionTransaction* trx, MarkerEnvelope* envelope) -> int {
               if (trx->documentCollection()->isVolatile()) {
                 return TRI_ERROR_NO_ERROR;
@@ -489,7 +489,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
         LOG(TRACE) << "found remove marker. databaseId: " << databaseId << ", collectionId: " << collectionId << ", transactionId: " << tid;
 
         int res = state->executeSingleOperation(
-            databaseId, collectionId, marker, datafile->_fid,
+            databaseId, collectionId, marker, datafile->fid(),
             [&](SingleCollectionTransaction* trx, MarkerEnvelope* envelope) -> int {
               if (trx->documentCollection()->isVolatile()) {
                 return TRI_ERROR_NO_ERROR;

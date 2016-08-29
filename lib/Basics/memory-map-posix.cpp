@@ -136,9 +136,7 @@ int TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_ProtectMMFile(void* memoryAddress, size_t numOfBytesToProtect,
-                      int flags, int fileDescriptor, void** mmHandle) {
-  TRI_ASSERT(*mmHandle == nullptr);  // only useful for Windows
-
+                      int flags, int fileDescriptor) {
   int res = mprotect(memoryAddress, numOfBytesToProtect, flags);
 
   if (res == 0) {
