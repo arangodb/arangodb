@@ -80,7 +80,7 @@ class HttpResponse : public GeneralResponse {
       // hook
       // this optimization leads to bad bas crahses
     }
-  };
+  }
 
   int reservePayload(std::size_t size) override { return _body.reserve(size); }
   void addPayloadPostHook(VPackOptions const* options) override;

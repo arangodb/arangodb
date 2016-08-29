@@ -46,7 +46,7 @@ void GeneralResponse::addPayload(VPackSlice const& slice,
   } else {
     // just copy
     _vpackPayloads.emplace_back(slice.byteSize());
-    std::memcpy(&_vpackPayloads.back(), slice.start(), slice.byteSize());
+    _vpackPayloads.back().append(slice.startAs<char const>(), slice.byteSize());
   }
   addPayloadPostHook(options);
 };
