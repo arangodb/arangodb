@@ -30,9 +30,9 @@
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Basics/conversions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 
@@ -743,10 +743,14 @@ VPackSlice HttpRequest::payload(VPackOptions const* options) {
   // check options for nullptr?
 
   if (_contentType == ContentType::JSON) {
+    // if (body().length() > 0){
     VPackParser parser(options);
     parser.parse(body());
     _vpackBuilder = parser.steal();
     return VPackSlice(_vpackBuilder->slice());
+    //} else {
+    //  return VPackSlice::emptyObjectSlice(); //or empty object
+    //}
   } else /*VPACK*/ {
     VPackValidator validator;
     validator.validate(body().c_str(), body().length());

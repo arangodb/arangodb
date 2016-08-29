@@ -24,9 +24,9 @@
 #ifndef ARANGOD_UTILS_CURSOR_H
 #define ARANGOD_UTILS_CURSOR_H 1
 
+#include "Aql/QueryResult.h"
 #include "Basics/Common.h"
 #include "Basics/StringBuffer.h"
-#include "Aql/QueryResult.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -47,7 +47,8 @@ class Cursor {
   Cursor(Cursor const&) = delete;
   Cursor& operator=(Cursor const&) = delete;
 
-  Cursor(CursorId, size_t, std::shared_ptr<arangodb::velocypack::Builder>, double, bool);
+  Cursor(CursorId, size_t, std::shared_ptr<arangodb::velocypack::Builder>,
+         double, bool);
 
   virtual ~Cursor();
 
@@ -61,7 +62,7 @@ class Cursor {
   /// Make sure the Cursor Object is not destroyed while reading this slice.
   /// If no extras are set this will return a NONE slice.
   //////////////////////////////////////////////////////////////////////////////
-  
+
   arangodb::velocypack::Slice extra() const;
 
   bool hasCount() const { return _hasCount; }
@@ -96,6 +97,7 @@ class Cursor {
   virtual size_t count() const = 0;
 
   virtual void dump(arangodb::basics::StringBuffer&) = 0;
+  virtual void dump(VPackBuilder&) = 0;
 
  protected:
   CursorId const _id;
@@ -127,6 +129,7 @@ class VelocyPackCursor : public Cursor {
   size_t count() const override final;
 
   void dump(arangodb::basics::StringBuffer&) override final;
+  void dump(VPackBuilder&) override final;
 
  private:
   VocbaseGuard _vocbaseGuard;
@@ -150,6 +153,7 @@ class ExportCursor : public Cursor {
   size_t count() const override final;
 
   void dump(arangodb::basics::StringBuffer&) override final;
+  void dump(VPackBuilder&) override final;
 
  private:
   VocbaseGuard _vocbaseGuard;

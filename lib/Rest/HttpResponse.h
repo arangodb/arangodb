@@ -82,6 +82,9 @@ class HttpResponse : public GeneralResponse {
     }
   }
 
+  bool setGenerateBody(bool generateBody) override final {
+    return _generateBody = generateBody;
+  }  // used for head-responses
   int reservePayload(std::size_t size) override { return _body.reserve(size); }
   void addPayloadPostHook(VPackOptions const* options) override;
   void setPayload(arangodb::velocypack::Slice const&, bool generateBody,

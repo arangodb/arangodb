@@ -59,6 +59,14 @@ void RestBaseHandler::generateResult(rest::ResponseCode code,
   writeResult(slice, options);
 }
 
+void RestBaseHandler::generateResult(rest::ResponseCode code,
+                                     VPackSlice const& slice,
+                                     VPackOptions const* options) {
+  setResponseCode(code);
+  VPackOptions tmpoptions(*options);
+  tmpoptions.escapeUnicode = true;
+  writeResult(slice, tmpoptions);
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a result from VelocyPack
 ////////////////////////////////////////////////////////////////////////////////

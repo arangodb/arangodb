@@ -22,9 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cursor.h"
+#include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackDumper.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/VPackStringBufferAdapter.h"
 #include "Utils/CollectionExport.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/StandaloneTransactionContext.h"
@@ -52,8 +52,7 @@ Cursor::Cursor(CursorId id, size_t batchSize,
       _isDeleted(false),
       _isUsed(false) {}
 
-Cursor::~Cursor() {
-}
+Cursor::~Cursor() {}
 
 VPackSlice Cursor::extra() const {
   if (_extra == nullptr) {
@@ -131,10 +130,10 @@ void VelocyPackCursor::dump(arangodb::basics::StringBuffer& buffer) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  arangodb::basics::VelocyPackDumper dumper(&buffer, _result.context->getVPackOptions());
+  arangodb::basics::VelocyPackDumper dumper(&buffer,
+                                            _result.context->getVPackOptions());
 
   try {
-
     for (size_t i = 0; i < n; ++i) {
       if (!hasNext()) {
         break;
@@ -191,18 +190,67 @@ void VelocyPackCursor::dump(arangodb::basics::StringBuffer& buffer) {
   }
 }
 
+void VelocyPackCursor::dump(VPackBuilder& builder) {
+  try {
+    size_t const n = batchSize();
+    size_t num = n;
+    if (num == 0) {
+      num = 1;
+    } else if (num >= 10000) {
+      num = 10000;
+    }
+    VPackOptions const* oldOptions = builder.options;
+
+    builder.options = _result.context->getVPackOptions();
+
+    builder.add("result", VPackValue(VPackValueType::Array));
+    for (size_t i = 0; i < n; ++i) {
+      if (!hasNext()) {
+        break;
+      }
+      builder.add(next());
+    }
+    builder.close();
+
+    builder.add("hasMore", VPackValue(hasNext()));
+    if (hasNext()) {
+      builder.add("id", VPackValue(id()));
+    }
+
+    if (hasCount()) {
+      builder.add("count", VPackValue(static_cast<uint64_t>(count())));
+    }
+
+    if (extra().isObject()) {
+      builder.add("count", extra());
+    }
+
+    builder.add("cached", VPackValue(_cached));
+    builder.close();
+
+    if (!hasNext()) {
+      // mark the cursor as deleted
+      this->deleted();
+    }
+    builder.options = oldOptions;
+  } catch (arangodb::basics::Exception const& ex) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+}
+
 ExportCursor::ExportCursor(TRI_vocbase_t* vocbase, CursorId id,
                            arangodb::CollectionExport* ex, size_t batchSize,
                            double ttl, bool hasCount)
     : Cursor(id, batchSize, nullptr, ttl, hasCount),
       _vocbaseGuard(vocbase),
       _ex(ex),
-      _size(ex->_documents->size()) {
-}
+      _size(ex->_documents->size()) {}
 
-ExportCursor::~ExportCursor() {
-  delete _ex;
-}
+ExportCursor::~ExportCursor() { delete _ex; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the cursor contains more data
@@ -237,9 +285,7 @@ static bool IncludeAttribute(
     std::unordered_set<std::string> const& fields, std::string const& key) {
   if (restrictionType == CollectionExport::Restrictions::RESTRICTION_INCLUDE ||
       restrictionType == CollectionExport::Restrictions::RESTRICTION_EXCLUDE) {
-    bool const keyContainedInRestrictions =
-        (fields.find(key) !=
-         fields.end());
+    bool const keyContainedInRestrictions = (fields.find(key) != fields.end());
     if ((restrictionType ==
              CollectionExport::Restrictions::RESTRICTION_INCLUDE &&
          !keyContainedInRestrictions) ||
@@ -265,7 +311,8 @@ static bool IncludeAttribute(
 ////////////////////////////////////////////////////////////////////////////////
 
 void ExportCursor::dump(arangodb::basics::StringBuffer& buffer) {
-  auto transactionContext = std::make_shared<StandaloneTransactionContext>(_vocbaseGuard.vocbase());
+  auto transactionContext =
+      std::make_shared<StandaloneTransactionContext>(_vocbaseGuard.vocbase());
   VPackOptions* options = transactionContext->getVPackOptions();
 
   TRI_ASSERT(_ex != nullptr);
@@ -286,7 +333,8 @@ void ExportCursor::dump(arangodb::basics::StringBuffer& buffer) {
       buffer.appendChar(',');
     }
 
-    VPackSlice const slice(reinterpret_cast<char const*>(_ex->_documents->at(_position++)));
+    VPackSlice const slice(
+        reinterpret_cast<char const*>(_ex->_documents->at(_position++)));
 
     {
       result.clear();
@@ -296,20 +344,23 @@ void ExportCursor::dump(arangodb::basics::StringBuffer& buffer) {
       for (auto const& entry : VPackObjectIterator(slice)) {
         std::string key(entry.key.copyString());
 
-        if (!IncludeAttribute(restrictionType, _ex->_restrictions.fields, key)) {
+        if (!IncludeAttribute(restrictionType, _ex->_restrictions.fields,
+                              key)) {
           // Ignore everything that should be excluded or not included
           continue;
         }
         // If we get here we need this entry in the final result
         if (entry.value.isCustom()) {
-          result.add(key, VPackValue(options->customTypeHandler->toString(entry.value, options, slice)));
+          result.add(key, VPackValue(options->customTypeHandler->toString(
+                              entry.value, options, slice)));
         } else {
           result.add(key, entry.value);
         }
       }
     }
 
-    arangodb::basics::VPackStringBufferAdapter bufferAdapter(buffer.stringBuffer());
+    arangodb::basics::VPackStringBufferAdapter bufferAdapter(
+        buffer.stringBuffer());
 
     try {
       VPackDumper dumper(&bufferAdapter, options);
@@ -345,4 +396,79 @@ void ExportCursor::dump(arangodb::basics::StringBuffer& buffer) {
     // mark the cursor as deleted
     this->deleted();
   }
+}
+
+void ExportCursor::dump(VPackBuilder& builder) {
+  auto transactionContext =
+      std::make_shared<StandaloneTransactionContext>(_vocbaseGuard.vocbase());
+
+  VPackOptions const* oldOptions = builder.options;
+
+  builder.options = transactionContext->getVPackOptions();
+
+  TRI_ASSERT(_ex != nullptr);
+  auto const restrictionType = _ex->_restrictions.type;
+
+  try {
+    builder.add("result", VPackValue(VPackValueType::Array));
+    size_t const n = batchSize();
+
+    for (size_t i = 0; i < n; ++i) {
+      if (!hasNext()) {
+        break;
+      }
+
+      VPackSlice const slice(
+          reinterpret_cast<char const*>(_ex->_documents->at(_position++)));
+      builder.openObject();
+      // Copy over shaped values
+      for (auto const& entry : VPackObjectIterator(slice)) {
+        std::string key(entry.key.copyString());
+
+        if (!IncludeAttribute(restrictionType, _ex->_restrictions.fields,
+                              key)) {
+          // Ignore everything that should be excluded or not included
+          continue;
+        }
+        // If we get here we need this entry in the final result
+        if (entry.value.isCustom()) {
+          builder.add(key,
+                      VPackValue(builder.options->customTypeHandler->toString(
+                          entry.value, builder.options, slice)));
+        } else {
+          builder.add(key, entry.value);
+        }
+      }
+      builder.close();
+    }
+    builder.close();  // close Array
+
+    builder.add("hasMore", VPackValue(hasNext()));
+
+    if (hasNext()) {
+      builder.add("id", VPackValue(id()));
+    }
+
+    if (hasCount()) {
+      builder.add("count", VPackValue(static_cast<uint64_t>(count())));
+    }
+
+    if (extra().isObject()) {
+      builder.add("count", extra());
+    }
+
+    if (!hasNext()) {
+      // mark the cursor as deleted
+      delete _ex;
+      _ex = nullptr;
+      this->deleted();
+    }
+  } catch (arangodb::basics::Exception const& ex) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+  builder.options = oldOptions;
 }

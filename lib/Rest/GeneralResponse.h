@@ -127,11 +127,10 @@ class GeneralResponse {
                           arangodb::velocypack::Options const& =
                               arangodb::velocypack::Options::Defaults) = 0;
 
-  virtual int reservePayload(std::size_t size) { return size; }
   void addPayloadPreconditions() { TRI_ASSERT(_vpackPayloads.size() == 0); }
-  virtual void addPayloadPreHook(bool inputIsBuffer, bool& resolveExternals){}
+  virtual void addPayloadPreHook(bool inputIsBuffer, bool& resolveExternals) {}
   virtual void addPayloadPostHook(
-      arangodb::velocypack::Options const* options){}
+      arangodb::velocypack::Options const* options) {}
   void addPayload(VPackSlice const& slice,
                   arangodb::velocypack::Options const* options = nullptr,
                   bool resolve_externals = true);
@@ -139,6 +138,9 @@ class GeneralResponse {
                   arangodb::velocypack::Options const* options = nullptr,
                   bool resolve_externals = true);
 
+  virtual int reservePayload(std::size_t size) { return size; }
+  virtual bool setGenerateBody(bool) { return true; };  // used for head
+                                                        // resonses
   void setOptions(VPackOptions options) { _options = std::move(options); };
 
  protected:

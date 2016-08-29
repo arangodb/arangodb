@@ -59,8 +59,7 @@ void VppResponse::reset(ResponseCode code) {
 
 void VppResponse::setPayload(arangodb::velocypack::Slice const& slice,
                              bool generateBody, VPackOptions const& options) {
-  if (generateBody) {
-    _generateBody = true;
+  if (setGenerateBody(generateBody)) {
     addPayload(slice, &options);
   }
 };
