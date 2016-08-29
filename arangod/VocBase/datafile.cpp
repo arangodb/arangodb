@@ -533,7 +533,7 @@ static bool TryRepairDatafile(TRI_datafile_t* datafile) {
     if (marker->getType() != 0) {
       if (!CheckCrcMarker(marker, end)) {
         // CRC mismatch!
-        auto next = reinterpret_cast<char const*>(marker) + size;
+        auto next = reinterpret_cast<char const*>(marker) + DatafileHelper::AlignedSize<size_t>(size);
         auto p = next;
 
         if (p < end) {
