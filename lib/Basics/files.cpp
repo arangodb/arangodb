@@ -1708,18 +1708,18 @@ std::string TRI_GetInstallRoot(std::string const& binaryPath,
   }
   
   size_t bpLength = binaryPath.length();
-  const char *pbPath = binaryPath.c_str();
+  char const* pbPath = binaryPath.c_str();
 
   if (pbPath[bpLength - 1] == TRI_DIR_SEPARATOR_CHAR) {
-    bpLength --;
+    --bpLength;
   }
   
   if (ibpLength > bpLength) {
     return TRI_DIR_SEPARATOR_STR;
   }
 
-  for (int i = 1; i < ibpLength; i ++) {
-    if (pbPath[bpLength -i] != installBinaryPath[ibpLength - i]) {
+  for (size_t i = 1; i < ibpLength; ++i) {
+    if (pbPath[bpLength - i] != installBinaryPath[ibpLength - i]) {
       return TRI_DIR_SEPARATOR_STR;
     }
   }
