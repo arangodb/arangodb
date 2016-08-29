@@ -42,7 +42,7 @@
 #include "FulltextIndex/fulltext-query.h"
 #include "FulltextIndex/fulltext-result.h"
 #include "Indexes/FulltextIndex.h"
-#include "Indexes/GeoIndex2.h"
+#include "Indexes/GeoIndex.h"
 #include "Indexes/Index.h"
 #include "Random/UniformCharacter.h"
 #include "Ssl/SslInterface.h"
@@ -690,7 +690,7 @@ static AqlValue MergeParameters(arangodb::aql::Query* query,
 }
 
 /// @brief Load geoindex for collection name
-static arangodb::GeoIndex2* getGeoIndex(
+static arangodb::GeoIndex* getGeoIndex(
     arangodb::AqlTransaction* trx, TRI_voc_cid_t const& cid,
     std::string const& collectionName) {
   // NOTE:
@@ -707,12 +707,12 @@ static arangodb::GeoIndex2* getGeoIndex(
                                   "'%s'", collectionName.c_str());
   }
 
-  arangodb::GeoIndex2* index = nullptr;
+  arangodb::GeoIndex* index = nullptr;
 
   for (auto const& idx : document->getIndexes()) {
     if (idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX ||
         idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX) {
-      index = static_cast<arangodb::GeoIndex2*>(idx.get());
+      index = static_cast<arangodb::GeoIndex*>(idx.get());
       break;
     }
   }
@@ -2230,7 +2230,7 @@ AqlValue Functions::Near(arangodb::aql::Query* query,
   }
 
   TRI_voc_cid_t cid = trx->resolver()->getCollectionIdLocal(collectionName);
-  arangodb::GeoIndex2* index = getGeoIndex(trx, cid, collectionName);
+  arangodb::GeoIndex* index = getGeoIndex(trx, cid, collectionName);
 
   TRI_ASSERT(index != nullptr);
   TRI_ASSERT(trx->hasDitch(cid));
@@ -2281,7 +2281,7 @@ AqlValue Functions::Within(arangodb::aql::Query* query,
   }
 
   TRI_voc_cid_t cid = trx->resolver()->getCollectionIdLocal(collectionName);
-  arangodb::GeoIndex2* index = getGeoIndex(trx, cid, collectionName);
+  arangodb::GeoIndex* index = getGeoIndex(trx, cid, collectionName);
 
   TRI_ASSERT(index != nullptr);
   TRI_ASSERT(trx->hasDitch(cid));

@@ -21,7 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "GeoIndex2.h"
+#include "GeoIndex.h"
 #include "Logger/Logger.h"
 #include "Basics/StringRef.h"
 #include "VocBase/collection.h"
@@ -34,7 +34,7 @@ using namespace arangodb;
 ///        Lat and Lon are stored in the same Array
 ////////////////////////////////////////////////////////////////////////////////
 
-GeoIndex2::GeoIndex2(
+GeoIndex::GeoIndex(
     TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     std::vector<std::string> const& path, bool geoJson)
@@ -57,7 +57,7 @@ GeoIndex2::GeoIndex2(
 /// @brief create a new geo index, type "geo2"
 ////////////////////////////////////////////////////////////////////////////////
 
-GeoIndex2::GeoIndex2(
+GeoIndex::GeoIndex(
     TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     std::vector<std::vector<std::string>> const& paths)
@@ -78,7 +78,7 @@ GeoIndex2::GeoIndex2(
 
 /// @brief create a new geo index, type "geo2"
 
-GeoIndex2::GeoIndex2(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
+GeoIndex::GeoIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
                      VPackSlice const& info)
     : Index(iid, collection, info, false),
       _variant(INDEX_GEO_INDIVIDUAL_LAT_LON),
@@ -123,19 +123,19 @@ GeoIndex2::GeoIndex2(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
   }
 }
 
-GeoIndex2::~GeoIndex2() {
+GeoIndex::~GeoIndex() {
   if (_geoIndex != nullptr) {
     GeoIndex_free(_geoIndex);
   }
 }
 
-size_t GeoIndex2::memory() const { return GeoIndex_MemoryUsage(_geoIndex); }
+size_t GeoIndex::memory() const { return GeoIndex_MemoryUsage(_geoIndex); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a JSON representation of the index
 ////////////////////////////////////////////////////////////////////////////////
 
-void GeoIndex2::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
+void GeoIndex::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
   // Basic index
   Index::toVelocyPack(builder, withFigures);
 
@@ -157,7 +157,7 @@ void GeoIndex2::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
 }
 
 /// @brief Test if this index matches the definition
-bool GeoIndex2::matchesDefinition(VPackSlice const& info) const {
+bool GeoIndex::matchesDefinition(VPackSlice const& info) const {
   TRI_ASSERT(info.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   VPackSlice typeSlice = info.get("type");
@@ -222,7 +222,7 @@ bool GeoIndex2::matchesDefinition(VPackSlice const& info) const {
 
 
 
-int GeoIndex2::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
+int GeoIndex::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
   TRI_ASSERT(doc != nullptr);
   TRI_ASSERT(doc->vpack() != nullptr);
 
@@ -293,7 +293,7 @@ int GeoIndex2::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
   return TRI_ERROR_NO_ERROR;
 }
 
-int GeoIndex2::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
+int GeoIndex::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
   TRI_ASSERT(doc != nullptr);
   TRI_ASSERT(doc->vpack() != nullptr);
 
@@ -356,7 +356,7 @@ int GeoIndex2::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
   return TRI_ERROR_NO_ERROR;
 }
 
-int GeoIndex2::unload() {
+int GeoIndex::unload() {
   // create a new, empty index
   auto empty = GeoIndex_new();
 
@@ -376,7 +376,7 @@ int GeoIndex2::unload() {
 }
 
 /// @brief looks up all points within a given radius
-GeoCoordinates* GeoIndex2::withinQuery(arangodb::Transaction* trx, double lat,
+GeoCoordinates* GeoIndex::withinQuery(arangodb::Transaction* trx, double lat,
                                        double lon, double radius) const {
   GeoCoordinate gc;
   gc.latitude = lat;
@@ -389,7 +389,7 @@ GeoCoordinates* GeoIndex2::withinQuery(arangodb::Transaction* trx, double lat,
 /// @brief looks up the nearest points
 ////////////////////////////////////////////////////////////////////////////////
 
-GeoCoordinates* GeoIndex2::nearQuery(arangodb::Transaction* trx, double lat,
+GeoCoordinates* GeoIndex::nearQuery(arangodb::Transaction* trx, double lat,
                                      double lon, size_t count) const {
   GeoCoordinate gc;
   gc.latitude = lat;

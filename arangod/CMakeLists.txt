@@ -202,7 +202,7 @@ add_executable(${BIN_ARANGOD}
   GeoIndex/GeoIndex.cpp
   Indexes/EdgeIndex.cpp
   Indexes/FulltextIndex.cpp
-  Indexes/GeoIndex2.cpp
+  Indexes/GeoIndex.cpp
   Indexes/HashIndex.cpp
   Indexes/Index.cpp
   Indexes/IndexIterator.cpp

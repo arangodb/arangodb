@@ -42,7 +42,7 @@
 #include "FulltextIndex/fulltext-index.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/FulltextIndex.h"
-#include "Indexes/GeoIndex2.h"
+#include "Indexes/GeoIndex.h"
 #include "Indexes/HashIndex.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Indexes/SkiplistIndex.h"

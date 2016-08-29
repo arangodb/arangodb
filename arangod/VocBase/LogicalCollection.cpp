@@ -37,7 +37,7 @@
 #include "Cluster/ServerState.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/FulltextIndex.h"
-#include "Indexes/GeoIndex2.h"
+#include "Indexes/GeoIndex.h"
 #include "Indexes/HashIndex.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Indexes/RocksDBIndex.h"
@@ -896,7 +896,7 @@ std::shared_ptr<Index> LogicalCollection::createIndex(Transaction* trx,
     }
     case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
     case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX: {
-      newIdx.reset(new arangodb::GeoIndex2(iid, this, info));
+      newIdx.reset(new arangodb::GeoIndex(iid, this, info));
       break;
     }
     case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
@@ -992,7 +992,7 @@ int LogicalCollection::restoreIndex(Transaction* trx, VPackSlice const& info,
     }
     case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
     case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX: {
-      newIdx = std::make_shared<arangodb::GeoIndex2>(iid, this, info);
+      newIdx = std::make_shared<arangodb::GeoIndex>(iid, this, info);
       break;
     }
     case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
@@ -2767,7 +2767,7 @@ void LogicalCollection::addIndexCoordinator(VPackSlice const& info) {
     }
     case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
     case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX: {
-      newIdx.reset(new arangodb::GeoIndex2(info));
+      newIdx.reset(new arangodb::GeoIndex(info));
       break;
     }
     case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
