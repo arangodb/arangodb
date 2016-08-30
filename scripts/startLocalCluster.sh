@@ -96,6 +96,7 @@ start() {
     PORT=$2
     mkdir cluster/data$PORT
     echo Starting $TYPE on port $PORT
+    mkdir -p cluster/apps$PORT 
     build/bin/arangod -c none \
                 --database.directory cluster/data$PORT \
                 --cluster.agency-endpoint tcp://127.0.0.1:$BASE \
