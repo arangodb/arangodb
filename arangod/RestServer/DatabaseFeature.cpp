@@ -22,6 +22,7 @@
 
 #include "DatabaseFeature.h"
 
+#include "Agency/v8-agency.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
@@ -29,6 +30,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
+#include "Basics/ArangoGlobalContext.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/v8-cluster.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -942,6 +944,7 @@ void DatabaseFeature::updateContexts() {
         TRI_InitV8VocBridge(isolate, context, queryRegistry, vocbase, i);
         TRI_InitV8Queries(isolate, context);
         TRI_InitV8Cluster(isolate, context);
+        TRI_InitV8Agency(isolate, context);
       },
       vocbase);
 }

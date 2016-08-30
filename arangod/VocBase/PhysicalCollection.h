@@ -25,6 +25,7 @@
 #define ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H 1
 
 #include "Basics/Common.h"
+#include "VocBase/DatafileStatisticsContainer.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -63,6 +64,15 @@ class PhysicalCollection {
 
   /// @brief iterates over a collection
   virtual bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb) = 0;
+
+  /// @brief increase dead stats for a datafile, if it exists
+  virtual void increaseDeadStats(TRI_voc_fid_t fid, int64_t number, int64_t size) = 0;
+  
+  /// @brief increase dead stats for a datafile, if it exists
+  virtual void updateStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) = 0;
+  
+  /// @brief create statistics for a datafile, using the stats provided
+  virtual void createStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) = 0;
 
   /// @brief disallow compaction of the collection 
   /// after this call it is guaranteed that no compaction will be started until allowCompaction() is called

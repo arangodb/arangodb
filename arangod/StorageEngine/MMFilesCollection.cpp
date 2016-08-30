@@ -51,17 +51,18 @@ static void EnsureErrorCode(int code) {
 }
 
 MMFilesCollection::MMFilesCollection(LogicalCollection* collection)
-    : PhysicalCollection(collection), _initialCount(0) {}
+    : PhysicalCollection(collection), _initialCount(0), _revision(0) {}
 
-MMFilesCollection::~MMFilesCollection() {
-  close();
-}
-  
+MMFilesCollection::~MMFilesCollection() { close(); }
+
 TRI_voc_rid_t MMFilesCollection::revision() const { 
-  return 0; 
+  return _revision; 
 }
 
 void MMFilesCollection::setRevision(TRI_voc_rid_t revision, bool force) {
+  if (force || revision > _revision) {
+    _revision = revision;
+  }
 }
 
 int64_t MMFilesCollection::initialCount() const { 
@@ -95,6 +96,8 @@ int MMFilesCollection::close() {
   }
   _datafiles.clear();
 
+  _revision = 0;
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -110,10 +113,10 @@ int MMFilesCollection::sealDatafile(TRI_datafile_t* datafile, bool isCompactor) 
 
   if (!isCompactor && datafile->isPhysical()) {
     // rename the file
-    std::string dname("datafile-" + std::to_string(datafile->_fid) + ".db");
+    std::string dname("datafile-" + std::to_string(datafile->fid()) + ".db");
     std::string filename = arangodb::basics::FileUtils::buildFilename(_logicalCollection->path(), dname);
 
-    res = TRI_RenameDatafile(datafile, filename.c_str());
+    res = datafile->rename(filename);
 
     if (res == TRI_ERROR_NO_ERROR) {
       LOG(TRACE) << "closed file '" << datafile->getName() << "'";
@@ -201,7 +204,7 @@ int MMFilesCollection::syncActiveJournal() {
 
         LOG_TOPIC(ERR, Logger::COLLECTOR)
             << "msync failed with: " << TRI_last_error();
-        datafile->_state = TRI_DF_STATE_WRITE_ERROR;
+        datafile->setState(TRI_DF_STATE_WRITE_ERROR);
       }
     }
   }
@@ -237,9 +240,9 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
       // create enough room in the journals vector
       _journals.reserve(_journals.size() + 1);
 
-      datafile = createDatafile(tick, targetSize, false);
+      std::unique_ptr<TRI_datafile_t> df(createDatafile(tick, targetSize, false));
 
-      if (datafile == nullptr) {
+      if (df == nullptr) {
         int res = TRI_errno();
         // could not create a datafile, this is a serious error
 
@@ -252,7 +255,8 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
       }
 
       // shouldn't throw as we reserved enough space before
-      _journals.emplace_back(datafile);
+      _journals.emplace_back(df.get());
+      datafile = df.release();
     } else {
       // select datafile
       datafile = _journals[0];
@@ -263,7 +267,7 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
     // try to reserve space in the datafile
 
     TRI_df_marker_t* position = nullptr;
-    int res = TRI_ReserveElementDatafile(datafile, size, &position, targetSize);
+    int res = datafile->reserveElement(size, &position, targetSize);
 
     // found a datafile with enough space left
     if (res == TRI_ERROR_NO_ERROR) {
@@ -290,14 +294,16 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
     _datafiles.reserve(_datafiles.size() + 1);
 
     res = sealDatafile(datafile, false);
-
-    // move journal into datafiles vector, regardless of whether an error
-    // occurred
-    TRI_ASSERT(!_journals.empty());
-    _journals.erase(_journals.begin());
-    TRI_ASSERT(_journals.empty());
+    
+    // move journal into _datafiles vector
     // this shouldn't fail, as we have reserved space before already
     _datafiles.emplace_back(datafile);
+
+    // and finally erase it from _journals vector
+    TRI_ASSERT(!_journals.empty());
+    TRI_ASSERT(*_journals.begin() == datafile);
+    _journals.erase(_journals.begin());
+    TRI_ASSERT(_journals.empty());
 
     if (res != TRI_ERROR_NO_ERROR) {
       // an error occurred, we must stop here
@@ -360,14 +366,14 @@ int MMFilesCollection::replaceDatafileWithCompactor(TRI_datafile_t* datafile,
   TRI_ASSERT(!_compactors.empty());
 
   for (size_t i = 0; i < _datafiles.size(); ++i) {
-    if (_datafiles[i]->_fid == datafile->_fid) {
+    if (_datafiles[i]->fid() == datafile->fid()) {
       // found!
       // now put the compactor in place of the datafile
       _datafiles[i] = compactor;
 
       // remove the compactor file from the list of compactors
       TRI_ASSERT(_compactors[0] != nullptr);
-      TRI_ASSERT(_compactors[0]->_fid == compactor->_fid);
+      TRI_ASSERT(_compactors[0]->fid() == compactor->fid());
 
       _compactors.erase(_compactors.begin());
       TRI_ASSERT(_compactors.empty());
@@ -387,17 +393,17 @@ TRI_datafile_t* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
 
   // create an entry for the new datafile
   try {
-    _logicalCollection->_collection->_datafileStatistics.create(fid);
+    _datafileStatistics.create(fid);
   } catch (...) {
     EnsureErrorCode(TRI_ERROR_OUT_OF_MEMORY);
     return nullptr;
   }
 
-  TRI_datafile_t* datafile;
+  std::unique_ptr<TRI_datafile_t> datafile;
 
   if (_logicalCollection->isVolatile()) {
     // in-memory collection
-    datafile = TRI_CreateDatafile(StaticStrings::Empty, fid, journalSize, true);
+    datafile.reset(TRI_datafile_t::create(StaticStrings::Empty, fid, journalSize, true));
   } else {
     // construct a suitable filename (which may be temporary at the beginning)
     std::string jname;
@@ -423,7 +429,7 @@ TRI_datafile_t* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
       TRI_UnlinkFile(filename.c_str());
     }
 
-    datafile = TRI_CreateDatafile(filename, fid, journalSize, true);
+    datafile.reset(TRI_datafile_t::create(filename, fid, journalSize, true));
   }
 
   if (datafile == nullptr) {
@@ -448,8 +454,7 @@ TRI_datafile_t* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
 
   // create a collection header, still in the temporary file
   TRI_df_marker_t* position;
-  int res = TRI_ReserveElementDatafile(
-      datafile, sizeof(TRI_col_header_marker_t), &position, journalSize);
+  int res = datafile->reserveElement(sizeof(TRI_col_header_marker_t), &position, journalSize);
 
   TRI_IF_FAILURE("CreateJournalDocumentCollectionReserve1") {
     res = TRI_ERROR_DEBUG;
@@ -461,7 +466,7 @@ TRI_datafile_t* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
 
     // close the journal and remove it
     std::string temp(datafile->getName());
-    delete datafile;
+    datafile.reset();
     TRI_UnlinkFile(temp.c_str());
 
     EnsureErrorCode(res);
@@ -475,7 +480,7 @@ TRI_datafile_t* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
       sizeof(TRI_col_header_marker_t), static_cast<TRI_voc_tick_t>(fid));
   cm._cid = _logicalCollection->cid();
 
-  res = TRI_WriteCrcElementDatafile(datafile, position, &cm.base, false);
+  res = datafile->writeCrcElement(position, &cm.base, false);
 
   TRI_IF_FAILURE("CreateJournalDocumentCollectionReserve2") {
     res = TRI_ERROR_DEBUG;
@@ -488,7 +493,7 @@ TRI_datafile_t* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
 
     // close the datafile and remove it
     std::string temp(datafile->getName());
-    delete datafile;
+    datafile.reset();
     TRI_UnlinkFile(temp.c_str());
 
     EnsureErrorCode(res);
@@ -496,23 +501,23 @@ TRI_datafile_t* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
     return nullptr;
   }
 
-  TRI_ASSERT(fid == datafile->_fid);
+  TRI_ASSERT(fid == datafile->fid());
 
   // if a physical file, we can rename it from the temporary name to the correct
   // name
   if (!isCompactor && datafile->isPhysical()) {
     // and use the correct name
-    std::string jname("journal-" + std::to_string(datafile->_fid) + ".db");
+    std::string jname("journal-" + std::to_string(datafile->fid()) + ".db");
     std::string filename = arangodb::basics::FileUtils::buildFilename(_logicalCollection->path(), jname);
 
-    int res = TRI_RenameDatafile(datafile, filename.c_str());
+    int res = datafile->rename(filename);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG(ERR) << "failed to rename journal '" << datafile->getName()
                << "' to '" << filename << "': " << TRI_errno_string(res);
 
       std::string temp(datafile->getName());
-      delete datafile;
+      datafile.reset();
       TRI_UnlinkFile(temp.c_str());
 
       EnsureErrorCode(res);
@@ -524,7 +529,7 @@ TRI_datafile_t* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
                << "' to '" << filename << "'";
   }
 
-  return datafile;
+  return datafile.release();
 }
 
 /// @brief remove a compactor file from the list of compactors
@@ -578,7 +583,7 @@ bool MMFilesCollection::iterateDatafilesVector(std::vector<TRI_datafile_t*> cons
     }
 
     if (datafile->isPhysical() && datafile->_isSealed) {
-      TRI_MMFileAdvise(datafile->_data, datafile->_maximalSize,
+      TRI_MMFileAdvise(datafile->_data, datafile->maximalSize(),
                        TRI_MADVISE_RANDOM);
     }
   }
@@ -592,7 +597,7 @@ bool MMFilesCollection::closeDatafiles(std::vector<TRI_datafile_t*> const& files
 
   for (auto const& datafile : files) {
     TRI_ASSERT(datafile != nullptr);
-    if (datafile->_state == TRI_DF_STATE_CLOSED) {
+    if (datafile->state() == TRI_DF_STATE_CLOSED) {
       continue;
     }
     
@@ -607,6 +612,21 @@ bool MMFilesCollection::closeDatafiles(std::vector<TRI_datafile_t*> const& files
 }
   
 void MMFilesCollection::figures(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
+  // add datafile statistics
+  DatafileStatisticsContainer dfi = _datafileStatistics.all();
+
+  builder->add("alive", VPackValue(VPackValueType::Object));
+  builder->add("count", VPackValue(dfi.numberAlive));
+  builder->add("size", VPackValue(dfi.sizeAlive));
+  builder->close(); // alive
+  
+  builder->add("dead", VPackValue(VPackValueType::Object));
+  builder->add("count", VPackValue(dfi.numberDead));
+  builder->add("size", VPackValue(dfi.sizeDead));
+  builder->add("deletion", VPackValue(dfi.numberDeletions));
+  builder->close(); // dead
+
+  // add file statistics
   READ_LOCKER(readLocker, _filesLock); 
   
   size_t sizeDatafiles = 0;
@@ -645,7 +665,7 @@ std::vector<MMFilesCollection::DatafileDescription> MMFilesCollection::datafiles
 
   auto apply = [&dataMin, &dataMax, &result](TRI_datafile_t const* datafile, bool isJournal) {
     DatafileDescription entry = {datafile, datafile->_dataMin, datafile->_dataMax, datafile->_tickMax, isJournal};
-    LOG(TRACE) << "checking datafile " << datafile->_fid << " with data range " << datafile->_dataMin << " - " << datafile->_dataMax << ", tick max: " << datafile->_tickMax;
+    LOG(TRACE) << "checking datafile " << datafile->fid() << " with data range " << datafile->_dataMin << " - " << datafile->_dataMax << ", tick max: " << datafile->_tickMax;
 
     if (datafile->_dataMin == 0 || datafile->_dataMax == 0) {
       // datafile doesn't have any data

@@ -1319,7 +1319,20 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
     return TRI_ERROR_NO_ERROR;
   }
 
-  col = _vocbase->createCollection(slice, cid, true);
+  int res = TRI_ERROR_NO_ERROR;
+  try {
+    col = _vocbase->createCollection(slice, cid, true);
+  } catch (basics::Exception const& ex) {
+    res = ex.code();
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  TRI_ASSERT(col != nullptr);
 
   /* Temporary ASSERTS to prove correctness of new constructor */
   TRI_ASSERT(col->doCompact() ==
@@ -1354,9 +1367,6 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
     TRI_ASSERT(col->planId() == 0);
   }
 
-  if (col == nullptr) {
-    return TRI_errno();
-  }
 
   if (dst != nullptr) {
     *dst = col;

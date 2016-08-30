@@ -37,7 +37,7 @@
 #include "Cluster/ServerState.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/FulltextIndex.h"
-#include "Indexes/GeoIndex2.h"
+#include "Indexes/GeoIndex.h"
 #include "Indexes/HashIndex.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Indexes/RocksDBIndex.h"
@@ -216,8 +216,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _numberDocuments(0),
       _collection(nullptr),
       _lock() {
-  createPhysical();
-      
   auto database = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
   _waitForSync = database->waitForSync();
   _journalSize = static_cast<TRI_voc_size_t>(database->maximalJournalSize());
@@ -227,18 +225,18 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
     slice = VPackSlice(keyOpts->data());
   }
   
-  std::unique_ptr<KeyGenerator> keyGenerator(KeyGenerator::factory(slice));
-
-  if (keyGenerator == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR);
-  }
-
-  _keyGenerator.reset(keyGenerator.release());
-
   // TODO Only DBServer? Is this correct?
   if (ServerState::instance()->isDBServer()) {
     _followers.reset(new FollowerInfo(this));
   }
+
+  _keyGenerator.reset(KeyGenerator::factory(slice));
+
+  if (_keyGenerator == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR);
+  }
+  
+  createPhysical();
 }
 
 /// @brief This the "copy" constructor used in the cluster
@@ -276,6 +274,9 @@ LogicalCollection::LogicalCollection(
       _numberDocuments(0),
       _collection(nullptr),
       _lock() {
+        
+  _keyGenerator.reset(KeyGenerator::factory(other->keyOptions()));
+  
   createPhysical();
 
   // TODO Only DBServer? Is this correct?
@@ -367,6 +368,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
     }
   }
   
+  _keyGenerator.reset(KeyGenerator::factory(info));
+  
   createPhysical();
 
   VPackSlice slice;
@@ -391,6 +394,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
 
 LogicalCollection::~LogicalCollection() {
   delete _physical;
+  delete _collection;
 }
 
 bool LogicalCollection::IsAllowedName(VPackSlice parameters) {
@@ -745,6 +749,8 @@ void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
   if (status == TRI_VOC_COL_STATUS_LOADED) {
     _internalVersion = 0;
   } else if (status == TRI_VOC_COL_STATUS_UNLOADED) {
+    // TODO: do we need to delete _collection here?
+    delete _collection;
     _collection = nullptr;
   }
 }
@@ -1019,7 +1025,7 @@ std::shared_ptr<Index> LogicalCollection::createIndex(Transaction* trx,
     }
     case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
     case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX: {
-      newIdx.reset(new arangodb::GeoIndex2(iid, this, info));
+      newIdx.reset(new arangodb::GeoIndex(iid, this, info));
       break;
     }
     case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
@@ -1115,7 +1121,7 @@ int LogicalCollection::restoreIndex(Transaction* trx, VPackSlice const& info,
     }
     case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
     case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX: {
-      newIdx = std::make_shared<arangodb::GeoIndex2>(iid, this, info);
+      newIdx = std::make_shared<arangodb::GeoIndex>(iid, this, info);
       break;
     }
     case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
@@ -3161,7 +3167,7 @@ void LogicalCollection::addIndexCoordinator(VPackSlice const& info) {
     }
     case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
     case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX: {
-      newIdx.reset(new arangodb::GeoIndex2(info));
+      newIdx.reset(new arangodb::GeoIndex(info));
       break;
     }
     case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {

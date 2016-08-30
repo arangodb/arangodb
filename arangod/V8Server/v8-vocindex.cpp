@@ -30,12 +30,8 @@
 #include "Cluster/ClusterMethods.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "Indexes/EdgeIndex.h"
-#include "Indexes/FulltextIndex.h"
-#include "Indexes/GeoIndex2.h"
-#include "Indexes/HashIndex.h"
 #include "Indexes/Index.h"
 #include "Indexes/PrimaryIndex.h"
-#include "Indexes/SkiplistIndex.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8/v8-conv.h"
@@ -1268,21 +1264,26 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
     return;
   }
 
-  TRI_voc_cid_t cid = 0;
-  arangodb::LogicalCollection const* collection =
-      vocbase->createCollection(infoSlice, cid, true);
+  try {
+    TRI_voc_cid_t cid = 0;
+    arangodb::LogicalCollection const* collection =
+        vocbase->createCollection(infoSlice, cid, true);
 
-  if (collection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), "cannot create collection");
+    TRI_ASSERT(collection != nullptr);
+
+    v8::Handle<v8::Value> result = WrapCollection(isolate, collection);
+    if (result.IsEmpty()) {
+      TRI_V8_THROW_EXCEPTION_MEMORY();
+    }
+
+    TRI_V8_RETURN(result);
+  } catch (basics::Exception const& ex) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot create collection");
   }
-
-  v8::Handle<v8::Value> result = WrapCollection(isolate, collection);
-
-  if (result.IsEmpty()) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
-
-  TRI_V8_RETURN(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

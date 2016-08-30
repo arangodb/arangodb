@@ -39,7 +39,6 @@
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/CompactionLocker.h"
 #include "VocBase/DatafileHelper.h"
-#include "VocBase/DatafileStatistics.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/collection.h"
 #include "Wal/Logfile.h"
@@ -669,7 +668,7 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
     // finally update all datafile statistics
     LOG_TOPIC(TRACE, Logger::COLLECTOR) << "updating datafile statistics for collection '"
                << collection->name() << "'";
-    updateDatafileStatistics(document, cache);
+    updateDatafileStatistics(collection, cache);
 
     document->_uncollectedLogfileEntries -= cache->totalOperationsCount;
     if (document->_uncollectedLogfileEntries < 0) {
@@ -931,11 +930,11 @@ int CollectorThread::queueOperations(arangodb::wal::Logfile* logfile,
 
 /// @brief update a collection's datafile information
 int CollectorThread::updateDatafileStatistics(
-    TRI_collection_t* document, CollectorCache* cache) {
+    LogicalCollection* collection, CollectorCache* cache) {
   // iterate over all datafile infos and update the collection's datafile stats
   for (auto it = cache->dfi.begin(); it != cache->dfi.end();
        /* no hoisting */) {
-    document->_datafileStatistics.update((*it).first, (*it).second);
+    collection->updateStats((*it).first, (*it).second);
 
     // flush the local datafile info so we don't update the statistics twice
     // with the same values

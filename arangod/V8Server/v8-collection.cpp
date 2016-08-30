@@ -1306,13 +1306,12 @@ static void JS_PropertiesVocbaseCol(
 
   TRI_GET_GLOBAL_STRING(KeyOptionsKey);
   try {
-    VPackSlice opts = collection->keyOptions();
-    if (opts.isNull()) {
-      result->Set(KeyOptionsKey, v8::Array::New(isolate));
-    } else {
-      result->Set(KeyOptionsKey,
-                  TRI_VPackToV8(isolate, collection->keyOptions())->ToObject());
-    }
+    VPackBuilder optionsBuilder;
+    optionsBuilder.openObject();
+    collection->keyGenerator()->toVelocyPack(optionsBuilder);
+    optionsBuilder.close();
+    result->Set(KeyOptionsKey,
+                TRI_VPackToV8(isolate, optionsBuilder.slice())->ToObject());
   } catch (...) {
     // Could not build the VPack
     result->Set(KeyOptionsKey, v8::Array::New(isolate));
@@ -2328,7 +2327,7 @@ static void JS_TruncateDatafileVocbaseCol(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
   }
 
-  int res = TRI_TruncateDatafile(path, (TRI_voc_size_t)size);
+  int res = TRI_datafile_t::truncate(path, static_cast<TRI_voc_size_t>(size));
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot truncate datafile");
@@ -2368,7 +2367,7 @@ static void JS_TryRepairDatafileVocbaseCol(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
   }
 
-  bool result = TRI_TryRepairDatafile(path.c_str());
+  bool result = TRI_datafile_t::tryRepair(path);
 
   if (result) {
     TRI_V8_RETURN_TRUE();
@@ -2888,7 +2887,7 @@ static void JS_DatafileScanVocbaseCol(
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
     }
 
-    DatafileScan scan = TRI_ScanDatafile(path.c_str());
+    DatafileScan scan = TRI_datafile_t::scan(path);
 
     // build result
     result = v8::Object::New(isolate);

@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_INDEXES_GEO_INDEX2_H
-#define ARANGOD_INDEXES_GEO_INDEX2_H 1
+#ifndef ARANGOD_INDEXES_GEO_INDEX_H
+#define ARANGOD_INDEXES_GEO_INDEX_H 1
 
 #include "Basics/Common.h"
 #include "GeoIndex/GeoIndex.h"
@@ -35,22 +35,22 @@
 
 namespace arangodb {
 
-class GeoIndex2 final : public Index {
+class GeoIndex final : public Index {
  public:
-  GeoIndex2() = delete;
+  GeoIndex() = delete;
 
-  GeoIndex2(TRI_idx_iid_t, LogicalCollection*,
+  GeoIndex(TRI_idx_iid_t, LogicalCollection*,
             arangodb::velocypack::Slice const&);
 
-  GeoIndex2(TRI_idx_iid_t, arangodb::LogicalCollection*,
+  GeoIndex(TRI_idx_iid_t, arangodb::LogicalCollection*,
             std::vector<std::vector<arangodb::basics::AttributeName>> const&,
             std::vector<std::string> const&, bool);
 
-  GeoIndex2(TRI_idx_iid_t, arangodb::LogicalCollection*,
+  GeoIndex(TRI_idx_iid_t, arangodb::LogicalCollection*,
             std::vector<std::vector<arangodb::basics::AttributeName>> const&,
             std::vector<std::vector<std::string>> const&);
 
-  ~GeoIndex2();
+  ~GeoIndex();
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -148,7 +148,7 @@ class GeoIndex2 final : public Index {
   /// @brief the actual geo index
   //////////////////////////////////////////////////////////////////////////////
 
-  GeoIndex* _geoIndex;
+  GeoIdx* _geoIndex;
 };
 }
 

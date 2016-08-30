@@ -75,13 +75,8 @@ void TRI_vocbase_t::signalCleanup() {
 arangodb::LogicalCollection* TRI_vocbase_t::registerCollection(
     bool doLock, VPackSlice parameters) {
   // create a new proxy
-  std::unique_ptr<arangodb::LogicalCollection> collection;
-  try {
-    collection = std::make_unique<arangodb::LogicalCollection>(this, parameters);
-  } catch (arangodb::basics::Exception const& e) {
-    TRI_set_errno(e.code());
-    return nullptr;
-  }
+  std::unique_ptr<arangodb::LogicalCollection> collection =
+      std::make_unique<arangodb::LogicalCollection>(this, parameters);
   std::string name = collection->name();
   TRI_voc_cid_t cid = collection->cid();
   {
@@ -96,9 +91,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::registerCollection(
               << " has same name as already added collection "
               << _collectionsByName[name]->cid();
 
-      TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
-
-      return nullptr;
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
     }
 
     // check collection identifier
@@ -111,14 +104,12 @@ arangodb::LogicalCollection* TRI_vocbase_t::registerCollection(
         LOG(ERR) << "duplicate collection identifier " << collection->cid()
                 << " for name '" << name << "'";
 
-        TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
-
-        return nullptr;
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
       }
     }
     catch (...) {
       _collectionsByName.erase(name);
-      return nullptr;
+      throw;
     }
 
     TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
@@ -129,7 +120,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::registerCollection(
     catch (...) {
       _collectionsByName.erase(name);
       _collectionsById.erase(cid);
-      return nullptr;
+      throw;
     }
   }
 
@@ -305,22 +296,15 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
   auto it = _collectionsByName.find(name);
 
   if (it != _collectionsByName.end()) {
-    TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
-    return nullptr;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
   }
 
-  arangodb::LogicalCollection* collection = nullptr;
-  try {
-    collection = registerCollection(ConditionalWriteLocker::DoNotLock(), parameters);
-  } catch (...) {
-    // if an exception is caught, collection will be a nullptr
-  }
+  arangodb::LogicalCollection* collection =
+      registerCollection(ConditionalWriteLocker::DoNotLock(), parameters);
 
-  // FIXME
-  if (collection == nullptr) {
-    // TODO: does the collection directory need to be removed?
-    return nullptr;
-  }
+  // Register collection cannot return a nullptr.
+  // If it would return a nullptr it should have thrown instead
+  TRI_ASSERT(collection != nullptr);
 
   try {
     // FIXME Taken out of TRI_collection_t* create()
@@ -636,6 +620,7 @@ void TRI_vocbase_t::shutdown() {
   setState(TRI_vocbase_t::State::SHUTDOWN_COMPACTOR);
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  // shutdownDatabase() stops all threads 
   engine->shutdownDatabase(this);
 
   // this will signal the cleanup thread to do one last iteration
@@ -783,8 +768,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
     TRI_voc_cid_t cid, bool writeMarker) {
   // check that the name does not contain any strange characters
   if (!LogicalCollection::IsAllowedName(parameters)) {
-    TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    return nullptr;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
   
   arangodb::LogicalCollection* collection = nullptr;
@@ -794,15 +778,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
 
   {
     // note: cid may be modified by this function call
-    try {
-      collection = createCollectionWorker(parameters, cid, writeMarker, builder);
-    } catch (basics::Exception const& ex) {
-      TRI_set_errno(ex.code());
-      return nullptr;
-    } catch (...) {
-      TRI_set_errno(TRI_ERROR_INTERNAL);
-      return nullptr;
-    }
+    collection = createCollectionWorker(parameters, cid, writeMarker, builder);
   }
 
   if (!writeMarker) {

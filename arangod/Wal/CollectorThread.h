@@ -30,7 +30,6 @@
 #include "Basics/Thread.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/datafile.h"
-#include "VocBase/DatafileStatistics.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/voc-types.h"
 #include "Wal/CollectorCache.h"
@@ -104,7 +103,7 @@ class CollectorThread final : public Thread {
   int queueOperations(arangodb::wal::Logfile*, std::unique_ptr<CollectorCache>&);
 
   /// @brief update a collection's datafile information
-  int updateDatafileStatistics(TRI_collection_t*, CollectorCache*);
+  int updateDatafileStatistics(LogicalCollection*, CollectorCache*);
 
  private:
   /// @brief the logfile manager

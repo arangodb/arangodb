@@ -42,7 +42,7 @@
 #include "FulltextIndex/fulltext-index.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/FulltextIndex.h"
-#include "Indexes/GeoIndex2.h"
+#include "Indexes/GeoIndex.h"
 #include "Indexes/HashIndex.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Indexes/SkiplistIndex.h"
@@ -145,19 +145,6 @@ void TRI_collection_t::getCompactionStatus(char const*& reason,
 }
 
 void TRI_collection_t::figures(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
-  DatafileStatisticsContainer dfi = _datafileStatistics.all();
-
-  builder->add("alive", VPackValue(VPackValueType::Object));
-  builder->add("count", VPackValue(dfi.numberAlive));
-  builder->add("size", VPackValue(dfi.sizeAlive));
-  builder->close(); // alive
-  
-  builder->add("dead", VPackValue(VPackValueType::Object));
-  builder->add("count", VPackValue(dfi.numberDead));
-  builder->add("size", VPackValue(dfi.sizeDead));
-  builder->add("deletion", VPackValue(dfi.numberDeletions));
-  builder->close(); // dead
-
   builder->add("uncollectedLogfileEntries", VPackValue(_uncollectedLogfileEntries));
   builder->add("lastTick", VPackValue(_tickMax));
 
@@ -228,7 +215,6 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
                                              TRI_voc_size_t maximalSize,
                                              VPackSlice const& keyOptions)
     : _type(type),
-      _revision(0),
       _cid(0),
       _planId(0),
       _maximalSize(32 * 1024 * 1024), // just to have a default
@@ -274,7 +260,6 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
                                              VPackSlice const& options,
                                              bool forceIsSystem)
     : _type(type),
-      _revision(0),
       _cid(0),
       _planId(0),
       _maximalSize(32 * 1024 * 1024), // just to have a default
@@ -440,9 +425,6 @@ TRI_voc_cid_t VocbaseCollectionInfo::id() const { return _cid; }
 // cluster-wide collection identifier
 TRI_voc_cid_t VocbaseCollectionInfo::planId() const { return _planId; }
 
-// last revision id written
-TRI_voc_rid_t VocbaseCollectionInfo::revision() const { return _revision; }
-
 // maximal size of memory mapped file
 TRI_voc_size_t VocbaseCollectionInfo::maximalSize() const {
   return _maximalSize;
@@ -480,12 +462,6 @@ bool VocbaseCollectionInfo::waitForSync() const { return _waitForSync; }
 
 void VocbaseCollectionInfo::rename(std::string const& name) {
   TRI_CopyString(_name, name.c_str(), sizeof(_name) - 1);
-}
-
-void VocbaseCollectionInfo::setRevision(TRI_voc_rid_t rid, bool force) {
-  if (force || rid > _revision) {
-    _revision = rid;
-  }
 }
 
 void VocbaseCollectionInfo::setCollectionId(TRI_voc_cid_t cid) { _cid = cid; }
@@ -573,7 +549,6 @@ void VocbaseCollectionInfo::update(VocbaseCollectionInfo const& other) {
   _type = other.type();
   _cid = other.id();
   _planId = other.planId();
-  _revision = other.revision();
   _maximalSize = other.maximalSize();
   _initialCount = other.initialCount();
   _indexBuckets = other.indexBuckets();
@@ -691,9 +666,8 @@ static DatafileStatisticsContainer* FindDatafileStats(
 static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
                                             TRI_datafile_t* datafile,
                                             OpenIteratorState* state) {
-  auto const fid = datafile->_fid;
+  auto const fid = datafile->fid();
   LogicalCollection* collection = state->_collection;
-  TRI_collection_t* document = state->_document;
   arangodb::Transaction* trx = state->_trx;
 
   VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
@@ -705,7 +679,7 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
   collection->setRevision(revisionId, false);
   VPackValueLength length;
   char const* p = keySlice.getString(length);
-  document->_keyGenerator->track(p, length);
+  collection->keyGenerator()->track(p, length);
 
   ++state->_documents;
  
@@ -804,10 +778,10 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
 
   ++state->_deletions;
 
-  if (state->_fid != datafile->_fid) {
+  if (state->_fid != datafile->fid()) {
     // update the state
-    state->_fid = datafile->_fid;
-    state->_dfi = FindDatafileStats(state, datafile->_fid);
+    state->_fid = datafile->fid();
+    state->_dfi = FindDatafileStats(state, datafile->fid());
   }
 
   // no primary index lock required here because we are the only ones reading
@@ -878,7 +852,7 @@ static bool OpenIterator(TRI_df_marker_t const* marker, OpenIteratorState* data,
     if (type == TRI_DF_MARKER_HEADER) {
       // ensure there is a datafile info entry for each datafile of the
       // collection
-      FindDatafileStats(data, datafile->_fid);
+      FindDatafileStats(data, datafile->fid());
     }
 
     LOG(TRACE) << "skipping marker type " << TRI_NameMarkerDatafile(marker);
@@ -940,7 +914,7 @@ static int IterateMarkersCollection(arangodb::Transaction* trx,
   // update the real statistics for the collection
   try {
     for (auto& it : openState._stats) {
-      document->_datafileStatistics.create(it.first, *(it.second));
+      collection->createStats(it.first, *(it.second));
     }
   } catch (basics::Exception const& ex) {
     return ex.code();
