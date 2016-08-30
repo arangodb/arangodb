@@ -316,7 +316,9 @@ bool Supervision::updateSnapshot() {
   if (_agent == nullptr || this->isStopping()) {
     return false;
   }
-  _snapshot = _agent->readDB().get(_agencyPrefix);
+  try {
+    _snapshot = _agent->readDB().get(_agencyPrefix);
+  } catch (...) {}
   return true;
 }
 

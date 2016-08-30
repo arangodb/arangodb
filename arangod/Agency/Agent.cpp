@@ -559,6 +559,23 @@ bool Agent::lead() {
     guard.broadcast();
   }
   
+
+  // Agency configuration
+  auto agency = std::make_shared<Builder>();
+  agency->openArray();
+  agency->openArray();
+  agency->openObject();
+  agency->add(".agency", VPackValue(VPackValueType::Object));
+  agency->add("term", VPackValue(term()));
+  agency->add("id", VPackValue(id()));
+  agency->add("active", _config.activeToBuilder()->slice());
+  agency->add("pool", _config.poolToBuilder()->slice());
+  agency->close();  
+  agency->close();  
+  agency->close();
+  agency->close();
+  write(agency);
+
   // Wake up supervision
   _supervision.wakeUp();
 

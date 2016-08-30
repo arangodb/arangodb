@@ -130,6 +130,9 @@ RestHandler::status RestAgencyPrivHandler::execute() {
           return reportBadQuery();  // bad query
         }
       } else if (_request->suffix()[0] == "gossip") {
+        if (_request->requestType() != GeneralRequest::RequestType::POST) {
+          return reportMethodNotAllowed();
+        }
         arangodb::velocypack::Options options;
         query_t query = _request->toVelocyPackBuilderPtr(&options);
         try {
@@ -140,6 +143,11 @@ RestHandler::status RestAgencyPrivHandler::execute() {
         } catch (std::exception const& e) {
           return reportBadQuery(e.what());
         }
+      } else if (_request->suffix()[0] == "activeAgents") {
+        if (_request->requestType() != GeneralRequest::RequestType::GET) {
+          return reportMethodNotAllowed();
+        }
+        result.add("active", _agent->config().activeAgentsToBuilder()->slice());
       } else if (_request->suffix()[0] == "inform") {
         arangodb::velocypack::Options options;
         query_t query = _request->toVelocyPackBuilderPtr(&options);
