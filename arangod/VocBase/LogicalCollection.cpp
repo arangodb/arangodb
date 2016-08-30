@@ -1022,6 +1022,13 @@ std::shared_ptr<Index> LogicalCollection::createIndex(Transaction* trx,
     THROW_ARANGO_EXCEPTION(res);
   }
   
+  res = saveIndex(newIdx.get(), true);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  // Until here no harm is done if sth fails. The shared ptr will clean up. if left before
+
   addIndex(newIdx);
   created = true;
   return newIdx;
@@ -1128,7 +1135,6 @@ int LogicalCollection::restoreIndex(Transaction* trx, VPackSlice const& info,
   }
 
   addIndex(newIdx);
-
   idx = newIdx;
   return TRI_ERROR_NO_ERROR;
 }
