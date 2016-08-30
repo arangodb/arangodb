@@ -48,6 +48,8 @@ devel
 v3.0.6 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #2026
+
 * slightly better error diagnostics for AQL query compilation and replication
 
 * fixed issue #2018
