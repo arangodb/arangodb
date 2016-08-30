@@ -1352,25 +1352,22 @@ bool TRI_datafile_t::check(bool ignoreFailures) {
           LOG(INFO) << "raw marker data following:";
           char const* p = reinterpret_cast<char const*>(marker);
           char const* e = reinterpret_cast<char const*>(marker) + DatafileHelper::AlignedSize<size_t>(size);
+
+          if (e + 16 < end) {
+            // add some extra bytes for following data
+            e += 16;
+          }
+
           std::string line;
           std::string raw;
           size_t printed = 0;
           while (p < e) {
             // print offset
             line.append("0x");
-            static const uint64_t BitMasks[] = {
-              0xFF00000000000000ULL,
-              0x00FF000000000000ULL,
-              0x0000FF0000000000ULL,
-              0x000000FF00000000ULL,
-              0x00000000FF000000ULL,
-              0x0000000000FF0000ULL,
-              0x000000000000FF00ULL,
-              0x00000000000000FFULL
-            };
+            static const uint64_t Bits[] = { 56, 48, 40, 32, 24, 16, 8, 0 };
             uint64_t offset = static_cast<uint64_t>(static_cast<uintptr_t>(p - _data));
             for (uint64_t i = 0; i < 8; ++i) {
-              uint8_t c = static_cast<uint8_t>(offset & BitMasks[i]);
+              uint8_t c = static_cast<uint8_t>((static_cast<uint64_t>(offset) >> Bits[i]) && 0xFFULL);
               uint8_t n1 = c >> 4;
               uint8_t n2 = c & 0x0F;
 
