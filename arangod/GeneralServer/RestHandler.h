@@ -110,8 +110,8 @@ class RestHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   }
 
  protected:
-  // sets response Code
-  void setResponseCode(rest::ResponseCode);
+  // resets the request
+  void resetResponse(rest::ResponseCode);
 
  protected:
   // handler id

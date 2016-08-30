@@ -136,7 +136,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
   TRI_ASSERT(qResult.isArray());
 
   {
-    setResponseCode(rest::ResponseCode::CREATED);
+    resetResponse(rest::ResponseCode::CREATED);
     _response->setContentType(rest::ContentType::JSON);
     std::shared_ptr<VPackBuilder> extra = buildExtra(queryResult);
     VPackSlice opts = options->slice();
