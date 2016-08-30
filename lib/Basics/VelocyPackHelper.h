@@ -353,6 +353,8 @@ class VelocyPackHelper {
   static VPackBuilder sanitizeExternalsChecked(
       arangodb::velocypack::Slice const, bool checkExternals = true);
 
+  static uint64_t extractIdValue(VPackSlice const& slice);
+
   static uint8_t const KeyAttribute = 0x31;
   static uint8_t const RevAttribute = 0x32;
   static uint8_t const IdAttribute = 0x33;
