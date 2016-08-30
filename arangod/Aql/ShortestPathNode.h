@@ -38,6 +38,7 @@ namespace aql {
 /// @brief class ShortestPathNode
 class ShortestPathNode : public ExecutionNode {
   friend class ExecutionBlock;
+  friend class RedundantCalculationsReplacer;
   friend class ShortestPathBlock;
 
   /// @brief constructor with a vocbase and a collection name
