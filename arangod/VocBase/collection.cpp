@@ -324,11 +324,9 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
       TRI_CopyString(_name, cname.c_str(), sizeof(_name) - 1);
     }
 
-    std::string cidString =
-        arangodb::basics::VelocyPackHelper::getStringValue(options, "cid", "");
-    if (!cidString.empty()) {
-      // note: this may throw
-      _cid = std::stoull(cidString);
+    TRI_voc_cid_t cid = arangodb::basics::VelocyPackHelper::extractIdValue(options);
+    if (cid != 0) {
+      _cid = cid;
     }
 
     if (options.hasKey("isSystem")) {
@@ -363,13 +361,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
       _planId = planId;
     }
 
-    VPackSlice const cidSlice = options.get("id");
-    if (cidSlice.isNumber()) {
-      _cid = cidSlice.getNumericValue<TRI_voc_cid_t>();
-    } else if (cidSlice.isString()) {
-      std::string tmp = cidSlice.copyString();
-      _cid = static_cast<TRI_voc_cid_t>(StringUtils::uint64(tmp));
-    }
+    _cid = arangodb::basics::VelocyPackHelper::extractIdValue(options);
 
     if (options.hasKey("keyOptions")) {
       VPackSlice const slice = options.get("keyOptions");
@@ -473,12 +465,11 @@ std::shared_ptr<VPackBuilder> VocbaseCollectionInfo::toVelocyPack() const {
 void VocbaseCollectionInfo::toVelocyPack(VPackBuilder& builder) const {
   TRI_ASSERT(!builder.isClosed());
 
-  std::string cidString = std::to_string(id());
   std::string planIdString = std::to_string(planId());
 
   builder.add("version", VPackValue(version()));
   builder.add("type", VPackValue(type()));
-  builder.add("cid", VPackValue(cidString));
+  builder.add("id", VPackValue(std::to_string(id())));
 
   if (planId() > 0) {
     builder.add("planId", VPackValue(planIdString));

@@ -1256,23 +1256,6 @@ void RestReplicationHandler::handleCommandClusterInventory() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the collection id from VelocyPack TODO: MOVE
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_voc_cid_t RestReplicationHandler::getCid(VPackSlice const& slice) const {
-  if (!slice.isObject()) {
-    return 0;
-  }
-  VPackSlice const id = slice.get("cid");
-  if (id.isString()) {
-    return StringUtils::uint64(id.copyString());
-  } else if (id.isNumber()) {
-    return static_cast<TRI_voc_cid_t>(id.getNumericValue<uint64_t>());
-  }
-  return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a collection, based on the VelocyPack provided TODO: MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1297,7 +1280,7 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
   TRI_voc_cid_t cid = 0;
 
   if (reuseId) {
-    cid = getCid(slice);
+    cid = arangodb::basics::VelocyPackHelper::extractIdValue(slice);
 
     if (cid == 0) {
       return TRI_ERROR_HTTP_BAD_PARAMETER;
@@ -1557,17 +1540,13 @@ int RestReplicationHandler::processRestoreCollection(
   arangodb::LogicalCollection* col = nullptr;
 
   if (reuseId) {
-    VPackSlice const idString = parameters.get("cid");
+    TRI_voc_cid_t const cid = arangodb::basics::VelocyPackHelper::extractIdValue(parameters);
 
-    if (!idString.isString()) {
+    if (cid == 0) {
       errorMsg = "collection id is missing";
 
       return TRI_ERROR_HTTP_BAD_PARAMETER;
     }
-
-    std::string tmp = idString.copyString();
-
-    TRI_voc_cid_t cid = StringUtils::uint64(tmp.c_str(), tmp.length());
 
     // first look up the collection by the cid
     col = _vocbase->lookupCollection(cid);

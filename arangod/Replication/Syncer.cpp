@@ -309,20 +309,7 @@ int Syncer::sendRemoveBarrier() {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_voc_cid_t Syncer::getCid(VPackSlice const& slice) const {
-  if (!slice.isObject()) {
-    return 0;
-  }
-  VPackSlice id = slice.get("cid");
-
-  if (id.isString()) {
-    // string cid, e.g. "9988488"
-    return StringUtils::uint64(id.copyString());
-  } else if (id.isNumber()) {
-    // numeric cid, e.g. 9988488
-    return id.getNumericValue<TRI_voc_cid_t>();
-  }
-
-  return 0;
+  return VelocyPackHelper::extractIdValue(slice);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

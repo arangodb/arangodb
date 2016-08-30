@@ -1679,9 +1679,9 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
   std::string const masterName =
       VelocyPackHelper::getStringValue(parameters, "name", "");
 
-  VPackSlice const masterId = parameters.get("cid");
+  TRI_voc_cid_t const cid = VelocyPackHelper::extractIdValue(parameters);
 
-  if (!masterId.isString()) {
+  if (cid == 0) {
     errorMsg = "collection id is missing in response";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -1698,7 +1698,6 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
   std::string const typeString =
       (type.getNumber<int>() == 3 ? "edge" : "document");
 
-  TRI_voc_cid_t const cid = StringUtils::uint64(masterId.copyString());
   std::string const collectionMsg = "collection '" + masterName + "', type " +
                                     typeString + ", id " +
                                     StringUtils::itoa(cid);

@@ -126,21 +126,13 @@ static TRI_voc_cid_t ReadCid(VPackSlice info) {
     // ERROR CASE
     return 0;
   }
-  auto value = info.get("cid");
-  if (value.isNone()) {
-    // Compatibility. The pre 3.1 agency did store 'id' instead of 'cid'.
-    value = info.get("id");
-  }
 
-  if (value.isNumber()) {
-    return value.getNumericValue<TRI_voc_cid_t>();
-  }
+  TRI_voc_cid_t cid = Helper::extractIdValue(info);
 
-  if (value.isString()) {
-    return basics::StringUtils::uint64(value.copyString());
+  if (cid == 0) {
+    cid = TRI_NewTickServer();
   }
-
-  return TRI_NewTickServer();
+  return cid;
 }
 
 static std::string const ReadStringValue(VPackSlice info,
@@ -759,7 +751,7 @@ void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
 
 void LogicalCollection::toVelocyPack(VPackBuilder& result) const {
   result.openObject();
-  result.add("id", VPackValue(_cid));
+  result.add("id", VPackValue(std::to_string(_cid)));
   result.add("name", VPackValue(_name));
   result.add("status", VPackValue(_status));
   result.add("deleted", VPackValue(_isDeleted));
@@ -1035,14 +1027,14 @@ std::shared_ptr<Index> LogicalCollection::createIndex(Transaction* trx,
   value = info.get("id");
   if (value.isString()) {
     iid = basics::StringUtils::uint64(value.copyString());
-  } 
+  } else if (value.isNumber()) { 
+    iid = Helper::getNumericValue<TRI_idx_iid_t>(info, "id", 0);
+  }
+
   if (iid == 0) {
     iid = arangodb::Index::generateId();
   }
   
-  Helper::getNumericValue<TRI_idx_iid_t>(
-      info, "id", arangodb::Index::generateId());
-
   switch (type) {
     case arangodb::Index::TRI_IDX_TYPE_UNKNOWN:
     case arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX:
@@ -1304,7 +1296,7 @@ bool LogicalCollection::dropIndex(TRI_idx_iid_t iid, bool writeMarker) {
     try {
       VPackBuilder markerBuilder;
       markerBuilder.openObject();
-      markerBuilder.add("id", VPackValue(iid));
+      markerBuilder.add("id", VPackValue(std::to_string(iid)));
       markerBuilder.close();
 
       arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_DROP_INDEX,

@@ -543,8 +543,7 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       return TRI_ERROR_INTERNAL;
     }
 
-    std::string const cid = arangodb::basics::VelocyPackHelper::getStringValue(
-        parameters, "cid", "");
+    uint64_t const cid = arangodb::basics::VelocyPackHelper::extractIdValue(parameters);
     std::string const name = arangodb::basics::VelocyPackHelper::getStringValue(
         parameters, "name", "");
     bool const deleted = arangodb::basics::VelocyPackHelper::getBooleanValue(
@@ -553,7 +552,7 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
         parameters, "type", 2);
     std::string const collectionType(type == 2 ? "document" : "edge");
 
-    if (cid == "" || name == "") {
+    if (cid == 0 || name == "") {
       errorMsg = "got malformed JSON response from server";
 
       return TRI_ERROR_INTERNAL;
@@ -643,7 +642,7 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       }
 
       extendBatch("");
-      int res = dumpCollection(fd, cid, name, maxTick, errorMsg);
+      int res = dumpCollection(fd, std::to_string(cid), name, maxTick, errorMsg);
 
       TRI_CLOSE(fd);
 
@@ -826,14 +825,13 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
       return TRI_ERROR_INTERNAL;
     }
 
-    std::string const id = arangodb::basics::VelocyPackHelper::getStringValue(
-        parameters, "id", "");
+    uint64_t const cid = arangodb::basics::VelocyPackHelper::extractIdValue(parameters);
     std::string const name = arangodb::basics::VelocyPackHelper::getStringValue(
         parameters, "name", "");
     bool const deleted = arangodb::basics::VelocyPackHelper::getBooleanValue(
         parameters, "deleted", false);
 
-    if (id == "" || name == "") {
+    if (cid == 0 || name == "") {
       errorMsg = "got malformed JSON response from server";
 
       return TRI_ERROR_INTERNAL;
