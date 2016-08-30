@@ -139,7 +139,7 @@ void BootstrapFeature::start() {
   auto vocbase = DatabaseFeature::DATABASE->vocbase();
   
   auto ss = ServerState::instance();
-  if (!ss->isRunningInCluster() && !ss->isAgent()) {
+  if (!ss->isRunningInCluster()) {
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running server/server.js";
     V8DealerFeature::DEALER->loadJavascript(vocbase, "server/server.js");
   } else if (ss->isCoordinator()) {
