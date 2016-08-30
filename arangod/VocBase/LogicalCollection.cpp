@@ -380,9 +380,9 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
       _path = engine->createCollection(_vocbase, _cid, this);
     }
   }
-  
-  _keyGenerator.reset(KeyGenerator::factory(info));
-  
+
+  _keyGenerator.reset(KeyGenerator::factory(info.get("keyOptions")));
+
   createPhysical();
 
   // TODO Only DBServer? Is this correct?
