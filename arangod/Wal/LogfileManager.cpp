@@ -144,6 +144,12 @@ LogfileManager::~LogfileManager() {
     delete _slots;
     _slots = nullptr;
   }
+
+  for (auto& it : _logfiles) {
+    if (it.second != nullptr) {
+      delete it.second;
+    }
+  }
   
   Instance = nullptr;
 }
@@ -2027,7 +2033,7 @@ int LogfileManager::inspectLogfiles() {
   }
 #endif
 
-  for (auto it = _logfiles.begin(); it != _logfiles.end();) {
+  for (auto it = _logfiles.begin(); it != _logfiles.end(); /* no hoisting */) {
     Logfile::IdType const id = (*it).first;
     std::string const filename = logfileName(id);
 
@@ -2131,7 +2137,7 @@ int LogfileManager::createReserveLogfile(uint32_t size) {
     realsize = filesize();
   }
 
-  Logfile* logfile = Logfile::createNew(filename.c_str(), id, realsize);
+  std::unique_ptr<Logfile> logfile(Logfile::createNew(filename.c_str(), id, realsize));
 
   if (logfile == nullptr) {
     int res = TRI_errno();
@@ -2140,8 +2146,11 @@ int LogfileManager::createReserveLogfile(uint32_t size) {
     return res;
   }
 
-  WRITE_LOCKER(writeLocker, _logfilesLock);
-  _logfiles.emplace(id, logfile);
+  {
+    WRITE_LOCKER(writeLocker, _logfilesLock);
+    _logfiles.emplace(id, logfile.get());
+  }
+  logfile.release();
 
   return TRI_ERROR_NO_ERROR;
 }
