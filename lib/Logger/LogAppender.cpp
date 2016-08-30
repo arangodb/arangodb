@@ -165,13 +165,13 @@ std::shared_ptr<LogAppender> LogAppender::buildAppender(
 }
 
 void LogAppender::log(LogMessage* message) {
-  MUTEX_LOCKER(guard, _appendersLock);
-
   LogLevel level = message->_level;
   size_t topicId = message->_topicId;
   std::string const& m = message->_message;
   size_t offset = message->_offset;
   bool shownStd = false;
+
+  MUTEX_LOCKER(guard, _appendersLock);
 
   // output to appender
   auto output = [&level, &m, &offset, &shownStd](size_t n) -> bool {
@@ -215,7 +215,7 @@ void LogAppender::log(LogMessage* message) {
     writeStderr(level, m);
   }
 
-  for (auto logger : _loggers) {
+  for (auto const& logger : _loggers) {
     logger(message);
   }
 }
