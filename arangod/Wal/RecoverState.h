@@ -33,8 +33,6 @@
 #include "Wal/Logfile.h"
 #include "Wal/Marker.h"
 
-struct TRI_collection_t;
-
 namespace arangodb {
 class DatabaseFeature;
 

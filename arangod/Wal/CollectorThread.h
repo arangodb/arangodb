@@ -35,8 +35,6 @@
 #include "Wal/CollectorCache.h"
 #include "Wal/Logfile.h"
 
-struct TRI_collection_t;
-
 namespace arangodb {
 class LogicalCollection;
 

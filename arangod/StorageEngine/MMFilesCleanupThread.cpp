@@ -84,18 +84,13 @@ void MMFilesCleanupThread::run() {
       for (auto& collection : collections) {
         TRI_ASSERT(collection != nullptr);
 
-        TRI_collection_t* document = nullptr;
         {
           READ_LOCKER(readLocker, collection->_lock);
-          document = collection->_collection;
+          if (collection->_collection == nullptr) {
+            // collection currently not loaded
+            continue;
+          }
         }
-
-        if (document == nullptr) {
-          // collection currently not loaded
-          continue;
-        }
-
-        TRI_ASSERT(document != nullptr);
 
         // we're the only ones that can unload the collection, so using
         // the collection pointer outside the lock is ok
@@ -106,7 +101,7 @@ void MMFilesCleanupThread::run() {
           collection->cleanupIndexes();
         }
 
-        cleanupCollection(collection, document);
+        cleanupCollection(collection);
       }
     }, false);
 
@@ -149,18 +144,18 @@ void MMFilesCleanupThread::cleanupCursors(bool force) {
 }
 
 /// @brief checks all datafiles of a collection
-void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collection,
-                                             TRI_collection_t* document) {
+void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collection) {
   // unload operations can normally only be executed when a collection is fully
   // garbage collected
   bool unloadChecked = false;
 
   // but if we are in server shutdown, we can force unloading of collections
   bool isInShutdown = application_features::ApplicationServer::isStopping();
-
-  TRI_ASSERT(document != nullptr);
+  
+  TRI_collection_t* document = collection->_collection;
 
   // loop until done
+
   while (true) {
     auto ditches = document->ditches();
 

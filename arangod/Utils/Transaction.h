@@ -42,8 +42,6 @@ class Transaction;
 }
 #endif
 
-struct TRI_collection_t;
-
 namespace arangodb {
 
 namespace basics {

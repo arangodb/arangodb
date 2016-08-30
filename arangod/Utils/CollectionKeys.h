@@ -33,7 +33,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 struct TRI_df_marker_t;
-struct TRI_collection_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {

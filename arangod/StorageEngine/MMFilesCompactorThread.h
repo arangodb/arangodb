@@ -29,7 +29,6 @@
 #include "Basics/Thread.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_collection_t;
 struct TRI_datafile_t;
 struct TRI_df_marker_t;
 struct TRI_vocbase_t;
@@ -94,8 +93,7 @@ class MMFilesCompactorThread final : public Thread {
   uint64_t getNumberOfDocuments(LogicalCollection* collection);
 
   /// @brief write a copy of the marker into the datafile
-  int copyMarker(TRI_collection_t* document,
-                 TRI_datafile_t* compactor, TRI_df_marker_t const* marker,
+  int copyMarker(TRI_datafile_t* compactor, TRI_df_marker_t const* marker,
                  TRI_df_marker_t** result);
 
   /// @brief wait time between compaction runs when idle

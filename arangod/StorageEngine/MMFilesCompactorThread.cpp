@@ -347,7 +347,6 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
     TRI_voc_fid_t const targetFid = context._compactor->fid();
 
     TRI_df_marker_type_t const type = marker->getType();
-    TRI_collection_t* document = collection->_collection;
 
     // new or updated document
     if (type == TRI_DF_MARKER_VPACK_DOCUMENT) {
@@ -372,7 +371,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
       // write to compactor files
       TRI_df_marker_t* result;
-      int res = copyMarker(document, context._compactor, marker, &result);
+      int res = copyMarker(context._compactor, marker, &result);
 
       if (res != TRI_ERROR_NO_ERROR) {
         // TODO: dont fail but recover from this state
@@ -400,7 +399,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       if (context._keepDeletions) {
         // write to compactor files
         TRI_df_marker_t* result;
-        int res = copyMarker(document, context._compactor, marker, &result);
+        int res = copyMarker(context._compactor, marker, &result);
 
         if (res != TRI_ERROR_NO_ERROR) {
           // TODO: dont fail but recover from this state
@@ -970,8 +969,7 @@ uint64_t MMFilesCompactorThread::getNumberOfDocuments(LogicalCollection* collect
 }
 
 /// @brief write a copy of the marker into the datafile
-int MMFilesCompactorThread::copyMarker(TRI_collection_t* document,
-                                       TRI_datafile_t* compactor, TRI_df_marker_t const* marker,
+int MMFilesCompactorThread::copyMarker(TRI_datafile_t* compactor, TRI_df_marker_t const* marker,
                                        TRI_df_marker_t** result) {
   int res = compactor->reserveElement(marker->getSize(), result, 0);
 

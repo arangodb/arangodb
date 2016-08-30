@@ -1227,30 +1227,18 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
   for (auto const& it : VPackArrayIterator(slice)) {
     // we found a collection that is still active
     // FIXME Check if it is correct to free the collection here
-    std::unique_ptr<arangodb::LogicalCollection> c;
-
     TRI_ASSERT(!it.get("cid").isNone());
-    try {
-      c.reset(StorageEngine::registerCollection(ConditionalWriteLocker::DoLock(),
-                                            vocbase.get(), it));
-    } catch (...) {
-      // if we caught an exception, c is still a nullptr
-    }
+    arangodb::LogicalCollection* collection = StorageEngine::registerCollection(ConditionalWriteLocker::DoLock(), vocbase.get(), it);
 
-    if (c == nullptr) {
-      LOG(ERR) << "failed to add document collection '" << it.get("name").copyString() << "'";
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
-    }
-
-    registerCollectionPath(vocbase->id(), c->cid(), c->path());
+    registerCollectionPath(vocbase->id(), collection->cid(), collection->path());
 
     if (!wasCleanShutdown) {
       // iterating markers may be time-consuming. we'll only do it if
       // we have to
-      findMaxTickInJournals(c->path());
+      findMaxTickInJournals(collection->path());
     }
 
-    LOG(DEBUG) << "added document collection '" << c->name() << "'";
+    LOG(DEBUG) << "added document collection '" << collection->name() << "'";
   }
 
   // start cleanup thread
