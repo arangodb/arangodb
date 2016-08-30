@@ -11,6 +11,7 @@ cd ${DIR}/..
     --msvc \
     --buildDir /cygdrive/c/b/y/ \
     --package NSIS \
-    --targetDir /var/tmp/ 
+    --targetDir /var/tmp/ \
+    $@
 
 cd ${DIR}/..
