@@ -143,15 +143,10 @@ class VocbaseCollectionInfo {
   // If true waits for mysnc
   bool waitForSync() const;
 
-  // Changes the name. Should only be called by TRI_collection_t::rename()
-  // Use with caution!
-  void rename(std::string const&);
-
   void setCollectionId(TRI_voc_cid_t);
 
   void setPlanId(TRI_voc_cid_t);
 
-  void updateCount(size_t);
 
 
   void setDeleted(bool);
@@ -222,9 +217,6 @@ struct TRI_collection_t {
   arangodb::Ditches* ditches() { return &_ditches; }
   
   void setPath(std::string const& path) { _path = path; }
-
-  /// @brief renames a collection
-  int rename(std::string const& name);
 
  private:
   /// @brief creates the initial indexes for the collection

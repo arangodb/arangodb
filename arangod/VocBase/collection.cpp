@@ -460,13 +460,7 @@ bool VocbaseCollectionInfo::isVolatile() const { return _isVolatile; }
 // If true waits for mysnc
 bool VocbaseCollectionInfo::waitForSync() const { return _waitForSync; }
 
-void VocbaseCollectionInfo::rename(std::string const& name) {
-  TRI_CopyString(_name, name.c_str(), sizeof(_name) - 1);
-}
-
 void VocbaseCollectionInfo::setCollectionId(TRI_voc_cid_t cid) { _cid = cid; }
-
-void VocbaseCollectionInfo::updateCount(size_t size) { _initialCount = size; }
 
 void VocbaseCollectionInfo::setPlanId(TRI_voc_cid_t planId) {
   _planId = planId;

@@ -1225,11 +1225,9 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
   TRI_ASSERT(slice.isArray());
 
   for (auto const& it : VPackArrayIterator(slice)) {
-    
     // we found a collection that is still active
     // FIXME Check if it is correct to free the collection here
     std::unique_ptr<arangodb::LogicalCollection> c;
-    std::string const directory = it.get("path").copyString();
 
     TRI_ASSERT(!it.get("cid").isNone());
     try {
