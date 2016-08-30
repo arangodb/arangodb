@@ -300,12 +300,15 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
       _isLocal(!ServerState::instance()->isCoordinator()),
       _isDeleted(ReadBooleanValue(info, "deleted", false)),
       _doCompact(ReadBooleanValue(info, "doCompact", true)),
-      _isSystem(ReadBooleanValue(info, "isSystem", false)),
+      _isSystem(IsSystemName(_name) &&
+                ReadBooleanValue(info, "isSystem", false)),
       _isVolatile(ReadBooleanValue(info, "isVolatile", false)),
       _waitForSync(ReadBooleanValue(info, "waitForSync", false)),
       _journalSize(ReadNumericValue<TRI_voc_size_t>(
-          info, "maximalSize", // Backwards compatibility. Agency uses journalSize. paramters.json uses maximalSize
-          ReadNumericValue<TRI_voc_size_t>(info, "journalSize", TRI_JOURNAL_DEFAULT_SIZE))),
+          info, "maximalSize",  // Backwards compatibility. Agency uses
+                                // journalSize. paramters.json uses maximalSize
+          ReadNumericValue<TRI_voc_size_t>(info, "journalSize",
+                                           TRI_JOURNAL_DEFAULT_SIZE))),
       _keyOptions(CopySliceValue(info, "keyOptions")),
       _indexBuckets(ReadNumericValue<uint32_t>(info, "indexBuckets", 1)),
       _replicationFactor(ReadNumericValue<int>(info, "replicationFactor", 1)),
@@ -380,9 +383,9 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
       }
     }
   }
-  
-  _keyGenerator.reset(KeyGenerator::factory(info));
-  
+
+  _keyGenerator.reset(KeyGenerator::factory(info.get("keyOptions")));
+
   createPhysical();
 
   // TODO Only DBServer? Is this correct?
