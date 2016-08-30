@@ -264,7 +264,7 @@ std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
     auto it = _vocbase->_collectionsById.find(cid);
 
     if (it != _vocbase->_collectionsById.end()) {
-      if ((*it).second->planId() == 0) {
+      if ((*it).second->planId() != (*it).second->cid()) {
         // DBserver local case
         name = (*it).second->name();
       } else {
