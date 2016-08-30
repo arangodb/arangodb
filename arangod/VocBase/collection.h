@@ -192,10 +192,6 @@ struct TRI_collection_t {
   TRI_vocbase_t* _vocbase;
   TRI_voc_tick_t _tickMax;
  
-  /// @brief a lock protecting the _info structure
-  arangodb::basics::ReadWriteLock _infoLock;
-  // arangodb::VocbaseCollectionInfo _info;
-
  private: 
   std::string _path;
 

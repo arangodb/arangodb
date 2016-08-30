@@ -1222,36 +1222,6 @@ static void JS_PropertiesVocbaseCol(
 
       VPackSlice const slice = builder.slice();
 
-      {
-        // only work under the lock
-        WRITE_LOCKER(writeLocker, document->_infoLock);
-
-        if (collection->isVolatile() &&
-            arangodb::basics::VelocyPackHelper::getBooleanValue(
-                slice, "waitForSync", collection->waitForSync())) {
-          // the combination of waitForSync and isVolatile makes no sense
-          TRI_V8_THROW_EXCEPTION_PARAMETER(
-              "volatile collections do not support the waitForSync option");
-        }
-
-        if (collection->isVolatile() !=
-            arangodb::basics::VelocyPackHelper::getBooleanValue(
-                slice, "isVolatile", collection->isVolatile())) {
-          TRI_V8_THROW_EXCEPTION_PARAMETER(
-              "isVolatile option cannot be changed at runtime");
-        }
-
-        uint32_t tmp =
-            arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
-                slice, "indexBuckets",
-                2 /*Just for validation, this default Value passes*/);
-        if (tmp == 0 || tmp > 1024) {
-          TRI_V8_THROW_EXCEPTION_PARAMETER(
-              "indexBuckets must be a two-power between 1 and 1024");
-        }
-
-      }  // Leave the scope and free the lock
-
       // try to write new parameter to file
       bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
       res = collection->update(slice, doSync);
