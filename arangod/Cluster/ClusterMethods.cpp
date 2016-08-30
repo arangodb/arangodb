@@ -123,6 +123,11 @@ static void mergeResults(
   resultBody->openArray();
   for (auto const& pair : reverseMapping) {
     VPackSlice arr = resultMap.find(pair.first)->second->slice();
+    if (arr.isObject() && arr.hasKey("error") && arr.get("error").isBoolean() && arr.get("error").getBoolean()) {
+      // an error occurred, now rethrow the error
+      int res = arr.get("errorNum").getNumericValue<int>();
+      THROW_ARANGO_EXCEPTION(res);
+    }
     resultBody->add(arr.at(pair.second));
   }
   resultBody->close();
@@ -736,6 +741,7 @@ int createDocumentOnCoordinator(
   bool useMultiple = slice.isArray();
 
   int res = TRI_ERROR_NO_ERROR;
+
   if (useMultiple) {
     VPackValueLength length = slice.length();
     for (VPackValueLength idx = 0; idx < length; ++idx) {
@@ -766,6 +772,7 @@ int createDocumentOnCoordinator(
   // Now prepare the requests:
   std::vector<ClusterCommRequest> requests;
   auto body = std::make_shared<std::string>();
+
   for (auto const& it : shardMap) {
     if (!useMultiple) {
       TRI_ASSERT(it.second.size() == 1);
@@ -801,7 +808,7 @@ int createDocumentOnCoordinator(
         "shard:" + it.first, arangodb::GeneralRequest::RequestType::POST,
         baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart, body);
   }
-
+  
   // Perform the requests
   size_t nrDone = 0;
   cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::REQUESTS);
