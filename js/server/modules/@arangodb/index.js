@@ -86,7 +86,7 @@ exports.plainServerVersion = function () {
     devel = version.match(/(.*)((alpha|beta|devel|rc)[0-9]*)$/);
 
     if (devel !== null) {
-      version = devel[1];
+      version = devel[1] + '0';;
     }
   }
 
