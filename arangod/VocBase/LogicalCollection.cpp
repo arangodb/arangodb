@@ -321,6 +321,12 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
       _numberDocuments(0),
       _collection(nullptr),
       _lock() {
+  if (_isVolatile && _waitForSync) {
+    // Illegal collection configuration
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "A collection cannot be volatile and waitForSync at the same time.");
+  }
   if (info.isObject()) {
     // Otherwise the cluster communication is broken.
     // We cannot store anything further.
@@ -372,20 +378,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
   
   createPhysical();
 
-  VPackSlice slice;
-  if (_keyOptions != nullptr) {
-    slice = VPackSlice(_keyOptions->data());
-  }
-  
-  std::unique_ptr<KeyGenerator> keyGenerator(KeyGenerator::factory(slice));
-
-  if (keyGenerator == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR);
-  }
-
-  _keyGenerator.reset(keyGenerator.release());
-
- 
   // TODO Only DBServer? Is this correct?
   if (ServerState::instance()->isDBServer()) {
     _followers.reset(new FollowerInfo(this));
