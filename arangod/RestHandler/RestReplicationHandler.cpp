@@ -1359,10 +1359,12 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
   } else if (planIdSlice.isString()) {
     std::string tmp = planIdSlice.copyString();
     planId = static_cast<TRI_voc_cid_t>(StringUtils::uint64(tmp));
+  } else if (planIdSlice.isNone()) {
+    // There is no plan ID it has to be equal to collection id
+    planId = col->cid();
   }
 
   TRI_ASSERT(col->planId() == planId);
-
 
   if (dst != nullptr) {
     *dst = col;
