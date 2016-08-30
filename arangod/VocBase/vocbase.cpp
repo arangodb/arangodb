@@ -84,7 +84,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::registerCollection(
 
     // check name
     auto it = _collectionsByName.emplace(name, collection.get());
-
+        
     if (!it.second) {
       LOG(ERR) << "duplicate entry for collection name '" << name << "'";
       LOG(ERR) << "collection id " << cid
@@ -990,7 +990,7 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     auto it2 =
 #endif
-        _collectionsByName.emplace(newName, collection);
+    _collectionsByName.emplace(newName, collection);
     TRI_ASSERT(it2.second);
 
     _collectionsByName.erase(oldName);

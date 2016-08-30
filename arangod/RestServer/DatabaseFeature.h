@@ -35,7 +35,6 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class DatabaseManagerThread;
 
 namespace aql {
 class QueryRegistry;

@@ -52,9 +52,21 @@ void StatisticsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
 void StatisticsFeature::start() {
   STATISTICS = this;
   TRI_InitializeStatistics();
+  
+  _statisticsThread.reset(new StatisticsThread);
+  if (!_statisticsThread->start()) {
+    LOG(FATAL) << "could not start statistics thread";
+    FATAL_ERROR_EXIT();
+  }
 }
 
 void StatisticsFeature::unprepare() {
-  TRI_ShutdownStatistics();
+  if (_statisticsThread != nullptr) {
+    _statisticsThread->beginShutdown();
+    while (_statisticsThread->isRunning()) {
+      usleep(10000);
+    }
+  }
+
   STATISTICS = nullptr;
 }

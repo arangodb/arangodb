@@ -609,7 +609,7 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
                 continue;
               } else {
                 std::string tmp = f.copyString();
-                if (!TRI_EqualString(tmp.c_str(), shardKeys[i].c_str())) {
+                if (tmp != shardKeys[i]) {
                   res = TRI_ERROR_CLUSTER_UNSUPPORTED;
                 }
               }

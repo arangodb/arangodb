@@ -28,7 +28,6 @@
 #include "Logger/Logger.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/threads.h"
 #include "Statistics/StatisticsFeature.h"
 
 using namespace arangodb;
@@ -324,29 +323,13 @@ TRI_server_statistics_t TRI_GetServerStatistics() {
   return server;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown flag
-////////////////////////////////////////////////////////////////////////////////
-
-static std::atomic<bool> Shutdown;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief thread used for statistics
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_thread_t StatisticsThread;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks for new statistics and process them
-////////////////////////////////////////////////////////////////////////////////
-
-static void StatisticsQueueWorker(void* data) {
+void StatisticsThread::run() {
   uint64_t sleepTime = 100 * 1000;
   uint64_t const MaxSleepTime = 250 * 1000;
   int nothingHappened = 0;
 
-  while (!Shutdown.load(std::memory_order_relaxed) &&
-         StatisticsFeature::enabled()) {
+  while (!isStopping() && StatisticsFeature::enabled()) {
     size_t count = ProcessAllRequestStatistics();
 
     if (count == 0) {
@@ -514,10 +497,7 @@ StatisticsDistribution* TRI_BytesReceivedDistributionStatistics;
 
 TRI_server_statistics_t TRI_ServerStatistics;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief module init function
-////////////////////////////////////////////////////////////////////////////////
-
 void TRI_InitializeStatistics() {
   TRI_ServerStatistics._startTime = TRI_microtime();
 
@@ -585,22 +565,5 @@ void TRI_InitializeStatistics() {
     ConnectionFreeList.push(entry);
 #endif
   }
-
-  // .............................................................................
-  // use a separate thread for statistics
-  // .............................................................................
-
-  Shutdown = false;
-  TRI_StartThread(&StatisticsThread, nullptr, "Statistics",
-                  StatisticsQueueWorker, 0);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shut down statistics
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_ShutdownStatistics(void) {
-  Shutdown = true;
-  int res TRI_UNUSED = TRI_JoinThread(&StatisticsThread);
-  TRI_ASSERT(res == 0);
-}

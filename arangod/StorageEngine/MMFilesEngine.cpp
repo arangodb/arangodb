@@ -616,7 +616,7 @@ std::string MMFilesEngine::createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_
   }
 
   if (!TRI_IsDirectory(path.c_str())) {
-    LOG(ERR) << "cannot create collection '" << path << "', path is not a directory";
+    LOG(ERR) << "cannot create collection '" << path << "', database path is not a directory";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATADIR_INVALID);
   }
 
@@ -1393,6 +1393,7 @@ VocbaseCollectionInfo MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase,
   VPackBuilder bx;
   bx.openObject();
   bx.add("isSystem", VPackValue(isSystemValue));
+  bx.add("path", VPackValue(path));
   bx.close();
   VPackSlice isSystem = bx.slice();
   VPackBuilder b2 = VPackCollection::merge(slice, isSystem, false);

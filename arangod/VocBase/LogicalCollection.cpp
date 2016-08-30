@@ -315,6 +315,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
       _vocbase(vocbase),
       _cleanupIndexes(0),
       _persistentIndexes(0),
+      _path(ReadStringValue(info, "path", "")),
       _physical(nullptr),
       _masterPointers(),
       _useSecondaryIndexes(true),
@@ -374,7 +375,9 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
       // If we are not in the coordinator we need a path
       // to the physical data.
       StorageEngine* engine = EngineSelectorFeature::ENGINE;
-      _path = engine->createCollection(_vocbase, _cid, this);
+      if (_path.empty()) { 
+        _path = engine->createCollection(_vocbase, _cid, this);
+      }
     }
   }
   
@@ -1072,8 +1075,13 @@ std::shared_ptr<Index> LogicalCollection::createIndex(Transaction* trx,
     }
   }
 
+  int res = fillIndex(trx, newIdx.get(), false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  
   addIndex(newIdx);
-  fillIndex(trx, newIdx.get(), false);
   created = true;
   return newIdx;
 }
@@ -2162,6 +2170,7 @@ int LogicalCollection::rollbackOperation(arangodb::Transaction* trx,
 int LogicalCollection::fillIndex(arangodb::Transaction* trx,
                                  arangodb::Index* idx,
                                  bool skipPersistent) {
+
   if (!useSecondaryIndexes()) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -2189,7 +2198,7 @@ int LogicalCollection::fillIndex(arangodb::Transaction* trx,
     return res;
   } catch (arangodb::basics::Exception const& ex) {
     return ex.code();
-  } catch (std::bad_alloc&) {
+  } catch (std::bad_alloc const&) {
     return TRI_ERROR_OUT_OF_MEMORY;
   } catch (...) {
     return TRI_ERROR_INTERNAL;

@@ -73,7 +73,7 @@ DatabaseFeature* DatabaseFeature::DATABASE = nullptr;
 DatabaseManagerThread::DatabaseManagerThread()
     : Thread("DatabaseManager") {}
 
-DatabaseManagerThread::~DatabaseManagerThread() {}
+DatabaseManagerThread::~DatabaseManagerThread() { shutdown(); }
 
 void DatabaseManagerThread::run() {
   auto databaseFeature = ApplicationServer::getFeature<DatabaseFeature>("Database");
@@ -1087,48 +1087,59 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
 
   auto oldLists = _databasesLists.load();
   auto newLists = new DatabasesLists(*oldLists);
-  // No try catch here, if we crash here because out of memory...
 
-  for (auto const& it : VPackArrayIterator(databases)) {
-    TRI_ASSERT(it.isObject());
-    
-    VPackSlice deleted = it.get("deleted");
-    if (deleted.isBoolean() && deleted.getBoolean()) {
-      // ignore deleted databases here
-      continue;
+  try {
+    for (auto const& it : VPackArrayIterator(databases)) {
+      TRI_ASSERT(it.isObject());
+      
+      VPackSlice deleted = it.get("deleted");
+      if (deleted.isBoolean() && deleted.getBoolean()) {
+        // ignore deleted databases here
+        continue;
+      }
+
+      std::string const databaseName = it.get("name").copyString();
+
+      // create app directory for database if it does not exist
+      res = createApplicationDirectory(databaseName, appPath);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        break;
+      }
+
+      // open the database and scan collections in it
+
+      // try to open this database
+      TRI_vocbase_t* vocbase = engine->openDatabase(it, _upgrade);
+      // we found a valid database
+      TRI_ASSERT(vocbase != nullptr);
+      
+      try {
+        vocbase->addReplicationApplier(TRI_CreateReplicationApplier(vocbase));
+      } catch (std::exception const& ex) {
+        LOG(FATAL) << "initializing replication applier for database '"
+                  << vocbase->name() << "' failed: " << ex.what();
+        FATAL_ERROR_EXIT();
+      }
+
+      if (databaseName == TRI_VOC_SYSTEM_DATABASE) {
+        // found the system database
+        TRI_ASSERT(_vocbase == nullptr);
+        _vocbase = vocbase;
+      }
+
+      newLists->_databases.insert(std::make_pair(vocbase->name(), vocbase));
     }
+  } catch (std::exception const& ex) {
+    delete newLists;
 
-    std::string const databaseName = it.get("name").copyString();
+    LOG(FATAL) << "cannot start database: " << ex.what();
+    FATAL_ERROR_EXIT();
+  } catch (...) {
+    delete newLists;
 
-    // create app directory for database if it does not exist
-    res = createApplicationDirectory(databaseName, appPath);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      break;
-    }
-
-    // open the database and scan collections in it
-
-    // try to open this database
-    TRI_vocbase_t* vocbase = engine->openDatabase(it, _upgrade);
-    // we found a valid database
-    TRI_ASSERT(vocbase != nullptr);
-    
-    try {
-      vocbase->addReplicationApplier(TRI_CreateReplicationApplier(vocbase));
-    } catch (std::exception const& ex) {
-      LOG(FATAL) << "initializing replication applier for database '"
-                 << vocbase->name() << "' failed: " << ex.what();
-      FATAL_ERROR_EXIT();
-    }
-
-    if (databaseName == TRI_VOC_SYSTEM_DATABASE) {
-      // found the system database
-      TRI_ASSERT(_vocbase == nullptr);
-      _vocbase = vocbase;
-    }
-
-    newLists->_databases.insert(std::make_pair(vocbase->name(), vocbase));
+    LOG(FATAL) << "cannot start database: unknown exception";
+    FATAL_ERROR_EXIT();
   }
 
   _databasesLists = newLists;
