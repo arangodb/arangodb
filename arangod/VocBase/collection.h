@@ -143,36 +143,9 @@ class VocbaseCollectionInfo {
   // If true waits for mysnc
   bool waitForSync() const;
 
-  void setCollectionId(TRI_voc_cid_t);
 
-  void setPlanId(TRI_voc_cid_t);
-
-
-
-  void setDeleted(bool);
 
   void clearKeyOptions();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief updates settings for this collection info.
-  ///        If the second parameter is false it will only
-  ///        update the values explicitly contained in the slice.
-  ///        If the second parameter is true and the third is a nullptr,
-  ///        it will use global default values for all missing options in the
-  ///        slice.
-  ///        If the third parameter is not nullptr and the second is true, it
-  ///        will
-  ///        use the defaults stored in the vocbase.
-  //////////////////////////////////////////////////////////////////////////////
-
-  void update(arangodb::velocypack::Slice const&, bool, TRI_vocbase_t const*);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief updates settings for this collection info with the content of the
-  /// other
-  //////////////////////////////////////////////////////////////////////////////
-
-  void update(VocbaseCollectionInfo const&);
 };
 
 }  // namespace arangodb
@@ -209,22 +182,12 @@ struct TRI_collection_t {
   // datafile management
   
   std::string const& path() const { return _path; }
-  std::string label() const;
 
   double lastCompaction() const { return _lastCompaction; }
   void lastCompaction(double value) { _lastCompaction = value; }
   
   arangodb::Ditches* ditches() { return &_ditches; }
   
-  void setPath(std::string const& path) { _path = path; }
-
- private:
-  /// @brief creates the initial indexes for the collection
-  int createInitialIndexes();
-
-  int deleteSecondaryIndexes(arangodb::Transaction*, TRI_doc_mptr_t const*,
-                             bool);
-
  public:
   TRI_vocbase_t* _vocbase;
   TRI_voc_tick_t _tickMax;
