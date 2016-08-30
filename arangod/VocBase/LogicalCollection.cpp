@@ -693,6 +693,7 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result) const {
   result.add("name", VPackValue(_name));
   result.add("status", VPackValue(_status));
   result.add("deleted", VPackValue(_isDeleted));
+  result.add("type", VPackValue(static_cast<int>(_type)));
   result.add("doCompact", VPackValue(_doCompact));
   result.add("isSystem", VPackValue(_isSystem));
   result.add("isVolatile", VPackValue(_isVolatile));
