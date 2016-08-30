@@ -749,7 +749,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
   return addDependency(previous, en);
 }
 
-AstNode const* ExecutionPlan::parseTraversalVertexNode(ExecutionNode* previous,
+AstNode const* ExecutionPlan::parseTraversalVertexNode(ExecutionNode*& previous,
                                                        AstNode const* vertex) {
   if (vertex->type == NODE_TYPE_OBJECT && vertex->isConstant()) {
     size_t n = vertex->numMembers();
@@ -767,6 +767,8 @@ AstNode const* ExecutionPlan::parseTraversalVertexNode(ExecutionNode* previous,
     // operand is some misc expression
     auto calc = createTemporaryCalculation(vertex, previous);
     vertex = _ast->createNodeReference(getOutVariable(calc));
+    // update previous so the caller has an updated value
+    previous = calc;
   }
 
   return vertex;
@@ -1960,6 +1962,7 @@ bool ExecutionPlan::isDeadSimple() const {
         nodeType == ExecutionNode::ENUMERATE_COLLECTION ||
         nodeType == ExecutionNode::ENUMERATE_LIST ||
         nodeType == ExecutionNode::TRAVERSAL ||
+        nodeType == ExecutionNode::SHORTEST_PATH ||
         nodeType == ExecutionNode::INDEX) {
       // these node types are not simple
       return false;
