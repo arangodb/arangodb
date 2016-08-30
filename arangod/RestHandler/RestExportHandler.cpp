@@ -261,8 +261,6 @@ void RestExportHandler::createCursor() {
       bool count = arangodb::basics::VelocyPackHelper::getBooleanValue(
           options, "count", false);
 
-      setResponseCode(rest::ResponseCode::CREATED);
-
       auto cursors = _vocbase->cursorRepository();
       TRI_ASSERT(cursors != nullptr);
 
@@ -270,6 +268,8 @@ void RestExportHandler::createCursor() {
       arangodb::ExportCursor* cursor = cursors->createFromExport(
           collectionExport.get(), batchSize, ttl, count);
       collectionExport.release();
+      
+      setResponseCode(rest::ResponseCode::CREATED);
 
       try {
         VPackBuffer<uint8_t> buffer;
@@ -330,13 +330,6 @@ void RestExportHandler::modifyCursor() {
   try {
     setResponseCode(rest::ResponseCode::OK);
 
-    // TODO this needs to be generalized
-    auto* response = dynamic_cast<HttpResponse*>(_response.get());
-
-    if (response == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-    }
-
     VPackBuffer<uint8_t> buffer;
     VPackBuilder builder(buffer);
     builder.openObject();
@@ -346,9 +339,7 @@ void RestExportHandler::modifyCursor() {
     builder.close();
 
     _response->setContentType(rest::ContentType::JSON);
-    generateResult(rest::ResponseCode::CREATED, builder.slice());
-
-    response->setContentType(rest::ContentType::JSON);
+    generateResult(rest::ResponseCode::OK, builder.slice());
 
     cursors->release(cursor);
   } catch (arangodb::basics::Exception const& ex) {

@@ -114,6 +114,11 @@ void VelocyPackCursor::dump(VPackBuilder& builder) {
     } else if (num >= 10000) {
       num = 10000;
     }
+    // reserve an arbitrary number of bytes for the result to save
+    // some reallocs
+    // (not accurate, but the actual size is unknown anyway)
+    builder.buffer()->reserve(num * 32);
+
     VPackOptions const* oldOptions = builder.options;
 
     builder.options = _result.context->getVPackOptions();

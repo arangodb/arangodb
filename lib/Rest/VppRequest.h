@@ -52,7 +52,7 @@ struct Options;
 
 using rest::VppInputMessage;
 
-class VppRequest : public GeneralRequest {
+class VppRequest final : public GeneralRequest {
   friend class rest::VppCommTask;
   // friend class rest::VppsCommTask;
   friend class rest::GeneralCommTask;
