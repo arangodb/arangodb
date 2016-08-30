@@ -476,7 +476,7 @@ bool config_t::merge(VPackSlice const& conf) {
   ss << "Min RAFT interval: ";
   if (_minPing == 0) { // Command line beats persistence
     if (conf.hasKey(minPingStr)) {
-      _minPing = conf.get(minPingStr).getNumericValue<double>();
+      _minPing = conf.get(minPingStr).getDouble();
       ss << _minPing << " (persisted)";
     } else {
       _minPing = 0.5;
@@ -491,7 +491,11 @@ bool config_t::merge(VPackSlice const& conf) {
   ss << "Max RAFT interval: ";
   if (_maxPing == 0) { // Command line beats persistence
     if (conf.hasKey(maxPingStr)) {
+<<<<<<< HEAD
       _maxPing = conf.get(maxPingStr).getNumericValue<double>();
+=======
+      _maxPing = conf.get(maxPingStr).getDouble();
+>>>>>>> c53428ce893e1684701d8be23a894b221ad4969d
       ss << _maxPing << " (persisted)";
     } else {
       _maxPing = 2.5;
