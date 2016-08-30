@@ -122,9 +122,9 @@ arangodb::LogicalCollection* TRI_vocbase_t::registerCollection(
       _collectionsById.erase(cid);
       throw;
     }
+  
+    collection->setStatus(TRI_VOC_COL_STATUS_UNLOADED);
   }
-
-  collection->setStatus(TRI_VOC_COL_STATUS_UNLOADED);
 
   return collection.release();
 }
@@ -630,11 +630,13 @@ void TRI_vocbase_t::shutdown() {
   for (auto& collection : _deadCollections) {
     delete collection;
   }
+  _deadCollections.clear();
 
   // free collections
   for (auto& collection : _collections) {
     delete collection;
   }
+  _collections.clear();
 }
 
 /// @brief returns names of all known (document) collections
@@ -1140,6 +1142,11 @@ TRI_vocbase_t::~TRI_vocbase_t() {
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->shutdownDatabase(this);
+
+  // do a final cleanup of collections
+  for (auto& it : _collections) {
+    delete it;
+  }
 }
   
 std::string TRI_vocbase_t::path() const {

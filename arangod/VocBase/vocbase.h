@@ -37,7 +37,6 @@
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-aliases.h"
 
-struct TRI_collection_t;
 class TRI_replication_applier_t;
 
 namespace arangodb {
