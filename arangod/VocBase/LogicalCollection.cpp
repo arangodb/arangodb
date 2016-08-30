@@ -821,6 +821,31 @@ int LogicalCollection::update(VPackSlice const& slice, bool doSync) {
   // ... probably a few others missing here ...
 
   WRITE_LOCKER(writeLocker, _infoLock);
+
+  // some basic validation...      
+  if (isVolatile() &&
+    arangodb::basics::VelocyPackHelper::getBooleanValue(
+        slice, "waitForSync", waitForSync())) {
+    // the combination of waitForSync and isVolatile makes no sense
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+        "volatile collections do not support the waitForSync option");
+  }
+
+  if (isVolatile() != arangodb::basics::VelocyPackHelper::getBooleanValue(
+         slice, "isVolatile", isVolatile())) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+        "isVolatile option cannot be changed at runtime");
+  }
+
+  uint32_t tmp =
+      arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
+          slice, "indexBuckets", 2 /*Just for validation, this default Value passes*/);
+  if (tmp == 0 || tmp > 1024) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+       "indexBuckets must be a two-power between 1 and 1024");
+  }
+  // end of validation
+
   _doCompact = Helper::getBooleanValue(slice, "doCompact", _doCompact);
   _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
   if (slice.hasKey("journalSize")) {
