@@ -269,7 +269,7 @@ void RestExportHandler::createCursor() {
           collectionExport.get(), batchSize, ttl, count);
       collectionExport.release();
       
-      setResponseCode(rest::ResponseCode::CREATED);
+      resetResponse(rest::ResponseCode::CREATED);
 
       try {
         VPackBuffer<uint8_t> buffer;
@@ -328,7 +328,7 @@ void RestExportHandler::modifyCursor() {
   }
 
   try {
-    setResponseCode(rest::ResponseCode::OK);
+    resetResponse(rest::ResponseCode::OK);
 
     VPackBuffer<uint8_t> buffer;
     VPackBuilder builder(buffer);

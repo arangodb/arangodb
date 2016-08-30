@@ -53,7 +53,7 @@ void RestBaseHandler::handleError(Exception const& ex) {
 
 void RestBaseHandler::generateResult(rest::ResponseCode code,
                                      VPackSlice const& slice) {
-  setResponseCode(code);
+  resetResponse(code);
   VPackOptions options(VPackOptions::Defaults);
   options.escapeUnicode = true;
   writeResult(slice, options);
@@ -62,7 +62,7 @@ void RestBaseHandler::generateResult(rest::ResponseCode code,
 void RestBaseHandler::generateResult(rest::ResponseCode code,
                                      VPackSlice const& slice,
                                      VPackOptions const* options) {
-  setResponseCode(code);
+  resetResponse(code);
   VPackOptions tmpoptions(*options);
   tmpoptions.escapeUnicode = true;
   writeResult(slice, tmpoptions);
@@ -74,7 +74,7 @@ void RestBaseHandler::generateResult(rest::ResponseCode code,
 void RestBaseHandler::generateResult(
     rest::ResponseCode code, VPackSlice const& slice,
     std::shared_ptr<TransactionContext> context) {
-  setResponseCode(code);
+  resetResponse(code);
   writeResult(slice, *(context->getVPackOptionsForDump()));
 }
 
@@ -98,7 +98,7 @@ void RestBaseHandler::generateError(rest::ResponseCode code, int errorCode) {
 
 void RestBaseHandler::generateError(rest::ResponseCode code, int errorCode,
                                     std::string const& message) {
-  setResponseCode(code);
+  resetResponse(code);
 
   VPackBuilder builder;
   try {
