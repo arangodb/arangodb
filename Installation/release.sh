@@ -50,6 +50,11 @@ fi
 
 VERSION="$1"
 
+if echo ${VERSION} | grep -q -- '-'; then
+    echo "${VERSION} mustn't contain minuses! "
+    exit 1
+fi
+
 if git tag | grep -q "^v$VERSION$";  then
   echo "$0: version $VERSION already defined"
   exit 1
