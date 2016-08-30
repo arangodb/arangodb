@@ -1344,11 +1344,7 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
     planId = static_cast<TRI_voc_cid_t>(StringUtils::uint64(tmp));
   }
 
-  if (planId > 0) {
-    TRI_ASSERT(col->planId() == planId);
-  } else {
-    TRI_ASSERT(col->planId() == 0);
-  }
+  TRI_ASSERT(col->planId() == planId);
 
 
   if (dst != nullptr) {

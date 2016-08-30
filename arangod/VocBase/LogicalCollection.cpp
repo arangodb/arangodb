@@ -169,68 +169,6 @@ static int GetObjectLength(VPackSlice info, std::string const& name, int def) {
 
 }
 
-// @brief Constructor used in DBServer/SingleServer case.
-LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
-                                     TRI_col_type_e type, TRI_voc_cid_t cid,
-                                     std::string const& name,
-                                     TRI_voc_cid_t planId,
-                                     std::string const& path, 
-                                     std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const>& keyOpts,
-                                     bool isVolatile, bool isLocal)
-    : _internalVersion(0),
-      _cid(cid),
-      _planId(planId),
-      _type(type),
-      _name(name),
-      _status(TRI_VOC_COL_STATUS_CORRUPTED),
-      _isLocal(isLocal),
-      // THESE VALUES HAVE ARBITRARY VALUES. FIX THEM.
-      _isDeleted(false),
-      _doCompact(true),
-      _isSystem(LogicalCollection::IsSystemName(name)),
-      _isVolatile(isVolatile),
-      _waitForSync(false),
-      _journalSize(TRI_JOURNAL_DEFAULT_SIZE),
-      _keyOptions(keyOpts),
-      _indexBuckets(DatabaseFeature::DefaultIndexBuckets),
-      _replicationFactor(0),
-      _numberOfShards(1),
-      _allowUserKeys(true),
-      _shardIds(new ShardMap()),
-      _vocbase(vocbase),
-      // END OF ARBITRARY
-      _cleanupIndexes(0),
-      _persistentIndexes(0),
-      _path(path),
-      _physical(nullptr),
-      _masterPointers(),
-      _useSecondaryIndexes(true),
-      _numberDocuments(0),
-      _collection(nullptr),
-      _lock() {
-  auto database = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
-  _waitForSync = database->waitForSync();
-  _journalSize = static_cast<TRI_voc_size_t>(database->maximalJournalSize());
-
-  VPackSlice slice;
-  if (keyOpts != nullptr) {
-    slice = VPackSlice(keyOpts->data());
-  }
-  
-  // TODO Only DBServer? Is this correct?
-  if (ServerState::instance()->isDBServer()) {
-    _followers.reset(new FollowerInfo(this));
-  }
-
-  _keyGenerator.reset(KeyGenerator::factory(slice));
-
-  if (_keyGenerator == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR);
-  }
-  
-  createPhysical();
-}
-
 /// @brief This the "copy" constructor used in the cluster
 ///        it is required to create objects that survive plan
 ///        modifications and can be freed
