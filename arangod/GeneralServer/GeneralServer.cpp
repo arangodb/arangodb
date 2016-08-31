@@ -159,6 +159,9 @@ bool GeneralServer::handleRequestAsync(GeneralCommTask* task,
     if (res != TRI_ERROR_DISPATCHER_IS_STOPPING) {
       LOG(WARN) << "unable to add job to the job queue: "
                 << TRI_errno_string(res);
+    } else {
+      task->handleSimpleError(GeneralResponse::ResponseCode::SERVICE_UNAVAILABLE);
+      return true;
     }
     // todo send info to async work manager?
     return false;
@@ -193,6 +196,11 @@ bool GeneralServer::handleRequest(GeneralCommTask* task,
 
   // add the job to the dispatcher
   int res = DispatcherFeature::DISPATCHER->addJob(job, startThread);
+
+  if (res == TRI_ERROR_DISPATCHER_IS_STOPPING) {
+    task->handleSimpleError(GeneralResponse::ResponseCode::SERVICE_UNAVAILABLE);
+    return true;
+  }
 
   // job is in queue now
   return res == TRI_ERROR_NO_ERROR;

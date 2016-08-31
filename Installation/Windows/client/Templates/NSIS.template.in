@@ -1,4 +1,5 @@
 ; CPack install script designed for a nmake build
+; TODO !addplugindir  '@CPACK_PLUGIN_PATH@/AccessControl/Plugins'
 
 ;--------------------------------
 ; Include LogicLib for more readable code
@@ -484,13 +485,9 @@ FunctionEnd
 
 ;--------------------------------
 ;Pages
-  !define MUI_PAGE_CUSTOMFUNCTION_PRE skip_page
   !insertmacro MUI_PAGE_WELCOME
 
-  !define MUI_PAGE_CUSTOMFUNCTION_PRE skip_page
   !insertmacro MUI_PAGE_LICENSE "@CPACK_RESOURCE_FILE_LICENSE@"
-
-  Page custom InstallOptionsPage skip_page
 
   !define MUI_PAGE_CUSTOMFUNCTION_PRE default_installation_directory
   !define MUI_PAGE_CUSTOMFUNCTION_LEAVE check_installation_directory
@@ -709,7 +706,6 @@ displayAgain:
   StrCmp $PASSWORD $PASSWORD_AGAIN +3 0
     MessageBox MB_OK|MB_ICONSTOP "Passwords don't match, try again"
     Goto displayAgain
-  done:
     Pop ${TEMP1}
 
     Return  
@@ -725,20 +721,17 @@ FunctionEnd
 Function default_installation_directory
 ; Read variables which defines if arango should be installed as Service
 
-    !insertmacro MUI_INSTALLOPTIONS_READ $R2 "NSIS.InstallOptions.ini" "Field 2" "State"
-    !insertmacro MUI_INSTALLOPTIONS_READ $R3 "NSIS.InstallOptions.ini" "Field 3" "State"
-    !insertmacro MUI_INSTALLOPTIONS_READ $R4 "NSIS.InstallOptions.ini" "Field 4" "State"
+  !insertmacro MUI_INSTALLOPTIONS_READ $R2 "NSIS.InstallOptions.ini" "Field 2" "State"
+  !insertmacro MUI_INSTALLOPTIONS_READ $R3 "NSIS.InstallOptions.ini" "Field 3" "State"
+  !insertmacro MUI_INSTALLOPTIONS_READ $R4 "NSIS.InstallOptions.ini" "Field 4" "State"
 
-     ${If} $R3 == '1'
-       StrCpy $TRI_INSTALL_TYPE 'AllUsers'
-     ${EndIf}
-
-     ${If} $R4 == '1'
-       StrCpy $TRI_INSTALL_TYPE 'SingleUser'
-     ${EndIf}
-     Call read_options
+   ${If} $R3 == '1'
+     StrCpy $TRI_INSTALL_TYPE 'AllUsers'
    ${EndIf}
 
+   ${If} $R4 == '1'
+     StrCpy $TRI_INSTALL_TYPE 'SingleUser'
+   ${EndIf}
 
   ${Switch} $TRI_INSTALL_TYPE
     ${Case} 'SingleUser'
@@ -750,25 +743,25 @@ Function default_installation_directory
    Return
 FunctionEnd
 
-Function assign_proper_access_rigths
-    StrCpy $0 "0"
-    AccessControl::GrantOnFile \
-     "$INSTDIR" "(BU)" "GenericRead + GenericWrite + GenericExecute"
-    Pop $R0
-    ${If} $R0 == error
-      Pop $R0
-      StrCpy $0 "1"
-      DetailPrint `AccessControl error: $R0`
-      ; MessageBox MB_OK "target directory  $INSTDIR can not get cannot get correct access rigths"
-  ${EndIf}
-FunctionEnd
+; TODO Function assign_proper_access_rights
+; TODO     StrCpy $0 "0"
+; TODO     AccessControl::GrantOnFile \
+; TODO      "$INSTDIR" "(BU)" "GenericRead + GenericWrite + GenericExecute"
+; TODO     Pop $R0
+; TODO     ${If} $R0 == error
+; TODO       Pop $R0
+; TODO       StrCpy $0 "1"
+; TODO       DetailPrint `AccessControl error: $R0`
+; TODO       ; MessageBox MB_OK "target directory  $INSTDIR can not get cannot get correct access rigths"
+; TODO   ${EndIf}
+; TODO FunctionEnd
 
 Function is_writable
 ; is does not matter if we do some errors here
    ${If} $TRI_INSTALL_ALL_USERS == '1'
      CreateDirectory $INSTDIR
-     Call assign_proper_access_rigths
-    ${EndIf}
+     ; TODO Call assign_proper_access_rights
+     ${EndIf}
 FunctionEnd
 
 Function check_installation_directory

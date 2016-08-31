@@ -286,7 +286,7 @@ class ExecutionPlan {
   ExecutionNode* fromJson(arangodb::basics::Json const& Json);
 
   /// @brief create an vertex element for graph nodes
-  AstNode const* parseTraversalVertexNode(ExecutionNode*, AstNode const*);
+  AstNode const* parseTraversalVertexNode(ExecutionNode*&, AstNode const*);
 
  private:
   /// @brief map from node id to the actual node
