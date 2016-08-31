@@ -125,8 +125,16 @@ class GeneralResponse {
 
   // generates the response body, sets the content type; this might
   // throw an error
-  template <typename Payload>  // Payload needs to be of type: VPackSlice const&
+  void setPayload(VPackSlice&& slice, bool generateBody,
+                  VPackOptions const& options = VPackOptions::Options::Defaults,
+                  bool resolveExternals = true) {
+    _generateBody = generateBody;
+    auto tmp = std::move(slice);
+    addPayload(tmp, &options, resolveExternals);
+  }
+  // Payload needs to be of type: VPackSlice const&
   // or VPackBuffer<uint8_t>&&
+  template <typename Payload>
   void setPayload(Payload&& payload, bool generateBody,
                   VPackOptions const& options = VPackOptions::Options::Defaults,
                   bool resolveExternals = true) {
