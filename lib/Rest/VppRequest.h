@@ -52,7 +52,7 @@ struct Options;
 
 using rest::VppInputMessage;
 
-class VppRequest : public GeneralRequest {
+class VppRequest final : public GeneralRequest {
   friend class rest::VppCommTask;
   // friend class rest::VppsCommTask;
   friend class rest::GeneralCommTask;
@@ -66,7 +66,7 @@ class VppRequest : public GeneralRequest {
   ~VppRequest() {}
 
  public:
-  uint64_t messageId() override { return _messageId; }
+  uint64_t messageId() const override { return _messageId; }
   VPackSlice payload(arangodb::velocypack::Options const*) override;
 
   int64_t contentLength() const override {

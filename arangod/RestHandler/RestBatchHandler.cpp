@@ -92,7 +92,7 @@ RestHandler::status RestBatchHandler::execute() {
       _request->header(StaticStrings::Authorization);
 
   // create the response
-  setResponseCode(rest::ResponseCode::OK);
+  resetResponse(rest::ResponseCode::OK);
   _response->setContentType(_request->header(StaticStrings::ContentTypeHeader));
 
   // http required here

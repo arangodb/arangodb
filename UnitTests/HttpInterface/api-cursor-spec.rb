@@ -25,7 +25,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
         doc.parsed_response['code'].should eq(400)
-        doc.parsed_response['errorNum'].should eq(600)
+        doc.parsed_response['errorNum'].should eq(1502)
       end
 
       it "returns an error if collection is unknown" do

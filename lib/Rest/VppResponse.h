@@ -24,9 +24,9 @@
 #ifndef ARANGODB_REST_VPP_RESPONSE_H
 #define ARANGODB_REST_VPP_RESPONSE_H 1
 
-#include "Rest/VppMessage.h"
-#include "Rest/GeneralResponse.h"
 #include "Basics/StringBuffer.h"
+#include "Rest/GeneralResponse.h"
+#include "Rest/VppMessage.h"
 
 namespace arangodb {
 class RestBatchHandler;
@@ -49,7 +49,7 @@ class VppResponse : public GeneralResponse {
   static bool HIDE_PRODUCT_HEADER;
 
   // required by base
-  virtual uint64_t messageId() override { return _messageId; }
+  virtual uint64_t messageId() const override { return _messageId; }
   void reset(ResponseCode code) final;
   void setPayload(arangodb::velocypack::Slice const&, bool generateBody,
                   arangodb::velocypack::Options const&) final;
@@ -64,7 +64,6 @@ class VppResponse : public GeneralResponse {
   //_headers        - from Base
   std::shared_ptr<VPackBuffer<uint8_t>>
       _header;  // generated form _headers when prepared for network
-  VPackBuffer<uint8_t> _payload;
   uint64_t _messageId;
   bool _generateBody;  // this must be true if payload should be send
 };

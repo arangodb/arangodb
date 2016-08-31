@@ -29,13 +29,13 @@
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Meta/conversion.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackDumper.h"
 #include "Basics/tri-strings.h"
+#include "Meta/conversion.h"
 #include "Rest/GeneralRequest.h"
 
 using namespace arangodb;
@@ -47,7 +47,8 @@ HttpResponse::HttpResponse(ResponseCode code)
     : GeneralResponse(code),
       _isHeadResponse(false),
       _body(TRI_UNKNOWN_MEM_ZONE, false),
-      _bodySize(0) {
+      _bodySize(0),
+      _generateBody(false) {
   _contentType = ContentType::TEXT;
   _connectionType = rest::CONNECTION_KEEP_ALIVE;
   if (_body.c_str() == nullptr) {
@@ -299,19 +300,13 @@ void HttpResponse::writeHeader(StringBuffer* output) {
   // end of header, body to follow
 }
 
-void HttpResponse::setPayload(arangodb::velocypack::Slice const& slice,
-                              bool generateBody, VPackOptions const& options) {
-  if (_contentType != rest::ContentType::CUSTOM) {
-    // do not overwrite the content type set by the user!!!
-    //_contentType = contentType; //FIXME
-    //    _contentType =
-    //    meta::enumToEnum<rest::ContentType>(request->contentTypeResponse());
-  }
+void HttpResponse::addPayloadPostHook(VPackOptions const* options) {
+  VPackSlice slice(_vpackPayloads.front().data());
 
   switch (_contentType) {
     case rest::ContentType::VPACK: {
       size_t length = static_cast<size_t>(slice.byteSize());
-      if (generateBody) {
+      if (_generateBody) {
         _body.appendText(slice.startAs<const char>(), length);
       } else {
         headResponse(length);
@@ -320,9 +315,8 @@ void HttpResponse::setPayload(arangodb::velocypack::Slice const& slice,
     }
     default: {
       setContentType(rest::ContentType::JSON);
-
-      if (generateBody) {
-        arangodb::basics::VelocyPackDumper dumper(&_body, &options);
+      if (_generateBody) {
+        arangodb::basics::VelocyPackDumper dumper(&_body, options);
         dumper.dumpValue(slice);
       } else {
         // TODO can we optimize this?
@@ -333,11 +327,18 @@ void HttpResponse::setPayload(arangodb::velocypack::Slice const& slice,
         VPackStringBufferAdapter buffer(tmp.stringBuffer());
 
         // usual dumping -  but not to the response body
-        VPackDumper dumper(&buffer, &options);
+        VPackDumper dumper(&buffer, options);
         dumper.dump(slice);
 
         headResponse(tmp.length());
       }
     }
   }
+  //_vpackPayloads.clear();
+}
+
+void HttpResponse::setPayload(arangodb::velocypack::Slice const& slice,
+                              bool generateBody, VPackOptions const& options) {
+  _generateBody = generateBody;
+  addPayload(slice, &options, true);
 };

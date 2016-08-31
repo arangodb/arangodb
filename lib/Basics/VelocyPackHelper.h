@@ -29,9 +29,9 @@
 #include "Logger/Logger.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Options.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
@@ -350,8 +350,11 @@ class VelocyPackHelper {
                                 arangodb::velocypack::Builder&);
 
   static bool hasExternals(arangodb::velocypack::Slice const);
-  static VPackBuilder sanitizeExternalsChecked(
-      arangodb::velocypack::Slice const, bool checkExternals = true);
+
+  static VPackBuffer<uint8_t> sanitizeExternalsChecked(
+      arangodb::velocypack::Slice const,
+      VPackOptions const* options = &VPackOptions::Options::Defaults,
+      bool checkExternals = true);
 
   static uint64_t extractIdValue(VPackSlice const& slice);
 

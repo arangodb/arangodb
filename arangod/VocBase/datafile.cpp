@@ -1352,16 +1352,22 @@ bool TRI_datafile_t::check(bool ignoreFailures) {
           LOG(INFO) << "raw marker data following:";
           char const* p = reinterpret_cast<char const*>(marker);
           char const* e = reinterpret_cast<char const*>(marker) + DatafileHelper::AlignedSize<size_t>(size);
+
+          if (e + 16 < end) {
+            // add some extra bytes for following data
+            e += 16;
+          }
+
           std::string line;
           std::string raw;
           size_t printed = 0;
           while (p < e) {
             // print offset
             line.append("0x");
+            static const uint64_t Bits[] = { 56, 48, 40, 32, 24, 16, 8, 0 };
             uint64_t offset = static_cast<uint64_t>(static_cast<uintptr_t>(p - _data));
             for (uint64_t i = 0; i < 8; ++i) {
-              uint64_t const bits = 8ULL * (7ULL - i);
-              uint8_t c = static_cast<uint8_t>((offset & (0xFFULL << bits)) >> bits);
+              uint8_t c = static_cast<uint8_t>((static_cast<uint64_t>(offset) >> Bits[i]) && 0xFFULL);
               uint8_t n1 = c >> 4;
               uint8_t n2 = c & 0x0F;
 
@@ -1372,6 +1378,12 @@ bool TRI_datafile_t::check(bool ignoreFailures) {
             // print data
             line.append(": ");
             for (size_t i = 0; i < 16; ++i) {
+              if (i == 8) {
+                // separate groups of 8 bytes
+                line.push_back(' ');
+                raw.push_back(' ');
+              }
+
               if (p >= e) {
                 line.append("   ");
               } else {

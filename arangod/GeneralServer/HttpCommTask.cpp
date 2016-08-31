@@ -36,9 +36,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-size_t const HttpCommTask::MaximalHeaderSize = 2 * 1024 * 1024;       //  2 MB
-size_t const HttpCommTask::MaximalBodySize = 1024 * 1024 * 1024;      //  1 GB
-size_t const HttpCommTask::MaximalPipelineSize = 1024 * 1024 * 1024;  //  1 GB
+size_t const HttpCommTask::MaximalHeaderSize = 2 * 1024 * 1024;       //    2 MB
+size_t const HttpCommTask::MaximalBodySize = 1024 * 1024 * 1024;      // 1024 MB
+size_t const HttpCommTask::MaximalPipelineSize = 1024 * 1024 * 1024;  // 1024 MB
 size_t const HttpCommTask::RunCompactEvery = 500;
 
 HttpCommTask::HttpCommTask(GeneralServer* server, TRI_socket_t sock,
@@ -60,7 +60,8 @@ HttpCommTask::HttpCommTask(GeneralServer* server, TRI_socket_t sock,
       _sinceCompactification(0),
       _originalBodyLength(0) {  // TODO(fc) remove
   _protocol = "http";
-  connectionStatisticsAgentSetHttp();
+  connectionStatisticsAgentSetHttp();  // old
+  _agents.emplace(std::make_pair(1UL, RequestStatisticsAgent(true)));
 }
 
 void HttpCommTask::handleSimpleError(rest::ResponseCode code,
@@ -71,7 +72,7 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code,
 
 void HttpCommTask::handleSimpleError(rest::ResponseCode code, int errorNum,
                                      std::string const& errorMessage,
-                                     uint64_t /* messageId */) {
+                                     uint64_t messageId) {
   std::unique_ptr<GeneralResponse> response(new HttpResponse(code));
 
   VPackBuilder builder;
@@ -161,13 +162,15 @@ void HttpCommTask::addResponse(HttpResponse* response) {
     LOG_TOPIC(TRACE, Logger::REQUESTS)
         << "\"http-request-response\",\"" << (void*)this << "\",\""
         << StringUtils::escapeUnicode(
-               std::string(buffer->c_str(), buffer->length())) << "\"";
+               std::string(buffer->c_str(), buffer->length()))
+        << "\"";
   }
 
-  double const totalTime = RequestStatisticsAgent::elapsedSinceReadStart();
+  auto agent = getAgent(1);
+  double const totalTime = agent->elapsedSinceReadStart();
 
   // append write buffer and statistics
-  addWriteBuffer(std::move(buffer), this);
+  addWriteBuffer(std::move(buffer), agent);
 
   // and give some request information
   LOG_TOPIC(INFO, Logger::REQUESTS)
@@ -194,6 +197,8 @@ bool HttpCommTask::processRead() {
     return false;
   }
 
+  auto agent = getAgent(1UL);
+
   bool handleRequest = false;
 
   // still trying to read the header fields
@@ -208,7 +213,7 @@ bool HttpCommTask::processRead() {
     // starting a new request
     if (_newRequest) {
       // acquire a new statistics entry for the request
-      RequestStatisticsAgent::acquire();
+      agent->acquire();
 
 #if USE_DEV_TIMERS
       if (RequestStatisticsAgent::_statistics != nullptr) {
@@ -235,7 +240,7 @@ bool HttpCommTask::processRead() {
     }
 
     // request started
-    requestStatisticsAgentSetReadStart();
+    agent->requestStatisticsAgentSetReadStart();
 
     // check for the end of the request
     for (; ptr < end; ptr++) {
@@ -349,7 +354,7 @@ bool HttpCommTask::processRead() {
       // (original request object gets deleted before responding)
       _requestType = _incompleteRequest->requestType();
 
-      requestStatisticsAgentSetRequestType(_requestType);
+      agent->requestStatisticsAgentSetRequestType(_requestType);
 
       // handle different HTTP methods
       switch (_requestType) {
@@ -461,9 +466,9 @@ bool HttpCommTask::processRead() {
     return false;
   }
 
-  requestStatisticsAgentSetReadEnd();
-  requestStatisticsAgentAddReceivedBytes(_bodyPosition - _startPosition +
-                                         _bodyLength);
+  agent->requestStatisticsAgentSetReadEnd();
+  agent->requestStatisticsAgentAddReceivedBytes(_bodyPosition - _startPosition +
+                                                _bodyLength);
 
   bool const isOptionsRequest = (_requestType == rest::RequestType::OPTIONS);
   resetState();

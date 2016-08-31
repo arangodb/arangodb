@@ -24,6 +24,10 @@
 #include "v8-actions.h"
 #include "V8/v8-vpack.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Parser.h>
+#include <velocypack/Validator.h>
+#include <velocypack/velocypack-aliases.h>
 #include "Actions/ActionFeature.h"
 #include "Actions/actions.h"
 #include "Basics/MutexLocker.h"
@@ -49,10 +53,6 @@
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
-#include <velocypack/Validator.h>
-#include <velocypack/Builder.h>
-#include <velocypack/Parser.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <iostream>
 
@@ -424,8 +424,8 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
 
       // auto result = TRI_VPackToV8(isolate, slice);
       std::string jsonString = slice.toJson();
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-          << "json handed into v8 request:\n" << jsonString;
+      LOG_TOPIC(DEBUG, Logger::REQUESTS) << "json handed into v8 request:\n"
+                                         << jsonString;
 
       // V8Buffer* buffer =
       //    V8Buffer::New(isolate, slice.startAs<char>(),
@@ -715,7 +715,8 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
                              // json could not be converted
                              // there was no json - change content type?
               LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-                  << "failed to parse json:\n" << out;
+                  << "failed to parse json:\n"
+                  << out;
             }
           }
 
@@ -728,11 +729,9 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         response->setContentType(rest::ContentType::VPACK);
         response->setPayload(builder.slice(), true);
         break;
-      } 
-
-      default: { 
-        throw std::logic_error("unknown transport type"); 
       }
+
+      default: { throw std::logic_error("unknown transport type"); }
     }
     bodySet = true;
   }
@@ -757,8 +756,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
                             "': " + TRI_last_error();
 
           httpResponse->body().appendText(msg.c_str(), msg.size());
-          response->setResponseCode(
-              rest::ResponseCode::SERVER_ERROR);
+          response->setResponseCode(rest::ResponseCode::SERVER_ERROR);
         }
       } break;
 
@@ -910,7 +908,6 @@ static TRI_action_result_t ExecuteActionVocbase(
     result.isValid = false;
     result.canceled = false;
 
-    // TODO how to generalize this?
     response->setResponseCode(rest::ResponseCode::SERVER_ERROR);
 
     if (errorMessage.empty()) {
@@ -936,8 +933,9 @@ static TRI_action_result_t ExecuteActionVocbase(
       // TODO how to generalize this?
       if (response->transportType() ==
           Endpoint::TransportType::HTTP) {  // FIXME
-        ((HttpResponse*)response)->body().appendText(
-            TRI_StringifyV8Exception(isolate, &tryCatch));
+        ((HttpResponse*)response)
+            ->body()
+            .appendText(TRI_StringifyV8Exception(isolate, &tryCatch));
       }
     } else {
       v8g->_canceled = true;
@@ -1368,8 +1366,7 @@ void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
 static bool clusterSendToAllServers(
     std::string const& dbname,
     std::string const& path,  // Note: Has to be properly encoded!
-    arangodb::rest::RequestType const& method,
-    std::string const& body) {
+    arangodb::rest::RequestType const& method, std::string const& body) {
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
   std::string url = "/_db/" + StringUtils::urlEncode(dbname) + "/" + path;
@@ -1552,9 +1549,9 @@ static void JS_DebugClearFailAt(
     }
     std::string dbname(v8g->_vocbase->name());
 
-    int res = clusterSendToAllServers(
-        dbname, "_admin/debug/failat",
-        arangodb::rest::RequestType::DELETE_REQ, "");
+    int res =
+        clusterSendToAllServers(dbname, "_admin/debug/failat",
+                                arangodb::rest::RequestType::DELETE_REQ, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }

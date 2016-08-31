@@ -607,7 +607,7 @@ void RestReplicationHandler::handleCommandBatch() {
     int res = engine->extendCompactionBlocker(_vocbase, id, expires);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      setResponseCode(rest::ResponseCode::NO_CONTENT);
+      resetResponse(rest::ResponseCode::NO_CONTENT);
     } else {
       generateError(GeneralResponse::responseCode(res), res);
     }
@@ -623,7 +623,7 @@ void RestReplicationHandler::handleCommandBatch() {
     int res = engine->removeCompactionBlocker(_vocbase, id);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      setResponseCode(rest::ResponseCode::NO_CONTENT);
+      resetResponse(rest::ResponseCode::NO_CONTENT);
     } else {
       generateError(GeneralResponse::responseCode(res), res);
     }
@@ -724,7 +724,7 @@ void RestReplicationHandler::handleCommandBarrier() {
 
     if (arangodb::wal::LogfileManager::instance()->extendLogfileBarrier(
             id, ttl, minTick)) {
-      setResponseCode(rest::ResponseCode::NO_CONTENT);
+      resetResponse(rest::ResponseCode::NO_CONTENT);
     } else {
       int res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
       generateError(GeneralResponse::responseCode(res), res);
@@ -737,7 +737,7 @@ void RestReplicationHandler::handleCommandBarrier() {
     TRI_voc_tick_t id = StringUtils::uint64(suffix[1]);
 
     if (arangodb::wal::LogfileManager::instance()->removeLogfileBarrier(id)) {
-      setResponseCode(rest::ResponseCode::NO_CONTENT);
+      resetResponse(rest::ResponseCode::NO_CONTENT);
     } else {
       int res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
       generateError(GeneralResponse::responseCode(res), res);
@@ -845,7 +845,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   }
 
   bool dummy;
-  setResponseCode(static_cast<rest::ResponseCode>(
+  resetResponse(static_cast<rest::ResponseCode>(
       res->result->getHttpReturnCode()));
 
   HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
@@ -997,9 +997,9 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
       size_t const length = TRI_LengthStringBuffer(dump._buffer);
 
       if (length == 0) {
-        setResponseCode(rest::ResponseCode::NO_CONTENT);
+        resetResponse(rest::ResponseCode::NO_CONTENT);
       } else {
-        setResponseCode(rest::ResponseCode::OK);
+        resetResponse(rest::ResponseCode::OK);
       }
 
       HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
@@ -1099,9 +1099,9 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
       size_t const length = TRI_LengthStringBuffer(dump._buffer);
 
       if (length == 0) {
-        setResponseCode(rest::ResponseCode::NO_CONTENT);
+        resetResponse(rest::ResponseCode::NO_CONTENT);
       } else {
-        setResponseCode(rest::ResponseCode::OK);
+        resetResponse(rest::ResponseCode::OK);
       }
 
       HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
@@ -3193,9 +3193,9 @@ void RestReplicationHandler::handleCommandDump() {
     size_t const length = TRI_LengthStringBuffer(dump._buffer);
 
     if (length == 0) {
-      setResponseCode(rest::ResponseCode::NO_CONTENT);
+      resetResponse(rest::ResponseCode::NO_CONTENT);
     } else {
-      setResponseCode(rest::ResponseCode::OK);
+      resetResponse(rest::ResponseCode::OK);
     }
 
     // TODO needs to generalized
