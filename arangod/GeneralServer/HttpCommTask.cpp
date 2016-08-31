@@ -60,7 +60,8 @@ HttpCommTask::HttpCommTask(GeneralServer* server, TRI_socket_t sock,
       _sinceCompactification(0),
       _originalBodyLength(0) {  // TODO(fc) remove
   _protocol = "http";
-  connectionStatisticsAgentSetHttp();  // old
+  connectionStatisticsAgentSetHttp();  // this agent is inherited form
+                                       // sockettask or task
   _agents.emplace(std::make_pair(1UL, RequestStatisticsAgent(true)));
 }
 
