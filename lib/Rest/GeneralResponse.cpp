@@ -30,14 +30,21 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
+namespace detail {
+VPackOptions const* getOptions(VPackOptions const* options) {
+  if (options) {
+    return options;
+  }
+  return &VPackOptions::Options::Defaults;
+}
+}
+
 void GeneralResponse::addPayload(VPackSlice const& slice,
-                                 arangodb::velocypack::Options const* options,
+                                 VPackOptions const* options,
                                  bool resolveExternals) {
   addPayloadPreconditions();
-  if (!options) {  // like this because nullptr is easier to pass than
-                   // VPackOptions::Options::Defaults
-    options = &arangodb::velocypack::Options::Defaults;
-  }
+  _numPayloads++;
+  options = detail::getOptions(options);
 
   bool skipBody = false;
   addPayloadPreHook(true, resolveExternals, skipBody);
@@ -50,20 +57,21 @@ void GeneralResponse::addPayload(VPackSlice const& slice,
     } else {
       // just copy
       _vpackPayloads.emplace_back(slice.byteSize());
-      _vpackPayloads.back().append(slice.startAs<char const>(), slice.byteSize());
+      _vpackPayloads.back().append(slice.startAs<char const>(),
+                                   slice.byteSize());
     }
   }
-  //we pass the original slice here so the hook does not
-  addPayloadPostHook(slice, options, resolveExternals);
+  // we pass the original slice here the new one can be accessed
+  addPayloadPostHook(slice, options, resolveExternals, skipBody);
 };
 
 void GeneralResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
                                  arangodb::velocypack::Options const* options,
                                  bool resolveExternals) {
   addPayloadPreconditions();
-  if (!options) {
-    options = &arangodb::velocypack::Options::Defaults;
-  }
+  _numPayloads++;
+  options = detail::getOptions(options);
+
   bool skipBody = false;
   addPayloadPreHook(true, resolveExternals, skipBody);
   if (!skipBody) {
@@ -75,7 +83,8 @@ void GeneralResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
       _vpackPayloads.push_back(std::move(buffer));
     }
   }
-  addPayloadPostHook(VPackSlice(buffer.data()), options, resolveExternals);
+  addPayloadPostHook(VPackSlice(buffer.data()), options, resolveExternals,
+                     skipBody);
 };
 
 std::string GeneralResponse::responseString(ResponseCode code) {
@@ -465,4 +474,6 @@ GeneralResponse::GeneralResponse(ResponseCode responseCode)
     : _responseCode(responseCode),
       _contentType(ContentType::UNSET),
       _connectionType(ConnectionType::CONNECTION_NONE),
-      _options(velocypack::Options::Defaults) {}
+      _options(velocypack::Options::Defaults),
+      _generateBody(false),
+      _contentTypeRequested(ContentType::UNSET) {}

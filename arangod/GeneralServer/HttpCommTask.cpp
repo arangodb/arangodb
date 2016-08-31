@@ -589,6 +589,7 @@ void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
   std::unique_ptr<GeneralResponse> response(
       new HttpResponse(rest::ResponseCode::SERVER_ERROR));
   response->setContentType(request->contentTypeResponse());
+  response->setContentTypeRequested(request->contentTypeResponse());
 
   executeRequest(std::move(request), std::move(response));
 }

@@ -53,16 +53,9 @@ void VppResponse::reset(ResponseCode code) {
   _responseCode = code;
   _headers.clear();
   _connectionType = rest::CONNECTION_KEEP_ALIVE;
-  _contentType = ContentType::TEXT;
+  _contentType = ContentType::VPACK;
   _generateBody = false;  // payload has to be set
 }
-
-void VppResponse::setPayload(arangodb::velocypack::Slice const& slice,
-                             bool generateBody, VPackOptions const& options) {
-  if (setGenerateBody(generateBody)) {
-    addPayload(slice, &options);
-  }
-};
 
 VPackMessageNoOwnBuffer VppResponse::prepareForNetwork() {
   // initalize builder with vpackbuffer. then we do not need to
@@ -79,4 +72,3 @@ VPackMessageNoOwnBuffer VppResponse::prepareForNetwork() {
                                  VPackSlice(_vpackPayloads.front().data()),
                                  _messageId, _generateBody);
 }
-// void VppResponse::writeHeader(basics::StringBuffer*) {}

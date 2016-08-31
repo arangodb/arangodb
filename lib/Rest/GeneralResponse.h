@@ -79,6 +79,9 @@ class GeneralResponse {
   }
 
   void setConnectionType(ConnectionType type) { _connectionType = type; }
+  void setContentTypeRequested(ContentType type) {
+    _contentTypeRequested = type;
+  }
 
   virtual arangodb::Endpoint::TransportType transportType() = 0;
 
@@ -122,20 +125,33 @@ class GeneralResponse {
 
   // generates the response body, sets the content type; this might
   // throw an error
-  virtual void setPayload(arangodb::velocypack::Slice const&,
-                          bool generateBody = true,
-                          arangodb::velocypack::Options const& = arangodb::velocypack::Options::Defaults) = 0;
-
+  template <typename Payload>  // Payload needs to be of type: VPackSlice const&
+  // or VPackBuffer<uint8_t>&&
+  void setPayload(Payload&& payload, bool generateBody,
+                  VPackOptions const& options = VPackOptions::Options::Defaults,
+                  bool resolveExternals = true) {
+    _generateBody = generateBody;
+    addPayload(std::forward<Payload>(payload), &options, resolveExternals);
+  }
 
   void addPayloadPreconditions() { TRI_ASSERT(_vpackPayloads.size() == 0); }
-  virtual void addPayloadPreHook(bool inputIsBuffer, bool& resolveExternals, bool& skipBody){}
-  void addPayload(VPackSlice const&, arangodb::velocypack::Options const* = nullptr, bool resolve_externals = true);
-  void addPayload(VPackBuffer<uint8_t>&&, arangodb::velocypack::Options const* = nullptr, bool resolve_externals = true);
-  virtual void addPayloadPostHook(VPackSlice const&, arangodb::velocypack::Options const*, bool resolveExternals){}
+  virtual void addPayloadPreHook(bool inputIsBuffer, bool& resolveExternals,
+                                 bool& skipBody) {}
+  void addPayload(VPackSlice const&,
+                  arangodb::velocypack::Options const* = nullptr,
+                  bool resolve_externals = true);
+  void addPayload(VPackBuffer<uint8_t>&&,
+                  arangodb::velocypack::Options const* = nullptr,
+                  bool resolve_externals = true);
+  virtual void addPayloadPostHook(VPackSlice const&,
+                                  arangodb::velocypack::Options const*,
+                                  bool resolveExternals, bool bodySkipped) {}
 
   virtual int reservePayload(std::size_t size) { return size; }
-  virtual bool setGenerateBody(bool) { return true; };  // used for head
-                                                        // resonses
+  virtual bool setGenerateBody(bool) {
+    return _generateBody;
+  };  // used for head
+      // resonses
   void setOptions(VPackOptions options) { _options = std::move(options); };
 
  protected:
@@ -144,9 +160,12 @@ class GeneralResponse {
       _headers;  // headers/metadata map
 
   std::vector<VPackBuffer<uint8_t>> _vpackPayloads;
+  std::size_t _numPayloads;
   ContentType _contentType;
   ConnectionType _connectionType;
   velocypack::Options _options;
+  bool _generateBody;
+  ContentType _contentTypeRequested;
 };
 }
 

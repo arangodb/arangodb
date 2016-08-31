@@ -483,6 +483,7 @@ bool VppCommTask::processRead() {
 
         std::unique_ptr<VppResponse> response(new VppResponse(
             rest::ResponseCode::SERVER_ERROR, chunkHeader._messageID));
+        response->setContentTypeRequested(request->contentTypeResponse());
         executeRequest(std::move(request), std::move(response));
       }
     }
