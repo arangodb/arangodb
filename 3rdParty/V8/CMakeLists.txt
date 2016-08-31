@@ -61,9 +61,10 @@ list(APPEND V8_GYP_ARGS
 )
 
 if (CROSS_COMPILING)
-  list(APPEND V8_GYP_ARGS -DGYP_CROSSCOMPILE=1)
+  list(APPEND V8_GYP_ARGS
+  -Dhost_arch=${V8_PROC_ARCH}
+  -DGYP_CROSSCOMPILE=1)
 endif()
-
 
 ################################################################################
 ## ICU EXPORTS

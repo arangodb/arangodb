@@ -49,7 +49,9 @@ VPackSlice FakeRequest::payload(arangodb::velocypack::Options const* options) {
 
   if( _contentType == ContentType::JSON) {
     VPackParser parser(options);
-    parser.parse(_body, static_cast<size_t>(_contentLength));
+    if (_contentLength > 0) {
+      parser.parse(_body, static_cast<size_t>(_contentLength));
+    }
     _vpackBuilder = parser.steal();
     return VPackSlice(_vpackBuilder->slice());
   } else /*VPACK*/{

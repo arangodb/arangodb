@@ -166,6 +166,11 @@ void ApplicationServer::run(int argc, char* argv[]) {
   // file(s)
   parseOptions(argc, argv);
 
+  if (!_helpSection.empty()) {
+    // help shown. we can exit early
+    return;
+  }
+
   // seal the options
   _options->seal();
 
@@ -285,17 +290,17 @@ void ApplicationServer::collectOptions() {
 void ApplicationServer::parseOptions(int argc, char* argv[]) {
   ArgumentParser parser(_options.get());
 
-  std::string helpSection = parser.helpSection(argc, argv);
+  _helpSection = parser.helpSection(argc, argv);
 
-  if (!helpSection.empty()) {
+  if (!_helpSection.empty()) {
     // user asked for "--help"
 
     // translate "all" to "*"
-    if (helpSection == "all") {
-      helpSection = "*";
+    if (_helpSection == "all") {
+      _helpSection = "*";
     }
-    _options->printHelp(helpSection);
-    exit(EXIT_SUCCESS);
+    _options->printHelp(_helpSection);
+    return;
   }
 
   if (!parser.parse(argc, argv)) {

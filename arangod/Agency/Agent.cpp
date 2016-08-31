@@ -200,6 +200,8 @@ void Agent::reportIn(std::string const& id, index_t index) {
 
   MUTEX_LOCKER(mutexLocker, _ioLock);
 
+  _lastAcked[id] = std::chrono::system_clock::now();
+
   if (index > _confirmed[id]) {  // progress this follower?
     _confirmed[id] = index;
   }
@@ -352,7 +354,7 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(std::string const& follower_id) {
   builder.close();
 
   // Verbose output
-  if (unconfirmed.size() > 1) {
+ if (unconfirmed.size() > 1) {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Appending " << unconfirmed.size() - 1
                                      << " entries up to index " << highest
                                      << " to follower " << follower_id;
@@ -486,11 +488,27 @@ write_ret_t Agent::write(query_t const& query) {
 /// Read from store
 read_ret_t Agent::read(query_t const& query) {
 
+  MUTEX_LOCKER(mutexLocker, _ioLock);
+
   // Only leader else redirect
   if (!_constituent.leading()) {
     return read_ret_t(false, _constituent.leaderID());
   }
 
+  // Still leading?
+  size_t good = 0; 
+  for (auto const& i : _lastAcked) {
+    std::chrono::duration<double> m =
+      std::chrono::system_clock::now() - i.second;
+    if(0.9*_config.minPing() > m.count()) {
+      ++good;
+    }
+  }
+  
+  if (good < size() / 2) {
+    _constituent.candidate();
+  }
+  
   // Retrieve data from readDB
   auto result = std::make_shared<arangodb::velocypack::Builder>();
   std::vector<bool> success = _readDB.read(query, result);
@@ -567,7 +585,27 @@ bool Agent::lead() {
     CONDITION_LOCKER(guard, _appendCV);
     guard.broadcast();
   }
+
+  for (auto const& i : _config.active()) {
+    _lastAcked[i] = std::chrono::system_clock::now();
+  }
   
+  // Agency configuration
+  auto agency = std::make_shared<Builder>();
+  agency->openArray();
+  agency->openArray();
+  agency->openObject();
+  agency->add(".agency", VPackValue(VPackValueType::Object));
+  agency->add("term", VPackValue(term()));
+  agency->add("id", VPackValue(id()));
+  agency->add("active", _config.activeToBuilder()->slice());
+  agency->add("pool", _config.poolToBuilder()->slice());
+  agency->close();  
+  agency->close();  
+  agency->close();
+  agency->close();
+  write(agency);
+
   // Wake up supervision
   _supervision.wakeUp();
 
