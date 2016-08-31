@@ -115,11 +115,12 @@ class RequestStatisticsAgent
  public:
   RequestStatisticsAgent(bool standalone = false)
       : StatisticsAgent(standalone){};
-  ~RequestStatisticsAgent() = default;
 
+  RequestStatisticsAgent(RequestStatisticsAgent const&) = delete;
   RequestStatisticsAgent(RequestStatisticsAgent&& other) {
-    other._statistics = meta::exchange(_statistics, nullptr);
-    other._lastReadStart = _lastReadStart;
+    _statistics = meta::exchange(other._statistics, nullptr);
+    _lastReadStart = other._lastReadStart;
+    other._lastReadStart = 0.0;
   }
 
   void requestStatisticsAgentSetRequestType(rest::RequestType b) {
