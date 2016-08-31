@@ -135,6 +135,27 @@ static TRI_voc_cid_t ReadCid(VPackSlice info) {
   return cid;
 }
 
+static TRI_voc_cid_t ReadPlanId(VPackSlice info, TRI_voc_cid_t cid) {
+  if (!info.isObject()) {
+    // ERROR CASE
+    return 0;
+  }
+  VPackSlice id = info.get("planId");
+  if (id.isNone()) {
+    return cid;
+  }
+
+  if (id.isString()) {
+    // string cid, e.g. "9988488"
+    return arangodb::basics::StringUtils::uint64(id.copyString());
+  } else if (id.isNumber()) {
+    // numeric cid, e.g. 9988488
+    return id.getNumericValue<uint64_t>();
+  }
+  // TODO Throw error for invalid type?
+  return cid;
+}
+
 static std::string const ReadStringValue(VPackSlice info,
                                          std::string const& name,
                                          std::string const& def) {
@@ -328,7 +349,7 @@ LogicalCollection::LogicalCollection(
 LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
     : _internalVersion(0),
       _cid(ReadCid(info)),
-      _planId(_cid),
+      _planId(ReadPlanId(info, _cid)),
       _type(ReadNumericValue<TRI_col_type_e, int>(info, "type",
                                                   TRI_COL_TYPE_UNKNOWN)),
       _name(ReadStringValue(info, "name", "")),
