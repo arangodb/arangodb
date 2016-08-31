@@ -1348,6 +1348,11 @@ size_t ClusterComm::performSingleRequest(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
   }
 
+  if (req.result.status == CL_COMM_ERROR && req.result.result != nullptr
+      && req.result.result->getHttpReturnCode() == 503) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+  }
+
   // Add correct recognition of content type later.
   req.result.status = CL_COMM_RECEIVED;  // a fake, but a good one
   req.done = true;

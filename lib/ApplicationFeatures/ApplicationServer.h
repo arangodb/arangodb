@@ -166,6 +166,9 @@ class ApplicationServer {
 
   ~ApplicationServer();
 
+  std::string helpSection() const { return _helpSection; }
+  bool helpShown() const { return !_helpSection.empty(); }
+
   // adds a feature to the application server. the application server
   // will take ownership of the feature object and destroy it in its
   // destructor
@@ -297,6 +300,9 @@ class ApplicationServer {
 
   // reporter for progress
   std::vector<ProgressHandler> _progressReports;
+
+  // help section displayed
+  std::string _helpSection;
 };
 }
 }

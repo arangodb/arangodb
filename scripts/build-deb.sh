@@ -14,5 +14,6 @@ cd ${DIR}/..
     --buildDir build-deb \
     --targetDir /var/tmp/ \
     --jemalloc \
+    $@
 
 cd ${DIR}/..

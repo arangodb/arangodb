@@ -32,6 +32,7 @@
 #include "Aql/Function.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
+#include "Aql/ShortestPathNode.h"
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
 #include "Aql/TraversalConditionFinder.h"
@@ -325,7 +326,8 @@ void arangodb::aql::removeRedundantSortsRule(Optimizer* opt,
           }
         } else if (current->getType() == EN::ENUMERATE_LIST ||
                    current->getType() == EN::ENUMERATE_COLLECTION ||
-                   current->getType() == EN::TRAVERSAL) {
+                   current->getType() == EN::TRAVERSAL ||
+                   current->getType() == EN::SHORTEST_PATH) {
           // ok, but we cannot remove two different sorts if one of these node
           // types is between them
           // example: in the following query, the one sort will be optimized
@@ -765,10 +767,10 @@ void arangodb::aql::removeSortRandRule(Optimizer* opt, ExecutionPlan* plan,
         case EN::SUBQUERY:
         case EN::ENUMERATE_LIST:
         case EN::TRAVERSAL:
+        case EN::SHORTEST_PATH:
         case EN::INDEX: {
-          // if we found another SortNode, an CollectNode, FilterNode, a
-          // SubqueryNode,
-          // an EnumerateListNode, a TraversalNode or an IndexNode
+          // if we found another SortNode, a CollectNode, FilterNode, a
+          // SubqueryNode, an EnumerateListNode, a TraversalNode or an IndexNode
           // this means we cannot apply our optimization
           collectionNode = nullptr;
           current = nullptr;
@@ -950,7 +952,9 @@ void arangodb::aql::moveCalculationsDownRule(Optimizer* opt,
       } else if (currentType == EN::INDEX ||
                  currentType == EN::ENUMERATE_COLLECTION ||
                  currentType == EN::ENUMERATE_LIST ||
-                 currentType == EN::TRAVERSAL || currentType == EN::COLLECT ||
+                 currentType == EN::TRAVERSAL || 
+                 currentType == EN::SHORTEST_PATH || 
+                 currentType == EN::COLLECT ||
                  currentType == EN::NORESULTS) {
         // we will not push further down than such nodes
         shouldMove = false;
@@ -1242,6 +1246,17 @@ class arangodb::aql::RedundantCalculationsReplacer final
       std::unordered_map<VariableId, Variable const*> const& replacements)
       : _replacements(replacements) {
   }
+  
+  template <typename T>
+  void replaceStartTargetVariables(ExecutionNode* en) {
+    auto node = static_cast<T*>(en);
+    if (node->_inStartVariable != nullptr) {
+      node->_inStartVariable = Variable::replace(node->_inStartVariable, _replacements);
+    }
+    if (node->_inTargetVariable != nullptr) {
+      node->_inTargetVariable = Variable::replace(node->_inTargetVariable, _replacements);
+    }
+  }
 
   template <typename T>
   void replaceInVariable(ExecutionNode* en) {
@@ -1289,6 +1304,11 @@ class arangodb::aql::RedundantCalculationsReplacer final
       
       case EN::TRAVERSAL: {
         replaceInVariable<TraversalNode>(en);
+        break;
+      }
+      
+      case EN::SHORTEST_PATH: {
+        replaceStartTargetVariables<ShortestPathNode>(en);
         break;
       }
 
@@ -3590,7 +3610,7 @@ void arangodb::aql::patchUpdateStatementsRule(Optimizer* opt,
         }
       }
 
-      if (type == EN::TRAVERSAL) {
+      if (type == EN::TRAVERSAL || type == EN::SHORTEST_PATH) {
         // unclear what will be read by the traversal
         modified = false;
         break;

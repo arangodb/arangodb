@@ -540,7 +540,7 @@ ExecutionNode const* ExecutionNode::getLoop() const {
     auto type = node->getType();
 
     if (type == ENUMERATE_COLLECTION || type == INDEX || type == TRAVERSAL ||
-        type == ENUMERATE_LIST) {
+        type == ENUMERATE_LIST || type == SHORTEST_PATH) {
       return node;
     }
   }
@@ -1104,7 +1104,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
         en->getVarsUsedLater();
     std::vector<Variable const*> const& varsUsedHere =
         en->getVariablesUsedHere();
-
+  
     // We need to delete those variables that have been used here but are not
     // used any more later:
     std::unordered_set<RegisterId> regsToClear;
@@ -1117,7 +1117,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
 
         if (it2 == varInfo.end()) {
           // report an error here to prevent crashing
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "missing variable #" + std::to_string(v->id) + " for node " + en->getTypeString() + " while planning registers"); 
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "missing variable #" + std::to_string(v->id) + " (" + v->name + ") for node " + en->getTypeString() + " while planning registers"); 
         }
 
         // finally adjust the variable inside the IN calculation
