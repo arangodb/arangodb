@@ -1527,7 +1527,7 @@ var waitForDistributedResponse = function (data, numberOfRequests) {
 var isCluster = function () {
   var role = global.ArangoServerState.role();
 
-  return (role !== undefined && role !== 'SINGLE');
+  return (role !== undefined && role !== 'SINGLE' && role !== 'AGENT');
 };
 
 // //////////////////////////////////////////////////////////////////////////////
