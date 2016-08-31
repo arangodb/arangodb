@@ -351,6 +351,7 @@ elif [ "${CXGCC}" = 1 ]; then
         echo "Unknown CX-Compiler!"
         exit 1;
     fi
+
     export CXX=$TOOL_PREFIX-g++
     export AR=$TOOL_PREFIX-ar
     export RANLIB=$TOOL_PREFIX-ranlib
@@ -358,6 +359,7 @@ elif [ "${CXGCC}" = 1 ]; then
     export LD=$TOOL_PREFIX-g++
     export LINK=$TOOL_PREFIX-g++
     export STRIP=$TOOL_PREFIX-strip
+    CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCROSS_COMPILING=true"
 fi
 
 
@@ -445,7 +447,7 @@ SOURCE_DIR=`compute_relative ${DST}/ ${SRC}/`
 
 if [ ! -f Makefile -o ! -f CMakeCache.txt ];  then
     CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}" LIBS="${LIBS}" \
-          cmake ${SOURCE_DIR} ${CONFIGURE_OPTIONS} -G "${GENERATOR}"
+          cmake ${SOURCE_DIR} ${CONFIGURE_OPTIONS} -G "${GENERATOR}" || exit 1
 fi
 
 ${MAKE_CMD_PREFIX} ${MAKE} ${MAKE_PARAMS}
