@@ -95,8 +95,8 @@ DropDatafileDitch::DropDatafileDitch(
 DropDatafileDitch::~DropDatafileDitch() {}
 
 RenameDatafileDitch::RenameDatafileDitch(
-    Ditches* ditches, TRI_datafile_t* datafile, void* data,
-    std::function<void(TRI_datafile_t*, void*)> const& callback, char const* filename,
+    Ditches* ditches, TRI_datafile_t* datafile, CompactionContext* data,
+    std::function<void(TRI_datafile_t*, CompactionContext*)> const& callback, char const* filename,
     int line)
     : Ditch(ditches, filename, line),
       _datafile(datafile),
@@ -141,6 +141,7 @@ Ditches::~Ditches() {}
 ////////////////////////////////////////////////////////////////////////////////
 
 void Ditches::destroy() {
+  MUTEX_LOCKER(mutexLocker, _lock);
   auto* ptr = _begin;
 
   while (ptr != nullptr) {
@@ -435,8 +436,8 @@ DropDatafileDitch* Ditches::createDropDatafileDitch(
 ////////////////////////////////////////////////////////////////////////////////
 
 RenameDatafileDitch* Ditches::createRenameDatafileDitch(
-    TRI_datafile_t* datafile, void* data,
-    std::function<void(struct TRI_datafile_t*, void*)> const& callback,
+    TRI_datafile_t* datafile, CompactionContext* data,
+    std::function<void(TRI_datafile_t*, CompactionContext*)> const& callback,
     char const* filename, int line) {
   try {
     auto ditch =

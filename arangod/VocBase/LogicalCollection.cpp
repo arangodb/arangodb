@@ -2019,7 +2019,6 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
     }
 
     // we found a document to remove
-    TRI_ASSERT(oldHeader != nullptr);
     operation.header = oldHeader;
     operation.init();
 
@@ -2281,33 +2280,6 @@ int LogicalCollection::fillIndexSequential(arangodb::Transaction* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-/// @brief read locks a collection
-int LogicalCollection::beginRead() {
-  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
-    auto it = arangodb::Transaction::_makeNolockHeaders->find(name());
-    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "BeginRead blocked: " << _name <<
-      // std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-  // LOCKING-DEBUG
-  // std::cout << "BeginRead: " << _name << std::endl;
-  READ_LOCKER(locker, _idxLock);
-
-  try {
-    _vocbase->_deadlockDetector.addReader(this, false);
-  } catch (...) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  locker.steal();
-
-  return TRI_ERROR_NO_ERROR;
-}
-
 /// @brief read unlocks a collection
 int LogicalCollection::endRead() {
   if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
@@ -2328,34 +2300,6 @@ int LogicalCollection::endRead() {
   // LOCKING-DEBUG
   // std::cout << "EndRead: " << _name << std::endl;
   _idxLock.unlockRead();
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief write locks a collection
-int LogicalCollection::beginWrite() {
-  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
-    auto it = arangodb::Transaction::_makeNolockHeaders->find(name());
-    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "BeginWrite blocked: " << _name <<
-      // std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-  // LOCKING_DEBUG
-  // std::cout << "BeginWrite: " << _name << std::endl;
-  WRITE_LOCKER(locker, _idxLock);
-
-  // register writer
-  try {
-    _vocbase->_deadlockDetector.addWriter(this, false);
-  } catch (...) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  locker.steal();
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -2388,8 +2332,7 @@ int LogicalCollection::endWrite() {
 }
 
 /// @brief read locks a collection, with a timeout (in µseconds)
-int LogicalCollection::beginReadTimed(uint64_t timeout,
-                                     uint64_t sleepPeriod) {
+int LogicalCollection::beginReadTimed(uint64_t timeout, uint64_t sleepPeriod) {
   if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
     auto it = arangodb::Transaction::_makeNolockHeaders->find(name());
     if (it != arangodb::Transaction::_makeNolockHeaders->end()) {

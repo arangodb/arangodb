@@ -1367,7 +1367,7 @@ bool TRI_datafile_t::check(bool ignoreFailures) {
             static const uint64_t Bits[] = { 56, 48, 40, 32, 24, 16, 8, 0 };
             uint64_t offset = static_cast<uint64_t>(static_cast<uintptr_t>(p - _data));
             for (uint64_t i = 0; i < 8; ++i) {
-              uint8_t c = static_cast<uint8_t>((static_cast<uint64_t>(offset) >> Bits[i]) && 0xFFULL);
+              uint8_t c = static_cast<uint8_t>((static_cast<uint64_t>(offset) >> Bits[i]) & 0xFFULL);
               uint8_t n1 = c >> 4;
               uint8_t n2 = c & 0x0F;
 

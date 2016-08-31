@@ -376,32 +376,32 @@ bool TRI_IsSymbolicLink(char const* path) {
 bool TRI_ExistsFile(char const* path) {
   if (path == nullptr) {
     return false;
-  } else {
-    TRI_stat_t stbuf;
-    size_t len;
-    int res;
+  }
 
-    len = strlen(path);
+  TRI_stat_t stbuf;
+  size_t len;
+  int res;
 
-    // path must not end with a \ on Windows, other stat() will return -1
-    if (len > 0 && path[len - 1] == TRI_DIR_SEPARATOR_CHAR) {
-      char* copy = TRI_DuplicateString(TRI_CORE_MEM_ZONE, path);
+  len = strlen(path);
 
-      if (copy == nullptr) {
-        return false;
-      }
+  // path must not end with a \ on Windows, other stat() will return -1
+  if (len > 0 && path[len - 1] == TRI_DIR_SEPARATOR_CHAR) {
+    char* copy = TRI_DuplicateString(TRI_CORE_MEM_ZONE, path);
 
-      // remove trailing slash
-      RemoveTrailingSeparator(copy);
-
-      res = TRI_STAT(copy, &stbuf);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, copy);
-    } else {
-      res = TRI_STAT(path, &stbuf);
+    if (copy == nullptr) {
+      return false;
     }
 
-    return res == 0;
+    // remove trailing slash
+    RemoveTrailingSeparator(copy);
+
+    res = TRI_STAT(copy, &stbuf);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, copy);
+  } else {
+    res = TRI_STAT(path, &stbuf);
   }
+
+  return res == 0;
 }
 
 #else

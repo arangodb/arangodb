@@ -53,7 +53,13 @@ static void EnsureErrorCode(int code) {
 MMFilesCollection::MMFilesCollection(LogicalCollection* collection)
     : PhysicalCollection(collection), _initialCount(0), _revision(0) {}
 
-MMFilesCollection::~MMFilesCollection() { close(); }
+MMFilesCollection::~MMFilesCollection() { 
+  try {
+    close(); 
+  } catch (...) {
+    // dtor must not propagate exceptions
+  }
+}
 
 TRI_voc_rid_t MMFilesCollection::revision() const { 
   return _revision; 
@@ -157,6 +163,7 @@ int MMFilesCollection::rotateActiveJournal() {
 
 
   TRI_ASSERT(!_journals.empty());
+  TRI_ASSERT(_journals.back() == datafile);
   _journals.erase(_journals.begin());
   TRI_ASSERT(_journals.empty());
 
@@ -256,11 +263,12 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
 
       // shouldn't throw as we reserved enough space before
       _journals.emplace_back(df.get());
-      datafile = df.release();
-    } else {
-      // select datafile
-      datafile = _journals[0];
-    }
+      df.release();
+    } 
+      
+    // select datafile
+    TRI_ASSERT(!_journals.empty());
+    datafile = _journals[0];
 
     TRI_ASSERT(datafile != nullptr);
 
@@ -301,7 +309,7 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
 
     // and finally erase it from _journals vector
     TRI_ASSERT(!_journals.empty());
-    TRI_ASSERT(*_journals.begin() == datafile);
+    TRI_ASSERT(_journals.back() == datafile);
     _journals.erase(_journals.begin());
     TRI_ASSERT(_journals.empty());
 
@@ -324,17 +332,17 @@ TRI_datafile_t* MMFilesCollection::createCompactor(TRI_voc_fid_t fid,
     // reserve enough space for the later addition
     _compactors.reserve(_compactors.size() + 1);
 
-    TRI_datafile_t* compactor =
-        createDatafile(fid, static_cast<TRI_voc_size_t>(maximalSize), true);
+    std::unique_ptr<TRI_datafile_t> compactor(createDatafile(fid, static_cast<TRI_voc_size_t>(maximalSize), true));
 
     if (compactor != nullptr) {
       // should not throw, as we've reserved enough space before
-      _compactors.emplace_back(compactor);
+      _compactors.emplace_back(compactor.get());
+      return compactor.release();
     }
-    return compactor;
   } catch (...) {
-    return nullptr;
   }
+    
+  return nullptr;
 }
 
 /// @brief close an existing compactor
@@ -378,6 +386,7 @@ int MMFilesCollection::replaceDatafileWithCompactor(TRI_datafile_t* datafile,
       _compactors.erase(_compactors.begin());
       TRI_ASSERT(_compactors.empty());
 
+LOG(ERR) << "REPLACUING!";
       return TRI_ERROR_NO_ERROR;
     }
   }
@@ -534,6 +543,8 @@ TRI_datafile_t* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
 
 /// @brief remove a compactor file from the list of compactors
 bool MMFilesCollection::removeCompactor(TRI_datafile_t* df) {
+  TRI_ASSERT(df != nullptr);
+
   WRITE_LOCKER(writeLocker, _filesLock);
 
   for (auto it = _compactors.begin(); it != _compactors.end(); ++it) {
@@ -550,6 +561,8 @@ bool MMFilesCollection::removeCompactor(TRI_datafile_t* df) {
 
 /// @brief remove a datafile from the list of datafiles
 bool MMFilesCollection::removeDatafile(TRI_datafile_t* df) {
+  TRI_ASSERT(df != nullptr);
+
   WRITE_LOCKER(writeLocker, _filesLock);
 
   for (auto it = _datafiles.begin(); it != _datafiles.end(); ++it) {

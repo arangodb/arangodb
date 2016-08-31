@@ -31,6 +31,7 @@ struct TRI_collection_t;
 struct TRI_datafile_t;
 
 namespace arangodb {
+struct CompactionContext;
 class LogicalCollection;
 
 class Ditches;
@@ -119,7 +120,7 @@ class Ditch {
 /// @brief document ditch
 ////////////////////////////////////////////////////////////////////////////////
 
-class DocumentDitch : public Ditch {
+class DocumentDitch final : public Ditch {
   friend class Ditches;
 
  public:
@@ -145,7 +146,7 @@ class DocumentDitch : public Ditch {
 /// @brief replication ditch
 ////////////////////////////////////////////////////////////////////////////////
 
-class ReplicationDitch : public Ditch {
+class ReplicationDitch final : public Ditch {
  public:
   ReplicationDitch(Ditches* ditches, char const* filename, int line);
 
@@ -161,7 +162,7 @@ class ReplicationDitch : public Ditch {
 /// @brief compaction ditch
 ////////////////////////////////////////////////////////////////////////////////
 
-class CompactionDitch : public Ditch {
+class CompactionDitch final : public Ditch {
  public:
   CompactionDitch(Ditches* ditches, char const* filename, int line);
 
@@ -177,11 +178,11 @@ class CompactionDitch : public Ditch {
 /// @brief datafile removal ditch
 ////////////////////////////////////////////////////////////////////////////////
 
-class DropDatafileDitch : public Ditch {
+class DropDatafileDitch final : public Ditch {
  public:
-  DropDatafileDitch(Ditches* ditches, struct TRI_datafile_t* datafile,
+  DropDatafileDitch(Ditches* ditches, TRI_datafile_t* datafile,
                     LogicalCollection* collection,
-                    std::function<void(struct TRI_datafile_t*, LogicalCollection*)> const& callback,
+                    std::function<void(TRI_datafile_t*, LogicalCollection*)> const& callback,
                     char const* filename, int line);
 
   ~DropDatafileDitch();
@@ -194,20 +195,20 @@ class DropDatafileDitch : public Ditch {
   void executeCallback() { _callback(_datafile, _collection); }
 
  private:
-  struct TRI_datafile_t* _datafile;
+  TRI_datafile_t* _datafile;
   LogicalCollection* _collection;
-  std::function<void(struct TRI_datafile_t*, LogicalCollection*)> _callback;
+  std::function<void(TRI_datafile_t*, LogicalCollection*)> _callback;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile rename ditch
 ////////////////////////////////////////////////////////////////////////////////
 
-class RenameDatafileDitch : public Ditch {
+class RenameDatafileDitch final : public Ditch {
  public:
-  RenameDatafileDitch(Ditches* ditches, struct TRI_datafile_t* datafile,
-                      void* data,
-                      std::function<void(struct TRI_datafile_t*, void*)> const& callback,
+  RenameDatafileDitch(Ditches* ditches, TRI_datafile_t* datafile,
+                      CompactionContext* data,
+                      std::function<void(TRI_datafile_t*, CompactionContext*)> const& callback,
                       char const* filename, int line);
 
   ~RenameDatafileDitch();
@@ -220,16 +221,16 @@ class RenameDatafileDitch : public Ditch {
   void executeCallback() { _callback(_datafile, _data); }
 
  private:
-  struct TRI_datafile_t* _datafile;
-  void* _data;
-  std::function<void(struct TRI_datafile_t*, void*)> _callback;
+  TRI_datafile_t* _datafile;
+  CompactionContext* _data;
+  std::function<void(TRI_datafile_t*, CompactionContext*)> _callback;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection unload ditch
 ////////////////////////////////////////////////////////////////////////////////
 
-class UnloadCollectionDitch : public Ditch {
+class UnloadCollectionDitch final : public Ditch {
  public:
   UnloadCollectionDitch(
       Ditches* ditches, LogicalCollection* collection,
@@ -253,7 +254,7 @@ class UnloadCollectionDitch : public Ditch {
 /// @brief collection drop ditch
 ////////////////////////////////////////////////////////////////////////////////
 
-class DropCollectionDitch : public Ditch {
+class DropCollectionDitch final : public Ditch {
  public:
   DropCollectionDitch(
       arangodb::Ditches* ditches, arangodb::LogicalCollection* collection,
@@ -370,8 +371,8 @@ class Ditches {
   //////////////////////////////////////////////////////////////////////////////
 
   DropDatafileDitch* createDropDatafileDitch(
-      struct TRI_datafile_t* datafile, LogicalCollection* collection, 
-      std::function<void(struct TRI_datafile_t*, LogicalCollection*)> const& callback,
+      TRI_datafile_t* datafile, LogicalCollection* collection, 
+      std::function<void(TRI_datafile_t*, LogicalCollection*)> const& callback,
       char const* filename, int line);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -379,8 +380,8 @@ class Ditches {
   //////////////////////////////////////////////////////////////////////////////
 
   RenameDatafileDitch* createRenameDatafileDitch(
-      struct TRI_datafile_t* datafile, void* data,
-      std::function<void(struct TRI_datafile_t*, void*)> const& callback,
+      TRI_datafile_t* datafile, CompactionContext* data,
+      std::function<void(TRI_datafile_t*, CompactionContext*)> const& callback,
       char const* filename, int line);
 
   //////////////////////////////////////////////////////////////////////////////

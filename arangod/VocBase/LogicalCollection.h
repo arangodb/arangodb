@@ -295,14 +295,10 @@ class LogicalCollection {
   int fillIndex(arangodb::Transaction*, arangodb::Index*,
                 bool skipPersistent = true);
 
-  int beginRead();
-  int endRead();
-  int beginWrite();
-  int endWrite();
   int beginReadTimed(uint64_t, uint64_t);
   int beginWriteTimed(uint64_t, uint64_t);
-
-
+  int endRead();
+  int endWrite();
 
  private:
   // SECTION: Private functions

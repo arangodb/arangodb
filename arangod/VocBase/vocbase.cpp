@@ -773,15 +773,12 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
   
-  arangodb::LogicalCollection* collection = nullptr;
   VPackBuilder builder;
 
   READ_LOCKER(readLocker, _inventoryLock);
 
-  {
-    // note: cid may be modified by this function call
-    collection = createCollectionWorker(parameters, cid, writeMarker, builder);
-  }
+  // note: cid may be modified by this function call
+  arangodb::LogicalCollection* collection = createCollectionWorker(parameters, cid, writeMarker, builder);
 
   if (!writeMarker) {
     return collection;

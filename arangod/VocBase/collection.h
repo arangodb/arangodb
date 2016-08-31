@@ -33,12 +33,6 @@
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
-class EdgeIndex;
-class Index;
-struct OperationOptions;
-class PrimaryIndex;
-class StringRef;
-class Transaction;
 namespace velocypack {
 template <typename T>
 class Buffer;
