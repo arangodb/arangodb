@@ -319,9 +319,8 @@ class LogicalCollection {
 
   bool removeIndex(TRI_idx_iid_t iid);
 
-  // TODO: THROW OR RETURN ERROR?
   void addIndex(std::shared_ptr<arangodb::Index>);
-  void addIndexCoordinator(arangodb::velocypack::Slice);
+  void addIndexCoordinator(std::shared_ptr<arangodb::Index>, bool);
 
   // SECTION: Indexes (local only)
 
