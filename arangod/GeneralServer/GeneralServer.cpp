@@ -36,6 +36,7 @@
 #include "GeneralServer/GeneralServerJob.h"
 #include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
+#include "Rest/CommonDefines.h"
 #include "Scheduler/ListenTask.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -149,7 +150,7 @@ bool GeneralServer::handleRequestAsync(GeneralCommTask* task,
       LOG(WARN) << "unable to add job to the job queue: "
                 << TRI_errno_string(res);
     } else {
-      task->handleSimpleError(GeneralResponse::ResponseCode::SERVICE_UNAVAILABLE);
+      task->handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE, messageId);
       return true;
     }
     // TODO send info to async work manager?
@@ -189,7 +190,7 @@ bool GeneralServer::handleRequest(GeneralCommTask* task,
   int res = DispatcherFeature::DISPATCHER->addJob(job, startThread);
 
   if (res == TRI_ERROR_DISPATCHER_IS_STOPPING) {
-    task->handleSimpleError(GeneralResponse::ResponseCode::SERVICE_UNAVAILABLE);
+    task->handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE, messageId);
     return true;
   }
 

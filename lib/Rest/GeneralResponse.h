@@ -31,8 +31,8 @@
 #include "Basics/StringUtils.h"
 #include "GeneralRequest.h"
 #include "lib/Endpoint/Endpoint.h"
+#include "Rest/CommonDefines.h"
 
-#include "CommonDefines.h"
 namespace arangodb {
 namespace velocypack {
 struct Options;

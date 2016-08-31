@@ -125,6 +125,8 @@ class GeneralServer;
 // (which has to be implemented in derived) as long as new input is available.
 
 class GeneralCommTask : public SocketTask {
+ friend class GeneralServer;
+
   GeneralCommTask(GeneralCommTask const&) = delete;
   GeneralCommTask const& operator=(GeneralCommTask const&) = delete;
 
