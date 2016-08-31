@@ -243,6 +243,19 @@ query_t config_t::activeToBuilder () const {
   return ret;
 }
 
+query_t config_t::activeAgentsToBuilder () const {
+  query_t ret = std::make_shared<arangodb::velocypack::Builder>();
+  ret->openObject();
+  {
+    READ_LOCKER(readLocker, _lock);
+    for (auto const& i : _active) {
+      ret->add(i, VPackValue(_pool.at(i)));
+    }
+  }
+  ret->close();
+  return ret;
+}
+
 query_t config_t::poolToBuilder () const {
   query_t ret = std::make_shared<arangodb::velocypack::Builder>();
   ret->openObject();

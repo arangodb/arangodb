@@ -142,6 +142,7 @@ struct config_t {
 
   /// @brief of active agents
   query_t activeToBuilder () const;
+  query_t activeAgentsToBuilder () const;
   query_t poolToBuilder () const;
 
   

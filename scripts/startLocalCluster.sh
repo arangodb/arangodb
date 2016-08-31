@@ -69,7 +69,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --agency.pool-size $NRAGENTS \
         --agency.supervision true \
         --agency.supervision-frequency $SFRE \
-        --agency.wait-for-sync true \
+        --agency.wait-for-sync false \
         --agency.election-timeout-min $MINP \
         --agency.election-timeout-max $MAXP \
         --database.directory cluster/data$port \

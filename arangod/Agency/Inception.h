@@ -45,7 +45,7 @@ public:
   Inception();
   explicit Inception(Agent*);
   virtual ~Inception();
-  
+
   void run() override;
   bool start();
   
@@ -53,6 +53,9 @@ public:
   void beginShutdown() override;
   
 private:
+
+  void activeAgency();
+  void gossip();
 
   Agent* _agent;
   
