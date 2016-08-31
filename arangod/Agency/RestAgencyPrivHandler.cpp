@@ -147,7 +147,9 @@ RestHandler::status RestAgencyPrivHandler::execute() {
         if (_request->requestType() != GeneralRequest::RequestType::GET) {
           return reportMethodNotAllowed();
         }
-        result.add("active", _agent->config().activeAgentsToBuilder()->slice());
+        if (_agent->leaderID() != NO_LEADER) {
+          result.add("active", _agent->config().activeAgentsToBuilder()->slice());
+        }
       } else if (_request->suffix()[0] == "inform") {
         arangodb::velocypack::Options options;
         query_t query = _request->toVelocyPackBuilderPtr(&options);

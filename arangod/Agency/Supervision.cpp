@@ -341,7 +341,7 @@ void Supervision::run() {
     // make sense at all without other ArangoDB servers, we wait pretty
     // long here before giving up:
     if (!updateAgencyPrefix(1000, 1)) {
-      LOG_TOPIC(ERR, Logger::AGENCY)
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
         << "Cannot get prefix from Agency. Stopping supervision for good.";
       return;
     }
