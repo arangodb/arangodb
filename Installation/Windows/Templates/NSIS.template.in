@@ -946,7 +946,7 @@ Function default_installation_directory
    Return
 FunctionEnd
 
-Function assign_proper_access_rigths
+Function assign_proper_access_rights
     StrCpy $0 "0"
     AccessControl::GrantOnFile \
      "$INSTDIR" "(BU)" "GenericRead + GenericWrite + GenericExecute"
@@ -963,7 +963,7 @@ Function is_writable
 ; is does not matter if we do some errors here
    ${If} $TRI_INSTALL_ALL_USERS == '1'
      CreateDirectory $INSTDIR
-     Call assign_proper_access_rigths
+     Call assign_proper_access_rights
     ${EndIf}
 FunctionEnd
 
