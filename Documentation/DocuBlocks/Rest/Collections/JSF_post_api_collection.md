@@ -94,8 +94,19 @@ and the hash value is used to determine the target shard.
 **Note**: Values of shard key attributes cannot be changed once set.
   This option is meaningless in a single server setup.
 
+@RESTBODYPARAM{replicationFactor,integer,optional,int64} 
+(The default is *1*): in a cluster, this attribute determines how many copies 
+of each shard are kept on different DBServers. The value 1 means that only one 
+copy (no synchronous replication) is kept. A value of k means that k-1 replicas 
+are kept. Any two copies reside on different DBServers. Replication between them is 
+synchronous, that is, every write operation to the "leader" copy will be replicated 
+to all "follower" replicas, before the write operation is reported successful.
+
+If a server fails, this is detected automatically and one of the servers holding 
+copies take over, usually without an error being reported.
+
 @RESTDESCRIPTION
-Creates an new collection with a given name. The request must contain an
+Creates a new collection with a given name. The request must contain an
 object with the following attributes.
 
 

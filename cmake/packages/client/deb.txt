@@ -80,11 +80,12 @@ if(CMAKE_TARGET_ARCHITECTURES MATCHES ".*x86_64.*")
 elseif(CMAKE_TARGET_ARCHITECTURES MATCHES "aarch64")
   set(ARANGODB_PACKAGE_ARCHITECTURE "arm64")
 elseif(CMAKE_TARGET_ARCHITECTURES MATCHES "armv7")
-  set(ARANGODB_PACKAGE_ARCHITECTURE "arm7")
+  set(ARANGODB_PACKAGE_ARCHITECTURE "armhf")
 else()
   set(ARANGODB_PACKAGE_ARCHITECTURE "i386")
 endif()
 
+set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE ${ARANGODB_PACKAGE_ARCHITECTURE})
 set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}_${ARANGODB_PACKAGE_ARCHITECTURE}")
 
 ################################################################################
@@ -98,3 +99,12 @@ include(${ORIGINAL_SOURCE_DIR}/cmake/InstallArangoDBJSClient.cmake)
 include(${ORIGINAL_SOURCE_DIR}/arangosh/install.cmake)
 
 include(CPack)
+
+# TODO: missing usr/share/man
+# TODO: missing usr/share/man/man1
+# TODO: missing usr/share/man/man1/arangobench.1
+# TODO: missing usr/share/man/man1/arangodump.1
+# TODO: missing usr/share/man/man1/arangoimp.1
+# TODO: missing usr/share/man/man1/arangorestore.1
+# TODO: missing usr/share/man/man1/arangosh.1
+# usr/share/man/man8/foxx-manager.8

@@ -37,7 +37,7 @@ endif ()
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # where to find CMAKE modules
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
+set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
 # be verbose about flags used
 option(VERBOSE OFF)
@@ -708,7 +708,7 @@ if (NOT USE_BOOST_UNITTESTS)
   message(STATUS "BOOST unit-tests are disabled")
 endif ()
 
-include_directories(${Boost_INCLUDE_DIR})
+include_directories(SYSTEM ${Boost_INCLUDE_DIR})
 add_definitions(-DARANGODB_BOOST_VERSION=\"${Boost_VERSION}\")
 
 ################################################################################
