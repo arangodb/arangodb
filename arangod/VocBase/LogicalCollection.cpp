@@ -135,6 +135,27 @@ static TRI_voc_cid_t ReadCid(VPackSlice info) {
   return cid;
 }
 
+static TRI_voc_cid_t ReadPlanId(VPackSlice info, TRI_voc_cid_t cid) {
+  if (!info.isObject()) {
+    // ERROR CASE
+    return 0;
+  }
+  VPackSlice id = info.get("planId");
+  if (id.isNone()) {
+    return cid;
+  }
+
+  if (id.isString()) {
+    // string cid, e.g. "9988488"
+    return arangodb::basics::StringUtils::uint64(id.copyString());
+  } else if (id.isNumber()) {
+    // numeric cid, e.g. 9988488
+    return id.getNumericValue<uint64_t>();
+  }
+  // TODO Throw error for invalid type?
+  return cid;
+}
+
 static std::string const ReadStringValue(VPackSlice info,
                                          std::string const& name,
                                          std::string const& def) {
@@ -167,6 +188,107 @@ static int GetObjectLength(VPackSlice info, std::string const& name, int def) {
   return static_cast<int>(info.length());
 }
 
+// Creates an index object.
+// It does not modify anything and does not insert things into
+// the index.
+// Is also save to use in cluster case.
+static std::shared_ptr<Index> PrepareIndexFromSlice(VPackSlice info,
+                                                    bool generateKey,
+                                                    LogicalCollection* col,
+                                                    bool isClusterConstructor = false) {
+  if (!info.isObject()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+
+  // extract type
+  VPackSlice value = info.get("type");
+
+  if (!value.isString()) {
+    // FIXME Intenral Compatibility.
+    // Compatibility with old v8-vocindex.
+    if (generateKey) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    } else {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
+  }
+
+  std::string tmp = value.copyString();
+  arangodb::Index::IndexType const type = arangodb::Index::type(tmp.c_str());
+
+  std::shared_ptr<Index> newIdx;
+
+  TRI_idx_iid_t iid = 0;
+  value = info.get("id");
+  if (value.isString()) {
+    iid = basics::StringUtils::uint64(value.copyString());
+  } else if (value.isNumber()) { 
+    iid = Helper::getNumericValue<TRI_idx_iid_t>(info, "id", 0);
+  } else if (!generateKey) {
+    // In the restore case it is forbidden to NOT have id
+    LOG(ERR) << "ignoring index, index identifier could not be located";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+
+  if (iid == 0 && !isClusterConstructor) {
+    // Restore is not allowed to generate in id
+    TRI_ASSERT(generateKey);
+    iid = arangodb::Index::generateId();
+  }
+  
+  switch (type) {
+    case arangodb::Index::TRI_IDX_TYPE_UNKNOWN: {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
+    case arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX: {
+      if (!isClusterConstructor) {
+        // this indexes cannot be created directly
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+      newIdx.reset(new arangodb::PrimaryIndex(col));
+      break;
+    }
+    case arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX: {
+      if (!isClusterConstructor) {
+        // this indexes cannot be created directly
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+      newIdx.reset(new arangodb::EdgeIndex(iid, col));
+      break;
+    }
+    case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
+    case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX: {
+      newIdx.reset(new arangodb::GeoIndex(iid, col, info));
+      break;
+    }
+    case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
+      newIdx.reset(new arangodb::HashIndex(iid, col, info));
+      break;
+    }
+    case arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX: {
+      newIdx.reset(new arangodb::SkiplistIndex(iid, col, info));
+      break;
+    }
+    case arangodb::Index::TRI_IDX_TYPE_ROCKSDB_INDEX: {
+#ifdef ARANGODB_ENABLE_ROCKSDB
+      newIdx.reset(new arangodb::RocksDBIndex(iid, col, info));
+      break;
+#else
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                     "index type not supported in this build");
+#endif
+    }
+    case arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX: {
+      newIdx.reset(new arangodb::FulltextIndex(iid, col, info));
+      break;
+    }
+  }
+  if (newIdx == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  return newIdx;
+};
+
 }
 
 /// @brief This the "copy" constructor used in the cluster
@@ -188,9 +310,9 @@ LogicalCollection::LogicalCollection(
       _isVolatile(other->isVolatile()),
       _waitForSync(other->waitForSync()),
       _journalSize(other->journalSize()),
-      _keyOptions(nullptr),  // Not needed
+      _keyOptions(other->_keyOptions),
       _indexBuckets(other->indexBuckets()),
-      _indexes(),  // Not needed
+      _indexes(),
       _replicationFactor(other->replicationFactor()),
       _numberOfShards(other->numberOfShards()),
       _allowUserKeys(other->allowUserKeys()),
@@ -213,6 +335,12 @@ LogicalCollection::LogicalCollection(
   if (ServerState::instance()->isDBServer()) {
     _followers.reset(new FollowerInfo(this));
   }
+
+  // Copy over index definitions
+  _indexes.reserve(other->_indexes.size());
+  for (auto const& idx : other->_indexes) {
+    _indexes.emplace_back(idx);
+  }
 }
 
 // @brief Constructor used in coordinator case.
@@ -221,7 +349,7 @@ LogicalCollection::LogicalCollection(
 LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
     : _internalVersion(0),
       _cid(ReadCid(info)),
-      _planId(_cid),
+      _planId(ReadPlanId(info, _cid)),
       _type(ReadNumericValue<TRI_col_type_e, int>(info, "type",
                                                   TRI_COL_TYPE_UNKNOWN)),
       _name(ReadStringValue(info, "name", "")),
@@ -292,6 +420,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
 
     auto indexesSlice = info.get("indexes");
     if (indexesSlice.isArray()) {
+      TRI_ASSERT(ServerState::instance()->isRunningInCluster());
       for (auto const& v : VPackArrayIterator(indexesSlice)) {
         if (arangodb::basics::VelocyPackHelper::getBooleanValue(
                 v, "error", false)) {
@@ -300,7 +429,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
           // TODO Handle Properly
           continue;
         }
-        addIndexCoordinator(v);
+        auto idx = PrepareIndexFromSlice(v, false, this, true);
+        addIndexCoordinator(idx, false);
       }
     }
 
@@ -949,82 +1079,31 @@ std::shared_ptr<Index> LogicalCollection::createIndex(Transaction* trx,
   // We also hold the lock.
   // Create it
  
-  // extract type
-  VPackSlice value = info.get("type");
-
-  if (!value.isString()) {
-    // Compatibility with old v8-vocindex.
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  idx = PrepareIndexFromSlice(info, true, this);
+  TRI_ASSERT(idx != nullptr);
+  if (ServerState::instance()->isCoordinator()) {
+    // In the coordinator case we do not fill the index
+    // We only inform the others.
+    addIndexCoordinator(idx, true);
+    return idx;
   }
 
-  std::string tmp = value.copyString();
-  arangodb::Index::IndexType const type = arangodb::Index::type(tmp.c_str());
-
-  std::shared_ptr<Index> newIdx;
-
-  TRI_idx_iid_t iid = 0;
-  value = info.get("id");
-  if (value.isString()) {
-    iid = basics::StringUtils::uint64(value.copyString());
-  } else if (value.isNumber()) { 
-    iid = Helper::getNumericValue<TRI_idx_iid_t>(info, "id", 0);
-  }
-
-  if (iid == 0) {
-    iid = arangodb::Index::generateId();
-  }
-  
-  switch (type) {
-    case arangodb::Index::TRI_IDX_TYPE_UNKNOWN:
-    case arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX:
-    case arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX: {
-      // these indexes cannot be created directly
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-    }
-    case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
-    case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX: {
-      newIdx.reset(new arangodb::GeoIndex(iid, this, info));
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
-      newIdx.reset(new arangodb::HashIndex(iid, this, info));
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX: {
-      newIdx.reset(new arangodb::SkiplistIndex(iid, this, info));
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_ROCKSDB_INDEX: {
-#ifdef ARANGODB_ENABLE_ROCKSDB
-      newIdx.reset(new arangodb::RocksDBIndex(iid, this, info));
-      break;
-#else
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                     "index type not supported in this build");
-#endif
-    }
-    case arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX: {
-      newIdx.reset(new arangodb::FulltextIndex(iid, this, info));
-      break;
-    }
-  }
-
-  int res = fillIndex(trx, newIdx.get(), false);
+  int res = fillIndex(trx, idx.get(), false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
   
-  res = saveIndex(newIdx.get(), true);
+  res = saveIndex(idx.get(), true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
   // Until here no harm is done if sth fails. The shared ptr will clean up. if left before
 
-  addIndex(newIdx);
+  addIndex(idx);
   created = true;
-  return newIdx;
+  return idx;
 }
 
 int LogicalCollection::restoreIndex(Transaction* trx, VPackSlice const& info,
@@ -1035,18 +1114,7 @@ int LogicalCollection::restoreIndex(Transaction* trx, VPackSlice const& info,
   if (!info.isObject()) {
     return TRI_ERROR_INTERNAL;
   }
-
-  // extract the type
-  VPackSlice typeSlice = info.get("type");
-
-  if (!typeSlice.isString()) {
-    return TRI_ERROR_INTERNAL;
-  }
-  std::string typeStr = typeSlice.copyString();
-
-  // extract the index identifier
-  VPackSlice iis = info.get("id");
-
+  /* FIXME Old style First check if iid is okay and update server tick
   TRI_idx_iid_t iid;
   if (iis.isNumber()) {
     iid = iis.getNumericValue<TRI_idx_iid_t>();
@@ -1060,66 +1128,21 @@ int LogicalCollection::restoreIndex(Transaction* trx, VPackSlice const& info,
   }
 
   TRI_UpdateTickServer(iid);
-
-  idx = lookupIndex(info);
-  if (idx != nullptr) {
-    // We already have this index.
-    // Restore does not care
-    LOG(TRACE) << typeStr << "-index already created";
-    return TRI_ERROR_NO_ERROR;
-  }
-  // TODO What about an index having this iid?
-
-  // We are sure that we do not have an index of this type.
-  // We also hold the lock.
-  // Create it
-
-  arangodb::Index::IndexType const type =
-      arangodb::Index::type(typeStr.c_str());
-
+  */
+  // We create a new Index object to make sure that the index
+  // is not handed out except for a successful case.
   std::shared_ptr<Index> newIdx;
-
-  // TODO Check if this is correct. If not we have to generate a new iid
-  TRI_ASSERT(iid != 0);
-
-  switch (type) {
-    case arangodb::Index::TRI_IDX_TYPE_UNKNOWN:
-    case arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX:
-    case arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX: {
-      // these indexes cannot be created directly
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-    }
-    case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
-    case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX: {
-      newIdx = std::make_shared<arangodb::GeoIndex>(iid, this, info);
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
-      newIdx = std::make_shared<arangodb::HashIndex>(iid, this, info);
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX: {
-      newIdx = std::make_shared<arangodb::SkiplistIndex>(iid, this, info);
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_ROCKSDB_INDEX: {
-#ifdef ARANGODB_ENABLE_ROCKSDB
-      newIdx = std::make_shared<arangodb::RocksDBIndex>(iid, this, info);
-      break;
-#else
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                     "index type not supported in this build");
-#endif
-    }
-    case arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX: {
-      newIdx = std::make_shared<arangodb::FulltextIndex>(iid, this, info);
-      break;
-    }
+  try {
+    newIdx = PrepareIndexFromSlice(info, false, this);
+  } catch (arangodb::basics::Exception const& e) {
+    // Something with index creation went wrong.
+    // Just report.
+    return e.code();
   }
-  if (newIdx == nullptr) {
-    // Could not create the Index
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
+  TRI_ASSERT(newIdx != nullptr);
+
+  // FIXME New style. Update tick after successful creation of index.
+  TRI_UpdateTickServer(newIdx->id());
 
   int res = fillIndex(trx, newIdx.get());
 
@@ -1451,8 +1474,12 @@ void LogicalCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
   }
 }
 
-void LogicalCollection::addIndexCoordinator(arangodb::velocypack::Slice) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+void LogicalCollection::addIndexCoordinator(std::shared_ptr<arangodb::Index> idx,
+                                            bool distribute) {
+  _indexes.emplace_back(idx);
+  if (distribute) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
 }
 
 /// @brief garbage-collect a collection's indexes
@@ -2109,7 +2136,7 @@ int LogicalCollection::rollbackOperation(arangodb::Transaction* trx,
 int LogicalCollection::fillIndex(arangodb::Transaction* trx,
                                  arangodb::Index* idx,
                                  bool skipPersistent) {
-
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (!useSecondaryIndexes()) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -3045,67 +3072,3 @@ void LogicalCollection::newObjectForRemove(
   builder.add(StaticStrings::RevString, VPackValue(rev));
   builder.close();
 } 
-
-
-/*
-void LogicalCollection::addIndexCoordinator(VPackSlice const& info) {
-  // extract type
-  VPackSlice value = info.get("type");
-
-  if (!value.isString()) {
-    // Compatibility with old v8-vocindex.
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  std::string tmp = value.copyString();
-  arangodb::Index::IndexType const type = arangodb::Index::type(tmp.c_str());
-
-  bool created = false;
-
-  std::unique_ptr<Index> newIdx;
-
-  switch (type) {
-    case arangodb::Index::TRI_IDX_TYPE_UNKNOWN: {
-      // these indexes cannot be created directly
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX: {
-      newIdx.reset(new arangodb::PrimaryIndex(info));
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX: {
-      newIdx.reset(new arangodb::EdgeIndex(info));
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
-    case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX: {
-      newIdx.reset(new arangodb::GeoIndex(info));
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
-      newIdx.reset(new arangodb::HashIndex(info));
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX: {
-      newIdx.reset(new arangodb::SkiplistIndex(info));
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_ROCKSDB_INDEX: {
-#ifdef ARANGODB_ENABLE_ROCKSDB
-      newIdx.reset(new arangodb::RocksDBIndex(info));
-      break;
-#else
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                     "index type not supported in this build");
-#endif
-    case arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX: {
-      newIdx.reset(new arangodb::FulltextIndex(info));
-      break;
-    }
-  }
-
-  _indexes.emplace(newIdx.get());
-  newIdx.release();
-}
-*/
