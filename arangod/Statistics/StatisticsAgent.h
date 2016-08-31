@@ -25,6 +25,7 @@
 #define ARANGOD_STATISTICS_STATISTICS_AGENT_H 1
 
 #include "Basics/Common.h"
+#include "Meta/utility.h"
 
 #include "Statistics/StatisticsFeature.h"
 #include "Statistics/statistics.h"
@@ -37,7 +38,9 @@ class StatisticsAgent {
   StatisticsAgent& operator=(StatisticsAgent const&) = delete;
 
  public:
-  StatisticsAgent() : _statistics(nullptr), _lastReadStart(0.0) {}
+  StatisticsAgent(bool standalone = false)
+      : _statistics(standalone ? FUNC::acquire() : nullptr),
+        _lastReadStart(0.0) {}
 
   ~StatisticsAgent() {
     if (_statistics != nullptr) {
@@ -110,6 +113,15 @@ class RequestStatisticsAgent
     : public StatisticsAgent<TRI_request_statistics_t,
                              RequestStatisticsAgentDesc> {
  public:
+  RequestStatisticsAgent(bool standalone = false)
+      : StatisticsAgent(standalone){};
+  ~RequestStatisticsAgent() = default;
+
+  RequestStatisticsAgent(RequestStatisticsAgent&& other) {
+    other._statistics = meta::exchange(_statistics, nullptr);
+    other._lastReadStart = _lastReadStart;
+  }
+
   void requestStatisticsAgentSetRequestType(rest::RequestType b) {
     if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {
@@ -249,6 +261,16 @@ class ConnectionStatisticsAgent
 
  public:
   void connectionStatisticsAgentSetHttp() {
+    if (StatisticsFeature::enabled()) {
+      if (_statistics != nullptr) {
+        _statistics->_http = true;
+        TRI_HttpConnectionsStatistics.incCounter();
+      }
+    }
+  }
+
+  // TODO FIXME -- modify statistics to respect vpp
+  void connectionStatisticsAgentSetVpp() {
     if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {
         _statistics->_http = true;

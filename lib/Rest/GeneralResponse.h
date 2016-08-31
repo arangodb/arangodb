@@ -27,10 +27,10 @@
 #include "Basics/Common.h"
 
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
-#include "lib/Endpoint/Endpoint.h"
+#include "Basics/StringUtils.h"
 #include "GeneralRequest.h"
+#include "lib/Endpoint/Endpoint.h"
 
 #include "CommonDefines.h"
 namespace arangodb {
@@ -116,7 +116,7 @@ class GeneralResponse {
   }
 
  public:
-  virtual uint64_t messageId() { return 1; }
+  virtual uint64_t messageId() const { return 1; }
 
   virtual void reset(ResponseCode) = 0;
 
@@ -124,19 +124,23 @@ class GeneralResponse {
   // throw an error
   virtual void setPayload(arangodb::velocypack::Slice const&,
                           bool generateBody = true,
-                          arangodb::velocypack::Options const& = arangodb::
-                              velocypack::Options::Defaults) = 0;
+                          arangodb::velocypack::Options const& =
+                              arangodb::velocypack::Options::Defaults) = 0;
 
-  virtual void addPayload(VPackSlice const& slice) {
-    // this is slower as it has an extra copy!!
-    _vpackPayloads.emplace_back(slice.byteSize());
-    std::memcpy(&_vpackPayloads.back(), slice.start(), slice.byteSize());
-  };
+  void addPayloadPreconditions() { TRI_ASSERT(_vpackPayloads.size() == 0); }
+  virtual void addPayloadPreHook(bool inputIsBuffer, bool& resolveExternals) {}
+  virtual void addPayloadPostHook(
+      arangodb::velocypack::Options const* options) {}
+  void addPayload(VPackSlice const& slice,
+                  arangodb::velocypack::Options const* options = nullptr,
+                  bool resolve_externals = true);
+  void addPayload(VPackBuffer<uint8_t>&& buffer,
+                  arangodb::velocypack::Options const* options = nullptr,
+                  bool resolve_externals = true);
 
-  virtual void addPayload(VPackBuffer<uint8_t>&& buffer) {
-    _vpackPayloads.push_back(std::move(buffer));
-  };
-
+  virtual int reservePayload(std::size_t size) { return size; }
+  virtual bool setGenerateBody(bool) { return true; };  // used for head
+                                                        // resonses
   void setOptions(VPackOptions options) { _options = std::move(options); };
 
  protected:

@@ -916,6 +916,6 @@ std::shared_ptr<VPackBuilder> RestAqlHandler::parseVelocyPackBody() {
 void RestAqlHandler::sendResponse(
     rest::ResponseCode code, VPackSlice const slice,
     arangodb::TransactionContext* transactionContext) {
-  setResponseCode(code);
+  resetResponse(code);
   writeResult(slice, *(transactionContext->getVPackOptionsForDump()));
 }

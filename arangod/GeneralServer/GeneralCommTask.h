@@ -124,7 +124,7 @@ class GeneralServer;
 // handleRead (virtual function required by SocketTask) that calls processRead
 // (which has to be implemented in derived) as long as new input is available.
 
-class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
+class GeneralCommTask : public SocketTask {
   GeneralCommTask(GeneralCommTask const&) = delete;
   GeneralCommTask const& operator=(GeneralCommTask const&) = delete;
 
@@ -134,6 +134,15 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
 
   virtual void addResponse(GeneralResponse*) = 0;
   virtual arangodb::Endpoint::TransportType transportType() = 0;
+
+  RequestStatisticsAgent* getAgent(uint64_t id) {
+    auto agentIt = _agents.find(id);
+    if (agentIt != _agents.end()) {
+      return &(agentIt->second);
+    } else {
+      throw std::logic_error("there should be an agent for every request");
+    }
+  }
 
  protected:
   virtual void handleChunk(char const*, size_t) = 0;
@@ -147,8 +156,7 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
 
   void processResponse(GeneralResponse*);
 
-  virtual void handleSimpleError(rest::ResponseCode,
-                                 uint64_t messagid) = 0;
+  virtual void handleSimpleError(rest::ResponseCode, uint64_t messagid) = 0;
   virtual void handleSimpleError(rest::ResponseCode, int code,
                                  std::string const& errorMessage,
                                  uint64_t messageId) = 0;
@@ -164,8 +172,9 @@ class GeneralCommTask : public SocketTask, public RequestStatisticsAgent {
   // protocol to use http, vpp
   char const* _protocol = "unknown";
 
-  rest::ProtocolVersion _protocolVersion =
-      rest::ProtocolVersion::UNKNOWN;
+  rest::ProtocolVersion _protocolVersion = rest::ProtocolVersion::UNKNOWN;
+
+  std::map<uint64_t, RequestStatisticsAgent> _agents;
 };
 }
 }

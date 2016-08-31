@@ -22,25 +22,25 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VelocyPackHelper.h"
-#include "Basics/conversions.h"
 #include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VPackStringBufferAdapter.h"
+#include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/tri-strings.h"
+#include "Logger/Logger.h"
 
 #include <velocypack/AttributeTranslator.h>
-#include <velocypack/velocypack-common.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+#include <velocypack/velocypack-common.h>
 
 extern "C" {
 unsigned long long XXH64(const void* input, size_t length,
@@ -57,18 +57,21 @@ static std::unique_ptr<VPackCustomTypeHandler> CustomTypeHandler;
 // a default custom type handler that prevents throwing exceptions when
 // custom types are encountered during Slice.toJson() and family
 struct DefaultCustomTypeHandler final : public VPackCustomTypeHandler {
-  void dump(VPackSlice const&, VPackDumper* dumper, VPackSlice const&) override {
+  void dump(VPackSlice const&, VPackDumper* dumper,
+            VPackSlice const&) override {
     LOG(WARN) << "DefaultCustomTypeHandler called";
     dumper->appendString("hello from CustomTypeHandler");
   }
-  std::string toString(VPackSlice const&, VPackOptions const*, VPackSlice const&) override {
+  std::string toString(VPackSlice const&, VPackOptions const*,
+                       VPackSlice const&) override {
     LOG(WARN) << "DefaultCustomTypeHandler called";
     return "hello from CustomTypeHandler";
   }
 };
 
 // attribute exclude handler for skipping over system attributes
-struct SystemAttributeExcludeHandler final : public VPackAttributeExcludeHandler {
+struct SystemAttributeExcludeHandler final
+    : public VPackAttributeExcludeHandler {
   bool shouldExclude(VPackSlice const& key, int nesting) override final {
     VPackValueLength keyLength;
     char const* p = key.getString(keyLength);
@@ -116,8 +119,7 @@ void VelocyPackHelper::initialize() {
   VPackOptions::Defaults.attributeTranslator = Translator.get();
   VPackOptions::Defaults.unsupportedTypeBehavior =
       VPackOptions::ConvertUnsupportedType;
-  
-  
+
   CustomTypeHandler.reset(new DefaultCustomTypeHandler);
 
   VPackOptions::Defaults.customTypeHandler = CustomTypeHandler.get();
@@ -126,16 +128,21 @@ void VelocyPackHelper::initialize() {
                                                  // HTTP xfer
 
   // run quick selfs test with the attribute translator
-  TRI_ASSERT(VPackSlice(Translator->translate(StaticStrings::KeyString))
-                 .getUInt() == KeyAttribute - AttributeBase);
-  TRI_ASSERT(VPackSlice(Translator->translate(StaticStrings::RevString))
-                 .getUInt() == RevAttribute - AttributeBase);
-  TRI_ASSERT(VPackSlice(Translator->translate(StaticStrings::IdString))
-                 .getUInt() == IdAttribute - AttributeBase);
-  TRI_ASSERT(VPackSlice(Translator->translate(StaticStrings::FromString))
-                 .getUInt() == FromAttribute - AttributeBase);
-  TRI_ASSERT(VPackSlice(Translator->translate(StaticStrings::ToString))
-                 .getUInt() == ToAttribute - AttributeBase);
+  TRI_ASSERT(
+      VPackSlice(Translator->translate(StaticStrings::KeyString)).getUInt() ==
+      KeyAttribute - AttributeBase);
+  TRI_ASSERT(
+      VPackSlice(Translator->translate(StaticStrings::RevString)).getUInt() ==
+      RevAttribute - AttributeBase);
+  TRI_ASSERT(
+      VPackSlice(Translator->translate(StaticStrings::IdString)).getUInt() ==
+      IdAttribute - AttributeBase);
+  TRI_ASSERT(
+      VPackSlice(Translator->translate(StaticStrings::FromString)).getUInt() ==
+      FromAttribute - AttributeBase);
+  TRI_ASSERT(
+      VPackSlice(Translator->translate(StaticStrings::ToString)).getUInt() ==
+      ToAttribute - AttributeBase);
 
   TRI_ASSERT(VPackSlice(Translator->translate(KeyAttribute - AttributeBase))
                  .copyString() == StaticStrings::KeyString);
@@ -471,7 +478,8 @@ static bool PrintVelocyPack(int fd, VPackSlice const& slice,
   }
 
   arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
-  arangodb::basics::VPackStringBufferAdapter bufferAdapter(buffer.stringBuffer());
+  arangodb::basics::VPackStringBufferAdapter bufferAdapter(
+      buffer.stringBuffer());
   try {
     VPackDumper dumper(&bufferAdapter);
     dumper.dump(slice);
@@ -882,21 +890,20 @@ bool VelocyPackHelper::hasExternals(VPackSlice input) {
   return false;
 }
 
-VPackBuilder VelocyPackHelper::sanitizeExternalsChecked(VPackSlice input,
-                                                        bool checkExternals) {
-  VPackBuilder builder;
+VPackBuffer<uint8_t> VelocyPackHelper::sanitizeExternalsChecked(
+    VPackSlice input, VPackOptions const* options, bool checkExternals) {
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer, options);
   bool resolveExt = true;
   if (checkExternals) {
     resolveExt = hasExternals(input);
   }
-
   if (resolveExt) {  // resolve
     SanitizeExternals(input, builder);
   } else {
     builder.add(input);
   }
-
-  return builder;  // elided
+  return buffer;  // elided
 }
 
 /// @brief extract the collection id from VelocyPack

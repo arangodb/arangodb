@@ -141,7 +141,7 @@ class GeneralRequest {
   // VIRTUAL //////////////////////////////////////////////
   // return 0 for protocols that
   // do not care about message ids
-  virtual uint64_t messageId() { return 1; }
+  virtual uint64_t messageId() const { return 1; }
 
   virtual arangodb::Endpoint::TransportType transportType() = 0;
   virtual int64_t contentLength() const = 0;
@@ -164,8 +164,8 @@ class GeneralRequest {
   bool velocyPackResponse() const;
 
   // should toVelocyPack be renamed to payload?
-  virtual VPackSlice payload(arangodb::velocypack::Options const*
-                                 options = &VPackOptions::Defaults) = 0;
+  virtual VPackSlice payload(arangodb::velocypack::Options const* options =
+                                 &VPackOptions::Defaults) = 0;
 
   std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtr(
       arangodb::velocypack::Options const* options) {

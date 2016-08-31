@@ -44,7 +44,7 @@ using namespace arangodb::basics;
 bool VppResponse::HIDE_PRODUCT_HEADER = false;
 
 VppResponse::VppResponse(ResponseCode code, uint64_t id)
-    : GeneralResponse(code), _header(nullptr), _payload(), _messageId(id) {
+    : GeneralResponse(code), _header(nullptr), _messageId(id) {
   _contentType = ContentType::VPACK;
   _connectionType = rest::CONNECTION_KEEP_ALIVE;
 }
@@ -59,10 +59,8 @@ void VppResponse::reset(ResponseCode code) {
 
 void VppResponse::setPayload(arangodb::velocypack::Slice const& slice,
                              bool generateBody, VPackOptions const& options) {
-  if (generateBody) {
-    _generateBody = true;
-    _payload.append(slice.startAs<char>(),
-                    std::distance(slice.begin(), slice.end()));
+  if (setGenerateBody(generateBody)) {
+    addPayload(slice, &options);
   }
 };
 
@@ -78,7 +76,7 @@ VPackMessageNoOwnBuffer VppResponse::prepareForNetwork() {
   builder.close();
   _header = builder.steal();
   return VPackMessageNoOwnBuffer(VPackSlice(_header->data()),
-                                 VPackSlice(_payload.data()), _messageId,
-                                 _generateBody);
+                                 VPackSlice(_vpackPayloads.front().data()),
+                                 _messageId, _generateBody);
 }
 // void VppResponse::writeHeader(basics::StringBuffer*) {}

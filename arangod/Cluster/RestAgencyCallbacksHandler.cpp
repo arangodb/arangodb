@@ -74,10 +74,10 @@ RestHandler::status RestAgencyCallbacksHandler::execute() {
     auto callback = _agencyCallbackRegistry->getCallback(index);
     LOG(DEBUG) << "Agency callback has been triggered. refetching!";
     callback->refetchAndUpdate(true);
-    setResponseCode(arangodb::rest::ResponseCode::ACCEPTED);
+    resetResponse(arangodb::rest::ResponseCode::ACCEPTED);
   } catch (arangodb::basics::Exception const&) {
     // mop: not found...expected
-    setResponseCode(arangodb::rest::ResponseCode::NOT_FOUND);
+    resetResponse(arangodb::rest::ResponseCode::NOT_FOUND);
   }
   return status::DONE;
 }
