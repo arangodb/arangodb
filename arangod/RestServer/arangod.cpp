@@ -179,6 +179,10 @@ static int runServer(int argc, char** argv) {
 
   try {
     server.run(argc, argv);
+    if (server.helpShown()) {
+      // --help was displayed
+      ret = EXIT_SUCCESS;
+    }
   } catch (std::exception const& ex) {
     LOG(ERR) << "arangod terminated because of an unhandled exception: "
              << ex.what();

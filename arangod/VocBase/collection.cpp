@@ -103,8 +103,6 @@ TRI_collection_t::~TRI_collection_t() {
 
 /// @brief whether or not a collection is fully collected
 bool TRI_collection_t::isFullyCollected() {
-  READ_LOCKER(readLocker, _lock);
-
   int64_t uncollected = _uncollectedLogfileEntries.load();
 
   return (uncollected == 0);

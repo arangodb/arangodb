@@ -25,7 +25,6 @@
 #define ARANGOD_VOC_BASE_COLLECTION_H 1
 
 #include "Basics/Common.h"
-#include "Basics/ReadWriteLock.h"
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/MasterPointer.h"
@@ -194,7 +193,6 @@ struct TRI_collection_t {
   
  private:
   mutable arangodb::Ditches _ditches;
-  mutable arangodb::basics::ReadWriteLock _lock;  // lock protecting the indexes
 
   arangodb::Mutex _compactionStatusLock;
   size_t _nextCompactionStartIndex;

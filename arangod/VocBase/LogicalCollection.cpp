@@ -420,7 +420,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
 
     auto indexesSlice = info.get("indexes");
     if (indexesSlice.isArray()) {
-      TRI_ASSERT(ServerState::instance()->isRunningInCluster());
+      bool const isCluster = ServerState::instance()->isRunningInCluster();
       for (auto const& v : VPackArrayIterator(indexesSlice)) {
         if (arangodb::basics::VelocyPackHelper::getBooleanValue(
                 v, "error", false)) {
@@ -430,7 +430,11 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
           continue;
         }
         auto idx = PrepareIndexFromSlice(v, false, this, true);
-        addIndexCoordinator(idx, false);
+        if (isCluster) {
+          addIndexCoordinator(idx, false);
+        } else {
+          addIndex(idx);
+        }
       }
     }
 

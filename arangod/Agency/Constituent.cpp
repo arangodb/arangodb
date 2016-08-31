@@ -49,7 +49,6 @@ using namespace arangodb::rest;
 using namespace arangodb::velocypack;
 using namespace arangodb;
 
-static const std::string NO_LEADER = "";
 //  (std::numeric_limits<std::string>::max)();
 
 /// Raft role names for display purposes 

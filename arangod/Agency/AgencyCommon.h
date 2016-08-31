@@ -44,6 +44,8 @@ typedef uint64_t term_t;
 /// @brief Agent roles
 enum role_t {FOLLOWER, CANDIDATE, LEADER};
 
+static const std::string NO_LEADER = "";
+
 
 /// @brief Duration type
 typedef std::chrono::duration<long, std::ratio<1, 1000>> duration_t;
