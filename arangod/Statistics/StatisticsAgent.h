@@ -42,7 +42,7 @@ class StatisticsAgent {
       : _statistics(standalone ? FUNC::acquire() : nullptr),
         _lastReadStart(0.0) {}
 
-  ~StatisticsAgent() {
+  virtual ~StatisticsAgent() {
     if (_statistics != nullptr) {
       FUNC::release(_statistics);
     }
@@ -114,14 +114,19 @@ class RequestStatisticsAgent
                              RequestStatisticsAgentDesc> {
  public:
   RequestStatisticsAgent(bool standalone = false)
-      : StatisticsAgent(standalone){};
-  ~RequestStatisticsAgent() = default;
-
-  RequestStatisticsAgent(RequestStatisticsAgent&& other) {
-    other._statistics = meta::exchange(_statistics, nullptr);
-    other._lastReadStart = _lastReadStart;
+      : StatisticsAgent(standalone) {
   }
 
+  RequestStatisticsAgent(RequestStatisticsAgent const&) = delete;
+
+  RequestStatisticsAgent(RequestStatisticsAgent&& other) noexcept {
+    _statistics = other._statistics;
+    other._statistics = nullptr;
+
+    _lastReadStart = other._lastReadStart;
+    other._lastReadStart = 0.0;
+  }
+  
   void requestStatisticsAgentSetRequestType(rest::RequestType b) {
     if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {

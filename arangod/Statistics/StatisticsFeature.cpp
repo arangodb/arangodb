@@ -67,6 +67,7 @@ void StatisticsFeature::unprepare() {
       usleep(10000);
     }
   }
+  _statisticsThread.reset();
 
   STATISTICS = nullptr;
 }

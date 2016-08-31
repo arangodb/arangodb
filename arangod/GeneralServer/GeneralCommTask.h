@@ -174,7 +174,7 @@ class GeneralCommTask : public SocketTask {
 
   rest::ProtocolVersion _protocolVersion = rest::ProtocolVersion::UNKNOWN;
 
-  std::map<uint64_t, RequestStatisticsAgent> _agents;
+  std::unordered_map<uint64_t, RequestStatisticsAgent> _agents;
 };
 }
 }
