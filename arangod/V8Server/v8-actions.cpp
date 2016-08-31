@@ -908,7 +908,6 @@ static TRI_action_result_t ExecuteActionVocbase(
     result.isValid = false;
     result.canceled = false;
 
-    // TODO how to generalize this?
     response->setResponseCode(rest::ResponseCode::SERVER_ERROR);
 
     if (errorMessage.empty()) {

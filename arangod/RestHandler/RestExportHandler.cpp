@@ -25,8 +25,8 @@
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Utils/CollectionExport.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
@@ -180,8 +180,8 @@ void RestExportHandler::createCursor() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER, "expecting POST /_api/export");
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting POST /_api/export");
     return;
   }
 
@@ -211,8 +211,7 @@ void RestExportHandler::createCursor() {
 
     if (!body.isNone()) {
       if (!body.isObject()) {
-        generateError(rest::ResponseCode::BAD,
-                      TRI_ERROR_QUERY_EMPTY);
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
         return;
       }
       optionsBuilder = buildOptions(body);
@@ -262,18 +261,6 @@ void RestExportHandler::createCursor() {
       bool count = arangodb::basics::VelocyPackHelper::getBooleanValue(
           options, "count", false);
 
-      setResponseCode(rest::ResponseCode::CREATED);
-
-      // TODO needs to generalized
-      auto* response = dynamic_cast<HttpResponse*>(_response.get());
-
-      if (response == nullptr) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-      }
-
-      // TODO: generalize to calling handler setPayload
-      response->setContentType(rest::ContentType::JSON);
-
       auto cursors = _vocbase->cursorRepository();
       TRI_ASSERT(cursors != nullptr);
 
@@ -281,14 +268,20 @@ void RestExportHandler::createCursor() {
       arangodb::ExportCursor* cursor = cursors->createFromExport(
           collectionExport.get(), batchSize, ttl, count);
       collectionExport.release();
+      
+      resetResponse(rest::ResponseCode::CREATED);
 
       try {
-        response->body().appendChar('{');
-        cursor->dump(response->body());
-        response->body().appendText(",\"error\":false,\"code\":");
-        response->body().appendInteger(
-            static_cast<uint32_t>(response->responseCode()));
-        response->body().appendChar('}');
+        VPackBuffer<uint8_t> buffer;
+        VPackBuilder builder(buffer);
+        builder.openObject();
+        builder.add("error", VPackValue(false));
+        builder.add("code", VPackValue((int)_response->responseCode()));
+        cursor->dump(builder);
+        builder.close();
+
+        _response->setContentType(rest::ContentType::JSON);
+        generateResult(rest::ResponseCode::CREATED, builder.slice());
 
         cursors->release(cursor);
       } catch (...) {
@@ -300,8 +293,7 @@ void RestExportHandler::createCursor() {
     generateError(GeneralResponse::responseCode(ex.code()), ex.code(),
                   ex.what());
   } catch (...) {
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_INTERNAL);
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL);
   }
 }
 
@@ -309,8 +301,7 @@ void RestExportHandler::modifyCursor() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/export/<cursor-id>");
     return;
   }
@@ -337,23 +328,18 @@ void RestExportHandler::modifyCursor() {
   }
 
   try {
-    setResponseCode(rest::ResponseCode::OK);
+    resetResponse(rest::ResponseCode::OK);
 
-    // TODO this needs to be generalized
-    auto* response = dynamic_cast<HttpResponse*>(_response.get());
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder builder(buffer);
+    builder.openObject();
+    builder.add("error", VPackValue(false));
+    builder.add("code", VPackValue((int)_response->responseCode()));
+    cursor->dump(builder);
+    builder.close();
 
-    if (response == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-    }
-
-    response->setContentType(rest::ContentType::JSON);
-
-    response->body().appendChar('{');
-    cursor->dump(response->body());
-    response->body().appendText(",\"error\":false,\"code\":");
-    response->body().appendInteger(
-        static_cast<uint32_t>(response->responseCode()));
-    response->body().appendChar('}');
+    _response->setContentType(rest::ContentType::JSON);
+    generateResult(rest::ResponseCode::OK, builder.slice());
 
     cursors->release(cursor);
   } catch (arangodb::basics::Exception const& ex) {
@@ -364,8 +350,7 @@ void RestExportHandler::modifyCursor() {
   } catch (...) {
     cursors->release(cursor);
 
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_INTERNAL);
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL);
   }
 }
 
@@ -373,8 +358,7 @@ void RestExportHandler::deleteCursor() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/export/<cursor-id>");
     return;
   }
@@ -389,8 +373,7 @@ void RestExportHandler::deleteCursor() {
   bool found = cursors->remove(cursorId);
 
   if (!found) {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_CURSOR_NOT_FOUND);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND);
     return;
   }
 
@@ -398,9 +381,8 @@ void RestExportHandler::deleteCursor() {
   result.openObject();
   result.add("id", VPackValue(id));
   result.add("error", VPackValue(false));
-  result.add(
-      "code",
-      VPackValue(static_cast<int>(rest::ResponseCode::ACCEPTED)));
+  result.add("code",
+             VPackValue(static_cast<int>(rest::ResponseCode::ACCEPTED)));
   result.close();
 
   generateResult(rest::ResponseCode::ACCEPTED, result.slice());

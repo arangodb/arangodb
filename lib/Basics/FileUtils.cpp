@@ -616,6 +616,16 @@ std::string dirname(std::string const& name) {
 
   return base;
 }
+
+void makePathAbsolute(std::string &path) {
+  int err = 0;
+
+  std::string cwd = FileUtils::currentDirectory(&err);
+  char * p = TRI_GetAbsolutePath(path.c_str(), cwd.c_str());
+  path = p;
+  TRI_FreeString(TRI_CORE_MEM_ZONE, p);
+}
+
 }
 }
 }

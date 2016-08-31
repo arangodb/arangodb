@@ -321,7 +321,7 @@ if (MSVC)
   #http://lists.boost.org/boost-users/2016/04/85968.php
   add_definitions("-D_ENABLE_ATOMIC_ALIGNMENT_FIX")
   
-  set(MSVC_LIBS crypt32.lib;WINMM.LIB;Ws2_32.lib)
+  set(MSVC_LIBS Shlwapi.lib;crypt32.lib;WINMM.LIB;Ws2_32.lib)
 
   set(CMAKE_EXE_LINKER_FLAGS
     "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /SAFESEH:NO /MACHINE:x64 /ignore:4099 ${BASE_LD_FLAGS}"
@@ -708,7 +708,7 @@ if (NOT USE_BOOST_UNITTESTS)
   message(STATUS "BOOST unit-tests are disabled")
 endif ()
 
-include_directories(${Boost_INCLUDE_DIR})
+include_directories(SYSTEM ${Boost_INCLUDE_DIR})
 add_definitions(-DARANGODB_BOOST_VERSION=\"${Boost_VERSION}\")
 
 ################################################################################

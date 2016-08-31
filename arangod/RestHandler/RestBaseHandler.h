@@ -50,6 +50,11 @@ class RestBaseHandler : public rest::RestHandler {
   // generates a result from VelocyPack
   void generateResult(rest::ResponseCode,
                       arangodb::velocypack::Slice const& slice,
+                      VPackOptions const*);
+
+  // generates a result from VelocyPack
+  void generateResult(rest::ResponseCode,
+                      arangodb::velocypack::Slice const& slice,
                       std::shared_ptr<arangodb::TransactionContext> context);
 
   // generates an error

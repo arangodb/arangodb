@@ -42,7 +42,7 @@ class Builder;
 struct Options;
 }
 
-class HttpRequest : public GeneralRequest {
+class HttpRequest final : public GeneralRequest {
   friend class rest::HttpCommTask;
   friend class rest::HttpsCommTask;
   friend class rest::GeneralCommTask;

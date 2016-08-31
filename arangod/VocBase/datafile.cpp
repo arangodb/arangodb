@@ -35,6 +35,7 @@
 #include "VocBase/ticks.h"
 
 #include <sstream>
+#include <iomanip>
 
 // #define DEBUG_DATAFILE 1
 
@@ -45,8 +46,8 @@ namespace {
 
 /// @brief check if a marker appears to be created by ArangoDB 28
 static TRI_voc_crc_t Crc28(TRI_voc_crc_t crc, void const* data, size_t length) {
-  static TRI_voc_crc_t const CrcPolynomial = 0xEDB88320; 
-  unsigned char* current = (unsigned char*) data;   
+  static TRI_voc_crc_t const CrcPolynomial = 0xEDB88320;
+  unsigned char* current = (unsigned char*) data;
   while (length--) {
     crc ^= *current++;
 
@@ -54,22 +55,22 @@ static TRI_voc_crc_t Crc28(TRI_voc_crc_t crc, void const* data, size_t length) {
       if (crc & 1) {
         crc = (crc >> 1) ^ CrcPolynomial;
       } else {
-        crc = crc >> 1;         
+        crc = crc >> 1;
       }
     }
-  }   
+  }
   return crc;
 }
 
 static bool IsMarker28 (void const* marker) {
   struct Marker28 {
-    TRI_voc_size_t       _size; 
-    TRI_voc_crc_t        _crc;     
-    uint32_t             _type;   
+    TRI_voc_size_t       _size;
+    TRI_voc_crc_t        _crc;
+    uint32_t             _type;
 #ifdef TRI_PADDING_32
     char _padding_df_marker[4];
 #endif
-    TRI_voc_tick_t _tick;     
+    TRI_voc_tick_t _tick;
   };
 
   TRI_voc_size_t zero = 0;
@@ -555,7 +556,7 @@ static bool CheckDatafile(TRI_datafile_t* datafile, bool ignoreFailures) {
       if (ignoreFailures) {
         return FixDatafile(datafile, currentSize);
       }
-       
+
       datafile->_lastError =
           TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
       datafile->_currentSize = currentSize;
@@ -574,7 +575,7 @@ static bool CheckDatafile(TRI_datafile_t* datafile, bool ignoreFailures) {
       if (ignoreFailures) {
         return FixDatafile(datafile, currentSize);
       }
-       
+
       datafile->_lastError =
           TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
       datafile->_currentSize = currentSize;
@@ -599,7 +600,7 @@ static bool CheckDatafile(TRI_datafile_t* datafile, bool ignoreFailures) {
         if (ignoreFailures) {
           return FixDatafile(datafile, currentSize);
         }
-         
+
         datafile->_lastError =
             TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
         datafile->_currentSize = currentSize;
@@ -622,7 +623,7 @@ static bool CheckDatafile(TRI_datafile_t* datafile, bool ignoreFailures) {
         bool nextMarkerOk = false;
 
         if (size > 0) {
-          auto next = reinterpret_cast<char const*>(marker) + size;
+          auto next = reinterpret_cast<char const*>(marker) + DatafileHelper::AlignedSize<size_t>(size);
           auto p = next;
 
           if (p < end) {
@@ -669,17 +670,76 @@ static bool CheckDatafile(TRI_datafile_t* datafile, bool ignoreFailures) {
         if (ignoreFailures) {
           return FixDatafile(datafile, currentSize);
         }
-         
+
         datafile->_lastError =
             TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
         datafile->_currentSize = currentSize;
         datafile->_next = datafile->_data + datafile->_currentSize;
         datafile->_state = TRI_DF_STATE_OPEN_ERROR;
 
-        LOG(WARN) << "crc mismatch found in datafile '" << datafile->getName() << "' at position " << currentSize << ". expected crc: " << CalculateCrcValue(marker) << ", actual crc: " << marker->getCrc();
+        LOG(WARN) << "crc mismatch found in datafile '" << datafile->getName()
+                  << "' at position " << currentSize
+                  << ", of size " << datafile->_maximalSize;
+
+        LOG(WARN) << "crc mismatch found inside marker of type '" << TRI_NameMarkerDatafile(marker)
+                  << "' and size " << size
+                  << ". expected crc: " << CalculateCrcValue(marker)
+                  << ", actual crc: " << marker->getCrc();
+
+        {
+          LOG(INFO) << "raw marker data following:";
+          char const* p = reinterpret_cast<char const*>(marker);
+          char const* e = reinterpret_cast<char const*>(marker) + DatafileHelper::AlignedSize<size_t>(size);
+          std::string line;
+          std::string raw;
+          size_t printed = 0;
+          while (p < e) {
+            // print offset
+            line.append("0x");
+            uintptr_t offset = static_cast<uintptr_t>(p - datafile->_data);
+            for (size_t i = 0; i < 8; ++i) {
+              uint8_t c = static_cast<uint8_t>((offset & (0xFFULL << 8 * (7 - i))) >> 8 * (7 - i));
+              uint8_t n1 = c >> 4;
+              uint8_t n2 = c & 0x0F;
+
+              line.push_back((n1 < 10) ? ('0' + n1) : 'A' + n1 - 10);
+              line.push_back((n2 < 10) ? ('0' + n2) : 'A' + n2 - 10);
+            }
+
+            // print data
+            line.append(": ");
+            for (size_t i = 0; i < 16; ++i) {
+              if (p >= e) {
+                line.append("   ");
+              } else {
+                uint8_t c = static_cast<uint8_t>(*p++);
+                uint8_t n1 = c >> 4;
+                uint8_t n2 = c & 0x0F;
+
+                line.push_back((n1 < 10) ? ('0' + n1) : 'A' + n1 - 10);
+                line.push_back((n2 < 10) ? ('0' + n2) : 'A' + n2 - 10);
+                line.push_back(' ');
+
+                raw.push_back((c < 32 || c >= 127) ? '.' : static_cast<unsigned char>(c));
+
+                ++printed;
+              }
+            }
+
+            LOG(INFO) << line << "  " << raw;
+            line.clear();
+            raw.clear();
+
+            if (printed >= 2048) {
+              LOG(INFO) << "(output truncated due to excessive length)";
+              break;
+            }
+          }
+        }
 
         if (nextMarkerOk) {
           LOG(INFO) << "data directly following this marker looks ok so repairing the marker may recover it";
+          LOG(INFO) << "please restart the server with the parameter '--wal.ignore-logfile-errors true' to repair the marker";
         } else {
           LOG(WARN) << "data directly following this marker cannot be analyzed";
         }
@@ -920,7 +980,7 @@ static TRI_datafile_t* OpenDatafile(std::string const& filename, bool ignoreErro
 
   // read header from file
   char buffer[128];
-  memset(&buffer[0], 0, sizeof(buffer)); 
+  memset(&buffer[0], 0, sizeof(buffer));
 
   ssize_t len = sizeof(TRI_df_header_marker_t);
 
@@ -1666,7 +1726,7 @@ static std::string DiagnoseMarker(TRI_df_marker_t const* marker,
   if (marker->getCrc() == crc) {
     return "crc checksum is correct";
   }
-   
+
   result << "crc checksum (hex " << std::hex << marker->getCrc()
          << ") is wrong. expecting (hex " << std::hex << crc << ")";
 
@@ -1818,8 +1878,8 @@ TRI_datafile_t::TRI_datafile_t(std::string const& filename, int fd, void* mmHand
           _state(TRI_DF_STATE_READ),
           _fd(fd),
           _mmHandle(mmHandle),
-          _initSize(maximalSize), 
-          _maximalSize(maximalSize), 
+          _initSize(maximalSize),
+          _maximalSize(maximalSize),
           _currentSize(currentSize),
           _footerSize(sizeof(TRI_df_footer_marker_t)),
           _data(data),
@@ -1845,7 +1905,7 @@ TRI_datafile_t::TRI_datafile_t(std::string const& filename, int fd, void* mmHand
     TRI_MMFileAdvise(_data, _maximalSize, TRI_MADVISE_SEQUENTIAL);
   }
 }
-  
+
 TRI_datafile_t::~TRI_datafile_t() {
   try {
     this->close();
@@ -1892,13 +1952,13 @@ int TRI_datafile_t::close() {
     _fd = -1;
 
     return TRI_ERROR_NO_ERROR;
-  } 
-  
+  }
+
   if (_state == TRI_DF_STATE_CLOSED) {
     LOG(WARN) << "closing an already closed datafile '" << getName() << "'";
     return TRI_ERROR_NO_ERROR;
-  } 
-  
+  }
+
   return TRI_ERROR_ARANGO_ILLEGAL_STATE;
 }
 
@@ -1918,4 +1978,4 @@ bool TRI_datafile_t::sync(char const* begin, char const* end) {
 
   return TRI_MSync(_fd, begin, end);
 }
- 
+

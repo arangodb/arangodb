@@ -85,7 +85,7 @@ RestHandler::status PathHandler::execute() {
     }
     url += defaultFile;
 
-    setResponseCode(rest::ResponseCode::MOVED_PERMANENTLY);
+    resetResponse(rest::ResponseCode::MOVED_PERMANENTLY);
 
     response->setHeaderNC(StaticStrings::Location, url);
     response->setContentType(rest::ContentType::HTML);
@@ -108,7 +108,7 @@ RestHandler::status PathHandler::execute() {
     if (next == ".") {
       LOG(WARN) << "file '" << name << "' contains '.'";
 
-      setResponseCode(rest::ResponseCode::FORBIDDEN);
+      resetResponse(rest::ResponseCode::FORBIDDEN);
       response->body().appendText("path contains '.'");
       return status::DONE;
     }
@@ -116,7 +116,7 @@ RestHandler::status PathHandler::execute() {
     if (next == "..") {
       LOG(WARN) << "file '" << name << "' contains '..'";
 
-      setResponseCode(rest::ResponseCode::FORBIDDEN);
+      resetResponse(rest::ResponseCode::FORBIDDEN);
       response->body().appendText("path contains '..'");
       return status::DONE;
     }
@@ -126,7 +126,7 @@ RestHandler::status PathHandler::execute() {
     if (sc != std::string::npos) {
       LOG(WARN) << "file '" << name << "' contains illegal character";
 
-      setResponseCode(rest::ResponseCode::FORBIDDEN);
+      resetResponse(rest::ResponseCode::FORBIDDEN);
       response->body().appendText("path contains illegal character '" +
                                   std::string(1, next[sc]) + "'");
       return status::DONE;
@@ -136,7 +136,7 @@ RestHandler::status PathHandler::execute() {
       if (!FileUtils::isDirectory(path)) {
         LOG(WARN) << "file '" << name << "' not found";
 
-        setResponseCode(rest::ResponseCode::NOT_FOUND);
+        resetResponse(rest::ResponseCode::NOT_FOUND);
         response->body().appendText("file not found");
         return status::DONE;
       }
@@ -148,7 +148,7 @@ RestHandler::status PathHandler::execute() {
     if (!allowSymbolicLink && FileUtils::isSymbolicLink(name)) {
       LOG(WARN) << "file '" << name << "' contains symbolic link";
 
-      setResponseCode(rest::ResponseCode::FORBIDDEN);
+      resetResponse(rest::ResponseCode::FORBIDDEN);
       response->body().appendText("symbolic links are not allowed");
       return status::DONE;
     }
@@ -157,19 +157,19 @@ RestHandler::status PathHandler::execute() {
   if (!FileUtils::isRegularFile(name)) {
     LOG(WARN) << "file '" << name << "' not found";
 
-    setResponseCode(rest::ResponseCode::NOT_FOUND);
+    resetResponse(rest::ResponseCode::NOT_FOUND);
     response->body().appendText("file not found");
     return status::DONE;
   }
 
-  setResponseCode(rest::ResponseCode::OK);
+  resetResponse(rest::ResponseCode::OK);
 
   try {
     FileUtils::slurp(name, response->body());
   } catch (...) {
     LOG(WARN) << "file '" << name << "' not readable";
 
-    setResponseCode(rest::ResponseCode::NOT_FOUND);
+    resetResponse(rest::ResponseCode::NOT_FOUND);
     response->body().appendText("file not readable");
     return status::DONE;
   }
@@ -208,7 +208,7 @@ RestHandler::status PathHandler::execute() {
 }
 
 void PathHandler::handleError(Exception const&) {
-  setResponseCode(rest::ResponseCode::SERVER_ERROR);
+  resetResponse(rest::ResponseCode::SERVER_ERROR);
 }
 }
 }

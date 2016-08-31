@@ -28,6 +28,7 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
       JSVPack(),
 
       AgencyTempl(),
+      AgentTempl(),
       ClusterInfoTempl(),
       ServerStateTempl(),
       ClusterCommTempl(),
@@ -35,7 +36,6 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
       VPackTempl(),
       VocbaseColTempl(),
       VocbaseTempl(),
-      VulpesTempl(),
 
       BufferTempl(),
 

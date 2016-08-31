@@ -358,7 +358,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     VPackBuilder result;
     {
       VPackObjectBuilder guard(&result);
-      setResponseCode(rest::ResponseCode::OK);
+      resetResponse(rest::ResponseCode::OK);
 
       // TODO this should be generalized
       response->setContentType(rest::ContentType::JSON);

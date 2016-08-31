@@ -136,9 +136,8 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
   TRI_ASSERT(qResult.isArray());
 
   {
-    setResponseCode(rest::ResponseCode::CREATED);
+    resetResponse(rest::ResponseCode::CREATED);
     _response->setContentType(rest::ContentType::JSON);
-
     std::shared_ptr<VPackBuilder> extra = buildExtra(queryResult);
     VPackSlice opts = options->slice();
 
@@ -169,8 +168,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
         THROW_ARANGO_EXCEPTION(res);
       }
 
-      VPackBuffer<uint8_t> payload;
-      VPackBuilder result(payload, &options);
+      VPackBuilder result(&options);
       try {
         VPackObjectBuilder b(&result);
         result.add(VPackValue("result"));
@@ -192,9 +190,8 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
       } catch (...) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
-
-      _response->setPayload(result.slice(), true,
-                            *queryResult.context->getVPackOptionsForDump());
+      generateResult(rest::ResponseCode::CREATED, result.slice(),
+                     queryResult.context);
       return;
     }
 
@@ -214,13 +211,16 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
         std::move(queryResult), batchSize, extra, ttl, count);
 
     try {
-      VPackBuffer<uint8_t> payload;
-      VPackBuilder result(payload);
+      VPackBuilder result;
       result.openObject();
-      result.add("error", VPackValue("false"));
+      result.add("error", VPackValue(false));
       result.add("code", VPackValue((int)_response->responseCode()));
+      cursor->dump(result);
       result.close();
-      _response->addPayload(std::move(payload));
+
+      _response->setContentType(rest::ContentType::JSON);
+      generateResult(_response->responseCode(), result.slice(),
+                     cursor->result()->context);
 
       cursors->release(cursor);
     } catch (...) {
@@ -387,6 +387,11 @@ std::shared_ptr<VPackBuilder> RestCursorHandler::buildExtra(
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestCursorHandler::createCursor() {
+  if (_request->payload().isEmptyObject()) {
+    generateError(rest::ResponseCode::BAD, 600);
+    return;
+  }
+
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
@@ -458,17 +463,15 @@ void RestCursorHandler::modifyCursor() {
   }
 
   try {
-    setResponseCode(rest::ResponseCode::OK);
-    _response->setContentType(rest::ContentType::JSON);
-    VPackBuffer<uint8_t> buffer;
-    VPackBuilder builder(buffer);
+    VPackBuilder builder;
     builder.openObject();
-    builder.add("id", VPackValue(id));
     builder.add("error", VPackValue(false));
-    builder.add("code",
-                VPackValue(static_cast<int>(rest::ResponseCode::ACCEPTED)));
+    builder.add("code", VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+    cursor->dump(builder);
     builder.close();
-    _response->addPayload(std::move(buffer));
+
+    _response->setContentType(rest::ContentType::JSON);
+    generateResult(rest::ResponseCode::OK, builder.slice());
 
     cursors->release(cursor);
   } catch (arangodb::basics::Exception const& ex) {
@@ -478,7 +481,6 @@ void RestCursorHandler::modifyCursor() {
                   ex.what());
   } catch (...) {
     cursors->release(cursor);
-
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL);
   }
 }

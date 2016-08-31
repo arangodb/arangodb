@@ -544,6 +544,12 @@ bool RestDocumentHandler::deleteDocument() {
     search = builderPtr->slice();
   }
 
+  if (!search.isArray() && !search.isObject()) {
+    generateError(rest::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER, "Request body not parseable");
+    return false;
+  }
+
   SingleCollectionTransaction trx(transactionContext, collectionName,
                                   TRI_TRANSACTION_WRITE);
   if (suffix.size() == 2 || !search.isArray()) {

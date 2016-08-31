@@ -101,16 +101,6 @@ if test -f last_compiled_version.sha;  then
 fi
 
 COMPILE_MATTERS="3rdParty"
-CLEAN_IT=1
-
-if test -n "$LASTREV"; then
-    lines=`git diff ${LASTREV}: ${COMPILE_MATTERS} | wc -l`
-
-    if test $lines -eq 0; then
-        echo "no relevant changes, no need for full recompile"
-        CLEAN_IT=0
-    fi
-fi
 
 # setup make options
 if test -z "${CXX}"; then
@@ -192,6 +182,8 @@ case "$1" in
         exit 1
         ;;
 esac
+
+CLEAN_IT=0
 
 
 while [ $# -gt 0 ];  do
@@ -303,13 +295,29 @@ while [ $# -gt 0 ];  do
             TARGET_DIR=$1
             shift
             ;;
-                
+        
+        --checkCleanBuild)
+            CLEAN_IT=1
+            shift
+            ;;
         *)
             echo "Unknown option: $1"
             exit 1
             ;;
     esac
 done
+
+
+if test -n "$LASTREV"; then
+    lines=`git diff ${LASTREV}: ${COMPILE_MATTERS} | wc -l`
+
+    if test $lines -eq 0; then
+        echo "no relevant changes, no need for full recompile"
+        CLEAN_IT=0
+    fi
+fi
+
+
 
 if [ "$GCC5" == 1 ]; then
     CC=/usr/bin/gcc-5

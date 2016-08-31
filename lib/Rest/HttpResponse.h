@@ -82,8 +82,11 @@ class HttpResponse : public GeneralResponse {
       // hook
       // this optimization leads to bad bas crahses
     }
-  };
+  }
 
+  bool setGenerateBody(bool generateBody) override final {
+    return _generateBody = generateBody;
+  }  // used for head-responses
   int reservePayload(std::size_t size) override { return _body.reserve(size); }
   void setPayload(arangodb::velocypack::Slice const&, bool generateBody,
                   arangodb::velocypack::Options const&) override final;

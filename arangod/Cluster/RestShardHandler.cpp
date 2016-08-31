@@ -55,7 +55,7 @@ RestHandler::status RestShardHandler::execute() {
       ClusterComm::instance()->processAnswer(coordinatorHeader, stealRequest());
 
   if (result == "") {
-    setResponseCode(arangodb::rest::ResponseCode::ACCEPTED);
+    resetResponse(arangodb::rest::ResponseCode::ACCEPTED);
   } else {
     generateError(arangodb::rest::ResponseCode::BAD,
                   (int)arangodb::rest::ResponseCode::BAD,

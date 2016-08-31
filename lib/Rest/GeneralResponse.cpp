@@ -33,13 +33,15 @@ using namespace arangodb::basics;
 void GeneralResponse::addPayload(VPackSlice const& slice,
                                  arangodb::velocypack::Options const* options,
                                  bool resolveExternals) {
+  addPayloadPreconditions();
   if (!options) {  // like this because nullptr is easier to pass than
                    // VPackOptions::Options::Defaults
     options = &arangodb::velocypack::Options::Defaults;
   }
-  addPayloadPreconditions();
+
   bool skipBody = false;
   addPayloadPreHook(true, resolveExternals, skipBody);
+
   if (!skipBody) {
     if (resolveExternals) {
       auto tmpBuffer =
@@ -48,10 +50,11 @@ void GeneralResponse::addPayload(VPackSlice const& slice,
     } else {
       // just copy
       _vpackPayloads.emplace_back(slice.byteSize());
-      std::memcpy(&_vpackPayloads.back(), slice.start(), slice.byteSize());
+      _vpackPayloads.back().append(slice.startAs<char const>(), slice.byteSize());
     }
-    addPayloadPostHook(slice, options, resolveExternals);
   }
+  //we pass the original slice here so the hook does not
+  addPayloadPostHook(slice, options, resolveExternals);
 };
 
 void GeneralResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
@@ -61,9 +64,6 @@ void GeneralResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
   if (!options) {
     options = &arangodb::velocypack::Options::Defaults;
   }
-  // TODO
-  // skip sanatizing here for http if conent type is json because it will
-  // be dumped anyway -- check with jsteemann
   bool skipBody = false;
   addPayloadPreHook(true, resolveExternals, skipBody);
   if (!skipBody) {

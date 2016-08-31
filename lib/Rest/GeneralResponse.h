@@ -124,23 +124,18 @@ class GeneralResponse {
   // throw an error
   virtual void setPayload(arangodb::velocypack::Slice const&,
                           bool generateBody = true,
-                          arangodb::velocypack::Options const& =
-                              arangodb::velocypack::Options::Defaults) = 0;
+                          arangodb::velocypack::Options const& = arangodb::velocypack::Options::Defaults) = 0;
+
+
+  void addPayloadPreconditions() { TRI_ASSERT(_vpackPayloads.size() == 0); }
+  virtual void addPayloadPreHook(bool inputIsBuffer, bool& resolveExternals, bool& skipBody){}
+  void addPayload(VPackSlice const&, arangodb::velocypack::Options const* = nullptr, bool resolve_externals = true);
+  void addPayload(VPackBuffer<uint8_t>&&, arangodb::velocypack::Options const* = nullptr, bool resolve_externals = true);
+  virtual void addPayloadPostHook(VPackSlice const&, arangodb::velocypack::Options const*, bool resolveExternals){}
 
   virtual int reservePayload(std::size_t size) { return size; }
-  void addPayloadPreconditions() { TRI_ASSERT(_vpackPayloads.size() == 0); };
-  virtual void addPayloadPreHook(bool inputIsBuffer, bool& resolveExternals,
-                                 bool& skipBody){};
-  void addPayload(VPackSlice const&,
-                  arangodb::velocypack::Options const* = nullptr,
-                  bool resolve_externals = true);
-  void addPayload(VPackBuffer<uint8_t>&&,
-                  arangodb::velocypack::Options const* = nullptr,
-                  bool resolve_externals = true);
-  virtual void addPayloadPostHook(VPackSlice const&,
-                                  arangodb::velocypack::Options const*,
-                                  bool resolveExternals){};
-
+  virtual bool setGenerateBody(bool) { return true; };  // used for head
+                                                        // resonses
   void setOptions(VPackOptions options) { _options = std::move(options); };
 
  protected:
