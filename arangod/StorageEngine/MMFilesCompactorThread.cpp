@@ -80,6 +80,8 @@ struct CompactionContext {
 
 /// @brief callback to drop a datafile
 void MMFilesCompactorThread::DropDatafileCallback(TRI_datafile_t* df, LogicalCollection* collection) {
+  TRI_ASSERT(df != nullptr);
+
   std::unique_ptr<TRI_datafile_t> datafile(df);
   TRI_voc_fid_t fid = datafile->fid();
   
@@ -532,7 +534,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       auto b = document->ditches()->createDropDatafileDitch(
           compaction._datafile, collection, DropDatafileCallback, __FILE__,
           __LINE__);
-
+      
       if (b == nullptr) {
         LOG_TOPIC(ERR, Logger::COMPACTOR) << "out of memory when creating datafile-drop ditch";
       }

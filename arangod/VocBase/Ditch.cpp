@@ -92,7 +92,7 @@ DropDatafileDitch::DropDatafileDitch(
       _collection(collection),
       _callback(callback) {}
 
-DropDatafileDitch::~DropDatafileDitch() {}
+DropDatafileDitch::~DropDatafileDitch() { delete _datafile; }
 
 RenameDatafileDitch::RenameDatafileDitch(
     Ditches* ditches, TRI_datafile_t* datafile, CompactionContext* data,
@@ -418,13 +418,13 @@ CompactionDitch* Ditches::createCompactionDitch(char const* filename,
 
 DropDatafileDitch* Ditches::createDropDatafileDitch(
     TRI_datafile_t* datafile, LogicalCollection* collection, 
-    std::function<void(struct TRI_datafile_t*, LogicalCollection*)> const& callback,
+    std::function<void(TRI_datafile_t*, LogicalCollection*)> const& callback,
     char const* filename, int line) {
   try {
     auto ditch =
         new DropDatafileDitch(this, datafile, collection, callback, filename, line);
     link(ditch);
-
+      
     return ditch;
   } catch (...) {
     return nullptr;

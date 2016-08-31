@@ -81,6 +81,8 @@ void MMFilesCollection::updateCount(int64_t count) {
 
 /// @brief closes an open collection
 int MMFilesCollection::close() {
+  WRITE_LOCKER(writeLocker, _filesLock);
+
   // close compactor files
   closeDatafiles(_compactors);
   for (auto& it : _compactors) {
@@ -372,7 +374,7 @@ int MMFilesCollection::replaceDatafileWithCompactor(TRI_datafile_t* datafile,
   WRITE_LOCKER(writeLocker, _filesLock);
 
   TRI_ASSERT(!_compactors.empty());
-
+  
   for (size_t i = 0; i < _datafiles.size(); ++i) {
     if (_datafiles[i]->fid() == datafile->fid()) {
       // found!
@@ -386,7 +388,6 @@ int MMFilesCollection::replaceDatafileWithCompactor(TRI_datafile_t* datafile,
       _compactors.erase(_compactors.begin());
       TRI_ASSERT(_compactors.empty());
 
-LOG(ERR) << "REPLACUING!";
       return TRI_ERROR_NO_ERROR;
     }
   }

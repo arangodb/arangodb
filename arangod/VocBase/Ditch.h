@@ -192,7 +192,7 @@ class DropDatafileDitch final : public Ditch {
 
   char const* typeName() const override final { return "datafile-drop"; }
 
-  void executeCallback() { _callback(_datafile, _collection); }
+  void executeCallback() { _callback(_datafile, _collection); _datafile = nullptr; }
 
  private:
   TRI_datafile_t* _datafile;
