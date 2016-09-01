@@ -824,6 +824,7 @@ void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
 void LogicalCollection::toVelocyPack(VPackBuilder& result) const {
   result.openObject();
   result.add("id", VPackValue(std::to_string(_cid)));
+  result.add("cid", VPackValue(std::to_string(_cid))); // export cid for compatibility, too
   result.add("name", VPackValue(_name));
   result.add("status", VPackValue(_status));
   result.add("deleted", VPackValue(_isDeleted));
@@ -833,6 +834,7 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result) const {
   result.add("isVolatile", VPackValue(_isVolatile));
   result.add("waitForSync", VPackValue(_waitForSync));
   result.add("journalSize", VPackValue(_journalSize));
+  result.add("version", VPackValue(5)); // hard-coded version number, here for compatibility only
   if (_keyOptions != nullptr) {
     result.add("keyOptions", VPackSlice(_keyOptions->data()));
   }
