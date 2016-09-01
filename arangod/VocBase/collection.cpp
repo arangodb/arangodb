@@ -850,7 +850,7 @@ TRI_collection_t* TRI_collection_t::open(TRI_vocbase_t* vocbase,
   res = col->createInitialIndexes();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot initialize document collection";
+    LOG(ERR) << "cannot initialize document collection: " << TRI_errno_string(res);
     return nullptr;
   }
   
@@ -898,9 +898,13 @@ TRI_collection_t* TRI_collection_t::open(TRI_vocbase_t* vocbase,
     try {
       col->detectIndexes(&trx);
       col->useSecondaryIndexes(old);
+    } catch (std::exception const& ex) {
+      col->useSecondaryIndexes(old);
+      LOG(ERR) << "cannot initialize collection indexes: " << ex.what();
+      return nullptr;
     } catch (...) {
       col->useSecondaryIndexes(old);
-      LOG(ERR) << "cannot initialize collection indexes";
+      LOG(ERR) << "cannot initialize collection indexes: unknown exception";
       return nullptr;
     }
   }
