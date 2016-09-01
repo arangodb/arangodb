@@ -44,6 +44,8 @@ devel
 
 * added module.context.createDocumentationRouter to replace module.context.apiDocumentation
 
+* bug in RAFT implementation of reads. dethroned leader still answered
+	requests in isolation
 
 v3.0.6 (XXXX-XX-XX)
 -------------------

@@ -205,7 +205,18 @@ RestHandler::status RestAgencyHandler::handleWrite() {
         generateResult(GeneralResponse::ResponseCode::OK, body.slice());
       }
     } else {  // Redirect to leader
-      redirectRequest(ret.redirect);
+      if (_agent->leaderID() == NO_LEADER) {
+        Builder body;
+        body.openObject();
+        body.add("message", VPackValue("No leader"));
+        body.close();
+        generateResult(GeneralResponse::ResponseCode::SERVICE_UNAVAILABLE,
+                       body.slice());
+        LOG_TOPIC(ERR, Logger::AGENCY) << "We don't know who the leader is";
+        return status::DONE;
+      } else {
+        redirectRequest(ret.redirect);
+      }
     }
   } else {  // Unknown method
     generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED, 405);

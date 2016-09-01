@@ -450,7 +450,22 @@ write_ret_t Agent::write(query_t const& query) {
   // Only leader else redirect
   if (!_constituent.leading()) {
     return write_ret_t(false, _constituent.leaderID());
+  } else {
+    // Still leading?
+    size_t good = 0; 
+    for (auto const& i : _lastAcked) {
+      std::chrono::duration<double> m =
+        std::chrono::system_clock::now() - i.second;
+      if(0.9*_config.minPing() > m.count()) {
+        ++good;
+      }
+    }
+    if (good < size() / 2) {
+      _constituent.candidate();
+      return write_ret_t(false, NO_LEADER);
+    }
   }
+
 
   // Apply to spearhead and get indices for log entries
   {
