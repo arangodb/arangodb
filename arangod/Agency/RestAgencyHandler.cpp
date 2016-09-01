@@ -210,7 +210,7 @@ RestHandler::status RestAgencyHandler::handleWrite() {
         body.openObject();
         body.add("message", VPackValue("No leader"));
         body.close();
-        generateResult(GeneralResponse::ResponseCode::SERVICE_UNAVAILABLE,
+        generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE,
                        body.slice());
         LOG_TOPIC(ERR, Logger::AGENCY) << "We don't know who the leader is";
         return status::DONE;
@@ -268,7 +268,7 @@ inline RestHandler::status RestAgencyHandler::handleRead() {
         body.openObject();
         body.add("message", VPackValue("No leader"));
         body.close();
-        generateResult(GeneralResponse::ResponseCode::SERVICE_UNAVAILABLE,
+        generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE,
                        body.slice());
         LOG_TOPIC(ERR, Logger::AGENCY) << "We don't know who the leader is";
         return status::DONE;
