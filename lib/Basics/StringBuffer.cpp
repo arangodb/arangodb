@@ -826,24 +826,6 @@ int TRI_AppendUInt32OctalStringBuffer(TRI_string_buffer_t* self,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief appends unsigned integer with 64 bits in octal
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_AppendUInt64OctalStringBuffer(TRI_string_buffer_t* self,
-                                      uint64_t attr) {
-  int res = Reserve(self, 22);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  size_t len = TRI_StringUInt64OctalInPlace(attr, self->_current);
-  self->_current += len;
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief appends unsigned integer with 32 bits in hex
 ////////////////////////////////////////////////////////////////////////////////
 
