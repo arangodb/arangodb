@@ -47,7 +47,7 @@ class WorkMonitor : public Thread {
   WorkMonitor();
   ~WorkMonitor() {
     if (hasStarted()) {
-      shutdown();
+      Thread::shutdown();
     }
   }
 
