@@ -164,7 +164,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   bool _isInitiallyEmpty;
   bool _replicationApplier;
   bool _checkVersion;
-  bool _iterateMarkersOnOpen;
   bool _upgrade;
 
   /// @brief lock for serializing the creation of databases

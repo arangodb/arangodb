@@ -285,8 +285,7 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
     return false;
   }
 
-  std::string tmp = lhsType.copyString();
-  auto type = Index::type(tmp.c_str());
+  auto type = Index::type(lhsType.copyString());
 
   // unique must be identical if present
   VPackSlice value = lhs.get("unique");

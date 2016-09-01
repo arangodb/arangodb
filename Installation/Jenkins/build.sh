@@ -300,6 +300,16 @@ while [ $# -gt 0 ];  do
             CLEAN_IT=1
             shift
             ;;
+        --cxArmV8)
+            ARMV8=1
+            CXGCC=1
+            shift
+            ;;
+        --cxArmV7)
+            ARMV7=1
+            CXGCC=1
+            shift
+            ;;
         *)
             echo "Unknown option: $1"
             exit 1
@@ -330,7 +340,29 @@ elif [ "$CLANG36" == 1 ]; then
     CC=/usr/bin/clang-3.6
     CXX=/usr/bin/clang++-3.6
     CXXFLAGS="${CXXFLAGS} -std=c++11"
+elif [ "${CXGCC}" = 1 ]; then
+    if [ "${ARMV8}" = 1 ]; then
+        export TOOL_PREFIX=aarch64-linux-gnu
+        BUILD_DIR="${BUILD_DIR}-ARMV8"
+    elif [ "${ARMV7}" = 1 ]; then
+        export TOOL_PREFIX=aarch64-linux-gnu
+        BUILD_DIR="${BUILD_DIR}-ARMV7"
+    else
+        echo "Unknown CX-Compiler!"
+        exit 1;
+    fi
+
+    export CXX=$TOOL_PREFIX-g++
+    export AR=$TOOL_PREFIX-ar
+    export RANLIB=$TOOL_PREFIX-ranlib
+    export CC=$TOOL_PREFIX-gcc
+    export LD=$TOOL_PREFIX-g++
+    export LINK=$TOOL_PREFIX-g++
+    export STRIP=$TOOL_PREFIX-strip
+    CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCROSS_COMPILING=true"
 fi
+
+
 
 
 if [ "$SANITIZE" == 1 ]; then
@@ -415,7 +447,7 @@ SOURCE_DIR=`compute_relative ${DST}/ ${SRC}/`
 
 if [ ! -f Makefile -o ! -f CMakeCache.txt ];  then
     CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}" LIBS="${LIBS}" \
-          cmake ${SOURCE_DIR} ${CONFIGURE_OPTIONS} -G "${GENERATOR}"
+          cmake ${SOURCE_DIR} ${CONFIGURE_OPTIONS} -G "${GENERATOR}" || exit 1
 fi
 
 ${MAKE_CMD_PREFIX} ${MAKE} ${MAKE_PARAMS}

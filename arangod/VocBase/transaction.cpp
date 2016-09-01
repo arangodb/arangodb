@@ -280,47 +280,6 @@ static TRI_transaction_collection_t* FindCollection(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a transaction collection container
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_transaction_collection_t* CreateCollection(
-    TRI_transaction_t* trx, TRI_voc_cid_t cid,
-    TRI_transaction_type_e accessType, int nestingLevel) {
-  TRI_transaction_collection_t* trxCollection =
-      static_cast<TRI_transaction_collection_t*>(TRI_Allocate(
-          TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_transaction_collection_t), false));
-
-  if (trxCollection == nullptr) {
-    // OOM
-    return nullptr;
-  }
-
-  // initialize collection properties
-  trxCollection->_transaction = trx;
-  trxCollection->_cid = cid;
-  trxCollection->_accessType = accessType;
-  trxCollection->_nestingLevel = nestingLevel;
-  trxCollection->_collection = nullptr;
-  trxCollection->_operations = nullptr;
-  trxCollection->_originalRevision = 0;
-  trxCollection->_lockType = TRI_TRANSACTION_NONE;
-  trxCollection->_compactionLocked = false;
-  trxCollection->_waitForSync = false;
-
-  return trxCollection;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free a transaction collection container
-////////////////////////////////////////////////////////////////////////////////
-
-static void FreeCollection(TRI_transaction_collection_t* trxCollection) {
-  TRI_ASSERT(trxCollection != nullptr);
-
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, trxCollection);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief lock a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -876,18 +835,20 @@ int TRI_AddCollectionTransaction(TRI_transaction_t* trx, TRI_voc_cid_t cid,
   }
   
   // collection was not contained. now create and insert it
-  trxCollection = CreateCollection(trx, cid, accessType, nestingLevel);
-
-  if (trxCollection == nullptr) {
-    // out of memory
+  TRI_ASSERT(trxCollection == nullptr);
+  try {
+    trxCollection = new TRI_transaction_collection_t(trx, cid, accessType, nestingLevel);
+  } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
+  
+  TRI_ASSERT(trxCollection != nullptr);
 
   // insert collection at the correct position
   try {
     trx->_collections.insert(trx->_collections.begin() + position, trxCollection);
   } catch (...) {
-    FreeCollection(trxCollection);
+    delete trxCollection;
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -1353,7 +1314,7 @@ TRI_transaction_t::~TRI_transaction_t() {
 
   // free all collections
   for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
-    FreeCollection(*it);
+    delete (*it);
   }
 }
 

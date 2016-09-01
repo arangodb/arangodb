@@ -368,7 +368,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
           ReadNumericValue<TRI_voc_size_t>(info, "journalSize",
                                            TRI_JOURNAL_DEFAULT_SIZE))),
       _keyOptions(CopySliceValue(info, "keyOptions")),
-      _indexBuckets(ReadNumericValue<uint32_t>(info, "indexBuckets", 1)),
+      _indexBuckets(ReadNumericValue<uint32_t>(info, "indexBuckets", DatabaseFeature::DefaultIndexBuckets)),
       _replicationFactor(ReadNumericValue<int>(info, "replicationFactor", 1)),
       _numberOfShards(GetObjectLength(info, "shards", 1)),
       _allowUserKeys(ReadBooleanValue(info, "allowUserKeys", true)),
@@ -420,7 +420,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
 
     auto indexesSlice = info.get("indexes");
     if (indexesSlice.isArray()) {
-      TRI_ASSERT(ServerState::instance()->isRunningInCluster());
+      bool const isCluster = ServerState::instance()->isRunningInCluster();
       for (auto const& v : VPackArrayIterator(indexesSlice)) {
         if (arangodb::basics::VelocyPackHelper::getBooleanValue(
                 v, "error", false)) {
@@ -430,7 +430,11 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
           continue;
         }
         auto idx = PrepareIndexFromSlice(v, false, this, true);
-        addIndexCoordinator(idx, false);
+        if (isCluster) {
+          addIndexCoordinator(idx, false);
+        } else {
+          addIndex(idx);
+        }
       }
     }
 
@@ -820,6 +824,7 @@ void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
 void LogicalCollection::toVelocyPack(VPackBuilder& result) const {
   result.openObject();
   result.add("id", VPackValue(std::to_string(_cid)));
+  result.add("cid", VPackValue(std::to_string(_cid))); // export cid for compatibility, too
   result.add("name", VPackValue(_name));
   result.add("status", VPackValue(_status));
   result.add("deleted", VPackValue(_isDeleted));
@@ -828,6 +833,8 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result) const {
   result.add("isSystem", VPackValue(_isSystem));
   result.add("isVolatile", VPackValue(_isVolatile));
   result.add("waitForSync", VPackValue(_waitForSync));
+  result.add("journalSize", VPackValue(_journalSize));
+  result.add("version", VPackValue(5)); // hard-coded version number, here for compatibility only
   if (_keyOptions != nullptr) {
     result.add("keyOptions", VPackSlice(_keyOptions->data()));
   }
@@ -863,7 +870,6 @@ void LogicalCollection::toVelocyPack(VPackBuilder& builder, bool includeIndexes,
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->getCollectionInfo(_vocbase, _cid, builder, includeIndexes, maxTick);
 }
-
 
 TRI_vocbase_t* LogicalCollection::vocbase() const {
   return _vocbase;
@@ -921,6 +927,7 @@ int LogicalCollection::update(VPackSlice const& slice, bool doSync) {
   }
   _indexBuckets =
       Helper::getNumericValue<uint32_t>(slice, "indexBuckets", _indexBuckets);
+
   if (!_isLocal) {
     // We need to inform the cluster as well
     return ClusterInfo::instance()->setCollectionPropertiesCoordinator(
@@ -1093,8 +1100,10 @@ std::shared_ptr<Index> LogicalCollection::createIndex(Transaction* trx,
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  
-  res = saveIndex(idx.get(), true);
+ 
+
+  bool const writeMarker = !arangodb::wal::LogfileManager::instance()->isInRecovery();
+  res = saveIndex(idx.get(), writeMarker);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -2046,7 +2055,6 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
     }
 
     // we found a document to remove
-    TRI_ASSERT(oldHeader != nullptr);
     operation.header = oldHeader;
     operation.init();
 
@@ -2308,33 +2316,6 @@ int LogicalCollection::fillIndexSequential(arangodb::Transaction* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-/// @brief read locks a collection
-int LogicalCollection::beginRead() {
-  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
-    auto it = arangodb::Transaction::_makeNolockHeaders->find(name());
-    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "BeginRead blocked: " << _name <<
-      // std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-  // LOCKING-DEBUG
-  // std::cout << "BeginRead: " << _name << std::endl;
-  READ_LOCKER(locker, _idxLock);
-
-  try {
-    _vocbase->_deadlockDetector.addReader(this, false);
-  } catch (...) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  locker.steal();
-
-  return TRI_ERROR_NO_ERROR;
-}
-
 /// @brief read unlocks a collection
 int LogicalCollection::endRead() {
   if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
@@ -2355,34 +2336,6 @@ int LogicalCollection::endRead() {
   // LOCKING-DEBUG
   // std::cout << "EndRead: " << _name << std::endl;
   _idxLock.unlockRead();
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief write locks a collection
-int LogicalCollection::beginWrite() {
-  if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
-    auto it = arangodb::Transaction::_makeNolockHeaders->find(name());
-    if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "BeginWrite blocked: " << _name <<
-      // std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-  // LOCKING_DEBUG
-  // std::cout << "BeginWrite: " << _name << std::endl;
-  WRITE_LOCKER(locker, _idxLock);
-
-  // register writer
-  try {
-    _vocbase->_deadlockDetector.addWriter(this, false);
-  } catch (...) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  locker.steal();
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -2415,8 +2368,7 @@ int LogicalCollection::endWrite() {
 }
 
 /// @brief read locks a collection, with a timeout (in µseconds)
-int LogicalCollection::beginReadTimed(uint64_t timeout,
-                                     uint64_t sleepPeriod) {
+int LogicalCollection::beginReadTimed(uint64_t timeout, uint64_t sleepPeriod) {
   if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
     auto it = arangodb::Transaction::_makeNolockHeaders->find(name());
     if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
@@ -2579,8 +2531,6 @@ int LogicalCollection::beginWriteTimed(uint64_t timeout, uint64_t sleepPeriod) {
     }
   }
 }
-
-
 
 /// @brief looks up a document by key, low level worker
 /// the caller must make sure the read lock on the collection is held

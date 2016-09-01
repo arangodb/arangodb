@@ -220,6 +220,7 @@ class Agent : public arangodb::Thread {
   std::map<std::string, index_t> _confirmed;
   std::map<std::string, index_t> _lastHighest;
 
+  std::map<std::string, TimePoint> _lastAcked;
   std::map<std::string, TimePoint> _lastSent;
   arangodb::Mutex _ioLock; /**< @brief Read/Write lock */
 

@@ -52,6 +52,8 @@ SocketTask::SocketTask(TRI_socket_t socket, ConnectionInfo&& info,
 }
 
 SocketTask::~SocketTask() {
+  cleanup();
+
   if (TRI_isvalidsocket(_commSocket)) {
     TRI_CLOSE_SOCKET(_commSocket);
     TRI_invalidatesocket(&_commSocket);
@@ -349,9 +351,11 @@ bool SocketTask::setup(Scheduler* scheduler, EventLoop loop) {
 
   _tid = Thread::currentThreadId();
 
+  TRI_ASSERT(_writeWatcher == nullptr);
   _writeWatcher = _scheduler->installSocketEvent(loop, EVENT_SOCKET_WRITE, this,
                                                  _commSocket);
 
+  TRI_ASSERT(_readWatcher == nullptr);
   _readWatcher = _scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this,
                                                 _commSocket);
   return true;

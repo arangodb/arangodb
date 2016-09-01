@@ -371,7 +371,7 @@ static int EnhanceIndexJson(v8::FunctionCallbackInfo<v8::Value> const& args,
       }
     }
 
-    type = arangodb::Index::type(t.c_str());
+    type = arangodb::Index::type(t);
   }
 
   if (type == arangodb::Index::TRI_IDX_TYPE_UNKNOWN) {
@@ -394,9 +394,7 @@ static int EnhanceIndexJson(v8::FunctionCallbackInfo<v8::Value> const& args,
     if (obj->Has(TRI_V8_ASCII_STRING("id"))) {
       uint64_t id = TRI_ObjectToUInt64(obj->Get(TRI_V8_ASCII_STRING("id")), true);
       if (id > 0) {
-        char* idString = TRI_StringUInt64(id);
-        builder.add("id", VPackValue(idString));
-        TRI_FreeString(TRI_CORE_MEM_ZONE, idString);
+        builder.add("id", VPackValue(std::to_string(id)));
       }
     }
 

@@ -51,18 +51,17 @@ bool Inception::start() { return Thread::start(); }
 /// - Get snapshot of gossip peers and agent pool
 /// - Create outgoing gossip.
 /// - Send to all peers
-void Inception::run() {
 
-  TRI_ASSERT(_agent != nullptr);
+void Inception::gossip() {
 
   auto s = std::chrono::system_clock::now();
   std::chrono::seconds timeout(120);
   size_t i = 0;
-  //bool cs = false;
+
   while (!this->isStopping()) {
 
     config_t config = _agent->config(); // get a copy of conf
-
+    
     query_t out = std::make_shared<Builder>();
     out->openObject();
     out->add("endpoint", VPackValue(config.endpoint()));
@@ -73,7 +72,7 @@ void Inception::run() {
     }
     out->close();
     out->close();
-
+    
     std::string path = "/_api/agency_priv/gossip";
 
     for (auto const& p : config.gossipPeers()) { // gossip peers
@@ -99,9 +98,9 @@ void Inception::run() {
           std::make_shared<GossipCallback>(_agent), 1.0, true);
       }
     }
-
+    
     std::this_thread::sleep_for(std::chrono::milliseconds(250));
-
+    
     if ((std::chrono::system_clock::now()-s) > timeout) {
       if (config.poolComplete()) {
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "Stopping active gossipping!";
@@ -111,17 +110,64 @@ void Inception::run() {
       }
       break;
     }
-
+    
     if (config.poolComplete()) {
-      //if(!cs) {
-        _agent->startConstituent();
-        break;
-        //cs = true;
-        //}
+      _agent->startConstituent();
+      break;
     }
-
+    
   }
+  
+}
 
+void Inception::activeAgency() { // Do we have an active agency?
+/*
+  config_t config = _agent->config(); // get a copy of conf
+  size_t i = 0;
+  std::string const path = "/_api/agency/activeAgents";
+
+  for (auto const& endpoint : config.gossipPeers()) { // gossip peers
+    if (endpoint != config.endpoint()) {
+      std::string clientid = config.id() + std::to_string(i++);
+      auto hf = std::make_unique<std::unordered_map<std::string, std::string>>();
+      arangodb::ClusterComm::instance()->asyncRequest(
+        clientid, 1, endpoint, GeneralRequest::RequestType::POST, path,
+        std::make_shared<std::string>(out->toJson()), hf,
+        std::make_shared<GossipCallback>(_agent), 1.0, true);
+    }
+  }
+  
+  for (auto const& pair : config.pool()) { // pool entries
+    if (pair.second != config.endpoint()) {
+      std::string clientid = config.id() + std::to_string(i++);
+      auto hf = std::make_unique<std::unordered_map<std::string, std::string>>();
+      arangodb::ClusterComm::instance()->asyncRequest(
+        clientid, 1, pair.second, GeneralRequest::RequestType::POST, path,
+        std::make_shared<std::string>(out->toJson()), hf,
+        std::make_shared<GossipCallback>(_agent), 1.0, true);
+    }
+  }
+*/  
+  // start in pool/gossi peers start check if active agency
+
+  // if not if i have persisted agency 
+  // if member 
+  // contact other agents.
+  // if agreement raft
+
+  // complete pool?
+  
+}
+
+void Inception::run() {
+
+  //activeAgency();
+
+  config_t config = _agent->config();
+  if (!config.poolComplete()) {
+    gossip();
+  }
+  
 }
 
 

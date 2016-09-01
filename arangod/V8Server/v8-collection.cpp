@@ -1205,9 +1205,6 @@ static void JS_PropertiesVocbaseCol(
     TRI_V8_THROW_EXCEPTION(res);
   }
         
-  TRI_collection_t* document = collection->_collection;
-  TRI_ASSERT(document != nullptr);
-
   // check if we want to change some parameters
   if (isModification) {
     v8::Handle<v8::Value> par = args[0];

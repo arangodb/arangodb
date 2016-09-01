@@ -170,6 +170,8 @@ void MMFilesEngine::start() {
     // create a database for the system database
     res = createDatabaseDirectory(TRI_NewTickServer(), TRI_VOC_SYSTEM_DATABASE);
     _iterateMarkersOnOpen = false;
+  } else {
+    _iterateMarkersOnOpen = !application_features::ApplicationServer::getFeature<wal::LogfileManager>("LogfileManager")->hasFoundLastTick();
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
