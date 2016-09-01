@@ -1604,9 +1604,6 @@ std::string TRI_BinaryName(char const* argv0) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string TRI_LocateBinaryPath(char const* argv0) {
-  char const* p;
-  char* binaryPath = nullptr;
-
 #if _WIN32
 
   if (argv0 == nullptr) {
@@ -1634,9 +1631,11 @@ std::string TRI_LocateBinaryPath(char const* argv0) {
   }
 
 #endif
+  
+  std::string binaryPath;
 
   // check if name contains a '/' ( or '\' for windows)
-  p = argv0;
+  char const* p = argv0;
 
   for (; *p && *p != TRI_DIR_SEPARATOR_CHAR; ++p) {
   }
@@ -1645,12 +1644,9 @@ std::string TRI_LocateBinaryPath(char const* argv0) {
   if (*p) {
     char* dir = TRI_Dirname(argv0);
 
-    if (dir == nullptr) {
-      binaryPath = TRI_DuplicateString("");
-      TRI_FreeString(TRI_CORE_MEM_ZONE, dir);
-    }
-    else {
+    if (dir != nullptr) {
       binaryPath = dir;
+      TRI_FreeString(TRI_CORE_MEM_ZONE, dir);
     }
   }
 
@@ -1676,7 +1672,7 @@ std::string TRI_LocateBinaryPath(char const* argv0) {
 
         if (TRI_ExistsFile(full)) {
           TRI_FreeString(TRI_CORE_MEM_ZONE, full);
-          binaryPath = TRI_DuplicateString(files._buffer[i]);
+          binaryPath = files._buffer[i];
           break;
         }
 
@@ -1687,17 +1683,11 @@ std::string TRI_LocateBinaryPath(char const* argv0) {
     }
   }
 
-  std::string result = (binaryPath == nullptr) ? "" : binaryPath;
-
-  if (binaryPath != nullptr) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, binaryPath);
-  }
-
-  return result;
+  return binaryPath;
 }
 
 std::string TRI_GetInstallRoot(std::string const& binaryPath,
-                               char const *installBinaryPath) {
+                               char const* installBinaryPath) {
   // First lets remove trailing (back) slashes from the bill:
   size_t ibpLength = strlen(installBinaryPath);
 
