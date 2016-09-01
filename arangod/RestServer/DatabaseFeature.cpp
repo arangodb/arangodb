@@ -228,7 +228,6 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
       _isInitiallyEmpty(false),
       _replicationApplier(true),
       _checkVersion(false),
-      _iterateMarkersOnOpen(false),
       _upgrade(false) {
   setOptional(false);
   requiresElevatedPrivileges(false);
@@ -308,8 +307,6 @@ void DatabaseFeature::start() {
 
   // init key generator
   KeyGenerator::Initialize();
-
-  _iterateMarkersOnOpen = !wal::LogfileManager::instance()->hasFoundLastTick();
 
   verifyAppPaths();
 
