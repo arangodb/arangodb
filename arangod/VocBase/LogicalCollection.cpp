@@ -1071,7 +1071,6 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(VPackSlice const& info) co
 std::shared_ptr<Index> LogicalCollection::createIndex(Transaction* trx,
                                                       VPackSlice const& info,
                                                       bool& created) {
-  // TODO Coordinator case!
   // TODO Get LOCK for the vocbase
 
   auto idx = lookupIndex(info);
@@ -1092,6 +1091,7 @@ std::shared_ptr<Index> LogicalCollection::createIndex(Transaction* trx,
     // In the coordinator case we do not fill the index
     // We only inform the others.
     addIndexCoordinator(idx, true);
+    created = true;
     return idx;
   }
 
