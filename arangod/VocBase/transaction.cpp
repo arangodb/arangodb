@@ -316,16 +316,18 @@ static int LockCollection(TRI_transaction_collection_t* trxCollection,
     // give up if we cannot acquire the lock instantly
     timeout = 1 * 100;
   }
+  
+  bool const useDeadlockDetector = !IsSingleOperationTransaction(trx);
 
   int res;
   if (type == TRI_TRANSACTION_READ) {
     LOG_TRX(trx, nestingLevel) << "read-locking collection " << trxCollection->_cid;
-    res = collection->beginReadTimed(timeout,
+    res = collection->beginReadTimed(useDeadlockDetector, timeout,
                                      TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
   } else {
     LOG_TRX(trx, nestingLevel) << "write-locking collection "
                                << trxCollection->_cid;
-    res = collection->beginWriteTimed(timeout,
+    res = collection->beginWriteTimed(useDeadlockDetector, timeout,
                                       TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
   }
 
@@ -383,14 +385,17 @@ static int UnlockCollection(TRI_transaction_collection_t* trxCollection,
     return TRI_ERROR_INTERNAL;
   }
 
+  TRI_transaction_t* trx = trxCollection->_transaction;
+  bool const useDeadlockDetector = !IsSingleOperationTransaction(trx);
+
   LogicalCollection* collection = trxCollection->_collection;
   TRI_ASSERT(collection != nullptr);
   if (trxCollection->_lockType == TRI_TRANSACTION_READ) {
     LOG_TRX(trxCollection->_transaction, nestingLevel) << "read-unlocking collection " << trxCollection->_cid;
-    collection->endRead();
+    collection->endRead(useDeadlockDetector);
   } else {
     LOG_TRX(trxCollection->_transaction, nestingLevel) << "write-unlocking collection " << trxCollection->_cid;
-    collection->endWrite();
+    collection->endWrite(useDeadlockDetector);
   }
 
   trxCollection->_lockType = TRI_TRANSACTION_NONE;
