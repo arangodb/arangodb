@@ -140,8 +140,8 @@ RestHandler::status RestAgencyHandler::handleWrite() {
     }
 
     auto s = std::chrono::system_clock::now(); // Leadership established?
-    std::chrono::seconds timeout(0);
-    while(_agent->size() > 1 && _agent->leaderID() == "") {
+    std::chrono::duration<double> timeout(_agent->config().minPing());
+    while(_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
       if ((std::chrono::system_clock::now()-s) > timeout) {
         Builder body;
         body.openObject();
@@ -158,7 +158,6 @@ RestHandler::status RestAgencyHandler::handleWrite() {
     write_ret_t ret = _agent->write(query);
 
     if (ret.accepted) {  // We're leading and handling the request
-
       bool found;
       std::string call_mode = _request->header("x-arangodb-agency-mode", found);
       if (!found) {
@@ -227,8 +226,8 @@ inline RestHandler::status RestAgencyHandler::handleRead() {
     }
 
     auto s = std::chrono::system_clock::now(); // Leadership established?
-    std::chrono::seconds timeout(0);
-    while(_agent->size() > 1 && _agent->leaderID() == "") {
+    std::chrono::duration<double> timeout(_agent->config().minPing());
+    while(_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
       if ((std::chrono::system_clock::now()-s) > timeout) {
         Builder body;
         body.openObject();
@@ -252,7 +251,20 @@ inline RestHandler::status RestAgencyHandler::handleRead() {
         generateResult(GeneralResponse::ResponseCode::OK, ret.result->slice());
       }
     } else {  // Redirect to leader
-      redirectRequest(ret.redirect);
+      if (_agent->leaderID() == NO_LEADER) {
+
+        Builder body;
+        body.openObject();
+        body.add("message", VPackValue("No leader"));
+        body.close();
+        generateResult(GeneralResponse::ResponseCode::SERVICE_UNAVAILABLE,
+                       body.slice());
+        LOG_TOPIC(ERR, Logger::AGENCY) << "We don't know who the leader is";
+        return status::DONE;
+        
+      } else {
+        redirectRequest(ret.redirect);
+      }
       return status::DONE;
     }
   } else {
@@ -263,6 +275,7 @@ inline RestHandler::status RestAgencyHandler::handleRead() {
 }
 
 RestHandler::status RestAgencyHandler::handleConfig() {
+  
   Builder body;
   body.add(VPackValue(VPackValueType::Object));
   body.add("term", Value(_agent->term()));

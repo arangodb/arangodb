@@ -214,6 +214,8 @@ void Constituent::lead(std::map<std::string, bool> const& votes) {
 void Constituent::candidate() {
   
   MUTEX_LOCKER(guard, _castLock);
+
+  _leaderID = NO_LEADER;
   
   if (_role != CANDIDATE)
     LOG_TOPIC(DEBUG, Logger::AGENCY)
