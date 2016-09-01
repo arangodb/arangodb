@@ -1,5 +1,13 @@
+v3.1.alpha2 (2016-09-01)
+------------------------
+
+* added module.context.createDocumentationRouter to replace module.context.apiDocumentation
+
+* bug in RAFT implementation of reads. dethroned leader still answered requests in isolation
+
+
 v3.1.alpha1
--------------
+-----------
 
 * fixed issue #2012
 
@@ -41,10 +49,6 @@ v3.1.alpha1
 * added iconv-lite and timezone modules
 
 * web interface now allows installing GitHub and zip services in legacy mode
-
-* added module.context.createDocumentationRouter to replace module.context.apiDocumentation
-
-* bug in RAFT implementation of reads. dethroned leader still answered requests in isolation
 
 v3.0.6 (XXXX-XX-XX)
 -------------------
