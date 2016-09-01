@@ -478,10 +478,10 @@ function analyzeServerCrash (arangod, options, checkStr) {
   var cpf = "/proc/sys/kernel/core_pattern";
 
   if (fs.isFile(cpf)) {
-    var matchApport=/.*apport.*/
-    var matchVarTmp=/\/var\/tmp/
+    var matchApport = /.*apport.*/;
+    var matchVarTmp = /\/var\/tmp/;
     var corePattern = fs.readBuffer(cpf);
-    var cp = corePattern.asciiSlice(0, corePattern.length)
+    var cp = corePattern.asciiSlice(0, corePattern.length);
 
     if (matchApport.exec(cp) != null) {
       print(RED + "apport handles corefiles on your system. Uninstall it if you want us to get corefiles for analysis.");
