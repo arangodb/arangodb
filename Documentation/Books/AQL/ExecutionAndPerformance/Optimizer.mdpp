@@ -276,6 +276,32 @@ the `warnings` attribute of the `explain` result:
 There is an upper bound on the number of warning a query may produce. If that
 bound is reached, no further warnings will be returned.
 
+
+!SUBSECTION Things to consider for optimizing queries
+While the optimizer can fix some things in queries, its not allowed to take some assumptions,
+that you, the user, knowing what queries are intended to do can take. It may pull calculations
+to the front of the execution, but it may not cross certain borders.
+
+So in certain cases you may want to move calculations in your query, so they're cheaper.
+Even more expensive is if you have calculacions that are executed in javascript:
+
+    @startDocuBlockInline AQLEXP_11_explainjs
+    @EXAMPLE_ARANGOSH_OUTPUT{AQLEXP_11_explainjs}
+    db._explain('FOR x IN 1..10 LET then=DATE_NOW() FOR y IN 1..10 LET now=DATE_NOW() LET nowstr=CONCAT(now, x, y, then) RETURN nowstr', {}, {colors: false})
+    db._explain('LET now=DATE_NOW() FOR x IN 1..10 FOR y IN 1..10 LET nowstr=CONCAT(now, x, y, now) RETURN nowstr', {}, {colors: false})
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock AQLEXP_11_explainjs
+
+You can see, that the optimizer found `1..10` is specified twice, but can be done first one time.
+
+While you may see time passing by during the execution of the query and its calls to `DATE_NOW()`
+this may not be the desired thing in first place. The queries V8 Expressions will however also use
+significant resources, since its executed 10 x 10 times => 100 times. Now if we don't care
+for the time ticking by during the query execution, we may fetch the time once at the startup
+of the query, which will then only give us one V8 expression at the very start of the query.
+
+Next to bringing better performance, this also obeys the [DRY principle](https://en.wikipedia.org/wiki/Don't_repeat_yourself).
+
 !SUBSECTION Optimization in a cluster
 
 When you're running AQL in the cluster, the parsing of the query is done on the
