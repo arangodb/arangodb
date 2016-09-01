@@ -673,7 +673,8 @@ var bindEdgeCollections = function(self, edgeCollections) {
               var err = new ArangoError();
               err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_EDGE.code;
               err.errorMessage =
-                arangodb.errors.ERROR_GRAPH_INVALID_EDGE.message + " between " + from + " and " + to + ".";
+                arangodb.errors.ERROR_GRAPH_INVALID_EDGE.message +
+                ' between ' + from + ' and ' + to + '. Doesn\'t conform to any edge definition';
               throw err;
             }
           }
