@@ -1614,15 +1614,15 @@ int getFilteredEdgesOnCoordinator(
     queryParameters += "&direction=out";
   }
   auto reqBodyString = std::make_shared<std::string>();
+  VPackBuilder bodyBuilder;
+  bodyBuilder.openArray();
   if (!expressions.empty()) {
-    VPackBuilder bodyBuilder;
-    bodyBuilder.openArray();
     for (auto& e : expressions) {
       e->toVelocyPack(bodyBuilder);
     }
-    bodyBuilder.close();
-    reqBodyString->append(bodyBuilder.toJson());
   }
+  bodyBuilder.close();
+  reqBodyString->append(bodyBuilder.toJson());
 
   std::vector<ClusterCommRequest> requests;
   std::string baseUrl = "/_db/" + StringUtils::urlEncode(dbname) + "/_api/edges/";
