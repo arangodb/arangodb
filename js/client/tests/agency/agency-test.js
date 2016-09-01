@@ -529,6 +529,13 @@ function agencyTestSuite () {
       var res = writeAgency([[{"/bumms":{"op":"set","new":"fallera"}, "/bummsfallera": {"op":"set","new":"lalalala"}}]]);
       assertEqual(res.statusCode, 200);
       assertEqual(readAndCheck([["/bumms", "/bummsfallera"]]), [{bumms:"fallera", bummsfallera: "lalalala"}]);
+    },
+
+    testThousand: function() {
+      var i;
+      for (i = 0; i < 1000; i++) {
+        writeAndCheck([[{x:12}]]);
+      }
     }
   };
 }
