@@ -46,12 +46,7 @@ static void JS_EnabledAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   
-  try {
-      ApplicationServer::getEnabledFeature<AgencyFeature>("Agency");
-    TRI_V8_RETURN_TRUE();
-  } catch (std::exception const& e) {
-    TRI_V8_RETURN_FALSE();
-  }
+  TRI_V8_RETURN(v8::Boolean::New(isolate, ApplicationServer::server->isEnabled("Agency")));
   
   TRI_V8_TRY_CATCH_END
     
