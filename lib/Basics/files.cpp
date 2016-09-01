@@ -1647,7 +1647,6 @@ std::string TRI_LocateBinaryPath(char const* argv0) {
 
     if (dir == nullptr) {
       binaryPath = TRI_DuplicateString("");
-      TRI_FreeString(TRI_CORE_MEM_ZONE, dir);
     }
     else {
       binaryPath = dir;

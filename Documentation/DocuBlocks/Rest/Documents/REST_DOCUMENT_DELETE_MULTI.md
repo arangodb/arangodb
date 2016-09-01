@@ -11,8 +11,6 @@ A JSON array of strings or documents.
 @RESTURLPARAM{collection,string,required}
 Collection from which documents are removed.
 
-@RESTURLPARAMETERS
-
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{waitForSync,boolean,optional}
