@@ -95,6 +95,8 @@ class Constituent : public arangodb::Thread {
 
   bool start(TRI_vocbase_t* vocbase, aql::QueryRegistry*);
 
+  friend class Agent;
+
  private:
   /// @brief set term to new term
   void term(term_t);

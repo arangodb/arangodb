@@ -48,6 +48,8 @@ typedef uint32_t id_t;
 /// @brief Agent roles
 enum role_t {FOLLOWER, CANDIDATE, LEADER};
 
+static const arangodb::consensus::id_t NO_LEADER =
+  (std::numeric_limits<arangodb::consensus::id_t>::max)();
 
 /// @brief Duration type
 typedef std::chrono::duration<long, std::ratio<1, 1000>> duration_t;

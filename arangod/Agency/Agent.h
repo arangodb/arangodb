@@ -137,6 +137,10 @@ class Agent : public arangodb::Thread {
   friend class State;
 
  private:
+
+  /// @brief Find out, if we've had acknowledged RPCs recent enough
+  bool challengeLeadership();
+
   Agent& operator=(VPackSlice const&);
 
   /// @brief Leader ID
@@ -182,6 +186,7 @@ class Agent : public arangodb::Thread {
   std::vector<index_t> _confirmed;
   std::vector<index_t> _lastHighest;
   std::vector<TimePoint> _lastSent;
+  std::vector<TimePoint> _lastAcked;
   arangodb::Mutex _ioLock; /**< @brief Read/Write lock */
 
   /// @brief Next compaction after

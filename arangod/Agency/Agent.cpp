@@ -54,6 +54,7 @@ Agent::Agent(config_t const& config)
   _confirmed.resize(size(), 0);  // agency's size and reset to 0
   _lastHighest.resize(size(), 0);
   _lastSent.resize(size());
+  _lastAcked.resize(size());
 }
 
 
@@ -183,6 +184,8 @@ bool Agent::waitFor(index_t index, double timeout) {
 void Agent::reportIn(arangodb::consensus::id_t id, index_t index) {
 
   MUTEX_LOCKER(mutexLocker, _ioLock);
+
+  _lastAcked[id] = std::chrono::system_clock::now();
 
   TRI_ASSERT(id<_confirmed.size());
 
@@ -396,6 +399,22 @@ bool Agent::load() {
 }
 
 
+/// Challenge my own leadership
+bool Agent::challengeLeadership() {
+
+  // Still leading?
+  size_t good = 0;
+  for (auto const& i : _lastAcked) {
+    std::chrono::duration<double> m = std::chrono::system_clock::now() - i;
+    if(0.9*_config.minPing > m.count()) {
+      ++good;
+    }
+  }
+  return (good < size() / 2); // not counting myself
+
+}
+
+
 /// Write new entries to replicated state and store
 write_ret_t Agent::write(query_t const& query) {
 
@@ -406,8 +425,13 @@ write_ret_t Agent::write(query_t const& query) {
   // Only leader else redirect
   if (!_constituent.leading()) {
     return write_ret_t(false, _constituent.leaderID());
+  } else {
+    if (challengeLeadership()) {
+      _constituent.candidate();
+      return write_ret_t(false, NO_LEADER);
+    }
   }
-
+  
   // Apply to spearhead and get indices for log entries
   {
     MUTEX_LOCKER(mutexLocker, _ioLock);
@@ -434,8 +458,13 @@ read_ret_t Agent::read(query_t const& query) {
   // Only leader else redirect
   if (!_constituent.leading()) {
     return read_ret_t(false, _constituent.leaderID());
+  } else {
+    if (challengeLeadership()) {
+      _constituent.candidate();
+      return read_ret_t(false, NO_LEADER);
+    }
   }
-
+  
   // Retrieve data from readDB
   query_t result = std::make_shared<arangodb::velocypack::Builder>();
   std::vector<bool> success = _readDB.read(query, result);
@@ -513,9 +542,13 @@ bool Agent::lead() {
     guard.broadcast();
   }
   
+  for (auto& i : _lastAcked) {
+    i = std::chrono::system_clock::now();
+  }
+  
   // Wake up supervision
   _supervision.wakeUp();
-
+  
   return true;
   
 }
