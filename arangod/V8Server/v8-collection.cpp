@@ -173,13 +173,13 @@ static int ParseDocumentOrDocumentHandle(v8::Isolate* isolate,
     // name
     if (ServerState::instance()->isCoordinator()) {
       ClusterInfo* ci = ClusterInfo::instance();
-      std::shared_ptr<LogicalCollection> col =
-          ci->getCollection(vocbase->name(), collectionName);
-      if (col == nullptr) { 
-        // collection not found
+      try {
+        std::shared_ptr<LogicalCollection> col =
+            ci->getCollection(vocbase->name(), collectionName);
+        collection = new LogicalCollection(col);
+      } catch (...) {
         return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
       }
-      collection = new LogicalCollection(col);
     } else {
       collection = resolver->getCollectionStruct(collectionName);
     }
@@ -2200,14 +2200,14 @@ static void JS_StatusVocbaseCol(
   if (ServerState::instance()->isCoordinator()) {
     std::string const databaseName(collection->dbName());
 
-    std::shared_ptr<LogicalCollection> const ci =
-        ClusterInfo::instance()->getCollection(databaseName,
-                                               collection->cid_as_string());
-
-    if (ci == nullptr) {
+    try {
+      std::shared_ptr<LogicalCollection> const ci =
+          ClusterInfo::instance()->getCollection(databaseName,
+                                                 collection->cid_as_string());
+      TRI_V8_RETURN(v8::Number::New(isolate, (int)ci->getStatusLocked()));
+    } catch (...) {
       TRI_V8_RETURN(v8::Number::New(isolate, (int)TRI_VOC_COL_STATUS_DELETED));
     }
-    TRI_V8_RETURN(v8::Number::New(isolate, (int)ci->getStatusLocked()));
   }
   // fallthru intentional
 
@@ -2362,14 +2362,13 @@ static void JS_TypeVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (ServerState::instance()->isCoordinator()) {
     std::string const databaseName = collection->dbName();
 
-    std::shared_ptr<LogicalCollection> const ci =
-        ClusterInfo::instance()->getCollection(databaseName,
-                                               collection->cid_as_string());
-
-    if (ci == nullptr) {
-      TRI_V8_RETURN(v8::Number::New(isolate, (int)collection->type()));
-    } else {
+    try {
+      std::shared_ptr<LogicalCollection> const ci =
+          ClusterInfo::instance()->getCollection(databaseName,
+                                                 collection->cid_as_string());
       TRI_V8_RETURN(v8::Number::New(isolate, (int)ci->type()));
+    } catch (...) {
+      TRI_V8_RETURN(v8::Number::New(isolate, (int)collection->type()));
     }
   }
   // fallthru intentional
@@ -2521,15 +2520,14 @@ static void JS_CollectionVocbase(
 
   if (ServerState::instance()->isCoordinator()) {
     std::string const name = TRI_ObjectToString(val);
-    std::shared_ptr<LogicalCollection> const ci =
-        ClusterInfo::instance()->getCollection(vocbase->name(), name);
-
-    if (ci == nullptr) {
+    try {
+      std::shared_ptr<LogicalCollection> const ci =
+          ClusterInfo::instance()->getCollection(vocbase->name(), name);
+      collection = new LogicalCollection(ci);
+    } catch (...) {
       // not found
       TRI_V8_RETURN_NULL();
     }
-
-    collection = new LogicalCollection(ci);
   } else {
     collection = GetCollectionFromArgument(vocbase, val);
   }

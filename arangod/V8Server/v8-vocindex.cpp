@@ -764,9 +764,9 @@ static void CreateCollectionCoordinator(
     if (otherCid != 0) {
       std::string otherCidString 
           = arangodb::basics::StringUtils::itoa(otherCid);
-      std::shared_ptr<LogicalCollection> collInfo =
-          ci->getCollection(databaseName, otherCidString);
-      if (collInfo != nullptr) {
+      try {
+        std::shared_ptr<LogicalCollection> collInfo =
+            ci->getCollection(databaseName, otherCidString);
         auto shards = collInfo->shardIds();
         auto shardList = ci->getShardList(otherCidString);
         for (auto const& s : *shardList) {
@@ -777,6 +777,7 @@ static void CreateCollectionCoordinator(
             }
           }
         }
+      } catch (...) {
       }
     }
   }

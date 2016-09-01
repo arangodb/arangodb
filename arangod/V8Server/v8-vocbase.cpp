@@ -1875,15 +1875,15 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    std::shared_ptr<LogicalCollection> ci =
-        ClusterInfo::instance()->getCollection(vocbase->name(),
-                                               std::string(key));
-
-    if (ci == nullptr) {
+    try {
+      std::shared_ptr<LogicalCollection> ci =
+          ClusterInfo::instance()->getCollection(vocbase->name(),
+                                                 std::string(key));
+      TRI_ASSERT(ci != nullptr);
+      collection = new LogicalCollection(ci);
+    } catch (...) {
       TRI_V8_RETURN(v8::Handle<v8::Value>());
     }
-
-    collection = new LogicalCollection(ci);
   } else {
     collection = vocbase->lookupCollection(std::string(key));
   }
