@@ -475,6 +475,24 @@ function analyzeCoreDumpWindows (instanceInfo) {
 // //////////////////////////////////////////////////////////////////////////////
 function analyzeServerCrash (arangod, options, checkStr) {
   serverCrashed = true;
+  var cpf = "/proc/sys/kernel/core_pattern";
+
+  if (fs.isFile(cpf)) {
+    var matchApport = /.*apport.*/;
+    var matchVarTmp = /\/var\/tmp/;
+    var corePattern = fs.readBuffer(cpf);
+    var cp = corePattern.asciiSlice(0, corePattern.length);
+
+    if (matchApport.exec(cp) != null) {
+      print(RED + "apport handles corefiles on your system. Uninstall it if you want us to get corefiles for analysis.");
+      return;
+    }
+    if (matchVarTmp.exec(cp) == null) {
+      print(RED + "Don't know howto locate corefiles in your system. '" + cpf + "' contains: '" + cp + "'");
+      return;
+    }
+  }
+
   const storeArangodPath = arangod.rootDir + '/arangod_' + arangod.pid;
 
   print(RED +

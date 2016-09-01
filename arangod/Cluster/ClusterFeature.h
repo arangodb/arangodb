@@ -58,6 +58,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::string _arangodPath;
   std::string _dbserverConfig;
   std::string _coordinatorConfig;
+  uint32_t _systemReplicationFactor = 2;
 
  public:
   AgencyCallbackRegistry* agencyCallbackRegistry() const {

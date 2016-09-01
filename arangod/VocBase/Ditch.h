@@ -134,12 +134,10 @@ class DocumentDitch final : public Ditch {
 
   char const* typeName() const override final { return "document-reference"; }
 
-  void setUsedByTransaction();
-  void setUsedByExternal();
+  bool usedByTransaction() const { return _usedByTransaction; }
 
  private:
-  uint32_t _usedByExternal;
-  bool _usedByTransaction;
+  bool const _usedByTransaction;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

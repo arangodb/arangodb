@@ -37,10 +37,10 @@ class CollectionReadLocker {
   CollectionReadLocker& operator=(CollectionReadLocker const&) = delete;
 
   /// @brief create the locker
-  CollectionReadLocker(LogicalCollection* collection, bool doLock)
-      : _collection(collection), _doLock(false) {
+  CollectionReadLocker(LogicalCollection* collection, bool useDeadlockDetector, bool doLock)
+      : _collection(collection), _useDeadlockDetector(useDeadlockDetector), _doLock(false) {
     if (doLock) {
-      int res = _collection->beginReadTimed(
+      int res = _collection->beginReadTimed(_useDeadlockDetector,
           0, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -57,7 +57,7 @@ class CollectionReadLocker {
   /// @brief release the lock
   inline void unlock() {
     if (_doLock) {
-      _collection->endRead();
+      _collection->endRead(_useDeadlockDetector);
       _doLock = false;
     }
   }
@@ -65,6 +65,9 @@ class CollectionReadLocker {
  private:
   /// @brief collection pointer
   LogicalCollection* _collection;
+  
+  /// @brief whether or not to use the deadlock detector
+  bool const _useDeadlockDetector;
 
   /// @brief lock flag
   bool _doLock;

@@ -346,4 +346,13 @@
     exports.sendChunk = global.SYS_SEND_CHUNK;
     delete global.SYS_SEND_CHUNK;
   }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief default replication factor
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_DEFAULT_REPLICATION_FACTOR_SYSTEM) {
+    exports.DEFAULT_REPLICATION_FACTOR_SYSTEM = global.SYS_DEFAULT_REPLICATION_FACTOR_SYSTEM;
+    delete global.SYS_DEFAULT_REPLICATION_FACTOR_SYSTEM;
+  }
 }());

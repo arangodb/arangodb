@@ -37,10 +37,10 @@ class CollectionWriteLocker {
   CollectionWriteLocker& operator=(CollectionWriteLocker const&) = delete;
 
   /// @brief create the locker
-  CollectionWriteLocker(arangodb::LogicalCollection* collection, bool doLock)
-      : _collection(collection), _doLock(false) {
+  CollectionWriteLocker(arangodb::LogicalCollection* collection, bool useDeadlockDetector, bool doLock)
+      : _collection(collection), _useDeadlockDetector(useDeadlockDetector), _doLock(false) {
     if (doLock) {
-      int res = _collection->beginWriteTimed(0, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
+      int res = _collection->beginWriteTimed(_useDeadlockDetector, 0, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
 
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
@@ -56,7 +56,7 @@ class CollectionWriteLocker {
   /// @brief release the lock
   inline void unlock() {
     if (_doLock) {
-      _collection->endWrite();
+      _collection->endWrite(_useDeadlockDetector);
       _doLock = false;
     }
   }
@@ -64,6 +64,9 @@ class CollectionWriteLocker {
  private:
   /// @brief collection pointer
   arangodb::LogicalCollection* _collection;
+
+  /// @brief whether or not to use the deadlock detector
+  bool const _useDeadlockDetector;
 
   /// @brief lock flag
   bool _doLock;

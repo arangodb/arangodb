@@ -300,7 +300,8 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
 
     bool ok;
     {
-      int res = collection->beginReadTimed(86400ULL * 1000ULL * 1000ULL, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
+      bool const useDeadlockDetector = false;
+      int res = collection->beginReadTimed(useDeadlockDetector, 86400ULL * 1000ULL * 1000ULL, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
 
       if (res != TRI_ERROR_NO_ERROR) {
         ok = false;
@@ -311,7 +312,7 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
         } catch (...) {
           ok = false;
         }
-        collection->endRead();
+        collection->endRead(useDeadlockDetector);
       }
     }
 

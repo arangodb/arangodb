@@ -44,6 +44,8 @@ var mountAppRegEx = /\/APP(\/|$)/i;
 var mountNumberRegEx = /^\/[\d\-%]/;
 var pathRegex = /^((\.{0,2}(\/|\\))|(~\/)|[a-zA-Z]:\\)/;
 
+const DEFAULT_REPLICATION_FACTOR_SYSTEM = internal.DEFAULT_REPLICATION_FACTOR_SYSTEM;
+
 var getReadableName = function (name) {
   return name.split(/([-_]|\s)+/).map(function (token) {
     return token.slice(0, 1).toUpperCase() + token.slice(1);
@@ -53,7 +55,7 @@ var getReadableName = function (name) {
 var getStorage = function () {
   var c = db._collection('_apps');
   if (c === null) {
-    c = db._create('_apps', {isSystem: true, replicationFactor: 2,
+    c = db._create('_apps', {isSystem: true, replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
     distributeShardsLike: '_graphs', journalSize: 4 * 1024 * 1024});
     c.ensureIndex({ type: 'hash', fields: [ 'mount' ], unique: true });
   }

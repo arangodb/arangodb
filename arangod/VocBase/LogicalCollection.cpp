@@ -45,8 +45,8 @@
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "Utils/CollectionReadLocker.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/CollectionReadLocker.h"
 #include "Utils/CollectionWriteLocker.h"
 #include "VocBase/PhysicalCollection.h"
 #include "VocBase/collection.h"
@@ -1539,7 +1539,8 @@ int LogicalCollection::read(Transaction* trx, StringRef const& key,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    CollectionReadLocker collectionLocker(this, lock);
+    bool const useDeadlockDetector = (lock && !trx->isSingleOperationTransaction());
+    CollectionReadLocker collectionLocker(this, useDeadlockDetector, lock);
 
     TRI_doc_mptr_t* header;
     int res = lookupDocument(trx, slice, header);
@@ -1651,7 +1652,8 @@ int LogicalCollection::insert(Transaction* trx, VPackSlice const slice,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
     
-    arangodb::CollectionWriteLocker collectionLocker(this, lock);
+    bool const useDeadlockDetector = (lock && !trx->isSingleOperationTransaction());
+    arangodb::CollectionWriteLocker collectionLocker(this, useDeadlockDetector, lock);
 
     // create a new header
     TRI_doc_mptr_t* header = operation.header = _masterPointers.request();
@@ -1728,7 +1730,8 @@ int LogicalCollection::update(Transaction* trx, VPackSlice const newSlice,
   {
     TRI_IF_FAILURE("UpdateDocumentNoLock") { return TRI_ERROR_DEBUG; }
 
-    arangodb::CollectionWriteLocker collectionLocker(this, lock);
+    bool const useDeadlockDetector = (lock && !trx->isSingleOperationTransaction());
+    arangodb::CollectionWriteLocker collectionLocker(this, useDeadlockDetector, lock);
     
     // get the header pointer of the previous revision
     TRI_doc_mptr_t* oldHeader;
@@ -1874,7 +1877,8 @@ int LogicalCollection::replace(Transaction* trx, VPackSlice const newSlice,
   {
     TRI_IF_FAILURE("ReplaceDocumentNoLock") { return TRI_ERROR_DEBUG; }
 
-    arangodb::CollectionWriteLocker collectionLocker(this, lock);
+    bool const useDeadlockDetector = (lock && !trx->isSingleOperationTransaction());
+    arangodb::CollectionWriteLocker collectionLocker(this, useDeadlockDetector, lock);
     
     // get the header pointer of the previous revision
     TRI_doc_mptr_t* oldHeader;
@@ -2032,7 +2036,8 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
     }
     TRI_ASSERT(!key.isNone());
     
-    arangodb::CollectionWriteLocker collectionLocker(this, lock);
+    bool const useDeadlockDetector = (lock && !trx->isSingleOperationTransaction());
+    arangodb::CollectionWriteLocker collectionLocker(this, useDeadlockDetector, lock);
     
     // get the header pointer of the previous revision
     TRI_doc_mptr_t* oldHeader = nullptr;
@@ -2317,7 +2322,7 @@ int LogicalCollection::fillIndexSequential(arangodb::Transaction* trx,
 }
 
 /// @brief read unlocks a collection
-int LogicalCollection::endRead() {
+int LogicalCollection::endRead(bool useDeadlockDetector) {
   if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
     auto it = arangodb::Transaction::_makeNolockHeaders->find(name());
     if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
@@ -2328,9 +2333,12 @@ int LogicalCollection::endRead() {
     }
   }
 
-  try {
-    _vocbase->_deadlockDetector.unsetReader(this);
-  } catch (...) {
+  if (useDeadlockDetector) {
+    // unregister reader
+    try {
+      _vocbase->_deadlockDetector.unsetReader(this);
+    } catch (...) {
+    }
   }
 
   // LOCKING-DEBUG
@@ -2341,7 +2349,7 @@ int LogicalCollection::endRead() {
 }
 
 /// @brief write unlocks a collection
-int LogicalCollection::endWrite() {
+int LogicalCollection::endWrite(bool useDeadlockDetector) {
   if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
     auto it = arangodb::Transaction::_makeNolockHeaders->find(name());
     if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
@@ -2353,11 +2361,13 @@ int LogicalCollection::endWrite() {
     }
   }
 
-  // unregister writer
-  try {
-    _vocbase->_deadlockDetector.unsetWriter(this);
-  } catch (...) {
-    // must go on here to unlock the lock
+  if (useDeadlockDetector) {
+    // unregister writer
+    try {
+      _vocbase->_deadlockDetector.unsetWriter(this);
+    } catch (...) {
+      // must go on here to unlock the lock
+    }
   }
 
   // LOCKING-DEBUG
@@ -2368,7 +2378,7 @@ int LogicalCollection::endWrite() {
 }
 
 /// @brief read locks a collection, with a timeout (in µseconds)
-int LogicalCollection::beginReadTimed(uint64_t timeout, uint64_t sleepPeriod) {
+int LogicalCollection::beginReadTimed(bool useDeadlockDetector, uint64_t timeout, uint64_t sleepPeriod) {
   if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
     auto it = arangodb::Transaction::_makeNolockHeaders->find(name());
     if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
@@ -2395,43 +2405,47 @@ int LogicalCollection::beginReadTimed(uint64_t timeout, uint64_t sleepPeriod) {
 
     if (locker.isLocked()) {
       // when we are here, we've got the read lock
-      _vocbase->_deadlockDetector.addReader(this, wasBlocked);
+      if (useDeadlockDetector) {
+        _vocbase->_deadlockDetector.addReader(this, wasBlocked);
+      }
       
       // keep lock and exit loop
       locker.steal();
       return TRI_ERROR_NO_ERROR;
     }
 
-    try {
-      if (!wasBlocked) {
-        // insert reader
-        wasBlocked = true;
-        if (_vocbase->_deadlockDetector.setReaderBlocked(this) ==
-            TRI_ERROR_DEADLOCK) {
-          // deadlock
-          LOG(TRACE) << "deadlock detected while trying to acquire read-lock on collection '" << name() << "'";
-          return TRI_ERROR_DEADLOCK;
+    if (useDeadlockDetector) {
+      try {
+        if (!wasBlocked) {
+          // insert reader
+          wasBlocked = true;
+          if (_vocbase->_deadlockDetector.setReaderBlocked(this) ==
+              TRI_ERROR_DEADLOCK) {
+            // deadlock
+            LOG(TRACE) << "deadlock detected while trying to acquire read-lock on collection '" << name() << "'";
+            return TRI_ERROR_DEADLOCK;
+          }
+          LOG(TRACE) << "waiting for read-lock on collection '" << name() << "'";
+        } else if (++iterations >= 5) {
+          // periodically check for deadlocks
+          TRI_ASSERT(wasBlocked);
+          iterations = 0;
+          if (_vocbase->_deadlockDetector.detectDeadlock(this, false) ==
+              TRI_ERROR_DEADLOCK) {
+            // deadlock
+            _vocbase->_deadlockDetector.unsetReaderBlocked(this);
+            LOG(TRACE) << "deadlock detected while trying to acquire read-lock on collection '" << name() << "'";
+            return TRI_ERROR_DEADLOCK;
+          }
         }
-        LOG(TRACE) << "waiting for read-lock on collection '" << name() << "'";
-      } else if (++iterations >= 5) {
-        // periodically check for deadlocks
-        TRI_ASSERT(wasBlocked);
-        iterations = 0;
-        if (_vocbase->_deadlockDetector.detectDeadlock(this, false) ==
-            TRI_ERROR_DEADLOCK) {
-          // deadlock
+      } catch (...) {
+        // clean up!
+        if (wasBlocked) {
           _vocbase->_deadlockDetector.unsetReaderBlocked(this);
-          LOG(TRACE) << "deadlock detected while trying to acquire read-lock on collection '" << name() << "'";
-          return TRI_ERROR_DEADLOCK;
         }
+        // always exit
+        return TRI_ERROR_OUT_OF_MEMORY;
       }
-    } catch (...) {
-      // clean up!
-      if (wasBlocked) {
-        _vocbase->_deadlockDetector.unsetReaderBlocked(this);
-      }
-      // always exit
-      return TRI_ERROR_OUT_OF_MEMORY;
     }
 
 #ifdef _WIN32
@@ -2443,7 +2457,9 @@ int LogicalCollection::beginReadTimed(uint64_t timeout, uint64_t sleepPeriod) {
     waited += sleepPeriod;
 
     if (waited > timeout) {
-      _vocbase->_deadlockDetector.unsetReaderBlocked(this);
+      if (useDeadlockDetector) {
+        _vocbase->_deadlockDetector.unsetReaderBlocked(this);
+      }
       LOG(TRACE) << "timed out waiting for read-lock on collection '" << name() << "'";
       return TRI_ERROR_LOCK_TIMEOUT;
     }
@@ -2451,7 +2467,7 @@ int LogicalCollection::beginReadTimed(uint64_t timeout, uint64_t sleepPeriod) {
 }
 
 /// @brief write locks a collection, with a timeout
-int LogicalCollection::beginWriteTimed(uint64_t timeout, uint64_t sleepPeriod) {
+int LogicalCollection::beginWriteTimed(bool useDeadlockDetector, uint64_t timeout, uint64_t sleepPeriod) {
   if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
     auto it = arangodb::Transaction::_makeNolockHeaders->find(name());
     if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
@@ -2478,42 +2494,46 @@ int LogicalCollection::beginWriteTimed(uint64_t timeout, uint64_t sleepPeriod) {
 
     if (locker.isLocked()) {
       // register writer
-      _vocbase->_deadlockDetector.addWriter(this, wasBlocked);
+      if (useDeadlockDetector) {
+        _vocbase->_deadlockDetector.addWriter(this, wasBlocked);
+      }
       // keep lock and exit loop
       locker.steal();
       return TRI_ERROR_NO_ERROR;
     }
 
-    try {
-      if (!wasBlocked) {
-        // insert writer
-        wasBlocked = true;
-        if (_vocbase->_deadlockDetector.setWriterBlocked(this) ==
-            TRI_ERROR_DEADLOCK) {
-          // deadlock
-          LOG(TRACE) << "deadlock detected while trying to acquire write-lock on collection '" << name() << "'";
-          return TRI_ERROR_DEADLOCK;
+    if (useDeadlockDetector) {
+      try {
+        if (!wasBlocked) {
+          // insert writer
+          wasBlocked = true;
+          if (_vocbase->_deadlockDetector.setWriterBlocked(this) ==
+              TRI_ERROR_DEADLOCK) {
+            // deadlock
+            LOG(TRACE) << "deadlock detected while trying to acquire write-lock on collection '" << name() << "'";
+            return TRI_ERROR_DEADLOCK;
+          }
+          LOG(TRACE) << "waiting for write-lock on collection '" << name() << "'";
+        } else if (++iterations >= 5) {
+          // periodically check for deadlocks
+          TRI_ASSERT(wasBlocked);
+          iterations = 0;
+          if (_vocbase->_deadlockDetector.detectDeadlock(this, true) ==
+              TRI_ERROR_DEADLOCK) {
+            // deadlock
+            _vocbase->_deadlockDetector.unsetWriterBlocked(this);
+            LOG(TRACE) << "deadlock detected while trying to acquire write-lock on collection '" << name() << "'";
+            return TRI_ERROR_DEADLOCK;
+          }
         }
-        LOG(TRACE) << "waiting for write-lock on collection '" << name() << "'";
-      } else if (++iterations >= 5) {
-        // periodically check for deadlocks
-        TRI_ASSERT(wasBlocked);
-        iterations = 0;
-        if (_vocbase->_deadlockDetector.detectDeadlock(this, true) ==
-            TRI_ERROR_DEADLOCK) {
-          // deadlock
+      } catch (...) {
+        // clean up!
+        if (wasBlocked) {
           _vocbase->_deadlockDetector.unsetWriterBlocked(this);
-          LOG(TRACE) << "deadlock detected while trying to acquire write-lock on collection '" << name() << "'";
-          return TRI_ERROR_DEADLOCK;
         }
+        // always exit
+        return TRI_ERROR_OUT_OF_MEMORY;
       }
-    } catch (...) {
-      // clean up!
-      if (wasBlocked) {
-        _vocbase->_deadlockDetector.unsetWriterBlocked(this);
-      }
-      // always exit
-      return TRI_ERROR_OUT_OF_MEMORY;
     }
 
 #ifdef _WIN32
@@ -2525,7 +2545,9 @@ int LogicalCollection::beginWriteTimed(uint64_t timeout, uint64_t sleepPeriod) {
     waited += sleepPeriod;
 
     if (waited > timeout) {
-      _vocbase->_deadlockDetector.unsetWriterBlocked(this);
+      if (useDeadlockDetector) {
+        _vocbase->_deadlockDetector.unsetWriterBlocked(this);
+      }
       LOG(TRACE) << "timed out waiting for write-lock on collection '" << name() << "'";
       return TRI_ERROR_LOCK_TIMEOUT;
     }

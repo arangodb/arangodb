@@ -27,9 +27,10 @@
 // / @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var internal = require('internal');
-var cluster = require('@arangodb/cluster');
-var db = internal.db;
+const internal = require('internal');
+const cluster = require('@arangodb/cluster');
+const db = internal.db;
+const DEFAULT_REPLICATION_FACTOR_SYSTEM = internal.DEFAULT_REPLICATION_FACTOR_SYSTEM;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief initialized
@@ -51,7 +52,7 @@ function createStatisticsCollection (name) {
 
     try {
       r = db._create(name, { isSystem: true, waitForSync: false,
-        replicationFactor: 2,
+        replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
         journalSize: 8 * 1024 * 1024,
       distributeShardsLike: '_graphs' });
     } catch (err) {}
@@ -450,7 +451,7 @@ exports.historian = function () {
 
   var clusterId;
 
-  if (cluster.isCluster()) {
+  if (cluster.isCluster() && (clusterId !== undefined && clusterId !== null)) {
     clusterId = global.ArangoServerState.id();
   }
 

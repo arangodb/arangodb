@@ -51,8 +51,6 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/CollectionReadLocker.h"
-#include "Utils/CollectionWriteLocker.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/DatafileHelper.h"

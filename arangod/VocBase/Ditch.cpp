@@ -48,28 +48,9 @@ TRI_collection_t* Ditch::collection() const {
 DocumentDitch::DocumentDitch(Ditches* ditches, bool usedByTransaction,
                              char const* filename, int line)
     : Ditch(ditches, filename, line),
-      _usedByExternal(0),
       _usedByTransaction(usedByTransaction) {}
 
 DocumentDitch::~DocumentDitch() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the _usedByTransaction flag, using the required lock
-////////////////////////////////////////////////////////////////////////////////
-
-void DocumentDitch::setUsedByTransaction() {
-  auto callback = [this]() -> void { _usedByTransaction = true; };
-  _ditches->executeProtected(callback);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief increases the _usedByExternal value, using the required lock
-////////////////////////////////////////////////////////////////////////////////
-
-void DocumentDitch::setUsedByExternal() {
-  auto callback = [this]() -> void { ++_usedByExternal; };
-  _ditches->executeProtected(callback);
-}
 
 ReplicationDitch::ReplicationDitch(Ditches* ditches, char const* filename,
                                    int line)
@@ -327,41 +308,22 @@ void Ditches::freeDitch(Ditch* ditch) {
 
 void Ditches::freeDocumentDitch(DocumentDitch* ditch, bool fromTransaction) {
   TRI_ASSERT(ditch != nullptr);
+    
+  // First see who might still be using the ditch:
+  if (fromTransaction) {
+    TRI_ASSERT(ditch->usedByTransaction() == true);
+  }
 
-  bool shouldFree = false;
   {
     MUTEX_LOCKER(mutexLocker, _lock); 
 
-    // First see who might still be using the ditch:
-    if (fromTransaction) {
-      TRI_ASSERT(ditch->_usedByTransaction == true);
-      ditch->_usedByTransaction = false;
-    } else {
-      // note: _usedByExternal may or may not be set when we get here
-      // the reason is that there are ditches not linked at all
-      // (when a ditch is created ahead of operations but the operations are
-      // not executed etc.)
-      if (ditch->_usedByExternal > 0) {
-        --ditch->_usedByExternal;
-      }
-    }
+    unlink(ditch);
 
-    if (ditch->_usedByTransaction == false && ditch->_usedByExternal == 0) {
-      // Really free it:
-
-      unlink(ditch);
-
-      // decrease counter
-      --_numDocumentDitches;
-
-      // free the ditch
-      shouldFree = true;
-    }
+    // decrease counter
+    --_numDocumentDitches;
   }
 
-  if (shouldFree) {
-    delete ditch;
-  }
+  delete ditch;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
