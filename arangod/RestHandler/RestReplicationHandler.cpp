@@ -925,15 +925,15 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
     VPackOptions options = VPackOptions::Defaults;
     options.checkAttributeUniqueness = true;
     std::shared_ptr<VPackBuilder> parsedRequest;
+    VPackSlice slice;
     try {
-      parsedRequest = _request->toVelocyPackBuilderPtr(&options);
+      slice = _request->payload(&options);
     } catch (...) {
       generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid body value. expecting array");
       return;
     }
-    VPackSlice const slice = parsedRequest->slice();
     if (!slice.isArray()) {
       generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,

@@ -68,7 +68,13 @@ VPackMessageNoOwnBuffer VppResponse::prepareForNetwork() {
       VPackValue(static_cast<int>(meta::underlyingValue(_responseCode))));
   builder.close();
   _header = builder.steal();
-  return VPackMessageNoOwnBuffer(VPackSlice(_header->data()),
-                                 VPackSlice(_vpackPayloads.front().data()),
-                                 _messageId, _generateBody);
+  if(_vpackPayloads.empty()){
+    return VPackMessageNoOwnBuffer(VPackSlice(_header->data()),
+                                   VPackSlice(_vpackPayloads.front().data()),
+                                   _messageId, _generateBody);
+  } else {
+    return VPackMessageNoOwnBuffer(VPackSlice(_header->data()),
+                                   VPackSlice::noneSlice(),
+                                   _messageId, _generateBody);
+  }
 }
