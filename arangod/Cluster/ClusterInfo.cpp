@@ -655,6 +655,8 @@ std::shared_ptr<LogicalCollection> ClusterInfo::getCollection(
     // must load collections outside the lock
     loadPlan();
   }
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                                 "Collection not found: " + collectionID);
   return nullptr;
 }
 
