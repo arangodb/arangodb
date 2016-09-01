@@ -440,6 +440,25 @@ bool Agent::load() {
 }
 
 
+
+/// Challenge my own leadership
+bool Agent::challengeLeadership() {
+
+  // Still leading?
+  size_t good = 0; 
+  for (auto const& i : _lastAcked) {
+    std::chrono::duration<double> m =
+      std::chrono::system_clock::now() - i.second;
+    if(0.9*_config.minPing() > m.count()) {
+      ++good;
+    }
+  }
+  return (good < size() / 2); // not counting myself
+  
+}
+
+
+
 /// Write new entries to replicated state and store
 write_ret_t Agent::write(query_t const& query) {
 
@@ -451,16 +470,7 @@ write_ret_t Agent::write(query_t const& query) {
   if (!_constituent.leading()) {
     return write_ret_t(false, _constituent.leaderID());
   } else {
-    // Still leading?
-    size_t good = 0; 
-    for (auto const& i : _lastAcked) {
-      std::chrono::duration<double> m =
-        std::chrono::system_clock::now() - i.second;
-      if(0.9*_config.minPing() > m.count()) {
-        ++good;
-      }
-    }
-    if (good < size() / 2) {
+    if (challengeLeadership()) {
       _constituent.candidate();
       return write_ret_t(false, NO_LEADER);
     }
@@ -496,16 +506,7 @@ read_ret_t Agent::read(query_t const& query) {
   if (!_constituent.leading()) {
     return read_ret_t(false, _constituent.leaderID());
   } else {
-    // Still leading?
-    size_t good = 0; 
-    for (auto const& i : _lastAcked) {
-      std::chrono::duration<double> m =
-        std::chrono::system_clock::now() - i.second;
-      if(0.9*_config.minPing() > m.count()) {
-        ++good;
-      }
-    }
-    if (good < size() / 2) {
+    if (challengeLeadership()) {
       _constituent.candidate();
       return read_ret_t(false, NO_LEADER);
     }

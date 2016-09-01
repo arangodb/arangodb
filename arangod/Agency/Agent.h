@@ -157,10 +157,13 @@ class Agent : public arangodb::Thread {
   /// @brief Get notification as inactve pool member
   void notify(query_t const&);
   
-  /// State reads persisted state and prepares the agent
+  /// @brief State reads persisted state and prepares the agent
   friend class State;
 
  private:
+
+  /// @brief Find out, if we've had acknowledged RPCs recent enough
+  bool challengeLeadership();
 
   /// @brief Notify inactive pool members of changes in configuration
   void notifyInactive() const;
