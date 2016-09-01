@@ -1,6 +1,9 @@
 devel
 -----
 
+* added --cluster.system-replication-factor in order to adjust the
+  replication factor for new system collections
+
 * fixed issue #2012
 
 * added a memory expection in case V8 memory gets too low
