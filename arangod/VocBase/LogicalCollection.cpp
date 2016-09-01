@@ -368,7 +368,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
           ReadNumericValue<TRI_voc_size_t>(info, "journalSize",
                                            TRI_JOURNAL_DEFAULT_SIZE))),
       _keyOptions(CopySliceValue(info, "keyOptions")),
-      _indexBuckets(ReadNumericValue<uint32_t>(info, "indexBuckets", 1)),
+      _indexBuckets(ReadNumericValue<uint32_t>(info, "indexBuckets", DatabaseFeature::DefaultIndexBuckets)),
       _replicationFactor(ReadNumericValue<int>(info, "replicationFactor", 1)),
       _numberOfShards(GetObjectLength(info, "shards", 1)),
       _allowUserKeys(ReadBooleanValue(info, "allowUserKeys", true)),
@@ -832,6 +832,7 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result) const {
   result.add("isSystem", VPackValue(_isSystem));
   result.add("isVolatile", VPackValue(_isVolatile));
   result.add("waitForSync", VPackValue(_waitForSync));
+  result.add("journalSize", VPackValue(_journalSize));
   if (_keyOptions != nullptr) {
     result.add("keyOptions", VPackSlice(_keyOptions->data()));
   }
@@ -867,7 +868,6 @@ void LogicalCollection::toVelocyPack(VPackBuilder& builder, bool includeIndexes,
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->getCollectionInfo(_vocbase, _cid, builder, includeIndexes, maxTick);
 }
-
 
 TRI_vocbase_t* LogicalCollection::vocbase() const {
   return _vocbase;
@@ -925,6 +925,7 @@ int LogicalCollection::update(VPackSlice const& slice, bool doSync) {
   }
   _indexBuckets =
       Helper::getNumericValue<uint32_t>(slice, "indexBuckets", _indexBuckets);
+
   if (!_isLocal) {
     // We need to inform the cluster as well
     return ClusterInfo::instance()->setCollectionPropertiesCoordinator(
@@ -2526,8 +2527,6 @@ int LogicalCollection::beginWriteTimed(uint64_t timeout, uint64_t sleepPeriod) {
     }
   }
 }
-
-
 
 /// @brief looks up a document by key, low level worker
 /// the caller must make sure the read lock on the collection is held
