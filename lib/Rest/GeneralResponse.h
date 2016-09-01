@@ -155,7 +155,8 @@ class GeneralResponse {
                                   arangodb::velocypack::Options const*,
                                   bool resolveExternals, bool bodySkipped) {}
 
-  virtual int reservePayload(std::size_t size) { return size; }
+  virtual int reservePayload(std::size_t size) { return TRI_ERROR_NO_ERROR; }
+  bool generateBody() const { return _generateBody; };  // used for head
   virtual bool setGenerateBody(bool) {
     return _generateBody;
   };  // used for head

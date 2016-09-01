@@ -68,13 +68,18 @@ VPackMessageNoOwnBuffer VppResponse::prepareForNetwork() {
       VPackValue(static_cast<int>(meta::underlyingValue(_responseCode))));
   builder.close();
   _header = builder.steal();
-  if(_vpackPayloads.empty()){
+  if (_vpackPayloads.empty()) {
+    if (_generateBody) {
+      LOG_TOPIC(INFO, Logger::REQUESTS)
+          << "Response should generate body but no Data available";
+      _generateBody = false;  // no body availalbe
+    }
     return VPackMessageNoOwnBuffer(VPackSlice(_header->data()),
-                                   VPackSlice(_vpackPayloads.front().data()),
-                                   _messageId, _generateBody);
+                                   VPackSlice::noneSlice(), _messageId,
+                                   _generateBody);
   } else {
     return VPackMessageNoOwnBuffer(VPackSlice(_header->data()),
-                                   VPackSlice::noneSlice(),
+                                   VPackSlice(_vpackPayloads.front().data()),
                                    _messageId, _generateBody);
   }
 }
