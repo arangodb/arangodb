@@ -1790,8 +1790,6 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
     TRI_V8_RETURN(v8::Handle<v8::Value>());
   }
 
-  arangodb::LogicalCollection* collection = nullptr;
-
   // generate a name under which the cached property is stored
   std::string cacheKey(key, keyLength);
   cacheKey.push_back('*');
@@ -1828,6 +1826,8 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
   if (globals->Has(_DbCacheKey)) {
     cacheObject = globals->Get(_DbCacheKey)->ToObject();
   }
+
+  arangodb::LogicalCollection* collection = nullptr;
 
   if (!cacheObject.IsEmpty() && cacheObject->HasRealNamedProperty(cacheName)) {
     v8::Handle<v8::Object> value =
@@ -1874,18 +1874,22 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
     cacheObject->Delete(cacheName);
   }
 
-  if (ServerState::instance()->isCoordinator()) {
-    std::shared_ptr<LogicalCollection> ci =
-        ClusterInfo::instance()->getCollection(vocbase->name(),
-                                               std::string(key));
+  try {
+    if (ServerState::instance()->isCoordinator()) {
+      std::shared_ptr<LogicalCollection> ci =
+          ClusterInfo::instance()->getCollection(vocbase->name(),
+                                                std::string(key));
 
-    if (ci == nullptr) {
-      TRI_V8_RETURN(v8::Handle<v8::Value>());
+      if (ci == nullptr) {
+        TRI_V8_RETURN(v8::Handle<v8::Value>());
+      }
+
+      collection = new LogicalCollection(ci);
+    } else {
+      collection = vocbase->lookupCollection(std::string(key));
     }
-
-    collection = new LogicalCollection(ci);
-  } else {
-    collection = vocbase->lookupCollection(std::string(key));
+  } catch (...) {
+    // do not propagate exception from here
   }
 
   if (collection == nullptr) {
