@@ -1347,13 +1347,144 @@ int ClusterInfo::ensureIndexCoordinator(
   }
   TRI_ASSERT(resultBuilder.isEmpty());
 
-  std::string const idString = arangodb::basics::StringUtils::itoa(iid);
-  int numberOfShards = 0;
+ 
+  std::string const key =
+      "Plan/Collections/" + databaseName + "/" + collectionID;
+
+  AgencyCommResult previous = ac.getValues(key);
+
+  if (!previous.successful()) {
+    return TRI_ERROR_CLUSTER_READING_PLAN_AGENCY;
+  }
+
+  velocypack::Slice collection =
+    previous.slice()[0].get(std::vector<std::string>(
+          { AgencyComm::prefix(), "Plan", "Collections",
+            databaseName, collectionID }));
+
+  if (!collection.isObject()) {
+    return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
+  }
+
+  loadPlan();
+  // It is possible that between the fetching of the planned collections
+  // and the write lock we acquire below something has changed. Therefore
+  // we first get the previous value and then do a compare and swap operation.
 
   Mutex numberOfShardsMutex;
+  int numberOfShards = 0;
+  auto collectionBuilder = std::make_shared<VPackBuilder>();
+  {
+    std::shared_ptr<LogicalCollection> c =
+      getCollection(databaseName, collectionID);
+    
+    // Note that nobody is removing this collection in the plan, since
+    // we hold the write lock in the agency, therefore it does not matter
+    // that getCollection fetches the read lock and releases it before
+    // we get it again.
+    //
+    READ_LOCKER(readLocker, _planProt.lock);
+    
+    if (c == nullptr) {
+      return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
+    }
+    
+    std::shared_ptr<VPackBuilder> tmp = std::make_shared<VPackBuilder>();
+    c->getIndexesVPack(*(tmp.get()), true);
+    MUTEX_LOCKER(guard, numberOfShardsMutex);
+    {
+      numberOfShards = c->numberOfShards();
+    }
+    VPackSlice const indexes = tmp->slice();
+    
+    if (indexes.isArray()) {
+      VPackSlice const type = slice.get("type");
+      
+      if (!type.isString()) {
+        return setErrormsg(TRI_ERROR_INTERNAL, errorMsg);
+      }
+      
+      for (auto const& other : VPackArrayIterator(indexes)) {
+        if (arangodb::basics::VelocyPackHelper::compare(
+              type, other.get("type"), false) != 0) {
+          // compare index types first. they must match
+          continue;
+        }
+        TRI_ASSERT(other.isObject());
+        
+        bool isSame = compare(slice, other);
+        
+        if (isSame) {
+          // found an existing index...
+          {
+            // Copy over all elements in slice.
+            VPackObjectBuilder b(&resultBuilder);
+            for (auto const& entry : VPackObjectIterator(other)) {
+              resultBuilder.add(entry.key.copyString(), entry.value);
+            }
+            resultBuilder.add("isNewlyCreated", VPackValue(false));
+          }
+          return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
+        }
+      }
+    }
+    
+    // no existing index found.
+    if (!create) {
+      TRI_ASSERT(resultBuilder.isEmpty());
+      return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
+    }
+    
+    // now create a new index
+    c->toVelocyPack(*collectionBuilder);
+  }
+  VPackSlice const collectionSlice = collectionBuilder->slice();
   
-  int dbServerResult = -1;
   VPackBuilder newBuilder;
+  if (!collectionSlice.isObject()) {
+    return setErrormsg(TRI_ERROR_CLUSTER_AGENCY_STRUCTURE_INVALID, errorMsg);
+  }
+
+  std::string const idString = arangodb::basics::StringUtils::itoa(iid);
+
+  try {
+    VPackObjectBuilder b(&newBuilder);
+    // Create a new collection VPack with the new Index
+    for (auto const& entry : VPackObjectIterator(collectionSlice)) {
+      TRI_ASSERT(entry.key.isString());
+      std::string key = entry.key.copyString();
+      
+      if (key == "indexes") {
+        TRI_ASSERT(entry.value.isArray());
+        newBuilder.add(key, VPackValue(VPackValueType::Array));
+        // Copy over all indexes known so far
+        for (auto const& idx : VPackArrayIterator(entry.value)) {
+          newBuilder.add(idx);
+        }
+        {
+          VPackObjectBuilder ob(&newBuilder);
+          // Add the new index ignoring "id"
+          for (auto const& e : VPackObjectIterator(slice)) {
+            TRI_ASSERT(e.key.isString());
+            std::string tmpkey = e.key.copyString();
+            if (tmpkey != "id") {
+              newBuilder.add(tmpkey, e.value);
+            }
+          }
+          newBuilder.add("id", VPackValue(idString));
+        }
+        newBuilder.close();  // the array
+      } else {
+        // Plain copy everything else
+        newBuilder.add(key, entry.value);
+      }
+    }
+  } catch (...) {
+    return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
+  }
+
+  int dbServerResult = -1;
+
   std::function<bool(VPackSlice const& result)> dbServerChanged =
     [&](VPackSlice const& result) {
     int localNumberOfShards;
@@ -1436,7 +1567,8 @@ int ClusterInfo::ensureIndexCoordinator(
     }
     return true;
   };
-  
+ 
+
   // ATTENTION: The following callback calls the above closure in a
   // different thread. Nevertheless, the closure accesses some of our 
   // local variables. Therefore we have to protect all accesses to them
@@ -1447,135 +1579,6 @@ int ClusterInfo::ensureIndexCoordinator(
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
 
-  std::string const key =
-      "Plan/Collections/" + databaseName + "/" + collectionID;
-
-  AgencyCommResult previous = ac.getValues(key);
-
-  if (!previous.successful()) {
-    return TRI_ERROR_CLUSTER_READING_PLAN_AGENCY;
-  }
-
-  velocypack::Slice collection =
-    previous.slice()[0].get(std::vector<std::string>(
-          { AgencyComm::prefix(), "Plan", "Collections",
-            databaseName, collectionID }));
-
-  if (!collection.isObject()) {
-    return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
-  }
-
-  loadPlan();
-  // It is possible that between the fetching of the planned collections
-  // and the write lock we acquire below something has changed. Therefore
-  // we first get the previous value and then do a compare and swap operation.
-
-  auto collectionBuilder = std::make_shared<VPackBuilder>();
-  {
-    std::shared_ptr<LogicalCollection> c =
-      getCollection(databaseName, collectionID);
-    
-    // Note that nobody is removing this collection in the plan, since
-    // we hold the write lock in the agency, therefore it does not matter
-    // that getCollection fetches the read lock and releases it before
-    // we get it again.
-    //
-    READ_LOCKER(readLocker, _planProt.lock);
-    
-    if (c == nullptr) {
-      return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
-    }
-    
-    std::shared_ptr<VPackBuilder> tmp = std::make_shared<VPackBuilder>();
-    c->getIndexesVPack(*(tmp.get()), true);
-    MUTEX_LOCKER(guard, numberOfShardsMutex);
-    {
-      numberOfShards = c->numberOfShards();
-    }
-    VPackSlice const indexes = tmp->slice();
-    
-    if (indexes.isArray()) {
-      VPackSlice const type = slice.get("type");
-      
-      if (!type.isString()) {
-        return setErrormsg(TRI_ERROR_INTERNAL, errorMsg);
-      }
-      
-      for (auto const& other : VPackArrayIterator(indexes)) {
-        if (arangodb::basics::VelocyPackHelper::compare(
-              type, other.get("type"), false) != 0) {
-          // compare index types first. they must match
-          continue;
-        }
-        TRI_ASSERT(other.isObject());
-        
-        bool isSame = compare(slice, other);
-        
-        if (isSame) {
-          // found an existing index...
-          {
-            // Copy over all elements in slice.
-            VPackObjectBuilder b(&resultBuilder);
-            for (auto const& entry : VPackObjectIterator(other)) {
-              resultBuilder.add(entry.key.copyString(), entry.value);
-            }
-            resultBuilder.add("isNewlyCreated", VPackValue(false));
-          }
-          return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
-        }
-      }
-    }
-    
-    // no existing index found.
-    if (!create) {
-      TRI_ASSERT(resultBuilder.isEmpty());
-      return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
-    }
-    
-    // now create a new index
-    c->toVelocyPack(*collectionBuilder);
-  }
-  VPackSlice const collectionSlice = collectionBuilder->slice();
-  
-  if (!collectionSlice.isObject()) {
-    return setErrormsg(TRI_ERROR_CLUSTER_AGENCY_STRUCTURE_INVALID, errorMsg);
-  }
-  try {
-    VPackObjectBuilder b(&newBuilder);
-    // Create a new collection VPack with the new Index
-    for (auto const& entry : VPackObjectIterator(collectionSlice)) {
-      TRI_ASSERT(entry.key.isString());
-      std::string key = entry.key.copyString();
-      
-      if (key == "indexes") {
-        TRI_ASSERT(entry.value.isArray());
-        newBuilder.add(key, VPackValue(VPackValueType::Array));
-        // Copy over all indexes known so far
-        for (auto const& idx : VPackArrayIterator(entry.value)) {
-          newBuilder.add(idx);
-        }
-        {
-          VPackObjectBuilder ob(&newBuilder);
-          // Add the new index ignoring "id"
-          for (auto const& e : VPackObjectIterator(slice)) {
-            TRI_ASSERT(e.key.isString());
-            std::string tmpkey = e.key.copyString();
-            if (tmpkey != "id") {
-              newBuilder.add(tmpkey, e.value);
-            }
-          }
-          newBuilder.add("id", VPackValue(idString));
-        }
-        newBuilder.close();  // the array
-      } else {
-        // Plain copy everything else
-        newBuilder.add(key, entry.value);
-      }
-    }
-  } catch (...) {
-    return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
-  }
-  
   AgencyOperation newValue(
     key, AgencyValueOperationType::SET, newBuilder.slice());
   AgencyOperation incrementVersion(
