@@ -518,6 +518,14 @@ you need to place hooks:
      is replaced in with its own evaluated content - so  *@EXAMPLE_ARANGOSH_[OUTPUT | RUN]* sections are executed
      the same way as inside of source code documentation.
 
+Include ditaa diagrams
+----------------------
+We use the [beautifull ditaa (DIagrams Through Ascii Art)](http://ditaa.sourceforge.net/) to generate diagrams explaining flows etc.
+in our documentation.
+
+We have i.e. `Manual/Graphs/graph_user_in_group.ditaa` which is transpiled by ditaa into a png file, thus you simply include
+a png file of the same name as image into the mardown: `![User in group example](graph_user_in_group.png)` to reference it.
+
 Read / use the documentation
 ----------------------------
  - `file:///Documentation/Books/books/Manual/index.html` contains the generated manual
