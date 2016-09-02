@@ -1651,7 +1651,7 @@ int64_t InitialSyncer::getSize(arangodb::LogicalCollection* col) {
   }
   
   auto document = trx.documentCollection();
-  return static_cast<int64_t>(document->_numberDocuments);
+  return static_cast<int64_t>(document->numberDocuments());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

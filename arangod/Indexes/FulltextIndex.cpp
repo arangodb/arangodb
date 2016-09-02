@@ -22,10 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "FulltextIndex.h"
-#include "Logger/Logger.h"
 #include "Basics/StringRef.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/VelocyPackHelper.h"
 #include "FulltextIndex/fulltext-index.h"
+#include "Logger/Logger.h"
 #include "VocBase/collection.h"
 #include "VocBase/transaction.h"
 

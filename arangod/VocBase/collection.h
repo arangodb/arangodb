@@ -25,21 +25,7 @@
 #define ARANGOD_VOC_BASE_COLLECTION_H 1
 
 #include "Basics/Common.h"
-#include "Cluster/ClusterInfo.h"
-#include "VocBase/MasterPointer.h"
-#include "VocBase/MasterPointers.h"
 #include "VocBase/vocbase.h"
-
-namespace arangodb {
-namespace velocypack {
-template <typename T>
-class Buffer;
-class Slice;
-}
-namespace wal {
-struct DocumentOperation;
-}
-}
 
 /// @brief predefined collection name for users
 #define TRI_COL_NAME_USERS "_users"
@@ -64,32 +50,8 @@ struct TRI_collection_t {
   /// returns true if the name is allowed and false otherwise
   static bool IsAllowedName(bool isSystem, std::string const& name);
   
-  bool isFullyCollected();
-
-  void setNextCompactionStartIndex(size_t);
-  size_t getNextCompactionStartIndex();
-  void setCompactionStatus(char const*);
-  void getCompactionStatus(char const*&, char*, size_t);
-  
-  void figures(std::shared_ptr<arangodb::velocypack::Builder>& result);
-
-  double lastCompaction() const { return _lastCompaction; }
-  void lastCompaction(double value) { _lastCompaction = value; }
-  
  public:
   TRI_vocbase_t* _vocbase;
-  TRI_voc_tick_t _tickMax;
- 
- public:
-  std::atomic<int64_t> _uncollectedLogfileEntries;
-  
- private:
-
-  arangodb::Mutex _compactionStatusLock;
-  size_t _nextCompactionStartIndex;
-  char const* _lastCompactionStatus;
-  char _lastCompactionStamp[21];
-  double _lastCompaction;
 };
 
 #endif

@@ -85,7 +85,7 @@ size_t Collection::count() const {
     } else {
       // local case
       // cache the result
-      numDocuments = static_cast<int64_t>(collection->_numberDocuments);
+      numDocuments = static_cast<int64_t>(collection->numberDocuments());
     }
   }
 

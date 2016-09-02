@@ -23,6 +23,7 @@
 
 #include "replication-dump.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Logger/Logger.h"
 #include "VocBase/CompactionLocker.h"

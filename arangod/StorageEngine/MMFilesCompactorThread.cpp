@@ -597,7 +597,6 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
   //    return false;
   //  }
 
-  TRI_collection_t* document = collection->_collection;
   wasBlocked = false;
 
   // if we cannot acquire the read lock instantly, we will exit directly.
@@ -617,7 +616,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
     // we already have created a compactor file in progress.
     // if this happens, then a previous compaction attempt for this collection
     // failed or is not finished yet
-    document->setCompactionStatus(ReasonCompactionBlocked);
+    collection->setCompactionStatus(ReasonCompactionBlocked);
     wasBlocked = true;
     return false;
   }
@@ -627,7 +626,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
 
   if (datafiles.empty()) {
     // collection has no datafiles
-    document->setCompactionStatus(ReasonNoDatafiles);
+    collection->setCompactionStatus(ReasonNoDatafiles);
     return false;
   }
   
@@ -638,7 +637,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
   size_t const n = datafiles.size();
   LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "inspecting datafiles of collection '" << collection->name() << "' for compaction opportunities";
 
-  size_t start = document->getNextCompactionStartIndex();
+  size_t start = collection->getNextCompactionStartIndex();
 
   // get number of documents from collection
   uint64_t const numDocuments = getNumberOfDocuments(collection);
@@ -797,10 +796,10 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
 
   if (toCompact.empty()) {
     // nothing to compact. now reset start index
-    document->setNextCompactionStartIndex(0);
+    collection->setNextCompactionStartIndex(0);
     
     // cleanup local variables
-    document->setCompactionStatus(ReasonNothingToCompact);
+    collection->setCompactionStatus(ReasonNothingToCompact);
     LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "inspecting datafiles of collection yielded: " << ReasonNothingToCompact;
     return false;
   }
@@ -808,9 +807,8 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
   // handle datafiles with dead objects
   TRI_ASSERT(toCompact.size() >= 1);
   TRI_ASSERT(reason != nullptr);
-  document->setCompactionStatus(reason);
-
-  document->setNextCompactionStartIndex(start);
+  collection->setCompactionStatus(reason);
+  collection->setNextCompactionStartIndex(start);
   compactDatafiles(collection, toCompact);
 
   return true;
@@ -882,7 +880,7 @@ void MMFilesCompactorThread::run() {
 
             try {
               double const now = TRI_microtime();
-              if (document->lastCompaction() + compactionCollectionInterval() <= now) {
+              if (collection->lastCompactionStamp() + compactionCollectionInterval() <= now) {
                 auto ce = collection->ditches()->createCompactionDitch(__FILE__,
                                                                       __LINE__);
 
@@ -896,7 +894,7 @@ void MMFilesCompactorThread::run() {
 
                     if (!worked && !wasBlocked) {
                       // set compaction stamp
-                      document->lastCompaction(now);
+                      collection->lastCompactionStamp(now);
                     }
                     // if we worked or were blocked, then we don't set the compaction stamp to
                     // force another round of compaction
@@ -962,7 +960,7 @@ uint64_t MMFilesCompactorThread::getNumberOfDocuments(LogicalCollection* collect
     return 16384; // assume some positive value 
   }
    
-  return static_cast<int64_t>(collection->_numberDocuments);
+  return collection->numberDocuments();
 }
 
 /// @brief write a copy of the marker into the datafile

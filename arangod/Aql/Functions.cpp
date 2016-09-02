@@ -3350,16 +3350,16 @@ AqlValue Functions::CollectionCount(
   auto resolver = trx->resolver();
   TRI_voc_cid_t cid = resolver->getCollectionIdLocal(collectionName);
   trx->addCollectionAtRuntime(cid, collectionName);
-  auto document = trx->documentCollection(cid);
+  auto collection = trx->documentCollection(cid);
 
-  if (document == nullptr) {
+  if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                                   "'%s'", collectionName.c_str());
   }
 
   TransactionBuilderLeaser builder(trx);
   // TODO Temporary until move to LogicalCollection is complete
-  builder->add(VPackValue(document->_numberDocuments));
+  builder->add(VPackValue(collection->numberDocuments()));
   return AqlValue(builder.get());
 }
 

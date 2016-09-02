@@ -27,6 +27,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "Indexes/EdgeIndex.h"

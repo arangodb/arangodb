@@ -4,6 +4,7 @@
 
 #include "Basics/Common.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/MasterPointer.h"
 #include "VocBase/MasterPointers.h"
 #include "VocBase/voc-types.h"
 #include "Wal/Marker.h"

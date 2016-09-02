@@ -670,10 +670,7 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
                << collection->name() << "'";
     updateDatafileStatistics(collection, cache);
 
-    document->_uncollectedLogfileEntries -= cache->totalOperationsCount;
-    if (document->_uncollectedLogfileEntries < 0) {
-      document->_uncollectedLogfileEntries = 0;
-    }
+    collection->decreaseUncollectedLogfileEntries(cache->totalOperationsCount);
 
     res = TRI_ERROR_NO_ERROR;
   } catch (arangodb::basics::Exception const& ex) {

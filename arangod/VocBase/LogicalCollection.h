@@ -89,6 +89,28 @@ class LogicalCollection {
 
   static bool IsAllowedName(arangodb::velocypack::Slice parameters);
 
+  // TODO: MOVE TO PHYSICAL?  
+  bool isFullyCollected();
+  int64_t uncollectedLogfileEntries() const { return _uncollectedLogfileEntries.load(); }
+  
+  void increaseUncollectedLogfileEntries(int64_t value) {
+    _uncollectedLogfileEntries += value;
+  }
+
+  void decreaseUncollectedLogfileEntries(int64_t value) {
+    _uncollectedLogfileEntries -= value;
+    if (_uncollectedLogfileEntries < 0) {
+      _uncollectedLogfileEntries = 0;
+    }
+  }
+
+  void setNextCompactionStartIndex(size_t);
+  size_t getNextCompactionStartIndex();
+  void setCompactionStatus(char const*);
+  double lastCompactionStamp() const { return _lastCompactionStamp; }
+  void lastCompactionStamp(double value) { _lastCompactionStamp = value; }
+  
+
   // SECTION: Meta Information
   uint32_t version() const { 
     return _version; 
@@ -119,6 +141,19 @@ class LogicalCollection {
   /// if the boolean is false, the return value is always TRI_VOC_COL_STATUS_CORRUPTED 
   TRI_vocbase_col_status_e tryFetchStatus(bool&);
   std::string statusString();
+
+  TRI_voc_tick_t maxTick() const { return _maxTick; }
+  void maxTick(TRI_voc_tick_t value) { _maxTick = value; }
+
+  uint64_t numberDocuments() const { return _numberDocuments; }
+
+  // TODO: REMOVE THESE OR MAKE PRIVATE
+  void incNumberDocuments() { ++_numberDocuments; }
+
+  void decNumberDocuments() { 
+    TRI_ASSERT(_numberDocuments > 0); 
+    --_numberDocuments; 
+  }
 
   // TODO this should be part of physical collection!
   size_t journalSize() const;
@@ -489,11 +524,10 @@ class LogicalCollection {
   // whether or not secondary indexes should be filled
   bool _useSecondaryIndexes;
 
-  // FIXME Both of them are not initialized properly!
- public:
-  // FIXME Must be private. OpenIterator uses this.
-  int64_t _numberDocuments;
- private:
+  uint64_t _numberDocuments;
+
+  TRI_voc_tick_t _maxTick;
+
   std::unique_ptr<arangodb::KeyGenerator> _keyGenerator;
   
   // TODO REMOVE ME!
@@ -502,10 +536,20 @@ class LogicalCollection {
 
   mutable arangodb::basics::ReadWriteLock
       _lock;  // lock protecting the status and name
+ 
+ private:
   mutable arangodb::basics::ReadWriteLock
       _idxLock;  // lock protecting the indexes
+
   mutable arangodb::basics::ReadWriteLock
       _infoLock;  // lock protecting the info
+  
+  arangodb::Mutex _compactionStatusLock;
+  size_t _nextCompactionStartIndex;
+  char const* _lastCompactionStatus;
+  double _lastCompactionStamp;
+  
+  std::atomic<int64_t> _uncollectedLogfileEntries;
 };
 
 }  // namespace arangodb

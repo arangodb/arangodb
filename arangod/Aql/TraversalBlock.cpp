@@ -32,10 +32,12 @@
 #include "Cluster/ClusterTraverser.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/Transaction.h"
-#include "VocBase/SingleServerTraverser.h"
 #include "V8/v8-globals.h"
+#include "VocBase/MasterPointer.h"
+#include "VocBase/SingleServerTraverser.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;

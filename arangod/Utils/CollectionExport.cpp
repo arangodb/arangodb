@@ -90,7 +90,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
     uint64_t const maxTries = maxWaitTime / SleepTime;
 
     while (++tries < maxTries) {
-      if (_document->isFullyCollected()) {
+      if (_collection->isFullyCollected()) {
         break;
       }
       usleep(SleepTime);

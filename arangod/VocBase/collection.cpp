@@ -85,80 +85,9 @@ int TRI_AddOperationTransaction(TRI_transaction_t*,
                                 arangodb::wal::DocumentOperation&, bool&);
 
 TRI_collection_t::TRI_collection_t(TRI_vocbase_t* vocbase)
-      : _vocbase(vocbase), 
-        _tickMax(0),
-        _uncollectedLogfileEntries(0),
-        _nextCompactionStartIndex(0),
-        _lastCompactionStatus(nullptr),
-        _lastCompaction(0.0) {
-  setCompactionStatus("compaction not yet started");
-}
+      : _vocbase(vocbase) {} 
   
 TRI_collection_t::~TRI_collection_t() {}
-
-/// @brief whether or not a collection is fully collected
-bool TRI_collection_t::isFullyCollected() {
-  int64_t uncollected = _uncollectedLogfileEntries.load();
-
-  return (uncollected == 0);
-}
-
-void TRI_collection_t::setNextCompactionStartIndex(size_t index) {
-  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
-  _nextCompactionStartIndex = index;
-}
-
-size_t TRI_collection_t::getNextCompactionStartIndex() {
-  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
-  return _nextCompactionStartIndex;
-}
-
-void TRI_collection_t::setCompactionStatus(char const* reason) {
-  TRI_ASSERT(reason != nullptr);
-  struct tm tb;
-  time_t tt = time(nullptr);
-  TRI_gmtime(tt, &tb);
-
-  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
-  _lastCompactionStatus = reason;
-
-  strftime(&_lastCompactionStamp[0], sizeof(_lastCompactionStamp),
-           "%Y-%m-%dT%H:%M:%SZ", &tb);
-}
-
-void TRI_collection_t::getCompactionStatus(char const*& reason,
-                                           char* dst, size_t maxSize) {
-  memset(dst, 0, maxSize);
-  if (maxSize > sizeof(_lastCompactionStamp)) {
-    maxSize = sizeof(_lastCompactionStamp);
-  }
-  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
-  reason = _lastCompactionStatus;
-  memcpy(dst, &_lastCompactionStamp[0], maxSize);
-}
-
-void TRI_collection_t::figures(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
-  builder->add("uncollectedLogfileEntries", VPackValue(_uncollectedLogfileEntries));
-  builder->add("lastTick", VPackValue(_tickMax));
-
-  // fills in compaction status
-  char const* lastCompactionStatus = nullptr;
-  char lastCompactionStamp[21];
-  getCompactionStatus(lastCompactionStatus,
-                      &lastCompactionStamp[0],
-                      sizeof(lastCompactionStamp));
-
-  if (lastCompactionStatus == nullptr) {
-    lastCompactionStatus = "-";
-    lastCompactionStamp[0] = '-';
-    lastCompactionStamp[1] = '\0';
-  }
-  
-  builder->add("compactionStatus", VPackValue(VPackValueType::Object));
-  builder->add("message", VPackValue(lastCompactionStatus));
-  builder->add("time", VPackValue(&lastCompactionStamp[0]));
-  builder->close(); // compactionStatus
-}
 
 /// @brief checks if a collection name is allowed
 /// Returns true if the name is allowed and false otherwise
@@ -309,7 +238,8 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
 
       return res;
     }
-    ++collection->_numberDocuments;
+
+    collection->incNumberDocuments();
 
     // update the datafile info
     state->_dfi->numberAlive++;
@@ -409,8 +339,7 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
     state->_dfi->numberDeletions++;
 
     collection->deletePrimaryIndex(trx, found);
-
-    --collection->_numberDocuments;
+    collection->decNumberDocuments();
 
     // free the header
     collection->_masterPointers.release(found);
@@ -422,7 +351,6 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
 /// @brief iterator for open
 static bool OpenIterator(TRI_df_marker_t const* marker, OpenIteratorState* data,
                          TRI_datafile_t* datafile) {
-  TRI_collection_t* document = data->_document;
   TRI_voc_tick_t const tick = marker->getTick();
   TRI_df_marker_type_t const type = marker->getType();
 
@@ -459,12 +387,12 @@ static bool OpenIterator(TRI_df_marker_t const* marker, OpenIteratorState* data,
     datafile->_tickMax = tick;
   }
 
-  if (tick > document->_tickMax) {
+  if (tick > data->_collection->maxTick()) {
     if (type != TRI_DF_MARKER_HEADER &&
         type != TRI_DF_MARKER_FOOTER &&
         type != TRI_DF_MARKER_COL_HEADER &&
         type != TRI_DF_MARKER_PROLOGUE) {
-      document->_tickMax = tick;
+      data->_collection->maxTick(tick);
     }
   }
 

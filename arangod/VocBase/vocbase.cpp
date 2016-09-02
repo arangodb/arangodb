@@ -56,6 +56,7 @@
 #include "VocBase/Ditch.h"
 #include "VocBase/collection.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/MasterPointer.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/ticks.h"
 #include "VocBase/transaction.h"

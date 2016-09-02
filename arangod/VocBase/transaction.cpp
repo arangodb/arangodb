@@ -185,7 +185,6 @@ static void FreeOperations(TRI_transaction_t* trx) {
     }
 
     arangodb::LogicalCollection* collection = trxCollection->_collection;
-    TRI_collection_t* document = collection->_collection;
 
     if (mustRollback) {
       // revert all operations
@@ -236,8 +235,7 @@ static void FreeOperations(TRI_transaction_t* trx) {
       collection->setRevision(trxCollection->_originalRevision, true);
     } else if (!collection->isVolatile() && !isSingleOperation) {
       // only count logfileEntries if the collection is durable
-      document->_uncollectedLogfileEntries +=
-          trxCollection->_operations->size();
+      collection->increaseUncollectedLogfileEntries(trxCollection->_operations->size());
     }
 
     delete trxCollection->_operations;
@@ -1074,8 +1072,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     arangodb::aql::QueryCache::instance()->invalidate(
         trx->_vocbase, collection->name());
 
-// FIXME
-    ++(collection->_collection->_uncollectedLogfileEntries);
+    collection->increaseUncollectedLogfileEntries(1);
 
     if (operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
         operation.type == TRI_VOC_DOCUMENT_OPERATION_REPLACE ||

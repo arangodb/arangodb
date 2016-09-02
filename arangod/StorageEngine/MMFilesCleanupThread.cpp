@@ -152,8 +152,6 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
   // but if we are in server shutdown, we can force unloading of collections
   bool isInShutdown = application_features::ApplicationServer::isStopping();
   
-  TRI_collection_t* document = collection->_collection;
-
   // loop until done
 
   while (true) {
@@ -217,7 +215,7 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
         }
       }
 
-      if (!document->isFullyCollected()) {
+      if (!collection->isFullyCollected()) {
         bool isDeleted = false;
 
         // if there is still some garbage collection to perform,
