@@ -217,7 +217,7 @@ const TOP_DIR = (function findTopDir () {
 
   if (!fs.exists('3rdParty') && !fs.exists('arangod') &&
     !fs.exists('arangosh') && !fs.exists('UnitTests')) {
-    throw 'Must be in ArangoDB topdir to execute unit tests.';
+    throw new Error('Must be in ArangoDB topdir to execute unit tests.');
   }
 
   return topDir;
@@ -502,9 +502,9 @@ function analyzeServerCrash (arangod, options, checkStr) {
     yaml.safeDump(arangod) +
     'marking build as crashy.');
 
-  let corePath = (options.coreDirectory === '') ?
-    'core' :
-    options.coreDirectory + '/core*' + arangod.pid + "*'";
+  let corePath = (options.coreDirectory === '')
+      ? 'core'
+      : options.coreDirectory + '/core*' + arangod.pid + "*'";
 
   arangod.exitStatus.gdbHint = "Run debugger with 'gdb " +
     storeArangodPath + ' ' + corePath;
@@ -627,8 +627,6 @@ function findFreePort (maxPort) {
       return port;
     }
   }
-
-  return 8529;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1068,8 +1066,8 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
   }
 }
 
-function createArangoshRunner(args) {
-  let runner = function(options, instanceInfo, file) {
+function createArangoshRunner (args) {
+  let runner = function (options, instanceInfo, file) {
     return runInArangosh(options, instanceInfo, file, args);
   };
   runner.info = 'arangosh';
@@ -1323,7 +1321,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
 
     startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('dbserver' + i, primaryArgs), 'dbserver');
   }
-  
+
   for (i=0;i<options.coordinators;i++) {
     let endpoint = protocol + '://127.0.0.1:' + findFreePort(options.maxPort);
     let coordinatorArgs = _.clone(options.extraArgs);
@@ -1387,7 +1385,8 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   }
 
   let instanceInfo = {
-  role, port, endpoint, rootDir};
+    role, port, endpoint, rootDir
+  };
 
   args['server.endpoint'] = endpoint;
   args['database.directory'] = dataDir;
@@ -1400,7 +1399,7 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   }
 
   // flush log messages directly and not asynchronously
-  // (helps debugging)  
+  // (helps debugging)
   args['log.force-direct'] = 'true';
 
   if (protocol === 'ssl') {
@@ -1472,7 +1471,6 @@ function startInstanceAgency (instanceInfo, protocol, options,
     fs.makeDirectoryRecursive(dir);
     fs.makeDirectoryRecursive(instanceArgs['database.directory']);
     instanceInfo.arangods.push(startArango(protocol, options, instanceArgs, rootDir, 'agent'));
-
   }
 
   instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;
@@ -1501,21 +1499,21 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
 
   const startTime = time();
   try {
-    if(options.hasOwnProperty("server")){
-        return { endpoint : options.server,
-                 url : options.server.replace("tcp", "http"),
-                 arangods : []
-               };
+    if (options.hasOwnProperty("server")){
+      return { endpoint: options.server,
+               url: options.server.replace("tcp", "http"),
+               arangods: []
+             };
     }
     else if (options.cluster) {
       startInstanceCluster(instanceInfo, protocol, options,
-        addArgs, rootDir);
+                           addArgs, rootDir);
     } else if (options.agency) {
       startInstanceAgency(instanceInfo, protocol, options,
-        addArgs, rootDir);
+                          addArgs, rootDir);
     } else {
       startInstanceSingleServer(instanceInfo, protocol, options,
-        addArgs, rootDir, 'single');
+                                addArgs, rootDir, 'single');
     }
 
     if (!options.cluster) {
@@ -1809,7 +1807,7 @@ function findTests () {
     function (x) {
       return fs.join(makePathUnix('js/server/tests/resilience'), x);
     }).sort();
-  
+
   testsCases.client_resilience = _.filter(fs.list(makePathUnix('js/client/tests/resilience')),
     function (p) {
       return p.substr(-3) === '.js';
@@ -2910,7 +2908,7 @@ testFuncs.http_replication = function (options) {
 // / @brief TEST: http_server
 // //////////////////////////////////////////////////////////////////////////////
 
-testFuncs.http_server = function(options) {
+testFuncs.http_server = function (options) {
   var opts = {
     "httpTrustedOrigin": "http://was-erlauben-strunz.it"
   };
@@ -3517,7 +3515,7 @@ testFuncs.shell_server_perf = function (options) {
 // / @brief TEST: single_client
 // //////////////////////////////////////////////////////////////////////////////
 
-function single_usage (testsuite, list) {
+function singleUsage (testsuite, list) {
   print('single_' + testsuite + ': No test specified!\n Available tests:');
   let filelist = '';
 
@@ -3574,7 +3572,7 @@ testFuncs.single_client = function (options) {
     return result;
   } else {
     findTests();
-    return single_usage('client', testsCases.client);
+    return singleUsage('client', testsCases.client);
   }
 };
 
@@ -3587,7 +3585,7 @@ testFuncs.single_server = function (options) {
 
   if (options.test === undefined) {
     findTests();
-    return single_usage('server', testsCases.server);
+    return singleUsage('server', testsCases.server);
   }
 
   let instanceInfo = startInstance('tcp', options, {}, 'single_server');
@@ -3776,15 +3774,15 @@ testFuncs.stress_locks = function (options) {
 
 testFuncs.agency = function (options) {
   findTests();
-  
-  let saveAgency = options.agency; 
+
+  let saveAgency = options.agency;
   let saveCluster = options.cluster;
 
   options.agency = true;
   options.cluster = false;
 
   let results = performTests(options, testsCases.agency, 'agency', createArangoshRunner());
-  
+
   options.agency = saveAgency;
   options.cluster = saveCluster;
 
@@ -3811,6 +3809,8 @@ function unitTestPrettyPrintResults (r) {
   let failedSuite = 0;
   let failedTests = 0;
 
+  let failedMessages = "";
+  let SuccessMessages = "";
   try {
     /* jshint forin: false */
     for (let testrunName in r) {
@@ -3819,8 +3819,6 @@ function unitTestPrettyPrintResults (r) {
       }
 
       let testrun = r[testrunName];
-
-      print("* Test '" + testrunName + "'");
 
       let successCases = {};
       let failedCases = {};
@@ -3863,38 +3861,60 @@ function unitTestPrettyPrintResults (r) {
         }
       }
 
-      for (let name in successCases) {
-        if (!successCases.hasOwnProperty(name)) {
-          continue;
-        }
+      if (isSuccess) {
+        SuccessMessages += '* Test "' + testrunName + '"\n';
 
-        let details = successCases[name];
-
-        if (details.skipped) {
-          print(YELLOW + '    [SKIPPED] ' + name + RESET);
-        } else {
-          print(GREEN + '    [SUCCESS] ' + name + RESET);
-        }
-      }
-
-      for (let name in failedCases) {
-        if (!failedCases.hasOwnProperty(name)) {
-          continue;
-        }
-
-        print(RED + '    [FAILED]  ' + name + RESET);
-
-        let details = failedCases[name];
-
-        for (let one in details) {
-          if (!details.hasOwnProperty(one)) {
+        for (let name in successCases) {
+          if (!successCases.hasOwnProperty(name)) {
             continue;
           }
 
-          print(RED + "      '" + one + "' failed: " + details[one] + RESET);
+          let details = successCases[name];
+
+          if (details.skipped) {
+            SuccessMessages += YELLOW + '    [SKIPPED] ' + name + RESET + '\n';
+          } else {
+            SuccessMessages += GREEN + '    [SUCCESS] ' + name + RESET + '\n';
+          }
+        }
+      }
+      else {
+        failedMessages += "* Test '" + testrunName + "'\n";
+
+        for (let name in successCases) {
+          if (!successCases.hasOwnProperty(name)) {
+            continue;
+          }
+
+          let details = successCases[name];
+
+          if (details.skipped) {
+            failedMessages += YELLOW + '    [SKIPPED] ' + name + RESET + '\n';
+          } else {
+            failedMessages += GREEN + '    [SUCCESS] ' + name + RESET + '\n';
+          }
+        }
+        for (let name in failedCases) {
+          if (!failedCases.hasOwnProperty(name)) {
+            continue;
+          }
+
+          failedMessages += RED + '    [FAILED]  ' + name + RESET + '\n';
+
+          let details = failedCases[name];
+
+          for (let one in details) {
+            if (!details.hasOwnProperty(one)) {
+              continue;
+            }
+
+            failedMessages += RED + '      "' + one + '" failed: ' + details[one] + RESET + '\n';
+          }
         }
       }
     }
+    print(SuccessMessages);
+    print(failedMessages);
     /* jshint forin: true */
 
     let color = (!r.crashed && r.status === true) ? GREEN : RED;
@@ -4024,7 +4044,7 @@ function unitTest (cases, options) {
     ARANGOSH_BIN];
   for (let b = 0; b < checkFiles.length; ++b) {
     if (!fs.isFile(checkFiles[b]) && !fs.isFile(checkFiles[b] + '.exe')) {
-      throw 'unable to locate ' + checkFiles[b];
+      throw new Error('unable to locate ' + checkFiles[b]);
     }
   }
 
