@@ -1653,12 +1653,13 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
 
   std::string dbName = _vocbase->name();
 
-  // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
-  std::shared_ptr<LogicalCollection> col = ci->getCollection(dbName, name);
 
-  // drop an existing collection if it exists
-  if (col != nullptr) {
+  try {
+    // in a cluster, we only look up by name:
+    std::shared_ptr<LogicalCollection> col = ci->getCollection(dbName, name);
+
+    // drop an existing collection if it exists
     if (dropExisting) {
       int res = ci->dropCollectionCoordinator(dbName, col->cid_as_string(),
                                               errorMsg, 0.0);
@@ -1686,6 +1687,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
 
       return res;
     }
+  } catch (...) {
   }
 
   // now re-create the collection
@@ -1975,12 +1977,14 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
-  std::shared_ptr<LogicalCollection> col = ci->getCollection(dbName, name);
-
-  if (col == nullptr) {
+  std::shared_ptr<LogicalCollection> col;
+  try {
+    col = ci->getCollection(dbName, name);
+  } catch (...) {
     errorMsg = "could not find collection '" + name + "'";
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
+  TRI_ASSERT(col != nullptr);
 
   int res = TRI_ERROR_NO_ERROR;
   for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
@@ -2484,9 +2488,10 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
-  std::shared_ptr<LogicalCollection> col = ci->getCollection(dbName, name);
-
-  if (col == nullptr) {
+  std::shared_ptr<LogicalCollection> col;
+  try {
+    col = ci->getCollection(dbName, name);
+  } catch (...) {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return;

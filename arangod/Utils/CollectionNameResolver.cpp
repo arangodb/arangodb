@@ -77,11 +77,13 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdCluster(
     return cid;
   }
 
-  // We have to look up the collection info:
-  ClusterInfo* ci = ClusterInfo::instance();
-  auto cinfo = ci->getCollection(_vocbase->name(), name);
-  if (cinfo != nullptr) {
+  try {
+    // We have to look up the collection info:
+    ClusterInfo* ci = ClusterInfo::instance();
+    auto cinfo = ci->getCollection(_vocbase->name(), name);
+    TRI_ASSERT(cinfo != nullptr);
     return cinfo->cid();
+  } catch (...) {
   }
   return 0;
 }
@@ -162,11 +164,13 @@ TRI_col_type_e CollectionNameResolver::getCollectionTypeCluster(
             arangodb::basics::StringUtils::uint64(name))));
   }
 
-  // We have to look up the collection info:
-  ClusterInfo* ci = ClusterInfo::instance();
-  auto cinfo = ci->getCollection(_vocbase->name(), name);
-  if (cinfo != nullptr) {
+  try {
+    // We have to look up the collection info:
+    ClusterInfo* ci = ClusterInfo::instance();
+    auto cinfo = ci->getCollection(_vocbase->name(), name);
+    TRI_ASSERT(cinfo != nullptr);
     return cinfo->type();
+  } catch(...) {
   }
   return TRI_COL_TYPE_UNKNOWN;
 }

@@ -1890,6 +1890,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
     }
   } catch (...) {
     // do not propagate exception from here
+    TRI_V8_RETURN(v8::Handle<v8::Value>());
   }
 
   if (collection == nullptr) {
