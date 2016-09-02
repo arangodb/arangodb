@@ -137,6 +137,7 @@ function main(argv) {
     fs.makeDirectoryRecursive(fs.join(tmpDataDir, "data"));
 
     let serverArgs = {};
+    fs.makeDirectoryRecursive(fs.join(tmpDataDir, "apps"));
 
     serverArgs["configuration"] = "none";
     serverArgs["database.directory"] = fs.join(tmpDataDir, "data");
