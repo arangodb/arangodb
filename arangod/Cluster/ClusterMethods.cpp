@@ -1953,6 +1953,7 @@ std::map<std::string, std::vector<std::string>> distributeShards(
   std::map<std::string, std::vector<std::string>> shards;
 
   ClusterInfo*  ci = ClusterInfo::instance();
+  ci->loadCurrentDBServers();
   if (dbServers.size() == 0) {
     dbServers = ci->getCurrentDBServers();
     if (dbServers.empty()) {
