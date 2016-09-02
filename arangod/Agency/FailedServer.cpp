@@ -75,7 +75,7 @@ bool FailedServer::start() {
       return false;
     }
   } else {
-    todo.add(_jb->slice()[0].valueAt(0));
+    todo.add(_jb->slice()[0].get(_agencyPrefix + toDoPrefix + _jobId));
   }
   todo.close();
 
@@ -116,6 +116,8 @@ bool FailedServer::start() {
   pending.close();
 
   pending.close(); pending.close();
+
+  LOG(WARN) << pending.toJson();
 
   // Transact to agency
   write_ret_t res = transact(_agent, pending);
@@ -198,6 +200,8 @@ bool FailedServer::create () {
   _jb->close();
 
   _jb->close(); _jb->close();
+
+  LOG(WARN) << _jb->toJson();
 
   write_ret_t res = transact(_agent, *_jb);
 
