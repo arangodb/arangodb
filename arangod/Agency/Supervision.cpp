@@ -612,7 +612,7 @@ bool Supervision::updateAgencyPrefix (size_t nTries, int intervalSec) {
   while (!this->isStopping()) {
     _snapshot = _agent->readDB().get("/");
     if (_snapshot.children().size() > 0) {
-      _agencyPrefix = std::string("/") + _snapshot.children().begin()->first;
+      _agencyPrefix = "/arango";//std::string("/") + _snapshot.children().begin()->first;
       LOG_TOPIC(DEBUG, Logger::AGENCY) << "Agency prefix is " << _agencyPrefix;
       return true;
     }

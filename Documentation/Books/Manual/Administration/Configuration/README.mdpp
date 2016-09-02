@@ -98,6 +98,18 @@ rather than specifying
 log.level = trace
 ```
 
+So you see in general `--section.param value` translates to
+
+```js
+[section]
+param=value 
+```
+
+Where one section may occur multiple times, and the last occurance of
+`param` will become the final value. In case of parameters being vectors,
+multiple occurance adds another item to the vector. Vectors can be identified
+by the `...` in the `--help` output of the binaries.
+
 Comments can be placed in the configuration file, only if the line begins
 with one or more hash symbols (#).
 
