@@ -41,7 +41,7 @@ SocketTask::SocketTask(TRI_socket_t socket, ConnectionInfo&& info,
       _keepAliveTimeout(keepAliveTimeout),
       _commSocket(socket),
       _connectionInfo(std::move(info)),
-      _readBuffer(TRI_UNKNOWN_MEM_ZONE, false) {
+      _readBuffer(TRI_UNKNOWN_MEM_ZONE, READ_BLOCK_SIZE + 1, false) {
   LOG(TRACE) << "connection established, client "
              << TRI_get_fd_or_handle_of_socket(socket) << ", server ip "
              << _connectionInfo.serverAddress << ", server port "
