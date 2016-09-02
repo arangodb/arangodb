@@ -1538,6 +1538,18 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
       });
     }
     print(CYAN + 'up and running in ' + (time() - startTime) + ' seconds' + RESET);
+    var matchPort=/.*:.*:([0-9]*)/;
+    var ports = [];
+    var processInfo = [];
+    instanceInfo.arangods.forEach(arangod => {
+      var port = matchPort.exec(arangod.endpoint)[1];
+      ports.push('port '+ port);
+      processInfo.push('  [' + arangod.role + '] up with pid ' + arangod.pid + ' on port ' + port);
+    });
+
+    print('sniffing template:\n  tcpdump -ni lo -s0 -w /tmp/out.pcap ' + ports.join(' or ') + '\n');
+    print(processInfo.join('\n') + '\n');
+
   } catch (e) {
     print(e, e.stack);
     return false;
