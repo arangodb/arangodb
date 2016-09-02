@@ -311,6 +311,7 @@ LogicalCollection::LogicalCollection(
       _waitForSync(other->waitForSync()),
       _journalSize(other->journalSize()),
       _keyOptions(other->_keyOptions),
+      _version(other->_version),
       _indexBuckets(other->indexBuckets()),
       _indexes(),
       _replicationFactor(other->replicationFactor()),
@@ -368,7 +369,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
           ReadNumericValue<TRI_voc_size_t>(info, "journalSize",
                                            TRI_JOURNAL_DEFAULT_SIZE))),
       _keyOptions(CopySliceValue(info, "keyOptions")),
-      _indexBuckets(ReadNumericValue<uint32_t>(info, "indexBuckets", DatabaseFeature::DefaultIndexBuckets)),
+      _version(ReadNumericValue<uint32_t>(info, "version", minimumVersion())),
+      _indexBuckets(ReadNumericValue<uint32_t>(info, "indexBuckets", DatabaseFeature::defaultIndexBuckets())),
       _replicationFactor(ReadNumericValue<int>(info, "replicationFactor", 1)),
       _numberOfShards(GetObjectLength(info, "shards", 1)),
       _allowUserKeys(ReadBooleanValue(info, "allowUserKeys", true)),
@@ -383,6 +385,18 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
       _numberDocuments(0),
       _collection(nullptr),
       _lock() {
+ 
+  if (!IsAllowedName(info)) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+  }
+  
+  if (_version < minimumVersion()) { 
+    // collection is too "old"
+    std::string errorMsg(std::string("collection '") + _name + "' has a too old version. Please start the server with the --database.auto-upgrade option.");
+
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, errorMsg);
+  }
+
   if (_isVolatile && _waitForSync) {
     // Illegal collection configuration
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -508,9 +522,7 @@ size_t LogicalCollection::journalSize() const {
   return _journalSize;
 }
 
-// SECTION: Meta Information
-
-uint32_t LogicalCollection::version() const {
+uint32_t LogicalCollection::internalVersion() const {
   return _internalVersion;
 }
 
@@ -773,7 +785,7 @@ int LogicalCollection::rename(std::string const& newName) {
   }
 
   // CHECK if this ordering is okay. Before change the version was increased after swapping in vocbase mapping.
-  increaseVersion();
+  increaseInternalVersion();
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -821,7 +833,7 @@ void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
   }
 }
 
-void LogicalCollection::toVelocyPack(VPackBuilder& result) const {
+void LogicalCollection::toVelocyPack(VPackBuilder& result, bool withPath) const {
   result.openObject();
   result.add("id", VPackValue(std::to_string(_cid)));
   result.add("cid", VPackValue(std::to_string(_cid))); // export cid for compatibility, too
@@ -834,9 +846,13 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result) const {
   result.add("isVolatile", VPackValue(_isVolatile));
   result.add("waitForSync", VPackValue(_waitForSync));
   result.add("journalSize", VPackValue(_journalSize));
-  result.add("version", VPackValue(5)); // hard-coded version number, here for compatibility only
+  result.add("version", VPackValue(5)); // FIX: hard-coded version number, here for compatibility only
   if (_keyOptions != nullptr) {
     result.add("keyOptions", VPackSlice(_keyOptions->data()));
+  }
+
+  if (withPath) {
+    result.add("path", VPackValue(_path));
   }
 
   result.add("indexBuckets", VPackValue(_indexBuckets));
@@ -875,7 +891,7 @@ TRI_vocbase_t* LogicalCollection::vocbase() const {
   return _vocbase;
 }
 
-void LogicalCollection::increaseVersion() {
+void LogicalCollection::increaseInternalVersion() {
   ++_internalVersion;
 }
 

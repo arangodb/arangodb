@@ -37,7 +37,6 @@
 namespace arangodb {
 class LogicalCollection;
 class PhysicalCollection;
-class VocbaseCollectionInfo;
 
 class StorageEngine : public application_features::ApplicationFeature {
  public:

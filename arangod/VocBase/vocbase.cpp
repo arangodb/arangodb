@@ -322,7 +322,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
     collection->setStatus(TRI_VOC_COL_STATUS_LOADED);
 
     if (writeMarker) {
-      collection->toVelocyPack(builder);
+      collection->toVelocyPack(builder, false);
     }
     // FIXME Temporary until move is finished
     // ok, construct the collection

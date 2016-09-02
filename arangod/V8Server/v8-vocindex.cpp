@@ -638,15 +638,11 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
 static void CreateCollectionCoordinator(
     v8::FunctionCallbackInfo<v8::Value> const& args,
     TRI_col_type_e collectionType, std::string const& databaseName,
-    VocbaseCollectionInfo& parameters, TRI_vocbase_t* vocbase) {
+    LogicalCollection* parameters) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
   std::string const name = TRI_ObjectToString(args[0]);
-
-  if (!TRI_collection_t::IsAllowedName(parameters.isSystem(), name.c_str())) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-  }
 
   bool allowUserKeys = true;
   uint64_t numberOfShards = 1;
@@ -758,7 +754,7 @@ static void CreateCollectionCoordinator(
   std::vector<std::string> dbServers;
 
   if (!distributeShardsLike.empty()) {
-    CollectionNameResolver resolver(vocbase);
+    CollectionNameResolver resolver(parameters->vocbase());
     TRI_voc_cid_t otherCid =
         resolver.getCollectionIdCluster(distributeShardsLike);
     if (otherCid != 0) {
@@ -807,13 +803,13 @@ static void CreateCollectionCoordinator(
           ("name",         Value(name))
           ("type",         Value((int) collectionType))
           ("status",       Value((int) TRI_VOC_COL_STATUS_LOADED))
-          ("deleted",      Value(parameters.deleted()))
-          ("doCompact",    Value(parameters.doCompact()))
-          ("isSystem",     Value(parameters.isSystem()))
-          ("isVolatile",   Value(parameters.isVolatile()))
-          ("waitForSync",  Value(parameters.waitForSync()))
-          ("journalSize",  Value(parameters.maximalSize()))
-          ("indexBuckets", Value(parameters.indexBuckets()))
+          ("deleted",      Value(parameters->deleted()))
+          ("doCompact",    Value(parameters->doCompact()))
+          ("isSystem",     Value(parameters->isSystem()))
+          ("isVolatile",   Value(parameters->isVolatile()))
+          ("waitForSync",  Value(parameters->waitForSync()))
+          ("journalSize",  Value(parameters->journalSize()))
+          ("indexBuckets", Value(parameters->indexBuckets()))
           ("replicationFactor", Value(replicationFactor))
           ("keyOptions",   Value(ValueType::Object))
               ("type",          Value("traditional"))
@@ -1255,11 +1251,9 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   infoSlice = builder.slice();
 
   if (ServerState::instance()->isCoordinator()) {
-    //TODO FIXME
-    VocbaseCollectionInfo parameters(vocbase, name.c_str(), collectionType,
-                                     infoSlice, false);
+    auto parameters = std::make_unique<LogicalCollection>(vocbase, infoSlice);
     CreateCollectionCoordinator(args, collectionType, vocbase->name(),
-                                parameters, vocbase);
+                                parameters.get());
     return;
   }
 

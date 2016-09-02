@@ -1840,7 +1840,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
     if (collection != nullptr && collection->vocbase() == vocbase) {
       TRI_vocbase_col_status_e status = collection->getStatusLocked();
       TRI_voc_cid_t cid = collection->cid();
-      uint32_t internalVersion = collection->version();
+      uint32_t internalVersion = collection->internalVersion();
 
       // check if the collection is still alive
       if (status != TRI_VOC_COL_STATUS_DELETED && cid > 0 &&

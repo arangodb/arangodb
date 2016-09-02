@@ -72,6 +72,11 @@ class LogicalCollection {
   LogicalCollection(LogicalCollection const&) = delete;
   LogicalCollection& operator=(LogicalCollection const&) = delete;
   LogicalCollection() = delete;
+  
+  /// @brief hard-coded minimum version number for collections
+  static constexpr uint32_t minimumVersion() {
+    return 5; 
+  }
 
   /// @brief determine whether a collection name is a system collection name
   static inline bool IsSystemName(std::string const& name) {
@@ -84,7 +89,11 @@ class LogicalCollection {
   static bool IsAllowedName(arangodb::velocypack::Slice parameters);
 
   // SECTION: Meta Information
-  uint32_t version() const;
+  uint32_t version() const { 
+    return _version; 
+  }
+
+  uint32_t internalVersion() const;
 
   TRI_voc_cid_t cid() const;
   std::string cid_as_string() const;
@@ -165,7 +174,7 @@ class LogicalCollection {
   void setStatus(TRI_vocbase_col_status_e);
 
   // SECTION: Serialisation
-  void toVelocyPack(arangodb::velocypack::Builder&) const;
+  void toVelocyPack(arangodb::velocypack::Builder&, bool withPath) const;
 
   /// @brief transform the information for this collection to velocypack
   ///        The builder has to be an opened Type::Object
@@ -177,7 +186,6 @@ class LogicalCollection {
   void updateCount(size_t);
 
   // Update this collection.
-  void increaseVersion();
   int update(arangodb::velocypack::Slice const&, bool);
 
   /// @brief return the figures for a collection
@@ -396,7 +404,7 @@ class LogicalCollection {
       std::string const& rev,
       arangodb::velocypack::Builder& builder);
 
-
+  void increaseInternalVersion();
 
  private:
   // SECTION: Private variables
@@ -439,6 +447,8 @@ class LogicalCollection {
   // TODO Really VPack?
   std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const>
       _keyOptions;  // options for key creation
+  
+  uint32_t _version;
 
   // SECTION: Indexes
   uint32_t _indexBuckets;
@@ -448,7 +458,6 @@ class LogicalCollection {
   // SECTION: Replication
   int const _replicationFactor;
 
- private:
   // SECTION: Sharding
   int const _numberOfShards;
   bool const _allowUserKeys;

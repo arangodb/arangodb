@@ -1229,7 +1229,7 @@ static void JS_PropertiesVocbaseCol(
 
       try {
         VPackBuilder infoBuilder;
-        collection->toVelocyPack(infoBuilder);
+        collection->toVelocyPack(infoBuilder, false);
 
         // now log the property changes
         res = TRI_ERROR_NO_ERROR;
@@ -2436,7 +2436,7 @@ static void JS_VersionVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  TRI_V8_RETURN(v8::Number::New(isolate, 5)); // TODO: fix hard-coded version number
+  TRI_V8_RETURN(v8::Number::New(isolate, collection->version()));
   TRI_V8_TRY_CATCH_END
 }
 
