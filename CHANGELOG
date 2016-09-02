@@ -18,6 +18,9 @@ v3.0.6 (2016-09-02)
 
 * properly return HTTP 503 in JS actions when backend is gone
 
+* supervision creates new key in agency for failed servers
+
+* new shards will not be allocated on failed or cleaned servers
 
 v3.0.5 (2016-08-18)
 -------------------
