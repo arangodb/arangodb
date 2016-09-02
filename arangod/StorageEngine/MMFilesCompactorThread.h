@@ -68,7 +68,7 @@ class MMFilesCompactorThread final : public Thread {
   /// @brief callback to drop a datafile
   static void DropDatafileCallback(TRI_datafile_t* datafile, LogicalCollection* collection);
   /// @brief callback to rename a datafile
-  static void RenameDatafileCallback(TRI_datafile_t* datafile, CompactionContext*);
+  static void RenameDatafileCallback(TRI_datafile_t* datafile, TRI_datafile_t* compactor, LogicalCollection* collection);
 
  protected:
   void run() override;

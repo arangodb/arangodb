@@ -141,12 +141,12 @@ void MMFilesCompactorThread::DropDatafileCallback(TRI_datafile_t* df, LogicalCol
 /// will be treated as a temporary file and dropped.
 ////////////////////////////////////////////////////////////////////////////////
 
-void MMFilesCompactorThread::RenameDatafileCallback(TRI_datafile_t* datafile, CompactionContext* data) {
-  std::unique_ptr<CompactionContext> context(data);
-
-  TRI_ASSERT(context != nullptr);
-  TRI_datafile_t* compactor = context->_compactor;
-  LogicalCollection* collection = context->_collection;
+void MMFilesCompactorThread::RenameDatafileCallback(TRI_datafile_t* datafile, 
+                                                    TRI_datafile_t* compactor, 
+                                                    LogicalCollection* collection) {
+  TRI_ASSERT(datafile != nullptr);
+  TRI_ASSERT(compactor != nullptr);
+  TRI_ASSERT(collection != nullptr);
 
   bool ok = false;
   TRI_ASSERT(datafile->fid() == compactor->fid());
@@ -562,13 +562,12 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       if (i == 0) {
         // add a rename marker
         auto b = document->ditches()->createRenameDatafileDitch(
-            compaction._datafile, context.get(), RenameDatafileCallback, __FILE__,
+            compaction._datafile, context->_compactor, context->_collection, RenameDatafileCallback, __FILE__,
             __LINE__);
 
         if (b == nullptr) {
           LOG_TOPIC(ERR, Logger::COMPACTOR) << "out of memory when creating datafile-rename ditch";
         } else {
-          context.release(); // pass ownership
           _vocbase->signalCleanup();
         }
 

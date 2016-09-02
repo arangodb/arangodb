@@ -1350,8 +1350,6 @@ void MMFilesEngine::saveCollectionInfo(TRI_vocbase_t* vocbase,
   }
 }
 
-
-
 VocbaseCollectionInfo MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase,
     std::string const& collectionName, std::string const& path, bool versionWarning) {
   // find parameter file

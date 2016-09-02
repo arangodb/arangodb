@@ -76,12 +76,14 @@ DropDatafileDitch::DropDatafileDitch(
 DropDatafileDitch::~DropDatafileDitch() { delete _datafile; }
 
 RenameDatafileDitch::RenameDatafileDitch(
-    Ditches* ditches, TRI_datafile_t* datafile, CompactionContext* data,
-    std::function<void(TRI_datafile_t*, CompactionContext*)> const& callback, char const* filename,
+    Ditches* ditches, TRI_datafile_t* datafile, TRI_datafile_t* compactor,
+    LogicalCollection* collection,
+    std::function<void(TRI_datafile_t*, TRI_datafile_t*, LogicalCollection*)> const& callback, char const* filename,
     int line)
     : Ditch(ditches, filename, line),
       _datafile(datafile),
-      _data(data),
+      _compactor(compactor),
+      _collection(collection),
       _callback(callback) {}
 
 RenameDatafileDitch::~RenameDatafileDitch() {}
@@ -398,12 +400,12 @@ DropDatafileDitch* Ditches::createDropDatafileDitch(
 ////////////////////////////////////////////////////////////////////////////////
 
 RenameDatafileDitch* Ditches::createRenameDatafileDitch(
-    TRI_datafile_t* datafile, CompactionContext* data,
-    std::function<void(TRI_datafile_t*, CompactionContext*)> const& callback,
+    TRI_datafile_t* datafile, TRI_datafile_t* compactor, LogicalCollection* collection,
+    std::function<void(TRI_datafile_t*, TRI_datafile_t*, LogicalCollection*)> const& callback,
     char const* filename, int line) {
   try {
     auto ditch =
-        new RenameDatafileDitch(this, datafile, data, callback, filename, line);
+        new RenameDatafileDitch(this, datafile, compactor, collection, callback, filename, line);
     link(ditch);
 
     return ditch;

@@ -31,7 +31,6 @@ struct TRI_collection_t;
 struct TRI_datafile_t;
 
 namespace arangodb {
-struct CompactionContext;
 class LogicalCollection;
 
 class Ditches;
@@ -205,8 +204,8 @@ class DropDatafileDitch final : public Ditch {
 class RenameDatafileDitch final : public Ditch {
  public:
   RenameDatafileDitch(Ditches* ditches, TRI_datafile_t* datafile,
-                      CompactionContext* data,
-                      std::function<void(TRI_datafile_t*, CompactionContext*)> const& callback,
+                      TRI_datafile_t* compactor, LogicalCollection* collection,
+                      std::function<void(TRI_datafile_t*, TRI_datafile_t*, LogicalCollection*)> const& callback,
                       char const* filename, int line);
 
   ~RenameDatafileDitch();
@@ -216,12 +215,13 @@ class RenameDatafileDitch final : public Ditch {
 
   char const* typeName() const override final { return "datafile-rename"; }
 
-  void executeCallback() { _callback(_datafile, _data); }
+  void executeCallback() { _callback(_datafile, _compactor, _collection); }
 
  private:
   TRI_datafile_t* _datafile;
-  CompactionContext* _data;
-  std::function<void(TRI_datafile_t*, CompactionContext*)> _callback;
+  TRI_datafile_t* _compactor;
+  LogicalCollection* _collection;
+  std::function<void(TRI_datafile_t*, TRI_datafile_t*, LogicalCollection*)> _callback;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -378,8 +378,8 @@ class Ditches {
   //////////////////////////////////////////////////////////////////////////////
 
   RenameDatafileDitch* createRenameDatafileDitch(
-      TRI_datafile_t* datafile, CompactionContext* data,
-      std::function<void(TRI_datafile_t*, CompactionContext*)> const& callback,
+      TRI_datafile_t* datafile, TRI_datafile_t* compactor, LogicalCollection* collection,
+      std::function<void(TRI_datafile_t*, TRI_datafile_t*, LogicalCollection*)> const& callback,
       char const* filename, int line);
 
   //////////////////////////////////////////////////////////////////////////////

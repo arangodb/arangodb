@@ -251,8 +251,7 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
     // someone else might now insert a new TRI_DITCH_DOCUMENT now, but it will
     // always refer to a different datafile than the one that we will now unload
 
-    // execute callback, sone of the callbacks might delete or free our
-    // collection
+    // execute callback, some of the callbacks might delete or unload our collection
     auto const type = ditch->type();
 
     if (type == arangodb::Ditch::TRI_DITCH_DATAFILE_DROP) {
