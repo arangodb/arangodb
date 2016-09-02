@@ -173,6 +173,8 @@ bool FailedServer::create () {
   _jb = std::make_shared<Builder>();
   _jb->openArray();
   _jb->openObject();
+
+  // Job entry
   _jb->add(path, VPackValue(VPackValueType::Object));
   _jb->add("type", VPackValue("failedServer"));
   _jb->add("server", VPackValue(_server));
@@ -180,7 +182,22 @@ bool FailedServer::create () {
   _jb->add("creator", VPackValue(_creator));
   _jb->add("timeCreated",
            VPackValue(timepointToString(std::chrono::system_clock::now())));
-  _jb->close(); _jb->close(); _jb->close();
+  _jb->close();
+
+  // Failed server entry
+  path = _agencyPrefix + failedServersPrefix;
+  _jb->add(path, VPackValue(VPackValueType::Object));
+  _jb->add("op", VPackValue("push"));
+  _jb->add("new", VPackValue(_server));
+  _jb->close();
+  
+  // Raise plan version
+  path = _agencyPrefix + planVersion;
+  _jb->add(path, VPackValue(VPackValueType::Object));
+  _jb->add("op", VPackValue("increment"));
+  _jb->close();
+
+  _jb->close(); _jb->close();
 
   write_ret_t res = transact(_agent, *_jb);
 

@@ -46,6 +46,7 @@ static std::string const failedPrefix   = "/Target/Failed/";
 static std::string const finishedPrefix = "/Target/Finished/";
 static std::string const toDoPrefix     = "/Target/ToDo/";
 static std::string const cleanedPrefix  = "Target/CleanedServers";
+static std::string const failedServersPrefix  = "Target/FailedServers";
 static std::string const planColPrefix  = "/Plan/Collections/";
 static std::string const curColPrefix   = "/Current/Collections/";
 static std::string const blockedServersPrefix = "/Supervision/DBServers/";
