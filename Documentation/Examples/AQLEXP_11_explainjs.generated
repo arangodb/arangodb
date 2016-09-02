@@ -1,0 +1,50 @@
+arangosh&gt; db._explain('FOR x IN 1..10 LET then=DATE_NOW() FOR y IN 1..10 LET now=DATE_NOW() LET nowstr=CONCAT(now, x, y, then) RETURN nowstr', {}, {colors: false})
+Query string:
+ FOR x IN 1..10 LET then=DATE_NOW() FOR y IN 1..10 LET now=DATE_NOW() LET nowstr=CONCAT(now, x, y, 
+ then) RETURN nowstr
+
+Execution plan:
+ Id   NodeType            Est.   Comment
+  1   SingletonNode          1   * ROOT
+  2   CalculationNode        1     - LET #5 = 1 .. 10   /* range */   /* simple expression */
+  3   EnumerateListNode     10     - FOR x IN #5   /* list iteration */
+  4   CalculationNode       10       - LET then = DATE_NOW()   /* v8 expression */
+  6   EnumerateListNode    100       - FOR y IN #5   /* list iteration */
+  7   CalculationNode      100         - LET now = DATE_NOW()   /* v8 expression */
+  8   CalculationNode      100         - LET nowstr = CONCAT(now, x, y, then)   /* simple expression */
+  9   ReturnNode           100         - RETURN nowstr
+
+Indexes used:
+ none
+
+Optimization rules applied:
+ Id   RuleName
+  1   move-calculations-up
+  2   remove-redundant-calculations
+  3   remove-unnecessary-calculations
+
+
+arangosh&gt; db._explain('LET now=DATE_NOW() FOR x IN 1..10 FOR y IN 1..10 LET nowstr=CONCAT(now, x, y, now) RETURN nowstr', {}, {colors: false})
+Query string:
+ LET now=DATE_NOW() FOR x IN 1..10 FOR y IN 1..10 LET nowstr=CONCAT(now, x, y, now) RETURN nowstr
+
+Execution plan:
+ Id   NodeType            Est.   Comment
+  1   SingletonNode          1   * ROOT
+  3   CalculationNode        1     - LET #4 = 1 .. 10   /* range */   /* simple expression */
+  2   CalculationNode        1     - LET now = DATE_NOW()   /* v8 expression */
+  4   EnumerateListNode     10     - FOR x IN #4   /* list iteration */
+  6   EnumerateListNode    100       - FOR y IN #4   /* list iteration */
+  7   CalculationNode      100         - LET nowstr = CONCAT(now, x, y, now)   /* simple expression */
+  8   ReturnNode           100         - RETURN nowstr
+
+Indexes used:
+ none
+
+Optimization rules applied:
+ Id   RuleName
+  1   move-calculations-up
+  2   remove-redundant-calculations
+  3   remove-unnecessary-calculations
+
+

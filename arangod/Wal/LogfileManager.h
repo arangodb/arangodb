@@ -95,6 +95,8 @@ class LogfileManager final : public application_features::ApplicationFeature {
   LogfileManager(LogfileManager const&) = delete;
   LogfileManager& operator=(LogfileManager const&) = delete;
 
+  static constexpr size_t numBuckets = 8;
+
  public:
   explicit LogfileManager(application_features::ApplicationServer* server);
 
@@ -376,6 +378,10 @@ class LogfileManager final : public application_features::ApplicationFeature {
   std::tuple<size_t, Logfile::IdType, Logfile::IdType> runningTransactions();
 
  private:
+
+  // hashes the transaction id into a bucket
+  size_t getBucket(TRI_voc_tid_t id) const { return std::hash<TRI_voc_cid_t>()(id) % numBuckets; }
+
   // memcpy the data into the WAL region and return the filled slot
   // to the WAL logfile manager
   SlotInfoCopy writeSlot(SlotInfo& slotInfo,
@@ -515,15 +521,20 @@ class LogfileManager final : public application_features::ApplicationFeature {
   // a lock protecting the shutdown file
   Mutex _shutdownFileLock;
 
-  // a lock protecting _transactions and _failedTransactions
-  basics::ReadWriteLock _transactionsLock;
+  // a lock protecting ALL buckets in _transactions
+  basics::ReadWriteLock _allTransactionsLock;
 
-  // currently ongoing transactions
-  std::unordered_map<TRI_voc_tid_t, std::pair<Logfile::IdType, Logfile::IdType>>
-      _transactions;
+  struct {
+    // a lock protecting _activeTransactions and _failedTransactions
+    basics::ReadWriteLock _lock;
 
-  // set of failed transactions
-  std::unordered_set<TRI_voc_tid_t> _failedTransactions;
+    // currently ongoing transactions
+    std::unordered_map<TRI_voc_tid_t, std::pair<Logfile::IdType, Logfile::IdType>>
+        _activeTransactions;
+
+    // set of failed transactions
+    std::unordered_set<TRI_voc_tid_t> _failedTransactions;
+  } _transactions[numBuckets];
 
   // set of dropped collections
   /// this is populated during recovery and not used afterwards

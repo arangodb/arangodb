@@ -128,7 +128,7 @@ DocumentDitch* TransactionContext::orderDitch(TRI_document_collection_t* documen
   if (it != _ditches.end()) {
     // tell everyone else this ditch is still in use,
     // at least until the transaction is over
-    (*it).second->setUsedByTransaction();
+    TRI_ASSERT((*it).second->usedByTransaction());
     // ditch already exists, return it
     return (*it).second;
   }

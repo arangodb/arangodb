@@ -38,6 +38,7 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseServerFeature.h"
 #include "SimpleHttpClient/ConnectionManager.h"
+#include "V8Server/V8DealerFeature.h"
 #include "VocBase/server.h"
 
 using namespace arangodb;
@@ -67,7 +68,7 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
 
 ClusterFeature::~ClusterFeature() {
   delete _heartbeatThread;
-  
+
   if (_enableCluster) {
     AgencyComm::cleanup();
   }
@@ -126,6 +127,10 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--cluster.coordinator-config",
                      "path to the coordinator configuration",
                      new StringParameter(&_coordinatorConfig));
+
+  options->addOption("--cluster.system-replication-factor",
+                     "replication factor for system collections",
+                     new UInt32Parameter(&_systemReplicationFactor));
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -180,6 +185,12 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       FATAL_ERROR_EXIT();
     }
   }
+
+  // validate system-replication-factor
+  if (_systemReplicationFactor == 0) {
+    LOG(FATAL) << "system replication factor must be greater 0";
+    FATAL_ERROR_EXIT();
+  }
 }
 
 void ClusterFeature::prepare() {
@@ -189,6 +200,12 @@ void ClusterFeature::prepare() {
   ServerState::instance()->setArangodPath(_arangodPath);
   ServerState::instance()->setDBserverConfig(_dbserverConfig);
   ServerState::instance()->setCoordinatorConfig(_coordinatorConfig);
+
+  V8DealerFeature* v8Dealer =
+      ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+
+  v8Dealer->defineDouble("SYS_DEFAULT_REPLICATION_FACTOR_SYSTEM",
+                         _systemReplicationFactor);
 
   // create callback registery
   _agencyCallbackRegistry.reset(
@@ -203,8 +220,9 @@ void ClusterFeature::prepare() {
   // create an instance (this will not yet create a thread)
   ClusterComm::instance();
 
-  AgencyFeature* agency = 
-      application_features::ApplicationServer::getFeature<AgencyFeature>("Agency");
+  AgencyFeature* agency =
+      application_features::ApplicationServer::getFeature<AgencyFeature>(
+          "Agency");
 
   if (agency->isEnabled() || _enableCluster) {
     // initialize ClusterComm library, must call initialize only once
@@ -335,12 +353,11 @@ void ClusterFeature::prepare() {
                << "' specified for --cluster.my-address";
     FATAL_ERROR_EXIT();
   }
-
 }
 
-//YYY #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-//YYY #warning FRANK split into methods
-//YYY #endif
+// YYY #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+// YYY #warning FRANK split into methods
+// YYY #endif
 
 void ClusterFeature::start() {
   // return if cluster is disabled
@@ -371,53 +388,49 @@ void ClusterFeature::start() {
     AgencyCommResult result = comm.getValues("Sync/HeartbeatIntervalMs");
 
     if (result.successful()) {
-      
       velocypack::Slice HeartbeatIntervalMs =
-        result.slice()[0].get(std::vector<std::string>(
-          {AgencyComm::prefix(), "Sync", "HeartbeatIntervalMs"}));
-          
+          result.slice()[0].get(std::vector<std::string>(
+              {AgencyComm::prefix(), "Sync", "HeartbeatIntervalMs"}));
+
       if (HeartbeatIntervalMs.isInteger()) {
         try {
           _heartbeatInterval = HeartbeatIntervalMs.getUInt();
           LOG(INFO) << "using heartbeat interval value '" << _heartbeatInterval
                     << " ms' from agency";
-        }
-        catch (...) {
+        } catch (...) {
           // Ignore if it is not a small int or uint
         }
-        
       }
     }
-    
+
     // no value set in agency. use default
     if (_heartbeatInterval == 0) {
       _heartbeatInterval = 5000;  // 1/s
-      
+
       LOG(WARN) << "unable to read heartbeat interval from agency. Using "
                 << "default value '" << _heartbeatInterval << " ms'";
     }
-    
+
     // start heartbeat thread
     _heartbeatThread = new HeartbeatThread(DatabaseServerFeature::SERVER,
                                            _agencyCallbackRegistry.get(),
                                            _heartbeatInterval * 1000, 5);
-    
+
     if (!_heartbeatThread->init() || !_heartbeatThread->start()) {
       LOG(FATAL) << "heartbeat could not connect to agency endpoints ("
                  << endpoints << ")";
       FATAL_ERROR_EXIT();
     }
-    
+
     while (!_heartbeatThread->isReady()) {
       // wait until heartbeat is ready
       usleep(10000);
     }
   }
-  
+
   AgencyCommResult result;
 
   while (true) {
-
     VPackBuilder builder;
     try {
       VPackObjectBuilder b(&builder);
@@ -429,7 +442,7 @@ void ClusterFeature::start() {
 
     result = comm.setValue("Current/ServersRegistered/" + _myId,
                            builder.slice(), 0.0);
-    
+
     if (!result.successful()) {
       LOG(FATAL) << "unable to register server in agency: http code: "
                  << result.httpCode() << ", body: " << result.body();
@@ -437,7 +450,7 @@ void ClusterFeature::start() {
     } else {
       break;
     }
-    
+
     sleep(1);
   }
 
@@ -449,7 +462,7 @@ void ClusterFeature::start() {
     ServerState::instance()->setState(ServerState::STATE_SYNCING);
   }
 
-  DispatcherFeature* dispatcher = 
+  DispatcherFeature* dispatcher =
       ApplicationServer::getFeature<DispatcherFeature>("Dispatcher");
 
   dispatcher->buildAqlQueue();
@@ -460,13 +473,13 @@ void ClusterFeature::unprepare() {
     if (_heartbeatThread != nullptr) {
       _heartbeatThread->beginShutdown();
     }
-    
+
     // change into shutdown state
     ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
-    
+
     AgencyComm comm;
     comm.sendServerState(0.0);
-    
+
     if (_heartbeatThread != nullptr) {
       int counter = 0;
       while (_heartbeatThread->isRunning()) {
@@ -493,32 +506,30 @@ void ClusterFeature::unprepare() {
 
   AgencyComm comm;
   comm.sendServerState(0.0);
-  
+
   // Try only once to unregister because maybe the agencycomm
   // is shutting down as well...
-  
+
   ServerState::RoleEnum role = ServerState::instance()->getRole();
-  
+
   AgencyWriteTransaction unreg;
 
   // Remove from role
   if (role == ServerState::ROLE_PRIMARY) {
-    unreg.operations.push_back(
-      AgencyOperation("Current/DBServers/" + _myId,
-                      AgencySimpleOperationType::DELETE_OP));
+    unreg.operations.push_back(AgencyOperation(
+        "Current/DBServers/" + _myId, AgencySimpleOperationType::DELETE_OP));
   } else if (role == ServerState::ROLE_COORDINATOR) {
-    unreg.operations.push_back(
-      AgencyOperation("Current/Coordinators/" + _myId,
-                      AgencySimpleOperationType::DELETE_OP));
+    unreg.operations.push_back(AgencyOperation(
+        "Current/Coordinators/" + _myId, AgencySimpleOperationType::DELETE_OP));
   }
-  
-  // Unregister 
+
+  // Unregister
   unreg.operations.push_back(
-    AgencyOperation("Current/ServersRegistered/" + _myId,
-                    AgencySimpleOperationType::DELETE_OP));
-  
+      AgencyOperation("Current/ServersRegistered/" + _myId,
+                      AgencySimpleOperationType::DELETE_OP));
+
   comm.sendTransactionWithFailover(unreg, 120.0);
-  
+
   while (_heartbeatThread->isRunning()) {
     usleep(50000);
   }
