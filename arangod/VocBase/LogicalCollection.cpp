@@ -325,6 +325,7 @@ LogicalCollection::LogicalCollection(
       _masterPointers(),
       _useSecondaryIndexes(true),
       _numberDocuments(0),
+      _keyGenerator(),
       _collection(nullptr),
       _lock() {
         
@@ -383,6 +384,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
       _masterPointers(),
       _useSecondaryIndexes(true),
       _numberDocuments(0),
+      _keyGenerator(),
       _collection(nullptr),
       _lock() {
  
@@ -846,7 +848,8 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result, bool withPath) const 
   result.add("isVolatile", VPackValue(_isVolatile));
   result.add("waitForSync", VPackValue(_waitForSync));
   result.add("journalSize", VPackValue(_journalSize));
-  result.add("version", VPackValue(5)); // FIX: hard-coded version number, here for compatibility only
+  result.add("version", VPackValue(_version)); 
+  
   if (_keyOptions != nullptr) {
     result.add("keyOptions", VPackSlice(_keyOptions->data()));
   }

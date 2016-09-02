@@ -157,7 +157,7 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
   // loop until done
 
   while (true) {
-    auto ditches = document->ditches();
+    auto ditches = collection->ditches();
 
     // check and remove all callback elements at the beginning of the list
     auto callback = [&](arangodb::Ditch const* ditch) -> bool {
@@ -228,7 +228,7 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
           isDeleted = (s == TRI_VOC_COL_STATUS_DELETED);
         }
 
-        if (!isDeleted && document->_vocbase->isDropped()) {
+        if (!isDeleted && collection->vocbase()->isDropped()) {
           // the collection was not marked as deleted, but the database was
           isDeleted = true;
         }

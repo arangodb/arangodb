@@ -2050,7 +2050,7 @@ char* MMFilesEngine::nextFreeMarkerPosition(
     // we only need the ditches when we are outside the recovery
     // the compactor will not run during recovery
     auto ditch =
-        collection->_collection->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
+        collection->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
 
     if (ditch == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);

@@ -104,15 +104,6 @@ int32_t const WRP_VOCBASE_TYPE = 1;
 
 int32_t const WRP_VOCBASE_COL_TYPE = 2;
 
-struct CollectionDitchInfo {
-  arangodb::DocumentDitch* ditch;
-  TRI_collection_t* col;
-
-  CollectionDitchInfo(arangodb::DocumentDitch* ditch,
-                      TRI_collection_t* col)
-      : ditch(ditch), col(col) {}
-};
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a C++ into a v8::Object
 ////////////////////////////////////////////////////////////////////////////////

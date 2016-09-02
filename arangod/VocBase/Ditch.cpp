@@ -37,11 +37,8 @@ Ditch::Ditch(Ditches* ditches, char const* filename, int line)
 
 Ditch::~Ditch() {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the associated collection
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_collection_t* Ditch::collection() const {
+LogicalCollection* Ditch::collection() const {
   return _ditches->collection();
 }
 
@@ -108,7 +105,7 @@ DropCollectionDitch::DropCollectionDitch(
 
 DropCollectionDitch::~DropCollectionDitch() {}
 
-Ditches::Ditches(TRI_collection_t* collection)
+Ditches::Ditches(LogicalCollection* collection)
     : _collection(collection),
       _lock(),
       _begin(nullptr),
@@ -117,12 +114,9 @@ Ditches::Ditches(TRI_collection_t* collection)
   TRI_ASSERT(_collection != nullptr);
 }
 
-Ditches::~Ditches() {}
+Ditches::~Ditches() { destroy(); }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the ditches - to be called on shutdown only
-////////////////////////////////////////////////////////////////////////////////
-
 void Ditches::destroy() {
   MUTEX_LOCKER(mutexLocker, _lock);
   auto* ptr = _begin;
@@ -148,28 +142,19 @@ void Ditches::destroy() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the associated collection
-////////////////////////////////////////////////////////////////////////////////
+LogicalCollection* Ditches::collection() const { return _collection; }
 
-TRI_collection_t* Ditches::collection() const { return _collection; }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief run a user-defined function under the lock
-////////////////////////////////////////////////////////////////////////////////
-
 void Ditches::executeProtected(std::function<void()> callback) {
   MUTEX_LOCKER(mutexLocker, _lock);
   callback();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief process the first element from the list
 /// the list will remain unchanged if the first element is either a
 /// DocumentDitch, a ReplicationDitch or a CompactionDitch, or if the list
 /// contains any DocumentDitches.
-////////////////////////////////////////////////////////////////////////////////
-
 Ditch* Ditches::process(bool& popped,
                         std::function<bool(Ditch const*)> callback) {
   popped = false;
@@ -231,10 +216,7 @@ Ditch* Ditches::process(bool& popped,
   return ditch;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type name of the ditch at the head of the active ditches
-////////////////////////////////////////////////////////////////////////////////
-
 char const* Ditches::head() {
   MUTEX_LOCKER(mutexLocker, _lock);
 
@@ -246,20 +228,14 @@ char const* Ditches::head() {
   return ditch->typeName();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the number of document ditches active
-////////////////////////////////////////////////////////////////////////////////
-
 uint64_t Ditches::numDocumentDitches() {
   MUTEX_LOCKER(mutexLocker, _lock);
 
   return _numDocumentDitches;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the ditches contain a ditch of a certain type
-////////////////////////////////////////////////////////////////////////////////
-
 bool Ditches::contains(Ditch::DitchType type) {
   MUTEX_LOCKER(mutexLocker, _lock);
 
@@ -281,10 +257,7 @@ bool Ditches::contains(Ditch::DitchType type) {
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief removes and frees a ditch
-////////////////////////////////////////////////////////////////////////////////
-
 void Ditches::freeDitch(Ditch* ditch) {
   TRI_ASSERT(ditch != nullptr);
 
@@ -302,12 +275,9 @@ void Ditches::freeDitch(Ditch* ditch) {
   delete ditch;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief removes and frees a ditch
 /// this is used for ditches used by transactions or by externals to protect
 /// the flags by the lock
-////////////////////////////////////////////////////////////////////////////////
-
 void Ditches::freeDocumentDitch(DocumentDitch* ditch, bool fromTransaction) {
   TRI_ASSERT(ditch != nullptr);
     
@@ -328,10 +298,7 @@ void Ditches::freeDocumentDitch(DocumentDitch* ditch, bool fromTransaction) {
   delete ditch;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new document ditch and links it
-////////////////////////////////////////////////////////////////////////////////
-
 DocumentDitch* Ditches::createDocumentDitch(bool usedByTransaction,
                                             char const* filename, int line) {
   try {
@@ -344,10 +311,7 @@ DocumentDitch* Ditches::createDocumentDitch(bool usedByTransaction,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new replication ditch and links it
-////////////////////////////////////////////////////////////////////////////////
-
 ReplicationDitch* Ditches::createReplicationDitch(char const* filename,
                                                   int line) {
   try {
@@ -360,10 +324,7 @@ ReplicationDitch* Ditches::createReplicationDitch(char const* filename,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new compaction ditch and links it
-////////////////////////////////////////////////////////////////////////////////
-
 CompactionDitch* Ditches::createCompactionDitch(char const* filename,
                                                 int line) {
   try {
@@ -376,10 +337,7 @@ CompactionDitch* Ditches::createCompactionDitch(char const* filename,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new datafile deletion ditch
-////////////////////////////////////////////////////////////////////////////////
-
 DropDatafileDitch* Ditches::createDropDatafileDitch(
     TRI_datafile_t* datafile, LogicalCollection* collection, 
     std::function<void(TRI_datafile_t*, LogicalCollection*)> const& callback,
@@ -395,10 +353,7 @@ DropDatafileDitch* Ditches::createDropDatafileDitch(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new datafile rename ditch
-////////////////////////////////////////////////////////////////////////////////
-
 RenameDatafileDitch* Ditches::createRenameDatafileDitch(
     TRI_datafile_t* datafile, TRI_datafile_t* compactor, LogicalCollection* collection,
     std::function<void(TRI_datafile_t*, TRI_datafile_t*, LogicalCollection*)> const& callback,
@@ -414,10 +369,7 @@ RenameDatafileDitch* Ditches::createRenameDatafileDitch(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new collection unload ditch
-////////////////////////////////////////////////////////////////////////////////
-
 UnloadCollectionDitch* Ditches::createUnloadCollectionDitch(
     LogicalCollection* collection, 
     std::function<bool(LogicalCollection*)> const& callback,
@@ -433,10 +385,7 @@ UnloadCollectionDitch* Ditches::createUnloadCollectionDitch(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new datafile drop ditch
-////////////////////////////////////////////////////////////////////////////////
-
 DropCollectionDitch* Ditches::createDropCollectionDitch(
     arangodb::LogicalCollection* collection,
     std::function<bool(arangodb::LogicalCollection*)> callback,
@@ -452,10 +401,7 @@ DropCollectionDitch* Ditches::createDropCollectionDitch(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts the ditch into the linked list of ditches
-////////////////////////////////////////////////////////////////////////////////
-
 void Ditches::link(Ditch* ditch) {
   TRI_ASSERT(ditch != nullptr);
 
@@ -485,10 +431,7 @@ void Ditches::link(Ditch* ditch) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief unlinks the ditch from the linked list of ditches
-////////////////////////////////////////////////////////////////////////////////
-
 void Ditches::unlink(Ditch* ditch) {
   // ditch is at the beginning of the chain
   if (ditch->_prev == nullptr) {

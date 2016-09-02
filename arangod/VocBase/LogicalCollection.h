@@ -52,6 +52,7 @@ typedef std::string CollectionID;  // ID of a collection
 typedef std::string ShardID;       // ID of a shard
 typedef std::unordered_map<ShardID, std::vector<ServerID>> ShardMap;
 
+class Ditches;
 class FollowerInfo;
 class Index;
 class KeyGenerator;
@@ -134,8 +135,13 @@ class LogicalCollection {
   void waitForSync(bool value) { _waitForSync = value; }
 
   std::unique_ptr<arangodb::FollowerInfo> const& followers() const;
-
+  
   void setDeleted(bool);
+
+  Ditches* ditches() const {
+    return getPhysical()->ditches();
+  }
+
   void setRevision(TRI_voc_rid_t, bool);
 
   // SECTION: Key Options
@@ -166,7 +172,7 @@ class LogicalCollection {
   bool usesDefaultShardKeys() const;
   std::vector<std::string> const& shardKeys() const;
   std::shared_ptr<ShardMap> shardIds() const;
-
+  
   // SECTION: Modification Functions
   int rename(std::string const&);
   void drop();
@@ -489,7 +495,7 @@ class LogicalCollection {
   int64_t _numberDocuments;
  private:
   std::unique_ptr<arangodb::KeyGenerator> _keyGenerator;
-
+  
   // TODO REMOVE ME!
  public:
   TRI_collection_t* _collection;

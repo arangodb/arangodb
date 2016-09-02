@@ -88,16 +88,13 @@ TRI_collection_t::TRI_collection_t(TRI_vocbase_t* vocbase)
       : _vocbase(vocbase), 
         _tickMax(0),
         _uncollectedLogfileEntries(0),
-        _ditches(this),
         _nextCompactionStartIndex(0),
         _lastCompactionStatus(nullptr),
         _lastCompaction(0.0) {
   setCompactionStatus("compaction not yet started");
 }
   
-TRI_collection_t::~TRI_collection_t() {
-  _ditches.destroy();
-}
+TRI_collection_t::~TRI_collection_t() {}
 
 /// @brief whether or not a collection is fully collected
 bool TRI_collection_t::isFullyCollected() {
@@ -144,11 +141,6 @@ void TRI_collection_t::figures(std::shared_ptr<arangodb::velocypack::Builder>& b
   builder->add("uncollectedLogfileEntries", VPackValue(_uncollectedLogfileEntries));
   builder->add("lastTick", VPackValue(_tickMax));
 
-  builder->add("documentReferences", VPackValue(_ditches.numDocumentDitches()));
-  
-  char const* waitingForDitch = _ditches.head();
-  builder->add("waitingFor", VPackValue(waitingForDitch == nullptr ? "-" : waitingForDitch));
-  
   // fills in compaction status
   char const* lastCompactionStatus = nullptr;
   char lastCompactionStamp[21];
@@ -551,7 +543,6 @@ TRI_collection_t* TRI_collection_t::open(TRI_vocbase_t* vocbase,
       << "open-document-collection { collection: " << vocbase->name() << "/"
       << col->name() << " }";
 
-  collection->_path = col->path();
   int res = col->open(ignoreErrors);
 
   if (res != TRI_ERROR_NO_ERROR) {

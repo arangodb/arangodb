@@ -532,7 +532,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       removeDatafile(collection, compaction._datafile);
 
       // add a deletion ditch to the collection
-      auto b = document->ditches()->createDropDatafileDitch(
+      auto b = collection->ditches()->createDropDatafileDitch(
           compaction._datafile, collection, DropDatafileCallback, __FILE__,
           __LINE__);
       
@@ -561,7 +561,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
       if (i == 0) {
         // add a rename marker
-        auto b = document->ditches()->createRenameDatafileDitch(
+        auto b = collection->ditches()->createRenameDatafileDitch(
             compaction._datafile, context->_compactor, context->_collection, RenameDatafileCallback, __FILE__,
             __LINE__);
 
@@ -576,7 +576,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
         removeDatafile(collection, compaction._datafile);
 
         // add a drop datafile marker
-        auto b = document->ditches()->createDropDatafileDitch(
+        auto b = collection->ditches()->createDropDatafileDitch(
             compaction._datafile, collection, DropDatafileCallback, __FILE__,
             __LINE__);
 
@@ -883,7 +883,7 @@ void MMFilesCompactorThread::run() {
             try {
               double const now = TRI_microtime();
               if (document->lastCompaction() + compactionCollectionInterval() <= now) {
-                auto ce = document->ditches()->createCompactionDitch(__FILE__,
+                auto ce = collection->ditches()->createCompactionDitch(__FILE__,
                                                                       __LINE__);
 
                 if (ce == nullptr) {
@@ -905,7 +905,7 @@ void MMFilesCompactorThread::run() {
                     // in case an error occurs, we must still free this ditch
                   }
 
-                  document->ditches()->freeDitch(ce);
+                  collection->ditches()->freeDitch(ce);
                 }
               }
             } catch (...) {

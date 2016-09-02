@@ -201,7 +201,7 @@ bool TRI_vocbase_t::UnloadCollectionCallback(LogicalCollection* collection) {
     return true;
   }
 
-  auto ditches = collection->_collection->ditches();
+  auto ditches = collection->ditches();
 
   if (ditches->contains(arangodb::Ditch::TRI_DITCH_DOCUMENT) ||
       ditches->contains(arangodb::Ditch::TRI_DITCH_REPLICATION) ||
@@ -392,7 +392,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
   if (collection->status() == TRI_VOC_COL_STATUS_UNLOADING) {
     TRI_ASSERT(collection->_collection != nullptr);
     // check if there is a deferred drop action going on for this collection
-    if (collection->_collection->ditches()->contains(
+    if (collection->ditches()->contains(
             arangodb::Ditch::TRI_DITCH_COLLECTION_DROP)) {
       // drop call going on, we must abort
       locker.unlock();
@@ -879,7 +879,7 @@ int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection, boo
 
     TRI_ASSERT(collection->_collection != nullptr);
     // add callback for unload
-    collection->_collection->ditches()->createUnloadCollectionDitch(
+    collection->ditches()->createUnloadCollectionDitch(
         collection, UnloadCollectionCallback, __FILE__,
         __LINE__);
   } // release locks
@@ -917,7 +917,7 @@ int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection, bool 
       } else {
         TRI_ASSERT(collection->_collection != nullptr);
         // add callback for dropping
-        collection->_collection->ditches()->createDropCollectionDitch(
+        collection->ditches()->createDropCollectionDitch(
             collection, DropCollectionCallback,
             __FILE__, __LINE__);
 

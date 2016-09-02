@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
-#include "VocBase/Ditch.h"
 #include "VocBase/MasterPointer.h"
 #include "VocBase/MasterPointers.h"
 #include "VocBase/vocbase.h"
@@ -74,27 +73,17 @@ struct TRI_collection_t {
   
   void figures(std::shared_ptr<arangodb::velocypack::Builder>& result);
 
-  // datafile management
-  
-  std::string const& path() const { return _path; }
-
   double lastCompaction() const { return _lastCompaction; }
   void lastCompaction(double value) { _lastCompaction = value; }
-  
-  arangodb::Ditches* ditches() { return &_ditches; }
   
  public:
   TRI_vocbase_t* _vocbase;
   TRI_voc_tick_t _tickMax;
  
- private: 
-  std::string _path;
-
  public:
   std::atomic<int64_t> _uncollectedLogfileEntries;
   
  private:
-  mutable arangodb::Ditches _ditches;
 
   arangodb::Mutex _compactionStatusLock;
   size_t _nextCompactionStartIndex;

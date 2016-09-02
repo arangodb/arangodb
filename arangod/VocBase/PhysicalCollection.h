@@ -34,6 +34,7 @@ struct TRI_datafile_t;
 struct TRI_df_marker_t;
 
 namespace arangodb {
+class Ditches;
 class LogicalCollection;
 
 class PhysicalCollection {
@@ -42,6 +43,8 @@ class PhysicalCollection {
 
  public:
   virtual ~PhysicalCollection() = default;
+  
+  virtual Ditches* ditches() const = 0;
 
   virtual TRI_voc_rid_t revision() const = 0;
   

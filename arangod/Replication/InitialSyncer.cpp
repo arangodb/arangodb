@@ -35,8 +35,9 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Utils/CollectionGuard.h"
 #include "VocBase/DatafileHelper.h"
-#include "VocBase/collection.h"
+#include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/collection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -1031,7 +1032,6 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
   // fetch all local keys from primary index
   std::vector<void const*> markers;
     
-  TRI_collection_t* document = nullptr;
   DocumentDitch* ditch = nullptr;
 
   // acquire a replication ditch so no datafiles are thrown away from now on
@@ -1046,19 +1046,16 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
       return res;
     }
     
-    // TODO Temporary until TRI_collection_t is removed
-    document = trx.documentCollection()->_collection;
-    ditch = document->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
+    ditch = col->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
 
     if (ditch == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
   }
 
-  TRI_ASSERT(document != nullptr);
   TRI_ASSERT(ditch != nullptr);
 
-  TRI_DEFER(document->ditches()->freeDitch(ditch));
+  TRI_DEFER(col->ditches()->freeDitch(ditch));
 
   {
     SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_READ);

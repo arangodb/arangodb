@@ -96,7 +96,7 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->preventCompaction(_collection->vocbase(), [this](TRI_vocbase_t* vocbase) {
     // create a ditch under the compaction lock
-    _ditch = _collection->_collection->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
+    _ditch = _collection->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
   });
 
   // now we either have a ditch or not

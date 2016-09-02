@@ -51,7 +51,7 @@ static void EnsureErrorCode(int code) {
 }
 
 MMFilesCollection::MMFilesCollection(LogicalCollection* collection)
-    : PhysicalCollection(collection), _initialCount(0), _revision(0) {}
+    : PhysicalCollection(collection), _ditches(collection), _initialCount(0), _revision(0) {}
 
 MMFilesCollection::~MMFilesCollection() { 
   try {
@@ -626,6 +626,11 @@ bool MMFilesCollection::closeDatafiles(std::vector<TRI_datafile_t*> const& files
 }
   
 void MMFilesCollection::figures(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
+  builder->add("documentReferences", VPackValue(_ditches.numDocumentDitches()));
+  
+  char const* waitingForDitch = _ditches.head();
+  builder->add("waitingFor", VPackValue(waitingForDitch == nullptr ? "-" : waitingForDitch));
+  
   // add datafile statistics
   DatafileStatisticsContainer dfi = _datafileStatistics.all();
 
