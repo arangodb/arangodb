@@ -3966,8 +3966,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     }
   }
 
-  TRI_collection_t* docColl = col->_collection;
-  if (docColl == nullptr) {
+  if (col->getStatusLocked() != TRI_VOC_COL_STATUS_LOADED) {
     generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED,
                   "collection not loaded");

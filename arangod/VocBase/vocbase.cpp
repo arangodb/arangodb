@@ -54,7 +54,6 @@
 #include "Utils/CursorRepository.h"
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/Ditch.h"
-#include "VocBase/collection.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/MasterPointer.h"
 #include "VocBase/replication-applier.h"
@@ -197,11 +196,6 @@ bool TRI_vocbase_t::UnloadCollectionCallback(LogicalCollection* collection) {
     return false;
   }
 
-  if (collection->_collection == nullptr) {
-    collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
-    return true;
-  }
-
   auto ditches = collection->ditches();
 
   if (ditches->contains(arangodb::Ditch::TRI_DITCH_DOCUMENT) ||
@@ -212,7 +206,7 @@ bool TRI_vocbase_t::UnloadCollectionCallback(LogicalCollection* collection) {
     // still some ditches left...
     // as the cleanup thread has already popped the unload ditch from the
     // ditches list,
-    // we need to insert a new one to really executed the unload
+    // we need to insert a new one to really execute the unload
     collection->vocbase()->unloadCollection(collection, false);
     return false;
   }
@@ -246,7 +240,8 @@ bool TRI_vocbase_t::DropCollectionCallback(arangodb::LogicalCollection* collecti
     }
 
     // unload collection
-    if (collection->_collection != nullptr) {
+    if (collection->status() == TRI_VOC_COL_STATUS_LOADED || 
+        collection->status() == TRI_VOC_COL_STATUS_UNLOADING) {
       int res = collection->close();
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -308,7 +303,6 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
   TRI_ASSERT(collection != nullptr);
 
   try {
-    // FIXME Taken out of TRI_collection_t* create()
     // Maybe the ordering is broken now
     // create document collection
     int res = collection->createInitialIndexes();
@@ -325,16 +319,6 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
     if (writeMarker) {
       collection->toVelocyPack(builder, false);
     }
-    // FIXME Temporary until move is finished
-    // ok, construct the collection
-    std::unique_ptr<TRI_collection_t> document(TRI_collection_t::create(this, cid));
-
-    if (document == nullptr) {
-      return nullptr;
-    }
-   
-    collection->_collection = document.release();
-
     return collection;
   } catch (...) {
     unregisterCollection(collection);
@@ -391,7 +375,6 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
   // someone is trying to unload the collection, cancel this,
   // release the WRITE lock and try again
   if (collection->status() == TRI_VOC_COL_STATUS_UNLOADING) {
-    TRI_ASSERT(collection->_collection != nullptr);
     // check if there is a deferred drop action going on for this collection
     if (collection->ditches()->contains(
             arangodb::Ditch::TRI_DITCH_COLLECTION_DROP)) {
@@ -464,11 +447,11 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
       ignoreDatafileErrors = DatabaseFeature::DATABASE->ignoreDatafileErrors();
     }
 
-    TRI_collection_t* document = nullptr;
     try {
-      document = TRI_collection_t::open(collection->vocbase(), collection,
-                                        ignoreDatafileErrors);
+      collection->getPhysical()->open(ignoreDatafileErrors);
     } catch (...) {
+      collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
+      return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
     }
 
     // lock again to adjust the status
@@ -477,12 +460,6 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
     // no one else must have changed the status
     TRI_ASSERT(collection->status() == TRI_VOC_COL_STATUS_LOADING);
 
-    if (document == nullptr) {
-      collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
-      return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
-    }
-
-    collection->_collection = document;
     collection->setStatus(TRI_VOC_COL_STATUS_LOADED);
 
     // release the WRITE lock and try again
@@ -872,13 +849,12 @@ int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection, boo
 
     // must be loaded
     if (collection->status() != TRI_VOC_COL_STATUS_LOADED) {
-      return TRI_set_errno(TRI_ERROR_INTERNAL);
+      return TRI_ERROR_INTERNAL;
     }
 
     // mark collection as unloading
     collection->setStatus(TRI_VOC_COL_STATUS_UNLOADING);
 
-    TRI_ASSERT(collection->_collection != nullptr);
     // add callback for unload
     collection->ditches()->createUnloadCollectionDitch(
         collection, UnloadCollectionCallback, __FILE__,
@@ -916,7 +892,6 @@ int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection, bool 
       if (arangodb::wal::LogfileManager::instance()->isInRecovery()) {
         DropCollectionCallback(collection);
       } else {
-        TRI_ASSERT(collection->_collection != nullptr);
         // add callback for dropping
         collection->ditches()->createDropCollectionDitch(
             collection, DropCollectionCallback,
@@ -970,7 +945,7 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
       return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
     }
 
-    if (!TRI_collection_t::IsAllowedName(isSystem, newName)) {
+    if (!LogicalCollection::IsAllowedName(isSystem, newName)) {
       return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
     }
   }

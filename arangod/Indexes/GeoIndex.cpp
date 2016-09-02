@@ -25,7 +25,6 @@
 #include "Logger/Logger.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
-#include "VocBase/collection.h"
 #include "VocBase/transaction.h"
 
 using namespace arangodb;

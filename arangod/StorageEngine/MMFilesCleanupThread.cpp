@@ -33,7 +33,6 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CursorRepository.h"
 #include "VocBase/Ditch.h"
-#include "VocBase/collection.h"
 #include "VocBase/LogicalCollection.h"
 #include "Wal/LogfileManager.h"
 
@@ -84,20 +83,23 @@ void MMFilesCleanupThread::run() {
       for (auto& collection : collections) {
         TRI_ASSERT(collection != nullptr);
 
-        auto callback = [this, &collection, &iterations]() -> void {
-          // we're the only ones that can unload the collection, so using
-          // the collection pointer outside the lock is ok
+        TRI_vocbase_col_status_e status = collection->getStatusLocked();
 
-          // maybe cleanup indexes, unload the collection or some datafiles
-          // clean indexes?
-          if (iterations % cleanupIndexIterations() == 0) {
-            collection->cleanupIndexes();
-          }
+        if (status != TRI_VOC_COL_STATUS_LOADED && 
+            status != TRI_VOC_COL_STATUS_UNLOADING) {
+          continue;
+        }
+          
+        // we're the only ones that can unload the collection, so using
+        // the collection pointer outside the lock is ok
 
-          cleanupCollection(collection);
-        };
+        // maybe cleanup indexes, unload the collection or some datafiles
+        // clean indexes?
+        if (iterations % cleanupIndexIterations() == 0) {
+          collection->cleanupIndexes();
+        }
 
-        collection->executeWhileStatusLocked(callback);
+        cleanupCollection(collection);
       }
     }, false);
 

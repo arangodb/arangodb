@@ -184,7 +184,6 @@ void VppCommTask::addResponse(VppResponse* response) {
     try {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << slice.toJson();
     } catch (arangodb::velocypack::Exception const& e) {
-      std::cout << e.what() << std::endl;
     }
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "--";
   }

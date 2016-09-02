@@ -30,9 +30,7 @@
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/collection.h"
 #include "VocBase/datafile.h"
-#include "VocBase/collection.h"
 #include "VocBase/vocbase.h"
 #include "Wal/Logfile.h"
 #include "Wal/LogfileManager.h"
@@ -454,7 +452,6 @@ int TRI_DumpCollectionReplication(TRI_replication_dump_t* dump,
                                   TRI_voc_tick_t dataMin,
                                   TRI_voc_tick_t dataMax, bool withTicks) {
   TRI_ASSERT(collection != nullptr);
-  TRI_ASSERT(collection->_collection != nullptr);
   
   // get a custom type handler
   auto customTypeHandler = dump->_transactionContext->orderCustomTypeHandler();

@@ -49,7 +49,6 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/MasterPointers.h"
-#include "VocBase/collection.h"
 #include "VocBase/ticks.h"
 #include "Wal/LogfileManager.h"
 

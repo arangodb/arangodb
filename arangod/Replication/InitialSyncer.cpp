@@ -37,7 +37,6 @@
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/collection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 

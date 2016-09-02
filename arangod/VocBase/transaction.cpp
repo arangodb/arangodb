@@ -26,7 +26,6 @@
 #include "Logger/Logger.h"
 #include "Basics/Exceptions.h"
 #include "VocBase/DatafileHelper.h"
-#include "VocBase/collection.h"
 #include "VocBase/ticks.h"
 #include "Wal/DocumentOperation.h"
 #include "Wal/LogfileManager.h"
@@ -362,7 +361,6 @@ static int UnlockCollection(TRI_transaction_collection_t* trxCollection,
     }
   }
 
-  TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
   TRI_ASSERT(IsLocked(trxCollection));
 
   if (trxCollection->_nestingLevel < nestingLevel) {
@@ -426,8 +424,7 @@ static int UseCollections(TRI_transaction_t* trx, int nestingLevel) {
         trxCollection->_collection = trx->_vocbase->lookupCollection(trxCollection->_cid);
       }
 
-      if (trxCollection->_collection == nullptr ||
-          trxCollection->_collection->_collection == nullptr) {
+      if (trxCollection->_collection == nullptr) {
         // something went wrong
         return TRI_errno();
       }
@@ -445,7 +442,6 @@ static int UseCollections(TRI_transaction_t* trx, int nestingLevel) {
     }
 
     TRI_ASSERT(trxCollection->_collection != nullptr);
-    TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
 
     if (nestingLevel == 0 &&
         trxCollection->_accessType == TRI_TRANSACTION_WRITE) {

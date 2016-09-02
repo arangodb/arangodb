@@ -36,7 +36,6 @@
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocindex.h"
-#include "VocBase/collection.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 

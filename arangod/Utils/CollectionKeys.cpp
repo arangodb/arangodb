@@ -33,7 +33,6 @@
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/MasterPointer.h"
-#include "VocBase/collection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 #include "Wal/LogfileManager.h"
@@ -69,7 +68,6 @@ CollectionKeys::CollectionKeys(TRI_vocbase_t* vocbase, std::string const& name,
 
   _collection = _guard->collection();
   TRI_ASSERT(_collection != nullptr);
-  TRI_ASSERT(_collection->_collection);
 }
 
 CollectionKeys::~CollectionKeys() {

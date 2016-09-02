@@ -28,7 +28,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-#include "VocBase/collection.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
@@ -60,14 +59,6 @@ Collection::~Collection() {}
 TRI_voc_cid_t Collection::cid() const {
   TRI_ASSERT(collection != nullptr);
   return collection->cid();
-}
-  
-/// @brief get the pointer to the document collection
-TRI_collection_t* Collection::documentCollection() const {
-  TRI_ASSERT(collection != nullptr);
-  TRI_ASSERT(collection->_collection != nullptr);
-
-  return collection->_collection;
 }
   
 /// @brief count the number of documents in the collection

@@ -1136,7 +1136,6 @@ std::shared_ptr<arangodb::Index> TRI_LookupIndexByHandle(
 
   // assume we are already loaded
   TRI_ASSERT(collection != nullptr);
-  TRI_ASSERT(collection->_collection != nullptr);
 
   // extract the index identifier from a string
   if (val->IsString() || val->IsStringObject() || val->IsNumber()) {

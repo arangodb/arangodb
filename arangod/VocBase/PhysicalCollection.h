@@ -97,6 +97,8 @@ class PhysicalCollection {
 
   /// @brief signal that compaction is finished
   virtual void finishCompaction() = 0;
+  
+  virtual void open(bool ignoreErrors) = 0;
 
  protected:
   LogicalCollection* _logicalCollection;

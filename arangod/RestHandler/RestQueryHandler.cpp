@@ -34,7 +34,6 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
-#include "VocBase/collection.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;

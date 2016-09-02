@@ -27,7 +27,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "Logger/Logger.h"
-#include "VocBase/collection.h"
 #include "VocBase/transaction.h"
 
 #include <velocypack/Iterator.h>

@@ -30,7 +30,6 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/Ditch.h"
-#include "VocBase/collection.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -51,8 +50,7 @@ CollectionExport::CollectionExport(TRI_vocbase_t* vocbase,
   _guard = new arangodb::CollectionGuard(vocbase, _name.c_str(), false);
 
   _collection = _guard->collection();
-  _document = _collection->_collection;
-  TRI_ASSERT(_document != nullptr);
+  TRI_ASSERT(_collection != nullptr);
 }
 
 CollectionExport::~CollectionExport() {

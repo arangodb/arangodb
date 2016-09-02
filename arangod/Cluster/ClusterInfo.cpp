@@ -40,7 +40,6 @@
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
 #include "RestServer/DatabaseFeature.h"
-#include "VocBase/collection.h"
 #include "VocBase/LogicalCollection.h"
 
 #ifdef _WIN32

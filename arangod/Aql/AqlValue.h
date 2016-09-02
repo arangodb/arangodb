@@ -30,7 +30,6 @@
 #include "Aql/types.h"
 #include "Basics/ConditionalDeleter.h"
 #include "Basics/VelocyPackHelper.h"
-#include "VocBase/collection.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>

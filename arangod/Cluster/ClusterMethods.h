@@ -26,8 +26,6 @@
 
 #include "Basics/Common.h"
 #include "Cluster/AgencyComm.h"
-#include "Rest/HttpResponse.h"
-#include "VocBase/collection.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>

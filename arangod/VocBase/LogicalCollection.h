@@ -33,7 +33,6 @@
 
 #include <velocypack/Buffer.h>
 
-struct TRI_collection_t;
 struct TRI_datafile_t;
 struct TRI_df_marker_t;
 
@@ -88,6 +87,7 @@ class LogicalCollection {
   }
 
   static bool IsAllowedName(arangodb::velocypack::Slice parameters);
+  static bool IsAllowedName(bool isSystem, std::string const& name);
 
   // TODO: MOVE TO PHYSICAL?  
   bool isFullyCollected();
@@ -533,11 +533,6 @@ class LogicalCollection {
 
   std::unique_ptr<arangodb::KeyGenerator> _keyGenerator;
   
-  // TODO REMOVE ME!
- public:
-  TRI_collection_t* _collection;
-
- private:
   mutable arangodb::basics::ReadWriteLock
       _lock;  // lock protecting the status and name
  

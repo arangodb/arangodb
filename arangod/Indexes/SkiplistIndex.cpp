@@ -29,7 +29,6 @@
 #include "Basics/debugging.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Utils/Transaction.h"
-#include "VocBase/collection.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>

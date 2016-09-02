@@ -27,7 +27,6 @@
 #include "Utils/Transaction.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/Ditch.h"
-#include "VocBase/collection.h"
 #include "VocBase/LogicalCollection.h"
 #include "Wal/LogfileManager.h"
 

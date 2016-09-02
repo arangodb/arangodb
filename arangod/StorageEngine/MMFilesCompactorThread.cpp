@@ -39,7 +39,6 @@
 #include "VocBase/CompactionLocker.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/collection.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -436,13 +435,18 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
   // now create a new compactor file
   // we are re-using the _fid of the first original datafile!
-  TRI_datafile_t* compactor = static_cast<MMFilesCollection*>(collection->getPhysical())->createCompactor(initial._fid, static_cast<TRI_voc_size_t>(initial._targetSize));
-
-  if (compactor == nullptr) {
-    // some error occurred
-    LOG_TOPIC(ERR, Logger::COMPACTOR) << "could not create compactor file";
+  TRI_datafile_t* compactor = nullptr;
+  try {
+    compactor = static_cast<MMFilesCollection*>(collection->getPhysical())->createCompactor(initial._fid, static_cast<TRI_voc_size_t>(initial._targetSize));
+  } catch (std::exception const& ex) {
+    LOG_TOPIC(ERR, Logger::COMPACTOR) << "could not create compactor file: " << ex.what();
+    return;
+  } catch (...) {
+    LOG_TOPIC(ERR, Logger::COMPACTOR) << "could not create compactor file: unknown exception";
     return;
   }
+
+  TRI_ASSERT(compactor != nullptr);
 
   LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "created new compactor file '" << compactor->getName() << "'";
 
@@ -499,10 +503,6 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
     // TODO: how do we recover from this state?
     return;
   }
-
-  // FIXME Temporary until ditches are moved
-  TRI_collection_t* document = collection->_collection;
-  TRI_ASSERT(document != nullptr);
 
   if (context->_dfi.numberAlive == 0 && context->_dfi.numberDead == 0 &&
       context->_dfi.numberDeletions == 0) {
@@ -844,17 +844,15 @@ void MMFilesCompactorThread::run() {
         collections.clear();
       }
 
-      bool worked;
-
       for (auto& collection : collections) {
-        auto callback = [this, &collection, &worked]() -> void {
-          TRI_collection_t* document = collection->_collection;
+        bool worked = false;
 
-          if (document == nullptr) {
+        auto callback = [this, &collection, &worked]() -> void {
+          if (collection->status() != TRI_VOC_COL_STATUS_LOADED &&
+              collection->status() != TRI_VOC_COL_STATUS_UNLOADING) {
             return;
           }
 
-          worked = false;
           bool doCompact = collection->doCompact();
 
           // for document collection, compactify datafiles

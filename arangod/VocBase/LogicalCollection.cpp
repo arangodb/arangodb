@@ -49,7 +49,6 @@
 #include "Utils/CollectionReadLocker.h"
 #include "Utils/CollectionWriteLocker.h"
 #include "VocBase/PhysicalCollection.h"
-#include "VocBase/collection.h"
 #include "VocBase/IndexPoolFeature.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ticks.h"
@@ -66,6 +65,7 @@
 using namespace arangodb;
 using Helper = arangodb::basics::VelocyPackHelper;
 
+/// forward
 int TRI_AddOperationTransaction(TRI_transaction_t*,
                                 arangodb::wal::DocumentOperation&, bool&);
 
@@ -327,7 +327,6 @@ LogicalCollection::LogicalCollection(
       _numberDocuments(0),
       _maxTick(0),
       _keyGenerator(),
-      _collection(nullptr),
       _nextCompactionStartIndex(0),
       _lastCompactionStatus(nullptr),
       _lastCompactionStamp(0.0),
@@ -392,7 +391,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
       _numberDocuments(0),
       _maxTick(0),
       _keyGenerator(),
-      _collection(nullptr),
       _nextCompactionStartIndex(0),
       _lastCompactionStatus(nullptr),
       _lastCompactionStamp(0.0),
@@ -488,7 +486,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
 
 LogicalCollection::~LogicalCollection() {
   delete _physical;
-  delete _collection;
 }
 
 bool LogicalCollection::IsAllowedName(VPackSlice parameters) {
@@ -498,6 +495,43 @@ bool LogicalCollection::IsAllowedName(VPackSlice parameters) {
     return false;
   }
 
+  bool ok;
+  char const* ptr;
+  size_t length = 0;
+
+  // check allow characters: must start with letter or underscore if system is
+  // allowed
+  for (ptr = name.c_str(); *ptr; ++ptr) {
+    if (length == 0) {
+      if (allowSystem) {
+        ok = (*ptr == '_') || ('a' <= *ptr && *ptr <= 'z') ||
+             ('A' <= *ptr && *ptr <= 'Z');
+      } else {
+        ok = ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
+      }
+    } else {
+      ok = (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9') ||
+           ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
+    }
+
+    if (!ok) {
+      return false;
+    }
+
+    ++length;
+  }
+
+  // invalid name length
+  if (length == 0 || length > TRI_COL_NAME_LENGTH) {
+    return false;
+  }
+
+  return true;
+}
+
+/// @brief checks if a collection name is allowed
+/// Returns true if the name is allowed and false otherwise
+bool LogicalCollection::IsAllowedName(bool allowSystem, std::string const& name) {
   bool ok;
   char const* ptr;
   size_t length = 0;
@@ -861,9 +895,6 @@ int LogicalCollection::close() {
 
   _numberDocuments = 0;
 
-  delete _collection;
-  _collection = nullptr;
-
   return getPhysical()->close();
 }
 
@@ -878,12 +909,8 @@ void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
   _status = status;
 
   if (status == TRI_VOC_COL_STATUS_LOADED) {
-    _internalVersion = 0;
-  } else if (status == TRI_VOC_COL_STATUS_UNLOADED) {
-    // TODO: do we need to delete _collection here?
-    delete _collection;
-    _collection = nullptr;
-  }
+    increaseInternalVersion(); 
+  } 
 }
 
 void LogicalCollection::toVelocyPack(VPackBuilder& result, bool withPath) const {
@@ -1027,7 +1054,6 @@ std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() {
       THROW_ARANGO_EXCEPTION(res);
     }
   } else {
-    TRI_ASSERT(_collection != nullptr);
     builder->openObject();
 
       // add index information

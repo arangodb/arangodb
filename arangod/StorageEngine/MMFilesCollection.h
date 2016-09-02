@@ -119,6 +119,8 @@ class MMFilesCollection final : public PhysicalCollection {
   bool tryLockForCompaction() override;
   void finishCompaction() override;
   
+  void open(bool ignoreErrors) override;
+  
   Ditches* ditches() const override { return &_ditches; }
 
  private:

@@ -37,7 +37,6 @@
 #include "StorageEngine/MMFilesCollection.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/collection.h"
 #include "VocBase/datafile.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"

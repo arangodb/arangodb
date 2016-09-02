@@ -40,7 +40,6 @@
 #include "VocBase/CompactionLocker.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/collection.h"
 #include "Wal/Logfile.h"
 #include "Wal/LogfileManager.h"
 
@@ -619,9 +618,6 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
   arangodb::LogicalCollection* collection = collectionGuard.collection();
 
   TRI_ASSERT(collection != nullptr);
-
-  TRI_collection_t* document = collection->_collection;
-  TRI_ASSERT(document != nullptr);
 
   // first try to read-lock the compactor-lock, afterwards try to write-lock the
   // collection
