@@ -190,7 +190,7 @@ bool FailedServer::create () {
   _jb->add("op", VPackValue("push"));
   _jb->add("new", VPackValue(_server));
   _jb->close();
-  
+
   // Raise plan version
   path = _agencyPrefix + planVersion;
   _jb->add(path, VPackValue(VPackValueType::Object));
