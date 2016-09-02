@@ -50,10 +50,9 @@ class QueryList;
 class CollectionNameResolver;
 class CollectionKeysRepository;
 class CursorRepository;
+class LogicalCollection;
 class StorageEngine;
 class Thread;
-
-class LogicalCollection;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -398,5 +397,5 @@ VPackSlice TRI_ExtractRevisionIdAsSlice(VPackSlice const slice);
 /// open object which will remain open
 void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder);
 void TRI_SanitizeObjectWithEdges(VPackSlice const slice, VPackBuilder& builder);
-  
+
 #endif

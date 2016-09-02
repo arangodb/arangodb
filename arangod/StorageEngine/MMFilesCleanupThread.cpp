@@ -84,24 +84,20 @@ void MMFilesCleanupThread::run() {
       for (auto& collection : collections) {
         TRI_ASSERT(collection != nullptr);
 
-        {
-          READ_LOCKER(readLocker, collection->_lock);
-          if (collection->_collection == nullptr) {
-            // collection currently not loaded
-            continue;
+        auto callback = [this, &collection, &iterations]() -> void {
+          // we're the only ones that can unload the collection, so using
+          // the collection pointer outside the lock is ok
+
+          // maybe cleanup indexes, unload the collection or some datafiles
+          // clean indexes?
+          if (iterations % cleanupIndexIterations() == 0) {
+            collection->cleanupIndexes();
           }
-        }
 
-        // we're the only ones that can unload the collection, so using
-        // the collection pointer outside the lock is ok
+          cleanupCollection(collection);
+        };
 
-        // maybe cleanup indexes, unload the collection or some datafiles
-        // clean indexes?
-        if (iterations % cleanupIndexIterations() == 0) {
-          collection->cleanupIndexes();
-        }
-
-        cleanupCollection(collection);
+        collection->executeWhileStatusLocked(callback);
       }
     }, false);
 

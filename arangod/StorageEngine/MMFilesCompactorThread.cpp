@@ -847,20 +847,11 @@ void MMFilesCompactorThread::run() {
       bool worked;
 
       for (auto& collection : collections) {
-      // Muss werden eine Lambda Function. () -> bool true wenn getan, False wenn nicht gelocked
-        {
-          TRY_READ_LOCKER(readLocker, collection->_lock);
-
-          if (!readLocker.isLocked()) {
-            // if we can't acquire the read lock instantly, we continue directly
-            // we don't want to stall here for too long
-            continue;
-          }
-
+        auto callback = [this, &collection, &worked]() -> void {
           TRI_collection_t* document = collection->_collection;
 
           if (document == nullptr) {
-            continue;
+            return;
           }
 
           worked = false;
@@ -875,7 +866,7 @@ void MMFilesCompactorThread::run() {
 
             if (!compactionLocker.isLocked()) {
               // someone else is holding the compactor lock, we'll not compact
-              continue;
+              return;
             }
 
             try {
@@ -911,8 +902,11 @@ void MMFilesCompactorThread::run() {
               LOG_TOPIC(ERR, Logger::COMPACTOR) << "an unknown exception occurred during compaction";
             }
           }
+        };
 
-        }  // end of lock
+        if (!collection->tryExecuteWhileStatusLocked(callback)) {
+          continue;
+        }
 
         if (worked) {
           ++numCompacted;

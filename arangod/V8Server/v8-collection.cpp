@@ -2374,11 +2374,7 @@ static void JS_TypeVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   // fallthru intentional
 
-  TRI_col_type_e type;
-  {
-    READ_LOCKER(readLocker, collection->_lock);
-    type = (TRI_col_type_e)collection->type();
-  }
+  TRI_col_type_e type = collection->type();
 
   TRI_V8_RETURN(v8::Number::New(isolate, (int)type));
   TRI_V8_TRY_CATCH_END

@@ -63,6 +63,8 @@ class StringRef;
 class Transaction;
 
 class LogicalCollection {
+  friend struct ::TRI_vocbase_t;
+
  public:
   LogicalCollection(TRI_vocbase_t*, arangodb::velocypack::Slice);
 
@@ -75,9 +77,7 @@ class LogicalCollection {
   LogicalCollection() = delete;
   
   /// @brief hard-coded minimum version number for collections
-  static constexpr uint32_t minimumVersion() {
-    return 5; 
-  }
+  static constexpr uint32_t minimumVersion() { return 5; } 
 
   /// @brief determine whether a collection name is a system collection name
   static inline bool IsSystemName(std::string const& name) {
@@ -135,6 +135,9 @@ class LogicalCollection {
 
   TRI_vocbase_col_status_e status();
   TRI_vocbase_col_status_e getStatusLocked();
+
+  void executeWhileStatusLocked(std::function<void()> const& callback);
+  bool tryExecuteWhileStatusLocked(std::function<void()> const& callback);
 
   /// @brief try to fetch the collection status under a lock
   /// the boolean value will be set to true if the lock could be acquired
@@ -534,10 +537,10 @@ class LogicalCollection {
  public:
   TRI_collection_t* _collection;
 
+ private:
   mutable arangodb::basics::ReadWriteLock
       _lock;  // lock protecting the status and name
  
- private:
   mutable arangodb::basics::ReadWriteLock
       _idxLock;  // lock protecting the indexes
 
