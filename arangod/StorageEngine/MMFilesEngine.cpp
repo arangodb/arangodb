@@ -1238,6 +1238,7 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
     throw;
   } catch (...) {
     LOG(ERR) << "error while opening database: unknown exception";
+    throw;
   }
 }
       
