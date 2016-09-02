@@ -562,7 +562,7 @@ Variable* ExecutionNode::varFromVPack(Ast* ast,
     std::string msg;
     msg +=
         "mandatory variable \"" + std::string(variableName) + "\" not found.";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
   }
   return ast->variables()->createVariable(variable);
 }
