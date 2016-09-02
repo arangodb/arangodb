@@ -178,7 +178,7 @@ class Supervision : public arangodb::Thread {
   // at least once so this flag got set at some point
   bool _selfShutdown;
 
-  bool serverGood(const std::string&);
+  std::string const serverHealth(const std::string&);
 
   static std::string _agencyPrefix;
 };

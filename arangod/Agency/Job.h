@@ -179,8 +179,8 @@ struct Job {
     finished.close();
 
     write_ret_t res = transact(_agent, finished);
-
     if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
+      LOG_TOPIC(INFO, Logger::AGENCY) << "Successfully finished job " << type << "(" << _jobId << ")";
       return true;
     }
 
