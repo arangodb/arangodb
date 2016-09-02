@@ -162,7 +162,7 @@ VppCommTask::VppCommTask(GeneralServer* server, TRI_socket_t sock,
     : Task("VppCommTask"),
       GeneralCommTask(server, sock, std::move(info), timeout) {
   _protocol = "vpp";
-  _readBuffer->reserve(
+  _readBuffer.reserve(
       _bufferLength);  // ATTENTION <- this is required so we do not
                        // loose information during a resize
                        // connectionStatisticsAgentSetVpp();
@@ -249,7 +249,7 @@ VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
 }
 
 bool VppCommTask::isChunkComplete(char* start) {
-  std::size_t length = std::distance(start, _readBuffer->end());
+  std::size_t length = std::distance(start, _readBuffer.end());
   auto& prv = _processReadVariables;
 
   if (!prv._currentChunkLength && length < sizeof(uint32_t)) {
@@ -273,7 +273,7 @@ bool VppCommTask::processRead() {
 
   auto& prv = _processReadVariables;
   if (!prv._readBufferCursor) {
-    prv._readBufferCursor = _readBuffer->begin();
+    prv._readBufferCursor = _readBuffer.begin();
   }
 
   auto chunkBegin = prv._readBufferCursor;
@@ -432,10 +432,10 @@ bool VppCommTask::processRead() {
       0;  // if we end up here we have read a complete chunk
   prv._readBufferCursor = chunkEnd;
   std::size_t processedDataLen =
-      std::distance(_readBuffer->begin(), prv._readBufferCursor);
+      std::distance(_readBuffer.begin(), prv._readBufferCursor);
   // clean buffer up to length of chunk
   if (processedDataLen > prv._cleanupLength) {
-    _readBuffer->move_front(processedDataLen);
+    _readBuffer.move_front(processedDataLen);
     prv._readBufferCursor = nullptr;  // the positon will be set at the
                                       // begin of this function
   }
@@ -488,7 +488,7 @@ bool VppCommTask::processRead() {
   }
 
   if (read_maybe_only_part_of_buffer) {
-    if (prv._readBufferCursor == _readBuffer->end()) {
+    if (prv._readBufferCursor == _readBuffer.end()) {
       return false;
     }
     return true;
@@ -499,7 +499,7 @@ bool VppCommTask::processRead() {
 void VppCommTask::closeTask(rest::ResponseCode code) {
   _processReadVariables._readBufferCursor = nullptr;
   _processReadVariables._currentChunkLength = 0;
-  _readBuffer->clear();  // check is this changes the reserved size
+  _readBuffer.clear();  // check is this changes the reserved size
 
   // is there a case where we do not want to close the connection
   for (auto const& message : _incompleteMessages) {

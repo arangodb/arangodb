@@ -40,15 +40,14 @@ SocketTask::SocketTask(TRI_socket_t socket, ConnectionInfo&& info,
     : Task("SocketTask"),
       _keepAliveTimeout(keepAliveTimeout),
       _commSocket(socket),
-      _connectionInfo(std::move(info)) {
+      _connectionInfo(std::move(info)),
+      _readBuffer(TRI_UNKNOWN_MEM_ZONE, false) {
   LOG(TRACE) << "connection established, client "
              << TRI_get_fd_or_handle_of_socket(socket) << ", server ip "
              << _connectionInfo.serverAddress << ", server port "
              << _connectionInfo.serverPort << ", client ip "
              << _connectionInfo.clientAddress << ", client port "
              << _connectionInfo.clientPort;
-
-  _readBuffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE, false);
 }
 
 SocketTask::~SocketTask() {
@@ -65,15 +64,10 @@ SocketTask::~SocketTask() {
     TRI_ReleaseRequestStatistics(_writeBufferStatistics);
   }
 
-  for (auto& i : _writeBuffers) {
-    delete i;
+  for (auto& it : _writeBuffers) {
+    delete it.first;
+    TRI_ReleaseRequestStatistics(it.second);
   }
-
-  for (auto& i : _writeBuffersStats) {
-    TRI_ReleaseRequestStatistics(i);
-  }
-
-  delete _readBuffer;
 
   LOG(TRACE) << "connection closed, client "
              << TRI_get_fd_or_handle_of_socket(_commSocket);
@@ -119,17 +113,17 @@ bool SocketTask::handleRead() {
 
 bool SocketTask::fillReadBuffer() {
   // reserve some memory for reading
-  if (_readBuffer->reserve(READ_BLOCK_SIZE + 1) == TRI_ERROR_OUT_OF_MEMORY) {
+  if (_readBuffer.reserve(READ_BLOCK_SIZE + 1) == TRI_ERROR_OUT_OF_MEMORY) {
     _clientClosed = true;
     LOG(TRACE) << "out of memory";
     return false;
   }
 
-  int nr = TRI_READ_SOCKET(_commSocket, _readBuffer->end(), READ_BLOCK_SIZE, 0);
+  int nr = TRI_READ_SOCKET(_commSocket, _readBuffer.end(), READ_BLOCK_SIZE, 0);
 
   if (nr > 0) {
-    _readBuffer->increaseLength(nr);
-    _readBuffer->ensureNullTerminated();
+    _readBuffer.increaseLength(nr);
+    _readBuffer.ensureNullTerminated();
     return true;
   }
 
@@ -258,9 +252,16 @@ void SocketTask::addWriteBuffer(basics::StringBuffer* buffer,
   }
 
   if (_writeBuffer != nullptr) {
-    _writeBuffers.push_back(buffer);
-    _writeBuffersStats.push_back(stat);
-    return;
+    try {
+      _writeBuffers.emplace_back(std::make_pair(buffer, stat));
+      return;
+    } catch (...) {
+      delete buffer;
+      if (stat) {
+        TRI_ReleaseRequestStatistics(stat);
+      }
+      throw;
+    }
   }
 
   _writeBuffer = buffer;
@@ -289,11 +290,9 @@ void SocketTask::completedWriteBuffer() {
     return;
   }
 
-  StringBuffer* buffer = _writeBuffers.front();
+  StringBuffer* buffer = _writeBuffers.front().first;
+  TRI_request_statistics_t* statistics = _writeBuffers.front().second;
   _writeBuffers.pop_front();
-
-  TRI_request_statistics_t* statistics = _writeBuffersStats.front();
-  _writeBuffersStats.pop_front();
 
   addWriteBuffer(buffer, statistics);
 }

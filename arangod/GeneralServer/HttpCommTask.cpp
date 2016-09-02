@@ -191,7 +191,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
 
 // reads data from the socket
 bool HttpCommTask::processRead() {
-  TRI_ASSERT(_readBuffer->c_str() != nullptr);
+  TRI_ASSERT(_readBuffer.c_str() != nullptr);
 
   if (_requestPending) {
     return false;
@@ -203,8 +203,8 @@ bool HttpCommTask::processRead() {
 
   // still trying to read the header fields
   if (!_readRequestBody) {
-    char const* ptr = _readBuffer->c_str() + _readPosition;
-    char const* etr = _readBuffer->end();
+    char const* ptr = _readBuffer.c_str() + _readPosition;
+    char const* etr = _readBuffer.end();
 
     if (ptr == etr) {
       return false;
@@ -251,7 +251,7 @@ bool HttpCommTask::processRead() {
     }
 
     // check if header is too large
-    size_t headerLength = ptr - (_readBuffer->c_str() + _startPosition);
+    size_t headerLength = ptr - (_readBuffer.c_str() + _startPosition);
 
     if (headerLength > MaximalHeaderSize) {
       LOG(WARN) << "maximal header size is " << MaximalHeaderSize
@@ -266,17 +266,17 @@ bool HttpCommTask::processRead() {
 
     // header is complete
     if (ptr < end) {
-      _readPosition = ptr - _readBuffer->c_str() + 4;
+      _readPosition = ptr - _readBuffer.c_str() + 4;
 
       LOG(TRACE) << "HTTP READ FOR " << (void*)this << ": "
-                 << std::string(_readBuffer->c_str() + _startPosition,
+                 << std::string(_readBuffer.c_str() + _startPosition,
                                 _readPosition - _startPosition);
 
       // check that we know, how to serve this request and update the connection
       // information, i. e. client and server addresses and ports and create a
       // request context for that request
       _incompleteRequest.reset(new HttpRequest(
-          _connectionInfo, _readBuffer->c_str() + _startPosition,
+          _connectionInfo, _readBuffer.c_str() + _startPosition,
           _readPosition - _startPosition, _allowMethodOverride));
 
       GeneralServerFeature::HANDLER_FACTORY->setRequestContext(
@@ -394,7 +394,7 @@ bool HttpCommTask::processRead() {
           }
 
           LOG(WARN) << "got corrupted HTTP request '"
-                    << std::string(_readBuffer->c_str() + _startPosition, l)
+                    << std::string(_readBuffer.c_str() + _startPosition, l)
                     << "'";
 
           // force a socket close, response will be ignored!
@@ -425,7 +425,7 @@ bool HttpCommTask::processRead() {
         }
       }
     } else {
-      size_t l = (_readBuffer->end() - _readBuffer->c_str());
+      size_t l = (_readBuffer.end() - _readBuffer.c_str());
 
       if (_startPosition + 4 <= l) {
         _readPosition = l - 4;
@@ -435,7 +435,7 @@ bool HttpCommTask::processRead() {
 
   // readRequestBody might have changed, so cannot use else
   if (_readRequestBody) {
-    if (_readBuffer->length() - _bodyPosition < _bodyLength) {
+    if (_readBuffer.length() - _bodyPosition < _bodyLength) {
       armKeepAliveTimeout();
 
       // let client send more
@@ -443,10 +443,10 @@ bool HttpCommTask::processRead() {
     }
 
     // read "bodyLength" from read buffer and add this body to "httpRequest"
-    _incompleteRequest->setBody(_readBuffer->c_str() + _bodyPosition,
+    _incompleteRequest->setBody(_readBuffer.c_str() + _bodyPosition,
                                 _bodyLength);
 
-    LOG(TRACE) << "" << std::string(_readBuffer->c_str() + _bodyPosition,
+    LOG(TRACE) << "" << std::string(_readBuffer.c_str() + _bodyPosition,
                                     _bodyLength);
 
     // remove body from read buffer and reset read position
@@ -715,22 +715,22 @@ void HttpCommTask::resetState() {
 
   if (_sinceCompactification > RunCompactEvery) {
     compact = true;
-  } else if (_readBuffer->length() > MaximalPipelineSize) {
+  } else if (_readBuffer.length() > MaximalPipelineSize) {
     compact = true;
   }
 
   if (compact) {
-    _readBuffer->erase_front(_bodyPosition + _bodyLength);
+    _readBuffer.erase_front(_bodyPosition + _bodyLength);
 
     _sinceCompactification = 0;
     _readPosition = 0;
   } else {
     _readPosition = _bodyPosition + _bodyLength;
 
-    if (_readPosition == _readBuffer->length()) {
+    if (_readPosition == _readBuffer.length()) {
       _sinceCompactification = 0;
       _readPosition = 0;
-      _readBuffer->reset();
+      _readBuffer.reset();
     }
   }
 
