@@ -1091,18 +1091,36 @@ static void JS_RawRequestBody(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Handle<v8::Value> property = obj->Get(TRI_V8_ASCII_STRING("internals"));
     if (property->IsExternal()) {
       v8::Handle<v8::External> e = v8::Handle<v8::External>::Cast(property);
-      auto request = static_cast<arangodb::HttpRequest*>(e->Value());
 
-      if (request != nullptr) {
-        std::string bodyStr = request->body();
-        V8Buffer* buffer =
-            V8Buffer::New(isolate, bodyStr.c_str(), bodyStr.size());
+      GeneralRequest* request = static_cast<GeneralRequest*>(e->Value());
 
-        TRI_V8_RETURN(buffer->_handle);
+      switch (request->transportType()) {
+        case Endpoint::TransportType::HTTP: {
+          auto httpRequest = static_cast<arangodb::HttpRequest*>(e->Value());
+          if (httpRequest != nullptr) {
+            std::string bodyStr = httpRequest->body();
+            V8Buffer* buffer =
+                V8Buffer::New(isolate, bodyStr.c_str(), bodyStr.size());
+
+            TRI_V8_RETURN(buffer->_handle);
+          }
+        } break;
+
+        case Endpoint::TransportType::VPP: {
+          if (request != nullptr) {
+            std::string bodyStr = request->payload().toJson();
+            V8Buffer* buffer =
+                V8Buffer::New(isolate, bodyStr.c_str(), bodyStr.size());
+
+            TRI_V8_RETURN(buffer->_handle);
+          }
+        } break;
       }
     }
   }
 
+  // VPackSlice slice(data);
+  // v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, slice);
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
