@@ -1,6 +1,6 @@
 #!/bin/bash
 
-build_dir="../arangodb-build"
+build_dir="../../arangodb-build"
 
 echo "delete old build"
 rm -fr "$build_dir/"*
@@ -9,9 +9,8 @@ echo "create dir if neccessary"
 echo "change into build dir"
 cd $build_dir || exit
 
-#asan="-fsanitize=address -fsanitize=undefined -fno-sanitize=alignment -fno-sanitize=vptr"
 
-compiler=clang
+compiler=gcc
 build_type="Debug"
 debug_flags="-g -O0"
 
@@ -23,9 +22,10 @@ case "$compiler" in
 
     ;;
     *gcc*)
-        flags="$debug_flags -lpthread -gdwarf-4"
+        #asan="-fsanitize=address -fsanitize=undefined -fno-sanitize=alignment -fno-sanitize=vptr"
+        flags="$debug_flags -lpthread -gdwarf-4 $asan"
         cxx="$HOME/.bin/g++-6"
-        cc="$HOME/.bin/g++-6"
+        cc="$HOME/.bin/gcc-6"
         export LD_LIBRARY_PATH=/opt/gcc_stable_2016-07-06/lib64
     ;;
 esac
@@ -42,7 +42,7 @@ CFLAGS="$flags" \
           ../arangodb
 
 cat  << here
-COMMAND: CXX=$cxx
+CXX=$cxx
 CC=$cc
 CXXFLAGS="$cxx_flags"
 CFLAGS="$flags"
