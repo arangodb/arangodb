@@ -448,30 +448,44 @@ void ClusterInfo::loadPlan() {
             }
             
             std::string const collectionId = collectionPairSlice.key.copyString();
-            auto newCollection = std::make_shared<LogicalCollection>(vocbase, collectionSlice);
-            std::string const collectionName = newCollection->name();
-            
-            // mop: register with name as well as with id
-            databaseCollections.emplace(
-                std::make_pair(collectionName, newCollection));
-            databaseCollections.emplace(std::make_pair(collectionId, newCollection));
+            try {
+              auto newCollection = std::make_shared<LogicalCollection>(vocbase, collectionSlice);
+              std::string const collectionName = newCollection->name();
+              
+              // mop: register with name as well as with id
+              databaseCollections.emplace(
+                  std::make_pair(collectionName, newCollection));
+              databaseCollections.emplace(std::make_pair(collectionId, newCollection));
 
-            auto shardKeys = std::make_shared<std::vector<std::string>>(
-                newCollection->shardKeys());
-            newShardKeys.insert(make_pair(collectionId, shardKeys));
-            
-            auto shardIDs = newCollection->shardIds();
-            auto shards = std::make_shared<std::vector<std::string>>();
-            for (auto const& p : *shardIDs) {
-              shards->push_back(p.first);
+              auto shardKeys = std::make_shared<std::vector<std::string>>(
+                  newCollection->shardKeys());
+              newShardKeys.insert(make_pair(collectionId, shardKeys));
+              
+              auto shardIDs = newCollection->shardIds();
+              auto shards = std::make_shared<std::vector<std::string>>();
+              for (auto const& p : *shardIDs) {
+                shards->push_back(p.first);
+              }
+              // Sort by the number in the shard ID ("s0000001" for example):
+              std::sort(shards->begin(), shards->end(),
+                  [](std::string const& a, std::string const& b) -> bool {
+                  return std::strtol(a.c_str() + 1, nullptr, 10) <
+                  std::strtol(b.c_str() + 1, nullptr, 10);
+                  });
+              newShards.emplace(std::make_pair(collectionId, shards));
+            } catch (...) {
+              // The plan contains invalid collection information.
+              // This should not happen in healthy situations.
+              // If it happens in unhealthy situations the
+              // cluster should not fail.
+              LOG(ERR) << "Failed to load information for collection "
+                       << collectionId
+                       << " invalid information in plan. The collection will "
+                          "be ignored for now and the invalid information will "
+                          "be repaired.";
+              TRI_ASSERT(false);
+              continue;
             }
-            // Sort by the number in the shard ID ("s0000001" for example):
-            std::sort(shards->begin(), shards->end(),
-                [](std::string const& a, std::string const& b) -> bool {
-                return std::strtol(a.c_str() + 1, nullptr, 10) <
-                std::strtol(b.c_str() + 1, nullptr, 10);
-                });
-            newShards.emplace(std::make_pair(collectionId, shards));
           }
 
           newCollections.emplace(std::make_pair(databaseName, databaseCollections));
