@@ -148,8 +148,6 @@ class Supervision : public arangodb::Thread {
 
   void shrinkCluster();
 
-  bool isShuttingDown();
-  
   bool handleJobs();
   void handleShutdown();
 
