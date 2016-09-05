@@ -32,8 +32,6 @@ var jsunity = require("jsunity");
 var internal = require("internal");
 var testHelper = require("@arangodb/test-helper").Helper;
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: volatile collections
 ////////////////////////////////////////////////////////////////////////////////
@@ -120,9 +118,10 @@ function CollectionVolatileSuite () {
       var c = internal.db._create(cn, { isVolatile : true });
       assertEqual(cn, c.name());
       assertEqual(true, c.properties().isVolatile);
-      c.unload();
 
-      internal.wait(4);
+      c.unload();
+      testHelper.waitUnload(c);
+
       assertEqual(true, c.properties().isVolatile);
     },
 

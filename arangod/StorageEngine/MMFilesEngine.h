@@ -319,8 +319,7 @@ class MMFilesEngine final : public StorageEngine {
                           arangodb::LogicalCollection const* parameters,
                           bool forceSync) const;
 
-  VocbaseCollectionInfo loadCollectionInfo(TRI_vocbase_t* vocbase,
-    std::string const& collectionName, std::string const& path, bool versionWarning);
+  LogicalCollection* loadCollectionInfo(TRI_vocbase_t* vocbase, std::string const& path);
   
   // start the cleanup thread for the database 
   int startCleanup(TRI_vocbase_t* vocbase);

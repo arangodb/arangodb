@@ -1333,7 +1333,7 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
   TRI_ASSERT(col->isSystem() == (name[0] == '_'));
   TRI_ASSERT(col->indexBuckets() ==
              arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
-                 slice, "indexBuckets", DatabaseFeature::DefaultIndexBuckets));
+                 slice, "indexBuckets", DatabaseFeature::defaultIndexBuckets()));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_voc_cid_t planId = 0;
   VPackSlice const planIdSlice = slice.get("planId");
@@ -3966,8 +3966,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     }
   }
 
-  TRI_collection_t* docColl = col->_collection;
-  if (docColl == nullptr) {
+  if (col->getStatusLocked() != TRI_VOC_COL_STATUS_LOADED) {
     generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED,
                   "collection not loaded");

@@ -328,7 +328,6 @@ add_executable(${BIN_ARANGOD}
   VocBase/PathEnumerator.cpp
   VocBase/SingleServerTraverser.cpp
   VocBase/Traverser.cpp
-  VocBase/collection.cpp
   VocBase/datafile.cpp
   VocBase/modes.cpp
   VocBase/replication-applier.cpp

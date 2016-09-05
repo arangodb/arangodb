@@ -49,7 +49,6 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/MasterPointers.h"
-#include "VocBase/collection.h"
 #include "VocBase/ticks.h"
 #include "Wal/LogfileManager.h"
 
@@ -2645,7 +2644,7 @@ OperationResult Transaction::countLocal(std::string const& collectionName) {
   // TODO Temporary until the move to LogicalCollection is completed
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
-  uint64_t num = collection->_numberDocuments;
+  uint64_t num = collection->numberDocuments();
 
   res = unlock(trxCollection(cid), TRI_TRANSACTION_READ);
   

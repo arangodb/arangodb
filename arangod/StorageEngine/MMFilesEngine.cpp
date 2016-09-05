@@ -37,7 +37,6 @@
 #include "StorageEngine/MMFilesCollection.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/collection.h"
 #include "VocBase/datafile.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -458,28 +457,15 @@ int MMFilesEngine::getCollectionsAndIndexes(TRI_vocbase_t* vocbase,
     int res = TRI_ERROR_NO_ERROR;
 
     try {
-      arangodb::VocbaseCollectionInfo info = loadCollectionInfo(vocbase, "", directory, true);
+      std::unique_ptr<LogicalCollection> collection(loadCollectionInfo(vocbase, directory));
      
-      if (info.deleted()) {
-        _deleted.emplace_back(std::make_pair(info.name(), directory));
+      if (collection->deleted()) {
+        _deleted.emplace_back(std::make_pair(collection->name(), directory));
         continue;
       }
 
-      if (info.version() < VocbaseCollectionInfo::version() && !isUpgrade) {
-        // collection is too "old"
-        LOG(ERR) << "collection '" << info.name()
-                 << "' has a too old version. Please start the server "
-                    "with the --database.auto-upgrade option.";
-
-        return TRI_ERROR_FAILED;
-      }
-
       // add collection info
-      result.openObject();
-      info.toVelocyPack(result);
-      result.add("path", VPackValue(directory));
-      result.close();
-
+      collection->toVelocyPack(result, true);
     } catch (arangodb::basics::Exception const& e) {
       std::string tmpfile = FileUtils::buildFilename(directory, ".tmp");
 
@@ -1216,36 +1202,44 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
   auto vocbase = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, name);
 
   // scan the database path for collections
-  VPackBuilder builder;
-  int res = getCollectionsAndIndexes(vocbase.get(), builder, wasCleanShutdown, isUpgrade);
+  try {
+    VPackBuilder builder;
+    int res = getCollectionsAndIndexes(vocbase.get(), builder, wasCleanShutdown, isUpgrade);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-  
-  VPackSlice slice = builder.slice();
-  TRI_ASSERT(slice.isArray());
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    
+    VPackSlice slice = builder.slice();
+    TRI_ASSERT(slice.isArray());
 
-  for (auto const& it : VPackArrayIterator(slice)) {
-    // we found a collection that is still active
-    TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
-    arangodb::LogicalCollection* collection = StorageEngine::registerCollection(ConditionalWriteLocker::DoLock(), vocbase.get(), it);
+    for (auto const& it : VPackArrayIterator(slice)) {
+      // we found a collection that is still active
+      TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
+      arangodb::LogicalCollection* collection = StorageEngine::registerCollection(ConditionalWriteLocker::DoLock(), vocbase.get(), it);
 
-    registerCollectionPath(vocbase->id(), collection->cid(), collection->path());
+      registerCollectionPath(vocbase->id(), collection->cid(), collection->path());
 
-    if (!wasCleanShutdown) {
-      // iterating markers may be time-consuming. we'll only do it if
-      // we have to
-      findMaxTickInJournals(collection->path());
+      if (!wasCleanShutdown) {
+        // iterating markers may be time-consuming. we'll only do it if
+        // we have to
+        findMaxTickInJournals(collection->path());
+      }
+
+      LOG(DEBUG) << "added document collection '" << collection->name() << "'";
     }
 
-    LOG(DEBUG) << "added document collection '" << collection->name() << "'";
+    // start cleanup thread
+    startCleanup(vocbase.get());
+      
+    return vocbase.release();
+  } catch (std::exception const& ex) {
+    LOG(ERR) << "error while opening database: " << ex.what();
+    throw;
+  } catch (...) {
+    LOG(ERR) << "error while opening database: unknown exception";
+    throw;
   }
-
-  // start cleanup thread
-  startCleanup(vocbase.get());
-    
-  return vocbase.release();
 }
       
 /// @brief physically erases the database directory
@@ -1336,7 +1330,7 @@ void MMFilesEngine::saveCollectionInfo(TRI_vocbase_t* vocbase,
   std::string const filename = collectionParametersFilename(vocbase->id(), id);
 
   VPackBuilder builder;
-  parameters->toVelocyPack(builder);
+  parameters->toVelocyPack(builder, false);
 
   TRI_ASSERT(id != 0);
 
@@ -1350,10 +1344,7 @@ void MMFilesEngine::saveCollectionInfo(TRI_vocbase_t* vocbase,
   }
 }
 
-
-
-VocbaseCollectionInfo MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase,
-    std::string const& collectionName, std::string const& path, bool versionWarning) {
+LogicalCollection* MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase, std::string const& path) {
   // find parameter file
   std::string filename =
       arangodb::basics::FileUtils::buildFilename(path, parametersFilename());
@@ -1374,8 +1365,6 @@ VocbaseCollectionInfo MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
   }
 
-  
-
   if (filename.substr(filename.size() - 4, 4) == ".tmp") {
     // we got a tmp file. Now try saving the original file
     arangodb::basics::VelocyPackHelper::velocyPackToFile(filename.substr(0, filename.size() - 4),
@@ -1391,27 +1380,16 @@ VocbaseCollectionInfo MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase,
     }
   }
 
-  VPackBuilder bx;
-  bx.openObject();
-  bx.add("isSystem", VPackValue(isSystemValue));
-  bx.add("path", VPackValue(path));
-  bx.close();
-  VPackSlice isSystem = bx.slice();
+  VPackBuilder patch;
+  patch.openObject();
+  patch.add("isSystem", VPackValue(isSystemValue));
+  patch.add("path", VPackValue(path));
+  patch.close();
+  VPackSlice isSystem = patch.slice();
   VPackBuilder b2 = VPackCollection::merge(slice, isSystem, false);
   slice = b2.slice();
 
-  VocbaseCollectionInfo info(vocbase, collectionName, slice, isSystemValue);
-  
-  // warn about wrong version of the collection
-  if (versionWarning && info.version() < VocbaseCollectionInfo::version()) {
-    if (info.name()[0] != '\0') {
-      // only warn if the collection version is older than expected, and if it's
-      // not a shape collection
-      LOG(WARN) << "collection '" << info.name()
-                << "' has an old version and needs to be upgraded.";
-    }
-  }
-  return info;
+  return new LogicalCollection(vocbase, slice);
 }
 
 /// @brief remove data of expired compaction blockers
@@ -1983,7 +1961,7 @@ int MMFilesEngine::transferMarkersWorker(LogicalCollection* collection,
   // used only for crash / recovery tests
   int numMarkers = 0;
 
-  TRI_voc_tick_t const minTransferTick = collection->_collection->_tickMax;
+  TRI_voc_tick_t const minTransferTick = collection->maxTick();
   TRI_ASSERT(!operations.empty());
 
   for (auto it2 = operations.begin(); it2 != operations.end(); ++it2) {
@@ -2072,7 +2050,7 @@ char* MMFilesEngine::nextFreeMarkerPosition(
     // we only need the ditches when we are outside the recovery
     // the compactor will not run during recovery
     auto ditch =
-        collection->_collection->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
+        collection->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
 
     if (ditch == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -2102,8 +2080,8 @@ void MMFilesEngine::finishMarker(char const* walPosition,
   // update ticks
   TRI_UpdateTicksDatafile(datafile, marker);
 
-  TRI_ASSERT(collection->_collection->_tickMax < tick);
-  collection->_collection->_tickMax = tick;
+  TRI_ASSERT(collection->maxTick() < tick);
+  collection->maxTick(tick);
 
   cache->operations->emplace_back(wal::CollectorOperation(
       datafilePosition, marker->getSize(), walPosition, cache->lastFid));

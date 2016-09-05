@@ -64,8 +64,6 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-uint32_t const DatabaseFeature::DefaultIndexBuckets = 8;
-
 DatabaseFeature* DatabaseFeature::DATABASE = nullptr;
 
 /// @brief database manager thread main loop

@@ -33,7 +33,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "VocBase/collection.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/LogicalCollection.h"
 #include "Wal/LogfileManager.h"
@@ -253,7 +252,7 @@ int RecoverState::executeSingleOperation(
   int res;
   arangodb::LogicalCollection* collection = useCollection(vocbase, collectionId, res);
 
-  if (collection == nullptr || collection->_collection == nullptr) {
+  if (collection == nullptr) {
     if (res == TRI_ERROR_ARANGO_CORRUPTED_COLLECTION) {
       return res;
     }
@@ -261,8 +260,8 @@ int RecoverState::executeSingleOperation(
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  TRI_voc_tick_t tickMax = collection->_collection->_tickMax;
-  if (marker->getTick() <= tickMax) {
+  TRI_voc_tick_t maxTick = collection->maxTick();
+  if (marker->getTick() <= maxTick) {
     // already transferred this marker
     return TRI_ERROR_NO_ERROR;
   }

@@ -27,7 +27,6 @@
 #include "Utils/Transaction.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/Ditch.h"
-#include "VocBase/collection.h"
 #include "VocBase/LogicalCollection.h"
 #include "Wal/LogfileManager.h"
 
@@ -135,10 +134,8 @@ DocumentDitch* TransactionContext::orderDitch(LogicalCollection* collection) {
     return (*it).second;
   }
 
-  TRI_collection_t* document = collection->_collection;
-  TRI_ASSERT(document != nullptr);
   // this method will not throw, but may return a nullptr
-  auto ditch = document->ditches()->createDocumentDitch(true, __FILE__, __LINE__);
+  auto ditch = collection->ditches()->createDocumentDitch(true, __FILE__, __LINE__);
 
   if (ditch != nullptr) {
     try {

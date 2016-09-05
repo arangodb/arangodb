@@ -27,16 +27,12 @@
 
 #include "Scheduler/Task.h"
 
+#include "Basics/StringBuffer.h"
 #include "Basics/Thread.h"
+#include "Basics/socket-utils.h"
 #include "Statistics/StatisticsAgent.h"
 
-#include "Basics/socket-utils.h"
-
 namespace arangodb {
-namespace basics {
-class StringBuffer;
-}
-
 namespace rest {
 
 class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
@@ -103,13 +99,12 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
   TRI_socket_t _commSocket;
   ConnectionInfo _connectionInfo;
 
-  basics::StringBuffer* _readBuffer = nullptr;
+  basics::StringBuffer _readBuffer;
 
   basics::StringBuffer* _writeBuffer = nullptr;
   TRI_request_statistics_t* _writeBufferStatistics = nullptr;
 
-  std::deque<basics::StringBuffer*> _writeBuffers;
-  std::deque<TRI_request_statistics_t*> _writeBuffersStats;
+  std::deque<std::pair<basics::StringBuffer*, TRI_request_statistics_t*>> _writeBuffers;
 
   EventToken _keepAliveWatcher = nullptr;
   EventToken _readWatcher = nullptr;

@@ -40,7 +40,6 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/MasterPointer.h"
-#include "VocBase/collection.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

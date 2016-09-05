@@ -33,7 +33,6 @@
 
 #include <velocypack/Buffer.h>
 
-struct TRI_collection_t;
 struct TRI_datafile_t;
 struct TRI_df_marker_t;
 
@@ -52,6 +51,7 @@ typedef std::string CollectionID;  // ID of a collection
 typedef std::string ShardID;       // ID of a shard
 typedef std::unordered_map<ShardID, std::vector<ServerID>> ShardMap;
 
+class Ditches;
 class FollowerInfo;
 class Index;
 class KeyGenerator;
@@ -62,6 +62,8 @@ class StringRef;
 class Transaction;
 
 class LogicalCollection {
+  friend struct ::TRI_vocbase_t;
+
  public:
   LogicalCollection(TRI_vocbase_t*, arangodb::velocypack::Slice);
 
@@ -72,6 +74,9 @@ class LogicalCollection {
   LogicalCollection(LogicalCollection const&) = delete;
   LogicalCollection& operator=(LogicalCollection const&) = delete;
   LogicalCollection() = delete;
+  
+  /// @brief hard-coded minimum version number for collections
+  static constexpr uint32_t minimumVersion() { return 5; } 
 
   /// @brief determine whether a collection name is a system collection name
   static inline bool IsSystemName(std::string const& name) {
@@ -82,9 +87,36 @@ class LogicalCollection {
   }
 
   static bool IsAllowedName(arangodb::velocypack::Slice parameters);
+  static bool IsAllowedName(bool isSystem, std::string const& name);
+
+  // TODO: MOVE TO PHYSICAL?  
+  bool isFullyCollected();
+  int64_t uncollectedLogfileEntries() const { return _uncollectedLogfileEntries.load(); }
+  
+  void increaseUncollectedLogfileEntries(int64_t value) {
+    _uncollectedLogfileEntries += value;
+  }
+
+  void decreaseUncollectedLogfileEntries(int64_t value) {
+    _uncollectedLogfileEntries -= value;
+    if (_uncollectedLogfileEntries < 0) {
+      _uncollectedLogfileEntries = 0;
+    }
+  }
+
+  void setNextCompactionStartIndex(size_t);
+  size_t getNextCompactionStartIndex();
+  void setCompactionStatus(char const*);
+  double lastCompactionStamp() const { return _lastCompactionStamp; }
+  void lastCompactionStamp(double value) { _lastCompactionStamp = value; }
+  
 
   // SECTION: Meta Information
-  uint32_t version() const;
+  uint32_t version() const { 
+    return _version; 
+  }
+
+  uint32_t internalVersion() const;
 
   TRI_voc_cid_t cid() const;
   std::string cid_as_string() const;
@@ -104,11 +136,27 @@ class LogicalCollection {
   TRI_vocbase_col_status_e status();
   TRI_vocbase_col_status_e getStatusLocked();
 
+  void executeWhileStatusLocked(std::function<void()> const& callback);
+  bool tryExecuteWhileStatusLocked(std::function<void()> const& callback);
+
   /// @brief try to fetch the collection status under a lock
   /// the boolean value will be set to true if the lock could be acquired
   /// if the boolean is false, the return value is always TRI_VOC_COL_STATUS_CORRUPTED 
   TRI_vocbase_col_status_e tryFetchStatus(bool&);
   std::string statusString();
+
+  TRI_voc_tick_t maxTick() const { return _maxTick; }
+  void maxTick(TRI_voc_tick_t value) { _maxTick = value; }
+
+  uint64_t numberDocuments() const { return _numberDocuments; }
+
+  // TODO: REMOVE THESE OR MAKE PRIVATE
+  void incNumberDocuments() { ++_numberDocuments; }
+
+  void decNumberDocuments() { 
+    TRI_ASSERT(_numberDocuments > 0); 
+    --_numberDocuments; 
+  }
 
   // TODO this should be part of physical collection!
   size_t journalSize() const;
@@ -125,8 +173,13 @@ class LogicalCollection {
   void waitForSync(bool value) { _waitForSync = value; }
 
   std::unique_ptr<arangodb::FollowerInfo> const& followers() const;
-
+  
   void setDeleted(bool);
+
+  Ditches* ditches() const {
+    return getPhysical()->ditches();
+  }
+
   void setRevision(TRI_voc_rid_t, bool);
 
   // SECTION: Key Options
@@ -157,7 +210,7 @@ class LogicalCollection {
   bool usesDefaultShardKeys() const;
   std::vector<std::string> const& shardKeys() const;
   std::shared_ptr<ShardMap> shardIds() const;
-
+  
   // SECTION: Modification Functions
   int rename(std::string const&);
   void drop();
@@ -165,7 +218,7 @@ class LogicalCollection {
   void setStatus(TRI_vocbase_col_status_e);
 
   // SECTION: Serialisation
-  void toVelocyPack(arangodb::velocypack::Builder&) const;
+  void toVelocyPack(arangodb::velocypack::Builder&, bool withPath) const;
 
   /// @brief transform the information for this collection to velocypack
   ///        The builder has to be an opened Type::Object
@@ -177,7 +230,6 @@ class LogicalCollection {
   void updateCount(size_t);
 
   // Update this collection.
-  void increaseVersion();
   int update(arangodb::velocypack::Slice const&, bool);
 
   /// @brief return the figures for a collection
@@ -396,7 +448,7 @@ class LogicalCollection {
       std::string const& rev,
       arangodb::velocypack::Builder& builder);
 
-
+  void increaseInternalVersion();
 
  private:
   // SECTION: Private variables
@@ -439,6 +491,8 @@ class LogicalCollection {
   // TODO Really VPack?
   std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const>
       _keyOptions;  // options for key creation
+  
+  uint32_t _version;
 
   // SECTION: Indexes
   uint32_t _indexBuckets;
@@ -448,7 +502,6 @@ class LogicalCollection {
   // SECTION: Replication
   int const _replicationFactor;
 
- private:
   // SECTION: Sharding
   int const _numberOfShards;
   bool const _allowUserKeys;
@@ -474,23 +527,27 @@ class LogicalCollection {
   // whether or not secondary indexes should be filled
   bool _useSecondaryIndexes;
 
-  // FIXME Both of them are not initialized properly!
- public:
-  // FIXME Must be private. OpenIterator uses this.
-  int64_t _numberDocuments;
- private:
+  uint64_t _numberDocuments;
+
+  TRI_voc_tick_t _maxTick;
+
   std::unique_ptr<arangodb::KeyGenerator> _keyGenerator;
-
-  // TODO REMOVE ME!
- public:
-  TRI_collection_t* _collection;
-
+  
   mutable arangodb::basics::ReadWriteLock
       _lock;  // lock protecting the status and name
+ 
   mutable arangodb::basics::ReadWriteLock
       _idxLock;  // lock protecting the indexes
+
   mutable arangodb::basics::ReadWriteLock
       _infoLock;  // lock protecting the info
+  
+  arangodb::Mutex _compactionStatusLock;
+  size_t _nextCompactionStartIndex;
+  char const* _lastCompactionStatus;
+  double _lastCompactionStamp;
+  
+  std::atomic<int64_t> _uncollectedLogfileEntries;
 };
 
 }  // namespace arangodb

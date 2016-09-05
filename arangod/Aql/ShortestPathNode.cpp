@@ -31,6 +31,9 @@
 #include "Utils/CollectionNameResolver.h"
 #include "V8Server/V8Traverser.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 

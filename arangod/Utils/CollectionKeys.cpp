@@ -31,8 +31,8 @@
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/Ditch.h"
-#include "VocBase/collection.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/MasterPointer.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 #include "Wal/LogfileManager.h"
@@ -68,7 +68,6 @@ CollectionKeys::CollectionKeys(TRI_vocbase_t* vocbase, std::string const& name,
 
   _collection = _guard->collection();
   TRI_ASSERT(_collection != nullptr);
-  TRI_ASSERT(_collection->_collection);
 }
 
 CollectionKeys::~CollectionKeys() {
@@ -96,7 +95,7 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->preventCompaction(_collection->vocbase(), [this](TRI_vocbase_t* vocbase) {
     // create a ditch under the compaction lock
-    _ditch = _collection->_collection->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
+    _ditch = _collection->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
   });
 
   // now we either have a ditch or not

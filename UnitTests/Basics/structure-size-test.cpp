@@ -30,7 +30,6 @@
 #define BOOST_TEST_INCLUDED
 #include <boost/test/unit_test.hpp>
 
-#include "arangod/VocBase/collection.h"
 #include "arangod/VocBase/datafile.h"
 #include "arangod/Wal/Marker.h"
 

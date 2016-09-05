@@ -49,7 +49,6 @@
 #include "Utils/CollectionReadLocker.h"
 #include "Utils/CollectionWriteLocker.h"
 #include "VocBase/PhysicalCollection.h"
-#include "VocBase/collection.h"
 #include "VocBase/IndexPoolFeature.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ticks.h"
@@ -66,6 +65,7 @@
 using namespace arangodb;
 using Helper = arangodb::basics::VelocyPackHelper;
 
+/// forward
 int TRI_AddOperationTransaction(TRI_transaction_t*,
                                 arangodb::wal::DocumentOperation&, bool&);
 
@@ -311,6 +311,7 @@ LogicalCollection::LogicalCollection(
       _waitForSync(other->waitForSync()),
       _journalSize(other->journalSize()),
       _keyOptions(other->_keyOptions),
+      _version(other->_version),
       _indexBuckets(other->indexBuckets()),
       _indexes(),
       _replicationFactor(other->replicationFactor()),
@@ -324,8 +325,12 @@ LogicalCollection::LogicalCollection(
       _masterPointers(),
       _useSecondaryIndexes(true),
       _numberDocuments(0),
-      _collection(nullptr),
-      _lock() {
+      _maxTick(0),
+      _keyGenerator(),
+      _nextCompactionStartIndex(0),
+      _lastCompactionStatus(nullptr),
+      _lastCompactionStamp(0.0),
+      _uncollectedLogfileEntries(0) {
         
   _keyGenerator.reset(KeyGenerator::factory(other->keyOptions()));
   
@@ -341,6 +346,8 @@ LogicalCollection::LogicalCollection(
   for (auto const& idx : other->_indexes) {
     _indexes.emplace_back(idx);
   }
+  
+  setCompactionStatus("compaction not yet started");
 }
 
 // @brief Constructor used in coordinator case.
@@ -368,7 +375,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
           ReadNumericValue<TRI_voc_size_t>(info, "journalSize",
                                            TRI_JOURNAL_DEFAULT_SIZE))),
       _keyOptions(CopySliceValue(info, "keyOptions")),
-      _indexBuckets(ReadNumericValue<uint32_t>(info, "indexBuckets", DatabaseFeature::DefaultIndexBuckets)),
+      _version(ReadNumericValue<uint32_t>(info, "version", minimumVersion())),
+      _indexBuckets(ReadNumericValue<uint32_t>(info, "indexBuckets", DatabaseFeature::defaultIndexBuckets())),
       _replicationFactor(ReadNumericValue<int>(info, "replicationFactor", 1)),
       _numberOfShards(GetObjectLength(info, "shards", 1)),
       _allowUserKeys(ReadBooleanValue(info, "allowUserKeys", true)),
@@ -381,8 +389,24 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
       _masterPointers(),
       _useSecondaryIndexes(true),
       _numberDocuments(0),
-      _collection(nullptr),
-      _lock() {
+      _maxTick(0),
+      _keyGenerator(),
+      _nextCompactionStartIndex(0),
+      _lastCompactionStatus(nullptr),
+      _lastCompactionStamp(0.0),
+      _uncollectedLogfileEntries(0) {
+ 
+  if (!IsAllowedName(info)) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+  }
+  
+  if (_version < minimumVersion()) { 
+    // collection is too "old"
+    std::string errorMsg(std::string("collection '") + _name + "' has a too old version. Please start the server with the --database.auto-upgrade option.");
+
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, errorMsg);
+  }
+
   if (_isVolatile && _waitForSync) {
     // Illegal collection configuration
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -456,11 +480,12 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
   if (ServerState::instance()->isDBServer()) {
     _followers.reset(new FollowerInfo(this));
   }
+  
+  setCompactionStatus("compaction not yet started");
 }
 
 LogicalCollection::~LogicalCollection() {
   delete _physical;
-  delete _collection;
 }
 
 bool LogicalCollection::IsAllowedName(VPackSlice parameters) {
@@ -504,13 +529,72 @@ bool LogicalCollection::IsAllowedName(VPackSlice parameters) {
   return true;
 }
 
+/// @brief checks if a collection name is allowed
+/// Returns true if the name is allowed and false otherwise
+bool LogicalCollection::IsAllowedName(bool allowSystem, std::string const& name) {
+  bool ok;
+  char const* ptr;
+  size_t length = 0;
+
+  // check allow characters: must start with letter or underscore if system is
+  // allowed
+  for (ptr = name.c_str(); *ptr; ++ptr) {
+    if (length == 0) {
+      if (allowSystem) {
+        ok = (*ptr == '_') || ('a' <= *ptr && *ptr <= 'z') ||
+             ('A' <= *ptr && *ptr <= 'Z');
+      } else {
+        ok = ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
+      }
+    } else {
+      ok = (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9') ||
+           ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
+    }
+
+    if (!ok) {
+      return false;
+    }
+
+    ++length;
+  }
+
+  // invalid name length
+  if (length == 0 || length > TRI_COL_NAME_LENGTH) {
+    return false;
+  }
+
+  return true;
+}
+
+/// @brief whether or not a collection is fully collected
+bool LogicalCollection::isFullyCollected() {
+  int64_t uncollected = _uncollectedLogfileEntries.load();
+
+  return (uncollected == 0);
+}
+
+void LogicalCollection::setNextCompactionStartIndex(size_t index) {
+  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
+  _nextCompactionStartIndex = index;
+}
+
+size_t LogicalCollection::getNextCompactionStartIndex() {
+  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
+  return _nextCompactionStartIndex;
+}
+
+void LogicalCollection::setCompactionStatus(char const* reason) {
+  TRI_ASSERT(reason != nullptr);
+  
+  MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
+  _lastCompactionStatus = reason;
+}
+
 size_t LogicalCollection::journalSize() const {
   return _journalSize;
 }
 
-// SECTION: Meta Information
-
-uint32_t LogicalCollection::version() const {
+uint32_t LogicalCollection::internalVersion() const {
   return _internalVersion;
 }
 
@@ -552,6 +636,21 @@ TRI_vocbase_col_status_e LogicalCollection::status() {
 TRI_vocbase_col_status_e LogicalCollection::getStatusLocked() {
   READ_LOCKER(readLocker, _lock);
   return _status;
+}
+  
+void LogicalCollection::executeWhileStatusLocked(std::function<void()> const& callback) {
+  READ_LOCKER(readLocker, _lock);
+  callback();
+}
+
+bool LogicalCollection::tryExecuteWhileStatusLocked(std::function<void()> const& callback) {
+  TRY_READ_LOCKER(readLocker, _lock);
+  if (!readLocker.isLocked()) {
+    return false;
+  }
+
+  callback();
+  return true;
 }
 
 TRI_vocbase_col_status_e LogicalCollection::tryFetchStatus(bool& didFetch) {
@@ -773,7 +872,7 @@ int LogicalCollection::rename(std::string const& newName) {
   }
 
   // CHECK if this ordering is okay. Before change the version was increased after swapping in vocbase mapping.
-  increaseVersion();
+  increaseInternalVersion();
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -796,9 +895,6 @@ int LogicalCollection::close() {
 
   _numberDocuments = 0;
 
-  delete _collection;
-  _collection = nullptr;
-
   return getPhysical()->close();
 }
 
@@ -813,15 +909,11 @@ void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
   _status = status;
 
   if (status == TRI_VOC_COL_STATUS_LOADED) {
-    _internalVersion = 0;
-  } else if (status == TRI_VOC_COL_STATUS_UNLOADED) {
-    // TODO: do we need to delete _collection here?
-    delete _collection;
-    _collection = nullptr;
-  }
+    increaseInternalVersion(); 
+  } 
 }
 
-void LogicalCollection::toVelocyPack(VPackBuilder& result) const {
+void LogicalCollection::toVelocyPack(VPackBuilder& result, bool withPath) const {
   result.openObject();
   result.add("id", VPackValue(std::to_string(_cid)));
   result.add("cid", VPackValue(std::to_string(_cid))); // export cid for compatibility, too
@@ -834,9 +926,14 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result) const {
   result.add("isVolatile", VPackValue(_isVolatile));
   result.add("waitForSync", VPackValue(_waitForSync));
   result.add("journalSize", VPackValue(_journalSize));
-  result.add("version", VPackValue(5)); // hard-coded version number, here for compatibility only
+  result.add("version", VPackValue(_version)); 
+  
   if (_keyOptions != nullptr) {
     result.add("keyOptions", VPackSlice(_keyOptions->data()));
+  }
+
+  if (withPath) {
+    result.add("path", VPackValue(_path));
   }
 
   result.add("indexBuckets", VPackValue(_indexBuckets));
@@ -875,7 +972,7 @@ TRI_vocbase_t* LogicalCollection::vocbase() const {
   return _vocbase;
 }
 
-void LogicalCollection::increaseVersion() {
+void LogicalCollection::increaseInternalVersion() {
   ++_internalVersion;
 }
 
@@ -953,17 +1050,13 @@ std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() {
   if (ServerState::instance()->isCoordinator()) {
     builder->openObject();
     builder->close();
-
     int res = figuresOnCoordinator(dbName(), cid_as_string(), builder); 
     
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
   } else {
-    TRI_ASSERT(_collection != nullptr);
-    // add figures from TRI_collection_t
     builder->openObject();
-    _collection->figures(builder);
 
       // add index information
     size_t sizeIndexes = _masterPointers.memory();
@@ -978,6 +1071,34 @@ std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() {
     builder->add("size", VPackValue(sizeIndexes));
     builder->close(); // indexes
 
+    builder->add("lastTick", VPackValue(_maxTick));
+    builder->add("uncollectedLogfileEntries", VPackValue(_uncollectedLogfileEntries));
+
+    // fills in compaction status
+    char const* lastCompactionStatus = "-";
+    char lastCompactionStampString[21];
+    lastCompactionStampString[0] = '-';
+    lastCompactionStampString[1] = '\0';
+    
+    double lastCompactionStamp;
+
+    {
+      MUTEX_LOCKER(mutexLocker, _compactionStatusLock);
+      lastCompactionStatus = _lastCompactionStatus;
+      lastCompactionStamp = _lastCompactionStamp;
+    }
+
+    if (lastCompactionStatus != nullptr) {
+      struct tm tb;
+      time_t tt = static_cast<time_t>(lastCompactionStamp);
+      TRI_gmtime(tt, &tb);
+      strftime(&lastCompactionStampString[0], sizeof(lastCompactionStampString), "%Y-%m-%dT%H:%M:%SZ", &tb);
+    }
+  
+    builder->add("compactionStatus", VPackValue(VPackValueType::Object));
+    builder->add("message", VPackValue(lastCompactionStatus));
+    builder->add("time", VPackValue(&lastCompactionStampString[0]));
+    builder->close(); // compactionStatus
 
     // add engine-specific figures
     getPhysical()->figures(builder);
@@ -2079,6 +2200,7 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
     }
 
     operation.indexed();
+    TRI_ASSERT(_numberDocuments > 0);
     _numberDocuments--;
 
     TRI_IF_FAILURE("RemoveDocumentNoOperation") { return TRI_ERROR_DEBUG; }

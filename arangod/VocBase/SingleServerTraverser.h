@@ -32,6 +32,7 @@
 namespace arangodb {
 
 class EdgeIndex;
+class LogicalCollection;
 
 namespace traverser {
 
@@ -265,8 +266,6 @@ public:
   bool edgeMatchesConditions(arangodb::velocypack::Slice, size_t);
 
   bool vertexMatchesConditions(std::string const&, size_t);
-
-  std::vector<TRI_collection_t*> _edgeCols;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Outer top level transaction

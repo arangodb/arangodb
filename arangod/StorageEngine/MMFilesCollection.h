@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "StorageEngine/MMFilesDatafileStatistics.h"
+#include "VocBase/Ditch.h"
 #include "VocBase/PhysicalCollection.h"
 
 struct TRI_datafile_t;
@@ -117,6 +118,10 @@ class MMFilesCollection final : public PhysicalCollection {
   void lockForCompaction() override;
   bool tryLockForCompaction() override;
   void finishCompaction() override;
+  
+  void open(bool ignoreErrors) override;
+  
+  Ditches* ditches() const override { return &_ditches; }
 
  private:
   /// @brief creates a datafile
@@ -135,6 +140,8 @@ class MMFilesCollection final : public PhysicalCollection {
                               std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb);
 
  private:
+  mutable arangodb::Ditches _ditches;
+
   arangodb::basics::ReadWriteLock _filesLock;
   std::vector<TRI_datafile_t*> _datafiles;   // all datafiles
   std::vector<TRI_datafile_t*> _journals;    // all journals

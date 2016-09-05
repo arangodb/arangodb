@@ -24,14 +24,16 @@
 #include "v8-collection.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
-#include "Basics/Timers.h"
-#include "Basics/Utf8Helper.h"
 #include "Basics/conversions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringBuffer.h"
+#include "Basics/Timers.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/PrimaryIndex.h"
 #include "RestServer/DatabaseFeature.h"
@@ -1229,7 +1231,7 @@ static void JS_PropertiesVocbaseCol(
 
       try {
         VPackBuilder infoBuilder;
-        collection->toVelocyPack(infoBuilder);
+        collection->toVelocyPack(infoBuilder, false);
 
         // now log the property changes
         res = TRI_ERROR_NO_ERROR;
@@ -2373,11 +2375,7 @@ static void JS_TypeVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   // fallthru intentional
 
-  TRI_col_type_e type;
-  {
-    READ_LOCKER(readLocker, collection->_lock);
-    type = (TRI_col_type_e)collection->type();
-  }
+  TRI_col_type_e type = collection->type();
 
   TRI_V8_RETURN(v8::Number::New(isolate, (int)type));
   TRI_V8_TRY_CATCH_END
@@ -2436,7 +2434,7 @@ static void JS_VersionVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  TRI_V8_RETURN(v8::Number::New(isolate, (int) VocbaseCollectionInfo::version()));
+  TRI_V8_RETURN(v8::Number::New(isolate, collection->version()));
   TRI_V8_TRY_CATCH_END
 }
 

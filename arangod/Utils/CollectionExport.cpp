@@ -30,7 +30,6 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/Ditch.h"
-#include "VocBase/collection.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -51,8 +50,7 @@ CollectionExport::CollectionExport(TRI_vocbase_t* vocbase,
   _guard = new arangodb::CollectionGuard(vocbase, _name.c_str(), false);
 
   _collection = _guard->collection();
-  _document = _collection->_collection;
-  TRI_ASSERT(_document != nullptr);
+  TRI_ASSERT(_collection != nullptr);
 }
 
 CollectionExport::~CollectionExport() {
@@ -72,7 +70,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
   // try to acquire the exclusive lock on the compaction
   engine->preventCompaction(_collection->vocbase(), [this](TRI_vocbase_t* vocbase) {
     // create a ditch under the compaction lock
-    _ditch = _document->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
+    _ditch = _collection->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
   });
 
   // now we either have a ditch or not
@@ -90,7 +88,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
     uint64_t const maxTries = maxWaitTime / SleepTime;
 
     while (++tries < maxTries) {
-      if (_document->isFullyCollected()) {
+      if (_collection->isFullyCollected()) {
         break;
       }
       usleep(SleepTime);

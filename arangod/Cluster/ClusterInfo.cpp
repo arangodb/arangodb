@@ -40,7 +40,6 @@
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
 #include "RestServer/DatabaseFeature.h"
-#include "VocBase/collection.h"
 #include "VocBase/LogicalCollection.h"
 
 #ifdef _WIN32
@@ -1072,7 +1071,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   transaction.operations.push_back(createCollection);
   transaction.operations.push_back(increaseVersion);
   transaction.preconditions.push_back(precondition);
-  
+
   AgencyCommResult res = ac.sendTransactionWithFailover(transaction);
 
   if (!res.successful()) {
@@ -1451,7 +1450,7 @@ int ClusterInfo::ensureIndexCoordinator(
     }
     
     // now create a new index
-    c->toVelocyPack(*collectionBuilder);
+    c->toVelocyPack(*collectionBuilder, false);
   }
   VPackSlice const collectionSlice = collectionBuilder->slice();
   
@@ -2025,6 +2024,8 @@ void ClusterInfo::loadCurrentCoordinators() {
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::string const prefixCurrentDBServers = "Current/DBServers";
+static std::string const prefixTargetCleaned = "Target/CleanedOutServers";
+static std::string const prefixTargetFailed = "Target/FailedServers";
 
 void ClusterInfo::loadCurrentDBServers() {
   uint64_t storedVersion = _DBServersProt.version;
@@ -2036,17 +2037,50 @@ void ClusterInfo::loadCurrentDBServers() {
 
   // Now contact the agency:
   AgencyCommResult result = _agency.getValues(prefixCurrentDBServers);
+  AgencyCommResult failed = _agency.getValues(prefixTargetFailed);
+  AgencyCommResult cleaned = _agency.getValues(prefixTargetCleaned);
 
   if (result.successful()) {
 
     velocypack::Slice currentDBServers =
       result.slice()[0].get(std::vector<std::string>(
             {AgencyComm::prefix(), "Current", "DBServers"}));
+    velocypack::Slice failedDBServers =
+      failed.slice()[0].get(std::vector<std::string>(
+            {AgencyComm::prefix(), "Target", "FailedServers"}));
+    velocypack::Slice cleanedDBServers =
+      cleaned.slice()[0].get(std::vector<std::string>(
+            {AgencyComm::prefix(), "Target", "CleanedOutServers"}));
 
     if (currentDBServers.isObject()) {
       decltype(_DBServers) newDBServers;
 
       for (auto const& dbserver : VPackObjectIterator(currentDBServers)) {
+        if (failedDBServers.isArray()) {
+          bool found = false;
+          for (auto const& failedServer : VPackArrayIterator(failedDBServers)) {
+            if (dbserver.key == failedServer) {
+              found = true;
+              continue;
+            }
+          }
+          if (found) {
+            continue;
+          }
+        }
+        if (cleanedDBServers.isArray()) {
+          bool found = false;
+          for (auto const& cleanedServer : VPackArrayIterator(cleanedDBServers)) {
+            if (dbserver.key == cleanedServer) {
+              found = true;
+              continue;
+            }
+          }
+          if (found) {
+            continue;
+          }
+        }
+
         newDBServers.emplace(
           std::make_pair(dbserver.key.copyString(), dbserver.value.copyString()));
       }

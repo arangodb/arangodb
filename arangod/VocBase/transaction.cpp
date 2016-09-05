@@ -26,7 +26,6 @@
 #include "Logger/Logger.h"
 #include "Basics/Exceptions.h"
 #include "VocBase/DatafileHelper.h"
-#include "VocBase/collection.h"
 #include "VocBase/ticks.h"
 #include "Wal/DocumentOperation.h"
 #include "Wal/LogfileManager.h"
@@ -185,7 +184,6 @@ static void FreeOperations(TRI_transaction_t* trx) {
     }
 
     arangodb::LogicalCollection* collection = trxCollection->_collection;
-    TRI_collection_t* document = collection->_collection;
 
     if (mustRollback) {
       // revert all operations
@@ -236,8 +234,7 @@ static void FreeOperations(TRI_transaction_t* trx) {
       collection->setRevision(trxCollection->_originalRevision, true);
     } else if (!collection->isVolatile() && !isSingleOperation) {
       // only count logfileEntries if the collection is durable
-      document->_uncollectedLogfileEntries +=
-          trxCollection->_operations->size();
+      collection->increaseUncollectedLogfileEntries(trxCollection->_operations->size());
     }
 
     delete trxCollection->_operations;
@@ -364,7 +361,6 @@ static int UnlockCollection(TRI_transaction_collection_t* trxCollection,
     }
   }
 
-  TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
   TRI_ASSERT(IsLocked(trxCollection));
 
   if (trxCollection->_nestingLevel < nestingLevel) {
@@ -428,8 +424,7 @@ static int UseCollections(TRI_transaction_t* trx, int nestingLevel) {
         trxCollection->_collection = trx->_vocbase->lookupCollection(trxCollection->_cid);
       }
 
-      if (trxCollection->_collection == nullptr ||
-          trxCollection->_collection->_collection == nullptr) {
+      if (trxCollection->_collection == nullptr) {
         // something went wrong
         return TRI_errno();
       }
@@ -447,7 +442,6 @@ static int UseCollections(TRI_transaction_t* trx, int nestingLevel) {
     }
 
     TRI_ASSERT(trxCollection->_collection != nullptr);
-    TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
 
     if (nestingLevel == 0 &&
         trxCollection->_accessType == TRI_TRANSACTION_WRITE) {
@@ -1074,8 +1068,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     arangodb::aql::QueryCache::instance()->invalidate(
         trx->_vocbase, collection->name());
 
-// FIXME
-    ++(collection->_collection->_uncollectedLogfileEntries);
+    collection->increaseUncollectedLogfileEntries(1);
 
     if (operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
         operation.type == TRI_VOC_DOCUMENT_OPERATION_REPLACE ||

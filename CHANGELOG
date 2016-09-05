@@ -1,6 +1,12 @@
 devel
 -----
 
+* renamed `maximalSize` attribute in parameter.json files to `journalSize`
+
+  The `maximalSize` attribute will still be picked up from collections that
+  have not been adjusted. Responses from the replication API will now also use
+  `journalSize` instead of `maximalSize`.
+
 * added --cluster.system-replication-factor in order to adjust the
   replication factor for new system collections
 

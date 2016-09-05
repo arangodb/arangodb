@@ -26,32 +26,332 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/memory-map.h"
+#include "Indexes/PrimaryIndex.h"
 #include "Logger/Logger.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "Utils/StandaloneTransactionContext.h"
+#include "Utils/Transaction.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "VocBase/DatafileHelper.h"
+#include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/collection.h"
 #include "VocBase/datafile.h"
+#include "Wal/LogfileManager.h"
 
 using namespace arangodb;
 
 namespace {
 
-/// @brief ensures that an error code is set in all required places
-static void EnsureErrorCode(int code) {
-  if (code == TRI_ERROR_NO_ERROR) {
-    // must have an error code
-    code = TRI_ERROR_INTERNAL;
+/// @brief state during opening of a collection
+struct OpenIteratorState {
+  LogicalCollection* _collection;
+  TRI_voc_tid_t _tid;
+  TRI_voc_fid_t _fid;
+  std::unordered_map<TRI_voc_fid_t, DatafileStatisticsContainer*> _stats;
+  DatafileStatisticsContainer* _dfi;
+  arangodb::Transaction* _trx;
+  uint64_t _deletions;
+  uint64_t _documents;
+  int64_t _initialCount;
+
+  explicit OpenIteratorState(LogicalCollection* collection) 
+      : _collection(collection),
+        _tid(0),
+        _fid(0),
+        _stats(),
+        _dfi(nullptr),
+        _trx(nullptr),
+        _deletions(0),
+        _documents(0),
+        _initialCount(-1) {
+    TRI_ASSERT(collection != nullptr);
   }
 
-  TRI_set_errno(code);
-  errno = code;
+  ~OpenIteratorState() {
+    for (auto& it : _stats) {
+      delete it.second;
+    }
+  }
+};
+
+/// @brief find a statistics container for a given file id
+static DatafileStatisticsContainer* FindDatafileStats(
+    OpenIteratorState* state, TRI_voc_fid_t fid) {
+  auto it = state->_stats.find(fid);
+
+  if (it != state->_stats.end()) {
+    return (*it).second;
+  }
+
+  auto stats = std::make_unique<DatafileStatisticsContainer>();
+  state->_stats.emplace(fid, stats.get());
+  return stats.release();
+}
+
+/// @brief process a document (or edge) marker when opening a collection
+static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
+                                            TRI_datafile_t* datafile,
+                                            OpenIteratorState* state) {
+  auto const fid = datafile->fid();
+  LogicalCollection* collection = state->_collection;
+  arangodb::Transaction* trx = state->_trx;
+
+  VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+  VPackSlice keySlice;
+  TRI_voc_rid_t revisionId;
+
+  Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
+ 
+  collection->setRevision(revisionId, false);
+  VPackValueLength length;
+  char const* p = keySlice.getString(length);
+  collection->keyGenerator()->track(p, length);
+
+  ++state->_documents;
+ 
+  if (state->_fid != fid) {
+    // update the state
+    state->_fid = fid; // when we're here, we're looking at a datafile
+    state->_dfi = FindDatafileStats(state, fid);
+  }
+
+  auto primaryIndex = collection->primaryIndex();
+
+  // no primary index lock required here because we are the only ones reading
+  // from the index ATM
+  auto found = primaryIndex->lookupKey(trx, keySlice);
+
+  // it is a new entry
+  if (found == nullptr) {
+    TRI_doc_mptr_t* header = collection->_masterPointers.request();
+
+    if (header == nullptr) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+
+    header->setFid(fid, false);
+    header->setHash(primaryIndex->calculateHash(trx, keySlice));
+    header->setVPackFromMarker(marker);  
+
+    // insert into primary index
+    void const* result = nullptr;
+    int res = primaryIndex->insertKey(trx, header, &result);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      collection->_masterPointers.release(header);
+      LOG(ERR) << "inserting document into primary index failed with error: " << TRI_errno_string(res);
+
+      return res;
+    }
+
+    collection->incNumberDocuments();
+
+    // update the datafile info
+    state->_dfi->numberAlive++;
+    state->_dfi->sizeAlive += DatafileHelper::AlignedMarkerSize<int64_t>(marker);
+  }
+
+  // it is an update, but only if found has a smaller revision identifier
+  else {
+    // save the old data
+    TRI_doc_mptr_t oldData = *found;
+
+    // update the header info
+    found->setFid(fid, false); // when we're here, we're looking at a datafile
+    found->setVPackFromMarker(marker);
+
+    // update the datafile info
+    DatafileStatisticsContainer* dfi;
+    if (oldData.getFid() == state->_fid) {
+      dfi = state->_dfi;
+    } else {
+      dfi = FindDatafileStats(state, oldData.getFid());
+    }
+
+    if (oldData.vpack() != nullptr) { 
+      int64_t size = static_cast<int64_t>(oldData.markerSize());
+
+      dfi->numberAlive--;
+      dfi->sizeAlive -= DatafileHelper::AlignedSize<int64_t>(size);
+      dfi->numberDead++;
+      dfi->sizeDead += DatafileHelper::AlignedSize<int64_t>(size);
+    }
+
+    state->_dfi->numberAlive++;
+    state->_dfi->sizeAlive += DatafileHelper::AlignedMarkerSize<int64_t>(marker);
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief process a deletion marker when opening a collection
+static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
+                                            TRI_datafile_t* datafile,
+                                            OpenIteratorState* state) {
+  LogicalCollection* collection = state->_collection;
+  arangodb::Transaction* trx = state->_trx;
+
+  VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_REMOVE));
+  
+  VPackSlice keySlice;
+  TRI_voc_rid_t revisionId;
+
+  Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
+ 
+  collection->setRevision(revisionId, false);
+  VPackValueLength length;
+  char const* p = keySlice.getString(length);
+  collection->keyGenerator()->track(p, length);
+
+  ++state->_deletions;
+
+  if (state->_fid != datafile->fid()) {
+    // update the state
+    state->_fid = datafile->fid();
+    state->_dfi = FindDatafileStats(state, datafile->fid());
+  }
+
+  // no primary index lock required here because we are the only ones reading
+  // from the index ATM
+  auto primaryIndex = collection->primaryIndex();
+  TRI_doc_mptr_t* found = primaryIndex->lookupKey(trx, keySlice);
+
+  // it is a new entry, so we missed the create
+  if (found == nullptr) {
+    // update the datafile info
+    state->_dfi->numberDeletions++;
+  }
+
+  // it is a real delete
+  else {
+    // update the datafile info
+    DatafileStatisticsContainer* dfi;
+
+    if (found->getFid() == state->_fid) {
+      dfi = state->_dfi;
+    } else {
+      dfi = FindDatafileStats(state, found->getFid());
+    }
+
+    TRI_ASSERT(found->vpack() != nullptr);
+
+    int64_t size = DatafileHelper::AlignedSize<int64_t>(found->markerSize());
+
+    dfi->numberAlive--;
+    dfi->sizeAlive -= DatafileHelper::AlignedSize<int64_t>(size);
+    dfi->numberDead++;
+    dfi->sizeDead += DatafileHelper::AlignedSize<int64_t>(size);
+    state->_dfi->numberDeletions++;
+
+    collection->deletePrimaryIndex(trx, found);
+    collection->decNumberDocuments();
+
+    // free the header
+    collection->_masterPointers.release(found);
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief iterator for open
+static bool OpenIterator(TRI_df_marker_t const* marker, OpenIteratorState* data,
+                         TRI_datafile_t* datafile) {
+  TRI_voc_tick_t const tick = marker->getTick();
+  TRI_df_marker_type_t const type = marker->getType();
+
+  int res;
+
+  if (type == TRI_DF_MARKER_VPACK_DOCUMENT) {
+    res = OpenIteratorHandleDocumentMarker(marker, datafile, data);
+
+    if (datafile->_dataMin == 0) {
+      datafile->_dataMin = tick;
+    }
+
+    if (tick > datafile->_dataMax) {
+      datafile->_dataMax = tick;
+    }
+  } else if (type == TRI_DF_MARKER_VPACK_REMOVE) {
+    res = OpenIteratorHandleDeletionMarker(marker, datafile, data);
+  } else {
+    if (type == TRI_DF_MARKER_HEADER) {
+      // ensure there is a datafile info entry for each datafile of the
+      // collection
+      FindDatafileStats(data, datafile->fid());
+    }
+
+    LOG(TRACE) << "skipping marker type " << TRI_NameMarkerDatafile(marker);
+    res = TRI_ERROR_NO_ERROR;
+  }
+
+  if (datafile->_tickMin == 0) {
+    datafile->_tickMin = tick;
+  }
+
+  if (tick > datafile->_tickMax) {
+    datafile->_tickMax = tick;
+  }
+
+  if (tick > data->_collection->maxTick()) {
+    if (type != TRI_DF_MARKER_HEADER &&
+        type != TRI_DF_MARKER_FOOTER &&
+        type != TRI_DF_MARKER_COL_HEADER &&
+        type != TRI_DF_MARKER_PROLOGUE) {
+      data->_collection->maxTick(tick);
+    }
+  }
+
+  return (res == TRI_ERROR_NO_ERROR);
+}
+
+/// @brief iterate all markers of the collection
+static int IterateMarkersCollection(arangodb::Transaction* trx,
+                                    LogicalCollection* collection) {
+  // initialize state for iteration
+  OpenIteratorState openState(collection);
+
+  if (collection->getPhysical()->initialCount() != -1) {
+    auto primaryIndex = collection->primaryIndex();
+
+    int res = primaryIndex->resize(
+        trx, static_cast<size_t>(collection->getPhysical()->initialCount() * 1.1));
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+
+    openState._initialCount = collection->getPhysical()->initialCount();
+  }
+
+  // read all documents and fill primary index
+  auto cb = [&openState](TRI_df_marker_t const* marker, TRI_datafile_t* datafile) -> bool {
+    return OpenIterator(marker, &openState, datafile); 
+  };
+
+  collection->iterateDatafiles(cb);
+
+  LOG(TRACE) << "found " << openState._documents << " document markers, " 
+             << openState._deletions << " deletion markers for collection '" << collection->name() << "'";
+  
+  // update the real statistics for the collection
+  try {
+    for (auto& it : openState._stats) {
+      collection->createStats(it.first, *(it.second));
+    }
+  } catch (basics::Exception const& ex) {
+    return ex.code();
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 }
 
 MMFilesCollection::MMFilesCollection(LogicalCollection* collection)
-    : PhysicalCollection(collection), _initialCount(0), _revision(0) {}
+    : PhysicalCollection(collection), _ditches(collection), _initialCount(0), _revision(0) {}
 
 MMFilesCollection::~MMFilesCollection() { 
   try {
@@ -249,23 +549,22 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
       // create enough room in the journals vector
       _journals.reserve(_journals.size() + 1);
 
-      std::unique_ptr<TRI_datafile_t> df(createDatafile(tick, targetSize, false));
+      try {
+        std::unique_ptr<TRI_datafile_t> df(createDatafile(tick, targetSize, false));
 
-      if (df == nullptr) {
-        int res = TRI_errno();
-        // could not create a datafile, this is a serious error
-
-        if (res == TRI_ERROR_NO_ERROR) {
-          // oops, error code got lost
-          res = TRI_ERROR_INTERNAL;
-        }
-
-        return res;
+        // shouldn't throw as we reserved enough space before
+        _journals.emplace_back(df.get());
+        df.release();
+      } catch (basics::Exception const& ex) {
+        LOG_TOPIC(ERR, Logger::COLLECTOR) << "cannot select journal: " << ex.what();
+        return ex.code();
+      } catch (std::exception const& ex) {
+        LOG_TOPIC(ERR, Logger::COLLECTOR) << "cannot select journal: " << ex.what();
+        return TRI_ERROR_INTERNAL;
+      } catch (...) {
+        LOG_TOPIC(ERR, Logger::COLLECTOR) << "cannot select journal: unknown exception";
+        return TRI_ERROR_INTERNAL;
       }
-
-      // shouldn't throw as we reserved enough space before
-      _journals.emplace_back(df.get());
-      df.release();
     } 
       
     // select datafile
@@ -327,24 +626,17 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
 /// @brief create compactor file
 TRI_datafile_t* MMFilesCollection::createCompactor(TRI_voc_fid_t fid,
                                                    TRI_voc_size_t maximalSize) {
-  try {
-    WRITE_LOCKER(writeLocker, _filesLock);
+  WRITE_LOCKER(writeLocker, _filesLock);
 
-    TRI_ASSERT(_compactors.empty());
-    // reserve enough space for the later addition
-    _compactors.reserve(_compactors.size() + 1);
+  TRI_ASSERT(_compactors.empty());
+  // reserve enough space for the later addition
+  _compactors.reserve(_compactors.size() + 1);
 
-    std::unique_ptr<TRI_datafile_t> compactor(createDatafile(fid, static_cast<TRI_voc_size_t>(maximalSize), true));
+  std::unique_ptr<TRI_datafile_t> compactor(createDatafile(fid, static_cast<TRI_voc_size_t>(maximalSize), true));
 
-    if (compactor != nullptr) {
-      // should not throw, as we've reserved enough space before
-      _compactors.emplace_back(compactor.get());
-      return compactor.release();
-    }
-  } catch (...) {
-  }
-    
-  return nullptr;
+  // should not throw, as we've reserved enough space before
+  _compactors.emplace_back(compactor.get());
+  return compactor.release();
 }
 
 /// @brief close an existing compactor
@@ -405,8 +697,7 @@ TRI_datafile_t* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
   try {
     _datafileStatistics.create(fid);
   } catch (...) {
-    EnsureErrorCode(TRI_ERROR_OUT_OF_MEMORY);
-    return nullptr;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
   std::unique_ptr<TRI_datafile_t> datafile;
@@ -428,9 +719,7 @@ TRI_datafile_t* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
 
     TRI_IF_FAILURE("CreateJournalDocumentCollection") {
       // simulate disk full
-      EnsureErrorCode(TRI_ERROR_ARANGO_FILESYSTEM_FULL);
-
-      return nullptr;
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_FILESYSTEM_FULL);
     }
 
     // remove an existing temporary file first
@@ -444,12 +733,9 @@ TRI_datafile_t* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
 
   if (datafile == nullptr) {
     if (TRI_errno() == TRI_ERROR_OUT_OF_MEMORY_MMAP) {
-      EnsureErrorCode(TRI_ERROR_OUT_OF_MEMORY_MMAP);
-    } else {
-      EnsureErrorCode(TRI_ERROR_ARANGO_NO_JOURNAL);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY_MMAP);
     }
-
-    return nullptr;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_NO_JOURNAL);
   }
 
   // datafile is there now
@@ -479,9 +765,7 @@ TRI_datafile_t* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
     datafile.reset();
     TRI_UnlinkFile(temp.c_str());
 
-    EnsureErrorCode(res);
-
-    return nullptr;
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   TRI_col_header_marker_t cm;
@@ -506,9 +790,7 @@ TRI_datafile_t* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
     datafile.reset();
     TRI_UnlinkFile(temp.c_str());
 
-    EnsureErrorCode(res);
-
-    return nullptr;
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   TRI_ASSERT(fid == datafile->fid());
@@ -530,9 +812,7 @@ TRI_datafile_t* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
       datafile.reset();
       TRI_UnlinkFile(temp.c_str());
 
-      EnsureErrorCode(res);
-
-      return nullptr;
+      THROW_ARANGO_EXCEPTION(res);
     } 
       
     LOG(TRACE) << "renamed journal from '" << datafile->getName()
@@ -626,6 +906,11 @@ bool MMFilesCollection::closeDatafiles(std::vector<TRI_datafile_t*> const& files
 }
   
 void MMFilesCollection::figures(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
+  builder->add("documentReferences", VPackValue(_ditches.numDocumentDitches()));
+  
+  char const* waitingForDitch = _ditches.head();
+  builder->add("waitingFor", VPackValue(waitingForDitch == nullptr ? "-" : waitingForDitch));
+  
   // add datafile statistics
   DatafileStatisticsContainer dfi = _datafileStatistics.all();
 
@@ -836,3 +1121,94 @@ void MMFilesCollection::finishCompaction() {
   _compactionLock.unlock();
 }
 
+/// @brief opens an existing collection
+void MMFilesCollection::open(bool ignoreErrors) {
+  TRI_vocbase_t* vocbase = _logicalCollection->vocbase();
+
+  VPackBuilder builder;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->getCollectionInfo(vocbase, _logicalCollection->cid(), builder, false, 0);
+
+  double start = TRI_microtime();
+
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+      << "open-document-collection { collection: " << vocbase->name() << "/"
+      << _logicalCollection->name() << " }";
+
+  int res = _logicalCollection->open(ignoreErrors);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(ERR) << "cannot open document collection from path '" << _logicalCollection->path() << "'";
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  res = _logicalCollection->createInitialIndexes();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(ERR) << "cannot initialize document collection: " << TRI_errno_string(res);
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  
+  arangodb::SingleCollectionTransaction trx(
+      arangodb::StandaloneTransactionContext::Create(vocbase),
+      _logicalCollection->cid(), TRI_TRANSACTION_WRITE);
+
+  // build the primary index
+  res = TRI_ERROR_INTERNAL;
+
+  try {
+    double start = TRI_microtime();
+
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+        << "iterate-markers { collection: " << vocbase->name() << "/"
+        << _logicalCollection->name() << " }";
+
+    // iterate over all markers of the collection
+    res = IterateMarkersCollection(&trx, _logicalCollection);
+
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::FIXED(TRI_microtime() - start) << " s, iterate-markers { collection: " << vocbase->name() << "/" << _logicalCollection->name() << " }";
+  } catch (arangodb::basics::Exception const& ex) {
+    res = ex.code();
+  } catch (std::bad_alloc const&) {
+    res = TRI_ERROR_OUT_OF_MEMORY;
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string("cannot iterate data of document collection: ") + TRI_errno_string(res));
+  }
+
+  // build the indexes meta-data, but do not fill the indexes yet
+  {
+    auto old = _logicalCollection->useSecondaryIndexes();
+
+    // turn filling of secondary indexes off. we're now only interested in getting
+    // the indexes' definition. we'll fill them below ourselves.
+    _logicalCollection->useSecondaryIndexes(false);
+
+    try {
+      _logicalCollection->detectIndexes(&trx);
+      _logicalCollection->useSecondaryIndexes(old);
+    } catch (basics::Exception const& ex) {
+      _logicalCollection->useSecondaryIndexes(old);
+      THROW_ARANGO_EXCEPTION_MESSAGE(ex.code(), std::string("cannot initialize collection indexes: ") + ex.what());
+    } catch (std::exception const& ex) {
+      _logicalCollection->useSecondaryIndexes(old);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("cannot initialize collection indexes: ") + ex.what());
+    } catch (...) {
+      _logicalCollection->useSecondaryIndexes(old);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot initialize collection indexes: unknown exception");
+    }
+  }
+
+  if (!arangodb::wal::LogfileManager::instance()->isInRecovery()) {
+    // build the index structures, and fill the indexes
+    _logicalCollection->fillIndexes(&trx);
+  }
+
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+      << "[timer] " << Logger::FIXED(TRI_microtime() - start)
+      << " s, open-document-collection { collection: " << vocbase->name() << "/"
+      << _logicalCollection->name() << " }";
+}

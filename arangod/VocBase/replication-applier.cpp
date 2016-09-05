@@ -39,7 +39,6 @@
 #include "RestServer/ServerIdFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "VocBase/collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 

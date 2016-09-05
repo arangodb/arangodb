@@ -28,7 +28,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-#include "VocBase/collection.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
@@ -62,14 +61,6 @@ TRI_voc_cid_t Collection::cid() const {
   return collection->cid();
 }
   
-/// @brief get the pointer to the document collection
-TRI_collection_t* Collection::documentCollection() const {
-  TRI_ASSERT(collection != nullptr);
-  TRI_ASSERT(collection->_collection != nullptr);
-
-  return collection->_collection;
-}
-  
 /// @brief count the number of documents in the collection
 size_t Collection::count() const {
   if (numDocuments == UNINITIALIZED) {
@@ -85,7 +76,7 @@ size_t Collection::count() const {
     } else {
       // local case
       // cache the result
-      numDocuments = static_cast<int64_t>(collection->_numberDocuments);
+      numDocuments = static_cast<int64_t>(collection->numberDocuments());
     }
   }
 

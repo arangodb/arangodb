@@ -50,28 +50,21 @@ class QueryList;
 class CollectionNameResolver;
 class CollectionKeysRepository;
 class CursorRepository;
+class LogicalCollection;
 class StorageEngine;
 class Thread;
-
-class LogicalCollection;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief name of the system database
-////////////////////////////////////////////////////////////////////////////////
+/// @brief predefined collection name for users
+constexpr auto TRI_COL_NAME_USERS = "_users";
 
+/// @brief name of the system database
 constexpr auto TRI_VOC_SYSTEM_DATABASE = "_system";
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief maximal name length
-////////////////////////////////////////////////////////////////////////////////
-
 constexpr size_t TRI_COL_NAME_LENGTH = 64;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief default maximal collection journal size
-////////////////////////////////////////////////////////////////////////////////
-
 constexpr size_t TRI_JOURNAL_DEFAULT_SIZE = 1024 * 1024 * 32; // 32 MB
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -398,5 +391,5 @@ VPackSlice TRI_ExtractRevisionIdAsSlice(VPackSlice const slice);
 /// open object which will remain open
 void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder);
 void TRI_SanitizeObjectWithEdges(VPackSlice const slice, VPackBuilder& builder);
-  
+
 #endif

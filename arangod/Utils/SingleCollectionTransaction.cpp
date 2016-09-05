@@ -26,7 +26,6 @@
 #include "Utils/Transaction.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/Ditch.h"
-#include "VocBase/collection.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/transaction.h"
 

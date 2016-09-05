@@ -40,7 +40,6 @@
 #include "VocBase/CompactionLocker.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/collection.h"
 #include "Wal/Logfile.h"
 #include "Wal/LogfileManager.h"
 
@@ -620,9 +619,6 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
 
   TRI_ASSERT(collection != nullptr);
 
-  TRI_collection_t* document = collection->_collection;
-  TRI_ASSERT(document != nullptr);
-
   // first try to read-lock the compactor-lock, afterwards try to write-lock the
   // collection
   // if any locking attempt fails, release and try again next time
@@ -670,10 +666,7 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
                << collection->name() << "'";
     updateDatafileStatistics(collection, cache);
 
-    document->_uncollectedLogfileEntries -= cache->totalOperationsCount;
-    if (document->_uncollectedLogfileEntries < 0) {
-      document->_uncollectedLogfileEntries = 0;
-    }
+    collection->decreaseUncollectedLogfileEntries(cache->totalOperationsCount);
 
     res = TRI_ERROR_NO_ERROR;
   } catch (arangodb::basics::Exception const& ex) {

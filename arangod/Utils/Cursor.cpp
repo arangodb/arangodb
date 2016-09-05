@@ -29,7 +29,6 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/TransactionContext.h"
-#include "VocBase/collection.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>

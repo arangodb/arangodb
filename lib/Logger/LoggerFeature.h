@@ -29,6 +29,7 @@ namespace arangodb {
 class LoggerFeature final : public application_features::ApplicationFeature {
  public:
   LoggerFeature(application_features::ApplicationServer* server, bool threaded);
+  ~LoggerFeature();
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
