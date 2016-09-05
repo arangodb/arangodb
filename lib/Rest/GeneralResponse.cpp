@@ -472,6 +472,9 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
 
 GeneralResponse::GeneralResponse(ResponseCode responseCode)
     : _responseCode(responseCode),
+      _headers(),
+      _vpackPayloads(),
+      _numPayloads(),
       _contentType(ContentType::UNSET),
       _connectionType(ConnectionType::CONNECTION_NONE),
       _options(velocypack::Options::Defaults),
