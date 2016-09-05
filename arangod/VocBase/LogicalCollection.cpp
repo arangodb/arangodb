@@ -1048,6 +1048,8 @@ std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() {
   auto builder = std::make_shared<VPackBuilder>();
   
   if (ServerState::instance()->isCoordinator()) {
+    builder->openObject();
+    builder->close();
     int res = figuresOnCoordinator(dbName(), cid_as_string(), builder); 
     
     if (res != TRI_ERROR_NO_ERROR) {
