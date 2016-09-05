@@ -589,6 +589,8 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
 
     // check if there is an attempt to create a unique index on non-shard keys
     if (create) {
+      Index::validateFields(slice);
+
       VPackSlice v = slice.get("unique");
 
       if (v.isBoolean() && v.getBoolean()) {

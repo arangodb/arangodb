@@ -48,6 +48,26 @@ RestBatchHandler::~RestBatchHandler() {}
 ////////////////////////////////////////////////////////////////////////////////
 
 RestHandler::status RestBatchHandler::execute() {
+  switch (_response->transportType()) {
+    case Endpoint::TransportType::HTTP: {
+      return executeHttp();
+    }
+    case Endpoint::TransportType::VPP: {
+      return executeVpp();
+    }
+  }
+  // should never get here
+  TRI_ASSERT(false);
+  return RestHandler::status::FAILED;
+}
+
+RestHandler::status RestBatchHandler::executeVpp() {
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_NO_ERROR,
+                "The RestBatchHandler is not supported for this protocol!");
+  return status::DONE;
+}
+
+RestHandler::status RestBatchHandler::executeHttp() {
   HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
 
   if (httpResponse == nullptr) {
@@ -66,8 +86,7 @@ RestHandler::status RestBatchHandler::execute() {
   // extract the request type
   auto const type = _request->requestType();
 
-  if (type != rest::RequestType::POST &&
-      type != rest::RequestType::PUT) {
+  if (type != rest::RequestType::POST && type != rest::RequestType::PUT) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return status::DONE;
@@ -77,8 +96,7 @@ RestHandler::status RestBatchHandler::execute() {
 
   // invalid content-type or boundary sent
   if (!getBoundary(&boundary)) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid content-type or boundary received");
     return status::FAILED;
   }
@@ -110,8 +128,7 @@ RestHandler::status RestBatchHandler::execute() {
     // get the next part from the multipart message
     if (!extractPart(&helper)) {
       // error
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid multipart message received");
       LOG(WARN) << "received a corrupted multipart message";
 

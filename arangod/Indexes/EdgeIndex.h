@@ -133,6 +133,8 @@ class EdgeIndex final : public Index {
     return Index::TRI_IDX_TYPE_EDGE_INDEX;
   }
   
+  bool allowExpansion() const override final { return false; }
+  
   bool canBeDropped() const override final { return false; }
 
   bool isSorted() const override final { return false; }

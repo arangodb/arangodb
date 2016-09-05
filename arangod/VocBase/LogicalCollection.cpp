@@ -1222,7 +1222,6 @@ std::shared_ptr<Index> LogicalCollection::createIndex(Transaction* trx,
     THROW_ARANGO_EXCEPTION(res);
   }
  
-
   bool const writeMarker = !arangodb::wal::LogfileManager::instance()->isInRecovery();
   res = saveIndex(idx.get(), writeMarker);
 

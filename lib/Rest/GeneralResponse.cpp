@@ -30,48 +30,61 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-void GeneralResponse::addPayload(VPackSlice const& slice,
-                                 arangodb::velocypack::Options const* options,
-                                 bool resolve_externals) {
-  addPayloadPreconditions();
-  addPayloadPreHook(false, resolve_externals);
-  if (!options) {
-    options = &arangodb::velocypack::Options::Defaults;
+namespace detail {
+VPackOptions const* getOptions(VPackOptions const* options) {
+  if (options) {
+    return options;
   }
+  return &VPackOptions::Options::Defaults;
+}
+}
 
-  if (resolve_externals) {
-    auto tmpBuffer =
-        basics::VelocyPackHelper::sanitizeExternalsChecked(slice, options);
-    _vpackPayloads.push_back(std::move(tmpBuffer));
-  } else {
-    // just copy
-    _vpackPayloads.emplace_back(slice.byteSize());
-    _vpackPayloads.back().append(slice.startAs<char const>(), slice.byteSize());
+void GeneralResponse::addPayload(VPackSlice const& slice,
+                                 VPackOptions const* options,
+                                 bool resolveExternals) {
+  addPayloadPreconditions();
+  _numPayloads++;
+  options = detail::getOptions(options);
+
+  bool skipBody = false;
+  addPayloadPreHook(true, resolveExternals, skipBody);
+
+  if (!skipBody) {
+    if (resolveExternals) {
+      auto tmpBuffer =
+          basics::VelocyPackHelper::sanitizeExternalsChecked(slice, options);
+      _vpackPayloads.push_back(std::move(tmpBuffer));
+    } else {
+      // just copy
+      _vpackPayloads.emplace_back(slice.byteSize());
+      _vpackPayloads.back().append(slice.startAs<char const>(),
+                                   slice.byteSize());
+    }
   }
-  addPayloadPostHook(options);
+  // we pass the original slice here the new one can be accessed
+  addPayloadPostHook(slice, options, resolveExternals, skipBody);
 };
 
 void GeneralResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
                                  arangodb::velocypack::Options const* options,
-                                 bool resolve_externals) {
+                                 bool resolveExternals) {
   addPayloadPreconditions();
-  // TODO
-  // skip sanatizing here for http if conent type is json because it will
-  // be dumped anyway -- check with jsteemann
-  addPayloadPreHook(true, resolve_externals);
+  _numPayloads++;
+  options = detail::getOptions(options);
 
-  if (!options) {
-    options = &arangodb::velocypack::Options::Defaults;
+  bool skipBody = false;
+  addPayloadPreHook(true, resolveExternals, skipBody);
+  if (!skipBody) {
+    if (resolveExternals) {
+      auto tmpBuffer = basics::VelocyPackHelper::sanitizeExternalsChecked(
+          VPackSlice(buffer.data()), options);
+      _vpackPayloads.push_back(std::move(tmpBuffer));
+    } else {
+      _vpackPayloads.push_back(std::move(buffer));
+    }
   }
-
-  if (resolve_externals) {
-    auto tmpBuffer = basics::VelocyPackHelper::sanitizeExternalsChecked(
-        VPackSlice(buffer.data()), options);
-    _vpackPayloads.push_back(std::move(tmpBuffer));
-  } else {
-    _vpackPayloads.push_back(std::move(buffer));
-  }
-  addPayloadPostHook(options);
+  addPayloadPostHook(VPackSlice(buffer.data()), options, resolveExternals,
+                     skipBody);
 };
 
 std::string GeneralResponse::responseString(ResponseCode code) {
@@ -460,4 +473,6 @@ GeneralResponse::GeneralResponse(ResponseCode responseCode)
     : _responseCode(responseCode),
       _contentType(ContentType::UNSET),
       _connectionType(ConnectionType::CONNECTION_NONE),
-      _options(velocypack::Options::Defaults) {}
+      _options(velocypack::Options::Defaults),
+      _generateBody(false),
+      _contentTypeRequested(ContentType::UNSET) {}

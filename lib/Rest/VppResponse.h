@@ -51,8 +51,6 @@ class VppResponse : public GeneralResponse {
   // required by base
   virtual uint64_t messageId() const override { return _messageId; }
   void reset(ResponseCode code) final;
-  void setPayload(arangodb::velocypack::Slice const&, bool generateBody,
-                  arangodb::velocypack::Options const&) final;
   virtual arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::VPP;
   };
@@ -65,7 +63,6 @@ class VppResponse : public GeneralResponse {
   std::shared_ptr<VPackBuffer<uint8_t>>
       _header;  // generated form _headers when prepared for network
   uint64_t _messageId;
-  bool _generateBody;  // this must be true if payload should be send
 };
 }
 

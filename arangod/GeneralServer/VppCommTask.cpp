@@ -176,7 +176,9 @@ void VppCommTask::addResponse(VppResponse* response) {
 
   std::vector<VPackSlice> slices;
   slices.push_back(response_message._header);
-  slices.push_back(response_message._payload);
+  if (response->generateBody()) {
+    slices.push_back(response_message._payload);
+  }
 
   LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
                                           << "created response:";
@@ -482,6 +484,7 @@ bool VppCommTask::processRead() {
 
         std::unique_ptr<VppResponse> response(new VppResponse(
             rest::ResponseCode::SERVER_ERROR, chunkHeader._messageID));
+        response->setContentTypeRequested(request->contentTypeResponse());
         executeRequest(std::move(request), std::move(response));
       }
     }

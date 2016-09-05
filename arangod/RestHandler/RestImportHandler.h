@@ -68,7 +68,6 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   status execute() override final;
 
  private:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a position string
   //////////////////////////////////////////////////////////////////////////////
@@ -91,10 +90,10 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   /// @brief process a single VelocyPack document
   //////////////////////////////////////////////////////////////////////////////
 
-  int handleSingleDocument(SingleCollectionTransaction& trx, 
+  int handleSingleDocument(SingleCollectionTransaction& trx,
                            RestImportResult& result,
-                           arangodb::velocypack::Builder& babies, 
-                           char const* lineStart, arangodb::velocypack::Slice slice,
+                           arangodb::velocypack::Builder& babies,
+                           arangodb::velocypack::Slice slice,
                            bool isEdgeCollection, size_t);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -103,6 +102,7 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   bool createFromJson(std::string const&);
+  bool createFromVPack(std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates documents by JSON objects
@@ -116,16 +116,18 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   bool createFromKeyValueList();
+  bool createFromKeyValueListVPack() {
+    LOG(ERR) << " not implemened";
+    return false;
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief perform the actual import (insert/update/replace) operations
   //////////////////////////////////////////////////////////////////////////////
 
-  int performImport(SingleCollectionTransaction& trx,
-                    RestImportResult& result, 
+  int performImport(SingleCollectionTransaction& trx, RestImportResult& result,
                     std::string const& collectionName,
-                    VPackBuilder const& babies,
-                    bool complete,
+                    VPackBuilder const& babies, bool complete,
                     OperationOptions const& opOptions);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -152,9 +154,8 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<arangodb::velocypack::Builder> createVelocyPackObject(
-                                                       arangodb::velocypack::Slice const&,
-                                                       arangodb::velocypack::Slice const&,
-                                                       std::string&, size_t);
+      arangodb::velocypack::Slice const&, arangodb::velocypack::Slice const&,
+      std::string&, size_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief checks the keys, returns true if all values in the list are

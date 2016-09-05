@@ -92,15 +92,32 @@ RestHandler::status RestImportHandler::execute() {
       // extract the import type
       std::string const& documentType = _request->value("type", found);
 
-      if (found && (documentType == "documents" || documentType == "array" ||
-                    documentType == "list" || documentType == "auto")) {
-        createFromJson(documentType);
-      } else {
-        // CSV
-        createFromKeyValueList();
+      /////////////////////////////////////////////////////////////////////////////////
+      switch (_response->transportType()) {
+        case Endpoint::TransportType::HTTP: {
+          if (found &&
+              (documentType == "documents" || documentType == "array" ||
+               documentType == "list" || documentType == "auto")) {
+            createFromJson(documentType);
+          } else {
+            // CSV
+            createFromKeyValueList();
+          }
+        } break;
+        /////////////////////////////////////////////////////////////////////////////////
+        case Endpoint::TransportType::VPP: {
+          if (found &&
+              (documentType == "documents" || documentType == "array" ||
+               documentType == "list" || documentType == "auto")) {
+            createFromVPack(documentType);
+          } else {
+            generateNotImplemented("ILLEGAL " + IMPORT_PATH);
+            createFromKeyValueListVPack();
+          }
+        } break;
       }
-      break;
-    }
+      /////////////////////////////////////////////////////////////////////////////////
+    } break;
 
     default:
       generateNotImplemented("ILLEGAL " + IMPORT_PATH);
@@ -122,7 +139,6 @@ std::string RestImportHandler::positionize(size_t i) const {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register an error
 ////////////////////////////////////////////////////////////////////////////////
-
 void RestImportHandler::registerError(RestImportResult& result,
                                       std::string const& errorMsg) {
   ++result._numErrors;
@@ -133,7 +149,6 @@ void RestImportHandler::registerError(RestImportResult& result,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief construct an error message
 ////////////////////////////////////////////////////////////////////////////////
-
 std::string RestImportHandler::buildParseError(size_t i,
                                                char const* lineStart) {
   if (lineStart != nullptr) {
@@ -155,13 +170,11 @@ std::string RestImportHandler::buildParseError(size_t i,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief process a single VelocyPack document
+/// @brief process a single VelocyPack document of Object Type
 ////////////////////////////////////////////////////////////////////////////////
-
 int RestImportHandler::handleSingleDocument(SingleCollectionTransaction& trx,
                                             RestImportResult& result,
                                             VPackBuilder& babies,
-                                            char const* lineStart,
                                             VPackSlice slice,
                                             bool isEdgeCollection, size_t i) {
   if (!slice.isObject()) {
@@ -267,8 +280,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "superfluous suffix, expecting " + IMPORT_PATH +
                       "?collection=<identifier>");
     return false;
@@ -439,7 +451,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
         continue;
       }
 
-      res = handleSingleDocument(trx, result, babies, oldPtr, builder->slice(),
+      res = handleSingleDocument(trx, result, babies, builder->slice(),
                                  isEdgeCollection, i);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -455,27 +467,21 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
   else {
     // the entire request body is one JSON document
-    std::shared_ptr<VPackBuilder> parsedDocuments;
-    HttpRequest* req = dynamic_cast<HttpRequest*>(_request.get());
 
-    if (req == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-    }
-
+    VPackSlice documents;
     try {
-      parsedDocuments = VPackParser::fromJson(req->body());
+      documents = _request->payload();
     } catch (VPackException const&) {
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expecting a JSON array in the request");
       return false;
     }
 
-    VPackSlice const documents = parsedDocuments->slice();
+    // VPackSlice const documents = _request->payload();  //yields different
+    // error from what is expected in the server test
 
     if (!documents.isArray()) {
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expecting a JSON array in the request");
       return false;
     }
@@ -485,8 +491,8 @@ bool RestImportHandler::createFromJson(std::string const& type) {
     for (VPackValueLength i = 0; i < n; ++i) {
       VPackSlice const slice = documents.at(i);
 
-      res = handleSingleDocument(trx, result, babies, nullptr, slice,
-                                 isEdgeCollection, static_cast<size_t>(i + 1));
+      res = handleSingleDocument(trx, result, babies, slice, isEdgeCollection,
+                                 static_cast<size_t>(i + 1));
 
       if (res != TRI_ERROR_NO_ERROR) {
         if (complete) {
@@ -496,6 +502,110 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
         res = TRI_ERROR_NO_ERROR;
       }
+    }
+  }
+
+  babies.close();
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    // no error so far. go on and perform the actual insert
+    res =
+        performImport(trx, result, collectionName, babies, complete, opOptions);
+  }
+
+  res = trx.finish(res);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collectionName, res, "");
+  } else {
+    generateDocumentsCreated(result);
+  }
+  return true;
+}
+
+bool RestImportHandler::createFromVPack(std::string const& type) {
+  if (_request == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+
+  RestImportResult result;
+
+  std::vector<std::string> const& suffix = _request->suffix();
+
+  if (suffix.size() != 0) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+                  "superfluous suffix, expecting " + IMPORT_PATH +
+                      "?collection=<identifier>");
+    return false;
+  }
+
+  bool const complete = extractBooleanParameter("complete", false);
+  bool const overwrite = extractBooleanParameter("overwrite", false);
+  OperationOptions opOptions;
+  opOptions.waitForSync = extractBooleanParameter("waitForSync", false);
+
+  // extract the collection name
+  bool found;
+  std::string const& collectionName = _request->value("collection", found);
+
+  if (!found || collectionName.empty()) {
+    generateError(rest::ResponseCode::BAD,
+                  TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
+                  "'collection' is missing, expecting " + IMPORT_PATH +
+                      "?collection=<identifier>");
+    return false;
+  }
+
+  // find and load collection given by name or identifier
+  SingleCollectionTransaction trx(
+      StandaloneTransactionContext::Create(_vocbase), collectionName,
+      TRI_TRANSACTION_WRITE);
+
+  // .............................................................................
+  // inside write transaction
+  // .............................................................................
+
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collectionName, res, "");
+    return false;
+  }
+  bool const isEdgeCollection = trx.isEdgeCollection(collectionName);
+
+  if (overwrite) {
+    OperationOptions truncateOpts;
+    truncateOpts.waitForSync = false;
+    // truncate collection first
+    trx.truncate(collectionName, truncateOpts);
+    // Ignore the result ...
+  }
+
+  VPackBuilder babies;
+  babies.openArray();
+
+  VPackSlice const documents = _request->payload();
+
+  if (!documents.isArray()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting a JSON array in the request");
+    return false;
+  }
+
+  VPackValueLength const n = documents.length();
+
+  for (VPackValueLength i = 0; i < n; ++i) {
+    VPackSlice const slice = documents.at(i);
+
+    res = handleSingleDocument(trx, result, babies, slice, isEdgeCollection,
+                               static_cast<size_t>(i + 1));
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      if (complete) {
+        // only perform a full import: abort
+        break;
+      }
+
+      res = TRI_ERROR_NO_ERROR;
     }
   }
 
@@ -531,8 +641,7 @@ bool RestImportHandler::createFromKeyValueList() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "superfluous suffix, expecting " + IMPORT_PATH +
                       "?collection=<identifier>");
     return false;
@@ -578,8 +687,7 @@ bool RestImportHandler::createFromKeyValueList() {
       static_cast<char const*>(memchr(current, '\n', bodyEnd - current));
 
   if (next == nullptr) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "no JSON array found in second line");
     return false;
   }
@@ -608,16 +716,14 @@ bool RestImportHandler::createFromKeyValueList() {
     parsedKeys = parseVelocyPackLine(lineStart, lineEnd, success);
   } catch (...) {
     // This throws if the body is not parseable
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "no JSON string array found in first line");
     return false;
   }
   VPackSlice const keys = parsedKeys->slice();
 
   if (!success || !checkKeys(keys)) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "no JSON string array found in first line");
     return false;
   }
@@ -707,8 +813,8 @@ bool RestImportHandler::createFromKeyValueList() {
       try {
         std::shared_ptr<VPackBuilder> objectBuilder =
             createVelocyPackObject(keys, values, errorMsg, i);
-        res = handleSingleDocument(trx, result, babies, lineStart,
-                                   objectBuilder->slice(), isEdgeCollection, i);
+        res = handleSingleDocument(trx, result, babies, objectBuilder->slice(),
+                                   isEdgeCollection, i);
       } catch (...) {
         // raise any error
         res = TRI_ERROR_INTERNAL;

@@ -74,6 +74,8 @@ class GeoIndex final : public Index {
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
   
+  bool allowExpansion() const override final { return false; }
+  
   bool canBeDropped() const override final { return true; }
 
   bool isSorted() const override final { return false; }
