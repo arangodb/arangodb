@@ -27,9 +27,10 @@
 #include "CleanOutServer.h"
 #include "FailedLeader.h"
 #include "FailedServer.h"
-#include "MoveShard.h"
 #include "Job.h"
+#include "MoveShard.h"
 #include "Store.h"
+#include "UnassumedLeadership.h"
 
 #include "Basics/ConditionLocker.h"
 #include "VocBase/server.h"
@@ -385,13 +386,15 @@ void Supervision::workJobs() {
       jobId = job("jobId").getString(),
       creator = job("creator").getString();
     if (jobType == "failedServer") {
-      FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      FailedServer(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "cleanOutServer") {
-      CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      CleanOutServer(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "moveShard") {
-      MoveShard mv(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      MoveShard(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "failedLeader") {
-      FailedLeader fl(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      FailedLeader(_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "unassumedLeadership") {
+      UnassumedLeadership(_snapshot, _agent, jobId, creator, _agencyPrefix);
     }
   }
 
@@ -402,13 +405,15 @@ void Supervision::workJobs() {
       jobId = job("jobId").getString(),
       creator = job("creator").getString();
     if (jobType == "failedServer") {
-      FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      FailedServer(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "cleanOutServer") {
-      CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      CleanOutServer(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "moveShard") {
-      MoveShard mv(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      MoveShard(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "failedLeader") {
-      FailedLeader fl(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      FailedLeader(_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "unassumedLeadership") {
+      UnassumedLeadership(_snapshot, _agent, jobId, creator, _agencyPrefix);
     }
   }
   
