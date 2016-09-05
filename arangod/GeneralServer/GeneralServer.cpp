@@ -149,6 +149,7 @@ bool GeneralServer::handleRequestAsync(GeneralCommTask* task,
     if (res != TRI_ERROR_DISPATCHER_IS_STOPPING) {
       LOG(WARN) << "unable to add job to the job queue: "
                 << TRI_errno_string(res);
+      task->handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE, res, TRI_errno_string(res), messageId);
     } else {
       task->handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE, messageId);
       return true;
@@ -189,8 +190,8 @@ bool GeneralServer::handleRequest(GeneralCommTask* task,
   // add the job to the dispatcher
   int res = DispatcherFeature::DISPATCHER->addJob(job, startThread);
 
-  if (res == TRI_ERROR_DISPATCHER_IS_STOPPING) {
-    task->handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE, messageId);
+  if (res != TRI_ERROR_NO_ERROR) {
+    task->handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE, res, TRI_errno_string(res), messageId);
     return true;
   }
 
