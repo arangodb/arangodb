@@ -418,7 +418,7 @@ function delete_api_user_request (req, res) {
   db._useDatabase('_system');
 
   try {
-    if (req.suffix.length === 1) {
+    if (req.suffix.length >= 1) {
       if (req.suffix.length === 1) {
         delete_api_user(req, res);
       } else if (req.suffix.length === 2) {
