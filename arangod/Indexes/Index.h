@@ -166,16 +166,10 @@ class Index {
   };
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief return the index id
-  //////////////////////////////////////////////////////////////////////////////
-
   inline TRI_idx_iid_t id() const { return _iid; }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief return the index fields
-  //////////////////////////////////////////////////////////////////////////////
-
   inline std::vector<std::vector<arangodb::basics::AttributeName>> const&
   fields() const {
     return _fields;
@@ -260,6 +254,9 @@ class Index {
 
   /// @brief whether or not the index is unique
   inline bool unique() const { return _unique; }
+  
+  /// @brief validate fields from slice
+  static void validateFields(VPackSlice const&);
 
   /// @brief return the name of the index
   char const* typeName() const { return typeName(type()); }
@@ -371,6 +368,10 @@ class Index {
 
   virtual void expandInSearchValues(arangodb::velocypack::Slice const,
                                     arangodb::velocypack::Builder&) const;
+  
+ private:
+  /// @brief set fields from slice
+  void setFields(VPackSlice const&);
 
  protected:
   TRI_idx_iid_t const _iid;

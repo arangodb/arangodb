@@ -404,28 +404,29 @@ DropCollectionDitch* Ditches::createDropCollectionDitch(
 /// @brief inserts the ditch into the linked list of ditches
 void Ditches::link(Ditch* ditch) {
   TRI_ASSERT(ditch != nullptr);
+    
+  ditch->_next = nullptr;
+  ditch->_prev = nullptr;
+  
+  bool const isDocumentDitch = (ditch->type() == Ditch::TRI_DITCH_DOCUMENT);
 
   MUTEX_LOCKER(mutexLocker, _lock);  // FIX_MUTEX
 
   // empty list
   if (_end == nullptr) {
-    ditch->_next = nullptr;
-    ditch->_prev = nullptr;
-
     _begin = ditch;
     _end = ditch;
   }
 
   // add to the end
   else {
-    ditch->_next = nullptr;
     ditch->_prev = _end;
 
     _end->_next = ditch;
     _end = ditch;
   }
 
-  if (ditch->type() == Ditch::TRI_DITCH_DOCUMENT) {
+  if (isDocumentDitch) {
     // increase counter
     ++_numDocumentDitches;
   }

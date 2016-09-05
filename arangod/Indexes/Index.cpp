@@ -62,34 +62,11 @@ Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
           slice, "unique", false)),
       _sparse(arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, "sparse", false)),
-      _selectivityEstimate(0.0) {
+      _selectivityEstimate(arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+          slice, "selectivityEstimate", 0.0)) {
+  
   VPackSlice const fields = slice.get("fields");
-
-  if (fields.isArray()) {
-    size_t const n = static_cast<size_t>(fields.length());
-    _fields.reserve(n);
-
-    for (auto const& name : VPackArrayIterator(fields)) {
-      if (!name.isString()) {
-        LOG(ERR) << "ignoring index " << iid
-                 << ", 'fields' must be an array of attribute paths";
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "invalid index description");
-      }
-
-      std::vector<arangodb::basics::AttributeName> parsedAttributes;
-      TRI_ParseAttributeString(name.copyString(), parsedAttributes, allowExpansion);
-      _fields.emplace_back(std::move(parsedAttributes));
-    }
-  } else if (!fields.isNone()) {
-    LOG(ERR) << "ignoring index " << iid << ", 'fields' must be an array";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "invalid index description");
-  }
-  // fields is NOT mandatory for all indexes.
-  // But if it is contained it has to be an array.
-  // Every index has to validate in it's own constructor if _fields
-  // is correct.
+  setFields(fields);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -107,11 +84,19 @@ Index::Index(VPackSlice const& slice)
           slice, "unique", false)),
       _sparse(arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, "sparse", false)),
-      _selectivityEstimate(0.0) {
-  VPackSlice const fields = slice.get("fields");
+      _selectivityEstimate(arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+          slice, "selectivityEstimate", 0.0)) {
 
+  VPackSlice const fields = slice.get("fields");
+  setFields(fields);
+}
+
+Index::~Index() {}
+
+/// @brief set fields from slice
+void Index::setFields(VPackSlice const& fields) {
   if (!fields.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
                                    "invalid index description");
   }
 
@@ -120,7 +105,7 @@ Index::Index(VPackSlice const& slice)
 
   for (auto const& name : VPackArrayIterator(fields)) {
     if (!name.isString()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
                                      "invalid index description");
     }
 
@@ -128,18 +113,27 @@ Index::Index(VPackSlice const& slice)
     TRI_ParseAttributeString(name.copyString(), parsedAttributes, true);
     _fields.emplace_back(std::move(parsedAttributes));
   }
-
-  _selectivityEstimate =
-      arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-          slice, "selectivityEstimate", 0.0);
 }
 
-Index::~Index() {}
+/// @brief validate fields from slice
+void Index::validateFields(VPackSlice const& fields) {
+  if (!fields.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
+                                   "invalid index description");
+  }
 
-////////////////////////////////////////////////////////////////////////////////
+  for (auto const& name : VPackArrayIterator(fields)) {
+    if (!name.isString()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
+                                     "invalid index description");
+    }
+
+    std::vector<arangodb::basics::AttributeName> parsedAttributes;
+    TRI_ParseAttributeString(name.copyString(), parsedAttributes, true);
+  }
+}
+
 /// @brief return the index type based on a type name
-////////////////////////////////////////////////////////////////////////////////
-
 Index::IndexType Index::type(char const* type) {
   if (::strcmp(type, "primary") == 0) {
     return TRI_IDX_TYPE_PRIMARY_INDEX;
