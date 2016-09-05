@@ -589,13 +589,13 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
 
     // check if there is an attempt to create a unique index on non-shard keys
     if (create) {
-      VPackSlice flds = slice.get("fields");
-      Index::validateFields(flds);
+      Index::validateFields(slice);
 
       VPackSlice v = slice.get("unique");
 
       if (v.isBoolean() && v.getBoolean()) {
         // unique index, now check if fields and shard keys match
+        VPackSlice flds = slice.get("fields");
         if (flds.isArray() && c->numberOfShards() > 1) {
           std::vector<std::string> const& shardKeys = c->shardKeys();
           size_t n = static_cast<size_t>(flds.length());

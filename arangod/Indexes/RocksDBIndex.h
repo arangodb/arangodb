@@ -119,6 +119,8 @@ class RocksDBIndex final : public PathBasedIndex {
     return Index::TRI_IDX_TYPE_ROCKSDB_INDEX;
   }
   
+  bool allowExpansion() const override final { return true; }
+  
   bool isPersistent() const override final { return true; }
   bool canBeDropped() const override final { return true; }
 

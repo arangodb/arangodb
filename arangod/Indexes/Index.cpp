@@ -53,8 +53,7 @@ Index::Index(
 }
 
 Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
-             VPackSlice const& slice,
-             bool allowExpansion)
+             VPackSlice const& slice) 
     : _iid(iid),
       _collection(collection),
       _fields(),
@@ -66,7 +65,7 @@ Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
           slice, "selectivityEstimate", 0.0)) {
   
   VPackSlice const fields = slice.get("fields");
-  setFields(fields);
+  setFields(fields, Index::allowExpansion(Index::type(slice.get("type").copyString())));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -88,13 +87,13 @@ Index::Index(VPackSlice const& slice)
           slice, "selectivityEstimate", 0.0)) {
 
   VPackSlice const fields = slice.get("fields");
-  setFields(fields);
+  setFields(fields, Index::allowExpansion(Index::type(slice.get("type").copyString())));
 }
 
 Index::~Index() {}
 
 /// @brief set fields from slice
-void Index::setFields(VPackSlice const& fields) {
+void Index::setFields(VPackSlice const& fields, bool allowExpansion) {
   if (!fields.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
                                    "invalid index description");
@@ -110,13 +109,17 @@ void Index::setFields(VPackSlice const& fields) {
     }
 
     std::vector<arangodb::basics::AttributeName> parsedAttributes;
-    TRI_ParseAttributeString(name.copyString(), parsedAttributes, true);
+    TRI_ParseAttributeString(name.copyString(), parsedAttributes, allowExpansion);
     _fields.emplace_back(std::move(parsedAttributes));
   }
 }
 
 /// @brief validate fields from slice
-void Index::validateFields(VPackSlice const& fields) {
+void Index::validateFields(VPackSlice const& slice) {
+  bool const allowExpansion = Index::allowExpansion(Index::type(slice.get("type").copyString()));
+  
+  VPackSlice fields = slice.get("fields");
+
   if (!fields.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
                                    "invalid index description");
@@ -129,7 +132,7 @@ void Index::validateFields(VPackSlice const& fields) {
     }
 
     std::vector<arangodb::basics::AttributeName> parsedAttributes;
-    TRI_ParseAttributeString(name.copyString(), parsedAttributes, true);
+    TRI_ParseAttributeString(name.copyString(), parsedAttributes, allowExpansion);
   }
 }
 

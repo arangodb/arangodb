@@ -78,7 +78,7 @@ PathBasedIndex::PathBasedIndex(
 PathBasedIndex::PathBasedIndex(TRI_idx_iid_t iid,
                                arangodb::LogicalCollection* collection,
                                VPackSlice const& info, bool allowPartialIndex)
-    : Index(iid, collection, info, true),
+    : Index(iid, collection, info),
       _useExpansion(false),
       _allowPartialIndex(allowPartialIndex) {
   TRI_ASSERT(!_fields.empty());

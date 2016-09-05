@@ -167,6 +167,8 @@ class HashIndex final : public PathBasedIndex {
     return Index::TRI_IDX_TYPE_HASH_INDEX;
   }
   
+  bool allowExpansion() const override final { return true; }
+  
   bool canBeDropped() const override final { return true; }
 
   bool isSorted() const override final { return false; }

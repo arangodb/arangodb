@@ -80,7 +80,7 @@ GeoIndex::GeoIndex(
 
 GeoIndex::GeoIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
                      VPackSlice const& info)
-    : Index(iid, collection, info, false),
+    : Index(iid, collection, info),
       _variant(INDEX_GEO_INDIVIDUAL_LAT_LON),
       _geoJson(false),
       _geoIndex(nullptr) {

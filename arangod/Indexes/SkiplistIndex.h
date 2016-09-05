@@ -366,6 +366,8 @@ class SkiplistIndex final : public PathBasedIndex {
     return Index::TRI_IDX_TYPE_SKIPLIST_INDEX;
   }
   
+  bool allowExpansion() const override final { return true; }
+
   bool canBeDropped() const override final { return true; }
 
   bool isSorted() const override final { return true; }

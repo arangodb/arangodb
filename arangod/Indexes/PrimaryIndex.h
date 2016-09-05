@@ -136,6 +136,8 @@ class PrimaryIndex final : public Index {
   IndexType type() const override final {
     return Index::TRI_IDX_TYPE_PRIMARY_INDEX;
   }
+  
+  bool allowExpansion() const override final { return false; }
 
   bool canBeDropped() const override final { return false; }
 
