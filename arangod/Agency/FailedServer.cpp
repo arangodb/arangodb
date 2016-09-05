@@ -25,6 +25,7 @@
 
 #include "Agent.h"
 #include "FailedLeader.h"
+#include "UnassumedLeadership.h"
 #include "Job.h"
 
 using namespace arangodb::consensus;
@@ -127,30 +128,49 @@ bool FailedServer::start() {
     LOG_TOPIC(INFO, Logger::AGENCY) <<
       "Pending: DB Server " + _server + " failed.";
       
-    Node::Children const& databases =
+    auto const& databases =
       _snapshot("/Plan/Collections").children();
+    auto const& current =
+      _snapshot("/Current/Collections").children();
 
     size_t sub = 0;
 
     for (auto const& database : databases) {
+      auto cdatabase = current.at(database.first)->children();
+      
       for (auto const& collptr : database.second->children()) {
         Node const& collection = *(collptr.second);
-        Node const& replicationFactor = collection("replicationFactor");
-        if (replicationFactor.slice().getUInt() > 1) {
-          for (auto const& shard : collection("shards").children()) {
-            VPackArrayIterator dbsit(shard.second->slice());
-              
-            // Only proceed if leader and create job
-            if ((*dbsit.begin()).copyString() != _server) {
-              continue;
-            }
 
-            FailedLeader(
+        if (!cdatabase.find(collptr.first)->second->children().empty()) {
+          
+          Node const& collection = *(collptr.second);
+          Node const& replicationFactor = collection("replicationFactor");
+          if (replicationFactor.slice().getUInt() > 1) {
+            for (auto const& shard : collection("shards").children()) {
+              VPackArrayIterator dbsit(shard.second->slice());
+              
+              // Only proceed if leader and create job
+              if ((*dbsit.begin()).copyString() != _server) {
+                continue;
+              }
+              
+              FailedLeader(
+                _snapshot, _agent, _jobId + "-" + std::to_string(sub++), _jobId,
+                _agencyPrefix, database.first, collptr.first, shard.first,
+                _server, shard.second->slice()[1].copyString());
+              
+            }
+          }
+          
+        } else {
+
+          for (auto const& shard : collection("shards").children()) {
+            UnassumedLeadership(
               _snapshot, _agent, _jobId + "-" + std::to_string(sub++), _jobId,
               _agencyPrefix, database.first, collptr.first, shard.first,
-              _server, shard.second->slice()[1].copyString());
-              
-          } 
+              _server);
+          }
+          
         }
       }
     }

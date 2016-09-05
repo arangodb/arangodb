@@ -355,6 +355,18 @@ bool CleanOutServer::checkFeasibility () {
     }
   }
 
+  // Server has not been cleaned already
+  if (_snapshot.exists("/Target/FailedServers").size() == 2) {
+    for (auto const& srv :
+           VPackArrayIterator(_snapshot("/Failed/CleanedServers").slice())) {
+      if (srv.copyString() == _server) {
+        LOG_TOPIC(ERR, Logger::AGENCY)
+          << _server << " has been cleaned out already!";
+        return false;
+      }
+    }
+  }
+
   if (_snapshot.exists(serverStatePrefix + _server + "/cleaning").size() == 4) {
     LOG_TOPIC(ERR, Logger::AGENCY)
       << _server << " has been cleaned out already!";
@@ -431,3 +443,4 @@ bool CleanOutServer::checkFeasibility () {
   return true;
   
 }
+
