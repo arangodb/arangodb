@@ -304,7 +304,6 @@ void HttpResponse::addPayloadPostHook(
     VPackSlice const& slice,
     VPackOptions const* options = &VPackOptions::Options::Defaults,
     bool resolveExternals = true, bool bodySkipped = false) {
-
   VPackSlice const* slicePtr;
   VPackSlice tmpSlice;
 
@@ -315,6 +314,13 @@ void HttpResponse::addPayloadPostHook(
     slicePtr = &tmpSlice;
   } else {
     slicePtr = &slice;
+  }
+
+  if (_contentType == rest::ContentType::JSON &&
+      _contentTypeRequested == rest::ContentType::VPACK) {
+    // content type was set by a handler to Json but the client wants VPACK
+    // as we have a slice at had we are able to reply with VPACK
+    _contentType = rest::ContentType::VPACK;
   }
 
   switch (_contentType) {
