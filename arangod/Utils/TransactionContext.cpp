@@ -27,7 +27,7 @@
 #include "Utils/Transaction.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/Ditch.h"
-#include "VocBase/collection.h"
+#include "VocBase/LogicalCollection.h"
 #include "Wal/LogfileManager.h"
 
 #include <velocypack/Builder.h>
@@ -120,21 +120,22 @@ VPackCustomTypeHandler* TransactionContext::createCustomTypeHandler(TRI_vocbase_
 /// function will return a nullptr!
 //////////////////////////////////////////////////////////////////////////////
 
-DocumentDitch* TransactionContext::orderDitch(TRI_collection_t* document) {
-  TRI_voc_cid_t cid = document->_info.id();
+DocumentDitch* TransactionContext::orderDitch(LogicalCollection* collection) {
+
+  TRI_voc_cid_t cid = collection->cid();
 
   auto it = _ditches.find(cid);
 
   if (it != _ditches.end()) {
     // tell everyone else this ditch is still in use,
     // at least until the transaction is over
-    (*it).second->setUsedByTransaction();
+    TRI_ASSERT((*it).second->usedByTransaction());
     // ditch already exists, return it
     return (*it).second;
   }
 
   // this method will not throw, but may return a nullptr
-  auto ditch = document->ditches()->createDocumentDitch(true, __FILE__, __LINE__);
+  auto ditch = collection->ditches()->createDocumentDitch(true, __FILE__, __LINE__);
 
   if (ditch != nullptr) {
     try {

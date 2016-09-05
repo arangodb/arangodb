@@ -42,11 +42,12 @@
 #include "FulltextIndex/fulltext-query.h"
 #include "FulltextIndex/fulltext-result.h"
 #include "Indexes/FulltextIndex.h"
-#include "Indexes/GeoIndex2.h"
+#include "Indexes/GeoIndex.h"
 #include "Indexes/Index.h"
 #include "Random/UniformCharacter.h"
 #include "Ssl/SslInterface.h"
 #include "Utils/CollectionNameResolver.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -689,9 +690,14 @@ static AqlValue MergeParameters(arangodb::aql::Query* query,
 }
 
 /// @brief Load geoindex for collection name
-static arangodb::Index* getGeoIndex(arangodb::AqlTransaction* trx,
-                                    TRI_voc_cid_t const& cid,
-                                    std::string const& collectionName) {
+static arangodb::GeoIndex* getGeoIndex(
+    arangodb::AqlTransaction* trx, TRI_voc_cid_t const& cid,
+    std::string const& collectionName) {
+  // NOTE:
+  // Due to trx lock the shared_index stays valid
+  // as long as trx stays valid.
+  // It is save to return the Raw pointer.
+  // It can only be used until trx is finished.
   trx->addCollectionAtRuntime(cid, collectionName);
 
   auto document = trx->documentCollection(cid);
@@ -701,12 +707,12 @@ static arangodb::Index* getGeoIndex(arangodb::AqlTransaction* trx,
                                   "'%s'", collectionName.c_str());
   }
 
-  arangodb::Index* index = nullptr;
+  arangodb::GeoIndex* index = nullptr;
 
-  for (auto const& idx : document->allIndexes()) {
+  for (auto const& idx : document->getIndexes()) {
     if (idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX ||
         idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX) {
-      index = idx;
+      index = static_cast<arangodb::GeoIndex*>(idx.get());
       break;
     }
   }
@@ -2224,12 +2230,12 @@ AqlValue Functions::Near(arangodb::aql::Query* query,
   }
 
   TRI_voc_cid_t cid = trx->resolver()->getCollectionIdLocal(collectionName);
-  arangodb::Index* index = getGeoIndex(trx, cid, collectionName);
+  arangodb::GeoIndex* index = getGeoIndex(trx, cid, collectionName);
 
   TRI_ASSERT(index != nullptr);
   TRI_ASSERT(trx->hasDitch(cid));
 
-  GeoCoordinates* cors = static_cast<arangodb::GeoIndex2*>(index)->nearQuery(
+  GeoCoordinates* cors = index->nearQuery(
       trx, latitude.toDouble(trx), longitude.toDouble(trx), static_cast<size_t>(limitValue));
 
   return buildGeoResult(trx, query, cors, cid, attributeName);
@@ -2275,12 +2281,12 @@ AqlValue Functions::Within(arangodb::aql::Query* query,
   }
 
   TRI_voc_cid_t cid = trx->resolver()->getCollectionIdLocal(collectionName);
-  arangodb::Index* index = getGeoIndex(trx, cid, collectionName);
+  arangodb::GeoIndex* index = getGeoIndex(trx, cid, collectionName);
 
   TRI_ASSERT(index != nullptr);
   TRI_ASSERT(trx->hasDitch(cid));
 
-  GeoCoordinates* cors = static_cast<arangodb::GeoIndex2*>(index)->withinQuery(
+  GeoCoordinates* cors = index->withinQuery(
       trx, latitudeValue.toDouble(trx), longitudeValue.toDouble(trx), radiusValue.toDouble(trx));
 
   return buildGeoResult(trx, query, cors, cid, attributeName);
@@ -3344,15 +3350,16 @@ AqlValue Functions::CollectionCount(
   auto resolver = trx->resolver();
   TRI_voc_cid_t cid = resolver->getCollectionIdLocal(collectionName);
   trx->addCollectionAtRuntime(cid, collectionName);
-  auto document = trx->documentCollection(cid);
+  auto collection = trx->documentCollection(cid);
 
-  if (document == nullptr) {
+  if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                                   "'%s'", collectionName.c_str());
   }
 
   TransactionBuilderLeaser builder(trx);
-  builder->add(VPackValue(document->_numberDocuments));
+  // TODO Temporary until move to LogicalCollection is complete
+  builder->add(VPackValue(collection->numberDocuments()));
   return AqlValue(builder.get());
 }
 
@@ -3757,24 +3764,27 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
                                   "", collectionName.c_str());
   }
 
-  arangodb::Index* index = nullptr;
+  // NOTE: The shared_ptr is protected by trx lock.
+  // It is save to use the raw pointer directly.
+  // We are NOT allowed to delete the index.
+  arangodb::FulltextIndex* fulltextIndex = nullptr;
 
   std::vector<std::vector<arangodb::basics::AttributeName>> const search(
       {{arangodb::basics::AttributeName(attributeName, false)}});
 
-  for (auto const& idx : document->allIndexes()) {
+  for (auto const& idx : document->getIndexes()) {
     if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
       // test if index is on the correct field
       if (arangodb::basics::AttributeName::isIdentical(idx->fields(), search,
                                                        false)) {
         // match!
-        index = idx;
+        fulltextIndex = static_cast<arangodb::FulltextIndex*>(idx.get());
         break;
       }
     }
   }
 
-  if (index == nullptr) {
+  if (fulltextIndex == nullptr) {
     // fiddle collection name into error message
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING,
                                   collectionName.c_str());
@@ -3798,7 +3808,6 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  auto fulltextIndex = static_cast<arangodb::FulltextIndex*>(index);
   // note: the following call will free "ft"!
   TRI_fulltext_result_t* queryResult =
       TRI_QueryFulltextIndex(fulltextIndex->internals(), ft);

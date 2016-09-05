@@ -39,8 +39,6 @@
 #include "VocBase/CompactionLocker.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/collection.h"
-#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -66,6 +64,7 @@ static char const* ReasonNothingToCompact =
     "checked datafiles, but no compaction opportunity found";
   
 /// @brief compaction state
+namespace arangodb {
 struct CompactionContext {
   arangodb::Transaction* _trx;
   LogicalCollection* _collection;
@@ -73,13 +72,17 @@ struct CompactionContext {
   DatafileStatisticsContainer _dfi;
   bool _keepDeletions;
 
+  CompactionContext(CompactionContext const&) = delete;
   CompactionContext() : _trx(nullptr), _collection(nullptr), _compactor(nullptr), _dfi(), _keepDeletions(true) {}
 };
-
+}
 
 /// @brief callback to drop a datafile
-void MMFilesCompactorThread::DropDatafileCallback(TRI_datafile_t* datafile, LogicalCollection* collection) {
-  TRI_voc_fid_t fid = datafile->_fid;
+void MMFilesCompactorThread::DropDatafileCallback(TRI_datafile_t* df, LogicalCollection* collection) {
+  TRI_ASSERT(df != nullptr);
+
+  std::unique_ptr<TRI_datafile_t> datafile(df);
+  TRI_voc_fid_t fid = datafile->fid();
   
   std::string copy;
   std::string name("deleted-" + std::to_string(fid) + ".db");
@@ -87,9 +90,9 @@ void MMFilesCompactorThread::DropDatafileCallback(TRI_datafile_t* datafile, Logi
 
   if (datafile->isPhysical()) {
     // copy the current filename
-    copy = datafile->_filename;
+    copy = datafile->getName();
 
-    int res = TRI_RenameDatafile(datafile, filename.c_str());
+    int res = datafile->rename(filename);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC(ERR, Logger::COMPACTOR) << "cannot rename obsolete datafile '" << copy << "' to '" << filename << "': " << TRI_errno_string(res);
@@ -122,8 +125,6 @@ void MMFilesCompactorThread::DropDatafileCallback(TRI_datafile_t* datafile, Logi
       }
     }
   }
-
-  delete datafile;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -139,26 +140,28 @@ void MMFilesCompactorThread::DropDatafileCallback(TRI_datafile_t* datafile, Logi
 /// will be treated as a temporary file and dropped.
 ////////////////////////////////////////////////////////////////////////////////
 
-void MMFilesCompactorThread::RenameDatafileCallback(TRI_datafile_t* datafile, void* data) {
-  auto* context = static_cast<CompactionContext*>(data);
-  TRI_datafile_t* compactor = context->_compactor;
-  LogicalCollection* collection = context->_collection;
+void MMFilesCompactorThread::RenameDatafileCallback(TRI_datafile_t* datafile, 
+                                                    TRI_datafile_t* compactor, 
+                                                    LogicalCollection* collection) {
+  TRI_ASSERT(datafile != nullptr);
+  TRI_ASSERT(compactor != nullptr);
+  TRI_ASSERT(collection != nullptr);
 
   bool ok = false;
-  TRI_ASSERT(datafile->_fid == compactor->_fid);
+  TRI_ASSERT(datafile->fid() == compactor->fid());
 
   if (datafile->isPhysical()) {
     // construct a suitable tempname
-    std::string jname("temp-" + std::to_string(datafile->_fid) + ".db");
+    std::string jname("temp-" + std::to_string(datafile->fid()) + ".db");
     std::string tempFilename = arangodb::basics::FileUtils::buildFilename(collection->path(), jname);
-    std::string realName = datafile->_filename;
+    std::string realName = datafile->getName();
 
-    int res = TRI_RenameDatafile(datafile, tempFilename.c_str());
+    int res = datafile->rename(tempFilename);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC(ERR, Logger::COMPACTOR) << "unable to rename datafile '" << datafile->getName() << "' to '" << tempFilename << "': " << TRI_errno_string(res);
     } else {
-      res = TRI_RenameDatafile(compactor, realName.c_str());
+      res = compactor->rename(realName);
 
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_TOPIC(ERR, Logger::COMPACTOR) << "unable to rename compaction file '" << compactor->getName() << "' to '" << realName << "': " << TRI_errno_string(res);
@@ -180,10 +183,7 @@ void MMFilesCompactorThread::RenameDatafileCallback(TRI_datafile_t* datafile, vo
 
     DropDatafileCallback(datafile, collection);
   }
-
-  TRI_Free(TRI_CORE_MEM_ZONE, context);
 }
-
 
 /// @brief remove an empty compactor file
 int MMFilesCompactorThread::removeCompactor(LogicalCollection* collection,
@@ -225,17 +225,17 @@ int MMFilesCompactorThread::removeDatafile(LogicalCollection* collection,
   }
 
   // update dfi
-  collection->_collection->_datafileStatistics.remove(df->_fid);
+  static_cast<MMFilesCollection*>(collection->getPhysical())->_datafileStatistics.remove(df->fid());
 
   return TRI_ERROR_NO_ERROR;
 }
 
 
 /// @brief calculate the target size for the compactor to be created
-MMFilesCompactorThread::compaction_initial_context_t MMFilesCompactorThread::getCompactionContext(
+MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getCompactionContext(
     arangodb::Transaction* trx, LogicalCollection* collection,
     std::vector<compaction_info_t> const& toCompact) {
-  compaction_initial_context_t context(trx, collection);
+  CompactionInitialContext context(trx, collection);
 
   // this is the minimum required size
   context._targetSize =
@@ -256,14 +256,14 @@ MMFilesCompactorThread::compaction_initial_context_t MMFilesCompactorThread::get
 
     if (i == 0) {
       // extract and store fid
-      context._fid = compaction._datafile->_fid;
+      context._fid = compaction._datafile->fid();
     }
 
     context._keepDeletions = compaction._keepDeletions;
 
     /// @brief datafile iterator, calculates necessary total size
     auto calculateSize = [&context](TRI_df_marker_t const* marker, TRI_datafile_t* datafile) -> bool {
-      TRI_collection_t* document = context._collection->_collection;
+      LogicalCollection* collection = context._collection;
       TRI_df_marker_type_t const type = marker->getType();
 
       // new or updated document
@@ -274,7 +274,7 @@ MMFilesCompactorThread::compaction_initial_context_t MMFilesCompactorThread::get
         VPackSlice keySlice = Transaction::extractKeyFromDocument(slice);
 
         // check if the document is still active
-        auto primaryIndex = document->primaryIndex();
+        auto primaryIndex = collection->primaryIndex();
         auto found = primaryIndex->lookupKey(context._trx, keySlice);
         bool deleted = (found == nullptr || marker != found->getMarkerPtr());
 
@@ -298,9 +298,9 @@ MMFilesCompactorThread::compaction_initial_context_t MMFilesCompactorThread::get
 
 
     bool ok;
-    TRI_collection_t* document = collection->_collection;
     {
-      int res = document->beginRead();
+      bool const useDeadlockDetector = false;
+      int res = collection->beginReadTimed(useDeadlockDetector, 86400ULL * 1000ULL * 1000ULL, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
 
       if (res != TRI_ERROR_NO_ERROR) {
         ok = false;
@@ -311,7 +311,7 @@ MMFilesCompactorThread::compaction_initial_context_t MMFilesCompactorThread::get
         } catch (...) {
           ok = false;
         }
-        document->endRead();
+        collection->endRead(useDeadlockDetector);
       }
     }
 
@@ -332,10 +332,10 @@ MMFilesCompactorThread::compaction_initial_context_t MMFilesCompactorThread::get
 void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
     std::vector<compaction_info_t> const& toCompact) {
 
-  TRI_datafile_t* compactor;
-  CompactionContext context;
   size_t const n = toCompact.size();
   TRI_ASSERT(n > 0);
+  
+  auto context = std::make_unique<CompactionContext>();
 
   /// @brief datafile iterator, copies "live" data from datafile into compactor
   /// this function is called for all markers in the collected datafiles. Its
@@ -344,11 +344,10 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   /// IMPORTANT: if the logic inside this function is adjusted, the total size
   /// calculated by function CalculateSize might need adjustment, too!!
   auto compactifier = [&context, &collection, this](TRI_df_marker_t const* marker, TRI_datafile_t* datafile) -> bool {
-    LogicalCollection* collection = context._collection;
-    TRI_voc_fid_t const targetFid = context._compactor->_fid;
+    LogicalCollection* collection = context->_collection;
+    TRI_voc_fid_t const targetFid = context->_compactor->fid();
 
     TRI_df_marker_type_t const type = marker->getType();
-    TRI_collection_t* document = collection->_collection;
 
     // new or updated document
     if (type == TRI_DF_MARKER_VPACK_DOCUMENT) {
@@ -358,22 +357,22 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       VPackSlice keySlice = Transaction::extractKeyFromDocument(slice);
 
       // check if the document is still active
-      auto primaryIndex = document->primaryIndex();
-      auto found = primaryIndex->lookupKey(context._trx, keySlice);
+      auto primaryIndex = collection->primaryIndex();
+      auto found = primaryIndex->lookupKey(context->_trx, keySlice);
       bool deleted = (found == nullptr || marker != found->getMarkerPtr());
 
       if (deleted) {
         // found a dead document
-        context._dfi.numberDead++;
-        context._dfi.sizeDead += DatafileHelper::AlignedMarkerSize<int64_t>(marker);
+        context->_dfi.numberDead++;
+        context->_dfi.sizeDead += DatafileHelper::AlignedMarkerSize<int64_t>(marker);
         return true;
       }
 
-      context._keepDeletions = true;
+      context->_keepDeletions = true;
 
       // write to compactor files
       TRI_df_marker_t* result;
-      int res = copyMarker(document, context._compactor, marker, &result);
+      int res = copyMarker(context->_compactor, marker, &result);
 
       if (res != TRI_ERROR_NO_ERROR) {
         // TODO: dont fail but recover from this state
@@ -392,16 +391,16 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
         found2->setFid(targetFid, false);
       }
 
-      context._dfi.numberAlive++;
-      context._dfi.sizeAlive += DatafileHelper::AlignedMarkerSize<int64_t>(marker);
+      context->_dfi.numberAlive++;
+      context->_dfi.sizeAlive += DatafileHelper::AlignedMarkerSize<int64_t>(marker);
     }
 
     // deletions
     else if (type == TRI_DF_MARKER_VPACK_REMOVE) {
-      if (context._keepDeletions) {
+      if (context->_keepDeletions) {
         // write to compactor files
         TRI_df_marker_t* result;
-        int res = copyMarker(document, context._compactor, marker, &result);
+        int res = copyMarker(context->_compactor, marker, &result);
 
         if (res != TRI_ERROR_NO_ERROR) {
           // TODO: dont fail but recover from this state
@@ -410,22 +409,21 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
         }
 
         // update datafile info
-        context._dfi.numberDeletions++;
+        context->_dfi.numberDeletions++;
       }
     }
 
     return true;
   };
 
-  TRI_collection_t* document = collection->_collection;
-  arangodb::SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(document->_vocbase), 
-      document->_info.id(), TRI_TRANSACTION_WRITE);
+  arangodb::SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(collection->vocbase()), 
+      collection->cid(), TRI_TRANSACTION_WRITE);
   trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_THROTTLING, true);
 
-  compaction_initial_context_t initial = getCompactionContext(&trx, collection, toCompact);
+  CompactionInitialContext initial = getCompactionContext(&trx, collection, toCompact);
 
   if (initial._failed) {
     LOG_TOPIC(ERR, Logger::COMPACTOR) << "could not create initialize compaction";
@@ -433,24 +431,29 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
     return;
   }
 
-  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "compactify called for collection '" << document->_info.id() << "' for " << n << " datafiles of total size " << initial._targetSize;
+  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "compactify called for collection '" << collection->cid() << "' for " << n << " datafiles of total size " << initial._targetSize;
 
   // now create a new compactor file
   // we are re-using the _fid of the first original datafile!
-  compactor = static_cast<MMFilesCollection*>(collection->getPhysical())->createCompactor(initial._fid, static_cast<TRI_voc_size_t>(initial._targetSize));
-
-  if (compactor == nullptr) {
-    // some error occurred
-    LOG_TOPIC(ERR, Logger::COMPACTOR) << "could not create compactor file";
+  TRI_datafile_t* compactor = nullptr;
+  try {
+    compactor = static_cast<MMFilesCollection*>(collection->getPhysical())->createCompactor(initial._fid, static_cast<TRI_voc_size_t>(initial._targetSize));
+  } catch (std::exception const& ex) {
+    LOG_TOPIC(ERR, Logger::COMPACTOR) << "could not create compactor file: " << ex.what();
+    return;
+  } catch (...) {
+    LOG_TOPIC(ERR, Logger::COMPACTOR) << "could not create compactor file: unknown exception";
     return;
   }
+
+  TRI_ASSERT(compactor != nullptr);
 
   LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "created new compactor file '" << compactor->getName() << "'";
 
   // these attributes remain the same for all datafiles we collect
-  context._collection = collection;
-  context._compactor = compactor;
-  context._trx = &trx;
+  context->_collection = collection;
+  context->_compactor = compactor;
+  context->_trx = &trx;
 
   int res = trx.begin();
 
@@ -469,7 +472,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
     // if this is the first datafile in the list of datafiles, we can also
     // collect
     // deletion markers
-    context._keepDeletions = compaction._keepDeletions;
+    context->_keepDeletions = compaction._keepDeletions;
 
     // run the actual compaction of a single datafile
     bool ok = TRI_IterateDatafile(df, compactifier);
@@ -484,24 +487,25 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
   }  // next file
 
-  document->_datafileStatistics.replace(compactor->_fid, context._dfi);
+  MMFilesCollection* physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+  physical->_datafileStatistics.replace(compactor->fid(), context->_dfi);
 
   trx.commit();
 
   // remove all datafile statistics that we don't need anymore
   for (size_t i = 1; i < n; ++i) {
     auto compaction = toCompact[i];
-    document->_datafileStatistics.remove(compaction._datafile->_fid);
+    physical->_datafileStatistics.remove(compaction._datafile->fid());
   }
 
-  if (static_cast<MMFilesCollection*>(collection->getPhysical())->closeCompactor(compactor) != TRI_ERROR_NO_ERROR) {
+  if (physical->closeCompactor(compactor) != TRI_ERROR_NO_ERROR) {
     LOG_TOPIC(ERR, Logger::COMPACTOR) << "could not close compactor file";
     // TODO: how do we recover from this state?
     return;
   }
 
-  if (context._dfi.numberAlive == 0 && context._dfi.numberDead == 0 &&
-      context._dfi.numberDeletions == 0) {
+  if (context->_dfi.numberAlive == 0 && context->_dfi.numberDead == 0 &&
+      context->_dfi.numberDeletions == 0) {
     // everything is empty after compaction
     if (n > 1) {
       // create .dead files for all collected files
@@ -528,10 +532,10 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       removeDatafile(collection, compaction._datafile);
 
       // add a deletion ditch to the collection
-      auto b = document->ditches()->createDropDatafileDitch(
+      auto b = collection->ditches()->createDropDatafileDitch(
           compaction._datafile, collection, DropDatafileCallback, __FILE__,
           __LINE__);
-
+      
       if (b == nullptr) {
         LOG_TOPIC(ERR, Logger::COMPACTOR) << "out of memory when creating datafile-drop ditch";
       }
@@ -557,18 +561,12 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
       if (i == 0) {
         // add a rename marker
-        void* copy = TRI_Allocate(TRI_CORE_MEM_ZONE,
-                                  sizeof(CompactionContext), false);
-
-        memcpy(copy, &context, sizeof(CompactionContext));
-
-        auto b = document->ditches()->createRenameDatafileDitch(
-            compaction._datafile, copy, RenameDatafileCallback, __FILE__,
+        auto b = collection->ditches()->createRenameDatafileDitch(
+            compaction._datafile, context->_compactor, context->_collection, RenameDatafileCallback, __FILE__,
             __LINE__);
 
         if (b == nullptr) {
           LOG_TOPIC(ERR, Logger::COMPACTOR) << "out of memory when creating datafile-rename ditch";
-          TRI_Free(TRI_CORE_MEM_ZONE, copy);
         } else {
           _vocbase->signalCleanup();
         }
@@ -578,7 +576,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
         removeDatafile(collection, compaction._datafile);
 
         // add a drop datafile marker
-        auto b = document->ditches()->createDropDatafileDitch(
+        auto b = collection->ditches()->createDropDatafileDitch(
             compaction._datafile, collection, DropDatafileCallback, __FILE__,
             __LINE__);
 
@@ -599,7 +597,6 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
   //    return false;
   //  }
 
-  TRI_collection_t* document = collection->_collection;
   wasBlocked = false;
 
   // if we cannot acquire the read lock instantly, we will exit directly.
@@ -619,7 +616,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
     // we already have created a compactor file in progress.
     // if this happens, then a previous compaction attempt for this collection
     // failed or is not finished yet
-    document->setCompactionStatus(ReasonCompactionBlocked);
+    collection->setCompactionStatus(ReasonCompactionBlocked);
     wasBlocked = true;
     return false;
   }
@@ -629,7 +626,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
 
   if (datafiles.empty()) {
     // collection has no datafiles
-    document->setCompactionStatus(ReasonNoDatafiles);
+    collection->setCompactionStatus(ReasonNoDatafiles);
     return false;
   }
   
@@ -638,15 +635,15 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
 
   // now we have datafiles that we can process 
   size_t const n = datafiles.size();
-  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "inspecting datafiles of collection '" << document->_info.name() << "' for compaction opportunities";
+  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "inspecting datafiles of collection '" << collection->name() << "' for compaction opportunities";
 
-  size_t start = document->getNextCompactionStartIndex();
+  size_t start = collection->getNextCompactionStartIndex();
 
   // get number of documents from collection
-  uint64_t const numDocuments = getNumberOfDocuments(document);
+  uint64_t const numDocuments = getNumberOfDocuments(collection);
 
   // get maximum size of result file
-  uint64_t maxSize = maxSizeFactor() * (uint64_t)document->_info.maximalSize();
+  uint64_t maxSize = maxSizeFactor() * (uint64_t)collection->journalSize();
   if (maxSize < 8 * 1024 * 1024) {
     maxSize = 8 * 1024 * 1024;
   }
@@ -675,11 +672,10 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
     TRI_datafile_t* df = datafiles[i];
     TRI_ASSERT(df != nullptr);
 
-    DatafileStatisticsContainer dfi =
-        document->_datafileStatistics.get(df->_fid);
+    DatafileStatisticsContainer dfi = static_cast<MMFilesCollection*>(collection->getPhysical())->_datafileStatistics.get(df->fid());
 
     if (dfi.numberUncollected > 0) {
-      LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "cannot compact datafile " << df->_fid << " of collection '" << document->_info.name() << "' because it still has uncollected entries";
+      LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "cannot compact datafile " << df->fid() << " of collection '" << collection->name() << "' because it still has uncollected entries";
       start = i + 1;
       break;
     }
@@ -756,8 +752,8 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
 
     TRI_ASSERT(reason != nullptr);
 
-    LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "found datafile #" << i << " eligible for compaction. fid: " << df->_fid << ", size: " << df->_maximalSize << ", reason: " << reason << ", numberDead: " << dfi.numberDead << ", numberAlive: " << dfi.numberAlive << ", numberDeletions: " << dfi.numberDeletions << ", numberUncollected: " << dfi.numberUncollected << ", sizeDead: " << dfi.sizeDead << ", sizeAlive: " << dfi.sizeAlive;
-    totalSize += static_cast<uint64_t>(df->_maximalSize);
+    LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "found datafile #" << i << " eligible for compaction. fid: " << df->fid() << ", size: " << df->maximalSize() << ", reason: " << reason << ", numberDead: " << dfi.numberDead << ", numberAlive: " << dfi.numberAlive << ", numberDeletions: " << dfi.numberDeletions << ", numberUncollected: " << dfi.numberUncollected << ", sizeDead: " << dfi.sizeDead << ", sizeAlive: " << dfi.sizeAlive;
+    totalSize += static_cast<uint64_t>(df->maximalSize());
 
     compaction_info_t compaction;
     compaction._datafile = df;
@@ -800,10 +796,10 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
 
   if (toCompact.empty()) {
     // nothing to compact. now reset start index
-    document->setNextCompactionStartIndex(0);
+    collection->setNextCompactionStartIndex(0);
     
     // cleanup local variables
-    document->setCompactionStatus(ReasonNothingToCompact);
+    collection->setCompactionStatus(ReasonNothingToCompact);
     LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "inspecting datafiles of collection yielded: " << ReasonNothingToCompact;
     return false;
   }
@@ -811,9 +807,8 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
   // handle datafiles with dead objects
   TRI_ASSERT(toCompact.size() >= 1);
   TRI_ASSERT(reason != nullptr);
-  document->setCompactionStatus(reason);
-
-  document->setNextCompactionStartIndex(start);
+  collection->setCompactionStatus(reason);
+  collection->setNextCompactionStartIndex(start);
   compactDatafiles(collection, toCompact);
 
   return true;
@@ -849,27 +844,16 @@ void MMFilesCompactorThread::run() {
         collections.clear();
       }
 
-      bool worked;
-
       for (auto& collection : collections) {
-      // Muss werden eine Lambda Function. () -> bool true wenn getan, False wenn nicht gelocked
-        {
-          TRY_READ_LOCKER(readLocker, collection->_lock);
+        bool worked = false;
 
-          if (!readLocker.isLocked()) {
-            // if we can't acquire the read lock instantly, we continue directly
-            // we don't want to stall here for too long
-            continue;
+        auto callback = [this, &collection, &worked]() -> void {
+          if (collection->status() != TRI_VOC_COL_STATUS_LOADED &&
+              collection->status() != TRI_VOC_COL_STATUS_UNLOADING) {
+            return;
           }
 
-          TRI_collection_t* document = collection->_collection;
-
-          if (document == nullptr) {
-            continue;
-          }
-
-          worked = false;
-          bool doCompact = document->_info.doCompact();
+          bool doCompact = collection->doCompact();
 
           // for document collection, compactify datafiles
           if (collection->status() == TRI_VOC_COL_STATUS_LOADED && doCompact) {
@@ -880,13 +864,13 @@ void MMFilesCompactorThread::run() {
 
             if (!compactionLocker.isLocked()) {
               // someone else is holding the compactor lock, we'll not compact
-              continue;
+              return;
             }
 
             try {
               double const now = TRI_microtime();
-              if (document->lastCompaction() + compactionCollectionInterval() <= now) {
-                auto ce = document->ditches()->createCompactionDitch(__FILE__,
+              if (collection->lastCompactionStamp() + compactionCollectionInterval() <= now) {
+                auto ce = collection->ditches()->createCompactionDitch(__FILE__,
                                                                       __LINE__);
 
                 if (ce == nullptr) {
@@ -899,7 +883,7 @@ void MMFilesCompactorThread::run() {
 
                     if (!worked && !wasBlocked) {
                       // set compaction stamp
-                      document->lastCompaction(now);
+                      collection->lastCompactionStamp(now);
                     }
                     // if we worked or were blocked, then we don't set the compaction stamp to
                     // force another round of compaction
@@ -908,7 +892,7 @@ void MMFilesCompactorThread::run() {
                     // in case an error occurs, we must still free this ditch
                   }
 
-                  document->ditches()->freeDitch(ce);
+                  collection->ditches()->freeDitch(ce);
                 }
               }
             } catch (...) {
@@ -916,8 +900,11 @@ void MMFilesCompactorThread::run() {
               LOG_TOPIC(ERR, Logger::COMPACTOR) << "an unknown exception occurred during compaction";
             }
           }
+        };
 
-        }  // end of lock
+        if (!collection->tryExecuteWhileStatusLocked(callback)) {
+          continue;
+        }
 
         if (worked) {
           ++numCompacted;
@@ -950,8 +937,10 @@ void MMFilesCompactorThread::run() {
 }
 
 /// @brief determine the number of documents in the collection
-uint64_t MMFilesCompactorThread::getNumberOfDocuments(TRI_collection_t* document) {
-  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), document->_info.id(), TRI_TRANSACTION_READ);
+uint64_t MMFilesCompactorThread::getNumberOfDocuments(LogicalCollection* collection) {
+  SingleCollectionTransaction trx(
+      StandaloneTransactionContext::Create(_vocbase), collection->cid(),
+      TRI_TRANSACTION_READ);
   // only try to acquire the lock here
   // if lock acquisition fails, we go on and report an (arbitrary) positive number
   trx.addHint(TRI_TRANSACTION_HINT_TRY_LOCK, false); 
@@ -963,19 +952,18 @@ uint64_t MMFilesCompactorThread::getNumberOfDocuments(TRI_collection_t* document
     return 16384; // assume some positive value 
   }
    
-  return static_cast<int64_t>(document->_numberDocuments);
+  return collection->numberDocuments();
 }
 
 /// @brief write a copy of the marker into the datafile
-int MMFilesCompactorThread::copyMarker(TRI_collection_t* document,
-                                       TRI_datafile_t* compactor, TRI_df_marker_t const* marker,
+int MMFilesCompactorThread::copyMarker(TRI_datafile_t* compactor, TRI_df_marker_t const* marker,
                                        TRI_df_marker_t** result) {
-  int res = TRI_ReserveElementDatafile(compactor, marker->getSize(), result, 0);
+  int res = compactor->reserveElement(marker->getSize(), result, 0);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return TRI_ERROR_ARANGO_NO_JOURNAL;
   }
 
-  return TRI_WriteElementDatafile(compactor, *result, marker, false);
+  return compactor->writeElement(*result, marker, false);
 }
 

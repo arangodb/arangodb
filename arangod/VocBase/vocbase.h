@@ -37,42 +37,34 @@
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-aliases.h"
 
-struct TRI_collection_t;
 class TRI_replication_applier_t;
 
 namespace arangodb {
 namespace velocypack {
 class Builder;
+class Slice;
 }
 namespace aql {
 class QueryList;
 }
 class CollectionNameResolver;
-class VocbaseCollectionInfo;
 class CollectionKeysRepository;
 class CursorRepository;
+class LogicalCollection;
 class StorageEngine;
 class Thread;
-
-class LogicalCollection;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief name of the system database
-////////////////////////////////////////////////////////////////////////////////
+/// @brief predefined collection name for users
+constexpr auto TRI_COL_NAME_USERS = "_users";
 
+/// @brief name of the system database
 constexpr auto TRI_VOC_SYSTEM_DATABASE = "_system";
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief maximal name length
-////////////////////////////////////////////////////////////////////////////////
-
 constexpr size_t TRI_COL_NAME_LENGTH = 64;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief default maximal collection journal size
-////////////////////////////////////////////////////////////////////////////////
-
 constexpr size_t TRI_JOURNAL_DEFAULT_SIZE = 1024 * 1024 * 32; // 32 MB
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,7 +174,7 @@ struct TRI_vocbase_t {
       _replicationClients;
 
  public:
-  arangodb::basics::DeadlockDetector<TRI_collection_t>
+  arangodb::basics::DeadlockDetector<arangodb::LogicalCollection>
       _deadlockDetector;
   arangodb::basics::ReadWriteLock _inventoryLock;  // object lock needed when
                                                    // replication is assessing
@@ -305,7 +297,7 @@ struct TRI_vocbase_t {
   /// using a cid of > 0 is supported to import dumps from other servers etc.
   /// but the functionality is not advertised
   arangodb::LogicalCollection* createCollection(
-      arangodb::VocbaseCollectionInfo& parameters, TRI_voc_cid_t cid,
+      arangodb::velocypack::Slice parameters, TRI_voc_cid_t cid,
       bool writeMarker);
 
   /// @brief drops a collection
@@ -348,9 +340,7 @@ struct TRI_vocbase_t {
   /// @brief adds a new collection
   /// caller must hold _collectionsLock in write mode or set doLock
   arangodb::LogicalCollection* registerCollection(
-      bool doLock, TRI_col_type_e type, TRI_voc_cid_t cid,
-      std::string const& name, TRI_voc_cid_t planId, std::string const& path,
-      bool isVolatile);
+      bool doLock, arangodb::velocypack::Slice parameters);
 
   /// @brief removes a collection from the global list of collections
   /// This function is called when a collection is dropped.
@@ -358,7 +348,7 @@ struct TRI_vocbase_t {
 
   /// @brief creates a new collection, worker function
   arangodb::LogicalCollection* createCollectionWorker(
-      arangodb::VocbaseCollectionInfo& parameters, TRI_voc_cid_t& cid,
+      arangodb::velocypack::Slice parameters, TRI_voc_cid_t& cid,
       bool writeMarker, VPackBuilder& builder);
 
   /// @brief drops a collection, worker function
@@ -401,5 +391,5 @@ VPackSlice TRI_ExtractRevisionIdAsSlice(VPackSlice const slice);
 /// open object which will remain open
 void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder);
 void TRI_SanitizeObjectWithEdges(VPackSlice const slice, VPackBuilder& builder);
-  
+
 #endif

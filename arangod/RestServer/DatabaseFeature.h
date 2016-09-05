@@ -35,7 +35,6 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class DatabaseManagerThread;
 
 namespace aql {
 class QueryRegistry;
@@ -79,6 +78,9 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   int recoveryDone();
 
  public:
+
+  static constexpr uint32_t defaultIndexBuckets() { return 8; }
+
    /// @brief get the ids of all local coordinator databases
   std::vector<TRI_voc_tick_t> getDatabaseIdsCoordinator(bool includeSystem);
   std::vector<TRI_voc_tick_t> getDatabaseIds(bool includeSystem);
@@ -165,14 +167,10 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   bool _isInitiallyEmpty;
   bool _replicationApplier;
   bool _checkVersion;
-  bool _iterateMarkersOnOpen;
   bool _upgrade;
 
   /// @brief lock for serializing the creation of databases
   arangodb::Mutex _databaseCreateLock;
-
- public:
-  static uint32_t const DefaultIndexBuckets;
 };
 }
 

@@ -39,8 +39,11 @@ class FulltextIndex final : public Index {
  public:
   FulltextIndex() = delete;
 
-  FulltextIndex(TRI_idx_iid_t, TRI_collection_t*,
-                std::string const&, int);
+  FulltextIndex(TRI_idx_iid_t, arangodb::LogicalCollection*, std::string const&,
+                int);
+
+  FulltextIndex(TRI_idx_iid_t, LogicalCollection*,
+                arangodb::velocypack::Slice const&);
 
   ~FulltextIndex();
 
@@ -48,6 +51,8 @@ class FulltextIndex final : public Index {
   IndexType type() const override final {
     return Index::TRI_IDX_TYPE_FULLTEXT_INDEX;
   }
+  
+  bool allowExpansion() const override final { return false; }
   
   bool canBeDropped() const override final { return true; }
 
@@ -61,6 +66,8 @@ class FulltextIndex final : public Index {
 
   void toVelocyPack(VPackBuilder&, bool) const override final;
   // Uses default toVelocyPackFigures
+
+  bool matchesDefinition(VPackSlice const&) const override final;
 
   int insert(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;

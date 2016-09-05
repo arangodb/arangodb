@@ -286,8 +286,8 @@ again:
         return false;
     }
   } else {
-    _readBuffer->appendText(_tmpReadBuffer, nr);
-    _readBuffer->ensureNullTerminated();
+    _readBuffer.appendText(_tmpReadBuffer, nr);
+    _readBuffer.ensureNullTerminated();
 
     // we might have more data to read
     // if we do not iterate again, the reading process would stop

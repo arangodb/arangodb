@@ -61,15 +61,19 @@ class PathBasedIndex : public Index {
   PathBasedIndex() = delete;
 
   PathBasedIndex(
-      TRI_idx_iid_t, TRI_collection_t*,
+      TRI_idx_iid_t, arangodb::LogicalCollection*,
       std::vector<std::vector<arangodb::basics::AttributeName>> const&,
       bool unique, bool sparse, bool allowPartialIndex);
+
+  PathBasedIndex(TRI_idx_iid_t, arangodb::LogicalCollection*,
+                 arangodb::velocypack::Slice const&, bool);
 
   PathBasedIndex(VPackSlice const&, bool);
 
   ~PathBasedIndex();
 
  public:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the index should reveal its fields
   //////////////////////////////////////////////////////////////////////////////

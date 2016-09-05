@@ -28,7 +28,6 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 
-struct TRI_collection_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -58,8 +57,7 @@ class MMFilesCleanupThread final : public Thread {
   void cleanupCursors(bool force);
 
   /// @brief checks all datafiles of a collection
-  void cleanupCollection(arangodb::LogicalCollection* collection,
-                         TRI_collection_t* document);
+  void cleanupCollection(arangodb::LogicalCollection* collection);
 
  private:
   TRI_vocbase_t* _vocbase;

@@ -27,15 +27,14 @@
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
-#include "VocBase/DatafileStatistics.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_collection_t;
 struct TRI_datafile_t;
 struct TRI_df_marker_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
+struct CompactionContext;
 class LogicalCollection;
 class Transaction;
 
@@ -48,7 +47,7 @@ class MMFilesCompactorThread final : public Thread {
   };
 
   /// @brief auxiliary struct used when initializing compaction
-  struct compaction_initial_context_t {
+  struct CompactionInitialContext {
     arangodb::Transaction* _trx;
     LogicalCollection* _collection;
     int64_t _targetSize;
@@ -56,7 +55,7 @@ class MMFilesCompactorThread final : public Thread {
     bool _keepDeletions;
     bool _failed;
 
-    compaction_initial_context_t(arangodb::Transaction* trx, LogicalCollection* collection)
+    CompactionInitialContext(arangodb::Transaction* trx, LogicalCollection* collection)
         : _trx(trx), _collection(collection), _targetSize(0), _fid(0), _keepDeletions(false), _failed(false) {}
   };
 
@@ -69,14 +68,14 @@ class MMFilesCompactorThread final : public Thread {
   /// @brief callback to drop a datafile
   static void DropDatafileCallback(TRI_datafile_t* datafile, LogicalCollection* collection);
   /// @brief callback to rename a datafile
-  static void RenameDatafileCallback(TRI_datafile_t* datafile, void*);
+  static void RenameDatafileCallback(TRI_datafile_t* datafile, TRI_datafile_t* compactor, LogicalCollection* collection);
 
  protected:
   void run() override;
 
  private:
   /// @brief calculate the target size for the compactor to be created
-  compaction_initial_context_t getCompactionContext(
+  CompactionInitialContext getCompactionContext(
     arangodb::Transaction* trx, LogicalCollection* collection,
     std::vector<compaction_info_t> const& toCompact);
 
@@ -92,11 +91,10 @@ class MMFilesCompactorThread final : public Thread {
   int removeDatafile(LogicalCollection* collection, TRI_datafile_t* datafile);
 
   /// @brief determine the number of documents in the collection
-  uint64_t getNumberOfDocuments(TRI_collection_t* document);
+  uint64_t getNumberOfDocuments(LogicalCollection* collection);
 
   /// @brief write a copy of the marker into the datafile
-  int copyMarker(TRI_collection_t* document,
-                 TRI_datafile_t* compactor, TRI_df_marker_t const* marker,
+  int copyMarker(TRI_datafile_t* compactor, TRI_df_marker_t const* marker,
                  TRI_df_marker_t** result);
 
   /// @brief wait time between compaction runs when idle

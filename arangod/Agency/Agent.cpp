@@ -268,10 +268,6 @@ bool Agent::recvAppendEntriesRPC(
     return false;
   }
   
-  if (!_constituent.vote(term, leaderId, prevIndex, prevTerm, true)) {
-    return false;
-  }
-
   size_t nqs   = queries->slice().length();
 
   if (nqs > 0) {
@@ -359,7 +355,7 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(std::string const& follower_id) {
     std::make_shared<std::string>(builder.toJson()), headerFields,
     std::make_shared<AgentCallback>(this, follower_id, highest),
     0.1*_config.minPing(), true, 0.05*_config.minPing());
-
+  
   _lastSent[follower_id] = std::chrono::system_clock::now();
   _lastHighest[follower_id] = highest;
   
@@ -444,6 +440,25 @@ bool Agent::load() {
 }
 
 
+
+/// Challenge my own leadership
+bool Agent::challengeLeadership() {
+
+  // Still leading?
+  size_t good = 0; 
+  for (auto const& i : _lastAcked) {
+    std::chrono::duration<double> m =
+      std::chrono::system_clock::now() - i.second;
+    if(0.9*_config.minPing() > m.count()) {
+      ++good;
+    }
+  }
+  return (good < size() / 2); // not counting myself
+  
+}
+
+
+
 /// Write new entries to replicated state and store
 write_ret_t Agent::write(query_t const& query) {
 
@@ -454,7 +469,13 @@ write_ret_t Agent::write(query_t const& query) {
   // Only leader else redirect
   if (!_constituent.leading()) {
     return write_ret_t(false, _constituent.leaderID());
+  } else {
+    if (challengeLeadership()) {
+      _constituent.candidate();
+      return write_ret_t(false, NO_LEADER);
+    }
   }
+
 
   // Apply to spearhead and get indices for log entries
   {
@@ -484,22 +505,13 @@ read_ret_t Agent::read(query_t const& query) {
   // Only leader else redirect
   if (!_constituent.leading()) {
     return read_ret_t(false, _constituent.leaderID());
-  }
-
-  // Still leading?
-  size_t good = 0; 
-  for (auto const& i : _lastAcked) {
-    std::chrono::duration<double> m =
-      std::chrono::system_clock::now() - i.second;
-    if(0.9*_config.minPing() > m.count()) {
-      ++good;
+  } else {
+    if (challengeLeadership()) {
+      _constituent.candidate();
+      return read_ret_t(false, NO_LEADER);
     }
   }
-  
-  if (good < size() / 2) {
-    _constituent.candidate();
-  }
-  
+
   // Retrieve data from readDB
   auto result = std::make_shared<arangodb::velocypack::Builder>();
   std::vector<bool> success = _readDB.read(query, result);

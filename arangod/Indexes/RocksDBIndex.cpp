@@ -31,7 +31,7 @@
 #include "Indexes/RocksDBFeature.h"
 #include "Indexes/RocksDBKeyComparator.h"
 #include "Utils/Transaction.h"
-#include "VocBase/collection.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <rocksdb/utilities/optimistic_transaction_db.h>
 #include <rocksdb/utilities/transaction.h>
@@ -93,7 +93,8 @@ RocksDBIterator::RocksDBIterator(arangodb::Transaction* trx,
       _probe(false) {
   
   TRI_idx_iid_t const id = index->id();
-  std::string const prefix = RocksDBIndex::buildPrefix(trx->vocbase()->id(), _primaryIndex->collection()->_info.id(), id);
+  std::string const prefix = RocksDBIndex::buildPrefix(
+      trx->vocbase()->id(), _primaryIndex->collection()->cid(), id);
   TRI_ASSERT(prefix.size() == RocksDBIndex::keyPrefixSize());
 
   _leftEndpoint.reset(new arangodb::velocypack::Buffer<char>());
@@ -206,12 +207,22 @@ TRI_doc_mptr_t* RocksDBIterator::next() {
 ////////////////////////////////////////////////////////////////////////////////
 
 RocksDBIndex::RocksDBIndex(
-    TRI_idx_iid_t iid, TRI_collection_t* collection,
+    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     bool unique, bool sparse)
     : PathBasedIndex(iid, collection, fields, unique, sparse, true),
       _db(RocksDBFeature::instance()->db()) {
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the index
+////////////////////////////////////////////////////////////////////////////////
+
+RocksDBIndex::RocksDBIndex(TRI_idx_iid_t iid,
+                           arangodb::LogicalCollection* collection,
+                           arangodb::velocypack::Slice const& info)
+    : PathBasedIndex(iid, collection, info, true),
+      _db(RocksDBFeature::instance()->db()) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an index stub with a hard-coded selectivity estimate
@@ -282,7 +293,8 @@ int RocksDBIndex::insert(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
   }
   
   VPackSlice const key = Transaction::extractKeyFromDocument(VPackSlice(doc->vpack()));
-  std::string const prefix = buildPrefix(trx->vocbase()->id(), _collection->_info.id(), _iid);
+  std::string const prefix =
+      buildPrefix(trx->vocbase()->id(), _collection->cid(), _iid);
 
   VPackBuilder builder;
   std::vector<std::string> values;
@@ -453,7 +465,7 @@ int RocksDBIndex::remove(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
     VPackSlice const s = builder.slice();
     std::string value;
     value.reserve(keyPrefixSize() + s.byteSize());
-    value.append(buildPrefix(trx->vocbase()->id(), _collection->_info.id(), _iid));
+    value.append(buildPrefix(trx->vocbase()->id(), _collection->cid(), _iid));
     value.append(s.startAs<char const>(), s.byteSize());
     values.emplace_back(std::move(value));
   }
@@ -484,7 +496,8 @@ int RocksDBIndex::unload() {
 
 /// @brief called when the index is dropped
 int RocksDBIndex::drop() {
-  return RocksDBFeature::instance()->dropIndex(_collection->_vocbase->id(), _collection->_info.id(), _iid);
+  return RocksDBFeature::instance()->dropIndex(_collection->vocbase()->id(),
+                                               _collection->cid(), _iid);
 }
 
 /// @brief attempts to locate an entry in the index
@@ -583,7 +596,13 @@ RocksDBIterator* RocksDBIndex::lookup(arangodb::Transaction* trx,
     }
   }
 
-  auto iterator = std::make_unique<RocksDBIterator>(trx, this, _collection->primaryIndex(), _db, reverse, leftBorder, rightBorder);
+  // Secured by trx. The shared_ptr index stays valid in
+  // _collection at least as long as trx is running.
+  // Same for the iterator
+  auto idx = _collection->primaryIndex();
+  auto iterator = std::make_unique<RocksDBIterator>(
+      trx, this, idx, _db, reverse,
+      leftBorder, rightBorder);
 
   return iterator.release();
 }

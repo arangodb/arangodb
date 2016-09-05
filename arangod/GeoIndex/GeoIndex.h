@@ -21,7 +21,7 @@
 /// @author R. A. Parker
 ////////////////////////////////////////////////////////////////////////////////
 
-/* GeoIndex.h - header file for GeoIndex algorithms  */
+/* GeoIdx.h - header file for GeoIdx algorithms  */
 /* Version 2.2  25.11.2015  R. A. Parker             */
 
 #ifndef ARANGOD_GEO_INDEX_GEO_INDEX_H
@@ -85,30 +85,30 @@ typedef struct {
   double* distances;
 } GeoCoordinates;
 
-typedef void GeoIndex;  /* to keep the structure private  */
+typedef void GeoIdx;  /* to keep the structure private  */
 typedef void GeoCursor; /* to keep the structure private  */
 
 size_t GeoIndex_MemoryUsage(void*);
 
-GeoIndex* GeoIndex_new(void);
-void GeoIndex_free(GeoIndex* gi);
+GeoIdx* GeoIndex_new(void);
+void GeoIndex_free(GeoIdx* gi);
 double GeoIndex_distance(GeoCoordinate* c1, GeoCoordinate* c2);
-int GeoIndex_insert(GeoIndex* gi, GeoCoordinate* c);
-int GeoIndex_remove(GeoIndex* gi, GeoCoordinate* c);
-int GeoIndex_hint(GeoIndex* gi, int hint);
-GeoCoordinates* GeoIndex_PointsWithinRadius(GeoIndex* gi, GeoCoordinate* c,
+int GeoIndex_insert(GeoIdx* gi, GeoCoordinate* c);
+int GeoIndex_remove(GeoIdx* gi, GeoCoordinate* c);
+int GeoIndex_hint(GeoIdx* gi, int hint);
+GeoCoordinates* GeoIndex_PointsWithinRadius(GeoIdx* gi, GeoCoordinate* c,
                                             double d);
-GeoCoordinates* GeoIndex_NearestCountPoints(GeoIndex* gi, GeoCoordinate* c,
+GeoCoordinates* GeoIndex_NearestCountPoints(GeoIdx* gi, GeoCoordinate* c,
                                             int count);
-GeoCursor* GeoIndex_NewCursor(GeoIndex* gi, GeoCoordinate* c);
+GeoCursor* GeoIndex_NewCursor(GeoIdx* gi, GeoCoordinate* c);
 GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count);
 void GeoIndex_CursorFree(GeoCursor* gc);
 void GeoIndex_CoordinatesFree(GeoCoordinates* clist);
 #ifdef TRI_GEO_DEBUG
-void GeoIndex_INDEXDUMP(GeoIndex* gi, FILE* f);
-int GeoIndex_INDEXVALID(GeoIndex* gi);
+void GeoIndex_INDEXDUMP(GeoIdx* gi, FILE* f);
+int GeoIndex_INDEXVALID(GeoIdx* gi);
 #endif
 
 #endif
 
-/* end of GeoIndex.h  */
+/* end of GeoIdx.h  */

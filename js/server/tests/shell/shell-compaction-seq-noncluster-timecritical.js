@@ -312,7 +312,7 @@ function CompactionSuite () {
       
       while (true) {
         fig = c.figures();
-        if (fig.dead.deletion === 0) {
+        if (fig.dead.deletion === 0 && fig.dead.count === 0) {
           break;
         }
 

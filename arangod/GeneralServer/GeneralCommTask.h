@@ -125,6 +125,8 @@ class GeneralServer;
 // (which has to be implemented in derived) as long as new input is available.
 
 class GeneralCommTask : public SocketTask {
+ friend class GeneralServer;
+
   GeneralCommTask(GeneralCommTask const&) = delete;
   GeneralCommTask const& operator=(GeneralCommTask const&) = delete;
 
@@ -175,7 +177,7 @@ class GeneralCommTask : public SocketTask {
 
   rest::ProtocolVersion _protocolVersion = rest::ProtocolVersion::UNKNOWN;
 
-  std::map<uint64_t, RequestStatisticsAgent> _agents;
+  std::unordered_map<uint64_t, RequestStatisticsAgent> _agents;
 };
 }
 }

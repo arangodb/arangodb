@@ -18,35 +18,33 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_VOCINDEX_H
-#define ARANGOD_V8_SERVER_V8_VOCINDEX_H 1
+#ifndef ARANGOD_VOC_BASE_DATAFILE_STATISTICS_CONTAINER_H
+#define ARANGOD_VOC_BASE_DATAFILE_STATISTICS_CONTAINER_H 1
 
 #include "Basics/Common.h"
-#include "Utils/CollectionNameResolver.h"
-#include "V8/v8-globals.h"
-#include "V8Server/v8-vocbase.h"
 
 namespace arangodb {
-class Index;
-class LogicalCollection;
+
+/// @brief datafile statistics
+struct DatafileStatisticsContainer {
+  DatafileStatisticsContainer();
+
+  void update(DatafileStatisticsContainer const&);
+  void reset();
+
+  int64_t numberAlive;
+  int64_t numberDead;
+  int64_t numberDeletions;
+
+  int64_t sizeAlive;
+  int64_t sizeDead;
+
+  int64_t numberUncollected;
+};
+
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a index identifier
-////////////////////////////////////////////////////////////////////////////////
-
-std::shared_ptr<arangodb::Index> TRI_LookupIndexByHandle(
-    v8::Isolate* isolate, arangodb::CollectionNameResolver const* resolver,
-    arangodb::LogicalCollection const* collection, v8::Handle<v8::Value> const val,
-    bool ignoreNotFound);
-
-void TRI_InitV8indexArangoDB(v8::Isolate* isolate,
-                             v8::Handle<v8::ObjectTemplate> ArangoDBNS);
-
-void TRI_InitV8indexCollection(v8::Isolate* isolate,
-                               v8::Handle<v8::ObjectTemplate> rt);
 
 #endif

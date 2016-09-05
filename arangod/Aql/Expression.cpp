@@ -498,7 +498,7 @@ AqlValue Expression::executeSimpleExpression(
       std::string msg("unhandled type '");
       msg.append(node->getTypeString());
       msg.append("' in executeSimpleExpression()");
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
   }
 }
 
@@ -848,7 +848,7 @@ AqlValue Expression::executeSimpleExpressionReference(
   msg.append(v->name);
   msg.append("' in executeSimpleExpression()");
  
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
 }
 
 /// @brief execute an expression of type SIMPLE with RANGE
@@ -1135,7 +1135,7 @@ AqlValue Expression::executeSimpleExpressionComparison(
       std::string msg("unhandled type '");
       msg.append(node->getTypeString());
       msg.append("' in executeSimpleExpression()");
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
   }
 }
 

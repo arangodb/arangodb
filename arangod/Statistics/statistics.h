@@ -181,7 +181,6 @@ extern TRI_server_statistics_t TRI_ServerStatistics;
 
 inline double TRI_StatisticsTime() { return TRI_microtime(); }
 
-void TRI_InitializeStatistics(void);
-void TRI_ShutdownStatistics(void);
+void TRI_InitializeStatistics();
 
 #endif

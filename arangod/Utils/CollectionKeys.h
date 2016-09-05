@@ -33,7 +33,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 struct TRI_df_marker_t;
-struct TRI_collection_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -116,7 +115,7 @@ class CollectionKeys {
  private:
   struct TRI_vocbase_t* _vocbase;
   arangodb::CollectionGuard* _guard;
-  struct TRI_collection_t* _document;
+  arangodb::LogicalCollection* _collection;
   arangodb::DocumentDitch* _ditch;
   std::string const _name;
   arangodb::CollectionNameResolver _resolver;

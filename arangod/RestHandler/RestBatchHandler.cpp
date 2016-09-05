@@ -56,6 +56,9 @@ RestHandler::status RestBatchHandler::execute() {
       return executeVpp();
     }
   }
+  // should never get here
+  TRI_ASSERT(false);
+  return RestHandler::status::FAILED;
 }
 
 RestHandler::status RestBatchHandler::executeVpp() {

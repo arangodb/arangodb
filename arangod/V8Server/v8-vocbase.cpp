@@ -104,15 +104,6 @@ int32_t const WRP_VOCBASE_TYPE = 1;
 
 int32_t const WRP_VOCBASE_COL_TYPE = 2;
 
-struct CollectionDitchInfo {
-  arangodb::DocumentDitch* ditch;
-  TRI_collection_t* col;
-
-  CollectionDitchInfo(arangodb::DocumentDitch* ditch,
-                      TRI_collection_t* col)
-      : ditch(ditch), col(col) {}
-};
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a C++ into a v8::Object
 ////////////////////////////////////////////////////////////////////////////////
@@ -1790,8 +1781,6 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
     TRI_V8_RETURN(v8::Handle<v8::Value>());
   }
 
-  arangodb::LogicalCollection* collection = nullptr;
-
   // generate a name under which the cached property is stored
   std::string cacheKey(key, keyLength);
   cacheKey.push_back('*');
@@ -1829,6 +1818,8 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
     cacheObject = globals->Get(_DbCacheKey)->ToObject();
   }
 
+  arangodb::LogicalCollection* collection = nullptr;
+
   if (!cacheObject.IsEmpty() && cacheObject->HasRealNamedProperty(cacheName)) {
     v8::Handle<v8::Object> value =
         cacheObject->GetRealNamedProperty(cacheName)->ToObject();
@@ -1840,7 +1831,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
     if (collection != nullptr && collection->vocbase() == vocbase) {
       TRI_vocbase_col_status_e status = collection->getStatusLocked();
       TRI_voc_cid_t cid = collection->cid();
-      uint32_t internalVersion = collection->version();
+      uint32_t internalVersion = collection->internalVersion();
 
       // check if the collection is still alive
       if (status != TRI_VOC_COL_STATUS_DELETED && cid > 0 &&
@@ -1874,18 +1865,23 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
     cacheObject->Delete(cacheName);
   }
 
-  if (ServerState::instance()->isCoordinator()) {
-    std::shared_ptr<LogicalCollection> ci =
-        ClusterInfo::instance()->getCollection(vocbase->name(),
-                                               std::string(key));
+  try {
+    if (ServerState::instance()->isCoordinator()) {
+      std::shared_ptr<LogicalCollection> ci =
+          ClusterInfo::instance()->getCollection(vocbase->name(),
+                                                std::string(key));
 
-    if (ci == nullptr) {
-      TRI_V8_RETURN(v8::Handle<v8::Value>());
+      if (ci == nullptr) {
+        TRI_V8_RETURN(v8::Handle<v8::Value>());
+      }
+
+      collection = new LogicalCollection(ci);
+    } else {
+      collection = vocbase->lookupCollection(std::string(key));
     }
-
-    collection = new LogicalCollection(ci);
-  } else {
-    collection = vocbase->lookupCollection(std::string(key));
+  } catch (...) {
+    // do not propagate exception from here
+    TRI_V8_RETURN(v8::Handle<v8::Value>());
   }
 
   if (collection == nullptr) {

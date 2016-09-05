@@ -676,9 +676,7 @@ static void JS_GetCollectionInfoClusterInfo(
 
   std::shared_ptr<LogicalCollection> ci = ClusterInfo::instance()->getCollection(
       TRI_ObjectToString(args[0]), TRI_ObjectToString(args[1]));
-  if (ci == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-  }
+  TRI_ASSERT(ci != nullptr);
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   std::string const cid = ci->cid_as_string();
@@ -727,8 +725,9 @@ static void JS_GetCollectionInfoClusterInfo(
     shardIds->Set(TRI_V8_STD_STRING(p.first), list);
   }
   result->Set(TRI_V8_ASCII_STRING("shards"), shardIds);
-
-  v8::Handle<v8::Value> indexes = TRI_VPackToV8(isolate, ci->getIndexes());
+  VPackBuilder tmp;
+  ci->getIndexesVPack(tmp, true);
+  v8::Handle<v8::Value> indexes = TRI_VPackToV8(isolate, tmp.slice());
   result->Set(TRI_V8_ASCII_STRING("indexes"), indexes);
 
   TRI_V8_RETURN(result);

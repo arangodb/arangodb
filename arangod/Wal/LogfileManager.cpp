@@ -101,9 +101,6 @@ LogfileManager::LogfileManager(ApplicationServer* server)
       _lastCollectedId(0),
       _lastSealedId(0),
       _shutdownFileLock(),
-      _transactionsLock(),
-      _transactions(),
-      _failedTransactions(),
       _droppedCollections(),
       _droppedDatabases(),
       _idLock(),
@@ -120,9 +117,6 @@ LogfileManager::LogfileManager(ApplicationServer* server)
   for (auto const& it : EngineSelectorFeature::availableEngines()) {
     startsAfter(it);
   }
-
-  _transactions.reserve(32);
-  _failedTransactions.reserve(32);
 }
 
 // destroy the logfile manager
@@ -135,14 +129,13 @@ LogfileManager::~LogfileManager() {
 
   _barriers.clear();
 
-  if (_recoverState != nullptr) {
-    delete _recoverState;
-    _recoverState = nullptr;
-  }
+  delete _recoverState;
+  delete _slots;
 
-  if (_slots != nullptr) {
-    delete _slots;
-    _slots = nullptr;
+  for (auto& it : _logfiles) {
+    if (it.second != nullptr) {
+      delete it.second;
+    }
   }
   
   Instance = nullptr;
@@ -327,12 +320,14 @@ bool LogfileManager::open() {
   // note all failed transactions that we found plus the list
   // of collections and databases that we can ignore
   {
-    WRITE_LOCKER(writeLocker, _transactionsLock);
-
-    _failedTransactions.reserve(_recoverState->failedTransactions.size());
+    WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
 
     for (auto const& it : _recoverState->failedTransactions) {
-      _failedTransactions.emplace(it.first);
+      size_t bucket = getBucket(it.first);
+
+      WRITE_LOCKER(locker, _transactions[bucket]._lock);
+
+      _transactions[bucket]._failedTransactions.emplace(it.first);
     }
 
     _droppedDatabases = _recoverState->droppedDatabases;
@@ -545,12 +540,13 @@ int LogfileManager::registerTransaction(TRI_voc_tid_t transactionId) {
   }
 
   try {
-    auto p = std::make_pair(lastCollectedId, lastSealedId);
-
-    WRITE_LOCKER(writeLocker, _transactionsLock);
+    size_t bucket = getBucket(transactionId);
+    READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
+     
+    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
     // insert into currently running list of transactions
-    _transactions.emplace(transactionId, std::move(p));
+    _transactions[bucket]._activeTransactions.emplace(transactionId, std::make_pair(lastCollectedId, lastSealedId));
     TRI_ASSERT(lastCollectedId <= lastSealedId);
 
     return TRI_ERROR_NO_ERROR;
@@ -562,12 +558,15 @@ int LogfileManager::registerTransaction(TRI_voc_tid_t transactionId) {
 // unregisters a transaction
 void LogfileManager::unregisterTransaction(TRI_voc_tid_t transactionId,
                                            bool markAsFailed) {
-  WRITE_LOCKER(writeLocker, _transactionsLock);
+  size_t bucket = getBucket(transactionId);
+  READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
+    
+  WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
-  _transactions.erase(transactionId);
+  _transactions[bucket]._activeTransactions.erase(transactionId);
 
   if (markAsFailed) {
-    _failedTransactions.emplace(transactionId);
+    _transactions[bucket]._failedTransactions.emplace(transactionId);
   }
 }
 
@@ -576,8 +575,15 @@ std::unordered_set<TRI_voc_tid_t> LogfileManager::getFailedTransactions() {
   std::unordered_set<TRI_voc_tid_t> failedTransactions;
 
   {
-    READ_LOCKER(readLocker, _transactionsLock);
-    failedTransactions = _failedTransactions;
+    WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
+
+    for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
+      READ_LOCKER(locker, _transactions[bucket]._lock);
+
+      for (auto const& it : _transactions[bucket]._failedTransactions) {
+        failedTransactions.emplace(it);
+      }
+    }
   }
 
   return failedTransactions;
@@ -612,10 +618,15 @@ std::unordered_set<TRI_voc_tick_t> LogfileManager::getDroppedDatabases() {
 // unregister a list of failed transactions
 void LogfileManager::unregisterFailedTransactions(
     std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
-  WRITE_LOCKER(writeLocker, _transactionsLock);
+    
+  WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
 
-  std::for_each(failedTransactions.begin(), failedTransactions.end(),
-                [&](TRI_voc_tid_t id) { _failedTransactions.erase(id); });
+  for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
+    READ_LOCKER(locker, _transactions[bucket]._lock);
+
+    std::for_each(failedTransactions.begin(), failedTransactions.end(),
+                [&](TRI_voc_tid_t id) { _transactions[bucket]._failedTransactions.erase(id); });
+  }
 }
 
 // whether or not it is currently allowed to create an additional
@@ -1365,16 +1376,20 @@ Logfile* LogfileManager::getCollectableLogfile() {
   // iterate over all active readers and find their minimum used logfile id
   Logfile::IdType minId = UINT64_MAX;
 
-  {
-    READ_LOCKER(readLocker, _transactionsLock);
+  { 
+    WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
 
     // iterate over all active transactions and find their minimum used logfile
     // id
-    for (auto const& it : _transactions) {
-      Logfile::IdType lastWrittenId = it.second.second;
+    for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
+      READ_LOCKER(locker, _transactions[bucket]._lock);
 
-      if (lastWrittenId < minId) {
-        minId = lastWrittenId;
+      for (auto const& it : _transactions[bucket]._activeTransactions) {
+        Logfile::IdType lastWrittenId = it.second.second;
+
+        if (lastWrittenId < minId) {
+          minId = lastWrittenId;
+        }
       }
     }
   }
@@ -1415,14 +1430,18 @@ Logfile* LogfileManager::getRemovableLogfile() {
   Logfile::IdType minId = UINT64_MAX;
 
   {
-    READ_LOCKER(readLocker, _transactionsLock);
+    WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
 
     // iterate over all active readers and find their minimum used logfile id
-    for (auto const& it : _transactions) {
-      Logfile::IdType lastCollectedId = it.second.first;
+    for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
+      READ_LOCKER(locker, _transactions[bucket]._lock);
 
-      if (lastCollectedId < minId) {
-        minId = lastCollectedId;
+      for (auto const& it : _transactions[bucket]._activeTransactions) {
+        Logfile::IdType lastCollectedId = it.second.first;
+
+        if (lastCollectedId < minId) {
+          minId = lastCollectedId;
+        }
       }
     }
   }
@@ -1585,19 +1604,23 @@ LogfileManager::runningTransactions() {
 
   {
     Logfile::IdType value;
-    READ_LOCKER(readLocker, _transactionsLock);
+    WRITE_LOCKER(readLocker, _allTransactionsLock);
 
-    for (auto const& it : _transactions) {
-      ++count;
+    for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
+      READ_LOCKER(locker, _transactions[bucket]._lock);
 
-      value = it.second.first;
-      if (value < lastCollectedId) {
-        lastCollectedId = value;
-      }
+      count += _transactions[bucket]._activeTransactions.size();
+      for (auto const& it : _transactions[bucket]._activeTransactions) {
 
-      value = it.second.second;
-      if (value < lastSealedId) {
-        lastSealedId = value;
+        value = it.second.first;
+        if (value < lastCollectedId) {
+          lastCollectedId = value;
+        }
+
+        value = it.second.second;
+        if (value < lastSealedId) {
+          lastSealedId = value;
+        }
       }
     }
   }
@@ -2027,7 +2050,7 @@ int LogfileManager::inspectLogfiles() {
   }
 #endif
 
-  for (auto it = _logfiles.begin(); it != _logfiles.end();) {
+  for (auto it = _logfiles.begin(); it != _logfiles.end(); /* no hoisting */) {
     Logfile::IdType const id = (*it).first;
     std::string const filename = logfileName(id);
 
@@ -2131,7 +2154,7 @@ int LogfileManager::createReserveLogfile(uint32_t size) {
     realsize = filesize();
   }
 
-  Logfile* logfile = Logfile::createNew(filename.c_str(), id, realsize);
+  std::unique_ptr<Logfile> logfile(Logfile::createNew(filename.c_str(), id, realsize));
 
   if (logfile == nullptr) {
     int res = TRI_errno();
@@ -2140,8 +2163,11 @@ int LogfileManager::createReserveLogfile(uint32_t size) {
     return res;
   }
 
-  WRITE_LOCKER(writeLocker, _logfilesLock);
-  _logfiles.emplace(id, logfile);
+  {
+    WRITE_LOCKER(writeLocker, _logfilesLock);
+    _logfiles.emplace(id, logfile.get());
+  }
+  logfile.release();
 
   return TRI_ERROR_NO_ERROR;
 }

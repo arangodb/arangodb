@@ -29,7 +29,6 @@
 #include "Basics/debugging.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Utils/Transaction.h"
-#include "VocBase/collection.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -712,7 +711,7 @@ void SkiplistIterator2::initNextInterval() {
 ////////////////////////////////////////////////////////////////////////////////
 
 SkiplistIndex::SkiplistIndex(
-    TRI_idx_iid_t iid, TRI_collection_t* collection,
+    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     bool unique, bool sparse)
     : PathBasedIndex(iid, collection, fields, unique, sparse, true),
@@ -721,6 +720,18 @@ SkiplistIndex::SkiplistIndex(
       _skiplistIndex(nullptr) {
   _skiplistIndex =
       new TRI_Skiplist(CmpElmElm, CmpKeyElm, FreeElm, unique, _useExpansion);
+}
+
+/// @brief create the skiplist index
+SkiplistIndex::SkiplistIndex(TRI_idx_iid_t iid,
+                             arangodb::LogicalCollection* collection,
+                             VPackSlice const& info)
+    : PathBasedIndex(iid, collection, info, true),
+      CmpElmElm(this),
+      CmpKeyElm(this),
+      _skiplistIndex(nullptr) {
+  _skiplistIndex =
+      new TRI_Skiplist(CmpElmElm, CmpKeyElm, FreeElm, _unique, _useExpansion);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -864,7 +875,7 @@ int SkiplistIndex::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
 }
 
 int SkiplistIndex::unload() {
-  _skiplistIndex->truncate();
+  _skiplistIndex->truncate(true);
   return TRI_ERROR_NO_ERROR;
 }
 

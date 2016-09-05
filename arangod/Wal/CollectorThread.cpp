@@ -39,9 +39,7 @@
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/CompactionLocker.h"
 #include "VocBase/DatafileHelper.h"
-#include "VocBase/DatafileStatistics.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/collection.h"
 #include "Wal/Logfile.h"
 #include "Wal/LogfileManager.h"
 
@@ -550,7 +548,7 @@ size_t CollectorThread::numQueuedOperations() {
 /// @brief process a single marker in collector step 2
 void CollectorThread::processCollectionMarker(
     arangodb::SingleCollectionTransaction& trx,
-    TRI_collection_t* document, CollectorCache* cache,
+    LogicalCollection* colection, CollectorCache* cache,
     CollectorOperation const& operation) {
   auto const* walMarker = reinterpret_cast<TRI_df_marker_t const*>(operation.walPosition);
   TRI_ASSERT(walMarker != nullptr);
@@ -572,7 +570,7 @@ void CollectorThread::processCollectionMarker(
     TRI_voc_rid_t revisionId = 0;
     Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
   
-    auto found = document->primaryIndex()->lookupKey(&trx, keySlice);
+    auto found = colection->primaryIndex()->lookupKey(&trx, keySlice);
 
     if (found == nullptr || found->revisionId() != revisionId ||
         found->getMarkerPtr() != walMarker) {
@@ -600,7 +598,7 @@ void CollectorThread::processCollectionMarker(
     TRI_voc_rid_t revisionId = 0;
     Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
 
-    auto found = document->primaryIndex()->lookupKey(&trx, keySlice);
+    auto found = colection->primaryIndex()->lookupKey(&trx, keySlice);
 
     if (found != nullptr && found->revisionId() > revisionId) {
       // somebody re-created the document with a newer revision
@@ -621,9 +619,6 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
 
   TRI_ASSERT(collection != nullptr);
 
-  TRI_collection_t* document = collection->_collection;
-  TRI_ASSERT(document != nullptr);
-
   // first try to read-lock the compactor-lock, afterwards try to write-lock the
   // collection
   // if any locking attempt fails, release and try again next time
@@ -633,8 +628,9 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
     return TRI_ERROR_LOCK_TIMEOUT;
   }
 
-  arangodb::SingleCollectionTransaction trx(arangodb::StandaloneTransactionContext::Create(document->_vocbase), 
-      document->_info.id(), TRI_TRANSACTION_WRITE);
+  arangodb::SingleCollectionTransaction trx(
+      arangodb::StandaloneTransactionContext::Create(collection->vocbase()),
+      collection->cid(), TRI_TRANSACTION_WRITE);
   trx.addHint(TRI_TRANSACTION_HINT_NO_USAGE_LOCK,
               true);  // already locked by guard above
   trx.addHint(TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK,
@@ -649,7 +645,7 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
   if (res != TRI_ERROR_NO_ERROR) {
     // this includes TRI_ERROR_LOCK_TIMEOUT!
     LOG_TOPIC(TRACE, Logger::COLLECTOR) << "wal collector couldn't acquire write lock for collection '"
-               << document->_info.name() << "': " << TRI_errno_string(res);
+               << collection->name() << "': " << TRI_errno_string(res);
 
     return res;
   }
@@ -657,23 +653,20 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
   try {
     // now we have the write lock on the collection
     LOG_TOPIC(TRACE, Logger::COLLECTOR) << "wal collector processing operations for collection '"
-               << document->_info.name() << "'";
+               << collection->name() << "'";
 
     TRI_ASSERT(!cache->operations->empty());
 
     for (auto const& it : *(cache->operations)) {
-      processCollectionMarker(trx, document, cache, it);
+      processCollectionMarker(trx, collection, cache, it);
     }
 
     // finally update all datafile statistics
     LOG_TOPIC(TRACE, Logger::COLLECTOR) << "updating datafile statistics for collection '"
-               << document->_info.name() << "'";
-    updateDatafileStatistics(document, cache);
+               << collection->name() << "'";
+    updateDatafileStatistics(collection, cache);
 
-    document->_uncollectedLogfileEntries -= cache->totalOperationsCount;
-    if (document->_uncollectedLogfileEntries < 0) {
-      document->_uncollectedLogfileEntries = 0;
-    }
+    collection->decreaseUncollectedLogfileEntries(cache->totalOperationsCount);
 
     res = TRI_ERROR_NO_ERROR;
   } catch (arangodb::basics::Exception const& ex) {
@@ -686,7 +679,7 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
   trx.finish(res);
 
   LOG_TOPIC(TRACE, Logger::COLLECTOR) << "wal collector processed operations for collection '"
-             << document->_info.name() << "' with status: " << TRI_errno_string(res);
+             << collection->name() << "' with status: " << TRI_errno_string(res);
 
   return res;
 }
@@ -847,11 +840,8 @@ int CollectorThread::transferMarkers(Logfile* logfile,
   arangodb::LogicalCollection* collection = collectionGuard.collection();
   TRI_ASSERT(collection != nullptr);
 
-  TRI_collection_t* document = collection->_collection;
-  TRI_ASSERT(document != nullptr);
-
   LOG_TOPIC(TRACE, Logger::COLLECTOR) << "collector transferring markers for '"
-             << document->_info.name()
+             << collection->name()
              << "', totalOperationsCount: " << totalOperationsCount;
 
   std::unique_ptr<CollectorCache> cache(
@@ -933,11 +923,11 @@ int CollectorThread::queueOperations(arangodb::wal::Logfile* logfile,
 
 /// @brief update a collection's datafile information
 int CollectorThread::updateDatafileStatistics(
-    TRI_collection_t* document, CollectorCache* cache) {
+    LogicalCollection* collection, CollectorCache* cache) {
   // iterate over all datafile infos and update the collection's datafile stats
   for (auto it = cache->dfi.begin(); it != cache->dfi.end();
        /* no hoisting */) {
-    document->_datafileStatistics.update((*it).first, (*it).second);
+    collection->updateStats((*it).first, (*it).second);
 
     // flush the local datafile info so we don't update the statistics twice
     // with the same values

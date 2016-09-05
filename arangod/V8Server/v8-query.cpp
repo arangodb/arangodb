@@ -26,7 +26,7 @@
 #include "Aql/QueryResultV8.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Indexes/GeoIndex2.h"
+#include "Indexes/GeoIndex.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/V8TransactionContext.h"
@@ -36,7 +36,6 @@
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocindex.h"
-#include "VocBase/collection.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -373,8 +372,10 @@ static void JS_ChecksumCollection(
   trx.orderDitch(col->cid()); // will throw when it fails
   
   // get last tick
-  TRI_collection_t* document = trx.documentCollection();
-  std::string const revisionId = std::to_string(document->_info.revision());
+  LogicalCollection* collection = trx.documentCollection();
+  auto physical = collection->getPhysical();
+  TRI_ASSERT(physical != nullptr);
+  std::string const revisionId = std::to_string(physical->revision());
   uint64_t hash = 0;
         
   trx.invokeOnAllElements(col->name(), [&hash, &withData, &withRevisions](TRI_doc_mptr_t const* mptr) {

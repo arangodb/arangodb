@@ -448,7 +448,6 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_USER_DUPLICATE:
     case TRI_ERROR_TASK_DUPLICATE_ID:
     case TRI_ERROR_GRAPH_DUPLICATE:
-    case TRI_ERROR_QUEUE_ALREADY_EXISTS:
       return ResponseCode::CONFLICT;
 
     case TRI_ERROR_DEADLOCK:

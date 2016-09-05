@@ -517,9 +517,18 @@ class AssocMulti {
     
     try {
       for (size_t i = 0; i < _buckets.size(); ++i) {
-        empty.emplace_back(new EntryType[static_cast<size_t>(_initialSize)]);
+        auto newBucket = new EntryType[static_cast<size_t>(_initialSize)];
+        for (IndexType j = 0; j < _initialSize; ++j) {
+          newBucket[j].ptr = nullptr;
+          newBucket[j].next = INVALID_INDEX;
+          newBucket[j].prev = INVALID_INDEX;
+          if (useHashCache) {
+            newBucket[j].writeHashCache(0);
+          }
+        }
+        empty.emplace_back(newBucket);
       }
-
+      
       size_t i = 0;
       for (auto& b : _buckets) {
         invokeOnAllElements(callback, b);

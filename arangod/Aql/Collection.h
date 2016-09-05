@@ -28,8 +28,6 @@
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
-struct TRI_collection_t;
-
 namespace arangodb {
 namespace aql {
 struct Index;
@@ -66,9 +64,6 @@ struct Collection {
     // non-sharding case: simply return the name
     return name;
   }
-
-  /// @brief get the pointer to the document collection
-  TRI_collection_t* documentCollection() const;
 
   /// @brief count the LOCAL number of documents in the collection
   size_t count() const;

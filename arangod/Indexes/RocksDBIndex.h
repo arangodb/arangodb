@@ -103,9 +103,12 @@ class RocksDBIndex final : public PathBasedIndex {
   RocksDBIndex() = delete;
 
   RocksDBIndex(
-      TRI_idx_iid_t, TRI_collection_t*,
+      TRI_idx_iid_t, arangodb::LogicalCollection*,
       std::vector<std::vector<arangodb::basics::AttributeName>> const&, bool,
       bool);
+
+  RocksDBIndex(TRI_idx_iid_t, LogicalCollection*,
+               arangodb::velocypack::Slice const&);
 
   explicit RocksDBIndex(VPackSlice const&);
 
@@ -115,6 +118,8 @@ class RocksDBIndex final : public PathBasedIndex {
   IndexType type() const override final {
     return Index::TRI_IDX_TYPE_ROCKSDB_INDEX;
   }
+  
+  bool allowExpansion() const override final { return true; }
   
   bool isPersistent() const override final { return true; }
   bool canBeDropped() const override final { return true; }

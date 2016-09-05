@@ -37,7 +37,6 @@
 #include "StorageEngine/MMFilesCollection.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/collection.h"
 #include "VocBase/datafile.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -170,6 +169,8 @@ void MMFilesEngine::start() {
     // create a database for the system database
     res = createDatabaseDirectory(TRI_NewTickServer(), TRI_VOC_SYSTEM_DATABASE);
     _iterateMarkersOnOpen = false;
+  } else {
+    _iterateMarkersOnOpen = !application_features::ApplicationServer::getFeature<wal::LogfileManager>("LogfileManager")->hasFoundLastTick();
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -456,28 +457,15 @@ int MMFilesEngine::getCollectionsAndIndexes(TRI_vocbase_t* vocbase,
     int res = TRI_ERROR_NO_ERROR;
 
     try {
-      arangodb::VocbaseCollectionInfo info = loadCollectionInfo(vocbase, "", directory, true);
+      std::unique_ptr<LogicalCollection> collection(loadCollectionInfo(vocbase, directory));
      
-      if (info.deleted()) {
-        _deleted.emplace_back(std::make_pair(info.name(), directory));
+      if (collection->deleted()) {
+        _deleted.emplace_back(std::make_pair(collection->name(), directory));
         continue;
       }
 
-      if (info.version() < VocbaseCollectionInfo::version() && !isUpgrade) {
-        // collection is too "old"
-        LOG(ERR) << "collection '" << info.name()
-                 << "' has a too old version. Please start the server "
-                    "with the --database.auto-upgrade option.";
-
-        return TRI_ERROR_FAILED;
-      }
-
       // add collection info
-      result.openObject();
-      info.toVelocyPack(result);
-      result.add("path", VPackValue(directory));
-      result.close();
-
+      collection->toVelocyPack(result, true);
     } catch (arangodb::basics::Exception const& e) {
       std::string tmpfile = FileUtils::buildFilename(directory, ".tmp");
 
@@ -604,19 +592,19 @@ int MMFilesEngine::waitUntilDeletion(TRI_voc_tick_t id, bool force) {
 // the WAL entry for the collection creation will be written *after* the call
 // to "createCollection" returns
 std::string MMFilesEngine::createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                                            arangodb::VocbaseCollectionInfo const& parameters) {
+                                            arangodb::LogicalCollection const* parameters) {
   std::string const path = databasePath(vocbase);
 
   // sanity check
-  if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) > parameters.maximalSize()) {
-    LOG(ERR) << "cannot create datafile '" << parameters.name() << "' in '"
+  if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) > parameters->journalSize()) {
+    LOG(ERR) << "cannot create datafile '" << parameters->name() << "' in '"
              << path << "', maximal size '"
-             << parameters.maximalSize() << "' is too small";
+             << parameters->journalSize() << "' is too small";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATAFILE_FULL);
   }
 
   if (!TRI_IsDirectory(path.c_str())) {
-    LOG(ERR) << "cannot create collection '" << path << "', path is not a directory";
+    LOG(ERR) << "cannot create collection '" << path << "', database path is not a directory";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATADIR_INVALID);
   }
 
@@ -626,7 +614,7 @@ std::string MMFilesEngine::createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_
 
   // directory must not exist
   if (TRI_ExistsFile(dirname.c_str())) {
-    LOG(ERR) << "cannot create collection '" << parameters.name()
+    LOG(ERR) << "cannot create collection '" << parameters->name()
              << "' in directory '" << dirname << "': directory already exists";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS);
   }
@@ -641,7 +629,7 @@ std::string MMFilesEngine::createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_
   int res = TRI_CreateDirectory(tmpname.c_str(), systemError, errorMessage);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot create collection '" << parameters.name()
+    LOG(ERR) << "cannot create collection '" << parameters->name()
              << "' in directory '" << path << "': " << TRI_errno_string(res)
              << " - " << systemError << " - " << errorMessage;
     THROW_ARANGO_EXCEPTION(res);
@@ -661,7 +649,7 @@ std::string MMFilesEngine::createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_
   TRI_IF_FAILURE("CreateCollection::tempFile") { THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot create collection '" << parameters.name()
+    LOG(ERR) << "cannot create collection '" << parameters->name()
              << "' in directory '" << path << "': " << TRI_errno_string(res)
              << " - " << systemError << " - " << errorMessage;
     TRI_RemoveDirectory(tmpname.c_str());
@@ -673,7 +661,7 @@ std::string MMFilesEngine::createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_
   res = TRI_RenameFile(tmpname.c_str(), dirname.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot create collection '" << parameters.name()
+    LOG(ERR) << "cannot create collection '" << parameters->name()
              << "' in directory '" << path << "': " << TRI_errno_string(res)
              << " - " << systemError << " - " << errorMessage;
     TRI_RemoveDirectory(tmpname.c_str());
@@ -788,25 +776,6 @@ void MMFilesEngine::dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalColl
   }
 }
 
-// asks the storage engine to rename the collection as specified in the VPack
-// Slice object and persist the renaming info. It is guaranteed by the server 
-// that no other active collection with the same name and id exists in the same
-// database when this function is called. If this operation fails somewhere in 
-// the middle, the storage engine is required to fully revert the rename operation
-// and throw only then, so that subsequent collection creation/rename requests will 
-// not fail. the WAL entry for the rename will be written *after* the call
-// to "renameCollection" returns
-void MMFilesEngine::renameCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                                     std::string const& name) {
-  std::string const path = collectionPath(vocbase, id);
-  
-  arangodb::VocbaseCollectionInfo parameters = loadCollectionInfo(vocbase, name, path, true); 
-  parameters.rename(name);
-
-  bool const doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-  saveCollectionInfo(vocbase, id, parameters, doSync);
-}
-
 // asks the storage engine to change properties of the collection as specified in 
 // the VPack Slice object and persist them. If this operation fails 
 // somewhere in the middle, the storage engine is required to fully revert the 
@@ -814,7 +783,7 @@ void MMFilesEngine::renameCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
 // the WAL entry for the propery change will be written *after* the call
 // to "changeCollection" returns
 void MMFilesEngine::changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                                     arangodb::VocbaseCollectionInfo const& parameters,
+                                     arangodb::LogicalCollection const* parameters,
                                      bool doSync) {
   saveCollectionInfo(vocbase, id, parameters, doSync);
 }
@@ -858,7 +827,7 @@ void MMFilesEngine::dropIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId
   int res = TRI_UnlinkFile(filename.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot remove index definition: " << TRI_errno_string(res);
+    LOG(ERR) << "cannot remove index definition in file '" << filename << "': " << TRI_errno_string(res);
   }
 }
   
@@ -1233,49 +1202,44 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
   auto vocbase = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, name);
 
   // scan the database path for collections
-  VPackBuilder builder;
-  int res = getCollectionsAndIndexes(vocbase.get(), builder, wasCleanShutdown, isUpgrade);
+  try {
+    VPackBuilder builder;
+    int res = getCollectionsAndIndexes(vocbase.get(), builder, wasCleanShutdown, isUpgrade);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-  
-  VPackSlice slice = builder.slice();
-  TRI_ASSERT(slice.isArray());
-
-  for (auto const& it : VPackArrayIterator(slice)) {
-    arangodb::VocbaseCollectionInfo info(vocbase.get(), it.get("name").copyString(), it, true);
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
     
-    // we found a collection that is still active
-    std::string const directory = it.get("path").copyString();
-    arangodb::LogicalCollection* c = nullptr;
+    VPackSlice slice = builder.slice();
+    TRI_ASSERT(slice.isArray());
 
-    TRI_ASSERT(info.id() != 0);
-    try {
-      c = StorageEngine::registerCollection(ConditionalWriteLocker::DoLock(), vocbase.get(), info.type(), info.id(), info.name(), info.planId(), directory, info.isVolatile());
-      registerCollectionPath(vocbase->id(), info.id(), directory);
-    } catch (...) {
-      // if we caught an exception, c is still a nullptr
+    for (auto const& it : VPackArrayIterator(slice)) {
+      // we found a collection that is still active
+      TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
+      arangodb::LogicalCollection* collection = StorageEngine::registerCollection(ConditionalWriteLocker::DoLock(), vocbase.get(), it);
+
+      registerCollectionPath(vocbase->id(), collection->cid(), collection->path());
+
+      if (!wasCleanShutdown) {
+        // iterating markers may be time-consuming. we'll only do it if
+        // we have to
+        findMaxTickInJournals(collection->path());
+      }
+
+      LOG(DEBUG) << "added document collection '" << collection->name() << "'";
     }
 
-    if (c == nullptr) {
-      LOG(ERR) << "failed to add document collection '" << info.name() << "'";
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
-    }
-
-    if (!wasCleanShutdown) {
-      // iterating markers may be time-consuming. we'll only do it if
-      // we have to
-      findMaxTickInJournals(directory);
-    }
-
-    LOG(DEBUG) << "added document collection '" << info.name() << "'";
+    // start cleanup thread
+    startCleanup(vocbase.get());
+      
+    return vocbase.release();
+  } catch (std::exception const& ex) {
+    LOG(ERR) << "error while opening database: " << ex.what();
+    throw;
+  } catch (...) {
+    LOG(ERR) << "error while opening database: unknown exception";
+    throw;
   }
-
-  // start cleanup thread
-  startCleanup(vocbase.get());
-    
-  return vocbase.release();
 }
       
 /// @brief physically erases the database directory
@@ -1303,11 +1267,10 @@ bool MMFilesEngine::iterateFiles(std::vector<std::string> const& files) {
   for (auto const& filename : files) {
     LOG(DEBUG) << "iterating over collection journal file '" << filename << "'";
 
-    TRI_datafile_t* datafile = TRI_OpenDatafile(filename, true);
+    std::unique_ptr<TRI_datafile_t> datafile(TRI_datafile_t::open(filename, true));
 
     if (datafile != nullptr) {
-      TRI_IterateDatafile(datafile, cb);
-      delete datafile;
+      TRI_IterateDatafile(datafile.get(), cb);
     }
   }
 
@@ -1362,14 +1325,12 @@ void MMFilesEngine::unregisterCollectionPath(TRI_voc_tick_t databaseId, TRI_voc_
 
 void MMFilesEngine::saveCollectionInfo(TRI_vocbase_t* vocbase,
                                        TRI_voc_cid_t id,
-                                       arangodb::VocbaseCollectionInfo const& parameters,
+                                       arangodb::LogicalCollection const* parameters,
                                        bool forceSync) const {
   std::string const filename = collectionParametersFilename(vocbase->id(), id);
 
   VPackBuilder builder;
-  builder.openObject();
-  parameters.toVelocyPack(builder);
-  builder.close();
+  parameters->toVelocyPack(builder, false);
 
   TRI_ASSERT(id != 0);
 
@@ -1383,8 +1344,7 @@ void MMFilesEngine::saveCollectionInfo(TRI_vocbase_t* vocbase,
   }
 }
 
-VocbaseCollectionInfo MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase,
-    std::string const& collectionName, std::string const& path, bool versionWarning) {
+LogicalCollection* MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase, std::string const& path) {
   // find parameter file
   std::string filename =
       arangodb::basics::FileUtils::buildFilename(path, parametersFilename());
@@ -1405,8 +1365,6 @@ VocbaseCollectionInfo MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
   }
 
-  
-
   if (filename.substr(filename.size() - 4, 4) == ".tmp") {
     // we got a tmp file. Now try saving the original file
     arangodb::basics::VelocyPackHelper::velocyPackToFile(filename.substr(0, filename.size() - 4),
@@ -1422,26 +1380,16 @@ VocbaseCollectionInfo MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase,
     }
   }
 
-  VPackBuilder bx;
-  bx.openObject();
-  bx.add("isSystem", VPackValue(isSystemValue));
-  bx.close();
-  VPackSlice isSystem = bx.slice();
+  VPackBuilder patch;
+  patch.openObject();
+  patch.add("isSystem", VPackValue(isSystemValue));
+  patch.add("path", VPackValue(path));
+  patch.close();
+  VPackSlice isSystem = patch.slice();
   VPackBuilder b2 = VPackCollection::merge(slice, isSystem, false);
   slice = b2.slice();
 
-  VocbaseCollectionInfo info(vocbase, collectionName, slice, isSystemValue);
-  
-  // warn about wrong version of the collection
-  if (versionWarning && info.version() < VocbaseCollectionInfo::version()) {
-    if (info.name()[0] != '\0') {
-      // only warn if the collection version is older than expected, and if it's
-      // not a shape collection
-      LOG(WARN) << "collection '" << info.name()
-                << "' has an old version and needs to be upgraded.";
-    }
-  }
-  return info;
+  return new LogicalCollection(vocbase, slice);
 }
 
 /// @brief remove data of expired compaction blockers
@@ -1853,10 +1801,9 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
         filename = newName;
       }
 
-      TRI_datafile_t* datafile =
-          TRI_OpenDatafile(filename, ignoreErrors);
+      std::unique_ptr<TRI_datafile_t> df(TRI_datafile_t::open(filename, ignoreErrors));
 
-      if (datafile == nullptr) {
+      if (df == nullptr) {
         LOG_TOPIC(ERR, Logger::DATAFILES) << "cannot open datafile '"
                                           << filename
                                           << "': " << TRI_last_error();
@@ -1865,7 +1812,8 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
         break;
       }
 
-      all.emplace_back(datafile);
+      all.emplace_back(df.get());
+      TRI_datafile_t* datafile = df.release();
 
       // check the document header
       char const* ptr = datafile->_data;
@@ -1896,7 +1844,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
       // file is a journal
       if (filetype == "journal") {
         if (datafile->_isSealed) {
-          if (datafile->_state != TRI_DF_STATE_READ) {
+          if (datafile->state() != TRI_DF_STATE_READ) {
             LOG_TOPIC(WARN, Logger::DATAFILES)
                 << "strange, journal '" << filename
                 << "' is already sealed; must be a left over; will use "
@@ -1939,10 +1887,10 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
   // convert the sealed journals into datafiles
   if (!stop) {
     for (auto& datafile : sealed) {
-      std::string dname("datafile-" + std::to_string(datafile->_fid) + ".db");
+      std::string dname("datafile-" + std::to_string(datafile->fid()) + ".db");
       std::string filename = arangodb::basics::FileUtils::buildFilename(collection->path(), dname);
 
-      int res = TRI_RenameDatafile(datafile, filename.c_str());
+      int res = datafile->rename(filename);
 
       if (res == TRI_ERROR_NO_ERROR) {
         datafiles.emplace_back(datafile);
@@ -2013,7 +1961,7 @@ int MMFilesEngine::transferMarkersWorker(LogicalCollection* collection,
   // used only for crash / recovery tests
   int numMarkers = 0;
 
-  TRI_voc_tick_t const minTransferTick = collection->_collection->_tickMax;
+  TRI_voc_tick_t const minTransferTick = collection->maxTick();
   TRI_ASSERT(!operations.empty());
 
   for (auto it2 = operations.begin(); it2 != operations.end(); ++it2) {
@@ -2083,27 +2031,26 @@ char* MMFilesEngine::nextFreeMarkerPosition(
 
   TRI_ASSERT(datafile != nullptr);
 
-  if (cache->lastFid != datafile->_fid) {
+  if (cache->lastFid != datafile->fid()) {
     if (cache->lastFid > 0) {
       // rotated the existing journal... now update the old journal's stats
       auto& dfi = cache->createDfi(cache->lastFid);
-      collection->_collection->_datafileStatistics.increaseUncollected(cache->lastFid,
-                                                        dfi.numberUncollected);
+      static_cast<MMFilesCollection*>(collection->getPhysical())->_datafileStatistics.increaseUncollected(cache->lastFid, dfi.numberUncollected);
       // and reset them afterwards
       dfi.numberUncollected = 0;
     }
  
     // reset datafile in cache   
     cache->lastDatafile = datafile;
-    cache->lastFid = datafile->_fid;
+    cache->lastFid = datafile->fid();
     
     // create a local datafile info struct
-    cache->createDfi(datafile->_fid);
+    cache->createDfi(datafile->fid());
 
     // we only need the ditches when we are outside the recovery
     // the compactor will not run during recovery
     auto ditch =
-        collection->_collection->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
+        collection->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
 
     if (ditch == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -2133,8 +2080,8 @@ void MMFilesEngine::finishMarker(char const* walPosition,
   // update ticks
   TRI_UpdateTicksDatafile(datafile, marker);
 
-  TRI_ASSERT(collection->_collection->_tickMax < tick);
-  collection->_collection->_tickMax = tick;
+  TRI_ASSERT(collection->maxTick() < tick);
+  collection->maxTick(tick);
 
   cache->operations->emplace_back(wal::CollectorOperation(
       datafilePosition, marker->getSize(), walPosition, cache->lastFid));

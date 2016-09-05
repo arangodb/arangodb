@@ -20,7 +20,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Michael hackstein
+/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_BASICS_ASSOC_UNIQUE_H
@@ -334,9 +334,17 @@ class AssocUnique {
     std::vector<Element**> empty;
     empty.reserve(_buckets.size());
    
-    try { 
+    try {
+      uint64_t const nrAlloc = initialSize(); 
+
       for (size_t i = 0; i < _buckets.size(); ++i) {
-        empty.emplace_back(new Element*[static_cast<size_t>(initialSize())]);
+        auto newBucket = new Element*[static_cast<size_t>(nrAlloc)];
+
+        for (uint64_t j = 0; j < nrAlloc; ++j) {
+          newBucket[j] = nullptr;
+        }
+
+        empty.emplace_back(newBucket);
       }
 
       size_t i = 0;

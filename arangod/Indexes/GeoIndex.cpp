@@ -21,9 +21,10 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "GeoIndex2.h"
+#include "GeoIndex.h"
 #include "Logger/Logger.h"
-#include "VocBase/collection.h"
+#include "Basics/StringRef.h"
+#include "Basics/VelocyPackHelper.h"
 #include "VocBase/transaction.h"
 
 using namespace arangodb;
@@ -33,8 +34,8 @@ using namespace arangodb;
 ///        Lat and Lon are stored in the same Array
 ////////////////////////////////////////////////////////////////////////////////
 
-GeoIndex2::GeoIndex2(
-    TRI_idx_iid_t iid, TRI_collection_t* collection,
+GeoIndex::GeoIndex(
+    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     std::vector<std::string> const& path, bool geoJson)
     : Index(iid, collection, fields, false, true),
@@ -56,8 +57,8 @@ GeoIndex2::GeoIndex2(
 /// @brief create a new geo index, type "geo2"
 ////////////////////////////////////////////////////////////////////////////////
 
-GeoIndex2::GeoIndex2(
-    TRI_idx_iid_t iid, TRI_collection_t* collection,
+GeoIndex::GeoIndex(
+    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     std::vector<std::vector<std::string>> const& paths)
     : Index(iid, collection, fields, false, true),
@@ -75,19 +76,66 @@ GeoIndex2::GeoIndex2(
   }
 }
 
-GeoIndex2::~GeoIndex2() {
+/// @brief create a new geo index, type "geo2"
+
+GeoIndex::GeoIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
+                     VPackSlice const& info)
+    : Index(iid, collection, info),
+      _variant(INDEX_GEO_INDIVIDUAL_LAT_LON),
+      _geoJson(false),
+      _geoIndex(nullptr) {
+  TRI_ASSERT(iid != 0);
+  _unique = false;
+  _sparse = true;
+
+  if (_fields.size() == 1) {
+    _geoJson = arangodb::basics::VelocyPackHelper::getBooleanValue(
+        info, "geoJson", false);
+    auto& loc = _fields[0];
+    _location.reserve(loc.size());
+    for (auto const& it : loc) {
+      _location.emplace_back(it.name);
+    }
+    _variant =
+        _geoJson ? INDEX_GEO_COMBINED_LAT_LON : INDEX_GEO_COMBINED_LON_LAT;
+  } else if (_fields.size() == 2) {
+    _variant = INDEX_GEO_INDIVIDUAL_LAT_LON;
+    auto& lat = _fields[0];
+    _latitude.reserve(lat.size());
+    for (auto const& it : lat) {
+      _latitude.emplace_back(it.name);
+    }
+    auto& lon = _fields[1];
+    _longitude.reserve(lon.size());
+    for (auto const& it : lon) {
+      _longitude.emplace_back(it.name);
+    }
+  } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "GeoIndex can only be created with one or two fields.");
+  }
+
+  _geoIndex = GeoIndex_new();
+
+  if (_geoIndex == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+}
+
+GeoIndex::~GeoIndex() {
   if (_geoIndex != nullptr) {
     GeoIndex_free(_geoIndex);
   }
 }
 
-size_t GeoIndex2::memory() const { return GeoIndex_MemoryUsage(_geoIndex); }
+size_t GeoIndex::memory() const { return GeoIndex_MemoryUsage(_geoIndex); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a JSON representation of the index
 ////////////////////////////////////////////////////////////////////////////////
 
-void GeoIndex2::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
+void GeoIndex::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
   // Basic index
   Index::toVelocyPack(builder, withFigures);
 
@@ -108,7 +156,73 @@ void GeoIndex2::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
   builder.add("sparse", VPackValue(true));
 }
 
-int GeoIndex2::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
+/// @brief Test if this index matches the definition
+bool GeoIndex::matchesDefinition(VPackSlice const& info) const {
+  TRI_ASSERT(info.isObject());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  VPackSlice typeSlice = info.get("type");
+  TRI_ASSERT(typeSlice.isString());
+  StringRef typeStr(typeSlice);
+  TRI_ASSERT(typeStr == typeName());
+#endif
+  auto value = info.get("id");
+  if (!value.isNone()) {
+    // We already have an id.
+    if(!value.isString()) {
+      // Invalid ID
+      return false;
+    }
+    // Short circuit. If id is correct the index is identical.
+    StringRef idRef(value);
+    return idRef == std::to_string(_iid);
+  }
+  value = info.get("fields");
+  if (!value.isArray()) {
+    return false;
+  }
+
+  size_t const n = static_cast<size_t>(value.length());
+  if (n != _fields.size()) {
+    return false;
+  }
+  if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
+                     info, "unique", false)) {
+    return false;
+  }
+  if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
+                     info, "sparse", true)) {
+    return false;
+  }
+
+  if (n == 1) {
+    if (_geoJson != arangodb::basics::VelocyPackHelper::getBooleanValue(
+        info, "geoJson", false)) {
+      return false;
+    }
+  }
+
+  // This check takes ordering of attributes into account.
+  std::vector<arangodb::basics::AttributeName> translate;
+  for (size_t i = 0; i < n; ++i) {
+    translate.clear();
+    VPackSlice f = value.at(i);
+    if (!f.isString()) {
+      // Invalid field definition!
+      return false;
+    }
+    arangodb::StringRef in(f);
+    TRI_ParseAttributeString(in, translate, true);
+    if (!arangodb::basics::AttributeName::isIdentical(_fields[i], translate,
+                                                      false)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+
+
+int GeoIndex::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
   TRI_ASSERT(doc != nullptr);
   TRI_ASSERT(doc->vpack() != nullptr);
 
@@ -179,7 +293,7 @@ int GeoIndex2::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
   return TRI_ERROR_NO_ERROR;
 }
 
-int GeoIndex2::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
+int GeoIndex::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
   TRI_ASSERT(doc != nullptr);
   TRI_ASSERT(doc->vpack() != nullptr);
 
@@ -242,7 +356,7 @@ int GeoIndex2::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
   return TRI_ERROR_NO_ERROR;
 }
 
-int GeoIndex2::unload() {
+int GeoIndex::unload() {
   // create a new, empty index
   auto empty = GeoIndex_new();
 
@@ -262,7 +376,7 @@ int GeoIndex2::unload() {
 }
 
 /// @brief looks up all points within a given radius
-GeoCoordinates* GeoIndex2::withinQuery(arangodb::Transaction* trx, double lat,
+GeoCoordinates* GeoIndex::withinQuery(arangodb::Transaction* trx, double lat,
                                        double lon, double radius) const {
   GeoCoordinate gc;
   gc.latitude = lat;
@@ -275,7 +389,7 @@ GeoCoordinates* GeoIndex2::withinQuery(arangodb::Transaction* trx, double lat,
 /// @brief looks up the nearest points
 ////////////////////////////////////////////////////////////////////////////////
 
-GeoCoordinates* GeoIndex2::nearQuery(arangodb::Transaction* trx, double lat,
+GeoCoordinates* GeoIndex::nearQuery(arangodb::Transaction* trx, double lat,
                                      double lon, size_t count) const {
   GeoCoordinate gc;
   gc.latitude = lat;

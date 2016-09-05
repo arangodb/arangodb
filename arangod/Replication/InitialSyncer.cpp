@@ -35,7 +35,7 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Utils/CollectionGuard.h"
 #include "VocBase/DatafileHelper.h"
-#include "VocBase/collection.h"
+#include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -1031,7 +1031,6 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
   // fetch all local keys from primary index
   std::vector<void const*> markers;
     
-  TRI_collection_t* document = nullptr;
   DocumentDitch* ditch = nullptr;
 
   // acquire a replication ditch so no datafiles are thrown away from now on
@@ -1046,18 +1045,16 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
       return res;
     }
     
-    document = trx.documentCollection();
-    ditch = document->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
+    ditch = col->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
 
     if (ditch == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
   }
 
-  TRI_ASSERT(document != nullptr);
   TRI_ASSERT(ditch != nullptr);
 
-  TRI_DEFER(document->ditches()->freeDitch(ditch));
+  TRI_DEFER(col->ditches()->freeDitch(ditch));
 
   {
     SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_READ);
@@ -1069,6 +1066,9 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
       return res;
     }
     
+    // We do not take responsibility for the index.
+    // The LogicalCollection is protected by trx.
+    // Neither it nor it's indexes can be invalidated
     auto idx = trx.documentCollection()->primaryIndex();
     markers.reserve(idx->size());
 
@@ -1276,6 +1276,9 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
     
     trx.orderDitch(col->cid()); // will throw when it fails
     
+    // We do not take responsibility for the index.
+    // The LogicalCollection is protected by trx.
+    // Neither it nor it's indexes can be invalidated
     auto idx = trx.documentCollection()->primaryIndex();
 
     size_t const currentChunkId = i;
@@ -1625,9 +1628,12 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
 int InitialSyncer::changeCollection(arangodb::LogicalCollection* col,
                                     VPackSlice const& slice) {
   arangodb::CollectionGuard guard(_vocbase, col->cid());
-  bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
+  bool doSync =
+      application_features::ApplicationServer::getFeature<DatabaseFeature>(
+          "Database")
+          ->forceSyncProperties();
 
-  return guard.collection()->_collection->updateCollectionInfo(_vocbase, slice, doSync);
+  return guard.collection()->update(slice, doSync);
 }
  
 ////////////////////////////////////////////////////////////////////////////////
@@ -1644,7 +1650,7 @@ int64_t InitialSyncer::getSize(arangodb::LogicalCollection* col) {
   }
   
   auto document = trx.documentCollection();
-  return static_cast<int64_t>(document->_numberDocuments);
+  return static_cast<int64_t>(document->numberDocuments());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1669,9 +1675,9 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
   std::string const masterName =
       VelocyPackHelper::getStringValue(parameters, "name", "");
 
-  VPackSlice const masterId = parameters.get("cid");
+  TRI_voc_cid_t const cid = VelocyPackHelper::extractIdValue(parameters);
 
-  if (!masterId.isString()) {
+  if (cid == 0) {
     errorMsg = "collection id is missing in response";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -1688,7 +1694,6 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
   std::string const typeString =
       (type.getNumber<int>() == 3 ? "edge" : "document");
 
-  TRI_voc_cid_t const cid = StringUtils::uint64(masterId.copyString());
   std::string const collectionMsg = "collection '" + masterName + "', type " +
                                     typeString + ", id " +
                                     StringUtils::itoa(cid);
@@ -1850,11 +1855,11 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
 
             trx.orderDitch(col->cid()); // will throw when it fails
       
-            TRI_collection_t* document = trx.documentCollection();
+            LogicalCollection* document = trx.documentCollection();
             TRI_ASSERT(document != nullptr);
 
             for (auto const& idxDef : VPackArrayIterator(indexes)) {
-              arangodb::Index* idx = nullptr;
+              std::shared_ptr<arangodb::Index> idx;
 
               if (idxDef.isObject()) {
                 VPackSlice const type = idxDef.get("type");
@@ -1866,7 +1871,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
                 }
               }
 
-              res = document->indexFromVelocyPack(&trx, idxDef, &idx);
+              res = document->restoreIndex(&trx, idxDef, idx);
 
               if (res != TRI_ERROR_NO_ERROR) {
                 errorMsg = "could not create index: " +
@@ -1875,7 +1880,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
               } else {
                 TRI_ASSERT(idx != nullptr);
 
-                res = document->saveIndex(idx, true);
+                res = document->saveIndex(idx.get(), true);
 
                 if (res != TRI_ERROR_NO_ERROR) {
                   errorMsg = "could not save index: " +

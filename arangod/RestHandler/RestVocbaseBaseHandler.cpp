@@ -34,7 +34,6 @@
 #include "Rest/HttpRequest.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/Transaction.h"
-#include "VocBase/collection.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>

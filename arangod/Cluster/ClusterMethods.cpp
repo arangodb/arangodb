@@ -563,12 +563,13 @@ int revisionOnCoordinator(std::string const& dbname,
   ClusterComm* cc = ClusterComm::instance();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo =
-      ci->getCollection(dbname, collname);
-
-  if (collinfo == nullptr) {
+  std::shared_ptr<LogicalCollection> collinfo;
+  try {
+    collinfo = ci->getCollection(dbname, collname);
+  } catch (...) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
+  TRI_ASSERT(collinfo != nullptr);
 
   rid = 0;
 
@@ -634,12 +635,13 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
   ClusterComm* cc = ClusterComm::instance();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo =
-      ci->getCollection(dbname, collname);
-
-  if (collinfo == nullptr) {
+  std::shared_ptr<LogicalCollection> collinfo;
+  try {
+    collinfo = ci->getCollection(dbname, collname);
+  } catch (...) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
+  TRI_ASSERT(collinfo != nullptr);
 
   // If we get here, the sharding attributes are not only _key, therefore
   // we have to contact everybody:
@@ -700,12 +702,13 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
   result = 0;
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo =
-      ci->getCollection(dbname, collname);
-
-  if (collinfo == nullptr) {
+  std::shared_ptr<LogicalCollection> collinfo;
+  try {
+    collinfo = ci->getCollection(dbname, collname);
+  } catch (...) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
+  TRI_ASSERT(collinfo != nullptr);
 
   auto shards = collinfo->shardIds();
   std::vector<ClusterCommRequest> requests;
@@ -768,12 +771,13 @@ int createDocumentOnCoordinator(
   ClusterComm* cc = ClusterComm::instance();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo =
-      ci->getCollection(dbname, collname);
-
-  if (collinfo == nullptr) {
+  std::shared_ptr<LogicalCollection> collinfo;
+  try {
+    collinfo = ci->getCollection(dbname, collname);
+  } catch (...) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
+  TRI_ASSERT(collinfo != nullptr);
 
   std::string const collid = collinfo->cid_as_string();
   std::unordered_map<
@@ -902,11 +906,13 @@ int deleteDocumentOnCoordinator(
   ClusterComm* cc = ClusterComm::instance();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo =
-      ci->getCollection(dbname, collname);
-  if (collinfo == nullptr) {
+  std::shared_ptr<LogicalCollection> collinfo;
+  try {
+    collinfo = ci->getCollection(dbname, collname);
+  } catch (...) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
+  TRI_ASSERT(collinfo != nullptr);
   bool useDefaultSharding = collinfo->usesDefaultShardKeys();
   std::string collid = collinfo->cid_as_string();
   bool useMultiple = slice.isArray();
@@ -1128,12 +1134,13 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
   ClusterComm* cc = ClusterComm::instance();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo =
-      ci->getCollection(dbname, collname);
-
-  if (collinfo == nullptr) {
+  std::shared_ptr<LogicalCollection> collinfo;
+  try {
+    collinfo = ci->getCollection(dbname, collname);
+  } catch (...) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
+  TRI_ASSERT(collinfo != nullptr);
 
   // Some stuff to prepare cluster-intern requests:
   // We have to contact everybody:
@@ -1183,11 +1190,14 @@ int getDocumentOnCoordinator(
   ClusterComm* cc = ClusterComm::instance();
 
   // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo =
-      ci->getCollection(dbname, collname);
-  if (collinfo == nullptr) {
+  std::shared_ptr<LogicalCollection> collinfo;
+  try {
+    collinfo = ci->getCollection(dbname, collname);
+  } catch (...) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
+  TRI_ASSERT(collinfo != nullptr);
+
   std::string collid = collinfo->cid_as_string();
 
   // If _key is the one and only sharding attribute, we can do this quickly,
@@ -1436,10 +1446,7 @@ static void insertIntoShardMap(
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo =
       ci->getCollection(dbname, splitId[0]);
-  if (collinfo == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                   "Collection not found: " + splitId[0]);
-  }
+
   std::string collid = collinfo->cid_as_string();
   if (collinfo->usesDefaultShardKeys()) {
     // We only need add one resp. shard
@@ -1614,15 +1621,15 @@ int getFilteredEdgesOnCoordinator(
     queryParameters += "&direction=out";
   }
   auto reqBodyString = std::make_shared<std::string>();
+  VPackBuilder bodyBuilder;
+  bodyBuilder.openArray();
   if (!expressions.empty()) {
-    VPackBuilder bodyBuilder;
-    bodyBuilder.openArray();
     for (auto& e : expressions) {
       e->toVelocyPack(bodyBuilder);
     }
-    bodyBuilder.close();
-    reqBodyString->append(bodyBuilder.toJson());
   }
+  bodyBuilder.close();
+  reqBodyString->append(bodyBuilder.toJson());
 
   std::vector<ClusterCommRequest> requests;
   std::string baseUrl = "/_db/" + StringUtils::urlEncode(dbname) + "/_api/edges/";
@@ -2020,6 +2027,7 @@ std::map<std::string, std::vector<std::string>> distributeShards(
   std::map<std::string, std::vector<std::string>> shards;
 
   ClusterInfo*  ci = ClusterInfo::instance();
+  ci->loadCurrentDBServers();
   if (dbServers.size() == 0) {
     dbServers = ci->getCurrentDBServers();
     if (dbServers.empty()) {

@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_INDEXES_GEO_INDEX2_H
-#define ARANGOD_INDEXES_GEO_INDEX2_H 1
+#ifndef ARANGOD_INDEXES_GEO_INDEX_H
+#define ARANGOD_INDEXES_GEO_INDEX_H 1
 
 #include "Basics/Common.h"
 #include "GeoIndex/GeoIndex.h"
@@ -35,19 +35,22 @@
 
 namespace arangodb {
 
-class GeoIndex2 final : public Index {
+class GeoIndex final : public Index {
  public:
-  GeoIndex2() = delete;
+  GeoIndex() = delete;
 
-  GeoIndex2(TRI_idx_iid_t, TRI_collection_t*,
+  GeoIndex(TRI_idx_iid_t, LogicalCollection*,
+            arangodb::velocypack::Slice const&);
+
+  GeoIndex(TRI_idx_iid_t, arangodb::LogicalCollection*,
             std::vector<std::vector<arangodb::basics::AttributeName>> const&,
             std::vector<std::string> const&, bool);
 
-  GeoIndex2(TRI_idx_iid_t, TRI_collection_t*,
+  GeoIndex(TRI_idx_iid_t, arangodb::LogicalCollection*,
             std::vector<std::vector<arangodb::basics::AttributeName>> const&,
             std::vector<std::vector<std::string>> const&);
 
-  ~GeoIndex2();
+  ~GeoIndex();
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -71,6 +74,8 @@ class GeoIndex2 final : public Index {
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
   
+  bool allowExpansion() const override final { return false; }
+  
   bool canBeDropped() const override final { return true; }
 
   bool isSorted() const override final { return false; }
@@ -83,6 +88,8 @@ class GeoIndex2 final : public Index {
 
   void toVelocyPack(VPackBuilder&, bool) const override final;
   // Uses default toVelocyPackFigures
+
+  bool matchesDefinition(VPackSlice const& info) const override final;
 
   int insert(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
@@ -106,12 +113,12 @@ class GeoIndex2 final : public Index {
   GeoCoordinates* nearQuery(arangodb::Transaction*, double, double,
                             size_t) const;
 
-  bool isSame(std::vector<std::string> location, bool geoJson) const {
+  bool isSame(std::vector<std::string> const& location, bool geoJson) const {
     return (!_location.empty() && _location == location && _geoJson == geoJson);
   }
 
-  bool isSame(std::vector<std::string> latitude,
-              std::vector<std::string> longitude) const {
+  bool isSame(std::vector<std::string> const& latitude,
+              std::vector<std::string> const& longitude) const {
     return (!_latitude.empty() && !_longitude.empty() &&
             _latitude == latitude && _longitude == longitude);
   }
@@ -130,7 +137,7 @@ class GeoIndex2 final : public Index {
   /// @brief the geo index variant (geo1 or geo2)
   //////////////////////////////////////////////////////////////////////////////
 
-  IndexVariant const _variant;
+  IndexVariant _variant;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether the index is a geoJson index (latitude / longitude
@@ -143,7 +150,7 @@ class GeoIndex2 final : public Index {
   /// @brief the actual geo index
   //////////////////////////////////////////////////////////////////////////////
 
-  GeoIndex* _geoIndex;
+  GeoIdx* _geoIndex;
 };
 }
 

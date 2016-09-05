@@ -906,6 +906,31 @@ VPackBuffer<uint8_t> VelocyPackHelper::sanitizeExternalsChecked(
   return buffer;  // elided
 }
 
+/// @brief extract the collection id from VelocyPack
+uint64_t VelocyPackHelper::extractIdValue(VPackSlice const& slice) {
+  if (!slice.isObject()) {
+    return 0;
+  }
+  VPackSlice id = slice.get("id");
+  if (id.isNone()) {
+    // pre-3.1 compatibility
+    id = slice.get("cid");
+  }
+
+  if (id.isString()) {
+    // string cid, e.g. "9988488"
+    return StringUtils::uint64(id.copyString());
+  } else if (id.isNumber()) {
+    // numeric cid, e.g. 9988488
+    return id.getNumericValue<uint64_t>();
+  } else if (!id.isNone()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid value for 'id' attribute");
+  }
+
+  TRI_ASSERT(id.isNone()); 
+  return 0;
+}
+
 arangodb::LoggerStream& operator<<(arangodb::LoggerStream& logger,
                                    VPackSlice const& slice) {
   size_t const cutoff = 100;

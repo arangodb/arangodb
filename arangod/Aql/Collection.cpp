@@ -28,7 +28,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-#include "VocBase/collection.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
@@ -62,14 +61,6 @@ TRI_voc_cid_t Collection::cid() const {
   return collection->cid();
 }
   
-/// @brief get the pointer to the document collection
-TRI_collection_t* Collection::documentCollection() const {
-  TRI_ASSERT(collection != nullptr);
-  TRI_ASSERT(collection->_collection != nullptr);
-
-  return collection->_collection;
-}
-  
 /// @brief count the number of documents in the collection
 size_t Collection::count() const {
   if (numDocuments == UNINITIALIZED) {
@@ -84,9 +75,8 @@ size_t Collection::count() const {
       numDocuments = static_cast<int64_t>(result);
     } else {
       // local case
-      auto document = documentCollection();
       // cache the result
-      numDocuments = static_cast<int64_t>(document->_numberDocuments);
+      numDocuments = static_cast<int64_t>(collection->numberDocuments());
     }
   }
 
@@ -121,8 +111,8 @@ std::vector<std::string> Collection::shardKeys() const {
 
   std::string id;
   if (arangodb::ServerState::instance()->isDBServer() &&
-      documentCollection()->_info.planId() > 0) {
-    id = std::to_string(documentCollection()->_info.planId());
+      collection->planId() > 0) {
+    id = std::to_string(collection->planId());
   } else {
     id = name;
   }

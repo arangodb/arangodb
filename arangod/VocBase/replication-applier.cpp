@@ -39,7 +39,6 @@
 #include "RestServer/ServerIdFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "VocBase/collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
@@ -410,7 +409,7 @@ static void VPackState(VPackBuilder& builder,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_replication_applier_t* TRI_CreateReplicationApplier(TRI_vocbase_t* vocbase) {
-  TRI_replication_applier_t* applier = new TRI_replication_applier_t(vocbase);
+  auto applier = std::make_unique<TRI_replication_applier_t>(vocbase);
 
   TRI_InitStateReplicationApplier(&applier->_state);
 
@@ -419,7 +418,6 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier(TRI_vocbase_t* vocbase) 
 
     if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_FILE_NOT_FOUND) {
       TRI_DestroyStateReplicationApplier(&applier->_state);
-      delete applier;
       THROW_ARANGO_EXCEPTION(res);
     }
 
@@ -427,7 +425,6 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier(TRI_vocbase_t* vocbase) 
 
     if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_FILE_NOT_FOUND) {
       TRI_DestroyStateReplicationApplier(&applier->_state);
-      delete applier;
       THROW_ARANGO_EXCEPTION(res);
     }
   }
@@ -435,7 +432,7 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier(TRI_vocbase_t* vocbase) 
   applier->setTermination(false);
   applier->setProgress("applier initially created", true);
 
-  return applier;
+  return applier.release();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

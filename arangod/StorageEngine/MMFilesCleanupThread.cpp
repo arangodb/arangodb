@@ -33,7 +33,6 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CursorRepository.h"
 #include "VocBase/Ditch.h"
-#include "VocBase/collection.h"
 #include "VocBase/LogicalCollection.h"
 #include "Wal/LogfileManager.h"
 
@@ -83,30 +82,24 @@ void MMFilesCleanupThread::run() {
 
       for (auto& collection : collections) {
         TRI_ASSERT(collection != nullptr);
-        TRI_collection_t* document;
 
-        {
-          READ_LOCKER(readLocker, collection->_lock);
-          document = collection->_collection;
-        }
+        TRI_vocbase_col_status_e status = collection->getStatusLocked();
 
-        if (document == nullptr) {
-          // collection currently not loaded
+        if (status != TRI_VOC_COL_STATUS_LOADED && 
+            status != TRI_VOC_COL_STATUS_UNLOADING) {
           continue;
         }
-
-        TRI_ASSERT(document != nullptr);
-
+          
         // we're the only ones that can unload the collection, so using
         // the collection pointer outside the lock is ok
 
         // maybe cleanup indexes, unload the collection or some datafiles
         // clean indexes?
         if (iterations % cleanupIndexIterations() == 0) {
-          document->cleanupIndexes();
+          collection->cleanupIndexes();
         }
 
-        cleanupCollection(collection, document);
+        cleanupCollection(collection);
       }
     }, false);
 
@@ -149,20 +142,18 @@ void MMFilesCleanupThread::cleanupCursors(bool force) {
 }
 
 /// @brief checks all datafiles of a collection
-void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collection,
-                                             TRI_collection_t* document) {
+void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collection) {
   // unload operations can normally only be executed when a collection is fully
   // garbage collected
   bool unloadChecked = false;
 
   // but if we are in server shutdown, we can force unloading of collections
   bool isInShutdown = application_features::ApplicationServer::isStopping();
-
-  TRI_ASSERT(document != nullptr);
-
+  
   // loop until done
+
   while (true) {
-    auto ditches = document->ditches();
+    auto ditches = collection->ditches();
 
     // check and remove all callback elements at the beginning of the list
     auto callback = [&](arangodb::Ditch const* ditch) -> bool {
@@ -222,7 +213,7 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
         }
       }
 
-      if (!document->isFullyCollected()) {
+      if (!collection->isFullyCollected()) {
         bool isDeleted = false;
 
         // if there is still some garbage collection to perform,
@@ -233,7 +224,7 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
           isDeleted = (s == TRI_VOC_COL_STATUS_DELETED);
         }
 
-        if (!isDeleted && document->_vocbase->isDropped()) {
+        if (!isDeleted && collection->vocbase()->isDropped()) {
           // the collection was not marked as deleted, but the database was
           isDeleted = true;
         }
@@ -256,8 +247,7 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
     // someone else might now insert a new TRI_DITCH_DOCUMENT now, but it will
     // always refer to a different datafile than the one that we will now unload
 
-    // execute callback, sone of the callbacks might delete or free our
-    // collection
+    // execute callback, some of the callbacks might delete or unload our collection
     auto const type = ditch->type();
 
     if (type == arangodb::Ditch::TRI_DITCH_DATAFILE_DROP) {

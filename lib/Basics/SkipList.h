@@ -172,10 +172,10 @@ class SkipList {
   //////////////////////////////////////////////////////////////////////////////
 
   ~SkipList() {
-    truncate();
+    truncate(false);
   }
 
-  void truncate() {
+  void truncate(bool createStartNode) {
     Node* p;
     Node* next;
 
@@ -193,9 +193,12 @@ class SkipList {
     
     _memoryUsed = sizeof(SkipList);
     _nrUsed = 0;
-    _start = allocNode(TRI_SKIPLIST_MAX_HEIGHT);
-    // Note that this can throw
-    _end = _start;
+
+    if (createStartNode) {
+      _start = allocNode(TRI_SKIPLIST_MAX_HEIGHT);
+      // Note that this can throw
+      _end = _start;
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////////

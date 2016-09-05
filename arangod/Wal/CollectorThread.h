@@ -30,13 +30,10 @@
 #include "Basics/Thread.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/datafile.h"
-#include "VocBase/DatafileStatistics.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/voc-types.h"
 #include "Wal/CollectorCache.h"
 #include "Wal/Logfile.h"
-
-struct TRI_collection_t;
 
 namespace arangodb {
 class LogicalCollection;
@@ -79,7 +76,7 @@ class CollectorThread final : public Thread {
   /// @brief process a single marker in collector step 2
   void processCollectionMarker(
       arangodb::SingleCollectionTransaction&,
-      TRI_collection_t*, CollectorCache*, CollectorOperation const&);
+      arangodb::LogicalCollection*, CollectorCache*, CollectorOperation const&);
 
   /// @brief return the number of queued operations
   size_t numQueuedOperations();
@@ -104,7 +101,7 @@ class CollectorThread final : public Thread {
   int queueOperations(arangodb::wal::Logfile*, std::unique_ptr<CollectorCache>&);
 
   /// @brief update a collection's datafile information
-  int updateDatafileStatistics(TRI_collection_t*, CollectorCache*);
+  int updateDatafileStatistics(LogicalCollection*, CollectorCache*);
 
  private:
   /// @brief the logfile manager

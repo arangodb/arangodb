@@ -3,7 +3,8 @@
 #define ARANGOD_WAL_DOCUMENT_OPERATION_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/collection.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/MasterPointer.h"
 #include "VocBase/MasterPointers.h"
 #include "VocBase/voc-types.h"
 #include "Wal/Marker.h"
@@ -24,11 +25,11 @@ struct DocumentOperation {
   };
   
   DocumentOperation(arangodb::Transaction* trx, Marker const* marker,
-                    TRI_collection_t* document,
+                    LogicalCollection* collection,
                     TRI_voc_document_operation_e type)
       : trx(trx),
         marker(marker),
-        document(document),
+        collection(collection),
         header(nullptr),
         tick(0),
         rid(0),
@@ -43,7 +44,7 @@ struct DocumentOperation {
   ~DocumentOperation() {
     if (status == StatusType::HANDLED) {
       if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-        document->_masterPointers.release(header); 
+        collection->_masterPointers.release(header); 
       }
     } else if (status != StatusType::REVERTED) {
       revert();
@@ -52,7 +53,7 @@ struct DocumentOperation {
 
   DocumentOperation* swap() {
     DocumentOperation* copy =
-        new DocumentOperation(trx, marker, document, type);
+        new DocumentOperation(trx, marker, collection, type);
     copy->tick = tick;
     copy->rid = rid;
     copy->header = header;
@@ -95,11 +96,11 @@ struct DocumentOperation {
     }
 
     if (status == StatusType::INDEXED || status == StatusType::HANDLED) {
-      document->rollbackOperation(trx, type, header, &oldHeader);
+      collection->rollbackOperation(trx, type, header, &oldHeader);
     }
 
     if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
-      document->_masterPointers.release(header);
+      collection->_masterPointers.release(header);
     } else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
                type == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       header->copy(oldHeader);
@@ -110,7 +111,7 @@ struct DocumentOperation {
 
   arangodb::Transaction* trx;
   Marker const* marker;
-  TRI_collection_t* document;
+  LogicalCollection* collection;
   TRI_doc_mptr_t* header;
   TRI_doc_mptr_t oldHeader;
   TRI_voc_tick_t tick;

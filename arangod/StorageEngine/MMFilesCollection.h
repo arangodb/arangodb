@@ -26,6 +26,8 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "StorageEngine/MMFilesDatafileStatistics.h"
+#include "VocBase/Ditch.h"
 #include "VocBase/PhysicalCollection.h"
 
 struct TRI_datafile_t;
@@ -55,6 +57,7 @@ class MMFilesCollection final : public PhysicalCollection {
   void setRevision(TRI_voc_rid_t revision, bool force) override;
 
   int64_t initialCount() const override;
+  void updateCount(int64_t) override;
   
   /// @brief return engine-specific figures
   void figures(std::shared_ptr<arangodb::velocypack::Builder>&) override;
@@ -93,6 +96,21 @@ class MMFilesCollection final : public PhysicalCollection {
 
   /// @brief iterates over a collection
   bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb) override;
+  
+  /// @brief increase dead stats for a datafile, if it exists
+  void increaseDeadStats(TRI_voc_fid_t fid, int64_t number, int64_t size) override {
+    _datafileStatistics.increaseDead(fid, number, size);
+  }
+  
+  /// @brief increase dead stats for a datafile, if it exists
+  void updateStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) override {
+    _datafileStatistics.update(fid, values);
+  }
+
+  /// @brief create statistics for a datafile, using the stats provided
+  void createStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) override {
+    _datafileStatistics.create(fid, values);
+  }
 
   void preventCompaction() override;
   bool tryPreventCompaction() override;
@@ -100,6 +118,10 @@ class MMFilesCollection final : public PhysicalCollection {
   void lockForCompaction() override;
   bool tryLockForCompaction() override;
   void finishCompaction() override;
+  
+  void open(bool ignoreErrors) override;
+  
+  Ditches* ditches() const override { return &_ditches; }
 
  private:
   /// @brief creates a datafile
@@ -118,12 +140,20 @@ class MMFilesCollection final : public PhysicalCollection {
                               std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb);
 
  private:
+  mutable arangodb::Ditches _ditches;
+
   arangodb::basics::ReadWriteLock _filesLock;
   std::vector<TRI_datafile_t*> _datafiles;   // all datafiles
   std::vector<TRI_datafile_t*> _journals;    // all journals
   std::vector<TRI_datafile_t*> _compactors;  // all compactor files
   
   arangodb::basics::ReadWriteLock _compactionLock;
+
+  int64_t _initialCount;
+  
+  MMFilesDatafileStatistics _datafileStatistics;
+
+  TRI_voc_rid_t _revision;
 };
 
 }

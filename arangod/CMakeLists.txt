@@ -95,6 +95,7 @@ add_executable(${BIN_ARANGOD}
   Agency/State.cpp
   Agency/Store.cpp
   Agency/StoreCallback.cpp
+  Agency/UnassumedLeadership.cpp
   Agency/v8-agency.cpp
   Aql/Aggregator.cpp
   Aql/AqlItemBlock.cpp
@@ -202,7 +203,7 @@ add_executable(${BIN_ARANGOD}
   GeoIndex/GeoIndex.cpp
   Indexes/EdgeIndex.cpp
   Indexes/FulltextIndex.cpp
-  Indexes/GeoIndex2.cpp
+  Indexes/GeoIndex.cpp
   Indexes/HashIndex.cpp
   Indexes/Index.cpp
   Indexes/IndexIterator.cpp
@@ -279,6 +280,7 @@ add_executable(${BIN_ARANGOD}
   StorageEngine/MMFilesCleanupThread.cpp
   StorageEngine/MMFilesCollection.cpp
   StorageEngine/MMFilesCompactorThread.cpp
+  StorageEngine/MMFilesDatafileStatistics.cpp
   StorageEngine/MMFilesEngine.cpp
   StorageEngine/OtherEngine.cpp
   Utils/AqlTransaction.cpp
@@ -316,7 +318,7 @@ add_executable(${BIN_ARANGOD}
   V8Server/v8-voccursor.cpp
   V8Server/v8-vocindex.cpp
   VocBase/AuthInfo.cpp
-  VocBase/DatafileStatistics.cpp
+  VocBase/DatafileStatisticsContainer.cpp
   VocBase/Ditch.cpp
   VocBase/EdgeCollectionInfo.cpp
   VocBase/Graphs.cpp
@@ -327,7 +329,6 @@ add_executable(${BIN_ARANGOD}
   VocBase/PathEnumerator.cpp
   VocBase/SingleServerTraverser.cpp
   VocBase/Traverser.cpp
-  VocBase/collection.cpp
   VocBase/datafile.cpp
   VocBase/modes.cpp
   VocBase/replication-applier.cpp
