@@ -304,8 +304,10 @@ void HttpResponse::addPayloadPostHook(
     VPackSlice const& slice,
     VPackOptions const* options = &VPackOptions::Options::Defaults,
     bool resolveExternals = true, bool bodySkipped = false) {
+
   VPackSlice const* slicePtr;
   VPackSlice tmpSlice;
+  
   if (!bodySkipped) {
     // we have Probably resolved externals
     TRI_ASSERT(!_vpackPayloads.empty());
