@@ -118,8 +118,6 @@ bool FailedServer::start() {
 
   pending.close(); pending.close();
 
-  LOG(WARN) << pending.toJson();
-
   // Transact to agency
   write_ret_t res = transact(_agent, pending);
 
@@ -220,8 +218,6 @@ bool FailedServer::create () {
   _jb->close();
 
   _jb->close(); _jb->close();
-
-  LOG(WARN) << _jb->toJson();
 
   write_ret_t res = transact(_agent, *_jb);
 
