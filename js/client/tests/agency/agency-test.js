@@ -371,6 +371,32 @@ function agencyTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Test "pop" operator
+////////////////////////////////////////////////////////////////////////////////
+
+    testOpErase : function () {
+      writeAndCheck([[{"/version":{"op":"delete"}}]]);
+      writeAndCheck([[{"/a":[0,1,2,3,4,5,6,7,8,9]}]]); // none before
+      assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,3,4,5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"erase","val":3}}]])
+      assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,4,5,6,7,8,9]}]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test "pop" operator
+////////////////////////////////////////////////////////////////////////////////
+
+    testOpReplace : function () {
+      writeAndCheck([[{"/version":{"op":"delete"}}]]);
+      writeAndCheck([[{"/a":[0,1,2,3,4,5,6,7,8,9]}]]); // none before
+      assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,3,4,5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"replace","val":3,"new":"three"}}]])
+      assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,"three",4,5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"replace","val":1,"new":[1]}}]])
+      assertEqual(readAndCheck([["/a"]]), [{a:[0,[1],2,"three",4,5,6,7,8,9]}]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Test "increment" operator
 ////////////////////////////////////////////////////////////////////////////////
 

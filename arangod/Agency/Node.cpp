@@ -458,6 +458,59 @@ bool Node::handle<PUSH>(VPackSlice const& slice) {
 }
 
 
+/// Remove element from any place in array by value array
+template <>
+bool Node::handle<ERASE>(VPackSlice const& slice) {
+  if (!slice.hasKey("val")) {
+    LOG_TOPIC(WARN, Logger::AGENCY)
+        << "Operator erase without value to be erased: " << slice.toJson();
+    return false;
+  }
+  Builder tmp;
+  tmp.openArray();
+  if (this->slice().isArray()) {
+    for (auto const& old : VPackArrayIterator(this->slice())) {
+      if (old != slice.get("val")) {
+        tmp.add(old);
+      }
+    }
+  }
+  tmp.close();
+  *this = tmp.slice();
+  return true;
+}
+
+
+/// Replace element from any place in array by new value
+template <>
+bool Node::handle<REPLACE>(VPackSlice const& slice) {
+  if (!slice.hasKey("val")) {
+    LOG_TOPIC(WARN, Logger::AGENCY)
+        << "Operator erase without value to be erased: " << slice.toJson();
+    return false;
+  }
+  if (!slice.hasKey("new")) {
+    LOG_TOPIC(WARN, Logger::AGENCY)
+        << "Operator replace without new value: " << slice.toJson();
+    return false;
+  }
+  Builder tmp;
+  tmp.openArray();
+  if (this->slice().isArray()) {
+    for (auto const& old : VPackArrayIterator(this->slice())) {
+      if (old == slice.get("val")) {
+        tmp.add(slice.get("new"));
+      } else {
+        tmp.add(old);
+      }
+    }
+  }
+  tmp.close();
+  *this = tmp.slice();
+  return true;
+}
+
+
 /// Remove element from end of array.
 template <>
 bool Node::handle<POP>(VPackSlice const& slice) {
@@ -601,9 +654,14 @@ bool Node::applieOp(VPackSlice const& slice) {
     return handle<OBSERVE>(slice);
   } else if (oper == "unobserve") {  // "op":"unobserve"
     return handle<UNOBSERVE>(slice);
+  } else if (oper == "erase") {  // "op":"erase"
+    return handle<ERASE>(slice);
+  } else if (oper == "replace") {  // "op":"replace"
+    return handle<REPLACE>(slice);
   } else {  // "op" might not be a key word after all
     LOG_TOPIC(WARN, Logger::AGENCY)
-        << "Keyword 'op' without known operation. Handling as regular key.";
+      << "Keyword 'op' without known operation. Handling as regular key: \""
+      << oper << "\"";
   }
 
   return false;

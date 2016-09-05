@@ -50,7 +50,9 @@ enum Operation {
   PREPEND,
   SHIFT,
   OBSERVE,
-  UNOBSERVE
+  UNOBSERVE,
+  ERASE,
+  REPLACE
 };
 
 using namespace arangodb::velocypack;

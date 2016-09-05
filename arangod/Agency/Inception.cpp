@@ -121,6 +121,8 @@ void Inception::gossip() {
 }
 
 void Inception::activeAgency() { // Do we have an active agency?
+
+//  if (config.poolComplete() && config.) 
 /*
   config_t config = _agent->config(); // get a copy of conf
   size_t i = 0;
@@ -161,7 +163,7 @@ void Inception::activeAgency() { // Do we have an active agency?
 
 void Inception::run() {
 
-  //activeAgency();
+  activeAgency();
 
   config_t config = _agent->config();
   if (!config.poolComplete()) {
