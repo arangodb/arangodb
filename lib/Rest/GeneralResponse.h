@@ -127,7 +127,13 @@ class GeneralResponse {
                           arangodb::velocypack::Options const& =
                               arangodb::velocypack::Options::Defaults) = 0;
 
-  void addPayloadPreconditions() { TRI_ASSERT(_vpackPayloads.size() == 0); }
+  void addPayloadPreconditions() { 
+    if (_vpackPayloads.size() != 0) {
+      LOG(ERR) << "Payload set twice";
+      TRI_ASSERT(_vpackPayloads.size() == 0);
+    }
+  }
+
   virtual void addPayloadPreHook(bool inputIsBuffer, bool& resolveExternals) {}
   virtual void addPayloadPostHook(
       arangodb::velocypack::Options const* options) {}
