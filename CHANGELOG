@@ -1,3 +1,8 @@
+v3.0.7 (2016-09-05)
+-------------------
+
+* new supervision job handles db server failure during collection creation.
+
 v3.0.6 (2016-09-02)
 -------------------
 
