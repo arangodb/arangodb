@@ -47,8 +47,8 @@ HttpResponse::HttpResponse(ResponseCode code)
     : GeneralResponse(code),
       _isHeadResponse(false),
       _body(TRI_UNKNOWN_MEM_ZONE, false),
-      _bodySize(0),
-      _generateBody(false) {
+      _bodySize(0) {
+  _generateBody = false;
   _contentType = ContentType::TEXT;
   _connectionType = rest::CONNECTION_KEEP_ALIVE;
   if (_body.c_str() == nullptr) {
@@ -300,14 +300,25 @@ void HttpResponse::writeHeader(StringBuffer* output) {
   // end of header, body to follow
 }
 
-void HttpResponse::addPayloadPostHook(VPackOptions const* options) {
-  VPackSlice slice(_vpackPayloads.front().data());
+void HttpResponse::addPayloadPostHook(
+    VPackSlice const& slice,
+    VPackOptions const* options = &VPackOptions::Options::Defaults,
+    bool resolveExternals = true, bool bodySkipped = false) {
+  VPackSlice const* slicePtr;
+  if (!bodySkipped) {
+    // we have Probably resolved externals
+    TRI_ASSERT(!_vpackPayloads.empty());
+    VPackSlice tmpSlice = VPackSlice(_vpackPayloads.front().data());
+    slicePtr = &tmpSlice;
+  } else {
+    slicePtr = &slice;
+  }
 
   switch (_contentType) {
     case rest::ContentType::VPACK: {
-      size_t length = static_cast<size_t>(slice.byteSize());
+      size_t length = static_cast<size_t>(slicePtr->byteSize());
       if (_generateBody) {
-        _body.appendText(slice.startAs<const char>(), length);
+        _body.appendText(slicePtr->startAs<const char>(), length);
       } else {
         headResponse(length);
       }
@@ -317,7 +328,7 @@ void HttpResponse::addPayloadPostHook(VPackOptions const* options) {
       setContentType(rest::ContentType::JSON);
       if (_generateBody) {
         arangodb::basics::VelocyPackDumper dumper(&_body, options);
-        dumper.dumpValue(slice);
+        dumper.dumpValue(*slicePtr);
       } else {
         // TODO can we optimize this?
         // Just dump some where else to find real length
@@ -328,17 +339,10 @@ void HttpResponse::addPayloadPostHook(VPackOptions const* options) {
 
         // usual dumping -  but not to the response body
         VPackDumper dumper(&buffer, options);
-        dumper.dump(slice);
+        dumper.dump(*slicePtr);
 
         headResponse(tmp.length());
       }
     }
   }
-  //_vpackPayloads.clear();
 }
-
-void HttpResponse::setPayload(arangodb::velocypack::Slice const& slice,
-                              bool generateBody, VPackOptions const& options) {
-  _generateBody = generateBody;
-  addPayload(slice, &options, true);
-};

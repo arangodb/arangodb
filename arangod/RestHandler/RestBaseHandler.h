@@ -44,17 +44,16 @@ class RestBaseHandler : public rest::RestHandler {
 
  public:
   // generates a result from VelocyPack
-  void generateResult(rest::ResponseCode,
-                      arangodb::velocypack::Slice const& slice);
+  template <typename Payload>
+  void generateResult(rest::ResponseCode, Payload&&);
 
   // generates a result from VelocyPack
-  void generateResult(rest::ResponseCode,
-                      arangodb::velocypack::Slice const& slice,
-                      VPackOptions const*);
+  template <typename Payload>
+  void generateResult(rest::ResponseCode, Payload&&, VPackOptions const*);
 
   // generates a result from VelocyPack
-  void generateResult(rest::ResponseCode,
-                      arangodb::velocypack::Slice const& slice,
+  template <typename Payload>
+  void generateResult(rest::ResponseCode, Payload&&,
                       std::shared_ptr<arangodb::TransactionContext> context);
 
   // generates an error
@@ -70,9 +69,8 @@ class RestBaseHandler : public rest::RestHandler {
   void generateCanceled();
 
  protected:
-  // write result back to client
-  void writeResult(arangodb::velocypack::Slice const& slice,
-                   arangodb::velocypack::Options const& options);
+  template <typename Payload>
+  void writeResult(Payload&&, arangodb::velocypack::Options const& options);
 };
 }
 

@@ -53,16 +53,9 @@ void VppResponse::reset(ResponseCode code) {
   _responseCode = code;
   _headers.clear();
   _connectionType = rest::CONNECTION_KEEP_ALIVE;
-  _contentType = ContentType::TEXT;
+  _contentType = ContentType::VPACK;
   _generateBody = false;  // payload has to be set
 }
-
-void VppResponse::setPayload(arangodb::velocypack::Slice const& slice,
-                             bool generateBody, VPackOptions const& options) {
-  if (setGenerateBody(generateBody)) {
-    addPayload(slice, &options);
-  }
-};
 
 VPackMessageNoOwnBuffer VppResponse::prepareForNetwork() {
   // initalize builder with vpackbuffer. then we do not need to
@@ -75,8 +68,18 @@ VPackMessageNoOwnBuffer VppResponse::prepareForNetwork() {
       VPackValue(static_cast<int>(meta::underlyingValue(_responseCode))));
   builder.close();
   _header = builder.steal();
-  return VPackMessageNoOwnBuffer(VPackSlice(_header->data()),
-                                 VPackSlice(_vpackPayloads.front().data()),
-                                 _messageId, _generateBody);
+  if (_vpackPayloads.empty()) {
+    if (_generateBody) {
+      LOG_TOPIC(INFO, Logger::REQUESTS)
+          << "Response should generate body but no Data available";
+      _generateBody = false;  // no body availalbe
+    }
+    return VPackMessageNoOwnBuffer(VPackSlice(_header->data()),
+                                   VPackSlice::noneSlice(), _messageId,
+                                   _generateBody);
+  } else {
+    return VPackMessageNoOwnBuffer(VPackSlice(_header->data()),
+                                   VPackSlice(_vpackPayloads.front().data()),
+                                   _messageId, _generateBody);
+  }
 }
-// void VppResponse::writeHeader(basics::StringBuffer*) {}

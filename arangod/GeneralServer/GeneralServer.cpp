@@ -192,6 +192,7 @@ bool GeneralServer::handleRequest(GeneralCommTask* task,
 
   if (res != TRI_ERROR_NO_ERROR) {
     task->handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE, res, TRI_errno_string(res), messageId);
+
     return true;
   }
 

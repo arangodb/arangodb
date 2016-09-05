@@ -74,11 +74,10 @@ class HttpResponse : public GeneralResponse {
  public:
   void reset(ResponseCode code) override final;
 
-  void addPayloadPreHook(bool inputIsBuffer, bool& resolveExternals) override {
+  void addPayloadPreHook(bool inputIsBuffer, bool& resolveExternals,
+                         bool& skipBody) override {
     if (_contentType == ContentType::JSON) {
-      // resolveExternals = false;  // they get resolved during dump in post
-      // hook
-      // this optimization leads to bad bas crahses
+      skipBody = true;
     }
   }
 
@@ -86,9 +85,8 @@ class HttpResponse : public GeneralResponse {
     return _generateBody = generateBody;
   }  // used for head-responses
   int reservePayload(std::size_t size) override { return _body.reserve(size); }
-  void addPayloadPostHook(VPackOptions const* options) override;
-  void setPayload(arangodb::velocypack::Slice const&, bool generateBody,
-                  arangodb::velocypack::Options const&) override final;
+  void addPayloadPostHook(VPackSlice const&, VPackOptions const* options,
+                          bool resolveExternals, bool bodySkipped) override;
 
   arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::HTTP;
@@ -103,7 +101,6 @@ class HttpResponse : public GeneralResponse {
   std::vector<std::string> _cookies;
   basics::StringBuffer _body;
   size_t _bodySize;
-  bool _generateBody;
 };
 }
 

@@ -114,8 +114,7 @@ class RequestStatisticsAgent
                              RequestStatisticsAgentDesc> {
  public:
   RequestStatisticsAgent(bool standalone = false)
-      : StatisticsAgent(standalone) {
-  }
+      : StatisticsAgent(standalone) {}
 
   RequestStatisticsAgent(RequestStatisticsAgent const&) = delete;
 

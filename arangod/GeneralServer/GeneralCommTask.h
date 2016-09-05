@@ -158,6 +158,7 @@ class GeneralCommTask : public SocketTask {
 
   void processResponse(GeneralResponse*);
 
+ public:
   virtual void handleSimpleError(rest::ResponseCode, uint64_t messagid) = 0;
   virtual void handleSimpleError(rest::ResponseCode, int code,
                                  std::string const& errorMessage,

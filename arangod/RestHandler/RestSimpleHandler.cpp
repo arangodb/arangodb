@@ -28,8 +28,8 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Traverser.h"
@@ -256,9 +256,7 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
       result.add("removed", VPackValue(removed));
       result.add("ignored", VPackValue(ignored));
       result.add("error", VPackValue(false));
-      result.add(
-          "code",
-          VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+      result.add("code", VPackValue(static_cast<int>(rest::ResponseCode::OK)));
       if (!silent) {
         result.add("old", queryResult.result->slice());
       }
@@ -273,8 +271,7 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
                   ex.what());
   } catch (...) {
     unregisterQuery();
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_INTERNAL);
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL);
   }
 }
 
@@ -355,7 +352,8 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
       resultSize = static_cast<size_t>(qResult.length());
     }
 
-    VPackBuilder result;
+    VPackBuffer<uint8_t> resultBuffer;
+    VPackBuilder result(resultBuffer);
     {
       VPackObjectBuilder guard(&result);
       resetResponse(rest::ResponseCode::OK);
@@ -436,32 +434,26 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
                  VPackValue(static_cast<int>(_response->responseCode())));
 
       // reserve a few bytes per result document by default
-      int res = response->body().reserve(32 * resultSize);
+      int res = response->reservePayload(32 * resultSize);
 
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
       }
     }
 
-    auto customTypeHandler = queryResult.context->orderCustomTypeHandler();
-    VPackOptions options = VPackOptions::Defaults;  // copy defaults
-    options.customTypeHandler = customTypeHandler.get();
+    generateResult(rest::ResponseCode::OK, std::move(resultBuffer),
+                   queryResult.context);
 
-    arangodb::basics::VPackStringBufferAdapter buffer(
-        response->body().stringBuffer());
-    VPackDumper dumper(&buffer, &options);
-    dumper.dump(result.slice());
   } catch (arangodb::basics::Exception const& ex) {
     unregisterQuery();
     generateError(GeneralResponse::responseCode(ex.code()), ex.code(),
                   ex.what());
   } catch (std::exception const& ex) {
     unregisterQuery();
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_INTERNAL, ex.what());
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  ex.what());
   } catch (...) {
     unregisterQuery();
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_INTERNAL);
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL);
   }
 }

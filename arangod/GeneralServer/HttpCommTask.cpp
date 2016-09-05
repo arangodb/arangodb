@@ -60,7 +60,8 @@ HttpCommTask::HttpCommTask(GeneralServer* server, TRI_socket_t sock,
       _sinceCompactification(0),
       _originalBodyLength(0) {  // TODO(fc) remove
   _protocol = "http";
-  connectionStatisticsAgentSetHttp();  // old
+  connectionStatisticsAgentSetHttp();  // this agent is inherited form
+                                       // sockettask or task
   _agents.emplace(std::make_pair(1UL, RequestStatisticsAgent(true)));
 }
 
@@ -588,6 +589,7 @@ void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
   std::unique_ptr<GeneralResponse> response(
       new HttpResponse(rest::ResponseCode::SERVER_ERROR));
   response->setContentType(request->contentTypeResponse());
+  response->setContentTypeRequested(request->contentTypeResponse());
 
   executeRequest(std::move(request), std::move(response));
 }
