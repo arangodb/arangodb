@@ -418,22 +418,12 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
       // should the work be done in javascript
       // FIXME not every VPack can be converted to JSON
       VPackSlice slice = request->payload();
-
       VPackValidator validator;
       validator.validate(slice.start(), slice.byteSize());
-
-      // auto result = TRI_VPackToV8(isolate, slice);
       std::string jsonString = slice.toJson();
+
       LOG_TOPIC(DEBUG, Logger::REQUESTS) << "json handed into v8 request:\n"
                                          << jsonString;
-
-      // V8Buffer* buffer =
-      //    V8Buffer::New(isolate, slice.startAs<char>(),
-      //                  std::distance(slice.begin(), slice.end()));
-      // v8::Local<v8::Object> bufferObject =
-      //    v8::Local<v8::Object>::New(isolate, buffer->_handle);
-
-      // We are unable to use NON JSON compatible VPACK -- FIXME
 
       req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(jsonString));
       headers["content-length"] = StringUtils::itoa(jsonString.size());
@@ -452,7 +442,6 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
     case rest::RequestType::POST: {
       TRI_GET_GLOBAL_STRING(PostConstant);
       req->ForceSet(RequestTypeKey, PostConstant);
-      // req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(request->body()));
       set_request_body_json_or_vpack();
       break;
     }
@@ -460,7 +449,6 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
     case rest::RequestType::PUT: {
       TRI_GET_GLOBAL_STRING(PutConstant);
       req->ForceSet(RequestTypeKey, PutConstant);
-      // req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(request->body()));
       set_request_body_json_or_vpack();
       break;
     }
@@ -468,7 +456,6 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
     case rest::RequestType::PATCH: {
       TRI_GET_GLOBAL_STRING(PatchConstant);
       req->ForceSet(RequestTypeKey, PatchConstant);
-      // req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(request->body()));
       set_request_body_json_or_vpack();
       break;
     }
