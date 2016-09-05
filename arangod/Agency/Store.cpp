@@ -166,39 +166,45 @@ std::vector<bool> Store::apply(query_t const& query, bool verbose) {
   std::vector<bool> success;
   MUTEX_LOCKER(storeLocker, _storeLock);
 
-  try {
+  if (query->slice().isArray()) {
 
-    for (auto const& i : VPackArrayIterator(query->slice())) {
+    try {
       
-      switch (i.length()) {
-      case 1:  // No precondition
-        success.push_back(applies(i[0]));
-        break;  
-      case 2:  // precondition
-        if (check(i[1])) {                
+      for (auto const& i : VPackArrayIterator(query->slice())) {
+        
+        switch (i.length()) {
+        case 1:  // No precondition
           success.push_back(applies(i[0]));
-        } else {  // precondition failed
-          LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
+          break;  
+        case 2:  // precondition
+          if (check(i[1])) {                
+            success.push_back(applies(i[0]));
+          } else {  // precondition failed
+            LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
+            success.push_back(false);
+          }
+          break;
+        default: // Wrong 
+          LOG_TOPIC(ERR, Logger::AGENCY)
+            << "We can only handle log entry with or without precondition!";
           success.push_back(false);
+          break;
         }
-        break;
-      default: // Wrong 
-        LOG_TOPIC(ERR, Logger::AGENCY)
-          << "We can only handle log entry with or without precondition!";
-        success.push_back(false);
-        break;
+        
       }
       
+      //Wake up TTL processing
+      _cv.signal();
+      
+    } catch (std::exception const& e) { // Catch any erorrs
+      LOG_TOPIC(ERR, Logger::AGENCY)
+        << __FILE__ << ":" << __LINE__ << " " << e.what();
     }
 
-    //Wake up TTL processing
-    _cv.signal();
-    
-  } catch (std::exception const& e) { // Catch any erorrs
-    LOG_TOPIC(ERR, Logger::AGENCY)
-      << __FILE__ << ":" << __LINE__ << " " << e.what();
+  } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      30000, "Agency request syntax is [[<queries>]]");
   }
-
   return success;
   
 }

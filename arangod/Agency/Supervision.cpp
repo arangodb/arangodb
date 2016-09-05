@@ -26,6 +26,7 @@
 #include "Agent.h"
 #include "CleanOutServer.h"
 #include "FailedLeader.h"
+#include "UnassumedLeadership.h"
 #include "FailedServer.h"
 #include "MoveShard.h"
 #include "Job.h"
@@ -453,13 +454,15 @@ void Supervision::workJobs() {
       jobId = job("jobId").getString(),
       creator = job("creator").getString();
     if (jobType == "failedServer") {
-      FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      FailedServer (_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "cleanOutServer") {
-      CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      CleanOutServer (_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "moveShard") {
-      MoveShard mv(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      MoveShard (_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "failedLeader") {
-      FailedLeader fl(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      FailedLeader (_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "unassumedLeadership") {
+      UnassumedLeadership (_snapshot, _agent, jobId, creator, _agencyPrefix);
     }
   }
 
@@ -470,14 +473,16 @@ void Supervision::workJobs() {
       jobId = job("jobId").getString(),
       creator = job("creator").getString();
     if (jobType == "failedServer") {
-      FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      FailedServer (_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "cleanOutServer") {
-      CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      CleanOutServer (_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "moveShard") {
-      MoveShard mv(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      MoveShard (_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "failedLeader") {
-      FailedLeader fl(_snapshot, _agent, jobId, creator, _agencyPrefix);
-    }
+      FailedLeader (_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "unassumedLeadership") {
+      UnassumedLeadership (_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } 
   }
   
 }
@@ -497,7 +502,7 @@ void Supervision::shrinkCluster () {
   try {
     targetNumDBServers = _snapshot("/Target/NumberOfDBServers").getUInt();
   } catch (std::exception const& e) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
+    LOG_TOPIC(TRACE, Logger::AGENCY)
       << "Targeted number of DB servers not set yet: " << e.what();
     return;
   }

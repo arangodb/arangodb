@@ -34,7 +34,7 @@ UnassumedLeadership::UnassumedLeadership(
   std::string const& database, std::string const& collection,
   std::string const& shard, std::string const& server) :
   Job(snapshot, agent, jobId, creator, agencyPrefix), _database(database),
-  _collection(collection), _shard(shard), _server(server) {
+  _collection(collection), _shard(shard), _from(server) {
 
   try {
     JOB_STATUS js = status();
@@ -127,6 +127,8 @@ bool UnassumedLeadership::start() {
               VPackValue(VPackValueType::Object));
   pending.add("timeStarted",
               VPackValue(timepointToString(std::chrono::system_clock::now())));
+  pending.add("fromServer", VPackValue(_from));
+  pending.add("toServer", VPackValue(_to));
   for (auto const& obj : VPackObjectIterator(todo.slice()[0])) {
     pending.add(obj.key.copyString(), obj.value);
   }
@@ -142,6 +144,19 @@ bool UnassumedLeadership::start() {
   pending.add(_agencyPrefix +  planVersion,
               VPackValue(VPackValueType::Object));
   pending.add("op", VPackValue("increment"));
+  pending.close();
+
+  // --- Reassign DBServer
+  std::string path = planPath + "/shards/" + _shard;
+  pending.add(_agencyPrefix + path, VPackValue(VPackValueType::Array));
+  for (const auto& dbserver : VPackArrayIterator(_snapshot(path).slice())) {
+    if (dbserver.copyString() == _from) {
+      pending.add(VPackValue(_to));
+    } else {
+      pending.add(dbserver);      
+    }
+  }
+  pending.close();
   pending.close();
   
   // Precondition
@@ -175,7 +190,6 @@ bool UnassumedLeadership::reassignShard() {
 
   std::vector<std::string> availServers;
 
-  LOG(WARN) << __LINE__;
 
   // Get servers from plan
   Node::Children const& dbservers = _snapshot("/Plan/DBServers").children();
@@ -183,13 +197,11 @@ bool UnassumedLeadership::reassignShard() {
     availServers.push_back(srv.first);
   }
 
-  LOG(WARN) << __LINE__;
   // Remove this server
   availServers.erase(
-    std::remove(availServers.begin(), availServers.end(), _server),
+    std::remove(availServers.begin(), availServers.end(), _from),
     availServers.end());
   
-  LOG(WARN) << __LINE__;
   // Remove cleaned from ist
   if (_snapshot.exists("/Target/CleanedServers").size()==2) {
     for (auto const& srv :
@@ -200,7 +212,6 @@ bool UnassumedLeadership::reassignShard() {
     }
   }
   
-  LOG(WARN) << __LINE__;
   // Remove failed from ist
   if (_snapshot.exists("/Target/FailedServers").size()==2) {
     for (auto const& srv :
@@ -211,25 +222,22 @@ bool UnassumedLeadership::reassignShard() {
     }
   }
 
-  LOG(WARN) << __LINE__;
   // Only destinations, which are not already holding this shard
-  LOG(WARN) << planColPrefix + "/" + _database + "/" + _collection + "/shards" + _shard;
-  auto const& plannedservers = _snapshot(
-    planColPrefix + "/" + _database + "/" + _collection + "/shards" + _shard);
+  std::string path =
+    planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
+  auto const& plannedservers = _snapshot(path);
   for (auto const& dbserver : VPackArrayIterator(plannedservers.slice())) {
     availServers.erase(
       std::remove(availServers.begin(), availServers.end(),
                   dbserver.copyString()), availServers.end());
   }
   
-  LOG(WARN) << __LINE__;
   // Minimum 1 DB server must remain
   if (availServers.empty()) {
     LOG_TOPIC(ERR, Logger::AGENCY) << "No DB servers left as target.";
     return false;
   }
   
-  LOG(WARN) << __LINE__;
   // Among those a random destination
   try {
     _to = availServers.at(rand() % availServers.size());
@@ -241,7 +249,6 @@ bool UnassumedLeadership::reassignShard() {
     return false;
   }
   
-  LOG(WARN) << __LINE__;
   return true;
 }
 
@@ -283,7 +290,7 @@ JOB_STATUS UnassumedLeadership::status() {
     
     Node const& planned = _snapshot(planPath);
     Node const& current = _snapshot(curPath);
-    
+
     if (planned.slice()[0] == current.slice()[0]) {
       LOG_TOPIC(DEBUG, Logger::AGENCY) <<
         "Done reassigned creation of " + _shard + " to " + _to;

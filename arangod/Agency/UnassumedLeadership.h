@@ -53,7 +53,6 @@ struct UnassumedLeadership : public Job {
   std::string _database;
   std::string _collection;
   std::string _shard;
-  std::string _server;
   std::string _from;
   std::string _to;
   

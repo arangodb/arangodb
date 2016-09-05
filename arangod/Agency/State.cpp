@@ -119,8 +119,15 @@ std::vector<arangodb::consensus::index_t> State::log(
   size_t j = 0;
   auto const& slice = transaction->slice();
 
-  TRI_ASSERT(slice.isArray());
-  TRI_ASSERT(slice.length() == good.size());
+  if (!slice.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      30000, "Agency request syntax is [[<queries>]]");
+  }
+    
+  if (slice.length() != good.size()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      30000, "Agency request syntax is [[<queries>]]");
+  }
     
   MUTEX_LOCKER(mutexLocker, _logLock);  // log entries must stay in order
   for (auto const& i : VPackArrayIterator(slice)) {

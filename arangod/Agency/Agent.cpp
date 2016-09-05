@@ -217,7 +217,7 @@ void Agent::reportIn(std::string const& id, index_t index) {
     // catch up read database and commit index
     if (n > size() / 2) {
 
-      LOG_TOPIC(DEBUG, Logger::AGENCY) << "Critical mass for commiting "
+      LOG_TOPIC(TRACE, Logger::AGENCY) << "Critical mass for commiting "
                                        << _lastCommitIndex + 1 << " through "
                                        << index << " to read db";
 
@@ -281,7 +281,12 @@ bool Agent::recvAppendEntriesRPC(
         << "Appending " << nqs - ndups << " entries to state machine." <<
         nqs << " " << ndups;
 
-      _state.log(queries, ndups);
+      try {
+        _state.log(queries, ndups);
+      } catch (std::exception const& e) {
+        LOG_TOPIC(DEBUG, Logger::AGENCY)
+          << "Malformed query: " << __FILE__ << __LINE__;
+      }
   
     }
     

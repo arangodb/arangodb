@@ -155,7 +155,21 @@ RestHandler::status RestAgencyHandler::handleWrite() {
       std::this_thread::sleep_for(duration_t(100));
     }
 
-    write_ret_t ret = _agent->write(query);
+    write_ret_t ret;
+
+    try {
+     ret = _agent->write(query);
+    } catch (std::exception const& e) {
+      LOG_TOPIC(DEBUG, Logger::AGENCY) << "Malformed write query " << query;
+      Builder body;
+      body.openObject();
+      body.add("message",
+               VPackValue(std::string("Malformed write query") + e.what()));
+      body.close();
+      generateResult(GeneralResponse::ResponseCode::BAD,
+                     body.slice());
+      return status::DONE;
+    }
 
     if (ret.accepted) {  // We're leading and handling the request
       bool found;
