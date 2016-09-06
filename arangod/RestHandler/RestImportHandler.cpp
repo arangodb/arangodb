@@ -1061,26 +1061,21 @@ std::shared_ptr<VPackBuilder> RestImportHandler::createVelocyPackObject(
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, errorMsg);
   }
 
-  try {
-    auto result = std::make_shared<VPackBuilder>();
-    result->openObject();
+  auto result = std::make_shared<VPackBuilder>();
+  result->openObject();
 
-    for (size_t i = 0; i < n; ++i) {
-      VPackSlice const key = keys.at(i);
-      VPackSlice const value = values.at(i);
+  for (size_t i = 0; i < n; ++i) {
+    VPackSlice const key = keys.at(i);
+    VPackSlice const value = values.at(i);
 
-      if (key.isString() && !value.isNone() && !value.isNull()) {
-        std::string tmp = key.copyString();
-        result->add(tmp, value);
-      }
+    if (key.isString() && !value.isNone() && !value.isNull()) {
+      std::string tmp = key.copyString();
+      result->add(tmp, value);
     }
-    result->close();
-
-    return result;
-  } catch (std::bad_alloc const&) {
-    LOG(ERR) << "out of memory";
-    throw;
   }
+  result->close();
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

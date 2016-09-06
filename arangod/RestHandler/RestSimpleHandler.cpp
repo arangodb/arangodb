@@ -267,13 +267,9 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
       generateResult(rest::ResponseCode::OK, result.slice(),
                      queryResult.context);
     }
-  } catch (arangodb::basics::Exception const& ex) {
-    unregisterQuery();
-    generateError(GeneralResponse::responseCode(ex.code()), ex.code(),
-                  ex.what());
   } catch (...) {
     unregisterQuery();
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL);
+    throw;
   }
 }
 
@@ -445,17 +441,8 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
 
     generateResult(rest::ResponseCode::OK, std::move(resultBuffer),
                    queryResult.context);
-
-  } catch (arangodb::basics::Exception const& ex) {
-    unregisterQuery();
-    generateError(GeneralResponse::responseCode(ex.code()), ex.code(),
-                  ex.what());
-  } catch (std::exception const& ex) {
-    unregisterQuery();
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  ex.what());
   } catch (...) {
     unregisterQuery();
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL);
+    throw;
   }
 }

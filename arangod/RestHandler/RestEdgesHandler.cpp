@@ -45,32 +45,21 @@ RestHandler::status RestEdgesHandler::execute() {
   auto const type = _request->requestType();
 
   // execute one of the CRUD methods
-  try {
-    switch (type) {
-      case rest::RequestType::GET: {
-        std::vector<traverser::TraverserExpression*> empty;
-        readEdges(empty);
-        break;
-      }
-      case rest::RequestType::PUT:
-        readFilteredEdges();
-        break;
-      case rest::RequestType::POST:
-        readEdgesForMultipleVertices();
-        break;
-      default:
-        generateNotImplemented("ILLEGAL " + EDGES_PATH);
-        break;
+  switch (type) {
+    case rest::RequestType::GET: {
+      std::vector<traverser::TraverserExpression*> empty;
+      readEdges(empty);
+      break;
     }
-  } catch (arangodb::basics::Exception const& ex) {
-    generateError(GeneralResponse::responseCode(ex.code()), ex.code(),
-                  ex.what());
-  } catch (std::exception const& ex) {
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_INTERNAL, ex.what());
-  } catch (...) {
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_INTERNAL);
+    case rest::RequestType::PUT:
+      readFilteredEdges();
+      break;
+    case rest::RequestType::POST:
+      readEdgesForMultipleVertices();
+      break;
+    default:
+      generateNotImplemented("ILLEGAL " + EDGES_PATH);
+      break;
   }
 
   // this handler is done

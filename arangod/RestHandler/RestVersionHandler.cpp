@@ -45,32 +45,28 @@ RestVersionHandler::RestVersionHandler(GeneralRequest* request,
 bool RestVersionHandler::isDirect() const { return true; }
 
 RestHandler::status RestVersionHandler::execute() {
-  try {
-    VPackBuilder result;
-    result.add(VPackValue(VPackValueType::Object));
-    result.add("server", VPackValue("arango"));
-    result.add("version", VPackValue(ARANGODB_VERSION));
+  VPackBuilder result;
+  result.add(VPackValue(VPackValueType::Object));
+  result.add("server", VPackValue("arango"));
+  result.add("version", VPackValue(ARANGODB_VERSION));
 
-    bool found;
-    std::string const& detailsStr = _request->value("details", found);
+  bool found;
+  std::string const& detailsStr = _request->value("details", found);
 
-    if (found && StringUtils::boolean(detailsStr)) {
-      result.add("details", VPackValue(VPackValueType::Object));
+  if (found && StringUtils::boolean(detailsStr)) {
+    result.add("details", VPackValue(VPackValueType::Object));
 
-      Version::getVPack(result);
+    Version::getVPack(result);
 
-      if (application_features::ApplicationServer::server != nullptr) {
-        auto server = application_features::ApplicationServer::server
-                          ->getFeature<ServerFeature>("Server");
-        result.add("mode", VPackValue(server->operationModeString()));
-      }
-
-      result.close();
+    if (application_features::ApplicationServer::server != nullptr) {
+      auto server = application_features::ApplicationServer::server
+                        ->getFeature<ServerFeature>("Server");
+      result.add("mode", VPackValue(server->operationModeString()));
     }
+
     result.close();
-    generateResult(rest::ResponseCode::OK, result.slice());
-  } catch (...) {
-    // Ignore this error
   }
+  result.close();
+  generateResult(rest::ResponseCode::OK, result.slice());
   return status::DONE;
 }

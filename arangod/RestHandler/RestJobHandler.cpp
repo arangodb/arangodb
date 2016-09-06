@@ -132,17 +132,13 @@ void RestJobHandler::putJobMethod() {
       generateError(rest::ResponseCode::NOT_FOUND,
                     TRI_ERROR_HTTP_NOT_FOUND);
     } else {
-      try {
-        VPackBuilder json;
-        json.add(VPackValue(VPackValueType::Object));
-        json.add("result", VPackValue(true));
-        json.close();
+      VPackBuilder json;
+      json.add(VPackValue(VPackValueType::Object));
+      json.add("result", VPackValue(true));
+      json.close();
 
-        VPackSlice slice(json.start());
-        generateResult(rest::ResponseCode::OK, slice);
-      } catch (...) {
-        // Ignore the error
-      }
+      VPackSlice slice(json.start());
+      generateResult(rest::ResponseCode::OK, slice);
     }
     return;
   } else {
@@ -217,35 +213,24 @@ void RestJobHandler::getJobByType(std::string const& type) {
   }
 
   std::vector<AsyncJobResult::IdType> ids;
-  try {
-    if (type == "done") {
-      ids = _jobManager->done(count);
-    } else if (type == "pending") {
-      ids = _jobManager->pending(count);
-    } else {
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER);
-      return;
-    }
-  } catch (...) {
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_HTTP_SERVER_ERROR);
+  if (type == "done") {
+    ids = _jobManager->done(count);
+  } else if (type == "pending") {
+    ids = _jobManager->pending(count);
+  } else {
+    generateError(rest::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
   }
 
-  try {
-    VPackBuilder result;
-    result.openArray();
-    size_t const n = ids.size();
-    for (size_t i = 0; i < n; ++i) {
-      result.add(VPackValue(std::to_string(ids[i])));
-    }
-    result.close();
-    generateResult(rest::ResponseCode::OK, result.slice());
-  } catch (...) {
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_OUT_OF_MEMORY);
+  VPackBuilder result;
+  result.openArray();
+  size_t const n = ids.size();
+  for (size_t i = 0; i < n; ++i) {
+    result.add(VPackValue(std::to_string(ids[i])));
   }
+  result.close();
+  generateResult(rest::ResponseCode::OK, result.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -289,15 +274,10 @@ void RestJobHandler::deleteJob() {
     }
   }
 
-  try {
-    VPackBuilder json;
-    json.add(VPackValue(VPackValueType::Object));
-    json.add("result", VPackValue(true));
-    json.close();
-    VPackSlice slice(json.start());
-    generateResult(rest::ResponseCode::OK, slice);
-  } catch (...) {
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_OUT_OF_MEMORY);
-  }
+  VPackBuilder json;
+  json.add(VPackValue(VPackValueType::Object));
+  json.add("result", VPackValue(true));
+  json.close();
+  VPackSlice slice(json.start());
+  generateResult(rest::ResponseCode::OK, slice);
 }

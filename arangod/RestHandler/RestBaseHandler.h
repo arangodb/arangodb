@@ -62,9 +62,6 @@ class RestBaseHandler : public rest::RestHandler {
   // generates an error
   void generateError(rest::ResponseCode, int, std::string const&);
 
-  // generates an out of memory error
-  void generateOOMError();
-
   // generates a canceled message
   void generateCanceled();
 

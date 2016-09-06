@@ -127,14 +127,6 @@ void RestBaseHandler::generateError(rest::ResponseCode code, int errorCode,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates an OUT_OF_MEMORY error
-////////////////////////////////////////////////////////////////////////////////
-
-void RestBaseHandler::generateOOMError() {
-  generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a cancel message
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -155,6 +147,8 @@ void RestBaseHandler::writeResult(Payload&& payload,
       _response->setContentType(_request->contentTypeResponse());
     }
     _response->setPayload(std::forward<Payload>(payload), true, options);
+  } catch (basics::Exception const& ex) {
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
   } catch (std::exception const& ex) {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   ex.what());

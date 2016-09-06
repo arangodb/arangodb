@@ -412,20 +412,9 @@ void RestCursorHandler::createCursor() {
     VPackSlice body = parsedBody.get()->slice();
 
     processQuery(body);
-  } catch (arangodb::basics::Exception const& ex) {
-    unregisterQuery();
-    generateError(GeneralResponse::responseCode(ex.code()), ex.code(),
-                  ex.what());
-  } catch (std::bad_alloc const&) {
-    unregisterQuery();
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
-  } catch (std::exception const& ex) {
-    unregisterQuery();
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  ex.what());
   } catch (...) {
     unregisterQuery();
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL);
+    throw;
   }
 }
 
@@ -475,14 +464,9 @@ void RestCursorHandler::modifyCursor() {
     generateResult(rest::ResponseCode::OK, builder.slice());
 
     cursors->release(cursor);
-  } catch (arangodb::basics::Exception const& ex) {
-    cursors->release(cursor);
-
-    generateError(GeneralResponse::responseCode(ex.code()), ex.code(),
-                  ex.what());
   } catch (...) {
     cursors->release(cursor);
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL);
+    throw;
   }
 }
 
