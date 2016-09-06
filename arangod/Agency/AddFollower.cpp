@@ -65,9 +65,11 @@ bool AddFollower::create () {
   std::string curPath =
     curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   Slice current = _snapshot(curPath).slice();
   TRI_ASSERT(current.isArray());
   TRI_ASSERT(current[0].isString());
+#endif
   
   _jb = std::make_shared<Builder>();
   _jb->openArray();
