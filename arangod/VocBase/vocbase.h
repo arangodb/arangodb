@@ -265,7 +265,7 @@ struct TRI_vocbase_t {
   void shutdown();
 
   /// @brief returns all known collections
-  std::vector<arangodb::LogicalCollection*> collections();
+  std::vector<arangodb::LogicalCollection*> collections(bool includeDeleted);
 
   /// @brief returns names of all known collections
   std::vector<std::string> collectionNames();

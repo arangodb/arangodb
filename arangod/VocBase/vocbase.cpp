@@ -517,7 +517,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
     if (writeMarker) {
       writeDropCollectionMarker(collection->cid(), collection->name());
     }
-
+  
     DropCollectionCallback(collection);
 
     return TRI_ERROR_NO_ERROR;
@@ -1203,15 +1203,23 @@ TRI_vocbase_t::getReplicationClients() {
   }
   return result;
 }
-      
-std::vector<arangodb::LogicalCollection*> TRI_vocbase_t::collections() {
+
+std::vector<arangodb::LogicalCollection*> TRI_vocbase_t::collections(bool includeDeleted) {
   std::vector<arangodb::LogicalCollection*> collections;
 
   {
     READ_LOCKER(readLocker, _collectionsLock);
-    collections.reserve(_collectionsById.size());
-    for (auto const& it : _collectionsById) {
-      collections.emplace_back(it.second);
+    if (includeDeleted) {
+      // return deleted collections as well. the cleanup thread needs them
+      collections.reserve(_collections.size());
+      for (auto const& it : _collections) {
+        collections.emplace_back(it);
+      }
+    } else {
+      collections.reserve(_collectionsById.size());
+      for (auto const& it : _collectionsById) {
+        collections.emplace_back(it.second);
+      }
     }
   }
   return collections;

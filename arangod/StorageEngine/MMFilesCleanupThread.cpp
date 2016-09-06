@@ -75,7 +75,7 @@ void MMFilesCleanupThread::run() {
     engine->tryPreventCompaction(_vocbase, [this, &collections, &iterations](TRI_vocbase_t* vocbase) {
       try {
         // copy all collections
-        collections = vocbase->collections();
+        collections = vocbase->collections(true);
       } catch (...) {
         collections.clear();
       }
@@ -86,7 +86,8 @@ void MMFilesCleanupThread::run() {
         TRI_vocbase_col_status_e status = collection->getStatusLocked();
 
         if (status != TRI_VOC_COL_STATUS_LOADED && 
-            status != TRI_VOC_COL_STATUS_UNLOADING) {
+            status != TRI_VOC_COL_STATUS_UNLOADING &&
+            status != TRI_VOC_COL_STATUS_DELETED) {
           continue;
         }
           
@@ -181,7 +182,7 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
       // absolutely nothing to do
       return;
     }
-
+  
     TRI_ASSERT(ditch != nullptr);
 
     if (!popped) {
@@ -212,7 +213,7 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
           return;
         }
       }
-
+  
       if (!collection->isFullyCollected()) {
         bool isDeleted = false;
 
@@ -249,7 +250,7 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
 
     // execute callback, some of the callbacks might delete or unload our collection
     auto const type = ditch->type();
-
+  
     if (type == arangodb::Ditch::TRI_DITCH_DATAFILE_DROP) {
       dynamic_cast<arangodb::DropDatafileDitch*>(ditch)->executeCallback();
       delete ditch;
