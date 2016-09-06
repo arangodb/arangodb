@@ -936,8 +936,6 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
         barrierId, 180, tickStart);
   }
 
-  int res = TRI_ERROR_NO_ERROR;
-
   auto transactionContext =
       std::make_shared<StandaloneTransactionContext>(_vocbase);
 
@@ -947,7 +945,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
                               includeSystem, cid);
 
   // and dump
-  res = TRI_DumpLogReplication(&dump, transactionIds, firstRegularTick,
+  int res = TRI_DumpLogReplication(&dump, transactionIds, firstRegularTick,
                                 tickStart, tickEnd, false);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -1032,8 +1030,6 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
     return;
   }
 
-  int res = TRI_ERROR_NO_ERROR;
-
   auto transactionContext =
       std::make_shared<StandaloneTransactionContext>(_vocbase);
 
@@ -1043,7 +1039,7 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
                               false, 0);
 
   // and dump
-  res = TRI_DetermineOpenTransactionsReplication(&dump, tickStart, tickEnd);
+  int res = TRI_DetermineOpenTransactionsReplication(&dump, tickStart, tickEnd);
 
   if (res == TRI_ERROR_NO_ERROR) {
     // generate the result
