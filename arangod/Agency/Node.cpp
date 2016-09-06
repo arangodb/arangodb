@@ -44,7 +44,6 @@ struct Empty {
   bool operator()(const std::string& s) { return s.empty(); }
 };
 
-
 /// @brief Split strings by separator
 inline std::vector<std::string> split(const std::string& value,
                                       char separator) {
@@ -61,40 +60,40 @@ inline std::vector<std::string> split(const std::string& value,
   return result;
 }
 
-
 /// Construct with node name
-Node::Node(std::string const& name) :
-  _node_name(name), _parent(nullptr), _store(nullptr), _vecBufDirty(true),
-  _isArray(false) {
-}
-
+Node::Node(std::string const& name)
+    : _node_name(name),
+      _parent(nullptr),
+      _store(nullptr),
+      _vecBufDirty(true),
+      _isArray(false) {}
 
 /// Construct with node name in tree structure
-Node::Node(std::string const& name, Node* parent) :
-  _node_name(name), _parent(parent), _store(nullptr), _vecBufDirty(true),
-  _isArray(false) {
-}
-
+Node::Node(std::string const& name, Node* parent)
+    : _node_name(name),
+      _parent(parent),
+      _store(nullptr),
+      _vecBufDirty(true),
+      _isArray(false) {}
 
 /// Construct for store
-Node::Node(std::string const& name, Store* store) :
-  _node_name(name), _parent(nullptr), _store(store), _vecBufDirty(true),
-  _isArray(false) {
-}
-
+Node::Node(std::string const& name, Store* store)
+    : _node_name(name),
+      _parent(nullptr),
+      _store(store),
+      _vecBufDirty(true),
+      _isArray(false) {}
 
 /// Default dtor
 Node::~Node() {}
 
-
 /// Get slice to value buffer
 Slice Node::slice() const {
-
   // Some array
   if (_isArray) {
     rebuildVecBuf();
     return Slice(_vecBuf.data());
-  } 
+  }
 
   // Some value
   if (!_value.empty()) {
@@ -103,12 +102,10 @@ Slice Node::slice() const {
 
   // Empty object
   return arangodb::basics::VelocyPackHelper::EmptyObjectValue();
-  
 }
 
-
 void Node::rebuildVecBuf() const {
-  if (_vecBufDirty) {              // Dirty vector buffer
+  if (_vecBufDirty) {  // Dirty vector buffer
     Builder tmp;
     tmp.openArray();
     for (auto const& i : _value) {
@@ -122,7 +119,6 @@ void Node::rebuildVecBuf() const {
 
 /// Get name of this node
 std::string const& Node::name() const { return _node_name; }
-
 
 /// Get full path of this node
 std::string Node::uri() const {
@@ -140,32 +136,29 @@ std::string Node::uri() const {
   return path.str();
 }
 
-
 /// Move constructor
-Node::Node(Node&& other) :
-  _node_name(std::move(other._node_name)),
-  _children(std::move(other._children)), 
-  _value(std::move(other._value)),
-  _vecBuf(std::move(other._vecBuf)),
-  _vecBufDirty(std::move(other._vecBufDirty)),
-  _isArray(std::move(other._isArray)) {}
-
+Node::Node(Node&& other)
+    : _node_name(std::move(other._node_name)),
+      _children(std::move(other._children)),
+      _value(std::move(other._value)),
+      _vecBuf(std::move(other._vecBuf)),
+      _vecBufDirty(std::move(other._vecBufDirty)),
+      _isArray(std::move(other._isArray)) {}
 
 /// Copy constructor
-Node::Node(Node const& other) :
-  _node_name(other._node_name),
-  _parent(nullptr),
-  _store(nullptr),
-  _value(other._value),
-  _vecBuf(other._vecBuf),
-  _vecBufDirty(other._vecBufDirty),
-  _isArray(other._isArray) {
+Node::Node(Node const& other)
+    : _node_name(other._node_name),
+      _parent(nullptr),
+      _store(nullptr),
+      _value(other._value),
+      _vecBuf(other._vecBuf),
+      _vecBufDirty(other._vecBufDirty),
+      _isArray(other._isArray) {
   for (auto const& p : other._children) {
     auto copy = std::make_shared<Node>(*p.second);
     _children.insert(std::make_pair(p.first, copy));
   }
 }
-
 
 /// Assignment operator (slice)
 Node& Node::operator=(VPackSlice const& slice) {
@@ -180,14 +173,14 @@ Node& Node::operator=(VPackSlice const& slice) {
     _isArray = true;
     _value.resize(slice.length());
     for (size_t i = 0; i < slice.length(); ++i) {
-      _value.at(i).append(reinterpret_cast<char const*>(
-                            slice[i].begin()), slice[i].byteSize());
+      _value.at(i).append(reinterpret_cast<char const*>(slice[i].begin()),
+                          slice[i].byteSize());
     }
   } else {
     _isArray = false;
     _value.resize(1);
-    _value.front().append(
-      reinterpret_cast<char const*>(slice.begin()), slice.byteSize());
+    _value.front().append(reinterpret_cast<char const*>(slice.begin()),
+                          slice.byteSize());
   }
   _vecBufDirty = true;
   return *this;
@@ -209,7 +202,6 @@ Node& Node::operator=(Node&& rhs) {
   return *this;
 }
 
-
 /// Assignment operator
 Node& Node::operator=(Node const& rhs) {
   // 1. remove any existing time to live entry
@@ -230,7 +222,6 @@ Node& Node::operator=(Node const& rhs) {
   return *this;
 }
 
-
 /// Comparison with slice
 bool Node::operator==(VPackSlice const& rhs) const {
   if (rhs.isObject()) {
@@ -240,19 +231,14 @@ bool Node::operator==(VPackSlice const& rhs) const {
   }
 }
 
-
 // Comparison with slice
-bool Node::operator!=(VPackSlice const& rhs) const {
-  return !(*this == rhs);
-}
-
+bool Node::operator!=(VPackSlice const& rhs) const { return !(*this == rhs); }
 
 /// Remove this node from store
 bool Node::remove() {
   Node& parent = *_parent;
   return parent.removeChild(_node_name);
 }
-
 
 /// Remove child by name
 bool Node::removeChild(std::string const& key) {
@@ -265,12 +251,8 @@ bool Node::removeChild(std::string const& key) {
   return true;
 }
 
-
 /// Node type
-NodeType Node::type() const {
-  return _children.size() ? NODE : LEAF;
-}
-
+NodeType Node::type() const { return _children.size() ? NODE : LEAF; }
 
 /// lh-value at path vector
 Node& Node::operator()(std::vector<std::string> const& pv) {
@@ -316,7 +298,7 @@ Node const& Node::operator()(std::string const& path) const {
 
 // lh-store
 Node const& Node::root() const {
-  Node* par = _parent, * tmp = nullptr;
+  Node *par = _parent, *tmp = nullptr;
   while (par != nullptr) {
     tmp = par;
     par = par->_parent;
@@ -326,7 +308,7 @@ Node const& Node::root() const {
 
 // rh-store
 Node& Node::root() {
-  Node* par = _parent, * tmp = nullptr;
+  Node *par = _parent, *tmp = nullptr;
   while (par != nullptr) {
     tmp = par;
     par = par->_parent;
@@ -397,14 +379,13 @@ bool Node::handle<SET>(VPackSlice const& slice) {
                               : static_cast<long>(slice.get("ttl").getInt()));
       addTimeToLive(ttl);
     } else {
-      LOG_TOPIC(WARN, Logger::AGENCY)
-          << "Non-number value assigned to ttl: " << ttl_v.toJson();
+      LOG_TOPIC(WARN, Logger::AGENCY) << "Non-number value assigned to ttl: "
+                                      << ttl_v.toJson();
     }
   }
 
   return true;
 }
-
 
 /// Increment integer value or set 1
 template <>
@@ -421,7 +402,6 @@ bool Node::handle<INCREMENT>(VPackSlice const& slice) {
   return true;
 }
 
-
 /// Decrement integer value or set -1
 template <>
 bool Node::handle<DECREMENT>(VPackSlice const& slice) {
@@ -437,13 +417,12 @@ bool Node::handle<DECREMENT>(VPackSlice const& slice) {
   return true;
 }
 
-
 /// Append element to array
 template <>
 bool Node::handle<PUSH>(VPackSlice const& slice) {
   if (!slice.hasKey("new")) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
-        << "Operator push without new value: " << slice.toJson();
+    LOG_TOPIC(WARN, Logger::AGENCY) << "Operator push without new value: "
+                                    << slice.toJson();
     return false;
   }
   Builder tmp;
@@ -456,7 +435,6 @@ bool Node::handle<PUSH>(VPackSlice const& slice) {
   *this = tmp.slice();
   return true;
 }
-
 
 /// Remove element from any place in array by value array
 template <>
@@ -480,7 +458,6 @@ bool Node::handle<ERASE>(VPackSlice const& slice) {
   return true;
 }
 
-
 /// Replace element from any place in array by new value
 template <>
 bool Node::handle<REPLACE>(VPackSlice const& slice) {
@@ -490,8 +467,8 @@ bool Node::handle<REPLACE>(VPackSlice const& slice) {
     return false;
   }
   if (!slice.hasKey("new")) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
-        << "Operator replace without new value: " << slice.toJson();
+    LOG_TOPIC(WARN, Logger::AGENCY) << "Operator replace without new value: "
+                                    << slice.toJson();
     return false;
   }
   Builder tmp;
@@ -509,7 +486,6 @@ bool Node::handle<REPLACE>(VPackSlice const& slice) {
   *this = tmp.slice();
   return true;
 }
-
 
 /// Remove element from end of array.
 template <>
@@ -531,13 +507,12 @@ bool Node::handle<POP>(VPackSlice const& slice) {
   return true;
 }
 
-
 /// Prepend element to array
 template <>
 bool Node::handle<PREPEND>(VPackSlice const& slice) {
   if (!slice.hasKey("new")) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
-        << "Operator prepend without new value: " << slice.toJson();
+    LOG_TOPIC(WARN, Logger::AGENCY) << "Operator prepend without new value: "
+                                    << slice.toJson();
     return false;
   }
   Builder tmp;
@@ -550,7 +525,6 @@ bool Node::handle<PREPEND>(VPackSlice const& slice) {
   *this = tmp.slice();
   return true;
 }
-
 
 /// Remove element from front of array
 template <>
@@ -573,7 +547,6 @@ bool Node::handle<SHIFT>(VPackSlice const& slice) {
   return true;
 }
 
-
 /// Add observer for this node
 template <>
 bool Node::handle<OBSERVE>(VPackSlice const& slice) {
@@ -592,7 +565,6 @@ bool Node::handle<OBSERVE>(VPackSlice const& slice) {
 
   return false;
 }
-
 
 /// Remove observer for this node
 template <>
@@ -620,8 +592,6 @@ bool Node::handle<UNOBSERVE>(VPackSlice const& slice) {
 
   return false;
 }
-
-
 }
 }
 
@@ -629,11 +599,11 @@ bool Node::applieOp(VPackSlice const& slice) {
   std::string oper = slice.get("op").copyString();
 
   if (oper == "delete") {
-    if (_parent == nullptr) { // root node
+    if (_parent == nullptr) {  // root node
       _children.clear();
       _value.clear();
       return true;
-    } else {                   
+    } else {
       return _parent->removeChild(_node_name);
     }
   } else if (oper == "set") {  // "op":"set"
@@ -660,8 +630,8 @@ bool Node::applieOp(VPackSlice const& slice) {
     return handle<REPLACE>(slice);
   } else {  // "op" might not be a key word after all
     LOG_TOPIC(WARN, Logger::AGENCY)
-      << "Keyword 'op' without known operation. Handling as regular key: \""
-      << oper << "\"";
+        << "Keyword 'op' without known operation. Handling as regular key: \""
+        << oper << "\"";
   }
 
   return false;
@@ -687,7 +657,7 @@ bool Node::applies(VPackSlice const& slice) {
   } else {
     *this = slice;
   }
-  
+
   return true;
 }
 
@@ -751,7 +721,8 @@ std::string Node::toJson() const {
 
 Node const* Node::parent() const { return _parent; }
 
-std::vector<std::string> Node::exists(std::vector<std::string> const& rel) const {
+std::vector<std::string> Node::exists(
+    std::vector<std::string> const& rel) const {
   std::vector<std::string> result;
   Node const* cur = this;
   for (auto const& sub : rel) {
@@ -771,21 +742,17 @@ std::vector<std::string> Node::exists(std::string const& rel) const {
 }
 
 int Node::getInt() const {
-
   if (type() == NODE) {
     throw StoreException("Must not convert NODE type to int");
   }
   return static_cast<int>(slice().getInt());
-  
 }
 
 uint64_t Node::getUInt() const {
-
   if (type() == NODE) {
     throw StoreException("Must not convert NODE type to unsigned int");
   }
   return slice().getUInt();
-  
 }
 
 bool Node::getBool() const {
@@ -793,23 +760,18 @@ bool Node::getBool() const {
     throw StoreException("Must not convert NODE type to bool");
   }
   return slice().getBool();
-  
 }
 
 double Node::getDouble() const {
-
   if (type() == NODE) {
     throw StoreException("Must not convert NODE type to int");
   }
   return slice().getDouble();
-  
 }
 
 std::string Node::getString() const {
-
   if (type() == NODE) {
     throw StoreException("Must not convert NODE type to string");
   }
   return slice().copyString();
-  
 }

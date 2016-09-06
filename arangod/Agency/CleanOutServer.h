@@ -31,25 +31,23 @@ namespace arangodb {
 namespace consensus {
 
 struct CleanOutServer : public Job {
-  
   CleanOutServer(Node const& snapshot, Agent* agent, std::string const& jobId,
                  std::string const& creator, std::string const& prefix,
                  std::string const& server = std::string());
-  
+
   virtual ~CleanOutServer();
-  
+
   virtual JOB_STATUS status() override;
   virtual bool create() override;
   virtual bool start() override;
-  
+
   // Check if all shards' replication factors can be satisfied after clean out.
-  bool checkFeasibility() ;
-  bool scheduleMoveShards() ;
+  bool checkFeasibility();
+  bool scheduleMoveShards();
 
   std::string _server;
-  
 };
-
-}}
+}
+}
 
 #endif

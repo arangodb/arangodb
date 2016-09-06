@@ -32,18 +32,15 @@ namespace consensus {
 class Agent;
 
 class GossipCallback : public arangodb::ClusterCommCallback {
-public:
-
+ public:
   explicit GossipCallback(Agent*);
-  
-  virtual bool operator()(arangodb::ClusterCommResult*) override final;
-  
-  void shutdown();
-  
-private:
-  
-  Agent* _agent;
 
+  virtual bool operator()(arangodb::ClusterCommResult*) override final;
+
+  void shutdown();
+
+ private:
+  Agent* _agent;
 };
 }
 }  // namespace

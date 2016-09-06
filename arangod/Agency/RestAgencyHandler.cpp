@@ -73,9 +73,8 @@ inline RestHandler::status RestAgencyHandler::reportUnknownMethod() {
 
 void RestAgencyHandler::redirectRequest(std::string const& leaderId) {
   try {
-    std::string url =
-      Endpoint::uriForm(_agent->config().poolAt(leaderId)) +
-        _request->requestPath();
+    std::string url = Endpoint::uriForm(_agent->config().poolAt(leaderId)) +
+                      _request->requestPath();
     setResponseCode(GeneralResponse::ResponseCode::TEMPORARY_REDIRECT);
     _response->setHeaderNC(StaticStrings::Location, url);
   } catch (std::exception const& e) {
@@ -139,10 +138,10 @@ RestHandler::status RestAgencyHandler::handleWrite() {
       return status::DONE;
     }
 
-    auto s = std::chrono::system_clock::now(); // Leadership established?
+    auto s = std::chrono::system_clock::now();  // Leadership established?
     std::chrono::duration<double> timeout(_agent->config().minPing());
-    while(_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
-      if ((std::chrono::system_clock::now()-s) > timeout) {
+    while (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
+      if ((std::chrono::system_clock::now() - s) > timeout) {
         Builder body;
         body.openObject();
         body.add("message", VPackValue("No leader"));
@@ -158,7 +157,7 @@ RestHandler::status RestAgencyHandler::handleWrite() {
     write_ret_t ret;
 
     try {
-     ret = _agent->write(query);
+      ret = _agent->write(query);
     } catch (std::exception const& e) {
       LOG_TOPIC(DEBUG, Logger::AGENCY) << "Malformed write query " << query;
       Builder body;
@@ -166,8 +165,7 @@ RestHandler::status RestAgencyHandler::handleWrite() {
       body.add("message",
                VPackValue(std::string("Malformed write query") + e.what()));
       body.close();
-      generateResult(GeneralResponse::ResponseCode::BAD,
-                     body.slice());
+      generateResult(GeneralResponse::ResponseCode::BAD, body.slice());
       return status::DONE;
     }
 
@@ -198,10 +196,10 @@ RestHandler::status RestAgencyHandler::handleWrite() {
           arangodb::consensus::index_t max_index = 0;
           try {
             max_index =
-              *std::max_element(ret.indices.begin(), ret.indices.end());
+                *std::max_element(ret.indices.begin(), ret.indices.end());
           } catch (std::exception const& e) {
-            LOG_TOPIC(WARN, Logger::AGENCY)
-              << e.what() << " " << __FILE__ << __LINE__;
+            LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__
+                                            << __LINE__;
           }
 
           if (max_index > 0) {
@@ -245,15 +243,16 @@ inline RestHandler::status RestAgencyHandler::handleRead() {
     try {
       query = _request->toVelocyPackBuilderPtr(&options);
     } catch (std::exception const& e) {
-      LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
+      LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__
+                                      << __LINE__;
       generateError(GeneralResponse::ResponseCode::BAD, 400);
       return status::DONE;
     }
 
-    auto s = std::chrono::system_clock::now(); // Leadership established?
+    auto s = std::chrono::system_clock::now();  // Leadership established?
     std::chrono::duration<double> timeout(_agent->config().minPing());
-    while(_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
-      if ((std::chrono::system_clock::now()-s) > timeout) {
+    while (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
+      if ((std::chrono::system_clock::now() - s) > timeout) {
         Builder body;
         body.openObject();
         body.add("message", VPackValue("No leader"));
@@ -277,7 +276,6 @@ inline RestHandler::status RestAgencyHandler::handleRead() {
       }
     } else {  // Redirect to leader
       if (_agent->leaderID() == NO_LEADER) {
-
         Builder body;
         body.openObject();
         body.add("message", VPackValue("No leader"));
@@ -286,7 +284,7 @@ inline RestHandler::status RestAgencyHandler::handleRead() {
                        body.slice());
         LOG_TOPIC(ERR, Logger::AGENCY) << "We don't know who the leader is";
         return status::DONE;
-        
+
       } else {
         redirectRequest(ret.redirect);
       }
@@ -300,7 +298,6 @@ inline RestHandler::status RestAgencyHandler::handleRead() {
 }
 
 RestHandler::status RestAgencyHandler::handleConfig() {
-  
   Builder body;
   body.add(VPackValue(VPackValueType::Object));
   body.add("term", Value(_agent->term()));

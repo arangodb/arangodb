@@ -84,8 +84,9 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--agency.endpoint", "agency endpoints",
                      new VectorParameter<StringParameter>(&_agencyEndpoints));
-  
-  options->addOption("--agency.my-address", "which address to advertise to the outside",
+
+  options->addOption("--agency.my-address",
+                     "which address to advertise to the outside",
                      new StringParameter(&_agencyMyAddress));
 
   options->addOption("--agency.supervision",
@@ -107,7 +108,6 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-
   ProgramOptions::ProcessingResult const& result = options->processingResult();
 
   if (!result.touched("agency.activate") || !_activated) {
@@ -120,8 +120,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // Agency size
   if (result.touched("agency.size")) {
     if (_size < 1) {
-      LOG_TOPIC(FATAL, Logger::AGENCY)
-        << "agency must have size greater 0";
+      LOG_TOPIC(FATAL, Logger::AGENCY) << "agency must have size greater 0";
       FATAL_ERROR_EXIT();
     }
   } else {
@@ -132,7 +131,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (result.touched("agency.pool-size")) {
     if (_poolSize < _size) {
       LOG_TOPIC(FATAL, Logger::AGENCY)
-        << "agency pool size must be larger than agency size.";
+          << "agency pool size must be larger than agency size.";
       FATAL_ERROR_EXIT();
     }
   } else {
@@ -165,8 +164,8 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   if (_maxElectionTimeout <= 2 * _minElectionTimeout) {
     LOG_TOPIC(WARN, Logger::AGENCY)
-      << "agency.election-timeout-max should probably be chosen longer!"
-      << " " << __FILE__ << __LINE__;
+        << "agency.election-timeout-max should probably be chosen longer!"
+        << " " << __FILE__ << __LINE__;
   }
 
   if (!_agencyMyAddress.empty()) {
@@ -174,7 +173,8 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
     if (unified.empty()) {
       LOG_TOPIC(FATAL, Logger::AGENCY) << "invalid endpoint '"
-        << _agencyMyAddress << "' specified for --agency.my-address";
+                                       << _agencyMyAddress
+                                       << "' specified for --agency.my-address";
       FATAL_ERROR_EXIT();
     }
   }
@@ -185,11 +185,10 @@ void AgencyFeature::prepare() {
 }
 
 void AgencyFeature::start() {
-
   if (!isEnabled()) {
     return;
   }
-  
+
   // TODO: Port this to new options handling
   std::string endpoint;
 
@@ -197,12 +196,12 @@ void AgencyFeature::start() {
     std::string port = "8529";
 
     EndpointFeature* endpointFeature =
-      ApplicationServer::getFeature<EndpointFeature>("Endpoint");
+        ApplicationServer::getFeature<EndpointFeature>("Endpoint");
     auto endpoints = endpointFeature->httpEndpoints();
 
     if (!endpoints.empty()) {
       std::string const& tmp = endpoints.front();
-      size_t pos = tmp.find(':',10);
+      size_t pos = tmp.find(':', 10);
 
       if (pos != std::string::npos) {
         port = tmp.substr(pos + 1, tmp.size() - pos);
@@ -215,17 +214,15 @@ void AgencyFeature::start() {
   }
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Agency endpoint " << endpoint;
 
-  _agent.reset(
-    new consensus::Agent(
-      consensus::config_t(
-        _size, _poolSize, _minElectionTimeout, _maxElectionTimeout, endpoint,
-        _agencyEndpoints, _supervision, _waitForSync, _supervisionFrequency,
-        _compactionStepSize)));
+  _agent.reset(new consensus::Agent(consensus::config_t(
+      _size, _poolSize, _minElectionTimeout, _maxElectionTimeout, endpoint,
+      _agencyEndpoints, _supervision, _waitForSync, _supervisionFrequency,
+      _compactionStepSize)));
 
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting agency personality";  
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting agency personality";
   _agent->start();
 
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Loading agency";  
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Loading agency";
   _agent->load();
 }
 
@@ -233,8 +230,8 @@ void AgencyFeature::beginShutdown() {
   if (!isEnabled()) {
     return;
   }
- 
-  // pass shutdown event to _agent so it can notify all its sub-threads 
+
+  // pass shutdown event to _agent so it can notify all its sub-threads
   _agent->beginShutdown();
 }
 
@@ -244,7 +241,7 @@ void AgencyFeature::unprepare() {
   }
 
   _agent->beginShutdown();
-  
+
   if (_agent != nullptr) {
     int counter = 0;
     while (_agent->isRunning()) {
@@ -255,5 +252,4 @@ void AgencyFeature::unprepare() {
       }
     }
   }
-
 }
