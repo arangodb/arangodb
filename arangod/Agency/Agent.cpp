@@ -77,8 +77,6 @@ bool Agent::mergeConfiguration(VPackSlice const& persisted) {
 
 /// Dtor shuts down thread
 Agent::~Agent() {
-  LOG(ERR) << "DESTRUCTOR AGENT";
-
   int counter = 0;
   while (_constituent.isRunning()) {
     usleep(100000);
