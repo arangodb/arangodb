@@ -42,14 +42,14 @@ using namespace arangodb::aql;
 
 TraversalNode::EdgeConditionBuilder::EdgeConditionBuilder(
     TraversalNode const* tn)
-    : _tn(tn), _containsCondition(false) {
+    : _tn(tn), _modCondition(nullptr), _containsCondition(false) {
   _modCondition =
       _tn->_plan->getAst()->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
 }
 
 TraversalNode::EdgeConditionBuilder::EdgeConditionBuilder(
     TraversalNode const* tn, arangodb::velocypack::Slice const& condition)
-    : _tn(tn), _containsCondition(false) {
+    : _tn(tn), _modCondition(nullptr), _containsCondition(false) {
   _modCondition = new AstNode(_tn->_plan->getAst(), condition);
   TRI_ASSERT(_modCondition != nullptr);
   TRI_ASSERT(_modCondition->type == NODE_TYPE_OPERATOR_NARY_AND);
@@ -381,6 +381,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
       _fromCondition(nullptr),
       _toCondition(nullptr),
       _optionsBuild(false) {
+  
   VPackSlice dirList = base.get("directions");
   for (auto const& it : VPackArrayIterator(dirList)) {
     uint64_t dir = arangodb::basics::VelocyPackHelper::stringUInt64(it);
@@ -459,7 +460,6 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
   }
 
   list = base.get("edgeCollections");
-
   if (!list.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
                                    "traverser needs an array of edge collections.");
@@ -537,7 +537,6 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
 
 
   list = base.get("edgeConditions");
-
   if (list.isObject()) {
     for (auto const& cond : VPackObjectIterator(list)) {
       std::string key = cond.key.copyString();
