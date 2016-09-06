@@ -103,12 +103,12 @@ class VppCommTask : public GeneralCommTask {
   struct ProcessReadVariables {
     ProcessReadVariables()
         : _currentChunkLength(0),
-          _readBufferCursor(nullptr),
+          _readBufferOffset(0),
           _cleanupLength(_bufferLength - _chunkMaxBytes - 1) {}
     uint32_t
         _currentChunkLength;     // size of chunk processed or 0 when expecting
                                  // new chunk
-    char* _readBufferCursor;     // data up to this position has been processed
+    size_t _readBufferOffset;     // data up to this position has been processed
     std::size_t _cleanupLength;  // length of data after that the read buffer
                                  // will be cleaned
   };
