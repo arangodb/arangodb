@@ -277,7 +277,8 @@ function agencyTestSuite () {
       wait(1.50);
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
       writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12}}}]]);
-      assertEqual(readAndCheck([["/foo/bar/baz"]]), [{"foo":{"bar":{"baz":12}}}]);
+      assertEqual(readAndCheck([["/foo/bar/baz"]]),
+                  [{"foo":{"bar":{"baz":12}}}]);
       assertEqual(readAndCheck([["/foo/bar"]]), [{"foo":{"bar":{"baz":12}}}]);
       assertEqual(readAndCheck([["/foo"]]), [{"foo":{"bar":{"baz":12}}}]);
       writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12},"ttl":1}}]]);
@@ -378,8 +379,27 @@ function agencyTestSuite () {
       writeAndCheck([[{"/version":{"op":"delete"}}]]);
       writeAndCheck([[{"/a":[0,1,2,3,4,5,6,7,8,9]}]]); // none before
       assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,3,4,5,6,7,8,9]}]);
-      writeAndCheck([[{"a":{"op":"erase","val":3}}]])
+      writeAndCheck([[{"a":{"op":"erase","val":3}}]]);
       assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,4,5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"erase","val":3}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,4,5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"erase","val":0}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[1,2,4,5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"erase","val":1}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[2,4,5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"erase","val":2}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[4,5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"erase","val":4}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"erase","val":5}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"erase","val":9}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[6,7,8]}]);
+      writeAndCheck([[{"a":{"op":"erase","val":7}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[6,8]}]);
+      writeAndCheck([[{"a":{"op":"erase","val":6}}],
+                     [{"a":{"op":"erase","val":8}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[]}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -387,13 +407,34 @@ function agencyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testOpReplace : function () {
-      writeAndCheck([[{"/version":{"op":"delete"}}]]);
-      writeAndCheck([[{"/a":[0,1,2,3,4,5,6,7,8,9]}]]); // none before
+      writeAndCheck([[{"/version":{"op":"delete"}}]]); // clear
+      writeAndCheck([[{"/a":[0,1,2,3,4,5,6,7,8,9]}]]); 
       assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,3,4,5,6,7,8,9]}]);
-      writeAndCheck([[{"a":{"op":"replace","val":3,"new":"three"}}]])
+      writeAndCheck([[{"a":{"op":"replace","val":3,"new":"three"}}]]);
       assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,"three",4,5,6,7,8,9]}]);
-      writeAndCheck([[{"a":{"op":"replace","val":1,"new":[1]}}]])
+      writeAndCheck([[{"a":{"op":"replace","val":1,"new":[1]}}]]);
       assertEqual(readAndCheck([["/a"]]), [{a:[0,[1],2,"three",4,5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"replace","val":[1],"new":[1,2,3]}}]]);
+      assertEqual(readAndCheck([["/a"]]),
+                  [{a:[0,[1,2,3],2,"three",4,5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"replace","val":[1,2,3],"new":[1,2,3]}}]]);
+      assertEqual(readAndCheck([["/a"]]),
+                  [{a:[0,[1,2,3],2,"three",4,5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"replace","val":4,"new":[1,2,3]}}]]);
+      assertEqual(readAndCheck([["/a"]]),
+                  [{a:[0,[1,2,3],2,"three",[1,2,3],5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"replace","val":9,"new":[1,2,3]}}]]);
+      assertEqual(readAndCheck([["/a"]]),
+                  [{a:[0,[1,2,3],2,"three",[1,2,3],5,6,7,8,[1,2,3]]}]);
+      writeAndCheck([[{"a":{"op":"replace","val":[1,2,3],"new":{"a":0}}}]]);
+      assertEqual(readAndCheck([["/a"]]),
+                  [{a:[0,{a:0},2,"three",{a:0},5,6,7,8,{a:0}]}]);
+      writeAndCheck([[{"a":{"op":"replace","val":{"a":0},"new":"a"}}]]);
+      assertEqual(readAndCheck([["/a"]]),
+                  [{a:[0,"a",2,"three","a",5,6,7,8,"a"]}]);
+      writeAndCheck([[{"a":{"op":"replace","val":"a","new":"/a"}}]]);
+      assertEqual(readAndCheck([["/a"]]),
+                  [{a:[0,"/a",2,"three","/a",5,6,7,8,"/a"]}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
