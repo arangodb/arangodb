@@ -31,6 +31,8 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Utils/StandaloneTransactionContext.h"
+#include "Utils/TransactionContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Traverser.h"
 

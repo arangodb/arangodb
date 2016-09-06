@@ -26,6 +26,7 @@
 
 #include "ShortestPathNode.h"
 #include "Aql/Ast.h"
+#include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"

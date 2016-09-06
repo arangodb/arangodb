@@ -555,6 +555,10 @@ struct AstNode {
     }
     members.erase(members.begin() + i, members.end());
   }
+  
+  inline void clearMembers() {
+    members.clear();
+  }
 
   /// @brief set the node's value type
   inline void setValueType(AstNodeValueType type) { value.type = type; }
@@ -640,6 +644,9 @@ struct AstNode {
   /// this method is used when generated JavaScript code for the node!
   /// this creates an equivalent to what JSON.stringify() would do
   void appendValue(arangodb::basics::StringBuffer*) const;
+
+  /// @brief Steals the computed value and frees it.
+  void stealComputedValue();
 
  public:
   /// @brief the node type

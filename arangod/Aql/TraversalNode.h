@@ -25,38 +25,53 @@
 #define ARANGOD_AQL_TRAVERSAL_NODE_H 1
 
 #include "Aql/ExecutionNode.h"
+#include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/Graphs.h"
-#include "Aql/TraversalOptions.h"
-#include "VocBase/Traverser.h"
+#include "Cluster/TraverserEngineRegistry.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/TraverserOptions.h"
 
 namespace arangodb {
 namespace aql {
 
-class SimpleTraverserExpression
-    : public arangodb::traverser::TraverserExpression {
- public:
-  arangodb::aql::AstNode* compareToNode;
-
-  arangodb::aql::Expression* expression;
-
-  SimpleTraverserExpression(bool isEdgeAccess,
-                            arangodb::aql::AstNodeType comparisonType,
-                            arangodb::aql::AstNode const* varAccess,
-                            arangodb::aql::AstNode* compareToNode)
-      : arangodb::traverser::TraverserExpression(isEdgeAccess, comparisonType,
-                                                 varAccess),
-        compareToNode(compareToNode),
-        expression(nullptr) {}
-
-  SimpleTraverserExpression(arangodb::aql::Ast* ast, arangodb::velocypack::Slice const&);
-  ~SimpleTraverserExpression();
-
-  void toVelocyPack(arangodb::velocypack::Builder&) const;
-};
-
 /// @brief class TraversalNode
 class TraversalNode : public ExecutionNode {
+
+  class EdgeConditionBuilder {
+    private:
+
+      /// @brief reference to the outer traversal node
+      TraversalNode const* _tn;
+
+      /// @brief the conditions modifying the edge on this depth
+      AstNode* _modCondition;
+
+      /// @brief indicator if we have attached the _from or _to condition to _modCondition
+      bool _containsCondition;
+
+    public:
+     explicit EdgeConditionBuilder(TraversalNode const*);
+
+     EdgeConditionBuilder(TraversalNode const*, arangodb::velocypack::Slice const&);
+
+     EdgeConditionBuilder(TraversalNode const*, EdgeConditionBuilder const*);
+
+     ~EdgeConditionBuilder() {}
+
+     EdgeConditionBuilder(EdgeConditionBuilder const&) = delete;
+
+     EdgeConditionBuilder(EdgeConditionBuilder&&) = delete;
+
+     void addConditionPart(AstNode const*);
+
+      AstNode* getOutboundCondition();
+
+      AstNode* getInboundCondition();
+
+      void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
+  };
+
   friend class ExecutionBlock;
   friend class TraversalBlock;
   friend class RedundantCalculationsReplacer;
@@ -65,27 +80,21 @@ class TraversalNode : public ExecutionNode {
  public:
   TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                 AstNode const* direction, AstNode const* start,
-                AstNode const* graph, TraversalOptions const& options);
+                AstNode const* graph,
+                std::unique_ptr<traverser::TraverserOptions>& options);
 
   TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
-  ~TraversalNode() {
-    delete _condition;
-
-    for (auto& it : _expressions) {
-      for (auto& it2 : it.second) {
-        delete it2;
-      }
-    }
-  }
+  ~TraversalNode();
 
   /// @brief Internal constructor to clone the node.
  private:
   TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-                std::vector<std::string> const& edgeColls,
+                std::vector<std::unique_ptr<aql::Collection>> const& edgeColls,
+                std::vector<std::unique_ptr<aql::Collection>> const& vertexColls,
                 Variable const* inVariable, std::string const& vertexId,
-                std::vector<TRI_edge_direction_e> const& directions, uint64_t minDepth,
-                uint64_t maxDepth, TraversalOptions const& options);
+                std::vector<TRI_edge_direction_e> const& directions,
+                std::unique_ptr<traverser::TraverserOptions>& options);
 
  public:
   /// @brief return the type of the node
@@ -109,7 +118,9 @@ class TraversalNode : public ExecutionNode {
   std::vector<Variable const*> getVariablesUsedHere() const override final {
     std::vector<Variable const*> result;
     for (auto const& condVar : _conditionVariables) {
-      result.emplace_back(condVar);
+      if (condVar != _tmpObjVariable) {
+        result.emplace_back(condVar);
+      }
     }
     if (usesInVariable()) {
       result.emplace_back(_inVariable);
@@ -121,7 +132,9 @@ class TraversalNode : public ExecutionNode {
   void getVariablesUsedHere(
       std::unordered_set<Variable const*>& result) const override final {
     for (auto const& condVar : _conditionVariables) {
-      result.emplace(condVar);
+      if (condVar != _tmpObjVariable) {
+        result.emplace(condVar);
+      }
     }
     if (usesInVariable()) {
       result.emplace(_inVariable);
@@ -186,11 +199,13 @@ class TraversalNode : public ExecutionNode {
 
   std::string const getStartVertex() const { return _vertexId; }
 
-  /// @brief Fill the traversal options with all values known to this node or
-  ///        with default values.
-  void fillTraversalOptions(arangodb::traverser::TraverserOptions& opts) const;
+  std::vector<std::unique_ptr<aql::Collection>> const& edgeColls() const {
+    return _edgeColls;
+  }
 
-  std::vector<std::string> const edgeColls() const { return _edgeColls; }
+  std::vector<std::unique_ptr<aql::Collection>> const& vertexColls() const {
+    return _vertexColls;
+  }
 
   /// @brief remember the condition to execute for early traversal abortion.
   void setCondition(Condition* condition);
@@ -202,38 +217,54 @@ class TraversalNode : public ExecutionNode {
   int checkIsOutVariable(size_t variableId) const;
 
   /// @brief check whether an access is inside the specified range
-  bool isInRange(uint64_t thisIndex, bool isEdge) const {
-    if (isEdge) {
-      return (thisIndex < _maxDepth);
-    }
-    return (thisIndex <= _maxDepth);
-  }
+  bool isInRange(uint64_t,  bool) const;
 
-  /// @brief check whecher min..max actualy span a range
-  bool isRangeValid() const { return _maxDepth >= _minDepth; }
+  /// @brief register a filter condition on a given search depth.
+  ///        If this condition is not fulfilled a traversal will abort.
+  ///        The condition will contain the local variable for it's accesses.
+  void registerCondition(bool, size_t, AstNode const*);
 
-  /// @brief Remember a simple comparator filter
-  void storeSimpleExpression(bool isEdgeAccess, size_t indexAccess,
-                             AstNodeType comparisonType,
-                             AstNode const* varAccess, AstNode* compareToNode);
-  
+  /// @brief register a filter condition for all search depths
+  ///        If this condition is not fulfilled a traversal will abort.
+  ///        The condition will contain the local variable for it's accesses.
+  void registerGlobalCondition(bool, AstNode const*);
+
   bool allDirectionsEqual() const;
 
-  void specializeToNeighborsSearch();
+  traverser::TraverserOptions* options() const;
 
-  /// @brief Returns a regerence to the simple traverser expressions
-  std::unordered_map<
-      size_t, std::vector<arangodb::traverser::TraverserExpression*>> const*
-  expressions() const {
-    return &_expressions;
+  AstNode* getTemporaryRefNode() const;
+
+  Variable const* getTemporaryVariable() const;
+
+  void getConditionVariables(std::vector<Variable const*>&) const;
+
+  /// @brief Compute the traversal options containing the expressions
+  ///        MUST! be called after optimization and before creation
+  ///        of blocks.
+  void prepareOptions();
+
+  /// @brief Add a traverser engine Running on a DBServer to this node.
+  ///        The block will communicate with them (CLUSTER ONLY)
+  void addEngine(traverser::TraverserEngineID const&, ServerID const&);
+
+  
+  /// @brief Returns a reference to the engines. (CLUSTER ONLY)
+  std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines()
+      const {
+    TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
+    return &_engines;
   }
 
-  uint64_t minDepth() const { return _minDepth; }
-  uint64_t maxDepth() const { return _maxDepth; }
+ private:
 
-  TraversalOptions const* options() const { return &_options; }
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  void checkConditionsDefined() const;
+#endif
+
 
  private:
+
   /// @brief the database
   TRI_vocbase_t* _vocbase;
 
@@ -255,37 +286,63 @@ class TraversalNode : public ExecutionNode {
   /// @brief input graphInfo only used for serialization & info
   arangodb::velocypack::Builder _graphInfo;
 
-  /// @brief The minimal depth included in the result
-  uint64_t _minDepth;
-
-  /// @brief The maximal depth searched and included in the result
-  uint64_t _maxDepth;
-
   /// @brief The directions edges are followed
   std::vector<TRI_edge_direction_e> _directions;
 
   /// @brief the edge collection names
-  std::vector<std::string> _edgeColls;
+  std::vector<std::unique_ptr<aql::Collection>> _edgeColls;
 
-  /// @brief our graph...
+  /// @brief the vertex collection names
+  std::vector<std::unique_ptr<aql::Collection>> _vertexColls;
+
+  /// @brief our graph
   Graph const* _graphObj;
 
   /// @brief early abort traversal conditions:
   Condition* _condition;
 
   /// @brief variables that are inside of the condition
-  std::vector<Variable const*> _conditionVariables;
-
-  /// @brief store a simple comparator filter
-  /// one vector of TraverserExpressions per matchdepth (size_t)
-  std::unordered_map<size_t,
-                     std::vector<arangodb::traverser::TraverserExpression*>>
-      _expressions;
+  std::unordered_set<Variable const*> _conditionVariables;
 
   /// @brief Options for traversals
-  TraversalOptions _options;
+  std::unique_ptr<traverser::TraverserOptions> _options;
 
-  bool _specializedNeighborsSearch;
+  /// @brief Temporary pseudo variable for the currently traversed object.
+  Variable const* _tmpObjVariable;
+
+  /// @brief Reference to the pseudo variable
+  AstNode* _tmpObjVarNode;
+
+  /// @brief Pseudo string value node to hold the last visted vertex id.
+  AstNode* _tmpIdNode;
+
+  /// @brief The hard coded condition on _from
+  AstNode* _fromCondition;
+
+  /// @brief The hard coded condition on _to
+  AstNode* _toCondition;
+
+  /// @brief The global edge condition. Does not contain
+  ///        _from and _to checks
+  std::vector<AstNode const*> _globalEdgeConditions;
+
+  /// @brief The global vertex condition
+  std::vector<AstNode const*> _globalVertexConditions;
+
+  /// @brief List of all depth specific conditions for edges
+  std::unordered_map<size_t, std::unique_ptr<EdgeConditionBuilder>> _edgeConditions;
+
+  /// @brief List of all depth specific conditions for vertices
+  std::unordered_map<size_t, AstNode*> _vertexConditions;
+
+  /// @brief Flag if options are already prepared. After
+  ///        this flag was set the node cannot be cloned
+  ///        any more.
+  bool _optionsBuild;
+
+  /// @brief The list of traverser engines grouped by server.
+  std::unordered_map<ServerID, traverser::TraverserEngineID> _engines;
+
 };
 
 }  // namespace arangodb::aql

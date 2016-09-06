@@ -67,6 +67,13 @@ void GeneralCommTask::signalTask(TaskData* data) {
   else {
     _clientClosed = true;
   }
+
+  while (processRead()) {
+    if (_closeRequested) {
+      break;
+    }
+  }
+
 }
 
 void GeneralCommTask::executeRequest(

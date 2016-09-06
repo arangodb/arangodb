@@ -72,7 +72,10 @@ class TraversalBlock : public ExecutionBlock {
   /// @brief current position in _paths, _edges, _vertices
   size_t _posInPaths;
 
-  /// @brief Depth first Traverser object
+  /// @brief Options for the travereser
+  arangodb::traverser::TraverserOptions* _opts;
+
+  /// @brief Traverser object
   std::unique_ptr<arangodb::traverser::Traverser> _traverser;
 
   /// @brief The information to get the starting point, when a register id is
@@ -110,21 +113,13 @@ class TraversalBlock : public ExecutionBlock {
   /// @brief Register for the full path output
   RegisterId _pathReg;
 
-  /// @brief reference to the conditions that might be executed locally
-  std::unordered_map<
-      size_t, std::vector<arangodb::traverser::TraverserExpression*>> const*
-      _expressions;
-
-  /// @brief whether or not one of the bounds expressions requires V8
-  bool _hasV8Expression;
-
-  /// @brief _inVars, a vector containing for each expression above
-  /// a vector of Variable*, used to execute the expression
-  std::vector<std::vector<Variable const*>> _inVars;
+  /// @brief _inVars, a vector containing all variables required
+  ///        for the filtering conditions.
+  std::vector<Variable const*> _inVars;
 
   /// @brief _inRegs, a vector containing for each expression above
   /// a vector of RegisterId, used to execute the expression
-  std::vector<std::vector<RegisterId>> _inRegs;
+  std::vector<RegisterId> _inRegs;
 
   /// @brief continue fetching of paths
   bool morePaths(size_t hint);
@@ -132,8 +127,11 @@ class TraversalBlock : public ExecutionBlock {
   /// @brief skip the next paths
   size_t skipPaths(size_t hint);
 
+  /// @brief Initialize the filter expressions
+  void initializeExpressions(AqlItemBlock const*, size_t pos);
+
   /// @brief Initialize the path enumerator
-  void initializePaths(AqlItemBlock const*);
+  void initializePaths(AqlItemBlock const*, size_t pos);
 
   /// @brief Checks if we output the vertex
   bool usesVertexOutput() { return _vertexVar != nullptr; }
@@ -143,23 +141,6 @@ class TraversalBlock : public ExecutionBlock {
 
   /// @brief Checks if we output the path
   bool usesPathOutput() { return _pathVar != nullptr; }
-
-  /// @brief Executes the path-local filter expressions
-  void executeExpressions();
-
-  /// @brief Executes the path-local filter expressions
-  ///        Also determines the context
-  void executeFilterExpressions();
-
-  /// @brief optimized version of neighbors search, must properly implement this
-  void neighbors(std::string const& startVertex);
-
-  /// @brief worker for neighbors() function
-  void runNeighbors(std::vector<VPackSlice> const& startVertices,
-                    std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackStringHash, arangodb::basics::VelocyPackHelper::VPackStringEqual>& visited,
-                    std::vector<VPackSlice>& distinct,
-                    TRI_edge_direction_e direction,
-                    uint64_t depth);
 
 };
 }  // namespace arangodb::aql

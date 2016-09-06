@@ -62,6 +62,10 @@ class SortCondition;
 struct Variable;
 }
 
+namespace traverser {
+class TraverserEngine;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief forward declarations
 //////////////////////////////////////////////////////////////////////////////
@@ -72,6 +76,8 @@ struct OperationCursor;
 class TransactionContext;
 
 class Transaction {
+  friend class traverser::TraverserEngine;
+
  public:
 
   double const TRX_FOLLOWER_TIMEOUT = 3.0;
@@ -436,11 +442,14 @@ class Transaction {
   ///        If there was an error the code is returned and it is guaranteed
   ///        that result remains unmodified.
   ///        Does not care for revision handling!
+  ///        shouldLock indicates if the transaction should lock the collection
+  ///        if set to false it will not lock it (make sure it is already locked!)
   //////////////////////////////////////////////////////////////////////////////
 
   int documentFastPath(std::string const& collectionName,
                        arangodb::velocypack::Slice const value,
-                       arangodb::velocypack::Builder& result);
+                       arangodb::velocypack::Builder& result,
+                       bool shouldLock);
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return one  document from a collection, fast path
@@ -535,6 +544,17 @@ class Transaction {
       arangodb::aql::Variable const*, arangodb::aql::SortCondition const*,
       size_t, std::vector<IndexHandle>&, bool&);
 
+  /// @brief Gets the best fitting index for one specific condition.
+  ///        Difference to IndexHandles: Condition is only one NARY_AND
+  ///        and the Condition stays unmodified. Also does not care for sorting.
+  ///        Returns false if no index could be found.
+  ///        If it returned true, the AstNode contains the specialized condition
+
+  bool getBestIndexHandleForFilterCondition(std::string const&,
+                                            arangodb::aql::AstNode*&,
+                                            arangodb::aql::Variable const*,
+                                            size_t, IndexHandle&);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks if the index supports the filter condition.
   /// note: the caller must have read-locked the underlying collection when
@@ -573,10 +593,10 @@ class Transaction {
   /// calling this method
   //////////////////////////////////////////////////////////////////////////////
 
-  OperationCursor* indexScanForCondition(
-      std::string const& collectionName, IndexHandle const& indexId,
-      arangodb::aql::AstNode const*, arangodb::aql::Variable const*, uint64_t,
-      uint64_t, bool);
+  OperationCursor* indexScanForCondition(IndexHandle const&,
+                                         arangodb::aql::AstNode const*,
+                                         arangodb::aql::Variable const*,
+                                         uint64_t, uint64_t, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief factory for OperationCursor objects
@@ -619,6 +639,14 @@ class Transaction {
 
   std::vector<std::shared_ptr<arangodb::Index>> indexesForCollection(
       std::string const&);
+
+/// @brief Lock all collections. Only works for selected sub-classes
+
+   virtual int lockCollections();
+
+/// @brief Clone this transaction. Only works for selected sub-classes
+
+   virtual Transaction* clone() const;
 
  private:
   
@@ -802,6 +830,16 @@ class Transaction {
       std::vector<Transaction::IndexHandle>& usedIndexes,
       arangodb::aql::AstNode*& specializedCondition,
       bool& isSparse) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief findIndexHandleForAndNode, Shorthand which does not support Sort
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool findIndexHandleForAndNode(std::vector<std::shared_ptr<Index>> indexes,
+                                 arangodb::aql::AstNode*& node,
+                                 arangodb::aql::Variable const* reference,
+                                 size_t itemsInCollection,
+                                 Transaction::IndexHandle& usedIndex) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Get one index by id for a collection name, coordinator case

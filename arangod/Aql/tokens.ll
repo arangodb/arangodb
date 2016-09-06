@@ -20,6 +20,7 @@
 %{
 #include "Basics/Common.h"
 #include "Basics/conversions.h"
+#include "Basics/StringUtils.h"
 
 // introduce the namespace here, otherwise following references to 
 // the namespace in auto-generated headers might fail

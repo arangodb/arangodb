@@ -105,6 +105,7 @@ add_executable(${BIN_ARANGOD}
   Aql/AstNode.cpp
   Aql/AttributeAccessor.cpp
   Aql/BasicBlocks.cpp
+  Aql/BaseExpressionContext.cpp
   Aql/BindParameters.cpp
   Aql/CalculationBlock.cpp
   Aql/ClusterBlocks.cpp
@@ -126,6 +127,7 @@ add_executable(${BIN_ARANGOD}
   Aql/ExecutionStats.cpp
   Aql/Executor.cpp
   Aql/Expression.cpp
+  Aql/FixedVarExpressionContext.cpp
   Aql/FunctionDefinitions.cpp
   Aql/Function.cpp
   Aql/Functions.cpp
@@ -158,7 +160,6 @@ add_executable(${BIN_ARANGOD}
   Aql/TraversalBlock.cpp
   Aql/TraversalConditionFinder.cpp
   Aql/TraversalNode.cpp
-  Aql/TraversalOptions.cpp
   Aql/V8Expression.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp
@@ -168,14 +169,17 @@ add_executable(${BIN_ARANGOD}
   Cluster/AgencyCallbackRegistry.cpp
   Cluster/AgencyComm.cpp
   Cluster/ClusterComm.cpp
+  Cluster/ClusterEdgeCursor.cpp
   Cluster/ClusterFeature.cpp
   Cluster/ClusterInfo.cpp
   Cluster/ClusterMethods.cpp
   Cluster/ClusterTraverser.cpp
+  Cluster/DBServerAgencySync.cpp
   Cluster/HeartbeatThread.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestShardHandler.cpp
-  Cluster/DBServerAgencySync.cpp
+  Cluster/TraverserEngine.cpp
+  Cluster/TraverserEngineRegistry.cpp
   Cluster/ServerState.cpp
   Cluster/v8-cluster.cpp
   Dispatcher/Dispatcher.cpp
@@ -211,6 +215,7 @@ add_executable(${BIN_ARANGOD}
   Indexes/PrimaryIndex.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp
   Indexes/SkiplistIndex.cpp
+  InternalRestHandler/InternalRestTraverserHandler.cpp
   ReadCache/CollectionRevisionCache.cpp
   ReadCache/GlobalRevisionCache.cpp
   ReadCache/GlobalRevisionCacheChunk.cpp
@@ -258,6 +263,7 @@ add_executable(${BIN_ARANGOD}
   RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
+  RestServer/TraverserEngineRegistryFeature.cpp
   RestServer/UnitTestsFeature.cpp
   RestServer/UpgradeFeature.cpp
   RestServer/VocbaseContext.cpp
@@ -329,6 +335,7 @@ add_executable(${BIN_ARANGOD}
   VocBase/PathEnumerator.cpp
   VocBase/SingleServerTraverser.cpp
   VocBase/Traverser.cpp
+  VocBase/TraverserOptions.cpp
   VocBase/datafile.cpp
   VocBase/modes.cpp
   VocBase/replication-applier.cpp

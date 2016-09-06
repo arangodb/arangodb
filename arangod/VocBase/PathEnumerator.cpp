@@ -36,72 +36,120 @@ bool DepthFirstEnumerator::next() {
       return true;
     }
   }
-  if (_enumeratedPath.edges.size() == _opts->maxDepth) {
-    // we have reached the maximal search depth.
-    // We can prune this path and go to the next.
-    prune();
+  if (_enumeratedPath.vertices.empty()) {
+    // We are done;
+    return false;
   }
 
-  // Avoid tail recursion. May crash on high search depth
+  size_t cursorId = 0;
+
   while (true) {
-    if (_lastEdges.empty()) {
-      _enumeratedPath.edges.clear();
-      _enumeratedPath.vertices.clear();
-      return false;
+    if (_enumeratedPath.edges.size() < _opts->maxDepth) {
+      // We are not done with this path, so
+      // we reserve the cursor for next depth
+      auto cursor = _opts->nextCursor(_enumeratedPath.vertices.back(),
+                                      _enumeratedPath.edges.size());
+      if (cursor != nullptr) {
+        _edgeCursors.emplace(cursor);
+      }
+    } else {
+      // This path is at the end. cut the last step
+      _enumeratedPath.vertices.pop_back();
+      _enumeratedPath.edges.pop_back();
     }
-    _traverser->getEdge(_enumeratedPath.vertices.back(), _enumeratedPath.edges,
-                        _lastEdges.top(), _lastEdgesIdx.top());
-    if (_lastEdges.top() != nullptr) {
-      // Could continue the path in the next depth.
-      _lastEdges.push(nullptr);
-      _lastEdgesIdx.push(0);
-      std::string v;
-      bool isValid = _traverser->getVertex(_enumeratedPath.edges.back(),
-                                           _enumeratedPath.vertices.back(),
-                                           _enumeratedPath.vertices.size(), v);
-      _enumeratedPath.vertices.push_back(v);
-      TRI_ASSERT(_enumeratedPath.vertices.size() ==
-                 _enumeratedPath.edges.size() + 1);
-      if (isValid) {
-        if (_enumeratedPath.edges.size() < _opts->minDepth) {
-          // The path is ok as a prefix. But to short to be returned.
-          continue;
-        }
-        if (_opts->uniqueVertices == TraverserOptions::UniquenessLevel::PATH) {
-          // it is sufficient to check if any of the vertices on the path is equal to the end.
-          // Then we prune and any intermediate equality cannot happen.
-          auto& last = _enumeratedPath.vertices.back();
-          auto found = std::find(_enumeratedPath.vertices.begin(), _enumeratedPath.vertices.end(), last);
-          TRI_ASSERT(found != _enumeratedPath.vertices.end()); // We have to find it once, it is at least the last!
-          if ((++found) != _enumeratedPath.vertices.end()) {
-            // Test if we found the last element. That is ok.
-            prune();
+
+    while (!_edgeCursors.empty()) {
+      TRI_ASSERT(_edgeCursors.size() == _enumeratedPath.edges.size() + 1);
+      auto& cursor = _edgeCursors.top();
+      if (cursor->next(_enumeratedPath.edges, cursorId)) {
+        ++_traverser->_readDocuments;
+        if (_opts->uniqueEdges == TraverserOptions::UniquenessLevel::GLOBAL) {
+          if (_returnedEdges.find(_enumeratedPath.edges.back()) ==
+              _returnedEdges.end()) {
+            // Edge not yet visited. Mark and continue.
+            _returnedEdges.emplace(_enumeratedPath.edges.back());
+          } else {
+            _traverser->_filteredPaths++;
+            _enumeratedPath.edges.pop_back();
             continue;
           }
         }
-        return true;
-      }
-    } else {
-      if (_enumeratedPath.edges.empty()) {
-        // We are done with enumerating paths
-        _enumeratedPath.edges.clear();
-        _enumeratedPath.vertices.clear();
-        return false;
+        if (!_traverser->edgeMatchesConditions(_enumeratedPath.edges.back(),
+                                               _enumeratedPath.vertices.back(),
+                                               _enumeratedPath.edges.size() - 1,
+                                               cursorId)) {
+            // This edge does not pass the filtering
+            _enumeratedPath.edges.pop_back();
+            continue;
+        }
+
+        if (_opts->uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {
+          auto& e = _enumeratedPath.edges.back();
+          bool foundOnce = false;
+          for (auto const& it : _enumeratedPath.edges) {
+            if (foundOnce) {
+              foundOnce = false; // if we leave with foundOnce == false we found the edge earlier
+              break;
+            }
+            if (it == e) {
+              foundOnce = true;
+            }
+          }
+          if (!foundOnce) {
+            // We found it and it was not the last element (expected)
+            // This edge is allready on the path
+            _enumeratedPath.edges.pop_back();
+            continue;
+          }
+        }
+
+        // We have to check if edge and vertex is valid
+        if (_traverser->getVertex(_enumeratedPath.edges.back(),
+                                  _enumeratedPath.vertices)) {
+          // case both are valid.
+          if (_opts->uniqueVertices == TraverserOptions::UniquenessLevel::PATH) {
+            auto& e = _enumeratedPath.vertices.back();
+            bool foundOnce = false;
+            for (auto const& it : _enumeratedPath.vertices) {
+              if (foundOnce) {
+                foundOnce = false;  // if we leave with foundOnce == false we
+                                    // found the edge earlier
+                break;
+              }
+              if (it == e) {
+                foundOnce = true;
+              }
+            }
+            if (!foundOnce) {
+              // We found it and it was not the last element (expected)
+              // This vertex is allready on the path
+              _enumeratedPath.vertices.pop_back();
+              _enumeratedPath.edges.pop_back();
+              continue;
+            }
+          }
+          if (_enumeratedPath.edges.size() < _opts->minDepth) {
+            // Do not return, but leave this loop. Continue with the outer.
+            break;
+          }
+
+          return true;
+        }
+        // Vertex Invalid. Revoke edge
+        _enumeratedPath.edges.pop_back();
+        continue;
+      } else {
+        // cursor is empty.
+        _edgeCursors.pop();
+        _enumeratedPath.edges.pop_back();
+        _enumeratedPath.vertices.pop_back();
       }
     }
-    // This either modifies the stack or _lastEdges is empty.
-    // This will return in next depth
-    prune();
-  }
-}
-
-void DepthFirstEnumerator::prune() {
-  if (!_lastEdges.empty()) {
-    _lastEdges.pop();
-    _lastEdgesIdx.pop();
-    if (!_enumeratedPath.edges.empty()) {
-      _enumeratedPath.edges.pop_back();
-      _enumeratedPath.vertices.pop_back();
+    if (_edgeCursors.empty()) {
+      // If we get here all cursors are exhausted.
+      _enumeratedPath.edges.clear();
+      _enumeratedPath.vertices.clear();
+      return false;
     }
   }
 }
@@ -137,7 +185,7 @@ arangodb::aql::AqlValue DepthFirstEnumerator::pathToAqlValue(arangodb::velocypac
 }
 
 BreadthFirstEnumerator::BreadthFirstEnumerator(Traverser* traverser,
-                                               std::string const& startVertex,
+                                               VPackSlice startVertex,
                                                TraverserOptions const* opts)
     : PathEnumerator(traverser, startVertex, opts),
       _schreierIndex(1),
@@ -209,23 +257,44 @@ bool BreadthFirstEnumerator::next() {
     auto const nextIdx = _toSearch[_toSearchPos++].sourceIdx;
     auto const& nextVertex = _schreier[nextIdx]->vertex;
 
-    _traverser->getAllEdges(nextVertex, _tmpEdges, _currentDepth);
-    bool shouldReturnPath = _currentDepth + 1 >= _opts->minDepth;
-    if (!_tmpEdges.empty()) {
+    auto cursor = _opts->nextCursor(nextVertex, _currentDepth);
+    if (cursor != nullptr) {
+      size_t cursorIdx;
+      bool shouldReturnPath = _currentDepth + 1 >= _opts->minDepth;
       bool didInsert = false;
-      std::string v;
-      for (auto const& e : _tmpEdges) {
-        bool valid =
-            _traverser->getVertex(e, nextVertex, _currentDepth, v);
-        if (valid) {
-          auto step = std::make_unique<PathStep>(nextIdx, e, v);
-          _schreier.emplace_back(step.get());
-          step.release();
-          if (_currentDepth < _opts->maxDepth - 1) {
-            _nextDepth.emplace_back(NextStep(_schreierIndex));
+      while (cursor->readAll(_tmpEdges, cursorIdx)) {
+        if (!_tmpEdges.empty()) {
+          _traverser->_readDocuments += _tmpEdges.size();
+          VPackSlice v;
+          for (auto const& e : _tmpEdges) {
+            if (_opts->uniqueEdges ==
+                TraverserOptions::UniquenessLevel::GLOBAL) {
+              if (_returnedEdges.find(e) == _returnedEdges.end()) {
+                // Edge not yet visited. Mark and continue.
+                _returnedEdges.emplace(e);
+              } else {
+                _traverser->_filteredPaths++;
+                continue;
+              }
+            }
+
+            if (!_traverser->edgeMatchesConditions(e, nextVertex,
+                                                   _currentDepth,
+                                                   cursorIdx)) {
+              continue;
+            }
+            if (_traverser->getSingleVertex(e, nextVertex, _currentDepth, v)) {
+              auto step = std::make_unique<PathStep>(nextIdx, e, v);
+              _schreier.emplace_back(step.get());
+              step.release();
+              if (_currentDepth < _opts->maxDepth - 1) {
+                _nextDepth.emplace_back(NextStep(_schreierIndex));
+              }
+              _schreierIndex++;
+              didInsert = true;
+            }
           }
-          _schreierIndex++;
-          didInsert = true;
+          _tmpEdges.clear();
         }
       }
       if (!shouldReturnPath) {
@@ -249,12 +318,6 @@ bool BreadthFirstEnumerator::next() {
   // to the next free position.
   computeEnumeratedPath(_lastReturned++);
   return true;
-}
-
-void BreadthFirstEnumerator::prune() {
-  if (!_nextDepth.empty()) {
-    _nextDepth.pop_back();
-  }
 }
 
 // TODO Optimize this. Remove enumeratedPath
