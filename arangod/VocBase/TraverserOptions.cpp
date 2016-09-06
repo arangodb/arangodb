@@ -95,10 +95,11 @@ arangodb::traverser::TraverserOptions::LookupInfo::LookupInfo(
   indexCondition = new aql::AstNode(query->ast(), read); 
 }
 
-arangodb::traverser::TraverserOptions::LookupInfo::LookupInfo(LookupInfo const& other) {
-  idxHandles = other.idxHandles;
+arangodb::traverser::TraverserOptions::LookupInfo::LookupInfo(LookupInfo const& other) 
+    : idxHandles(other.idxHandles),
+      expression(nullptr),
+      indexCondition(other.indexCondition) {
   expression = other.expression->clone();
-  indexCondition = other.indexCondition;
 }
 
 void arangodb::traverser::TraverserOptions::LookupInfo::buildEngineInfo(
