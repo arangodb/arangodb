@@ -27,10 +27,10 @@
 #include "Agency/CleanOutServer.h"
 #include "Agency/FailedLeader.h"
 #include "Agency/FailedServer.h"
-#include "Agency/MoveShard.h"
 #include "Agency/Job.h"
+#include "Agency/MoveShard.h"
 #include "Agency/Store.h"
-
+#include "Agency/UnassumedLeadership.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 
@@ -55,16 +55,14 @@ Supervision::Supervision()
 
 Supervision::~Supervision() { shutdown(); };
 
-void Supervision::wakeUp() {
-  _cv.signal();
-}
+void Supervision::wakeUp() { _cv.signal(); }
 
 static std::string const syncPrefix = "/Sync/ServerStates/";
 static std::string const healthPrefix = "/Supervision/Health/";
 static std::string const planDBServersPrefix = "/Plan/DBServers";
 static std::string const planCoordinatorsPrefix = "/Plan/Coordinators";
-static std::string const currentServersRegisteredPrefix 
-    = "/Current/ServersRegistered";
+static std::string const currentServersRegisteredPrefix =
+    "/Current/ServersRegistered";
 static std::string const foxxmaster = "/Current/Foxxmaster";
 
 std::vector<check_t> Supervision::checkDBServers() {
@@ -76,37 +74,36 @@ std::vector<check_t> Supervision::checkDBServers() {
 
   std::vector<std::string> todelete;
   for (auto const& machine : _snapshot(healthPrefix).children()) {
-    if (machine.first.substr(0,2) == "DB") {
+    if (machine.first.substr(0, 2) == "DB") {
       todelete.push_back(machine.first);
     }
   }
 
   for (auto const& machine : machinesPlanned) {
-
     bool good = false;
-    std::string lastHeartbeatTime, lastHeartbeatAcked, lastStatus, heartbeatTime,
-      heartbeatStatus, serverID;
+    std::string lastHeartbeatTime, lastHeartbeatAcked, lastStatus,
+        heartbeatTime, heartbeatStatus, serverID;
 
-    serverID        = machine.first;
-    heartbeatTime   = _snapshot(syncPrefix + serverID + "/time").toJson();
+    serverID = machine.first;
+    heartbeatTime = _snapshot(syncPrefix + serverID + "/time").toJson();
     heartbeatStatus = _snapshot(syncPrefix + serverID + "/status").toJson();
 
-    todelete.erase(
-      std::remove(todelete.begin(), todelete.end(), serverID), todelete.end());
-    
-    try {           // Existing
+    todelete.erase(std::remove(todelete.begin(), todelete.end(), serverID),
+                   todelete.end());
+
+    try {  // Existing
       lastHeartbeatTime =
-        _snapshot(healthPrefix + serverID + "/LastHeartbeatSent").toJson();
+          _snapshot(healthPrefix + serverID + "/LastHeartbeatSent").toJson();
       lastHeartbeatAcked =
-        _snapshot(healthPrefix + serverID + "/LastHeartbeatAcked").toJson();
+          _snapshot(healthPrefix + serverID + "/LastHeartbeatAcked").toJson();
       lastStatus = _snapshot(healthPrefix + serverID + "/Status").toJson();
-      if (lastHeartbeatTime != heartbeatTime) { // Update
+      if (lastHeartbeatTime != heartbeatTime) {  // Update
         good = true;
       }
-    } catch (...) { // New server
+    } catch (...) {  // New server
       good = true;
     }
-    
+
     query_t report = std::make_shared<Builder>();
     report->openArray();
     report->openArray();
@@ -128,16 +125,17 @@ std::vector<check_t> Supervision::checkDBServers() {
         }
       }
     }
-      
+
     if (good) {
-      report->add("LastHeartbeatAcked",
-                  VPackValue(
-                    timepointToString(std::chrono::system_clock::now())));
+      report->add(
+          "LastHeartbeatAcked",
+          VPackValue(timepointToString(std::chrono::system_clock::now())));
       report->add("Status", VPackValue(Supervision::HEALTH_STATUS_GOOD));
     } else {
       std::chrono::seconds t{0};
       t = std::chrono::duration_cast<std::chrono::seconds>(
-        std::chrono::system_clock::now()-stringToTimepoint(lastHeartbeatAcked));
+          std::chrono::system_clock::now() -
+          stringToTimepoint(lastHeartbeatAcked));
       if (t.count() > _gracePeriod) {  // Failure
         if (lastStatus == "BAD") {
           report->add("Status", VPackValue("FAILED"));
@@ -148,7 +146,7 @@ std::vector<check_t> Supervision::checkDBServers() {
         report->add("Status", VPackValue("BAD"));
       }
     }
-    
+
     report->close();
     report->close();
     report->close();
@@ -156,7 +154,6 @@ std::vector<check_t> Supervision::checkDBServers() {
     if (!this->isStopping()) {
       _agent->write(report);
     }
-    
   }
 
   if (!todelete.empty()) {
@@ -170,10 +167,12 @@ std::vector<check_t> Supervision::checkDBServers() {
       del->add("op", VPackValue("delete"));
       del->close();
     }
-    del->close(); del->close(); del->close();
+    del->close();
+    del->close();
+    del->close();
     _agent->write(del);
   }
-  
+
   return ret;
 }
 
@@ -189,40 +188,39 @@ std::vector<check_t> Supervision::checkCoordinators() {
     currentFoxxmaster = _snapshot(foxxmaster).getString();
   } catch (...) {
   }
-  
+
   std::string goodServerId;
   bool foxxmasterOk = false;
   std::vector<std::string> todelete;
   for (auto const& machine : _snapshot(healthPrefix).children()) {
-    if (machine.first.substr(0,2) == "Co") {
+    if (machine.first.substr(0, 2) == "Co") {
       todelete.push_back(machine.first);
     }
   }
 
   for (auto const& machine : machinesPlanned) {
-
     bool good = false;
-    std::string lastHeartbeatTime, lastHeartbeatAcked, lastStatus, heartbeatTime,
-      heartbeatStatus, serverID;
+    std::string lastHeartbeatTime, lastHeartbeatAcked, lastStatus,
+        heartbeatTime, heartbeatStatus, serverID;
 
-    serverID        = machine.first;
-    heartbeatTime   = _snapshot(syncPrefix + serverID + "/time").toJson();
+    serverID = machine.first;
+    heartbeatTime = _snapshot(syncPrefix + serverID + "/time").toJson();
     heartbeatStatus = _snapshot(syncPrefix + serverID + "/status").toJson();
-    
-    todelete.erase(
-      std::remove(todelete.begin(), todelete.end(), serverID), todelete.end());
-    
-    try {           // Existing
+
+    todelete.erase(std::remove(todelete.begin(), todelete.end(), serverID),
+                   todelete.end());
+
+    try {  // Existing
       lastHeartbeatTime =
-        _snapshot(healthPrefix + serverID + "/LastHeartbeatSent").toJson();
+          _snapshot(healthPrefix + serverID + "/LastHeartbeatSent").toJson();
       lastStatus = _snapshot(healthPrefix + serverID + "/Status").toJson();
-      if (lastHeartbeatTime != heartbeatTime) { // Update
+      if (lastHeartbeatTime != heartbeatTime) {  // Update
         good = true;
       }
-    } catch (...) { // New server
+    } catch (...) {  // New server
       good = true;
     }
-    
+
     query_t report = std::make_shared<Builder>();
     report->openArray();
     report->openArray();
@@ -244,7 +242,7 @@ std::vector<check_t> Supervision::checkCoordinators() {
         }
       }
     }
-    
+
     if (good) {
       if (goodServerId.empty()) {
         goodServerId = serverID;
@@ -252,14 +250,15 @@ std::vector<check_t> Supervision::checkCoordinators() {
       if (serverID == currentFoxxmaster) {
         foxxmasterOk = true;
       }
-      report->add("LastHeartbeatAcked",
-                  VPackValue(
-                    timepointToString(std::chrono::system_clock::now())));
+      report->add(
+          "LastHeartbeatAcked",
+          VPackValue(timepointToString(std::chrono::system_clock::now())));
       report->add("Status", VPackValue(Supervision::HEALTH_STATUS_GOOD));
     } else {
       std::chrono::seconds t{0};
       t = std::chrono::duration_cast<std::chrono::seconds>(
-        std::chrono::system_clock::now()-stringToTimepoint(lastHeartbeatAcked));
+          std::chrono::system_clock::now() -
+          stringToTimepoint(lastHeartbeatAcked));
       if (t.count() > _gracePeriod) {  // Failure
         if (lastStatus == Supervision::HEALTH_STATUS_BAD) {
           report->add("Status", VPackValue(Supervision::HEALTH_STATUS_FAILED));
@@ -276,7 +275,6 @@ std::vector<check_t> Supervision::checkCoordinators() {
     if (!this->isStopping()) {
       _agent->write(report);
     }
-      
   }
 
   if (!todelete.empty()) {
@@ -290,7 +288,9 @@ std::vector<check_t> Supervision::checkCoordinators() {
       del->add("op", VPackValue("delete"));
       del->close();
     }
-    del->close(); del->close(); del->close();
+    del->close();
+    del->close();
+    del->close();
     _agent->write(del);
   }
 
@@ -303,37 +303,34 @@ std::vector<check_t> Supervision::checkCoordinators() {
     create->close();
     create->close();
     create->close();
-    
+
     _agent->write(create);
   }
-  
-  return ret;
 
+  return ret;
 }
 
 bool Supervision::updateSnapshot() {
-
   if (_agent == nullptr || this->isStopping()) {
     return false;
   }
   try {
     _snapshot = _agent->readDB().get(_agencyPrefix);
-  } catch (...) {}
+  } catch (...) {
+  }
   return true;
 }
 
 bool Supervision::doChecks() {
-
   checkDBServers();
   checkCoordinators();
   return true;
-  
 }
 
 void Supervision::run() {
   CONDITION_LOCKER(guard, _cv);
   TRI_ASSERT(_agent != nullptr);
-  
+
   // Get agency prefix after cluster init
   if (_jobId == 0) {
     // We need the agency prefix to work, but it is only initialized by
@@ -342,14 +339,15 @@ void Supervision::run() {
     // long here before giving up:
     if (!updateAgencyPrefix(1000, 1)) {
       LOG_TOPIC(DEBUG, Logger::AGENCY)
-        << "Cannot get prefix from Agency. Stopping supervision for good.";
+          << "Cannot get prefix from Agency. Stopping supervision for good.";
       return;
     }
   }
-  
+
   while (!this->isStopping()) {
     updateSnapshot();
-    // mop: always do health checks so shutdown is able to detect if a server failed otherwise
+    // mop: always do health checks so shutdown is able to detect if a server
+    // failed otherwise
     if (_agent->leading()) {
       doChecks();
     }
@@ -388,19 +386,20 @@ bool Supervision::serverGood(const std::string& serverName) {
 void Supervision::handleShutdown() {
   _selfShutdown = true;
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Waiting for clients to shut down";
-  Node::Children const& serversRegistered = _snapshot(currentServersRegisteredPrefix).children();
+  Node::Children const& serversRegistered =
+      _snapshot(currentServersRegisteredPrefix).children();
   bool serversCleared = true;
   for (auto const& server : serversRegistered) {
     if (server.first == "Version") {
       continue;
     }
-     
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
-      << "Waiting for " << server.first << " to shutdown";
+
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Waiting for " << server.first
+                                     << " to shutdown";
 
     if (!serverGood(server.first)) {
-      LOG_TOPIC(WARN, Logger::AGENCY)
-        << "Server " << server.first << " did not shutdown properly it seems!";
+      LOG_TOPIC(WARN, Logger::AGENCY) << "Server " << server.first
+                                      << " did not shutdown properly it seems!";
       continue;
     }
     serversCleared = false;
@@ -408,7 +407,6 @@ void Supervision::handleShutdown() {
 
   if (serversCleared) {
     if (_agent->leading()) {
-
       query_t del = std::make_shared<Builder>();
       del->openArray();
       del->openArray();
@@ -416,10 +414,13 @@ void Supervision::handleShutdown() {
       del->add(_agencyPrefix + "/Shutdown", VPackValue(VPackValueType::Object));
       del->add("op", VPackValue("delete"));
       del->close();
-      del->close(); del->close(); del->close();
+      del->close();
+      del->close();
+      del->close();
       auto result = _agent->write(del);
       if (result.indices.size() != 1) {
-        LOG(ERR) << "Invalid resultsize of " << result.indices.size() << " found during shutdown";
+        LOG(ERR) << "Invalid resultsize of " << result.indices.size()
+                 << " found during shutdown";
       } else {
         if (!_agent->waitFor(result.indices.at(0))) {
           LOG(ERR) << "Result was not written to followers during shutdown";
@@ -438,7 +439,7 @@ bool Supervision::handleJobs() {
   // Do supervision
   shrinkCluster();
   workJobs();
-  
+
   return true;
 }
 
@@ -448,46 +449,47 @@ void Supervision::workJobs() {
 
   for (auto const& todoEnt : todos) {
     Node const& job = *todoEnt.second;
-    
+
     std::string jobType = job("type").getString(),
-      jobId = job("jobId").getString(),
-      creator = job("creator").getString();
+                jobId = job("jobId").getString(),
+                creator = job("creator").getString();
     if (jobType == "failedServer") {
-      FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      FailedServer(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "cleanOutServer") {
-      CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      CleanOutServer(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "moveShard") {
-      MoveShard mv(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      MoveShard(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "failedLeader") {
-      FailedLeader fl(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      FailedLeader(_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "unassumedLeadership") {
+      UnassumedLeadership(_snapshot, _agent, jobId, creator, _agencyPrefix);
     }
   }
 
   for (auto const& pendEnt : pends) {
     Node const& job = *pendEnt.second;
-    
+
     std::string jobType = job("type").getString(),
-      jobId = job("jobId").getString(),
-      creator = job("creator").getString();
+                jobId = job("jobId").getString(),
+                creator = job("creator").getString();
     if (jobType == "failedServer") {
-      FailedServer fs(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      FailedServer(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "cleanOutServer") {
-      CleanOutServer cos(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      CleanOutServer(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "moveShard") {
-      MoveShard mv(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      MoveShard(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "failedLeader") {
-      FailedLeader fl(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      FailedLeader(_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "unassumedLeadership") {
+      UnassumedLeadership(_snapshot, _agent, jobId, creator, _agencyPrefix);
     }
   }
-  
 }
 
-
 // Shrink cluster if applicable
-void Supervision::shrinkCluster () {
-
+void Supervision::shrinkCluster() {
   // Get servers from plan
-  std::vector<std::string> availServers; 
+  std::vector<std::string> availServers;
   Node::Children const& dbservers = _snapshot("/Plan/DBServers").children();
   for (auto const& srv : dbservers) {
     availServers.push_back(srv.first);
@@ -497,56 +499,55 @@ void Supervision::shrinkCluster () {
   try {
     targetNumDBServers = _snapshot("/Target/NumberOfDBServers").getUInt();
   } catch (std::exception const& e) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
-      << "Targeted number of DB servers not set yet: " << e.what();
+    LOG_TOPIC(TRACE, Logger::AGENCY)
+        << "Targeted number of DB servers not set yet: " << e.what();
     return;
   }
-  
+
   // If there are any cleanOutServer jobs todo or pending do nothing
   Node::Children const& todos = _snapshot(toDoPrefix).children();
   Node::Children const& pends = _snapshot(pendingPrefix).children();
-  
+
   for (auto const& job : todos) {
     try {
       if ((*job.second)("type").getString() == "cleanOutServer") {
         return;
       }
     } catch (std::exception const& e) {
-      LOG_TOPIC(WARN, Logger::AGENCY)
-        << "Failed to get job type of job " << job.first << ": " << e.what();
+      LOG_TOPIC(WARN, Logger::AGENCY) << "Failed to get job type of job "
+                                      << job.first << ": " << e.what();
       return;
     }
   }
-  
+
   for (auto const& job : pends) {
     try {
       if ((*job.second)("type").getString() == "cleanOutServer") {
         return;
       }
     } catch (std::exception const& e) {
-      LOG_TOPIC(WARN, Logger::AGENCY)
-        << "Failed to get job type of job " << job.first << ": " << e.what();
+      LOG_TOPIC(WARN, Logger::AGENCY) << "Failed to get job type of job "
+                                      << job.first << ": " << e.what();
       return;
     }
   }
-  
-  // Remove cleaned from ist 
-  if (_snapshot.exists("/Target/CleanedServers").size()==2) {
+
+  // Remove cleaned from ist
+  if (_snapshot.exists("/Target/CleanedServers").size() == 2) {
     for (auto const& srv :
-           VPackArrayIterator(_snapshot("/Target/CleanedServers").slice())) {
-      availServers.erase(
-        std::remove(availServers.begin(), availServers.end(), srv.copyString()),
-        availServers.end());
+         VPackArrayIterator(_snapshot("/Target/CleanedServers").slice())) {
+      availServers.erase(std::remove(availServers.begin(), availServers.end(),
+                                     srv.copyString()),
+                         availServers.end());
     }
   }
 
   // Only if number of servers in target is smaller than the available
   if (targetNumDBServers < availServers.size()) {
-
     // Minimum 1 DB server must remain
     if (availServers.size() == 1) {
-      LOG_TOPIC(DEBUG, Logger::AGENCY) <<
-        "Only one db server left for operation";
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
+          << "Only one db server left for operation";
       return;
     }
 
@@ -561,8 +562,9 @@ void Supervision::shrinkCluster () {
             maxReplFact = replFact;
           }
         } catch (std::exception const&) {
-          LOG_TOPIC(DEBUG, Logger::AGENCY) << "Cannot retrieve replication " <<
-            "factor for collection " << collptr.first;
+          LOG_TOPIC(DEBUG, Logger::AGENCY) << "Cannot retrieve replication "
+                                           << "factor for collection "
+                                           << collptr.first;
           return;
         }
       }
@@ -570,26 +572,20 @@ void Supervision::shrinkCluster () {
 
     // If max number of replications is small than that of available
     if (maxReplFact < availServers.size()) {
-
       // Sort servers by name
       std::sort(availServers.begin(), availServers.end());
-      
+
       // Clean out as long as number of available servers is bigger
       // than maxReplFactor and bigger than targeted number of db servers
       if (availServers.size() > maxReplFact &&
           availServers.size() > targetNumDBServers) {
-        
         // Schedule last server for cleanout
         CleanOutServer(_snapshot, _agent, std::to_string(_jobId++),
                        "supervision", _agencyPrefix, availServers.back());
       }
-      
     }
-    
   }
-
 }
-
 
 // Start thread
 bool Supervision::start() {
@@ -606,58 +602,59 @@ bool Supervision::start(Agent* agent) {
 }
 
 // Get agency prefix fron agency
-bool Supervision::updateAgencyPrefix (size_t nTries, int intervalSec) {
-
-  // Try nTries to get agency's prefix in intervals 
+bool Supervision::updateAgencyPrefix(size_t nTries, int intervalSec) {
+  // Try nTries to get agency's prefix in intervals
   while (!this->isStopping()) {
     _snapshot = _agent->readDB().get("/");
     if (_snapshot.children().size() > 0) {
-      _agencyPrefix = "/arango";//std::string("/") + _snapshot.children().begin()->first;
+      _agencyPrefix =
+          "/arango";  // std::string("/") + _snapshot.children().begin()->first;
       LOG_TOPIC(DEBUG, Logger::AGENCY) << "Agency prefix is " << _agencyPrefix;
       return true;
     }
-    std::this_thread::sleep_for (std::chrono::seconds(intervalSec));
+    std::this_thread::sleep_for(std::chrono::seconds(intervalSec));
   }
 
   // Stand-alone agency
   return false;
-  
 }
 
 static std::string const syncLatest = "/Sync/LatestID";
-// Get bunch of cluster's unique ids from agency 
+// Get bunch of cluster's unique ids from agency
 void Supervision::getUniqueIds() {
   uint64_t latestId;
   // Run forever, supervision does not make sense before the agency data
   // is initialized by some other server...
   while (!this->isStopping()) {
     try {
-      latestId = std::stoul(
-        _agent->readDB().get(_agencyPrefix + "/Sync/LatestID").slice().toJson());
+      latestId = std::stoul(_agent->readDB()
+                                .get(_agencyPrefix + "/Sync/LatestID")
+                                .slice()
+                                .toJson());
     } catch (...) {
-      std::this_thread::sleep_for (std::chrono::seconds(1));
+      std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
     }
 
     Builder uniq;
     uniq.openArray();
     uniq.openObject();
-    uniq.add(_agencyPrefix + syncLatest, VPackValue(latestId + 100000)); // new 
+    uniq.add(_agencyPrefix + syncLatest, VPackValue(latestId + 100000));  // new
     uniq.close();
     uniq.openObject();
-    uniq.add(_agencyPrefix + syncLatest, VPackValue(latestId));      // precond
+    uniq.add(_agencyPrefix + syncLatest, VPackValue(latestId));  // precond
     uniq.close();
     uniq.close();
 
     auto result = transact(_agent, uniq);
 
     if (!result.accepted || result.indices.empty()) {
-      LOG_TOPIC(DEBUG, Logger::AGENCY)
-        << "We have lost agency leadership. Stopping any supervision processing "
-        << __FILE__ << __LINE__;
+      LOG_TOPIC(DEBUG, Logger::AGENCY) << "We have lost agency leadership. "
+                                          "Stopping any supervision processing "
+                                       << __FILE__ << __LINE__;
       return;
     }
-    
+
     if (result.indices[0]) {
       _agent->waitFor(result.indices[0]);
       _jobId = latestId;
@@ -668,14 +665,13 @@ void Supervision::getUniqueIds() {
 }
 
 void Supervision::updateFromAgency() {
-  auto const& jobsPending =
-      _snapshot("/Supervision/Jobs/Pending").children();
+  auto const& jobsPending = _snapshot("/Supervision/Jobs/Pending").children();
 
   for (auto const& jobent : jobsPending) {
     auto const& job = *(jobent.second);
 
-    LOG_TOPIC(WARN, Logger::AGENCY)
-      << job.name() << " " << job("failed").toJson() << job("");
+    LOG_TOPIC(WARN, Logger::AGENCY) << job.name() << " "
+                                    << job("failed").toJson() << job("");
   }
 }
 
@@ -685,9 +681,6 @@ void Supervision::beginShutdown() {
 
   CONDITION_LOCKER(guard, _cv);
   guard.broadcast();
-
 }
 
-Store const& Supervision::store() const {
-  return _agent->readDB();
-}
+Store const& Supervision::store() const { return _agent->readDB(); }

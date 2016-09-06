@@ -48,8 +48,8 @@ class AgencyFeature : virtual public application_features::ApplicationFeature {
   uint64_t _size;  // agency size (default: 5)
   uint64_t _poolSize;
   std::string _agentId;
-  double _minElectionTimeout;                 // min election timeout
-  double _maxElectionTimeout;                 // max election timeout
+  double _minElectionTimeout;  // min election timeout
+  double _maxElectionTimeout;  // max election timeout
   bool _supervision;
   bool _waitForSync;
   double _supervisionFrequency;

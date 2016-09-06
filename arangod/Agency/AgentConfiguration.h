@@ -36,24 +36,23 @@
 namespace arangodb {
 namespace consensus {
 
-  static const std::string idStr = "id";
-  static const std::string agencySizeStr = "agency size";
-  static const std::string poolSizeStr = "pool size";
-  static const std::string minPingStr = "min ping";
-  static const std::string maxPingStr = "max ping";
-  static const std::string endpointStr = "endpoint";
-  static const std::string uuidStr = "uuid";
-  static const std::string poolStr = "pool";
-  static const std::string gossipPeersStr = "gissipPeers";
-  static const std::string activeStr = "active";
-  static const std::string supervisionStr = "supervision";
-  static const std::string waitForSyncStr = "wait for sync";
-  static const std::string supervisionFrequencyStr = "supervision frequency";
-  static const std::string compactionStepSizeStr = "compaction step size";
-  static const std::string defaultEndpointStr = "tcp://localhost:8529";
+static const std::string idStr = "id";
+static const std::string agencySizeStr = "agency size";
+static const std::string poolSizeStr = "pool size";
+static const std::string minPingStr = "min ping";
+static const std::string maxPingStr = "max ping";
+static const std::string endpointStr = "endpoint";
+static const std::string uuidStr = "uuid";
+static const std::string poolStr = "pool";
+static const std::string gossipPeersStr = "gissipPeers";
+static const std::string activeStr = "active";
+static const std::string supervisionStr = "supervision";
+static const std::string waitForSyncStr = "wait for sync";
+static const std::string supervisionFrequencyStr = "supervision frequency";
+static const std::string compactionStepSizeStr = "compaction step size";
+static const std::string defaultEndpointStr = "tcp://localhost:8529";
 
 struct config_t {
-
   std::string _id;
   size_t _agencySize;
   size_t _poolSize;
@@ -70,132 +69,101 @@ struct config_t {
 
   mutable arangodb::basics::ReadWriteLock _lock;
 
-
   /// @brief default ctor
   config_t();
-
 
   /// @brief ctor
   config_t(size_t as, size_t ps, double minp, double maxp, std::string const& e,
            std::vector<std::string> const& g, bool s, bool w, double f,
            uint64_t c);
 
-
   /// @brief copy constructor
   config_t(config_t const&);
 
-  
   /// @brief move constructor
   config_t(config_t&&);
 
-  
-  /// @brief assignement operator 
-  config_t& operator= (config_t const&);
-  
+  /// @brief assignement operator
+  config_t& operator=(config_t const&);
 
-  /// @brief move assignment operator 
-  config_t& operator= (config_t&&);
-
+  /// @brief move assignment operator
+  config_t& operator=(config_t&&);
 
   /// @brief update leadership changes
   void update(query_t const&);
 
   /// @brief agent id
   std::string id() const;
-  
 
   /// @brief pool size
   bool poolComplete() const;
 
-
   /// @brief pool size
   bool supervision() const;
-
 
   /// @brief pool size
   double supervisionFrequency() const;
 
-
   /// @brief wait for sync requested
   bool waitForSync() const;
 
-    
   /// @brief add pool member
-  bool addToPool(std::pair<std::string,std::string> const& i);
-
+  bool addToPool(std::pair<std::string, std::string> const& i);
 
   /// @brief active agency size
   size_t size() const;
-  
 
   /// @brief active empty?
   bool activeEmpty() const;
 
-
   /// @brief pool size
   size_t poolSize() const;
-
 
   /// @brief pool size
   size_t compactionStepSize() const;
 
-
   /// @brief of active agents
-  query_t activeToBuilder () const;
-  query_t activeAgentsToBuilder () const;
-  query_t poolToBuilder () const;
+  query_t activeToBuilder() const;
+  query_t activeAgentsToBuilder() const;
+  query_t poolToBuilder() const;
 
-  
   /// @brief override this configuration with prevailing opinion (startup)
   void override(VPackSlice const& conf);
 
-  
   /// @brief vpack representation
   query_t toBuilder() const;
-
 
   /// @brief set id
   bool setId(std::string const& i);
 
-
   /// @brief merge from persisted configuration
   bool merge(VPackSlice const& conf);
-
 
   /// @brief gossip peers
   std::vector<std::string> gossipPeers() const;
 
-
   /// @brief remove endpoint from gossip peers
   void eraseFromGossipPeers(std::string const& endpoint);
-
 
   /// @brief add active agents
   bool activePushBack(std::string const& id);
 
-  
   /// @brief my endpoint
   std::string endpoint() const;
 
-
   /// @brief copy of pool
-  std::map<std::string,std::string> pool() const;
-
+  std::map<std::string, std::string> pool() const;
 
   /// @brief get one pair out of pool
   std::string poolAt(std::string const& id) const;
 
-
   /// @brief get active agents
   std::vector<std::string> active() const;
 
-
   double minPing() const;
   double maxPing() const;
-  
-  
 };
-
-}}
+}
+}
 
 #endif

@@ -62,10 +62,10 @@ class State {
   /// @brief Log entries (leader)
   std::vector<index_t> log(query_t const& query,
                            std::vector<bool> const& indices, term_t term);
-  
+
   /// @brief Log entries (followers)
   arangodb::consensus::index_t log(query_t const& queries, size_t ndups = 0);
-  
+
   /// @brief Find entry at index with term
   bool find(index_t index, term_t term);
 
@@ -96,7 +96,7 @@ class State {
     for (auto const& i : s._log)
       LOG_TOPIC(INFO, Logger::AGENCY)
           << "index(" << i.index << ") term(" << i.term << ") query("
-          << VPackSlice(i.entry->data()).toJson()  << ")";
+          << VPackSlice(i.entry->data()).toJson() << ")";
     return os;
   }
 
@@ -104,11 +104,9 @@ class State {
 
   size_t removeConflicts(query_t const&);
 
-  bool persistActiveAgents (query_t const& active, query_t const&  pool);
-
+  bool persistActiveAgents(query_t const& active, query_t const& pool);
 
  private:
-
   bool snapshot();
 
   /// @brief Save currentTerm, votedFor, log entries
@@ -149,7 +147,6 @@ class State {
   bool _collectionsLoaded;
 
   aql::QueryRegistry* _queryRegistry;
-
 
   size_t _compaction_step;
   size_t _cur;

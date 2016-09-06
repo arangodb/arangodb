@@ -30,9 +30,9 @@ using namespace arangodb::velocypack;
 
 AgentCallback::AgentCallback() : _agent(0), _last(0) {}
 
-AgentCallback::AgentCallback(
-  Agent* agent, std::string const& slaveID, index_t last)
-  : _agent(agent), _last(last), _slaveID(slaveID) {}
+AgentCallback::AgentCallback(Agent* agent, std::string const& slaveID,
+                             index_t last)
+    : _agent(agent), _last(last), _slaveID(slaveID) {}
 
 void AgentCallback::shutdown() { _agent = 0; }
 
@@ -42,9 +42,9 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
       _agent->reportIn(_slaveID, _last);
     }
   } else {
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
-      << "comm_status(" << res->status << "), last("
-      << _last << "), follower(" << _slaveID << ")";
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "comm_status(" << res->status
+                                     << "), last(" << _last << "), follower("
+                                     << _slaveID << ")";
   }
   return true;
 }
