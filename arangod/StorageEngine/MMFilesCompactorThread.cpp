@@ -839,7 +839,7 @@ void MMFilesCompactorThread::run() {
       numCompacted = 0;
       try {
         // copy all collections
-        collections = _vocbase->collections();
+        collections = _vocbase->collections(false);
       } catch (...) {
         collections.clear();
       }

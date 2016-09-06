@@ -328,16 +328,10 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
 
 arangodb::traverser::TraverserOptions::~TraverserOptions() {
   for (auto& pair : _vertexExpressions) {
-    if (pair.second != nullptr) {
-      delete pair.second;
-    }
+    delete pair.second;
   }
-  if (_baseVertexExpression != nullptr) {
-    delete _baseVertexExpression;
-  }
-  if (_ctx != nullptr) {
-    delete _ctx;
-  }
+  delete _baseVertexExpression;
+  delete _ctx;
 }
 
 void arangodb::traverser::TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
@@ -370,7 +364,6 @@ void arangodb::traverser::TraverserOptions::toVelocyPack(VPackBuilder& builder) 
       builder.add("uniqueEdges", VPackValue("global"));
       break;
   }
-
 }
 
 void arangodb::traverser::TraverserOptions::buildEngineInfo(VPackBuilder& result) const {
