@@ -342,11 +342,11 @@ var buildFilter = function (examples, bindVars, varname) {
 var generateWithStatement = function (graph, options) {
   if (!options.hasOwnProperty("edgeCollectionRestriction")
     || !Array.isArray(options.edgeCollectionRestriction)
-    || options.edgeCollectionRestriction.length == 0) {
+    || options.edgeCollectionRestriction.length === 0) {
     return "";
   }
   return "WITH " + Object.keys(graph.__vertexCollections).join(", ");
-}
+};
 
 // Returns FOR <varname> IN (...)
 // So start contains every object in the graph
