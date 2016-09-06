@@ -244,8 +244,8 @@ VppCommTask::ChunkHeader VppCommTask::readChunkHeader() {
     header._messageLength = 0;  // not needed
   }
 
-  header._headerLength =
-      std::distance(_readBuffer.begin() + _processReadVariables._readBufferOffset, cursor);
+  header._headerLength = std::distance(
+      _readBuffer.begin() + _processReadVariables._readBufferOffset, cursor);
 
   return header;
 }
@@ -427,15 +427,14 @@ bool VppCommTask::processRead() {
   }
 
   read_maybe_only_part_of_buffer = true;
-  prv._currentChunkLength =
-      0;  // if we end up here we have read a complete chunk
-  prv._readBufferOffset = chunkEnd - _readBuffer.begin();
-  std::size_t processedDataLen = prv._readBufferOffset;
+  prv._currentChunkLength = 0;  // we have read a complete chunk
+  prv._readBufferOffset = std::distance(_readBuffer.begin(), chunkEnd);
+
   // clean buffer up to length of chunk
-  if (processedDataLen > prv._cleanupLength) {
-    _readBuffer.move_front(processedDataLen);
+  if (prv._readBufferOffset > prv._cleanupLength) {
+    _readBuffer.move_front(prv._readBufferOffset);
     prv._readBufferOffset = 0;  // the positon will be set at the
-                                      // begin of this function
+                                // begin of this function
   }
 
   if (doExecute) {
@@ -504,7 +503,7 @@ void VppCommTask::closeTask(rest::ResponseCode code) {
   // to answer with failed packages
   //
   // is there a case where we do not want to close the connection
-  //for (auto const& message : _incompleteMessages) {
+  // for (auto const& message : _incompleteMessages) {
   //  handleSimpleError(code, message.first);
   //}
 
