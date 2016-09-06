@@ -504,10 +504,14 @@ void VppCommTask::closeTask(rest::ResponseCode code) {
   _processReadVariables._currentChunkLength = 0;
   _readBuffer.clear();  // check is this changes the reserved size
 
+  // we close the connection hard and do not even try to
+  // to answer with failed packages
+  //
   // is there a case where we do not want to close the connection
-  for (auto const& message : _incompleteMessages) {
-    handleSimpleError(code, message.first);
-  }
+  //for (auto const& message : _incompleteMessages) {
+  //  handleSimpleError(code, message.first);
+  //}
+
   _incompleteMessages.clear();
   _clientClosed = true;
 }

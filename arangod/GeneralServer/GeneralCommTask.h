@@ -142,9 +142,9 @@ class GeneralCommTask : public SocketTask {
     if (agentIt != _agents.end()) {
       return &(agentIt->second);
     } else {
-      // throw std::logic_error("there should be an agent for every request");
-      LOG(DEBUG) << "accessing already removed id";
-      return &_agents[id];
+      throw std::logic_error("there should be an agent for every request");
+      //LOG(DEBUG) << "accessing already removed id";
+      //return &_agents[id];
     }
   }
 
