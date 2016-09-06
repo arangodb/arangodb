@@ -699,8 +699,7 @@ int InitialSyncer::handleCollectionDump(
           }
           if (response->getHttpReturnCode() == 404) {
             // unknown job, we can abort
-            errorMsg = "no response received from master at " +
-                       _masterInfo._endpoint;
+            errorMsg = "job not found on master at " + _masterInfo._endpoint;
             return TRI_ERROR_REPLICATION_NO_RESPONSE;
           }
         }
@@ -889,8 +888,7 @@ int InitialSyncer::handleCollectionSync(
       }
       if (response->getHttpReturnCode() == 404) {
         // unknown job, we can abort
-        errorMsg = "no response received from master at " +
-                   _masterInfo._endpoint;
+        errorMsg = "job not found on master at " + _masterInfo._endpoint;
         return TRI_ERROR_REPLICATION_NO_RESPONSE;
       }
     }

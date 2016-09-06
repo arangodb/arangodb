@@ -141,7 +141,12 @@ class GeneralResponse {
     addPayload(std::forward<Payload>(payload), &options, resolveExternals);
   }
 
-  void addPayloadPreconditions() { TRI_ASSERT(_vpackPayloads.size() == 0); }
+  void addPayloadPreconditions() { 
+    if (_vpackPayloads.size() != 0) {
+      LOG(ERR) << "Payload set twice";
+      TRI_ASSERT(_vpackPayloads.size() == 0);
+    }
+  }
   virtual void addPayloadPreHook(bool inputIsBuffer, bool& resolveExternals,
                                  bool& skipBody) {}
   void addPayload(VPackSlice const&,
