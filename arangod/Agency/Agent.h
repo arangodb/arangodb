@@ -100,7 +100,7 @@ class Agent : public arangodb::Thread {
 
   /// @brief Invoked by leader to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2).
-  priv_rpc_ret_t sendAppendEntriesRPC(std::string const& slave_id);
+  void sendAppendEntriesRPC();
 
   /// @brief 1. Deal with appendEntries to slaves.
   ///        2. Report success of write processes.
