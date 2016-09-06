@@ -79,8 +79,11 @@ void RestAgencyHandler::redirectRequest(std::string const& leaderId) {
     _response->setHeaderNC(StaticStrings::Location, url);
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_INTERNAL, e.what());
+    Builder body;
+    body.openObject();
+    body.add("message", VPackValue(e.what()));
+    body.close();
+    generateResult(GeneralResponse::ResponseCode::SERVER_ERROR, body.slice());
   }
 }
 
@@ -227,6 +230,7 @@ RestHandler::status RestAgencyHandler::handleWrite() {
         LOG_TOPIC(ERR, Logger::AGENCY) << "We don't know who the leader is";
         return status::DONE;
       } else {
+        
         redirectRequest(ret.redirect);
       }
     }
