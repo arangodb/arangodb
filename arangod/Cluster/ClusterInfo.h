@@ -149,7 +149,7 @@ class CollectionInfoCurrent {
     auto it = _vpacks.find(shardID);
     if (it != _vpacks.end()) {
       VPackSlice slice = it->second->slice();
-      
+
       VPackSlice servers = slice.get("servers");
       if (servers.isArray()) {
         for (auto const& server: VPackArrayIterator(servers)) {
@@ -473,29 +473,29 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidate planned
   //////////////////////////////////////////////////////////////////////////////
-  
+
   void invalidatePlan();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidate current
   //////////////////////////////////////////////////////////////////////////////
-  
+
   void invalidateCurrent();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get current "Plan" structure
   //////////////////////////////////////////////////////////////////////////////
-  
+
   std::shared_ptr<VPackBuilder> getPlan();
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get current "Current" structure
   //////////////////////////////////////////////////////////////////////////////
-  
+
   std::shared_ptr<VPackBuilder> getCurrent();
-  
+
  private:
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get an operation timeout
   //////////////////////////////////////////////////////////////////////////////
@@ -529,28 +529,28 @@ class ClusterInfo {
 
   // Cached data from the agency, we reload whenever necessary:
 
-  // We group the data, each group has an atomic "valid-flag"
-  // which is used for lazy loading in the beginning. It starts
-  // as false, is set to true at each reload and is never reset
-  // to false in the lifetime of the server. The variable is
-  // atomic to be able to check it without acquiring
-  // the read lock (see below). Flush is just an explicit reload
-  // for all data and is only used in tests.
+  // We group the data, each group has an atomic "valid-flag" which is
+  // used for lazy loading in the beginning. It starts as false, is set
+  // to true at each reload and is only reset to false if the cache
+  // needs to be invalidated. The variable is atomic to be able to check
+  // it without acquiring the read lock (see below). Flush is just an
+  // explicit reload for all data and is only used in tests.
   // Furthermore, each group has a mutex that protects against
   // simultaneously contacting the agency for an update.
-  // In addition, each group has an atomic version number, this is used
-  // to prevent a stampede if multiple threads notice concurrently
-  // that an update from the agency is necessary. Finally, there is
-  // a read/write lock which protects the actual data structure.
+  // In addition, each group has two atomic version numbers, these are
+  // used to prevent a stampede if multiple threads notice concurrently
+  // that an update from the agency is necessary. Finally, there is a
+  // read/write lock which protects the actual data structure.
   // We encapsulate this protection in the struct ProtectionData:
 
   struct ProtectionData {
     std::atomic<bool> isValid;
     Mutex mutex;
-    std::atomic<uint64_t> version;
+    std::atomic<uint64_t> wantedVersion;
+    std::atomic<uint64_t> doneVersion;
     arangodb::basics::ReadWriteLock lock;
 
-    ProtectionData() : isValid(false), version(0) {}
+    ProtectionData() : isValid(false), wantedVersion(0), doneVersion(0) {}
   };
 
   // The servers, first all, we only need Current here:
@@ -566,10 +566,10 @@ class ClusterInfo {
   std::unordered_map<ServerID, ServerID>
       _coordinators;  // from Current/Coordinators
   ProtectionData _coordinatorsProt;
-  
+
   std::shared_ptr<VPackBuilder> _plan;
   std::shared_ptr<VPackBuilder> _current;
-  
+
   std::unordered_map<DatabaseID, VPackSlice> _plannedDatabases;  // from Plan/Databases
 
   ProtectionData _planProt;
@@ -653,7 +653,7 @@ class FollowerInfo {
 
  public:
 
-  explicit FollowerInfo(arangodb::LogicalCollection* d) 
+  explicit FollowerInfo(arangodb::LogicalCollection* d)
     : _followers(new std::vector<ServerID>()), _docColl(d) { }
 
   //////////////////////////////////////////////////////////////////////////////

@@ -32,9 +32,11 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/RestAgencyCallbacksHandler.h"
 #include "Cluster/RestShardHandler.h"
+#include "Cluster/TraverserEngineRegistry.h"
 #include "Dispatcher/DispatcherFeature.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "InternalRestHandler/InternalRestTraverserHandler.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -67,6 +69,7 @@
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerFeature.h"
+#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Ssl/SslServerFeature.h"
 #include "V8Server/V8DealerFeature.h"
@@ -374,6 +377,8 @@ void GeneralServerFeature::defineHandlers() {
   TRI_ASSERT(cluster != nullptr);
 
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+  auto traverserEngineRegistry =
+      TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY;
 
   // ...........................................................................
   // /_msg
@@ -481,7 +486,13 @@ void GeneralServerFeature::defineHandlers() {
         RestHandlerCreator<RestAgencyCallbacksHandler>::createData<
             AgencyCallbackRegistry*>,
         cluster->agencyCallbackRegistry());
+
   }
+    _handlerFactory->addPrefixHandler(
+        RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH,
+        RestHandlerCreator<InternalRestTraverserHandler>::createData<
+            traverser::TraverserEngineRegistry*>,
+        traverserEngineRegistry);
 
   // And now some handlers which are registered in both /_api and /_admin
   _handlerFactory->addPrefixHandler(

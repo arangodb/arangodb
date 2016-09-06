@@ -379,9 +379,13 @@ void ClusterInfo::loadPlan() {
   DatabaseFeature* databaseFeature =
       application_features::ApplicationServer::getFeature<DatabaseFeature>(
           "Database");
-  uint64_t storedVersion = _planProt.version;
-  MUTEX_LOCKER(mutexLocker, _planProt.mutex);
-  if (_planProt.version > storedVersion) {
+  ++_planProt.wantedVersion;  // Indicate that after *NOW* somebody has to
+                              // reread from the agency!
+  MUTEX_LOCKER(mutexLocker, _planProt.mutex);  // only one may work at a time
+  uint64_t storedVersion = _planProt.wantedVersion;  // this is the version
+                                                     // we will set in the end
+
+  if (_planProt.doneVersion == storedVersion) {
     // Somebody else did, what we intended to do, so just return
     return;
   }
@@ -519,7 +523,7 @@ void ClusterInfo::loadPlan() {
         _shards.swap(newShards);
         _shardKeys.swap(newShardKeys);
       }
-      _planProt.version++;  // such that others notice our change
+      _planProt.doneVersion = storedVersion;
       _planProt.isValid = true;  // will never be reset to false
     } else {
       LOG(ERR) << "\"Plan\" is not an object in agency";
@@ -542,9 +546,12 @@ void ClusterInfo::loadPlan() {
 static std::string const prefixCurrent = "Current";
 
 void ClusterInfo::loadCurrent() {
-  uint64_t storedVersion = _currentProt.version;
-  MUTEX_LOCKER(mutexLocker, _currentProt.mutex);
-  if (_currentProt.version > storedVersion) {
+  ++_currentProt.wantedVersion; // Indicate that after *NOW* somebody has to
+                                // reread from the agency!
+  MUTEX_LOCKER(mutexLocker, _currentProt.mutex); // only one may work at a time
+  uint64_t storedVersion = _currentProt.wantedVersion; // this is the version
+                                                       // we will set at the end
+  if (_currentProt.doneVersion == storedVersion) {
     // Somebody else did, what we intended to do, so just return
     return;
   }
@@ -598,7 +605,7 @@ void ClusterInfo::loadCurrent() {
             std::string const collectionName = collectionSlice.key.copyString();
 
             auto collectionDataCurrent = std::make_shared<CollectionInfoCurrent>();
-            for (auto const& shardSlice : VPackObjectIterator(collectionSlice.value)) {          
+            for (auto const& shardSlice : VPackObjectIterator(collectionSlice.value)) {
               std::string const shardID = shardSlice.key.copyString();
               collectionDataCurrent->add(shardID, shardSlice.value);
 
@@ -634,7 +641,7 @@ void ClusterInfo::loadCurrent() {
         _currentCollections.swap(newCollections);
         _shardIds.swap(newShardIds);
       }
-      _currentProt.version++;  // such that others notice our change
+      _currentProt.doneVersion = storedVersion;
       _currentProt.isValid = true;  // will never be reset to false
     } else {
       LOG(ERR) << "Current is not an object!";
@@ -835,7 +842,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
   };
   
   // ATTENTION: The following callback calls the above closure in a
-  // different thread. Nevertheless, the closure accesses some of our 
+  // different thread. Nevertheless, the closure accesses some of our
   // local variables. Therefore we have to protect all accesses to them
   // by a mutex. We use the mutex of the condition variable in the
   // AgencyCallback for this.
@@ -924,7 +931,7 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
   std::string where("Current/Databases/" + name);
 
   // ATTENTION: The following callback calls the above closure in a
-  // different thread. Nevertheless, the closure accesses some of our 
+  // different thread. Nevertheless, the closure accesses some of our
   // local variables. Therefore we have to protect all accesses to them
   // by a mutex. We use the mutex of the condition variable in the
   // AgencyCallback for this.
@@ -1059,7 +1066,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   };
 
   // ATTENTION: The following callback calls the above closure in a
-  // different thread. Nevertheless, the closure accesses some of our 
+  // different thread. Nevertheless, the closure accesses some of our
   // local variables. Therefore we have to protect all accesses to them
   // by a mutex. We use the mutex of the condition variable in the
   // AgencyCallback for this.
@@ -1162,7 +1169,7 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
       "Current/Collections/" + databaseName + "/" + collectionID;
   
   // ATTENTION: The following callback calls the above closure in a
-  // different thread. Nevertheless, the closure accesses some of our 
+  // different thread. Nevertheless, the closure accesses some of our
   // local variables. Therefore we have to protect all accesses to them
   // by a mutex. We use the mutex of the condition variable in the
   // AgencyCallback for this.
@@ -1601,7 +1608,7 @@ int ClusterInfo::ensureIndexCoordinator(
  
 
   // ATTENTION: The following callback calls the above closure in a
-  // different thread. Nevertheless, the closure accesses some of our 
+  // different thread. Nevertheless, the closure accesses some of our
   // local variables. Therefore we have to protect all accesses to them
   // by a mutex. We use the mutex of the condition variable in the
   // AgencyCallback for this.
@@ -1737,11 +1744,11 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
         dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
       }
     }
-    return true; 
+    return true;
   };
   
   // ATTENTION: The following callback calls the above closure in a
-  // different thread. Nevertheless, the closure accesses some of our 
+  // different thread. Nevertheless, the closure accesses some of our
   // local variables. Therefore we have to protect all accesses to them
   // by a mutex. We use the mutex of the condition variable in the
   // AgencyCallback for this.
@@ -1868,9 +1875,12 @@ static std::string const prefixServers = "Current/ServersRegistered";
 
 void ClusterInfo::loadServers() {
 
-  uint64_t storedVersion = _serversProt.version;
+  ++_serversProt.wantedVersion;  // Indicate that after *NOW* somebody has to
+                                 // reread from the agency!
   MUTEX_LOCKER(mutexLocker, _serversProt.mutex);
-  if (_serversProt.version > storedVersion) {
+  uint64_t storedVersion = _serversProt.wantedVersion;  // this is the version
+                                                     // we will set in the end
+  if (_serversProt.doneVersion == storedVersion) {
     // Somebody else did, what we intended to do, so just return
     return;
   }
@@ -1900,7 +1910,7 @@ void ClusterInfo::loadServers() {
       {
         WRITE_LOCKER(writeLocker, _serversProt.lock);
         _servers.swap(newServers);
-        _serversProt.version++;       // such that others notice our change
+        _serversProt.doneVersion = storedVersion;
         _serversProt.isValid = true;  // will never be reset to false
       }
       return;
@@ -1993,9 +2003,12 @@ std::string ClusterInfo::getServerName(std::string const& endpoint) {
 static std::string const prefixCurrentCoordinators = "Current/Coordinators";
 
 void ClusterInfo::loadCurrentCoordinators() {
-  uint64_t storedVersion = _coordinatorsProt.version;
+  ++_coordinatorsProt.wantedVersion;  // Indicate that after *NOW* somebody
+                                      // has to reread from the agency!
   MUTEX_LOCKER(mutexLocker, _coordinatorsProt.mutex);
-  if (_coordinatorsProt.version > storedVersion) {
+  uint64_t storedVersion = _coordinatorsProt.wantedVersion;  // this is the
+                                            // version we will set in the end
+  if (_coordinatorsProt.doneVersion == storedVersion) {
     // Somebody else did, what we intended to do, so just return
     return;
   }
@@ -2021,7 +2034,7 @@ void ClusterInfo::loadCurrentCoordinators() {
       {
         WRITE_LOCKER(writeLocker, _coordinatorsProt.lock);
         _coordinators.swap(newCoordinators);
-        _coordinatorsProt.version++;       // such that others notice our change
+        _coordinatorsProt.doneVersion = storedVersion;
         _coordinatorsProt.isValid = true;  // will never be reset to false
       }
       return;
@@ -2045,9 +2058,12 @@ static std::string const prefixTargetCleaned = "Target/CleanedOutServers";
 static std::string const prefixTargetFailed = "Target/FailedServers";
 
 void ClusterInfo::loadCurrentDBServers() {
-  uint64_t storedVersion = _DBServersProt.version;
+  ++_DBServersProt.wantedVersion;  // Indicate that after *NOW* somebody has to
+                                   // reread from the agency!
   MUTEX_LOCKER(mutexLocker, _DBServersProt.mutex);
-  if (_DBServersProt.version > storedVersion) {
+  uint64_t storedVersion = _DBServersProt.wantedVersion; // this is the version
+                                                     // we will set in the end
+  if (_DBServersProt.doneVersion == storedVersion) {
     // Somebody else did, what we intended to do, so just return
     return;
   }
@@ -2106,7 +2122,7 @@ void ClusterInfo::loadCurrentDBServers() {
       {
         WRITE_LOCKER(writeLocker, _DBServersProt.lock);
         _DBServers.swap(newDBServers);
-        _DBServersProt.version++;       // such that others notice our change
+        _DBServersProt.doneVersion = storedVersion;
         _DBServersProt.isValid = true;  // will never be reset to false
       }
       return;

@@ -14,6 +14,13 @@ devel
 
 * added a memory expection in case V8 memory gets too low
 
+* added Optimizer Rule for other indexes in Traversals
+  this allows AQL traversals to use other indexes than the edge index.
+  So traversals with filters on edges can now make use of more specific
+  indexes. E.g.:
+  FOR v, e, p IN 2 OUTBOUND @start @@edge FILTER p.edges[0].foo == "bar"
+  Will prefer an Hash Index on [_from, foo] above the EdgeIndex.
+
 * fixed epoch computation in hybrid logical clock
 
 * fixed thread affinity

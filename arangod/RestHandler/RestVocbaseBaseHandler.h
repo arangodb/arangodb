@@ -130,6 +130,10 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   static std::string const UPLOAD_PATH;
 
+  /// @brief Internal Traverser path
+
+  static std::string const INTERNAL_TRAVERSER_PATH;
+
  public:
   RestVocbaseBaseHandler(GeneralRequest*, GeneralResponse*);
   ~RestVocbaseBaseHandler();

@@ -26,6 +26,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/CollectNode.h"
+#include "Aql/Collection.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
@@ -37,7 +38,6 @@
 #include "Aql/ShortestPathOptions.h"
 #include "Aql/SortNode.h"
 #include "Aql/TraversalNode.h"
-#include "Aql/TraversalOptions.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/Exceptions.h"
@@ -54,14 +54,54 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
 
-static TraversalOptions CreateTraversalOptions(AstNode const* node) {
-  TraversalOptions options;
+static uint64_t checkTraversalDepthValue(AstNode const* node) {
+  if (!node->isNumericValue()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                   "invalid traversal depth");
+  }
+  double v = node->getDoubleValue();
+  double intpart;
+  if (modf(v, &intpart) != 0.0 || v < 0.0) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                   "invalid traversal depth");
+  }
+  return static_cast<uint64_t>(v);
+}
 
-  if (node != nullptr && node->type == NODE_TYPE_OBJECT) {
-    size_t n = node->numMembers();
+static std::unique_ptr<traverser::TraverserOptions> CreateTraversalOptions(
+    Transaction* trx, AstNode const* direction, AstNode const* optionsNode) {
+
+  auto options = std::make_unique<traverser::TraverserOptions>(trx);
+
+  TRI_ASSERT(direction != nullptr);
+  TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
+  TRI_ASSERT(direction->numMembers() == 2);
+
+  auto steps = direction->getMember(1);
+
+  if (steps->isNumericValue()) {
+    // Check if a double value is integer
+    options->minDepth = checkTraversalDepthValue(steps);
+    options->maxDepth = options->minDepth;
+  } else if (steps->type == NODE_TYPE_RANGE) {
+    // Range depth
+    options->minDepth = checkTraversalDepthValue(steps->getMember(0));
+    options->maxDepth = checkTraversalDepthValue(steps->getMember(1));
+
+    if (options->maxDepth < options->minDepth) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                     "invalid traversal depth");
+    }
+  } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                   "invalid traversal depth");
+  }
+
+  if (optionsNode != nullptr && optionsNode->type == NODE_TYPE_OBJECT) {
+    size_t n = optionsNode->numMembers();
 
     for (size_t i = 0; i < n; ++i) {
-      auto member = node->getMember(i);
+      auto member = optionsNode->getMember(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         std::string const name = member->getString();
@@ -70,29 +110,27 @@ static TraversalOptions CreateTraversalOptions(AstNode const* node) {
         TRI_ASSERT(value->isConstant());
 
         if (name == "bfs") {
-          options.useBreadthFirst = value->isTrue();
+          options->useBreadthFirst = value->isTrue();
         } else if (name == "uniqueVertices" && value->isStringValue()) {
           if (value->stringEquals("path", true)) {
-            options.uniqueVertices =
+            options->uniqueVertices =
                 arangodb::traverser::TraverserOptions::UniquenessLevel::PATH;
           } else if (value->stringEquals("global", true)) {
-            options.uniqueVertices =
+            options->uniqueVertices =
                 arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL;
           }
         } else if (name == "uniqueEdges" && value->isStringValue()) {
           if (value->stringEquals("none", true)) {
-            options.uniqueEdges =
+            options->uniqueEdges =
                 arangodb::traverser::TraverserOptions::UniquenessLevel::NONE;
           } else if (value->stringEquals("global", true)) {
-            options.uniqueEdges =
+            options->uniqueEdges =
                 arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL;
           }
         }
       }
-
     }
   }
-
   return options;
 }
 
@@ -664,7 +702,8 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
     previous = calc;
   }
 
-  TraversalOptions options = CreateTraversalOptions(node->getMember(3));
+  auto options = CreateTraversalOptions(getAst()->query()->trx(), direction,
+                                        node->getMember(3));
 
   // First create the node
   auto travNode = new TraversalNode(this, nextId(), _ast->query()->vocbase(),

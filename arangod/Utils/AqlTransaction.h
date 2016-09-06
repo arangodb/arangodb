@@ -120,7 +120,7 @@ class AqlTransaction : public Transaction {
   /// AQL query running on the coordinator
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::AqlTransaction* clone() const {
+  arangodb::Transaction* clone() const override {
     return new arangodb::AqlTransaction(
         arangodb::StandaloneTransactionContext::Create(this->_vocbase),
         &_collections, false);
@@ -135,7 +135,7 @@ class AqlTransaction : public Transaction {
   /// order via an HTTP call. This method is used to implement that HTTP action.
   //////////////////////////////////////////////////////////////////////////////
 
-  int lockCollections();
+  int lockCollections() override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief keep a copy of the collections, this is needed for the clone
