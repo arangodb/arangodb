@@ -39,9 +39,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_replication_dump_t {
-  TRI_replication_dump_t(std::shared_ptr<arangodb::StandaloneTransactionContext> transactionContext,
-                         size_t chunkSize,
-                         bool includeSystem, TRI_voc_cid_t restrictCollection)
+  TRI_replication_dump_t(std::shared_ptr<arangodb::StandaloneTransactionContext>
+                             transactionContext,
+                         size_t chunkSize, bool includeSystem,
+                         TRI_voc_cid_t restrictCollection, bool useVpp = false)
       : _transactionContext(transactionContext),
         _vocbase(transactionContext->vocbase()),
         _buffer(nullptr),
@@ -95,8 +96,9 @@ struct TRI_replication_dump_t {
 /// @brief dump data from a single collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DumpCollectionReplication(TRI_replication_dump_t*, arangodb::LogicalCollection*,
-                                  TRI_voc_tick_t, TRI_voc_tick_t, bool);
+int TRI_DumpCollectionReplication(TRI_replication_dump_t*,
+                                  arangodb::LogicalCollection*, TRI_voc_tick_t,
+                                  TRI_voc_tick_t, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump data from the replication log
