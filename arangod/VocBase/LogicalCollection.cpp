@@ -353,7 +353,7 @@ LogicalCollection::LogicalCollection(
 // @brief Constructor used in coordinator case.
 // The Slice contains the part of the plan that
 // is relevant for this collection.
-LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
+LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice const& info, bool isPhysical)
     : _internalVersion(0),
       _cid(ReadCid(info)),
       _planId(ReadPlanId(info, _cid)),
@@ -462,7 +462,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
       }
     }
 
-    if (!ServerState::instance()->isCoordinator()) {
+    if (!ServerState::instance()->isCoordinator() && isPhysical) {
       // If we are not in the coordinator we need a path
       // to the physical data.
       StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -718,7 +718,6 @@ bool LogicalCollection::waitForSync() const {
 std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
   return _followers;
 }
-
 
 void LogicalCollection::setDeleted(bool newValue) {
   _isDeleted = newValue;

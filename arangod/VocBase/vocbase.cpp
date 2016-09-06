@@ -76,7 +76,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::registerCollection(
     bool doLock, VPackSlice parameters) {
   // create a new proxy
   std::unique_ptr<arangodb::LogicalCollection> collection =
-      std::make_unique<arangodb::LogicalCollection>(this, parameters);
+      std::make_unique<arangodb::LogicalCollection>(this, parameters, true);
   std::string name = collection->name();
   TRI_voc_cid_t cid = collection->cid();
   {

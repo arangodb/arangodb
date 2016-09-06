@@ -1253,7 +1253,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   infoSlice = builder.slice();
 
   if (ServerState::instance()->isCoordinator()) {
-    auto parameters = std::make_unique<LogicalCollection>(vocbase, infoSlice);
+    auto parameters = std::make_unique<LogicalCollection>(vocbase, infoSlice, false);
     CreateCollectionCoordinator(args, collectionType, vocbase->name(),
                                 parameters.get());
     return;

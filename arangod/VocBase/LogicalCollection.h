@@ -65,7 +65,7 @@ class LogicalCollection {
   friend struct ::TRI_vocbase_t;
 
  public:
-  LogicalCollection(TRI_vocbase_t*, arangodb::velocypack::Slice);
+  LogicalCollection(TRI_vocbase_t*, arangodb::velocypack::Slice const&, bool isPhysical);
 
   explicit LogicalCollection(std::shared_ptr<LogicalCollection> const&);
 
