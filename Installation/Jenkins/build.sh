@@ -266,7 +266,7 @@ while [ $# -gt 0 ];  do
             ;;
 
         --jemalloc)
-            CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DUSE_JEMALLOC=On"
+            USE_JEMALLOC=1
             shift
             ;;
         
@@ -318,6 +318,8 @@ while [ $# -gt 0 ];  do
 done
 
 
+
+
 if test -n "$LASTREV"; then
     lines=`git diff ${LASTREV}: ${COMPILE_MATTERS} | wc -l`
 
@@ -341,6 +343,7 @@ elif [ "$CLANG36" == 1 ]; then
     CXX=/usr/bin/clang++-3.6
     CXXFLAGS="${CXXFLAGS} -std=c++11"
 elif [ "${CXGCC}" = 1 ]; then
+    USE_JEMALLOC=0
     if [ "${ARMV8}" = 1 ]; then
         export TOOL_PREFIX=aarch64-linux-gnu
         BUILD_DIR="${BUILD_DIR}-ARMV8"
@@ -352,6 +355,7 @@ elif [ "${CXGCC}" = 1 ]; then
         exit 1;
     fi
 
+    CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCROSS_COMPILING=true" # -DCMAKE_LIBRARY_ARCHITECTURE=${TOOL_PREFIX} "
     export CXX=$TOOL_PREFIX-g++
     export AR=$TOOL_PREFIX-ar
     export RANLIB=$TOOL_PREFIX-ranlib
@@ -359,11 +363,20 @@ elif [ "${CXGCC}" = 1 ]; then
     export LD=$TOOL_PREFIX-g++
     export LINK=$TOOL_PREFIX-g++
     export STRIP=$TOOL_PREFIX-strip
+
+    # we need ARM LD: 
+    GOLD=0;
+
+    # tell cmake we're cross compiling:
     CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCROSS_COMPILING=true"
+
+    # V8's mksnapshot won't work - ignore it:
+    MAKE_PARAMS="${MAKE_PARAMS} -i"
 fi
 
-
-
+if [ "${USE_JEMALLOC}" = 1 ]; then 
+    CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DUSE_JEMALLOC=On"
+fi
 
 if [ "$SANITIZE" == 1 ]; then
     if [ "$GCC5" == 1 ]; then
@@ -451,6 +464,7 @@ if [ ! -f Makefile -o ! -f CMakeCache.txt ];  then
 fi
 
 ${MAKE_CMD_PREFIX} ${MAKE} ${MAKE_PARAMS}
+
 (cd ${SOURCE_DIR}; git rev-parse HEAD > last_compiled_version.sha)
 
 if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
