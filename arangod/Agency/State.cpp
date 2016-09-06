@@ -207,12 +207,11 @@ size_t State::removeConflicts(query_t const& transactions) {
                   << _log.at(pos).term;
 
               // persisted logs
-              std::stringstream aql;
-              aql << "FOR l IN log FILTER l._key >= '" << stringify(idx)
-                  << "' REMOVE l IN log";
+              std::string const aql(std::string("FOR l IN log FILTER l._key >= '") + 
+                                    stringify(idx) + "' REMOVE l IN log");
 
-              arangodb::aql::Query query(false, _vocbase, aql.str().c_str(),
-                                         aql.str().size(), bindVars, nullptr,
+              arangodb::aql::Query query(false, _vocbase, aql.c_str(),
+                                         aql.size(), bindVars, nullptr,
                                          arangodb::aql::PART_MAIN);
 
               auto queryResult = query.execute(_queryRegistry);
