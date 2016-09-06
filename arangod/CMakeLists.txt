@@ -76,8 +76,10 @@ add_executable(${BIN_ARANGOD}
   Actions/ActionFeature.cpp
   Actions/RestActionHandler.cpp
   Actions/actions.cpp
+  Agency/ActivationCallback.cpp
   Agency/AgencyFeature.cpp
   Agency/Agent.cpp
+  Agency/AgentActivator.cpp
   Agency/AgentCallback.cpp
   Agency/AgentConfiguration.cpp
   Agency/Constituent.cpp

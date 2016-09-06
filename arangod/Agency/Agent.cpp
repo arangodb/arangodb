@@ -114,6 +114,12 @@ std::string Agent::leaderID() const { return _constituent.leaderID(); }
 /// Are we leading?
 bool Agent::leading() const { return _constituent.leading(); }
 
+/// Activate a standby agent
+bool Agent::activateStandbyAgent() {
+  return true;
+}
+
+/// Start constituent personality
 void Agent::startConstituent() {
   activateAgency();
 

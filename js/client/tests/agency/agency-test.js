@@ -49,8 +49,6 @@ function agencyTestSuite () {
   var whoseTurn = 0;
   var request = require("@arangodb/request");
 
-  wait(3.0);
-
   function readAgency(list) {
     // We simply try all agency servers in turn until one gives us an HTTP
     // response:
@@ -97,6 +95,24 @@ function agencyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    testStartup : function () {
+      while (true) {
+        var res = request({
+          url: agencyServers[whoseTurn] + "/_api/agency/config",
+          method: "GET"
+        });
+        res.bodyParsed = JSON.parse(res.body);
+        if (res.bodyParsed.leaderId != "") {
+          break;
+        }
+        wait(0.1);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -269,12 +285,12 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["a/z"]]), [{"a":{"z":12}}]);
       writeAndCheck([[{"a/y":{"op":"set","new":12, "ttl": 1}}]]);
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
-      wait(1.50);
+      wait(2.0);
       assertEqual(readAndCheck([["a/y"]]), [{a:{}}]);
       writeAndCheck([[{"a/y":{"op":"set","new":12, "ttl": 1}}]]);
       writeAndCheck([[{"a/y":{"op":"set","new":12}}]]);
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
-      wait(1.50);
+      wait(2.0);
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
       writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12}}}]]);
       assertEqual(readAndCheck([["/foo/bar/baz"]]),
@@ -282,7 +298,7 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/foo/bar"]]), [{"foo":{"bar":{"baz":12}}}]);
       assertEqual(readAndCheck([["/foo"]]), [{"foo":{"bar":{"baz":12}}}]);
       writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12},"ttl":1}}]]);
-      wait(1.50);
+      wait(2.0);
       assertEqual(readAndCheck([["/foo"]]), [{"foo":{}}]);
       assertEqual(readAndCheck([["/foo/bar"]]), [{"foo":{}}]);
       assertEqual(readAndCheck([["/foo/bar/baz"]]), [{"foo":{}}]);
@@ -596,14 +612,8 @@ function agencyTestSuite () {
       var res = writeAgency([[{"/bumms":{"op":"set","new":"fallera"}, "/bummsfallera": {"op":"set","new":"lalalala"}}]]);
       assertEqual(res.statusCode, 200);
       assertEqual(readAndCheck([["/bumms", "/bummsfallera"]]), [{bumms:"fallera", bummsfallera: "lalalala"}]);
-    },
-
-    testThousand: function() {
-      var i;
-      for (i = 0; i < 1000; i++) {
-        writeAndCheck([[{x:12}]]);
-      }
     }
+
   };
 }
 

@@ -25,6 +25,7 @@
 #define ARANGOD_CONSENSUS_AGENT_H 1
 
 #include "Agency/AgencyCommon.h"
+#include "Agency/AgentActivator.h"
 #include "Agency/AgentCallback.h"
 #include "Agency/AgentConfiguration.h"
 #include "Agency/Constituent.h"
@@ -118,9 +119,8 @@ class Agent : public arangodb::Thread {
   /// @brief Gossip in
   bool activeAgency();
 
-  /// @brief Startup process of detection of agent pool, active agency, gossip
-  /// etc
-  //  void inception();
+  /// @brief Gossip in
+  bool activeStandbyAgent();
 
   /// @brief Start orderly shutdown of threads
   void beginShutdown() override final;
@@ -170,6 +170,9 @@ class Agent : public arangodb::Thread {
 
   /// @brief Activate this agent in single agent mode.
   bool activateAgency();
+
+  /// @brief Activate new agent in pool to replace failed agent
+  bool activateStandbyAgent();
 
   /// @brief Assignment of persisted state
   Agent& operator=(VPackSlice const&);
@@ -240,6 +243,7 @@ class Agent : public arangodb::Thread {
   std::map<std::string, bool> _gossipTmp;
 
   std::unique_ptr<Inception> _inception;
+  std::unique_ptr<AgentActivator> _activator;
 };
 }
 }

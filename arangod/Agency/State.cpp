@@ -461,6 +461,7 @@ bool State::loadCompacted() {
   return true;
 }
 
+
 /// Load persisted configuration
 bool State::loadOrPersistConfiguration() {
   auto bindVars = std::make_shared<VPackBuilder>();
