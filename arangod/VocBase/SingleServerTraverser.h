@@ -51,6 +51,11 @@ class SingleServerEdgeCursor : public EdgeCursor {
   explicit SingleServerEdgeCursor(size_t);
 
   ~SingleServerEdgeCursor() {
+    for (auto& it : _cursors) {
+      for (auto& it2 : it) {
+        delete it2;
+      }
+    }
   }
 
   bool next(std::vector<arangodb::velocypack::Slice>&, size_t&) override;

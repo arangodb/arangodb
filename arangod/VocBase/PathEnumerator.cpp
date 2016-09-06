@@ -257,7 +257,7 @@ bool BreadthFirstEnumerator::next() {
     auto const nextIdx = _toSearch[_toSearchPos++].sourceIdx;
     auto const& nextVertex = _schreier[nextIdx]->vertex;
 
-    auto cursor = _opts->nextCursor(nextVertex, _currentDepth);
+    std::unique_ptr<arangodb::traverser::EdgeCursor> cursor(_opts->nextCursor(nextVertex, _currentDepth));
     if (cursor != nullptr) {
       size_t cursorIdx;
       bool shouldReturnPath = _currentDepth + 1 >= _opts->minDepth;
