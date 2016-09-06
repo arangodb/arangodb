@@ -32,7 +32,13 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Dumper.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include <vector>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replication dump container
@@ -56,16 +62,19 @@ struct TRI_replication_dump_t {
         _hasMore(false),
         _includeSystem(includeSystem),
         _fromTickIncluded(false),
-        _compat28(false) {
+        _compat28(false),
+        _slices() {
     if (_chunkSize == 0) {
       // default chunk size
       _chunkSize = 128 * 1024;
     }
 
-    _buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, _chunkSize);
+    if (!useVpp) {
+      _buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, _chunkSize);
 
-    if (_buffer == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      if (_buffer == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
     }
   }
 
@@ -90,6 +99,7 @@ struct TRI_replication_dump_t {
   bool _includeSystem;
   bool _fromTickIncluded;
   bool _compat28;
+  std::vector<VPackBuffer<uint64_t>> _slices;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
