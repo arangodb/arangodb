@@ -59,7 +59,7 @@ void AgentActivator::run() {
     auto headerFields =
       std::make_unique<std::unordered_map<std::string, std::string>>();
     arangodb::ClusterComm::instance()->asyncRequest(
-      "1", 1, pool.at(_peerId), GeneralRequest::RequestType::POST,
+      "1", 1, pool.at(_peerId), rest::RequestType::POST,
       path, std::make_shared<std::string>(builder.toJson()), headerFields,
       std::make_shared<ActivationCallback>(_agent, _peerId, highest), 5.0, true,
       1.0);
