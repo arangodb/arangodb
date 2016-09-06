@@ -106,7 +106,9 @@ function optimizerIndexesSortTestSuite () {
       });
 
       assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+      if (!require("@arangodb/cluster").isCluster()) {
+        assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+      }
 
       var results = AQL_EXECUTE(query);
       var expected = [ ];
@@ -116,7 +118,9 @@ function optimizerIndexesSortTestSuite () {
       }
       assertEqual(expected.sort(), results.json.sort(), query);
       assertEqual(0, results.stats.scannedFull);
-      assertEqual(expected.length, results.stats.scannedIndex);
+      if (!require("@arangodb/cluster").isCluster()) {
+        assertEqual(expected.length, results.stats.scannedIndex);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -139,7 +143,9 @@ function optimizerIndexesSortTestSuite () {
       });
 
       assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+      if (!require("@arangodb/cluster").isCluster()) {
+        assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+      }
 
       var results = AQL_EXECUTE(query);
       var expected = [ ];
@@ -148,7 +154,9 @@ function optimizerIndexesSortTestSuite () {
       }
       assertEqual(expected, results.json, query);
       assertEqual(0, results.stats.scannedFull);
-      assertEqual(expected.length, results.stats.scannedIndex);
+      if (!require("@arangodb/cluster").isCluster()) {
+        assertEqual(expected.length, results.stats.scannedIndex);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -171,7 +179,9 @@ function optimizerIndexesSortTestSuite () {
       });
 
       assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+      if (!require("@arangodb/cluster").isCluster()) {
+        assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+      }
 
       var results = AQL_EXECUTE(query);
       var expected = [ ];
@@ -181,7 +191,9 @@ function optimizerIndexesSortTestSuite () {
       }
       assertEqual(expected.sort(), results.json.sort(), query);
       assertEqual(0, results.stats.scannedFull);
-      assertEqual(expected.length, results.stats.scannedIndex);
+      if (!require("@arangodb/cluster").isCluster()) {
+        assertEqual(expected.length, results.stats.scannedIndex);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
