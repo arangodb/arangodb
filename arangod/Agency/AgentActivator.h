@@ -21,8 +21,8 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_INCEPTION_H
-#define ARANGOD_CONSENSUS_INCEPTION_H 1
+#ifndef ARANGOD_CONSENSUS_AGENT_ACTIVATOR_H
+#define ARANGOD_CONSENSUS_AGENT_ACTIVATOR_H 1
 
 #include <memory>
 
@@ -38,11 +38,11 @@ namespace consensus {
 
 class Agent;
 
-class Inception : public Thread {
+class AgentActivator : public Thread {
  public:
-  Inception();
-  explicit Inception(Agent*);
-  virtual ~Inception();
+  AgentActivator();
+  AgentActivator(Agent*, std::string const&);
+  virtual ~AgentActivator();
 
   void run() override;
   bool start();
@@ -51,10 +51,10 @@ class Inception : public Thread {
   void beginShutdown() override;
 
  private:
-  void activeAgency();
-  void gossip();
 
   Agent* _agent;
+  std::string _peerId;
+  
 };
 }
 }

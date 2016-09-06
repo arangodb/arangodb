@@ -21,26 +21,23 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "FailedLeader.h"
+#include "UnassumedLeadership.h"
 
 #include "Agent.h"
 #include "Job.h"
 
 using namespace arangodb::consensus;
 
-FailedLeader::FailedLeader(Node const& snapshot, Agent* agent,
-                           std::string const& jobId, std::string const& creator,
-                           std::string const& agencyPrefix,
-                           std::string const& database,
-                           std::string const& collection,
-                           std::string const& shard, std::string const& from,
-                           std::string const& to)
+UnassumedLeadership::UnassumedLeadership(
+    Node const& snapshot, Agent* agent, std::string const& jobId,
+    std::string const& creator, std::string const& agencyPrefix,
+    std::string const& database, std::string const& collection,
+    std::string const& shard, std::string const& server)
     : Job(snapshot, agent, jobId, creator, agencyPrefix),
       _database(database),
       _collection(collection),
       _shard(shard),
-      _from(from),
-      _to(to) {
+      _from(server) {
   try {
     JOB_STATUS js = status();
 
@@ -57,11 +54,11 @@ FailedLeader::FailedLeader(Node const& snapshot, Agent* agent,
   }
 }
 
-FailedLeader::~FailedLeader() {}
+UnassumedLeadership::~UnassumedLeadership() {}
 
-bool FailedLeader::create() {
+bool UnassumedLeadership::create() {
   LOG_TOPIC(INFO, Logger::AGENCY)
-      << "Todo: failed Leader for " + _shard + " from " + _from + " to " + _to;
+      << "Todo: Find new leader for to be created shard " << _shard;
 
   std::string path = _agencyPrefix + toDoPrefix + _jobId;
 
@@ -70,13 +67,10 @@ bool FailedLeader::create() {
   _jb->openObject();
   _jb->add(path, VPackValue(VPackValueType::Object));
   _jb->add("creator", VPackValue(_creator));
-  _jb->add("type", VPackValue("failedLeader"));
+  _jb->add("type", VPackValue("unassumedLeadership"));
   _jb->add("database", VPackValue(_database));
   _jb->add("collection", VPackValue(_collection));
   _jb->add("shard", VPackValue(_shard));
-  _jb->add("fromServer", VPackValue(_from));
-  _jb->add("toServer", VPackValue(_to));
-  _jb->add("isLeader", VPackValue(true));
   _jb->add("jobId", VPackValue(_jobId));
   _jb->add("timeCreated",
            VPackValue(timepointToString(std::chrono::system_clock::now())));
@@ -94,25 +88,19 @@ bool FailedLeader::create() {
   return false;
 }
 
-bool FailedLeader::start() {
-  // DBservers
-  std::string planPath =
-      planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  std::string curPath =
-      curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
+bool UnassumedLeadership::start() {
+  std::string planPath = planColPrefix + _database + "/" + _collection;
+  std::string curPath = curColPrefix + _database + "/" + _collection;
 
   Node const& current = _snapshot(curPath);
 
-  if (current.slice().length() == 1) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to change leadership for shard " +
-                                          _shard + " from " + _from + " to " +
-                                          _to + ". No in-sync followers:" +
-                                          current.slice().toJson();
-    return false;
-  }
-
   // Copy todo to pending
   Builder todo, pending;
+
+  // Find target server
+  if (!reassignShard()) {
+    return false;
+  }
 
   // Get todo entry
   todo.openArray();
@@ -139,6 +127,8 @@ bool FailedLeader::start() {
               VPackValue(VPackValueType::Object));
   pending.add("timeStarted",
               VPackValue(timepointToString(std::chrono::system_clock::now())));
+  pending.add("fromServer", VPackValue(_from));
+  pending.add("toServer", VPackValue(_to));
   for (auto const& obj : VPackObjectIterator(todo.slice()[0])) {
     pending.add(obj.key.copyString(), obj.value);
   }
@@ -150,25 +140,22 @@ bool FailedLeader::start() {
   pending.add("op", VPackValue("delete"));
   pending.close();
 
-  // --- Cyclic shift in sync servers
-  pending.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Array));
-  for (size_t i = 1; i < current.slice().length(); ++i) {
-    pending.add(current.slice()[i]);
-  }
-  pending.add(current.slice()[0]);
-  pending.close();
-
-  // --- Block shard
-  pending.add(_agencyPrefix + blockedShardsPrefix + _shard,
-              VPackValue(VPackValueType::Object));
-  pending.add("jobId", VPackValue(_jobId));
-  pending.close();
-
   // --- Increment Plan/Version
   pending.add(_agencyPrefix + planVersion, VPackValue(VPackValueType::Object));
   pending.add("op", VPackValue("increment"));
   pending.close();
 
+  // --- Reassign DBServer
+  std::string path = planPath + "/shards/" + _shard;
+  pending.add(_agencyPrefix + path, VPackValue(VPackValueType::Array));
+  for (const auto& dbserver : VPackArrayIterator(_snapshot(path).slice())) {
+    if (dbserver.copyString() == _from) {
+      pending.add(VPackValue(_to));
+    } else {
+      pending.add(dbserver);
+    }
+  }
+  pending.close();
   pending.close();
 
   // Precondition
@@ -178,12 +165,6 @@ bool FailedLeader::start() {
   pending.add("old", current.slice());
   pending.close();
 
-  // --- Check if shard is not blocked
-  pending.add(_agencyPrefix + blockedShardsPrefix + _shard,
-              VPackValue(VPackValueType::Object));
-  pending.add("oldEmpty", VPackValue(true));
-  pending.close();
-
   pending.close();
   pending.close();
 
@@ -191,17 +172,83 @@ bool FailedLeader::start() {
   write_ret_t res = transact(_agent, pending);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    LOG_TOPIC(INFO, Logger::AGENCY) << "Pending: Change leadership " + _shard +
-                                           " from " + _from + " to " + _to;
+    LOG_TOPIC(INFO, Logger::AGENCY)
+        << "Pending: Reassign creating leader for " + _shard + " from " +
+               _from + " to " + _to;
     return true;
   }
 
   LOG_TOPIC(INFO, Logger::AGENCY)
       << "Precondition failed for starting job " + _jobId;
+
   return false;
 }
 
-JOB_STATUS FailedLeader::status() {
+bool UnassumedLeadership::reassignShard() {
+  std::vector<std::string> availServers;
+
+  // Get servers from plan
+  Node::Children const& dbservers = _snapshot("/Plan/DBServers").children();
+  for (auto const& srv : dbservers) {
+    availServers.push_back(srv.first);
+  }
+
+  // Remove this server
+  availServers.erase(
+      std::remove(availServers.begin(), availServers.end(), _from),
+      availServers.end());
+
+  // Remove cleaned from ist
+  if (_snapshot.exists("/Target/CleanedServers").size() == 2) {
+    for (auto const& srv :
+         VPackArrayIterator(_snapshot("/Target/CleanedServers").slice())) {
+      availServers.erase(std::remove(availServers.begin(), availServers.end(),
+                                     srv.copyString()),
+                         availServers.end());
+    }
+  }
+
+  // Remove failed from ist
+  if (_snapshot.exists("/Target/FailedServers").size() == 2) {
+    for (auto const& srv :
+         VPackArrayIterator(_snapshot("/Target/FailedServers").slice())) {
+      availServers.erase(std::remove(availServers.begin(), availServers.end(),
+                                     srv.copyString()),
+                         availServers.end());
+    }
+  }
+
+  // Only destinations, which are not already holding this shard
+  std::string path =
+      planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
+  auto const& plannedservers = _snapshot(path);
+  for (auto const& dbserver : VPackArrayIterator(plannedservers.slice())) {
+    availServers.erase(std::remove(availServers.begin(), availServers.end(),
+                                   dbserver.copyString()),
+                       availServers.end());
+  }
+
+  // Minimum 1 DB server must remain
+  if (availServers.empty()) {
+    LOG_TOPIC(ERR, Logger::AGENCY) << "No DB servers left as target.";
+    return false;
+  }
+
+  // Among those a random destination
+  try {
+    _to = availServers.at(rand() % availServers.size());
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+        << "Will reassign creation of " + _shard + " to " + _to;
+  } catch (...) {
+    LOG_TOPIC(ERR, Logger::AGENCY)
+        << "Range error picking destination for shard " + _shard;
+    return false;
+  }
+
+  return true;
+}
+
+JOB_STATUS UnassumedLeadership::status() {
   auto status = exists();
 
   if (status != NOTFOUND) {  // Get job details from agency
@@ -236,6 +283,8 @@ JOB_STATUS FailedLeader::status() {
     Node const& current = _snapshot(curPath);
 
     if (planned.slice()[0] == current.slice()[0]) {
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
+          << "Done reassigned creation of " + _shard + " to " + _to;
       if (finish("Shards/" + shard)) {
         return FINISHED;
       }

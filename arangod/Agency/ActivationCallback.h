@@ -21,42 +21,33 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_INCEPTION_H
-#define ARANGOD_CONSENSUS_INCEPTION_H 1
+#ifndef ARANGOD_CONSENSUS_ACTIVATION_CALLBACK_H
+#define ARANGOD_CONSENSUS_ACTIVATION_CALLBACK_H 1
 
-#include <memory>
-
-#include "Basics/Common.h"
-#include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
+#include "Agency/AgencyCommon.h"
+#include "Cluster/ClusterComm.h"
 
 namespace arangodb {
 namespace consensus {
 
 class Agent;
 
-class Inception : public Thread {
+class ActivationCallback : public arangodb::ClusterCommCallback {
  public:
-  Inception();
-  explicit Inception(Agent*);
-  virtual ~Inception();
+  ActivationCallback();
 
-  void run() override;
-  bool start();
+  ActivationCallback(Agent*, std::string const&, index_t);
 
-  /// @brief Orderly shutdown of thread
-  void beginShutdown() override;
+  virtual bool operator()(arangodb::ClusterCommResult*) override final;
+
+  void shutdown();
 
  private:
-  void activeAgency();
-  void gossip();
-
   Agent* _agent;
+  index_t _last;
+  std::string _slaveID;
 };
 }
-}
+}  // namespace
 
 #endif

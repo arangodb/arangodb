@@ -33,7 +33,7 @@ namespace consensus {
 class Agent;
 
 class AgentCallback : public arangodb::ClusterCommCallback {
-public:
+ public:
   AgentCallback();
 
   AgentCallback(Agent*, std::string const&, index_t);
@@ -42,7 +42,7 @@ public:
 
   void shutdown();
 
-private:
+ private:
   Agent* _agent;
   index_t _last;
   std::string _slaveID;

@@ -21,9 +21,9 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RestAgencyPrivHandler.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
-#include "RestAgencyPrivHandler.h"
 
 #include "Agency/Agent.h"
 
@@ -58,13 +58,14 @@ inline RestHandler::status RestAgencyPrivHandler::reportErrorEmptyRequest() {
 }
 
 inline RestHandler::status RestAgencyPrivHandler::reportTooManySuffices() {
-  LOG_TOPIC(WARN, Logger::AGENCY) << "Agency handles a single suffix: vote, log or configure";
+  LOG_TOPIC(WARN, Logger::AGENCY)
+      << "Agency handles a single suffix: vote, log or configure";
   generateError(GeneralResponse::ResponseCode::NOT_FOUND, 404);
   return RestHandler::status::DONE;
 }
 
 inline RestHandler::status RestAgencyPrivHandler::reportBadQuery(
-  std::string const& message) {
+    std::string const& message) {
   generateError(GeneralResponse::ResponseCode::BAD, 400, message);
   return RestHandler::status::DONE;
 }
@@ -137,9 +138,9 @@ RestHandler::status RestAgencyPrivHandler::execute() {
         query_t query = _request->toVelocyPackBuilderPtr(&options);
         try {
           query_t ret = _agent->gossip(query);
-          result.add("id",ret->slice().get("id"));
-          result.add("endpoint",ret->slice().get("endpoint"));
-          result.add("pool",ret->slice().get("pool"));
+          result.add("id", ret->slice().get("id"));
+          result.add("endpoint", ret->slice().get("endpoint"));
+          result.add("pool", ret->slice().get("pool"));
         } catch (std::exception const& e) {
           return reportBadQuery(e.what());
         }
@@ -148,7 +149,8 @@ RestHandler::status RestAgencyPrivHandler::execute() {
           return reportMethodNotAllowed();
         }
         if (_agent->leaderID() != NO_LEADER) {
-          result.add("active", _agent->config().activeAgentsToBuilder()->slice());
+          result.add("active",
+                     _agent->config().activeAgentsToBuilder()->slice());
         }
       } else if (_request->suffix()[0] == "inform") {
         arangodb::velocypack::Options options;

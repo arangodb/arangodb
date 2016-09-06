@@ -21,42 +21,30 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_INCEPTION_H
-#define ARANGOD_CONSENSUS_INCEPTION_H 1
+#include "ActivationCallback.h"
 
-#include <memory>
+#include "Agent.h"
 
-#include "Basics/Common.h"
-#include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
+using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
+ActivationCallback::ActivationCallback() : _agent(0), _last(0) {}
 
-namespace arangodb {
-namespace consensus {
+ActivationCallback::ActivationCallback(Agent* agent, std::string const& slaveID,
+                             index_t last)
+    : _agent(agent), _last(last), _slaveID(slaveID) {}
 
-class Agent;
+void ActivationCallback::shutdown() { _agent = 0; }
 
-class Inception : public Thread {
- public:
-  Inception();
-  explicit Inception(Agent*);
-  virtual ~Inception();
-
-  void run() override;
-  bool start();
-
-  /// @brief Orderly shutdown of thread
-  void beginShutdown() override;
-
- private:
-  void activeAgency();
-  void gossip();
-
-  Agent* _agent;
-};
+bool ActivationCallback::operator()(arangodb::ClusterCommResult* res) {
+  if (res->status == CL_COMM_SENT) {
+    if (_agent) {
+      _agent->reportIn(_slaveID, _last);
+    }
+  } else {
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "comm_status(" << res->status
+                                     << "), last(" << _last << "), follower("
+                                     << _slaveID << ")";
+  }
+  return true;
 }
-}
-
-#endif

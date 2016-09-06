@@ -76,8 +76,11 @@ add_executable(${BIN_ARANGOD}
   Actions/ActionFeature.cpp
   Actions/RestActionHandler.cpp
   Actions/actions.cpp
+  Agency/ActivationCallback.cpp
+  Agency/AddFollower.cpp
   Agency/AgencyFeature.cpp
   Agency/Agent.cpp
+  Agency/AgentActivator.cpp
   Agency/AgentCallback.cpp
   Agency/AgentConfiguration.cpp
   Agency/Constituent.cpp
@@ -90,11 +93,13 @@ add_executable(${BIN_ARANGOD}
   Agency/NotifyCallback.cpp
   Agency/Node.cpp
   Agency/Supervision.cpp
+  Agency/RemoveServer.cpp
   Agency/RestAgencyHandler.cpp
   Agency/RestAgencyPrivHandler.cpp
   Agency/State.cpp
   Agency/Store.cpp
   Agency/StoreCallback.cpp
+  Agency/UnassumedLeadership.cpp
   Agency/v8-agency.cpp
   Aql/Aggregator.cpp
   Aql/AqlItemBlock.cpp

@@ -26,23 +26,20 @@
 #include "Agent.h"
 #include "FailedLeader.h"
 #include "Job.h"
+#include "UnassumedLeadership.h"
 
 using namespace arangodb::consensus;
 
-FailedServer::FailedServer(Node const& snapshot,
-                           Agent* agent,
-                           std::string const& jobId,
-                           std::string const& creator,
+FailedServer::FailedServer(Node const& snapshot, Agent* agent,
+                           std::string const& jobId, std::string const& creator,
                            std::string const& agencyPrefix,
-                           std::string const& server) :
-  Job(snapshot, agent, jobId, creator, agencyPrefix),
-  _server(server) {
-  
+                           std::string const& server)
+    : Job(snapshot, agent, jobId, creator, agencyPrefix), _server(server) {
   try {
     JOB_STATUS js = status();
     if (js == TODO) {
-      start();        
-    } else if (js == NOTFOUND) {            
+      start();
+    } else if (js == NOTFOUND) {
       if (create()) {
         start();
       }
@@ -51,15 +48,13 @@ FailedServer::FailedServer(Node const& snapshot,
     LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
     finish("DBServers/" + _server, false, e.what());
   }
-
 }
 
-FailedServer::~FailedServer () {}
+FailedServer::~FailedServer() {}
 
 bool FailedServer::start() {
-  
-  LOG_TOPIC(INFO, Logger::AGENCY) <<
-    "Trying to start FailedLeader job" + _jobId + " for server " + _server;
+  LOG_TOPIC(INFO, Logger::AGENCY)
+      << "Trying to start FailedLeader job" + _jobId + " for server " + _server;
 
   // Copy todo to pending
   Builder todo, pending;
@@ -70,12 +65,12 @@ bool FailedServer::start() {
     try {
       _snapshot(toDoPrefix + _jobId).toBuilder(todo);
     } catch (std::exception const&) {
-      LOG_TOPIC(INFO, Logger::AGENCY) <<
-        "Failed to get key " + toDoPrefix + _jobId + " from agency snapshot";
+      LOG_TOPIC(INFO, Logger::AGENCY) << "Failed to get key " + toDoPrefix +
+                                             _jobId + " from agency snapshot";
       return false;
     }
   } else {
-    todo.add(_jb->slice()[0].valueAt(0));
+    todo.add(_jb->slice()[0].get(_agencyPrefix + toDoPrefix + _jobId));
   }
   todo.close();
 
@@ -92,7 +87,7 @@ bool FailedServer::start() {
     pending.add(obj.key.copyString(), obj.value);
   }
   pending.close();
-    
+
   // --- Delete todo
   pending.add(_agencyPrefix + toDoPrefix + _jobId,
               VPackValue(VPackValueType::Object));
@@ -100,79 +95,93 @@ bool FailedServer::start() {
   pending.close();
 
   // --- Block toServer
-  pending.add(_agencyPrefix +  blockedServersPrefix + _server,
+  pending.add(_agencyPrefix + blockedServersPrefix + _server,
               VPackValue(VPackValueType::Object));
   pending.add("jobId", VPackValue(_jobId));
   pending.close();
-    
+
   pending.close();
 
   // Preconditions
   // --- Check that toServer not blocked
   pending.openObject();
-  pending.add(_agencyPrefix +  blockedServersPrefix + _server,
+  pending.add(_agencyPrefix + blockedServersPrefix + _server,
               VPackValue(VPackValueType::Object));
   pending.add("oldEmpty", VPackValue(true));
   pending.close();
 
-  pending.close(); pending.close();
+  pending.close();
+  pending.close();
+
+  LOG(WARN) << pending.toJson();
 
   // Transact to agency
   write_ret_t res = transact(_agent, pending);
 
-  if (res.accepted && res.indices.size()==1 && res.indices[0]) {
-      
-    LOG_TOPIC(INFO, Logger::AGENCY) <<
-      "Pending: DB Server " + _server + " failed.";
-      
-    Node::Children const& databases =
-      _snapshot("/Plan/Collections").children();
+  if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
+    LOG_TOPIC(INFO, Logger::AGENCY)
+        << "Pending: DB Server " + _server + " failed.";
+
+    auto const& databases = _snapshot("/Plan/Collections").children();
+    auto const& current = _snapshot("/Current/Collections").children();
 
     size_t sub = 0;
 
     for (auto const& database : databases) {
+      auto cdatabase = current.at(database.first)->children();
+
       for (auto const& collptr : database.second->children()) {
         Node const& collection = *(collptr.second);
-        Node const& replicationFactor = collection("replicationFactor");
-        if (replicationFactor.slice().getUInt() > 1) {
-          for (auto const& shard : collection("shards").children()) {
-            VPackArrayIterator dbsit(shard.second->slice());
-              
-            // Only proceed if leader and create job
-            if ((*dbsit.begin()).copyString() != _server) {
-              continue;
-            }
 
-            FailedLeader(
-              _snapshot, _agent, _jobId + "-" + std::to_string(sub++), _jobId,
-              _agencyPrefix, database.first, collptr.first, shard.first,
-              _server, shard.second->slice()[1].copyString());
-              
-          } 
+        if (!cdatabase.find(collptr.first)->second->children().empty()) {
+          Node const& collection = *(collptr.second);
+          Node const& replicationFactor = collection("replicationFactor");
+          if (replicationFactor.slice().getUInt() > 1) {
+            for (auto const& shard : collection("shards").children()) {
+              VPackArrayIterator dbsit(shard.second->slice());
+
+              // Only proceed if leader and create job
+              if ((*dbsit.begin()).copyString() != _server) {
+                continue;
+              }
+
+              FailedLeader(
+                  _snapshot, _agent, _jobId + "-" + std::to_string(sub++),
+                  _jobId, _agencyPrefix, database.first, collptr.first,
+                  shard.first, _server, shard.second->slice()[1].copyString());
+            }
+          }
+
+        } else {
+          for (auto const& shard : collection("shards").children()) {
+            UnassumedLeadership(_snapshot, _agent,
+                                _jobId + "-" + std::to_string(sub++), _jobId,
+                                _agencyPrefix, database.first, collptr.first,
+                                shard.first, _server);
+          }
         }
       }
     }
-          
+
     return true;
   }
 
-  LOG_TOPIC(INFO, Logger::AGENCY) <<
-    "Precondition failed for starting job " + _jobId;
+  LOG_TOPIC(INFO, Logger::AGENCY)
+      << "Precondition failed for starting job " + _jobId;
 
   return false;
-    
 }
 
-bool FailedServer::create () {
-
-  LOG_TOPIC(INFO, Logger::AGENCY)
-    << "Todo: DB Server " + _server + " failed.";
+bool FailedServer::create() {
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Todo: DB Server " + _server + " failed.";
 
   std::string path = _agencyPrefix + toDoPrefix + _jobId;
 
   _jb = std::make_shared<Builder>();
   _jb->openArray();
   _jb->openObject();
+
+  // Job entry
   _jb->add(path, VPackValue(VPackValueType::Object));
   _jb->add("type", VPackValue("failedServer"));
   _jb->add("server", VPackValue(_server));
@@ -180,24 +189,40 @@ bool FailedServer::create () {
   _jb->add("creator", VPackValue(_creator));
   _jb->add("timeCreated",
            VPackValue(timepointToString(std::chrono::system_clock::now())));
-  _jb->close(); _jb->close(); _jb->close();
+  _jb->close();
+
+  // Failed server entry
+  path = _agencyPrefix + failedServersPrefix;
+  _jb->add(path, VPackValue(VPackValueType::Object));
+  _jb->add("op", VPackValue("push"));
+  _jb->add("new", VPackValue(_server));
+  _jb->close();
+
+  // Raise plan version
+  path = _agencyPrefix + planVersion;
+  _jb->add(path, VPackValue(VPackValueType::Object));
+  _jb->add("op", VPackValue("increment"));
+  _jb->close();
+
+  _jb->close();
+  _jb->close();
+
+  LOG(WARN) << _jb->toJson();
 
   write_ret_t res = transact(_agent, *_jb);
 
-  if (res.accepted && res.indices.size()==1 && res.indices[0]) {
+  if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     return true;
   }
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Failed to insert job " + _jobId;
   return false;
-    
 }
-  
-JOB_STATUS FailedServer::status () {
-    
+
+JOB_STATUS FailedServer::status() {
   auto status = exists();
 
-  if (status != NOTFOUND) { // Get job details from agency
+  if (status != NOTFOUND) {  // Get job details from agency
 
     try {
       _server = _snapshot(pos[status] + _jobId + "/server").getString();
@@ -208,23 +233,21 @@ JOB_STATUS FailedServer::status () {
       finish("DBServers/" + _server, false, err.str());
       return FAILED;
     }
-    
   }
 
   if (status == PENDING) {
-  
     Node::Children const todos = _snapshot(toDoPrefix).children();
     Node::Children const pends = _snapshot(pendingPrefix).children();
     size_t found = 0;
 
     for (auto const& subJob : todos) {
-      if (!subJob.first.compare(0, _jobId.size()+1, _jobId + "-")) {
+      if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
         found++;
       }
     }
 
     for (auto const& subJob : pends) {
-      if (!subJob.first.compare(0, _jobId.size()+1, _jobId + "-")) {
+      if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
         found++;
       }
     }
@@ -234,12 +257,7 @@ JOB_STATUS FailedServer::status () {
         return FINISHED;
       }
     }
-
   }
-  
+
   return status;
-    
 }
-  
-
-

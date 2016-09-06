@@ -21,42 +21,39 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_INCEPTION_H
-#define ARANGOD_CONSENSUS_INCEPTION_H 1
+#ifndef ARANGOD_CONSENSUS_UNASSUMED_LEADERSHIP_H
+#define ARANGOD_CONSENSUS_UNASSUMED_LEADERSHIP_H 1
 
-#include <memory>
-
-#include "Basics/Common.h"
-#include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
+#include "Job.h"
+#include "Supervision.h"
 
 namespace arangodb {
 namespace consensus {
 
-class Agent;
+struct UnassumedLeadership : public Job {
+  UnassumedLeadership(Node const& snapshot, Agent* agent,
+                      std::string const& jobId, std::string const& creator,
+                      std::string const& agencyPrefix,
+                      std::string const& database = std::string(),
+                      std::string const& collection = std::string(),
+                      std::string const& shard = std::string(),
+                      std::string const& server = std::string());
 
-class Inception : public Thread {
- public:
-  Inception();
-  explicit Inception(Agent*);
-  virtual ~Inception();
+  virtual ~UnassumedLeadership();
 
-  void run() override;
-  bool start();
+  bool reassignShard();
 
-  /// @brief Orderly shutdown of thread
-  void beginShutdown() override;
+  virtual bool create() override;
+  virtual bool start() override;
+  virtual JOB_STATUS status() override;
 
- private:
-  void activeAgency();
-  void gossip();
-
-  Agent* _agent;
+  std::string _database;
+  std::string _collection;
+  std::string _shard;
+  std::string _from;
+  std::string _to;
 };
 }
-}
+}  // namespaces
 
 #endif

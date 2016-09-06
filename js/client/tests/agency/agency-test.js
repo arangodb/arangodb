@@ -49,8 +49,6 @@ function agencyTestSuite () {
   var whoseTurn = 0;
   var request = require("@arangodb/request");
 
-  wait(3.0);
-
   function readAgency(list) {
     // We simply try all agency servers in turn until one gives us an HTTP
     // response:
@@ -97,6 +95,24 @@ function agencyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wait until leadership is established
+////////////////////////////////////////////////////////////////////////////////
+
+    testStartup : function () {
+      while (true) {
+        var res = request({
+          url: agencyServers[whoseTurn] + "/_api/agency/config",
+          method: "GET"
+        });
+        res.bodyParsed = JSON.parse(res.body);
+        if (res.bodyParsed.leaderId != "") {
+          break;
+        }
+        wait(0.1);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -269,19 +285,20 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["a/z"]]), [{"a":{"z":12}}]);
       writeAndCheck([[{"a/y":{"op":"set","new":12, "ttl": 1}}]]);
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
-      wait(1.250);
+      wait(2.0);
       assertEqual(readAndCheck([["a/y"]]), [{a:{}}]);
       writeAndCheck([[{"a/y":{"op":"set","new":12, "ttl": 1}}]]);
       writeAndCheck([[{"a/y":{"op":"set","new":12}}]]);
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
-      wait(1.250);
+      wait(2.0);
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
       writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12}}}]]);
-      assertEqual(readAndCheck([["/foo/bar/baz"]]), [{"foo":{"bar":{"baz":12}}}]);
+      assertEqual(readAndCheck([["/foo/bar/baz"]]),
+                  [{"foo":{"bar":{"baz":12}}}]);
       assertEqual(readAndCheck([["/foo/bar"]]), [{"foo":{"bar":{"baz":12}}}]);
       assertEqual(readAndCheck([["/foo"]]), [{"foo":{"bar":{"baz":12}}}]);
       writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12},"ttl":1}}]]);
-      wait(1.250);
+      wait(2.0);
       assertEqual(readAndCheck([["/foo"]]), [{"foo":{}}]);
       assertEqual(readAndCheck([["/foo/bar"]]), [{"foo":{}}]);
       assertEqual(readAndCheck([["/foo/bar/baz"]]), [{"foo":{}}]);
@@ -368,6 +385,72 @@ function agencyTestSuite () {
       writeAndCheck([[{"a/b/d":1}]]); // on existing scalar
       writeAndCheck([[{"/a/b/d":{"op":"pop"}}]]); // on existing scalar
       assertEqual(readAndCheck([["/a/b/d"]]), [{a:{b:{d:[]}}}]);        
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test "pop" operator
+////////////////////////////////////////////////////////////////////////////////
+
+    testOpErase : function () {
+      writeAndCheck([[{"/version":{"op":"delete"}}]]);
+      writeAndCheck([[{"/a":[0,1,2,3,4,5,6,7,8,9]}]]); // none before
+      assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,3,4,5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"erase","val":3}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,4,5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"erase","val":3}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,4,5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"erase","val":0}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[1,2,4,5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"erase","val":1}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[2,4,5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"erase","val":2}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[4,5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"erase","val":4}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"erase","val":5}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"erase","val":9}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[6,7,8]}]);
+      writeAndCheck([[{"a":{"op":"erase","val":7}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[6,8]}]);
+      writeAndCheck([[{"a":{"op":"erase","val":6}}],
+                     [{"a":{"op":"erase","val":8}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[]}]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test "pop" operator
+////////////////////////////////////////////////////////////////////////////////
+
+    testOpReplace : function () {
+      writeAndCheck([[{"/version":{"op":"delete"}}]]); // clear
+      writeAndCheck([[{"/a":[0,1,2,3,4,5,6,7,8,9]}]]); 
+      assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,3,4,5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"replace","val":3,"new":"three"}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,"three",4,5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"replace","val":1,"new":[1]}}]]);
+      assertEqual(readAndCheck([["/a"]]), [{a:[0,[1],2,"three",4,5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"replace","val":[1],"new":[1,2,3]}}]]);
+      assertEqual(readAndCheck([["/a"]]),
+                  [{a:[0,[1,2,3],2,"three",4,5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"replace","val":[1,2,3],"new":[1,2,3]}}]]);
+      assertEqual(readAndCheck([["/a"]]),
+                  [{a:[0,[1,2,3],2,"three",4,5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"replace","val":4,"new":[1,2,3]}}]]);
+      assertEqual(readAndCheck([["/a"]]),
+                  [{a:[0,[1,2,3],2,"three",[1,2,3],5,6,7,8,9]}]);
+      writeAndCheck([[{"a":{"op":"replace","val":9,"new":[1,2,3]}}]]);
+      assertEqual(readAndCheck([["/a"]]),
+                  [{a:[0,[1,2,3],2,"three",[1,2,3],5,6,7,8,[1,2,3]]}]);
+      writeAndCheck([[{"a":{"op":"replace","val":[1,2,3],"new":{"a":0}}}]]);
+      assertEqual(readAndCheck([["/a"]]),
+                  [{a:[0,{a:0},2,"three",{a:0},5,6,7,8,{a:0}]}]);
+      writeAndCheck([[{"a":{"op":"replace","val":{"a":0},"new":"a"}}]]);
+      assertEqual(readAndCheck([["/a"]]),
+                  [{a:[0,"a",2,"three","a",5,6,7,8,"a"]}]);
+      writeAndCheck([[{"a":{"op":"replace","val":"a","new":"/a"}}]]);
+      assertEqual(readAndCheck([["/a"]]),
+                  [{a:[0,"/a",2,"three","/a",5,6,7,8,"/a"]}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -529,14 +612,8 @@ function agencyTestSuite () {
       var res = writeAgency([[{"/bumms":{"op":"set","new":"fallera"}, "/bummsfallera": {"op":"set","new":"lalalala"}}]]);
       assertEqual(res.statusCode, 200);
       assertEqual(readAndCheck([["/bumms", "/bummsfallera"]]), [{bumms:"fallera", bummsfallera: "lalalala"}]);
-    },
-
-    testThousand: function() {
-      var i;
-      for (i = 0; i < 1000; i++) {
-        writeAndCheck([[{x:12}]]);
-      }
     }
+
   };
 }
 
