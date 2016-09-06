@@ -485,7 +485,7 @@ bool State::loadOrPersistConfiguration() {
       result.length()) {  // We already have a persisted conf
 
     try {
-      LOG(WARN) << result[0].toJson();
+      LOG_TOPIC(DEBUG, Logger::AGENCY) << "Merging configuration " << result[0].toJson();
       _agent->mergeConfiguration(result[0]);
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::AGENCY)
