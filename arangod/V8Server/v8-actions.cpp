@@ -1095,10 +1095,14 @@ static void JS_RawRequestBody(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
         case Endpoint::TransportType::VPP: {
           if (request != nullptr) {
-            std::string bodyStr = request->payload().toJson();
-            V8Buffer* buffer =
-                V8Buffer::New(isolate, bodyStr.c_str(), bodyStr.size());
-
+            auto slice = request->payload();
+            V8Buffer* buffer = nullptr;
+            if (slice.isNone()) {
+              buffer = V8Buffer::New(isolate, "", 0);
+            } else {
+              std::string bodyStr = slice.toJson();
+              buffer = V8Buffer::New(isolate, bodyStr.c_str(), bodyStr.size());
+            }
             TRI_V8_RETURN(buffer->_handle);
           }
         } break;

@@ -125,7 +125,7 @@ class GeneralServer;
 // (which has to be implemented in derived) as long as new input is available.
 
 class GeneralCommTask : public SocketTask {
- friend class GeneralServer;
+  friend class GeneralServer;
 
   GeneralCommTask(GeneralCommTask const&) = delete;
   GeneralCommTask const& operator=(GeneralCommTask const&) = delete;
@@ -142,7 +142,7 @@ class GeneralCommTask : public SocketTask {
     if (agentIt != _agents.end()) {
       return &(agentIt->second);
     } else {
-      //throw std::logic_error("there should be an agent for every request");
+      // throw std::logic_error("there should be an agent for every request");
       LOG(DEBUG) << "accessing already removed id";
       return &_agents[id];
     }
