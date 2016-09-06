@@ -76,6 +76,7 @@ void RestAgencyHandler::redirectRequest(std::string const& leaderId) {
     std::string url =
       Endpoint::uriForm(_agent->config().poolAt(leaderId)) +
         _request->requestPath();
+    _response->setResponseCode(rest::ResponseCode::TEMPORARY_REDIRECT);
     _response->setHeaderNC(StaticStrings::Location, url);
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
