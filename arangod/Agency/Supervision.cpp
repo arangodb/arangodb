@@ -600,7 +600,7 @@ void Supervision::shrinkCluster() {
           if (replFact > maxReplFact) {
             maxReplFact = replFact;
           }
-        } catch (std::exception const&) {
+        } catch (std::exception const& e) {
           LOG_TOPIC(WARN, Logger::AGENCY) << "Cannot retrieve replication " <<
             "factor for collection " << collptr.first << ": " << e.what();
           return;
