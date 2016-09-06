@@ -29,6 +29,7 @@
 #include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ServerState.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
@@ -46,10 +47,8 @@ Index::Index(
       _collection(collection),
       _fields(fields),
       _unique(unique),
-      _sparse(sparse),
-      _selectivityEstimate(0.0) {
+      _sparse(sparse) {
   // note: _collection can be a nullptr in the cluster coordinator case!!
-  // note: _selectivityEstimate is only used in cluster coordinator case
 }
 
 Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
@@ -60,9 +59,7 @@ Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
       _unique(arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, "unique", false)),
       _sparse(arangodb::basics::VelocyPackHelper::getBooleanValue(
-          slice, "sparse", false)),
-      _selectivityEstimate(arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-          slice, "selectivityEstimate", 0.0)) {
+          slice, "sparse", false)) {
   
   VPackSlice const fields = slice.get("fields");
   setFields(fields, Index::allowExpansion(Index::type(slice.get("type").copyString())));
@@ -82,9 +79,7 @@ Index::Index(VPackSlice const& slice)
       _unique(arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, "unique", false)),
       _sparse(arangodb::basics::VelocyPackHelper::getBooleanValue(
-          slice, "sparse", false)),
-      _selectivityEstimate(arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-          slice, "selectivityEstimate", 0.0)) {
+          slice, "sparse", false)) {
 
   VPackSlice const fields = slice.get("fields");
   setFields(fields, Index::allowExpansion(Index::type(slice.get("type").copyString())));
@@ -410,18 +405,16 @@ void Index::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
   builder.add("id", VPackValue(std::to_string(_iid)));
   builder.add("type", VPackValue(typeName()));
 
-  if (dumpFields()) {
-    builder.add(VPackValue("fields"));
-    VPackArrayBuilder b1(&builder);
-
-    for (auto const& field : fields()) {
-      std::string fieldString;
-      TRI_AttributeNamesToString(field, fieldString);
-      builder.add(VPackValue(fieldString));
-    }
+  builder.add(VPackValue("fields"));
+  builder.openArray();
+  for (auto const& field : fields()) {
+    std::string fieldString;
+    TRI_AttributeNamesToString(field, fieldString);
+    builder.add(VPackValue(fieldString));
   }
+  builder.close();
 
-  if (hasSelectivityEstimate()) {
+  if (hasSelectivityEstimate() && !ServerState::instance()->isCoordinator()) {
     builder.add("selectivityEstimate", VPackValue(selectivityEstimate()));
   }
 

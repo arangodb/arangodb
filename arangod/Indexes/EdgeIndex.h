@@ -143,8 +143,6 @@ class EdgeIndex final : public Index {
 
   double selectivityEstimate() const override final;
 
-  bool dumpFields() const override final { return true; }
-
   size_t memory() const override final;
 
   void toVelocyPack(VPackBuilder&, bool) const override final;

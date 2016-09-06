@@ -478,9 +478,11 @@ void EdgeIndex::buildSearchValueFromArray(TRI_edge_direction_e dir,
 ////////////////////////////////////////////////////////////////////////////////
 
 double EdgeIndex::selectivityEstimate() const {
-  if (_edgesFrom == nullptr || _edgesTo == nullptr) {
+  if (_edgesFrom == nullptr || 
+      _edgesTo == nullptr || 
+      ServerState::instance()->isCoordinator()) {
     // use hard-coded selectivity estimate in case of cluster coordinator
-    return _selectivityEstimate;
+    return 0.1;
   }
 
   // return average selectivity of the two index parts

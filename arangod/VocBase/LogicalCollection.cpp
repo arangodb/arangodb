@@ -938,7 +938,7 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result, bool withPath) const 
 
   result.add("indexBuckets", VPackValue(_indexBuckets));
   result.add(VPackValue("indexes"));
-  getIndexesVPack(result, true);
+  getIndexesVPack(result, false);
   result.add("replicationFactor", VPackValue(_replicationFactor));
   result.add(VPackValue("shards"));
   result.openObject();

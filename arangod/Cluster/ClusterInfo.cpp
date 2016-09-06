@@ -472,17 +472,34 @@ void ClusterInfo::loadPlan() {
                   std::strtol(b.c_str() + 1, nullptr, 10);
                   });
               newShards.emplace(std::make_pair(collectionId, shards));
+            } catch (std::exception const& ex) {
+              // The plan contains invalid collection information.
+              // This should not happen in healthy situations.
+              // If it happens in unhealthy situations the
+              // cluster should not fail.
+              LOG(ERR) << "Failed to load information for collection '"
+                       << collectionId << "': " << ex.what()  
+                       << ". invalid information in plan. The collection will "
+                          "be ignored for now and the invalid information will "
+                          "be repaired.";
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+              TRI_ASSERT(false);
+#endif
+              continue;
             } catch (...) {
               // The plan contains invalid collection information.
               // This should not happen in healthy situations.
               // If it happens in unhealthy situations the
               // cluster should not fail.
-              LOG(ERR) << "Failed to load information for collection "
-                       << collectionId
-                       << " invalid information in plan. The collection will "
+              LOG(ERR) << "Failed to load information for collection '"
+                       << collectionId << ". invalid information in plan. The collection will "
                           "be ignored for now and the invalid information will "
                           "be repaired.";
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
               TRI_ASSERT(false);
+#endif
               continue;
             }
           }
@@ -1404,7 +1421,7 @@ int ClusterInfo::ensureIndexCoordinator(
     }
     
     std::shared_ptr<VPackBuilder> tmp = std::make_shared<VPackBuilder>();
-    c->getIndexesVPack(*(tmp.get()), true);
+    c->getIndexesVPack(*(tmp.get()), false);
     MUTEX_LOCKER(guard, numberOfShardsMutex);
     {
       numberOfShards = c->numberOfShards();
@@ -1750,7 +1767,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
     if (c == nullptr) {
       return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
     }
-    c->getIndexesVPack(tmp, true);
+    c->getIndexesVPack(tmp, false);
     indexes = tmp.slice();
     
     if (!indexes.isArray()) {
