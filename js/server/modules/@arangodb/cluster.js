@@ -965,21 +965,28 @@ function tryLaunchJob () {
     if (jobs.running === null) {
       var shards = Object.keys(jobs.scheduled).sort();
       if (shards.length > 0) {
-        var jobInfo = jobs.scheduled[shards[0]];
-        try {
-          registerTask({
-            database: jobInfo.database,
-            params: {database: jobInfo.database, shard: jobInfo.shard,
-            planId: jobInfo.planId, leader: jobInfo.leader},
-            command: function (params) {
-              require('@arangodb/cluster').synchronizeOneShard(
-                params.database, params.shard, params.planId, params.leader);
-          }});
-        } catch (err) {
-          if (!require('internal').isStopping()) {
-            console.error('Could not registerTask for shard synchronization.');
+        var done = false;
+        while (!done) {
+          var jobInfo = jobs.scheduled[shards[0]];
+          try {
+            registerTask({
+              database: jobInfo.database,
+              params: {database: jobInfo.database, shard: jobInfo.shard,
+              planId: jobInfo.planId, leader: jobInfo.leader},
+              command: function (params) {
+                require('@arangodb/cluster').synchronizeOneShard(
+                  params.database, params.shard, params.planId, params.leader);
+            }});
+            done = true;
+          } catch (err) {
+            if (!require('internal').isStopping()) {
+              console.error('Could not registerTask for shard synchronization.',
+                            err);
+              wait(1.0);
+            } else {
+              done = true;
+            }
           }
-          return;
         }
         global.KEY_SET('shardSynchronization', 'running', jobInfo);
         console.debug('scheduleOneShardSynchronization: have launched job', jobInfo);
