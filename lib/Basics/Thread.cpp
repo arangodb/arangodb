@@ -180,7 +180,8 @@ Thread::~Thread() {
   }
 
   state = _state.load();
-  if (state != ThreadState::DETACHED) {
+
+  if (state != ThreadState::DETACHED && state != ThreadState::CREATED) {
     LOG(FATAL) << "thread is not detached but " << stringify(state)
                << ". shutting down hard";
     FATAL_ERROR_EXIT();
