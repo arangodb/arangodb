@@ -266,6 +266,7 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
           TRI_ERROR_BAD_PARAMETER,
           "The options require depthLookupInfo to be an object");
     }
+    LOG(ERR) << read.toJson();
 
     _depthLookupInfo.reserve(read.length());
     for (auto const& depth : VPackObjectIterator(read)) {
@@ -273,6 +274,7 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
       auto it = _depthLookupInfo.emplace(d, std::vector<LookupInfo>());
       TRI_ASSERT(it.second);
       VPackSlice list = depth.value;
+      TRI_ASSERT(length == list.length());
       it.first->second.reserve(length);
       for (size_t j = 0; j < length; ++j) {
         it.first->second.emplace_back(query, list.at(j), collections.at(j));
@@ -496,7 +498,6 @@ bool arangodb::traverser::TraverserOptions::evaluateEdgeExpression(
 
     bool mustDestroy = false;
     aql::AqlValue res = expression->execute(_trx, _ctx, mustDestroy);
-    TRI_ASSERT(res.isBoolean());
     expression->clearVariable(_tmpVar);
     bool result = res.toBoolean();
     if (mustDestroy) {

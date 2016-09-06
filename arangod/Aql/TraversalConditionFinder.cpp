@@ -350,8 +350,32 @@ static void transformCondition(AstNode const* node, Variable const* pvar,
       }
     }
 
-    bool foundVar = false;
     size_t idx = 0;
+
+    if (op == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // We only have a single attribute access. Identical to attr == true
+      AstNode* testee = baseCondition;
+      while(true) {
+        if (testee->numMembers() == 0) {
+          // Ok we barked up the wrong tree. Give up
+          break;
+        }
+        if (matchesPathAccessPattern(testee, pvar, idx, isEdge)) {
+          // On top level we may change a different member:
+          // cond == p.edges[x] 
+          // Otherwise we always switch the 0 member.
+          top->changeMember(0, varRefNode); 
+          tn->registerCondition(isEdge, idx, baseCondition);
+          break;
+        }
+        top = testee;
+        testee = testee->getMemberUnchecked(0);
+      }
+
+      continue;
+    }
+
+    bool foundVar = false;
     TRI_ASSERT(baseCondition->numMembers() >= 2);
     for (size_t i = 0; i < 2; ++i) {
       bool firstRun = true;

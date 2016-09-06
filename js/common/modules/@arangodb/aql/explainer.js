@@ -850,7 +850,7 @@ function processQuery (query, explain) {
 
         traversalDetails.push(node);
         if (node.hasOwnProperty('condition')) {
-          node.ConditionStr = buildSimpleExpression(node.condition);
+          node.ConditionStr = buildExpression(node.condition);
         }
 
         e = [];
