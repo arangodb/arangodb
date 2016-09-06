@@ -133,6 +133,7 @@ class Logger {
   static LogTopic COMPACTOR;
   static LogTopic COMMUNICATION;
   static LogTopic CONFIG;
+  static LogTopic CLUSTER;
   static LogTopic DATAFILES;
   static LogTopic HEARTBEAT;
   static LogTopic MMAP;
@@ -141,6 +142,7 @@ class Logger {
   static LogTopic REPLICATION;
   static LogTopic REQUESTS;
   static LogTopic STARTUP;
+  static LogTopic SUPERVISION;
   static LogTopic THREADS;
   static LogTopic V8;
 

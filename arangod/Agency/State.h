@@ -100,15 +100,17 @@ class State {
     return os;
   }
 
+  /// @brief compact state machine
   bool compact(arangodb::consensus::index_t cind);
 
+  /// @brief Remove RAFT conflicts. i.e. All indices, where higher term version
+  ///        exists are overwritten
   size_t removeConflicts(query_t const&);
 
+  /// @brief Persist active agency in pool
   bool persistActiveAgents(query_t const& active, query_t const& pool);
 
  private:
-  bool snapshot();
-
   /// @brief Save currentTerm, votedFor, log entries
   bool persist(index_t index, term_t term,
                arangodb::velocypack::Slice const& entry);
@@ -131,13 +133,22 @@ class State {
   /// @brief Create collection
   bool createCollection(std::string const& name);
 
+  /// @brief Compact persisted logs
   bool compactPersisted(arangodb::consensus::index_t cind);
+
+  /// @brief Compact RAM logs
   bool compactVolatile(arangodb::consensus::index_t cind);
+
+  /// @brief Remove obsolete logs
   bool removeObsolete(arangodb::consensus::index_t cind);
+
+  /// @brief Persist read database
   bool persistReadDB(arangodb::consensus::index_t cind);
 
+  /// @brief Our agent
   Agent* _agent;
 
+  /// @brief Our vocbase
   TRI_vocbase_t* _vocbase;
 
   mutable arangodb::Mutex _logLock; /**< @brief Mutex for modifying _log */
@@ -146,11 +157,16 @@ class State {
   bool _collectionsChecked;         /**< @brief Collections checked */
   bool _collectionsLoaded;
 
+  /// @brief Our query registry
   aql::QueryRegistry* _queryRegistry;
 
+  /// @brief Compaction step
   size_t _compaction_step;
+
+  /// @brief Current log offset
   size_t _cur;
 
+  /// @brief Operation options
   OperationOptions _options;
 };
 }
