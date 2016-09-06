@@ -30,8 +30,8 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
 #include "Basics/WorkMonitor.h"
+#include "Logger/Logger.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -147,7 +147,7 @@ std::string Thread::stringify(ThreadState state) {
 /// @brief constructs a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-Thread::Thread(std::string const& name) 
+Thread::Thread(std::string const& name)
     : _name(name),
       _thread(),
       _threadNumber(0),
@@ -156,7 +156,6 @@ Thread::Thread(std::string const& name)
       _state(ThreadState::CREATED),
       _affinity(-1),
       _workDescription(nullptr) {
-  
   TRI_InitThread(&_thread);
 }
 
@@ -193,9 +192,14 @@ Thread::~Thread() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Thread::beginShutdown() {
-  LOG_TOPIC(TRACE, Logger::THREADS) << "beginShutdown(" << _name << ")";
+  LOG_TOPIC(TRACE, Logger::THREADS)
+      << "beginShutdown(" << _name << ") in state " << stringify(_state.load());
 
   ThreadState state = _state.load();
+
+  while (state == ThreadState::CREATED) {
+    _state.compare_exchange_strong(state, ThreadState::STOPPED);
+  }
 
   while (state != ThreadState::STOPPING && state != ThreadState::STOPPED &&
          state != ThreadState::DETACHED) {
@@ -203,7 +207,8 @@ void Thread::beginShutdown() {
   }
 
   LOG_TOPIC(TRACE, Logger::THREADS) << "beginShutdown(" << _name
-                                    << ") reached state " << (int)_state.load();
+                                    << ") reached state "
+                                    << stringify(_state.load());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -264,7 +269,7 @@ bool Thread::isStopping() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Thread::start(ConditionVariable* finishedCondition) {
-  if (!isSystem() && ! ApplicationServer::isPrepared()) {
+  if (!isSystem() && !ApplicationServer::isPrepared()) {
     LOG(FATAL) << "trying to start a thread '" << _name
                << "' before prepare has finished, current state: "
                << (ApplicationServer::server == nullptr
