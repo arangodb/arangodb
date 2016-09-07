@@ -243,13 +243,10 @@ JOB_STATUS AddFollower::status () {
   }
 
   if (status == PENDING) {
-    std::string planPath =
-      planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
     std::string curPath =
       curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
-    
+
     Slice current = _snapshot(curPath).slice();
-    std::vector<std::string> currv;
     for (auto const& srv : VPackArrayIterator(current)) {
       if (srv.copyString() == _newFollower) {
         if (finish("Shards/" + _shard)) {
@@ -257,6 +254,7 @@ JOB_STATUS AddFollower::status () {
         }
       }
     }
+
   }
   
   return status;
