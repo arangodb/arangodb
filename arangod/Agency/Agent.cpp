@@ -279,10 +279,11 @@ void Agent::sendAppendEntriesRPC() {
       std::vector<log_t> unconfirmed = _state.get(last_confirmed);
       index_t highest = unconfirmed.back().index;
 
-      if (highest == _lastHighest[followerId] &&
-          (long)(500.0e6 * _config.minPing()) >
-              (std::chrono::system_clock::now() - _lastSent[followerId])
-                  .count()) {
+      std::chrono::duration<double> m =
+        std::chrono::system_clock::now() - _lastSent[followerId];
+      
+      if (highest == _lastHighest[followerId]
+          && 0.5 * _config.minPing() > m.count()) {
         continue;
       }
 
