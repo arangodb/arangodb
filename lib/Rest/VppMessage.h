@@ -93,7 +93,7 @@ struct VppInputMessage {
 };
 
 struct VPackMessageNoOwnBuffer {
-  VPackMessageNoOwnBuffer(VPackSlice head, std::vector<VPackSlice> payloads,
+  VPackMessageNoOwnBuffer(VPackSlice head, std::vector<VPackSlice>&& payloads,
                           uint64_t id, bool generateBody = true)
       : _header(head),
         _payloads(std::move(payloads)),

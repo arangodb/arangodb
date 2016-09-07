@@ -78,8 +78,12 @@ VPackMessageNoOwnBuffer VppResponse::prepareForNetwork() {
                                    VPackSlice::noneSlice(), _messageId,
                                    _generateBody);
   } else {
+    std::vector<VPackSlice> slices;
+    for (auto const& buffer : _vpackPayloads) {
+      slices.emplace_back(buffer.data());
+    }
     return VPackMessageNoOwnBuffer(VPackSlice(_header->data()),
-                                   VPackSlice(_vpackPayloads.front().data()),
-                                   _messageId, _generateBody);
+                                   std::move(slices), _messageId,
+                                   _generateBody);
   }
 }
