@@ -634,17 +634,17 @@ void ClusterInfo::loadCurrent() {
       _currentProt.version++;  // such that others notice our change
       _currentProt.isValid = true;  // will never be reset to false
     } else {
-      LOG(ERR) << "Current is not an object!";
+      LOG_TOPIC(ERR, Logger::CLUSTER) << "Current is not an object!";
     }
     
     return;
   }
   
-  LOG(ERR) << "Error while loading " << prefixCurrent
-           << " httpCode: " << result.httpCode()
-           << " errorCode: " << result.errorCode()
-           << " errorMessage: " << result.errorMessage()
-           << " body: " << result.body();
+  LOG_TOPIC(ERR, Logger::CLUSTER) << "Error while loading " << prefixCurrent
+                                  << " httpCode: " << result.httpCode()
+                                  << " errorCode: " << result.errorCode()
+                                  << " errorMessage: " << result.errorMessage()
+                                  << " body: " << result.body();
 }
 
 /// @brief ask about a collection
