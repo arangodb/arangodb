@@ -1488,8 +1488,14 @@ function optimizeInSuite () {
 
       result = db._query(edgeQuery, bindVars);
       extra = result.getExtra();
-      // We have only 10 valid elements in the array.
-      assertEqual(extra.stats.filtered, 90);
+      if (isCluster) {
+        // The cluster uses a different index no filtering on _key
+        assertEqual(extra.stats.filtered, 0);
+      } else {
+        // We have only 10 valid elements in the array.
+        assertEqual(extra.stats.filtered, 90);
+      }
+
       assertEqual(result.count(), 1000);
 
       // if the rule is disabled we expect to do way more filtering
@@ -1544,14 +1550,26 @@ function optimizeInSuite () {
 
       result = db._query(edgeQuery, bindVars);
       extra = result.getExtra();
-      // We have only 10 valid elements in the array.
-      assertEqual(extra.stats.filtered, 90);
+
+      if (isCluster) {
+        // The cluster uses a different index no filtering on _key
+        assertEqual(extra.stats.filtered, 0);
+      } else {
+        // We have only 10 valid elements in the array.
+        assertEqual(extra.stats.filtered, 90);
+      }
       assertEqual(result.count(), 1000);
 
       result = db._query(mixedQuery1, bindVars);
       extra = result.getExtra();
-      // We have only 10 valid elements in the array.
-      assertEqual(extra.stats.filtered, 90);
+
+      if (isCluster) {
+        // The cluster uses a different index no filtering on _key
+        assertEqual(extra.stats.filtered, 0);
+      } else {
+        // We have only 10 valid elements in the array.
+        assertEqual(extra.stats.filtered, 90);
+      }
       assertEqual(result.count(), 1000);
 
       result = db._query(mixedQuery2, bindVars);

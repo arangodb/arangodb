@@ -36,7 +36,10 @@
 using VPackHelper = arangodb::basics::VelocyPackHelper;
 
 arangodb::traverser::TraverserOptions::LookupInfo::LookupInfo()
-    : expression(nullptr), indexCondition(nullptr) {
+    : expression(nullptr),
+      indexCondition(nullptr),
+      conditionNeedUpdate(false),
+      conditionMemberToUpdate(0) {
   // NOTE: We need exactly one in this case for the optimizer to update
   idxHandles.resize(1);
 };
@@ -52,6 +55,12 @@ arangodb::traverser::TraverserOptions::LookupInfo::LookupInfo(
   TRI_ASSERT(shards.isArray());
   idxHandles.reserve(shards.length());
 
+  conditionNeedUpdate = arangodb::basics::VelocyPackHelper::getBooleanValue(
+      info, "condNeedUpdate", false);
+  conditionMemberToUpdate =
+      arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
+          info, "condMemberToUpdate", 0);
+  
   VPackSlice read = info.get("handle");
   if (!read.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -84,6 +93,7 @@ arangodb::traverser::TraverserOptions::LookupInfo::LookupInfo(
         "Each lookup requires expression to be an object");
   }
 
+
   expression = new aql::Expression(query->ast(), read);
 
   read = info.get("condition");
@@ -95,10 +105,13 @@ arangodb::traverser::TraverserOptions::LookupInfo::LookupInfo(
   indexCondition = new aql::AstNode(query->ast(), read); 
 }
 
-arangodb::traverser::TraverserOptions::LookupInfo::LookupInfo(LookupInfo const& other) 
+arangodb::traverser::TraverserOptions::LookupInfo::LookupInfo(
+    LookupInfo const& other)
     : idxHandles(other.idxHandles),
       expression(nullptr),
-      indexCondition(other.indexCondition) {
+      indexCondition(other.indexCondition),
+      conditionNeedUpdate(other.conditionNeedUpdate),
+      conditionMemberToUpdate(other.conditionMemberToUpdate) {
   expression = other.expression->clone();
 }
 
@@ -118,6 +131,8 @@ void arangodb::traverser::TraverserOptions::LookupInfo::buildEngineInfo(
   result.close();
   result.add(VPackValue("condition"));
   indexCondition->toVelocyPack(result, true);
+  result.add("condNeedUpdate", VPackValue(conditionNeedUpdate));
+  result.add("condMemberToUpdate", VPackValue(conditionMemberToUpdate));
   result.close();
 }
 
@@ -560,14 +575,17 @@ arangodb::traverser::TraverserOptions::nextCursorLocal(
   for (auto& info : list) {
     auto& node = info.indexCondition;
     TRI_ASSERT(node->numMembers() > 0);
-    auto dirCmp = node->getMemberUnchecked(node->numMembers() - 1);
-    TRI_ASSERT(dirCmp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
-    TRI_ASSERT(dirCmp->numMembers() == 2);
+    if (info.conditionNeedUpdate) {
+      // We have to inject _from/_to iff the condition needs it
+      auto dirCmp = node->getMemberUnchecked(info.conditionMemberToUpdate);
+      TRI_ASSERT(dirCmp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
+      TRI_ASSERT(dirCmp->numMembers() == 2);
 
-    auto idNode = dirCmp->getMemberUnchecked(1);
-    TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
-    TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
-    idNode->setStringValue(vid, vidLength);
+      auto idNode = dirCmp->getMemberUnchecked(1);
+      TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
+      TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
+      idNode->setStringValue(vid, vidLength);
+    }
     std::vector<OperationCursor*> csrs;
     csrs.reserve(info.idxHandles.size());
     for (auto const& it : info.idxHandles) {
