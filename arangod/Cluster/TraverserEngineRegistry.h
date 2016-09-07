@@ -63,6 +63,8 @@ class TraverserEngineRegistry {
   void returnEngine(TraverserEngineID);
 
  private:
+  
+  void destroy(TraverserEngineID, bool doLock);
 
   struct EngineInfo {
     bool _isInUse;            // Flag if this engine is in use
