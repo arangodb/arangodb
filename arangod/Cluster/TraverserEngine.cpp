@@ -127,6 +127,10 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t* vocbase,
 }
 
 TraverserEngine::~TraverserEngine() {
+  if (_trx) {
+    _trx->commit();
+    delete _trx;
+  }
 }
 
 void TraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder& builder) {
@@ -157,7 +161,7 @@ void TraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder& bu
       // Result now contains all valid edges, probably multiples.
     }
   } else if (vertex.isString()) {
-    auto edgeCursor = _opts->nextCursor(vertex, depth);
+    std::unique_ptr<arangodb::traverser::EdgeCursor> edgeCursor(_opts->nextCursor(vertex, depth));
 
     while(edgeCursor->next(result, cursorId)) {
       if (!_opts->evaluateEdgeExpression(result.back(), vertex, depth, cursorId)) {
