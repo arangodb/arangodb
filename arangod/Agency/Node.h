@@ -166,7 +166,7 @@ class Node {
   bool handle(arangodb::velocypack::Slice const&);
 
   /// @brief Create Builder representing this store
-  void toBuilder(Builder&) const;
+  void toBuilder(Builder&, bool showHidden = false) const;
 
   /// @brief Access children
   Children& children();

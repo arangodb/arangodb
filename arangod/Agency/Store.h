@@ -100,7 +100,7 @@ class Store : public arangodb::Thread {
   bool applies(arangodb::velocypack::Slice const&);
 
   /// @brief Create Builder representing this store
-  void toBuilder(Builder&) const;
+  void toBuilder(Builder&, bool showHidden = false) const;
 
   /// @brief Copy out a node
   Node const get(std::string const& path) const;

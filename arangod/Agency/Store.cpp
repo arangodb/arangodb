@@ -466,7 +466,7 @@ query_t Store::clearExpired() const {
 /// Dump internal data to builder
 void Store::dumpToBuilder(Builder& builder) const {
   MUTEX_LOCKER(storeLocker, _storeLock);
-  toBuilder(builder);
+  toBuilder(builder, true);
   {
     VPackObjectBuilder guard(&builder);
     for (auto const& i : _timeTable) {
@@ -591,7 +591,8 @@ Store& Store::operator=(VPackSlice const& slice) {
 }
 
 /// Put key value store in velocypack
-void Store::toBuilder(Builder& b) const { _node.toBuilder(b); }
+void Store::toBuilder(Builder& b, bool showHidden) const {
+  _node.toBuilder(b, showHidden); }
 
 /// Get kv-store at path vector
 Node Store::operator()(std::vector<std::string> const& pv) { return _node(pv); }
