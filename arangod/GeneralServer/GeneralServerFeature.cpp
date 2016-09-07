@@ -64,6 +64,7 @@
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestUploadHandler.h"
 #include "RestHandler/RestVersionHandler.h"
+#include "RestHandler/RestWalHandler.h"
 #include "RestHandler/WorkMonitorHandler.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/EndpointFeature.h"
@@ -432,6 +433,10 @@ void GeneralServerFeature::defineHandlers() {
       RestHandlerCreator<RestSimpleQueryHandler>::createData<
           aql::QueryRegistry*>,
       queryRegistry);
+  
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::WAL_PATH,
+      RestHandlerCreator<RestWalHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH,
