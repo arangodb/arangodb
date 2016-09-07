@@ -40,10 +40,6 @@ AgentActivator::AgentActivator(Agent* agent, std::string const& peerId)
 // Shutdown if not already
 AgentActivator::~AgentActivator() { shutdown(); }
 
-void AgentActivator::beginShutdown() { Thread::beginShutdown(); }
-
-bool AgentActivator::start() { return Thread::start(); }
-
 void AgentActivator::run() {
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting activation of " << _peerId;

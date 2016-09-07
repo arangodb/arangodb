@@ -452,7 +452,7 @@ void ClusterInfo::loadPlan() {
             
             std::string const collectionId = collectionPairSlice.key.copyString();
             try {
-              auto newCollection = std::make_shared<LogicalCollection>(vocbase, collectionSlice);
+              auto newCollection = std::make_shared<LogicalCollection>(vocbase, collectionSlice, false);
               std::string const collectionName = newCollection->name();
               
               // mop: register with name as well as with id

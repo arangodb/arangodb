@@ -76,6 +76,7 @@ void RestAgencyHandler::redirectRequest(std::string const& leaderId) {
     std::string url =
       Endpoint::uriForm(_agent->config().poolAt(leaderId)) +
         _request->requestPath();
+    _response->setResponseCode(rest::ResponseCode::TEMPORARY_REDIRECT);
     _response->setHeaderNC(StaticStrings::Location, url);
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
@@ -227,6 +228,7 @@ RestHandler::status RestAgencyHandler::handleWrite() {
         LOG_TOPIC(ERR, Logger::AGENCY) << "We don't know who the leader is";
         return status::DONE;
       } else {
+        
         redirectRequest(ret.redirect);
       }
     }

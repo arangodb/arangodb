@@ -75,7 +75,20 @@ bool Agent::mergeConfiguration(VPackSlice const& persisted) {
 }
 
 /// Dtor shuts down thread
-Agent::~Agent() { shutdown(); }
+Agent::~Agent() {
+  int counter = 0;
+  while (_constituent.isRunning()) {
+    usleep(100000);
+
+    // emit warning after 5 seconds
+    if (++counter == 10 * 5) {
+      LOG_TOPIC(FATAL, Logger::AGENCY) << "constituent thread did not finish";
+      FATAL_ERROR_EXIT();
+    }
+  }
+
+  shutdown();
+}
 
 /// State machine
 State const& Agent::state() const { return _state; }
@@ -114,9 +127,7 @@ std::string Agent::leaderID() const { return _constituent.leaderID(); }
 bool Agent::leading() const { return _constituent.leading(); }
 
 /// Activate a standby agent
-bool Agent::activateStandbyAgent() {
-  return true;
-}
+bool Agent::activateStandbyAgent() { return true; }
 
 /// Start constituent personality
 void Agent::startConstituent() {
@@ -500,6 +511,7 @@ void Agent::beginShutdown() {
 
   // Stop constituent and key value stores
   _constituent.beginShutdown();
+
   _spearhead.beginShutdown();
   _readDB.beginShutdown();
 

@@ -959,6 +959,7 @@ function tryLaunchJob () {
   if (isStopping()) {
     return;
   }
+  var doCleanup = false;
   lockSyncKeyspace();
   try {
     var jobs = global.KEYSPACE_GET('shardSynchronization');
@@ -978,25 +979,33 @@ function tryLaunchJob () {
                   params.database, params.shard, params.planId, params.leader);
             }});
             done = true;
+            global.KEY_SET('shardSynchronization', 'running', jobInfo);
+            console.debug('tryLaunchJob: have launched job', jobInfo);
+            delete jobs.scheduled[shards[0]];
+            global.KEY_SET('shardSynchronization', 'scheduled', jobs.scheduled);
           } catch (err) {
+            if (err.errorNum === ArangoError.ERROR_ARANGO_DATABASE_NOT_FOUND.code) {
+              doCleanup = true;
+              done = true;
+            }
             if (!require('internal').isStopping()) {
               console.error('Could not registerTask for shard synchronization.',
                             err);
               wait(1.0);
             } else {
+              doCleanup = true;
               done = true;
             }
           }
         }
-        global.KEY_SET('shardSynchronization', 'running', jobInfo);
-        console.debug('scheduleOneShardSynchronization: have launched job', jobInfo);
-        delete jobs.scheduled[shards[0]];
-        global.KEY_SET('shardSynchronization', 'scheduled', jobs.scheduled);
       }
     }
   }
   finally {
     unlockSyncKeyspace();
+  }
+  if (doCleanup) {   // database was deleted
+    global.KEYSPACE_REMOVE("shardSynchronization");
   }
 }
 

@@ -21,38 +21,40 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_AGENT_ACTIVATOR_H
-#define ARANGOD_CONSENSUS_AGENT_ACTIVATOR_H 1
+#ifndef ARANGOD_CONSENSUS_ADDFOLLOWER_H
+#define ARANGOD_CONSENSUS_ADDFOLLOWER_H 1
 
-#include <memory>
-
-#include "Basics/Common.h"
-#include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
+#include "Job.h"
+#include "Supervision.h"
 
 namespace arangodb {
 namespace consensus {
 
-class Agent;
-
-class AgentActivator : public Thread {
- public:
-  AgentActivator();
-  AgentActivator(Agent*, std::string const&);
-  ~AgentActivator();
-
-  void run() override;
-
- private:
-
-  Agent* _agent;
-  std::string _peerId;
+struct AddFollower : public Job {
   
+  AddFollower (Node const& snapshot,
+             Agent* agent,
+             std::string const& jobId,
+             std::string const& creator,
+             std::string const& prefix,
+             std::string const& database = std::string(),
+             std::string const& collection = std::string(),
+             std::string const& shard = std::string(),
+             std::string const& newFollower = std::string());
+  
+  virtual ~AddFollower ();
+  
+  virtual JOB_STATUS status () override;
+  virtual bool create () override;
+  virtual bool start() override;
+
+  std::string _database;
+  std::string _collection;
+  std::string _shard;
+  std::string _newFollower;
+
 };
-}
-}
+
+}}
 
 #endif
