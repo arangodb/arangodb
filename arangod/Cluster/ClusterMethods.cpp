@@ -2006,8 +2006,9 @@ std::map<std::string, std::vector<std::string>> distributeShards(
           count = 0;
         }
         if (++count2 == dbServers.size() + 1) {
-          LOG(WARN) << "createCollectionCoordinator: replicationFactor is "
-                       "too large for the number of DBservers";
+          LOG_TOPIC(WARN, Logger::CLUSTER)
+            << "createCollectionCoordinator: replicationFactor is "
+            << "too large for the number of DBservers";
           found = false;
           break;
         }

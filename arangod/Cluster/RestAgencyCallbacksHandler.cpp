@@ -72,7 +72,8 @@ RestHandler::status RestAgencyCallbacksHandler::execute() {
     ss >> index;
 
     auto callback = _agencyCallbackRegistry->getCallback(index);
-    LOG(DEBUG) << "Agency callback has been triggered. refetching!";
+    LOG_TOPIC(DEBUG, Logger::CLUSTER)
+      << "Agency callback has been triggered. refetching!";
     callback->refetchAndUpdate(true);
     setResponseCode(arangodb::GeneralResponse::ResponseCode::ACCEPTED);
   } catch (arangodb::basics::Exception const&) {

@@ -1118,7 +1118,8 @@ static void JS_isFoxxmaster(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_getFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_getFoxxmasterQueueupdate(
+  v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1666,7 +1667,8 @@ static void Return_PrepareClusterCommResultForJS(
       TRI_GET_GLOBAL_STRING(StatusKey);
       r->Set(StatusKey, TRI_V8_ASCII_STRING("RECEIVED"));
       TRI_ASSERT(res.answer != nullptr);
-      std::unordered_map<std::string, std::string> headers = res.answer->headers();
+      std::unordered_map<std::string, std::string> headers =
+        res.answer->headers();
       headers["content-length"] =
           StringUtils::itoa(res.answer->contentLength());
       for (auto& it : headers) {
@@ -1727,7 +1729,8 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string destination;
   std::string path;
   auto body = std::make_shared<std::string>();
-  auto headerFields = std::make_unique<std::unordered_map<std::string, std::string>>();
+  auto headerFields =
+    std::make_unique<std::unordered_map<std::string, std::string>>();
   ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   double timeout;
@@ -1748,7 +1751,8 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "couldn't queue async request");
   }
 
-  LOG(DEBUG) << "JS_AsyncRequest: request has been submitted";
+  LOG_TOPIC(DEBUG, Logger::CLUSTER)
+    << "JS_AsyncRequest: request has been submitted";
 
   Return_PrepareClusterCommResultForJS(args, res);
   TRI_V8_TRY_CATCH_END
@@ -1813,7 +1817,7 @@ static void JS_SyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "couldn't do sync request");
   }
 
-  LOG(DEBUG) << "JS_SyncRequest: request has been done";
+  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "JS_SyncRequest: request has been done";
 
   Return_PrepareClusterCommResultForJS(args, *res);
   TRI_V8_TRY_CATCH_END
@@ -1841,7 +1845,8 @@ static void JS_Enquire(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   OperationID operationID = TRI_ObjectToUInt64(args[0], true);
 
-  LOG(DEBUG) << "JS_Enquire: calling ClusterComm::enquire()";
+  LOG_TOPIC(DEBUG, Logger::CLUSTER)
+    << "JS_Enquire: calling ClusterComm::enquire()";
 
   ClusterCommResult const res = cc->enquire(operationID);
 
@@ -1910,7 +1915,7 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  LOG(DEBUG) << "JS_Wait: calling ClusterComm::wait()";
+  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "JS_Wait: calling ClusterComm::wait()";
 
   ClusterCommResult const res =
       cc->wait(myclientTransactionID, mycoordTransactionID, myoperationID,
@@ -1972,7 +1977,7 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  LOG(DEBUG) << "JS_Drop: calling ClusterComm::drop()";
+  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "JS_Drop: calling ClusterComm::drop()";
 
   cc->drop(myclientTransactionID, mycoordTransactionID, myoperationID,
            myshardID);
