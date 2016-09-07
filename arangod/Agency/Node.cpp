@@ -661,11 +661,14 @@ bool Node::applies(VPackSlice const& slice) {
   return true;
 }
 
-void Node::toBuilder(Builder& builder) const {
+void Node::toBuilder(Builder& builder, bool showHidden) const {
   try {
     if (type() == NODE) {
       VPackObjectBuilder guard(&builder);
       for (auto const& child : _children) {
+        if (child.first[0] == '.' && !showHidden) {
+          continue;
+        }
         builder.add(VPackValue(child.first));
         child.second->toBuilder(builder);
       }
