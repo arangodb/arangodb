@@ -2449,6 +2449,15 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
     return;
   }
 
+  if (type == NODE_TYPE_OPERATOR_TERNARY) {
+    getMember(0)->stringify(buffer, verbose, failIfLong);
+    buffer->appendChar('?');
+    getMember(1)->stringify(buffer, verbose, failIfLong);
+    buffer->appendChar(':');
+    getMember(2)->stringify(buffer, verbose, failIfLong);
+    return;
+  }
+
   if (type == NODE_TYPE_RANGE) {
     // not used by V8
     TRI_ASSERT(numMembers() == 2);

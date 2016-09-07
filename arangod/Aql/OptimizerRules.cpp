@@ -1461,10 +1461,11 @@ void arangodb::aql::removeRedundantCalculationsRule(
           continue;
         }
 
-        std::string const compareExpression(buffer.c_str(), buffer.length());
+        bool const isEqual = (buffer.length() == referenceExpression.size() && 
+                              memcmp(buffer.c_str(), referenceExpression.c_str(), buffer.length()) == 0);
         buffer.reset();
 
-        if (compareExpression == referenceExpression) {
+        if (isEqual) {
           // expressions are identical
           auto outvars = current->getVariablesSetHere();
           TRI_ASSERT(outvars.size() == 1);
