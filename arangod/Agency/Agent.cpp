@@ -132,10 +132,6 @@ bool Agent::activateStandbyAgent() { return true; }
 /// Start constituent personality
 void Agent::startConstituent() {
   activateAgency();
-
-  auto database = ApplicationServer::getFeature<DatabaseFeature>("Database");
-  auto vocbase = database->systemDatabase();
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
 }
 
 // Waits here for confirmation of log's commits up to index.
