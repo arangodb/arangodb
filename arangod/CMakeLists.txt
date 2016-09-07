@@ -250,6 +250,7 @@ add_executable(${BIN_ARANGOD}
   RestHandler/RestUploadHandler.cpp
   RestHandler/RestVersionHandler.cpp
   RestHandler/RestVocbaseBaseHandler.cpp
+  RestHandler/RestWalHandler.cpp
   RestHandler/WorkMonitorHandler.cpp
   RestServer/AffinityFeature.cpp
   RestServer/BootstrapFeature.cpp
