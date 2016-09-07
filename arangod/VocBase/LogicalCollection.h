@@ -358,11 +358,10 @@ class LogicalCollection {
 
   // SECTION: Index creation
 
-  /// @brief creates the initial indexes for the collection
- public:
-  // FIXME Should be private
-  int createInitialIndexes();
  private:
+  /// @brief creates the initial indexes for the collection
+  int createInitialIndexes();
+
   int openWorker(bool ignoreErrors);
 
   bool removeIndex(TRI_idx_iid_t iid);

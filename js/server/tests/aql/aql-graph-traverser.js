@@ -1936,7 +1936,7 @@ function complexFilteringSuite () {
         // 2 Edge Lookups (A)
         // 4 Edge Lookups (2 B) (2 D)
         // 2 Primary Lookups (C, F)
-        assertEqual(stats.scannedIndex, 8);
+        assertEqual(stats.scannedIndex, 9);
       }
       else {
         // 2 Edge Lookups (A)
