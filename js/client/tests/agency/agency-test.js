@@ -612,8 +612,22 @@ function agencyTestSuite () {
       var res = writeAgency([[{"/bumms":{"op":"set","new":"fallera"}, "/bummsfallera": {"op":"set","new":"lalalala"}}]]);
       assertEqual(res.statusCode, 200);
       assertEqual(readAndCheck([["/bumms", "/bummsfallera"]]), [{bumms:"fallera", bummsfallera: "lalalala"}]);
-    }
+    },
 
+    testHiddenAgencyWrite: {
+      var res = writeAgency([[{".agency": {"op":"set","new":"fallera"}}]]);
+      assertEqual(res.statusCode, 400);
+    }, 
+
+    testHiddenAgencyWriteSlash: {
+      var res = writeAgency([[{"/.agency": {"op":"set","new":"fallera"}}]]);
+      assertEqual(res.statusCode, 400);
+    },
+    
+    testHiddenAgencyWriteDeep: {
+      var res = writeAgency([[{"/.agency/hans": {"op":"set","new":"fallera"}}]]);
+      assertEqual(res.statusCode, 400);
+    } 
   };
 }
 
