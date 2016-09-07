@@ -101,7 +101,6 @@ class VppRequest final : public GeneralRequest {
   std::unordered_map<std::string, std::string> _values;
   std::unordered_map<std::string, std::vector<std::string>> _arrayValues;
   uint64_t _messageId;
-  const std::unordered_map<std::string, std::string> _cookies;  // TODO remove
 
   void parseHeaderInformation();
 };
