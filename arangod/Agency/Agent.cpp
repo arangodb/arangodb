@@ -136,7 +136,6 @@ void Agent::startConstituent() {
   auto database = ApplicationServer::getFeature<DatabaseFeature>("Database");
   auto vocbase = database->systemDatabase();
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
-  _constituent.start(vocbase, queryRegistry);
 }
 
 // Waits here for confirmation of log's commits up to index.
@@ -402,8 +401,8 @@ bool Agent::load() {
   TRI_ASSERT(queryRegistry != nullptr);
   if (size() == 1) {
     activateAgency();
-    _constituent.start(vocbase, queryRegistry);
   }
+    _constituent.start(vocbase, queryRegistry);
 
   if (_config.supervision()) {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting cluster sanity facilities";
