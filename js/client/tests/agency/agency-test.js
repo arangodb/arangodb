@@ -108,7 +108,7 @@ function agencyTestSuite () {
           method: "GET"
         });
         res.bodyParsed = JSON.parse(res.body);
-        if (res.bodyParsed.leaderId != "") {
+        if (res.bodyParsed.leaderId !== "") {
           break;
         }
         wait(0.1);
