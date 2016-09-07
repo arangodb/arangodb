@@ -24,7 +24,7 @@ The *_key* attribute of the vertex.
 Define if the request should wait until synced to disk.
 
 @RESTPARAM{keepNull, boolean, optional}
-Define if values set to null should be stored. By default the key is removed from the document.
+Define if values set to null should be stored. By default the key is not removed from the document.
 
 @RESTHEADERPARAMETERS
 
