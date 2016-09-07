@@ -170,7 +170,7 @@ class Agent : public arangodb::Thread {
   /// @brief Activate this agent in single agent mode.
   bool activateAgency();
 
-  /// @brief Activate new agent in pool to replace failed agent
+  /// @brief Activate new agent in pool to replace failed
   bool activateStandbyAgent();
 
   /// @brief Assignment of persisted state
