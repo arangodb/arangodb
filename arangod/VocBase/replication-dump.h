@@ -99,7 +99,7 @@ struct TRI_replication_dump_t {
   bool _includeSystem;
   bool _fromTickIncluded;
   bool _compat28;
-  std::vector<VPackBuffer<uint64_t>> _slices;
+  std::vector<VPackBuffer<uint8_t>> _slices;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -124,6 +124,7 @@ int TRI_DumpLogReplication(TRI_replication_dump_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t*,
-                                             TRI_voc_tick_t, TRI_voc_tick_t);
+                                             TRI_voc_tick_t, TRI_voc_tick_t,
+                                             bool useVpp = false);
 
 #endif

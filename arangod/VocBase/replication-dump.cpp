@@ -329,9 +329,9 @@ static int SliceifyMarker(TRI_replication_dump_t* dump,
   TRI_df_marker_type_t const type = marker->getType();
 
   VPackBuilder builder(&dump->_vpackOptions);
+  builder.openObject();
 
   if (!isDump) {
-    builder.openObject();
     // logger-follow command
     builder.add("tick", VPackValue(static_cast<uint64_t>(marker->getTick())));
 
@@ -380,11 +380,7 @@ static int SliceifyMarker(TRI_replication_dump_t* dump,
   } else {
     // collection dump
     if (withTicks) {
-      Append(dump, "{\"tick\":\"");
-      Append(dump, static_cast<uint64_t>(marker->getTick()));
-      Append(dump, "\",");
-    } else {
-      Append(dump, "{");
+      builder.add("tick", VPackValue(static_cast<uint64_t>(marker->getTick())));
     }
 
     if (dump->_compat28 && (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
@@ -392,28 +388,21 @@ static int SliceifyMarker(TRI_replication_dump_t* dump,
       // 2.8-compatible format
       VPackSlice slice(reinterpret_cast<char const*>(marker) +
                        DatafileHelper::VPackOffset(type));
-      arangodb::basics::VPackStringBufferAdapter adapter(dump->_buffer);
-      VPackDumper dumper(
-          &adapter,
-          &dump->_vpackOptions);  // note: we need the CustomTypeHandler here
-
-      // additionally dump "key" and "rev" attributes on the top-level
-      Append(dump, "\"key\":");
-      dumper.dump(slice.get(StaticStrings::KeyString));
+      builder.add("key", slice.get(StaticStrings::KeyString));
       if (slice.hasKey(StaticStrings::RevString)) {
-        Append(dump, ",\"rev\":");
-        dumper.dump(slice.get(StaticStrings::RevString));
+        builder.add("rev", slice.get(StaticStrings::RevString));
       }
       // convert 2300 markers to 2301 markers for edges
       Append(dump, ",\"type\":");
       if (type == TRI_DF_MARKER_VPACK_DOCUMENT && isEdgeCollection) {
-        Append(dump, 2301);
+        builder.add("type", VPackValue(2301));
       } else {
-        Append(dump, static_cast<uint64_t>(TranslateType(marker)));
+        builder.add("type",
+                    VPackValue(static_cast<uint64_t>(TranslateType(marker))));
       }
     } else {
-      Append(dump, "\"type\":");
-      Append(dump, static_cast<uint64_t>(TranslateType(marker)));
+      builder.add("type",
+                  VPackValue(static_cast<uint64_t>(TranslateType(marker))));
     }
   }
 
@@ -428,15 +417,9 @@ static int SliceifyMarker(TRI_replication_dump_t* dump,
     case TRI_DF_MARKER_VPACK_DROP_DATABASE:
     case TRI_DF_MARKER_VPACK_DROP_COLLECTION:
     case TRI_DF_MARKER_VPACK_DROP_INDEX: {
-      Append(dump, ",\"data\":");
-
       VPackSlice slice(reinterpret_cast<char const*>(marker) +
                        DatafileHelper::VPackOffset(type));
-      arangodb::basics::VPackStringBufferAdapter adapter(dump->_buffer);
-      VPackDumper dumper(
-          &adapter,
-          &dump->_vpackOptions);  // note: we need the CustomTypeHandler here
-      dumper.dump(slice);
+      builder.add("data", slice);
       break;
     }
 
@@ -453,7 +436,7 @@ static int SliceifyMarker(TRI_replication_dump_t* dump,
     }
   }
 
-  Append(dump, "}\n");
+  builder.close();
   return TRI_ERROR_NO_ERROR;
 }
 ////////////////////////////////////////////////////////////////////////////////
@@ -827,7 +810,8 @@ int TRI_DumpLogReplication(
 
 int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
                                              TRI_voc_tick_t tickMin,
-                                             TRI_voc_tick_t tickMax) {
+                                             TRI_voc_tick_t tickMax,
+                                             bool useVpp) {
   LOG(TRACE) << "determining transactions, tick range " << tickMin << " - "
              << tickMax;
 
@@ -914,32 +898,53 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
     // LOG(INFO) << "found transactions: " << transactions.size();
     // LOG(INFO) << "last tick: " << lastFoundTick;
 
-    if (transactions.empty()) {
-      Append(dump, "[]");
-    } else {
-      bool first = true;
-      Append(dump, "[\"");
-
-      for (auto const& it : transactions) {
-        if (it.second - 1 < lastFoundTick) {
-          lastFoundTick = it.second - 1;
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder builder(buffer);
+    if (useVpp) {
+      if (transactions.empty()) {
+        builder.add(VPackSlice::emptyArraySlice());
+      } else {
+        builder.openArray();
+        for (auto const& it : transactions) {
+          if (it.second - 1 < lastFoundTick) {
+            lastFoundTick = it.second - 1;
+          }
+          builder.add(VPackValue(it.first));
         }
-
-        if (first) {
-          first = false;
-        } else {
-          Append(dump, "\",\"");
-        }
-
-        Append(dump, it.first);
+        builder.close();
       }
 
-      Append(dump, "\"]");
+    } else {
+      if (transactions.empty()) {
+        Append(dump, "[]");
+      } else {
+        bool first = true;
+        Append(dump, "[\"");
+
+        for (auto const& it : transactions) {
+          if (it.second - 1 < lastFoundTick) {
+            lastFoundTick = it.second - 1;
+          }
+
+          if (first) {
+            first = false;
+          } else {
+            Append(dump, "\",\"");
+          }
+
+          Append(dump, it.first);
+        }
+
+        Append(dump, "\"]");
+      }
     }
 
     dump->_fromTickIncluded = fromTickIncluded;
     dump->_lastFoundTick = lastFoundTick;
     // LOG(INFO) << "last tick2: " << lastFoundTick;
+
+    (dump->_slices).push_back(std::move(buffer));
+
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
