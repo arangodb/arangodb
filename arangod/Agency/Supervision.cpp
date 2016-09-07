@@ -330,40 +330,47 @@ bool Supervision::doChecks() {
 }
 
 void Supervision::run() {
-  CONDITION_LOCKER(guard, _cv);
-  TRI_ASSERT(_agent != nullptr);
+  bool shutdown = false;
+  {
+    CONDITION_LOCKER(guard, _cv);
+    TRI_ASSERT(_agent != nullptr);
 
-  // Get agency prefix after cluster init
-  if (_jobId == 0) {
-    // We need the agency prefix to work, but it is only initialized by
-    // some other server in the cluster. Since the supervision does not
-    // make sense at all without other ArangoDB servers, we wait pretty
-    // long here before giving up:
-    if (!updateAgencyPrefix(1000, 1)) {
-      LOG_TOPIC(DEBUG, Logger::AGENCY)
+    // Get agency prefix after cluster init
+    if (_jobId == 0) {
+      // We need the agency prefix to work, but it is only initialized by
+      // some other server in the cluster. Since the supervision does not
+      // make sense at all without other ArangoDB servers, we wait pretty
+      // long here before giving up:
+      if (!updateAgencyPrefix(1000, 1)) {
+        LOG_TOPIC(DEBUG, Logger::AGENCY)
           << "Cannot get prefix from Agency. Stopping supervision for good.";
-      return;
-    }
-  }
-
-  while (!this->isStopping()) {
-    updateSnapshot();
-    // mop: always do health checks so shutdown is able to detect if a server
-    // failed otherwise
-    if (_agent->leading()) {
-      doChecks();
-    }
-
-    if (isShuttingDown()) {
-      handleShutdown();
-    } else if (_selfShutdown) {
-      ApplicationServer::server->beginShutdown();
-    } else if (_agent->leading()) {
-      if (!handleJobs()) {
-        break;
+        return;
       }
     }
-    _cv.wait(_frequency * 1000000);
+
+    while (!this->isStopping()) {
+      updateSnapshot();
+      // mop: always do health checks so shutdown is able to detect if a server
+      // failed otherwise
+      if (_agent->leading()) {
+        doChecks();
+      }
+
+      if (isShuttingDown()) {
+        handleShutdown();
+      } else if (_selfShutdown) {
+        shutdown = true;
+        break;
+      } else if (_agent->leading()) {
+        if (!handleJobs()) {
+          break;
+        }
+      }
+      _cv.wait(_frequency * 1000000);
+    }
+  }
+  if (shutdown) {
+    ApplicationServer::server->beginShutdown();
   }
 }
 
