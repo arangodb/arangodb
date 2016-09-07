@@ -39,6 +39,7 @@
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;
+using namespace arangodb::traverser;
 
 TraversalNode::EdgeConditionBuilder::EdgeConditionBuilder(
     TraversalNode const* tn)
@@ -127,7 +128,7 @@ static TRI_edge_direction_e parseDirection (AstNode const* node) {
 TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
                              TRI_vocbase_t* vocbase, AstNode const* direction,
                              AstNode const* start, AstNode const* graph,
-                             std::unique_ptr<traverser::TraverserOptions>& options)
+                             std::unique_ptr<TraverserOptions>& options)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
@@ -326,11 +327,11 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
 /// @brief Internal constructor to clone the node.
 TraversalNode::TraversalNode(
     ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-    std::vector<std::unique_ptr<aql::Collection>> const& edgeColls,
-    std::vector<std::unique_ptr<aql::Collection>> const& vertexColls,
+    std::vector<std::unique_ptr<Collection>> const& edgeColls,
+    std::vector<std::unique_ptr<Collection>> const& vertexColls,
     Variable const* inVariable, std::string const& vertexId,
     std::vector<TRI_edge_direction_e> const& directions,
-    std::unique_ptr<traverser::TraverserOptions>& options)
+    std::unique_ptr<TraverserOptions>& options)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
@@ -986,8 +987,8 @@ void TraversalNode::prepareOptions() {
   _optionsBuild = true;
 }
 
-void TraversalNode::addEngine(traverser::TraverserEngineID const& engine,
-                              ServerID const& server) {
+void TraversalNode::addEngine(TraverserEngineID const& engine,
+                              arangodb::ServerID const& server) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   _engines.emplace(server, engine);
 }
