@@ -121,5 +121,6 @@ void TraverserEngineRegistry::destroy(TraverserEngineID id, bool doLock) {
     _engines.erase(id);
   }
 
+  delete engine->_engine;
   delete engine;
 }
