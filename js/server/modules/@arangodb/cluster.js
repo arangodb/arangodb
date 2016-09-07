@@ -32,6 +32,7 @@ var console = require('console');
 var arangodb = require('@arangodb');
 var ArangoCollection = arangodb.ArangoCollection;
 var ArangoError = arangodb.ArangoError;
+var errors = require("internal").errors;
 var request = require('@arangodb/request').request;
 var wait = require('internal').wait;
 var _ = require('lodash');
@@ -984,7 +985,7 @@ function tryLaunchJob () {
             delete jobs.scheduled[shards[0]];
             global.KEY_SET('shardSynchronization', 'scheduled', jobs.scheduled);
           } catch (err) {
-            if (err.errorNum === ArangoError.ERROR_ARANGO_DATABASE_NOT_FOUND.code) {
+            if (err.errorNum === errors.ERROR_ARANGO_DATABASE_NOT_FOUND.code) {
               doCleanup = true;
               done = true;
             }
