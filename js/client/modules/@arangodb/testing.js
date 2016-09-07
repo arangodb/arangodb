@@ -1226,6 +1226,8 @@ function shutdownInstance (instanceInfo, options) {
   let count = 0;
   let bar = '[';
 
+  var shutdownTime = require('internal').time();
+
   let toShutdown = instanceInfo.arangods.slice();
   while (toShutdown.length > 0) {
     // Once all other servers are shut down, we take care of the agents,
@@ -1241,13 +1243,8 @@ function shutdownInstance (instanceInfo, options) {
       arangod.exitStatus = statusExternal(arangod.pid, false);
 
       if (arangod.exitStatus.status === 'RUNNING') {
-        ++count;
 
-        if (count % 10 === 0) {
-          bar = bar + '#';
-        }
-
-        if (count > timeout) {
+        if ((require('internal').time() - shutdownTime) > timeout) {
           print('forcefully terminating ' + yaml.safeDump(arangod.pid) +
             ' after ' + timeout + 's grace period; marking crashy.');
           serverCrashed = true;
