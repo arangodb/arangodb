@@ -29,6 +29,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 #include <iterator>
+#include <vector>
 #include "Basics/StringBuffer.h"
 
 namespace arangodb {
@@ -92,11 +93,29 @@ struct VppInputMessage {
 };
 
 struct VPackMessageNoOwnBuffer {
-  VPackMessageNoOwnBuffer(VPackSlice head, VPackSlice pay, uint64_t id,
+  VPackMessageNoOwnBuffer(VPackSlice head, std::vector<VPackSlice> payloads,
+                          uint64_t id, bool generateBody = true)
+      : _header(head),
+        _payloads(std::move(payloads)),
+        _id(id),
+        _generateBody(generateBody) {}
+
+  VPackMessageNoOwnBuffer(VPackSlice head, VPackSlice payload, uint64_t id,
                           bool generateBody = true)
-      : _header(head), _payload(pay), _id(id), _generateBody(generateBody) {}
+      : _header(head), _payloads(), _id(id), _generateBody(generateBody) {
+    _payloads.push_back(payload);
+  }
+
+  VPackSlice firstPayload() {
+    if (_payloads.size() && _generateBody) {
+      return _payloads.front();
+    }
+  }
+
+  std::vector<VPackSlice> payloads() { return _payloads; }
+
   VPackSlice _header;
-  VPackSlice _payload;
+  std::vector<VPackSlice> _payloads;
   uint64_t _id;
   bool _generateBody;
 };
