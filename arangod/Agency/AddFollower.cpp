@@ -245,7 +245,7 @@ JOB_STATUS AddFollower::status () {
   if (status == PENDING) {
     std::string curPath =
       curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
-    
+
     Slice current = _snapshot(curPath).slice();
     for (auto const& srv : VPackArrayIterator(current)) {
       if (srv.copyString() == _newFollower) {
@@ -254,6 +254,7 @@ JOB_STATUS AddFollower::status () {
         }
       }
     }
+
   }
   
   return status;
