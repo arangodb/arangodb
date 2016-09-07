@@ -45,10 +45,6 @@ class Inception : public Thread {
   virtual ~Inception();
 
   void run() override;
-  bool start();
-
-  /// @brief Orderly shutdown of thread
-  void beginShutdown() override;
 
  private:
   void activeAgency();

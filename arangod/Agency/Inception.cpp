@@ -39,10 +39,6 @@ Inception::Inception(Agent* agent) : Thread("Inception"), _agent(agent) {}
 // Shutdown if not already
 Inception::~Inception() { shutdown(); }
 
-void Inception::beginShutdown() { Thread::beginShutdown(); }
-
-bool Inception::start() { return Thread::start(); }
-
 /// Gossip to others
 /// - Get snapshot of gossip peers and agent pool
 /// - Create outgoing gossip.

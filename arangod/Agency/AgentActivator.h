@@ -42,13 +42,9 @@ class AgentActivator : public Thread {
  public:
   AgentActivator();
   AgentActivator(Agent*, std::string const&);
-  virtual ~AgentActivator();
+  ~AgentActivator();
 
   void run() override;
-  bool start();
-
-  /// @brief Orderly shutdown of thread
-  void beginShutdown() override;
 
  private:
 
