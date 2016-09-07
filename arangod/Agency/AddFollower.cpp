@@ -62,10 +62,10 @@ bool AddFollower::create () {
   std::string path, now(timepointToString(std::chrono::system_clock::now()));
 
   // DBservers
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::string curPath =
     curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   Slice current = _snapshot(curPath).slice();
   TRI_ASSERT(current.isArray());
   TRI_ASSERT(current[0].isString());
@@ -243,13 +243,10 @@ JOB_STATUS AddFollower::status () {
   }
 
   if (status == PENDING) {
-    std::string planPath =
-      planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
     std::string curPath =
       curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
     
     Slice current = _snapshot(curPath).slice();
-    std::vector<std::string> currv;
     for (auto const& srv : VPackArrayIterator(current)) {
       if (srv.copyString() == _newFollower) {
         if (finish("Shards/" + _shard)) {
