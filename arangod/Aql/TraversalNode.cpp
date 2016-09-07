@@ -929,15 +929,22 @@ void TraversalNode::prepareOptions() {
     // it is used in. Such that the traverser can update the respective string value
     // in-place
     // TODO This place can be optimized.
-    std::vector<std::vector<std::string>> fieldNames =
-        info.idxHandles[0].fieldNames();
-    for (size_t i = 0; i < fieldNames.size(); ++i) {
-      auto f = fieldNames[i];
-      if (f.size() == 1 && f[0] == usedField) {
-        // we only work for _from and _to not _from.foo which would be null anyways...
-        info.conditionNeedUpdate = true;
-        info.conditionMemberToUpdate = i;
-        break;
+    if (info.idxHandles[0].isEdgeIndex()) {
+      // Special case for edge index....
+      // It serves two attributes, but can only be asked for one of them...
+      info.conditionNeedUpdate = true;
+      info.conditionMemberToUpdate = 0;
+    } else {
+      std::vector<std::vector<std::string>> fieldNames =
+          info.idxHandles[0].fieldNames();
+      for (size_t i = 0; i < fieldNames.size(); ++i) {
+        auto f = fieldNames[i];
+        if (f.size() == 1 && f[0] == usedField) {
+          // we only work for _from and _to not _from.foo which would be null anyways...
+          info.conditionNeedUpdate = true;
+          info.conditionMemberToUpdate = i;
+          break;
+        }
       }
     }
     _options->_baseLookupInfos.emplace_back(std::move(info));
@@ -985,15 +992,22 @@ void TraversalNode::prepareOptions() {
       // it is used in. Such that the traverser can update the respective string value
       // in-place
       // TODO This place can be optimized.
-      std::vector<std::vector<std::string>> fieldNames =
-          info.idxHandles[0].fieldNames();
-      for (size_t i = 0; i < fieldNames.size(); ++i) {
-        auto f = fieldNames[i];
-        if (f.size() == 1 && f[0] == usedField) {
-          // we only work for _from and _to not _from.foo which would be null anyways...
-          info.conditionNeedUpdate = true;
-          info.conditionMemberToUpdate = i;
-          break;
+      if (info.idxHandles[0].isEdgeIndex()) {
+        // Special case for edge index....
+        // It serves two attributes, but can only be asked for one of them...
+        info.conditionNeedUpdate = true;
+        info.conditionMemberToUpdate = 0;
+      } else {
+        std::vector<std::vector<std::string>> fieldNames =
+            info.idxHandles[0].fieldNames();
+        for (size_t i = 0; i < fieldNames.size(); ++i) {
+          auto f = fieldNames[i];
+          if (f.size() == 1 && f[0] == usedField) {
+            // we only work for _from and _to not _from.foo which would be null anyways...
+            info.conditionNeedUpdate = true;
+            info.conditionMemberToUpdate = i;
+            break;
+          }
         }
       }
 
