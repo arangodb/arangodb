@@ -898,16 +898,19 @@ void TraversalNode::prepareOptions() {
   _options->_baseLookupInfos.reserve(numEdgeColls);
   // Compute Edge Indexes. First default indexes:
   for (size_t i = 0; i < numEdgeColls; ++i) {
+    std::string usedField;
     auto dir = _directions[i];
     // TODO we can optimize here. indexCondition and Expression could be
     // made non-overlapping.
     traverser::TraverserOptions::LookupInfo info;
     switch (dir) {
       case TRI_EDGE_IN:
+        usedField = StaticStrings::ToString;
         info.indexCondition =
             globalEdgeConditionBuilder.getInboundCondition()->clone(ast);
         break;
       case TRI_EDGE_OUT:
+        usedField = StaticStrings::FromString;
         info.indexCondition =
             globalEdgeConditionBuilder.getOutboundCondition()->clone(ast);
         break;
@@ -921,6 +924,22 @@ void TraversalNode::prepareOptions() {
         info.idxHandles[0]);
     TRI_ASSERT(res);  // Right now we have an enforced edge index which will
                       // always fit.
+
+    // We now have to check if we need _from / _to inside the index lookup and which position
+    // it is used in. Such that the traverser can update the respective string value
+    // in-place
+    // TODO This place can be optimized.
+    std::vector<std::vector<std::string>> fieldNames =
+        info.idxHandles[0].fieldNames();
+    for (size_t i = 0; i < fieldNames.size(); ++i) {
+      auto f = fieldNames[i];
+      if (f.size() == 1 && f[0] == usedField) {
+        // we only work for _from and _to not _from.foo which would be null anyways...
+        info.conditionNeedUpdate = true;
+        info.conditionMemberToUpdate = i;
+        break;
+      }
+    }
     _options->_baseLookupInfos.emplace_back(std::move(info));
   }
 
@@ -937,15 +956,18 @@ void TraversalNode::prepareOptions() {
     auto& builder = it.second;
 
     for (size_t i = 0; i < numEdgeColls; ++i) {
+      std::string usedField;
       auto dir = _directions[i];
       // TODO we can optimize here. indexCondition and Expression could be
       // made non-overlapping.
       traverser::TraverserOptions::LookupInfo info;
       switch (dir) {
         case TRI_EDGE_IN:
+          usedField = StaticStrings::ToString;
           info.indexCondition = builder->getInboundCondition()->clone(ast);
           break;
         case TRI_EDGE_OUT:
+          usedField = StaticStrings::FromString;
           info.indexCondition = builder->getOutboundCondition()->clone(ast);
           break;
         case TRI_EDGE_ANY:
@@ -959,6 +981,22 @@ void TraversalNode::prepareOptions() {
           info.idxHandles[0]);
       TRI_ASSERT(res);  // Right now we have an enforced edge index which will
                         // always fit.
+      // We now have to check if we need _from / _to inside the index lookup and which position
+      // it is used in. Such that the traverser can update the respective string value
+      // in-place
+      // TODO This place can be optimized.
+      std::vector<std::vector<std::string>> fieldNames =
+          info.idxHandles[0].fieldNames();
+      for (size_t i = 0; i < fieldNames.size(); ++i) {
+        auto f = fieldNames[i];
+        if (f.size() == 1 && f[0] == usedField) {
+          // we only work for _from and _to not _from.foo which would be null anyways...
+          info.conditionNeedUpdate = true;
+          info.conditionMemberToUpdate = i;
+          break;
+        }
+      }
+
       infos.emplace_back(std::move(info));
     }
   }
