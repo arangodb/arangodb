@@ -167,7 +167,7 @@ describe ArangoDB do
         cmd = edge_endpoint(graph_name, collection, key)
         cmd = cmd + "?waitForSync=#{waitForSync}"
         if keepNull != '' then
-          cmd = cmd + "&keepNull=" + keepNull
+          cmd = cmd + "&keepNull=#{keepNull}"
         end
         doc = ArangoDB.patch(cmd, :body => JSON.dump(body))
         return doc
@@ -489,6 +489,35 @@ describe ArangoDB do
             doc.parsed_response['vertex']['_rev'].should eq(doc.headers['etag'])
             doc.parsed_response['vertex']['_key'].should eq(key)
           end
+          
+          it "can update a vertex keepNull default(true)" do
+            doc = create_vertex( sync, graph_name, user_collection, {"name" => "Alice"})
+            key = doc.parsed_response['vertex']['_key']
+            doc = update_vertex( sync, graph_name, user_collection, key, {"name" => nil}, "")
+            doc.code.should eq(sync ? 200 : 202)
+            doc = get_vertex(graph_name, user_collection, key)
+            doc.parsed_response['vertex'].key?('name').should eq(true)
+            doc.parsed_response['vertex']['name'].should eq(nil)
+          end
+          
+          it "can update a vertex keepNull false" do
+            doc = create_vertex( sync, graph_name, user_collection, {"name" => "Alice"})
+            key = doc.parsed_response['vertex']['_key']
+            doc = update_vertex( sync, graph_name, user_collection, key, {"name" => nil}, false)
+            doc.code.should eq(sync ? 200 : 202)
+            doc = get_vertex(graph_name, user_collection, key)
+            doc.parsed_response['vertex'].key?('name').should eq(false)
+          end
+          
+          it "can update a vertex keepNull true" do
+            doc = create_vertex( sync, graph_name, user_collection, {"name" => "Alice"})
+            key = doc.parsed_response['vertex']['_key']
+            doc = update_vertex( sync, graph_name, user_collection, key, {"name" => nil}, true)
+            doc.code.should eq(sync ? 200 : 202)
+            doc = get_vertex(graph_name, user_collection, key)
+            doc.parsed_response['vertex'].key?('name').should eq(true)
+            doc.parsed_response['vertex']['name'].should eq(nil)
+          end
 
           it "can not update a non existing vertex" do
             key = "unknownKey"
@@ -652,6 +681,65 @@ describe ArangoDB do
             doc.parsed_response['edge']['type2'].should eq(type2)
             doc.parsed_response['edge']['_rev'].should eq(doc.headers['etag'])
             doc.parsed_response['edge']['_key'].should eq(key)
+          end
+          
+          it "can update an edge keepNull default(true)" do
+            v1 = create_vertex( sync, graph_name, user_collection, {})
+            v1.code.should eq(sync ? 201 : 202)
+            v1 = v1.parsed_response['vertex']['_id']
+            v2 = create_vertex( sync, graph_name, user_collection, {})
+            v2.code.should eq(sync ? 201 : 202)
+            v2 = v2.parsed_response['vertex']['_id']
+            type = "married"
+            doc = create_edge( sync, graph_name, friend_collection, v1, v2, {"type" => type})
+            doc.code.should eq(202)
+            key = doc.parsed_response['edge']['_key']
+
+            doc = update_edge( sync, graph_name, friend_collection, key, {"type" => nil}, "")
+            doc.code.should eq(sync ? 200 : 202)
+
+            doc = get_edge(graph_name, friend_collection, key)
+            doc.parsed_response['edge'].key?('type').should eq(true)
+            doc.parsed_response['edge']['type'].should eq(nil)
+          end
+    
+          it "can update an edge keepNull true" do
+            v1 = create_vertex( sync, graph_name, user_collection, {})
+            v1.code.should eq(sync ? 201 : 202)
+            v1 = v1.parsed_response['vertex']['_id']
+            v2 = create_vertex( sync, graph_name, user_collection, {})
+            v2.code.should eq(sync ? 201 : 202)
+            v2 = v2.parsed_response['vertex']['_id']
+            type = "married"
+            doc = create_edge( sync, graph_name, friend_collection, v1, v2, {"type" => type})
+            doc.code.should eq(202)
+            key = doc.parsed_response['edge']['_key']
+
+            doc = update_edge( sync, graph_name, friend_collection, key, {"type" => nil}, true)
+            doc.code.should eq(sync ? 200 : 202)
+
+            doc = get_edge(graph_name, friend_collection, key)
+            doc.parsed_response['edge'].key?('type').should eq(true)
+            doc.parsed_response['edge']['type'].should eq(nil)
+          end
+    
+          it "can update an edge keepNull false" do
+            v1 = create_vertex( sync, graph_name, user_collection, {})
+            v1.code.should eq(sync ? 201 : 202)
+            v1 = v1.parsed_response['vertex']['_id']
+            v2 = create_vertex( sync, graph_name, user_collection, {})
+            v2.code.should eq(sync ? 201 : 202)
+            v2 = v2.parsed_response['vertex']['_id']
+            type = "married"
+            doc = create_edge( sync, graph_name, friend_collection, v1, v2, {"type" => type})
+            doc.code.should eq(202)
+            key = doc.parsed_response['edge']['_key']
+
+            doc = update_edge( sync, graph_name, friend_collection, key, {"type" => nil}, false)
+            doc.code.should eq(sync ? 200 : 202)
+
+            doc = get_edge(graph_name, friend_collection, key)
+            doc.parsed_response['edge'].key?('type').should eq(false)
           end
 
           it "can not update a non existing edge" do

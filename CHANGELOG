@@ -1,5 +1,6 @@
 devel
 -----
+* changed default for keepNull of modifyVertex/modifyEdge to true in Gharial
 
 * added --cluster.system-replication-factor in order to adjust the
   replication factor for new system collections
