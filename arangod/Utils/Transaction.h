@@ -97,6 +97,10 @@ class Transaction {
     }
     explicit IndexHandle(std::shared_ptr<arangodb::Index> idx) : _index(idx) {
     }
+    std::vector<std::vector<std::string>> fieldNames() const;
+
+    bool isEdgeIndex() const;
+
    private:
     std::shared_ptr<arangodb::Index> getIndex() const;
   };

@@ -334,7 +334,7 @@ void Traverser::UniqueVertexGetter::reset(VPackSlice startVertex) {
   _returnedVertices.emplace(startVertex);
 }
 
-Traverser::Traverser(TraverserOptions* opts, Transaction* trx)
+Traverser::Traverser(arangodb::traverser::TraverserOptions* opts, arangodb::Transaction* trx)
     : _trx(trx),
       _startIdBuilder(trx),
       _readDocuments(0),

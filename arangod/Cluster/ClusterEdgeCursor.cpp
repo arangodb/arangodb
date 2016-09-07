@@ -32,7 +32,7 @@
 using ClusterEdgeCursor = arangodb::traverser::ClusterEdgeCursor;
 
 ClusterEdgeCursor::ClusterEdgeCursor(VPackSlice v, size_t depth,
-                                     ClusterTraverser* traverser)
+                                     arangodb::traverser::ClusterTraverser* traverser)
     : _position(0) {
       TransactionBuilderLeaser leased(traverser->_trx);
       fetchEdgesFromEngines(traverser->_dbname, traverser->_engines, v, depth,

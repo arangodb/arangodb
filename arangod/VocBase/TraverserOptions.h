@@ -75,6 +75,10 @@ struct TraverserOptions {
     std::vector<arangodb::Transaction::IndexHandle> idxHandles;
     aql::Expression* expression;
     aql::AstNode* indexCondition;
+    // Flag if we have to update _from / _to in the index search condition
+    bool conditionNeedUpdate;
+    // Position of _from / _to in the index search condition
+    size_t conditionMemberToUpdate;
 
     LookupInfo();
     ~LookupInfo();
