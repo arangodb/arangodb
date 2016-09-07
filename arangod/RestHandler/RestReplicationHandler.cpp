@@ -776,18 +776,26 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   // Set a few variables needed for our work:
   ClusterComm* cc = ClusterComm::instance();
 
-  HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
+  std::unique_ptr<ClusterCommResult> res;
+  if (_request->transportType() == Endpoint::TransportType::HTTP) {
+    HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
+    if (httpRequest == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
 
-  if (httpRequest == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    // Send a synchronous request to that shard using ClusterComm:
+    res = cc->syncRequest("", TRI_NewTickServer(), "server:" + DBserver,
+                          _request->requestType(),
+                          "/_db/" + StringUtils::urlEncode(dbname) +
+                              _request->requestPath() + params,
+                          httpRequest->body(), *headers, 300.0);
+  } else {
+    res = cc->syncRequest("", TRI_NewTickServer(), "server:" + DBserver,
+                          _request->requestType(),
+                          "/_db/" + StringUtils::urlEncode(dbname) +
+                              _request->requestPath() + params,
+                          _request->payload().toJson(), *headers, 300.0);
   }
-
-  // Send a synchronous request to that shard using ClusterComm:
-  auto res = cc->syncRequest("", TRI_NewTickServer(), "server:" + DBserver,
-                             _request->requestType(),
-                             "/_db/" + StringUtils::urlEncode(dbname) +
-                                 _request->requestPath() + params,
-                             httpRequest->body(), *headers, 300.0);
 
   if (res->status == CL_COMM_TIMEOUT) {
     // No reply, we give up:
@@ -813,19 +821,22 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   resetResponse(
       static_cast<rest::ResponseCode>(res->result->getHttpReturnCode()));
 
-  HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
-
-  if (_response == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-  }
-
-  httpResponse->setContentType(
+  _response->setContentType(
       res->result->getHeaderField(StaticStrings::ContentTypeHeader, dummy));
-  httpResponse->body().swap(&(res->result->getBody()));
+  if (_request->transportType() == Endpoint::TransportType::HTTP) {
+    HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
+    if (_response == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
+    httpResponse->body().swap(&(res->result->getBody()));
+  } else {
+    VPackSlice slice = res->result->getBodyVelocyPack()->slice();
+    _response->setPayload(slice, true);  // do we need to generate the body?!
+  }
 
   auto const& resultHeaders = res->result->getHeaderFields();
   for (auto const& it : resultHeaders) {
-    httpResponse->setHeader(it.first, it.second);
+    _response->setHeader(it.first, it.second);
   }
 }
 
@@ -1258,14 +1269,16 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
       arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, "waitForSync",
           application_features::ApplicationServer::getFeature<DatabaseFeature>(
-              "Database")->waitForSync()));
+              "Database")
+              ->waitForSync()));
   TRI_ASSERT(col->isVolatile() ==
              arangodb::basics::VelocyPackHelper::getBooleanValue(
                  slice, "isVolatile", false));
   TRI_ASSERT(col->isSystem() == (name[0] == '_'));
-  TRI_ASSERT(col->indexBuckets() ==
-             arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
-                 slice, "indexBuckets", DatabaseFeature::defaultIndexBuckets()));
+  TRI_ASSERT(
+      col->indexBuckets() ==
+      arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
+          slice, "indexBuckets", DatabaseFeature::defaultIndexBuckets()));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_voc_cid_t planId = 0;
   VPackSlice const planIdSlice = slice.get("planId");
@@ -1464,7 +1477,8 @@ int RestReplicationHandler::processRestoreCollection(
   arangodb::LogicalCollection* col = nullptr;
 
   if (reuseId) {
-    TRI_voc_cid_t const cid = arangodb::basics::VelocyPackHelper::extractIdValue(parameters);
+    TRI_voc_cid_t const cid =
+        arangodb::basics::VelocyPackHelper::extractIdValue(parameters);
 
     if (cid == 0) {
       errorMsg = "collection id is missing";

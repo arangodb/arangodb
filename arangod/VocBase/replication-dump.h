@@ -32,16 +32,23 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Dumper.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include <vector>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replication dump container
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_replication_dump_t {
-  TRI_replication_dump_t(std::shared_ptr<arangodb::StandaloneTransactionContext> transactionContext,
-                         size_t chunkSize,
-                         bool includeSystem, TRI_voc_cid_t restrictCollection)
+  TRI_replication_dump_t(std::shared_ptr<arangodb::StandaloneTransactionContext>
+                             transactionContext,
+                         size_t chunkSize, bool includeSystem,
+                         TRI_voc_cid_t restrictCollection, bool useVpp = false)
       : _transactionContext(transactionContext),
         _vocbase(transactionContext->vocbase()),
         _buffer(nullptr),
@@ -55,16 +62,19 @@ struct TRI_replication_dump_t {
         _hasMore(false),
         _includeSystem(includeSystem),
         _fromTickIncluded(false),
-        _compat28(false) {
+        _compat28(false),
+        _slices() {
     if (_chunkSize == 0) {
       // default chunk size
       _chunkSize = 128 * 1024;
     }
 
-    _buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, _chunkSize);
+    if (!useVpp) {
+      _buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, _chunkSize);
 
-    if (_buffer == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      if (_buffer == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
     }
   }
 
@@ -89,14 +99,16 @@ struct TRI_replication_dump_t {
   bool _includeSystem;
   bool _fromTickIncluded;
   bool _compat28;
+  std::vector<VPackBuffer<uint8_t>> _slices;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump data from a single collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DumpCollectionReplication(TRI_replication_dump_t*, arangodb::LogicalCollection*,
-                                  TRI_voc_tick_t, TRI_voc_tick_t, bool);
+int TRI_DumpCollectionReplication(TRI_replication_dump_t*,
+                                  arangodb::LogicalCollection*, TRI_voc_tick_t,
+                                  TRI_voc_tick_t, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump data from the replication log
@@ -112,6 +124,7 @@ int TRI_DumpLogReplication(TRI_replication_dump_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t*,
-                                             TRI_voc_tick_t, TRI_voc_tick_t);
+                                             TRI_voc_tick_t, TRI_voc_tick_t,
+                                             bool useVpp = false);
 
 #endif
