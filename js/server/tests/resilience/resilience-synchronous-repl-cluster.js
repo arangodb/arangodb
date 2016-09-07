@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertEqual, fail */
+/*global assertTrue, assertFalse, assertEqual, fail, instanceInfo */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test synchronous replication in the cluster
@@ -780,7 +780,7 @@ function SynchronousReplicationSuite () {
       let info = global.ArangoClusterInfo.getCollectionInfo('_system', cn);
       let shard = Object.keys(info.shards);
       while (true) {
-        if (info.shards[shard][0] != leader) {
+        if (info.shards[shard][0] !== leader) {
           // mop: leader should first become a follower
           assertEqual(info.shards[shard][1], leader);
           break;
@@ -794,10 +794,10 @@ function SynchronousReplicationSuite () {
 
       // mop: now when we reduce the number of servers this server should be cleaned out
       let numDBServers = instanceInfo.arangods.filter(arangod => {
-        return arangod.role == 'dbserver';
+        return arangod.role === 'dbserver';
       }).length;
       let coordinator = instanceInfo.arangods.filter(arangod => {
-        return arangod.role == 'coordinator';
+        return arangod.role === 'coordinator';
       })[0];
       
       const requestOptions = {};

@@ -162,7 +162,12 @@ SortInformation SortNode::getSortInformation(
         break;
       }
 
-      expression->stringify(buffer);
+      try {
+        expression->stringify(buffer);
+      } catch (...) {
+        result.isValid = false;
+        return result;
+      }
       result.criteria.emplace_back(
           std::make_tuple(const_cast<ExecutionNode const*>(setter), std::string(buffer->c_str(), buffer->length()), (*it).second));
       buffer->reset();

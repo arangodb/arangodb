@@ -1,6 +1,8 @@
 devel
 -----
 
+* changed default for keepNull of modifyVertex/modifyEdge to true in Gharial
+
 * renamed `maximalSize` attribute in parameter.json files to `journalSize`
 
   The `maximalSize` attribute will still be picked up from collections that
@@ -63,7 +65,20 @@ devel
 * bug in RAFT implementation of reads. dethroned leader still answered
 	requests in isolation
 
-v3.0.6 (XXXX-XX-XX)
+
+v3.0.8 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #2039
+
+
+v3.0.7 (2016-09-05)
+-------------------
+
+* new supervision job handles db server failure during collection creation.
+
+
+v3.0.6 (2016-09-02)
 -------------------
 
 * fixed issue #2026

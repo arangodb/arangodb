@@ -28,6 +28,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "StorageEngine/MMFilesDatafileStatistics.h"
 #include "VocBase/Ditch.h"
+#include "VocBase/MasterPointers.h"
 #include "VocBase/PhysicalCollection.h"
 
 struct TRI_datafile_t;
@@ -111,6 +112,15 @@ class MMFilesCollection final : public PhysicalCollection {
   void createStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) override {
     _datafileStatistics.create(fid, values);
   }
+    
+  /// @brief order a new master pointer
+  TRI_doc_mptr_t* requestMasterpointer() override;
+
+  /// @brief release an existing master pointer
+  void releaseMasterpointer(TRI_doc_mptr_t* mptr) override;
+  
+  /// @brief report extra memory used by indexes etc.
+  size_t memory() const override;
 
   void preventCompaction() override;
   bool tryPreventCompaction() override;
@@ -140,6 +150,8 @@ class MMFilesCollection final : public PhysicalCollection {
                               std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb);
 
  private:
+  arangodb::MasterPointers _masterPointers;
+
   mutable arangodb::Ditches _ditches;
 
   arangodb::basics::ReadWriteLock _filesLock;
