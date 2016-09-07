@@ -244,7 +244,7 @@ int CollectorThread::waitForResult(uint64_t timeout) {
   CONDITION_LOCKER(guard, _collectorResultCondition);
 
   if (_collectorResult == TRI_ERROR_NO_ERROR) {
-    if (guard.wait(timeout)) {
+    if (!guard.wait(timeout)) {
       return TRI_ERROR_LOCK_TIMEOUT;
     }
   }
@@ -385,6 +385,7 @@ int CollectorThread::collectLogfiles(bool& worked) {
       {
         CONDITION_LOCKER(guard, _collectorResultCondition);
         _collectorResult = TRI_ERROR_NO_ERROR;
+        _collectorResultCondition.broadcast();
       }
 
 #ifdef ARANGODB_ENABLE_ROCKSDB
