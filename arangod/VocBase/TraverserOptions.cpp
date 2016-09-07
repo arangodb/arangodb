@@ -266,8 +266,6 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
           TRI_ERROR_BAD_PARAMETER,
           "The options require depthLookupInfo to be an object");
     }
-    LOG(ERR) << read.toJson();
-
     _depthLookupInfo.reserve(read.length());
     for (auto const& depth : VPackObjectIterator(read)) {
       size_t d = basics::StringUtils::uint64(depth.key.copyString());
