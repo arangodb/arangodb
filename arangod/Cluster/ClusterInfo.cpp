@@ -485,7 +485,7 @@ void ClusterInfo::loadPlan() {
                        << collectionId << "': " << ex.what()  
                        << ". invalid information in plan. The collection will "
                           "be ignored for now and the invalid information will "
-                          "be repaired.";
+                          "be repaired. VelocyPack: " << collectionSlice.toJson();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
               TRI_ASSERT(false);
@@ -499,7 +499,7 @@ void ClusterInfo::loadPlan() {
               LOG(ERR) << "Failed to load information for collection '"
                        << collectionId << ". invalid information in plan. The collection will "
                           "be ignored for now and the invalid information will "
-                          "be repaired.";
+                          "be repaired. VelocyPack: " << collectionSlice.toJson();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
               TRI_ASSERT(false);
