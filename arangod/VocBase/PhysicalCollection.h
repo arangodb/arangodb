@@ -32,6 +32,7 @@
 
 struct TRI_datafile_t;
 struct TRI_df_marker_t;
+struct TRI_doc_mptr_t;
 
 namespace arangodb {
 class Ditches;
@@ -76,6 +77,15 @@ class PhysicalCollection {
   
   /// @brief create statistics for a datafile, using the stats provided
   virtual void createStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) = 0;
+  
+  /// @brief report extra memory used by indexes etc.
+  virtual size_t memory() const = 0;
+    
+  /// @brief order a new master pointer
+  virtual TRI_doc_mptr_t* requestMasterpointer() = 0; 
+  
+  /// @brief release an existing master pointer
+  virtual void releaseMasterpointer(TRI_doc_mptr_t* mptr) = 0;
 
   /// @brief disallow compaction of the collection 
   /// after this call it is guaranteed that no compaction will be started until allowCompaction() is called

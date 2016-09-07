@@ -36,6 +36,7 @@
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/MasterPointer.h"
 #include "VocBase/datafile.h"
 #include "Wal/LogfileManager.h"
 
@@ -124,7 +125,7 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
 
   // it is a new entry
   if (found == nullptr) {
-    TRI_doc_mptr_t* header = collection->_masterPointers.request();
+    TRI_doc_mptr_t* header = collection->requestMasterpointer();
 
     if (header == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -139,7 +140,7 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
     int res = primaryIndex->insertKey(trx, header, &result);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      collection->_masterPointers.release(header);
+      collection->releaseMasterpointer(header);
       LOG(ERR) << "inserting document into primary index failed with error: " << TRI_errno_string(res);
 
       return res;
@@ -248,7 +249,7 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
     collection->decNumberDocuments();
 
     // free the header
-    collection->_masterPointers.release(found);
+    collection->releaseMasterpointer(found);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -1090,7 +1091,23 @@ int MMFilesCollection::applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t 
 
   return false; // hasMore = false
 }
+  
+/// @brief order a new master pointer
+TRI_doc_mptr_t* MMFilesCollection::requestMasterpointer() {
+  return _masterPointers.request();
+}
+        
+/// @brief release an existing master pointer
+void MMFilesCollection::releaseMasterpointer(TRI_doc_mptr_t* mptr) {
+  TRI_ASSERT(mptr != nullptr);
+  _masterPointers.release(mptr);
+}
  
+/// @brief report extra memory used by indexes etc.
+size_t MMFilesCollection::memory() const {
+  return _masterPointers.memory();
+}
+
 /// @brief disallow compaction of the collection 
 void MMFilesCollection::preventCompaction() {
   _compactionLock.readLock();

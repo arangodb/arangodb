@@ -279,7 +279,7 @@ void SimpleAttributeEqualityMatcher::calculateIndexCosts(
     // index is unique, and the condition covers all attributes
     // now use a low value for the costs
     estimatedItems = 1;
-    estimatedCost = 1.0;
+    estimatedCost = 0.95;
   } else if (index->hasSelectivityEstimate()) {
     // use index selectivity estimate
     double estimate = index->selectivityEstimate();

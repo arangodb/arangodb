@@ -322,7 +322,6 @@ LogicalCollection::LogicalCollection(
       _cleanupIndexes(0),
       _persistentIndexes(0),
       _physical(nullptr),
-      _masterPointers(),
       _useSecondaryIndexes(true),
       _numberDocuments(0),
       _maxTick(0),
@@ -386,7 +385,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice const& i
       _persistentIndexes(0),
       _path(ReadStringValue(info, "path", "")),
       _physical(nullptr),
-      _masterPointers(),
       _useSecondaryIndexes(true),
       _numberDocuments(0),
       _maxTick(0),
@@ -1057,8 +1055,8 @@ std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() {
   } else {
     builder->openObject();
 
-      // add index information
-    size_t sizeIndexes = _masterPointers.memory();
+    // add index information
+    size_t sizeIndexes = getPhysical()->memory();
     size_t numIndexes = 0;
     for (auto const& idx : _indexes) {
       sizeIndexes += static_cast<size_t>(idx->memory());
@@ -1775,7 +1773,7 @@ int LogicalCollection::insert(Transaction* trx, VPackSlice const slice,
     arangodb::CollectionWriteLocker collectionLocker(this, useDeadlockDetector, lock);
 
     // create a new header
-    TRI_doc_mptr_t* header = operation.header = _masterPointers.request();
+    TRI_doc_mptr_t* header = operation.header = getPhysical()->requestMasterpointer(); 
 
     if (header == nullptr) {
       // out of memory. no harm done here. just return the error

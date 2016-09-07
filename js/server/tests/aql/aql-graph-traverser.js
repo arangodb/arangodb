@@ -1728,16 +1728,10 @@ function complexFilteringSuite () {
       assertEqual(cursor.count(), 0);
       var stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
-      if (isCluster) {
-        // The lookup will be using the primary Index.
-        // It will find 0 elements.
-        assertEqual(stats.scannedIndex, 0);
-      }
-      else {
-        // SingleServer will get the start vertex.
-        assertEqual(stats.scannedIndex, 1);
-      }
-      assertEqual(stats.filtered, 1);
+      // The lookup will be using the primary Index.
+      // It will find 0 elements.
+      assertEqual(stats.scannedIndex, 0);
+      assertEqual(stats.filtered, 0);
     },
 
     testVertexLevel0: function () {
