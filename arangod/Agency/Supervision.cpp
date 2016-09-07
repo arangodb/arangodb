@@ -23,6 +23,7 @@
 
 #include "Supervision.h"
 
+#include "Agency/AddFollower.h"
 #include "Agency/Agent.h"
 #include "Agency/CleanOutServer.h"
 #include "Agency/FailedLeader.h"
@@ -373,13 +374,14 @@ bool Supervision::isShuttingDown() {
   }
 }
 
-bool Supervision::serverGood(const std::string& serverName) {
+std::string const Supervision::serverHealth(const std::string& serverName) {
   try {
     const std::string serverStatus(healthPrefix + serverName + "/Status");
     const std::string status = _snapshot(serverStatus).getString();
-    return status == Supervision::HEALTH_STATUS_GOOD;
+    return status;
   } catch (...) {
-    return false;
+    LOG_TOPIC(WARN, Logger::AGENCY) << "Couldn't read server health status for server " << serverName;
+    return "";
   }
 }
 
@@ -397,9 +399,9 @@ void Supervision::handleShutdown() {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Waiting for " << server.first
                                      << " to shutdown";
 
-    if (!serverGood(server.first)) {
-      LOG_TOPIC(WARN, Logger::AGENCY) << "Server " << server.first
-                                      << " did not shutdown properly it seems!";
+    if (serverHealth(server.first) != HEALTH_STATUS_GOOD) {
+      LOG_TOPIC(WARN, Logger::AGENCY)
+        << "Server " << server.first << " did not shutdown properly it seems!";
       continue;
     }
     serversCleared = false;
@@ -454,9 +456,13 @@ void Supervision::workJobs() {
                 jobId = job("jobId").getString(),
                 creator = job("creator").getString();
     if (jobType == "failedServer") {
-      FailedServer(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      FailedServer (_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "addFollower") {
+      AddFollower (_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "cleanOutServer") {
-      CleanOutServer(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      CleanOutServer (_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "removeServer") {
+      RemoveServer (_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "moveShard") {
       MoveShard(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "failedLeader") {
@@ -473,9 +479,13 @@ void Supervision::workJobs() {
                 jobId = job("jobId").getString(),
                 creator = job("creator").getString();
     if (jobType == "failedServer") {
-      FailedServer(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      FailedServer (_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "addFollower") {
+      AddFollower (_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "cleanOutServer") {
-      CleanOutServer(_snapshot, _agent, jobId, creator, _agencyPrefix);
+      CleanOutServer (_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "removeServer") {
+      RemoveServer (_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "moveShard") {
       MoveShard(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "failedLeader") {
@@ -494,7 +504,7 @@ void Supervision::shrinkCluster() {
   for (auto const& srv : dbservers) {
     availServers.push_back(srv.first);
   }
-
+  
   size_t targetNumDBServers;
   try {
     targetNumDBServers = _snapshot("/Target/NumberOfDBServers").getUInt();
@@ -513,6 +523,9 @@ void Supervision::shrinkCluster() {
       if ((*job.second)("type").getString() == "cleanOutServer") {
         return;
       }
+      if ((*job.second)("type").getString() == "removeServer") {
+        return;
+      }
     } catch (std::exception const& e) {
       LOG_TOPIC(WARN, Logger::AGENCY) << "Failed to get job type of job "
                                       << job.first << ": " << e.what();
@@ -523,6 +536,9 @@ void Supervision::shrinkCluster() {
   for (auto const& job : pends) {
     try {
       if ((*job.second)("type").getString() == "cleanOutServer") {
+        return;
+      }
+      if ((*job.second)("type").getString() == "removeServer") {
         return;
       }
     } catch (std::exception const& e) {
@@ -550,35 +566,86 @@ void Supervision::shrinkCluster() {
           << "Only one db server left for operation";
       return;
     }
-
+    
+    // mop: any failed server is first considered useless and may be cleared from the list later on :O
+    std::vector<std::string> uselessFailedServers;
+    auto failedPivot = std::partition(availServers.begin(), availServers.end(), [this](std::string server) {
+      return serverHealth(server) != HEALTH_STATUS_FAILED;
+    });
+    std::move(failedPivot, availServers.end(), std::back_inserter(uselessFailedServers));
+    availServers.erase(failedPivot, availServers.end());
+    
+    /**
+     * mop: TODO instead of using Plan/Collections we should watch out for
+     * Plan/ReplicationFactor and Current...when the replicationFactor is not
+     * fullfilled we should add a follower to the plan
+     * When seeing more servers in Current than replicationFactor we should
+     * remove a server.
+     * RemoveServer then should be changed so that it really just kills a server
+     * after a while...
+     * this way we would have implemented changing the replicationFactor and
+     * have an awesome new feature
+     **/
     // Find greatest replication factor among all collections
     uint64_t maxReplFact = 1;
     Node::Children const& databases = _snapshot("/Plan/Collections").children();
     for (auto const& database : databases) {
       for (auto const& collptr : database.second->children()) {
+        uint64_t replFact {0};
         try {
-          uint64_t replFact = (*collptr.second)("replicationFactor").getUInt();
+          replFact = (*collptr.second)("replicationFactor").getUInt();
+
           if (replFact > maxReplFact) {
             maxReplFact = replFact;
           }
-        } catch (std::exception const&) {
-          LOG_TOPIC(DEBUG, Logger::AGENCY) << "Cannot retrieve replication "
-                                           << "factor for collection "
-                                           << collptr.first;
+        } catch (std::exception const& e) {
+          LOG_TOPIC(WARN, Logger::AGENCY) << "Cannot retrieve replication " <<
+            "factor for collection " << collptr.first << ": " << e.what();
           return;
+        }
+        if (uselessFailedServers.size() > 0) {
+          try {
+            Node::Children const& shards = (*collptr.second)("shards").children();
+            for (auto const& shard: shards) {
+              auto const& children = shard.second->children();
+              for (size_t i=0;i<children.size();i++) {
+                auto const& server = children.at(std::to_string(i))->getString();
+                auto found = std::find(uselessFailedServers.begin(), uselessFailedServers.end(), server);
+                
+                bool isLeader = i == 0;
+                if (found != uselessFailedServers.end() && (isLeader || replFact >= availServers.size())) {
+                  // mop: apparently it has been a lie :O it is not useless
+                  uselessFailedServers.erase(found);
+                }
+              }
+            }
+          } catch (std::exception const& e) {
+            LOG_TOPIC(WARN, Logger::AGENCY) << "Cannot retrieve shard information for " << collptr.first << ": " << e.what();
+          } catch (...) {
+            LOG_TOPIC(WARN, Logger::AGENCY) << "Cannot retrieve shard information for " << collptr.first;
+          }
         }
       }
     }
-
-    // If max number of replications is small than that of available
+     
+    if (uselessFailedServers.size() > 0) {
+      // Schedule last server for cleanout
+      RemoveServer(_snapshot, _agent, std::to_string(_jobId++),
+                     "supervision", _agencyPrefix, uselessFailedServers.back());
+      return;
+    }
+    // mop: do not account any failedservers in this calculation..the ones having
+    // a state of failed still have data of interest to us! We wait indefinately
+    // for them to recover or for the user to remove them
     if (maxReplFact < availServers.size()) {
-      // Sort servers by name
-      std::sort(availServers.begin(), availServers.end());
-
       // Clean out as long as number of available servers is bigger
       // than maxReplFactor and bigger than targeted number of db servers
       if (availServers.size() > maxReplFact &&
           availServers.size() > targetNumDBServers) {
+
+        // Sort servers by name
+        std::sort(availServers.begin(), availServers.end());
+        
         // Schedule last server for cleanout
         CleanOutServer(_snapshot, _agent, std::to_string(_jobId++),
                        "supervision", _agencyPrefix, availServers.back());

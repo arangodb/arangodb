@@ -210,9 +210,9 @@ size_t State::removeConflicts(query_t const& transactions) {
               std::string const aql(std::string("FOR l IN log FILTER l._key >= '") + 
                                     stringify(idx) + "' REMOVE l IN log");
 
-              arangodb::aql::Query query(false, _vocbase, aql.c_str(),
-                                         aql.size(), bindVars, nullptr,
-                                         arangodb::aql::PART_MAIN);
+              arangodb::aql::Query query(
+                false, _vocbase, aql.c_str(), aql.size(), bindVars, nullptr,
+                arangodb::aql::PART_MAIN);
 
               auto queryResult = query.execute(_queryRegistry);
 
@@ -487,7 +487,7 @@ bool State::loadOrPersistConfiguration() {
       result.length()) {  // We already have a persisted conf
 
     try {
-      LOG(WARN) << result[0].toJson();
+      LOG_TOPIC(DEBUG, Logger::AGENCY) << "Merging configuration " << result[0].toJson();
       _agent->mergeConfiguration(result[0]);
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::AGENCY)

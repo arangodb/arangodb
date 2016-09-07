@@ -228,6 +228,7 @@ RestHandler::status RestAgencyHandler::handleWrite() {
         LOG_TOPIC(ERR, Logger::AGENCY) << "We don't know who the leader is";
         return status::DONE;
       } else {
+        
         redirectRequest(ret.redirect);
       }
     }

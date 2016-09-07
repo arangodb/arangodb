@@ -1159,10 +1159,12 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
     return 0;
   }
 
+#if 0
+  commented out as it break resilience tests
   if (requests.size() == 1) {
     return performSingleRequest(requests, timeout, nrDone, logTopic);
   }
-
+#endif
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
 
   ClusterCommTimeout startTime = TRI_microtime();
@@ -1345,12 +1347,15 @@ size_t ClusterComm::performSingleRequest(
 
   // mop: helpless attempt to fix segfaulting due to body buffer empty
   if (req.result.status == CL_COMM_BACKEND_UNAVAILABLE) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+    nrDone = 0;
+    return 0;
   }
 
   if (req.result.status == CL_COMM_ERROR && req.result.result != nullptr
       && req.result.result->getHttpReturnCode() == 503) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+    req.result.status = CL_COMM_BACKEND_UNAVAILABLE;
+    nrDone = 0;
+    return 0;
   }
   
   // Add correct recognition of content type later.
