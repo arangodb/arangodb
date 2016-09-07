@@ -306,8 +306,7 @@ static bool OpenIterator(TRI_df_marker_t const* marker, OpenIteratorState* data,
   return (res == TRI_ERROR_NO_ERROR);
 }
 
-
-}
+} // namespace
 
 MMFilesCollection::MMFilesCollection(LogicalCollection* collection)
     : PhysicalCollection(collection), _ditches(collection), _initialCount(0), _revision(0) {}
