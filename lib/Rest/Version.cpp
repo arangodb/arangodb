@@ -44,6 +44,10 @@
 #include <rocksdb/version.h>
 #endif
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Version.h"
+#endif
+
 using namespace arangodb::rest;
 
 std::map<std::string, std::string> Version::Values;
@@ -96,9 +100,6 @@ void Version::initialize() {
   Values["asm-crc32"] = (ENABLE_ASM_CRC32) ? "true" : "false";
   Values["boost-version"] = getBoostVersion();
   Values["build-date"] = getBuildDate();
-#if HAVE_ARANGODB_BUILD_REPOSITORY
-  Values["build-repository"] = getBuildRepository();
-#endif
   Values["compiler"] = getCompiler();
   Values["endianness"] = getEndianness();
   Values["fd-setsize"] = arangodb::basics::StringUtils::itoa(FD_SETSIZE);
@@ -112,6 +113,14 @@ void Version::initialize() {
   Values["vpack-version"] = getVPackVersion();
   Values["zlib-version"] = getZLibVersion();
 
+
+#if USE_ENTERPRISE
+  Values["enterprise-version"] = ENTERPRISE_VERSION;
+#endif
+
+#if HAVE_ARANGODB_BUILD_REPOSITORY
+  Values["build-repository"] = getBuildRepository();
+#endif
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   Values["assertions"] = "true";

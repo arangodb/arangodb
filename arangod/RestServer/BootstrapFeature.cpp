@@ -37,6 +37,10 @@
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/server.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Version.h"
+#endif
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
@@ -137,7 +141,7 @@ static void raceForClusterBootstrap() {
 
 void BootstrapFeature::start() {
   auto vocbase = DatabaseFeature::DATABASE->vocbase();
-  
+
   auto ss = ServerState::instance();
   if (!ss->isRunningInCluster()) {
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running server/server.js";
@@ -158,11 +162,17 @@ void BootstrapFeature::start() {
 
   // Start service properly:
   rest::RestHandlerFactory::setMaintenance(false);
+
+#ifdef USE_ENTERPRISE
+  LOG(INFO) << "ArangoDB (enterprise version " << ARANGODB_VERSION_FULL
+            << " / " << ENTERPRISE_VERSION << ") is ready for business. Have fun!";
+#else
   LOG(INFO) << "ArangoDB (version " << ARANGODB_VERSION_FULL
             << ") is ready for business. Have fun!";
+#endif
 
   if (_bark) {
-    LOG(INFO) << "der Hund so: wau wau!";
+    LOG(INFO) << "The dog says: wau wau!";
   }
 
   _isReady = true;
