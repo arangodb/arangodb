@@ -48,6 +48,8 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/CollectionReadLocker.h"
 #include "Utils/CollectionWriteLocker.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/PhysicalCollection.h"
 #include "VocBase/IndexPoolFeature.h"
 #include "VocBase/KeyGenerator.h"
@@ -1115,7 +1117,97 @@ PhysicalCollection* LogicalCollection::createPhysical() {
 }
 
 /// @brief opens an existing collection
-int LogicalCollection::open(bool ignoreErrors) {
+void LogicalCollection::open(bool ignoreErrors) {
+  VPackBuilder builder;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->getCollectionInfo(_vocbase, cid(), builder, false, 0);
+
+  double start = TRI_microtime();
+
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+      << "open-document-collection { collection: " << _vocbase->name() << "/"
+      << _name << " }";
+
+  int res = openWorker(ignoreErrors);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(ERR) << "cannot open document collection from path '" << path() << "'";
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  res = createInitialIndexes();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(ERR) << "cannot initialize document collection: " << TRI_errno_string(res);
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  
+  arangodb::SingleCollectionTransaction trx(
+      arangodb::StandaloneTransactionContext::Create(_vocbase),
+      cid(), TRI_TRANSACTION_WRITE);
+
+  // build the primary index
+  res = TRI_ERROR_INTERNAL;
+
+  try {
+    double start = TRI_microtime();
+
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+        << "iterate-markers { collection: " << _vocbase->name() << "/"
+        << _name << " }";
+
+    // iterate over all markers of the collection
+    res = getPhysical()->iterateMarkersOnLoad(&trx);
+
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::FIXED(TRI_microtime() - start) << " s, iterate-markers { collection: " << _vocbase->name() << "/" << _name << " }";
+  } catch (arangodb::basics::Exception const& ex) {
+    res = ex.code();
+  } catch (std::bad_alloc const&) {
+    res = TRI_ERROR_OUT_OF_MEMORY;
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string("cannot iterate data of document collection: ") + TRI_errno_string(res));
+  }
+
+  // build the indexes meta-data, but do not fill the indexes yet
+  {
+    auto old = useSecondaryIndexes();
+
+    // turn filling of secondary indexes off. we're now only interested in getting
+    // the indexes' definition. we'll fill them below ourselves.
+    useSecondaryIndexes(false);
+
+    try {
+      detectIndexes(&trx);
+      useSecondaryIndexes(old);
+    } catch (basics::Exception const& ex) {
+      useSecondaryIndexes(old);
+      THROW_ARANGO_EXCEPTION_MESSAGE(ex.code(), std::string("cannot initialize collection indexes: ") + ex.what());
+    } catch (std::exception const& ex) {
+      useSecondaryIndexes(old);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("cannot initialize collection indexes: ") + ex.what());
+    } catch (...) {
+      useSecondaryIndexes(old);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot initialize collection indexes: unknown exception");
+    }
+  }
+
+  if (!arangodb::wal::LogfileManager::instance()->isInRecovery()) {
+    // build the index structures, and fill the indexes
+    fillIndexes(&trx);
+  }
+
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+      << "[timer] " << Logger::FIXED(TRI_microtime() - start)
+      << " s, open-document-collection { collection: " << _vocbase->name() << "/"
+      << _name << " }";
+}
+
+/// @brief opens an existing collection
+int LogicalCollection::openWorker(bool ignoreErrors) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   double start = TRI_microtime();
 

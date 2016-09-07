@@ -306,48 +306,6 @@ static bool OpenIterator(TRI_df_marker_t const* marker, OpenIteratorState* data,
   return (res == TRI_ERROR_NO_ERROR);
 }
 
-/// @brief iterate all markers of the collection
-static int IterateMarkersCollection(arangodb::Transaction* trx,
-                                    LogicalCollection* collection) {
-  // initialize state for iteration
-  OpenIteratorState openState(collection);
-
-  if (collection->getPhysical()->initialCount() != -1) {
-    auto primaryIndex = collection->primaryIndex();
-
-    int res = primaryIndex->resize(
-        trx, static_cast<size_t>(collection->getPhysical()->initialCount() * 1.1));
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    openState._initialCount = collection->getPhysical()->initialCount();
-  }
-
-  // read all documents and fill primary index
-  auto cb = [&openState](TRI_df_marker_t const* marker, TRI_datafile_t* datafile) -> bool {
-    return OpenIterator(marker, &openState, datafile); 
-  };
-
-  collection->iterateDatafiles(cb);
-
-  LOG(TRACE) << "found " << openState._documents << " document markers, " 
-             << openState._deletions << " deletion markers for collection '" << collection->name() << "'";
-  
-  // update the real statistics for the collection
-  try {
-    for (auto& it : openState._stats) {
-      collection->createStats(it.first, *(it.second));
-    }
-  } catch (basics::Exception const& ex) {
-    return ex.code();
-  } catch (...) {
-    return TRI_ERROR_INTERNAL;
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
 
 }
 
@@ -1138,94 +1096,44 @@ void MMFilesCollection::finishCompaction() {
   _compactionLock.unlock();
 }
 
-/// @brief opens an existing collection
-void MMFilesCollection::open(bool ignoreErrors) {
-  TRI_vocbase_t* vocbase = _logicalCollection->vocbase();
+/// @brief iterate all markers of the collection
+int MMFilesCollection::iterateMarkersOnLoad(arangodb::Transaction* trx) {
+  // initialize state for iteration
+  OpenIteratorState openState(_logicalCollection);
 
-  VPackBuilder builder;
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->getCollectionInfo(vocbase, _logicalCollection->cid(), builder, false, 0);
+  if (_initialCount != -1) {
+    auto primaryIndex = _logicalCollection->primaryIndex();
 
-  double start = TRI_microtime();
+    int res = primaryIndex->resize(
+        trx, static_cast<size_t>(_initialCount * 1.1));
 
-  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "open-document-collection { collection: " << vocbase->name() << "/"
-      << _logicalCollection->name() << " }";
-
-  int res = _logicalCollection->open(ignoreErrors);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot open document collection from path '" << _logicalCollection->path() << "'";
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  res = _logicalCollection->createInitialIndexes();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot initialize document collection: " << TRI_errno_string(res);
-    THROW_ARANGO_EXCEPTION(res);
-  }
-  
-  arangodb::SingleCollectionTransaction trx(
-      arangodb::StandaloneTransactionContext::Create(vocbase),
-      _logicalCollection->cid(), TRI_TRANSACTION_WRITE);
-
-  // build the primary index
-  res = TRI_ERROR_INTERNAL;
-
-  try {
-    double start = TRI_microtime();
-
-    LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-        << "iterate-markers { collection: " << vocbase->name() << "/"
-        << _logicalCollection->name() << " }";
-
-    // iterate over all markers of the collection
-    res = IterateMarkersCollection(&trx, _logicalCollection);
-
-    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::FIXED(TRI_microtime() - start) << " s, iterate-markers { collection: " << vocbase->name() << "/" << _logicalCollection->name() << " }";
-  } catch (arangodb::basics::Exception const& ex) {
-    res = ex.code();
-  } catch (std::bad_alloc const&) {
-    res = TRI_ERROR_OUT_OF_MEMORY;
-  } catch (...) {
-    res = TRI_ERROR_INTERNAL;
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string("cannot iterate data of document collection: ") + TRI_errno_string(res));
-  }
-
-  // build the indexes meta-data, but do not fill the indexes yet
-  {
-    auto old = _logicalCollection->useSecondaryIndexes();
-
-    // turn filling of secondary indexes off. we're now only interested in getting
-    // the indexes' definition. we'll fill them below ourselves.
-    _logicalCollection->useSecondaryIndexes(false);
-
-    try {
-      _logicalCollection->detectIndexes(&trx);
-      _logicalCollection->useSecondaryIndexes(old);
-    } catch (basics::Exception const& ex) {
-      _logicalCollection->useSecondaryIndexes(old);
-      THROW_ARANGO_EXCEPTION_MESSAGE(ex.code(), std::string("cannot initialize collection indexes: ") + ex.what());
-    } catch (std::exception const& ex) {
-      _logicalCollection->useSecondaryIndexes(old);
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("cannot initialize collection indexes: ") + ex.what());
-    } catch (...) {
-      _logicalCollection->useSecondaryIndexes(old);
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot initialize collection indexes: unknown exception");
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
     }
+
+    openState._initialCount = _initialCount;
   }
 
-  if (!arangodb::wal::LogfileManager::instance()->isInRecovery()) {
-    // build the index structures, and fill the indexes
-    _logicalCollection->fillIndexes(&trx);
+  // read all documents and fill primary index
+  auto cb = [&openState](TRI_df_marker_t const* marker, TRI_datafile_t* datafile) -> bool {
+    return OpenIterator(marker, &openState, datafile); 
+  };
+
+  iterateDatafiles(cb);
+
+  LOG(TRACE) << "found " << openState._documents << " document markers, " 
+             << openState._deletions << " deletion markers for collection '" << _logicalCollection->name() << "'";
+  
+  // update the real statistics for the collection
+  try {
+    for (auto& it : openState._stats) {
+      createStats(it.first, *(it.second));
+    }
+  } catch (basics::Exception const& ex) {
+    return ex.code();
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
   }
 
-  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
-      << "[timer] " << Logger::FIXED(TRI_microtime() - start)
-      << " s, open-document-collection { collection: " << vocbase->name() << "/"
-      << _logicalCollection->name() << " }";
+  return TRI_ERROR_NO_ERROR;
 }

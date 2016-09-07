@@ -37,6 +37,7 @@ struct TRI_doc_mptr_t;
 namespace arangodb {
 class Ditches;
 class LogicalCollection;
+class Transaction;
 
 class PhysicalCollection {
  protected:
@@ -66,17 +67,11 @@ class PhysicalCollection {
   virtual int applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
                                 std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) = 0;
 
-  /// @brief iterates over a collection
-  virtual bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb) = 0;
-
   /// @brief increase dead stats for a datafile, if it exists
   virtual void increaseDeadStats(TRI_voc_fid_t fid, int64_t number, int64_t size) = 0;
   
   /// @brief increase dead stats for a datafile, if it exists
   virtual void updateStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) = 0;
-  
-  /// @brief create statistics for a datafile, using the stats provided
-  virtual void createStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) = 0;
   
   /// @brief report extra memory used by indexes etc.
   virtual size_t memory() const = 0;
@@ -107,9 +102,10 @@ class PhysicalCollection {
 
   /// @brief signal that compaction is finished
   virtual void finishCompaction() = 0;
-  
-  virtual void open(bool ignoreErrors) = 0;
 
+  /// @brief iterate all markers of a collection on load
+  virtual int iterateMarkersOnLoad(arangodb::Transaction* trx) = 0;
+  
  protected:
   LogicalCollection* _logicalCollection;
 };
