@@ -183,7 +183,7 @@ const edgeKey = joi.string()
   .description('_key attribute of one specific edge.');
 
 const keepNullFlag = phpCompatFlag
-  .description('define if null values should not be deleted.');
+  .description('define if null values should not be deleted.').default(true);
 
 // Graph Creation
 

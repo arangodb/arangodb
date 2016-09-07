@@ -1,5 +1,6 @@
 devel
 -----
+* changed default for keepNull of modifyVertex/modifyEdge to true in Gharial
 
 * renamed `maximalSize` attribute in parameter.json files to `journalSize`
 
