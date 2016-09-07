@@ -30,6 +30,7 @@
 #include "Agency/FailedServer.h"
 #include "Agency/Job.h"
 #include "Agency/MoveShard.h"
+#include "Agency/RemoveServer.h"
 #include "Agency/Store.h"
 #include "Agency/UnassumedLeadership.h"
 #include "ApplicationFeatures/ApplicationServer.h"
