@@ -669,7 +669,9 @@ std::shared_ptr<VPackBuilder> TRI_vocbase_t::inventory(TRI_voc_tick_t maxTick,
       continue;
     }
 
-    if (collection->cid() > maxTick) {
+    // In cluster case cids are not created by ticks but by cluster uniqIds
+    if (!ServerState::instance()->isRunningInCluster() &&
+        collection->cid() > maxTick) {
       // collection is too new
       continue;
     }
