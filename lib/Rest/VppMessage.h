@@ -31,6 +31,7 @@
 #include <iterator>
 #include <vector>
 #include "Basics/StringBuffer.h"
+#include "Basics/VelocyPackHelper.h"
 
 namespace arangodb {
 namespace rest {
@@ -110,6 +111,7 @@ struct VPackMessageNoOwnBuffer {
     if (_payloads.size() && _generateBody) {
       return _payloads.front();
     }
+    return arangodb::basics::VelocyPackHelper::NullValue();
   }
 
   std::vector<VPackSlice> payloads() { return _payloads; }
