@@ -358,7 +358,6 @@ class LogicalCollection {
 
   // SECTION: Index creation
 
- private:
   /// @brief creates the initial indexes for the collection
   int createInitialIndexes();
 
