@@ -1551,7 +1551,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
       );
     },
 
-    testGRAPH_SHOTEST_PATH_with_stopAtFirstMatch: function () {
+    testGRAPH_SHORTEST_PATH_with_stopAtFirstMatch: function () {
       var actual;
 
       actual = getQueryResults("FOR e IN arangodb::GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Frankfurter/Fritz', " +
