@@ -502,7 +502,7 @@ void Agent::run() {
     
     // Leader working only
     if (leading()) {
-      _appendCV.wait(1000);
+      _appendCV.wait(10000);
       
       // Append entries to followers
       sendAppendEntriesRPC();
