@@ -344,7 +344,7 @@ void Supervision::run() {
       // long here before giving up:
       if (!updateAgencyPrefix(1000, 1)) {
         LOG_TOPIC(DEBUG, Logger::AGENCY)
-          << "Cannot get prefix from Agency. Stopping supervision for good.";
+            << "Cannot get prefix from Agency. Stopping supervision for good.";
         return;
       }
     }
@@ -389,7 +389,8 @@ std::string const Supervision::serverHealth(const std::string& serverName) {
     const std::string status = _snapshot(serverStatus).getString();
     return status;
   } catch (...) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << "Couldn't read server health status for server " << serverName;
+    LOG_TOPIC(WARN, Logger::AGENCY)
+        << "Couldn't read server health status for server " << serverName;
     return "";
   }
 }
@@ -409,8 +410,8 @@ void Supervision::handleShutdown() {
                                      << " to shutdown";
 
     if (serverHealth(server.first) != HEALTH_STATUS_GOOD) {
-      LOG_TOPIC(WARN, Logger::AGENCY)
-        << "Server " << server.first << " did not shutdown properly it seems!";
+      LOG_TOPIC(WARN, Logger::AGENCY) << "Server " << server.first
+                                      << " did not shutdown properly it seems!";
       continue;
     }
     serversCleared = false;
@@ -465,13 +466,13 @@ void Supervision::workJobs() {
                 jobId = job("jobId").getString(),
                 creator = job("creator").getString();
     if (jobType == "failedServer") {
-      FailedServer (_snapshot, _agent, jobId, creator, _agencyPrefix);
+      FailedServer(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "addFollower") {
-      AddFollower (_snapshot, _agent, jobId, creator, _agencyPrefix);
+      AddFollower(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "cleanOutServer") {
-      CleanOutServer (_snapshot, _agent, jobId, creator, _agencyPrefix);
+      CleanOutServer(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "removeServer") {
-      RemoveServer (_snapshot, _agent, jobId, creator, _agencyPrefix);
+      RemoveServer(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "moveShard") {
       MoveShard(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "failedLeader") {
@@ -488,13 +489,13 @@ void Supervision::workJobs() {
                 jobId = job("jobId").getString(),
                 creator = job("creator").getString();
     if (jobType == "failedServer") {
-      FailedServer (_snapshot, _agent, jobId, creator, _agencyPrefix);
+      FailedServer(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "addFollower") {
-      AddFollower (_snapshot, _agent, jobId, creator, _agencyPrefix);
+      AddFollower(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "cleanOutServer") {
-      CleanOutServer (_snapshot, _agent, jobId, creator, _agencyPrefix);
+      CleanOutServer(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "removeServer") {
-      RemoveServer (_snapshot, _agent, jobId, creator, _agencyPrefix);
+      RemoveServer(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "moveShard") {
       MoveShard(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "failedLeader") {
@@ -513,7 +514,7 @@ void Supervision::shrinkCluster() {
   for (auto const& srv : dbservers) {
     availServers.push_back(srv.first);
   }
-  
+
   size_t targetNumDBServers;
   try {
     targetNumDBServers = _snapshot("/Target/NumberOfDBServers").getUInt();
@@ -575,15 +576,18 @@ void Supervision::shrinkCluster() {
           << "Only one db server left for operation";
       return;
     }
-    
-    // mop: any failed server is first considered useless and may be cleared from the list later on :O
+
+    // mop: any failed server is first considered useless and may be cleared
+    // from the list later on :O
     std::vector<std::string> uselessFailedServers;
-    auto failedPivot = std::partition(availServers.begin(), availServers.end(), [this](std::string server) {
-      return serverHealth(server) != HEALTH_STATUS_FAILED;
-    });
-    std::move(failedPivot, availServers.end(), std::back_inserter(uselessFailedServers));
+    auto failedPivot = std::partition(
+        availServers.begin(), availServers.end(), [this](std::string server) {
+          return serverHealth(server) != HEALTH_STATUS_FAILED;
+        });
+    std::move(failedPivot, availServers.end(),
+              std::back_inserter(uselessFailedServers));
     availServers.erase(failedPivot, availServers.end());
-    
+
     /**
      * mop: TODO instead of using Plan/Collections we should watch out for
      * Plan/ReplicationFactor and Current...when the replicationFactor is not
@@ -600,7 +604,7 @@ void Supervision::shrinkCluster() {
     Node::Children const& databases = _snapshot("/Plan/Collections").children();
     for (auto const& database : databases) {
       for (auto const& collptr : database.second->children()) {
-        uint64_t replFact {0};
+        uint64_t replFact{0};
         try {
           replFact = (*collptr.second)("replicationFactor").getUInt();
 
@@ -608,42 +612,53 @@ void Supervision::shrinkCluster() {
             maxReplFact = replFact;
           }
         } catch (std::exception const& e) {
-          LOG_TOPIC(WARN, Logger::AGENCY) << "Cannot retrieve replication " <<
-            "factor for collection " << collptr.first << ": " << e.what();
+          LOG_TOPIC(WARN, Logger::AGENCY) << "Cannot retrieve replication "
+                                          << "factor for collection "
+                                          << collptr.first << ": " << e.what();
           return;
         }
         if (uselessFailedServers.size() > 0) {
           try {
-            Node::Children const& shards = (*collptr.second)("shards").children();
-            for (auto const& shard: shards) {
+            Node::Children const& shards =
+                (*collptr.second)("shards").children();
+            for (auto const& shard : shards) {
               auto const& children = shard.second->children();
-              for (size_t i=0;i<children.size();i++) {
-                auto const& server = children.at(std::to_string(i))->getString();
-                auto found = std::find(uselessFailedServers.begin(), uselessFailedServers.end(), server);
-                
+              for (size_t i = 0; i < children.size(); i++) {
+                auto const& server =
+                    children.at(std::to_string(i))->getString();
+                auto found = std::find(uselessFailedServers.begin(),
+                                       uselessFailedServers.end(), server);
+
                 bool isLeader = i == 0;
-                if (found != uselessFailedServers.end() && (isLeader || replFact >= availServers.size())) {
+                if (found != uselessFailedServers.end() &&
+                    (isLeader || replFact >= availServers.size())) {
                   // mop: apparently it has been a lie :O it is not useless
                   uselessFailedServers.erase(found);
                 }
               }
             }
           } catch (std::exception const& e) {
-            LOG_TOPIC(WARN, Logger::AGENCY) << "Cannot retrieve shard information for " << collptr.first << ": " << e.what();
+            LOG_TOPIC(WARN, Logger::AGENCY)
+                << "Cannot retrieve shard information for " << collptr.first
+                << ": " << e.what();
           } catch (...) {
-            LOG_TOPIC(WARN, Logger::AGENCY) << "Cannot retrieve shard information for " << collptr.first;
+            LOG_TOPIC(WARN, Logger::AGENCY)
+                << "Cannot retrieve shard information for " << collptr.first;
           }
         }
       }
     }
-     
+
     if (uselessFailedServers.size() > 0) {
       // Schedule last server for cleanout
-      RemoveServer(_snapshot, _agent, std::to_string(_jobId++),
-                     "supervision", _agencyPrefix, uselessFailedServers.back());
+
+      // cppcheck-suppress *
+      RemoveServer(_snapshot, _agent, std::to_string(_jobId++), "supervision",
+                   _agencyPrefix, uselessFailedServers.back());
       return;
     }
-    // mop: do not account any failedservers in this calculation..the ones having
+    // mop: do not account any failedservers in this calculation..the ones
+    // having
     // a state of failed still have data of interest to us! We wait indefinately
     // for them to recover or for the user to remove them
     if (maxReplFact < availServers.size()) {
@@ -651,10 +666,9 @@ void Supervision::shrinkCluster() {
       // than maxReplFactor and bigger than targeted number of db servers
       if (availServers.size() > maxReplFact &&
           availServers.size() > targetNumDBServers) {
-
         // Sort servers by name
         std::sort(availServers.begin(), availServers.end());
-        
+
         // Schedule last server for cleanout
         CleanOutServer(_snapshot, _agent, std::to_string(_jobId++),
                        "supervision", _agencyPrefix, availServers.back());
