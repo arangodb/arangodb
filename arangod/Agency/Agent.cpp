@@ -36,6 +36,7 @@
 
 using namespace arangodb::application_features;
 using namespace arangodb::velocypack;
+using namespace std::chrono;
 
 namespace arangodb {
 namespace consensus {
@@ -49,7 +50,8 @@ Agent::Agent(config_t const& config)
       _readDB(this),
       _serveActiveAgent(false),
       _nextCompationAfter(_config.compactionStepSize()),
-      _inception(std::make_unique<Inception>(this)) {
+      _inception(std::make_unique<Inception>(this)),
+      _activator(nullptr) {
   _state.configure(this);
   _constituent.configure(this);
 }
@@ -100,6 +102,11 @@ bool Agent::start() {
   return true;
 }
 
+/// Get all logs from state machine
+query_t Agent::allLogs() const {
+  return _state.allLogs();
+}
+
 /// This agent's term
 term_t Agent::term() const { return _constituent.term(); }
 
@@ -125,9 +132,6 @@ std::string Agent::leaderID() const { return _constituent.leaderID(); }
 
 /// Are we leading?
 bool Agent::leading() const { return _constituent.leading(); }
-
-/// Activate a standby agent
-bool Agent::activateStandbyAgent() { return true; }
 
 /// Start constituent personality
 void Agent::startConstituent() {
@@ -169,7 +173,7 @@ bool Agent::waitFor(index_t index, double timeout) {
 void Agent::reportIn(std::string const& id, index_t index) {
   MUTEX_LOCKER(mutexLocker, _ioLock);
 
-  _lastAcked[id] = std::chrono::system_clock::now();
+  _lastAcked[id] = system_clock::now();
 
   if (index > _confirmed[id]) {  // progress this follower?
     _confirmed[id] = index;
@@ -279,8 +283,8 @@ void Agent::sendAppendEntriesRPC() {
       std::vector<log_t> unconfirmed = _state.get(last_confirmed);
       index_t highest = unconfirmed.back().index;
 
-      std::chrono::duration<double> m =
-        std::chrono::system_clock::now() - _lastSent[followerId];
+      duration<double> m =
+        system_clock::now() - _lastSent[followerId];
       
       if (highest == _lastHighest[followerId]
           && 0.5 * _config.minPing() > m.count()) {
@@ -328,7 +332,7 @@ void Agent::sendAppendEntriesRPC() {
 
       {
         MUTEX_LOCKER(mutexLocker, _ioLock);
-        _lastSent[followerId] = std::chrono::system_clock::now();
+        _lastSent[followerId] = system_clock::now();
         _lastHighest[followerId] = highest;
       }
     }
@@ -392,16 +396,21 @@ bool Agent::load() {
   reportIn(id(), _state.lastLog().index);
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting spearhead worker.";
-  _spearhead.start();
-  _readDB.start();
+  if (!this->isStopping()) {
+    _spearhead.start();
+    _readDB.start();
+  }
 
   TRI_ASSERT(queryRegistry != nullptr);
   if (size() == 1) {
     activateAgency();
   }
-    _constituent.start(vocbase, queryRegistry);
 
-  if (_config.supervision()) {
+  if (!this->isStopping()) {
+    _constituent.start(vocbase, queryRegistry);
+  }
+  
+  if (!this->isStopping() && _config.supervision()) {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting cluster sanity facilities";
     _supervision.start(this);
   }
@@ -414,8 +423,8 @@ bool Agent::challengeLeadership() {
   // Still leading?
   size_t good = 0;
   for (auto const& i : _lastAcked) {
-    std::chrono::duration<double> m =
-        std::chrono::system_clock::now() - i.second;
+    duration<double> m =
+        system_clock::now() - i.second;
     if (0.9 * _config.minPing() > m.count()) {
       ++good;
     }
@@ -478,23 +487,90 @@ read_ret_t Agent::read(query_t const& query) {
   return read_ret_t(true, _constituent.leaderID(), success, result);
 }
 
+
+
+
+
 /// Send out append entries to followers regularly or on event
 void Agent::run() {
+
   CONDITION_LOCKER(guard, _appendCV);
+  using namespace std::chrono;
+  auto tp = system_clock::now();
 
   // Only run in case we are in multi-host mode
   while (!this->isStopping() && size() > 1) {
+    
     // Leader working only
     if (leading()) {
       _appendCV.wait(1000);
-    } else {
-      _appendCV.wait();
-    }
+      
+      // Append entries to followers
+      sendAppendEntriesRPC();
 
-    // Append entries to followers
-    sendAppendEntriesRPC();
+      // Detect faulty agent and replace
+      // if possible and only if not already activating
+      if (_activator == nullptr && 
+          duration<double>(system_clock::now() - tp).count() > 5.0) {
+        detectActiveAgentFailures();
+        tp = system_clock::now();
+      }
+      
+    } else {
+      _appendCV.wait(1000000);
+      updateConfiguration();
+    }
+    
   }
 }
+
+
+
+void Agent::reportActivated(
+  std::string const& failed, std::string const& replacement, query_t state) {
+
+  _config.swapActiveMember(failed, replacement);
+  MUTEX_LOCKER(mutexLocker, _ioLock);
+  _confirmed.erase(failed);
+  auto commitIndex = state->slice().get("commitIndex").getNumericValue<index_t>();
+  _confirmed[replacement] = commitIndex;
+  _lastAcked[replacement] = system_clock::now();
+  
+}
+
+
+void Agent::failedActivation(
+  std::string const& failed, std::string const& replacement) {
+  _activator.reset(nullptr);
+}
+
+
+void Agent::detectActiveAgentFailures() {
+  // Detect faulty agent if pool larger than agency
+  if (_config.poolSize() > _config.size()) {
+    std::vector<std::string> active = _config.active();
+    for (auto const& id : active) {
+      auto ds = duration<double>(
+        system_clock::now() - _lastAcked.at(id)).count();
+      if (ds > 10.0) {
+        std::string repl = _config.nextAgentInLine();
+        LOG(WARN) << "Active agent " << id << " has failed. << "
+                  << repl << " will be promoted to active agency membership";
+        MUTEX_LOCKER(mutexLocker, _ioLock);
+        _activator =
+          std::unique_ptr<AgentActivator>(new AgentActivator(this, id, repl));
+      }
+    }
+  }
+}
+
+
+void Agent::updateConfiguration() {
+
+  // First ask last know leader
+  
+}
+
 
 /// Orderly shutdown
 void Agent::beginShutdown() {
@@ -536,7 +612,7 @@ bool Agent::lead() {
   }
 
   for (auto const& i : _config.active()) {
-    _lastAcked[i] = std::chrono::system_clock::now();
+    _lastAcked[i] = system_clock::now();
   }
 
   // Agency configuration

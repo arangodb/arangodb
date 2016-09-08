@@ -521,7 +521,9 @@ void Store::run() {
     }
 
     toClear = clearExpired();
-    _agent->write(toClear);
+    if (_agent && !_agent->isStopping()) {
+      _agent->write(toClear);
+    }
   }
 }
 

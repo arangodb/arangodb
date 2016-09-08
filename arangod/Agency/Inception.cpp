@@ -49,8 +49,11 @@ void Inception::gossip() {
   std::chrono::seconds timeout(120);
   size_t i = 0;
 
-  while (!this->isStopping()) {
-    config_t config = _agent->config(); // get a copy of conf
+  CONDITION_LOCKER(guard, _cv);
+  
+  while (!this->isStopping() && !_agent->isStopping()) {
+    config_t config = _agent->config();  // get a copy of conf
+
     query_t out = std::make_shared<Builder>();
     out->openObject();
     out->add("endpoint", VPackValue(config.endpoint()));
@@ -88,7 +91,7 @@ void Inception::gossip() {
       }
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(250));
+    _cv.wait(100000);
 
     if ((std::chrono::system_clock::now() - s) > timeout) {
       if (config.poolComplete()) {
@@ -156,4 +159,10 @@ void Inception::run() {
   if (!config.poolComplete()) {
     gossip();
   }
+}
+
+void Inception::beginShutdown() {
+  Thread::beginShutdown();
+  CONDITION_LOCKER(guard, _cv);
+  guard.broadcast();
 }

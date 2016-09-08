@@ -160,8 +160,18 @@ struct config_t {
   /// @brief get active agents
   std::vector<std::string> active() const;
 
+  /// @brief Get minimum RAFT timeout
   double minPing() const;
+
+  /// @brief Get maximum RAFT timeout
   double maxPing() const;
+
+  /// @brief Get replacement for deceased active agent
+  bool swapActiveMember(std::string const&, std::string const&);
+
+  /// @brief Get next agent in line of succession
+  std::string nextAgentInLine() const;
+
 };
 }
 }
