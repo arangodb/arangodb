@@ -395,7 +395,7 @@ bool Agent::load() {
   reportIn(id(), _state.lastLog().index);
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting spearhead worker.";
-  if (!this->isStopping()) {
+  if (size() == 1 || !this->isStopping()) {
     _spearhead.start();
     _readDB.start();
   }
@@ -405,11 +405,11 @@ bool Agent::load() {
     activateAgency();
   }
 
-  if (!this->isStopping()) {
+  if (size() == 1 || !this->isStopping()) {
     _constituent.start(vocbase, queryRegistry);
   }
   
-  if (!this->isStopping() && _config.supervision()) {
+  if (size() == 1 || (!this->isStopping() && _config.supervision())) {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting cluster sanity facilities";
     _supervision.start(this);
   }
