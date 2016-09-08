@@ -187,7 +187,7 @@ int TraversalBlock::shutdown(int errorCode) {
     }
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return ExecutionBlock::shutdown(errorCode);
   DEBUG_END_BLOCK();
 }
 
