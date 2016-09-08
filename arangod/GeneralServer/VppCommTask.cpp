@@ -85,14 +85,12 @@ void VppCommTask::addResponse(VppResponse* response) {
   }
   LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "response -- end";
 
-  // FIXME (obi)
-  // If the message is big we will create many small chunks in a loop.
-  // For the first tests we just send single Messages
-
   // adds chunk header infromation and creates SingBuffer* that can be
   // used with _writeBuffers
-  auto buffers = createChunkForNetwork(slices, id,
-                                       std::numeric_limits<std::size_t>::max());
+  auto buffers =
+      createChunkForNetwork(slices, id, std::numeric_limits<std::size_t>::max(),
+                            false);  // set some sensible maxchunk
+                                     // size and compression
 
   double const totalTime = getAgent(id)->elapsedSinceReadStart();
 
@@ -187,47 +185,47 @@ bool VppCommTask::processRead() {
 
   // CASE 1: message is in one chunk
   if (chunkHeader._isFirst && chunkHeader._chunk == 1) {
-    _agents.emplace(
-        std::make_pair(chunkHeader._messageID, RequestStatisticsAgent(true)));
+    [this](ChunkHeader const& chunkHeader, VppInputMessage& message,
+           bool& doExecute, char const* vpackBegin, char const* chunkEnd) {
+      _agents.emplace(
+          std::make_pair(chunkHeader._messageID, RequestStatisticsAgent(true)));
 
-    auto agent = getAgent(chunkHeader._messageID);
-    agent->acquire();
-    agent->requestStatisticsAgentSetReadStart();
+      auto agent = getAgent(chunkHeader._messageID);
+      agent->acquire();
+      agent->requestStatisticsAgentSetReadStart();
 
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
-                                            << "chunk contains single message";
-    std::size_t payloads = 0;
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+          << "VppCommTask: "
+          << "chunk contains single message";
+      std::size_t payloads = 0;
 
-    try {
-      payloads = validateAndCount(vpackBegin, chunkEnd);
-    } catch (std::exception const& e) {
-      handleSimpleError(rest::ResponseCode::BAD,
-                        TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, e.what(),
-                        chunkHeader._messageID);
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
-                                              << "VPack Validation failed!"
-                                              << e.what();
-      closeTask(rest::ResponseCode::BAD);
-      return false;
-    } catch (...) {
-      handleSimpleError(rest::ResponseCode::BAD, chunkHeader._messageID);
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
-                                              << "VPack Validation failed!";
-      closeTask(rest::ResponseCode::BAD);
-      return false;
-    }
+      try {
+        payloads = validateAndCount(vpackBegin, chunkEnd);
+      } catch (std::exception const& e) {
+        handleSimpleError(rest::ResponseCode::BAD,
+                          TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, e.what(),
+                          chunkHeader._messageID);
+        LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
+                                                << "VPack Validation failed!"
+                                                << e.what();
+        closeTask(rest::ResponseCode::BAD);
+        return false;
+      } catch (...) {
+        handleSimpleError(rest::ResponseCode::BAD, chunkHeader._messageID);
+        LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
+                                                << "VPack Validation failed!";
+        closeTask(rest::ResponseCode::BAD);
+        return false;
+      }
 
-    VPackBuffer<uint8_t> buffer;
-    buffer.append(vpackBegin, std::distance(vpackBegin, chunkEnd));
-    message.set(chunkHeader._messageID, std::move(buffer), payloads);  // fixme
+      VPackBuffer<uint8_t> buffer;
+      buffer.append(vpackBegin, std::distance(vpackBegin, chunkEnd));
+      message.set(chunkHeader._messageID, std::move(buffer),
+                  payloads);  // fixme
 
-    // message._header = VPackSlice(message._buffer.data());
-    // if (payloadOffset) {
-    //  message._payload = VPackSlice(message._buffer.data() + payloadOffset);
-    // }
-
-    doExecute = true;
-    getAgent(chunkHeader._messageID)->requestStatisticsAgentSetReadEnd();
+      doExecute = true;
+      getAgent(chunkHeader._messageID)->requestStatisticsAgentSetReadEnd();
+    }(chunkHeader, message, doExecute, vpackBegin, chunkEnd);
   }
   // CASE 2:  message is in multiple chunks
   auto incompleteMessageItr = _incompleteMessages.find(chunkHeader._messageID);
