@@ -559,7 +559,7 @@ void ServerState::setState(StateEnum state) {
   }
 
   if (result) {
-    LOG_TOPIC(INFO, Logger::CLUSTER)
+    LOG_TOPIC(DEBUG, Logger::CLUSTER)
       << "changing state of " << ServerState::roleToString(role)
       << " server from " << ServerState::stateToString(_state)
       << " to " << ServerState::stateToString(state);

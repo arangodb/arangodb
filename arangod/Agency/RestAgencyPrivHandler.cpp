@@ -130,6 +130,22 @@ RestHandler::status RestAgencyPrivHandler::execute() {
         } else {
           return reportBadQuery();  // bad query
         }
+      } else if (_request->suffix()[0] == "activate") {  // notify
+        if (_request->requestType() != GeneralRequest::RequestType::POST) {
+          return reportMethodNotAllowed();
+        }
+
+        arangodb::velocypack::Options options;
+        query_t everything;
+        try {
+          everything = _request->toVelocyPackBuilderPtr(&options);
+        } catch (std::exception const& e) {
+          LOG_TOPIC(ERR, Logger::AGENCY)
+            << "Failure getting activation body: e.what()";
+        }
+        
+        _agent->activate(everything);
+        
       } else if (_request->suffix()[0] == "gossip") {
         if (_request->requestType() != GeneralRequest::RequestType::POST) {
           return reportMethodNotAllowed();

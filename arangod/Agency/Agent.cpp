@@ -340,6 +340,49 @@ void Agent::sendAppendEntriesRPC() {
   }
 }
 
+
+bool Agent::active() const {
+  std::vector<std::string> active = _config.active();
+  return (find(active.begin(), active.end(), id()) != active.end());
+}
+
+
+query_t Agent::activate(query_t const& everything) {
+  // if active -> false
+  // else
+  //   persist everything
+  //   activate everything
+  // respond with highest commitId
+
+  auto ret = std::make_shared<Builder>();
+  ret->openObject();
+
+  if (active()) {
+    ret->add("success", VPackValue(false));
+  } else {
+
+    MUTEX_LOCKER(mutexLocker, _ioLock);
+    
+    _readDB = everything->slice().get("compact").get("readDB");
+    std::vector<Slice> batch;
+    for (auto const& q : VPackArrayIterator(everything->slice().get("logs"))) {
+      batch.push_back(q.get("request"));
+    }
+    _readDB.apply(batch);
+    _spearhead = _readDB;
+    
+    //_state.persistReadDB(everything->slice().get("compact").get("_key"));
+    //_state.log((everything->slice().get("logs"));
+    
+    ret->add("success", VPackValue(true));
+    ret->add("commitId", VPackValue(_lastCommitIndex));
+  }
+
+  ret->close();
+  return ret;
+  
+}
+
 /// @brief
 bool Agent::activateAgency() {
   if (_config.activeEmpty()) {
@@ -555,9 +598,9 @@ void Agent::detectActiveAgentFailures() {
         std::string repl = _config.nextAgentInLine();
         LOG(WARN) << "Active agent " << id << " has failed. << "
                   << repl << " will be promoted to active agency membership";
-        MUTEX_LOCKER(mutexLocker, _ioLock);
         _activator =
           std::unique_ptr<AgentActivator>(new AgentActivator(this, id, repl));
+        _activator->start();
       }
     }
   }

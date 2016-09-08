@@ -167,6 +167,12 @@ class Agent : public arangodb::Thread {
   /// @brief All there is in the state machine
   query_t allLogs() const;
 
+  /// @brief Am I active agent
+  bool active() const;
+
+  /// @brief Am I active agent
+  query_t activate(query_t const&);  
+
   /// @brief State reads persisted state and prepares the agent
   friend class State;
 

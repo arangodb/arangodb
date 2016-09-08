@@ -671,6 +671,7 @@ bool State::removeObsolete(arangodb::consensus::index_t cind) {
   return true;
 }
 
+
 /// Persist the globally commited truth
 bool State::persistReadDB(arangodb::consensus::index_t cind) {
   if (checkCollection("compact")) {
