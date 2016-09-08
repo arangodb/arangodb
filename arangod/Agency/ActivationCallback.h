@@ -36,7 +36,7 @@ class ActivationCallback : public arangodb::ClusterCommCallback {
  public:
   ActivationCallback();
 
-  ActivationCallback(Agent*, std::string const&, index_t);
+  ActivationCallback(Agent*, std::string const&, std::string const&);
 
   virtual bool operator()(arangodb::ClusterCommResult*) override final;
 
@@ -44,8 +44,8 @@ class ActivationCallback : public arangodb::ClusterCommCallback {
 
  private:
   Agent* _agent;
-  index_t _last;
-  std::string _slaveID;
+  std::string _failed;
+  std::string _replacement;
 };
 }
 }  // namespace

@@ -230,9 +230,8 @@ std::string Constituent::endpoint(std::string id) const {
 /// @brief Vote
 bool Constituent::vote(term_t term, std::string id, index_t prevLogIndex,
                        term_t prevLogTerm, bool appendEntries) {
-  if(_vocbase==nullptr) {
-    return false;
-  }
+
+  TRI_ASSERT(_vocbase);
   
   term_t t = 0;
   std::string lid;

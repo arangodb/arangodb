@@ -116,11 +116,14 @@ class Agent : public arangodb::Thread {
   /// @brief Persisted agents
   bool persistedAgents();
 
-  /// @brief Gossip in
-  bool activeAgency();
+  /// @brief Activate new agent in pool to replace failed
+  void reportActivated(std::string const&, std::string const&, query_t);
+
+  /// @brief Activate new agent in pool to replace failed
+  void failedActivation(std::string const&, std::string const&);
 
   /// @brief Gossip in
-  bool activeStandbyAgent();
+  bool activeAgency();
 
   /// @brief Start orderly shutdown of threads
   void beginShutdown() override final;
@@ -158,10 +161,20 @@ class Agent : public arangodb::Thread {
   /// @brief Get notification as inactve pool member
   void notify(query_t const&);
 
+  /// @brief Detect active agent failures
+  void detectActiveAgentFailures();
+
+  /// @brief All there is in the state machine
+  query_t allLogs() const;
+
   /// @brief State reads persisted state and prepares the agent
   friend class State;
 
  private:
+
+  /// @brief Update my configuration as passive agent
+  void updateConfiguration();
+  
   /// @brief Find out, if we've had acknowledged RPCs recent enough
   bool challengeLeadership();
 
@@ -170,9 +183,6 @@ class Agent : public arangodb::Thread {
 
   /// @brief Activate this agent in single agent mode.
   bool activateAgency();
-
-  /// @brief Activate new agent in pool to replace failed
-  bool activateStandbyAgent();
 
   /// @brief Assignment of persisted state
   Agent& operator=(VPackSlice const&);

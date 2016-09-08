@@ -31,38 +31,62 @@
 #include <thread>
 
 using namespace arangodb::consensus;
+using namespace std::chrono;
 
 AgentActivator::AgentActivator() : Thread("AgentActivator"), _agent(nullptr) {}
 
-AgentActivator::AgentActivator(Agent* agent, std::string const& peerId)
-  : Thread("AgentActivator"), _agent(agent), _peerId(peerId) {}
+AgentActivator::AgentActivator(Agent* agent, std::string const& failed,
+                               std::string const& replacement)
+  : Thread("AgentActivator"),
+    _agent(agent),
+    _failed(failed),
+    _replacement(replacement) {}
 
 // Shutdown if not already
-AgentActivator::~AgentActivator() { shutdown(); }
+AgentActivator::~AgentActivator() {
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Done activating " << _replacement;
+  shutdown();
+}
 
 void AgentActivator::run() {
 
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting activation of " << _peerId;
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting activation of " << _replacement;
 
   std::string const path = privApiPrefix + "activate";
-  
+  auto const started = system_clock::now();
+  auto timeout = seconds(60);
+  auto const& endpoint = _agent->config().pool().at(_replacement);
+
+  CONDITION_LOCKER(guard, _cv);
+ 
   while (!this->isStopping()) {
 
-    auto const& pool = _agent->config().pool();
-    Builder builder;
-    size_t highest = 0;
+    // All snapshots and all logs
+    query_t allLogs = _agent->allLogs();
 
     auto headerFields =
       std::make_unique<std::unordered_map<std::string, std::string>>();
     arangodb::ClusterComm::instance()->asyncRequest(
-      "1", 1, pool.at(_peerId), GeneralRequest::RequestType::POST,
-      path, std::make_shared<std::string>(builder.toJson()), headerFields,
-      std::make_shared<ActivationCallback>(_agent, _peerId, highest), 5.0, true,
-      1.0);
-    
+      "1", 1, endpoint, GeneralRequest::RequestType::POST, path,
+      std::make_shared<std::string>(allLogs->toJson()), headerFields,
+      std::make_shared<ActivationCallback>(_agent, _failed, _replacement),
+      5.0, true, 1.0);
+
+    _cv.wait(10000000); // 10 sec
+
+    if ((std::chrono::system_clock::now() - started) > timeout) {
+      _agent->failedActivation(_failed, _replacement);
+      LOG_TOPIC(WARN, Logger::AGENCY)
+        << "Timed out while activating agent " << _replacement;
+      break;
+    }
+
   }
 
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Done activating " << _peerId;
+}
 
-  
+void AgentActivator::beginShutdown() {
+  Thread::beginShutdown();
+  CONDITION_LOCKER(guard, _cv);
+  guard.broadcast();
 }
