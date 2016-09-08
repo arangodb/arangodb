@@ -855,7 +855,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
 
 void RestReplicationHandler::handleCommandLoggerFollow() {
   bool useVpp = false;
-  if (_request->transportType() == Endpoint::TransportType::HTTP) {
+  if (_request->transportType() == Endpoint::TransportType::VPP) {
     useVpp = true;
   }
 

@@ -1931,9 +1931,9 @@ function supervisionState () {
 
 function waitForSyncReplOneCollection (dbName, collName) {
   console.debug('waitForSyncRepl:', dbName, collName);
-  var cinfo = global.ArangoClusterInfo.getCollectionInfo(dbName, collName);
-  var count = 120;
+  var count = 60;
   while (--count > 0) {
+    var cinfo = global.ArangoClusterInfo.getCollectionInfo(dbName, collName);
     var shards = Object.keys(cinfo.shards);
     var ccinfo = shards.map(function (s) {
       return global.ArangoClusterInfo.getCollectionInfoCurrent(dbName,
@@ -1950,7 +1950,7 @@ function waitForSyncReplOneCollection (dbName, collName) {
       console.debug('waitForSyncRepl: OK:', dbName, collName, shards);
       return true;
     }
-    require('internal').wait(0.5);
+    require('internal').wait(1);
   }
   console.warn('waitForSyncRepl:', dbName, collName, ': BAD');
   return false;

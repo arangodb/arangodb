@@ -59,7 +59,9 @@ a collection's primary index. Thus looking up a document by its
 key is a fast operation. The _key value of a document is
 immutable once the document has been created. By default, ArangoDB will
 auto-generate a document key if no _key attribute is specified, and use
-the user-specified _key otherwise.
+the user-specified _key otherwise. The generateed _key is guaranteed to
+be unique in the collection it was generated for. It can't be guaranteed
+that this _key is uniq across the whole installation.
 
 This behavior can be changed on a per-collection level by creating
 collections with the `keyOptions` attribute.

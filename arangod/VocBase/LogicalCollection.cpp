@@ -132,7 +132,11 @@ static TRI_voc_cid_t ReadCid(VPackSlice info) {
   TRI_voc_cid_t cid = Helper::extractIdValue(info);
 
   if (cid == 0) {
-    cid = TRI_NewTickServer();
+    if (ServerState::instance()->isDBServer()) {
+      cid = ClusterInfo::instance()->uniqid();
+    } else {
+      cid = TRI_NewTickServer();
+    }
   }
   return cid;
 }

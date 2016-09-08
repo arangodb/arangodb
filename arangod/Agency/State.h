@@ -118,6 +118,8 @@ class State {
   bool persist(index_t index, term_t term,
                arangodb::velocypack::Slice const& entry);
 
+  bool saveCompacted();
+
   /// @brief Load collection from persistent store
   bool loadPersisted();
   bool loadCompacted();
