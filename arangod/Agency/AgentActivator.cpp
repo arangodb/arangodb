@@ -54,8 +54,8 @@ void AgentActivator::run() {
 
   std::string const path = privApiPrefix + "activate";
   auto const started = system_clock::now();
-  auto timeout = seconds(60);
-  auto const& endpoint = _agent->config().pool().at(_replacement);
+  auto const timeout = seconds(60);
+  auto const endpoint = _agent->config().pool().at(_replacement);
 
   CONDITION_LOCKER(guard, _cv);
  
@@ -63,6 +63,7 @@ void AgentActivator::run() {
 
     // All snapshots and all logs
     query_t allLogs = _agent->allLogs();
+    LOG(WARN) << allLogs->toJson();
 
     auto headerFields =
       std::make_unique<std::unordered_map<std::string, std::string>>();
