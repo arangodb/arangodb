@@ -8,10 +8,11 @@ cppcheck -j4 \
   --force \
   --quiet \
   --platform=unix64 \
+  --inline-suppr \
   --suppress="*:lib/JsonParser/json-parser.cpp" \
   --suppress="*:lib/V8/v8-json.cpp" \
-  --suppress="*:arangod/Aql/grammar.cpp" \
-  --suppress="*:arangod/Aql/tokens.cpp" \
+  --suppress="*:Aql/grammar.cpp" \
+  --suppress="*:Aql/tokens.ll" \
   arangod/ arangosh/ lib/ 2>> cppcheck.tmp
 
 sort cppcheck.tmp | uniq > cppcheck.log
