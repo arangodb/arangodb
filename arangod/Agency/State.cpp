@@ -731,3 +731,51 @@ bool State::persistActiveAgents(query_t const& active, query_t const& pool) {
 
   return true;
 }
+
+query_t State::allLogs() const {
+  MUTEX_LOCKER(mutexLocker, _logLock);
+
+  auto bindVars = std::make_shared<VPackBuilder>();
+  bindVars->openObject();
+  bindVars->close();
+  
+  std::string const comp("FOR c IN compact SORT c._key RETURN c");
+  std::string const logs("FOR l IN log SORT l._key RETURN l");
+
+  arangodb::aql::Query compq(false, _vocbase, comp.c_str(), comp.size(),
+                             bindVars, nullptr, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query logsq(false, _vocbase, logs.c_str(), logs.size(),
+                             bindVars, nullptr, arangodb::aql::PART_MAIN);
+
+  auto compqResult = compq.execute(QueryRegistryFeature::QUERY_REGISTRY);
+  if (compqResult.code != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(compqResult.code, compqResult.details);
+  }
+  auto logsqResult = logsq.execute(QueryRegistryFeature::QUERY_REGISTRY);
+  if (logsqResult.code != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(logsqResult.code, logsqResult.details);
+  }
+
+  auto everything = std::make_shared<VPackBuilder>();
+
+  everything->openObject();
+
+  try {
+    everything->add("compact", compqResult.result->slice());
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::AGENCY)
+      << "Failed to assemble compaction part of everything package";
+  }
+
+  try{
+    everything->add("logs", logsqResult.result->slice());
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::AGENCY)
+      << "Failed to assemble remaining part of everything package";
+  }
+
+  everything->close();
+
+  return everything;
+  
+}
