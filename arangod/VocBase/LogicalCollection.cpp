@@ -48,6 +48,8 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/CollectionReadLocker.h"
 #include "Utils/CollectionWriteLocker.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/PhysicalCollection.h"
 #include "VocBase/IndexPoolFeature.h"
 #include "VocBase/KeyGenerator.h"
@@ -322,7 +324,6 @@ LogicalCollection::LogicalCollection(
       _cleanupIndexes(0),
       _persistentIndexes(0),
       _physical(nullptr),
-      _masterPointers(),
       _useSecondaryIndexes(true),
       _numberDocuments(0),
       _maxTick(0),
@@ -353,7 +354,7 @@ LogicalCollection::LogicalCollection(
 // @brief Constructor used in coordinator case.
 // The Slice contains the part of the plan that
 // is relevant for this collection.
-LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
+LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice const& info, bool isPhysical)
     : _internalVersion(0),
       _cid(ReadCid(info)),
       _planId(ReadPlanId(info, _cid)),
@@ -386,7 +387,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
       _persistentIndexes(0),
       _path(ReadStringValue(info, "path", "")),
       _physical(nullptr),
-      _masterPointers(),
       _useSecondaryIndexes(true),
       _numberDocuments(0),
       _maxTick(0),
@@ -462,7 +462,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice info)
       }
     }
 
-    if (!ServerState::instance()->isCoordinator()) {
+    if (!ServerState::instance()->isCoordinator() && isPhysical) {
       // If we are not in the coordinator we need a path
       // to the physical data.
       StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -719,7 +719,6 @@ std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
   return _followers;
 }
 
-
 void LogicalCollection::setDeleted(bool newValue) {
   _isDeleted = newValue;
 }
@@ -938,7 +937,7 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result, bool withPath) const 
 
   result.add("indexBuckets", VPackValue(_indexBuckets));
   result.add(VPackValue("indexes"));
-  getIndexesVPack(result, true);
+  getIndexesVPack(result, false);
   result.add("replicationFactor", VPackValue(_replicationFactor));
   result.add(VPackValue("shards"));
   result.openObject();
@@ -1058,8 +1057,8 @@ std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() {
   } else {
     builder->openObject();
 
-      // add index information
-    size_t sizeIndexes = _masterPointers.memory();
+    // add index information
+    size_t sizeIndexes = getPhysical()->memory();
     size_t numIndexes = 0;
     for (auto const& idx : _indexes) {
       sizeIndexes += static_cast<size_t>(idx->memory());
@@ -1118,7 +1117,97 @@ PhysicalCollection* LogicalCollection::createPhysical() {
 }
 
 /// @brief opens an existing collection
-int LogicalCollection::open(bool ignoreErrors) {
+void LogicalCollection::open(bool ignoreErrors) {
+  VPackBuilder builder;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->getCollectionInfo(_vocbase, cid(), builder, false, 0);
+
+  double start = TRI_microtime();
+
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+      << "open-document-collection { collection: " << _vocbase->name() << "/"
+      << _name << " }";
+
+  int res = openWorker(ignoreErrors);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(ERR) << "cannot open document collection from path '" << path() << "'";
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  res = createInitialIndexes();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(ERR) << "cannot initialize document collection: " << TRI_errno_string(res);
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  
+  arangodb::SingleCollectionTransaction trx(
+      arangodb::StandaloneTransactionContext::Create(_vocbase),
+      cid(), TRI_TRANSACTION_WRITE);
+
+  // build the primary index
+  res = TRI_ERROR_INTERNAL;
+
+  try {
+    double start = TRI_microtime();
+
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+        << "iterate-markers { collection: " << _vocbase->name() << "/"
+        << _name << " }";
+
+    // iterate over all markers of the collection
+    res = getPhysical()->iterateMarkersOnLoad(&trx);
+
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::FIXED(TRI_microtime() - start) << " s, iterate-markers { collection: " << _vocbase->name() << "/" << _name << " }";
+  } catch (arangodb::basics::Exception const& ex) {
+    res = ex.code();
+  } catch (std::bad_alloc const&) {
+    res = TRI_ERROR_OUT_OF_MEMORY;
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string("cannot iterate data of document collection: ") + TRI_errno_string(res));
+  }
+
+  // build the indexes meta-data, but do not fill the indexes yet
+  {
+    auto old = useSecondaryIndexes();
+
+    // turn filling of secondary indexes off. we're now only interested in getting
+    // the indexes' definition. we'll fill them below ourselves.
+    useSecondaryIndexes(false);
+
+    try {
+      detectIndexes(&trx);
+      useSecondaryIndexes(old);
+    } catch (basics::Exception const& ex) {
+      useSecondaryIndexes(old);
+      THROW_ARANGO_EXCEPTION_MESSAGE(ex.code(), std::string("cannot initialize collection indexes: ") + ex.what());
+    } catch (std::exception const& ex) {
+      useSecondaryIndexes(old);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("cannot initialize collection indexes: ") + ex.what());
+    } catch (...) {
+      useSecondaryIndexes(old);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot initialize collection indexes: unknown exception");
+    }
+  }
+
+  if (!arangodb::wal::LogfileManager::instance()->isInRecovery()) {
+    // build the index structures, and fill the indexes
+    fillIndexes(&trx);
+  }
+
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+      << "[timer] " << Logger::FIXED(TRI_microtime() - start)
+      << " s, open-document-collection { collection: " << _vocbase->name() << "/"
+      << _name << " }";
+}
+
+/// @brief opens an existing collection
+int LogicalCollection::openWorker(bool ignoreErrors) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   double start = TRI_microtime();
 
@@ -1776,7 +1865,7 @@ int LogicalCollection::insert(Transaction* trx, VPackSlice const slice,
     arangodb::CollectionWriteLocker collectionLocker(this, useDeadlockDetector, lock);
 
     // create a new header
-    TRI_doc_mptr_t* header = operation.header = _masterPointers.request();
+    TRI_doc_mptr_t* header = operation.header = getPhysical()->requestMasterpointer(); 
 
     if (header == nullptr) {
       // out of memory. no harm done here. just return the error

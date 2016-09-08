@@ -68,6 +68,22 @@
 using namespace arangodb;
   
 //////////////////////////////////////////////////////////////////////////////
+/// @brief Get the field names of the used index
+//////////////////////////////////////////////////////////////////////////////
+
+std::vector<std::vector<std::string>> Transaction::IndexHandle::fieldNames() const {
+  return _index->fieldNames();
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Only required by traversal should be removed ASAP
+//////////////////////////////////////////////////////////////////////////////
+
+bool Transaction::IndexHandle::isEdgeIndex() const {
+  return _index->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX;
+}
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief IndexHandle getter method
 //////////////////////////////////////////////////////////////////////////////
 
@@ -380,8 +396,7 @@ bool Transaction::sortOrs(arangodb::aql::Ast* ast,
 std::pair<bool, bool> Transaction::findIndexHandleForAndNode(
     std::vector<std::shared_ptr<Index>> indexes, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference,
-    arangodb::aql::SortCondition const* sortCondition,
-    size_t itemsInCollection,
+    arangodb::aql::SortCondition const* sortCondition, size_t itemsInCollection,
     std::vector<Transaction::IndexHandle>& usedIndexes,
     arangodb::aql::AstNode*& specializedCondition,
     bool& isSparse) const {
@@ -468,6 +483,52 @@ std::pair<bool, bool> Transaction::findIndexHandleForAndNode(
 
   return std::make_pair(bestSupportsFilter, bestSupportsSort);
 }
+
+bool Transaction::findIndexHandleForAndNode(
+    std::vector<std::shared_ptr<Index>> indexes,
+    arangodb::aql::AstNode*& node,
+    arangodb::aql::Variable const* reference,
+    size_t itemsInCollection,
+    Transaction::IndexHandle& usedIndex) const {
+  std::shared_ptr<Index> bestIndex;
+  double bestCost = 0.0;
+
+  for (auto const& idx : indexes) {
+    double filterCost = 0.0;
+    double sortCost = 0.0;
+    size_t itemsInIndex = itemsInCollection;
+
+    // check if the index supports the filter expression
+    double estimatedCost;
+    size_t estimatedItems;
+    if (!idx->supportsFilterCondition(node, reference, itemsInIndex,
+                                     estimatedItems, estimatedCost)) {
+      continue;
+    }
+    // index supports the filter condition
+    filterCost = estimatedCost;
+    // this reduces the number of items left
+    itemsInIndex = estimatedItems;
+
+    double const totalCost = filterCost + sortCost;
+    if (bestIndex == nullptr || totalCost < bestCost) {
+      bestIndex = idx;
+      bestCost = totalCost;
+    }
+  }
+
+  if (bestIndex == nullptr) {
+    return false;
+  }
+
+  node = bestIndex->specializeCondition(node, reference);
+
+  usedIndex = IndexHandle(bestIndex);
+
+  return true;
+}
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief if this pointer is set to an actual set, then for each request
@@ -1282,7 +1343,8 @@ void Transaction::invokeOnAllElements(std::string const& collectionName,
 
 int Transaction::documentFastPath(std::string const& collectionName,
                                   VPackSlice const value,
-                                  VPackBuilder& result) {
+                                  VPackBuilder& result,
+                                  bool shouldLock) {
   TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
   if (!value.isObject() && !value.isString()) {
     // must provide a document object or string
@@ -1312,8 +1374,10 @@ int Transaction::documentFastPath(std::string const& collectionName,
   }
 
   TRI_doc_mptr_t mptr;
-  int res = collection->read(this, key, &mptr, !isLocked(collection, TRI_TRANSACTION_READ));
-  
+  int res = collection->read(
+      this, key, &mptr,
+      shouldLock && !isLocked(collection, TRI_TRANSACTION_READ));
+
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -2723,6 +2787,34 @@ std::pair<bool, bool> Transaction::getBestIndexHandlesForFilterCondition(
   return std::make_pair(canUseForFilter, canUseForSort);
 }
 
+
+/// @brief Gets the best fitting index for one specific condition.
+///        Difference to IndexHandles: Condition is only one NARY_AND
+///        and the Condition stays unmodified. Also does not care for sorting
+///        Returns false if no index could be found.
+
+bool Transaction::getBestIndexHandleForFilterCondition(
+    std::string const& collectionName, arangodb::aql::AstNode*& node,
+    arangodb::aql::Variable const* reference, size_t itemsInCollection,
+    IndexHandle& usedIndex) {
+  // We can only start after DNF transformation and only a single AND
+  TRI_ASSERT(node->type ==
+             arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND);
+  if (node->numMembers() == 0) {
+    // Well no index can serve no condition.
+    return false;
+  }
+
+  auto indexes = indexesForCollection(collectionName);
+
+  // Const cast is save here. Giving computeSpecialisation == false
+  // Makes sure node is NOT modified.
+  return findIndexHandleForAndNode(
+      indexes, node, reference,
+      itemsInCollection, usedIndex);
+}
+
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Checks if the index supports the filter condition.
 /// note: the caller must have read-locked the underlying collection when
@@ -2824,7 +2916,7 @@ std::pair<bool, bool> Transaction::getIndexForSortCondition(
 //////////////////////////////////////////////////////////////////////////////
 
 OperationCursor* Transaction::indexScanForCondition(
-    std::string const& collectionName, IndexHandle const& indexId,
+    IndexHandle const& indexId,
     arangodb::aql::AstNode const* condition, arangodb::aql::Variable const* var,
     uint64_t limit, uint64_t batchSize, bool reverse) {
   if (ServerState::isCoordinator(_serverRole)) {
@@ -3102,6 +3194,19 @@ std::vector<std::shared_ptr<Index>> Transaction::indexesForCollection(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   LogicalCollection* document = documentCollection(trxCollection(cid));
   return document->getIndexes();
+}
+
+
+/// @brief Lock all collections. Only works for selected sub-classes
+
+int Transaction::lockCollections() {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+/// @brief Clone this transaction. Only works for selected sub-classes
+
+Transaction* Transaction::clone() const {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 //////////////////////////////////////////////////////////////////////////////

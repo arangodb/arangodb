@@ -277,9 +277,11 @@ void HeartbeatThread::runDBServer() {
         remain = interval - (TRI_microtime() - start);
       } while (remain > 0);
     } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Got an exception in DBServer heartbeat: " << e.what();
+      LOG_TOPIC(ERR, Logger::HEARTBEAT)
+        << "Got an exception in DBServer heartbeat: " << e.what();
     } catch (...) {
-      LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Got an unknown exception in DBServer heartbeat";
+      LOG_TOPIC(ERR, Logger::HEARTBEAT)
+        << "Got an unknown exception in DBServer heartbeat";
     }
   }
 
@@ -361,38 +363,42 @@ void HeartbeatThread::runCoordinator() {
 
         handleStateChange(result);
         
-        // mop: order is actually important here...FoxxmasterQueueupdate will be set only when somebody
-        // registers some new queue stuff (for example on a different coordinator than this one)...
-        // However when we are just about to become the new foxxmaster we must immediately refresh our queues
-        // this is done in ServerState...if queueupdate is set after foxxmaster the change will be reset again
+        // mop: order is actually important here...FoxxmasterQueueupdate will
+        // be set only when somebody registers some new queue stuff (for example
+        // on a different coordinator than this one)... However when we are just
+        // about to become the new foxxmaster we must immediately refresh our
+        // queues this is done in ServerState...if queueupdate is set after
+        // foxxmaster the change will be reset again
         VPackSlice foxxmasterQueueupdateSlice = result.slice()[0].get(
-            std::vector<std::string>({_agency.prefix(), "Current", "FoxxmasterQueueupdate"})
-        );
+          std::vector<std::string>({_agency.prefix(), "Current",
+                "FoxxmasterQueueupdate"})
+          );
         
         if (foxxmasterQueueupdateSlice.isBool()) {
-          ServerState::instance()->setFoxxmasterQueueupdate(foxxmasterQueueupdateSlice.getBool());
+          ServerState::instance()->setFoxxmasterQueueupdate(
+            foxxmasterQueueupdateSlice.getBool());
         }
-
+        
         VPackSlice foxxmasterSlice = result.slice()[0].get(
-            std::vector<std::string>({_agency.prefix(), "Current", "Foxxmaster"})
-        );
+          std::vector<std::string>({_agency.prefix(), "Current", "Foxxmaster"})
+          );
         
         if (foxxmasterSlice.isString()) {
           ServerState::instance()->setFoxxmaster(foxxmasterSlice.copyString());
         }
-
+        
         VPackSlice versionSlice = result.slice()[0].get(
-            std::vector<std::string>({_agency.prefix(), "Plan", "Version"}));
-
+          std::vector<std::string>({_agency.prefix(), "Plan", "Version"}));
+        
         if (versionSlice.isInteger()) {
           // there is a plan version
-
+          
           uint64_t planVersion = 0;
           try {
             planVersion = versionSlice.getUInt();
           } catch (...) {
           }
-
+          
           if (planVersion > lastPlanVersionNoticed) {
             LOG_TOPIC(TRACE, Logger::HEARTBEAT)
                 << "Found planVersion " << planVersion << " which is newer than "
@@ -401,14 +407,14 @@ void HeartbeatThread::runCoordinator() {
               lastPlanVersionNoticed = planVersion;
             } else {
               LOG_TOPIC(WARN, Logger::HEARTBEAT)
-                  << "handlePlanChangeCoordinator was unsuccessful";
+                << "handlePlanChangeCoordinator was unsuccessful";
             }
           }
         }
-
+        
         VPackSlice slice = result.slice()[0].get(
-            std::vector<std::string>({_agency.prefix(), "Sync", "UserVersion"}));
-
+          std::vector<std::string>({_agency.prefix(), "Sync", "UserVersion"}));
+        
         if (slice.isInteger()) {
           // there is a UserVersion
           uint64_t userVersion = 0;
@@ -416,13 +422,13 @@ void HeartbeatThread::runCoordinator() {
             userVersion = slice.getUInt();
           } catch (...) {
           }
-
+          
           if (userVersion > 0 && userVersion != oldUserVersion) {
             oldUserVersion = userVersion;
             GeneralServerFeature::AUTH_INFO.outdate();
           }
         }
-
+        
         versionSlice = result.slice()[0].get(
             std::vector<std::string>({_agency.prefix(), "Current", "Version"}));
         if (versionSlice.isInteger()) {

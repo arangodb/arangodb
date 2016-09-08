@@ -28,6 +28,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "StorageEngine/MMFilesDatafileStatistics.h"
 #include "VocBase/Ditch.h"
+#include "VocBase/MasterPointers.h"
 #include "VocBase/PhysicalCollection.h"
 
 struct TRI_datafile_t;
@@ -94,9 +95,6 @@ class MMFilesCollection final : public PhysicalCollection {
   /// @brief seal a datafile
   int sealDatafile(TRI_datafile_t* datafile, bool isCompactor);
 
-  /// @brief iterates over a collection
-  bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb) override;
-  
   /// @brief increase dead stats for a datafile, if it exists
   void increaseDeadStats(TRI_voc_fid_t fid, int64_t number, int64_t size) override {
     _datafileStatistics.increaseDead(fid, number, size);
@@ -107,10 +105,14 @@ class MMFilesCollection final : public PhysicalCollection {
     _datafileStatistics.update(fid, values);
   }
 
-  /// @brief create statistics for a datafile, using the stats provided
-  void createStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) override {
-    _datafileStatistics.create(fid, values);
-  }
+  /// @brief order a new master pointer
+  TRI_doc_mptr_t* requestMasterpointer() override;
+
+  /// @brief release an existing master pointer
+  void releaseMasterpointer(TRI_doc_mptr_t* mptr) override;
+  
+  /// @brief report extra memory used by indexes etc.
+  size_t memory() const override;
 
   void preventCompaction() override;
   bool tryPreventCompaction() override;
@@ -119,11 +121,20 @@ class MMFilesCollection final : public PhysicalCollection {
   bool tryLockForCompaction() override;
   void finishCompaction() override;
   
-  void open(bool ignoreErrors) override;
-  
   Ditches* ditches() const override { return &_ditches; }
+  
+  /// @brief iterate all markers of a collection on load
+  int iterateMarkersOnLoad(arangodb::Transaction* trx) override;
 
  private:
+  /// @brief create statistics for a datafile, using the stats provided
+  void createStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) {
+    _datafileStatistics.create(fid, values);
+  }
+    
+  /// @brief iterates over a collection
+  bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb);
+  
   /// @brief creates a datafile
   TRI_datafile_t* createDatafile(TRI_voc_fid_t fid,
                                  TRI_voc_size_t journalSize, 
@@ -140,6 +151,8 @@ class MMFilesCollection final : public PhysicalCollection {
                               std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb);
 
  private:
+  arangodb::MasterPointers _masterPointers;
+
   mutable arangodb::Ditches _ditches;
 
   arangodb::basics::ReadWriteLock _filesLock;

@@ -60,8 +60,6 @@ class FulltextIndex final : public Index {
 
   bool hasSelectivityEstimate() const override final { return false; }
 
-  bool dumpFields() const override final { return true; }
-
   size_t memory() const override final;
 
   void toVelocyPack(VPackBuilder&, bool) const override final;

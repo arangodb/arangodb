@@ -30,8 +30,8 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
 #include "Basics/WorkMonitor.h"
+#include "Logger/Logger.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -192,9 +192,14 @@ Thread::~Thread() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Thread::beginShutdown() {
-  LOG_TOPIC(TRACE, Logger::THREADS) << "beginShutdown(" << _name << ")";
+  LOG_TOPIC(TRACE, Logger::THREADS)
+      << "beginShutdown(" << _name << ") in state " << stringify(_state.load());
 
   ThreadState state = _state.load();
+
+  while (state == ThreadState::CREATED) {
+    _state.compare_exchange_strong(state, ThreadState::STOPPED);
+  }
 
   while (state != ThreadState::STOPPING && state != ThreadState::STOPPED &&
          state != ThreadState::DETACHED) {
@@ -202,7 +207,8 @@ void Thread::beginShutdown() {
   }
 
   LOG_TOPIC(TRACE, Logger::THREADS) << "beginShutdown(" << _name
-                                    << ") reached state " << (int)_state.load();
+                                    << ") reached state "
+                                    << stringify(_state.load());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -273,10 +279,12 @@ bool Thread::start(ConditionVariable* finishedCondition) {
   }
 
   _finishedCondition = finishedCondition;
+  ThreadState state = _state.load();
 
-  if (_state.load() != ThreadState::CREATED) {
+  if (state != ThreadState::CREATED) {
     LOG_TOPIC(FATAL, Logger::THREADS)
-        << "called started on an already started thread";
+        << "called started on an already started thread, thread is in state "
+        << stringify(state);
     FATAL_ERROR_EXIT();
   }
 
@@ -284,7 +292,9 @@ bool Thread::start(ConditionVariable* finishedCondition) {
   bool res = _state.compare_exchange_strong(expected, ThreadState::STARTED);
 
   if (!res) {
-    LOG_TOPIC(WARN, Logger::THREADS) << "thread died before it could start";
+    LOG_TOPIC(WARN, Logger::THREADS)
+        << "thread died before it could start, thread is in state "
+        << stringify(expected);
     return false;
   }
 

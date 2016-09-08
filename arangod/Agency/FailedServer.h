@@ -31,22 +31,19 @@ namespace arangodb {
 namespace consensus {
 
 struct FailedServer : public Job {
-
   FailedServer(Node const& snapshot, Agent* agent, std::string const& jobId,
                std::string const& creator, std::string const& agencyPrefix,
                std::string const& failed = std::string());
-  
-  virtual ~FailedServer ();
+
+  virtual ~FailedServer();
 
   virtual bool start() override;
-  virtual bool create () override;
-  virtual JOB_STATUS status () override;
-  
+  virtual bool create() override;
+  virtual JOB_STATUS status() override;
+
   std::string _server;
-  
 };
-
-
-}}
+}
+}
 
 #endif

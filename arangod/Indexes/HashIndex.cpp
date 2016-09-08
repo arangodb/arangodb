@@ -564,9 +564,9 @@ double HashIndex::selectivityEstimate() const {
     return 1.0;
   }
 
-  if (_multiArray == nullptr) {
+  if (_multiArray == nullptr || ServerState::instance()->isCoordinator()) {
     // use hard-coded selectivity estimate in case of cluster coordinator
-    return _selectivityEstimate;
+    return 0.1;
   }
 
   double estimate = _multiArray->_hashArray->selectivity();
@@ -678,9 +678,6 @@ bool HashIndex::matchesDefinition(VPackSlice const& info) const {
   }
   return true;
 }
-
-
-
 
 int HashIndex::insert(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
                       bool isRollback) {

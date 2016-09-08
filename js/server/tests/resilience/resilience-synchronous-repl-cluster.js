@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertEqual, fail */
+/*global assertTrue, assertFalse, assertEqual, fail, instanceInfo */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test synchronous replication in the cluster
@@ -37,6 +37,7 @@ const _ = require("lodash");
 const wait = require("internal").wait;
 const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
+const download = require('internal').download;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -130,6 +131,7 @@ function SynchronousReplicationSuite () {
     assertTrue(pos >= 0);
     assertTrue(suspendExternal(global.instanceInfo.arangods[pos].pid));
     console.info("Have failed leader", leader);
+    return leader;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -339,6 +341,7 @@ function SynchronousReplicationSuite () {
 
     tearDown : function () {
       db._drop(cn);
+      global.ArangoAgency.set('Target/FailedServers', []);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -348,6 +351,7 @@ function SynchronousReplicationSuite () {
     testCheckInstanceInfo : function () {
       assertTrue(global.instanceInfo !== undefined);
     },
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a synchronously replicated collection gets online
@@ -765,6 +769,62 @@ function SynchronousReplicationSuite () {
       assertTrue(waitForSynchronousReplication("_system"));
       runBasicOperations({place:18, follower: false},
                          {place:18, follower: false});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+    
+    testCleaningFailedServer: function() {
+      assertTrue(waitForSynchronousReplication("_system"));
+      let leader = failLeader();
+      let count = 0;
+      let maxAttempts = 1000;
+      let info = global.ArangoClusterInfo.getCollectionInfo('_system', cn);
+      let shard = Object.keys(info.shards);
+      while (true) {
+        if (info.shards[shard][0] !== leader) {
+          // mop: leader should first become a follower
+          assertEqual(info.shards[shard][1], leader);
+          break;
+        }
+        if (count++ > maxAttempts) {
+          assertFalse('Supervision didn\'t promote a new follower within ' + maxAttempts + ' attempts');
+        }
+        wait(3);
+        info = global.ArangoClusterInfo.getCollectionInfo('_system', cn);
+      }
+
+      // mop: now when we reduce the number of servers this server should be cleaned out
+      let numDBServers = instanceInfo.arangods.filter(arangod => {
+        return arangod.role === 'dbserver';
+      }).length;
+      let coordinator = instanceInfo.arangods.filter(arangod => {
+        return arangod.role === 'coordinator';
+      })[0];
+      
+      const requestOptions = {};
+      requestOptions.method = 'PUT';
+      requestOptions.returnBodyOnError = true;
+       
+      let body = {"numberOfCoordinators":null,"numberOfDBServers":numDBServers - 1,"cleanedServers":[]};
+      let reply = download(coordinator.url + '/_admin/cluster/numberOfServers', JSON.stringify(body), requestOptions);
+      
+      assertFalse(reply.error);
+
+      count = 0;
+      while (true) {
+        let reply = download(coordinator.url + '/_admin/cluster/numberOfServers');
+        let body = JSON.parse(reply.body);
+        assertEqual(typeof body, 'object');
+        if (Array.isArray(body.cleanedServers) && body.cleanedServers.length > 0) {
+          assertEqual(1, body.cleanedServers.length);
+          assertEqual(leader, body.cleanedServers[0]);
+          break;
+        }
+        if (count++ > maxAttempts) {
+          assertFalse('Supervision didn\'t clean our server after ' + maxAttempts);
+        }
+        wait(5);
+      }
+      healLeader();
       assertTrue(waitForSynchronousReplication("_system"));
     },
 

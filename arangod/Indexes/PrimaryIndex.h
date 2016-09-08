@@ -147,8 +147,6 @@ class PrimaryIndex final : public Index {
 
   double selectivityEstimate() const override final { return 1.0; }
 
-  bool dumpFields() const override final { return true; }
-
   size_t size() const;
 
   size_t memory() const override final;

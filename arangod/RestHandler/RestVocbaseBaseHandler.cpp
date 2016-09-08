@@ -137,6 +137,16 @@ std::string const RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH =
 
 std::string const RestVocbaseBaseHandler::UPLOAD_PATH = "/_api/upload";
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wal path
+////////////////////////////////////////////////////////////////////////////////
+
+std::string const RestVocbaseBaseHandler::WAL_PATH = "/_admin/wal";
+
+/// @brief Internal Traverser path
+
+std::string const RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH = "/_internal/traverser";
+
 RestVocbaseBaseHandler::RestVocbaseBaseHandler(GeneralRequest* request,
                                                GeneralResponse* response)
     : RestBaseHandler(request, response),
@@ -624,28 +634,6 @@ bool RestVocbaseBaseHandler::extractBooleanParameter(char const* name,
   }
 
   return def;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parses the body as VelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
-std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
-    VPackOptions const* options, bool& success) {
-  try {
-    success = true;
-    return _request->toVelocyPackBuilderPtr(options);
-
-  } catch (std::bad_alloc const&) {
-    generateOOMError();
-  } catch (VPackException const& e) {
-    std::string errmsg("VpackError error: ");
-    errmsg.append(e.what());
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON,
-                  errmsg);
-  }
-  success = false;
-  return std::make_shared<VPackBuilder>();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

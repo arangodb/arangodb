@@ -24,8 +24,8 @@
 #ifndef ARANGOD_REST_HANDLER_REST_AGENCY_HANDLER_H
 #define ARANGOD_REST_HANDLER_REST_AGENCY_HANDLER_H 1
 
-#include "RestHandler/RestBaseHandler.h"
 #include "Agency/Agent.h"
+#include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
 

@@ -28,8 +28,8 @@
 #include "AgentConfiguration.h"
 
 #include "Basics/Common.h"
-#include "Basics/Thread.h"
 #include "Basics/ConditionVariable.h"
+#include "Basics/Thread.h"
 
 struct TRI_vocbase_t;
 
@@ -45,7 +45,6 @@ class Agent;
 /// @brief RAFT leader election
 class Constituent : public arangodb::Thread {
  public:
-
   /// @brief Default ctor
   Constituent();
 
@@ -71,8 +70,7 @@ class Constituent : public arangodb::Thread {
   bool running() const;
 
   /// @brief Called by REST handler
-  bool vote(term_t, std::string, index_t, term_t,
-            bool appendEntries = false);
+  bool vote(term_t, std::string, index_t, term_t, bool appendEntries = false);
 
   /// @brief My daily business
   void run() override final;
@@ -97,10 +95,9 @@ class Constituent : public arangodb::Thread {
   friend class Agent;
 
  private:
-
   /// @brief update leaderId and term if inactive
   void update(std::string const&, term_t);
-  
+
   /// @brief set term to new term
   void term(term_t);
 
@@ -114,8 +111,7 @@ class Constituent : public arangodb::Thread {
   void candidate();
 
   /// @brief Become leader
-  void lead(std::map<std::string,bool> const& =
-            std::map<std::string,bool>());
+  void lead(std::map<std::string, bool> const& = std::map<std::string, bool>());
 
   /// @brief Call for vote (by leader or candidates after timeout)
   void callElection();
@@ -132,14 +128,14 @@ class Constituent : public arangodb::Thread {
   TRI_vocbase_t* _vocbase;
   aql::QueryRegistry* _queryRegistry;
 
-  term_t _term;                /**< @brief term number */
-  std::atomic<bool> _cast;     /**< @brief cast a vote this term */
+  term_t _term;            /**< @brief term number */
+  std::atomic<bool> _cast; /**< @brief cast a vote this term */
 
   std::string _leaderID; /**< @brief Current leader */
   std::string _id;       /**< @brief My own id */
 
-  role_t _role;                        /**< @brief My role */
-  Agent* _agent;                       /**< @brief My boss */
+  role_t _role;  /**< @brief My role */
+  Agent* _agent; /**< @brief My boss */
   std::string _votedFor;
 
   arangodb::basics::ConditionVariable _cv;  // agency callbacks

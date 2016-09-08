@@ -610,6 +610,7 @@ std::string MMFilesEngine::createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_
 
   TRI_ASSERT(id != 0);
   std::string const dirname = createCollectionDirectoryName(path, id);
+
   registerCollectionPath(vocbase->id(), id, dirname);
 
   // directory must not exist
@@ -1385,11 +1386,10 @@ LogicalCollection* MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase, std
   patch.add("isSystem", VPackValue(isSystemValue));
   patch.add("path", VPackValue(path));
   patch.close();
-  VPackSlice isSystem = patch.slice();
-  VPackBuilder b2 = VPackCollection::merge(slice, isSystem, false);
+  VPackBuilder b2 = VPackCollection::merge(slice, patch.slice(), false);
   slice = b2.slice();
 
-  return new LogicalCollection(vocbase, slice);
+  return new LogicalCollection(vocbase, slice, true);
 }
 
 /// @brief remove data of expired compaction blockers

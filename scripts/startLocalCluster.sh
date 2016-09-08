@@ -64,24 +64,24 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
     build/bin/arangod \
         -c none \
         --agency.activate true \
+        --agency.compaction-step-size $COMP \
+        --agency.election-timeout-min $MINP \
+        --agency.election-timeout-max $MAXP \
         --agency.endpoint tcp://localhost:$BASE \
-        --agency.size $NRAGENTS \
         --agency.pool-size $NRAGENTS \
+        --agency.size $NRAGENTS \
         --agency.supervision true \
         --agency.supervision-frequency $SFRE \
         --agency.wait-for-sync false \
-        --agency.election-timeout-min $MINP \
-        --agency.election-timeout-max $MAXP \
         --database.directory cluster/data$port \
         --javascript.app-path ./js/apps \
         --javascript.startup-directory ./js \
         --javascript.v8-contexts 1 \
-        --log.file cluster/$port.log \
         --server.authentication false \
         --server.endpoint tcp://0.0.0.0:$port \
         --server.statistics false \
         --server.threads 16 \
-        --agency.compaction-step-size $COMP \
+        --log.file cluster/$port.log \
         --log.force-direct true \
         > cluster/$port.stdout 2>&1 &
 done

@@ -65,7 +65,7 @@ class LogicalCollection {
   friend struct ::TRI_vocbase_t;
 
  public:
-  LogicalCollection(TRI_vocbase_t*, arangodb::velocypack::Slice);
+  LogicalCollection(TRI_vocbase_t*, arangodb::velocypack::Slice const&, bool isPhysical);
 
   explicit LogicalCollection(std::shared_ptr<LogicalCollection> const&);
 
@@ -237,7 +237,7 @@ class LogicalCollection {
   
   
   /// @brief opens an existing collection
-  int open(bool ignoreErrors);
+  void open(bool ignoreErrors);
 
   /// @brief closes an open collection
   int close();
@@ -247,11 +247,6 @@ class LogicalCollection {
   /// @brief rotate the active journal - will do nothing if there is no journal
   int rotateActiveJournal() {
     return getPhysical()->rotateActiveJournal();
-  }
-  
-  /// @brief iterates over a collection
-  bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& callback) {
-    return getPhysical()->iterateDatafiles(callback);
   }
   
   /// @brief increase dead stats for a datafile, if it exists
@@ -264,17 +259,21 @@ class LogicalCollection {
     return getPhysical()->updateStats(fid, values);
   }
   
-  /// @brief create statistics for a datafile, using the stats provided
-  void createStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) {
-    return getPhysical()->createStats(fid, values);
-  }
-
-  
   int applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
                         std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) {
     return getPhysical()->applyForTickRange(dataMin, dataMax, callback);
   }
-
+  
+  /// @brief order a new master pointer
+  TRI_doc_mptr_t* requestMasterpointer() {
+    return getPhysical()->requestMasterpointer();
+  } 
+  
+  /// @brief release an existing master pointer
+  void releaseMasterpointer(TRI_doc_mptr_t* mptr) {
+    getPhysical()->releaseMasterpointer(mptr);
+  }
+  
   /// @brief disallow starting the compaction of the collection
   void preventCompaction() { getPhysical()->preventCompaction(); }
   bool tryPreventCompaction() { return getPhysical()->tryPreventCompaction(); }
@@ -360,10 +359,9 @@ class LogicalCollection {
   // SECTION: Index creation
 
   /// @brief creates the initial indexes for the collection
- public:
-  // FIXME Should be private
   int createInitialIndexes();
- private:
+
+  int openWorker(bool ignoreErrors);
 
   bool removeIndex(TRI_idx_iid_t iid);
 
@@ -518,10 +516,6 @@ class LogicalCollection {
   size_t _persistentIndexes;
   std::string _path;
   PhysicalCollection* _physical;
-
- public:
-  // FIXME Must be private. OpenIterator uses this.
-  arangodb::MasterPointers _masterPointers;
 
  private:
   // whether or not secondary indexes should be filled

@@ -43,6 +43,25 @@ RestBaseHandler::RestBaseHandler(GeneralRequest* request,
                                  GeneralResponse* response)
     : RestHandler(request, response) {}
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parses the body as VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> RestBaseHandler::parseVelocyPackBody(
+    VPackOptions const* options, bool& success) {
+  try {
+    success = true;
+    return _request->toVelocyPackBuilderPtr(options);
+  } catch (VPackException const& e) {
+    std::string errmsg("VPackError error: ");
+    errmsg.append(e.what());
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON,
+                  errmsg);
+  }
+  success = false;
+  return std::make_shared<VPackBuilder>();
+}
+
 void RestBaseHandler::handleError(Exception const& ex) {
   generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
 }
@@ -127,14 +146,6 @@ void RestBaseHandler::generateError(rest::ResponseCode code, int errorCode,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates an OUT_OF_MEMORY error
-////////////////////////////////////////////////////////////////////////////////
-
-void RestBaseHandler::generateOOMError() {
-  generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a cancel message
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -155,6 +166,8 @@ void RestBaseHandler::writeResult(Payload&& payload,
       _response->setContentType(_request->contentTypeResponse());
     }
     _response->setPayload(std::forward<Payload>(payload), true, options);
+  } catch (basics::Exception const& ex) {
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
   } catch (std::exception const& ex) {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   ex.what());

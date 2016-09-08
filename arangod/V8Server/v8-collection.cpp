@@ -2566,7 +2566,7 @@ static void JS_CollectionsVocbase(
   if (ServerState::instance()->isCoordinator()) {
     colls = GetCollectionsCluster(vocbase);
   } else {
-    colls = vocbase->collections();
+    colls = vocbase->collections(false);
   }
 
   std::sort(colls.begin(), colls.end(), [](LogicalCollection* lhs, LogicalCollection* rhs) -> bool {

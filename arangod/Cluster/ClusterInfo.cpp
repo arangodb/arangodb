@@ -452,7 +452,7 @@ void ClusterInfo::loadPlan() {
             
             std::string const collectionId = collectionPairSlice.key.copyString();
             try {
-              auto newCollection = std::make_shared<LogicalCollection>(vocbase, collectionSlice);
+              auto newCollection = std::make_shared<LogicalCollection>(vocbase, collectionSlice, false);
               std::string const collectionName = newCollection->name();
               
               // mop: register with name as well as with id
@@ -476,17 +476,34 @@ void ClusterInfo::loadPlan() {
                   std::strtol(b.c_str() + 1, nullptr, 10);
                   });
               newShards.emplace(std::make_pair(collectionId, shards));
+            } catch (std::exception const& ex) {
+              // The plan contains invalid collection information.
+              // This should not happen in healthy situations.
+              // If it happens in unhealthy situations the
+              // cluster should not fail.
+              LOG(ERR) << "Failed to load information for collection '"
+                       << collectionId << "': " << ex.what()  
+                       << ". invalid information in plan. The collection will "
+                          "be ignored for now and the invalid information will "
+                          "be repaired. VelocyPack: " << collectionSlice.toJson();
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+              TRI_ASSERT(false);
+#endif
+              continue;
             } catch (...) {
               // The plan contains invalid collection information.
               // This should not happen in healthy situations.
               // If it happens in unhealthy situations the
               // cluster should not fail.
-              LOG(ERR) << "Failed to load information for collection "
-                       << collectionId
-                       << " invalid information in plan. The collection will "
+              LOG(ERR) << "Failed to load information for collection '"
+                       << collectionId << ". invalid information in plan. The collection will "
                           "be ignored for now and the invalid information will "
-                          "be repaired.";
+                          "be repaired. VelocyPack: " << collectionSlice.toJson();
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
               TRI_ASSERT(false);
+#endif
               continue;
             }
           }
@@ -509,16 +526,16 @@ void ClusterInfo::loadPlan() {
       _planProt.doneVersion = storedVersion;
       _planProt.isValid = true;  // will never be reset to false
     } else {
-      LOG(ERR) << "\"Plan\" is not an object in agency";
+      LOG_TOPIC(ERR, Logger::CLUSTER) << "\"Plan\" is not an object in agency";
     }
     return;
   }
 
-  LOG(DEBUG) << "Error while loading " << prefixPlan
-             << " httpCode: " << result.httpCode()
-             << " errorCode: " << result.errorCode()
-             << " errorMessage: " << result.errorMessage()
-             << " body: " << result.body();
+  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Error while loading " << prefixPlan
+                                    << " httpCode: " << result.httpCode()
+                                    << " errorCode: " << result.errorCode()
+                                    << " errorMessage: " << result.errorMessage()
+                                    << " body: " << result.body();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -605,9 +622,11 @@ void ClusterInfo::loadCurrent() {
               newShardIds.insert(make_pair(shardID, servers));
 
             }
-            databaseCollections.insert(std::make_pair(collectionName, collectionDataCurrent));
+            databaseCollections.insert(
+              std::make_pair(collectionName, collectionDataCurrent));
           }
-          newCollections.emplace(std::make_pair(databaseName, databaseCollections));
+          newCollections.emplace(
+            std::make_pair(databaseName, databaseCollections));
         }
         swapCollections = true;
       }
@@ -620,24 +639,25 @@ void ClusterInfo::loadCurrent() {
         _currentDatabases.swap(newDatabases);
       }
       if (swapCollections) {
-        LOG(TRACE) << "Have loaded new collections current cache!";
+        LOG_TOPIC(TRACE, Logger::CLUSTER)
+          << "Have loaded new collections current cache!";
         _currentCollections.swap(newCollections);
         _shardIds.swap(newShardIds);
       }
       _currentProt.doneVersion = storedVersion;
       _currentProt.isValid = true;  // will never be reset to false
     } else {
-      LOG(ERR) << "Current is not an object!";
+      LOG_TOPIC(ERR, Logger::CLUSTER) << "Current is not an object!";
     }
     
     return;
   }
   
-  LOG(ERR) << "Error while loading " << prefixCurrent
-           << " httpCode: " << result.httpCode()
-           << " errorCode: " << result.errorCode()
-           << " errorMessage: " << result.errorMessage()
-           << " body: " << result.body();
+  LOG_TOPIC(ERR, Logger::CLUSTER) << "Error while loading " << prefixCurrent
+                                  << " httpCode: " << result.httpCode()
+                                  << " errorCode: " << result.errorCode()
+                                  << " errorMessage: " << result.errorMessage()
+                                  << " body: " << result.body();
 }
 
 /// @brief ask about a collection
@@ -1411,7 +1431,7 @@ int ClusterInfo::ensureIndexCoordinator(
     }
     
     std::shared_ptr<VPackBuilder> tmp = std::make_shared<VPackBuilder>();
-    c->getIndexesVPack(*(tmp.get()), true);
+    c->getIndexesVPack(*(tmp.get()), false);
     MUTEX_LOCKER(guard, numberOfShardsMutex);
     {
       numberOfShards = c->numberOfShards();
@@ -1757,7 +1777,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
     if (c == nullptr) {
       return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
     }
-    c->getIndexesVPack(tmp, true);
+    c->getIndexesVPack(tmp, false);
     indexes = tmp.slice();
     
     if (!indexes.isArray()) {
@@ -1900,11 +1920,11 @@ void ClusterInfo::loadServers() {
     }
   }
   
-  LOG(DEBUG) << "Error while loading " << prefixServers
-             << " httpCode: " << result.httpCode()
-             << " errorCode: " << result.errorCode()
-             << " errorMessage: " << result.errorMessage()
-             << " body: " << result.body();
+  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Error while loading " << prefixServers
+                                    << " httpCode: " << result.httpCode()
+                                    << " errorCode: " << result.errorCode()
+                                    << " errorMessage: " << result.errorMessage()
+                                    << " body: " << result.body();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2024,11 +2044,12 @@ void ClusterInfo::loadCurrentCoordinators() {
     }
   }
   
-  LOG(DEBUG) << "Error while loading " << prefixCurrentCoordinators
-             << " httpCode: " << result.httpCode()
-             << " errorCode: " << result.errorCode()
-             << " errorMessage: " << result.errorMessage()
-             << " body: " << result.body();
+  LOG_TOPIC(DEBUG, Logger::CLUSTER)
+    << "Error while loading " << prefixCurrentCoordinators
+    << " httpCode: " << result.httpCode()
+    << " errorCode: " << result.errorCode()
+    << " errorMessage: " << result.errorMessage()
+    << " body: " << result.body();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2112,11 +2133,12 @@ void ClusterInfo::loadCurrentDBServers() {
     }
   }
 
-  LOG(DEBUG) << "Error while loading " << prefixCurrentDBServers
-             << " httpCode: " << result.httpCode()
-             << " errorCode: " << result.errorCode()
-             << " errorMessage: " << result.errorMessage()
-             << " body: " << result.body();
+  LOG_TOPIC(DEBUG, Logger::CLUSTER)
+    << "Error while loading " << prefixCurrentDBServers
+    << " httpCode: " << result.httpCode()
+    << " errorCode: " << result.errorCode()
+    << " errorMessage: " << result.errorMessage()
+    << " body: " << result.body();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2189,7 +2211,9 @@ std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer(
           // This is a temporary situation in which the leader has already
           // resigned, let's wait half a second and try again.
           --tries;
-          LOG(INFO) << "getResponsibleServer: found resigned leader, waiting for half a second...";
+          LOG_TOPIC(INFO, Logger::CLUSTER)
+            << "getResponsibleServer: found resigned leader,"
+            << "waiting for half a second...";
           usleep(500000);
         } else {
           return (*it).second;
@@ -2517,9 +2541,10 @@ void FollowerInfo::add(ServerID const& sid) {
               _docColl->name()}));
       
       if (!currentEntry.isObject()) {
-        LOG(ERR) << "FollowerInfo::add, did not find object in " << path;
+        LOG_TOPIC(ERR, Logger::CLUSTER)
+          << "FollowerInfo::add, did not find object in " << path;
         if (!currentEntry.isNone()) {
-          LOG(ERR) << "Found: " << currentEntry.toJson();
+          LOG_TOPIC(ERR, Logger::CLUSTER) << "Found: " << currentEntry.toJson();
         }
       } else {
         auto newValue = newShardEntry(currentEntry, sid, true);
@@ -2541,17 +2566,19 @@ void FollowerInfo::add(ServerID const& sid) {
           success = true;
           break;  //
         } else {
-          LOG(WARN) << "FollowerInfo::add, could not cas key " << path;
+          LOG_TOPIC(WARN, Logger::CLUSTER)
+            << "FollowerInfo::add, could not cas key " << path;
         }
       }
     } else {
-      LOG(ERR) << "FollowerInfo::add, could not read " << path << " in agency.";
+      LOG_TOPIC(ERR, Logger::CLUSTER)
+        << "FollowerInfo::add, could not read " << path << " in agency.";
     }
     usleep(500000);
   } while (TRI_microtime() < startTime + 30);
   if (!success) {
-    LOG(ERR) << "FollowerInfo::add, timeout in agency operation for key "
-             << path;
+    LOG_TOPIC(ERR, Logger::CLUSTER)
+      << "FollowerInfo::add, timeout in agency operation for key " << path;
   }
 }
 
@@ -2598,9 +2625,10 @@ void FollowerInfo::remove(ServerID const& sid) {
               _docColl->name()}));
 
       if (!currentEntry.isObject()) {
-        LOG(ERR) << "FollowerInfo::remove, did not find object in " << path;
+        LOG_TOPIC(ERR, Logger::CLUSTER)
+          << "FollowerInfo::remove, did not find object in " << path;
         if (!currentEntry.isNone()) {
-          LOG(ERR) << "Found: " << currentEntry.toJson();
+          LOG_TOPIC(ERR, Logger::CLUSTER) << "Found: " << currentEntry.toJson();
         }
       } else {
         auto newValue = newShardEntry(currentEntry, sid, false);
@@ -2622,18 +2650,19 @@ void FollowerInfo::remove(ServerID const& sid) {
           success = true;
           break;  //
         } else {
-          LOG(WARN) << "FollowerInfo::remove, could not cas key " << path;
+          LOG_TOPIC(WARN, Logger::CLUSTER)
+            << "FollowerInfo::remove, could not cas key " << path;
         }
       }
     } else {
-      LOG(ERR) << "FollowerInfo::remove, could not read " << path
-               << " in agency.";
+      LOG_TOPIC(ERR, Logger::CLUSTER)
+        << "FollowerInfo::remove, could not read " << path << " in agency.";
     }
     usleep(500000);
   } while (TRI_microtime() < startTime + 30);
   if (!success) {
-    LOG(ERR) << "FollowerInfo::remove, timeout in agency operation for key "
-             << path;
+    LOG_TOPIC(ERR, Logger::CLUSTER)
+      << "FollowerInfo::remove, timeout in agency operation for key " << path;
   }
 }
 

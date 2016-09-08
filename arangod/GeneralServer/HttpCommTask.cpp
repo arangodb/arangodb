@@ -185,9 +185,6 @@ void HttpCommTask::addResponse(HttpResponse* response) {
 
   // clear body
   response->body().clear();
-
-  processRead();  // do not remove this line - or multiple requests in one
-                  // message will break
 }
 
 // reads data from the socket

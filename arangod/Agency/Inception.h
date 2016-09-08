@@ -39,28 +39,23 @@ namespace consensus {
 class Agent;
 
 class Inception : public Thread {
-
-public:
-  
+ public:
   Inception();
   explicit Inception(Agent*);
   virtual ~Inception();
 
-  void run() override;
-  bool start();
-  
-  /// @brief Orderly shutdown of thread
   void beginShutdown() override;
-  
-private:
+  void run() override;
 
+ private:
   void activeAgency();
   void gossip();
 
   Agent* _agent;
-  
-};
+  arangodb::basics::ConditionVariable _cv;
 
-}}
+};
+}
+}
 
 #endif

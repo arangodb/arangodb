@@ -316,8 +316,6 @@ class Index {
   virtual void toVelocyPackFigures(arangodb::velocypack::Builder&) const;
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackFigures() const;
 
-  virtual bool dumpFields() const = 0;
-
   virtual int insert(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
                      bool) = 0;
   virtual int remove(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
@@ -390,8 +388,6 @@ class Index {
   mutable bool _unique;
 
   mutable bool _sparse;
-
-  double _selectivityEstimate;
 };
 }
 

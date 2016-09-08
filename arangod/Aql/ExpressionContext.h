@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,39 +18,35 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_TRAVERSAL_OPTIONS_H
-#define ARANGOD_AQL_TRAVERSAL_OPTIONS_H 1
+#ifndef ARANGOD_AQL_EXPRESSION_CONTEXT_H
+#define ARANGOD_AQL_EXPRESSION_CONTEXT_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/Traverser.h"
-
-#include <velocypack/Slice.h>
+#include "arangod/Aql/types.h"
 
 namespace arangodb {
 namespace aql {
 
-/// @brief TraversalOptions
-struct TraversalOptions {
+struct AqlValue;
+struct Variable;
 
-  /// @brief constructor
-  explicit TraversalOptions(arangodb::velocypack::Slice const&);
+class ExpressionContext {
+  public:
+    ExpressionContext() {}
 
-  /// @brief constructor, using default values
-  TraversalOptions()
-      : useBreadthFirst(false),
-        uniqueVertices(traverser::TraverserOptions::UniquenessLevel::NONE),
-        uniqueEdges(traverser::TraverserOptions::UniquenessLevel::PATH) {}
+    virtual ~ExpressionContext() {}
 
-  void toVelocyPack(arangodb::velocypack::Builder&) const;
+    virtual size_t numRegisters() const = 0;
 
-  bool useBreadthFirst;
-  traverser::TraverserOptions::UniquenessLevel uniqueVertices;
-  traverser::TraverserOptions::UniquenessLevel uniqueEdges;
+    virtual AqlValue const& getRegisterValue(size_t i) const = 0;
+
+    virtual Variable const* getVariable(size_t i) const = 0;
+
+    virtual AqlValue getVariableValue(Variable const* variable, bool doCopy, bool& mustDestroy) const = 0;
 };
-
-}  // namespace arangodb::aql
-}  // namespace arangodb
+}
+}
 #endif

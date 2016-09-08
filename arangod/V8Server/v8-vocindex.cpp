@@ -653,7 +653,7 @@ static void CreateCollectionCoordinator(
   uint64_t replicationFactor = 1;
 
   // default shard key
-  shardKeys.push_back("_key");
+  shardKeys.push_back(StaticStrings::KeyString);
 
   std::string distributeShardsLike;
 
@@ -1024,7 +1024,7 @@ static void JS_DropIndexVocbaseCol(
 
 static void GetIndexesCoordinator(
     v8::FunctionCallbackInfo<v8::Value> const& args,
-    arangodb::LogicalCollection const* collection) {
+    arangodb::LogicalCollection const* collection, bool withFigures) {
   // warning This may be obsolete.
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
@@ -1043,7 +1043,7 @@ static void GetIndexesCoordinator(
   v8::Handle<v8::Array> ret = v8::Array::New(isolate);
 
   VPackBuilder tmp;
-  c->getIndexesVPack(tmp, true);
+  c->getIndexesVPack(tmp, withFigures);
   VPackSlice slice = tmp.slice();
 
   if (slice.isArray()) {
@@ -1073,15 +1073,15 @@ static void JS_GetIndexesVocbaseCol(
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
-
-  if (ServerState::instance()->isCoordinator()) {
-    GetIndexesCoordinator(args, collection);
-    return;
-  }
-
+  
   bool withFigures = false;
   if (args.Length() > 0) {
     withFigures = TRI_ObjectToBoolean(args[0]);
+  }
+
+  if (ServerState::instance()->isCoordinator()) {
+    GetIndexesCoordinator(args, collection, withFigures);
+    return;
   }
 
   SingleCollectionTransaction trx(
@@ -1253,7 +1253,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   infoSlice = builder.slice();
 
   if (ServerState::instance()->isCoordinator()) {
-    auto parameters = std::make_unique<LogicalCollection>(vocbase, infoSlice);
+    auto parameters = std::make_unique<LogicalCollection>(vocbase, infoSlice, false);
     CreateCollectionCoordinator(args, collectionType, vocbase->name(),
                                 parameters.get());
     return;

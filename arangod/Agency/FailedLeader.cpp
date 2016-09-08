@@ -28,20 +28,25 @@
 
 using namespace arangodb::consensus;
 
-FailedLeader::FailedLeader(
-  Node const& snapshot, Agent* agent, std::string const& jobId,
-  std::string const& creator, std::string const& agencyPrefix,
-  std::string const& database, std::string const& collection,
-  std::string const& shard, std::string const& from, std::string const& to) :
-  Job(snapshot, agent, jobId, creator, agencyPrefix), _database(database),
-  _collection(collection), _shard(shard), _from(from), _to(to) {
-
+FailedLeader::FailedLeader(Node const& snapshot, Agent* agent,
+                           std::string const& jobId, std::string const& creator,
+                           std::string const& agencyPrefix,
+                           std::string const& database,
+                           std::string const& collection,
+                           std::string const& shard, std::string const& from,
+                           std::string const& to)
+    : Job(snapshot, agent, jobId, creator, agencyPrefix),
+      _database(database),
+      _collection(collection),
+      _shard(shard),
+      _from(from),
+      _to(to) {
   try {
     JOB_STATUS js = status();
 
     if (js == TODO) {
-      start();        
-    } else if (js == NOTFOUND) {            
+      start();
+    } else if (js == NOTFOUND) {
       if (create()) {
         start();
       }
@@ -50,18 +55,16 @@ FailedLeader::FailedLeader(
     LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
     finish("Shards/" + _shard, false, e.what());
   }
-  
 }
 
 FailedLeader::~FailedLeader() {}
 
-bool FailedLeader::create () {
+bool FailedLeader::create() {
+  LOG_TOPIC(INFO, Logger::AGENCY)
+      << "Todo: failed Leader for " + _shard + " from " + _from + " to " + _to;
 
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Todo: failed Leader for " + _shard
-    + " from " + _from + " to " + _to;
-  
   std::string path = _agencyPrefix + toDoPrefix + _jobId;
-  
+
   _jb = std::make_shared<Builder>();
   _jb->openArray();
   _jb->openObject();
@@ -73,61 +76,62 @@ bool FailedLeader::create () {
   _jb->add("shard", VPackValue(_shard));
   _jb->add("fromServer", VPackValue(_from));
   _jb->add("toServer", VPackValue(_to));
-  _jb->add("isLeader", VPackValue(true));    
+  _jb->add("isLeader", VPackValue(true));
   _jb->add("jobId", VPackValue(_jobId));
   _jb->add("timeCreated",
            VPackValue(timepointToString(std::chrono::system_clock::now())));
-  _jb->close(); _jb->close(); _jb->close();
-  
+  _jb->close();
+  _jb->close();
+  _jb->close();
+
   write_ret_t res = transact(_agent, *_jb);
-  
-  if (res.accepted && res.indices.size()==1 && res.indices[0]) {
+
+  if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     return true;
   }
-  
+
   LOG_TOPIC(INFO, Logger::AGENCY) << "Failed to insert job " + _jobId;
   return false;
-  
 }
 
 bool FailedLeader::start() {
-  
   // DBservers
   std::string planPath =
-    planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
+      planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
   std::string curPath =
-    curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
+      curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
 
   Node const& current = _snapshot(curPath);
-  
+
   if (current.slice().length() == 1) {
-    LOG_TOPIC(ERR, Logger::AGENCY)
-      << "Failed to change leadership for shard " + _shard  + " from " + _from
-      + " to " + _to + ". No in-sync followers:" + current.slice().toJson();
+    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to change leadership for shard " +
+                                          _shard + " from " + _from + " to " +
+                                          _to + ". No in-sync followers:" +
+                                          current.slice().toJson();
     return false;
   }
-  
+
   // Copy todo to pending
   Builder todo, pending;
-  
+
   // Get todo entry
   todo.openArray();
   if (_jb == nullptr) {
     try {
       _snapshot(toDoPrefix + _jobId).toBuilder(todo);
     } catch (std::exception const&) {
-      LOG_TOPIC(INFO, Logger::AGENCY) <<
-        "Failed to get key " + toDoPrefix + _jobId + " from agency snapshot";
+      LOG_TOPIC(INFO, Logger::AGENCY) << "Failed to get key " + toDoPrefix +
+                                             _jobId + " from agency snapshot";
       return false;
     }
   } else {
     todo.add(_jb->slice()[0].valueAt(0));
   }
   todo.close();
-  
+
   // Transaction
   pending.openArray();
-  
+
   // Apply
   // --- Add pending entry
   pending.openObject();
@@ -139,13 +143,13 @@ bool FailedLeader::start() {
     pending.add(obj.key.copyString(), obj.value);
   }
   pending.close();
-  
+
   // --- Remove todo entry
   pending.add(_agencyPrefix + toDoPrefix + _jobId,
-                VPackValue(VPackValueType::Object));
+              VPackValue(VPackValueType::Object));
   pending.add("op", VPackValue("delete"));
   pending.close();
-  
+
   // --- Cyclic shift in sync servers
   pending.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Array));
   for (size_t i = 1; i < current.slice().length(); ++i) {
@@ -153,58 +157,54 @@ bool FailedLeader::start() {
   }
   pending.add(current.slice()[0]);
   pending.close();
-  
+
   // --- Block shard
-  pending.add(_agencyPrefix +  blockedShardsPrefix + _shard,
+  pending.add(_agencyPrefix + blockedShardsPrefix + _shard,
               VPackValue(VPackValueType::Object));
   pending.add("jobId", VPackValue(_jobId));
   pending.close();
-  
+
   // --- Increment Plan/Version
-  pending.add(_agencyPrefix +  planVersion,
-              VPackValue(VPackValueType::Object));
+  pending.add(_agencyPrefix + planVersion, VPackValue(VPackValueType::Object));
   pending.add("op", VPackValue("increment"));
   pending.close();
-  
+
   pending.close();
-  
+
   // Precondition
   // --- Check that Current servers are as we expect
   pending.openObject();
   pending.add(_agencyPrefix + curPath, VPackValue(VPackValueType::Object));
   pending.add("old", current.slice());
   pending.close();
-  
+
   // --- Check if shard is not blocked
   pending.add(_agencyPrefix + blockedShardsPrefix + _shard,
               VPackValue(VPackValueType::Object));
   pending.add("oldEmpty", VPackValue(true));
   pending.close();
-  
-  pending.close(); pending.close();
-  
-  // Transact 
+
+  pending.close();
+  pending.close();
+
+  // Transact
   write_ret_t res = transact(_agent, pending);
-  
-  if (res.accepted && res.indices.size()==1 && res.indices[0]) {
-    
-    LOG_TOPIC(INFO, Logger::AGENCY) << "Pending: Change leadership " + _shard
-      + " from " + _from + " to " + _to;
+
+  if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Pending: Change leadership " + _shard +
+                                           " from " + _from + " to " + _to;
     return true;
-  }    
-  
-  LOG_TOPIC(INFO, Logger::AGENCY) <<
-    "Precondition failed for starting job " + _jobId;
+  }
+
+  LOG_TOPIC(INFO, Logger::AGENCY)
+      << "Precondition failed for starting job " + _jobId;
   return false;
-  
 }
 
-
-JOB_STATUS FailedLeader::status () {
-  
+JOB_STATUS FailedLeader::status() {
   auto status = exists();
 
-  if (status != NOTFOUND) { // Get job details from agency
+  if (status != NOTFOUND) {  // Get job details from agency
 
     try {
       _database = _snapshot(pos[status] + _jobId + "/database").getString();
@@ -219,24 +219,22 @@ JOB_STATUS FailedLeader::status () {
       finish("Shards/" + _shard, false, err.str());
       return FAILED;
     }
-    
   }
 
   if (status == PENDING) {
-
     Node const& job = _snapshot(pendingPrefix + _jobId);
     std::string database = job("database").toJson(),
-      collection = job("collection").toJson(),
-      shard = job("shard").toJson();
-    
-    std::string planPath = planColPrefix + database + "/" + collection
-      + "/shards/" + shard,
-      curPath = curColPrefix + database + "/" + collection + "/" + shard
-      + "/servers";
-    
+                collection = job("collection").toJson(),
+                shard = job("shard").toJson();
+
+    std::string planPath = planColPrefix + database + "/" + collection +
+                           "/shards/" + shard,
+                curPath = curColPrefix + database + "/" + collection + "/" +
+                          shard + "/servers";
+
     Node const& planned = _snapshot(planPath);
     Node const& current = _snapshot(curPath);
-    
+
     if (planned.slice()[0] == current.slice()[0]) {
       if (finish("Shards/" + shard)) {
         return FINISHED;
@@ -245,7 +243,4 @@ JOB_STATUS FailedLeader::status () {
   }
 
   return status;
-
 }
-
-

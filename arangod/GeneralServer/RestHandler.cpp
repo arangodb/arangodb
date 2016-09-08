@@ -28,6 +28,8 @@
 #include "Logger/Logger.h"
 #include "Rest/GeneralRequest.h"
 
+#include <velocypack/Exception.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -72,6 +74,10 @@ RestHandler::status RestHandler::executeFull() {
     } catch (Exception const& ex) {
       requestStatisticsAgentSetExecuteError();
       handleError(ex);
+    } catch (arangodb::velocypack::Exception const& ex) {
+      requestStatisticsAgentSetExecuteError();
+      Exception err(TRI_ERROR_INTERNAL, std::string("VPack error: ") + ex.what(), __FILE__, __LINE__);
+      handleError(err);
     } catch (std::bad_alloc const& ex) {
       requestStatisticsAgentSetExecuteError();
       Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);

@@ -26,7 +26,7 @@
 
 using namespace arangodb::aql;
 
-CollectionScanner::CollectionScanner(arangodb::AqlTransaction* trx,
+CollectionScanner::CollectionScanner(arangodb::Transaction* trx,
                                      std::string const& collection,
                                      bool readRandom)
     : _cursor(trx->indexScan(collection,

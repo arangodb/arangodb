@@ -1,6 +1,6 @@
 
-@startDocuBlock JSF_get_admin_modules_flush
-@brief returns the log files
+@startDocuBlock JSF_get_admin_log
+@brief returns the server logs
 
 @RESTHEADER{GET /_admin/log, Read global logs from the server}
 
@@ -59,6 +59,57 @@ The result is a JSON object with the following attributes:
 
 @RESTRETURNCODE{400}
 is returned if invalid values are specified for *upto* or *level*.
+
+@RESTRETURNCODE{500}
+is returned if the server cannot generate the result due to an out-of-memory
+error.
+@endDocuBlock
+
+
+@startDocuBlock JSF_get_admin_loglevel
+@brief returns the current loglevel settings
+
+@RESTHEADER{GET /_admin/log/level, Return the current server loglevel}
+
+@RESTDESCRIPTION
+Returns the server's current loglevel settings.
+The result is a JSON object with the log topics being the object keys, and
+the log levels being the object values.
+
+@RESTRETURNCODES
+
+@RESTRETURNCODE{200}
+is returned if the request is valid
+
+@RESTRETURNCODE{500}
+is returned if the server cannot generate the result due to an out-of-memory
+error.
+@endDocuBlock
+
+
+@startDocuBlock JSF_put_admin_loglevel
+@brief modifies the current loglevel settings
+
+@RESTHEADER{PUT /_admin/log/level, Modify and return the current server loglevel}
+
+@RESTDESCRIPTION
+Modifies and returns the server's current loglevel settings.
+The request body must be a JSON object with the log topics being the object keys
+and the log levels being the object values.
+
+The result is a JSON object with the adjusted log topics being the object keys, and
+the adjusted log levels being the object values.
+
+@RESTRETURNCODES
+
+@RESTRETURNCODE{200}
+is returned if the request is valid
+
+@RESTRETURNCODE{400}
+is returned when the request body contains invalid JSON.
+
+@RESTRETURNCODE{405}
+is returned when an invalid HTTP method is used.
 
 @RESTRETURNCODE{500}
 is returned if the server cannot generate the result due to an out-of-memory

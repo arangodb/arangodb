@@ -24,9 +24,9 @@
 #ifndef ARANGOD_CONSENSUS_STORE_H
 #define ARANGOD_CONSENSUS_STORE_H 1
 
-#include "Node.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
+#include "Node.h"
 
 namespace arangodb {
 namespace consensus {
@@ -43,16 +43,16 @@ class Store : public arangodb::Thread {
   virtual ~Store();
 
   /// @brief Copy constructor
-  Store (Store const& other);
+  Store(Store const& other);
 
   /// @brief Move constructor
-  Store (Store&& other);
+  Store(Store&& other);
 
   // @brief Copy assignent
-  Store& operator= (Store const& rhs);
+  Store& operator=(Store const& rhs);
 
   // @brief Move assigment
-  Store& operator= (Store&& rhs);
+  Store& operator=(Store&& rhs);
 
   /// @brief Apply entry in query
   std::vector<bool> apply(query_t const& query, bool verbose = false);
@@ -100,7 +100,7 @@ class Store : public arangodb::Thread {
   bool applies(arangodb::velocypack::Slice const&);
 
   /// @brief Create Builder representing this store
-  void toBuilder(Builder&) const;
+  void toBuilder(Builder&, bool showHidden = false) const;
 
   /// @brief Copy out a node
   Node const get(std::string const& path) const;

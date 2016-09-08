@@ -152,7 +152,6 @@ add_library(${LIB_ARANGO} STATIC
   Basics/files.cpp
   Basics/fpconv.cpp
   Basics/hashes.cpp
-  Basics/json-utilities.cpp
   Basics/json.cpp
   Basics/levenshtein.cpp
   Basics/memory.cpp

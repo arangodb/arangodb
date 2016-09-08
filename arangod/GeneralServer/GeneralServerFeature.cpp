@@ -32,9 +32,11 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/RestAgencyCallbacksHandler.h"
 #include "Cluster/RestShardHandler.h"
+#include "Cluster/TraverserEngineRegistry.h"
 #include "Dispatcher/DispatcherFeature.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "InternalRestHandler/InternalRestTraverserHandler.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -62,11 +64,13 @@
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestUploadHandler.h"
 #include "RestHandler/RestVersionHandler.h"
+#include "RestHandler/RestWalHandler.h"
 #include "RestHandler/WorkMonitorHandler.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerFeature.h"
+#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Ssl/SslServerFeature.h"
 #include "V8Server/V8DealerFeature.h"
@@ -374,6 +378,8 @@ void GeneralServerFeature::defineHandlers() {
   TRI_ASSERT(cluster != nullptr);
 
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+  auto traverserEngineRegistry =
+      TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY;
 
   // ...........................................................................
   // /_msg
@@ -427,6 +433,10 @@ void GeneralServerFeature::defineHandlers() {
       RestHandlerCreator<RestSimpleQueryHandler>::createData<
           aql::QueryRegistry*>,
       queryRegistry);
+  
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::WAL_PATH,
+      RestHandlerCreator<RestWalHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH,
@@ -481,7 +491,13 @@ void GeneralServerFeature::defineHandlers() {
         RestHandlerCreator<RestAgencyCallbacksHandler>::createData<
             AgencyCallbackRegistry*>,
         cluster->agencyCallbackRegistry());
+
   }
+    _handlerFactory->addPrefixHandler(
+        RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH,
+        RestHandlerCreator<InternalRestTraverserHandler>::createData<
+            traverser::TraverserEngineRegistry*>,
+        traverserEngineRegistry);
 
   // And now some handlers which are registered in both /_api and /_admin
   _handlerFactory->addPrefixHandler(
@@ -505,7 +521,7 @@ void GeneralServerFeature::defineHandlers() {
       "/_admin/version", RestHandlerCreator<RestVersionHandler>::createNoData);
 
   // further admin handlers
-  _handlerFactory->addHandler(
+  _handlerFactory->addPrefixHandler(
       "/_admin/log",
       RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);
 

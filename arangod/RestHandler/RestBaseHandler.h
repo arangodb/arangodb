@@ -32,6 +32,7 @@ namespace arangodb {
 class TransactionContext;
 
 namespace velocypack {
+class Builder;
 struct Options;
 class Slice;
 }
@@ -62,13 +63,13 @@ class RestBaseHandler : public rest::RestHandler {
   // generates an error
   void generateError(rest::ResponseCode, int, std::string const&);
 
-  // generates an out of memory error
-  void generateOOMError();
-
   // generates a canceled message
   void generateCanceled();
 
  protected:
+  /// @brief parses the body as VelocyPack
+  std::shared_ptr<arangodb::velocypack::Builder> parseVelocyPackBody(arangodb::velocypack::Options const*, bool&);
+
   template <typename Payload>
   void writeResult(Payload&&, arangodb::velocypack::Options const& options);
 };

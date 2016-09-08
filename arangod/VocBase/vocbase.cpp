@@ -76,7 +76,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::registerCollection(
     bool doLock, VPackSlice parameters) {
   // create a new proxy
   std::unique_ptr<arangodb::LogicalCollection> collection =
-      std::make_unique<arangodb::LogicalCollection>(this, parameters);
+      std::make_unique<arangodb::LogicalCollection>(this, parameters, true);
   std::string name = collection->name();
   TRI_voc_cid_t cid = collection->cid();
   {
@@ -448,7 +448,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
     }
 
     try {
-      collection->getPhysical()->open(ignoreDatafileErrors);
+      collection->open(ignoreDatafileErrors);
     } catch (...) {
       collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
       return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
@@ -517,7 +517,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
     if (writeMarker) {
       writeDropCollectionMarker(collection->cid(), collection->name());
     }
-
+  
     DropCollectionCallback(collection);
 
     return TRI_ERROR_NO_ERROR;
@@ -1203,15 +1203,23 @@ TRI_vocbase_t::getReplicationClients() {
   }
   return result;
 }
-      
-std::vector<arangodb::LogicalCollection*> TRI_vocbase_t::collections() {
+
+std::vector<arangodb::LogicalCollection*> TRI_vocbase_t::collections(bool includeDeleted) {
   std::vector<arangodb::LogicalCollection*> collections;
 
   {
     READ_LOCKER(readLocker, _collectionsLock);
-    collections.reserve(_collectionsById.size());
-    for (auto const& it : _collectionsById) {
-      collections.emplace_back(it.second);
+    if (includeDeleted) {
+      // return deleted collections as well. the cleanup thread needs them
+      collections.reserve(_collections.size());
+      for (auto const& it : _collections) {
+        collections.emplace_back(it);
+      }
+    } else {
+      collections.reserve(_collectionsById.size());
+      for (auto const& it : _collectionsById) {
+        collections.emplace_back(it.second);
+      }
     }
   }
   return collections;

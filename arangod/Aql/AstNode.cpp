@@ -1572,6 +1572,18 @@ bool AstNode::isSimple() const {
     return true;
   }
 
+  if (type == NODE_TYPE_OPERATOR_NARY_AND || type == NODE_TYPE_OPERATOR_NARY_OR) {
+    // a logical operator is simple if all its operands are simple
+    for (auto const& it : members) {
+      if (!it->isSimple()) {
+        setFlag(DETERMINED_SIMPLE);
+        return false;
+      }
+    }
+    setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
+    return true;
+  }
+
   setFlag(DETERMINED_SIMPLE);
   return false;
 }
@@ -2185,6 +2197,15 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
     return;
   }
 
+  if (type == NODE_TYPE_OPERATOR_TERNARY) {
+    getMember(0)->stringify(buffer, verbose, failIfLong);
+    buffer->appendChar('?');
+    getMember(1)->stringify(buffer, verbose, failIfLong);
+    buffer->appendChar(':');
+    getMember(2)->stringify(buffer, verbose, failIfLong);
+    return;
+  }
+
   if (type == NODE_TYPE_RANGE) {
     // not used by V8
     TRI_ASSERT(numMembers() == 2);
@@ -2547,6 +2568,13 @@ void AstNode::appendValue(arangodb::basics::StringBuffer* buffer) const {
       buffer->appendText(TRI_CHAR_LENGTH_PAIR("null"));
       break;
     }
+  }
+}
+
+void AstNode::stealComputedValue() {
+  if (computedValue != nullptr) {
+    delete[] computedValue;
+    computedValue = nullptr;
   }
 }
 
