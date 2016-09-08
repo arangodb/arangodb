@@ -448,7 +448,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
     }
 
     try {
-      collection->getPhysical()->open(ignoreDatafileErrors);
+      collection->open(ignoreDatafileErrors);
     } catch (...) {
       collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
       return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;

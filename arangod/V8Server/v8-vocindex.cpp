@@ -653,7 +653,7 @@ static void CreateCollectionCoordinator(
   uint64_t replicationFactor = 1;
 
   // default shard key
-  shardKeys.push_back("_key");
+  shardKeys.push_back(StaticStrings::KeyString);
 
   std::string distributeShardsLike;
 

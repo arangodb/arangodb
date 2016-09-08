@@ -49,6 +49,15 @@ if (USE_DEV_TIMERS)
   add_definitions("-DUSE_DEV_TIMERS=1")
 endif ()
 
+# enable enterprise features
+set(ENTERPRISE_INCLUDE_DIR "enterprise")
+option(USE_ENTERPRISE OFF)
+
+if (USE_ENTERPRISE)
+  add_definitions("-DUSE_ENTERPRISE=1")
+  include_directories(${ENTERPRISE_INCLUDE_DIR})
+endif ()
+
 ################################################################################
 ## ARANGODB
 ################################################################################

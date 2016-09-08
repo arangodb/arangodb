@@ -42,37 +42,21 @@ TraverserEngineRegistry::EngineInfo::~EngineInfo() {
 }
 
 TraverserEngineRegistry::~TraverserEngineRegistry() {
-  std::vector<TraverserEngineID> toDelete;
-  {
-    WRITE_LOCKER(writeLocker, _lock);
-    try {
-      for (auto const& it : _engines) {
-        toDelete.emplace_back(it.first);
-      }
-    } catch (...) {
-      // the emplace_back() above might fail
-      // prevent throwing exceptions in the destructor
-    }
-  }
-
-  // note: destroy() will acquire _lock itself, so it must be called without
-  // holding the lock
-  for (auto& p : toDelete) {
-    try {  // just in case
-      destroy(p);
-    } catch (...) {
-    }
+  WRITE_LOCKER(writeLocker, _lock);
+  for (auto const& it : _engines) {
+    destroy(it.first, false);
   }
 }
 
 /// @brief Create a new Engine and return it's id
 TraverserEngineID TraverserEngineRegistry::createNew(TRI_vocbase_t* vocbase,
                                                      VPackSlice engineInfo) {
-  WRITE_LOCKER(writeLocker, _lock);
   TraverserEngineID id = TRI_NewTickServer();
   TRI_ASSERT(id != 0);
-  TRI_ASSERT(_engines.find(id) == _engines.end());
   auto info = std::make_unique<EngineInfo>(vocbase, engineInfo);
+
+  WRITE_LOCKER(writeLocker, _lock);
+  TRI_ASSERT(_engines.find(id) == _engines.end());
   _engines.emplace(id, info.get());
   info.release();
   return id;
@@ -80,23 +64,7 @@ TraverserEngineID TraverserEngineRegistry::createNew(TRI_vocbase_t* vocbase,
 
 /// @brief Destroy the engine with the given id
 void TraverserEngineRegistry::destroy(TraverserEngineID id) {
-  WRITE_LOCKER(writeLocker, _lock);
-  auto e = _engines.find(id);
-  if (e == _engines.end()) {
-    // Nothing to destroy
-    // TODO: Should we throw an error instead?
-    return;
-  }
-  // TODO what about shard locking?
-  // TODO what about multiple dbs?
-  if (e->second->_isInUse) {
-    // Someone is still working with this engine.
-    // TODO can we just delete it? Or throw an error?
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEADLOCK);
-  }
-
-  delete e->second;
-  _engines.erase(id);
+  destroy(id, true);
 }
 
 /// @brief Get the engine with the given id
@@ -130,4 +98,31 @@ void TraverserEngineRegistry::returnEngine(TraverserEngineID id) {
     e->second->_isInUse = false;
   }
   // TODO Should we throw an error if we are not allowed to return this
+}
+
+/// @brief Destroy the engine with the given id, worker function
+void TraverserEngineRegistry::destroy(TraverserEngineID id, bool doLock) {
+  EngineInfo* engine = nullptr;
+
+  {
+    CONDITIONAL_WRITE_LOCKER(writeLocker, _lock, doLock);
+    auto e = _engines.find(id);
+    if (e == _engines.end()) {
+      // Nothing to destroy
+      // TODO: Should we throw an error instead?
+      return;
+    }
+    // TODO what about shard locking?
+    // TODO what about multiple dbs?
+    if (e->second->_isInUse) {
+      // Someone is still working with this engine.
+      // TODO can we just delete it? Or throw an error?
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEADLOCK);
+    }
+
+    engine = e->second;
+    _engines.erase(id);
+  }
+
+  delete engine;
 }

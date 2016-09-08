@@ -127,6 +127,7 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t* vocbase,
 }
 
 TraverserEngine::~TraverserEngine() {
+  /*
   auto resolver = _trx->resolver();
   // TODO Do we need this or will delete trx do this already?
   for (auto const& shard : _locked) {
@@ -141,9 +142,10 @@ TraverserEngine::~TraverserEngine() {
                << TRI_errno_string(res);
     }
   }
-  if (_trx != nullptr) {
+  */
+  if (_trx) {
+    _trx->commit();
     delete _trx;
-    _trx = nullptr;
   }
   if (_query != nullptr) {
     delete _query;
@@ -178,7 +180,7 @@ void TraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder& bu
       // Result now contains all valid edges, probably multiples.
     }
   } else if (vertex.isString()) {
-    auto edgeCursor = _opts->nextCursor(vertex, depth);
+    std::unique_ptr<arangodb::traverser::EdgeCursor> edgeCursor(_opts->nextCursor(vertex, depth));
 
     while(edgeCursor->next(result, cursorId)) {
       if (!_opts->evaluateEdgeExpression(result.back(), vertex, depth, cursorId)) {
