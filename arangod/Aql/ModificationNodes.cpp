@@ -27,21 +27,20 @@
 #include "Aql/ExecutionPlan.h"
 
 using namespace arangodb::aql;
-using JsonHelper = arangodb::basics::JsonHelper;
 
 static bool const Optional = true;
 
 ModificationNode::ModificationNode(ExecutionPlan* plan,
-                                   arangodb::basics::Json const& base)
+                                   arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _vocbase(plan->getAst()->query()->vocbase()),
       _collection(plan->getAst()->query()->collections()->get(
-          JsonHelper::checkAndGetStringValue(base.json(), "collection"))),
+          base.get("collection").copyString())),
       _options(base),
       _outVariableOld(
-          varFromJson(plan->getAst(), base, "outVariableOld", Optional)),
+          varFromVPack(plan->getAst(), base, "outVariableOld", Optional)),
       _outVariableNew(
-          varFromJson(plan->getAst(), base, "outVariableNew", Optional)) {
+          varFromVPack(plan->getAst(), base, "outVariableNew", Optional)) {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
 }
@@ -52,7 +51,7 @@ void ModificationNode::toVelocyPackHelper(VPackBuilder& builder,
   ExecutionNode::toVelocyPackHelperGeneric(builder,
                                            verbose);  // call base class method
   // Now put info about vocbase and cid in there
-  builder.add("database", VPackValue(_vocbase->_name));
+  builder.add("database", VPackValue(_vocbase->name()));
   builder.add("collection", VPackValue(_collection->getName()));
 
   // add out variables
@@ -84,11 +83,10 @@ double ModificationNode::estimateCost(size_t& nrItems) const {
   return depCost + incoming;
 }
 
-RemoveNode::RemoveNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
+RemoveNode::RemoveNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ModificationNode(plan, base),
-      _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {}
+      _inVariable(varFromVPack(plan->getAst(), base, "inVariable")) {}
 
-/// @brief toJson
 void RemoveNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   ModificationNode::toVelocyPackHelper(nodes, verbose);
   nodes.add(VPackValue("inVariable"));
@@ -120,9 +118,9 @@ ExecutionNode* RemoveNode::clone(ExecutionPlan* plan, bool withDependencies,
   return static_cast<ExecutionNode*>(c);
 }
 
-InsertNode::InsertNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
+InsertNode::InsertNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ModificationNode(plan, base),
-      _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {}
+      _inVariable(varFromVPack(plan->getAst(), base, "inVariable")) {}
 
 /// @brief toVelocyPack
 void InsertNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
@@ -159,11 +157,11 @@ ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
   return static_cast<ExecutionNode*>(c);
 }
 
-UpdateNode::UpdateNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
+UpdateNode::UpdateNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ModificationNode(plan, base),
-      _inDocVariable(varFromJson(plan->getAst(), base, "inDocVariable")),
+      _inDocVariable(varFromVPack(plan->getAst(), base, "inDocVariable")),
       _inKeyVariable(
-          varFromJson(plan->getAst(), base, "inKeyVariable", Optional)) {}
+          varFromVPack(plan->getAst(), base, "inKeyVariable", Optional)) {}
 
 /// @brief toVelocyPack
 void UpdateNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
@@ -216,11 +214,11 @@ ExecutionNode* UpdateNode::clone(ExecutionPlan* plan, bool withDependencies,
 }
 
 ReplaceNode::ReplaceNode(ExecutionPlan* plan,
-                         arangodb::basics::Json const& base)
+                         arangodb::velocypack::Slice const& base)
     : ModificationNode(plan, base),
-      _inDocVariable(varFromJson(plan->getAst(), base, "inDocVariable")),
+      _inDocVariable(varFromVPack(plan->getAst(), base, "inDocVariable")),
       _inKeyVariable(
-          varFromJson(plan->getAst(), base, "inKeyVariable", Optional)) {}
+          varFromVPack(plan->getAst(), base, "inKeyVariable", Optional)) {}
 
 /// @brief toVelocyPack
 void ReplaceNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
@@ -272,13 +270,12 @@ ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan, bool withDependencies,
   return static_cast<ExecutionNode*>(c);
 }
 
-UpsertNode::UpsertNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
+UpsertNode::UpsertNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ModificationNode(plan, base),
-      _inDocVariable(varFromJson(plan->getAst(), base, "inDocVariable")),
-      _insertVariable(varFromJson(plan->getAst(), base, "insertVariable")),
-      _updateVariable(varFromJson(plan->getAst(), base, "updateVariable")),
-      _isReplace(
-          JsonHelper::checkAndGetBooleanValue(base.json(), "isReplace")) {}
+      _inDocVariable(varFromVPack(plan->getAst(), base, "inDocVariable")),
+      _insertVariable(varFromVPack(plan->getAst(), base, "insertVariable")),
+      _updateVariable(varFromVPack(plan->getAst(), base, "updateVariable")),
+      _isReplace(base.get("isReplace").getBoolean()) {}
 
 /// @brief toVelocyPack
 void UpsertNode::toVelocyPackHelper(VPackBuilder& nodes,

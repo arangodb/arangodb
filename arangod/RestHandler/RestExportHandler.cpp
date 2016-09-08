@@ -25,8 +25,8 @@
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Utils/CollectionExport.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
@@ -47,7 +47,7 @@ RestExportHandler::RestExportHandler(GeneralRequest* request,
 
 RestHandler::status RestExportHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {
-    generateError(GeneralResponse::ResponseCode::NOT_IMPLEMENTED,
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_CLUSTER_UNSUPPORTED,
                   "'/_api/export' is not yet supported in a cluster");
     return status::DONE;
@@ -56,22 +56,22 @@ RestHandler::status RestExportHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
 
-  if (type == GeneralRequest::RequestType::POST) {
+  if (type == rest::RequestType::POST) {
     createCursor();
     return status::DONE;
   }
 
-  if (type == GeneralRequest::RequestType::PUT) {
+  if (type == rest::RequestType::PUT) {
     modifyCursor();
     return status::DONE;
   }
 
-  if (type == GeneralRequest::RequestType::DELETE_REQ) {
+  if (type == rest::RequestType::DELETE_REQ) {
     deleteCursor();
     return status::DONE;
   }
 
-  generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return status::DONE;
 }
@@ -180,8 +180,8 @@ void RestExportHandler::createCursor() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
-    generateError(GeneralResponse::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER, "expecting POST /_api/export");
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting POST /_api/export");
     return;
   }
 
@@ -190,119 +190,101 @@ void RestExportHandler::createCursor() {
   std::string const& name = _request->value("collection", found);
 
   if (!found || name.empty()) {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + EXPORT_PATH +
                       "?collection=<identifier>");
     return;
   }
 
-  try {
-    bool parseSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody =
-        parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
+  bool parseSuccess = true;
+  std::shared_ptr<VPackBuilder> parsedBody =
+      parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
 
-    if (!parseSuccess) {
+  if (!parseSuccess) {
+    return;
+  }
+  VPackSlice body = parsedBody.get()->slice();
+
+  VPackBuilder optionsBuilder;
+
+  if (!body.isNone()) {
+    if (!body.isObject()) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
       return;
     }
-    VPackSlice body = parsedBody.get()->slice();
+    optionsBuilder = buildOptions(body);
+  } else {
+    // create an empty options object
+    optionsBuilder.openObject();
+  }
 
-    VPackBuilder optionsBuilder;
+  VPackSlice options = optionsBuilder.slice();
 
-    if (!body.isNone()) {
-      if (!body.isObject()) {
-        generateError(GeneralResponse::ResponseCode::BAD,
-                      TRI_ERROR_QUERY_EMPTY);
-        return;
-      }
-      optionsBuilder = buildOptions(body);
-    } else {
-      // create an empty options object
-      optionsBuilder.openObject();
+  uint64_t waitTime = 0;
+  bool flush = arangodb::basics::VelocyPackHelper::getBooleanValue(
+      options, "flush", false);
+
+  if (flush) {
+    // flush the logfiles so the export can fetch all documents
+    int res =
+        arangodb::wal::LogfileManager::instance()->flush(true, true, false);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
     }
 
-    VPackSlice options = optionsBuilder.slice();
+    double flushWait =
+        arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+            options, "flushWait", 10.0);
 
-    uint64_t waitTime = 0;
-    bool flush = arangodb::basics::VelocyPackHelper::getBooleanValue(
-        options, "flush", false);
+    waitTime = static_cast<uint64_t>(
+        flushWait * 1000 *
+        1000);  // flushWait is specified in s, but we need ns
+  }
 
-    if (flush) {
-      // flush the logfiles so the export can fetch all documents
-      int res =
-          arangodb::wal::LogfileManager::instance()->flush(true, true, false);
+  size_t limit = arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
+      options, "limit", 0);
 
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
+  // this may throw!
+  auto collectionExport =
+      std::make_unique<CollectionExport>(_vocbase, name, _restrictions);
+  collectionExport->run(waitTime, limit);
 
-      double flushWait =
-          arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-              options, "flushWait", 10.0);
+  size_t batchSize =
+      arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
+          options, "batchSize", 1000);
+  double ttl = arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+      options, "ttl", 30);
+  bool count = arangodb::basics::VelocyPackHelper::getBooleanValue(
+      options, "count", false);
 
-      waitTime = static_cast<uint64_t>(
-          flushWait * 1000 *
-          1000);  // flushWait is specified in s, but we need ns
-    }
+  auto cursors = _vocbase->cursorRepository();
+  TRI_ASSERT(cursors != nullptr);
 
-    size_t limit = arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
-        options, "limit", 0);
+  // create a cursor from the result
+  arangodb::ExportCursor* cursor = cursors->createFromExport(
+      collectionExport.get(), batchSize, ttl, count);
+  collectionExport.release();
+  
+  resetResponse(rest::ResponseCode::CREATED);
 
-    // this may throw!
-    auto collectionExport =
-        std::make_unique<CollectionExport>(_vocbase, name, _restrictions);
-    collectionExport->run(waitTime, limit);
+  try {
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder builder(buffer);
+    builder.openObject();
+    builder.add("error", VPackValue(false));
+    builder.add("code", VPackValue((int)_response->responseCode()));
+    cursor->dump(builder);
+    builder.close();
 
-    {
-      size_t batchSize =
-          arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
-              options, "batchSize", 1000);
-      double ttl = arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-          options, "ttl", 30);
-      bool count = arangodb::basics::VelocyPackHelper::getBooleanValue(
-          options, "count", false);
+    _response->setContentType(rest::ContentType::JSON);
+    generateResult(rest::ResponseCode::CREATED, builder.slice());
 
-      setResponseCode(GeneralResponse::ResponseCode::CREATED);
-
-      // TODO needs to generalized
-      auto* response = dynamic_cast<HttpResponse*>(_response);
-
-      if (response == nullptr) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-      }
-
-      // TODO: generalize to calling handler setPayload
-      response->setContentType(HttpResponse::ContentType::JSON);
-
-      auto cursors =
-          static_cast<arangodb::CursorRepository*>(_vocbase->_cursorRepository);
-      TRI_ASSERT(cursors != nullptr);
-
-      // create a cursor from the result
-      arangodb::ExportCursor* cursor = cursors->createFromExport(
-          collectionExport.get(), batchSize, ttl, count);
-      collectionExport.release();
-
-      try {
-        response->body().appendChar('{');
-        cursor->dump(response->body());
-        response->body().appendText(",\"error\":false,\"code\":");
-        response->body().appendInteger(
-            static_cast<uint32_t>(response->responseCode()));
-        response->body().appendChar('}');
-
-        cursors->release(cursor);
-      } catch (...) {
-        cursors->release(cursor);
-        throw;
-      }
-    }
-  } catch (arangodb::basics::Exception const& ex) {
-    generateError(GeneralResponse::responseCode(ex.code()), ex.code(),
-                  ex.what());
+    cursors->release(cursor);
   } catch (...) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_INTERNAL);
+    cursors->release(cursor);
+    throw;
   }
 }
 
@@ -310,16 +292,14 @@ void RestExportHandler::modifyCursor() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(GeneralResponse::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/export/<cursor-id>");
     return;
   }
 
   std::string const& id = suffix[0];
 
-  auto cursors =
-      static_cast<arangodb::CursorRepository*>(_vocbase->_cursorRepository);
+  auto cursors = _vocbase->cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   auto cursorId = static_cast<arangodb::CursorId>(
@@ -339,35 +319,23 @@ void RestExportHandler::modifyCursor() {
   }
 
   try {
-    setResponseCode(GeneralResponse::ResponseCode::OK);
+    resetResponse(rest::ResponseCode::OK);
 
-    // TODO this needs to be generalized
-    auto* response = dynamic_cast<HttpResponse*>(_response);
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder builder(buffer);
+    builder.openObject();
+    builder.add("error", VPackValue(false));
+    builder.add("code", VPackValue((int)_response->responseCode()));
+    cursor->dump(builder);
+    builder.close();
 
-    if (response == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-    }
-
-    response->setContentType(HttpResponse::ContentType::JSON);
-
-    response->body().appendChar('{');
-    cursor->dump(response->body());
-    response->body().appendText(",\"error\":false,\"code\":");
-    response->body().appendInteger(
-        static_cast<uint32_t>(response->responseCode()));
-    response->body().appendChar('}');
+    _response->setContentType(rest::ContentType::JSON);
+    generateResult(rest::ResponseCode::OK, builder.slice());
 
     cursors->release(cursor);
-  } catch (arangodb::basics::Exception const& ex) {
-    cursors->release(cursor);
-
-    generateError(GeneralResponse::responseCode(ex.code()), ex.code(),
-                  ex.what());
   } catch (...) {
     cursors->release(cursor);
-
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_INTERNAL);
+    throw;
   }
 }
 
@@ -375,16 +343,14 @@ void RestExportHandler::deleteCursor() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(GeneralResponse::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/export/<cursor-id>");
     return;
   }
 
   std::string const& id = suffix[0];
 
-  auto cursors =
-      static_cast<arangodb::CursorRepository*>(_vocbase->_cursorRepository);
+  auto cursors = _vocbase->cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   auto cursorId = static_cast<arangodb::CursorId>(
@@ -392,8 +358,7 @@ void RestExportHandler::deleteCursor() {
   bool found = cursors->remove(cursorId);
 
   if (!found) {
-    generateError(GeneralResponse::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_CURSOR_NOT_FOUND);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND);
     return;
   }
 
@@ -401,8 +366,9 @@ void RestExportHandler::deleteCursor() {
   result.openObject();
   result.add("id", VPackValue(id));
   result.add("error", VPackValue(false));
-  result.add("code", VPackValue(static_cast<int>(GeneralResponse::ResponseCode::ACCEPTED)));
+  result.add("code",
+             VPackValue(static_cast<int>(rest::ResponseCode::ACCEPTED)));
   result.close();
 
-  generateResult(GeneralResponse::ResponseCode::ACCEPTED, result.slice());
+  generateResult(rest::ResponseCode::ACCEPTED, result.slice());
 }

@@ -31,6 +31,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
+#include "Utils/TransactionContext.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Value.h>
@@ -53,22 +54,22 @@ RestHandler::status RestCursorHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
 
-  if (type == GeneralRequest::RequestType::POST) {
+  if (type == rest::RequestType::POST) {
     createCursor();
     return status::DONE;
   }
 
-  if (type == GeneralRequest::RequestType::PUT) {
+  if (type == rest::RequestType::PUT) {
     modifyCursor();
     return status::DONE;
   }
 
-  if (type == GeneralRequest::RequestType::DELETE_REQ) {
+  if (type == rest::RequestType::DELETE_REQ) {
     deleteCursor();
     return status::DONE;
   }
 
-  generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return status::DONE;
 }
@@ -82,19 +83,19 @@ bool RestCursorHandler::cancel() { return cancelQuery(); }
 
 void RestCursorHandler::processQuery(VPackSlice const& slice) {
   if (!slice.isObject()) {
-    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
     return;
   }
   VPackSlice const querySlice = slice.get("query");
   if (!querySlice.isString()) {
-    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
     return;
   }
 
   VPackSlice const bindVars = slice.get("bindVars");
   if (!bindVars.isNone()) {
     if (!bindVars.isObject() && !bindVars.isNull()) {
-      generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting object for <bindVars>");
       return;
     }
@@ -136,18 +137,8 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
   TRI_ASSERT(qResult.isArray());
 
   {
-    setResponseCode(GeneralResponse::ResponseCode::CREATED);
-
-    // TODO needs to generalized
-    auto* response = dynamic_cast<HttpResponse*>(_response);
-
-    if (response == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-    }
-
-    // TODO: generalize to calling handler setPayload
-    response->setContentType(GeneralResponse::ContentType::JSON);
-
+    resetResponse(rest::ResponseCode::CREATED);
+    _response->setContentType(rest::ContentType::JSON);
     std::shared_ptr<VPackBuilder> extra = buildExtra(queryResult);
     VPackSlice opts = options->slice();
 
@@ -167,11 +158,11 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
       // conservatively allocate a few bytes per value to be returned
       int res;
       if (n >= 10000) {
-        res = response->body().reserve(128 * 1024);
+        res = _response->reservePayload(128 * 1024);
       } else if (n >= 1000) {
-        res = response->body().reserve(64 * 1024);
+        res = _response->reservePayload(64 * 1024);
       } else {
-        res = response->body().reserve(n * 48);
+        res = _response->reservePayload(n * 48);
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -196,26 +187,17 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
           result.add("extra", extra->slice());
         }
         result.add("error", VPackValue(false));
-        result.add("code", VPackValue((int)response->responseCode()));
+        result.add("code", VPackValue((int)_response->responseCode()));
       } catch (...) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
-
-      // TODO generalize
-      auto* httpResponse = dynamic_cast<HttpResponse*>(_response);
-
-      if (httpResponse == nullptr) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-      }
-
-      arangodb::basics::VelocyPackDumper dumper(
-          &(httpResponse->body()), queryResult.context->getVPackOptionsForDump());
-      dumper.dumpValue(result.slice());
+      generateResult(rest::ResponseCode::CREATED, result.slice(),
+                     queryResult.context);
       return;
     }
 
     // result is bigger than batchSize, and a cursor will be created
-    auto cursors = _vocbase->_cursorRepository;
+    auto cursors = _vocbase->cursorRepository();
     TRI_ASSERT(cursors != nullptr);
 
     double ttl = arangodb::basics::VelocyPackHelper::getNumericValue<double>(
@@ -230,12 +212,16 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
         std::move(queryResult), batchSize, extra, ttl, count);
 
     try {
-      response->body().appendChar('{');
-      cursor->dump(response->body());
-      response->body().appendText(",\"error\":false,\"code\":");
-      response->body().appendInteger(
-          static_cast<uint32_t>(response->responseCode()));
-      response->body().appendChar('}');
+      VPackBuilder result;
+      result.openObject();
+      result.add("error", VPackValue(false));
+      result.add("code", VPackValue((int)_response->responseCode()));
+      cursor->dump(result);
+      result.close();
+
+      _response->setContentType(rest::ContentType::JSON);
+      generateResult(_response->responseCode(), result.slice(),
+                     cursor->result()->context);
 
       cursors->release(cursor);
     } catch (...) {
@@ -402,11 +388,16 @@ std::shared_ptr<VPackBuilder> RestCursorHandler::buildExtra(
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestCursorHandler::createCursor() {
+  if (_request->payload().isEmptyObject()) {
+    generateError(rest::ResponseCode::BAD, 600);
+    return;
+  }
+
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
-    generateError(GeneralResponse::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER, "expecting POST /_api/cursor");
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting POST /_api/cursor");
     return;
   }
 
@@ -421,22 +412,9 @@ void RestCursorHandler::createCursor() {
     VPackSlice body = parsedBody.get()->slice();
 
     processQuery(body);
-  } catch (arangodb::basics::Exception const& ex) {
-    unregisterQuery();
-    generateError(GeneralResponse::responseCode(ex.code()), ex.code(),
-                  ex.what());
-  } catch (std::bad_alloc const&) {
-    unregisterQuery();
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_OUT_OF_MEMORY);
-  } catch (std::exception const& ex) {
-    unregisterQuery();
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
     unregisterQuery();
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_INTERNAL);
+    throw;
   }
 }
 
@@ -448,16 +426,14 @@ void RestCursorHandler::modifyCursor() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(GeneralResponse::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/cursor/<cursor-id>");
     return;
   }
 
   std::string const& id = suffix[0];
 
-  auto cursors =
-      static_cast<arangodb::CursorRepository*>(_vocbase->_cursorRepository);
+  auto cursors = _vocbase->cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   auto cursorId = static_cast<arangodb::CursorId>(
@@ -477,36 +453,20 @@ void RestCursorHandler::modifyCursor() {
   }
 
   try {
-    setResponseCode(GeneralResponse::ResponseCode::OK);
+    VPackBuilder builder;
+    builder.openObject();
+    builder.add("error", VPackValue(false));
+    builder.add("code", VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+    cursor->dump(builder);
+    builder.close();
 
-    // TODO needs to generalized
-    auto* response = dynamic_cast<HttpResponse*>(_response);
-
-    if (response == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-    }
-
-    // TODO: generalize to calling handler setPayload
-    response->setContentType(GeneralResponse::ContentType::JSON);
-
-    response->body().appendChar('{');
-    cursor->dump(response->body());
-    response->body().appendText(",\"error\":false,\"code\":");
-    response->body().appendInteger(
-        static_cast<uint32_t>(response->responseCode()));
-    response->body().appendChar('}');
+    _response->setContentType(rest::ContentType::JSON);
+    generateResult(rest::ResponseCode::OK, builder.slice());
 
     cursors->release(cursor);
-  } catch (arangodb::basics::Exception const& ex) {
-    cursors->release(cursor);
-
-    generateError(GeneralResponse::responseCode(ex.code()), ex.code(),
-                  ex.what());
   } catch (...) {
     cursors->release(cursor);
-
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_INTERNAL);
+    throw;
   }
 }
 
@@ -518,16 +478,14 @@ void RestCursorHandler::deleteCursor() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(GeneralResponse::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/cursor/<cursor-id>");
     return;
   }
 
   std::string const& id = suffix[0];
 
-  auto cursors =
-      static_cast<arangodb::CursorRepository*>(_vocbase->_cursorRepository);
+  auto cursors = _vocbase->cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   auto cursorId = static_cast<arangodb::CursorId>(
@@ -535,8 +493,7 @@ void RestCursorHandler::deleteCursor() {
   bool found = cursors->remove(cursorId);
 
   if (!found) {
-    generateError(GeneralResponse::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_CURSOR_NOT_FOUND);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND);
     return;
   }
 
@@ -544,10 +501,9 @@ void RestCursorHandler::deleteCursor() {
   builder.openObject();
   builder.add("id", VPackValue(id));
   builder.add("error", VPackValue(false));
-  builder.add(
-      "code",
-      VPackValue(static_cast<int>(GeneralResponse::ResponseCode::ACCEPTED)));
+  builder.add("code",
+              VPackValue(static_cast<int>(rest::ResponseCode::ACCEPTED)));
   builder.close();
 
-  generateResult(GeneralResponse::ResponseCode::ACCEPTED, builder.slice());
+  generateResult(rest::ResponseCode::ACCEPTED, builder.slice());
 }

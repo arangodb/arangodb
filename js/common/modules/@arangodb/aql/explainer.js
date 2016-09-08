@@ -808,7 +808,7 @@ function processQuery (query, explain) {
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* ' + (node.reverse ? 'reverse ' : '') + node.index.type + ' index scan */');
 
       case 'TraversalNode':
-        node.minMaxDepth = node.minDepth + '..' + node.maxDepth;
+        node.minMaxDepth = node.traversalFlags.minDepth + '..' + node.traversalFlags.maxDepth;
         node.minMaxDepthLen = node.minMaxDepth.length;
 
         rc = keyword('FOR ');
@@ -849,8 +849,8 @@ function processQuery (query, explain) {
         }
 
         traversalDetails.push(node);
-        if (node.hasOwnProperty('simpleExpressions')) {
-          node.ConditionStr = buildSimpleExpression(node.simpleExpressions);
+        if (node.hasOwnProperty('condition')) {
+          node.ConditionStr = buildExpression(node.condition);
         }
 
         e = [];

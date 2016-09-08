@@ -1,6 +1,18 @@
 devel
 -----
+
+* added HTTP REST APIs for online loglevel adjustments:
+
+  - GET `/_admin/log/level` returns the current loglevel settings
+  - PUT `/_admin/log/level` modifies the current loglevel settings
+
 * changed default for keepNull of modifyVertex/modifyEdge to true in Gharial
+
+* renamed `maximalSize` attribute in parameter.json files to `journalSize`
+
+  The `maximalSize` attribute will still be picked up from collections that
+  have not been adjusted. Responses from the replication API will now also use
+  `journalSize` instead of `maximalSize`.
 
 * added --cluster.system-replication-factor in order to adjust the
   replication factor for new system collections
@@ -8,6 +20,13 @@ devel
 * fixed issue #2012
 
 * added a memory expection in case V8 memory gets too low
+
+* added Optimizer Rule for other indexes in Traversals
+  this allows AQL traversals to use other indexes than the edge index.
+  So traversals with filters on edges can now make use of more specific
+  indexes. E.g.:
+  FOR v, e, p IN 2 OUTBOUND @start @@edge FILTER p.edges[0].foo == "bar"
+  Will prefer an Hash Index on [_from, foo] above the EdgeIndex.
 
 * fixed epoch computation in hybrid logical clock
 

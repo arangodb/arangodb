@@ -27,14 +27,15 @@
 #include "Basics/Common.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/datafile.h"
-#include "VocBase/document-collection.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 #include "Wal/Logfile.h"
 #include "Wal/Marker.h"
 
 namespace arangodb {
+class DatabaseFeature;
+
 namespace wal {
 
 /// @brief state that is built up when scanning a WAL logfile during recovery
@@ -43,7 +44,7 @@ struct RecoverState {
   RecoverState& operator=(RecoverState const&) = delete;
 
   /// @brief creates the recover state
-  RecoverState(TRI_server_t*, bool);
+  explicit RecoverState(bool);
 
   /// @brief destroys the recover state
   ~RecoverState();
@@ -113,16 +114,16 @@ struct RecoverState {
   TRI_vocbase_t* releaseDatabase(TRI_voc_tick_t);
 
   /// @brief release a collection (so it can be dropped)
-  TRI_vocbase_col_t* releaseCollection(TRI_voc_cid_t);
+  arangodb::LogicalCollection* releaseCollection(TRI_voc_cid_t);
 
   /// @brief gets a collection (and inserts it into the cache if not in it)
-  TRI_vocbase_col_t* useCollection(TRI_vocbase_t*, TRI_voc_cid_t, int&);
+  arangodb::LogicalCollection* useCollection(TRI_vocbase_t*, TRI_voc_cid_t, int&);
 
   /// @brief looks up a collection
   /// the collection will be opened after this call and inserted into a local
   /// cache for faster lookups
   /// returns nullptr if the collection does not exist
-  TRI_document_collection_t* getCollection(TRI_voc_tick_t, TRI_voc_cid_t);
+  arangodb::LogicalCollection* getCollection(TRI_voc_tick_t, TRI_voc_cid_t);
 
   /// @brief executes a single operation inside a transaction
   int executeSingleOperation(
@@ -152,7 +153,7 @@ struct RecoverState {
   /// @brief fill the secondary indexes of all collections used in recovery
   int fillIndexes();
 
-  TRI_server_t* server;
+  DatabaseFeature* databaseFeature;
   std::unordered_map<TRI_voc_tid_t, std::pair<TRI_voc_tick_t, bool>>
       failedTransactions;
   std::unordered_set<TRI_voc_cid_t> droppedCollections;
@@ -162,7 +163,7 @@ struct RecoverState {
 
   TRI_voc_tick_t lastTick;
   std::vector<Logfile*> logfilesToProcess;
-  std::unordered_map<TRI_voc_cid_t, TRI_vocbase_col_t*> openedCollections;
+  std::unordered_map<TRI_voc_cid_t, arangodb::LogicalCollection*> openedCollections;
   std::unordered_map<TRI_voc_tick_t, TRI_vocbase_t*> openedDatabases;
   std::vector<std::string> emptyLogfiles;
 

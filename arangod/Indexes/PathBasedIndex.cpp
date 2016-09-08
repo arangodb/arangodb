@@ -51,7 +51,7 @@ arangodb::aql::AstNode const* PathBasedIndex::PermutationState::getValue()
 ////////////////////////////////////////////////////////////////////////////////
 
 PathBasedIndex::PathBasedIndex(
-    TRI_idx_iid_t iid, TRI_document_collection_t* collection,
+    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     bool unique, bool sparse, bool allowPartialIndex)
     : Index(iid, collection, fields, unique, sparse),
@@ -70,6 +70,32 @@ PathBasedIndex::PathBasedIndex(
     }
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the index
+////////////////////////////////////////////////////////////////////////////////
+
+PathBasedIndex::PathBasedIndex(TRI_idx_iid_t iid,
+                               arangodb::LogicalCollection* collection,
+                               VPackSlice const& info, bool allowPartialIndex)
+    : Index(iid, collection, info),
+      _useExpansion(false),
+      _allowPartialIndex(allowPartialIndex) {
+  TRI_ASSERT(!_fields.empty());
+
+  TRI_ASSERT(iid != 0);
+
+  fillPaths(_paths, _expanding);
+
+  for (auto const& it : _fields) {
+    if (TRI_AttributeNamesHaveExpansion(it)) {
+      _useExpansion = true;
+      break;
+    }
+  }
+}
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an index stub with a hard-coded selectivity estimate

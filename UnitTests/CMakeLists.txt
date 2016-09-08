@@ -15,7 +15,6 @@ add_executable(${TEST_BASICS_SUITE}
   Basics/files-test.cpp
   Basics/fpconv-test.cpp
   Basics/json-test.cpp
-  Basics/json-utilities-test.cpp
   Basics/hashes-test.cpp
   Basics/associative-multi-pointer-test.cpp
   Basics/associative-multi-pointer-nohashcache-test.cpp

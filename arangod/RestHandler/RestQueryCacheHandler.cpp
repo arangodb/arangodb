@@ -41,13 +41,13 @@ RestHandler::status RestQueryCacheHandler::execute() {
   auto const type = _request->requestType();
 
   switch (type) {
-    case GeneralRequest::RequestType::DELETE_REQ:
+    case rest::RequestType::DELETE_REQ:
       clearCache();
       break;
-    case GeneralRequest::RequestType::GET:
+    case rest::RequestType::GET:
       readProperties();
       break;
-    case GeneralRequest::RequestType::PUT:
+    case rest::RequestType::PUT:
       replaceProperties();
       break;
     default:
@@ -66,16 +66,13 @@ RestHandler::status RestQueryCacheHandler::execute() {
 bool RestQueryCacheHandler::clearCache() {
   auto queryCache = arangodb::aql::QueryCache::instance();
   queryCache->invalidate();
-  try {
-    VPackBuilder result;
-    result.add(VPackValue(VPackValueType::Object));
-    result.add("error", VPackValue(false));
-    result.add("code", VPackValue((int)GeneralResponse::ResponseCode::OK));
-    result.close();
-    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
-  } catch (...) {
-    // Ignore the error
-  }
+    
+  VPackBuilder result;
+  result.add(VPackValue(VPackValueType::Object));
+  result.add("error", VPackValue(false));
+  result.add("code", VPackValue((int)rest::ResponseCode::OK));
+  result.close();
+  generateResult(rest::ResponseCode::OK, result.slice());
   return true;
 }
 
@@ -84,22 +81,10 @@ bool RestQueryCacheHandler::clearCache() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestQueryCacheHandler::readProperties() {
-  try {
-    auto queryCache = arangodb::aql::QueryCache::instance();
+  auto queryCache = arangodb::aql::QueryCache::instance();
 
-    VPackBuilder result = queryCache->properties();
-    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
-  } catch (Exception const& err) {
-    handleError(err);
-  } catch (std::exception const& ex) {
-    arangodb::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__,
-                                    __LINE__);
-    handleError(err);
-  } catch (...) {
-    arangodb::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
-    handleError(err);
-  }
-
+  VPackBuilder result = queryCache->properties();
+  generateResult(rest::ResponseCode::OK, result.slice());
   return true;
 }
 
@@ -111,7 +96,7 @@ bool RestQueryCacheHandler::replaceProperties() {
   auto const& suffix = _request->suffix();
 
   if (suffix.size() != 1 || suffix[0] != "properties") {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/query-cache/properties");
     return true;
@@ -127,41 +112,28 @@ bool RestQueryCacheHandler::replaceProperties() {
   VPackSlice body = parsedBody.get()->slice();
 
   if (!body.isObject()) {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER, "expecting a JSON-Object body");
     return true;
   }
 
   auto queryCache = arangodb::aql::QueryCache::instance();
 
-  try {
-    std::pair<std::string, size_t> cacheProperties;
-    queryCache->properties(cacheProperties);
+  std::pair<std::string, size_t> cacheProperties;
+  queryCache->properties(cacheProperties);
 
-    VPackSlice attribute = body.get("mode");
-    if (attribute.isString()) {
-      cacheProperties.first = attribute.copyString();
-    }
-
-    attribute = body.get("maxResults");
-
-    if (attribute.isNumber()) {
-      cacheProperties.second = static_cast<size_t>(attribute.getUInt());
-    }
-
-    queryCache->setProperties(cacheProperties);
-
-    return readProperties();
-  } catch (Exception const& err) {
-    handleError(err);
-  } catch (std::exception const& ex) {
-    arangodb::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__,
-                                    __LINE__);
-    handleError(err);
-  } catch (...) {
-    arangodb::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
-    handleError(err);
+  VPackSlice attribute = body.get("mode");
+  if (attribute.isString()) {
+    cacheProperties.first = attribute.copyString();
   }
 
-  return true;
+  attribute = body.get("maxResults");
+
+  if (attribute.isNumber()) {
+    cacheProperties.second = static_cast<size_t>(attribute.getUInt());
+  }
+
+  queryCache->setProperties(cacheProperties);
+
+  return readProperties();
 }

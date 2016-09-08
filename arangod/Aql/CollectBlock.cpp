@@ -31,7 +31,6 @@
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::aql;
-using Json = arangodb::basics::Json;
 
 static AqlValue EmptyValue;
 

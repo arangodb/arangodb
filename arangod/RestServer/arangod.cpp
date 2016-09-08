@@ -32,15 +32,16 @@
 #endif
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/DaemonFeature.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
+#include "ApplicationFeatures/PageSizeFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/SupervisorFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
-#include "ApplicationFeatures/WorkMonitorFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Cluster/ClusterFeature.h"
 #include "Dispatcher/DispatcherFeature.h"
@@ -54,22 +55,30 @@
 #include "RestServer/CheckVersionFeature.h"
 #include "RestServer/ConsoleFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabaseServerFeature.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/FrontendFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
+#include "RestServer/LockfileFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ScriptFeature.h"
 #include "RestServer/ServerFeature.h"
+#include "RestServer/ServerIdFeature.h"
+#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/UnitTestsFeature.h"
 #include "RestServer/UpgradeFeature.h"
+#include "RestServer/WorkMonitorFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Ssl/SslFeature.h"
 #include "Ssl/SslServerFeature.h"
 #include "Statistics/StatisticsFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/MMFilesEngine.h"
+#include "StorageEngine/OtherEngine.h"
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
+#include "VocBase/IndexPoolFeature.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/RecoveryFeature.h"
 
@@ -93,14 +102,10 @@ static int runServer(int argc, char** argv) {
   application_features::ApplicationServer server(options);
 
   std::vector<std::string> nonServerFeatures = {
-      "Action",        "Affinity",
-      "Agency",        "Cluster",
-      "Daemon",        "Dispatcher",
-      "Endpoint",      "FoxxQueues",
-      "GeneralServer", "LoggerBufferFeature",
-      "Server",        "Scheduler",
-      "SslServer",     "Statistics",
-      "Supervisor"};
+      "Action",        "Affinity",            "Agency",    "Cluster",
+      "Daemon",        "Dispatcher",          "Endpoint",  "FoxxQueues",
+      "GeneralServer", "LoggerBufferFeature", "Server",    "Scheduler",
+      "SslServer",     "Statistics",          "Supervisor"};
 
   int ret = EXIT_FAILURE;
 
@@ -117,26 +122,33 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new ConfigFeature(&server, name));
   server.addFeature(new ConsoleFeature(&server));
   server.addFeature(new DatabaseFeature(&server));
-  server.addFeature(new DatabaseServerFeature(&server));
+  server.addFeature(new DatabasePathFeature(&server));
   server.addFeature(new DispatcherFeature(&server));
   server.addFeature(new EndpointFeature(&server));
+  server.addFeature(new EngineSelectorFeature(&server));
   server.addFeature(new FileDescriptorsFeature(&server));
   server.addFeature(new FoxxQueuesFeature(&server));
   server.addFeature(new FrontendFeature(&server));
   server.addFeature(new GeneralServerFeature(&server));
+  server.addFeature(new GreetingsFeature(&server, "arangod"));
+  server.addFeature(new IndexPoolFeature(&server));
   server.addFeature(new InitDatabaseFeature(&server, nonServerFeatures));
   server.addFeature(new LanguageFeature(&server));
+  server.addFeature(new LockfileFeature(&server));
   server.addFeature(new LogfileManager(&server));
   server.addFeature(new LoggerBufferFeature(&server));
   server.addFeature(new LoggerFeature(&server, true));
   server.addFeature(new NonceFeature(&server));
+  server.addFeature(new PageSizeFeature(&server));
   server.addFeature(new PrivilegeFeature(&server));
   server.addFeature(new QueryRegistryFeature(&server));
+  server.addFeature(new TraverserEngineRegistryFeature(&server));
   server.addFeature(new RandomFeature(&server));
   server.addFeature(new RecoveryFeature(&server));
   server.addFeature(new SchedulerFeature(&server));
   server.addFeature(new ScriptFeature(&server, &ret));
   server.addFeature(new ServerFeature(&server, &ret));
+  server.addFeature(new ServerIdFeature(&server));
   server.addFeature(new ShutdownFeature(&server, {"UnitTests", "Script"}));
   server.addFeature(new SslFeature(&server));
   server.addFeature(new SslServerFeature(&server));
@@ -162,6 +174,11 @@ static int runServer(int argc, char** argv) {
   server.addFeature(supervisor.release());
 #endif
 
+  // storage engines
+  server.addFeature(new MMFilesEngine(&server));
+  server.addFeature(
+      new OtherEngine(&server));  // TODO: just for testing - remove this!
+
   try {
     server.run(argc, argv);
     if (server.helpShown()) {
@@ -171,14 +188,13 @@ static int runServer(int argc, char** argv) {
   } catch (std::exception const& ex) {
     LOG(ERR) << "arangod terminated because of an unhandled exception: "
              << ex.what();
-    Logger::flush();
     ret = EXIT_FAILURE;
   } catch (...) {
     LOG(ERR) << "arangod terminated because of an unhandled exception of "
                 "unknown type";
-    Logger::flush();
     ret = EXIT_FAILURE;
   }
+  Logger::flush();
 
   return context.exit(ret);
 }

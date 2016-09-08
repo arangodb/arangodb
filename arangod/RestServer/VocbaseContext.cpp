@@ -28,7 +28,7 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Basics/MutexLocker.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/ConnectionInfo.h"
@@ -36,7 +36,6 @@
 #include "Logger/Logger.h"
 #include "Ssl/SslInterface.h"
 #include "VocBase/AuthInfo.h"
-#include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -52,7 +51,7 @@ VocbaseContext::VocbaseContext(GeneralRequest* request, TRI_vocbase_t* vocbase,
   TRI_ASSERT(_vocbase != nullptr);
 }
 
-VocbaseContext::~VocbaseContext() { TRI_ReleaseVocBase(_vocbase); }
+VocbaseContext::~VocbaseContext() { _vocbase->release(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not to use special cluster authentication
@@ -80,33 +79,35 @@ bool VocbaseContext::useClusterAuthentication() const {
 /// @brief checks the authentication
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralResponse::ResponseCode VocbaseContext::authenticate() {
+rest::ResponseCode VocbaseContext::authenticate() {
   TRI_ASSERT(_vocbase != nullptr);
 
-  if (!_vocbase->_settings.requireAuthentication) {
+  auto restServer = application_features::ApplicationServer::getFeature<GeneralServerFeature>("GeneralServer");
+
+  if (!restServer->authentication()) {
     // no authentication required at all
-    return GeneralResponse::ResponseCode::OK;
+    return rest::ResponseCode::OK;
   }
 
   std::string const& path = _request->requestPath();
 
   // mop: inside authenticateRequest() _request->user will be populated
   bool forceOpen = false;
-  GeneralResponse::ResponseCode result = authenticateRequest(&forceOpen);
+  rest::ResponseCode result = authenticateRequest(&forceOpen);
 
-  if (result == GeneralResponse::ResponseCode::UNAUTHORIZED ||
-      result == GeneralResponse::ResponseCode::FORBIDDEN) {
+  if (result == rest::ResponseCode::UNAUTHORIZED ||
+      result == rest::ResponseCode::FORBIDDEN) {
     if (StringUtils::isPrefix(path, "/_open/") ||
         StringUtils::isPrefix(path, "/_admin/aardvark/") || path == "/") {
       // mop: these paths are always callable...they will be able to check
       // req.user when it could be validated
-      result = GeneralResponse::ResponseCode::OK;
+      result = rest::ResponseCode::OK;
       forceOpen = true;
     }
   }
 
   // check that we are allowed to see the database
-  if (result == GeneralResponse::ResponseCode::OK && !forceOpen) {
+  if (result == rest::ResponseCode::OK && !forceOpen) {
     if (!StringUtils::isPrefix(path, "/_api/user/")) {
       std::string const& username = _request->user();
       std::string const& dbname = _request->databaseName();
@@ -116,7 +117,7 @@ GeneralResponse::ResponseCode VocbaseContext::authenticate() {
             GeneralServerFeature::AUTH_INFO.canUseDatabase(username, dbname);
 
         if (level != AuthLevel::RW) {
-          result = GeneralResponse::ResponseCode::UNAUTHORIZED;
+          result = rest::ResponseCode::UNAUTHORIZED;
         }
       }
     }
@@ -125,35 +126,37 @@ GeneralResponse::ResponseCode VocbaseContext::authenticate() {
   return result;
 }
 
-GeneralResponse::ResponseCode VocbaseContext::authenticateRequest(
+rest::ResponseCode VocbaseContext::authenticateRequest(
     bool* forceOpen) {
+  
+  auto restServer = application_features::ApplicationServer::getFeature<GeneralServerFeature>("GeneralServer");
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   // check if we need to run authentication for this type of
   // endpoint
   ConnectionInfo const& ci = _request->connectionInfo();
 
   if (ci.endpointType == Endpoint::DomainType::UNIX &&
-      !_vocbase->_settings.requireAuthenticationUnixSockets) {
+      !restServer->authenticationUnixSockets()) {
     // no authentication required for unix socket domain connections
-    return GeneralResponse::ResponseCode::OK;
+    return rest::ResponseCode::OK;
   }
 #endif
 
   std::string const& path = _request->requestPath();
 
-  if (_vocbase->_settings.authenticateSystemOnly) {
+  if (restServer->authenticationSystemOnly()) {
     // authentication required, but only for /_api, /_admin etc.
 
     if (!path.empty()) {
       // check if path starts with /_
       if (path[0] != '/') {
         *forceOpen = true;
-        return GeneralResponse::ResponseCode::OK;
+        return rest::ResponseCode::OK;
       }
 
       if (path.length() > 0 && path[1] != '_') {
         *forceOpen = true;
-        return GeneralResponse::ResponseCode::OK;
+        return rest::ResponseCode::OK;
       }
     }
   }
@@ -167,12 +170,12 @@ GeneralResponse::ResponseCode VocbaseContext::authenticateRequest(
       _request->header(StaticStrings::Authorization, found);
 
   if (!found) {
-    return GeneralResponse::ResponseCode::UNAUTHORIZED;
+    return rest::ResponseCode::UNAUTHORIZED;
   }
 
   size_t methodPos = authStr.find_first_of(' ');
   if (methodPos == std::string::npos) {
-    return GeneralResponse::ResponseCode::UNAUTHORIZED;
+    return rest::ResponseCode::UNAUTHORIZED;
   }
 
   // skip over authentication method
@@ -189,7 +192,7 @@ GeneralResponse::ResponseCode VocbaseContext::authenticateRequest(
     return jwtAuthentication(std::string(auth));
   } else {
     // mop: hmmm is 403 the correct status code? or 401? or 400? :S
-    return GeneralResponse::ResponseCode::UNAUTHORIZED;
+    return rest::ResponseCode::UNAUTHORIZED;
   }
 }
 
@@ -197,13 +200,13 @@ GeneralResponse::ResponseCode VocbaseContext::authenticateRequest(
 /// @brief checks the authentication via basic
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralResponse::ResponseCode VocbaseContext::basicAuthentication(
+rest::ResponseCode VocbaseContext::basicAuthentication(
     const char* auth) {
   if (useClusterAuthentication()) {
     std::string const expected = ServerState::instance()->getAuthentication();
 
     if (expected.substr(6) != std::string(auth)) {
-      return GeneralResponse::ResponseCode::UNAUTHORIZED;
+      return rest::ResponseCode::UNAUTHORIZED;
     }
 
     std::string const up = StringUtils::decodeBase64(auth);
@@ -213,50 +216,50 @@ GeneralResponse::ResponseCode VocbaseContext::basicAuthentication(
       LOG(TRACE) << "invalid authentication data found, cannot extract "
                     "username/password";
 
-      return GeneralResponse::ResponseCode::BAD;
+      return rest::ResponseCode::BAD;
     }
 
     _request->setUser(up.substr(0, n));
 
-    return GeneralResponse::ResponseCode::OK;
+    return rest::ResponseCode::OK;
   }
 
   AuthResult result = GeneralServerFeature::AUTH_INFO.checkAuthentication(
       AuthInfo::AuthType::BASIC, auth);
 
   if (!result._authorized) {
-    return GeneralResponse::ResponseCode::UNAUTHORIZED;
+    return rest::ResponseCode::UNAUTHORIZED;
   }
 
   // we have a user name, verify 'mustChange'
   _request->setUser(std::move(result._username));
 
   if (result._mustChange) {
-    if ((_request->requestType() == GeneralRequest::RequestType::PUT ||
-         _request->requestType() == GeneralRequest::RequestType::PATCH) &&
+    if ((_request->requestType() == rest::RequestType::PUT ||
+         _request->requestType() == rest::RequestType::PATCH) &&
         StringUtils::isPrefix(_request->requestPath(), "/_api/user/")) {
-      return GeneralResponse::ResponseCode::OK;
+      return rest::ResponseCode::OK;
     }
 
-    return GeneralResponse::ResponseCode::FORBIDDEN;
+    return rest::ResponseCode::FORBIDDEN;
   }
 
-  return GeneralResponse::ResponseCode::OK;
+  return rest::ResponseCode::OK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the authentication via jwt
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralResponse::ResponseCode VocbaseContext::jwtAuthentication(
+rest::ResponseCode VocbaseContext::jwtAuthentication(
     std::string const& auth) {
   AuthResult result = GeneralServerFeature::AUTH_INFO.checkAuthentication(
       AuthInfo::AuthType::JWT, auth);
 
   if (!result._authorized) {
-    return GeneralResponse::ResponseCode::UNAUTHORIZED;
+    return rest::ResponseCode::UNAUTHORIZED;
   }
   // we have a user name, verify 'mustChange'
   _request->setUser(std::move(result._username));
-  return GeneralResponse::ResponseCode::OK;
+  return rest::ResponseCode::OK;
 }

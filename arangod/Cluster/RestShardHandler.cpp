@@ -44,8 +44,8 @@ RestHandler::status RestShardHandler::execute() {
       _request->header(StaticStrings::Coordinator, found);
 
   if (!found) {
-    generateError(arangodb::GeneralResponse::ResponseCode::BAD,
-                  (int)arangodb::GeneralResponse::ResponseCode::BAD,
+    generateError(arangodb::rest::ResponseCode::BAD,
+                  (int)arangodb::rest::ResponseCode::BAD,
                   "header 'X-Arango-Coordinator' is missing");
     return status::DONE;
   }
@@ -55,10 +55,10 @@ RestHandler::status RestShardHandler::execute() {
       ClusterComm::instance()->processAnswer(coordinatorHeader, stealRequest());
 
   if (result == "") {
-    setResponseCode(arangodb::GeneralResponse::ResponseCode::ACCEPTED);
+    resetResponse(arangodb::rest::ResponseCode::ACCEPTED);
   } else {
-    generateError(arangodb::GeneralResponse::ResponseCode::BAD,
-                  (int)arangodb::GeneralResponse::ResponseCode::BAD,
+    generateError(arangodb::rest::ResponseCode::BAD,
+                  (int)arangodb::rest::ResponseCode::BAD,
                   result.c_str());
   }
 

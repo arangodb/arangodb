@@ -454,10 +454,10 @@ else ()
   set(V8_CXXFLAGS "$ENV{V8_CXXFLAGS}")
   set(V8_LDFLAGS  "$ENV{V8_LDFLAGS}")
 
-  if (CMAKE_COMPILER_IS_GNUCC)
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(V8_CFLAGS   "${V8_CFLAGS} -fno-delete-null-pointer-checks")
     set(V8_CXXFLAGS "${V8_CXXFLAGS} -fno-delete-null-pointer-checks")
-  endif ()
+  endif()
 
   if (USE_DEBUG_V8)
     set(V8_TARGET_ARCH "${V8_PROC_ARCH}.debug")

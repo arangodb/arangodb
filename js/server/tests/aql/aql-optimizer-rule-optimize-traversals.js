@@ -213,11 +213,11 @@ function optimizerRuleTestSuite () {
 
     testFunction : function () {
       var queries = [
-        "FOR v, e, p IN 2 OUTBOUND @start @@ecol FILTER p.edges[0]._key == CONCAT(@edgeKey, '') SORT v._key RETURN v._key",
-        "FOR v, e, p IN 2 OUTBOUND @start @@ecol FILTER p.edges[0]._key == @edgeKey SORT v._key RETURN v._key",
-        "FOR v, e, p IN 2 OUTBOUND @start @@ecol FILTER CONCAT(p.edges[0]._key, '') == @edgeKey SORT v._key RETURN v._key",
-        "FOR v, e, p IN 2 OUTBOUND @start @@ecol FILTER NOOPT(CONCAT(p.edges[0]._key, '')) == @edgeKey SORT v._key RETURN v._key",
-        "FOR v, e, p IN 2 OUTBOUND @start @@ecol FILTER NOOPT(V8(CONCAT(p.edges[0]._key, ''))) == @edgeKey SORT v._key RETURN v._key"
+        "WITH circles FOR v, e, p IN 2 OUTBOUND @start @@ecol FILTER p.edges[0]._key == CONCAT(@edgeKey, '') SORT v._key RETURN v._key",
+        "WITH circles FOR v, e, p IN 2 OUTBOUND @start @@ecol FILTER p.edges[0]._key == @edgeKey SORT v._key RETURN v._key",
+        "WITH circles FOR v, e, p IN 2 OUTBOUND @start @@ecol FILTER CONCAT(p.edges[0]._key, '') == @edgeKey SORT v._key RETURN v._key",
+        "WITH circles FOR v, e, p IN 2 OUTBOUND @start @@ecol FILTER NOOPT(CONCAT(p.edges[0]._key, '')) == @edgeKey SORT v._key RETURN v._key",
+        "WITH circles FOR v, e, p IN 2 OUTBOUND @start @@ecol FILTER NOOPT(V8(CONCAT(p.edges[0]._key, ''))) == @edgeKey SORT v._key RETURN v._key"
       ];
       var bindVars = {
         start: "circles/A",

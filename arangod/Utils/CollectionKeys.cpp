@@ -23,14 +23,17 @@
 
 #include "CollectionKeys.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/WriteLocker.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "VocBase/compactor.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/Ditch.h"
-#include "VocBase/document-collection.h"
-#include "VocBase/server.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/MasterPointer.h"
+#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 #include "Wal/LogfileManager.h"
 
@@ -44,7 +47,7 @@ CollectionKeys::CollectionKeys(TRI_vocbase_t* vocbase, std::string const& name,
                                TRI_voc_tick_t blockerId, double ttl)
     : _vocbase(vocbase),
       _guard(nullptr),
-      _document(nullptr),
+      _collection(nullptr),
       _ditch(nullptr),
       _name(name),
       _resolver(vocbase),
@@ -63,13 +66,14 @@ CollectionKeys::CollectionKeys(TRI_vocbase_t* vocbase, std::string const& name,
   // this may throw
   _guard = new arangodb::CollectionGuard(vocbase, _name.c_str(), false);
 
-  _document = _guard->collection()->_collection;
-  TRI_ASSERT(_document != nullptr);
+  _collection = _guard->collection();
+  TRI_ASSERT(_collection != nullptr);
 }
 
 CollectionKeys::~CollectionKeys() {
   // remove compaction blocker
-  TRI_RemoveBlockerCompactorVocBase(_vocbase, _blockerId);
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->removeCompactionBlocker(_vocbase, _blockerId);
 
   delete _markers;
 
@@ -86,19 +90,13 @@ CollectionKeys::~CollectionKeys() {
 
 void CollectionKeys::create(TRI_voc_tick_t maxTick) {
   arangodb::wal::LogfileManager::instance()->waitForCollectorQueue(
-      _document->_info.id(), 30.0);
-
-  // try to acquire the exclusive lock on the compaction
-  while (!TRI_CheckAndLockCompactorVocBase(_document->_vocbase)) {
-    // didn't get it. try again...
-    usleep(5000);
-  }
-
-  // create a ditch under the compaction lock
-  _ditch = _document->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
-
-  // release the lock
-  TRI_UnlockCompactorVocBase(_document->_vocbase);
+      _collection->cid(), 30.0);
+  
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->preventCompaction(_collection->vocbase(), [this](TRI_vocbase_t* vocbase) {
+    // create a ditch under the compaction lock
+    _ditch = _collection->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
+  });
 
   // now we either have a ditch or not
   if (_ditch == nullptr) {
@@ -111,8 +109,9 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
 
   // copy all datafile markers into the result under the read-lock
   {
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_document->_vocbase),
-                                            _name, TRI_TRANSACTION_READ);
+    SingleCollectionTransaction trx(
+        StandaloneTransactionContext::Create(_collection->vocbase()), _name,
+        TRI_TRANSACTION_READ);
 
     int res = trx.begin();
 
@@ -120,18 +119,19 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    trx.invokeOnAllElements(_document->_info.name(), [this, &maxTick](TRI_doc_mptr_t const* mptr) {
-      // only use those markers that point into datafiles
-      if (!mptr->pointsToWal()) {
-        TRI_df_marker_t const* marker = mptr->getMarkerPtr();
+    trx.invokeOnAllElements(
+        _collection->name(), [this, &maxTick](TRI_doc_mptr_t const* mptr) {
+          // only use those markers that point into datafiles
+          if (!mptr->pointsToWal()) {
+            TRI_df_marker_t const* marker = mptr->getMarkerPtr();
 
-        if (marker->getTick() <= maxTick) {
-          _markers->emplace_back(mptr->vpack());
-        }
-      }
+            if (marker->getTick() <= maxTick) {
+              _markers->emplace_back(mptr->vpack());
+            }
+          }
 
-      return true;
-    });
+          return true;
+        });
 
     trx.finish(res);
   }
@@ -142,7 +142,8 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
     VPackSlice l(reinterpret_cast<char const*>(lhs));
     VPackSlice r(reinterpret_cast<char const*>(rhs));
 
-    return (l.get(StaticStrings::KeyString).copyString() < r.get(StaticStrings::KeyString).copyString());
+    return (l.get(StaticStrings::KeyString).copyString() <
+            r.get(StaticStrings::KeyString).copyString());
   });
 }
 

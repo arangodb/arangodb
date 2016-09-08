@@ -22,19 +22,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ContinuousSyncer.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
-#include "Basics/json.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
+#include "RestServer/DatabaseFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -51,13 +53,12 @@ using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 
 ContinuousSyncer::ContinuousSyncer(
-    TRI_server_t* server, TRI_vocbase_t* vocbase,
+    TRI_vocbase_t* vocbase,
     TRI_replication_applier_configuration_t const* configuration,
     TRI_voc_tick_t initialTick, bool useTick,
     TRI_voc_tick_t barrierId)
     : Syncer(vocbase, configuration),
-      _server(server),
-      _applier(vocbase->_replicationApplier),
+      _applier(vocbase->replicationApplier()),
       _chunkSize(),
       _restrictType(RESTRICT_NONE),
       _initialTick(initialTick),
@@ -118,7 +119,7 @@ retry:
     _applier->_state._failedConnects = 0;
   }
 
-  while (_vocbase->_state < 2) {
+  while (_vocbase->state() == TRI_vocbase_t::State::NORMAL) {
     setProgress("fetching master state information");
     res = getMasterState(errorMsg);
 
@@ -188,7 +189,7 @@ retry:
     if (res == TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT ||
         res == TRI_ERROR_REPLICATION_NO_START_TICK) {
       if (res == TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT) {
-        LOG_TOPIC(WARN, Logger::REPLICATION) << "replication applier stopped for database '" << _vocbase->_name << "' because required tick is not present on master";
+        LOG_TOPIC(WARN, Logger::REPLICATION) << "replication applier stopped for database '" << _vocbase->name() << "' because required tick is not present on master";
       }
 
       // remove previous applier state
@@ -199,7 +200,7 @@ retry:
       {
         WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, 1000);
 
-        LOG_TOPIC(DEBUG, Logger::REPLICATION) << "stopped replication applier for database '" << _vocbase->_name << "' with lastProcessedContinuousTick: " << _applier->_state._lastProcessedContinuousTick << ", lastAppliedContinuousTick: " << _applier->_state._lastAppliedContinuousTick << ", safeResumeTick: " << _applier->_state._safeResumeTick;
+        LOG_TOPIC(DEBUG, Logger::REPLICATION) << "stopped replication applier for database '" << _vocbase->name() << "' with lastProcessedContinuousTick: " << _applier->_state._lastProcessedContinuousTick << ", lastAppliedContinuousTick: " << _applier->_state._lastAppliedContinuousTick << ", safeResumeTick: " << _applier->_state._safeResumeTick;
 
         _applier->_state._lastProcessedContinuousTick = 0;
         _applier->_state._lastAppliedContinuousTick = 0;
@@ -227,10 +228,10 @@ retry:
       if (shortTermFailsInRow > _configuration._autoResyncRetries) {
         if (_configuration._autoResyncRetries > 0) {
           // message only makes sense if there's at least one retry
-          LOG_TOPIC(WARN, Logger::REPLICATION) << "aborting automatic resynchronization for database '" << _vocbase->_name << "' after " << _configuration._autoResyncRetries << " retries";
+          LOG_TOPIC(WARN, Logger::REPLICATION) << "aborting automatic resynchronization for database '" << _vocbase->name() << "' after " << _configuration._autoResyncRetries << " retries";
         }
         else {
-          LOG_TOPIC(WARN, Logger::REPLICATION) << "aborting automatic resynchronization for database '" << _vocbase->_name << "' because autoResyncRetries is 0";
+          LOG_TOPIC(WARN, Logger::REPLICATION) << "aborting automatic resynchronization for database '" << _vocbase->name() << "' because autoResyncRetries is 0";
         }
 
         // always abort if we get here
@@ -238,7 +239,7 @@ retry:
       }
 
       // do an automatic full resync
-      LOG_TOPIC(WARN, Logger::REPLICATION) << "restarting initial synchronization for database '" << _vocbase->_name << "' because autoResync option is set. retry #" << shortTermFailsInRow;
+      LOG_TOPIC(WARN, Logger::REPLICATION) << "restarting initial synchronization for database '" << _vocbase->name() << "' because autoResync option is set. retry #" << shortTermFailsInRow;
 
       // start initial synchronization
       errorMsg = "";
@@ -252,7 +253,7 @@ retry:
 
         if (res == TRI_ERROR_NO_ERROR) {
           TRI_voc_tick_t lastLogTick = syncer.getLastLogTick();
-          LOG_TOPIC(INFO, Logger::REPLICATION) << "automatic resynchronization for database '" << _vocbase->_name << "' finished. restarting continuous replication applier from tick " << lastLogTick;
+          LOG_TOPIC(INFO, Logger::REPLICATION) << "automatic resynchronization for database '" << _vocbase->name() << "' finished. restarting continuous replication applier from tick " << lastLogTick;
           _initialTick = lastLogTick;
           _useTick = true;
           goto retry;
@@ -489,12 +490,12 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
     std::string const cnameString = cname.copyString();
     isSystem = (!cnameString.empty() && cnameString[0] == '_');
 
-    TRI_vocbase_col_t* col = getCollectionByIdOrName(cid, cnameString);
+    arangodb::LogicalCollection* col = getCollectionByIdOrName(cid, cnameString);
 
-    if (col != nullptr && col->_cid != cid) {
+    if (col != nullptr && col->cid() != cid) {
       // cid change? this may happen for system collections or if we restored
       // from a dump
-      cid = col->_cid;
+      cid = col->cid();
     }
   }
 
@@ -630,7 +631,7 @@ int ContinuousSyncer::startTransaction(VPackSlice const& slice) {
 
   LOG_TOPIC(TRACE, Logger::REPLICATION) << "starting replication transaction " << tid;
 
-  auto trx = std::make_unique<ReplicationTransaction>(_server, _vocbase);
+  auto trx = std::make_unique<ReplicationTransaction>(_vocbase);
 
   int res = trx->begin();
 
@@ -748,13 +749,13 @@ int ContinuousSyncer::renameCollection(VPackSlice const& slice) {
   }
 
   TRI_voc_cid_t const cid = getCid(slice);
-  TRI_vocbase_col_t* col = getCollectionByIdOrName(cid, cname);
+  arangodb::LogicalCollection* col = getCollectionByIdOrName(cid, cname);
 
   if (col == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  return TRI_RenameCollectionVocBase(_vocbase, col, name.c_str(), true, true);
+  return _vocbase->renameCollection(col, name, true, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -769,7 +770,7 @@ int ContinuousSyncer::changeCollection(VPackSlice const& slice) {
 
   TRI_voc_cid_t cid = getCid(slice);
   std::string const cname = getCName(slice);
-  TRI_vocbase_col_t* col = getCollectionByIdOrName(cid, cname);
+  arangodb::LogicalCollection* col = getCollectionByIdOrName(cid, cname);
   
   if (col == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -781,9 +782,8 @@ int ContinuousSyncer::changeCollection(VPackSlice const& slice) {
   }
 
   arangodb::CollectionGuard guard(_vocbase, cid);
-  bool doSync = _vocbase->_settings.forceSyncProperties;
-
-  return guard.collection()->_collection->updateCollectionInfo(_vocbase, data, doSync);
+  bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
+  return guard.collection()->update(data, doSync);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1171,7 +1171,7 @@ int ContinuousSyncer::fetchMasterState(std::string& errorMsg,
 
   // send request
   std::unique_ptr<SimpleHttpResult> response(
-      _client->request(GeneralRequest::RequestType::GET, url, nullptr, 0));
+      _client->request(rest::RequestType::GET, url, nullptr, 0));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "got invalid response from master at " +
@@ -1330,8 +1330,8 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
   }
 
   std::unique_ptr<SimpleHttpResult> response(
-      _client->request(_masterIs27OrHigher ? GeneralRequest::RequestType::PUT
-                                           : GeneralRequest::RequestType::GET,
+      _client->request(_masterIs27OrHigher ? rest::RequestType::PUT
+                                           : rest::RequestType::GET,
                        url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {

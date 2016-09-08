@@ -33,7 +33,7 @@ namespace wal {
 
 class LogfileManager;
 
-class RemoverThread : public Thread {
+class RemoverThread final : public Thread {
   RemoverThread(RemoverThread const&) = delete;
   RemoverThread& operator=(RemoverThread const&) = delete;
 

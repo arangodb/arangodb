@@ -30,7 +30,7 @@
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Utils/Transaction.h"
 #include "Utils/TransactionContext.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/transaction.h"
 
 #include <velocypack/Builder.h>
@@ -150,17 +150,17 @@ void AnyIndexIterator::reset() {
 }
 
 
-PrimaryIndex::PrimaryIndex(TRI_document_collection_t* collection)
+PrimaryIndex::PrimaryIndex(arangodb::LogicalCollection* collection)
     : Index(0, collection,
             std::vector<std::vector<arangodb::basics::AttributeName>>(
-                {{{StaticStrings::KeyString, false}}}),
+                {{arangodb::basics::AttributeName(StaticStrings::KeyString, false)}}),
             true, false),
       _primaryIndex(nullptr) {
   uint32_t indexBuckets = 1;
 
   if (collection != nullptr) {
     // document is a nullptr in the coordinator case
-    indexBuckets = collection->_info.indexBuckets();
+    indexBuckets = collection->indexBuckets();
   }
 
   _primaryIndex = new TRI_PrimaryIndex_t(
@@ -202,10 +202,7 @@ void PrimaryIndex::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
   builder.add("sparse", VPackValue(false));
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a VelocyPack representation of the index figures
-////////////////////////////////////////////////////////////////////////////////
-
 void PrimaryIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   Index::toVelocyPackFigures(builder);
   _primaryIndex->appendToVelocyPack(builder);
@@ -219,10 +216,13 @@ int PrimaryIndex::remove(arangodb::Transaction*, TRI_doc_mptr_t const*, bool) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up an element given a key
-////////////////////////////////////////////////////////////////////////////////
+/// @brief unload the index data from memory
+int PrimaryIndex::unload() {
+  _primaryIndex->truncate([](TRI_doc_mptr_t*) -> bool { return true; });
+  return TRI_ERROR_NO_ERROR;
+}
 
+/// @brief looks up an element given a key
 TRI_doc_mptr_t* PrimaryIndex::lookup(arangodb::Transaction* trx,
                                      VPackSlice const& slice) const {
   TRI_ASSERT(slice.isArray() && slice.length() == 1);
@@ -232,10 +232,7 @@ TRI_doc_mptr_t* PrimaryIndex::lookup(arangodb::Transaction* trx,
   return _primaryIndex->findByKey(trx, tmp.begin());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an element given a key
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_doc_mptr_t* PrimaryIndex::lookupKey(arangodb::Transaction* trx,
                                         VPackSlice const& key) const {
   TRI_ASSERT(key.isString());
@@ -528,13 +525,13 @@ void PrimaryIndex::handleValNode(IndexIteratorContext* context,
     TRI_ASSERT(cid != 0);
     TRI_ASSERT(key != nullptr);
 
-    if (!context->isCluster() && cid != _collection->_info.id()) {
+    if (!context->isCluster() && cid != _collection->cid()) {
       // only continue lookup if the id value is syntactically correct and
       // refers to "our" collection, using local collection id
       return;
     }
 
-    if (context->isCluster() && cid != _collection->_info.planId()) {
+    if (context->isCluster() && cid != _collection->planId()) {
       // only continue lookup if the id value is syntactically correct and
       // refers to "our" collection, using cluster collection id
       return;

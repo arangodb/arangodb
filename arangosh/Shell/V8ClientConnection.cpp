@@ -78,7 +78,7 @@ void V8ClientConnection::init(
   // connect to server and get version number
   std::unordered_map<std::string, std::string> headerFields;
   std::unique_ptr<SimpleHttpResult> result(
-      _client->request(GeneralRequest::RequestType::GET,
+      _client->request(rest::RequestType::GET,
                        "/_api/version?details=true", nullptr, 0, headerFields));
 
   if (result.get() == nullptr || !result->isComplete()) {
@@ -88,7 +88,7 @@ void V8ClientConnection::init(
   } else {
     _lastHttpReturnCode = result->getHttpReturnCode();
 
-    if (result->getHttpReturnCode() == static_cast<int>(GeneralResponse::ResponseCode::OK)) {
+    if (result->getHttpReturnCode() == static_cast<int>(rest::ResponseCode::OK)) {
       try {
         std::shared_ptr<VPackBuilder> parsedBody = result->getBodyVelocyPack();
         VPackSlice const body = parsedBody->slice();
@@ -178,7 +178,7 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
   }
 
   if (isConnected() &&
-      _lastHttpReturnCode == static_cast<int>(GeneralResponse::ResponseCode::OK)) {
+      _lastHttpReturnCode == static_cast<int>(rest::ResponseCode::OK)) {
     LOG(INFO) << "Connected to ArangoDB "
               << "'" << endpointSpecification() << "', "
               << "version " << _version << " [" << _mode << "], "
@@ -331,7 +331,7 @@ static void ClientConnection_ConstructorCallback(
 
   if (v8connection->isConnected() &&
       v8connection->lastHttpReturnCode() ==
-          (int)GeneralResponse::ResponseCode::OK) {
+          (int)rest::ResponseCode::OK) {
     LOG(INFO) << "Connected to ArangoDB "
               << "'" << v8connection->endpointSpecification() << "', "
               << "version " << v8connection->version() << " ["
@@ -1266,10 +1266,10 @@ v8::Handle<v8::Value> V8ClientConnection::getData(
     v8::Isolate* isolate, std::string const& location,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, GeneralRequest::RequestType::GET, location,
+    return requestDataRaw(isolate, rest::RequestType::GET, location,
                           "", headerFields);
   }
-  return requestData(isolate, GeneralRequest::RequestType::GET, location, "",
+  return requestData(isolate, rest::RequestType::GET, location, "",
                      headerFields);
 }
 
@@ -1277,10 +1277,10 @@ v8::Handle<v8::Value> V8ClientConnection::headData(
     v8::Isolate* isolate, std::string const& location,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, GeneralRequest::RequestType::HEAD, location,
+    return requestDataRaw(isolate, rest::RequestType::HEAD, location,
                           "", headerFields);
   }
-  return requestData(isolate, GeneralRequest::RequestType::HEAD, location, "",
+  return requestData(isolate, rest::RequestType::HEAD, location, "",
                      headerFields);
 }
 
@@ -1289,10 +1289,10 @@ v8::Handle<v8::Value> V8ClientConnection::deleteData(
     std::unordered_map<std::string, std::string> const& headerFields, bool raw,
     std::string const& body) {
   if (raw) {
-    return requestDataRaw(isolate, GeneralRequest::RequestType::DELETE_REQ, location,
+    return requestDataRaw(isolate, rest::RequestType::DELETE_REQ, location,
                           body, headerFields);
   }
-  return requestData(isolate, GeneralRequest::RequestType::DELETE_REQ, location, body,
+  return requestData(isolate, rest::RequestType::DELETE_REQ, location, body,
                      headerFields);
 }
 
@@ -1300,10 +1300,10 @@ v8::Handle<v8::Value> V8ClientConnection::optionsData(
     v8::Isolate* isolate, std::string const& location, std::string const& body,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, GeneralRequest::RequestType::OPTIONS,
+    return requestDataRaw(isolate, rest::RequestType::OPTIONS,
                           location, body, headerFields);
   }
-  return requestData(isolate, GeneralRequest::RequestType::OPTIONS, location,
+  return requestData(isolate, rest::RequestType::OPTIONS, location,
                      body, headerFields);
 }
 
@@ -1311,10 +1311,10 @@ v8::Handle<v8::Value> V8ClientConnection::postData(
     v8::Isolate* isolate, std::string const& location, std::string const& body,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, GeneralRequest::RequestType::POST, location,
+    return requestDataRaw(isolate, rest::RequestType::POST, location,
                           body, headerFields);
   }
-  return requestData(isolate, GeneralRequest::RequestType::POST, location, body,
+  return requestData(isolate, rest::RequestType::POST, location, body,
                      headerFields);
 }
 
@@ -1322,10 +1322,10 @@ v8::Handle<v8::Value> V8ClientConnection::putData(
     v8::Isolate* isolate, std::string const& location, std::string const& body,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, GeneralRequest::RequestType::PUT, location,
+    return requestDataRaw(isolate, rest::RequestType::PUT, location,
                           body, headerFields);
   }
-  return requestData(isolate, GeneralRequest::RequestType::PUT, location, body,
+  return requestData(isolate, rest::RequestType::PUT, location, body,
                      headerFields);
 }
 
@@ -1333,15 +1333,15 @@ v8::Handle<v8::Value> V8ClientConnection::patchData(
     v8::Isolate* isolate, std::string const& location, std::string const& body,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, GeneralRequest::RequestType::PATCH, location,
+    return requestDataRaw(isolate, rest::RequestType::PATCH, location,
                           body, headerFields);
   }
-  return requestData(isolate, GeneralRequest::RequestType::PATCH, location,
+  return requestData(isolate, rest::RequestType::PATCH, location,
                      body, headerFields);
 }
 
 v8::Handle<v8::Value> V8ClientConnection::requestData(
-    v8::Isolate* isolate, GeneralRequest::RequestType method,
+    v8::Isolate* isolate, rest::RequestType method,
     std::string const& location, std::string const& body,
     std::unordered_map<std::string, std::string> const& headerFields) {
   _lastErrorMessage = "";
@@ -1359,7 +1359,7 @@ v8::Handle<v8::Value> V8ClientConnection::requestData(
 }
 
 v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
-    v8::Isolate* isolate, GeneralRequest::RequestType method,
+    v8::Isolate* isolate, rest::RequestType method,
     std::string const& location, std::string const& body,
     std::unordered_map<std::string, std::string> const& headerFields) {
 
@@ -1384,12 +1384,12 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
       _lastErrorMessage = "Unknown error";
     }
 
-    _lastHttpReturnCode = static_cast<int>(GeneralResponse::ResponseCode::SERVER_ERROR);
+    _lastHttpReturnCode = static_cast<int>(rest::ResponseCode::SERVER_ERROR);
 
     result->ForceSet(
         TRI_V8_ASCII_STRING("code"),
         v8::Integer::New(isolate,
-                         static_cast<int>(GeneralResponse::ResponseCode::SERVER_ERROR)));
+                         static_cast<int>(rest::ResponseCode::SERVER_ERROR)));
 
     int errorNumber = 0;
 
@@ -1479,7 +1479,7 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate) {
       _lastErrorMessage = "Unknown error";
     }
 
-    _lastHttpReturnCode = static_cast<int>(GeneralResponse::ResponseCode::SERVER_ERROR);
+    _lastHttpReturnCode = static_cast<int>(rest::ResponseCode::SERVER_ERROR);
 
     v8::Local<v8::Object> result = v8::Object::New(isolate);
     result->ForceSet(TRI_V8_ASCII_STRING("error"),
@@ -1487,7 +1487,7 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate) {
     result->ForceSet(
         TRI_V8_ASCII_STRING("code"),
         v8::Integer::New(isolate,
-                         static_cast<int>(GeneralResponse::ResponseCode::SERVER_ERROR)));
+                         static_cast<int>(rest::ResponseCode::SERVER_ERROR)));
 
     int errorNumber = 0;
 

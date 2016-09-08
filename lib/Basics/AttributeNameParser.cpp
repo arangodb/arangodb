@@ -23,9 +23,17 @@
 
 #include "AttributeNameParser.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StringRef.h"
 #include "Logger/Logger.h"
 
 using AttributeName = arangodb::basics::AttributeName;
+
+arangodb::basics::AttributeName::AttributeName(arangodb::StringRef const& name)
+    : AttributeName(name, false) {}
+
+arangodb::basics::AttributeName::AttributeName(arangodb::StringRef const& name,
+                                               bool expand)
+    : name(name.toString()), shouldExpand(expand) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two attribute name vectors
@@ -98,7 +106,15 @@ bool arangodb::basics::AttributeName::isIdentical(
 }
 
 void arangodb::basics::TRI_ParseAttributeString(
-    std::string const& input, std::vector<AttributeName>& result) {
+    std::string const& input, std::vector<AttributeName>& result,
+    bool allowExpansion) {
+  TRI_ParseAttributeString(arangodb::StringRef(input), result, allowExpansion);
+}
+
+void arangodb::basics::TRI_ParseAttributeString(
+    arangodb::StringRef const& input, std::vector<AttributeName>& result,
+    bool allowExpansion) {
+  bool foundExpansion = false;
   size_t parsedUntil = 0;
   size_t const length = input.length();
 
@@ -110,7 +126,19 @@ void arangodb::basics::TRI_ParseAttributeString(
           (length - pos > 3 && input[pos + 3] != '.')) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
       }
+      if (!allowExpansion) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "cannot use [*] expansion for this type of index");
+      }
+      if (foundExpansion) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                       "cannot use multiple [*] "
+                                       "expansions for a single index "
+                                       "field");
+      }
       result.emplace_back(input.substr(parsedUntil, pos - parsedUntil), true);
+      foundExpansion = true;
       pos += 4;
       parsedUntil = pos;
     } else if (token == '.') {

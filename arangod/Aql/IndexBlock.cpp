@@ -32,6 +32,7 @@
 #include "Basics/StaticStrings.h"
 #include "Utils/OperationCursor.h"
 #include "V8/v8-globals.h"
+#include "VocBase/MasterPointer.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
@@ -612,7 +613,6 @@ arangodb::OperationCursor* IndexBlock::orderCursor(size_t currentIndex) {
     // yet no cursor for index, so create it
     IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
     _cursors[currentIndex].reset(_trx->indexScanForCondition(
-      _collection->getName(), 
       _indexes[currentIndex], 
       conditionNode,
       node->outVariable(), 

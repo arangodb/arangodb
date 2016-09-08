@@ -25,10 +25,14 @@
 
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
-#include "VocBase/EdgeCollectionInfo.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/Transaction.h"
+#include "VocBase/EdgeCollectionInfo.h"
+#include "VocBase/MasterPointer.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief typedef the template instantiation of the PathFinder

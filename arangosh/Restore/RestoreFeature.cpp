@@ -189,7 +189,7 @@ int RestoreFeature::tryCreateDatabase(ClientFeature* client,
   std::string const body = builder.slice().toJson();
 
   std::unique_ptr<SimpleHttpResult> response(
-      _httpClient->request(GeneralRequest::RequestType::POST, "/_api/database",
+      _httpClient->request(rest::RequestType::POST, "/_api/database",
                            body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
@@ -198,13 +198,13 @@ int RestoreFeature::tryCreateDatabase(ClientFeature* client,
 
   auto returnCode = response->getHttpReturnCode();
 
-  if (returnCode == static_cast<int>(GeneralResponse::ResponseCode::OK) ||
-      returnCode == static_cast<int>(GeneralResponse::ResponseCode::CREATED)) {
+  if (returnCode == static_cast<int>(rest::ResponseCode::OK) ||
+      returnCode == static_cast<int>(rest::ResponseCode::CREATED)) {
     // all ok
     return TRI_ERROR_NO_ERROR;
   } 
-  if (returnCode == static_cast<int>(GeneralResponse::ResponseCode::UNAUTHORIZED) ||
-      returnCode == static_cast<int>(GeneralResponse::ResponseCode::FORBIDDEN)) {
+  if (returnCode == static_cast<int>(rest::ResponseCode::UNAUTHORIZED) ||
+      returnCode == static_cast<int>(rest::ResponseCode::FORBIDDEN)) {
     // invalid authorization
     _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr),
                                  false);
@@ -251,7 +251,7 @@ int RestoreFeature::sendRestoreCollection(VPackSlice const& slice,
   std::string const body = slice.toJson();
 
   std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-      GeneralRequest::RequestType::PUT, url, body.c_str(), body.size()));
+      rest::RequestType::PUT, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg =
@@ -281,7 +281,7 @@ int RestoreFeature::sendRestoreIndexes(VPackSlice const& slice,
   std::string const body = slice.toJson();
 
   std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-      GeneralRequest::RequestType::PUT, url, body.c_str(), body.size()));
+      rest::RequestType::PUT, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg =
@@ -313,7 +313,7 @@ int RestoreFeature::sendRestoreData(std::string const& cname,
                           (_force ? "true" : "false");
 
   std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-      GeneralRequest::RequestType::PUT, url, buffer, bufferSize));
+      rest::RequestType::PUT, url, buffer, bufferSize));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg =

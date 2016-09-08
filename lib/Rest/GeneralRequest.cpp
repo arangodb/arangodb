@@ -34,22 +34,17 @@ using namespace arangodb::basics;
 
 std::string GeneralRequest::translateVersion(ProtocolVersion version) {
   switch (version) {
-    case ProtocolVersion::VSTREAM_1_0:
+    case ProtocolVersion::VPP_1_0:
       return "VPP/1.0";
-
     case ProtocolVersion::HTTP_1_1:
       return "HTTP/1.1";
-
     case ProtocolVersion::HTTP_1_0:
       return "HTTP/1.0";
-
     case ProtocolVersion::UNKNOWN:
-    default: {
-      return "HTTP/1.0";
-    }
+    default: { return "HTTP/1.0"; }
   }
 
-  return "UNKNOWN"; // in order please MSVC
+  return "UNKNOWN";  // in order please MSVC
 }
 
 std::string GeneralRequest::translateMethod(RequestType method) {
@@ -89,10 +84,10 @@ std::string GeneralRequest::translateMethod(RequestType method) {
       return "UNKNOWN";
   }
 
-  return "UNKNOWN"; // in order please MSVC
+  return "UNKNOWN";  // in order please MSVC
 }
 
-GeneralRequest::RequestType GeneralRequest::translateMethod(
+rest::RequestType GeneralRequest::translateMethod(
     std::string const& method) {
   std::string const methodString = StringUtils::toupper(method);
 
@@ -122,12 +117,13 @@ GeneralRequest::RequestType GeneralRequest::translateMethod(
 }
 
 void GeneralRequest::appendMethod(RequestType method, StringBuffer* buffer) {
+  // append RequestType as string value to given String buffer
   buffer->appendText(translateMethod(method));
   buffer->appendChar(' ');
 }
 
-GeneralRequest::RequestType GeneralRequest::findRequestType(char const* ptr,
-                                                         size_t const length) {
+rest::RequestType GeneralRequest::findRequestType(
+    char const* ptr, size_t const length) {
   switch (length) {
     case 3:
       if (ptr[0] == 'g' && ptr[1] == 'e' && ptr[2] == 't') {
@@ -145,6 +141,9 @@ GeneralRequest::RequestType GeneralRequest::findRequestType(char const* ptr,
       if (ptr[0] == 'h' && ptr[1] == 'e' && ptr[2] == 'a' && ptr[3] == 'd') {
         return RequestType::HEAD;
       }
+      if (ptr[0] == 'c' && ptr[1] == 'r' && ptr[2] == 'e' && ptr[3] == 'd') {
+        return RequestType::VSTREAM_CRED;
+      }
       break;
 
     case 5:
@@ -159,12 +158,23 @@ GeneralRequest::RequestType GeneralRequest::findRequestType(char const* ptr,
           ptr[4] == 't' && ptr[5] == 'e') {
         return RequestType::DELETE_REQ;
       }
+      if (ptr[0] == 's' && ptr[1] == 't' && ptr[2] == 'a' && ptr[3] == 't' &&
+          ptr[4] == 'u' && ptr[5] == 's') {
+        return RequestType::VSTREAM_STATUS;
+      }
       break;
 
     case 7:
       if (ptr[0] == 'o' && ptr[1] == 'p' && ptr[2] == 't' && ptr[3] == 'i' &&
           ptr[4] == 'o' && ptr[5] == 'n' && ptr[6] == 's') {
         return RequestType::OPTIONS;
+      }
+      break;
+
+    case 8:
+      if (ptr[0] == 'r' && ptr[1] == 'e' && ptr[2] == 'g' && ptr[3] == 'i' &&
+          ptr[4] == 's' && ptr[5] == 't' && ptr[6] == 'e' && ptr[7] == 'r') {
+        return RequestType::VSTREAM_REGISTER;
       }
       break;
   }
@@ -181,6 +191,8 @@ GeneralRequest::~GeneralRequest() {
 
 void GeneralRequest::setRequestContext(RequestContext* requestContext,
                                        bool isRequestContextOwner) {
+  TRI_ASSERT(requestContext != nullptr);
+
   if (_requestContext) {
     // if we have a shared context, we should not have got here
     TRI_ASSERT(isRequestContextOwner);
@@ -202,68 +214,17 @@ void GeneralRequest::setFullUrl(char const* begin, char const* end) {
   _fullUrl = std::string(begin, end - begin);
 }
 
+void GeneralRequest::setFullUrl(std::string url) {
+  TRI_ASSERT(!url.empty());
+  _fullUrl = std::move(url);
+}
+
 void GeneralRequest::addSuffix(std::string&& part) {
   _suffix.emplace_back(StringUtils::urlDecode(part));
 }
 
-std::string const& GeneralRequest::header(std::string const& key) const {
-  auto it = _headers.find(key);
-
-  if (it == _headers.end()) {
-    return StaticStrings::Empty;
-  }
-
-  return it->second;
-}
-
-std::string const& GeneralRequest::header(std::string const& key, bool& found) const {
-  auto it = _headers.find(key);
-
-  if (it == _headers.end()) {
-    found = false;
-    return StaticStrings::Empty;
-  }
-
-  found = true;
-  return it->second;
-}
-
-std::string const& GeneralRequest::value(std::string const& key) const {
-  if (!_values.empty()) {
-    auto it = _values.find(key);
-
-    if (it != _values.end()) {
-      return it->second;
-    }
-  }
-
-  return StaticStrings::Empty;
-}
-
-std::string const& GeneralRequest::value(std::string const& key, bool& found) const {
-  if (!_values.empty()) {
-    auto it = _values.find(key);
-
-    if (it != _values.end()) {
-      found = true;
-      return it->second;
-    }
-  }
-
-  found = false;
-  return StaticStrings::Empty;
-}
-
-void GeneralRequest::setArrayValue(char* key, size_t length, char const* value) {
-  _arrayValues[std::string(key, length)].emplace_back(value);
-}
-
 bool GeneralRequest::velocyPackResponse() const {
-#if 0
-  // currently deactivated
+  // needs only to be used in http case?!
   std::string const& result = header(StaticStrings::Accept);
   return (std::string::npos != result.find(StaticStrings::MimeTypeVPack));
-#else
-  return false;
-#endif
 }

@@ -25,6 +25,7 @@
 #define ARANGODB_BASICS_MEMORY__MAP_H 1
 
 #include "Basics/Common.h"
+#include "ApplicationFeatures/PageSizeFeature.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapper macro for anonymous memory mapping
@@ -79,12 +80,36 @@ int TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_ProtectMMFile(void* memoryAddress, size_t numOfBytesToProtect,
-                      int flags, int fileDescriptor, void** mmHandle);
+                      int flags, int fileDescriptor);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gives hints about upcoming memory usage
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_MMFileAdvise(void* memoryAddress, size_t numOfBytes, int advice);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief msyncs a memory block between begin (incl) and end (excl)
+////////////////////////////////////////////////////////////////////////////////
+
+static inline bool TRI_MSync(int fd, char const* begin, char const* end) {
+  size_t pageSize = arangodb::PageSizeFeature::getPageSize();
+  uintptr_t p = (intptr_t)begin;
+  uintptr_t q = (intptr_t)end;
+  uintptr_t g = (intptr_t)pageSize;
+
+  char* b = (char*)((p / g) * g);
+  char* e = (char*)(((q + g - 1) / g) * g);
+
+  int res = TRI_FlushMMFile(fd, b, e - b, MS_SYNC);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_set_errno(res);
+
+    return false;
+  }
+
+  return true;
+}
 
 #endif

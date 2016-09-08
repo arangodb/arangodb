@@ -36,10 +36,9 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "RestServer/DatabaseServerFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "SimpleHttpClient/ConnectionManager.h"
 #include "V8Server/V8DealerFeature.h"
-#include "VocBase/server.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -412,8 +411,7 @@ void ClusterFeature::start() {
     }
 
     // start heartbeat thread
-    _heartbeatThread = new HeartbeatThread(DatabaseServerFeature::SERVER,
-                                           _agencyCallbackRegistry.get(),
+    _heartbeatThread = new HeartbeatThread(_agencyCallbackRegistry.get(),
                                            _heartbeatInterval * 1000, 5);
 
     if (!_heartbeatThread->init() || !_heartbeatThread->start()) {

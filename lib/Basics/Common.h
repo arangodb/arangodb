@@ -147,16 +147,17 @@ typedef long suseconds_t;
 #endif
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
+#include <deque>
 #include <functional>
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
-#include <vector>
 #include <unordered_map>
 #include <unordered_set>
-#include <memory>
-#include <atomic>
+#include <vector>
 
 #define TRI_WITHIN_COMMON 1
 #include "Basics/voc-errors.h"
@@ -193,7 +194,7 @@ static inline uint64_t TRI_DecModU64(uint64_t i, uint64_t len) {
 /// @brief a trivial hash function for uint64_t to uint32_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline uint32_t TRI_64to32(uint64_t x) {
+static inline uint32_t TRI_64To32(uint64_t x) {
   return static_cast<uint32_t>(x >> 32) ^ static_cast<uint32_t>(x);
 }
 
@@ -253,16 +254,6 @@ static inline uint32_t TRI_64to32(uint64_t x) {
 #else
 inline void ADB_WindowsEntryFunction() {}
 inline void ADB_WindowsExitFunction(int exitCode, void* data) {}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief struct alignas(x) ... does not work in Visual Studio 2013
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef _WIN32
-#define TRI_ALIGNAS(x)
-#else
-#define TRI_ALIGNAS(x) alignas(x)
 #endif
 
 // -----------------------------------------------------------------------------

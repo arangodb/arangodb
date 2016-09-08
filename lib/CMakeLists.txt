@@ -12,21 +12,6 @@ include_directories(.)
 if (USE_MAINTAINER_MODE AND NOT MSVC)
   add_custom_command(
     OUTPUT
-      ${CMAKE_SOURCE_DIR}/lib/JsonParser/json-parser.cpp
-    WORKING_DIRECTORY
-      ${CMAKE_SOURCE_DIR}
-    COMMAND
-      ${CMAKE_SOURCE_DIR}/utils/flex-c++.sh
-      ${FLEX_EXECUTABLE}
-      lib/JsonParser/json-parser.cpp
-      lib/JsonParser/json-parser.ll
-    MAIN_DEPENDENCY
-      ${CMAKE_SOURCE_DIR}/lib/JsonParser/json-parser.ll
-    VERBATIM
-  )
-  
-  add_custom_command(
-    OUTPUT
       ${CMAKE_SOURCE_DIR}/lib/V8/v8-json.cpp
     WORKING_DIRECTORY
       ${CMAKE_SOURCE_DIR}
@@ -124,14 +109,15 @@ add_library(${LIB_ARANGO} STATIC
   ApplicationFeatures/ApplicationFeature.cpp
   ApplicationFeatures/ApplicationServer.cpp
   ApplicationFeatures/ConfigFeature.cpp
+  ApplicationFeatures/GreetingsFeature.cpp
   ApplicationFeatures/LanguageFeature.cpp
   ApplicationFeatures/NonceFeature.cpp
+  ApplicationFeatures/PageSizeFeature.cpp
   ApplicationFeatures/PrivilegeFeature.cpp
   ApplicationFeatures/ShutdownFeature.cpp
   ApplicationFeatures/TempFeature.cpp
   ApplicationFeatures/V8PlatformFeature.cpp
   ApplicationFeatures/VersionFeature.cpp
-  ApplicationFeatures/WorkMonitorFeature.cpp
   Basics/ArangoGlobalContext.cpp
   Basics/AttributeNameParser.cpp
   Basics/Barrier.cpp
@@ -141,7 +127,6 @@ add_library(${LIB_ARANGO} STATIC
   Basics/Exceptions.cpp
   Basics/FileUtils.cpp
   Basics/HybridLogicalClock.cpp
-  Basics/JsonHelper.cpp
   Basics/Mutex.cpp
   Basics/MutexLocker.cpp
   Basics/Nonce.cpp
@@ -167,7 +152,6 @@ add_library(${LIB_ARANGO} STATIC
   Basics/files.cpp
   Basics/fpconv.cpp
   Basics/hashes.cpp
-  Basics/json-utilities.cpp
   Basics/json.cpp
   Basics/levenshtein.cpp
   Basics/memory.cpp
@@ -189,7 +173,6 @@ add_library(${LIB_ARANGO} STATIC
   Endpoint/EndpointIpV4.cpp
   Endpoint/EndpointIpV6.cpp
   Endpoint/EndpointList.cpp
-  JsonParser/json-parser.cpp
   Logger/LogAppender.cpp
   Logger/LogAppenderFile.cpp
   Logger/LogAppenderSyslog.cpp
@@ -206,9 +189,10 @@ add_library(${LIB_ARANGO} STATIC
   Random/RandomFeature.cpp
   Random/RandomGenerator.cpp
   Random/UniformCharacter.cpp
-  Rest/FakeRequest.cpp
   Rest/GeneralRequest.cpp
   Rest/GeneralResponse.cpp
+  Rest/VppRequest.cpp
+  Rest/VppResponse.cpp
   Rest/HttpRequest.cpp
   Rest/HttpResponse.cpp
   Rest/InitializeRest.cpp

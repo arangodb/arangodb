@@ -95,7 +95,7 @@ const optionsDocumentation = [
   '   - `loopSleepWhen`: sleep every nth iteration',
   '   - `loopSleepSec`: sleep seconds between iterations',
   '',
-  '   - `server`: server_url for external server',
+  '   - `server`: server_url (e.g. tcp://127.0.0.1:8529) for external server',
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
   '   - `dbServers`: number of DB-Servers to use',
@@ -3908,16 +3908,21 @@ function unitTestPrettyPrintResults (r) {
             continue;
           }
 
-          failedMessages += RED + '    [FAILED]  ' + name + RESET + '\n';
+          failedMessages += RED + '    [FAILED]  ' + name + RESET + '\n\n';
 
           let details = failedCases[name];
 
+          let count = 0;
           for (let one in details) {
             if (!details.hasOwnProperty(one)) {
               continue;
             }
 
+            if (count > 0) {
+              failedMessages += '\n';
+            }
             failedMessages += RED + '      "' + one + '" failed: ' + details[one] + RESET + '\n';
+            count++;
           }
         }
       }

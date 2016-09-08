@@ -430,8 +430,7 @@ bool config_t::setId(std::string const& i) {
 
 /// @brief merge from persisted configuration
 bool config_t::merge(VPackSlice const& conf) {
-  WRITE_LOCKER(writeLocker,
-               _lock);  // All must happen under the lock or else ...
+  WRITE_LOCKER(writeLocker, _lock); // All must happen under the lock or else ...
 
   _id = conf.get(idStr).copyString();  // I get my id
   _pool[_id] = _endpoint;              // Register my endpoint with it

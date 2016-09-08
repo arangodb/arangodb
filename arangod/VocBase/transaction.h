@@ -36,6 +36,7 @@ class Transaction;
 
 namespace arangodb {
 class DocumentDitch;
+class LogicalCollection;
 
 namespace wal {
 struct DocumentOperation;
@@ -44,7 +45,6 @@ struct DocumentOperation;
 
 struct TRI_transaction_collection_t;
 struct TRI_vocbase_t;
-class TRI_vocbase_col_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief time (in µs) that is spent waiting for a lock
@@ -139,11 +139,15 @@ struct TRI_transaction_t {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_transaction_collection_t {
+  TRI_transaction_collection_t(TRI_transaction_t* trx, TRI_voc_cid_t cid, TRI_transaction_type_e accessType, int nestingLevel)
+      : _transaction(trx), _cid(cid), _accessType(accessType), _nestingLevel(nestingLevel), _collection(nullptr), _operations(nullptr),
+        _originalRevision(0), _lockType(TRI_TRANSACTION_NONE), _compactionLocked(false), _waitForSync(false) {}
+
   TRI_transaction_t* _transaction;     // the transaction
-  TRI_voc_cid_t _cid;                  // collection id
+  TRI_voc_cid_t const _cid;                  // collection id
   TRI_transaction_type_e _accessType;  // access type (read|write)
   int _nestingLevel;  // the transaction level that added this collection
-  TRI_vocbase_col_t* _collection;  // vocbase collection pointer
+  arangodb::LogicalCollection* _collection;  // vocbase collection pointer
   std::vector<arangodb::wal::DocumentOperation*>* _operations;
   TRI_voc_rid_t _originalRevision;   // collection revision at trx start
   TRI_transaction_type_e _lockType;  // collection lock type

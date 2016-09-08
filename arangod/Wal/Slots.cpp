@@ -28,7 +28,7 @@
 #include "Logger/Logger.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/datafile.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 #include "Wal/LogfileManager.h"
 
 using namespace arangodb;

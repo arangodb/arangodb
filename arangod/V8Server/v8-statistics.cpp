@@ -201,46 +201,46 @@ static void JS_HttpStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
   result->Set(
       TRI_V8_ASCII_STRING("requestsGet"),
       v8::Number::New(
-          isolate, (double)methodRequests[(int)GeneralRequest::RequestType::GET]
+          isolate, (double)methodRequests[(int)rest::RequestType::GET]
                        ._count));
   result->Set(TRI_V8_ASCII_STRING("requestsHead"),
               v8::Number::New(
                   isolate,
-                  (double)methodRequests[(int)GeneralRequest::RequestType::HEAD]
+                  (double)methodRequests[(int)rest::RequestType::HEAD]
                       ._count));
   result->Set(TRI_V8_ASCII_STRING("requestsPost"),
               v8::Number::New(
                   isolate,
-                  (double)methodRequests[(int)GeneralRequest::RequestType::POST]
+                  (double)methodRequests[(int)rest::RequestType::POST]
                       ._count));
   result->Set(
       TRI_V8_ASCII_STRING("requestsPut"),
       v8::Number::New(
-          isolate, (double)methodRequests[(int)GeneralRequest::RequestType::PUT]
+          isolate, (double)methodRequests[(int)rest::RequestType::PUT]
                        ._count));
   result->Set(
       TRI_V8_ASCII_STRING("requestsPatch"),
       v8::Number::New(
           isolate,
-          (double)methodRequests[(int)GeneralRequest::RequestType::PATCH]
+          (double)methodRequests[(int)rest::RequestType::PATCH]
               ._count));
   result->Set(
       TRI_V8_ASCII_STRING("requestsDelete"),
       v8::Number::New(
           isolate,
-          (double)methodRequests[(int)GeneralRequest::RequestType::DELETE_REQ]
+          (double)methodRequests[(int)rest::RequestType::DELETE_REQ]
               ._count));
   result->Set(
       TRI_V8_ASCII_STRING("requestsOptions"),
       v8::Number::New(
           isolate,
-          (double)methodRequests[(int)GeneralRequest::RequestType::OPTIONS]
+          (double)methodRequests[(int)rest::RequestType::OPTIONS]
               ._count));
   result->Set(
       TRI_V8_ASCII_STRING("requestsOther"),
       v8::Number::New(
           isolate,
-          (double)methodRequests[(int)GeneralRequest::RequestType::ILLEGAL]
+          (double)methodRequests[(int)rest::RequestType::ILLEGAL]
               ._count));
 
   TRI_V8_RETURN(result);

@@ -27,15 +27,16 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
-using Json = arangodb::basics::Json;
-using JsonHelper = arangodb::basics::JsonHelper;
 
-/// @brief constructor, using JSON
-CollectOptions::CollectOptions(Json const& json) {
-  Json obj = json.get("collectOptions");
-
-  method =
-      methodFromString(JsonHelper::getStringValue(obj.json(), "method", ""));
+/// @brief constructor
+CollectOptions::CollectOptions(VPackSlice const& slice) {
+  VPackSlice v = slice.get("collectOptions");
+  if (v.isObject()) {
+    v = v.get("method");
+    if (v.isString()) {
+      method = methodFromString(v.copyString());
+    }
+  }
 }
 
 /// @brief whether or not the hash method can be used
@@ -45,13 +46,6 @@ bool CollectOptions::canUseHashMethod() const {
   }
 
   return true;
-}
-
-/// @brief convert the options to JSON
-void CollectOptions::toJson(arangodb::basics::Json& json,
-                            TRI_memory_zone_t* zone) const {
-  Json options = Json(Json::Object, 1)("method", Json(methodToString(method)));
-  json("collectOptions", options);
 }
 
 /// @brief convert the options to VelocyPack

@@ -63,13 +63,13 @@ class Supervision : public arangodb::Thread {
   };
 
   struct VitalSign {
-    VitalSign(ServerStatus s, ServerTimestamp t)
+    VitalSign(ServerStatus const& s, ServerTimestamp const& t)
         : myTimestamp(std::chrono::system_clock::now()),
           serverStatus(s),
           serverTimestamp(t),
           jobId("0") {}
 
-    void update(ServerStatus s, ServerTimestamp t) {
+    void update(ServerStatus const& s, ServerTimestamp const& t) {
       myTimestamp = std::chrono::system_clock::now();
       serverStatus = s;
       serverTimestamp = t;

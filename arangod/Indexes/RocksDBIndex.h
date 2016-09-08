@@ -56,7 +56,7 @@ class Transaction;
 /// @brief Iterator structure for RocksDB. We require a start and stop node
 ////////////////////////////////////////////////////////////////////////////////
 
-class RocksDBIterator : public IndexIterator {
+class RocksDBIterator final : public IndexIterator {
  private:
   friend class RocksDBIndex;
 
@@ -103,9 +103,12 @@ class RocksDBIndex final : public PathBasedIndex {
   RocksDBIndex() = delete;
 
   RocksDBIndex(
-      TRI_idx_iid_t, struct TRI_document_collection_t*,
+      TRI_idx_iid_t, arangodb::LogicalCollection*,
       std::vector<std::vector<arangodb::basics::AttributeName>> const&, bool,
       bool);
+
+  RocksDBIndex(TRI_idx_iid_t, LogicalCollection*,
+               arangodb::velocypack::Slice const&);
 
   explicit RocksDBIndex(VPackSlice const&);
 
@@ -115,6 +118,8 @@ class RocksDBIndex final : public PathBasedIndex {
   IndexType type() const override final {
     return Index::TRI_IDX_TYPE_ROCKSDB_INDEX;
   }
+  
+  bool allowExpansion() const override final { return true; }
   
   bool isPersistent() const override final { return true; }
   bool canBeDropped() const override final { return true; }
@@ -163,6 +168,8 @@ class RocksDBIndex final : public PathBasedIndex {
 
   int remove(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
+
+  int unload() override final;
 
   int drop() override final;
 

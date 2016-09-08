@@ -40,7 +40,7 @@
 #include "V8Server/V8PeriodicTask.h"
 #include "V8Server/V8QueueJob.h"
 #include "V8Server/V8TimerTask.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -113,8 +113,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
     id = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("id")));
   } else {
     // auto-generated id
-    uint64_t tick = TRI_NewTickServer();
-    id = StringUtils::itoa(tick);
+    id = StringUtils::itoa(TRI_NewTickServer());
   }
 
   // job name

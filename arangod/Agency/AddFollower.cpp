@@ -65,7 +65,8 @@ bool AddFollower::create() {
   // DBservers
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::string curPath =
-      curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
+    curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
+
   Slice current = _snapshot(curPath).slice();
 
   TRI_ASSERT(current.isArray());

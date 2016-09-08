@@ -127,7 +127,7 @@ function aqlVPackExternalsTestSuite () {
     },
 
     testExternalInNeighbors: function () {
-      const query = `FOR n IN OUTBOUND "${collName}/test1000" ${edgeColl} OPTIONS {bfs: true, uniqueVertices: "global"} SORT n._key RETURN n`;
+      const query = `WITH ${collName} FOR n IN OUTBOUND "${collName}/test1000" ${edgeColl} OPTIONS {bfs: true, uniqueVertices: "global"} SORT n._key RETURN n`;
       const cursor = db._query(query);
       for (let i = 1001; i < 3000; ++i) {
         assertTrue(cursor.hasNext());
@@ -147,7 +147,7 @@ function aqlVPackExternalsTestSuite () {
       ecoll.insert({ _key: "a", _from: coll.name() + "/a", _to: coll.name() + "/b", w: 1});
       ecoll.insert({ _key: "b", _from: coll.name() + "/b", _to: coll.name() + "/c", w: 2});
 
-      const query = `FOR x,y,p IN 1..10 OUTBOUND '${collName}/a' ${edgeColl} SORT x._key, y._key RETURN p.vertices[*].w`;
+      const query = `WITH ${collName} FOR x,y,p IN 1..10 OUTBOUND '${collName}/a' ${edgeColl} SORT x._key, y._key RETURN p.vertices[*].w`;
       const cursor = db._query(query);
      
       assertEqual([ 1, 2 ], cursor.next());
@@ -167,7 +167,7 @@ function aqlVPackExternalsTestSuite () {
       ecoll.insert({ _from: coll.name() + "/b", _to: coll.name() + "/c", w: 2});
       ecoll.insert({ _from: coll.name() + "/a", _to: coll.name() + "/a", w: 3});
 
-      const query = `FOR x IN ANY '${collName}/a' ${edgeColl} COLLECT ct = x.w >= 1 INTO g RETURN MAX(g)`;
+      const query = `WITH ${collName} FOR x IN ANY '${collName}/a' ${edgeColl} COLLECT ct = x.w >= 1 INTO g RETURN MAX(g)`;
       const cursor = db._query(query);
       var doc = cursor.next();
       delete doc.x._rev;
@@ -191,7 +191,7 @@ function aqlVPackExternalsTestSuite () {
     },
 
     testExternalInTraversalMerge: function () {
-      const query = `LET s = (FOR n IN OUTBOUND "${collName}/test1000" ${edgeColl} RETURN n) RETURN MERGE(s)`;
+      const query = `WITH ${collName} LET s = (FOR n IN OUTBOUND "${collName}/test1000" ${edgeColl} RETURN n) RETURN MERGE(s)`;
       const cursor = db._query(query);
       const doc = cursor.next();
       assertTrue(doc.hasOwnProperty('_key'));

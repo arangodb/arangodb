@@ -44,7 +44,7 @@ class V8TimerTask : public rest::TimerTask {
               std::string const&,
               std::shared_ptr<arangodb::velocypack::Builder>, bool);
 
-  ~V8TimerTask();
+  ~V8TimerTask() = default;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -67,11 +67,8 @@ class V8TimerTask : public rest::TimerTask {
   bool handleTimeout() override;
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief system vocbase
-  //////////////////////////////////////////////////////////////////////////////
-
-  TRI_vocbase_t* _vocbase;
+  /// @brief guard to make sure the database is not dropped while used by us
+  VocbaseGuard _vocbaseGuard;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief command to execute

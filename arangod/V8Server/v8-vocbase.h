@@ -26,9 +26,7 @@
 
 #include "Basics/Common.h"
 #include "V8/v8-globals.h"
-#include "VocBase/document-collection.h"
 
-struct TRI_server_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -70,7 +68,7 @@ void TRI_V8ReloadRouting(v8::Isolate* isolate);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context>,
-                         arangodb::aql::QueryRegistry*, TRI_server_t*,
+                         arangodb::aql::QueryRegistry*, 
                          TRI_vocbase_t*, size_t);
 
 #endif

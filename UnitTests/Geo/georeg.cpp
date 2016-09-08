@@ -73,7 +73,7 @@ int np4[4]={2838,5116,5180,9869};
 int hs4[4]={33972992,9770664,11661062,28398735};
 int hs5[4]={79685116,67516870,19274248,35037618};
 
-static GeoIndex * gi;
+static GeoIdx * gi;
 static GeoCursor * gcr;
 static GeoCoordinate gcp;
 static GeoCoordinate gcp1, gcp2, gcp3, gcp4;
@@ -87,7 +87,7 @@ static void* nullp = 0;
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-static void MyFree (GeoIndex * gi) {
+static void MyFree (GeoIdx * gi) {
     int x;
     x=GeoIndex_INDEXVALID(gi);
 

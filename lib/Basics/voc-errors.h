@@ -88,9 +88,6 @@
 ///   required state.
 /// - 1002: @LIT{datafile sealed}
 ///   Internal error that will be raised when trying to write to a datafile.
-/// - 1003: @LIT{unknown type}
-///   Internal error that will be raised when an unknown collection type is
-///   encountered.
 /// - 1004: @LIT{read only}
 ///   Internal error that will be raised when trying to write to a read-only
 ///   datafile or collection.
@@ -501,20 +498,6 @@
 /// - 1753: @LIT{service upload failed}
 ///   Will be raised when a service upload from the client to the ArangoDB
 ///   server failed.
-/// - 1800: @LIT{invalid key declaration}
-///   Will be raised when an invalid key specification is passed to the server
-/// - 1801: @LIT{key already exists}
-///   Will be raised when a key is to be created that already exists
-/// - 1802: @LIT{key not found}
-///   Will be raised when the specified key is not found
-/// - 1803: @LIT{key is not unique}
-///   Will be raised when the specified key is not unique
-/// - 1804: @LIT{key value not changed}
-///   Will be raised when updating the value for a key does not work
-/// - 1805: @LIT{key value not removed}
-///   Will be raised when deleting a key/value pair does not work
-/// - 1806: @LIT{missing value}
-///   Will be raised when the value is missing
 /// - 1850: @LIT{invalid task id}
 ///   Will be raised when a task is created with an invalid id.
 /// - 1851: @LIT{duplicate task id}
@@ -617,12 +600,6 @@
 ///   The module path could not be resolved.
 /// - 3103: @LIT{failed to invoke module}
 ///   Failed to invoke the module in its context.
-/// - 10000: @LIT{element not inserted into structure, because it already exists}
-///   Will be returned if the element was not insert because it already exists.
-/// - 10001: @LIT{element not found in structure}
-///   Will be returned if the element was not found in the structure.
-/// - 21000: @LIT{named queue already exists}
-///   Will be returned if a queue with this name already exists.
 /// - 21001: @LIT{dispatcher stopped}
 ///   Will be returned if a shutdown is in progress.
 /// - 21002: @LIT{named queue does not exist}
@@ -1035,17 +1012,6 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_DATAFILE_SEALED                                  (1002)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1003: ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE
-///
-/// unknown type
-///
-/// Internal error that will be raised when an unknown collection type is
-/// encountered.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE                          (1003)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1004: ERROR_ARANGO_READ_ONLY
@@ -2712,76 +2678,6 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_SERVICE_UPLOAD_FAILED                                   (1753)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1800: ERROR_KEYVALUE_INVALID_KEY
-///
-/// invalid key declaration
-///
-/// Will be raised when an invalid key specification is passed to the server
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_KEYVALUE_INVALID_KEY                                    (1800)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1801: ERROR_KEYVALUE_KEY_EXISTS
-///
-/// key already exists
-///
-/// Will be raised when a key is to be created that already exists
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_KEYVALUE_KEY_EXISTS                                     (1801)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1802: ERROR_KEYVALUE_KEY_NOT_FOUND
-///
-/// key not found
-///
-/// Will be raised when the specified key is not found
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_KEYVALUE_KEY_NOT_FOUND                                  (1802)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1803: ERROR_KEYVALUE_KEY_NOT_UNIQUE
-///
-/// key is not unique
-///
-/// Will be raised when the specified key is not unique
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_KEYVALUE_KEY_NOT_UNIQUE                                 (1803)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1804: ERROR_KEYVALUE_KEY_NOT_CHANGED
-///
-/// key value not changed
-///
-/// Will be raised when updating the value for a key does not work
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_KEYVALUE_KEY_NOT_CHANGED                                (1804)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1805: ERROR_KEYVALUE_KEY_NOT_REMOVED
-///
-/// key value not removed
-///
-/// Will be raised when deleting a key/value pair does not work
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_KEYVALUE_KEY_NOT_REMOVED                                (1805)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1806: ERROR_KEYVALUE_NO_VALUE
-///
-/// missing value
-///
-/// Will be raised when the value is missing
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_KEYVALUE_NO_VALUE                                       (1806)
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief 1850: ERROR_TASK_INVALID_ID
 ///
 /// invalid task id
@@ -3272,36 +3168,6 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_MODULE_FAILURE                                          (3103)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 10000: RESULT_ELEMENT_EXISTS
-///
-/// element not inserted into structure, because it already exists
-///
-/// Will be returned if the element was not insert because it already exists.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_RESULT_ELEMENT_EXISTS                                         (10000)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 10001: RESULT_ELEMENT_NOT_FOUND
-///
-/// element not found in structure
-///
-/// Will be returned if the element was not found in the structure.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_RESULT_ELEMENT_NOT_FOUND                                      (10001)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 21000: ERROR_QUEUE_ALREADY_EXISTS
-///
-/// named queue already exists
-///
-/// Will be returned if a queue with this name already exists.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_QUEUE_ALREADY_EXISTS                                    (21000)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 21001: ERROR_DISPATCHER_IS_STOPPING

@@ -41,7 +41,6 @@
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "VocBase/collection.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::consensus;
@@ -299,9 +298,10 @@ void Constituent::callElection() {
       auto headerFields =
           std::make_unique<std::unordered_map<std::string, std::string>>();
       operationIDs[i] = ClusterComm::instance()->asyncRequest(
-          "1", 1, _agent->config().poolAt(i), GeneralRequest::RequestType::GET,
-          path.str(), std::make_shared<std::string>(body), headerFields,
-          nullptr, respTimeout, true, initTimeout);
+        "1", 1, _agent->config().poolAt(i),
+        rest::RequestType::GET, path.str(),
+        std::make_shared<std::string>(body), headerFields,
+        nullptr, respTimeout, true, initTimeout);
     }
   }
 

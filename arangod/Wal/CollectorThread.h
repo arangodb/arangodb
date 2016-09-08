@@ -30,126 +30,26 @@
 #include "Basics/Thread.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/datafile.h"
-#include "VocBase/DatafileStatistics.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/voc-types.h"
+#include "Wal/CollectorCache.h"
 #include "Wal/Logfile.h"
 
-struct TRI_datafile_t;
-struct TRI_df_marker_t;
-struct TRI_document_collection_t;
-struct TRI_server_t;
-
 namespace arangodb {
+class LogicalCollection;
+
 namespace wal {
 
 class LogfileManager;
 class Logfile;
 
-struct CollectorOperation {
-  CollectorOperation(char const* datafilePosition,
-                     TRI_voc_size_t datafileMarkerSize, char const* walPosition,
-                     TRI_voc_fid_t datafileId)
-      : datafilePosition(datafilePosition),
-        datafileMarkerSize(datafileMarkerSize),
-        walPosition(walPosition),
-        datafileId(datafileId) {
-    TRI_ASSERT(datafilePosition != nullptr);
-    TRI_ASSERT(datafileMarkerSize > 0);
-    TRI_ASSERT(walPosition != nullptr);
-    TRI_ASSERT(datafileId > 0);
-  }
-
-  char const* datafilePosition;
-  TRI_voc_size_t datafileMarkerSize;
-  char const* walPosition;
-  TRI_voc_fid_t datafileId;
-};
-
-struct CollectorCache {
-  CollectorCache(CollectorCache const&) = delete;
-  CollectorCache& operator=(CollectorCache const&) = delete;
-
-  CollectorCache(TRI_voc_cid_t collectionId, TRI_voc_tick_t databaseId,
-                 Logfile* logfile, int64_t totalOperationsCount,
-                 size_t operationsSize)
-      : collectionId(collectionId),
-        databaseId(databaseId),
-        logfile(logfile),
-        totalOperationsCount(totalOperationsCount),
-        operations(new std::vector<CollectorOperation>()),
-        ditches(),
-        dfi(),
-        lastFid(0),
-        lastDatafile(nullptr) {
-    operations->reserve(operationsSize);
-  }
-
-  ~CollectorCache() {
-    if (operations != nullptr) {
-      delete operations;
-    }
-    freeDitches();
-  }
-
-  /// @brief add a ditch
-  void addDitch(arangodb::DocumentDitch* ditch) {
-    TRI_ASSERT(ditch != nullptr);
-    ditches.emplace_back(ditch);
-  }
-
-  /// @brief free all ditches
-  void freeDitches() {
-    for (auto& it : ditches) {
-      it->ditches()->freeDocumentDitch(it, false);
-    }
-
-    ditches.clear();
-  }
-
-  /// @brief id of collection
-  TRI_voc_cid_t const collectionId;
-
-  /// @brief id of database
-  TRI_voc_tick_t const databaseId;
-
-  /// @brief id of the WAL logfile
-  Logfile* logfile;
-
-  /// @brief total number of operations in this block
-  int64_t const totalOperationsCount;
-
-  /// @brief all collector operations of a collection
-  std::vector<CollectorOperation>* operations;
-
-  /// @brief ditches held by the operations
-  std::vector<arangodb::DocumentDitch*> ditches;
-
-  /// @brief datafile info cache, updated when the collector transfers markers
-  std::unordered_map<TRI_voc_fid_t, DatafileStatisticsContainer> dfi;
-
-  /// @brief id of last datafile handled
-  TRI_voc_fid_t lastFid;
-
-  /// @brief last datafile written to
-  TRI_datafile_t* lastDatafile;
-};
-
-class CollectorThread : public Thread {
+class CollectorThread final : public Thread {
   CollectorThread(CollectorThread const&) = delete;
   CollectorThread& operator=(CollectorThread const&) = delete;
 
  public:
-  CollectorThread(LogfileManager*, TRI_server_t*);
+  explicit CollectorThread(LogfileManager*);
   ~CollectorThread() { shutdown(); }
-
- public:
-  /// @brief typedef key => document marker
-  typedef std::unordered_map<std::string, struct TRI_df_marker_t const*>
-      DocumentOperationsType;
-
-  /// @brief typedef for structural operation (attributes, shapes) markers
-  typedef std::vector<struct TRI_df_marker_t const*> OperationsType;
 
  public:
   void beginShutdown() override final;
@@ -176,7 +76,7 @@ class CollectorThread : public Thread {
   /// @brief process a single marker in collector step 2
   void processCollectionMarker(
       arangodb::SingleCollectionTransaction&,
-      TRI_document_collection_t*, CollectorCache*, CollectorOperation const&);
+      arangodb::LogicalCollection*, CollectorCache*, CollectorOperation const&);
 
   /// @brief return the number of queued operations
   size_t numQueuedOperations();
@@ -197,34 +97,15 @@ class CollectorThread : public Thread {
   int transferMarkers(arangodb::wal::Logfile*, TRI_voc_cid_t, TRI_voc_tick_t,
                       int64_t, OperationsType const&);
 
-  /// @brief transfer markers into a collection
-  int executeTransferMarkers(TRI_document_collection_t*, CollectorCache*,
-                             OperationsType const&);
-
   /// @brief insert the collect operations into a per-collection queue
-  int queueOperations(arangodb::wal::Logfile*, CollectorCache*&);
+  int queueOperations(arangodb::wal::Logfile*, std::unique_ptr<CollectorCache>&);
 
   /// @brief update a collection's datafile information
-  int updateDatafileStatistics(TRI_document_collection_t*, CollectorCache*);
-
-  /// @brief sync the journal of a collection
-  int syncJournalCollection(struct TRI_document_collection_t*);
-
-  /// @brief get the next free position for a new marker of the specified size
-  char* nextFreeMarkerPosition(struct TRI_document_collection_t*,
-                               TRI_voc_tick_t, TRI_df_marker_type_t,
-                               TRI_voc_size_t, CollectorCache*);
-
-  /// @brief set the tick of a marker and calculate its CRC value
-  void finishMarker(char const*, char*, struct TRI_document_collection_t*,
-                    TRI_voc_tick_t, CollectorCache*);
+  int updateDatafileStatistics(LogicalCollection*, CollectorCache*);
 
  private:
   /// @brief the logfile manager
   LogfileManager* _logfileManager;
-
-  /// @brief pointer to the server
-  TRI_server_t* _server;
 
   /// @brief condition variable for the collector thread
   basics::ConditionVariable _condition;

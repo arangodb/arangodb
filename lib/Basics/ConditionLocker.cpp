@@ -82,6 +82,7 @@ void ConditionLocker::wait() { _conditionVariable->wait(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief waits for an event to occur, with a timeout in microseconds
+/// returns true when the condition was signaled, false on timeout 
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ConditionLocker::wait(uint64_t delay) {

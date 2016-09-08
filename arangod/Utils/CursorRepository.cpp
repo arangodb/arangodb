@@ -22,11 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CursorRepository.h"
-#include "Basics/json.h"
 #include "Basics/MutexLocker.h"
 #include "Logger/Logger.h"
 #include "Utils/CollectionExport.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>

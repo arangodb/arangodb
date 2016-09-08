@@ -32,9 +32,11 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/RestAgencyCallbacksHandler.h"
 #include "Cluster/RestShardHandler.h"
+#include "Cluster/TraverserEngineRegistry.h"
 #include "Dispatcher/DispatcherFeature.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "InternalRestHandler/InternalRestTraverserHandler.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -62,16 +64,16 @@
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestUploadHandler.h"
 #include "RestHandler/RestVersionHandler.h"
+#include "RestHandler/RestWalHandler.h"
 #include "RestHandler/WorkMonitorHandler.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabaseServerFeature.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerFeature.h"
+#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Ssl/SslServerFeature.h"
 #include "V8Server/V8DealerFeature.h"
-#include "VocBase/server.h"
 
 #include <stdexcept>
 
@@ -205,8 +207,8 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
         std::remove_if(_accessControlAllowOrigins.begin(),
                        _accessControlAllowOrigins.end(),
                        [](std::string const& value) {
-          return basics::StringUtils::trim(value).empty();
-        }),
+                         return basics::StringUtils::trim(value).empty();
+                       }),
         _accessControlAllowOrigins.end());
   }
 
@@ -219,31 +221,30 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   }
 }
 
-static TRI_vocbase_t* LookupDatabaseFromRequest(GeneralRequest* request,
-                                                TRI_server_t* server) {
+static TRI_vocbase_t* LookupDatabaseFromRequest(GeneralRequest* request) {
+  auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+
   // get database name from request
   std::string const& dbName = request->databaseName();
 
-  char const* p;
   if (dbName.empty()) {
     // if no databases was specified in the request, use system database name
     // as a fallback
     request->setDatabaseName(StaticStrings::SystemDatabase);
-    p = StaticStrings::SystemDatabase.c_str();
-  } else {
-    p = dbName.c_str();
+    if (ServerState::instance()->isCoordinator()) {
+      return databaseFeature->useDatabaseCoordinator(StaticStrings::SystemDatabase);
+    }
+    return databaseFeature->useDatabase(StaticStrings::SystemDatabase);
   }
-
+  
   if (ServerState::instance()->isCoordinator()) {
-    return TRI_UseCoordinatorDatabaseServer(server, p);
+    return databaseFeature->useDatabaseCoordinator(dbName);
   }
-
-  return TRI_UseDatabaseServer(server, p);
+  return databaseFeature->useDatabase(dbName);
 }
 
 static bool SetRequestContext(GeneralRequest* request, void* data) {
-  TRI_server_t* server = static_cast<TRI_server_t*>(data);
-  TRI_vocbase_t* vocbase = LookupDatabaseFromRequest(request, server);
+  TRI_vocbase_t* vocbase = LookupDatabaseFromRequest(request);
 
   // invalid database name specified, database not found etc.
   if (vocbase == nullptr) {
@@ -251,7 +252,7 @@ static bool SetRequestContext(GeneralRequest* request, void* data) {
   }
 
   // database needs upgrade
-  if (vocbase->_state == (sig_atomic_t)TRI_VOCBASE_STATE_FAILED_VERSION) {
+  if (vocbase->state() == TRI_vocbase_t::State::FAILED_VERSION) {
     request->setRequestPath("/_msg/please-upgrade");
     return false;
   }
@@ -287,8 +288,7 @@ void GeneralServerFeature::start() {
 
   JOB_MANAGER = _jobManager.get();
 
-  _handlerFactory.reset(new RestHandlerFactory(&SetRequestContext,
-                                               DatabaseServerFeature::SERVER));
+  _handlerFactory.reset(new RestHandlerFactory(&SetRequestContext, nullptr));
 
   HANDLER_FACTORY = _handlerFactory.get();
 
@@ -358,9 +358,7 @@ void GeneralServerFeature::buildServers() {
     }
   }
 
-  GeneralServer* server =
-      new GeneralServer(_allowMethodOverride,
-                        _accessControlAllowOrigins);
+  GeneralServer* server = new GeneralServer();
 
   server->setEndpointList(&endpointList);
   _servers.push_back(server);
@@ -380,6 +378,8 @@ void GeneralServerFeature::defineHandlers() {
   TRI_ASSERT(cluster != nullptr);
 
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+  auto traverserEngineRegistry =
+      TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY;
 
   // ...........................................................................
   // /_msg
@@ -433,6 +433,10 @@ void GeneralServerFeature::defineHandlers() {
       RestHandlerCreator<RestSimpleQueryHandler>::createData<
           aql::QueryRegistry*>,
       queryRegistry);
+  
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::WAL_PATH,
+      RestHandlerCreator<RestWalHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH,
@@ -487,7 +491,13 @@ void GeneralServerFeature::defineHandlers() {
         RestHandlerCreator<RestAgencyCallbacksHandler>::createData<
             AgencyCallbackRegistry*>,
         cluster->agencyCallbackRegistry());
+
   }
+    _handlerFactory->addPrefixHandler(
+        RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH,
+        RestHandlerCreator<InternalRestTraverserHandler>::createData<
+            traverser::TraverserEngineRegistry*>,
+        traverserEngineRegistry);
 
   // And now some handlers which are registered in both /_api and /_admin
   _handlerFactory->addPrefixHandler(
@@ -511,7 +521,7 @@ void GeneralServerFeature::defineHandlers() {
       "/_admin/version", RestHandlerCreator<RestVersionHandler>::createNoData);
 
   // further admin handlers
-  _handlerFactory->addHandler(
+  _handlerFactory->addPrefixHandler(
       "/_admin/log",
       RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);
 

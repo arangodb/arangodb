@@ -27,7 +27,6 @@
 #include "Basics/ConditionLocker.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
@@ -326,7 +325,7 @@ void Agent::sendAppendEntriesRPC() {
           std::make_unique<std::unordered_map<std::string, std::string>>();
       arangodb::ClusterComm::instance()->asyncRequest(
           "1", 1, _config.poolAt(followerId),
-          arangodb::GeneralRequest::RequestType::POST, path.str(),
+          arangodb::rest::RequestType::POST, path.str(),
           std::make_shared<std::string>(builder.toJson()), headerFields,
           std::make_shared<AgentCallback>(this, followerId, highest),
           0.1 * _config.minPing(), true, 0.05 * _config.minPing());
@@ -408,8 +407,10 @@ bool Agent::activateAgency() {
 
 /// Load persistent state
 bool Agent::load() {
-  auto database = ApplicationServer::getFeature<DatabaseFeature>("Database");
-  auto vocbase = database->vocbase();
+  DatabaseFeature* database =
+      ApplicationServer::getFeature<DatabaseFeature>("Database");
+
+  auto vocbase = database->systemDatabase();
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
 
   if (vocbase == nullptr) {
@@ -703,9 +704,9 @@ void Agent::notifyInactive() const {
         auto headerFields =
             std::make_unique<std::unordered_map<std::string, std::string>>();
         arangodb::ClusterComm::instance()->asyncRequest(
-            "1", 1, p.second, arangodb::GeneralRequest::RequestType::POST, path,
-            std::make_shared<std::string>(out.toJson()), headerFields, nullptr,
-            1.0, true);
+          "1", 1, p.second, arangodb::rest::RequestType::POST,
+          path, std::make_shared<std::string>(out.toJson()), headerFields,
+          nullptr, 1.0, true);
       }
     }
   }

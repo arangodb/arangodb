@@ -28,19 +28,19 @@
 #include "Utils/CollectionNameResolver.h"
 #include "V8/v8-globals.h"
 #include "V8Server/v8-vocbase.h"
-#include "VocBase/server.h"
 
 namespace arangodb {
 class Index;
+class LogicalCollection;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::Index* TRI_LookupIndexByHandle(
+std::shared_ptr<arangodb::Index> TRI_LookupIndexByHandle(
     v8::Isolate* isolate, arangodb::CollectionNameResolver const* resolver,
-    TRI_vocbase_col_t const* collection, v8::Handle<v8::Value> const val,
+    arangodb::LogicalCollection const* collection, v8::Handle<v8::Value> const val,
     bool ignoreNotFound);
 
 void TRI_InitV8indexArangoDB(v8::Isolate* isolate,

@@ -33,9 +33,10 @@
 #include "GeneralServer/GeneralCommTask.h"
 #include "GeneralServer/GeneralListenTask.h"
 #include "GeneralServer/GeneralServerFeature.h"
-#include "GeneralServer/HttpServerJob.h"
+#include "GeneralServer/GeneralServerJob.h"
 #include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
+#include "Rest/CommonDefines.h"
 #include "Scheduler/ListenTask.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -60,18 +61,6 @@ int GeneralServer::sendChunk(uint64_t taskId, std::string const& data) {
 
   return TRI_ERROR_NO_ERROR;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new general server with dispatcher and job manager
-////////////////////////////////////////////////////////////////////////////////
-
-GeneralServer::GeneralServer(
-    bool allowMethodOverride,
-    std::vector<std::string> const& accessControlAllowOrigins)
-    : _listenTasks(),
-      _endpointList(nullptr),
-      _allowMethodOverride(allowMethodOverride),
-      _accessControlAllowOrigins(accessControlAllowOrigins) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs a general server
@@ -127,9 +116,10 @@ void GeneralServer::stopListening() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool GeneralServer::handleRequestAsync(GeneralCommTask* task,
-                                       WorkItem::uptr<RestHandler>& handler,
+                                       WorkItem::uptr<RestHandler> handler,
                                        uint64_t* jobId) {
-  bool startThread = task->startThread();
+  auto messageId = handler->request()->messageId();
+  bool startThread = handler->needsOwnThread();
 
   // extract the coordinator flag
   bool found;
@@ -139,13 +129,13 @@ bool GeneralServer::handleRequestAsync(GeneralCommTask* task,
 
   // execute the handler using the dispatcher
   std::unique_ptr<Job> job =
-      std::make_unique<HttpServerJob>(this, handler, true);
-  task->RequestStatisticsAgent::transferTo(job.get());
+      std::make_unique<GeneralServerJob>(this, std::move(handler), true);
+  task->getAgent(messageId)->transferTo(job.get());
 
   // register the job with the job manager
   if (jobId != nullptr) {
     GeneralServerFeature::JOB_MANAGER->initAsyncJob(
-        static_cast<HttpServerJob*>(job.get()), hdr);
+        static_cast<GeneralServerJob*>(job.get()), hdr);
     *jobId = job->jobId();
   }
 
@@ -155,15 +145,16 @@ bool GeneralServer::handleRequestAsync(GeneralCommTask* task,
   // could not add job to job queue
   if (res != TRI_ERROR_NO_ERROR) {
     job->requestStatisticsAgentSetExecuteError();
-    job->RequestStatisticsAgent::transferTo(task);
+    job->RequestStatisticsAgent::transferTo(task->getAgent(messageId));
     if (res != TRI_ERROR_DISPATCHER_IS_STOPPING) {
       LOG(WARN) << "unable to add job to the job queue: "
                 << TRI_errno_string(res);
+      task->handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE, res, TRI_errno_string(res), messageId);
     } else {
-      task->handleSimpleError(GeneralResponse::ResponseCode::SERVICE_UNAVAILABLE);
+      task->handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE, messageId);
       return true;
     }
-    // todo send info to async work manager?
+    // TODO send info to async work manager?
     return false;
   }
 
@@ -176,29 +167,32 @@ bool GeneralServer::handleRequestAsync(GeneralCommTask* task,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool GeneralServer::handleRequest(GeneralCommTask* task,
-                                  WorkItem::uptr<RestHandler>& handler) {
+                                  WorkItem::uptr<RestHandler> handler) {
+  TRI_ASSERT(handler != nullptr);
+
   // direct handlers
   if (handler->isDirect()) {
-    HandlerWorkStack work(handler);
-    handleRequestDirectly(work.handler(), task);
-
+    handleRequestDirectly(task, std::move(handler));
     return true;
   }
 
-  bool startThread = task->startThread();
+  bool startThread = handler->needsOwnThread();
+  auto messageId = handler->request()->messageId();
 
   // use a dispatcher queue, handler belongs to the job
-  std::unique_ptr<Job> job = std::make_unique<HttpServerJob>(this, handler);
-  task->RequestStatisticsAgent::transferTo(job.get());
+  std::unique_ptr<Job> job =
+      std::make_unique<GeneralServerJob>(this, std::move(handler));
+  task->getAgent(messageId)->transferTo(job.get());
 
-  LOG(TRACE) << "GeneralCommTask " << (void*)task << " created HttpServerJob "
-             << (void*)job.get();
+  LOG(TRACE) << "GeneralCommTask " << (void*)task
+             << " created GeneralServerJob " << (void*)job.get();
 
   // add the job to the dispatcher
   int res = DispatcherFeature::DISPATCHER->addJob(job, startThread);
 
-  if (res == TRI_ERROR_DISPATCHER_IS_STOPPING) {
-    task->handleSimpleError(GeneralResponse::ResponseCode::SERVICE_UNAVAILABLE);
+  if (res != TRI_ERROR_NO_ERROR) {
+    task->handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE, res, TRI_errno_string(res), messageId);
+
     return true;
   }
 
@@ -211,23 +205,23 @@ bool GeneralServer::handleRequest(GeneralCommTask* task,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool GeneralServer::openEndpoint(Endpoint* endpoint) {
-  ConnectionType connectionType;
+  ProtocolType protocolType;
 
   if (endpoint->transport() == Endpoint::TransportType::HTTP) {
     if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-      connectionType = ConnectionType::HTTPS;
+      protocolType = ProtocolType::HTTPS;
     } else {
-      connectionType = ConnectionType::HTTP;
+      protocolType = ProtocolType::HTTP;
     }
   } else {
     if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-      connectionType = ConnectionType::VPPS;
+      protocolType = ProtocolType::VPPS;
     } else {
-      connectionType = ConnectionType::VPP;
+      protocolType = ProtocolType::VPP;
     }
   }
 
-  ListenTask* task = new GeneralListenTask(this, endpoint, connectionType);
+  ListenTask* task = new GeneralListenTask(this, endpoint, protocolType);
 
   // ...................................................................
   // For some reason we have failed in our endeavor to bind to the socket -
@@ -253,22 +247,34 @@ bool GeneralServer::openEndpoint(Endpoint* endpoint) {
 /// @brief handle request directly
 ////////////////////////////////////////////////////////////////////////////////
 
-void GeneralServer::handleRequestDirectly(RestHandler* handler,
-                                          GeneralCommTask* task) {
-  task->RequestStatisticsAgent::transferTo(handler);
-  RestHandler::status result = handler->executeFull();
-  handler->RequestStatisticsAgent::transferTo(task);
+void GeneralServer::handleRequestDirectly(GeneralCommTask* task,
+                                          WorkItem::uptr<RestHandler> handler) {
+  uint64_t messageId = 0UL;
+  auto req = handler->request();
+  auto res = handler->response();
+  if (req) {
+    messageId = req->messageId();
+  } else if (res) {
+    messageId = res->messageId();
+  } else {
+    LOG_TOPIC(WARN, Logger::COMMUNICATION)
+        << "could not find corresponding request/response";
+  }
+
+  HandlerWorkStack work(std::move(handler));
+  task->getAgent(messageId)->transferTo(work.handler());
+  RestHandler::status result = work.handler()->executeFull();
+  work.handler()->RequestStatisticsAgent::transferTo(task->getAgent(messageId));
 
   switch (result) {
     case RestHandler::status::FAILED:
     case RestHandler::status::DONE: {
-      auto response = dynamic_cast<HttpResponse*>(handler->response());
-      task->handleResponse(response);
+      task->addResponse(work.handler()->response());
       break;
     }
 
     case RestHandler::status::ASYNC:
-      // do nothing, just wait
+      handler.release();
       break;
   }
 }

@@ -29,6 +29,7 @@
 #include <v8.h>
 
 #include "Basics/Mutex.h"
+#include "Basics/StaticStrings.h"
 
 namespace arangodb {
 class GlobalContextMethods {
@@ -81,7 +82,7 @@ class GlobalContextMethods {
     }
   }
 
-  static std::string const code(MethodType type) {
+  static std::string const& code(MethodType type) {
     switch (type) {
       case MethodType::RELOAD_ROUTING:
         return CodeReloadRouting;
@@ -95,7 +96,7 @@ class GlobalContextMethods {
         return CodeWarmupExports;
       case MethodType::UNKNOWN:
       default:
-        return "";
+        return StaticStrings::Empty;
     }
   }
 

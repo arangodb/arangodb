@@ -23,22 +23,21 @@
 
 #include "Supervision.h"
 
-#include "AddFollower.h"
-#include "Agent.h"
-#include "CleanOutServer.h"
-#include "FailedLeader.h"
-#include "FailedServer.h"
-#include "Job.h"
-#include "MoveShard.h"
-#include "RemoveServer.h"
-#include "Store.h"
-#include "UnassumedLeadership.h"
-
+#include "Agency/AddFollower.h"
+#include "Agency/Agent.h"
+#include "Agency/CleanOutServer.h"
+#include "Agency/FailedLeader.h"
+#include "Agency/FailedServer.h"
+#include "Agency/Job.h"
+#include "Agency/MoveShard.h"
+#include "Agency/RemoveServer.h"
+#include "Agency/Store.h"
+#include "Agency/UnassumedLeadership.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
-#include "VocBase/server.h"
 
 #include <thread>
+
 using namespace arangodb;
 
 using namespace arangodb::consensus;

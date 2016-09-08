@@ -26,7 +26,10 @@
 
 #include "Basics/Common.h"
 #include "V8/v8-utils.h"
-#include "v8-vocbase.h"
+#include "V8Server/v8-vocbase.h"
+#include "VocBase/voc-types.h"
+
+#include <velocypack/Builder.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapped class for TRI_vocbase_t
@@ -39,7 +42,7 @@
 extern int32_t const WRP_VOCBASE_TYPE;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wrapped class for TRI_vocbase_col_t
+/// @brief wrapped class for LogicalCollection
 ///
 /// Layout:
 /// - SLOT_CLASS_TYPE

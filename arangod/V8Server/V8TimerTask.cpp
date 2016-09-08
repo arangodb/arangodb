@@ -28,7 +28,6 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "V8/v8-conv.h"
 #include "V8Server/V8Job.h"
-#include "VocBase/server.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -47,20 +46,11 @@ V8TimerTask::V8TimerTask(std::string const& id, std::string const& name,
                                                           // greater than zero,
                                                           // otherwise
       // the timertask will not execute the task at all
-      _vocbase(vocbase),
+      _vocbaseGuard(vocbase),
       _command(command),
       _parameters(parameters),
       _created(TRI_microtime()),
       _allowUseDatabase(allowUseDatabase) {
-  TRI_ASSERT(vocbase != nullptr);
-
-  // increase reference counter for the database used
-  TRI_UseVocBase(_vocbase);
-}
-
-V8TimerTask::~V8TimerTask() {
-  // decrease reference counter for the database used
-  TRI_ReleaseVocBase(_vocbase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -71,7 +61,7 @@ void V8TimerTask::getDescription(VPackBuilder& builder) const {
   TimerTask::getDescription(builder);
   builder.add("created", VPackValue(_created));
   builder.add("command", VPackValue(_command));
-  builder.add("database", VPackValue(_vocbase->_name));
+  builder.add("database", VPackValue(_vocbaseGuard.vocbase()->name()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,7 +72,7 @@ bool V8TimerTask::handleTimeout() {
   TRI_ASSERT(DispatcherFeature::DISPATCHER != nullptr);
 
   std::unique_ptr<Job> job(
-      new V8Job(_vocbase, "(function (params) { " + _command + " } )(params);",
+      new V8Job(_vocbaseGuard.vocbase(), "(function (params) { " + _command + " } )(params);",
                 _parameters, _allowUseDatabase, nullptr));
 
   if (DispatcherFeature::DISPATCHER == nullptr) {

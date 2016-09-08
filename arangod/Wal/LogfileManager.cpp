@@ -23,6 +23,7 @@
 
 #include "LogfileManager.h"
 
+#include "ApplicationFeatures/PageSizeFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
@@ -37,8 +38,8 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabaseServerFeature.h"
-#include "VocBase/server.h"
+#include "RestServer/DatabasePathFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Wal/AllocatorThread.h"
 #include "Wal/CollectorThread.h"
 #include "Wal/RecoverState.h"
@@ -85,7 +86,6 @@ static inline uint32_t MaxSlots() { return 1024 * 1024 * 16; }
 // create the logfile manager
 LogfileManager::LogfileManager(ApplicationServer* server)
     : ApplicationFeature(server, "LogfileManager"),
-      _server(nullptr),
       _recoverState(nullptr),
       _allowWrites(false),  // start in read-only mode
       _hasFoundLastTick(false),
@@ -111,8 +111,12 @@ LogfileManager::LogfileManager(ApplicationServer* server)
 
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("DatabaseServer");
-  startsAfter("QueryRegistry");
+  startsAfter("DatabasePath");
+  startsAfter("EngineSelector");
+
+  for (auto const& it : EngineSelectorFeature::availableEngines()) {
+    startsAfter(it);
+  }
 }
 
 // destroy the logfile manager
@@ -125,14 +129,13 @@ LogfileManager::~LogfileManager() {
 
   _barriers.clear();
 
-  if (_recoverState != nullptr) {
-    delete _recoverState;
-    _recoverState = nullptr;
-  }
+  delete _recoverState;
+  delete _slots;
 
-  if (_slots != nullptr) {
-    delete _slots;
-    _slots = nullptr;
+  for (auto& it : _logfiles) {
+    if (it.second != nullptr) {
+      delete it.second;
+    }
   }
   
   Instance = nullptr;
@@ -234,8 +237,8 @@ void LogfileManager::validateOptions(std::shared_ptr<options::ProgramOptions> op
 }
   
 void LogfileManager::prepare() {
-  DatabaseFeature* database = ApplicationServer::getFeature<DatabaseFeature>("Database");
-  _databasePath = database->directory();
+  auto databasePath = ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
+  _databasePath = databasePath->directory();
 
   std::string const shutdownFile = shutdownFilename();
   bool const shutdownFileExists = basics::FileUtils::exists(shutdownFile);
@@ -258,30 +261,13 @@ void LogfileManager::prepare() {
 void LogfileManager::start() {
   Instance = this;
 
-  _server = DatabaseServerFeature::SERVER;
-  TRI_ASSERT(_server != nullptr);
-
   // needs server initialized
-  _filesize = static_cast<uint32_t>(((_filesize + PageSize - 1) / PageSize) * PageSize);
+  size_t pageSize = PageSizeFeature::getPageSize();
+  _filesize = static_cast<uint32_t>(((_filesize + pageSize - 1) / pageSize) * pageSize);
 
   if (_directory.empty()) {
     // use global configuration variable
     _directory = _databasePath;
-
-    if (!basics::FileUtils::isDirectory(_directory)) {
-      std::string systemErrorStr;
-      long errorNo;
-
-      int res = TRI_CreateRecursiveDirectory(_directory.c_str(), errorNo,
-                                             systemErrorStr);
-
-      if (res == TRI_ERROR_NO_ERROR) {
-        LOG(INFO) << "created database directory '" << _directory << "'.";
-      } else {
-        LOG(FATAL) << "unable to create database directory: " << systemErrorStr;
-        FATAL_ERROR_EXIT();
-      }
-    }
 
     // append "/journals"
     if (_directory[_directory.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
@@ -305,7 +291,7 @@ void LogfileManager::start() {
   
   // initialize some objects
   _slots = new Slots(this, _numberOfSlots, 0);
-  _recoverState = new RecoverState(_server, _ignoreRecoveryErrors);
+  _recoverState = new RecoverState(_ignoreRecoveryErrors);
 
   TRI_ASSERT(!_allowWrites);
 
@@ -439,8 +425,9 @@ bool LogfileManager::open() {
   // tell the allocator that the recovery is over now
   _allocatorThread->recoveryDone();
 
-  // unload all collections to reset statistics, start compactor threads etc.
-  res = TRI_InitDatabasesServer(_server);
+  // start compactor threads etc.
+  auto databaseFeature = ApplicationServer::getFeature<DatabaseFeature>("Database");
+  res = databaseFeature->recoveryDone();
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG(FATAL) << "could not initialize databases: " << TRI_errno_string(res);
@@ -448,6 +435,12 @@ bool LogfileManager::open() {
   }
 
   return true;
+}
+    
+void LogfileManager::stop() { 
+  // deactivate write-throttling (again) on shutdown in case it was set again
+  // after beginShutdown
+  throttleWhenPending(0); 
 }
 
 void LogfileManager::beginShutdown() {
@@ -1394,7 +1387,7 @@ Logfile* LogfileManager::getCollectableLogfile() {
       for (auto const& it : _transactions[bucket]._activeTransactions) {
         Logfile::IdType lastWrittenId = it.second.second;
 
-        if (lastWrittenId < minId) {
+        if (lastWrittenId < minId && lastWrittenId != 0) {
           minId = lastWrittenId;
         }
       }
@@ -1446,7 +1439,7 @@ Logfile* LogfileManager::getRemovableLogfile() {
       for (auto const& it : _transactions[bucket]._activeTransactions) {
         Logfile::IdType lastCollectedId = it.second.first;
 
-        if (lastCollectedId < minId) {
+        if (lastCollectedId < minId && lastCollectedId != 0) {
           minId = lastCollectedId;
         }
       }
@@ -1620,12 +1613,12 @@ LogfileManager::runningTransactions() {
       for (auto const& it : _transactions[bucket]._activeTransactions) {
 
         value = it.second.first;
-        if (value < lastCollectedId) {
+        if (value < lastCollectedId && value != 0) {
           lastCollectedId = value;
         }
 
         value = it.second.second;
-        if (value < lastSealedId) {
+        if (value < lastSealedId && value != 0) {
           lastSealedId = value;
         }
       }
@@ -1653,6 +1646,17 @@ void LogfileManager::removeLogfile(Logfile* logfile) {
   if (!basics::FileUtils::remove(filename, &res)) {
     LOG(ERR) << "unable to remove logfile '" << filename
              << "': " << TRI_errno_string(res);
+  }
+}
+
+void LogfileManager::waitForCollector() {
+  if (_collectorThread == nullptr) {
+    return;
+  }
+
+  while (_collectorThread->hasQueuedOperations()) {
+    LOG(TRACE) << "waiting for WAL collector";
+    usleep(50000);
   }
 }
 
@@ -1857,7 +1861,7 @@ int LogfileManager::writeShutdownInfo(bool writeShutdownTime) {
       // time
       MUTEX_LOCKER(mutexLocker, _shutdownFileLock);
       ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
-          filename.c_str(), builder.slice(), true);
+          filename, builder.slice(), true);
     }
 
     if (!ok) {
@@ -1917,7 +1921,7 @@ void LogfileManager::stopAllocatorThread() {
 
 // start the collector thread
 int LogfileManager::startCollectorThread() {
-  _collectorThread = new CollectorThread(this, _server);
+  _collectorThread = new CollectorThread(this);
 
   if (!_collectorThread->start()) {
     delete _collectorThread;
@@ -1929,43 +1933,45 @@ int LogfileManager::startCollectorThread() {
 
 // stop the collector thread
 void LogfileManager::stopCollectorThread() {
-  if (_collectorThread != nullptr) {
-    LOG(TRACE) << "stopping WAL collector thread";
- 
-    // wait for at most 5 seconds for the collector 
-    // to catch up
-    double const end = TRI_microtime() + 5.0;  
-    while (TRI_microtime() < end) {
-      bool canAbort = true;
-      {
-        READ_LOCKER(readLocker, _logfilesLock);
-        for (auto& it : _logfiles) {
-          Logfile* logfile = it.second;
+  if (_collectorThread == nullptr) {
+    return;
+  }
 
-          if (logfile == nullptr) {
-           continue;
-          }
+  LOG(TRACE) << "stopping WAL collector thread";
 
-          Logfile::StatusType status = logfile->status();
+  // wait for at most 5 seconds for the collector 
+  // to catch up
+  double const end = TRI_microtime() + 5.0;  
+  while (TRI_microtime() < end) {
+    bool canAbort = true;
+    {
+      READ_LOCKER(readLocker, _logfilesLock);
+      for (auto& it : _logfiles) {
+        Logfile* logfile = it.second;
 
-          if (status == Logfile::StatusType::SEAL_REQUESTED) {
-            canAbort = false;
-          }
+        if (logfile == nullptr) {
+          continue;
+        }
+
+        Logfile::StatusType status = logfile->status();
+
+        if (status == Logfile::StatusType::SEAL_REQUESTED) {
+          canAbort = false;
         }
       }
-
-      if (canAbort) {
-        MUTEX_LOCKER(mutexLocker, _idLock);
-        if (_lastSealedId == _lastCollectedId) {
-          break;
-        }
-      }
-
-      usleep(50000);
     }
 
-    _collectorThread->beginShutdown();
+    if (canAbort) {
+      MUTEX_LOCKER(mutexLocker, _idLock);
+      if (_lastSealedId == _lastCollectedId) {
+        break;
+      }
+    }
+
+    usleep(50000);
   }
+
+  _collectorThread->beginShutdown();
 }
 
 // start the remover thread
@@ -2044,7 +2050,7 @@ int LogfileManager::inspectLogfiles() {
   }
 #endif
 
-  for (auto it = _logfiles.begin(); it != _logfiles.end();) {
+  for (auto it = _logfiles.begin(); it != _logfiles.end(); /* no hoisting */) {
     Logfile::IdType const id = (*it).first;
     std::string const filename = logfileName(id);
 
@@ -2148,7 +2154,7 @@ int LogfileManager::createReserveLogfile(uint32_t size) {
     realsize = filesize();
   }
 
-  Logfile* logfile = Logfile::createNew(filename.c_str(), id, realsize);
+  std::unique_ptr<Logfile> logfile(Logfile::createNew(filename.c_str(), id, realsize));
 
   if (logfile == nullptr) {
     int res = TRI_errno();
@@ -2157,8 +2163,11 @@ int LogfileManager::createReserveLogfile(uint32_t size) {
     return res;
   }
 
-  WRITE_LOCKER(writeLocker, _logfilesLock);
-  _logfiles.emplace(id, logfile);
+  {
+    WRITE_LOCKER(writeLocker, _logfilesLock);
+    _logfiles.emplace(id, logfile.get());
+  }
+  logfile.release();
 
   return TRI_ERROR_NO_ERROR;
 }

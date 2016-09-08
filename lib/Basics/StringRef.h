@@ -190,6 +190,15 @@ inline bool operator!=(arangodb::StringRef const& lhs, std::string const& rhs) {
   return !(lhs == rhs);
 }
 
+inline bool operator==(arangodb::StringRef const& lhs, char const* rhs) {
+  size_t const len = strlen(rhs);
+  return (lhs.size() == len && memcmp(lhs.data(), rhs, lhs.size()) == 0);
+}
+
+inline bool operator!=(arangodb::StringRef const& lhs, char const* rhs) {
+  return !(lhs == rhs);
+}
+
 namespace std {
 
 template <>

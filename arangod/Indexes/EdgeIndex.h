@@ -103,7 +103,7 @@ class EdgeIndex final : public Index {
  public:
   EdgeIndex() = delete;
 
-  EdgeIndex(TRI_idx_iid_t, struct TRI_document_collection_t*);
+  EdgeIndex(TRI_idx_iid_t, arangodb::LogicalCollection*);
 
   explicit EdgeIndex(VPackSlice const&);
 
@@ -133,6 +133,8 @@ class EdgeIndex final : public Index {
     return Index::TRI_IDX_TYPE_EDGE_INDEX;
   }
   
+  bool allowExpansion() const override final { return false; }
+  
   bool canBeDropped() const override final { return false; }
 
   bool isSorted() const override final { return false; }
@@ -140,8 +142,6 @@ class EdgeIndex final : public Index {
   bool hasSelectivityEstimate() const override final { return true; }
 
   double selectivityEstimate() const override final;
-
-  bool dumpFields() const override final { return true; }
 
   size_t memory() const override final;
 
@@ -158,6 +158,8 @@ class EdgeIndex final : public Index {
   int batchInsert(arangodb::Transaction*,
                   std::vector<TRI_doc_mptr_t const*> const*,
                   size_t) override final;
+  
+  int unload() override final;
 
   int sizeHint(arangodb::Transaction*, size_t) override final;
 

@@ -42,9 +42,9 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
+#include "RestServer/DatabaseFeature.h"
 #include "V8/v8-globals.h"
 #include "VocBase/AuthInfo.h"
-#include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -56,12 +56,10 @@ std::atomic<bool> HeartbeatThread::HasRunOnce(false);
 /// @brief constructs a heartbeat thread
 ////////////////////////////////////////////////////////////////////////////////
 
-HeartbeatThread::HeartbeatThread(TRI_server_t* server,
-                                 AgencyCallbackRegistry* agencyCallbackRegistry,
+HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
                                  uint64_t interval,
                                  uint64_t maxFailsBeforeWarning)
     : Thread("Heartbeat"),
-      _server(server),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _statusLock(),
       _agency(),
@@ -526,6 +524,8 @@ void HeartbeatThread::removeDispatchedJob(DBServerAgencySyncResult result) {
 
 static std::string const prefixPlanChangeCoordinator = "Plan/Databases";
 bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
+  DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+
   LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "found a plan update";
   AgencyCommResult result = _agency.getValues(prefixPlanChangeCoordinator);
 
@@ -572,8 +572,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         ids.push_back(id);
       }
 
-      TRI_vocbase_t* vocbase =
-          TRI_UseCoordinatorDatabaseServer(_server, name.c_str());
+      TRI_vocbase_t* vocbase = databaseFeature->useDatabaseCoordinator(name);
 
       if (vocbase == nullptr) {
         // database does not yet exist, create it now
@@ -583,28 +582,28 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
           id = ClusterInfo::instance()->uniqid();
         }
 
-        TRI_vocbase_defaults_t defaults;
-        TRI_GetDatabaseDefaultsServer(_server, &defaults);
-
         // create a local database object...
-        TRI_CreateCoordinatorDatabaseServer(_server, id, name.c_str(),
-                                            &defaults, &vocbase);
-        HasRunOnce = true;
+        int res = databaseFeature->createDatabaseCoordinator(id, name, vocbase);
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          LOG(ERR) << "creating local database '" << name << "' failed: " << TRI_errno_string(res);
+        } else {
+          HasRunOnce = true;
+        }
       } else {
-        TRI_ReleaseVocBase(vocbase);
+        vocbase->release();
       }
     }
 
     // get the list of databases that we know about locally
-    std::vector<TRI_voc_tick_t> localIds =
-        TRI_GetIdsCoordinatorDatabaseServer(_server);
+    std::vector<TRI_voc_tick_t> localIds = databaseFeature->getDatabaseIdsCoordinator(false);
 
     for (auto id : localIds) {
       auto r = std::find(ids.begin(), ids.end(), id);
 
       if (r == ids.end()) {
         // local database not found in the plan...
-        TRI_DropByIdCoordinatorDatabaseServer(_server, id, false);
+        databaseFeature->dropDatabaseCoordinator(id, false);
       }
     }
 

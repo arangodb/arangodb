@@ -32,10 +32,8 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <string>
 #include <type_traits>
 #include <utility>
-#include <vector>
 
 namespace arangodb {
 namespace consensus {

@@ -34,7 +34,6 @@
 #include "Agency/Store.h"
 #include "Agency/Supervision.h"
 
-struct TRI_server_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -201,9 +200,6 @@ class Agent : public arangodb::Thread {
 
   /// @brief Leader ID
   void lastCommitted(arangodb::consensus::index_t);
-
-  /// @brief This server (need endpoint)
-  TRI_server_t* _server;
 
   /// @brief Vocbase for agency persistence
   TRI_vocbase_t* _vocbase;

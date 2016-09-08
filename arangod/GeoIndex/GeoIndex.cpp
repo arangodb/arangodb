@@ -357,7 +357,7 @@ int GeoIndexNewPot(GeoIx* gix) {
 /* GeoString values of real (latitude, longitude)      */
 /* points                                              */
 /* =================================================== */
-GeoIndex* GeoIndex_new(void) {
+GeoIdx* GeoIndex_new(void) {
   GeoIx* gix;
   int i, j;
   double lat, lon, x, y, z;
@@ -366,7 +366,7 @@ GeoIndex* GeoIndex_new(void) {
       TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoIx), false));
 
   if (gix == NULL) {
-    return (GeoIndex*)gix;
+    return (GeoIdx*)gix;
   }
 
   /* try to allocate all the things we need  */
@@ -537,7 +537,7 @@ GeoIndex* GeoIndex_new(void) {
   gix->pots[j].end = 0x1FFFFFFFFFFFFFll;
   gix->pots[j].level = 1;
   for (i = 0; i < GeoIndexFIXEDPOINTS; i++) gix->pots[j].maxdist[i] = 0;
-  return (GeoIndex*)gix;
+  return (GeoIdx*)gix;
 }
 /* =================================================== */
 /*               GeoIndex_free routine                 */
@@ -546,7 +546,7 @@ GeoIndex* GeoIndex_new(void) {
 /* objects that may have been pointed to by the user's */
 /* data pointers are (of course) not freed by this call*/
 /* =================================================== */
-void GeoIndex_free(GeoIndex* gi) {
+void GeoIndex_free(GeoIdx* gi) {
   GeoIx* gix;
 
   if (gi == NULL) {
@@ -1047,7 +1047,7 @@ double GeoSNMD(GeoDetailedPoint* gd, GeoCoordinate* c) {
 /* GeoCoordinate data (lat/longitude and data pointer) */
 /* needed for the return to the caller.                */
 /* =================================================== */
-GeoCoordinates* GeoIndex_PointsWithinRadius(GeoIndex* gi, GeoCoordinate* c,
+GeoCoordinates* GeoIndex_PointsWithinRadius(GeoIdx* gi, GeoCoordinate* c,
                                             double d) {
   GeoResults* gres;
   GeoCoordinates* answer;
@@ -1112,7 +1112,7 @@ GeoCoordinates* GeoIndex_PointsWithinRadius(GeoIndex* gi, GeoCoordinate* c,
 /* useful points onto the top of the stack for early   */
 /* processing.                                         */
 /* =================================================== */
-GeoCoordinates* GeoIndex_NearestCountPoints(GeoIndex* gi, GeoCoordinate* c,
+GeoCoordinates* GeoIndex_NearestCountPoints(GeoIdx* gi, GeoCoordinate* c,
                                             int count) {
   GeoResults* gr;
   GeoDetailedPoint gd;
@@ -1437,7 +1437,7 @@ void RotateRight(GeoIx* gix, int pote) {
 /* balancing operation) which starts by obtaining the  */
 /* two new pots. . . continued below                   */
 /* =================================================== */
-int GeoIndex_insert(GeoIndex* gi, GeoCoordinate* c) {
+int GeoIndex_insert(GeoIdx* gi, GeoCoordinate* c) {
   int i, j, js, slot, pot, pot1, pot2;
   int potx, pota, poty, potz;
   int lvx, lv1, lva, lvy, lvz;
@@ -1661,7 +1661,7 @@ int GeoIndex_insert(GeoIndex* gi, GeoCoordinate* c) {
 /* releasing of two pots (which are put back into the  */
 /* free chain using GeoIndexFreePot) Continued . . . . */
 /* =================================================== */
-int GeoIndex_remove(GeoIndex* gi, GeoCoordinate* c) {
+int GeoIndex_remove(GeoIdx* gi, GeoCoordinate* c) {
   GeoDetailedPoint gd;
   int rebalance;
   int lev, levp, levb, levn, levc;
@@ -1979,7 +1979,7 @@ void GeoIndex_CoordinatesFree(GeoCoordinates* clist) {
 /*            GeoIndex_hint does nothing!              */
 /* it is here for possible future compatibilty         */
 /* =================================================== */
-int GeoIndex_hint(GeoIndex* gi, int hint) { return 0; }
+int GeoIndex_hint(GeoIdx* gi, int hint) { return 0; }
 
 /* =================================================== */
 /*                 GeoCr structure                     */
@@ -2034,7 +2034,7 @@ GeoFix makedist(GeoPot* pot, GeoDetailedPoint* gd) {
   return dist;
 }
 
-GeoCursor* GeoIndex_NewCursor(GeoIndex* gi, GeoCoordinate* c) {
+GeoCursor* GeoIndex_NewCursor(GeoIdx* gi, GeoCoordinate* c) {
   GeoIx* gix;
   hpot hp;
   if (c->longitude < -180.0) return nullptr;
@@ -2194,7 +2194,7 @@ void RecursivePotDump(GeoIx* gix, FILE* f, int pot) {
   }
 }
 
-void GeoIndex_INDEXDUMP(GeoIndex* gi, FILE* f) {
+void GeoIndex_INDEXDUMP(GeoIdx* gi, FILE* f) {
   GeoIx* gix;
   gix = (GeoIx*)gi;
   fprintf(f, "Dump of entire index.  %d pots and %d slots allocated\n",
@@ -2258,7 +2258,7 @@ int RecursivePotValidate(GeoIx* gix, int pot, int* usage) {
   }
 }
 
-int GeoIndex_INDEXVALID(GeoIndex* gi) {
+int GeoIndex_INDEXVALID(GeoIdx* gi) {
   int usage[2];  // pots and slots
   int j, pot, slot;
   GeoIx* gix;

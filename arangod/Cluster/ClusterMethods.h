@@ -26,8 +26,9 @@
 
 #include "Basics/Common.h"
 #include "Cluster/AgencyComm.h"
+#include "Cluster/TraverserEngineRegistry.h"
 #include "Rest/HttpResponse.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
@@ -75,7 +76,7 @@ int revisionOnCoordinator(std::string const& dbname,
 ////////////////////////////////////////////////////////////////////////////////
 
 int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
-                         TRI_doc_collection_info_t*&);
+                         std::shared_ptr<arangodb::velocypack::Builder>&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief counts number of documents in a coordinator
@@ -91,7 +92,7 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
 int createDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     OperationOptions const& options, arangodb::velocypack::Slice const& slice,
-    arangodb::GeneralResponse::ResponseCode& responseCode,
+    arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounters,
     std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
 
@@ -102,7 +103,7 @@ int createDocumentOnCoordinator(
 int deleteDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     VPackSlice const slice, OperationOptions const& options,
-    arangodb::GeneralResponse::ResponseCode& responseCode,
+    arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounters,
     std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
 
@@ -114,7 +115,7 @@ int getDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     VPackSlice const slice, OperationOptions const& options,
     std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
-    arangodb::GeneralResponse::ResponseCode& responseCode,
+    arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
     std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
 
@@ -133,6 +134,44 @@ int getFilteredDocumentsOnCoordinator(
                        std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>&
         result);
 
+/// @brief fetch edges from TraverserEngines
+///        Contacts all TraverserEngines placed
+///        on the DBServers for the given list
+///        of vertex _id's.
+///        All non-empty and non-cached results
+///        of DBServers will be inserted in the
+///        datalake. Slices used in the result
+///        point to content inside of this lake
+///        only and do not run out of scope unless
+///        the lake is cleared.
+
+int fetchEdgesFromEngines(
+    std::string const&,
+    std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
+    arangodb::velocypack::Slice const, size_t,
+    std::unordered_map<arangodb::velocypack::Slice,
+                       arangodb::velocypack::Slice>&,
+    std::vector<arangodb::velocypack::Slice>&,
+    std::vector<std::shared_ptr<arangodb::velocypack::Builder>>&,
+    arangodb::velocypack::Builder&, size_t&, size_t&);
+
+/// @brief fetch vertices from TraverserEngines
+///        Contacts all TraverserEngines placed
+///        on the DBServers for the given list
+///        of vertex _id's.
+///        If any server responds with a document
+///        it will be inserted into the result.
+///        If no server responds with a document
+///        a 'null' will be inserted into the result.
+
+void fetchVerticesFromEngines(
+    std::string const&,
+    std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
+    std::unordered_set<arangodb::velocypack::Slice>&,
+    std::unordered_map<arangodb::velocypack::Slice,
+                       std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>&,
+    arangodb::velocypack::Builder&);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a filtered set of edges on Coordinator.
 ///        Also returns the result in VelocyPack
@@ -142,7 +181,7 @@ int getFilteredEdgesOnCoordinator(
     std::string const& dbname, std::string const& collname,
     std::string const& vertex, TRI_edge_direction_e const& direction,
     std::vector<traverser::TraverserExpression*> const& expressions,
-    arangodb::GeneralResponse::ResponseCode& responseCode,
+    arangodb::rest::ResponseCode& responseCode,
     arangodb::velocypack::Builder& result);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,7 +193,7 @@ int modifyDocumentOnCoordinator(
     arangodb::velocypack::Slice const& slice, OperationOptions const& options,
     bool isPatch,
     std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
-    arangodb::GeneralResponse::ResponseCode& responseCode,
+    arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
     std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
 

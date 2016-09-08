@@ -25,6 +25,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Rest/HttpRequest.h"
+#include "RestServer/ServerIdFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -32,9 +33,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "VocBase/collection.h"
-#include "VocBase/document-collection.h"
-#include "VocBase/server.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -68,14 +67,14 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
       _barrierTtl(600) {
   if (configuration->_database.empty()) {
     // use name of current database
-    _databaseName = std::string(vocbase->_name);
+    _databaseName = vocbase->name();
   } else {
     // use name from configuration
     _databaseName = configuration->_database;
   }
 
   // get our own server-id
-  _localServerId = TRI_GetIdServer();
+  _localServerId = ServerIdFeature::getId();
   _localServerIdString = StringUtils::itoa(_localServerId);
 
   _configuration.update(configuration);
@@ -108,7 +107,7 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
           std::string("retrying failed HTTP request for endpoint '") +
           _configuration._endpoint +
           std::string("' for replication applier in database '" +
-                      std::string(_vocbase->_name) + "'");
+                      _vocbase->name() + "'");
     }
   }
 }
@@ -185,7 +184,7 @@ int Syncer::sendCreateBarrier(std::string& errorMsg, TRI_voc_tick_t minTick) {
 
   // send request
   std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
-      GeneralRequest::RequestType::POST, url, body.c_str(), body.size()));
+      rest::RequestType::POST, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "could not connect to master at " + _masterInfo._endpoint +
@@ -248,7 +247,7 @@ int Syncer::sendExtendBarrier(TRI_voc_tick_t tick) {
 
   // send request
   std::unique_ptr<SimpleHttpResult> response(_client->request(
-      GeneralRequest::RequestType::PUT, url, body.c_str(), body.size()));
+      rest::RequestType::PUT, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -282,7 +281,7 @@ int Syncer::sendRemoveBarrier() {
 
     // send request
     std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
-        GeneralRequest::RequestType::DELETE_REQ, url, nullptr, 0));
+        rest::RequestType::DELETE_REQ, url, nullptr, 0));
 
     if (response == nullptr || !response->isComplete()) {
       return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -309,20 +308,7 @@ int Syncer::sendRemoveBarrier() {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_voc_cid_t Syncer::getCid(VPackSlice const& slice) const {
-  if (!slice.isObject()) {
-    return 0;
-  }
-  VPackSlice id = slice.get("cid");
-
-  if (id.isString()) {
-    // string cid, e.g. "9988488"
-    return StringUtils::uint64(id.copyString());
-  } else if (id.isNumber()) {
-    // numeric cid, e.g. 9988488
-    return id.getNumericValue<TRI_voc_cid_t>();
-  }
-
-  return 0;
+  return VelocyPackHelper::extractIdValue(slice);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -337,17 +323,17 @@ std::string Syncer::getCName(VPackSlice const& slice) const {
 /// @brief extract the collection by either id or name, may return nullptr!
 ////////////////////////////////////////////////////////////////////////////////
   
-TRI_vocbase_col_t* Syncer::getCollectionByIdOrName(TRI_voc_cid_t cid, std::string const& name) { 
-  TRI_vocbase_col_t* idCol = nullptr;
-  TRI_vocbase_col_t* nameCol = nullptr;
+arangodb::LogicalCollection* Syncer::getCollectionByIdOrName(TRI_voc_cid_t cid, std::string const& name) { 
+  arangodb::LogicalCollection* idCol = nullptr;
+  arangodb::LogicalCollection* nameCol = nullptr;
 
   if (_useCollectionId) {
-    idCol = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+    idCol = _vocbase->lookupCollection(cid);
   }
 
   if (!name.empty()) {
     // try looking up the collection by name then
-    nameCol = TRI_LookupCollectionByNameVocBase(_vocbase, name);
+    nameCol = _vocbase->lookupCollection(name);
   }
 
   if (idCol != nullptr && nameCol != nullptr) {
@@ -461,7 +447,7 @@ int Syncer::applyCollectionDumpMarker(
 /// @brief creates a collection, based on the VelocyPack provided
 ////////////////////////////////////////////////////////////////////////////////
 
-int Syncer::createCollection(VPackSlice const& slice, TRI_vocbase_col_t** dst) {
+int Syncer::createCollection(VPackSlice const& slice, arangodb::LogicalCollection** dst) {
   if (dst != nullptr) {
     *dst = nullptr;
   }
@@ -483,11 +469,11 @@ int Syncer::createCollection(VPackSlice const& slice, TRI_vocbase_col_t** dst) {
   }
 
   TRI_col_type_e const type = static_cast<TRI_col_type_e>(VelocyPackHelper::getNumericValue<int>(
-      slice, "type", static_cast<int>(TRI_COL_TYPE_DOCUMENT)));
+      slice, "type", TRI_COL_TYPE_DOCUMENT));
 
-  TRI_vocbase_col_t* col = getCollectionByIdOrName(cid, name);
+  arangodb::LogicalCollection* col = getCollectionByIdOrName(cid, name);
 
-  if (col != nullptr && static_cast<TRI_col_type_t>(col->_type) == static_cast<TRI_col_type_t>(type)) {
+  if (col != nullptr && col->type() == type) {
     // collection already exists. TODO: compare attributes
     return TRI_ERROR_NO_ERROR;
   }
@@ -500,13 +486,20 @@ int Syncer::createCollection(VPackSlice const& slice, TRI_vocbase_col_t** dst) {
 
   VPackBuilder merged = VPackCollection::merge(s.slice(), slice, true);
 
-  VocbaseCollectionInfo params(_vocbase, name.c_str(), merged.slice(), true);
-
-  col = TRI_CreateCollectionVocBase(_vocbase, params, cid, true);
-
-  if (col == nullptr) {
-    return TRI_errno();
+  int res = TRI_ERROR_NO_ERROR;
+  try {
+    col = _vocbase->createCollection(merged.slice(), cid, true);
+  } catch (basics::Exception const& ex) {
+    res = ex.code();
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
   }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  TRI_ASSERT(col != nullptr);
 
   if (dst != nullptr) {
     *dst = col;
@@ -520,7 +513,7 @@ int Syncer::createCollection(VPackSlice const& slice, TRI_vocbase_col_t** dst) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
-  TRI_vocbase_col_t* col = getCollectionByIdOrName(getCid(slice), getCName(slice));
+  arangodb::LogicalCollection* col = getCollectionByIdOrName(getCid(slice), getCName(slice));
 
   if (col == nullptr) {
     if (reportError) {
@@ -530,7 +523,7 @@ int Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  return TRI_DropCollectionVocBase(_vocbase, col, true);
+  return _vocbase->dropCollection(col, true, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -555,15 +548,15 @@ int Syncer::createIndex(VPackSlice const& slice) {
   }
 
   try {
-    CollectionGuard guard(_vocbase, cid, cname);
+    CollectionGuard guard(_vocbase, cid, std::string(cname));
 
     if (guard.collection() == nullptr) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
-    TRI_document_collection_t* document = guard.collection()->_collection;
+    LogicalCollection* collection = guard.collection();
 
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), guard.collection()->_cid, TRI_TRANSACTION_WRITE);
+    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), guard.collection()->cid(), TRI_TRANSACTION_WRITE);
 
     int res = trx.begin();
 
@@ -571,12 +564,11 @@ int Syncer::createIndex(VPackSlice const& slice) {
       return res;
     }
 
-    arangodb::Index* idx = nullptr;
-    res = TRI_FromVelocyPackIndexDocumentCollection(&trx, document, indexSlice,
-                                                    &idx);
+    std::shared_ptr<arangodb::Index> idx;
+    res = collection->restoreIndex(&trx, indexSlice, idx);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      res = TRI_SaveIndex(document, idx, true);
+      res = collection->saveIndex(idx.get(), true);
     }
 
     res = trx.finish(res);
@@ -614,15 +606,15 @@ int Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
   }
 
   try {
-    CollectionGuard guard(_vocbase, cid, cname);
+    CollectionGuard guard(_vocbase, cid, std::string(cname));
 
     if (guard.collection() == nullptr) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
-    TRI_document_collection_t* document = guard.collection()->_collection;
+    LogicalCollection* collection = guard.collection();
 
-    bool result = TRI_DropIndexDocumentCollection(document, iid, true);
+    bool result = collection->dropIndex(iid, true);
 
     if (!result) {
       return TRI_ERROR_NO_ERROR;
@@ -653,7 +645,7 @@ int Syncer::getMasterState(std::string& errorMsg) {
   _client->_retryWaitTime = 500 * 1000;
 
   std::unique_ptr<SimpleHttpResult> response(
-      _client->retryRequest(GeneralRequest::RequestType::GET, url, nullptr, 0));
+      _client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
 
   // restore old settings
   _client->_maxRetries = static_cast<size_t>(maxRetries);

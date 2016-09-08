@@ -109,6 +109,7 @@ add_executable(${BIN_ARANGOD}
   Aql/AstNode.cpp
   Aql/AttributeAccessor.cpp
   Aql/BasicBlocks.cpp
+  Aql/BaseExpressionContext.cpp
   Aql/BindParameters.cpp
   Aql/CalculationBlock.cpp
   Aql/ClusterBlocks.cpp
@@ -130,6 +131,7 @@ add_executable(${BIN_ARANGOD}
   Aql/ExecutionStats.cpp
   Aql/Executor.cpp
   Aql/Expression.cpp
+  Aql/FixedVarExpressionContext.cpp
   Aql/FunctionDefinitions.cpp
   Aql/Function.cpp
   Aql/Functions.cpp
@@ -162,7 +164,6 @@ add_executable(${BIN_ARANGOD}
   Aql/TraversalBlock.cpp
   Aql/TraversalConditionFinder.cpp
   Aql/TraversalNode.cpp
-  Aql/TraversalOptions.cpp
   Aql/V8Expression.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp
@@ -172,14 +173,17 @@ add_executable(${BIN_ARANGOD}
   Cluster/AgencyCallbackRegistry.cpp
   Cluster/AgencyComm.cpp
   Cluster/ClusterComm.cpp
+  Cluster/ClusterEdgeCursor.cpp
   Cluster/ClusterFeature.cpp
   Cluster/ClusterInfo.cpp
   Cluster/ClusterMethods.cpp
   Cluster/ClusterTraverser.cpp
+  Cluster/DBServerAgencySync.cpp
   Cluster/HeartbeatThread.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestShardHandler.cpp
-  Cluster/DBServerAgencySync.cpp
+  Cluster/TraverserEngine.cpp
+  Cluster/TraverserEngineRegistry.cpp
   Cluster/ServerState.cpp
   Cluster/v8-cluster.cpp
   Dispatcher/Dispatcher.cpp
@@ -198,16 +202,16 @@ add_executable(${BIN_ARANGOD}
   GeneralServer/GeneralServer.cpp
   GeneralServer/GeneralServerFeature.cpp
   GeneralServer/HttpCommTask.cpp
-  GeneralServer/HttpCommTask.cpp
-  GeneralServer/HttpServerJob.cpp
+  GeneralServer/GeneralServerJob.cpp
   GeneralServer/HttpsCommTask.cpp
   GeneralServer/PathHandler.cpp
   GeneralServer/RestHandler.cpp
   GeneralServer/RestHandlerFactory.cpp
+  GeneralServer/VppCommTask.cpp
   GeoIndex/GeoIndex.cpp
   Indexes/EdgeIndex.cpp
   Indexes/FulltextIndex.cpp
-  Indexes/GeoIndex2.cpp
+  Indexes/GeoIndex.cpp
   Indexes/HashIndex.cpp
   Indexes/Index.cpp
   Indexes/IndexIterator.cpp
@@ -215,6 +219,11 @@ add_executable(${BIN_ARANGOD}
   Indexes/PrimaryIndex.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp
   Indexes/SkiplistIndex.cpp
+  InternalRestHandler/InternalRestTraverserHandler.cpp
+  ReadCache/CollectionRevisionCache.cpp
+  ReadCache/GlobalRevisionCache.cpp
+  ReadCache/GlobalRevisionCacheChunk.cpp
+  ReadCache/RevisionReader.cpp
   Replication/ContinuousSyncer.cpp
   Replication/InitialSyncer.cpp
   Replication/Syncer.cpp
@@ -241,6 +250,7 @@ add_executable(${BIN_ARANGOD}
   RestHandler/RestUploadHandler.cpp
   RestHandler/RestVersionHandler.cpp
   RestHandler/RestVocbaseBaseHandler.cpp
+  RestHandler/RestWalHandler.cpp
   RestHandler/WorkMonitorHandler.cpp
   RestServer/AffinityFeature.cpp
   RestServer/BootstrapFeature.cpp
@@ -248,17 +258,21 @@ add_executable(${BIN_ARANGOD}
   RestServer/ConsoleFeature.cpp
   RestServer/ConsoleThread.cpp
   RestServer/DatabaseFeature.cpp
-  RestServer/DatabaseServerFeature.cpp
+  RestServer/DatabasePathFeature.cpp
   RestServer/EndpointFeature.cpp
   RestServer/FileDescriptorsFeature.cpp
   RestServer/FrontendFeature.cpp
   RestServer/InitDatabaseFeature.cpp
+  RestServer/LockfileFeature.cpp
   RestServer/QueryRegistryFeature.cpp
   RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
+  RestServer/ServerIdFeature.cpp
+  RestServer/TraverserEngineRegistryFeature.cpp
   RestServer/UnitTestsFeature.cpp
   RestServer/UpgradeFeature.cpp
   RestServer/VocbaseContext.cpp
+  RestServer/WorkMonitorFeature.cpp
   RestServer/arangod.cpp
   Scheduler/ListenTask.cpp
   Scheduler/PeriodicTask.cpp
@@ -273,10 +287,18 @@ add_executable(${BIN_ARANGOD}
   Scheduler/TimerTask.cpp
   Statistics/StatisticsFeature.cpp
   Statistics/statistics.cpp
+  StorageEngine/EngineSelectorFeature.cpp
+  StorageEngine/MMFilesCleanupThread.cpp
+  StorageEngine/MMFilesCollection.cpp
+  StorageEngine/MMFilesCompactorThread.cpp
+  StorageEngine/MMFilesDatafileStatistics.cpp
+  StorageEngine/MMFilesEngine.cpp
+  StorageEngine/OtherEngine.cpp
   Utils/AqlTransaction.cpp
   Utils/CollectionExport.cpp
   Utils/CollectionKeys.cpp
   Utils/CollectionKeysRepository.cpp
+  Utils/CollectionNameResolver.cpp
   Utils/Cursor.cpp
   Utils/CursorRepository.cpp
   Utils/OperationCursor.cpp
@@ -307,26 +329,25 @@ add_executable(${BIN_ARANGOD}
   V8Server/v8-voccursor.cpp
   V8Server/v8-vocindex.cpp
   VocBase/AuthInfo.cpp
-  VocBase/DatafileStatistics.cpp
+  VocBase/DatafileStatisticsContainer.cpp
   VocBase/Ditch.cpp
   VocBase/EdgeCollectionInfo.cpp
   VocBase/Graphs.cpp
+  VocBase/IndexPoolFeature.cpp
   VocBase/KeyGenerator.cpp
+  VocBase/LogicalCollection.cpp
   VocBase/MasterPointers.cpp
   VocBase/PathEnumerator.cpp
   VocBase/SingleServerTraverser.cpp
   VocBase/Traverser.cpp
-  VocBase/cleanup.cpp
-  VocBase/collection.cpp
-  VocBase/compactor.cpp
+  VocBase/TraverserOptions.cpp
   VocBase/datafile.cpp
-  VocBase/document-collection.cpp
+  VocBase/modes.cpp
   VocBase/replication-applier.cpp
   VocBase/replication-common.cpp
   VocBase/replication-dump.cpp
-  VocBase/server.cpp
+  VocBase/ticks.cpp
   VocBase/transaction.cpp
-  VocBase/vocbase-defaults.cpp
   VocBase/vocbase.cpp
   Wal/AllocatorThread.cpp
   Wal/CollectorThread.cpp

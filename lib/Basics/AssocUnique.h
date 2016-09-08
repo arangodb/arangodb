@@ -20,7 +20,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Michael hackstein
+/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_BASICS_ASSOC_UNIQUE_H
@@ -330,6 +330,45 @@ class AssocUnique {
   }
 
  public:
+  void truncate(CallbackElementFuncType callback) {
+    std::vector<Element**> empty;
+    empty.reserve(_buckets.size());
+   
+    try {
+      uint64_t const nrAlloc = initialSize(); 
+
+      for (size_t i = 0; i < _buckets.size(); ++i) {
+        auto newBucket = new Element*[static_cast<size_t>(nrAlloc)];
+
+        for (uint64_t j = 0; j < nrAlloc; ++j) {
+          newBucket[j] = nullptr;
+        }
+
+        empty.emplace_back(newBucket);
+      }
+
+      size_t i = 0;
+      for (auto& b : _buckets) {
+        invokeOnAllElements(callback, b);
+
+        // now bucket is empty
+        delete[] b._table;
+        b._table = empty[i];
+        b._nrAlloc = initialSize();
+        b._nrUsed = 0;
+        
+        empty[i] = nullptr; // pass ownership
+        ++i;
+      }
+    } catch (...) {
+      // prevent leaks
+      for (auto& it : empty) {
+        delete[] it;
+      }
+      throw;
+    }
+  }
+
   size_t buckets() const {
     return _buckets.size();
   }
@@ -829,25 +868,31 @@ class AssocUnique {
     return old;
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief a method to iterate over all elements in the hash. this method
   /// can NOT be used for deleting elements
-  //////////////////////////////////////////////////////////////////////////////
-
-  void invokeOnAllElements(CallbackElementFuncType callback) {
+  void invokeOnAllElements(CallbackElementFuncType const& callback) {
     for (auto& b : _buckets) {
       if (b._table == nullptr) {
         continue;
       }
-      for (size_t i = 0; i < b._nrAlloc; ++i) {
-        if (b._table[i] == nullptr) {
-          continue;
-        }
-        if (!callback(b._table[i])) {
-          return;
-        }
+      if (!invokeOnAllElements(callback, b)) {
+        return;
       }
     }
+  }
+      
+  /// @brief a method to iterate over all elements in a bucket. this method
+  /// can NOT be used for deleting elements
+  bool invokeOnAllElements(CallbackElementFuncType const& callback, Bucket& b) {
+    for (size_t i = 0; i < b._nrAlloc; ++i) {
+      if (b._table[i] == nullptr) {
+        continue;
+      }
+      if (!callback(b._table[i])) {
+        return false;
+      }
+    }
+    return true;
   }
 
   //////////////////////////////////////////////////////////////////////////////

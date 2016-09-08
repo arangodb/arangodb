@@ -38,7 +38,10 @@ class WorkerThread : public Thread {
   WorkerThread(ThreadPool* pool)
       : Thread(pool->name()), _pool(pool), _status(0) {}
 
-  ~WorkerThread() {shutdown();}
+  ~WorkerThread() {
+    waitForDone(); 
+    shutdown();
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief stops the worker thread
@@ -56,6 +59,10 @@ class WorkerThread : public Thread {
  protected:
   void run() {
     while (_status == 0) {
+      if (isStopping()) {
+        break;
+      }
+
       std::function<void()> task;
 
       if (!_pool->dequeue(task)) {

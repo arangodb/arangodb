@@ -37,14 +37,14 @@ bool RestPleaseUpgradeHandler::isDirect() const { return true; }
 
 RestHandler::status RestPleaseUpgradeHandler::execute() {
   // TODO needs to generalized
-  auto response = dynamic_cast<HttpResponse*>(_response);
+  auto response = dynamic_cast<HttpResponse*>(_response.get());
 
   if (response == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  setResponseCode(GeneralResponse::ResponseCode::OK);
-  response->setContentType(GeneralResponse::ContentType::TEXT);
+  resetResponse(rest::ResponseCode::OK);
+  response->setContentType(rest::ContentType::TEXT);
 
   auto& buffer = response->body();
   buffer.appendText("Database: ");

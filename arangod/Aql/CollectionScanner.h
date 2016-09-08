@@ -25,15 +25,15 @@
 #define ARANGOD_AQL_COLLECTION_SCANNER_H 1
 
 #include "Basics/Common.h"
-#include "Utils/AqlTransaction.h"
 #include "Utils/OperationCursor.h"
+#include "Utils/Transaction.h"
 
 namespace arangodb {
 namespace aql {
 
 class CollectionScanner {
  public:
-  CollectionScanner(arangodb::AqlTransaction*, std::string const&, bool);
+  CollectionScanner(arangodb::Transaction*, std::string const&, bool);
 
   ~CollectionScanner();
 

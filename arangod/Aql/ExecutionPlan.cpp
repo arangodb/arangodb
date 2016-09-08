@@ -26,6 +26,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/CollectNode.h"
+#include "Aql/Collection.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
@@ -37,12 +38,11 @@
 #include "Aql/ShortestPathOptions.h"
 #include "Aql/SortNode.h"
 #include "Aql/TraversalNode.h"
-#include "Aql/TraversalOptions.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/Exceptions.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/SmallVector.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
 
@@ -54,16 +54,54 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
 
-using JsonHelper = arangodb::basics::JsonHelper;
+static uint64_t checkTraversalDepthValue(AstNode const* node) {
+  if (!node->isNumericValue()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                   "invalid traversal depth");
+  }
+  double v = node->getDoubleValue();
+  double intpart;
+  if (modf(v, &intpart) != 0.0 || v < 0.0) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                   "invalid traversal depth");
+  }
+  return static_cast<uint64_t>(v);
+}
 
-static TraversalOptions CreateTraversalOptions(AstNode const* node) {
-  TraversalOptions options;
+static std::unique_ptr<traverser::TraverserOptions> CreateTraversalOptions(
+    Transaction* trx, AstNode const* direction, AstNode const* optionsNode) {
 
-  if (node != nullptr && node->type == NODE_TYPE_OBJECT) {
-    size_t n = node->numMembers();
+  auto options = std::make_unique<traverser::TraverserOptions>(trx);
+
+  TRI_ASSERT(direction != nullptr);
+  TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
+  TRI_ASSERT(direction->numMembers() == 2);
+
+  auto steps = direction->getMember(1);
+
+  if (steps->isNumericValue()) {
+    // Check if a double value is integer
+    options->minDepth = checkTraversalDepthValue(steps);
+    options->maxDepth = options->minDepth;
+  } else if (steps->type == NODE_TYPE_RANGE) {
+    // Range depth
+    options->minDepth = checkTraversalDepthValue(steps->getMember(0));
+    options->maxDepth = checkTraversalDepthValue(steps->getMember(1));
+
+    if (options->maxDepth < options->minDepth) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                     "invalid traversal depth");
+    }
+  } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                   "invalid traversal depth");
+  }
+
+  if (optionsNode != nullptr && optionsNode->type == NODE_TYPE_OBJECT) {
+    size_t n = optionsNode->numMembers();
 
     for (size_t i = 0; i < n; ++i) {
-      auto member = node->getMember(i);
+      auto member = optionsNode->getMember(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         std::string const name = member->getString();
@@ -72,29 +110,27 @@ static TraversalOptions CreateTraversalOptions(AstNode const* node) {
         TRI_ASSERT(value->isConstant());
 
         if (name == "bfs") {
-          options.useBreadthFirst = value->isTrue();
+          options->useBreadthFirst = value->isTrue();
         } else if (name == "uniqueVertices" && value->isStringValue()) {
           if (value->stringEquals("path", true)) {
-            options.uniqueVertices =
+            options->uniqueVertices =
                 arangodb::traverser::TraverserOptions::UniquenessLevel::PATH;
           } else if (value->stringEquals("global", true)) {
-            options.uniqueVertices =
+            options->uniqueVertices =
                 arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL;
           }
         } else if (name == "uniqueEdges" && value->isStringValue()) {
           if (value->stringEquals("none", true)) {
-            options.uniqueEdges =
+            options->uniqueEdges =
                 arangodb::traverser::TraverserOptions::UniquenessLevel::NONE;
           } else if (value->stringEquals("global", true)) {
-            options.uniqueEdges =
+            options->uniqueEdges =
                 arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL;
           }
         }
       }
-
     }
   }
-
   return options;
 }
 
@@ -200,11 +236,7 @@ ExecutionPlan* ExecutionPlan::instantiateFromVelocyPack(
   TRI_ASSERT(ast != nullptr);
 
   auto plan = std::make_unique<ExecutionPlan>(ast);
-
-  // TODO: in place slice => Json
-  Json json(TRI_UNKNOWN_MEM_ZONE,
-            arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
-  plan->_root = plan->fromJson(json);
+  plan->_root = plan->fromSlice(slice);
   plan->_varUsageComputed = true;
 
   return plan.release();
@@ -264,51 +296,6 @@ ExecutionPlan* ExecutionPlan::clone(Query const& query) {
   }
 
   return otherPlan.release();
-}
-
-/// @brief export to JSON, returns an AUTOFREE Json object
-/// DEPRECATED
-arangodb::basics::Json ExecutionPlan::toJson(Ast* ast, TRI_memory_zone_t* zone,
-                                             bool verbose) const {
-  // TODO
-  VPackBuilder b;
-  _root->toVelocyPack(b, verbose);
-  TRI_json_t* tmp = arangodb::basics::VelocyPackHelper::velocyPackToJson(b.slice());
-  arangodb::basics::Json result(zone, tmp);
-
-  // set up rules
-  auto appliedRules(Optimizer::translateRules(_appliedRules));
-  arangodb::basics::Json rules(arangodb::basics::Json::Array,
-                               appliedRules.size());
-
-  for (auto const& r : appliedRules) {
-    rules.add(arangodb::basics::Json(r));
-  }
-  result.set("rules", rules);
-
-  auto usedCollections = *ast->query()->collections()->collections();
-  arangodb::basics::Json jsonCollectionList(arangodb::basics::Json::Array,
-                                            usedCollections.size());
-
-  for (auto const& c : usedCollections) {
-    arangodb::basics::Json json(arangodb::basics::Json::Object);
-
-    jsonCollectionList(json("name", arangodb::basics::Json(c.first))(
-        "type", arangodb::basics::Json(
-                    TRI_TransactionTypeGetStr(c.second->accessType))));
-  }
-
-  result.set("collections", jsonCollectionList);
-
-  VPackBuilder tmpTwo;
-  ast->variables()->toVelocyPack(tmpTwo);
-  result.set("variables", arangodb::basics::VelocyPackHelper::velocyPackToJson(tmpTwo.slice()));
-  size_t nrItems = 0;
-  result.set("estimatedCost", arangodb::basics::Json(_root->getCost(nrItems)));
-  result.set("estimatedNrItems",
-             arangodb::basics::Json(static_cast<double>(nrItems)));
-
-  return result;
 }
 
 /// @brief export to VelocyPack
@@ -701,7 +688,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
     for (size_t i = 0; i < n; ++i) {
       auto member = start->getMember(i);
       if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-          member->getString() == TRI_VOC_ATTRIBUTE_ID) {
+          member->getString() == StaticStrings::IdString) {
         start = member->getMember(0);
         break;
       }
@@ -715,7 +702,8 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
     previous = calc;
   }
 
-  TraversalOptions options = CreateTraversalOptions(node->getMember(3));
+  auto options = CreateTraversalOptions(getAst()->query()->trx(), direction,
+                                        node->getMember(3));
 
   // First create the node
   auto travNode = new TraversalNode(this, nextId(), _ast->query()->vocbase(),
@@ -756,7 +744,7 @@ AstNode const* ExecutionPlan::parseTraversalVertexNode(ExecutionNode*& previous,
     for (size_t i = 0; i < n; ++i) {
       auto member = vertex->getMember(i);
       if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-          member->getString() == TRI_VOC_ATTRIBUTE_ID) {
+          member->getString() == StaticStrings::IdString) {
         vertex = member->getMember(0);
         break;
       }
@@ -1879,37 +1867,38 @@ void ExecutionPlan::insertDependency(ExecutionNode* oldNode,
   _varUsageComputed = false;
 }
 
-/// @brief create a plan from the JSON provided
-ExecutionNode* ExecutionPlan::fromJson(arangodb::basics::Json const& json) {
+/// @brief create a plan from VPack
+ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
   ExecutionNode* ret = nullptr;
-  arangodb::basics::Json nodes = json.get("nodes");
 
-  if (!nodes.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nodes is not an array");
+  if (!slice.isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "plan slice is not an object");
   }
 
-  // first, re-create all nodes from the JSON, using the node ids
+  VPackSlice nodes = slice.get("nodes");
+
+  if (!nodes.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "plan \"nodes\" attribute is not an array");
+  }
+
+  // first, re-create all nodes from the Slice, using the node ids
   // no dependency links will be set up in this step
-  auto const size = nodes.size();
-
-  for (size_t i = 0; i < size; i++) {
-    arangodb::basics::Json oneJsonNode = nodes.at(static_cast<int>(i));
-
-    if (!oneJsonNode.isObject()) {
+  for (auto const& it : VPackArrayIterator(nodes)) {
+    if (!it.isObject()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "json node is not an object");
+                                     "node entry in plan is not an object");
     }
 
-    ret = ExecutionNode::fromJsonFactory(this, oneJsonNode);
+    ret = ExecutionNode::fromVPackFactory(this, it);
     registerNode(ret);
 
     TRI_ASSERT(ret != nullptr);
 
     if (ret->getType() == arangodb::aql::ExecutionNode::SUBQUERY) {
       // found a subquery node. now do magick here
-      arangodb::basics::Json subquery = oneJsonNode.get("subquery");
+      VPackSlice subquery = it.get("subquery");
       // create the subquery nodes from the "subquery" sub-node
-      auto subqueryNode = fromJson(subquery);
+      auto subqueryNode = fromSlice(subquery);
 
       // register the just created subquery
       static_cast<SubqueryNode*>(ret)->setSubquery(subqueryNode, false);
@@ -1917,30 +1906,17 @@ ExecutionNode* ExecutionPlan::fromJson(arangodb::basics::Json const& json) {
   }
 
   // all nodes have been created. now add the dependencies
-
-  for (size_t i = 0; i < size; i++) {
-    arangodb::basics::Json oneJsonNode = nodes.at(static_cast<int>(i));
-
-    if (!oneJsonNode.isObject()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "json node is not an object");
-    }
-
+  for (auto const& it : VPackArrayIterator(nodes)) {
     // read the node's own id
-    auto thisId = arangodb::basics::JsonHelper::checkAndGetNumericValue<size_t>(
-        oneJsonNode.json(), "id");
+    auto thisId = it.get("id").getNumericValue<size_t>();
     auto thisNode = getNodeById(thisId);
 
     // now re-link the dependencies
-    arangodb::basics::Json dependencies = oneJsonNode.get("dependencies");
-    if (arangodb::basics::JsonHelper::isArray(dependencies.json())) {
-      size_t const nDependencies = dependencies.size();
-
-      for (size_t j = 0; j < nDependencies; j++) {
-        if (arangodb::basics::JsonHelper::isNumber(
-                dependencies.at(static_cast<int>(j)).json())) {
-          auto depId = arangodb::basics::JsonHelper::getNumericValue<size_t>(
-              dependencies.at(static_cast<int>(j)).json(), 0);
+    VPackSlice dependencies = it.get("dependencies");
+    if (dependencies.isArray()) {
+      for (auto const& it2 : VPackArrayIterator(dependencies)) {
+        if (it2.isNumber()) {
+          auto depId = it2.getNumericValue<size_t>();
           thisNode->addDependency(getNodeById(depId));
         }
       }

@@ -76,14 +76,14 @@ class Logfile {
     if (_df == nullptr) {
       return "";
     }
-    return _df->getName(_df);
+    return _df->getName();
   }
 
   /// @brief return the datafile pointer
   inline TRI_datafile_t* df() const { return _df; }
 
   /// @brief return the file descriptor
-  inline int fd() const { return _df->_fd; }
+  inline int fd() const { return _df->fd(); }
 
   /// @brief return the logfile id
   inline Logfile::IdType id() const { return _id; }
@@ -98,7 +98,7 @@ class Logfile {
 
   /// @brief return the allocated size of the logfile
   inline uint64_t allocatedSize() const {
-    return static_cast<uint64_t>(_df->_maximalSize);
+    return static_cast<uint64_t>(_df->maximalSize());
   }
 
   /// @brief return the size of the free space in the logfile
@@ -107,7 +107,7 @@ class Logfile {
       return 0;
     }
 
-    return static_cast<uint64_t>(allocatedSize() - _df->_currentSize -
+    return static_cast<uint64_t>(allocatedSize() - _df->currentSize() -
                                  DatafileHelper::JournalOverhead());
   }
 

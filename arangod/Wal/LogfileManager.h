@@ -33,8 +33,6 @@
 #include "Wal/Marker.h"
 #include "Wal/Slots.h"
 
-struct TRI_server_t;
-
 namespace arangodb {
 namespace options {
 class ProgramOptions;
@@ -95,7 +93,7 @@ class LogfileManager final : public application_features::ApplicationFeature {
   LogfileManager(LogfileManager const&) = delete;
   LogfileManager& operator=(LogfileManager const&) = delete;
 
-  static constexpr size_t numBuckets = 8;
+  static constexpr size_t numBuckets = 16;
 
  public:
   explicit LogfileManager(application_features::ApplicationServer* server);
@@ -119,6 +117,7 @@ class LogfileManager final : public application_features::ApplicationFeature {
   void prepare() override final;
   void start() override final;
   void beginShutdown() override final;
+  void stop() override final;
   void unprepare() override final;
 
  public:
@@ -376,6 +375,8 @@ class LogfileManager final : public application_features::ApplicationFeature {
 
   // get information about running transactions
   std::tuple<size_t, Logfile::IdType, Logfile::IdType> runningTransactions();
+  
+  void waitForCollector();
 
  private:
 
@@ -453,9 +454,6 @@ class LogfileManager final : public application_features::ApplicationFeature {
   std::string logfileName(Logfile::IdType) const;
 
  private:
-  // pointer to the server
-  TRI_server_t* _server;
-
   // the arangod config variable containing the database path
   std::string _databasePath;
 
@@ -524,7 +522,11 @@ class LogfileManager final : public application_features::ApplicationFeature {
   // a lock protecting ALL buckets in _transactions
   basics::ReadWriteLock _allTransactionsLock;
 
+#ifdef _WIN32
   struct {
+#else
+  struct alignas(64) {
+#endif
     // a lock protecting _activeTransactions and _failedTransactions
     basics::ReadWriteLock _lock;
 

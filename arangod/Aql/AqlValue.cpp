@@ -24,10 +24,10 @@
 #include "AqlValue.h"
 #include "Aql/AqlItemBlock.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Utils/AqlTransaction.h"
+#include "Utils/Transaction.h"
+#include "Utils/TransactionContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"
-#include "VocBase/document-collection.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
@@ -38,7 +38,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 /// @brief hashes the value
-uint64_t AqlValue::hash(arangodb::AqlTransaction* trx, uint64_t seed) const {
+uint64_t AqlValue::hash(arangodb::Transaction* trx, uint64_t seed) const {
   switch (type()) {
     case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
@@ -145,10 +145,11 @@ size_t AqlValue::length() const {
   TRI_ASSERT(false);
   return 0;
 }
-
-/// @brief get the (array) element at position
-AqlValue AqlValue::at(arangodb::AqlTransaction* trx, int64_t position,
-                      bool& mustDestroy, bool doCopy) const {
+  
+/// @brief get the (array) element at position 
+AqlValue AqlValue::at(arangodb::Transaction* trx,
+                      int64_t position, bool& mustDestroy, 
+                      bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
     case VPACK_SLICE_POINTER:
@@ -222,7 +223,7 @@ AqlValue AqlValue::at(arangodb::AqlTransaction* trx, int64_t position,
 }
 
 /// @brief get the _key attribute from an object/document
-AqlValue AqlValue::getKeyAttribute(arangodb::AqlTransaction* trx,
+AqlValue AqlValue::getKeyAttribute(arangodb::Transaction* trx,
                                    bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
@@ -258,7 +259,7 @@ AqlValue AqlValue::getKeyAttribute(arangodb::AqlTransaction* trx,
 }
 
 /// @brief get the _id attribute from an object/document
-AqlValue AqlValue::getIdAttribute(arangodb::AqlTransaction* trx,
+AqlValue AqlValue::getIdAttribute(arangodb::Transaction* trx,
                                   bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
@@ -299,7 +300,7 @@ AqlValue AqlValue::getIdAttribute(arangodb::AqlTransaction* trx,
 }
 
 /// @brief get the _from attribute from an object/document
-AqlValue AqlValue::getFromAttribute(arangodb::AqlTransaction* trx,
+AqlValue AqlValue::getFromAttribute(arangodb::Transaction* trx,
                                     bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
@@ -335,7 +336,7 @@ AqlValue AqlValue::getFromAttribute(arangodb::AqlTransaction* trx,
 }
 
 /// @brief get the _to attribute from an object/document
-AqlValue AqlValue::getToAttribute(arangodb::AqlTransaction* trx,
+AqlValue AqlValue::getToAttribute(arangodb::Transaction* trx,
                                   bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
@@ -371,8 +372,9 @@ AqlValue AqlValue::getToAttribute(arangodb::AqlTransaction* trx,
 }
 
 /// @brief get the (object) element by name
-AqlValue AqlValue::get(arangodb::AqlTransaction* trx, std::string const& name,
-                       bool& mustDestroy, bool doCopy) const {
+AqlValue AqlValue::get(arangodb::Transaction* trx,
+                       std::string const& name, bool& mustDestroy,
+                       bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
     case VPACK_SLICE_POINTER:
@@ -412,9 +414,9 @@ AqlValue AqlValue::get(arangodb::AqlTransaction* trx, std::string const& name,
 }
 
 /// @brief get the (object) element(s) by name
-AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
-                       std::vector<std::string> const& names, bool& mustDestroy,
-                       bool doCopy) const {
+AqlValue AqlValue::get(arangodb::Transaction* trx,
+                       std::vector<std::string> const& names, 
+                       bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   if (names.empty()) {
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
@@ -483,7 +485,7 @@ AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
 }
 
 /// @brief check whether an object has a specific key
-bool AqlValue::hasKey(arangodb::AqlTransaction* trx,
+bool AqlValue::hasKey(arangodb::Transaction* trx,
                       std::string const& name) const {
   switch (type()) {
     case VPACK_SLICE_POINTER:
@@ -503,12 +505,12 @@ bool AqlValue::hasKey(arangodb::AqlTransaction* trx,
 }
 
 /// @brief get the numeric value of an AqlValue
-double AqlValue::toDouble(arangodb::AqlTransaction* trx) const {
-  bool failed;  // will be ignored
+double AqlValue::toDouble(arangodb::Transaction* trx) const {
+  bool failed; // will be ignored
   return toDouble(trx, failed);
 }
 
-double AqlValue::toDouble(arangodb::AqlTransaction* trx, bool& failed) const {
+double AqlValue::toDouble(arangodb::Transaction* trx, bool& failed) const {
   failed = false;
   switch (type()) {
     case VPACK_SLICE_POINTER:
@@ -575,7 +577,7 @@ double AqlValue::toDouble(arangodb::AqlTransaction* trx, bool& failed) const {
 }
 
 /// @brief get the numeric value of an AqlValue
-int64_t AqlValue::toInt64(arangodb::AqlTransaction* trx) const {
+int64_t AqlValue::toInt64(arangodb::Transaction* trx) const {
   switch (type()) {
     case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
@@ -669,7 +671,7 @@ size_t AqlValue::docvecSize() const {
 /// @brief construct a V8 value as input for the expression execution in V8
 /// only construct those attributes that are needed in the expression
 v8::Handle<v8::Value> AqlValue::toV8Partial(
-    v8::Isolate* isolate, arangodb::AqlTransaction* trx,
+    v8::Isolate* isolate, arangodb::Transaction* trx,
     std::unordered_set<std::string> const& attributes) const {
   AqlValueType t = type();
 
@@ -718,8 +720,9 @@ v8::Handle<v8::Value> AqlValue::toV8Partial(
 }
 
 /// @brief construct a V8 value as input for the expression execution in V8
-v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate,
-                                     arangodb::AqlTransaction* trx) const {
+v8::Handle<v8::Value> AqlValue::toV8(
+    v8::Isolate* isolate, arangodb::Transaction* trx) const {
+  
   switch (type()) {
     case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
@@ -772,7 +775,7 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate,
 }
 
 /// @brief materializes a value into the builder
-void AqlValue::toVelocyPack(AqlTransaction* trx,
+void AqlValue::toVelocyPack(Transaction* trx, 
                             arangodb::velocypack::Builder& builder,
                             bool resolveExternals) const {
   switch (type()) {
@@ -815,7 +818,7 @@ void AqlValue::toVelocyPack(AqlTransaction* trx,
 }
 
 /// @brief materializes a value into the builder
-AqlValue AqlValue::materialize(AqlTransaction* trx, bool& hasCopied,
+AqlValue AqlValue::materialize(Transaction* trx, bool& hasCopied,
                                bool resolveExternals) const {
   switch (type()) {
     case VPACK_SLICE_POINTER:
@@ -948,7 +951,7 @@ VPackSlice AqlValue::slice() const {
 
 /// @brief create an AqlValue from a vector of AqlItemBlock*s
 AqlValue AqlValue::CreateFromBlocks(
-    arangodb::AqlTransaction* trx, std::vector<AqlItemBlock*> const& src,
+    arangodb::Transaction* trx, std::vector<AqlItemBlock*> const& src,
     std::vector<std::string> const& variableNames) {
   bool shouldDelete = true;
   ConditionalDeleter<VPackBuffer<uint8_t>> deleter(shouldDelete);
@@ -987,7 +990,7 @@ AqlValue AqlValue::CreateFromBlocks(
 
 /// @brief create an AqlValue from a vector of AqlItemBlock*s
 AqlValue AqlValue::CreateFromBlocks(
-    arangodb::AqlTransaction* trx, std::vector<AqlItemBlock*> const& src,
+    arangodb::Transaction* trx, std::vector<AqlItemBlock*> const& src,
     arangodb::aql::RegisterId expressionRegister) {
   bool shouldDelete = true;
   ConditionalDeleter<VPackBuffer<uint8_t>> deleter(shouldDelete);
@@ -1009,7 +1012,7 @@ AqlValue AqlValue::CreateFromBlocks(
 }
 
 /// @brief 3-way comparison for AqlValue objects
-int AqlValue::Compare(arangodb::AqlTransaction* trx, AqlValue const& left,
+int AqlValue::Compare(arangodb::Transaction* trx, AqlValue const& left,
                       AqlValue const& right, bool compareUtf8) {
   VPackOptions* options = trx->transactionContext()->getVPackOptions();
 

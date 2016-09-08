@@ -28,6 +28,8 @@
 #include "Logger/Logger.h"
 #include "Rest/GeneralRequest.h"
 
+#include <velocypack/Exception.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -39,13 +41,15 @@ std::atomic_uint_fast64_t NEXT_HANDLER_ID(
 
 RestHandler::RestHandler(GeneralRequest* request, GeneralResponse* response)
     : _handlerId(NEXT_HANDLER_ID.fetch_add(1, std::memory_order_seq_cst)),
-      _taskId(0),
       _request(request),
-      _response(response) {}
+      _response(response) {
+  bool found;
+  std::string const& startThread =
+      _request->header(StaticStrings::StartThread, found);
 
-RestHandler::~RestHandler() {
-  delete _request;
-  delete _response;
+  if (found) {
+    _needsOwnThread = StringUtils::boolean(startThread);
+  }
 }
 
 void RestHandler::setTaskId(uint64_t id, EventLoop loop) {
@@ -70,6 +74,10 @@ RestHandler::status RestHandler::executeFull() {
     } catch (Exception const& ex) {
       requestStatisticsAgentSetExecuteError();
       handleError(ex);
+    } catch (arangodb::velocypack::Exception const& ex) {
+      requestStatisticsAgentSetExecuteError();
+      Exception err(TRI_ERROR_INTERNAL, std::string("VPack error: ") + ex.what(), __FILE__, __LINE__);
+      handleError(err);
     } catch (std::bad_alloc const& ex) {
       requestStatisticsAgentSetExecuteError();
       Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
@@ -115,19 +123,7 @@ RestHandler::status RestHandler::executeFull() {
   return result;
 }
 
-GeneralRequest* RestHandler::stealRequest() {
-  GeneralRequest* tmp = _request;
-  _request = nullptr;
-  return tmp;
-}
-
-GeneralResponse* RestHandler::stealResponse() {
-  GeneralResponse* tmp = _response;
-  _response = nullptr;
-  return tmp;
-}
-
-void RestHandler::setResponseCode(GeneralResponse::ResponseCode code) {
+void RestHandler::resetResponse(rest::ResponseCode code) {
   TRI_ASSERT(_response != nullptr);
   _response->reset(code);
 }

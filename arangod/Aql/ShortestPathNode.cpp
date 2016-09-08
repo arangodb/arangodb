@@ -26,10 +26,14 @@
 
 #include "ShortestPathNode.h"
 #include "Aql/Ast.h"
+#include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
 #include "V8Server/V8Traverser.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;
@@ -96,8 +100,7 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id,
   if (graph->type == NODE_TYPE_COLLECTION_LIST) {
     size_t edgeCollectionCount = graph->numMembers();
     auto resolver = std::make_unique<CollectionNameResolver>(vocbase);
-    _graphJson = arangodb::basics::Json(arangodb::basics::Json::Array,
-                                        edgeCollectionCount);
+    _graphInfo.openArray();
     _edgeColls.reserve(edgeCollectionCount);
     _directions.reserve(edgeCollectionCount);
     // List of edge collection names
@@ -122,14 +125,16 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id,
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
                                        msg);
       }
-      _graphJson.add(arangodb::basics::Json(eColName));
-      _edgeColls.push_back(std::move(eColName));
+      _graphInfo.add(VPackValue(eColName));
+      _edgeColls.emplace_back(std::move(eColName));
     }
+
+    _graphInfo.close();
   } else {
     if (_edgeColls.empty()) {
       if (graph->isStringValue()) {
         std::string graphName = graph->getString();
-        _graphJson = arangodb::basics::Json(graphName);
+        _graphInfo.add(VPackValue(graphName));
         _graphObj = plan->getAst()->query()->lookupGraphByName(graphName);
 
         if (_graphObj == nullptr) {
@@ -159,7 +164,7 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id,
 ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id,
                                    TRI_vocbase_t* vocbase,
                                    std::vector<std::string> const& edgeColls,
-                                   std::vector<TRI_edge_direction_e> directions,
+                                   std::vector<TRI_edge_direction_e> const& directions,
                                    Variable const* inStartVariable,
                                    std::string const& startVertexId,
                                    Variable const* inTargetVariable,
@@ -176,11 +181,13 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id,
       _directions(directions),
       _graphObj(nullptr),
       _options(options) {
-  _graphJson = arangodb::basics::Json(arangodb::basics::Json::Array, edgeColls.size());
-  for (auto& it : edgeColls) {
+
+  _graphInfo.openArray();
+  for (auto const& it : edgeColls) {
     _edgeColls.emplace_back(it);
-    _graphJson.add(arangodb::basics::Json(it));
+    _graphInfo.add(VPackValue(it));
   }
+  _graphInfo.close();
 }
 
 void ShortestPathNode::fillOptions(arangodb::traverser::ShortestPathOptions& opts) const {
@@ -194,7 +201,7 @@ void ShortestPathNode::fillOptions(arangodb::traverser::ShortestPathOptions& opt
 }
 
 ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
-                                   arangodb::basics::Json const& base)
+                                   arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _vocbase(plan->getAst()->query()->vocbase()),
       _vertexOutVariable(nullptr),
@@ -203,11 +210,9 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
       _inTargetVariable(nullptr),
       _graphObj(nullptr) {
   // Directions
-  auto dirList = base.get("directions");
-  TRI_ASSERT(dirList.json() != nullptr);
-  for (size_t i = 0; i < dirList.size(); ++i) {
-    auto dirJson = dirList.at(i);
-    uint64_t dir = arangodb::basics::JsonHelper::stringUInt64(dirJson.json());
+  VPackSlice dirList = base.get("directions");
+  for (auto const& it : VPackArrayIterator(dirList)) {
+    uint64_t dir = arangodb::basics::VelocyPackHelper::stringUInt64(it);
     TRI_edge_direction_e d;
     switch (dir) {
       case 0:
@@ -228,33 +233,42 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
   }
 
   // Start Vertex
-  if (base.has("startInVariable")) {
-    _inStartVariable = varFromJson(plan->getAst(), base, "startInVariable");
+  if (base.hasKey("startInVariable")) {
+    _inStartVariable = varFromVPack(plan->getAst(), base, "startInVariable");
   } else {
-    _startVertexId = arangodb::basics::JsonHelper::getStringValue(
-        base.json(), "startVertexId", "");
+    VPackSlice v = base.get("startVertexId");
+    if (!v.isString()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
+                                     "start vertex must be a string");
+    }
+    _startVertexId = v.copyString();
+
     if (_startVertexId.empty()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
-                                     "start vertex mustn't be empty.");
+                                     "start vertex mustn't be empty");
     }
   }
 
   // Target Vertex
-  if (base.has("targetInVariable")) {
-    _inTargetVariable = varFromJson(plan->getAst(), base, "targetInVariable");
+  if (base.hasKey("targetInVariable")) {
+    _inTargetVariable = varFromVPack(plan->getAst(), base, "targetInVariable");
   } else {
-    _targetVertexId = arangodb::basics::JsonHelper::getStringValue(
-        base.json(), "targetVertexId", "");
+    VPackSlice v = base.get("targetVertexId");
+    if (!v.isString()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
+                                     "target vertex must be a string");
+    }
+    _targetVertexId = v.copyString();
     if (_targetVertexId.empty()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
-                                     "target vertex mustn't be empty.");
+                                     "target vertex mustn't be empty");
     }
   }
 
   std::string graphName;
-  if (base.has("graph") && (base.get("graph").isString())) {
-    graphName = JsonHelper::checkAndGetStringValue(base.json(), "graph");
-    if (base.has("graphDefinition")) {
+  if (base.hasKey("graph") && (base.get("graph").isString())) {
+    graphName = base.get("graph").copyString();
+    if (base.hasKey("graphDefinition")) {
       _graphObj = plan->getAst()->query()->lookupGraphByName(graphName);
 
       if (_graphObj == nullptr) {
@@ -270,20 +284,18 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
                                      "missing graphDefinition.");
     }
   } else {
-    _graphJson = base.get("graph").copy();
-    if (!_graphJson.isArray()) {
+    _graphInfo.add(base.get("graph"));
+    if (!_graphInfo.slice().isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
                                      "graph has to be an array.");
     }
-    size_t edgeCollectionCount = _graphJson.size();
     // List of edge collection names
-    for (size_t i = 0; i < edgeCollectionCount; ++i) {
-      auto at = _graphJson.at(i);
-      if (!at.isString()) {
+    for (auto const& it : VPackArrayIterator(_graphInfo.slice())) {
+      if (!it.isString()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
                                        "graph has to be an array of strings.");
       }
-      _edgeColls.push_back(at.json()->_value._string.data);
+      _edgeColls.emplace_back(it.copyString());
     }
     if (_edgeColls.empty()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -293,15 +305,15 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
   }
 
   // Out variables
-  if (base.has("vertexOutVariable")) {
-    _vertexOutVariable = varFromJson(plan->getAst(), base, "vertexOutVariable");
+  if (base.hasKey("vertexOutVariable")) {
+    _vertexOutVariable = varFromVPack(plan->getAst(), base, "vertexOutVariable");
   }
-  if (base.has("edgeOutVariable")) {
-    _edgeOutVariable = varFromJson(plan->getAst(), base, "edgeOutVariable");
+  if (base.hasKey("edgeOutVariable")) {
+    _edgeOutVariable = varFromVPack(plan->getAst(), base, "edgeOutVariable");
   }
 
   // Flags
-  if (base.has("shortestPathFlags")) {
+  if (base.hasKey("shortestPathFlags")) {
     _options = ShortestPathOptions(base);
   }
 }
@@ -310,12 +322,8 @@ void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes,
                                           bool verbose) const {
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
                                            verbose);  // call base class method
-  nodes.add("database", VPackValue(_vocbase->_name));
-  {
-    // TODO Remove _graphJson
-    auto tmp = arangodb::basics::JsonHelper::toVelocyPack(_graphJson.json());
-    nodes.add("graph", tmp->slice());
-  }
+  nodes.add("database", VPackValue(_vocbase->name()));
+  nodes.add("graph", _graphInfo.slice());
   nodes.add(VPackValue("directions"));
   {
     VPackArrayBuilder guard(&nodes);

@@ -25,11 +25,11 @@
 #define ARANGOD_AQL_GRAPHS_H 1
 
 #include "Basics/Common.h"
-#include "Basics/JsonHelper.h"
 
 namespace arangodb {
 
 namespace velocypack {
+class Builder;
 class Slice;
 }
 
@@ -73,10 +73,6 @@ class Graph {
 
   /// @brief Add a vertex collection to this graphs definition
   void addVertexCollection(std::string const&);
-
-  /// @brief return a JSON representation of the graph
-  /// the caller is responsible for freeing the JSON later
-  arangodb::basics::Json toJson(TRI_memory_zone_t*, bool) const;
 
   /// @brief return a VelocyPack representation of the graph
   void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
