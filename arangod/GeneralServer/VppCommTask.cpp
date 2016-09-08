@@ -30,6 +30,7 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "GeneralServer/VppNetwork.h"
 #include "Logger/LoggerFeature.h"
 #include "Meta/conversion.h"
 #include "Scheduler/Scheduler.h"
@@ -40,122 +41,12 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
-namespace {
-std::size_t validateAndCount(char const* vpHeaderStart, char const* vpEnd) {
-  try {
-    VPackValidator validator;
-    // check for slice start to the end of Chunk
-    // isSubPart allows the slice to be shorter than the checked buffer.
-    validator.validate(vpHeaderStart, std::distance(vpHeaderStart, vpEnd),
-                       /*isSubPart =*/true);
-
-    VPackSlice vpHeader(vpHeaderStart);
-    auto vpPayloadStart = vpHeaderStart + vpHeader.byteSize();
-
-    std::size_t numPayloads = 0;
-    while (vpPayloadStart != vpEnd) {
-      // validate
-      validator.validate(vpPayloadStart, std::distance(vpPayloadStart, vpEnd),
-                         true);
-      // get offset to next
-      VPackSlice tmp(vpPayloadStart);
-      vpPayloadStart += tmp.byteSize();
-      numPayloads++;
-    }
-    return numPayloads;
-  } catch (std::exception const& e) {
-    throw std::runtime_error(
-        std::string("error during validation of incoming VPack") + e.what());
-  }
-}
-
-template <typename T>
-std::size_t appendToBuffer(StringBuffer* buffer, T& value) {
-  constexpr std::size_t len = sizeof(T);
-  char charArray[len];
-  char const* charPtr = charArray;
-  std::memcpy(&charArray, &value, len);
-  buffer->appendText(charPtr, len);
-  return len;
-}
-
-std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
-    std::vector<VPackSlice> const& slices, bool isFirstChunk, uint32_t chunk,
-    uint64_t id, uint32_t totalMessageLength = 0) {
-  using basics::StringBuffer;
-  bool firstOfMany = false;
-
-  // if we have more than one chunk and the chunk is the first
-  // then we are sending the first in a series. if this condition
-  // is true we also send extra 8 bytes for the messageLength
-  // (length of all VPackData)
-  if (isFirstChunk && chunk > 1) {
-    firstOfMany = true;
-  }
-
-  // build chunkX -- see VelocyStream Documentaion
-  chunk <<= 1;
-  chunk |= isFirstChunk ? 0x1 : 0x0;
-
-  // get the lenght of VPack data
-  uint32_t dataLength = 0;
-  for (auto& slice : slices) {
-    // TODO: is a 32bit value sufficient for all Slices here?
-    dataLength += static_cast<uint32_t>(slice.byteSize());
-  }
-
-  // calculate length of current chunk
-  uint32_t chunkLength = dataLength;
-  chunkLength += (sizeof(chunkLength) + sizeof(chunk) + sizeof(id));
-  if (firstOfMany) {
-    chunkLength += sizeof(totalMessageLength);
-  }
-
-  auto buffer =
-      std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE, chunkLength, false);
-
-  appendToBuffer(buffer.get(), chunkLength);
-  appendToBuffer(buffer.get(), chunk);
-  appendToBuffer(buffer.get(), id);
-
-  if (firstOfMany) {
-    appendToBuffer(buffer.get(), totalMessageLength);
-  }
-
-  // append data in slices
-  for (auto const& slice : slices) {
-    buffer->appendText(std::string(slice.startAs<char>(), slice.byteSize()));
-  }
-
-  return buffer;
-}
-
-std::unique_ptr<basics::StringBuffer> createChunkForNetworkSingle(
-    std::vector<VPackSlice> const& slices, uint64_t id) {
-  return createChunkForNetworkDetail(slices, true, 1, id, 0 /*unused*/);
-}
-
-// TODO FIXME make use of these functions
-// std::unique_ptr<basics::StringBuffer> createChunkForNetworkMultiFirst(
-//     std::vector<VPackSlice> const& slices, uint64_t id, uint32_t
-//     numberOfChunks,
-//     uint32_t totalMessageLength) {
-//   return createChunkForNetworkDetail(slices, true, numberOfChunks, id,
-//                                      totalMessageLength);
-// }
-//
-// std::unique_ptr<basics::StringBuffer> createChunkForNetworkMultiFollow(
-//     std::vector<VPackSlice> const& slices, uint64_t id, uint32_t chunkNumber,
-//     uint32_t totalMessageLength) {
-//   return createChunkForNetworkDetail(slices, false, chunkNumber, id, 0);
-// }
-}
 
 VppCommTask::VppCommTask(GeneralServer* server, TRI_socket_t sock,
                          ConnectionInfo&& info, double timeout)
@@ -176,8 +67,11 @@ void VppCommTask::addResponse(VppResponse* response) {
 
   std::vector<VPackSlice> slices;
   slices.push_back(response_message._header);
+
   if (response->generateBody()) {
-    slices.push_back(response_message._payload);
+    for (auto& payload : response_message._payloads) {
+      slices.push_back(payload);
+    }
   }
 
   LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
@@ -197,11 +91,15 @@ void VppCommTask::addResponse(VppResponse* response) {
 
   // adds chunk header infromation and creates SingBuffer* that can be
   // used with _writeBuffers
-  auto buffer = createChunkForNetworkSingle(slices, id);
+  auto buffers = createChunkForNetwork(slices, id,
+                                       std::numeric_limits<std::size_t>::max());
 
   double const totalTime = getAgent(id)->elapsedSinceReadStart();
 
-  addWriteBuffer(std::move(buffer), getAgent(id));
+  for (auto&& buffer : buffers) {
+    // is the multiple getAgent ok? REVIEW (fc)
+    addWriteBuffer(std::move(buffer), getAgent(id));
+  }
 
   // and give some request information
   LOG_TOPIC(INFO, Logger::REQUESTS)

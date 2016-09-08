@@ -731,31 +731,30 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
     TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, res->Get(BodyFromFileKey));
     size_t length;
     char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *filename, &length);
+        
+    if (content == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FILE_NOT_FOUND, std::string("unable to read file '") + *filename + "'");
+    }
 
     switch (response->transportType()) {
       case Endpoint::TransportType::HTTP: {
         HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
-        if (content != nullptr) {
-          httpResponse->body().appendText(content, length);
-          TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
-        } else {
-          std::string msg = std::string("cannot read file '") + *filename +
-                            "': " + TRI_last_error();
-
-          httpResponse->body().appendText(msg.c_str(), msg.size());
-          response->setResponseCode(rest::ResponseCode::SERVER_ERROR);
-        }
+        httpResponse->body().appendText(content, length);
+        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
       } break;
 
       case Endpoint::TransportType::VPP: {
         VPackBuilder builder;
+        builder.add(VPackValuePair(reinterpret_cast<uint8_t const*>(content), length));
+        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
-        // create vpack form file
+        // create vpack from file
         response->setContentType(rest::ContentType::VPACK);
         response->setPayload(builder.slice(), true);
       } break;
 
       default:
+        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
         throw std::logic_error("unknown transport type");
     }
   }

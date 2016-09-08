@@ -740,6 +740,10 @@ void RestReplicationHandler::handleCommandBarrier() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleTrampolineCoordinator() {
+  bool useVpp = false;
+  if (_request->transportType() == Endpoint::TransportType::VPP) {
+    useVpp = true;
+  }
   if (_request == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
@@ -777,7 +781,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   ClusterComm* cc = ClusterComm::instance();
 
   std::unique_ptr<ClusterCommResult> res;
-  if (_request->transportType() == Endpoint::TransportType::HTTP) {
+  if (!useVpp) {
     HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
     if (httpRequest == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -790,6 +794,9 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
                               _request->requestPath() + params,
                           httpRequest->body(), *headers, 300.0);
   } else {
+    // do we need to handle multiple payloads here - TODO
+    // here we switch vorm vpp to http?!
+    // i am not allowed to change cluster comm!
     res = cc->syncRequest("", TRI_NewTickServer(), "server:" + DBserver,
                           _request->requestType(),
                           "/_db/" + StringUtils::urlEncode(dbname) +
@@ -823,13 +830,15 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
 
   _response->setContentType(
       res->result->getHeaderField(StaticStrings::ContentTypeHeader, dummy));
-  if (_request->transportType() == Endpoint::TransportType::HTTP) {
+
+  if (!useVpp) {
     HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
     if (_response == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
     httpResponse->body().swap(&(res->result->getBody()));
   } else {
+    // TODO copy all payloads
     VPackSlice slice = res->result->getBodyVelocyPack()->slice();
     _response->setPayload(slice, true);  // do we need to generate the body?!
   }
@@ -845,6 +854,11 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerFollow() {
+  bool useVpp = false;
+  if (_request->transportType() == Endpoint::TransportType::HTTP) {
+    useVpp = true;
+  }
+
   // determine start and end tick
   arangodb::wal::LogfileManagerState const state =
       arangodb::wal::LogfileManager::instance()->state();
@@ -953,7 +967,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
   // initialize the dump container
   TRI_replication_dump_t dump(transactionContext,
                               static_cast<size_t>(determineChunkSize()),
-                              includeSystem, cid);
+                              includeSystem, cid, useVpp);
 
   // and dump
   int res = TRI_DumpLogReplication(&dump, transactionIds, firstRegularTick,
@@ -964,7 +978,12 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
                             dump._lastFoundTick != state.lastCommittedTick);
 
     // generate the result
-    size_t const length = TRI_LengthStringBuffer(dump._buffer);
+    size_t length = 0;
+    if (useVpp) {
+      length = TRI_LengthStringBuffer(dump._buffer);
+    } else {
+      length = dump._slices.size();
+    }
 
     if (length == 0) {
       resetResponse(rest::ResponseCode::NO_CONTENT);
@@ -972,35 +991,45 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
       resetResponse(rest::ResponseCode::OK);
     }
 
-    HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
-
-    if (httpResponse == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-    }
-
-    httpResponse->setContentType(rest::ContentType::DUMP);
-
-    // set headers
-    httpResponse->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
-                              checkMore ? "true" : "false");
-
-    httpResponse->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
-                              StringUtils::itoa(dump._lastFoundTick));
-
-    httpResponse->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
-                              StringUtils::itoa(state.lastCommittedTick));
-
-    httpResponse->setHeaderNC(TRI_REPLICATION_HEADER_ACTIVE, "true");
-
-    httpResponse->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
-                              dump._fromTickIncluded ? "true" : "false");
-
     if (length > 0) {
       // transfer ownership of the buffer contents
-      httpResponse->body().set(dump._buffer);
+      _response->setContentType(rest::ContentType::DUMP);
 
-      // to avoid double freeing
-      TRI_StealStringBuffer(dump._buffer);
+      // set headers
+      _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
+                             checkMore ? "true" : "false");
+
+      _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
+                             StringUtils::itoa(dump._lastFoundTick));
+
+      _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
+                             StringUtils::itoa(state.lastCommittedTick));
+
+      _response->setHeaderNC(TRI_REPLICATION_HEADER_ACTIVE, "true");
+
+      _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
+                             dump._fromTickIncluded ? "true" : "false");
+
+      if (useVpp) {
+        for (auto message : dump._slices) {
+          _response->addPayload(std::move(message), &dump._vpackOptions, true);
+        }
+      } else {
+        HttpResponse* httpResponse =
+            dynamic_cast<HttpResponse*>(_response.get());
+
+        if (httpResponse == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+        }
+
+        if (length > 0) {
+          // transfer ownership of the buffer contents
+          httpResponse->body().set(dump._buffer);
+
+          // to avoid double freeing
+          TRI_StealStringBuffer(dump._buffer);
+        }
+      }
     }
 
     insertClient(dump._lastFoundTick);

@@ -21,8 +21,6 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-// TODO -- error handling
-
 #ifndef ARANGOD_GENERAL_SERVER_VPP_COMM_TASK_H
 #define ARANGOD_GENERAL_SERVER_VPP_COMM_TASK_H 1
 
@@ -64,8 +62,7 @@ class VppCommTask : public GeneralCommTask {
   std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) override final;
 
-  void handleSimpleError(rest::ResponseCode code,
-                         uint64_t id) override {
+  void handleSimpleError(rest::ResponseCode code, uint64_t id) override {
     VppResponse response(code, id);
     addResponse(&response);
   }
@@ -76,8 +73,7 @@ class VppCommTask : public GeneralCommTask {
  private:
   // reets the internal state this method can be called to clean up when the
   // request handling aborts prematurely
-  void closeTask(rest::ResponseCode code =
-                     rest::ResponseCode::SERVER_ERROR);
+  void closeTask(rest::ResponseCode code = rest::ResponseCode::SERVER_ERROR);
 
   void addResponse(VppResponse*);
   rest::ResponseCode authenticateRequest(GeneralRequest* request);
@@ -108,7 +104,7 @@ class VppCommTask : public GeneralCommTask {
     uint32_t
         _currentChunkLength;     // size of chunk processed or 0 when expecting
                                  // new chunk
-    size_t _readBufferOffset;     // data up to this position has been processed
+    size_t _readBufferOffset;    // data up to this position has been processed
     std::size_t _cleanupLength;  // length of data after that the read buffer
                                  // will be cleaned
   };
