@@ -21,8 +21,8 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "VppMessage.h"
 #include "VppRequest.h"
+#include "VppMessage.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -34,10 +34,11 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
+#include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
-#include "Meta/conversion.h"
 #include "Logger/Logger.h"
+#include "Meta/conversion.h"
 
 #include <stdexcept>
 
@@ -125,6 +126,21 @@ void VppRequest::parseHeaderInformation() {
         _values.emplace(it.key.copyString(), it.value.copyString());
       }
     }
+
+    _fullUrl = _requestPath + "?";
+    for (auto const& param : _values) {
+      _fullUrl.append(param.first + "=" +
+                      basics::StringUtils::urlEncode(param.second) + "&");
+    }
+
+    for (auto const& param : _arrayValues) {
+      for (auto const& value : param.second) {
+        _fullUrl.append(param.first + "[]=" +
+                        basics::StringUtils::urlEncode(value) + "&");
+      }
+    }
+    _fullUrl.pop_back();
+
   } catch (std::exception const& e) {
     throw std::runtime_error(
         std::string("Error during Parsing of VppHeader: ") + e.what());

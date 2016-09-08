@@ -176,8 +176,11 @@ void VppCommTask::addResponse(VppResponse* response) {
 
   std::vector<VPackSlice> slices;
   slices.push_back(response_message._header);
+
   if (response->generateBody()) {
-    slices.push_back(response_message._payload);
+    for (auto& payload : response_message._payloads) {
+      slices.push_back(payload);
+    }
   }
 
   LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "

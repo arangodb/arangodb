@@ -753,8 +753,13 @@ int TRI_DumpLogReplication(
           }
         }
 
-        res = StringifyMarker(dump, databaseId, collectionId, marker, false,
-                              true, false);
+        if (dump->_useVpp) {
+          res = SliceifyMarker(dump, databaseId, collectionId, marker, false,
+                               true, false);
+        } else {
+          res = StringifyMarker(dump, databaseId, collectionId, marker, false,
+                                true, false);
+        }
 
         if (res != TRI_ERROR_NO_ERROR) {
           THROW_ARANGO_EXCEPTION(res);

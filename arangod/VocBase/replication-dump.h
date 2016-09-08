@@ -63,7 +63,8 @@ struct TRI_replication_dump_t {
         _includeSystem(includeSystem),
         _fromTickIncluded(false),
         _compat28(false),
-        _slices() {
+        _slices(),
+        _useVpp(useVpp) {
     if (_chunkSize == 0) {
       // default chunk size
       _chunkSize = 128 * 1024;
@@ -100,6 +101,7 @@ struct TRI_replication_dump_t {
   bool _fromTickIncluded;
   bool _compat28;
   std::vector<VPackBuffer<uint8_t>> _slices;
+  bool _useVpp;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
