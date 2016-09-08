@@ -27,20 +27,23 @@
 
 using namespace arangodb::consensus;
 
-AddFollower::AddFollower (Node const& snapshot, Agent* agent,
-                      std::string const& jobId, std::string const& creator,
-                      std::string const& prefix, std::string const& database,
-                      std::string const& collection, std::string const& shard,
-                      std::string const& newFollower) : 
-  Job(snapshot, agent, jobId, creator, prefix), _database(database),
-  _collection(collection), _shard(shard), _newFollower(newFollower) {
-
+AddFollower::AddFollower(Node const& snapshot, Agent* agent,
+                         std::string const& jobId, std::string const& creator,
+                         std::string const& prefix, std::string const& database,
+                         std::string const& collection,
+                         std::string const& shard,
+                         std::string const& newFollower)
+    : Job(snapshot, agent, jobId, creator, prefix),
+      _database(database),
+      _collection(collection),
+      _shard(shard),
+      _newFollower(newFollower) {
   try {
     JOB_STATUS js = status();
 
     if (js == TODO) {
-      start();        
-    } else if (js == NOTFOUND) {            
+      start();
+    } else if (js == NOTFOUND) {
       if (create()) {
         start();
       }
@@ -49,15 +52,13 @@ AddFollower::AddFollower (Node const& snapshot, Agent* agent,
     LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << __FILE__ << __LINE__;
     finish("Shards/" + _shard, false, e.what());
   }
-  
 }
 
-AddFollower::~AddFollower () {}
+AddFollower::~AddFollower() {}
 
-bool AddFollower::create () {
-  
-  LOG_TOPIC(INFO, Logger::AGENCY)
-    << "Todo: AddFollower " << _newFollower << " to shard " + _shard;
+bool AddFollower::create() {
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Todo: AddFollower " << _newFollower
+                                  << " to shard " + _shard;
 
   std::string path, now(timepointToString(std::chrono::system_clock::now()));
 
@@ -67,16 +68,17 @@ bool AddFollower::create () {
     curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
 
   Slice current = _snapshot(curPath).slice();
+
   TRI_ASSERT(current.isArray());
   TRI_ASSERT(current[0].isString());
 #endif
-  
+
   _jb = std::make_shared<Builder>();
   _jb->openArray();
   _jb->openObject();
-  
+
   path = _agencyPrefix + toDoPrefix + _jobId;
-  
+
   _jb->add(path, VPackValue(VPackValueType::Object));
   _jb->add("creator", VPackValue(_creator));
   _jb->add("type", VPackValue("addFollower"));
@@ -87,34 +89,33 @@ bool AddFollower::create () {
   _jb->add("jobId", VPackValue(_jobId));
   _jb->add("timeCreated", VPackValue(now));
 
-  _jb->close(); _jb->close(); _jb->close();
-  
+  _jb->close();
+  _jb->close();
+  _jb->close();
+
   write_ret_t res = transact(_agent, *_jb);
 
-  if (res.accepted && res.indices.size()==1 && res.indices[0]) {
+  if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     return true;
   }
-  
+
   LOG_TOPIC(INFO, Logger::AGENCY) << "Failed to insert job " + _jobId;
   return false;
-
 }
 
-
 bool AddFollower::start() {
-
   // DBservers
   std::string planPath =
-    planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
+      planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
   std::string curPath =
-    curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
+      curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
 
   Slice current = _snapshot(curPath).slice();
   Slice planned = _snapshot(planPath).slice();
 
   TRI_ASSERT(current.isArray());
   TRI_ASSERT(planned.isArray());
-  
+
   for (auto const& srv : VPackArrayIterator(current)) {
     TRI_ASSERT(srv.isString());
     if (srv.copyString() == _newFollower) {
@@ -131,7 +132,7 @@ bool AddFollower::start() {
       return false;
     }
   }
-  
+
   // Copy todo to pending
   Builder todo, pending;
 
@@ -141,8 +142,8 @@ bool AddFollower::start() {
     try {
       _snapshot(toDoPrefix + _jobId).toBuilder(todo);
     } catch (std::exception const&) {
-      LOG_TOPIC(INFO, Logger::AGENCY) <<
-        "Failed to get key " + toDoPrefix + _jobId + " from agency snapshot";
+      LOG_TOPIC(INFO, Logger::AGENCY) << "Failed to get key " + toDoPrefix +
+                                             _jobId + " from agency snapshot";
       return false;
     }
   } else {
@@ -152,7 +153,7 @@ bool AddFollower::start() {
 
   // Enter pending, remove todo, block toserver
   pending.openArray();
-    
+
   // --- Add pending
   pending.openObject();
   pending.add(_agencyPrefix + pendingPrefix + _jobId,
@@ -163,15 +164,15 @@ bool AddFollower::start() {
     pending.add(obj.key.copyString(), obj.value);
   }
   pending.close();
-    
+
   // --- Delete todo
   pending.add(_agencyPrefix + toDoPrefix + _jobId,
               VPackValue(VPackValueType::Object));
   pending.add("op", VPackValue("delete"));
   pending.close();
-    
+
   // --- Block shard
-  pending.add(_agencyPrefix +  blockedShardsPrefix + _shard,
+  pending.add(_agencyPrefix + blockedShardsPrefix + _shard,
               VPackValue(VPackValueType::Object));
   pending.add("jobId", VPackValue(_jobId));
   pending.close();
@@ -183,54 +184,53 @@ bool AddFollower::start() {
   }
   pending.add(VPackValue(_newFollower));
   pending.close();
-  
+
   // --- Increment Plan/Version
-  pending.add(_agencyPrefix +  planVersion,
-              VPackValue(VPackValueType::Object));
+  pending.add(_agencyPrefix + planVersion, VPackValue(VPackValueType::Object));
   pending.add("op", VPackValue("increment"));
   pending.close();
-  
+
   pending.close();
-  
+
   // Preconditions
   // --- Check that Current servers are as we expect
   pending.openObject();
   pending.add(_agencyPrefix + curPath, VPackValue(VPackValueType::Object));
   pending.add("old", current);
   pending.close();
-  
+
   // --- Check if shard is not blocked
   pending.add(_agencyPrefix + blockedShardsPrefix + _shard,
               VPackValue(VPackValueType::Object));
   pending.add("oldEmpty", VPackValue(true));
   pending.close();
-  
-  pending.close(); pending.close();
-    
+
+  pending.close();
+  pending.close();
+
   // Transact to agency
   write_ret_t res = transact(_agent, pending);
-    
-  if (res.accepted && res.indices.size()==1 && res.indices[0]) {
-    
-    LOG_TOPIC(INFO, Logger::AGENCY) << "Pending: Addfollower " + _newFollower + " to shard " + _shard;
+
+  if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
+    LOG_TOPIC(INFO, Logger::AGENCY)
+        << "Pending: Addfollower " + _newFollower + " to shard " + _shard;
     return true;
-  }    
-  
+  }
+
   LOG_TOPIC(INFO, Logger::AGENCY) << "Start precondition failed for " + _jobId;
   return false;
-
 }
 
-JOB_STATUS AddFollower::status () {
-  
+JOB_STATUS AddFollower::status() {
   auto status = exists();
 
-  if (status != NOTFOUND) { // Get job details from agency
+  if (status != NOTFOUND) {  // Get job details from agency
 
     try {
       _database = _snapshot(pos[status] + _jobId + "/database").getString();
       _collection = _snapshot(pos[status] + _jobId + "/collection").getString();
-      _newFollower = _snapshot(pos[status] + _jobId + "/newFollower").getString();
+      _newFollower =
+          _snapshot(pos[status] + _jobId + "/newFollower").getString();
       _shard = _snapshot(pos[status] + _jobId + "/shard").getString();
     } catch (std::exception const& e) {
       std::stringstream err;
@@ -239,12 +239,11 @@ JOB_STATUS AddFollower::status () {
       finish("Shards/" + _shard, false, err.str());
       return FAILED;
     }
-    
   }
 
   if (status == PENDING) {
-    std::string curPath =
-      curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
+    std::string curPath = curColPrefix + _database + "/" + _collection + "/" +
+                          _shard + "/servers";
 
     Slice current = _snapshot(curPath).slice();
     for (auto const& srv : VPackArrayIterator(current)) {
@@ -254,10 +253,7 @@ JOB_STATUS AddFollower::status () {
         }
       }
     }
-
   }
-  
-  return status;
-  
-}
 
+  return status;
+}
