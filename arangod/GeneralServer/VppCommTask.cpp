@@ -40,6 +40,7 @@
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <boost/optional.hpp>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
@@ -185,8 +186,9 @@ bool VppCommTask::processRead() {
 
   // CASE 1: message is in one chunk
   if (chunkHeader._isFirst && chunkHeader._chunk == 1) {
-    [this](ChunkHeader const& chunkHeader, VppInputMessage& message,
-           bool& doExecute, char const* vpackBegin, char const* chunkEnd) {
+    auto rv = [this](ChunkHeader const& chunkHeader, VppInputMessage& message,
+                     bool& doExecute, char const* vpackBegin,
+                     char const* chunkEnd) -> boost::optional<bool> {
       _agents.emplace(
           std::make_pair(chunkHeader._messageID, RequestStatisticsAgent(true)));
 
@@ -225,7 +227,11 @@ bool VppCommTask::processRead() {
 
       doExecute = true;
       getAgent(chunkHeader._messageID)->requestStatisticsAgentSetReadEnd();
+      return boost::none;
     }(chunkHeader, message, doExecute, vpackBegin, chunkEnd);
+    if (rv) {
+      return *rv;
+    }
   }
   // CASE 2:  message is in multiple chunks
   auto incompleteMessageItr = _incompleteMessages.find(chunkHeader._messageID);
