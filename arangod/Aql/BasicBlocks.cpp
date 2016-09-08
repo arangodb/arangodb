@@ -137,6 +137,8 @@ int SingletonBlock::getOrSkipSome(size_t,  // atLeast,
 
   _done = true;
   return TRI_ERROR_NO_ERROR;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();  
 }
 
