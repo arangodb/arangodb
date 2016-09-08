@@ -47,6 +47,9 @@ class TraversalBlock : public ExecutionBlock {
   /// @brief initializeCursor
   int initializeCursor(AqlItemBlock* items, size_t pos) override;
 
+  /// @brief shutdown send destroy to all engines.
+  int shutdown(int errorCode) override final;
+
   /// @brief getSome
   AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final;
 
@@ -120,6 +123,8 @@ class TraversalBlock : public ExecutionBlock {
   /// @brief _inRegs, a vector containing for each expression above
   /// a vector of RegisterId, used to execute the expression
   std::vector<RegisterId> _inRegs;
+
+  std::unordered_map<ServerID, traverser::TraverserEngineID> const* _engines;
 
   /// @brief continue fetching of paths
   bool morePaths(size_t hint);

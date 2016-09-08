@@ -555,29 +555,6 @@ TraversalNode::~TraversalNode() {
   if (_condition != nullptr) {
     delete _condition;
   }
-  // We have to clean up the engines in Coordinator Case.
-  if (arangodb::ServerState::instance()->isCoordinator()) {
-    auto cc = arangodb::ClusterComm::instance();
-    std::string const url(
-        "/_db/" + arangodb::basics::StringUtils::urlEncode(_vocbase->name()) +
-        "/_internal/traverser/");
-    for (auto const& it : _engines) {
-      arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
-      std::unordered_map<std::string, std::string> headers;
-      auto res = cc->syncRequest(
-          "", coordTransactionID, "server:" + it.first, RequestType::DELETE_REQ,
-          url + arangodb::basics::StringUtils::itoa(it.second), "", headers,
-          30.0);
-      if (res->status != CL_COMM_SENT) {
-        // Note If there was an error on server side we do not have CL_COMM_SENT
-        std::string message("Could not destruct all traversal engines");
-        if (res->errorMessage.length() > 0) {
-          message += std::string(" : ") + res->errorMessage;
-        }
-        LOG(ERR) << message;
-      }
-    }
-  }
 }
 
 int TraversalNode::checkIsOutVariable(size_t variableId) const {

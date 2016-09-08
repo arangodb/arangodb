@@ -127,6 +127,27 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t* vocbase,
 }
 
 TraverserEngine::~TraverserEngine() {
+  auto resolver = _trx->resolver();
+  // TODO Do we need this or will delete trx do this already?
+  for (auto const& shard : _locked) {
+    TRI_voc_cid_t cid = resolver->getCollectionIdLocal(shard);
+    if (cid == 0) {
+      LOG(ERR) << "Failed to unlock shard " << shard << ": not found";
+      continue;
+    }
+    int res = _trx->unlock(_trx->trxCollection(cid), TRI_TRANSACTION_READ);
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG(ERR) << "Faild to unlock shard " << shard << ": "
+               << TRI_errno_string(res);
+    }
+  }
+  if (_trx != nullptr) {
+    delete _trx;
+    _trx = nullptr;
+  }
+  if (_query != nullptr) {
+    delete _query;
+  }
 }
 
 void TraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder& builder) {

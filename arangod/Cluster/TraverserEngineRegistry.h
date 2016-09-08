@@ -38,6 +38,7 @@ class TraverserEngine;
 typedef TRI_voc_tick_t TraverserEngineID;
 
 class TraverserEngineRegistry {
+  friend class TraverserEngine;
  public:
   TraverserEngineRegistry() {}
 
@@ -65,13 +66,14 @@ class TraverserEngineRegistry {
  private:
 
   struct EngineInfo {
-    bool _isInUse;            // Flag if this engine is in use
-    TraverserEngine* _engine; // The real engine
+    bool _isInUse;                            // Flag if this engine is in use
+    std::unique_ptr<TraverserEngine> _engine; // The real engine
 
-    double _timeToLive;       // in seconds
-    double _expires;          // UNIX UTC timestamp for expiration
+    double _timeToLive;                       // in seconds
+    double _expires;                          // UNIX UTC timestamp for expiration
 
     EngineInfo(TRI_vocbase_t*, arangodb::velocypack::Slice);
+    ~EngineInfo();
   };
 
   /// @brief the actual map of engines

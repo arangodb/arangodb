@@ -1074,17 +1074,6 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
           std::make_unique<CoordinatorInstanciator>(query, queryRegistry);
       plan->root()->walk(inst.get());
 
-#if 0
-      // Just for debugging
-      for (auto& ei : inst->engines) {
-        std::cout << "EngineInfo: id=" << ei.id
-                  << " Location=" << ei.location << std::endl;
-        for (auto& n : ei.nodes) {
-          std::cout << "Node: type=" << n->getTypeString() << std::endl;
-        }
-      }
-#endif
-
       try {
         engine = inst.get()->buildEngines();
         root = engine->root();
@@ -1189,6 +1178,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
         // into the QueryRegistry as well as those that we have pushed to
         // the DBservers via HTTP:
         TRI_vocbase_t* vocbase = query->vocbase();
+        auto cc = arangodb::ClusterComm::instance();
         for (auto& q : inst.get()->queryIds) {
           std::string theId = q.first;
           std::string queryId = q.second;
@@ -1199,7 +1189,6 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
             // Remove query from DBserver:
             arangodb::CoordTransactionID coordTransactionID =
                 TRI_NewTickServer();
-            auto cc = arangodb::ClusterComm::instance();
             if (queryId.back() == '*') {
               queryId.pop_back();
             }
@@ -1227,6 +1216,33 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
                   TRI_ERROR_INTERNAL);
             } catch (...) {
               // Ignore problems
+            }
+          }
+        }
+        // Also we need to destroy all traverser engines that have been pushed to DBServers
+        {
+
+          std::string const url(
+              "/_db/" +
+              arangodb::basics::StringUtils::urlEncode(vocbase->name()) +
+              "/_internal/traverser/");
+          for (auto& te : inst.get()->traverserEngines) {
+            std::string traverserId = arangodb::basics::StringUtils::itoa(te.first);
+            arangodb::CoordTransactionID coordTransactionID =
+                TRI_NewTickServer();
+            std::unordered_map<std::string, std::string> headers;
+            // NOTE: te.second is the list of shards. So we just send delete
+            // to the first of those shards
+            auto res = cc->syncRequest(
+                "", coordTransactionID, "shard:" + *(te.second.begin()),
+                RequestType::DELETE_REQ, url + traverserId, "", headers, 30.0);
+
+            // Ignore result, we need to try to remove all.
+            // However, log the incident if we have an errorMessage.
+            if (!res->errorMessage.empty()) {
+              std::string msg("while trying to unregister traverser engine ");
+              msg += traverserId + ": " + res->stringifyErrorMessage();
+              LOG(WARN) << msg;
             }
           }
         }

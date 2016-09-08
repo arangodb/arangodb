@@ -28,12 +28,14 @@
 #include "Aql/Functions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringRef.h"
+#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterTraverser.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/Transaction.h"
 #include "V8/v8-globals.h"
 #include "VocBase/MasterPointer.h"
 #include "VocBase/SingleServerTraverser.h"
+#include "VocBase/ticks.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -93,6 +95,11 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
   if (ep->usesPathOutVariable()) {
     _pathVar = ep->pathOutVariable();
   }
+
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    _engines = ep->engines();
+  }
+
 }
 
 TraversalBlock::~TraversalBlock() {
@@ -151,6 +158,37 @@ int TraversalBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   _usedConstant = false;
   freeCaches();
   return ExecutionBlock::initializeCursor(items, pos);
+}
+
+/// @brief shutdown: Inform all traverser Engines to destroy themselves
+int TraversalBlock::shutdown(int errorCode) {
+  DEBUG_BEGIN_BLOCK();
+  // We have to clean up the engines in Coordinator Case.
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    auto cc = arangodb::ClusterComm::instance();
+    std::string const url(
+        "/_db/" + arangodb::basics::StringUtils::urlEncode(_trx->vocbase()->name()) +
+        "/_internal/traverser/");
+    for (auto const& it : *_engines) {
+      arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
+      std::unordered_map<std::string, std::string> headers;
+      auto res = cc->syncRequest(
+          "", coordTransactionID, "server:" + it.first, RequestType::DELETE_REQ,
+          url + arangodb::basics::StringUtils::itoa(it.second), "", headers,
+          30.0);
+      if (res->status != CL_COMM_SENT) {
+        // Note If there was an error on server side we do not have CL_COMM_SENT
+        std::string message("Could not destruct all traversal engines");
+        if (res->errorMessage.length() > 0) {
+          message += std::string(" : ") + res->errorMessage;
+        }
+        LOG(ERR) << message;
+      }
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
+  DEBUG_END_BLOCK();
 }
 
 /// @brief read more paths

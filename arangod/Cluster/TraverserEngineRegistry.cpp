@@ -38,6 +38,9 @@ TraverserEngineRegistry::EngineInfo::EngineInfo(TRI_vocbase_t* vocbase,
       _timeToLive(0),
       _expires(0) {}
 
+TraverserEngineRegistry::EngineInfo::~EngineInfo() {
+}
+
 TraverserEngineRegistry::~TraverserEngineRegistry() {
   std::vector<TraverserEngineID> toDelete;
   {
@@ -92,8 +95,7 @@ void TraverserEngineRegistry::destroy(TraverserEngineID id) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEADLOCK);
   }
 
-  delete e->second->_engine;
-  e->second->_engine = nullptr;
+  delete e->second;
   _engines.erase(id);
 }
 
@@ -112,7 +114,7 @@ TraverserEngine* TraverserEngineRegistry::get(TraverserEngineID id) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEADLOCK);
   }
   e->second->_isInUse = true; 
-  return e->second->_engine;
+  return e->second->_engine.get();
 }
 
 /// @brief Returns the engine to the registry. Someone else can now use it.

@@ -47,8 +47,8 @@ namespace traverser {
 struct TraverserOptions;
 
 class TraverserEngine {
-  friend class TraverserEngineRegistry;
 
+  friend class TraverserEngineRegistry;
   private:
   // These are private on purpose.
   // Only the Registry (friend) is allowed
@@ -57,6 +57,8 @@ class TraverserEngine {
   // deletes an engine but the registry
   // does not get informed properly
     TraverserEngine(TRI_vocbase_t*, arangodb::velocypack::Slice);
+
+  public:
     ~TraverserEngine();
 
   public:
