@@ -127,7 +127,6 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t* vocbase,
 }
 
 TraverserEngine::~TraverserEngine() {
-  /*
   auto resolver = _trx->resolver();
   // TODO Do we need this or will delete trx do this already?
   for (auto const& shard : _locked) {
@@ -138,14 +137,12 @@ TraverserEngine::~TraverserEngine() {
     }
     int res = _trx->unlock(_trx->trxCollection(cid), TRI_TRANSACTION_READ);
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERR) << "Faild to unlock shard " << shard << ": "
+      LOG(ERR) << "Failed to unlock shard " << shard << ": "
                << TRI_errno_string(res);
     }
   }
-  */
   if (_trx) {
     _trx->commit();
-    delete _trx;
   }
   if (_query != nullptr) {
     delete _query;
