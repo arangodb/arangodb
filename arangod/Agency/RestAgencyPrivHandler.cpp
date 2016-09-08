@@ -131,7 +131,7 @@ RestHandler::status RestAgencyPrivHandler::execute() {
           return reportBadQuery();  // bad query
         }
       } else if (_request->suffix()[0] == "activate") {  // notify
-        if (_request->requestType() != GeneralRequest::RequestType::POST) {
+        if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
 
