@@ -1939,7 +1939,7 @@ function complexFilteringSuite () {
         // It may be that B or D are fetched accidentially
         // they may be inserted in the vertexToFetch list, which
         // lazy loads all vertices in it.
-        if (stats.scannedIndex != 8) {
+        if (stats.scannedIndex !== 8) {
           assertEqual(stats.scannedIndex, 9);
         }
       }
