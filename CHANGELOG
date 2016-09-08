@@ -1,6 +1,11 @@
 devel
 -----
 
+* added HTTP REST APIs for online loglevel adjustments:
+
+  - GET `/_admin/log/level` returns the current loglevel settings
+  - PUT `/_admin/log/level` modifies the current loglevel settings
+
 * changed default for keepNull of modifyVertex/modifyEdge to true in Gharial
 
 * renamed `maximalSize` attribute in parameter.json files to `journalSize`

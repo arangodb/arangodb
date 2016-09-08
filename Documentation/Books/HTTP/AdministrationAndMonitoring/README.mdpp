@@ -6,7 +6,11 @@ monitoring of the server.
 
 <!-- lib/Admin/RestAdminLogHandler.cpp -->
 
-@startDocuBlock JSF_get_admin_modules_flush
+@startDocuBlock JSF_get_admin_log
+
+@startDocuBlock JSF_get_admin_loglevel
+
+@startDocuBlock JSF_put_admin_loglevel
 
 
 <!-- js/actions/api-system.js -->
