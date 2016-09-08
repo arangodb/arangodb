@@ -127,6 +127,7 @@ void VppRequest::parseHeaderInformation() {
       }
     }
 
+    // fullUrl should not be necessary for Vpp
     _fullUrl = _requestPath + "?";
     for (auto const& param : _values) {
       _fullUrl.append(param.first + "=" +
