@@ -45,6 +45,10 @@ class RestAdminLogHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   status execute() override;
+
+ private:
+  void reportLogs();
+  void setLogLevel();
 };
 }
 

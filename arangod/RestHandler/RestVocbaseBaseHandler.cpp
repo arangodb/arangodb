@@ -637,25 +637,6 @@ bool RestVocbaseBaseHandler::extractBooleanParameter(char const* name,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parses the body as VelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
-std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
-    VPackOptions const* options, bool& success) {
-  try {
-    success = true;
-    return _request->toVelocyPackBuilderPtr(options);
-  } catch (VPackException const& e) {
-    std::string errmsg("VpackError error: ");
-    errmsg.append(e.what());
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON,
-                  errmsg);
-  }
-  success = false;
-  return std::make_shared<VPackBuilder>();
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief prepareExecute, to react to X-Arango-Nolock header
 ////////////////////////////////////////////////////////////////////////////////
 

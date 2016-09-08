@@ -279,10 +279,12 @@ bool Thread::start(ConditionVariable* finishedCondition) {
   }
 
   _finishedCondition = finishedCondition;
+  ThreadState state = _state.load();
 
-  if (_state.load() != ThreadState::CREATED) {
+  if (state != ThreadState::CREATED) {
     LOG_TOPIC(FATAL, Logger::THREADS)
-        << "called started on an already started thread";
+        << "called started on an already started thread, thread is in state "
+        << stringify(state);
     FATAL_ERROR_EXIT();
   }
 
@@ -290,7 +292,9 @@ bool Thread::start(ConditionVariable* finishedCondition) {
   bool res = _state.compare_exchange_strong(expected, ThreadState::STARTED);
 
   if (!res) {
-    LOG_TOPIC(WARN, Logger::THREADS) << "thread died before it could start";
+    LOG_TOPIC(WARN, Logger::THREADS)
+        << "thread died before it could start, thread is in state "
+        << stringify(expected);
     return false;
   }
 

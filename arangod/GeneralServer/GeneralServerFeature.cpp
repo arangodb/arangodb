@@ -521,7 +521,7 @@ void GeneralServerFeature::defineHandlers() {
       "/_admin/version", RestHandlerCreator<RestVersionHandler>::createNoData);
 
   // further admin handlers
-  _handlerFactory->addHandler(
+  _handlerFactory->addPrefixHandler(
       "/_admin/log",
       RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);
 

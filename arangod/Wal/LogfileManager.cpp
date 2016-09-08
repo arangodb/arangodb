@@ -1387,7 +1387,7 @@ Logfile* LogfileManager::getCollectableLogfile() {
       for (auto const& it : _transactions[bucket]._activeTransactions) {
         Logfile::IdType lastWrittenId = it.second.second;
 
-        if (lastWrittenId < minId) {
+        if (lastWrittenId < minId && lastWrittenId != 0) {
           minId = lastWrittenId;
         }
       }
@@ -1439,7 +1439,7 @@ Logfile* LogfileManager::getRemovableLogfile() {
       for (auto const& it : _transactions[bucket]._activeTransactions) {
         Logfile::IdType lastCollectedId = it.second.first;
 
-        if (lastCollectedId < minId) {
+        if (lastCollectedId < minId && lastCollectedId != 0) {
           minId = lastCollectedId;
         }
       }
@@ -1613,12 +1613,12 @@ LogfileManager::runningTransactions() {
       for (auto const& it : _transactions[bucket]._activeTransactions) {
 
         value = it.second.first;
-        if (value < lastCollectedId) {
+        if (value < lastCollectedId && value != 0) {
           lastCollectedId = value;
         }
 
         value = it.second.second;
-        if (value < lastSealedId) {
+        if (value < lastSealedId && value != 0) {
           lastSealedId = value;
         }
       }
