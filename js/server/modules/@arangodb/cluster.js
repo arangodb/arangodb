@@ -430,7 +430,7 @@ function cleanupCurrentDatabases (currentDatabases, writeLocked) {
 
         if (currentDatabases[name].hasOwnProperty(ourselves)) {
           // we are entered for a database that we don't have locally
-          console.info("cleaning up entry for unknown database '%s'", name);
+          console.debug("cleaning up entry for unknown database '%s'", name);
 
           writeLocked({ part: 'Current' },
             dropDatabaseAgency,
@@ -859,7 +859,7 @@ function dropLocalCollections (plannedCollections, currentCollections,
                 db._drop(collection);
 
                 if (removeAll || !shardMap.hasOwnProperty(collection)) {
-                  console.info('cleaning out Current entry for shard %s in',
+                  console.debug('cleaning out Current entry for shard %s in',
                     'agency for %s/%s', collection, database,
                     collections[collection].name);
                   writeLocked({ part: 'Current' },
