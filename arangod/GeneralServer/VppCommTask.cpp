@@ -52,7 +52,8 @@ using namespace arangodb::rest;
 VppCommTask::VppCommTask(GeneralServer* server, TRI_socket_t sock,
                          ConnectionInfo&& info, double timeout)
     : Task("VppCommTask"),
-      GeneralCommTask(server, sock, std::move(info), timeout) {
+      GeneralCommTask(server, sock, std::move(info), timeout),
+      _authenticatedUser() {
   _protocol = "vpp";
   _readBuffer.reserve(
       _bufferLength);  // ATTENTION <- this is required so we do not
@@ -219,6 +220,7 @@ bool VppCommTask::processRead() {
                                        << "\"," << message.payload().toJson()
                                        << "\"";
 
+    // get type of request
     int type = meta::underlyingValue(rest::RequestType::ILLEGAL);
     try {
       type = header.at(1).getInt();
@@ -230,14 +232,47 @@ bool VppCommTask::processRead() {
       closeTask(rest::ResponseCode::BAD);
       return false;
     }
+
+    // handle request types
     if (type == 1000) {
-      // do auth
+      // do authentication
+      std::string encryption = header.at(2).copyString();
+      std::string user = header.at(2).copyString();
+      std::string pass = header.at(3).copyString();
+      auto auth = basics::StringUtils::encodeBase64(user + ":" + pass);
+      AuthResult result = GeneralServerFeature::AUTH_INFO.checkAuthentication(
+          AuthInfo::AuthType::BASIC, auth);
+
+      if (result._authorized) {
+        _authenticatedUser = std::move(user);
+        handleSimpleError(rest::ResponseCode::I_AM_A_TEAPOT, TRI_ERROR_NO_ERROR,
+                          "authentication successful", chunkHeader._messageID);
+      } else {
+        _authenticatedUser.clear();
+        handleSimpleError(rest::ResponseCode::UNAUTHORIZED,
+                          TRI_ERROR_HTTP_UNAUTHORIZED, "authentication failed",
+                          chunkHeader._messageID);
+      }
     } else {
-      // check auth
       // the handler will take ownersip of this pointer
       std::unique_ptr<VppRequest> request(new VppRequest(
           _connectionInfo, std::move(message), chunkHeader._messageID));
       GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request.get());
+      request->setUser(_authenticatedUser);
+
+      // check authentication
+      std::string const& dbname = request->databaseName();
+      if (!_authenticatedUser.empty() || !dbname.empty()) {
+        AuthLevel level = GeneralServerFeature::AUTH_INFO.canUseDatabase(
+            _authenticatedUser, dbname);
+
+        if (level != AuthLevel::RW) {
+          handleSimpleError(
+              rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_FORBIDDEN,
+              TRI_errno_string(TRI_ERROR_FORBIDDEN), chunkHeader._messageID);
+        }
+      }
+
       // make sure we have a database
       if (request->requestContext() == nullptr) {
         handleSimpleError(rest::ResponseCode::NOT_FOUND,
