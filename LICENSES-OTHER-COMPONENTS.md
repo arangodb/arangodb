@@ -2,11 +2,11 @@
 
 ## C/C++ Libraries
 
-### Boost 1.58.0
+### Boost 1.61.0
 
 * Project Home: http://www.boost.org/
 * License: Boost [boost software license](http://www.boost.org/LICENSE_1_0.txt)
-* License: argument_value_usage.hpp [free as-is license](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/boost/1.58.0/boost/test/utils/runtime/cla/detail/argument_value_usage.hpp)
+* License: argument_value_usage.hpp [free as-is license](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/boost/1.61.0/boost/test/utils/runtime/cla/detail/argument_value_usage.hpp)
 
 ### fpconv_dtoa
 
@@ -75,18 +75,10 @@
 
 ## Programs
 
-### autoconf
+### cmake
 
-* Project Home: http://www.gnu.org/software/autoconf/autoconf.html
-* only used to generate code, not part of the distribution
-* License: configure [free as-is license](https://github.com/arangodb/arangodb/blob/master/configure#L11)
-* License: ax_cxx_compile_stdcxx_11.m4 [free as-is license](https://github.com/arangodb/arangodb/blob/master/m4/ax_cxx_compile_stdcxx_11.m4#L25)
-
-### automake
-
-* Project Home: https://www.gnu.org/software/automake/
-* only used to generate code, not part of the distribution
-* License: Makefile.in [free as-is license](https://raw.githubusercontent.com/arangodb/arangodb/master/Makefile.in)
+* Project Home: https://cmake.org/
+* License OSI-approved BSD 3-clause License [https://cmake.org/licensing/]
 
 ### Bison 3.0
 
