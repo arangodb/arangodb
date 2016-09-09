@@ -35,7 +35,7 @@
               <% } %>
 
               <% if (val.type === 'string') { %>
-                <input id="g_<%=key%>" type="text" placeholder="string"></input>
+                <input id="g_<%=key%>" type="text" placeholder="attribute"></input>
               <% } %>
 
               <% if (val.type === 'number') { %>
@@ -65,40 +65,41 @@
         <div class="pure-g pure-table pure-table-body">
           <% _.each(specific, function(val, key) { %>
 
-            <% if (val.type === 'divider') { %>
-              <div class="pure-u-1-1 left heading"><%=val.name%></div>
-            <% } else { %>
-              <div class="<%= genClass %> left">
-                <%=val.name%>
-              </div>
+            <% if (val.hide !== 'true') { %>
+              <% if (val.type === 'divider') { %>
+                <div class="pure-u-1-1 left heading"><%=val.name%></div>
+              <% } else { %>
+                <div class="<%= genClass %> left">
+                  <%=val.name%>
+                </div>
 
-              <div class="<%= genClass2 %> left">
+                <div class="<%= genClass2 %> left">
 
-                <% var VALUE; %>
-                <% if (val.value) { %>
-                  <% VALUE = val.value %>
-                <% } else { %>
-                  <% VALUE = val.default %>
-                <% } %>
+                  <% var VALUE; %>
+                  <% if (val.value) { %>
+                    <% VALUE = val.value %>
+                  <% } else { %>
+                    <% VALUE = val.default %>
+                  <% } %>
 
-                <% if (val.type === 'string') { %>
-                  <input id="g_<%=key%>" type="text" placeholder="string"></input>
-                <% } %>
+                  <% if (val.type === 'string') { %>
+                    <input id="g_<%=key%>" type="text" placeholder="attribute"></input>
+                  <% } %>
 
-                <% if (val.type === 'number') { %>
-                  <input id="g_<%=key%>" type="text" placeholder="number"></input>
-                <% } %>
+                  <% if (val.type === 'number') { %>
+                    <input id="g_<%=key%>" type="text" placeholder="number"></input>
+                  <% } %>
 
-                <% if (val.type === 'color') { %>
-                  <input id="g_<%=key%>" type='color' name='color' value="<%=VALUE%>"/>
-                <% } %>
+                  <% if (val.type === 'color') { %>
+                    <input id="g_<%=key%>" type='color' name='color' value="<%=VALUE%>"/>
+                  <% } %>
 
-                <% if (val.type === 'range') { %>
-                  <label id="g_<%=key%>_label" class="rangeLabel">1</label>
-                  <input id="g_<%=key%>" type='range' min="0" max="9" val="1"/>
-                <% } %>
+                  <% if (val.type === 'range') { %>
+                    <label id="g_<%=key%>_label" class="rangeLabel">1</label>
+                    <input id="g_<%=key%>" type='range' min="0" max="9" val="1"/>
+                  <% } %>
 
-                <% if (val.type === 'select') { %>
+                  <% if (val.type === 'select') { %>
                     <select id="g_<%=key%>">
                       <% _.each(val, function(option, optKey) { %>
                         <% if (option.name) { %>
@@ -106,9 +107,10 @@
                         <% } %>
                       <% }); %>
                     </select>
-                <% } %>
-                <i title="<%=val.desc%>" class="fa fa-info-circle gv-tooltips" aria-hidden="true"></i>
-              </div>
+                  <% } %>
+                  <i title="<%=val.desc%>" class="fa fa-info-circle gv-tooltips" aria-hidden="true"></i>
+                </div>
+              <% } %>
             <% } %>
           <% }); %>
         </div>

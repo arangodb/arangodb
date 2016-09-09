@@ -51,7 +51,7 @@
     aqlMode: false,
 
     events: {
-      'click #downloadPNG': 'downloadSVG',
+      'click #downloadPNG': 'downloadPNG',
       'click #reloadGraph': 'reloadGraph',
       'click #settingsMenu': 'toggleSettings',
       'click #noGraphToggle': 'toggleSettings',
@@ -109,11 +109,12 @@
       } catch (ignore) {}
     },
 
-    downloadSVG: function () {
+    downloadPNG: function () {
       var size = parseInt($('#graph-container').width(), 10);
       sigma.plugins.image(this.currentGraph, this.currentGraph.renderers[0], {
         download: true,
         size: size,
+        labels: true,
         background: 'white',
         zoom: true
       });
@@ -139,6 +140,47 @@
 
       this.resize();
       this.fetchGraph(toFocus);
+
+      this.initFullscreen();
+    },
+
+    initFullscreen: function () {
+      var self = this;
+
+      if (window.App.initializedFullscreen === false || window.App.initializedFullscreen === undefined) {
+        window.App.initializedFullscreen = true;
+        this.isFullscreen = false;
+
+        var exitHandler = function (a) {
+          if (document.webkitIsFullScreen || document.mozFullScreen || document.msFullscreenElement !== null) {
+            if (self.isFullscreen === false) {
+              self.isFullscreen = true;
+
+              // FULLSCREEN STYLING
+              $('#toggleForce').css('bottom', '10px');
+
+              $('#objectCount').css('bottom', '10px');
+              $('#objectCount').css('left', '25px');
+            } else {
+              self.isFullscreen = false;
+
+              // NO FULLSCREEN STYLING
+              $('#toggleForce').css('bottom', '40px');
+
+              $('#objectCount').css('bottom', '50px');
+              $('#objectCount').css('left', '25px');
+            }
+            console.log(self.isFullscreen);
+          }
+        };
+
+        if (document.addEventListener) {
+          document.addEventListener('webkitfullscreenchange', exitHandler, false);
+          document.addEventListener('mozfullscreenchange', exitHandler, false);
+          document.addEventListener('fullscreenchange', exitHandler, false);
+          document.addEventListener('MSFullscreenChange', exitHandler, false);
+        }
+      }
     },
 
     renderAQL: function (data) {
@@ -1301,10 +1343,11 @@
     },
 
     initializeGraph: function (sigmaInstance, graph) {
-      var self = this;
+      // var self = this;
       // sigmaInstance.graph.read(graph);
       sigmaInstance.refresh();
 
+      /*
       this.Sigma.plugins.Lasso = sigma.plugins.lasso;
 
       var lasso = new this.Sigma.plugins.Lasso(sigmaInstance, sigmaInstance.renderers[0], {
@@ -1343,6 +1386,7 @@
       });
 
       return lasso;
+      */
     },
 
     renderGraph: function (graph, toFocus, aqlMode) {
@@ -1368,8 +1412,8 @@
             style = 'position: absolute; left: 30px; margin-top: -37px;';
           }
 
-          $(this.el).append(
-            '<div style="' + style + ' animated fadeIn">' +
+          $('#graph-container').append(
+            '<div id="objectCount" style="' + style + ' animated fadeIn">' +
               '<span style="margin-right: 10px" class="arangoState"><span id="nodesCount">' + graph.nodes.length + '</span> nodes</span>' +
                 '<span class="arangoState"><span id="edgesCount">' + graph.edges.length + '</span> edges</span>' +
                   '</div>'
@@ -1406,13 +1450,13 @@
         labelThreshold: 10,
         maxNodeSize: 15,
         batchEdgesDrawing: true,
-        minEdgeSize: 10,
-        maxEdgeSize: 20,
+        minEdgeSize: 1,
+        maxEdgeSize: 1,
         enableEdgeHovering: true,
         edgeHoverColor: '#8c8c8c',
         defaultEdgeHoverColor: '#8c8c8c',
         defaultEdgeType: 'arrow',
-        edgeHoverSizeRatio: 2,
+        edgeHoverSizeRatio: 2.5,
         edgeHoverExtremities: true,
         nodesPowRatio: 0.5,
         // edgesPowRatio: 1.5,
@@ -1540,7 +1584,7 @@
                   var attributes = '';
                   attributes += '<span>ID </span> <span class="nodeId">' + data._id + '</span>';
                   if (Object.keys(data).length > 3) {
-                    attributes += '<span>KEYS </span>';
+                    attributes += '<span>ATTRIBUTES </span>';
                   }
                   _.each(data, function (value, key) {
                     if (key !== '_key' && key !== '_id' && key !== '_rev' && key !== '_from' && key !== '_to') {
@@ -1549,7 +1593,7 @@
                   });
                   var string = '<div id="nodeInfoDiv" class="nodeInfoDiv" style="display: none;">' + attributes + '</div>';
 
-                  $(self.el).append(string);
+                  $('#graph-container').append(string);
                   $('#nodeInfoDiv').fadeIn('slow');
                 }
               };
@@ -1737,7 +1781,7 @@
           style2 = 'color: rgb(64, 74, 83); cursor: pointer; position: absolute; right: 30px; margin-top: -30px;';
         }
 
-        $(this.el).append(
+        $('#graph-container').append(
           '<div id="toggleForce" style="' + style2 + '">' +
             '<i style="margin-right: 5px;" class="fa fa-pause"></i><span> Stop layout</span>' +
           '</div>'
@@ -1787,6 +1831,7 @@
         }, 2000);
       }
 
+      /*
       var enableLasso = function () {
         self.graphLasso = self.initializeGraph(s, graph);
         self.graphLasso.activate();
@@ -1807,12 +1852,14 @@
           $('#selectNodes').parent().hide();
         }
       }
+      */
 
-      if (self.graphLasso) {
+      /* if (self.graphLasso) {
         // add lasso event
         // Toggle lasso activation on Alt + l
         window.App.listenerFunctions['graphViewer'] = this.keyUpFunction.bind(this);
-      }
+      } */
+
       // clear up info div
       $('#calculatingGraph').fadeOut('slow');
 
@@ -1860,6 +1907,7 @@
       }
     },
 
+    /*
     toggleLasso: function () {
       var self = this;
 
@@ -1888,6 +1936,7 @@
         x.addEventListener('mouseup', self.nodesContextMenuCheck.bind(this), false);
       }
     },
+    */
 
     startLayout: function (kill, origin) {
       var self = this;
@@ -1925,7 +1974,7 @@
 
     stopLayout: function () {
       $('#toggleForce .fa').removeClass('fa-pause').addClass('fa-play');
-      $('#toggleForce span').html('Start layout');
+      $('#toggleForce span').html('Resume layout');
       this.layouting = false;
       this.currentGraph.stopForceAtlas2();
       sigma.plugins.dragNodes(this.currentGraph, this.currentGraph.renderers[0]);
