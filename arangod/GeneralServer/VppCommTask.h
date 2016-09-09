@@ -132,6 +132,7 @@ class VppCommTask : public GeneralCommTask {
       char const* vpackBegin, char const* chunkEnd);
 
   std::string _authenticatedUser;
+  bool _authenticationEnabled;
 
   // user
   // authenticated or not
