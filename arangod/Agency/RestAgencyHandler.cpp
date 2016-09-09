@@ -149,7 +149,7 @@ RestHandler::status RestAgencyHandler::handleWrite() {
         body.close();
         generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE,
                        body.slice());
-        LOG_TOPIC(ERR, Logger::AGENCY) << "We don't know who the leader is";
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
         return status::DONE;
       }
       std::this_thread::sleep_for(duration_t(100));
@@ -225,7 +225,7 @@ RestHandler::status RestAgencyHandler::handleWrite() {
         body.close();
         generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE,
                        body.slice());
-        LOG_TOPIC(ERR, Logger::AGENCY) << "We don't know who the leader is";
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
         return status::DONE;
       } else {
         
@@ -260,7 +260,7 @@ inline RestHandler::status RestAgencyHandler::handleRead() {
         body.close();
         generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE,
                        body.slice());
-        LOG_TOPIC(ERR, Logger::AGENCY) << "We don't know who the leader is";
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
         return status::DONE;
       }
       std::this_thread::sleep_for(duration_t(100));
@@ -283,7 +283,7 @@ inline RestHandler::status RestAgencyHandler::handleRead() {
         body.close();
         generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE,
                        body.slice());
-        LOG_TOPIC(ERR, Logger::AGENCY) << "We don't know who the leader is";
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
         return status::DONE;
 
       } else {

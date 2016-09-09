@@ -442,6 +442,8 @@ int ShortestPathBlock::initialize() {
   }
 
   return res;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -629,6 +631,8 @@ AqlItemBlock* ShortestPathBlock::getSome(size_t, size_t atMost) {
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
   return res.release();
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 

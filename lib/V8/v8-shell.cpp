@@ -52,7 +52,9 @@ static void ProcessCsvBegin(TRI_csv_parser_t* parser, size_t row) {
 
 static void ProcessCsvAdd(TRI_csv_parser_t* parser, char const* field, size_t,
                           size_t row, size_t column, bool escaped) {
+  // cppcheck-suppress *
   v8::Isolate* isolate = (v8::Isolate*)parser->_data;
+
   v8::Handle<v8::Array>* array =
       reinterpret_cast<v8::Handle<v8::Array>*>(parser->_dataBegin);
 

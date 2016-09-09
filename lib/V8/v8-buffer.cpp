@@ -182,7 +182,9 @@ static size_t ByteLengthString(v8::Isolate* isolate,
 
 static void Encode(v8::FunctionCallbackInfo<v8::Value> const& args,
                    const void* buf, size_t len, TRI_V8_encoding_t enc) {
+  // cppcheck-suppress *
   v8::Isolate* isolate = args.GetIsolate();
+
   if (enc == BUFFER) {
     TRI_V8_RETURN(TRI_V8_PAIR_STRING(static_cast<char const*>(buf), len));
   }
@@ -472,10 +474,8 @@ static bool IsBigEndian() {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void Swizzle(char* buf, size_t len) {
-  char t;
-
   for (size_t i = 0; i < len / 2; ++i) {
-    t = buf[i];
+    char t = buf[i];
     buf[i] = buf[len - i - 1];
     buf[len - i - 1] = t;
   }
@@ -764,7 +764,7 @@ bool V8Buffer::hasInstance(v8::Isolate* isolate, v8::Handle<v8::Value> val) {
   if (obj->Has(TRI_V8_ASCII_STRING("__buffer__"))) {
     return true;
   }
-    
+
   return strcmp(*v8::String::Utf8Value(obj->GetConstructorName()), "Buffer") ==
          0;
 }
@@ -962,7 +962,6 @@ static void JS_Base64Slice(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   unsigned a;
   unsigned b;
-  unsigned c;
   unsigned i;
   unsigned k;
   unsigned n;
@@ -979,7 +978,7 @@ static void JS_Base64Slice(v8::FunctionCallbackInfo<v8::Value> const& args) {
   while (i < n) {
     a = src[i + 0] & 0xff;
     b = src[i + 1] & 0xff;
-    c = src[i + 2] & 0xff;
+    unsigned c = src[i + 2] & 0xff;
 
     dst[k + 0] = table[a >> 2];
     dst[k + 1] = table[((a & 3) << 4) | (b >> 4)];
@@ -1052,12 +1051,17 @@ static void JS_Copy(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   V8Buffer* source = V8Buffer::unwrap(args.This());
 
-  if (!V8Buffer::hasInstance(isolate, args[0])) {
-    TRI_V8_THROW_EXCEPTION_USAGE("copy(<buffer>, [<start>], [<end>])");
+  if (source == nullptr) {
+    TRI_V8_THROW_EXCEPTION_USAGE("expecting a buffer as this");
   }
 
   v8::Local<v8::Value> target = args[0];
   char* target_data = V8Buffer::data(target);
+
+  if (target_data == nullptr || source == nullptr || source->_data == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid pointer value");
+  }
+
   size_t target_length = V8Buffer::length(target);
   size_t target_start = args[1]->IsUndefined() ? 0 : args[1]->Uint32Value();
   size_t source_start = args[2]->IsUndefined() ? 0 : args[2]->Uint32Value();
@@ -1083,10 +1087,6 @@ static void JS_Copy(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (source_end > source->_length) {
     TRI_V8_THROW_RANGE_ERROR("sourceEnd out of bounds");
-  }
-
-  if (target_data == nullptr || source == nullptr || source->_data == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid pointer value");
   }
 
   size_t to_copy =
@@ -1303,7 +1303,6 @@ static void JS_Base64Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("<offset> is out of bounds");
   }
 
-  char a, b, c, d;
   char* start = buffer->_data + offset;
   char* dst = start;
   char* const dstEnd = dst + max_length;
@@ -1317,13 +1316,13 @@ static void JS_Base64Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
       src++, remaining--;
     }
     if (remaining == 0 || *src == '=') break;
-    a = unbase64(*src++);
+    char a = unbase64(*src++);
 
     while (unbase64(*src) < 0 && src < srcEnd) {
       src++, remaining--;
     }
     if (remaining <= 1 || *src == '=') break;
-    b = unbase64(*src++);
+    char b = unbase64(*src++);
 
     *dst++ = (a << 2) | ((b & 0x30) >> 4);
     if (dst == dstEnd) break;
@@ -1332,7 +1331,7 @@ static void JS_Base64Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
       src++, remaining--;
     }
     if (remaining <= 2 || *src == '=') break;
-    c = unbase64(*src++);
+    char c = unbase64(*src++);
 
     *dst++ = ((b & 0x0F) << 4) | ((c & 0x3C) >> 2);
     if (dst == dstEnd) break;
@@ -1341,7 +1340,7 @@ static void JS_Base64Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
       src++, remaining--;
     }
     if (remaining <= 3 || *src == '=') break;
-    d = unbase64(*src++);
+    char d = unbase64(*src++);
 
     *dst++ = ((c & 0x03) << 6) | (d & 0x3F);
   }
@@ -1705,7 +1704,7 @@ void TRI_InitV8Buffer(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
 
   TRI_V8_AddMethod(isolate, ft, TRI_V8_ASCII_STRING("byteLength"),
                    JS_ByteLength);
-  
+
   // create the exports
   v8::Handle<v8::Object> exports = v8::Object::New(isolate);
 

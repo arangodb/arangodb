@@ -63,7 +63,6 @@ void AgentActivator::run() {
 
     // All snapshots and all logs
     query_t allLogs = _agent->allLogs();
-    LOG(WARN) << allLogs->toJson();
 
     auto headerFields =
       std::make_unique<std::unordered_map<std::string, std::string>>();
@@ -81,6 +80,7 @@ void AgentActivator::run() {
         << "Timed out while activating agent " << _replacement;
       break;
     }
+
   }
 }
 

@@ -209,6 +209,7 @@ bool ListenTask::handleEvent(EventToken token, EventType revents) {
             inet_ntop(AF_INET, &addr->sin_addr, buf, sizeof(buf) - 1);
 
         if (p != nullptr) {
+          // cppcheck-suppress *
           buf[INET_ADDRSTRLEN] = '\0';
           info.clientAddress = p;
         }
@@ -220,6 +221,7 @@ bool ListenTask::handleEvent(EventToken token, EventType revents) {
             inet_ntop(AF_INET6, &addrmem.sin6_addr, buf, sizeof(buf) - 1);
 
         if (p != nullptr) {
+          // cppcheck-suppress *
           buf[INET6_ADDRSTRLEN] = '\0';
           info.clientAddress = p;
         }
@@ -235,6 +237,7 @@ bool ListenTask::handleEvent(EventToken token, EventType revents) {
           inet_ntop(AF_INET, &addr_out->sin_addr, buf, sizeof(buf) - 1);
 
       if (p != nullptr) {
+        // cppcheck-suppress *
         buf[INET_ADDRSTRLEN] = '\0';
         info.serverAddress = p;
       }
@@ -246,6 +249,7 @@ bool ListenTask::handleEvent(EventToken token, EventType revents) {
           inet_ntop(AF_INET6, &addr_out_mem.sin6_addr, buf, sizeof(buf) - 1);
 
       if (p != nullptr) {
+        // cppcheck-suppress *
         buf[INET6_ADDRSTRLEN] = '\0';
         info.serverAddress = p;
       }

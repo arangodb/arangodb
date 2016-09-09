@@ -1433,6 +1433,7 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
     res = applyLog(response.get(), firstRegularTick, errorMsg, processedMarkers,
                    ignoreCount);
 
+    // cppcheck-suppress *
     if (processedMarkers > 0) {
       worked = true;
 

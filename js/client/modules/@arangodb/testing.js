@@ -102,6 +102,7 @@ const optionsDocumentation = [
   '   - `coordinators`: number coordinators to use',
   '   - `agency`: if set to true agency tests are done',
   '   - `agencySize`: number of agents in agency',
+  '   - `agencySupervision`: run supervision in agency',
   '   - `test`: path to single test to execute for "single" test target',
   '   - `cleanup`: if set to true (the default), the cluster data files',
   '     and logs are removed after termination of the test.',
@@ -136,6 +137,7 @@ const optionsDocumentation = [
 
 const optionsDefaults = {
   'agencySize': 3,
+  'agencySupervision': true,
   'build': '',
   'buildType': '',
   'cleanup': true,
@@ -1301,7 +1303,6 @@ function startInstanceCluster (instanceInfo, protocol, options,
     return [subArgs, subDir];
   };
 
-  options.agencySize = 1;
   options.agencyWaitForSync = false;
   startInstanceAgency(instanceInfo, protocol, options, ...makeArgs('agency', {}));
 
@@ -1437,6 +1438,7 @@ function startInstanceAgency (instanceInfo, protocol, options,
   const dataDir = fs.join(rootDir, 'data');
 
   const N = options.agencySize;
+  const S = options.agencySupervision;
   if (options.agencyWaitForSync === undefined) {
     options.agencyWaitForSync = false;
   }
@@ -1448,7 +1450,7 @@ function startInstanceAgency (instanceInfo, protocol, options,
     instanceArgs['agency.size'] = String(N);
     instanceArgs['agency.pool-size'] = String(N);
     instanceArgs['agency.wait-for-sync'] = String(wfs);
-    instanceArgs['agency.supervision'] = 'true';
+    instanceArgs['agency.supervision'] = String(S);
     instanceArgs['database.directory'] = dataDir + String(i);
 
     if (i === N - 1) {
@@ -1468,12 +1470,12 @@ function startInstanceAgency (instanceInfo, protocol, options,
     fs.makeDirectoryRecursive(dir);
     fs.makeDirectoryRecursive(instanceArgs['database.directory']);
     instanceInfo.arangods.push(startArango(protocol, options, instanceArgs, rootDir, 'agent'));
-  }
-
   instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;
   instanceInfo.url = instanceInfo.arangods[instanceInfo.arangods.length - 1].url;
   instanceInfo.role = 'agent';
   print('Agency Endpoint: ' + instanceInfo.endpoint);
+  }
+
 
   return instanceInfo;
 }

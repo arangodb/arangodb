@@ -102,8 +102,8 @@ struct log_t {
 };
 
 
-static std::string const pubApiPrefix = "/api/agency/";
-static std::string const privApiPrefix = "/api/agency_priv/";
+static std::string const pubApiPrefix = "/_api/agency/";
+static std::string const privApiPrefix = "/_api/agency_priv/";
 
 /// @brief Private RPC return type
 struct priv_rpc_ret_t {
