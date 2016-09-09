@@ -306,9 +306,14 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
     _vertexExpressions.reserve(read.length());
     for (auto const& info : VPackObjectIterator(read)) {
       size_t d = basics::StringUtils::uint64(info.key.copyString());
+#ifdef ARANGODB_ENABLE_MAINAINER_MODE
       auto it = _vertexExpressions.emplace(
           d, new aql::Expression(query->ast(), info.value));
       TRI_ASSERT(it.second);
+#else
+      _vertexExpressions.emplace(
+          d, new aql::Expression(query->ast(), info.value));
+#endif
     }
   }
 
