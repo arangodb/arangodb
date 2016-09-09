@@ -434,6 +434,8 @@ static void JS_ChecksumCollection(
 static void JS_EdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   return EdgesQuery(TRI_EDGE_ANY, args);
+
+  // cppcheck-suppress *
   TRI_V8_TRY_CATCH_END
 }
 
@@ -444,6 +446,8 @@ static void JS_EdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_InEdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   return EdgesQuery(TRI_EDGE_IN, args);
+
+  // cppcheck-suppress *
   TRI_V8_TRY_CATCH_END
 }
 
@@ -454,6 +458,8 @@ static void JS_InEdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_OutEdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   return EdgesQuery(TRI_EDGE_OUT, args);
+
+  // cppcheck-suppress *
   TRI_V8_TRY_CATCH_END
 }
 

@@ -799,6 +799,7 @@ static void JS_DocumentVocbaseCol(
 static void DropVocbaseColCoordinator(
     v8::FunctionCallbackInfo<v8::Value> const& args,
     arangodb::LogicalCollection* collection) {
+  // cppcheck-suppress *
   v8::Isolate* isolate = args.GetIsolate();
 
   if (collection->isSystem()) {
@@ -878,6 +879,8 @@ static void JS_ExistsVocbaseVPack(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   return ExistsVocbaseVPack(true, args);
+
+  // cppcheck-suppress style
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1299,6 +1302,8 @@ static void JS_RemoveVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   return RemoveVocbaseCol(args);
+
+  // cppcheck-suppress style
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2670,6 +2675,8 @@ static void JS_CompletionsVocbase(
 static void JS_RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   return RemoveVocbase(args);
+
+  // cppcheck-suppress style
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2691,6 +2698,8 @@ static void JS_DocumentVocbase(
 static void JS_ExistsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   return ExistsVocbaseVPack(false, args);
+
+  // cppcheck-suppress style
   TRI_V8_TRY_CATCH_END
 }
 

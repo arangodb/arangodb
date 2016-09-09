@@ -11,7 +11,12 @@ cppcheck -j4 \
   --inline-suppr \
   --suppress="*:lib/JsonParser/json-parser.cpp" \
   --suppress="*:lib/V8/v8-json.cpp" \
+  --suppress="*:lib/Zip/crypt.h" \
+  --suppress="*:lib/Zip/iowin32.cpp" \
+  --suppress="*:lib/Zip/unzip.cpp" \
+  --suppress="*:lib/Zip/zip.cpp" \
   --suppress="*:Aql/grammar.cpp" \
+  --suppress="*:Aql/tokens.cpp" \
   --suppress="*:Aql/tokens.ll" \
   arangod/ arangosh/ lib/ 2>> cppcheck.tmp
 
