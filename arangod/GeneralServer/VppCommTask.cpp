@@ -53,7 +53,11 @@ VppCommTask::VppCommTask(GeneralServer* server, TRI_socket_t sock,
                          ConnectionInfo&& info, double timeout)
     : Task("VppCommTask"),
       GeneralCommTask(server, sock, std::move(info), timeout),
-      _authenticatedUser() {
+      _authenticatedUser(),
+      _authenticationEnabled(
+          application_features::ApplicationServer::getFeature<
+              GeneralServerFeature>("GeneralServer")
+              ->authenticationEnabled()) {
   _protocol = "vpp";
   _readBuffer.reserve(
       _bufferLength);  // ATTENTION <- this is required so we do not
@@ -234,7 +238,7 @@ bool VppCommTask::processRead() {
     }
 
     // handle request types
-    if (type == 1000) {
+    if (type == 1000 && _authenticationEnabled) {
       // do authentication
       // std::string encryption = header.at(2).copyString();
       std::string user = header.at(3).copyString();
@@ -262,8 +266,9 @@ bool VppCommTask::processRead() {
 
       // check authentication
       std::string const& dbname = request->databaseName();
-      AuthLevel level = AuthLevel::NONE;
-      if (!_authenticatedUser.empty() || !dbname.empty()) {
+      AuthLevel level = AuthLevel::RW;
+      if (_authenticationEnabled &&
+          (!_authenticatedUser.empty() || !dbname.empty())) {
         level = GeneralServerFeature::AUTH_INFO.canUseDatabase(
             _authenticatedUser, dbname);
       }
