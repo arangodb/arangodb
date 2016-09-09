@@ -779,13 +779,8 @@ LogicalCollection::getIndexes() const {
 // is somehow protected. If it goes out of all scopes
 // or it's indexes are freed the pointer returned will get invalidated.
 arangodb::PrimaryIndex* LogicalCollection::primaryIndex() const {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(!_indexes.empty());
-#else
-  if (_indexes.empty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "primary index not found");
-  }
-#endif
+  TRI_ASSERT(_indexes[0]->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
   // the primary index must be the index at position #0
   return static_cast<arangodb::PrimaryIndex*>(_indexes[0].get());
 }
