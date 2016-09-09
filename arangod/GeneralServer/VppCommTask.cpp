@@ -236,7 +236,7 @@ bool VppCommTask::processRead() {
     // handle request types
     if (type == 1000) {
       // do authentication
-      std::string encryption = header.at(2).copyString();
+      // std::string encryption = header.at(2).copyString();
       std::string user = header.at(3).copyString();
       std::string pass = header.at(4).copyString();
       auto auth = basics::StringUtils::encodeBase64(user + ":" + pass);
@@ -367,6 +367,7 @@ void VppCommTask::handleSimpleError(rest::ResponseCode responseCode,
 boost::optional<bool> VppCommTask::getMessageFromSingleChunk(
     ChunkHeader const& chunkHeader, VppInputMessage& message, bool& doExecute,
     char const* vpackBegin, char const* chunkEnd) {
+  // add agent for this new message
   _agents.emplace(
       std::make_pair(chunkHeader._messageID, RequestStatisticsAgent(true)));
 
@@ -414,6 +415,7 @@ boost::optional<bool> VppCommTask::getMessageFromMultiChunks(
 
   // CASE 2a: chunk starts new message
   if (chunkHeader._isFirst) {  // first chunk of multi chunk message
+    // add agent for this new message
     _agents.emplace(
         std::make_pair(chunkHeader._messageID, RequestStatisticsAgent(true)));
 
@@ -449,6 +451,7 @@ boost::optional<bool> VppCommTask::getMessageFromMultiChunks(
 
     // CASE 2b: chunk continues a message
   } else {  // followup chunk of some mesage
+    // do not add agent for this continued message
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
                                             << "chunk continues a message";
     if (incompleteMessageItr == _incompleteMessages.end()) {
