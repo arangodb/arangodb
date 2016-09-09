@@ -414,6 +414,8 @@
         // add those filters also to the collection
         self.collection.addFilter(f.attribute, f.operator, f.value);
       });
+
+      self.rerender();
     },
 
     addFilterItem: function () {
