@@ -29,6 +29,7 @@
 #include "lib/Rest/VppRequest.h"
 #include "lib/Rest/VppResponse.h"
 
+#include <boost/optional.hpp>
 #include <stdexcept>
 
 namespace arangodb {
@@ -121,6 +122,16 @@ class VppCommTask : public GeneralCommTask {
   bool isChunkComplete(char*);    // sub-function of processRead
   ChunkHeader readChunkHeader();  // sub-function of processRead
   void replyToIncompleteMessages();
+
+  boost::optional<bool> getMessageFromSingleChunk(
+      ChunkHeader const& chunkHeader, VppInputMessage& message, bool& doExecute,
+      char const* vpackBegin, char const* chunkEnd);
+
+  boost::optional<bool> getMessageFromMultiChunks(
+      ChunkHeader const& chunkHeader, VppInputMessage& message, bool& doExecute,
+      char const* vpackBegin, char const* chunkEnd);
+
+  std::string _authenticatedUser;
 
   // user
   // authenticated or not

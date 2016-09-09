@@ -70,7 +70,7 @@ struct VppInputMessage {
     if (!_payload.empty()) {
       return _payload.front();
     }
-    return VPackSlice{};
+    return VPackSlice::noneSlice();
   }
 
   std::vector<VPackSlice> const& payloads() const { return _payload; }
@@ -111,7 +111,7 @@ struct VPackMessageNoOwnBuffer {
     if (_payloads.size() && _generateBody) {
       return _payloads.front();
     }
-    return arangodb::basics::VelocyPackHelper::NullValue();
+    return VPackSlice::noneSlice();
   }
 
   std::vector<VPackSlice> payloads() { return _payloads; }

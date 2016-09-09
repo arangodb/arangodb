@@ -303,14 +303,6 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
   TRI_ASSERT(collection != nullptr);
 
   try {
-    // Maybe the ordering is broken now
-    // create document collection
-    int res = collection->createInitialIndexes();
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-    
     // cid might have been assigned
     cid = collection->cid();
 
