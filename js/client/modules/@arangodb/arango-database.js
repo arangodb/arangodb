@@ -526,8 +526,12 @@ ArangoDatabase.prototype._dropIndex = function (id) {
 // / @brief returns the database version
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._version = function () {
-  var requestResult = this._connection.GET('/_api/version');
+ArangoDatabase.prototype._version = function (details) {
+  var appendix = '';
+  if (details) {
+    appendix = '?details=true';
+  }
+  var requestResult = this._connection.GET('/_api/version' + appendix);
 
   arangosh.checkRequestResult(requestResult);
 
