@@ -89,10 +89,10 @@ void VppCommTask::addResponse(VppResponse* response) {
 
   // adds chunk header infromation and creates SingBuffer* that can be
   // used with _writeBuffers
-  auto buffers =
-      createChunkForNetwork(slices, id, std::numeric_limits<std::size_t>::max(),
-                            false);  // set some sensible maxchunk
-                                     // size and compression
+  auto buffers = createChunkForNetwork(
+      slices, id, (std::numeric_limits<std::size_t>::max)(),
+      false);  // set some sensible maxchunk
+               // size and compression
 
   double const totalTime = getAgent(id)->elapsedSinceReadStart();
 
