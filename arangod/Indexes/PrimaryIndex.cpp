@@ -209,11 +209,11 @@ void PrimaryIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 }
 
 int PrimaryIndex::insert(arangodb::Transaction*, TRI_doc_mptr_t const*, bool) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "insert() called for primary index");
 }
 
 int PrimaryIndex::remove(arangodb::Transaction*, TRI_doc_mptr_t const*, bool) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "remove() called for primary index");
 }
 
 /// @brief unload the index data from memory

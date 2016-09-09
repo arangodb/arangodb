@@ -359,7 +359,7 @@ class LogicalCollection {
   // SECTION: Index creation
 
   /// @brief creates the initial indexes for the collection
-  int createInitialIndexes();
+  void createInitialIndexes();
 
   int openWorker(bool ignoreErrors);
 
