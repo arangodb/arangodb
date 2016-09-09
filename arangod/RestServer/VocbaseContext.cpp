@@ -82,9 +82,7 @@ bool VocbaseContext::useClusterAuthentication() const {
 rest::ResponseCode VocbaseContext::authenticate() {
   TRI_ASSERT(_vocbase != nullptr);
 
-  auto restServer =
-      application_features::ApplicationServer::getFeature<GeneralServerFeature>(
-          "GeneralServer");
+  auto restServer = application_features::ApplicationServer::getFeature<GeneralServerFeature>("GeneralServer");
 
   if (!restServer->authentication()) {
     // no authentication required at all
@@ -128,10 +126,10 @@ rest::ResponseCode VocbaseContext::authenticate() {
   return result;
 }
 
-rest::ResponseCode VocbaseContext::authenticateRequest(bool* forceOpen) {
-  auto restServer =
-      application_features::ApplicationServer::getFeature<GeneralServerFeature>(
-          "GeneralServer");
+rest::ResponseCode VocbaseContext::authenticateRequest(
+    bool* forceOpen) {
+  
+  auto restServer = application_features::ApplicationServer::getFeature<GeneralServerFeature>("GeneralServer");
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   // check if we need to run authentication for this type of
   // endpoint
@@ -202,7 +200,8 @@ rest::ResponseCode VocbaseContext::authenticateRequest(bool* forceOpen) {
 /// @brief checks the authentication via basic
 ////////////////////////////////////////////////////////////////////////////////
 
-rest::ResponseCode VocbaseContext::basicAuthentication(const char* auth) {
+rest::ResponseCode VocbaseContext::basicAuthentication(
+    const char* auth) {
   if (useClusterAuthentication()) {
     std::string const expected = ServerState::instance()->getAuthentication();
 
@@ -252,7 +251,8 @@ rest::ResponseCode VocbaseContext::basicAuthentication(const char* auth) {
 /// @brief checks the authentication via jwt
 ////////////////////////////////////////////////////////////////////////////////
 
-rest::ResponseCode VocbaseContext::jwtAuthentication(std::string const& auth) {
+rest::ResponseCode VocbaseContext::jwtAuthentication(
+    std::string const& auth) {
   AuthResult result = GeneralServerFeature::AUTH_INFO.checkAuthentication(
       AuthInfo::AuthType::JWT, auth);
 

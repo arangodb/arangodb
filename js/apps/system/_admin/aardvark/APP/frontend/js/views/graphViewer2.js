@@ -1133,6 +1133,8 @@
           arangoHelper.arangoError('Graph', 'Could not expand node: ' + id + '.');
         }
       });
+
+      self.removeHelp();
     },
 
     checkExpand: function (data, origin) {
@@ -1671,13 +1673,14 @@
               e.color = e.originalColor;
             });
 
+            $('.nodeInfoDiv').remove();
             s.refresh({ skipIndexation: true });
           }
         };
 
         s.bind('rightClickStage', function (e) {
-          unhighlightNodes();
           self.nodeHighlighted = 'undefinedid';
+          unhighlightNodes();
         });
 
         s.bind('rightClickNode', function (e) {
