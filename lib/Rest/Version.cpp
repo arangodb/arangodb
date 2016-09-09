@@ -115,7 +115,7 @@ void Version::initialize() {
 
 
 #if USE_ENTERPRISE
-  Values["enterprise-version"] = ENTERPRISE_VERSION;
+  Values["enterprise-version"] = ARANGODB_ENTERPRISE_VERSION;
 #endif
 
 #if HAVE_ARANGODB_BUILD_REPOSITORY
@@ -416,6 +416,8 @@ std::string Version::getDetailed() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Version::getVPack(VPackBuilder& dst) {
+  TRI_ASSERT(!dst.isClosed());
+
   for (auto const& it : Values) {
     std::string const& value = it.second;
 
