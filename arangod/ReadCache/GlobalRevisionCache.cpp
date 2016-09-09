@@ -26,17 +26,17 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "ReadCache/GlobalRevisionCacheChunk.h"
-    
+
 #include "Logger/Logger.h"
 
 using namespace arangodb;
 
 // the global read-cache for documents
 GlobalRevisionCache::GlobalRevisionCache(size_t defaultChunkSize, size_t totalTargetSize, GarbageCollectionCallback const& callback)
-    : _defaultChunkSize(defaultChunkSize), 
-      _totalTargetSize(totalTargetSize), 
-      _totalAllocated(0), 
-      _callback(callback) { 
+    : _defaultChunkSize(defaultChunkSize),
+      _totalTargetSize(totalTargetSize),
+      _totalAllocated(0),
+      _callback(callback) {
 
   TRI_ASSERT(defaultChunkSize >= 1024);
 
@@ -62,7 +62,7 @@ size_t GlobalRevisionCache::totalAllocated() {
 
 // stores a revision in the read-cache, acquiring a lease
 // the collection id is prepended to the actual data in order to quickly access
-// the shard-local hash for the revision when cleaning up the chunk 
+// the shard-local hash for the revision when cleaning up the chunk
 RevisionReader GlobalRevisionCache::storeAndLease(uint64_t collectionId, uint8_t const* data, size_t length) {
   while (true) {
     GlobalRevisionCacheChunk* chunk = nullptr;
@@ -84,7 +84,7 @@ RevisionReader GlobalRevisionCache::storeAndLease(uint64_t collectionId, uint8_t
             // chunk is being garbage collected at the moment
             // we cannot use this chunk but need to create a new one
             chunk = nullptr;
-          } 
+          }
         }
       }
     }
@@ -92,7 +92,7 @@ RevisionReader GlobalRevisionCache::storeAndLease(uint64_t collectionId, uint8_t
     // no suitable chunk found...
     // add a new chunk capable of holding at least the target length
     addChunk(length, chunk);
-    
+
     // and try insertion again in next iteration
     //LOG(ERR) << "REPEATING";
   }
@@ -100,7 +100,7 @@ RevisionReader GlobalRevisionCache::storeAndLease(uint64_t collectionId, uint8_t
 
 // stores a revision in the read-cache, without acquiring a lease
 // the collection id is prepended to the actual data in order to quickly access
-// the shard-local hash for the revision when cleaning up the chunk 
+// the shard-local hash for the revision when cleaning up the chunk
 void GlobalRevisionCache::store(uint64_t collectionId, uint8_t const* data, size_t length) {
   while (true) {
     GlobalRevisionCacheChunk* chunk = nullptr;
@@ -119,11 +119,11 @@ void GlobalRevisionCache::store(uint64_t collectionId, uint8_t const* data, size
             // chunk is being garbage collected at the moment
             // we cannot use this chunk but need to create a new one
             chunk = nullptr;
-          } 
+          }
         }
       }
     }
-    
+
     // no suitable chunk found...
     // add a new chunk capable of holding at least the target length
     addChunk(length, chunk);
@@ -131,7 +131,7 @@ void GlobalRevisionCache::store(uint64_t collectionId, uint8_t const* data, size
     // and try insertion again in next iteration
   }
 }
-  
+
 // run the garbage collection with the intent to free unused chunks
 bool GlobalRevisionCache::garbageCollect() {
   std::unique_ptr<GlobalRevisionCacheChunk> gcChunk;
@@ -153,8 +153,8 @@ bool GlobalRevisionCache::garbageCollect() {
         // there are still external references for this chunk. must not clean it up
         ++it;
       } else {
-        _usedList.erase(it);
         gcChunk.reset(*it);
+        _usedList.erase(it);
         break;
       }
     }
@@ -173,8 +173,8 @@ bool GlobalRevisionCache::garbageCollect(std::unique_ptr<GlobalRevisionCacheChun
   chunk->garbageCollect(_callback);
   // TODO: implement resetting and reusage for chunks
   chunk.reset(); // destroy the chunk
-       
-  { 
+
+  {
     WRITE_LOCKER(locker, _chunksLock);
     // adjust statistics
     _totalAllocated -= chunkSize;
@@ -202,9 +202,9 @@ void GlobalRevisionCache::addChunk(size_t dataLength, GlobalRevisionCacheChunk* 
   // don't pile up here
   {
     WRITE_LOCKER(locker, _chunksLock);
- 
+
     // start off by moving the full chunk to the used list, and by removing
-    // it from the free list 
+    // it from the free list
     if (fullChunk != nullptr) {
       for (auto it = _freeList.crbegin(), end = _freeList.crend(); it != end; ++it) {
         if ((*it) == fullChunk) {
@@ -236,8 +236,8 @@ void GlobalRevisionCache::addChunk(size_t dataLength, GlobalRevisionCacheChunk* 
           // there are still external references for this chunk. must not clean it up
           ++it;
         } else {
-          _usedList.erase(it);
           gcChunk.reset(*it);
+          _usedList.erase(it);
           break;
         }
       }
@@ -248,8 +248,8 @@ void GlobalRevisionCache::addChunk(size_t dataLength, GlobalRevisionCacheChunk* 
     _totalAllocated += targetSize;
   }
   chunk.release();
- 
-  // garbage collect outside of lock 
+
+  // garbage collect outside of lock
   garbageCollect(gcChunk);
 }
 

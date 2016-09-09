@@ -253,7 +253,7 @@ class Index {
 
   /// @brief whether or not the index is unique
   inline bool unique() const { return _unique; }
-  
+
   /// @brief validate fields from slice
   static void validateFields(VPackSlice const& slice);
 
@@ -264,17 +264,17 @@ class Index {
   static IndexType type(char const* type);
 
   static IndexType type(std::string const& type) {
-    return Index::type(type.c_str());
+    return type(type.c_str());
   }
 
   virtual bool allowExpansion() const = 0;
-  
+
   static bool allowExpansion(IndexType type) {
     return (type == TRI_IDX_TYPE_HASH_INDEX ||
             type == TRI_IDX_TYPE_SKIPLIST_INDEX ||
             type == TRI_IDX_TYPE_ROCKSDB_INDEX);
   }
-  
+
   virtual IndexType type() const = 0;
 
   /// @brief return the name of an index type
@@ -373,7 +373,7 @@ class Index {
 
   virtual void expandInSearchValues(arangodb::velocypack::Slice const,
                                     arangodb::velocypack::Builder&) const;
-  
+
  private:
   /// @brief set fields from slice
   void setFields(VPackSlice const& slice, bool allowExpansion);
