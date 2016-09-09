@@ -29,7 +29,7 @@
 #include "Basics/build.h"
 
 #ifdef USE_ENTERPRISE
-#include "Enterprise/Version.h"
+#include "Enterprise/Basics/Version.h"
 
 #ifndef ARANGODB_ENTERPRISE_VERSION
 #error "enterprise version number is not defined"
