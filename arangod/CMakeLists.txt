@@ -359,6 +359,7 @@ add_executable(${BIN_ARANGOD}
   Wal/Slot.cpp
   Wal/Slots.cpp
   Wal/SynchronizerThread.cpp
+  ${ADDITIONAL_BIN_ARANGOD_SOURCES}
 )
 
 target_link_libraries(${BIN_ARANGOD}
