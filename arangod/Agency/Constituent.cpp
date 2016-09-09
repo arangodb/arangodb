@@ -417,7 +417,7 @@ void Constituent::run() {
   std::vector<std::string> act = _agent->config().active();
   while (!this->isStopping() && find(act.begin(), act.end(), _id) == act.end()) {
     CONDITION_LOCKER(guardv, _cv);
-    _cv.wait(500000);
+    _cv.wait(50000);
     act = _agent->config().active();
   }
 
