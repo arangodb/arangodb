@@ -240,15 +240,15 @@ bool VppCommTask::processRead() {
     if (type == 1000) {
       // do authentication
       std::string encryption = header.at(2).copyString();
-      std::string user = header.at(2).copyString();
-      std::string pass = header.at(3).copyString();
+      std::string user = header.at(3).copyString();
+      std::string pass = header.at(4).copyString();
       auto auth = basics::StringUtils::encodeBase64(user + ":" + pass);
       AuthResult result = GeneralServerFeature::AUTH_INFO.checkAuthentication(
           AuthInfo::AuthType::BASIC, auth);
 
       if (result._authorized) {
         _authenticatedUser = std::move(user);
-        handleSimpleError(rest::ResponseCode::I_AM_A_TEAPOT, TRI_ERROR_NO_ERROR,
+        handleSimpleError(rest::ResponseCode::OK, TRI_ERROR_NO_ERROR,
                           "authentication successful", chunkHeader._messageID);
       } else {
         _authenticatedUser.clear();
