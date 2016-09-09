@@ -527,15 +527,12 @@ ArangoDatabase.prototype._dropIndex = function (id) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._version = function (details) {
-  var appendix = '';
-  if (details) {
-    appendix = '?details=true';
-  }
-  var requestResult = this._connection.GET('/_api/version' + appendix);
+  var requestResult = this._connection.GET('/_api/version' +
+                        (details ? '?details=true' : ''));
 
   arangosh.checkRequestResult(requestResult);
 
-  return requestResult.version;
+  return details ? requestResult : requestResult.version;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
