@@ -53,7 +53,11 @@ VppCommTask::VppCommTask(GeneralServer* server, TRI_socket_t sock,
                          ConnectionInfo&& info, double timeout)
     : Task("VppCommTask"),
       GeneralCommTask(server, sock, std::move(info), timeout),
-      _authenticatedUser() {
+      _authenticatedUser(),
+      _authenticationEnabled(
+          application_features::ApplicationServer::getFeature<
+              GeneralServerFeature>("GeneralServer")
+              ->authenticationEnabled()) {
   _protocol = "vpp";
   _readBuffer.reserve(
       _bufferLength);  // ATTENTION <- this is required so we do not
@@ -234,7 +238,7 @@ bool VppCommTask::processRead() {
     }
 
     // handle request types
-    if (type == 1000) {
+    if (type == 1000 && _authenticationEnabled) {
       // do authentication
       // std::string encryption = header.at(2).copyString();
       std::string user = header.at(3).copyString();
@@ -262,31 +266,35 @@ bool VppCommTask::processRead() {
 
       // check authentication
       std::string const& dbname = request->databaseName();
-      if (!_authenticatedUser.empty() || !dbname.empty()) {
-        AuthLevel level = GeneralServerFeature::AUTH_INFO.canUseDatabase(
+      AuthLevel level = AuthLevel::RW;
+      if (_authenticationEnabled &&
+          (!_authenticatedUser.empty() || !dbname.empty())) {
+        level = GeneralServerFeature::AUTH_INFO.canUseDatabase(
             _authenticatedUser, dbname);
-
-        if (level != AuthLevel::RW) {
-          handleSimpleError(
-              rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_FORBIDDEN,
-              TRI_errno_string(TRI_ERROR_FORBIDDEN), chunkHeader._messageID);
-        }
       }
 
-      // make sure we have a database
-      if (request->requestContext() == nullptr) {
-        handleSimpleError(rest::ResponseCode::NOT_FOUND,
-                          TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-                          TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND),
+      if (level != AuthLevel::RW) {
+        handleSimpleError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_FORBIDDEN,
+                          "not authorized to execute this request",
                           chunkHeader._messageID);
       } else {
-        request->setClientTaskId(_taskId);
-        _protocolVersion = request->protocolVersion();
+        // now that we are authorized we do the request
+        // make sure we have a database
+        if (request->requestContext() == nullptr) {
+          handleSimpleError(
+              rest::ResponseCode::NOT_FOUND,
+              TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+              TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND),
+              chunkHeader._messageID);
+        } else {
+          request->setClientTaskId(_taskId);
+          _protocolVersion = request->protocolVersion();
 
-        std::unique_ptr<VppResponse> response(new VppResponse(
-            rest::ResponseCode::SERVER_ERROR, chunkHeader._messageID));
-        response->setContentTypeRequested(request->contentTypeResponse());
-        executeRequest(std::move(request), std::move(response));
+          std::unique_ptr<VppResponse> response(new VppResponse(
+              rest::ResponseCode::SERVER_ERROR, chunkHeader._messageID));
+          response->setContentTypeRequested(request->contentTypeResponse());
+          executeRequest(std::move(request), std::move(response));
+        }
       }
     }
   }

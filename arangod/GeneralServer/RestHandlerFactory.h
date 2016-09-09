@@ -51,6 +51,7 @@ class RestHandlerFactory {
   typedef bool (*context_fptr)(GeneralRequest*, void*);
 
  public:
+  // cppcheck-suppress *
   RestHandlerFactory(context_fptr, void*);
 
  public:

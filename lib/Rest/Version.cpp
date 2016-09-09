@@ -44,10 +44,6 @@
 #include <rocksdb/version.h>
 #endif
 
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Version.h"
-#endif
-
 using namespace arangodb::rest;
 
 std::map<std::string, std::string> Version::Values;
