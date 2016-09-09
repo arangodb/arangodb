@@ -1301,7 +1301,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
     return [subArgs, subDir];
   };
 
-  options.agencySize = 1;
+//  options.agencySize = 1
   options.agencyWaitForSync = false;
   startInstanceAgency(instanceInfo, protocol, options, ...makeArgs('agency', {}));
 
@@ -1468,12 +1468,12 @@ function startInstanceAgency (instanceInfo, protocol, options,
     fs.makeDirectoryRecursive(dir);
     fs.makeDirectoryRecursive(instanceArgs['database.directory']);
     instanceInfo.arangods.push(startArango(protocol, options, instanceArgs, rootDir, 'agent'));
-  }
-
   instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;
   instanceInfo.url = instanceInfo.arangods[instanceInfo.arangods.length - 1].url;
   instanceInfo.role = 'agent';
   print('Agency Endpoint: ' + instanceInfo.endpoint);
+  }
+
 
   return instanceInfo;
 }
