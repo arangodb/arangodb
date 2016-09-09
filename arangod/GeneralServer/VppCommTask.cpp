@@ -262,31 +262,34 @@ bool VppCommTask::processRead() {
 
       // check authentication
       std::string const& dbname = request->databaseName();
+      AuthLevel level = AuthLevel::NONE;
       if (!_authenticatedUser.empty() || !dbname.empty()) {
-        AuthLevel level = GeneralServerFeature::AUTH_INFO.canUseDatabase(
+        level = GeneralServerFeature::AUTH_INFO.canUseDatabase(
             _authenticatedUser, dbname);
-
-        if (level != AuthLevel::RW) {
-          handleSimpleError(
-              rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_FORBIDDEN,
-              TRI_errno_string(TRI_ERROR_FORBIDDEN), chunkHeader._messageID);
-        }
       }
 
-      // make sure we have a database
-      if (request->requestContext() == nullptr) {
-        handleSimpleError(rest::ResponseCode::NOT_FOUND,
-                          TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-                          TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND),
+      if (level != AuthLevel::RW) {
+        handleSimpleError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_FORBIDDEN,
+                          "not authorized to execute this request",
                           chunkHeader._messageID);
       } else {
-        request->setClientTaskId(_taskId);
-        _protocolVersion = request->protocolVersion();
+        // now that we are authorized we do the request
+        // make sure we have a database
+        if (request->requestContext() == nullptr) {
+          handleSimpleError(
+              rest::ResponseCode::NOT_FOUND,
+              TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+              TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND),
+              chunkHeader._messageID);
+        } else {
+          request->setClientTaskId(_taskId);
+          _protocolVersion = request->protocolVersion();
 
-        std::unique_ptr<VppResponse> response(new VppResponse(
-            rest::ResponseCode::SERVER_ERROR, chunkHeader._messageID));
-        response->setContentTypeRequested(request->contentTypeResponse());
-        executeRequest(std::move(request), std::move(response));
+          std::unique_ptr<VppResponse> response(new VppResponse(
+              rest::ResponseCode::SERVER_ERROR, chunkHeader._messageID));
+          response->setContentTypeRequested(request->contentTypeResponse());
+          executeRequest(std::move(request), std::move(response));
+        }
       }
     }
   }

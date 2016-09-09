@@ -21,8 +21,7 @@ cppcheck -j4 \
 
 sort cppcheck.tmp | uniq > cppcheck.log
 
-
-#first file is - (files to exclude)
+#lines below will be ignored
 comm -23 cppcheck.log <(sort << EOF
 [arangod/Aql/AqlValue.h:586]: (performance) Variable 'materialized' is assigned in constructor body. Consider performing initialization in initialization list.
 [arangod/Aql/BasicBlocks.cpp:193]: (style) Statements following return, break, continue, goto or throw will never be executed.
