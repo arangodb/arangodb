@@ -263,9 +263,7 @@ class Index {
   /// @brief return the index type based on a type name
   static IndexType type(char const* type);
 
-  static IndexType type(std::string const& type) {
-    return type(type.c_str());
-  }
+  static IndexType type(std::string const& type);
 
   virtual bool allowExpansion() const = 0;
 

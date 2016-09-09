@@ -160,6 +160,10 @@ Index::IndexType Index::type(char const* type) {
 
   return TRI_IDX_TYPE_UNKNOWN;
 }
+    
+Index::IndexType Index::type(std::string const& type) {
+  return Index::type(type.c_str());
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the name of an index type
