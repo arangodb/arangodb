@@ -185,6 +185,9 @@ bool VppCommTask::processRead() {
   bool read_maybe_only_part_of_buffer = false;
   VppInputMessage message;  // filled in CASE 1 or CASE 2b
 
+  _agents.emplace(
+      std::make_pair(chunkHeader._messageID, RequestStatisticsAgent(true)));
+
   if (chunkHeader._isFirst && chunkHeader._chunk == 1) {
     // CASE 1: message is in one chunk
     if (auto rv = getMessageFromSingleChunk(chunkHeader, message, doExecute,
@@ -367,9 +370,6 @@ void VppCommTask::handleSimpleError(rest::ResponseCode responseCode,
 boost::optional<bool> VppCommTask::getMessageFromSingleChunk(
     ChunkHeader const& chunkHeader, VppInputMessage& message, bool& doExecute,
     char const* vpackBegin, char const* chunkEnd) {
-  _agents.emplace(
-      std::make_pair(chunkHeader._messageID, RequestStatisticsAgent(true)));
-
   auto agent = getAgent(chunkHeader._messageID);
   agent->acquire();
   agent->requestStatisticsAgentSetReadStart();
@@ -414,9 +414,6 @@ boost::optional<bool> VppCommTask::getMessageFromMultiChunks(
 
   // CASE 2a: chunk starts new message
   if (chunkHeader._isFirst) {  // first chunk of multi chunk message
-    _agents.emplace(
-        std::make_pair(chunkHeader._messageID, RequestStatisticsAgent(true)));
-
     auto agent = getAgent(chunkHeader._messageID);
     agent->acquire();
     agent->requestStatisticsAgentSetReadStart();
