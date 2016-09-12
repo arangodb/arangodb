@@ -14,6 +14,11 @@ Apart from that, AQL also offers several language constructs:
   as well as [COLLECT](../Operations/Collect.md) for grouping,
   which also offers efficient aggregation.
 
+!SUBSECTION CONCAT_SEPARATOR()
+
+[The function CONCAT_SEPARATOR which is equivilant to javascript join() is documented with the string functions.](String.md#concatseparator)
+
+
 !SUBSECTION APPEND()
 
 `APPEND(anyArray, values, unique) → newArray`
