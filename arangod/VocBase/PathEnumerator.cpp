@@ -53,6 +53,7 @@ bool DepthFirstEnumerator::next() {
         _edgeCursors.emplace(cursor);
       }
     } else {
+      TRI_ASSERT(!_enumeratedPath.edges.empty());
       // This path is at the end. cut the last step
       _enumeratedPath.vertices.pop_back();
       _enumeratedPath.edges.pop_back();
@@ -70,6 +71,7 @@ bool DepthFirstEnumerator::next() {
             _returnedEdges.emplace(_enumeratedPath.edges.back());
           } else {
             _traverser->_filteredPaths++;
+            TRI_ASSERT(!_enumeratedPath.edges.empty());
             _enumeratedPath.edges.pop_back();
             continue;
           }
@@ -79,6 +81,7 @@ bool DepthFirstEnumerator::next() {
                                                _enumeratedPath.edges.size() - 1,
                                                cursorId)) {
             // This edge does not pass the filtering
+            TRI_ASSERT(!_enumeratedPath.edges.empty());
             _enumeratedPath.edges.pop_back();
             continue;
         }
@@ -98,6 +101,7 @@ bool DepthFirstEnumerator::next() {
           if (!foundOnce) {
             // We found it and it was not the last element (expected)
             // This edge is allready on the path
+            TRI_ASSERT(!_enumeratedPath.edges.empty());
             _enumeratedPath.edges.pop_back();
             continue;
           }
@@ -123,6 +127,7 @@ bool DepthFirstEnumerator::next() {
             if (!foundOnce) {
               // We found it and it was not the last element (expected)
               // This vertex is allready on the path
+              TRI_ASSERT(!_enumeratedPath.edges.empty());
               _enumeratedPath.vertices.pop_back();
               _enumeratedPath.edges.pop_back();
               continue;
@@ -136,13 +141,16 @@ bool DepthFirstEnumerator::next() {
           return true;
         }
         // Vertex Invalid. Revoke edge
+        TRI_ASSERT(!_enumeratedPath.edges.empty());
         _enumeratedPath.edges.pop_back();
         continue;
       } else {
         // cursor is empty.
         _edgeCursors.pop();
-        _enumeratedPath.edges.pop_back();
-        _enumeratedPath.vertices.pop_back();
+        if (!_enumeratedPath.edges.empty()) {
+          _enumeratedPath.edges.pop_back();
+          _enumeratedPath.vertices.pop_back();
+        }
       }
     }
     if (_edgeCursors.empty()) {

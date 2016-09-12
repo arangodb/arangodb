@@ -359,6 +359,12 @@ class Transaction {
   static void extractKeyAndRevFromDocument(VPackSlice slice,
                                            VPackSlice& keySlice,
                                            TRI_voc_rid_t& revisionId);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief extract _rev from a database document
+  //////////////////////////////////////////////////////////////////////////////
+  
+  static TRI_voc_rid_t extractRevFromDocument(VPackSlice slice);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read any (random) document

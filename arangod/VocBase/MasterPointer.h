@@ -26,7 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/fasthash.h"
+#include "Utils/Transaction.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/voc-types.h"
 
@@ -152,7 +152,7 @@ struct TRI_doc_mptr_t {
 
   // return the marker's revision id as string slice or None slice if not there
   TRI_voc_rid_t revisionId() const {
-    return TRI_ExtractRevisionId(VPackSlice(vpack()));
+    return arangodb::Transaction::extractRevFromDocument(VPackSlice(vpack()));
   }
 };
 

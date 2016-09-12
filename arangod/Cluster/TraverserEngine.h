@@ -49,7 +49,7 @@ struct TraverserOptions;
 class TraverserEngine {
 
   friend class TraverserEngineRegistry;
-  private:
+  protected:
   // These are private on purpose.
   // Only the Registry (friend) is allowed
   // to create and destroy engines.
@@ -61,7 +61,6 @@ class TraverserEngine {
   public:
     virtual ~TraverserEngine();
 
-  public:
    // The engine is NOT copyable.
    TraverserEngine(TraverserEngine const&) = delete;
 
