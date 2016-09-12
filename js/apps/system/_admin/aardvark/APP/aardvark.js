@@ -419,14 +419,12 @@ authRouter.get('/graph/:name', function (req, res) {
     var tmpObjNodes = {};
 
     _.each(cursor.json, function (obj) {
-      var edgeLabel;
+      var edgeLabel = '';
       var edgeObj;
 
       _.each(obj.edges, function (edge) {
         if (edge._to && edge._from) {
-          if (config.edgeLabelByCollection === 'true') {
-            edgeLabel = edge._id.split('/')[0];
-          } else if (config.edgeLabel) {
+          if (config.edgeLabel && config.edgeLabel.length > 0) {
             // configure edge labels
 
             if (config.edgeLabel.indexOf('.') > -1) {
@@ -441,9 +439,12 @@ authRouter.get('/graph/:name', function (req, res) {
             if (typeof edgeLabel !== 'string') {
               edgeLabel = JSON.stringify(edgeLabel);
             }
-
-            if (!edgeLabel) {
-              edgeLabel = 'attribute ' + config.edgeLabel + ' not found';
+            if (config.edgeLabelByCollection === 'true') {
+              edgeLabel += ' - ' + edge._id.split('/')[0];
+            }
+          } else {
+            if (config.edgeLabelByCollection === 'true') {
+              edgeLabel = edge._id.split('/')[0];
             }
           }
 
@@ -474,6 +475,8 @@ authRouter.get('/graph/:name', function (req, res) {
           };
 
           if (config.edgeEditable === 'true') {
+            edgeObj.size = 1;
+          } else {
             edgeObj.size = 1;
           }
 
@@ -506,9 +509,8 @@ authRouter.get('/graph/:name', function (req, res) {
       _.each(obj.vertices, function (node) {
         if (node !== null) {
           nodeNames[node._id] = true;
-          if (config.nodeLabelByCollection === 'true') {
-            nodeLabel = node._id.split('/')[0];
-          } else if (config.nodeLabel) {
+
+          if (config.nodeLabel) {
             if (config.nodeLabel.indexOf('.') > -1) {
               nodeLabel = getAttributeByKey(node, config.nodeLabel);
               if (nodeLabel === undefined || nodeLabel === '') {
@@ -518,13 +520,15 @@ authRouter.get('/graph/:name', function (req, res) {
               nodeLabel = node[config.nodeLabel];
             }
           } else {
-            nodeLabel = node._id;
+            nodeLabel = node._key;
           }
 
+          if (config.nodeLabelByCollection === 'true') {
+            nodeLabel += ' - ' + node._id.split('/')[0];
+          }
           if (typeof nodeLabel === 'number') {
             nodeLabel = JSON.stringify(nodeLabel);
           }
-
           if (config.nodeSize && config.nodeSizeByEdges === 'false') {
             nodeSize = node[config.nodeSize];
           }

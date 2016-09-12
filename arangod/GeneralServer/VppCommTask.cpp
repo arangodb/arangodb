@@ -238,7 +238,7 @@ bool VppCommTask::processRead() {
     }
 
     // handle request types
-    if (type == 1000 && _authenticationEnabled) {
+    if (type == 1000) {
       // do authentication
       // std::string encryption = header.at(2).copyString();
       std::string user = header.at(3).copyString();
@@ -247,7 +247,7 @@ bool VppCommTask::processRead() {
       AuthResult result = GeneralServerFeature::AUTH_INFO.checkAuthentication(
           AuthInfo::AuthType::BASIC, auth);
 
-      if (result._authorized) {
+      if (!_authenticationEnabled || result._authorized) {
         _authenticatedUser = std::move(user);
         handleSimpleError(rest::ResponseCode::OK, TRI_ERROR_NO_ERROR,
                           "authentication successful", chunkHeader._messageID);
