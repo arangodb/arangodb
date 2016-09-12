@@ -64,6 +64,9 @@
 /// - 30: @LIT{shutdown in progress}
 ///   Will be raised when a call cannot succeed because a server shutdown is
 ///   already in progress.
+/// - 31: @LIT{only enterprise version}
+///   Will be raised when an enterprise-feature is requested from the community
+///   edition.
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 401: @LIT{unauthorized}
@@ -900,6 +903,17 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_SHUTTING_DOWN                                           (30)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 31: ERROR_ONLY_ENTERPRISE
+///
+/// only enterprise version
+///
+/// Will be raised when an enterprise-feature is requested from the community
+/// edition.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ONLY_ENTERPRISE                                         (31)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER

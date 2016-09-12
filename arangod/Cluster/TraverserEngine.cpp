@@ -305,6 +305,11 @@ void TraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
   builder.close();
 }
 
+void TraverserEngine::smartSearch(VPackSlice,
+                                  VPackBuilder&) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_ONLY_ENTERPRISE);
+}
+
 bool TraverserEngine::lockCollection(std::string const& shard) {
   if (_locked.find(shard) != _locked.end()) {
     return false;
