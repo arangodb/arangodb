@@ -1198,16 +1198,16 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
 
   {
     CONDITION_LOCKER(locker, agencyCallback->_cv);
-
+    
     while (true) {
       if (dbServerResult >= 0) {
         return dbServerResult;
       }
-
+      
       if (TRI_microtime() > endTime) {
         return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
       }
-
+      
       agencyCallback->executeByCallbackOrTimeout(interval);
     }
   }
