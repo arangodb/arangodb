@@ -53,10 +53,11 @@ bool DepthFirstEnumerator::next() {
         _edgeCursors.emplace(cursor);
       }
     } else {
-      TRI_ASSERT(!_enumeratedPath.edges.empty());
-      // This path is at the end. cut the last step
-      _enumeratedPath.vertices.pop_back();
-      _enumeratedPath.edges.pop_back();
+      if (!_enumeratedPath.edges.empty()) {
+        // This path is at the end. cut the last step
+        _enumeratedPath.vertices.pop_back();
+        _enumeratedPath.edges.pop_back();
+      }
     }
 
     while (!_edgeCursors.empty()) {
