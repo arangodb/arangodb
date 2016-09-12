@@ -26,6 +26,7 @@
 #include "Agency/Agent.h"
 #include "Agency/GossipCallback.h"
 #include "Basics/ConditionLocker.h"
+#include "Cluster/ClusterComm.h"
 
 #include <chrono>
 #include <thread>
@@ -114,14 +115,15 @@ void Inception::activeAgency() {  // Do we have an active agency?
 
   auto config = _agent->config();
   std::string const path = "/api/agency_priv/activeAgency";
+  auto out = std::make_shared<Builder>();
   
   if (config.poolComplete()) {
     for (auto const& pair : config.pool()) { // pool entries
       if (pair.first != config.id()) {
         std::string clientId = config.id();
-        //      auto comres = syncRequest(
-        //  clientId, 1, pair.second, rest::RequestType::POST, path, out->toJson(),
-        //  std::unordered_map<std::string, std::string>(), 10.0);
+        auto comres = arangodb::ClusterComm::instance()->syncRequest(
+          clientId, 1, pair.second, rest::RequestType::POST, path, out->toJson(),
+          std::unordered_map<std::string, std::string>(), 10.0);
       }
     }
   }
