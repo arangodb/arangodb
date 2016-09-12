@@ -304,6 +304,7 @@ RestHandler::status RestAgencyHandler::handleConfig() {
   body.add("term", Value(_agent->term()));
   body.add("leaderId", Value(_agent->leaderID()));
   body.add("lastCommitted", Value(_agent->lastCommitted()));
+  body.add("lastAcked", _agent->lastAckedAgo()->slice());
   body.add("configuration", _agent->config().toBuilder()->slice());
   body.close();
   generateResult(rest::ResponseCode::OK, body.slice());

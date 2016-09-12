@@ -227,72 +227,78 @@ std::vector<bool> Store::apply(std::vector<VPackSlice> const& queries,
     }
   }
 
-  // Find possibly affected callbacks
-  std::multimap<std::string, std::shared_ptr<notify_t>> in;
-  for (auto const& i : queries) {
-    for (auto const& j : VPackObjectIterator(i)) {
-      if (j.value.isObject() && j.value.hasKey("op")) {
-        std::string oper = j.value.get("op").copyString();
-        if (!(oper == "observe" || oper == "unobserve")) {
-          std::string uri = j.key.copyString();
-          while (true) {
-            auto ret = _observedTable.equal_range(uri);
-            for (auto it = ret.first; it != ret.second; ++it) {
-              in.emplace(it->second, std::make_shared<notify_t>(
-                                         it->first, j.key.copyString(), oper));
-            }
-            size_t pos = uri.find_last_of('/');
-            if (pos == std::string::npos || pos == 0) {
-              break;
-            } else {
-              uri = uri.substr(0, pos);
+  if (_agent->leading()) {
+    // Find possibly affected callbacks
+    std::multimap<std::string, std::shared_ptr<notify_t>> in;
+    for (auto const& i : queries) {
+      for (auto const& j : VPackObjectIterator(i)) {
+        if (j.value.isObject() && j.value.hasKey("op")) {
+          std::string oper = j.value.get("op").copyString();
+          if (!(oper == "observe" || oper == "unobserve")) {
+            std::string uri = j.key.copyString();
+            while (true) {
+              auto ret = _observedTable.equal_range(uri);
+              for (auto it = ret.first; it != ret.second; ++it) {
+                in.emplace(it->second, std::make_shared<notify_t>(
+                             it->first, j.key.copyString(), oper));
+              }
+              size_t pos = uri.find_last_of('/');
+              if (pos == std::string::npos || pos == 0) {
+                break;
+              } else {
+                uri = uri.substr(0, pos);
+              }
             }
           }
         }
       }
     }
-  }
-
-  // Sort by URLS to avoid multiple callbacks
-  std::vector<std::string> urls;
-  for (auto it = in.begin(), end = in.end(); it != end;
-       it = in.upper_bound(it->first)) {
-    urls.push_back(it->first);
-  }
-
-  // Callback
-  for (auto const& url : urls) {
-    Builder body;  // host
-    body.openObject();
-    body.add("term", VPackValue(_agent->term()));
-    body.add("index", VPackValue(_agent->lastCommitted()));
-    auto ret = in.equal_range(url);
-
-    for (auto it = ret.first; it != ret.second; ++it) {
-      body.add(it->second->key, VPackValue(VPackValueType::Object));
-      body.add(it->second->modified, VPackValue(VPackValueType::Object));
-      body.add("op", VPackValue(it->second->oper));
-      body.close();
-      body.close();
+    
+    // Sort by URLS to avoid multiple callbacks
+    std::vector<std::string> urls;
+    for (auto it = in.begin(), end = in.end(); it != end;
+         it = in.upper_bound(it->first)) {
+      urls.push_back(it->first);
     }
+    
+    // Callback
 
-    body.close();
-
-    std::string endpoint, path;
-    if (endpointPathFromUrl(url, endpoint, path)) {
-      auto headerFields =
+    for (auto const& url : urls) {
+      Builder body;  // host
+      body.openObject();
+      body.add("term", VPackValue(_agent->term()));
+      body.add("index", VPackValue(_agent->lastCommitted()));
+      auto ret = in.equal_range(url);
+      
+      for (auto it = ret.first; it != ret.second; ++it) {
+        body.add(it->second->key, VPackValue(VPackValueType::Object));
+        body.add(it->second->modified, VPackValue(VPackValueType::Object));
+        body.add("op", VPackValue(it->second->oper));
+        body.close();
+        body.close();
+      }
+      
+      body.close();
+      
+      std::string endpoint, path;
+      if (endpointPathFromUrl(url, endpoint, path)) {
+        auto headerFields =
           std::make_unique<std::unordered_map<std::string, std::string>>();
 
-      arangodb::ClusterComm::instance()->asyncRequest(
+        LOG(WARN) << body.toJson();
+        LOG(WARN) << endpoint.substr(6) + path;
+        
+        arangodb::ClusterComm::instance()->asyncRequest(
           "1", 1, endpoint, rest::RequestType::POST, path,
           std::make_shared<std::string>(body.toString()), headerFields,
-          std::make_shared<StoreCallback>(), 1.0, true);
-
-    } else {
-      LOG_TOPIC(WARN, Logger::AGENCY) << "Malformed URL " << url;
+          std::make_shared<StoreCallback>(), 0.01, true);
+        
+      } else {
+        LOG_TOPIC(WARN, Logger::AGENCY) << "Malformed URL " << url;
+      }
     }
   }
-
+  
   return applied;
 }
 
@@ -521,7 +527,7 @@ void Store::run() {
     }
 
     toClear = clearExpired();
-    if (_agent) {
+    if (_agent && _agent->leading()) {
       _agent->write(toClear);
     }
   }

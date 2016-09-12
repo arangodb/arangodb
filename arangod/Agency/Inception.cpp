@@ -26,6 +26,7 @@
 #include "Agency/Agent.h"
 #include "Agency/GossipCallback.h"
 #include "Basics/ConditionLocker.h"
+#include "Cluster/ClusterComm.h"
 
 #include <chrono>
 #include <thread>
@@ -112,48 +113,25 @@ void Inception::gossip() {
 
 void Inception::activeAgency() {  // Do we have an active agency?
 
-  //  if (config.poolComplete() && config.)
-  /*
-    config_t config = _agent->config(); // get a copy of conf
-    size_t i = 0;
-    std::string const path = "/_api/agency/activeAgents";
-
-    for (auto const& endpoint : config.gossipPeers()) { // gossip peers
-      if (endpoint != config.endpoint()) {
-        std::string clientid = config.id() + std::to_string(i++);
-        auto hf = std::make_unique<std::unordered_map<std::string,
-    std::string>>();
-        arangodb::ClusterComm::instance()->asyncRequest(
-          clientid, 1, endpoint, GeneralRequest::RequestType::POST, path,
-          std::make_shared<std::string>(out->toJson()), hf,
-          std::make_shared<GossipCallback>(_agent), 1.0, true);
-      }
-    }
-
+  auto config = _agent->config();
+  std::string const path = "/api/agency_priv/activeAgency";
+  auto out = std::make_shared<Builder>();
+  
+  if (config.poolComplete()) {
     for (auto const& pair : config.pool()) { // pool entries
-      if (pair.second != config.endpoint()) {
-        std::string clientid = config.id() + std::to_string(i++);
-        auto hf = std::make_unique<std::unordered_map<std::string,
-    std::string>>();
-        arangodb::ClusterComm::instance()->asyncRequest(
-          clientid, 1, pair.second, GeneralRequest::RequestType::POST, path,
-          std::make_shared<std::string>(out->toJson()), hf,
-          std::make_shared<GossipCallback>(_agent), 1.0, true);
+      if (pair.first != config.id()) {
+        std::string clientId = config.id();
+        auto comres = arangodb::ClusterComm::instance()->syncRequest(
+          clientId, 1, pair.second, rest::RequestType::POST, path, out->toJson(),
+          std::unordered_map<std::string, std::string>(), 10.0);
       }
     }
-  */
-  // start in pool/gossi peers start check if active agency
+  }
 
-  // if not if i have persisted agency
-  // if member
-  // contact other agents.
-  // if agreement raft
-
-  // complete pool?
 }
 
 void Inception::run() {
-  activeAgency();
+  //activeAgency();
 
   config_t config = _agent->config();
   if (!config.poolComplete()) {
