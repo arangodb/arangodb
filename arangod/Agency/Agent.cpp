@@ -518,6 +518,21 @@ bool Agent::challengeLeadership() {
 
 
 /// Get last acknowlwdged responses on leader
+query_t Agent::lastAckedAgo() const {
+  query_t ret = std::make_shared<Builder>();
+  ret->openObject();
+  if (leading()) {
+    for (auto const& i : _lastAcked) {
+      ret->add(i.first, VPackValue(
+                 1.0e-2 * std::floor(
+                   (i.first!=id() ?
+                    duration<double>(system_clock::now()-i.second).count()*100.0
+                    : 0.0))));
+    }
+  }
+  ret->close();
+  return ret;
+}
 
 
 /// Write new entries to replicated state and store

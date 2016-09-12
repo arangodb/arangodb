@@ -166,6 +166,9 @@ class Agent : public arangodb::Thread {
   /// @brief All there is in the state machine
   query_t allLogs() const;
 
+  /// @brief Last contact with followers
+  query_t lastAckedAgo() const;
+
   /// @brief Am I active agent
   bool active() const;
 
