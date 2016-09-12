@@ -59,7 +59,7 @@ class TraverserEngine {
     TraverserEngine(TRI_vocbase_t*, arangodb::velocypack::Slice);
 
   public:
-    ~TraverserEngine();
+    virtual ~TraverserEngine();
 
   public:
    // The engine is NOT copyable.
@@ -73,6 +73,9 @@ class TraverserEngine {
 
    void getVertexData(arangodb::velocypack::Slice, size_t,
                       arangodb::velocypack::Builder&);
+
+   virtual void smartSearch(arangodb::velocypack::Slice,
+                            arangodb::velocypack::Builder&);
 
    bool lockCollection(std::string const&);
 

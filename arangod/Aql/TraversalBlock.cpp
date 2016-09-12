@@ -149,6 +149,8 @@ int TraversalBlock::initialize() {
   }
 
   return res;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -188,6 +190,8 @@ int TraversalBlock::shutdown(int errorCode) {
   }
 
   return ExecutionBlock::shutdown(errorCode);
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -236,6 +240,8 @@ bool TraversalBlock::morePaths(size_t hint) {
   _engine->_stats.scannedIndex += _traverser->getAndResetReadDocuments();
   _engine->_stats.filtered += _traverser->getAndResetFilteredPaths();
   return !_vertices.empty();
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -248,6 +254,8 @@ size_t TraversalBlock::skipPaths(size_t hint) {
     return 0;
   }
   return _traverser->skip(hint);
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -303,6 +311,8 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items, size_t pos) {
     }
   }
   initializeExpressions(items, pos);
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -398,6 +408,8 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
   return res.release();
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -442,5 +454,7 @@ size_t TraversalBlock::skipSome(size_t atLeast, size_t atMost) {
   _posInPaths += atMost;
   // Skip the next atMost many paths.
   return atMost;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }

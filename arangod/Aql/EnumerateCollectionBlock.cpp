@@ -71,6 +71,8 @@ bool EnumerateCollectionBlock::skipDocuments(size_t toSkip, size_t& skipped) {
   }
   // _scanner might have more elements
   return true;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();  
 }
 
@@ -103,6 +105,8 @@ bool EnumerateCollectionBlock::moreDocuments(size_t hint) {
   _engine->_stats.scannedFull += static_cast<int64_t>(count);
 
   return true;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();  
 }
 
@@ -112,6 +116,8 @@ int EnumerateCollectionBlock::initialize() {
   _mustStoreResult = ep->isVarUsedLater(ep->_outVariable);
 
   return ExecutionBlock::initialize();
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();  
 }
 
@@ -129,6 +135,8 @@ int EnumerateCollectionBlock::initializeCursor(AqlItemBlock* items,
   DEBUG_END_BLOCK();  
 
   return TRI_ERROR_NO_ERROR;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();  
 }
 
@@ -218,6 +226,8 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
   clearRegisters(res.get());
 
   return res.release();
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK(); 
 }
 
@@ -278,5 +288,7 @@ size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
   }
   // We skipped atLeast documents
   return skipped;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK(); 
 }

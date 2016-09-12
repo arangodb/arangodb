@@ -178,19 +178,19 @@ void InternalRestTraverserHandler::queryEngine() {
   }
 
   VPackSlice body = parsedBody->slice();
-  VPackSlice depthSlice = body.get("depth");
-
-  VPackSlice keysSlice = body.get("keys");
-
-  if (!keysSlice.isString() && !keysSlice.isArray()) {
-    generateError(
-        ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "expecting 'keys' to be a string or an array value.");
-    return;
-  }
-
   VPackBuilder result;
   if (option == "edge") {
+    VPackSlice depthSlice = body.get("depth");
+
+    VPackSlice keysSlice = body.get("keys");
+
+    if (!keysSlice.isString() && !keysSlice.isArray()) {
+      generateError(
+          ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+          "expecting 'keys' to be a string or an array value.");
+      return;
+    }
+
     if (!depthSlice.isInteger()) {
       generateError(
           ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -200,6 +200,17 @@ void InternalRestTraverserHandler::queryEngine() {
 
     engine->getEdges(keysSlice, depthSlice.getNumericValue<size_t>(), result);
   } else if (option == "vertex") {
+    VPackSlice depthSlice = body.get("depth");
+
+    VPackSlice keysSlice = body.get("keys");
+
+    if (!keysSlice.isString() && !keysSlice.isArray()) {
+      generateError(
+          ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+          "expecting 'keys' to be a string or an array value.");
+      return;
+    }
+
     if (depthSlice.isNone()) {
       engine->getVertexData(keysSlice, result);
     } else {
@@ -211,6 +222,8 @@ void InternalRestTraverserHandler::queryEngine() {
       }
       engine->getVertexData(keysSlice, depthSlice.getNumericValue<size_t>(), result);
     }
+  } else if (option == "smartSearch") {
+    engine->smartSearch(body, result);
   } else {
     // PATH Info wrong other error
     generateError(

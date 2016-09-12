@@ -53,7 +53,11 @@ VppCommTask::VppCommTask(GeneralServer* server, TRI_socket_t sock,
                          ConnectionInfo&& info, double timeout)
     : Task("VppCommTask"),
       GeneralCommTask(server, sock, std::move(info), timeout),
-      _authenticatedUser() {
+      _authenticatedUser(),
+      _authenticationEnabled(
+          application_features::ApplicationServer::getFeature<
+              GeneralServerFeature>("GeneralServer")
+              ->authenticationEnabled()) {
   _protocol = "vpp";
   _readBuffer.reserve(
       _bufferLength);  // ATTENTION <- this is required so we do not
@@ -89,10 +93,10 @@ void VppCommTask::addResponse(VppResponse* response) {
 
   // adds chunk header infromation and creates SingBuffer* that can be
   // used with _writeBuffers
-  auto buffers =
-      createChunkForNetwork(slices, id, std::numeric_limits<std::size_t>::max(),
-                            false);  // set some sensible maxchunk
-                                     // size and compression
+  auto buffers = createChunkForNetwork(
+      slices, id, (std::numeric_limits<std::size_t>::max)(),
+      false);  // set some sensible maxchunk
+               // size and compression
 
   double const totalTime = getAgent(id)->elapsedSinceReadStart();
 
@@ -185,9 +189,6 @@ bool VppCommTask::processRead() {
   bool read_maybe_only_part_of_buffer = false;
   VppInputMessage message;  // filled in CASE 1 or CASE 2b
 
-  _agents.emplace(
-      std::make_pair(chunkHeader._messageID, RequestStatisticsAgent(true)));
-
   if (chunkHeader._isFirst && chunkHeader._chunk == 1) {
     // CASE 1: message is in one chunk
     if (auto rv = getMessageFromSingleChunk(chunkHeader, message, doExecute,
@@ -239,16 +240,16 @@ bool VppCommTask::processRead() {
     // handle request types
     if (type == 1000) {
       // do authentication
-      std::string encryption = header.at(2).copyString();
-      std::string user = header.at(2).copyString();
-      std::string pass = header.at(3).copyString();
+      // std::string encryption = header.at(2).copyString();
+      std::string user = header.at(3).copyString();
+      std::string pass = header.at(4).copyString();
       auto auth = basics::StringUtils::encodeBase64(user + ":" + pass);
       AuthResult result = GeneralServerFeature::AUTH_INFO.checkAuthentication(
           AuthInfo::AuthType::BASIC, auth);
 
-      if (result._authorized) {
+      if (!_authenticationEnabled || result._authorized) {
         _authenticatedUser = std::move(user);
-        handleSimpleError(rest::ResponseCode::I_AM_A_TEAPOT, TRI_ERROR_NO_ERROR,
+        handleSimpleError(rest::ResponseCode::OK, TRI_ERROR_NO_ERROR,
                           "authentication successful", chunkHeader._messageID);
       } else {
         _authenticatedUser.clear();
@@ -265,31 +266,35 @@ bool VppCommTask::processRead() {
 
       // check authentication
       std::string const& dbname = request->databaseName();
-      if (!_authenticatedUser.empty() || !dbname.empty()) {
-        AuthLevel level = GeneralServerFeature::AUTH_INFO.canUseDatabase(
+      AuthLevel level = AuthLevel::RW;
+      if (_authenticationEnabled &&
+          (!_authenticatedUser.empty() || !dbname.empty())) {
+        level = GeneralServerFeature::AUTH_INFO.canUseDatabase(
             _authenticatedUser, dbname);
-
-        if (level != AuthLevel::RW) {
-          handleSimpleError(
-              rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_FORBIDDEN,
-              TRI_errno_string(TRI_ERROR_FORBIDDEN), chunkHeader._messageID);
-        }
       }
 
-      // make sure we have a database
-      if (request->requestContext() == nullptr) {
-        handleSimpleError(rest::ResponseCode::NOT_FOUND,
-                          TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-                          TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND),
+      if (level != AuthLevel::RW) {
+        handleSimpleError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_FORBIDDEN,
+                          "not authorized to execute this request",
                           chunkHeader._messageID);
       } else {
-        request->setClientTaskId(_taskId);
-        _protocolVersion = request->protocolVersion();
+        // now that we are authorized we do the request
+        // make sure we have a database
+        if (request->requestContext() == nullptr) {
+          handleSimpleError(
+              rest::ResponseCode::NOT_FOUND,
+              TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+              TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND),
+              chunkHeader._messageID);
+        } else {
+          request->setClientTaskId(_taskId);
+          _protocolVersion = request->protocolVersion();
 
-        std::unique_ptr<VppResponse> response(new VppResponse(
-            rest::ResponseCode::SERVER_ERROR, chunkHeader._messageID));
-        response->setContentTypeRequested(request->contentTypeResponse());
-        executeRequest(std::move(request), std::move(response));
+          std::unique_ptr<VppResponse> response(new VppResponse(
+              rest::ResponseCode::SERVER_ERROR, chunkHeader._messageID));
+          response->setContentTypeRequested(request->contentTypeResponse());
+          executeRequest(std::move(request), std::move(response));
+        }
       }
     }
   }
@@ -370,6 +375,10 @@ void VppCommTask::handleSimpleError(rest::ResponseCode responseCode,
 boost::optional<bool> VppCommTask::getMessageFromSingleChunk(
     ChunkHeader const& chunkHeader, VppInputMessage& message, bool& doExecute,
     char const* vpackBegin, char const* chunkEnd) {
+  // add agent for this new message
+  _agents.emplace(
+      std::make_pair(chunkHeader._messageID, RequestStatisticsAgent(true)));
+
   auto agent = getAgent(chunkHeader._messageID);
   agent->acquire();
   agent->requestStatisticsAgentSetReadStart();
@@ -414,6 +423,10 @@ boost::optional<bool> VppCommTask::getMessageFromMultiChunks(
 
   // CASE 2a: chunk starts new message
   if (chunkHeader._isFirst) {  // first chunk of multi chunk message
+    // add agent for this new message
+    _agents.emplace(
+        std::make_pair(chunkHeader._messageID, RequestStatisticsAgent(true)));
+
     auto agent = getAgent(chunkHeader._messageID);
     agent->acquire();
     agent->requestStatisticsAgentSetReadStart();
@@ -446,6 +459,7 @@ boost::optional<bool> VppCommTask::getMessageFromMultiChunks(
 
     // CASE 2b: chunk continues a message
   } else {  // followup chunk of some mesage
+    // do not add agent for this continued message
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
                                             << "chunk continues a message";
     if (incompleteMessageItr == _incompleteMessages.end()) {

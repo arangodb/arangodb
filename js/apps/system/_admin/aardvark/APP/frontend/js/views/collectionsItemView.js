@@ -23,7 +23,7 @@
     },
 
     render: function () {
-      if (this.model.get('locked')) {
+      if (this.model.get('locked') || this.model.get('status') === 'corrupted') {
         $(this.el).addClass('locked');
         $(this.el).addClass(this.model.get('lockType'));
       } else {
@@ -65,6 +65,9 @@
         return 0;
       }
       if (this.model.get('status') === 'loading') {
+        return 0;
+      }
+      if (this.model.get('status') === 'corrupted') {
         return 0;
       }
 

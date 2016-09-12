@@ -1,23 +1,16 @@
 <script id="collectionsItemView.ejs" type="text/template">
 <div class="paddingBox">
   <div class="borderBox"></div>
-<!--
-  <div class="iconSet">
-    <span id="editCollection_<%=model.get('name')%>" class="icon_arangodb_settings2" alt="Edit collection properties" title="Edit collection properties"></span>
-    <% if(model.get('status') === "loaded") { %>
-      <span id="info_<%=model.get('name')%>" class="spanInfo icon_arangodb_info" title="Show collection properties"></span>
-    <%} else {%>
-      <span class="icon_arangodb_info disabled" alt="disabled"></span>
-    <%}%>
-  </div>
--->
   <i class="collection-type-icon fa <%= model.get('picture') %>"></i>
-  <!--<img src="<%= model.get('picture') %>" height="50" width="50" alt="" class="icon">-->
   <div class="tileBadge">
     <span>
     <% if(model.get('desc')) { %>
       <div class="corneredBadge inProgress">
         <%= model.get('desc') %>
+      </div>
+    <% } else if (model.get('status') === 'corrupted') { %>
+      <div class="corneredBadge <%= model.get('status') %>">
+        <%= model.get('status') %>
       </div>
     <% } else if (model.get('status') === "loaded" || model.get('status') === 'unloaded' || model.get('status') === 'loading' || model.get('status') === 'unloading') { %>
       <% if (!model.get('locked') && model.get("status") !== "loading" && model.get("status") !== "unloading") { %>

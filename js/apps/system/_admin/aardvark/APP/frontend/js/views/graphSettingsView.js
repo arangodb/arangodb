@@ -27,7 +27,7 @@
       'layout': {
         type: 'select',
         name: 'Layout',
-        desc: 'Different graph algorithms. No overlap is very fast (more than 5000 nodes), force is slower (less than 5000 nodes) and fruchtermann is the slowest (less than 500 nodes). The calculation time strongly depends on your nodes and edges counts.',
+        desc: 'Different graph algorithms. No overlap is very fast (more than 5000 nodes), force is slower (less than 5000 nodes) and fruchtermann is the slowest (less than 500 nodes).',
         noverlap: {
           name: 'No overlap',
           val: 'noverlap'
@@ -81,8 +81,8 @@
       },
       'nodeLabelByCollection': {
         type: 'select',
-        name: 'Use Collection Name',
-        desc: 'Set label text by collection. If activated node label attribute will be ignored.',
+        name: 'Add Collection Name',
+        desc: 'Append collection name to the label?',
         yes: {
           name: 'Yes',
           val: 'true'
@@ -94,7 +94,7 @@
       },
       'nodeColorByCollection': {
         type: 'select',
-        name: 'Use Collection Color',
+        name: 'Color By Collections',
         no: {
           name: 'No',
           val: 'false'
@@ -118,7 +118,7 @@
       },
       'nodeSizeByEdges': {
         type: 'select',
-        name: 'Size By Edges',
+        name: 'Size By Collections',
         yes: {
           name: 'Yes',
           val: 'true'
@@ -145,7 +145,7 @@
       },
       'edgeLabelByCollection': {
         type: 'select',
-        name: 'Use Collection Name',
+        name: 'Add Collection Name',
         desc: 'Set label text by collection. If activated edge label attribute will be ignored.',
         yes: {
           name: 'Yes',
@@ -158,7 +158,7 @@
       },
       'edgeColorByCollection': {
         type: 'select',
-        name: 'Use Collection Color',
+        name: 'Color By Collections',
         no: {
           name: 'No',
           val: 'false'
@@ -182,6 +182,7 @@
       },
       'edgeEditable': {
         type: 'select',
+        hide: 'true',
         name: 'Editable',
         yes: {
           name: 'Yes',
@@ -314,18 +315,18 @@
       }
 
       var callback = function () {
-        if (window.App.graphViewer2) {
+        if (window.App.graphViewer) {
           if (color !== '' && color !== undefined) {
             var nodes = !$('#g_nodeColor').is(':disabled');
             var edges = !$('#g_edgeColor').is(':disabled');
-            window.App.graphViewer2.updateColors(
+            window.App.graphViewer.updateColors(
               nodes,
               edges,
               $('#g_nodeColor').val(),
               $('#g_edgeColor').val()
             );
           } else {
-            window.App.graphViewer2.render(self.lastFocussed);
+            window.App.graphViewer.render(self.lastFocussed);
           }
         } else {
           arangoHelper.arangoNotification('Graph ' + this.name, 'Configuration saved.');
@@ -352,7 +353,7 @@
         edgeType: 'arrow',
         nodeSize: '',
         nodeSizeByEdges: 'true',
-        edgeEditable: 'false',
+        edgeEditable: 'true',
         nodeLabelByCollection: 'false',
         edgeLabelByCollection: 'false',
         nodeStart: '',
@@ -364,7 +365,7 @@
       } else {
         this.saveGraphSettings(null, null, null, obj);
         this.render();
-        window.App.graphViewer2.render(this.lastFocussed);
+        window.App.graphViewer.render(this.lastFocussed);
       }
     },
 
@@ -394,6 +395,7 @@
       if ($('#g_nodeSizeByEdges').val() === 'true') {
         $('#g_nodeSize').prop('disabled', true);
       }
+
       // node color
       if ($('#g_nodeColorByCollection').val() === 'true') {
         $('#g_nodeColorAttribute').prop('disabled', true);
@@ -410,16 +412,6 @@
       }
       if ($('#g_edgeColorAttribute').val() !== '') {
         $('#g_edgeColor').prop('disabled', true);
-      }
-
-      // node label
-      if ($('#g_nodeLabelByCollection').val() === 'true') {
-        $('#g_nodeLabel').prop('disabled', true);
-      }
-
-      // edge label
-      if ($('#g_edgeLabelByCollection').val() === 'true') {
-        $('#g_edgeLabel').prop('disabled', true);
       }
     },
 

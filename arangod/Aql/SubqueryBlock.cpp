@@ -113,6 +113,8 @@ AqlItemBlock* SubqueryBlock::getSome(size_t atLeast, size_t atMost) {
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
   return res.release();
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 

@@ -1394,10 +1394,12 @@ class KeySpace {
 
     TRI_ASSERT(dest != nullptr);
 
+    // cppcheck-suppress *
     if (!TRI_IsArrayJson(dest->json)) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
+    // cppcheck-suppress *
     TRI_PushBack2ArrayJson(dest->json, sourceItem);
 
     // hack: decrease the vector size

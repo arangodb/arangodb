@@ -927,13 +927,16 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED, message);
       } else {
-        // Only if the aresult was successful we will get here
+        // Only if the result was successful we will get here
         arangodb::basics::StringBuffer& body = res->result->getBody();
 
         std::shared_ptr<VPackBuilder> builder =
             VPackParser::fromJson(body.c_str(), body.length());
         VPackSlice resultSlice = builder->slice();
-        TRI_ASSERT(resultSlice.isNumber());
+        if (!resultSlice.isNumber()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL, "got unexpected response from engine lock request");
+        }
         auto engineId = resultSlice.getNumericValue<traverser::TraverserEngineID>();
         TRI_ASSERT(engineId != 0);
         traverserEngines.emplace(engineId, shardSet);
