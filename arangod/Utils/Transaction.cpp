@@ -986,7 +986,9 @@ void Transaction::extractKeyAndRevFromDocument(VPackSlice slice,
       VPackSlice revSlice(p + 1);
       if (revSlice.isString()) {
         bool isOld;
-        revisionId = TRI_StringToRid(revSlice.copyString(), isOld);
+        VPackValueLength l;
+        char const* p = revSlice.getString(l);
+        revisionId = TRI_StringToRid(p, l, isOld);
       } else if (revSlice.isNumber()) {
         revisionId = revSlice.getNumericValue<TRI_voc_rid_t>();
       }
@@ -1002,10 +1004,48 @@ void Transaction::extractKeyAndRevFromDocument(VPackSlice slice,
   }
 
   // fall back to regular lookup
-  keySlice = slice.get(StaticStrings::KeyString);    
-  bool isOld;
-  revisionId = TRI_StringToRid(slice.get(StaticStrings::RevString).copyString(),
-                               isOld);
+  {
+    keySlice = slice.get(StaticStrings::KeyString);    
+    bool isOld;
+    VPackValueLength l;
+    char const* p = slice.get(StaticStrings::RevString).getString(l);
+    revisionId = TRI_StringToRid(p, l, isOld);
+  }
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief extract _rev from a database document
+//////////////////////////////////////////////////////////////////////////////
+    
+TRI_voc_rid_t Transaction::extractRevFromDocument(VPackSlice slice) {
+  TRI_ASSERT(slice.isObject());
+  TRI_ASSERT(slice.length() >= 2); 
+
+  uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
+  VPackValueLength count = 0;
+
+  while (*p <= basics::VelocyPackHelper::ToAttribute && ++count <= 5) {
+    if (*p == basics::VelocyPackHelper::RevAttribute) {
+      VPackSlice revSlice(p + 1);
+      if (revSlice.isString()) {
+        bool isOld;
+        VPackValueLength l;
+        char const* p = revSlice.getString(l);
+        return TRI_StringToRid(p, l, isOld);
+      } else if (revSlice.isNumber()) {
+        return revSlice.getNumericValue<TRI_voc_rid_t>();
+      }
+      // invalid type for revision id
+      return 0;
+    }
+    // skip over the attribute name
+    ++p;
+    // skip over the attribute value
+    p += VPackSlice(p).byteSize();
+  }
+
+  TRI_ASSERT(false);
+  return 0;
 }
 
 //////////////////////////////////////////////////////////////////////////////

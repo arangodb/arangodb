@@ -28,6 +28,7 @@
 #include "Basics/AssocMulti.h"
 #include "Basics/AssocUnique.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/fasthash.h"
 #include "Indexes/PathBasedIndex.h"
 #include "Indexes/IndexIterator.h"
 #include "Utils/Transaction.h"

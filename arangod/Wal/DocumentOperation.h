@@ -38,7 +38,9 @@ struct DocumentOperation {
     TRI_ASSERT(marker != nullptr);
     VPackSlice s(static_cast<uint8_t*>(marker->vpack()));
     bool isOld;
-    rid = TRI_StringToRid(s.get(StaticStrings::RevString).copyString(), isOld);
+    VPackValueLength l;
+    char const* p = s.get(StaticStrings::RevString).getString(l);
+    rid = TRI_StringToRid(p, l, isOld);
   }
 
   ~DocumentOperation() {

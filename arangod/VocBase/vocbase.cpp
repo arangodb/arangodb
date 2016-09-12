@@ -1250,7 +1250,9 @@ TRI_voc_rid_t TRI_ExtractRevisionId(VPackSlice slice) {
   VPackSlice r(slice.get(StaticStrings::RevString));
   if (r.isString()) {
     bool isOld;
-    return TRI_StringToRid(r.copyString(), isOld);
+    VPackValueLength l;
+    char const* p = r.getString(l);
+    return TRI_StringToRid(p, l, isOld);
   }
   if (r.isInteger()) {
     return r.getNumber<TRI_voc_rid_t>();
@@ -1325,7 +1327,15 @@ TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool& isOld) {
   if (len > 0 && *p >= '1' && *p <= '9') {
     // Remove this case before the year 3887 AD because then it will
     // start to clash with encoded timestamps:
-    TRI_voc_rid_t r = arangodb::basics::StringUtils::uint64(p, len);
+    char const* e = p + len;
+    TRI_voc_rid_t r = 0;
+    do  {
+      r += *p - '0';
+      if (++p == e) {
+        break;
+      }
+      r *= 10;
+    } while (true);
     if (r > tickLimit) {
       // An old tick value that could be confused with a time stamp
       LOG(WARN)
