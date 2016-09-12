@@ -299,7 +299,7 @@ clean-book-intermediate:
 # Check docublocks - checks whether docublock are
 #  - files in intermediate output directories and temporary
 #    files are excludes (with # in their names)
-#  - uniq in the source
+#  - unique in the source
 #  - all docublocks are used somewhere in the documentation
 #
 check-docublocks:
