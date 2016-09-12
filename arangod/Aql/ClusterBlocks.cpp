@@ -82,6 +82,8 @@ int GatherBlock::initialize() {
   DEBUG_BEGIN_BLOCK();
   _atDep = 0;
   return ExecutionBlock::initialize();
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -110,6 +112,8 @@ int GatherBlock::shutdown(int errorCode) {
   }
 
   return TRI_ERROR_NO_ERROR;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -144,6 +148,8 @@ int GatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 
   _done = false;
   return TRI_ERROR_NO_ERROR;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -159,6 +165,8 @@ int64_t GatherBlock::count() const {
     sum += x->count();
   }
   return sum;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -174,6 +182,8 @@ int64_t GatherBlock::remaining() {
     sum += x->remaining();
   }
   return sum;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -203,6 +213,8 @@ bool GatherBlock::hasMore() {
   }
   _done = true;
   return false;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -308,6 +320,8 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
   }
 
   return res.release();
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -379,6 +393,8 @@ size_t GatherBlock::skipSome(size_t atLeast, size_t atMost) {
   }
 
   return skipped;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -400,6 +416,8 @@ bool GatherBlock::getBlock(size_t i, size_t atLeast, size_t atMost) {
   }
 
   return false;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -461,6 +479,7 @@ int BlockWithClients::initializeCursor(AqlItemBlock* items, size_t pos) {
 
   return TRI_ERROR_NO_ERROR;
 
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -471,6 +490,8 @@ int BlockWithClients::shutdown(int errorCode) {
   _doneForClient.clear();
 
   return ExecutionBlock::shutdown(errorCode);
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -510,6 +531,8 @@ size_t BlockWithClients::skipSomeForShard(size_t atLeast, size_t atMost,
     THROW_ARANGO_EXCEPTION(out);
   }
   return skipped;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -526,6 +549,8 @@ bool BlockWithClients::skipForShard(size_t number, std::string const& shardId) {
     return true;
   }
   return !hasMoreForShard(shardId);
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -544,6 +569,8 @@ size_t BlockWithClients::getClientId(std::string const& shardId) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
   return ((*it).second);
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -563,6 +590,8 @@ int ScatterBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
     _posForClient.emplace_back(std::make_pair(0, 0));
   }
   return TRI_ERROR_NO_ERROR;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -578,6 +607,8 @@ int ScatterBlock::shutdown(int errorCode) {
   _posForClient.clear();
 
   return TRI_ERROR_NO_ERROR;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -601,6 +632,8 @@ bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
     }
   }
   return true;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -628,6 +661,8 @@ int64_t ScatterBlock::remainingForShard(std::string const& shardId) {
   }
 
   return sum;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -693,6 +728,8 @@ int ScatterBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
   }
 
   return TRI_ERROR_NO_ERROR;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -746,6 +783,8 @@ int DistributeBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   }
 
   return TRI_ERROR_NO_ERROR;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -761,6 +800,8 @@ int DistributeBlock::shutdown(int errorCode) {
   _distBuffer.clear();
 
   return TRI_ERROR_NO_ERROR;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -782,6 +823,8 @@ bool DistributeBlock::hasMoreForShard(std::string const& shardId) {
     return false;
   }
   return true;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -873,6 +916,8 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
   // _buffer is left intact, deleted and cleared at shutdown
 
   return TRI_ERROR_NO_ERROR;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -921,6 +966,8 @@ bool DistributeBlock::getBlockForClient(size_t atLeast, size_t atMost,
   }
 
   return true;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -1038,6 +1085,8 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
   TRI_ASSERT(!shardId.empty());
 
   return getClientId(shardId);
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -1113,6 +1162,8 @@ static bool throwExceptionAfterBadSyncRequest(ClusterCommResult* res,
   }
 
   return false;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -1170,6 +1221,8 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
   }
 
   return result;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -1199,6 +1252,8 @@ int RemoteBlock::initialize() {
     return slice.get("code").getNumericValue<int>();
   }
   return TRI_ERROR_INTERNAL;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -1251,6 +1306,8 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
     }
     return TRI_ERROR_INTERNAL;
   }
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -1298,6 +1355,8 @@ int RemoteBlock::shutdown(int errorCode) {
     return slice.get("code").getNumericValue<int>();
   }
   return TRI_ERROR_INTERNAL;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -1333,6 +1392,8 @@ AqlItemBlock* RemoteBlock::getSome(size_t atLeast, size_t atMost) {
   }
 
   return new arangodb::aql::AqlItemBlock(responseBody);
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -1369,6 +1430,8 @@ size_t RemoteBlock::skipSome(size_t atLeast, size_t atMost) {
     }
     return skipped;
   }
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -1394,6 +1457,8 @@ bool RemoteBlock::hasMore() {
     hasMore = slice.get("hasMore").getBoolean();
   }
   return hasMore;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -1420,6 +1485,8 @@ int64_t RemoteBlock::count() const {
     count = slice.get("count").getNumericValue<int64_t>();
   }
   return count;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -1447,5 +1514,7 @@ int64_t RemoteBlock::remaining() {
     remaining = slice.get("remaining").getNumericValue<int64_t>();
   }
   return remaining;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }

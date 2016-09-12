@@ -39,6 +39,7 @@ namespace rest {
 struct VppInputMessage {
   VppInputMessage() : _buffer(), _id(0), _payloadAmount(0), _payload() {}
 
+  // cppcheck-suppress *
   VppInputMessage(uint64_t id, VPackBuffer<uint8_t>&& buff,
                   std::size_t amount = 1)
       : _buffer(std::move(buff)), _id(id), _payloadAmount(amount) {
@@ -47,6 +48,7 @@ struct VppInputMessage {
 
   // no copy
   VppInputMessage(VppInputMessage const& other) = delete;
+
   // just move
   VppInputMessage(VppInputMessage&& other) {
     if (this == &other) {
@@ -94,6 +96,7 @@ struct VppInputMessage {
 };
 
 struct VPackMessageNoOwnBuffer {
+  // cppcheck-suppress *
   VPackMessageNoOwnBuffer(VPackSlice head, std::vector<VPackSlice>&& payloads,
                           uint64_t id, bool generateBody = true)
       : _header(head),

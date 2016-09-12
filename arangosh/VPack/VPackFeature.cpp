@@ -208,6 +208,7 @@ void VPackFeature::start() {
   }
   
   // reset stream
+  // cppcheck-suppress *
   if (!toStdOut) {
     ofs.seekp(0);
   }
@@ -217,6 +218,7 @@ void VPackFeature::start() {
   ofs.write(start, buffer.size());
   ofs.close();
 
+  // cppcheck-suppress *
   if (!toStdOut) {
     std::cout << "Successfully converted JSON infile '" << _inputFile << "'"
               << std::endl;

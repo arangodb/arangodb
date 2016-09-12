@@ -80,6 +80,7 @@ class IndexFiller {
 
   void operator()() {
     int res = TRI_ERROR_INTERNAL;
+    TRI_ASSERT(_idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX); 
 
     try {
       res = _collection->fillIndex(_trx, _idx);
@@ -210,7 +211,6 @@ static std::shared_ptr<Index> PrepareIndexFromSlice(VPackSlice info,
   VPackSlice value = info.get("type");
 
   if (!value.isString()) {
-    // FIXME Intenral Compatibility.
     // Compatibility with old v8-vocindex.
     if (generateKey) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -232,8 +232,7 @@ static std::shared_ptr<Index> PrepareIndexFromSlice(VPackSlice info,
     iid = Helper::getNumericValue<TRI_idx_iid_t>(info, "id", 0);
   } else if (!generateKey) {
     // In the restore case it is forbidden to NOT have id
-    LOG(ERR) << "ignoring index, index identifier could not be located";
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot restore index without index identifier");
   }
 
   if (iid == 0 && !isClusterConstructor) {
@@ -249,7 +248,7 @@ static std::shared_ptr<Index> PrepareIndexFromSlice(VPackSlice info,
     case arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX: {
       if (!isClusterConstructor) {
         // this indexes cannot be created directly
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot create primary index");
       }
       newIdx.reset(new arangodb::PrimaryIndex(col));
       break;
@@ -257,7 +256,7 @@ static std::shared_ptr<Index> PrepareIndexFromSlice(VPackSlice info,
     case arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX: {
       if (!isClusterConstructor) {
         // this indexes cannot be created directly
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot create edge index");
       }
       newIdx.reset(new arangodb::EdgeIndex(iid, col));
       break;
@@ -281,7 +280,7 @@ static std::shared_ptr<Index> PrepareIndexFromSlice(VPackSlice info,
       break;
 #else
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                     "index type not supported in this build");
+                                     "index type 'persistent' not supported in this build");
 #endif
     }
     case arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX: {
@@ -445,7 +444,12 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice const& i
         }
       }
     }
-
+  
+   /* 
+    if (!isCluster) {
+      createInitialIndexes();
+    }
+*/
     auto indexesSlice = info.get("indexes");
     if (indexesSlice.isArray()) {
       bool const isCluster = ServerState::instance()->isRunningInCluster();
@@ -457,13 +461,25 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice const& i
           // TODO Handle Properly
           continue;
         }
+
         auto idx = PrepareIndexFromSlice(v, false, this, true);
+
         if (isCluster) {
           addIndexCoordinator(idx, false);
         } else {
+/*          if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
+              idx->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+            // already added those types earlier
+            continue;
+          }
+*/          
           addIndex(idx);
         }
       }
+    }
+
+    if (_indexes.empty()) {
+      createInitialIndexes();
     }
 
     if (!ServerState::instance()->isCoordinator() && isPhysical) {
@@ -764,6 +780,7 @@ LogicalCollection::getIndexes() const {
 // or it's indexes are freed the pointer returned will get invalidated.
 arangodb::PrimaryIndex* LogicalCollection::primaryIndex() const {
   TRI_ASSERT(!_indexes.empty());
+  TRI_ASSERT(_indexes[0]->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
   // the primary index must be the index at position #0
   return static_cast<arangodb::PrimaryIndex*>(_indexes[0].get());
 }
@@ -1124,7 +1141,7 @@ PhysicalCollection* LogicalCollection::createPhysical() {
 void LogicalCollection::open(bool ignoreErrors) {
   VPackBuilder builder;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->getCollectionInfo(_vocbase, cid(), builder, false, 0);
+  engine->getCollectionInfo(_vocbase, cid(), builder, true, 0);
 
   double start = TRI_microtime();
 
@@ -1135,17 +1152,9 @@ void LogicalCollection::open(bool ignoreErrors) {
   int res = openWorker(ignoreErrors);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot open document collection from path '" << path() << "'";
-    THROW_ARANGO_EXCEPTION(res);
+    THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string("cannot open document collection from path '") + path() + "': " + TRI_errno_string(res));
   }
 
-  res = createInitialIndexes();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot initialize document collection: " << TRI_errno_string(res);
-    THROW_ARANGO_EXCEPTION(res);
-  }
-  
   arangodb::SingleCollectionTransaction trx(
       arangodb::StandaloneTransactionContext::Create(_vocbase),
       cid(), TRI_TRANSACTION_WRITE);
@@ -1309,6 +1318,7 @@ std::shared_ptr<Index> LogicalCollection::createIndex(Transaction* trx,
     return idx;
   }
 
+  TRI_ASSERT(idx.get()->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX); 
   int res = fillIndex(trx, idx.get(), false);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1336,21 +1346,7 @@ int LogicalCollection::restoreIndex(Transaction* trx, VPackSlice const& info,
   if (!info.isObject()) {
     return TRI_ERROR_INTERNAL;
   }
-  /* FIXME Old style First check if iid is okay and update server tick
-  TRI_idx_iid_t iid;
-  if (iis.isNumber()) {
-    iid = iis.getNumericValue<TRI_idx_iid_t>();
-  } else if (iis.isString()) {
-    std::string tmp = iis.copyString();
-    iid = static_cast<TRI_idx_iid_t>(basics::StringUtils::uint64(tmp));
-  } else {
-    LOG(ERR) << "ignoring index, index identifier could not be located";
-
-    return TRI_ERROR_INTERNAL;
-  }
-
-  TRI_UpdateTickServer(iid);
-  */
+  
   // We create a new Index object to make sure that the index
   // is not handed out except for a successful case.
   std::shared_ptr<Index> newIdx;
@@ -1366,6 +1362,7 @@ int LogicalCollection::restoreIndex(Transaction* trx, VPackSlice const& info,
   // FIXME New style. Update tick after successful creation of index.
   TRI_UpdateTickServer(newIdx->id());
 
+  TRI_ASSERT(newIdx.get()->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX); 
   int res = fillIndex(trx, newIdx.get());
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1516,21 +1513,16 @@ bool LogicalCollection::dropIndex(TRI_idx_iid_t iid, bool writeMarker) {
 }
 
 /// @brief creates the initial indexes for the collection
-int LogicalCollection::createInitialIndexes() {
+void LogicalCollection::createInitialIndexes() {
   // TODO Properly fix this. The outside should make sure that only NEW collections
   // try to create the indexes.
   if (!_indexes.empty()) {
-    return TRI_ERROR_NO_ERROR;
+    return;
   }
 
   // create primary index
   auto primaryIndex = std::make_shared<arangodb::PrimaryIndex>(this);
-
-  try {
-    addIndex(primaryIndex);
-  } catch (...) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
+  addIndex(primaryIndex);
 
   // create edges index
   if (_type == TRI_COL_TYPE_EDGE) {
@@ -1539,16 +1531,10 @@ int LogicalCollection::createInitialIndexes() {
       iid = _planId;
     }
 
-    try {
-      auto edgeIndex = std::make_shared<arangodb::EdgeIndex>(iid, this);
+    auto edgeIndex = std::make_shared<arangodb::EdgeIndex>(iid, this);
 
-      addIndex(edgeIndex);
-    } catch (...) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
+    addIndex(edgeIndex);
   }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief iterator for index open
@@ -1633,6 +1619,7 @@ int LogicalCollection::fillIndexes(arangodb::Transaction* trx) {
     // now actually fill the secondary indexes
     for (size_t i = 1; i < n; ++i) {
       auto idx = _indexes[i];
+      TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX); 
 
       // index threads must come first, otherwise this thread will block the
       // loop and
@@ -1685,6 +1672,9 @@ int LogicalCollection::fillIndexes(arangodb::Transaction* trx) {
 }
 
 void LogicalCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
+  // primary index must be added at position 0
+  TRI_ASSERT(idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX || _indexes.empty());
+
   _indexes.emplace_back(idx);
 
   // update statistics
@@ -2364,6 +2354,7 @@ int LogicalCollection::rollbackOperation(arangodb::Transaction* trx,
 int LogicalCollection::fillIndex(arangodb::Transaction* trx,
                                  arangodb::Index* idx,
                                  bool skipPersistent) {
+  TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX); 
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (!useSecondaryIndexes()) {
     return TRI_ERROR_NO_ERROR;
@@ -2490,6 +2481,7 @@ int LogicalCollection::fillIndexSequential(arangodb::Transaction* trx,
   auto primaryIndex = this->primaryIndex();
   size_t nrUsed = primaryIndex->size();
 
+  TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX); 
   idx->sizeHint(trx, nrUsed);
 
   if (nrUsed > 0) {
@@ -2965,6 +2957,7 @@ int LogicalCollection::insertSecondaryIndexes(
 
   for (size_t i = 1; i < n; ++i) {
     auto idx = _indexes[i];
+    TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX); 
 
     if (!useSecondary && !idx->isPersistent()) {
       continue;
@@ -3007,6 +3000,7 @@ int LogicalCollection::deleteSecondaryIndexes(
 
   for (size_t i = 1; i < n; ++i) {
     auto idx = _indexes[i];
+    TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX); 
     
     if (!useSecondary && !idx->isPersistent()) {
       continue;

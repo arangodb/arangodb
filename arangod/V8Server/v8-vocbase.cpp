@@ -1917,7 +1917,23 @@ static void JS_VersionServer(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_V8_RETURN(TRI_V8_ASCII_STRING(ARANGODB_VERSION));
+  bool details = false;
+  if (args.Length() > 0) {
+    details = TRI_ObjectToBoolean(args[0]);
+  }
+
+  if (!details) {
+    // return version string
+    TRI_V8_RETURN(TRI_V8_ASCII_STRING(ARANGODB_VERSION));
+  }
+
+  // return version details
+  VPackBuilder builder;
+  builder.openObject();
+  rest::Version::getVPack(builder);
+  builder.close();
+
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
   TRI_V8_TRY_CATCH_END
 }
 

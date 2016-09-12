@@ -62,6 +62,8 @@ int SortBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   _pos = 0;
 
   return TRI_ERROR_NO_ERROR;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();  
 }
 

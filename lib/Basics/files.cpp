@@ -2000,7 +2000,7 @@ int TRI_Crc32File(char const* path, uint32_t* crc) {
 
     if (sizeRead > 0) {
       *crc = TRI_BlockCrc32(*crc, static_cast<char const*>(buffer), sizeRead);
-    } else if (sizeRead <= 0) {
+    } else /* if (sizeRead <= 0) */ {
       break;
     }
   }

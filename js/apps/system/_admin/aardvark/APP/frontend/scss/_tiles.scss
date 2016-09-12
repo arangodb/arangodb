@@ -366,6 +366,10 @@ $iconsize: 50px;
           border-bottom-color: $c-positive;
         }
 
+        &.corrupted {
+          border-bottom-color: $c-negative;
+        }
+
         &.inProgress {
           border-bottom-color: $c-progress-bar;
         }

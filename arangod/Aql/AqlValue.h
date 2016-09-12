@@ -583,6 +583,7 @@ struct AqlValueMaterializer {
       : trx(other.trx), materialized(other.materialized), hasCopied(other.hasCopied) {
     // reset other
     other.hasCopied = false;
+    // cppcheck-suppress *
     other.materialized = AqlValue();
   }
   

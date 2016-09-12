@@ -2279,6 +2279,7 @@ std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(
 /// `_key` is the one and only sharding attribute.
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_ENTERPRISE
 int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
                                      VPackSlice slice, bool docComplete,
                                      ShardID& shardID,
@@ -2339,6 +2340,7 @@ int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
   shardID = shards->at(hash % shards->size());
   return error;
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the list of coordinator server names

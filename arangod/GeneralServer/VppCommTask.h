@@ -131,6 +131,9 @@ class VppCommTask : public GeneralCommTask {
       ChunkHeader const& chunkHeader, VppInputMessage& message, bool& doExecute,
       char const* vpackBegin, char const* chunkEnd);
 
+  std::string _authenticatedUser;
+  bool _authenticationEnabled;
+
   // user
   // authenticated or not
   // database aus url

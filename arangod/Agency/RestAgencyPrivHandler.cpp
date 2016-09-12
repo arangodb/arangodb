@@ -134,7 +134,6 @@ RestHandler::status RestAgencyPrivHandler::execute() {
         if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
-
         arangodb::velocypack::Options options;
         query_t everything;
         try {
@@ -143,8 +142,14 @@ RestHandler::status RestAgencyPrivHandler::execute() {
           LOG_TOPIC(ERR, Logger::AGENCY)
             << "Failure getting activation body: e.what()";
         }
-        
-        _agent->activate(everything);
+        try {
+          query_t res = _agent->activate(everything);
+          for (auto const& i : VPackObjectIterator(res->slice())) {
+            result.add(i.key.copyString(),i.value);
+          }
+        } catch (std::exception const& e) {
+          LOG_TOPIC(ERR, Logger::AGENCY) << "Activation failed: " << e.what();
+        }
         
       } else if (_request->suffix()[0] == "gossip") {
         if (_request->requestType() != rest::RequestType::POST) {
