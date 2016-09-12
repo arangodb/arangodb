@@ -44,7 +44,7 @@ struct TRI_request_statistics_t {
         _writeEnd(0.0),
         _receivedBytes(0.0),
         _sentBytes(0.0),
-        _requestType(arangodb::GeneralRequest::RequestType::ILLEGAL),
+        _requestType(arangodb::rest::RequestType::ILLEGAL),
         _async(false),
         _tooLarge(false),
         _executeError(false),
@@ -65,7 +65,7 @@ struct TRI_request_statistics_t {
     _writeEnd = 0.0;
     _receivedBytes = 0.0;
     _sentBytes = 0.0;
-    _requestType = arangodb::GeneralRequest::RequestType::ILLEGAL;
+    _requestType = arangodb::rest::RequestType::ILLEGAL;
     _async = false;
     _tooLarge = false;
     _executeError = false;
@@ -76,11 +76,11 @@ struct TRI_request_statistics_t {
 #endif
   }
 
-  double _readStart;
-  double _readEnd;
-  double _queueStart;
-  double _queueEnd;
-  double _requestStart;
+  double _readStart;     // CommTask::processRead - read first byte of message
+  double _readEnd;       // CommTask::processRead - message complete
+  double _queueStart;    // addJob to queue GeneralServer::handleRequest
+  double _queueEnd;      // exit queue DispatcherThread::handleJob
+  double _requestStart;  // GeneralServerJob::work
   double _requestEnd;
   double _writeStart;
   double _writeEnd;
@@ -88,7 +88,7 @@ struct TRI_request_statistics_t {
   double _receivedBytes;
   double _sentBytes;
 
-  arangodb::GeneralRequest::RequestType _requestType;
+  arangodb::rest::RequestType _requestType;
 
   bool _async;
   bool _tooLarge;
@@ -181,7 +181,6 @@ extern TRI_server_statistics_t TRI_ServerStatistics;
 
 inline double TRI_StatisticsTime() { return TRI_microtime(); }
 
-void TRI_InitializeStatistics(void);
-void TRI_ShutdownStatistics(void);
+void TRI_InitializeStatistics();
 
 #endif

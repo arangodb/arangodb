@@ -22,8 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8Traverser.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/SingleServerTraverser.h"
-#include "VocBase/document-collection.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>

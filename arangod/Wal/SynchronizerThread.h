@@ -34,7 +34,7 @@ namespace wal {
 
 class LogfileManager;
 
-class SynchronizerThread : public Thread {
+class SynchronizerThread final : public Thread {
   /// @brief SynchronizerThread
  private:
   SynchronizerThread(SynchronizerThread const&) = delete;

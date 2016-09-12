@@ -1942,7 +1942,7 @@
     },
 
     renderOutputGraph: function (data, counter) {
-      this.graphViewer2 = new window.GraphViewer2({
+      this.graphViewer = new window.GraphViewer({
         name: undefined,
         documentStore: window.App.arangoDocumentStore,
         collection: new window.GraphCollection(),
@@ -1950,7 +1950,7 @@
         id: '#outputGraph' + counter,
         data: data
       });
-      this.graphViewer2.renderAQL();
+      this.graphViewer.renderAQL();
     },
 
     getAQL: function (originCallback) {

@@ -42,7 +42,7 @@
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "VocBase/collection.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
 #include <boost/uuid/uuid.hpp>             // uuid class
@@ -207,9 +207,9 @@ size_t State::removeConflicts(query_t const& transactions) {
                   << _log.at(pos).term;
 
               // persisted logs
-              std::string aql(std::string("FOR l IN log FILTER l._key >= '") +
-                              stringify(idx) + "' REMOVE l IN log");
-              
+              std::string const aql(std::string("FOR l IN log FILTER l._key >= '") + 
+                                    stringify(idx) + "' REMOVE l IN log");
+
               arangodb::aql::Query query(
                 false, _vocbase, aql.c_str(), aql.size(), bindVars, nullptr,
                 arangodb::aql::PART_MAIN);
@@ -347,7 +347,7 @@ bool State::createCollections() {
 /// Check collection by name
 bool State::checkCollection(std::string const& name) {
   if (!_collectionsChecked) {
-    return (TRI_LookupCollectionByNameVocBase(_vocbase, name) != nullptr);
+    return (_vocbase->lookupCollection(name) != nullptr);
   }
   return true;
 }
@@ -356,12 +356,14 @@ bool State::checkCollection(std::string const& name) {
 bool State::createCollection(std::string const& name) {
   Builder body;
   body.add(VPackValue(VPackValueType::Object));
+  body.add("type", VPackValue(static_cast<int>(TRI_COL_TYPE_DOCUMENT))); 
+  body.add("name", VPackValue(name));
+  body.add("isSystem", VPackValue(LogicalCollection::IsSystemName(name)));
   body.close();
 
-  VocbaseCollectionInfo parameters(_vocbase, name.c_str(),
-                                   TRI_COL_TYPE_DOCUMENT, body.slice(), false);
-  TRI_vocbase_col_t const* collection =
-      TRI_CreateCollectionVocBase(_vocbase, parameters, parameters.id(), true);
+  TRI_voc_cid_t cid = 0;
+  arangodb::LogicalCollection const* collection =
+      _vocbase->createCollection(body.slice(), cid, true);
 
   if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_errno(), "cannot create collection");
@@ -671,6 +673,7 @@ bool State::removeObsolete(arangodb::consensus::index_t cind) {
   return true;
 }
 
+
 /// Persist the globally commited truth
 bool State::persistReadDB(arangodb::consensus::index_t cind) {
   if (checkCollection("compact")) {
@@ -728,4 +731,52 @@ bool State::persistActiveAgents(query_t const& active, query_t const& pool) {
   }
 
   return true;
+}
+
+query_t State::allLogs() const {
+  MUTEX_LOCKER(mutexLocker, _logLock);
+
+  auto bindVars = std::make_shared<VPackBuilder>();
+  bindVars->openObject();
+  bindVars->close();
+  
+  std::string const comp("FOR c IN compact SORT c._key RETURN c");
+  std::string const logs("FOR l IN log SORT l._key RETURN l");
+
+  arangodb::aql::Query compq(false, _vocbase, comp.c_str(), comp.size(),
+                             bindVars, nullptr, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query logsq(false, _vocbase, logs.c_str(), logs.size(),
+                             bindVars, nullptr, arangodb::aql::PART_MAIN);
+
+  auto compqResult = compq.execute(QueryRegistryFeature::QUERY_REGISTRY);
+  if (compqResult.code != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(compqResult.code, compqResult.details);
+  }
+  auto logsqResult = logsq.execute(QueryRegistryFeature::QUERY_REGISTRY);
+  if (logsqResult.code != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(logsqResult.code, logsqResult.details);
+  }
+
+  auto everything = std::make_shared<VPackBuilder>();
+
+  everything->openObject();
+
+  try {
+    everything->add("compact", compqResult.result->slice());
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::AGENCY)
+      << "Failed to assemble compaction part of everything package";
+  }
+
+  try{
+    everything->add("logs", logsqResult.result->slice());
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::AGENCY)
+      << "Failed to assemble remaining part of everything package";
+  }
+
+  everything->close();
+
+  return everything;
+  
 }

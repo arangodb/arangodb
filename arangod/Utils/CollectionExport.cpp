@@ -22,13 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CollectionExport.h"
+#include "Basics/WriteLocker.h"
 #include "Indexes/PrimaryIndex.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "VocBase/compactor.h"
 #include "VocBase/Ditch.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -37,7 +39,7 @@ CollectionExport::CollectionExport(TRI_vocbase_t* vocbase,
                                    std::string const& name,
                                    Restrictions const& restrictions)
     : _guard(nullptr),
-      _document(nullptr),
+      _collection(nullptr),
       _ditch(nullptr),
       _name(name),
       _resolver(vocbase),
@@ -47,8 +49,8 @@ CollectionExport::CollectionExport(TRI_vocbase_t* vocbase,
   // this may throw
   _guard = new arangodb::CollectionGuard(vocbase, _name.c_str(), false);
 
-  _document = _guard->collection()->_collection;
-  TRI_ASSERT(_document != nullptr);
+  _collection = _guard->collection();
+  TRI_ASSERT(_collection != nullptr);
 }
 
 CollectionExport::~CollectionExport() {
@@ -63,17 +65,13 @@ CollectionExport::~CollectionExport() {
 }
 
 void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+
   // try to acquire the exclusive lock on the compaction
-  while (!TRI_CheckAndLockCompactorVocBase(_document->_vocbase)) {
-    // didn't get it. try again...
-    usleep(5000);
-  }
-
-  // create a ditch under the compaction lock
-  _ditch = _document->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
-
-  // release the lock
-  TRI_UnlockCompactorVocBase(_document->_vocbase);
+  engine->preventCompaction(_collection->vocbase(), [this](TRI_vocbase_t* vocbase) {
+    // create a ditch under the compaction lock
+    _ditch = _collection->ditches()->createDocumentDitch(false, __FILE__, __LINE__);
+  });
 
   // now we either have a ditch or not
   if (_ditch == nullptr) {
@@ -90,7 +88,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
     uint64_t const maxTries = maxWaitTime / SleepTime;
 
     while (++tries < maxTries) {
-      if (_document->isFullyCollected()) {
+      if (_collection->isFullyCollected()) {
         break;
       }
       usleep(SleepTime);
@@ -98,8 +96,9 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
   }
 
   {
-    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_document->_vocbase),
-                                            _name, TRI_TRANSACTION_READ);
+    SingleCollectionTransaction trx(
+        StandaloneTransactionContext::Create(_collection->vocbase()), _name,
+        TRI_TRANSACTION_READ);
 
     // already locked by guard above
     trx.addHint(TRI_TRANSACTION_HINT_NO_USAGE_LOCK, true);
@@ -109,7 +108,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
       THROW_ARANGO_EXCEPTION(res);
     }
     
-    size_t maxDocuments = _document->primaryIndex()->size();
+    size_t maxDocuments = _collection->primaryIndex()->size();
     if (limit > 0 && limit < maxDocuments) {
       maxDocuments = limit;
     } else {
@@ -117,7 +116,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
     }
     _documents->reserve(maxDocuments);
 
-    trx.invokeOnAllElements(_document->_info.name(), [this, &limit](TRI_doc_mptr_t const* mptr) {
+    trx.invokeOnAllElements(_collection->name(), [this, &limit](TRI_doc_mptr_t const* mptr) {
       if (limit == 0) {
         return false;
       }

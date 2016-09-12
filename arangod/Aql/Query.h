@@ -35,13 +35,13 @@
 #include "Aql/ShortStringStorage.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
-#include "Utils/AqlTransaction.h"
 #include "V8Server/V8Context.h"
 #include "VocBase/voc-types.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class Transaction;
 class TransactionContext;
 
 namespace velocypack {
@@ -117,6 +117,13 @@ class Query {
   Query* clone(QueryPart, bool);
 
  public:
+
+  /// @brief Inject a transaction from outside. Use with care!
+  void injectTransaction (arangodb::Transaction* trx) {
+    _trx = trx;
+    init();
+  }
+
   /// @brief return the start timestamp of the query
   double startTime () const { return _startTime; }
 
@@ -240,7 +247,7 @@ class Query {
   void engine(ExecutionEngine* engine) { _engine = engine; }
 
   /// @brief return the transaction, if prepared
-  inline arangodb::AqlTransaction* trx() { return _trx; }
+  inline arangodb::Transaction* trx() { return _trx; }
 
   /// @brief get the plan for the query
   ExecutionPlan* plan() const { return _plan; }
@@ -332,6 +339,9 @@ class Query {
   /// @brief create a TransactionContext
   std::shared_ptr<arangodb::TransactionContext> createTransactionContext();
 
+  /// @brief returns the next query id
+  static TRI_voc_tick_t NextId();
+
  private:
   /// @brief query id
   TRI_voc_tick_t _id;
@@ -396,7 +406,7 @@ class Query {
   /// @brief the transaction object, in a distributed query every part of
   /// the query has its own transaction object. The transaction object is
   /// created in the prepare method.
-  arangodb::AqlTransaction* _trx;
+  arangodb::Transaction* _trx;
 
   /// @brief the ExecutionEngine object, if the query is prepared
   ExecutionEngine* _engine;

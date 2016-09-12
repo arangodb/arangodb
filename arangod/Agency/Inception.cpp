@@ -39,10 +39,6 @@ Inception::Inception(Agent* agent) : Thread("Inception"), _agent(agent) {}
 // Shutdown if not already
 Inception::~Inception() { shutdown(); }
 
-void Inception::beginShutdown() { Thread::beginShutdown(); }
-
-bool Inception::start() { return Thread::start(); }
-
 /// Gossip to others
 /// - Get snapshot of gossip peers and agent pool
 /// - Create outgoing gossip.
@@ -53,7 +49,9 @@ void Inception::gossip() {
   std::chrono::seconds timeout(120);
   size_t i = 0;
 
-  while (!this->isStopping()) {
+  CONDITION_LOCKER(guard, _cv);
+  
+  while (!this->isStopping() && !_agent->isStopping()) {
     config_t config = _agent->config();  // get a copy of conf
 
     query_t out = std::make_shared<Builder>();
@@ -69,31 +67,31 @@ void Inception::gossip() {
 
     std::string path = "/_api/agency_priv/gossip";
 
-    for (auto const& p : config.gossipPeers()) {  // gossip peers
+    for (auto const& p : config.gossipPeers()) { // gossip peers
       if (p != config.endpoint()) {
         std::string clientid = config.id() + std::to_string(i++);
         auto hf =
             std::make_unique<std::unordered_map<std::string, std::string>>();
         arangodb::ClusterComm::instance()->asyncRequest(
-            clientid, 1, p, GeneralRequest::RequestType::POST, path,
-            std::make_shared<std::string>(out->toJson()), hf,
-            std::make_shared<GossipCallback>(_agent), 1.0, true);
+          clientid, 1, p, rest::RequestType::POST, path,
+          std::make_shared<std::string>(out->toJson()), hf,
+          std::make_shared<GossipCallback>(_agent), 1.0, true);
       }
     }
 
-    for (auto const& pair : config.pool()) {  // pool entries
+    for (auto const& pair : config.pool()) { // pool entries
       if (pair.second != config.endpoint()) {
         std::string clientid = config.id() + std::to_string(i++);
         auto hf =
             std::make_unique<std::unordered_map<std::string, std::string>>();
         arangodb::ClusterComm::instance()->asyncRequest(
-            clientid, 1, pair.second, GeneralRequest::RequestType::POST, path,
-            std::make_shared<std::string>(out->toJson()), hf,
-            std::make_shared<GossipCallback>(_agent), 1.0, true);
+          clientid, 1, pair.second, rest::RequestType::POST, path,
+          std::make_shared<std::string>(out->toJson()), hf,
+          std::make_shared<GossipCallback>(_agent), 1.0, true);
       }
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(250));
+    _cv.wait(100000);
 
     if ((std::chrono::system_clock::now() - s) > timeout) {
       if (config.poolComplete()) {
@@ -161,4 +159,10 @@ void Inception::run() {
   if (!config.poolComplete()) {
     gossip();
   }
+}
+
+void Inception::beginShutdown() {
+  Thread::beginShutdown();
+  CONDITION_LOCKER(guard, _cv);
+  guard.broadcast();
 }

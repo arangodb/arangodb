@@ -26,8 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Dispatcher/Job.h"
-
-struct TRI_vocbase_t;
+#include "VocBase/vocbase.h"
 
 namespace arangodb {
 namespace rest {
@@ -53,7 +52,8 @@ class V8Job : public rest::Job {
   virtual std::string const& getName() const override { return _command; }
 
  private:
-  TRI_vocbase_t* _vocbase;
+  /// @brief guard to make sure the database is not dropped while used by us
+  VocbaseGuard _vocbaseGuard;
   std::string const _command;
   std::shared_ptr<arangodb::velocypack::Builder> _parameters;
   std::atomic<bool> _canceled;

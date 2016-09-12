@@ -39,21 +39,22 @@ namespace consensus {
 class Agent;
 
 class AgentActivator : public Thread {
- public:
+
+public:
+
   AgentActivator();
-  AgentActivator(Agent*, std::string const&);
-  virtual ~AgentActivator();
-
-  void run() override;
-  bool start();
-
-  /// @brief Orderly shutdown of thread
+  AgentActivator(Agent*, std::string const&, std::string const&);
+  ~AgentActivator();
+  
   void beginShutdown() override;
-
- private:
-
+  void run() override;
+  
+private:
+  
   Agent* _agent;
-  std::string _peerId;
+  std::string _failed;
+  std::string _replacement;
+  arangodb::basics::ConditionVariable _cv;
   
 };
 }

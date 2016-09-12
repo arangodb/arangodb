@@ -22,20 +22,23 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TraversalBlock.h"
-#include "Aql/Ast.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Functions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringRef.h"
+#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterTraverser.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/Transaction.h"
-#include "VocBase/SingleServerTraverser.h"
 #include "V8/v8-globals.h"
+#include "VocBase/MasterPointer.h"
+#include "VocBase/SingleServerTraverser.h"
+#include "VocBase/ticks.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
@@ -43,6 +46,8 @@ using namespace arangodb::aql;
 TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
     : ExecutionBlock(engine, ep),
       _posInPaths(0),
+      _opts(nullptr),
+      _traverser(nullptr),
       _useRegister(false),
       _usedConstant(false),
       _vertexVar(nullptr),
@@ -50,59 +55,26 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
       _edgeVar(nullptr),
       _edgeReg(0),
       _pathVar(nullptr),
-      _pathReg(0),
-      _expressions(ep->expressions()),
-      _hasV8Expression(false) {
-  arangodb::traverser::TraverserOptions opts(_trx, _expressions);
-  ep->fillTraversalOptions(opts);
-  auto ast = ep->_plan->getAst();
-
-  for (auto& map : *_expressions) {
-    for (size_t i = 0; i < map.second.size(); ++i) {
-      SimpleTraverserExpression* it =
-          dynamic_cast<SimpleTraverserExpression*>(map.second.at(i));
-      if (it == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                       std::string("invalid expression map"));
-      }
-      auto e = std::make_unique<Expression>(ast, it->compareToNode);
-      _hasV8Expression |= e->isV8();
-      std::unordered_set<Variable const*> inVars;
-      e->variables(inVars);
-      it->expression = e.release();
-
-      // Prepare _inVars and _inRegs:
-      _inVars.emplace_back();
-      std::vector<Variable const*>& inVarsCur = _inVars.back();
-      _inRegs.emplace_back();
-      std::vector<RegisterId>& inRegsCur = _inRegs.back();
-
-      for (auto const& v : inVars) {
-        inVarsCur.emplace_back(v);
-        auto it = ep->getRegisterPlan()->varInfo.find(v->id);
-        TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
-        TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
-        inRegsCur.emplace_back(it->second.registerId);
-      }
-      
-      for (auto const& v : ep->_conditionVariables) {
-        inVarsCur.emplace_back(v);
-        auto it = ep->getRegisterPlan()->varInfo.find(v->id);
-        TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
-        TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
-        inRegsCur.emplace_back(it->second.registerId);
-      }
-    }
+      _pathReg(0) {
+  auto const& registerPlan = ep->getRegisterPlan()->varInfo;
+  ep->getConditionVariables(_inVars);
+  for (auto const& v : _inVars) {
+    auto it = registerPlan.find(v->id);
+    TRI_ASSERT(it != registerPlan.end());
+    _inRegs.emplace_back(it->second.registerId);
   }
+
+  _opts = ep->options();
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
     _traverser.reset(new arangodb::traverser::ClusterTraverser(
-        ep->edgeColls(), opts,
-        std::string(_trx->vocbase()->_name, strlen(_trx->vocbase()->_name)),
+        _opts,
+        ep->engines(),
+        _trx->vocbase()->name(),
         _trx));
   } else {
     _traverser.reset(
-        new arangodb::traverser::SingleServerTraverser(opts, _trx));
+        new arangodb::traverser::SingleServerTraverser(_opts, _trx));
   }
   if (!ep->usesInVariable()) {
     _vertexId = ep->getStartVertex();
@@ -123,6 +95,11 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
   if (ep->usesPathOutVariable()) {
     _pathVar = ep->pathOutVariable();
   }
+
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    _engines = ep->engines();
+  }
+
 }
 
 TraversalBlock::~TraversalBlock() {
@@ -172,97 +149,8 @@ int TraversalBlock::initialize() {
   }
 
   return res;
-  DEBUG_END_BLOCK();
-}
 
-void TraversalBlock::executeExpressions() {
-  DEBUG_BEGIN_BLOCK();
-  AqlItemBlock* cur = _buffer.front();
-  size_t index = 0;
-  for (auto& map : *_expressions) {
-    for (size_t i = 0; i < map.second.size(); ++i) {
-      // Right now no inVars are allowed.
-      SimpleTraverserExpression* it =
-          dynamic_cast<SimpleTraverserExpression*>(map.second.at(i));
-      if (it != nullptr && it->expression != nullptr) {
-        // inVars and inRegs needs fixx
-        bool mustDestroy;
-        AqlValue a = it->expression->execute(_trx, cur, _pos, _inVars[index],
-                                             _inRegs[index], mustDestroy);
-
-        AqlValueGuard guard(a, mustDestroy);
-        
-        AqlValueMaterializer materializer(_trx);
-        VPackSlice slice = materializer.slice(a, false);
-
-        VPackBuilder* builder = new VPackBuilder;
-        try {
-          builder->add(slice);
-        } catch (...) {
-          delete builder;
-          throw;
-        }
-
-        it->compareTo.reset(builder);
-      }
-      ++index;
-    }
-  }
-  throwIfKilled();  // check if we were aborted
-  DEBUG_END_BLOCK();
-}
-
-void TraversalBlock::executeFilterExpressions() {
-  DEBUG_BEGIN_BLOCK();
-  if (!_expressions->empty()) {
-    if (_hasV8Expression) {
-      bool const isRunningInCluster =
-          arangodb::ServerState::instance()->isRunningInCluster();
-
-      // must have a V8 context here to protect Expression::execute()
-      auto engine = _engine;
-      arangodb::basics::ScopeGuard guard{
-          [&engine]() -> void { engine->getQuery()->enterContext(); },
-          [&]() -> void {
-            if (isRunningInCluster) {
-              // must invalidate the expression now as we might be called from
-              // different threads
-              for (auto const& map : *_expressions) {
-                for (auto const& e : map.second) {
-                  auto casted = dynamic_cast<SimpleTraverserExpression*>(e);
-                  if (casted != nullptr) {
-                    casted->expression->invalidate();
-                  }
-                }
-              }
-
-              engine->getQuery()->exitContext();
-            }
-          }};
-
-      ISOLATE;
-      v8::HandleScope scope(isolate);  // do not delete this!
-
-      executeExpressions();
-      TRI_IF_FAILURE("TraversalBlock::executeV8") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-    } else {
-      // no V8 context required!
-
-      Functions::InitializeThreadContext();
-      try {
-        executeExpressions();
-        TRI_IF_FAILURE("TraversalBlock::executeExpression") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        Functions::DestroyThreadContext();
-      } catch (...) {
-        Functions::DestroyThreadContext();
-        throw;
-      }
-    }
-  }
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -274,14 +162,42 @@ int TraversalBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   return ExecutionBlock::initializeCursor(items, pos);
 }
 
+/// @brief shutdown: Inform all traverser Engines to destroy themselves
+int TraversalBlock::shutdown(int errorCode) {
+  DEBUG_BEGIN_BLOCK();
+  // We have to clean up the engines in Coordinator Case.
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    auto cc = arangodb::ClusterComm::instance();
+    std::string const url(
+        "/_db/" + arangodb::basics::StringUtils::urlEncode(_trx->vocbase()->name()) +
+        "/_internal/traverser/");
+    for (auto const& it : *_engines) {
+      arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
+      std::unordered_map<std::string, std::string> headers;
+      auto res = cc->syncRequest(
+          "", coordTransactionID, "server:" + it.first, RequestType::DELETE_REQ,
+          url + arangodb::basics::StringUtils::itoa(it.second), "", headers,
+          30.0);
+      if (res->status != CL_COMM_SENT) {
+        // Note If there was an error on server side we do not have CL_COMM_SENT
+        std::string message("Could not destruct all traversal engines");
+        if (res->errorMessage.length() > 0) {
+          message += std::string(" : ") + res->errorMessage;
+        }
+        LOG(ERR) << message;
+      }
+    }
+  }
+
+  return ExecutionBlock::shutdown(errorCode);
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+}
+
 /// @brief read more paths
 bool TraversalBlock::morePaths(size_t hint) {
   DEBUG_BEGIN_BLOCK();
-  
-  TraversalNode const* planNode = static_cast<TraversalNode const*>(getPlanNode());
-  if (planNode->_specializedNeighborsSearch) {
-    return false;
-  }
   
   freeCaches();
   _posInPaths = 0;
@@ -324,33 +240,44 @@ bool TraversalBlock::morePaths(size_t hint) {
   _engine->_stats.scannedIndex += _traverser->getAndResetReadDocuments();
   _engine->_stats.filtered += _traverser->getAndResetFilteredPaths();
   return !_vertices.empty();
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
 /// @brief skip the next paths
 size_t TraversalBlock::skipPaths(size_t hint) {
   DEBUG_BEGIN_BLOCK();
-  TRI_ASSERT(!static_cast<TraversalNode const*>(getPlanNode())->_specializedNeighborsSearch);
-
   freeCaches();
   _posInPaths = 0;
   if (!_traverser->hasMore()) {
     return 0;
   }
   return _traverser->skip(hint);
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
+void TraversalBlock::initializeExpressions(AqlItemBlock const* items, size_t pos) {
+  // Initialize the Expressions within the options.
+  // We need to find the variable and read it's value here. Everything is computed right now.
+  _opts->clearVariableValues();
+  TRI_ASSERT(_inVars.size() == _inRegs.size());
+  for (size_t i = 0; i < _inVars.size(); ++i) {
+    _opts->setVariableValue(_inVars[i], items->getValueReference(pos, _inRegs[i]));
+  }
+  // IF cluster => Transfer condition.
+}
+
 /// @brief initialize the list of paths
-void TraversalBlock::initializePaths(AqlItemBlock const* items) {
+void TraversalBlock::initializePaths(AqlItemBlock const* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
   if (!_vertices.empty()) {
     // No Initialization required.
     return;
   }
         
-  TraversalNode const* planNode = static_cast<TraversalNode const*>(getPlanNode());
-
   if (!_useRegister) {
     if (!_usedConstant) {
       _usedConstant = true;
@@ -361,36 +288,21 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items) {
                                          "Only id strings or objects with "
                                          "_id are allowed");
       } else {
-        if (planNode->_specializedNeighborsSearch) {
-          // fetch neighbor nodes
-          neighbors(_vertexId);
-        } else {
-          _traverser->setStartVertex(_vertexId);
-        }
+        _traverser->setStartVertex(_vertexId);
       }
     }
   } else {
     AqlValue const& in = items->getValueReference(_pos, _reg);
     if (in.isObject()) {
       try {
-        if (planNode->_specializedNeighborsSearch) {
-          // fetch neighbor nodes
-          neighbors(_trx->extractIdString(in.slice()));
-        } else {
-          _traverser->setStartVertex(_trx->extractIdString(in.slice()));
-        }
+        _traverser->setStartVertex(_trx->extractIdString(in.slice()));
       }
       catch (...) {
         // _id or _key not present... ignore this error and fall through
       }
     } else if (in.isString()) {
       _vertexId = in.slice().copyString();
-      if (planNode->_specializedNeighborsSearch) {
-        // fetch neighbor nodes
-        neighbors(_vertexId);
-      } else {
-        _traverser->setStartVertex(_vertexId);
-      }
+      _traverser->setStartVertex(_vertexId);
     } else {
       _engine->getQuery()->registerWarning(
           TRI_ERROR_BAD_PARAMETER, "Invalid input for traversal: Only "
@@ -398,6 +310,9 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items) {
                                        "allowed");
     }
   }
+  initializeExpressions(items, pos);
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -416,7 +331,6 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
       return nullptr;
     }
     _pos = 0;  // this is in the first block
-    executeFilterExpressions();
   }
 
   // If we get here, we do have _buffer.front()
@@ -425,7 +339,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
 
   if (_pos == 0) {
     // Initial initialization
-    initializePaths(cur);
+    initializePaths(cur, _pos);
   }
 
   // Iterate more paths:
@@ -439,7 +353,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
         delete cur;
         _pos = 0;
       } else {
-        initializePaths(cur);
+        initializePaths(cur, _pos);
       }
       return getSome(atMost, atMost);
     }
@@ -486,7 +400,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
         delete cur;
         _pos = 0;
       } else {
-        initializePaths(cur);
+        initializePaths(cur, _pos);
       }
     }
   }
@@ -494,6 +408,8 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
   return res.release();
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -513,7 +429,6 @@ size_t TraversalBlock::skipSome(size_t atLeast, size_t atMost) {
       return skipped;
     }
     _pos = 0;  // this is in the first block
-    executeFilterExpressions();
   }
 
   // If we get here, we do have _buffer.front()
@@ -521,7 +436,7 @@ size_t TraversalBlock::skipSome(size_t atLeast, size_t atMost) {
 
   if (_pos == 0) {
     // Initial initialisation
-    initializePaths(cur);
+    initializePaths(cur, _pos);
   }
 
   size_t available = _vertices.size() - _posInPaths;
@@ -539,137 +454,7 @@ size_t TraversalBlock::skipSome(size_t atLeast, size_t atMost) {
   _posInPaths += atMost;
   // Skip the next atMost many paths.
   return atMost;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
-}
-
-/// @brief optimized version of neighbors search, must properly implement this
-void TraversalBlock::neighbors(std::string const& startVertex) {
-  std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackStringHash, arangodb::basics::VelocyPackHelper::VPackStringEqual> visited;
-
-  std::vector<VPackSlice> result;
-  result.reserve(1000);
-
-  TransactionBuilderLeaser builder(_trx);
-  builder->add(VPackValue(startVertex));
-
-  std::vector<VPackSlice> startVertices;
-  startVertices.emplace_back(builder->slice());
-  visited.emplace(builder->slice());
-
-  TRI_edge_direction_e direction = TRI_EDGE_ANY;
-  std::string collectionName;
-  traverser::TraverserOptions const* options = _traverser->options();
-  if (options->getCollection(0, collectionName, direction)) {
-    runNeighbors(startVertices, visited, result, direction, 1);
-  }
-
-  TRI_doc_mptr_t mptr;
-  _vertices.clear();
-  _vertices.reserve(result.size());
-  for (auto const& it : result) {
-    VPackValueLength l;
-    char const* p = it.getString(l);
-    StringRef ref(p, l);
-
-    size_t pos = ref.find('/');
-    if (pos == std::string::npos) {
-      // invalid id
-      continue;
-    }
- 
-    int res = _trx->documentFastPathLocal(ref.substr(0, pos).toString(), ref.substr(pos + 1).toString(), &mptr);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      continue;
-    }
-
-    _vertices.emplace_back(AqlValue(mptr.vpack(), AqlValueFromMasterPointer()));
-  }
-}
-
-/// @brief worker for neighbors() function
-void TraversalBlock::runNeighbors(std::vector<VPackSlice> const& startVertices,
-                                  std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackStringHash, arangodb::basics::VelocyPackHelper::VPackStringEqual>& visited,
-                                  std::vector<VPackSlice>& distinct,
-                                  TRI_edge_direction_e direction,
-                                  uint64_t depth) {
-  std::vector<VPackSlice> nextDepth;
-  bool initialized = false;
-  TraversalNode const* node = static_cast<TraversalNode const*>(getPlanNode());
-  traverser::TraverserOptions const* options = _traverser->options();
-
-  TransactionBuilderLeaser builder(_trx);
-
-  size_t const n = options->collectionCount();
-  std::string collectionName;
-  Transaction::IndexHandle indexHandle;
-
-  std::vector<TRI_doc_mptr_t*> edges;
-
-  for (auto const& startVertex : startVertices) {
-    for (size_t i = 0; i < n; ++i) {
-      builder->clear();
-
-      if (!options->getCollectionAndSearchValue(i, startVertex.copyString(), collectionName, indexHandle, *builder.builder())) {
-        TRI_ASSERT(false);
-      }
-
-      std::unique_ptr<OperationCursor> cursor = _trx->indexScan(collectionName,
-                         arangodb::Transaction::CursorType::INDEX, indexHandle,
-                         builder->slice(), 0, UINT64_MAX, 1000, false);
-    
-      if (cursor->failed()) {
-        continue;
-      }
-
-      edges.clear();
-      while (cursor->hasMore()) {
-        cursor->getMoreMptr(edges, 1000);
-
-        for (auto const& it : edges) {
-          VPackSlice edge(it->vpack());
-          VPackSlice v;
-          if (direction == TRI_EDGE_IN) {
-            v = Transaction::extractFromFromDocument(edge);
-          } else {
-            v = Transaction::extractToFromDocument(edge);
-          }
-
-          if (visited.emplace(v).second) {
-            // we have not yet visited this vertex
-            if (depth >= node->minDepth()) {
-              distinct.emplace_back(v);
-            }
-            if (depth < node->maxDepth()) {
-              if (!initialized) {
-                nextDepth.reserve(64);
-                initialized = true;
-              }
-              nextDepth.emplace_back(v);
-            }
-            continue;
-          } else if (direction == TRI_EDGE_ANY) {
-            v = Transaction::extractToFromDocument(edge);
-            if (visited.emplace(v).second) {
-              // we have not yet visited this vertex
-              if (depth >= node->minDepth()) {
-                distinct.emplace_back(v);
-              }
-              if (depth < node->maxDepth()) {
-                if (!initialized) {
-                  nextDepth.reserve(64);
-                  initialized = true;
-                }
-                nextDepth.emplace_back(v);
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  if (!nextDepth.empty()) {
-    runNeighbors(nextDepth, visited, distinct, direction, depth + 1);
-  }
 }

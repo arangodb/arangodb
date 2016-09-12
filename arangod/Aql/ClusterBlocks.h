@@ -32,7 +32,7 @@
 #include "Rest/GeneralRequest.h"
 
 namespace arangodb {
-class AqlTransaction;
+class Transaction;
 struct ClusterCommResult;
 
 namespace aql {
@@ -101,7 +101,7 @@ class GatherBlock : public ExecutionBlock {
   /// @brief OurLessThan: comparison method for elements of _gatherBlockPos
   class OurLessThan {
    public:
-    OurLessThan(arangodb::AqlTransaction* trx,
+    OurLessThan(arangodb::Transaction* trx,
                 std::vector<std::deque<AqlItemBlock*>>& gatherBlockBuffer,
                 std::vector<std::pair<RegisterId, bool>>& sortRegisters) 
         : _trx(trx),
@@ -112,7 +112,7 @@ class GatherBlock : public ExecutionBlock {
                     std::pair<size_t, size_t> const& b);
 
    private:
-    arangodb::AqlTransaction* _trx;
+    arangodb::Transaction* _trx;
     std::vector<std::deque<AqlItemBlock*>>& _gatherBlockBuffer;
     std::vector<std::pair<RegisterId, bool>>& _sortRegisters;
   };
@@ -324,7 +324,7 @@ class RemoteBlock : public ExecutionBlock {
   /// @brief internal method to send a request
  private:
   std::unique_ptr<arangodb::ClusterCommResult> sendRequest(
-      GeneralRequest::RequestType type, std::string const& urlPart,
+      rest::RequestType type, std::string const& urlPart,
       std::string const& body) const;
 
   /// @brief our server, can be like "shard:S1000" or like "server:Claus"

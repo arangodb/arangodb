@@ -36,6 +36,7 @@
 
 namespace arangodb {
 class GeneralRequest;
+class WorkMonitor;
 
 namespace rest {
 class RestHandlerFactory;
@@ -48,7 +49,7 @@ class RestHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   RestHandler(GeneralRequest*, GeneralResponse*);
 
  protected:
-  ~RestHandler();
+  ~RestHandler() = default;
 
  public:
   enum class status { DONE, FAILED, ASYNC };
@@ -56,6 +57,9 @@ class RestHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
  public:
   // returns true if a handler is executed directly
   virtual bool isDirect() const = 0;
+
+  // returns true if a handler desires to start a new dispatcher thread
+  virtual bool needsOwnThread() const { return _needsOwnThread; }
 
   // returns the queue name
   virtual size_t queue() const { return Dispatcher::STANDARD_QUEUE; }
@@ -92,37 +96,38 @@ class RestHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   status executeFull();
 
   // return a pointer to the request
-  GeneralRequest const* request() const { return _request; }
+  GeneralRequest const* request() const { return _request.get(); }
 
   // steal the pointer to the request
-  GeneralRequest* stealRequest();
+  std::unique_ptr<GeneralRequest> stealRequest() { return std::move(_request); }
 
   // returns the response
-  GeneralResponse* response() const { return _response; }
+  GeneralResponse* response() const { return _response.get(); }
 
   // steal the response
-  GeneralResponse* stealResponse();
+  std::unique_ptr<GeneralResponse> stealResponse() {
+    return std::move(_response);
+  }
 
  protected:
-  // sets response Code
-  void setResponseCode(GeneralResponse::ResponseCode);
+  // resets the request
+  void resetResponse(rest::ResponseCode);
 
  protected:
   // handler id
   uint64_t const _handlerId;
 
-  // task id or 0
-  uint64_t _taskId;
+  // task id or (initially) 0
+  uint64_t _taskId = 0;
 
   // event loop
   EventLoop _loop;
 
-  // the request
-  GeneralRequest* _request;
+  std::unique_ptr<GeneralRequest> _request;
+  std::unique_ptr<GeneralResponse> _response;
 
-  // OBI-TODO make private
-  // the response
-  GeneralResponse* _response;
+ private:
+  bool _needsOwnThread = false;
 };
 }
 }

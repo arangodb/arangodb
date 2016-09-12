@@ -25,7 +25,9 @@ core.*
 *.lnk
 Thumbs.db
 
+enterprise
 compile_commands.json
+instanceinfo.json
 testresult.json
 botschaft.txt
 testsStarted

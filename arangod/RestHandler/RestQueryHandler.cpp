@@ -26,8 +26,6 @@
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
 #include "Basics/conversions.h"
-#include "Basics/json.h"
-#include "Basics/json-utilities.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -36,7 +34,6 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
-#include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -49,7 +46,7 @@ RestQueryHandler::RestQueryHandler(GeneralRequest* request,
     : RestVocbaseBaseHandler(request, response) {}
 
 bool RestQueryHandler::isDirect() const {
-  return _request->requestType() != GeneralRequest::RequestType::POST;
+  return _request->requestType() != rest::RequestType::POST;
 }
 
 RestHandler::status RestQueryHandler::execute() {
@@ -57,33 +54,22 @@ RestHandler::status RestQueryHandler::execute() {
   auto const type = _request->requestType();
 
   // execute one of the CRUD methods
-  try {
-    switch (type) {
-      case GeneralRequest::RequestType::DELETE_REQ:
-        deleteQuery();
-        break;
-      case GeneralRequest::RequestType::GET:
-        readQuery();
-        break;
-      case GeneralRequest::RequestType::PUT:
-        replaceProperties();
-        break;
-      case GeneralRequest::RequestType::POST:
-        parseQuery();
-        break;
-      default:
-        generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
-        break;
-    }
-  } catch (Exception const& err) {
-    handleError(err);
-  } catch (std::exception const& ex) {
-    arangodb::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__,
-                                    __LINE__);
-    handleError(err);
-  } catch (...) {
-    arangodb::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
-    handleError(err);
+  switch (type) {
+    case rest::RequestType::DELETE_REQ:
+      deleteQuery();
+      break;
+    case rest::RequestType::GET:
+      readQuery();
+      break;
+    case rest::RequestType::PUT:
+      replaceProperties();
+      break;
+    case rest::RequestType::POST:
+      parseQuery();
+      break;
+    default:
+      generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
+      break;
   }
 
   // this handler is done
@@ -91,71 +77,49 @@ RestHandler::status RestQueryHandler::execute() {
 }
 
 bool RestQueryHandler::readQueryProperties() {
-  try {
-    auto queryList = static_cast<QueryList*>(_vocbase->_queries);
+  auto queryList = _vocbase->queryList();
 
-    VPackBuilder result;
-    result.add(VPackValue(VPackValueType::Object));
-    result.add("error", VPackValue(false));
-    result.add("code", VPackValue((int)GeneralResponse::ResponseCode::OK));
-    result.add("enabled", VPackValue(queryList->enabled()));
-    result.add("trackSlowQueries", VPackValue(queryList->trackSlowQueries()));
-    result.add("maxSlowQueries", VPackValue(queryList->maxSlowQueries()));
-    result.add("slowQueryThreshold",
-               VPackValue(queryList->slowQueryThreshold()));
-    result.add("maxQueryStringLength",
-               VPackValue(queryList->maxQueryStringLength()));
-    result.close();
+  VPackBuilder result;
+  result.add(VPackValue(VPackValueType::Object));
+  result.add("error", VPackValue(false));
+  result.add("code", VPackValue((int)rest::ResponseCode::OK));
+  result.add("enabled", VPackValue(queryList->enabled()));
+  result.add("trackSlowQueries", VPackValue(queryList->trackSlowQueries()));
+  result.add("maxSlowQueries", VPackValue(queryList->maxSlowQueries()));
+  result.add("slowQueryThreshold",
+              VPackValue(queryList->slowQueryThreshold()));
+  result.add("maxQueryStringLength",
+              VPackValue(queryList->maxQueryStringLength()));
+  result.close();
 
-    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
-  } catch (Exception const& err) {
-    handleError(err);
-  } catch (std::exception const& ex) {
-    arangodb::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__,
-                                    __LINE__);
-    handleError(err);
-  } catch (...) {
-    arangodb::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
-    handleError(err);
-  }
+  generateResult(rest::ResponseCode::OK, result.slice());
 
   return true;
 }
 
 bool RestQueryHandler::readQuery(bool slow) {
-  try {
-    auto queryList = static_cast<QueryList*>(_vocbase->_queries);
-    auto queries = slow ? queryList->listSlow() : queryList->listCurrent();
+  auto queryList = _vocbase->queryList();
+  auto queries = slow ? queryList->listSlow() : queryList->listCurrent();
 
-    VPackBuilder result;
-    result.add(VPackValue(VPackValueType::Array));
+  VPackBuilder result;
+  result.add(VPackValue(VPackValueType::Array));
 
-    for (auto const& q : queries) {
-      auto const& timeString = TRI_StringTimeStamp(q.started);
-      auto const& queryString = q.queryString;
-      auto const& queryState = q.queryState.substr(8, q.queryState.size() - 9);
+  for (auto const& q : queries) {
+    auto const& timeString = TRI_StringTimeStamp(q.started);
+    auto const& queryString = q.queryString;
+    auto const& queryState = q.queryState.substr(8, q.queryState.size() - 9);
 
-      result.add(VPackValue(VPackValueType::Object));
-      result.add("id", VPackValue(StringUtils::itoa(q.id)));
-      result.add("query", VPackValue(queryString));
-      result.add("started", VPackValue(timeString));
-      result.add("runTime", VPackValue(q.runTime));
-      result.add("state", VPackValue(queryState));
-      result.close();
-    }
+    result.add(VPackValue(VPackValueType::Object));
+    result.add("id", VPackValue(StringUtils::itoa(q.id)));
+    result.add("query", VPackValue(queryString));
+    result.add("started", VPackValue(timeString));
+    result.add("runTime", VPackValue(q.runTime));
+    result.add("state", VPackValue(queryState));
     result.close();
-
-    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
-  } catch (Exception const& err) {
-    handleError(err);
-  } catch (std::exception const& ex) {
-    arangodb::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__,
-                                    __LINE__);
-    handleError(err);
-  } catch (...) {
-    arangodb::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
-    handleError(err);
   }
+  result.close();
+
+  generateResult(rest::ResponseCode::OK, result.slice());
 
   return true;
 }
@@ -168,7 +132,7 @@ bool RestQueryHandler::readQuery() {
   const auto& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting GET /_api/query/<type>");
     return true;
@@ -184,7 +148,7 @@ bool RestQueryHandler::readQuery() {
     return readQueryProperties();
   }
 
-  generateError(GeneralResponse::ResponseCode::NOT_FOUND,
+  generateError(rest::ResponseCode::NOT_FOUND,
                 TRI_ERROR_HTTP_NOT_FOUND,
                 "unknown type '" + name +
                     "', expecting 'slow', 'current', or 'properties'");
@@ -192,23 +156,23 @@ bool RestQueryHandler::readQuery() {
 }
 
 bool RestQueryHandler::deleteQuerySlow() {
-  auto queryList = static_cast<arangodb::aql::QueryList*>(_vocbase->_queries);
+  auto queryList = _vocbase->queryList();
   queryList->clearSlow();
 
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
   result.add("error", VPackValue(false));
-  result.add("code", VPackValue((int)GeneralResponse::ResponseCode::OK));
+  result.add("code", VPackValue((int)rest::ResponseCode::OK));
   result.close();
 
-  generateResult(GeneralResponse::ResponseCode::OK, result.slice());
+  generateResult(rest::ResponseCode::OK, result.slice());
 
   return true;
 }
 
 bool RestQueryHandler::deleteQuery(std::string const& name) {
   auto id = StringUtils::uint64(name);
-  auto queryList = static_cast<arangodb::aql::QueryList*>(_vocbase->_queries);
+  auto queryList = _vocbase->queryList();
   TRI_ASSERT(queryList != nullptr);
 
   auto res = queryList->kill(id);
@@ -217,12 +181,12 @@ bool RestQueryHandler::deleteQuery(std::string const& name) {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
     result.add("error", VPackValue(false));
-    result.add("code", VPackValue((int)GeneralResponse::ResponseCode::OK));
+    result.add("code", VPackValue((int)rest::ResponseCode::OK));
     result.close();
 
-    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
+    generateResult(rest::ResponseCode::OK, result.slice());
   } else {
-    generateError(GeneralResponse::ResponseCode::BAD, res,
+    generateError(rest::ResponseCode::BAD, res,
                   "cannot kill query '" + name + "'");
   }
 
@@ -237,7 +201,7 @@ bool RestQueryHandler::deleteQuery() {
   const auto& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/query/<id> or /_api/query/slow");
     return true;
@@ -255,7 +219,7 @@ bool RestQueryHandler::replaceProperties() {
   const auto& suffix = _request->suffix();
 
   if (suffix.size() != 1 || suffix[0] != "properties") {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/query/properties");
     return true;
@@ -271,72 +235,59 @@ bool RestQueryHandler::replaceProperties() {
 
   VPackSlice body = parsedBody.get()->slice();
   if (!body.isObject()) {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting a JSON object as body");
   };
 
-  auto queryList = static_cast<arangodb::aql::QueryList*>(_vocbase->_queries);
+  auto queryList = _vocbase->queryList();
 
-  try {
-    bool enabled = queryList->enabled();
-    bool trackSlowQueries = queryList->trackSlowQueries();
-    size_t maxSlowQueries = queryList->maxSlowQueries();
-    double slowQueryThreshold = queryList->slowQueryThreshold();
-    size_t maxQueryStringLength = queryList->maxQueryStringLength();
+  bool enabled = queryList->enabled();
+  bool trackSlowQueries = queryList->trackSlowQueries();
+  size_t maxSlowQueries = queryList->maxSlowQueries();
+  double slowQueryThreshold = queryList->slowQueryThreshold();
+  size_t maxQueryStringLength = queryList->maxQueryStringLength();
 
-    VPackSlice attribute;
-    attribute = body.get("enabled");
-    if (attribute.isBool()) {
-      enabled = attribute.getBool();
-    }
-
-    attribute = body.get("trackSlowQueries");
-    if (attribute.isBool()) {
-      trackSlowQueries = attribute.getBool();
-    }
-
-    attribute = body.get("maxSlowQueries");
-    if (attribute.isInteger()) {
-      maxSlowQueries = static_cast<size_t>(attribute.getUInt());
-    }
-
-    attribute = body.get("slowQueryThreshold");
-    if (attribute.isNumber()) {
-      slowQueryThreshold = attribute.getNumber<double>();
-    }
-
-    attribute = body.get("maxQueryStringLength");
-    if (attribute.isInteger()) {
-      maxQueryStringLength = static_cast<size_t>(attribute.getUInt());
-    }
-
-    queryList->enabled(enabled);
-    queryList->trackSlowQueries(trackSlowQueries);
-    queryList->maxSlowQueries(maxSlowQueries);
-    queryList->slowQueryThreshold(slowQueryThreshold);
-    queryList->maxQueryStringLength(maxQueryStringLength);
-
-    return readQueryProperties();
-  } catch (Exception const& err) {
-    handleError(err);
-  } catch (std::exception const& ex) {
-    arangodb::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__,
-                                    __LINE__);
-    handleError(err);
-  } catch (...) {
-    arangodb::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
-    handleError(err);
+  VPackSlice attribute;
+  attribute = body.get("enabled");
+  if (attribute.isBool()) {
+    enabled = attribute.getBool();
   }
 
-  return true;
+  attribute = body.get("trackSlowQueries");
+  if (attribute.isBool()) {
+    trackSlowQueries = attribute.getBool();
+  }
+
+  attribute = body.get("maxSlowQueries");
+  if (attribute.isInteger()) {
+    maxSlowQueries = static_cast<size_t>(attribute.getUInt());
+  }
+
+  attribute = body.get("slowQueryThreshold");
+  if (attribute.isNumber()) {
+    slowQueryThreshold = attribute.getNumber<double>();
+  }
+
+  attribute = body.get("maxQueryStringLength");
+  if (attribute.isInteger()) {
+    maxQueryStringLength = static_cast<size_t>(attribute.getUInt());
+  }
+
+  queryList->enabled(enabled);
+  queryList->trackSlowQueries(trackSlowQueries);
+  queryList->maxSlowQueries(maxSlowQueries);
+  queryList->slowQueryThreshold(slowQueryThreshold);
+  queryList->maxQueryStringLength(maxQueryStringLength);
+
+  return readQueryProperties();
 }
 
 bool RestQueryHandler::parseQuery() {
   const auto& suffix = _request->suffix();
 
   if (!suffix.empty()) {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER, "expecting POST /_api/query");
     return true;
   }
@@ -352,63 +303,51 @@ bool RestQueryHandler::parseQuery() {
   VPackSlice body = parsedBody.get()->slice();
 
   if (!body.isObject()) {
-    generateError(GeneralResponse::ResponseCode::BAD,
+    generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting a JSON object as body");
   };
 
-  try {
-    std::string const&& queryString =
-        VelocyPackHelper::checkAndGetStringValue(body, "query");
+  std::string const&& queryString =
+      VelocyPackHelper::checkAndGetStringValue(body, "query");
 
-    Query query(true, _vocbase, queryString.c_str(), queryString.size(),
-                nullptr, nullptr, PART_MAIN);
+  Query query(true, _vocbase, queryString.c_str(), queryString.size(),
+              nullptr, nullptr, PART_MAIN);
 
-    auto parseResult = query.parse();
+  auto parseResult = query.parse();
 
-    if (parseResult.code != TRI_ERROR_NO_ERROR) {
-      generateError(GeneralResponse::ResponseCode::BAD, parseResult.code,
-                    parseResult.details);
-      return true;
-    }
-
-    VPackBuilder result;
-    {
-      VPackObjectBuilder b(&result);
-      result.add("error", VPackValue(false));
-      result.add("code", VPackValue((int)GeneralResponse::ResponseCode::OK));
-      result.add("parsed", VPackValue(true));
-
-      result.add("collections", VPackValue(VPackValueType::Array));
-      for (const auto& it : parseResult.collectionNames) {
-        result.add(VPackValue(it));
-      }
-      result.close();  // Collections
-
-      result.add("bindVars", VPackValue(VPackValueType::Array));
-      for (const auto& it : parseResult.bindParameters) {
-        result.add(VPackValue(it));
-      }
-      result.close();  // bindVars
-
-      result.add("ast", parseResult.result->slice());
-
-      if (parseResult.warnings != nullptr) {
-        result.add("warnings", parseResult.warnings->slice());
-      }
-    }
-
-    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
-  } catch (Exception const& err) {
-    handleError(err);
-  } catch (std::exception const& ex) {
-    arangodb::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__,
-                                    __LINE__);
-    handleError(err);
-  } catch (...) {
-    arangodb::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
-    handleError(err);
+  if (parseResult.code != TRI_ERROR_NO_ERROR) {
+    generateError(rest::ResponseCode::BAD, parseResult.code,
+                  parseResult.details);
+    return true;
   }
 
+  VPackBuilder result;
+  {
+    VPackObjectBuilder b(&result);
+    result.add("error", VPackValue(false));
+    result.add("code", VPackValue((int)rest::ResponseCode::OK));
+    result.add("parsed", VPackValue(true));
+
+    result.add("collections", VPackValue(VPackValueType::Array));
+    for (const auto& it : parseResult.collectionNames) {
+      result.add(VPackValue(it));
+    }
+    result.close();  // Collections
+
+    result.add("bindVars", VPackValue(VPackValueType::Array));
+    for (const auto& it : parseResult.bindParameters) {
+      result.add(VPackValue(it));
+    }
+    result.close();  // bindVars
+
+    result.add("ast", parseResult.result->slice());
+
+    if (parseResult.warnings != nullptr) {
+      result.add("warnings", parseResult.warnings->slice());
+    }
+  }
+
+  generateResult(rest::ResponseCode::OK, result.slice());
   return true;
 }

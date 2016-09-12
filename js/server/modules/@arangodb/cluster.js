@@ -32,6 +32,7 @@ var console = require('console');
 var arangodb = require('@arangodb');
 var ArangoCollection = arangodb.ArangoCollection;
 var ArangoError = arangodb.ArangoError;
+var errors = require("internal").errors;
 var request = require('@arangodb/request').request;
 var wait = require('internal').wait;
 var _ = require('lodash');
@@ -430,7 +431,7 @@ function cleanupCurrentDatabases (currentDatabases, writeLocked) {
 
         if (currentDatabases[name].hasOwnProperty(ourselves)) {
           // we are entered for a database that we don't have locally
-          console.info("cleaning up entry for unknown database '%s'", name);
+          console.debug("cleaning up entry for unknown database '%s'", name);
 
           writeLocked({ part: 'Current' },
             dropDatabaseAgency,
@@ -859,7 +860,7 @@ function dropLocalCollections (plannedCollections, currentCollections,
                 db._drop(collection);
 
                 if (removeAll || !shardMap.hasOwnProperty(collection)) {
-                  console.info('cleaning out Current entry for shard %s in',
+                  console.debug('cleaning out Current entry for shard %s in',
                     'agency for %s/%s', collection, database,
                     collections[collection].name);
                   writeLocked({ part: 'Current' },
@@ -959,37 +960,53 @@ function tryLaunchJob () {
   if (isStopping()) {
     return;
   }
+  var doCleanup = false;
   lockSyncKeyspace();
   try {
     var jobs = global.KEYSPACE_GET('shardSynchronization');
     if (jobs.running === null) {
       var shards = Object.keys(jobs.scheduled).sort();
       if (shards.length > 0) {
-        var jobInfo = jobs.scheduled[shards[0]];
-        try {
-          registerTask({
-            database: jobInfo.database,
-            params: {database: jobInfo.database, shard: jobInfo.shard,
-            planId: jobInfo.planId, leader: jobInfo.leader},
-            command: function (params) {
-              require('@arangodb/cluster').synchronizeOneShard(
-                params.database, params.shard, params.planId, params.leader);
-          }});
-        } catch (err) {
-          if (!require('internal').isStopping()) {
-            console.error('Could not registerTask for shard synchronization.');
+        var done = false;
+        while (!done) {
+          var jobInfo = jobs.scheduled[shards[0]];
+          try {
+            registerTask({
+              database: jobInfo.database,
+              params: {database: jobInfo.database, shard: jobInfo.shard,
+              planId: jobInfo.planId, leader: jobInfo.leader},
+              command: function (params) {
+                require('@arangodb/cluster').synchronizeOneShard(
+                  params.database, params.shard, params.planId, params.leader);
+            }});
+            done = true;
+            global.KEY_SET('shardSynchronization', 'running', jobInfo);
+            console.debug('tryLaunchJob: have launched job', jobInfo);
+            delete jobs.scheduled[shards[0]];
+            global.KEY_SET('shardSynchronization', 'scheduled', jobs.scheduled);
+          } catch (err) {
+            if (err.errorNum === errors.ERROR_ARANGO_DATABASE_NOT_FOUND.code) {
+              doCleanup = true;
+              done = true;
+            }
+            if (!require('internal').isStopping()) {
+              console.error('Could not registerTask for shard synchronization.',
+                            err);
+              wait(1.0);
+            } else {
+              doCleanup = true;
+              done = true;
+            }
           }
-          return;
         }
-        global.KEY_SET('shardSynchronization', 'running', jobInfo);
-        console.debug('scheduleOneShardSynchronization: have launched job', jobInfo);
-        delete jobs.scheduled[shards[0]];
-        global.KEY_SET('shardSynchronization', 'scheduled', jobs.scheduled);
       }
     }
   }
   finally {
     unlockSyncKeyspace();
+  }
+  if (doCleanup) {   // database was deleted
+    global.KEYSPACE_REMOVE("shardSynchronization");
   }
 }
 
@@ -1527,7 +1544,7 @@ var waitForDistributedResponse = function (data, numberOfRequests) {
 var isCluster = function () {
   var role = global.ArangoServerState.role();
 
-  return (role !== undefined && role !== 'SINGLE');
+  return (role !== undefined && role !== 'SINGLE' && role !== 'AGENT');
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1914,9 +1931,9 @@ function supervisionState () {
 
 function waitForSyncReplOneCollection (dbName, collName) {
   console.debug('waitForSyncRepl:', dbName, collName);
-  var cinfo = global.ArangoClusterInfo.getCollectionInfo(dbName, collName);
-  var count = 120;
+  var count = 60;
   while (--count > 0) {
+    var cinfo = global.ArangoClusterInfo.getCollectionInfo(dbName, collName);
     var shards = Object.keys(cinfo.shards);
     var ccinfo = shards.map(function (s) {
       return global.ArangoClusterInfo.getCollectionInfoCurrent(dbName,
@@ -1933,7 +1950,7 @@ function waitForSyncReplOneCollection (dbName, collName) {
       console.debug('waitForSyncRepl: OK:', dbName, collName, shards);
       return true;
     }
-    require('internal').wait(0.5);
+    require('internal').wait(1);
   }
   console.warn('waitForSyncRepl:', dbName, collName, ': BAD');
   return false;

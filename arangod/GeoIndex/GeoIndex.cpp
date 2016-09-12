@@ -303,19 +303,18 @@ void GeoIndexFreePot(GeoIx* gix, int pot) {
 /* needed) before it gets too far into things.         */
 /* =================================================== */
 int GeoIndexNewPot(GeoIx* gix) {
-  int newpotct, j;
-  long long x, y;
+  int j;
   GeoPot* gp;
   if (gix->pots[0].LorLeaf == 0) {
     /* do the growth calculation in long long to make sure it doesn't  */
     /* overflow when the size gets to be near 2^31                     */
-    x = gix->potct;
-    y = 100 + GeoIndexGROW;
+    long long x = gix->potct;
+    long long y = 100 + GeoIndexGROW;
     x = x * y + 99;
     y = 100;
     x = x / y;
     if (x > 1000000000L) return -2;
-    newpotct = (int)x;
+    int newpotct = (int)x;
     gp = static_cast<GeoPot*>(TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, gix->pots,
                                              newpotct * sizeof(GeoPot)));
 
@@ -357,16 +356,15 @@ int GeoIndexNewPot(GeoIx* gix) {
 /* GeoString values of real (latitude, longitude)      */
 /* points                                              */
 /* =================================================== */
-GeoIndex* GeoIndex_new(void) {
+GeoIdx* GeoIndex_new(void) {
   GeoIx* gix;
   int i, j;
-  double lat, lon, x, y, z;
 
   gix = static_cast<GeoIx*>(
       TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoIx), false));
 
   if (gix == NULL) {
-    return (GeoIndex*)gix;
+    return (GeoIdx*)gix;
   }
 
   /* try to allocate all the things we need  */
@@ -417,8 +415,8 @@ GeoIndex* GeoIndex_new(void) {
   /* set up the fixed points structure  */
 
   for (i = 0; i < GeoIndexFIXEDPOINTS; i++) {
-    lat = 90.0;
-    lon = 0.0;
+    double lat = 90.0;
+    double lon = 0.0;
 #if GeoIndexFIXEDSET == 2
     if (i == 1) {
       lat = -90.0;
@@ -520,9 +518,9 @@ GeoIndex* GeoIndex_new(void) {
     }
 #endif
 
-    z = sin(lat * M_PI / 180.0);
-    x = cos(lat * M_PI / 180.0) * cos(lon * M_PI / 180.0);
-    y = cos(lat * M_PI / 180.0) * sin(lon * M_PI / 180.0);
+    double z = sin(lat * M_PI / 180.0);
+    double x = cos(lat * M_PI / 180.0) * cos(lon * M_PI / 180.0);
+    double y = cos(lat * M_PI / 180.0) * sin(lon * M_PI / 180.0);
     (gix->fixed.x)[i] = x;
     (gix->fixed.y)[i] = y;
     (gix->fixed.z)[i] = z;
@@ -537,7 +535,7 @@ GeoIndex* GeoIndex_new(void) {
   gix->pots[j].end = 0x1FFFFFFFFFFFFFll;
   gix->pots[j].level = 1;
   for (i = 0; i < GeoIndexFIXEDPOINTS; i++) gix->pots[j].maxdist[i] = 0;
-  return (GeoIndex*)gix;
+  return (GeoIdx*)gix;
 }
 /* =================================================== */
 /*               GeoIndex_free routine                 */
@@ -546,7 +544,7 @@ GeoIndex* GeoIndex_new(void) {
 /* objects that may have been pointed to by the user's */
 /* data pointers are (of course) not freed by this call*/
 /* =================================================== */
-void GeoIndex_free(GeoIndex* gi) {
+void GeoIndex_free(GeoIdx* gi) {
   GeoIx* gix;
 
   if (gi == NULL) {
@@ -589,7 +587,7 @@ GeoString GeoMkHilbert(GeoCoordinate* c) {
   double xx1, yy1;
   GeoString z;
   int x, y;
-  int i, nz, temp;
+  int i, temp;
   yy1 = c->latitude + 90.0;
   z = 0;
   xx1 = c->longitude;
@@ -601,7 +599,7 @@ GeoString GeoMkHilbert(GeoCoordinate* c) {
   y = (int)(yy1 * STRINGPERDEGREE);
   for (i = 0; i < 26; i++) {
     z <<= 2;
-    nz = ((y >> 24) & 2) + (x >> 25);
+    int nz = ((y >> 24) & 2) + (x >> 25);
     x = (x << 1) & (HILBERTMAX);
     y = (y << 1) & (HILBERTMAX);
     if (nz == 0) {
@@ -652,8 +650,6 @@ GeoString GeoMkHilbert(GeoCoordinate* c) {
 void GeoMkDetail(GeoIx* gix, GeoDetailedPoint* gd, GeoCoordinate* c) {
   /* entire routine takes about 0.94 microseconds  */
   /* math.h under MacOS defines y1 and j1 as global variable */
-  double xx1, yy1, z1, snmd;
-  int i;
   gd->gix = gix;
   gd->gc = c;
   /* The GeoString computation takes about 0.17 microseconds  */
@@ -663,11 +659,11 @@ void GeoMkDetail(GeoIx* gix, GeoDetailedPoint* gd, GeoCoordinate* c) {
   gd->x = cos(c->latitude * M_PI / 180.0) * cos(c->longitude * M_PI / 180.0);
   gd->y = cos(c->latitude * M_PI / 180.0) * sin(c->longitude * M_PI / 180.0);
   /* And this bit takes about 0.45 microseconds  */
-  for (i = 0; i < GeoIndexFIXEDPOINTS; i++) {
-    xx1 = (gix->fixed.x)[i];
-    yy1 = (gix->fixed.y)[i];
-    z1 = (gix->fixed.z)[i];
-    snmd = (xx1 - gd->x) * (xx1 - gd->x) + (yy1 - gd->y) * (yy1 - gd->y) +
+  for (int i = 0; i < GeoIndexFIXEDPOINTS; i++) {
+    double xx1 = (gix->fixed.x)[i];
+    double yy1 = (gix->fixed.y)[i];
+    double z1 = (gix->fixed.z)[i];
+    double snmd = (xx1 - gd->x) * (xx1 - gd->x) + (yy1 - gd->y) * (yy1 - gd->y) +
            (z1 - gd->z) * (z1 - gd->z);
     (gd->fixdist)[i] = (GeoFix)(asin(sqrt(snmd) / 2.0) * ARCSINFIX);
   }
@@ -842,13 +838,13 @@ void GeoResultsStartCount(GeoResults* gr) {
 /* =================================================== */
 void GeoResultsInsertPoint(GeoResults* gr, int slot, double snmd) {
   /* math.h under MacOS defines y1 and j1 as global variable */
-  int i, jj1, jj2, temp;
+  int i, temp;
   if (snmd >= gr->snmd[0]) return;
   if (gr->slot[0] == 0) gr->pointsct++;
   i = 0; /* i is now considered empty  */
   while (1) {
-    jj1 = 2 * i + 1;
-    jj2 = 2 * i + 2;
+    int jj1 = 2 * i + 1;
+    int jj2 = 2 * i + 2;
     if (jj1 < gr->allocpoints) {
       if (jj2 < gr->allocpoints) {
         if (gr->snmd[jj1] > gr->snmd[jj2]) {
@@ -934,7 +930,7 @@ int GeoResultsGrow(GeoResults* gr) {
 GeoCoordinates* GeoAnswers(GeoIx* gix, GeoResults* gr) {
   GeoCoordinates* ans;
   GeoCoordinate* gc;
-  int i, j, slot;
+  int i, j;
   double mole;
 
   if (gr->pointsct == 0) {
@@ -966,7 +962,7 @@ GeoCoordinates* GeoAnswers(GeoIx* gix, GeoResults* gr) {
   j = 0;
   for (i = 0; i < gr->allocpoints; i++) {
     if (j >= gr->pointsct) break;
-    slot = gr->slot[i];
+    int slot = gr->slot[i];
     if (slot == 0) continue;
     ans->coordinates[j].latitude = (gix->gc)[slot].latitude;
     ans->coordinates[j].longitude = (gix->gc)[slot].longitude;
@@ -1047,14 +1043,14 @@ double GeoSNMD(GeoDetailedPoint* gd, GeoCoordinate* c) {
 /* GeoCoordinate data (lat/longitude and data pointer) */
 /* needed for the return to the caller.                */
 /* =================================================== */
-GeoCoordinates* GeoIndex_PointsWithinRadius(GeoIndex* gi, GeoCoordinate* c,
+GeoCoordinates* GeoIndex_PointsWithinRadius(GeoIdx* gi, GeoCoordinate* c,
                                             double d) {
   GeoResults* gres;
   GeoCoordinates* answer;
   GeoDetailedPoint gd;
   GeoStack gk;
   GeoPot* gp;
-  int r, pot, slot, i;
+  int r, slot, i;
   double snmd, maxsnmd;
   GeoIx* gix;
   if (c->longitude < -180.0) return NULL;
@@ -1071,7 +1067,7 @@ GeoCoordinates* GeoIndex_PointsWithinRadius(GeoIndex* gi, GeoCoordinate* c,
   gk.stacksize++;
   while (gk.stacksize >= 1) {
     gk.stacksize--;
-    pot = gk.potid[gk.stacksize];
+    int pot = gk.potid[gk.stacksize];
     if (GeoPotJunk(&gd, pot)) continue;
     gp = gix->pots + pot;
     if (gp->LorLeaf == 0) {
@@ -1112,14 +1108,14 @@ GeoCoordinates* GeoIndex_PointsWithinRadius(GeoIndex* gi, GeoCoordinate* c,
 /* useful points onto the top of the stack for early   */
 /* processing.                                         */
 /* =================================================== */
-GeoCoordinates* GeoIndex_NearestCountPoints(GeoIndex* gi, GeoCoordinate* c,
+GeoCoordinates* GeoIndex_NearestCountPoints(GeoIdx* gi, GeoCoordinate* c,
                                             int count) {
   GeoResults* gr;
   GeoDetailedPoint gd;
   GeoCoordinates* answer;
   GeoStack gk;
   GeoPot* gp;
-  int pot, slot, i, left;
+  int slot, i, left;
   double snmd;
   GeoIx* gix;
   if (c->longitude < -180.0) return NULL;
@@ -1136,7 +1132,7 @@ GeoCoordinates* GeoIndex_NearestCountPoints(GeoIndex* gi, GeoCoordinate* c,
   left = count;
 
   while (gk.stacksize >= 0) {
-    pot = gk.potid[gk.stacksize--];
+    int pot = gk.potid[gk.stacksize--];
     gp = gix->pots + pot;
     if (left <= 0) {
       GeoSetDistance(&gd, gr->snmd[0]);
@@ -1187,19 +1183,18 @@ void GeoIndexFreeSlot(GeoIx* gix, int slot) {
 /* added to the index.                                 */
 /* =================================================== */
 int GeoIndexNewSlot(GeoIx* gix) {
-  int newslotct, j;
-  long long x, y;
+  int j;
   GeoCoordinate* gc;
   if (gix->gc[0].latitude == 0.0) {
     /* do the growth calculation in long long to make sure it doesn't  */
     /* overflow when the size gets to be near 2^31                     */
-    x = gix->slotct;
-    y = 100 + GeoIndexGROW;
+    long long x = gix->slotct;
+    long long y = 100 + GeoIndexGROW;
     x = x * y + 99;
     y = 100;
     x = x / y;
     if (x > 2000000000L) return -2;
-    newslotct = (int)x;
+    int newslotct = (int)x;
     gc = static_cast<GeoCoordinate*>(TRI_Reallocate(
         TRI_UNKNOWN_MEM_ZONE, gix->gc, newslotct * sizeof(GeoCoordinate)));
 
@@ -1437,10 +1432,10 @@ void RotateRight(GeoIx* gix, int pote) {
 /* balancing operation) which starts by obtaining the  */
 /* two new pots. . . continued below                   */
 /* =================================================== */
-int GeoIndex_insert(GeoIndex* gi, GeoCoordinate* c) {
-  int i, j, js, slot, pot, pot1, pot2;
-  int potx, pota, poty, potz;
-  int lvx, lv1, lva, lvy, lvz;
+int GeoIndex_insert(GeoIdx* gi, GeoCoordinate* c) {
+  int i, j, slot, pot, pot1;
+  int pota, poty, potz;
+  int lva, lvy, lvz;
   int height, rebalance;
   GeoDetailedPoint gd;
   GeoPath gt;
@@ -1452,7 +1447,6 @@ int GeoIndex_insert(GeoIndex* gi, GeoCoordinate* c) {
   GeoPot* gpz;
   GeoPot* gpa;
   GeoString gsa[2];
-  GeoString mings, gs;
   GeoIx* gix;
   gix = (GeoIx*)gi;
   rebalance = 0;
@@ -1476,7 +1470,7 @@ int GeoIndex_insert(GeoIndex* gi, GeoCoordinate* c) {
   if (gp->RorPoints == GeoIndexPOTSIZE) {
     rebalance = 1;
     pot1 = GeoIndexNewPot(gix);
-    pot2 = GeoIndexNewPot(gix);
+    int pot2 = GeoIndexNewPot(gix);
     gp = gix->pots + pot; /* may have re-alloced!  */
     if ((pot1 == -2) || (pot2 == -2)) {
       GeoIndexFreeSlot(gix, slot);
@@ -1510,11 +1504,12 @@ int GeoIndex_insert(GeoIndex* gi, GeoCoordinate* c) {
     gp2->RorPoints = gp->RorPoints;
     for (i = 0; i < gp->RorPoints; i++) gp2->points[i] = gp->points[i];
     /* move the first half of the points from pot2 to pot1 */
+    GeoString mings;
     for (i = 0; i < (GeoIndexPOTSIZE / 2); i++) {
       mings = 0x1FFFFFFFFFFFFFll;
-      js = 0;
+      int js = 0;
       for (j = 0; j < gp2->RorPoints; j++) {
-        gs = GeoMkHilbert(gix->gc + gp2->points[j]);
+        GeoString gs = GeoMkHilbert(gix->gc + gp2->points[j]);
         if (gs < mings) {
           mings = gs;
           js = j;
@@ -1578,15 +1573,15 @@ int GeoIndex_insert(GeoIndex* gi, GeoCoordinate* c) {
   /* just need to balance the tree  */
   if (rebalance == 0) return 0;
   height = 2;
-  while (1) {
-    potx = GeoGetPot(&gt, height);
+  while (true) {
+    int potx = GeoGetPot(&gt, height);
     gpx = gix->pots + potx;
-    lvx = gpx->level;
+    int lvx = gpx->level;
     if (potx == 1) break;
     /* root pot ?      */
     pot1 = GeoGetPot(&gt, height + 1); /* pot1=parent(x)  */
     gp1 = gix->pots + pot1;
-    lv1 = gp1->level;
+    int lv1 = gp1->level;
     if (lv1 > lvx) break;
     if (gp1->LorLeaf == potx) /* gpx is the left child? */
     {
@@ -1661,10 +1656,10 @@ int GeoIndex_insert(GeoIndex* gi, GeoCoordinate* c) {
 /* releasing of two pots (which are put back into the  */
 /* free chain using GeoIndexFreePot) Continued . . . . */
 /* =================================================== */
-int GeoIndex_remove(GeoIndex* gi, GeoCoordinate* c) {
+int GeoIndex_remove(GeoIdx* gi, GeoCoordinate* c) {
   GeoDetailedPoint gd;
   int rebalance;
-  int lev, levp, levb, levn, levc;
+  int levn, levc;
   GeoPot* gp;
   int potp;
   GeoPot* gpp;
@@ -1676,8 +1671,7 @@ int GeoIndex_remove(GeoIndex* gi, GeoCoordinate* c) {
   GeoPot* gpc;
   GeoPath gt;
   GeoString gsa[2];
-  int i, j, js, pot, potix, slot, pathix;
-  GeoString mings, gs;
+  int i, pot, potix, slot, pathix;
   GeoIx* gix;
   if (c->longitude < -180.0) return -3;
   if (c->longitude > 180.0) return -3;
@@ -1698,6 +1692,8 @@ int GeoIndex_remove(GeoIndex* gi, GeoCoordinate* c) {
   if (pot == 1) return 0; /* just allow root pot to have fewer points */
   rebalance = 0;
   if ((2 * gp->RorPoints) < GeoIndexPOTSIZE) {
+    int j, js;
+    GeoString mings, gs;
     potp = gt.path[gt.pathlength - 2];
     gpp = gix->pots + potp;
     if (gpp->LorLeaf == pot) {
@@ -1901,13 +1897,13 @@ int GeoIndex_remove(GeoIndex* gi, GeoCoordinate* c) {
     pathix--;
     potp = gt.path[pathix];
     gpp = gix->pots + potp;
-    levp = gpp->level;
+    int levp = gpp->level;
     pot = gpp->LorLeaf;
     potb = gpp->RorPoints;
     gp = gix->pots + pot;
     gpb = gix->pots + potb;
-    lev = gp->level;
-    levb = gpb->level;
+    int lev = gp->level;
+    int levb = gpb->level;
     i = (levp - lev) * (levp - levb);
     if (i == 4) {
       gpp->level--;
@@ -1979,7 +1975,7 @@ void GeoIndex_CoordinatesFree(GeoCoordinates* clist) {
 /*            GeoIndex_hint does nothing!              */
 /* it is here for possible future compatibilty         */
 /* =================================================== */
-int GeoIndex_hint(GeoIndex* gi, int hint) { return 0; }
+int GeoIndex_hint(GeoIdx* gi, int hint) { return 0; }
 
 /* =================================================== */
 /*                 GeoCr structure                     */
@@ -1995,9 +1991,7 @@ typedef struct {
   GeoFix dist;
 } hpot;  // pot for putting on the heap
 
-bool hpotcompare(hpot a, hpot b) {
-  return (a.dist > b.dist);
-}
+bool hpotcompare(hpot a, hpot b) { return (a.dist > b.dist); }
 
 typedef struct {
   int slot;
@@ -2034,7 +2028,7 @@ GeoFix makedist(GeoPot* pot, GeoDetailedPoint* gd) {
   return dist;
 }
 
-GeoCursor* GeoIndex_NewCursor(GeoIndex* gi, GeoCoordinate* c) {
+GeoCursor* GeoIndex_NewCursor(GeoIdx* gi, GeoCoordinate* c) {
   GeoIx* gix;
   hpot hp;
   if (c->longitude < -180.0) return nullptr;
@@ -2043,11 +2037,11 @@ GeoCursor* GeoIndex_NewCursor(GeoIndex* gi, GeoCoordinate* c) {
   if (c->latitude > 90.0) return nullptr;
   gix = (GeoIx*)gi;
   GeoCr* gcr = nullptr;
-  
+
   try {
     gcr = new GeoCr;
+  } catch (...) {
   }
-  catch (...) { }
 
   if (gcr == nullptr) {
     return (GeoCursor*)gcr;
@@ -2167,7 +2161,6 @@ void GeoIndex_CursorFree(GeoCursor* gc) {
 void RecursivePotDump(GeoIx* gix, FILE* f, int pot) {
   int i;
   GeoPot* gp;
-  GeoCoordinate* gc;
   gp = gix->pots + pot;
   fprintf(f, "GP. pot %d level %d  Kids %d %d\n", pot, gp->level, gp->LorLeaf,
           gp->RorPoints);
@@ -2179,7 +2172,7 @@ void RecursivePotDump(GeoIx* gix, FILE* f, int pot) {
     fprintf(f, "Leaf pot containing %d points . . .\n", gp->RorPoints);
     for (i = 0; i < gp->RorPoints; i++) {
       fprintf(f, "Child %d Point %d  ", i, gp->points[i]);
-      gc = gix->gc + gp->points[i];
+      GeoCoordinate* gc = gix->gc + gp->points[i];
       fprintf(f, "Lat.  %9.4f,  Long. %9.4f", gc->latitude, gc->longitude);
 #if TRI_GEO_DEBUG == 2
       fprintf(f, " %s", (char*)gc->data);
@@ -2194,7 +2187,7 @@ void RecursivePotDump(GeoIx* gix, FILE* f, int pot) {
   }
 }
 
-void GeoIndex_INDEXDUMP(GeoIndex* gi, FILE* f) {
+void GeoIndex_INDEXDUMP(GeoIdx* gi, FILE* f) {
   GeoIx* gix;
   gix = (GeoIx*)gi;
   fprintf(f, "Dump of entire index.  %d pots and %d slots allocated\n",
@@ -2206,10 +2199,8 @@ int RecursivePotValidate(GeoIx* gix, int pot, int* usage) {
   int i, j;
   GeoPot* gp;
   GeoDetailedPoint gd;
-  int pota, potb;
-  int lev, leva;
   GeoFix maxdist[GeoIndexFIXEDPOINTS];
-  GeoPot* gpa, *gpb;
+  GeoPot *gpa, *gpb;
   gp = gix->pots + pot;
   usage[0]++;
   if (gp->LorLeaf == 0) {
@@ -2228,15 +2219,13 @@ int RecursivePotValidate(GeoIx* gix, int pot, int* usage) {
     usage[1] += gp->RorPoints;
     return 0;
   } else {
-    int levb;
-
-    pota = gp->LorLeaf;
-    potb = gp->RorPoints;
+    int pota = gp->LorLeaf;
+    int potb = gp->RorPoints;
     gpa = gix->pots + pota;
     gpb = gix->pots + potb;
-    lev = gp->level;
-    leva = gpa->level;
-    levb = gpb->level;
+    int lev = gp->level;
+    int leva = gpa->level;
+    int levb = gpb->level;
     if (leva >= lev) return 2;
     if (levb >= lev) return 3;
     i = (lev - leva) * (lev - levb);
@@ -2258,7 +2247,7 @@ int RecursivePotValidate(GeoIx* gix, int pot, int* usage) {
   }
 }
 
-int GeoIndex_INDEXVALID(GeoIndex* gi) {
+int GeoIndex_INDEXVALID(GeoIdx* gi) {
   int usage[2];  // pots and slots
   int j, pot, slot;
   GeoIx* gix;

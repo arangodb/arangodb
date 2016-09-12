@@ -23,20 +23,23 @@
 
 #include "replication-dump.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/StringRef.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Logger/Logger.h"
-#include "VocBase/collection.h"
+#include "VocBase/CompactionLocker.h"
 #include "VocBase/DatafileHelper.h"
+#include "VocBase/Ditch.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/datafile.h"
-#include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 #include "Wal/Logfile.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Marker.h"
 
 #include <velocypack/Dumper.h>
-#include <velocypack/Slice.h>
 #include <velocypack/Options.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -62,18 +65,6 @@ static void Append(TRI_replication_dump_t* dump, char const* value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a datafile descriptor
-////////////////////////////////////////////////////////////////////////////////
-
-struct df_entry_t {
-  TRI_datafile_t const* _data;
-  TRI_voc_tick_t _dataMin;
-  TRI_voc_tick_t _dataMax;
-  TRI_voc_tick_t _tickMax;
-  bool _isJournal;
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief translate a (local) collection id into a collection name
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -87,7 +78,7 @@ static char const* NameFromCid(TRI_replication_dump_t* dump,
   }
 
   // collection name not in cache yet
-  std::string name(TRI_GetCollectionNameByIdVocBase(dump->_vocbase, cid));
+  std::string name(dump->_vocbase->collectionName(cid));
 
   if (!name.empty()) {
     // insert into cache
@@ -102,64 +93,6 @@ static char const* NameFromCid(TRI_replication_dump_t* dump,
   }
 
   return nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief iterate over a vector of datafiles and pick those with a specific
-/// data range
-////////////////////////////////////////////////////////////////////////////////
-
-static void IterateDatafiles(std::vector<TRI_datafile_t*> const& datafiles,
-                             std::vector<df_entry_t>& result,
-                             TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
-                             bool isJournal) {
-  for (auto& df : datafiles) {
-    df_entry_t entry = {df, df->_dataMin, df->_dataMax, df->_tickMax,
-                        isJournal};
-
-    LOG(TRACE) << "checking datafile " << df->_fid << " with data range " << df->_dataMin << " - " << df->_dataMax << ", tick max: " << df->_tickMax;
-
-    if (df->_dataMin == 0 || df->_dataMax == 0) {
-      // datafile doesn't have any data
-      continue;
-    }
-
-    TRI_ASSERT(df->_tickMin <= df->_tickMax);
-    TRI_ASSERT(df->_dataMin <= df->_dataMax);
-
-    if (dataMax < df->_dataMin) {
-      // datafile is newer than requested range
-      continue;
-    }
-
-    if (dataMin > df->_dataMax) {
-      // datafile is older than requested range
-      continue;
-    }
-
-    result.emplace_back(entry);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the datafiles of a collection for a specific tick range
-////////////////////////////////////////////////////////////////////////////////
-
-static std::vector<df_entry_t> GetRangeDatafiles(
-    TRI_document_collection_t* document, TRI_voc_tick_t dataMin,
-    TRI_voc_tick_t dataMax) {
-  LOG(TRACE) << "getting datafiles in data range " << dataMin << " - " << dataMax;
-
-  std::vector<df_entry_t> datafiles;
-
-  {
-    READ_LOCKER(readLocker, document->_filesLock); 
-
-    IterateDatafiles(document->_datafiles, datafiles, dataMin, dataMax, false);
-    IterateDatafiles(document->_journals, datafiles, dataMin, dataMax, true);
-  }
-
-  return datafiles;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -235,8 +168,8 @@ static TRI_replication_operation_e TranslateType(
 static int StringifyMarker(TRI_replication_dump_t* dump,
                            TRI_voc_tick_t databaseId,
                            TRI_voc_cid_t collectionId,
-                           TRI_df_marker_t const* marker,
-                           bool isDump, bool withTicks, bool isEdgeCollection) {
+                           TRI_df_marker_t const* marker, bool isDump,
+                           bool withTicks, bool isEdgeCollection) {
   TRI_ASSERT(MustReplicateWalMarkerType(marker));
   TRI_df_marker_type_t const type = marker->getType();
 
@@ -247,13 +180,16 @@ static int StringifyMarker(TRI_replication_dump_t* dump,
     // for debugging use the following
     // Append(dump, "\",\"typeName\":\"");
     // Append(dump, TRI_NameMarkerDatafile(marker));
-    
-    if (dump->_compat28 &&
-        (type == TRI_DF_MARKER_VPACK_DOCUMENT || type == TRI_DF_MARKER_VPACK_REMOVE)) {
+
+    if (dump->_compat28 && (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
+                            type == TRI_DF_MARKER_VPACK_REMOVE)) {
       // 2.8-compatible format
-      VPackSlice slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
-      arangodb::basics::VPackStringBufferAdapter adapter(dump->_buffer); 
-      VPackDumper dumper(&adapter, &dump->_vpackOptions); // note: we need the CustomTypeHandler here
+      VPackSlice slice(reinterpret_cast<char const*>(marker) +
+                       DatafileHelper::VPackOffset(type));
+      arangodb::basics::VPackStringBufferAdapter adapter(dump->_buffer);
+      VPackDumper dumper(
+          &adapter,
+          &dump->_vpackOptions);  // note: we need the CustomTypeHandler here
 
       // additionally dump "key" and "rev" attributes on the top-level
       Append(dump, "\",\"key\":");
@@ -274,7 +210,7 @@ static int StringifyMarker(TRI_replication_dump_t* dump,
       Append(dump, "\",\"type\":");
       Append(dump, static_cast<uint64_t>(TranslateType(marker)));
     }
-    
+
     if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
         type == TRI_DF_MARKER_VPACK_REMOVE ||
         type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
@@ -305,8 +241,7 @@ static int StringifyMarker(TRI_replication_dump_t* dump,
         }
       }
     }
-  }
-  else {
+  } else {
     // collection dump
     if (withTicks) {
       Append(dump, "{\"tick\":\"");
@@ -316,12 +251,15 @@ static int StringifyMarker(TRI_replication_dump_t* dump,
       Append(dump, "{");
     }
 
-    if (dump->_compat28 &&
-        (type == TRI_DF_MARKER_VPACK_DOCUMENT || type == TRI_DF_MARKER_VPACK_REMOVE)) {
+    if (dump->_compat28 && (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
+                            type == TRI_DF_MARKER_VPACK_REMOVE)) {
       // 2.8-compatible format
-      VPackSlice slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
-      arangodb::basics::VPackStringBufferAdapter adapter(dump->_buffer); 
-      VPackDumper dumper(&adapter, &dump->_vpackOptions); // note: we need the CustomTypeHandler here
+      VPackSlice slice(reinterpret_cast<char const*>(marker) +
+                       DatafileHelper::VPackOffset(type));
+      arangodb::basics::VPackStringBufferAdapter adapter(dump->_buffer);
+      VPackDumper dumper(
+          &adapter,
+          &dump->_vpackOptions);  // note: we need the CustomTypeHandler here
 
       // additionally dump "key" and "rev" attributes on the top-level
       Append(dump, "\"key\":");
@@ -337,29 +275,31 @@ static int StringifyMarker(TRI_replication_dump_t* dump,
       } else {
         Append(dump, static_cast<uint64_t>(TranslateType(marker)));
       }
-    }
-    else {
+    } else {
       Append(dump, "\"type\":");
       Append(dump, static_cast<uint64_t>(TranslateType(marker)));
     }
   }
 
   switch (type) {
-    case TRI_DF_MARKER_VPACK_DOCUMENT: 
-    case TRI_DF_MARKER_VPACK_REMOVE: 
-    case TRI_DF_MARKER_VPACK_CREATE_DATABASE: 
-    case TRI_DF_MARKER_VPACK_CREATE_COLLECTION: 
+    case TRI_DF_MARKER_VPACK_DOCUMENT:
+    case TRI_DF_MARKER_VPACK_REMOVE:
+    case TRI_DF_MARKER_VPACK_CREATE_DATABASE:
+    case TRI_DF_MARKER_VPACK_CREATE_COLLECTION:
     case TRI_DF_MARKER_VPACK_CREATE_INDEX:
-    case TRI_DF_MARKER_VPACK_RENAME_COLLECTION: 
-    case TRI_DF_MARKER_VPACK_CHANGE_COLLECTION: 
-    case TRI_DF_MARKER_VPACK_DROP_DATABASE: 
-    case TRI_DF_MARKER_VPACK_DROP_COLLECTION: 
+    case TRI_DF_MARKER_VPACK_RENAME_COLLECTION:
+    case TRI_DF_MARKER_VPACK_CHANGE_COLLECTION:
+    case TRI_DF_MARKER_VPACK_DROP_DATABASE:
+    case TRI_DF_MARKER_VPACK_DROP_COLLECTION:
     case TRI_DF_MARKER_VPACK_DROP_INDEX: {
       Append(dump, ",\"data\":");
 
-      VPackSlice slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
-      arangodb::basics::VPackStringBufferAdapter adapter(dump->_buffer); 
-      VPackDumper dumper(&adapter, &dump->_vpackOptions); // note: we need the CustomTypeHandler here
+      VPackSlice slice(reinterpret_cast<char const*>(marker) +
+                       DatafileHelper::VPackOffset(type));
+      arangodb::basics::VPackStringBufferAdapter adapter(dump->_buffer);
+      VPackDumper dumper(
+          &adapter,
+          &dump->_vpackOptions);  // note: we need the CustomTypeHandler here
       dumper.dump(slice);
       break;
     }
@@ -381,6 +321,124 @@ static int StringifyMarker(TRI_replication_dump_t* dump,
   return TRI_ERROR_NO_ERROR;
 }
 
+static int SliceifyMarker(TRI_replication_dump_t* dump,
+                          TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
+                          TRI_df_marker_t const* marker, bool isDump,
+                          bool withTicks, bool isEdgeCollection) {
+  TRI_ASSERT(MustReplicateWalMarkerType(marker));
+  TRI_df_marker_type_t const type = marker->getType();
+
+  VPackBuilder builder(&dump->_vpackOptions);
+  builder.openObject();
+
+  if (!isDump) {
+    // logger-follow command
+    builder.add("tick", VPackValue(static_cast<uint64_t>(marker->getTick())));
+
+    if (dump->_compat28 && (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
+                            type == TRI_DF_MARKER_VPACK_REMOVE)) {
+      // 2.8-compatible format
+      VPackSlice slice(reinterpret_cast<char const*>(marker) +
+                       DatafileHelper::VPackOffset(type));
+      // additionally dump "key" and "rev" attributes on the top-level
+      builder.add("key", slice.get(StaticStrings::KeyString));
+      if (slice.hasKey(StaticStrings::RevString)) {
+        builder.add("rev", slice.get(StaticStrings::RevString));
+      }
+      // convert 2300 markers to 2301 markers for edges
+      if (type == TRI_DF_MARKER_VPACK_DOCUMENT && isEdgeCollection) {
+        builder.add("type", VPackValue(2301));
+      } else {
+        builder.add("type",
+                    VPackValue(static_cast<uint64_t>(TranslateType(marker))));
+      }
+    } else {
+      // 3.0 dump
+      builder.add("type",
+                  VPackValue(static_cast<uint64_t>(TranslateType(marker))));
+    }
+
+    if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
+        type == TRI_DF_MARKER_VPACK_REMOVE ||
+        type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
+        type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
+        type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION) {
+      // transaction id
+      builder.add("tid", VPackValue(DatafileHelper::TransactionId(marker)));
+    }
+    if (databaseId > 0) {
+      builder.add("database", VPackValue(databaseId));
+      if (collectionId > 0) {
+        builder.add("cid", VPackValue(collectionId));
+        // also include collection name
+        char const* cname = NameFromCid(dump, collectionId);
+        if (cname != nullptr) {
+          builder.add("cname", VPackValue(cname));
+        }
+      }
+    }
+  } else {
+    // collection dump
+    if (withTicks) {
+      builder.add("tick", VPackValue(static_cast<uint64_t>(marker->getTick())));
+    }
+
+    if (dump->_compat28 && (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
+                            type == TRI_DF_MARKER_VPACK_REMOVE)) {
+      // 2.8-compatible format
+      VPackSlice slice(reinterpret_cast<char const*>(marker) +
+                       DatafileHelper::VPackOffset(type));
+      builder.add("key", slice.get(StaticStrings::KeyString));
+      if (slice.hasKey(StaticStrings::RevString)) {
+        builder.add("rev", slice.get(StaticStrings::RevString));
+      }
+      // convert 2300 markers to 2301 markers for edges
+      Append(dump, ",\"type\":");
+      if (type == TRI_DF_MARKER_VPACK_DOCUMENT && isEdgeCollection) {
+        builder.add("type", VPackValue(2301));
+      } else {
+        builder.add("type",
+                    VPackValue(static_cast<uint64_t>(TranslateType(marker))));
+      }
+    } else {
+      builder.add("type",
+                  VPackValue(static_cast<uint64_t>(TranslateType(marker))));
+    }
+  }
+
+  switch (type) {
+    case TRI_DF_MARKER_VPACK_DOCUMENT:
+    case TRI_DF_MARKER_VPACK_REMOVE:
+    case TRI_DF_MARKER_VPACK_CREATE_DATABASE:
+    case TRI_DF_MARKER_VPACK_CREATE_COLLECTION:
+    case TRI_DF_MARKER_VPACK_CREATE_INDEX:
+    case TRI_DF_MARKER_VPACK_RENAME_COLLECTION:
+    case TRI_DF_MARKER_VPACK_CHANGE_COLLECTION:
+    case TRI_DF_MARKER_VPACK_DROP_DATABASE:
+    case TRI_DF_MARKER_VPACK_DROP_COLLECTION:
+    case TRI_DF_MARKER_VPACK_DROP_INDEX: {
+      VPackSlice slice(reinterpret_cast<char const*>(marker) +
+                       DatafileHelper::VPackOffset(type));
+      builder.add("data", slice);
+      break;
+    }
+
+    case TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION:
+    case TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION:
+    case TRI_DF_MARKER_VPACK_ABORT_TRANSACTION: {
+      // nothing to do
+      break;
+    }
+
+    default: {
+      TRI_ASSERT(false);
+      return TRI_ERROR_INTERNAL;
+    }
+  }
+
+  builder.close();
+  return TRI_ERROR_NO_ERROR;
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a marker belongs to a transaction
 ////////////////////////////////////////////////////////////////////////////////
@@ -393,7 +451,7 @@ static bool IsTransactionWalMarker(TRI_replication_dump_t* dump,
   }
 
   // then check if the marker belongs to the "correct" database
-  if (dump->_vocbase->_id != DatafileHelper::DatabaseId(marker)) {
+  if (dump->_vocbase->id() != DatafileHelper::DatabaseId(marker)) {
     return false;
   }
 
@@ -415,10 +473,10 @@ static bool MustReplicateWalMarker(
   }
 
   // then check if the marker belongs to the "correct" database
-  if (dump->_vocbase->_id != databaseId) {
+  if (dump->_vocbase->id() != databaseId) {
     return false;
   }
-  
+
   // finally check if the marker is for a collection that we want to ignore
   TRI_voc_cid_t cid = collectionId;
 
@@ -430,14 +488,14 @@ static bool MustReplicateWalMarker(
       return false;
     }
   }
-  
-  if (dump->_restrictCollection > 0 && 
-      (cid != dump->_restrictCollection && ! IsTransactionWalMarker(dump, marker))) {
+
+  if (dump->_restrictCollection > 0 &&
+      (cid != dump->_restrictCollection &&
+       !IsTransactionWalMarker(dump, marker))) {
     // restrict output to a single collection, but a different one
     return false;
   }
 
-  
   if (marker->getTick() >= firstRegularTick) {
     return true;
   }
@@ -457,135 +515,52 @@ static bool MustReplicateWalMarker(
 ////////////////////////////////////////////////////////////////////////////////
 
 static int DumpCollection(TRI_replication_dump_t* dump,
-                          TRI_document_collection_t* document,
+                          LogicalCollection* collection,
                           TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
                           TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
-                          bool withTicks) {
-  LOG(TRACE) << "dumping collection " << document->_info.id() << ", tick range " << dataMin << " - " << dataMax;
+                          bool withTicks, bool useVpp = false) {
+  LOG(TRACE) << "dumping collection " << collection->cid() << ", tick range "
+             << dataMin << " - " << dataMax;
 
-  TRI_string_buffer_t* buffer = dump->_buffer;
-
-  std::vector<df_entry_t> datafiles;
-
-  try {
-    datafiles = GetRangeDatafiles(document, dataMin, dataMax);
-  } catch (...) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-  
-  bool const isEdgeCollection = (document->_info.type() == TRI_COL_TYPE_EDGE);
+  bool const isEdgeCollection = (collection->type() == TRI_COL_TYPE_EDGE);
 
   // setup some iteration state
   TRI_voc_tick_t lastFoundTick = 0;
-  int res = TRI_ERROR_NO_ERROR;
-  bool hasMore = true;
   bool bufferFull = false;
 
-  size_t const n = datafiles.size();
+  auto callback = [&dump, &lastFoundTick, &databaseId, &collectionId,
+                   &withTicks, &isEdgeCollection, &bufferFull, &useVpp](
+      TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker) {
+    // note the last tick we processed
+    lastFoundTick = foundTick;
 
-  for (size_t i = 0; i < n; ++i) {
-    df_entry_t const& e = datafiles[i];
-    TRI_datafile_t const* datafile = e._data;
-
-    // we are reading from a journal that might be modified in parallel
-    // so we must read-lock it
-    CONDITIONAL_READ_LOCKER(readLocker, document->_filesLock, e._isJournal); 
-
-    if (!e._isJournal) {
-      TRI_ASSERT(datafile->_isSealed);
-    }
-
-    char const* ptr = datafile->_data;
-    char const* end;
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      // no error so far. start iterating
-      end = ptr + datafile->_currentSize;
+    int res;
+    if (useVpp) {
+      res = SliceifyMarker(dump, databaseId, collectionId, marker, true,
+                           withTicks, isEdgeCollection);
     } else {
-      // some error occurred. don't iterate
-      end = ptr;
+      res = StringifyMarker(dump, databaseId, collectionId, marker, true,
+                            withTicks, isEdgeCollection);
     }
 
-    while (ptr < end) {
-      auto const* marker = reinterpret_cast<TRI_df_marker_t const*>(ptr);
-
-      if (marker->getSize() == 0) {
-        // end of datafile
-        break;
-      }
-      
-      TRI_df_marker_type_t type = marker->getType();
-        
-      if (type <= TRI_DF_MARKER_MIN) {
-        break;
-      }
-
-      ptr += DatafileHelper::AlignedMarkerSize<size_t>(marker);
-
-      if (type == TRI_DF_MARKER_BLANK) {
-        // fully ignore these marker types. they don't need to be replicated,
-        // but we also cannot stop iteration if we find one of these
-        continue;
-      }
-
-      // get the marker's tick and check whether we should include it
-      TRI_voc_tick_t foundTick = marker->getTick();
-
-      if (foundTick <= dataMin) {
-        // marker too old
-        continue;
-      }
-
-      if (foundTick > dataMax) {
-        // marker too new
-        hasMore = false;
-        goto NEXT_DF;
-      }
-
-      if (type != TRI_DF_MARKER_VPACK_DOCUMENT &&
-          type != TRI_DF_MARKER_VPACK_REMOVE) {
-        // found a non-data marker...
-
-        // check if we can abort searching
-        if (foundTick >= dataMax || (foundTick > e._tickMax && i == (n - 1))) {
-          // fetched the last available marker
-          hasMore = false;
-          goto NEXT_DF;
-        }
-
-        continue;
-      }
-
-      // note the last tick we processed
-      lastFoundTick = foundTick;
-
-      res = StringifyMarker(dump, databaseId, collectionId, marker, true, withTicks, isEdgeCollection);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        break;  // will go to NEXT_DF
-      }
-
-      if (foundTick >= dataMax || (foundTick >= e._tickMax && i == (n - 1))) {
-        // fetched the last available marker
-        hasMore = false;
-        goto NEXT_DF;
-      }
-
-      if (static_cast<uint64_t>(TRI_LengthStringBuffer(buffer)) > dump->_chunkSize) {
-        // abort the iteration
-        bufferFull = true;
-
-        goto NEXT_DF;
-      }
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
     }
 
-  NEXT_DF:
-    if (res != TRI_ERROR_NO_ERROR || !hasMore || bufferFull) {
-      break;
+    // TODO if vppcase find out slice lenght of _slices.back()
+    if (static_cast<uint64_t>(TRI_LengthStringBuffer(dump->_buffer)) >
+        dump->_chunkSize) {
+      // abort the iteration
+      bufferFull = true;
+      return false;  // stop iterating
     }
-  }
 
-  if (res == TRI_ERROR_NO_ERROR) {
+    return true;  // continue iterating
+  };
+
+  try {
+    bool hasMore = collection->applyForTickRange(dataMin, dataMax, callback);
+
     if (lastFoundTick > 0) {
       // data available for requested range
       dump->_lastFoundTick = lastFoundTick;
@@ -597,9 +572,13 @@ static int DumpCollection(TRI_replication_dump_t* dump,
       dump->_hasMore = false;
       dump->_bufferFull = false;
     }
-  }
 
-  return res;
+    return TRI_ERROR_NO_ERROR;
+  } catch (basics::Exception const& ex) {
+    return ex.code();
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -607,20 +586,17 @@ static int DumpCollection(TRI_replication_dump_t* dump,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DumpCollectionReplication(TRI_replication_dump_t* dump,
-                                  TRI_vocbase_col_t* col,
+                                  arangodb::LogicalCollection* collection,
                                   TRI_voc_tick_t dataMin,
                                   TRI_voc_tick_t dataMax, bool withTicks) {
-  TRI_ASSERT(col != nullptr);
-  TRI_ASSERT(col->_collection != nullptr);
-  
+  TRI_ASSERT(collection != nullptr);
+
   // get a custom type handler
   auto customTypeHandler = dump->_transactionContext->orderCustomTypeHandler();
   dump->_vpackOptions.customTypeHandler = customTypeHandler.get();
 
-  TRI_document_collection_t* document = col->_collection;
-
   // create a barrier so the underlying collection is not unloaded
-  auto b = document->ditches()->createReplicationDitch(__FILE__, __LINE__);
+  auto b = collection->ditches()->createReplicationDitch(__FILE__, __LINE__);
 
   if (b == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -629,17 +605,18 @@ int TRI_DumpCollectionReplication(TRI_replication_dump_t* dump,
   // block compaction
   int res;
   {
-    READ_LOCKER(locker, document->_compactionLock);
+    CompactionPreventer compactionPreventer(collection);
 
     try {
-      res = DumpCollection(dump, document, document->_vocbase->_id, document->_info.id(), dataMin, dataMax, withTicks);
+      res = DumpCollection(dump, collection, collection->vocbase()->id(),
+                           collection->cid(), dataMin, dataMax, withTicks);
     } catch (...) {
       res = TRI_ERROR_INTERNAL;
     }
   }
 
   // always execute this
-  document->ditches()->freeDitch(b);
+  collection->ditches()->freeDitch(b);
 
   return res;
 }
@@ -697,31 +674,31 @@ int TRI_DumpLogReplication(
           // end of datafile
           break;
         }
-          
+
         TRI_df_marker_type_t type = marker->getType();
 
         if (type <= TRI_DF_MARKER_MIN || type >= TRI_DF_MARKER_MAX) {
           break;
         }
-        
+
         // handle special markers
         if (type == TRI_DF_MARKER_PROLOGUE) {
           lastDatabaseId = DatafileHelper::DatabaseId(marker);
           lastCollectionId = DatafileHelper::CollectionId(marker);
-        }
-        else if (type == TRI_DF_MARKER_HEADER || type == TRI_DF_MARKER_FOOTER) {
+        } else if (type == TRI_DF_MARKER_HEADER ||
+                   type == TRI_DF_MARKER_FOOTER) {
           lastDatabaseId = 0;
           lastCollectionId = 0;
-        }
-        else if (type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION) {
+        } else if (type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION) {
           // fill collection name cache
           TRI_voc_tick_t databaseId = DatafileHelper::DatabaseId(marker);
           TRI_ASSERT(databaseId != 0);
           TRI_voc_cid_t collectionId = DatafileHelper::CollectionId(marker);
           TRI_ASSERT(collectionId != 0);
-  
-          if (dump->_vocbase->_id == databaseId) {
-            VPackSlice slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
+
+          if (dump->_vocbase->id() == databaseId) {
+            VPackSlice slice(reinterpret_cast<char const*>(marker) +
+                             DatafileHelper::VPackOffset(type));
             VPackSlice name = slice.get("name");
             if (name.isString()) {
               dump->_collectionNames[collectionId] = name.copyString();
@@ -747,21 +724,21 @@ int TRI_DumpLogReplication(
             break;
           }
         }
-        
+
         TRI_voc_tick_t databaseId;
         TRI_voc_cid_t collectionId;
- 
-        if (type == TRI_DF_MARKER_VPACK_DOCUMENT || type == TRI_DF_MARKER_VPACK_REMOVE) {
+
+        if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
+            type == TRI_DF_MARKER_VPACK_REMOVE) {
           databaseId = lastDatabaseId;
           collectionId = lastCollectionId;
-        }
-        else {
+        } else {
           databaseId = DatafileHelper::DatabaseId(marker);
           collectionId = DatafileHelper::CollectionId(marker);
         }
-  
-        if (!MustReplicateWalMarker(dump, marker, databaseId, collectionId, firstRegularTick,
-                                    transactionIds)) {
+
+        if (!MustReplicateWalMarker(dump, marker, databaseId, collectionId,
+                                    firstRegularTick, transactionIds)) {
           continue;
         }
 
@@ -776,7 +753,13 @@ int TRI_DumpLogReplication(
           }
         }
 
-        res = StringifyMarker(dump, databaseId, collectionId, marker, false, true, false);
+        if (dump->_useVpp) {
+          res = SliceifyMarker(dump, databaseId, collectionId, marker, false,
+                               true, false);
+        } else {
+          res = StringifyMarker(dump, databaseId, collectionId, marker, false,
+                                true, false);
+        }
 
         if (res != TRI_ERROR_NO_ERROR) {
           THROW_ARANGO_EXCEPTION(res);
@@ -794,7 +777,7 @@ int TRI_DumpLogReplication(
         break;
       }
     }
-  
+
     if (outputAsArray) {
       Append(dump, "]");
     }
@@ -832,8 +815,10 @@ int TRI_DumpLogReplication(
 
 int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
                                              TRI_voc_tick_t tickMin,
-                                             TRI_voc_tick_t tickMax) {
-  LOG(TRACE) << "determining transactions, tick range " << tickMin << " - " << tickMax;
+                                             TRI_voc_tick_t tickMax,
+                                             bool useVpp) {
+  LOG(TRACE) << "determining transactions, tick range " << tickMin << " - "
+             << tickMax;
 
   std::unordered_map<TRI_voc_tid_t, TRI_voc_tick_t> transactions;
 
@@ -868,7 +853,7 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
           // end of datafile
           break;
         }
-          
+
         TRI_df_marker_type_t const type = marker->getType();
 
         if (type <= TRI_DF_MARKER_MIN || type >= TRI_DF_MARKER_MAX) {
@@ -909,7 +894,8 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
                    type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION) {
           transactions.erase(tid);
         } else {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "found invalid marker type");
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "found invalid marker type");
         }
       }
     }
@@ -917,32 +903,53 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
     // LOG(INFO) << "found transactions: " << transactions.size();
     // LOG(INFO) << "last tick: " << lastFoundTick;
 
-    if (transactions.empty()) {
-      Append(dump, "[]");
-    } else {
-      bool first = true;
-      Append(dump, "[\"");
-
-      for (auto const& it : transactions) {
-        if (it.second - 1 < lastFoundTick) {
-          lastFoundTick = it.second - 1;
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder builder(buffer);
+    if (useVpp) {
+      if (transactions.empty()) {
+        builder.add(VPackSlice::emptyArraySlice());
+      } else {
+        builder.openArray();
+        for (auto const& it : transactions) {
+          if (it.second - 1 < lastFoundTick) {
+            lastFoundTick = it.second - 1;
+          }
+          builder.add(VPackValue(it.first));
         }
-
-        if (first) {
-          first = false;
-        } else {
-          Append(dump, "\",\"");
-        }
-
-        Append(dump, it.first);
+        builder.close();
       }
 
-      Append(dump, "\"]");
+    } else {
+      if (transactions.empty()) {
+        Append(dump, "[]");
+      } else {
+        bool first = true;
+        Append(dump, "[\"");
+
+        for (auto const& it : transactions) {
+          if (it.second - 1 < lastFoundTick) {
+            lastFoundTick = it.second - 1;
+          }
+
+          if (first) {
+            first = false;
+          } else {
+            Append(dump, "\",\"");
+          }
+
+          Append(dump, it.first);
+        }
+
+        Append(dump, "\"]");
+      }
     }
 
     dump->_fromTickIncluded = fromTickIncluded;
     dump->_lastFoundTick = lastFoundTick;
     // LOG(INFO) << "last tick2: " << lastFoundTick;
+
+    (dump->_slices).push_back(std::move(buffer));
+
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {

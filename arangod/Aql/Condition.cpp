@@ -24,12 +24,11 @@
 #include "Condition.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
+#include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
-#include "Basics/json.h"
-#include "Basics/JsonHelper.h"
 #include "Utils/Transaction.h"
 
 #ifdef _WIN32
@@ -307,14 +306,14 @@ void Condition::toVelocyPack(arangodb::velocypack::Builder& builder,
   }
 }
 
-/// @brief create a condition from JSON
-Condition* Condition::fromJson(ExecutionPlan* plan,
-                               arangodb::basics::Json const& json) {
+/// @brief create a condition from VPack
+Condition* Condition::fromVPack(ExecutionPlan* plan,
+                                arangodb::velocypack::Slice const& slice) {
   auto condition = std::make_unique<Condition>(plan->getAst());
 
-  if (json.isObject() && json.members() != 0) {
+  if (slice.isObject() && slice.length() != 0) {
     // note: the AST is responsible for freeing the AstNode later!
-    AstNode* node = new AstNode(plan->getAst(), json);
+    AstNode* node = new AstNode(plan->getAst(), slice);
     condition->andCombine(node);
   }
 

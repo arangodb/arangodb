@@ -42,6 +42,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-vpack.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -209,7 +210,7 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
     if (v8connection != nullptr) {
       if (v8connection->isConnected() &&
           v8connection->lastHttpReturnCode() ==
-              (int)GeneralResponse::ResponseCode::OK) {
+              (int)rest::ResponseCode::OK) {
         std::ostringstream is;
 
         is << "Connected to ArangoDB '" << v8connection->endpointSpecification()
@@ -780,6 +781,34 @@ static void JS_CompareString(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return client version
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_VersionClient(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  bool details = false;
+  if (args.Length() > 0) {
+    details = TRI_ObjectToBoolean(args[0]);
+  }
+
+  if (!details) {
+    // return version string
+    TRI_V8_RETURN(TRI_V8_ASCII_STRING(ARANGODB_VERSION));
+  }
+
+  // return version details
+  VPackBuilder builder;
+  builder.openObject();
+  rest::Version::getVPack(builder);
+  builder.close();
+
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes global Javascript variables
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -804,6 +833,10 @@ void V8ShellFeature::initGlobals() {
   TRI_AddGlobalVariableVocbase(
       _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "COMPARE_STRING"),
       v8::FunctionTemplate::New(_isolate, JS_CompareString)->GetFunction());
+
+  TRI_AddGlobalVariableVocbase(
+      _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "ARANGODB_CLIENT_VERSION"),
+      v8::FunctionTemplate::New(_isolate, JS_VersionClient)->GetFunction());
 
   // is quite
   TRI_AddGlobalVariableVocbase(_isolate, context,

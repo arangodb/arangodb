@@ -44,17 +44,16 @@ class Inception : public Thread {
   explicit Inception(Agent*);
   virtual ~Inception();
 
-  void run() override;
-  bool start();
-
-  /// @brief Orderly shutdown of thread
   void beginShutdown() override;
+  void run() override;
 
  private:
   void activeAgency();
   void gossip();
 
   Agent* _agent;
+  arangodb::basics::ConditionVariable _cv;
+
 };
 }
 }

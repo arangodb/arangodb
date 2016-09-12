@@ -25,9 +25,67 @@
 #include "GeneralResponse.h"
 
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
+
+namespace detail {
+VPackOptions const* getOptions(VPackOptions const* options) {
+  if (options) {
+    return options;
+  }
+  return &VPackOptions::Options::Defaults;
+}
+}
+
+void GeneralResponse::addPayload(VPackSlice const& slice,
+                                 VPackOptions const* options,
+                                 bool resolveExternals) {
+  addPayloadPreconditions();
+  _numPayloads++;
+  options = detail::getOptions(options);
+
+  bool skipBody = false;
+  addPayloadPreHook(true, resolveExternals, skipBody);
+
+  if (!skipBody) {
+    if (resolveExternals) {
+      auto tmpBuffer =
+          basics::VelocyPackHelper::sanitizeExternalsChecked(slice, options);
+      _vpackPayloads.push_back(std::move(tmpBuffer));
+    } else {
+      // just copy
+      _vpackPayloads.emplace_back(slice.byteSize());
+      _vpackPayloads.back().append(slice.startAs<char const>(),
+                                   slice.byteSize());
+    }
+  }
+  // we pass the original slice here the new one can be accessed
+  addPayloadPostHook(slice, options, resolveExternals, skipBody);
+};
+
+void GeneralResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
+                                 arangodb::velocypack::Options const* options,
+                                 bool resolveExternals) {
+  addPayloadPreconditions();
+  _numPayloads++;
+  options = detail::getOptions(options);
+
+  bool skipBody = false;
+  addPayloadPreHook(true, resolveExternals, skipBody);
+  if (!skipBody) {
+    if (resolveExternals) {
+      auto tmpBuffer = basics::VelocyPackHelper::sanitizeExternalsChecked(
+          VPackSlice(buffer.data()), options);
+      _vpackPayloads.push_back(std::move(tmpBuffer));
+    } else {
+      _vpackPayloads.push_back(std::move(buffer));
+    }
+  }
+  addPayloadPostHook(VPackSlice(buffer.data()), options, resolveExternals,
+                     skipBody);
+};
 
 std::string GeneralResponse::responseString(ResponseCode code) {
   switch (code) {
@@ -159,8 +217,7 @@ std::string GeneralResponse::responseString(ResponseCode code) {
   return StringUtils::itoa((int)code) + " Unknown";
 }
 
-GeneralResponse::ResponseCode GeneralResponse::responseCode(
-    std::string const& str) {
+rest::ResponseCode GeneralResponse::responseCode(std::string const& str) {
   int number = ::atoi(str.c_str());
 
   switch (number) {
@@ -268,7 +325,7 @@ GeneralResponse::ResponseCode GeneralResponse::responseCode(
   }
 }
 
-GeneralResponse::ResponseCode GeneralResponse::responseCode(int code) {
+rest::ResponseCode GeneralResponse::responseCode(int code) {
   TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
 
   switch (code) {
@@ -391,7 +448,6 @@ GeneralResponse::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_USER_DUPLICATE:
     case TRI_ERROR_TASK_DUPLICATE_ID:
     case TRI_ERROR_GRAPH_DUPLICATE:
-    case TRI_ERROR_QUEUE_ALREADY_EXISTS:
       return ResponseCode::CONFLICT;
 
     case TRI_ERROR_DEADLOCK:
@@ -414,5 +470,12 @@ GeneralResponse::ResponseCode GeneralResponse::responseCode(int code) {
 }
 
 GeneralResponse::GeneralResponse(ResponseCode responseCode)
-    : _responseCode(responseCode) {}
-
+    : _responseCode(responseCode),
+      _headers(),
+      _vpackPayloads(),
+      _numPayloads(),
+      _contentType(ContentType::UNSET),
+      _connectionType(ConnectionType::CONNECTION_NONE),
+      _options(velocypack::Options::Defaults),
+      _generateBody(false),
+      _contentTypeRequested(ContentType::UNSET) {}

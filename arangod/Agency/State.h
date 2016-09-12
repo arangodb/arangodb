@@ -110,10 +110,15 @@ class State {
   /// @brief Persist active agency in pool
   bool persistActiveAgents(query_t const& active, query_t const& pool);
 
+  /// @brief Get everything from the state machine
+  query_t allLogs() const;
+
  private:
   /// @brief Save currentTerm, votedFor, log entries
   bool persist(index_t index, term_t term,
                arangodb::velocypack::Slice const& entry);
+
+  bool saveCompacted();
 
   /// @brief Load collection from persistent store
   bool loadPersisted();

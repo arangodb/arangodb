@@ -32,7 +32,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
 #include "Utils/TransactionContext.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/transaction.h"
 
 #include <velocypack/Iterator.h>
@@ -308,11 +308,11 @@ void AnyDirectionEdgeIndexIterator::reset() {
 }
 
 
-EdgeIndex::EdgeIndex(TRI_idx_iid_t iid, TRI_document_collection_t* collection)
+EdgeIndex::EdgeIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection)
     : Index(iid, collection,
             std::vector<std::vector<arangodb::basics::AttributeName>>(
-                {{{StaticStrings::FromString, false}},
-                 {{StaticStrings::ToString, false}}}),
+                {{arangodb::basics::AttributeName(StaticStrings::FromString, false)},
+                 {arangodb::basics::AttributeName(StaticStrings::ToString, false)}}),
             false, false),
       _edgesFrom(nullptr),
       _edgesTo(nullptr),
@@ -321,7 +321,7 @@ EdgeIndex::EdgeIndex(TRI_idx_iid_t iid, TRI_document_collection_t* collection)
 
   if (collection != nullptr) {
     // document is a nullptr in the coordinator case
-    _numBuckets = static_cast<size_t>(collection->_info.indexBuckets());
+    _numBuckets = static_cast<size_t>(collection->indexBuckets());
   }
 
   auto context = [this]() -> std::string { return this->context(); };
@@ -478,9 +478,11 @@ void EdgeIndex::buildSearchValueFromArray(TRI_edge_direction_e dir,
 ////////////////////////////////////////////////////////////////////////////////
 
 double EdgeIndex::selectivityEstimate() const {
-  if (_edgesFrom == nullptr || _edgesTo == nullptr) {
+  if (_edgesFrom == nullptr || 
+      _edgesTo == nullptr || 
+      ServerState::instance()->isCoordinator()) {
     // use hard-coded selectivity estimate in case of cluster coordinator
-    return _selectivityEstimate;
+    return 0.1;
   }
 
   // return average selectivity of the two index parts
@@ -555,6 +557,14 @@ int EdgeIndex::batchInsert(arangodb::Transaction* trx,
         trx, reinterpret_cast<std::vector<TRI_doc_mptr_t*> const*>(documents),
         numThreads);
   }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief unload the index data from memory
+int EdgeIndex::unload() {
+  _edgesFrom->truncate([](TRI_doc_mptr_t*) -> bool { return true; });
+  _edgesTo->truncate([](TRI_doc_mptr_t*) -> bool { return true; });
 
   return TRI_ERROR_NO_ERROR;
 }

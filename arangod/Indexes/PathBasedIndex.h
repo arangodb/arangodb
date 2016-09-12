@@ -29,8 +29,6 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_document_collection_t;
-
 namespace arangodb {
 namespace aql {
 enum AstNodeType : uint32_t;
@@ -63,25 +61,20 @@ class PathBasedIndex : public Index {
   PathBasedIndex() = delete;
 
   PathBasedIndex(
-      TRI_idx_iid_t, struct TRI_document_collection_t*,
+      TRI_idx_iid_t, arangodb::LogicalCollection*,
       std::vector<std::vector<arangodb::basics::AttributeName>> const&,
       bool unique, bool sparse, bool allowPartialIndex);
+
+  PathBasedIndex(TRI_idx_iid_t, arangodb::LogicalCollection*,
+                 arangodb::velocypack::Slice const&, bool);
 
   PathBasedIndex(VPackSlice const&, bool);
 
   ~PathBasedIndex();
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief whether or not the index should reveal its fields
-  //////////////////////////////////////////////////////////////////////////////
 
-  bool dumpFields() const override final { return true; }
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief return the attribute paths
-  //////////////////////////////////////////////////////////////////////////////
-
   std::vector<std::vector<std::string>> const& paths()
       const {
     return _paths;

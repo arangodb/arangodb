@@ -28,10 +28,11 @@
 #include "Aql/ExecutionPlan.h"
 #include "Utils/Transaction.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::aql;
-
-using JsonHelper = arangodb::basics::JsonHelper;
 
 /// @brief constructor
 IndexNode::IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
@@ -62,7 +63,7 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
                                            verbose);  // call base class method
 
   // Now put info about vocbase and cid in there
-  nodes.add("database", VPackValue(_vocbase->_name));
+  nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("collection", VPackValue(_collection->getName()));
   nodes.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(nodes);
@@ -100,35 +101,36 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
   return static_cast<ExecutionNode*>(c);
 }
 
-/// @brief constructor for IndexNode from Json
-IndexNode::IndexNode(ExecutionPlan* plan, arangodb::basics::Json const& json)
-    : ExecutionNode(plan, json),
+/// @brief constructor for IndexNode 
+IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base) 
+    : ExecutionNode(plan, base),
       _vocbase(plan->getAst()->query()->vocbase()),
       _collection(plan->getAst()->query()->collections()->get(
-          JsonHelper::checkAndGetStringValue(json.json(), "collection"))),
-      _outVariable(varFromJson(plan->getAst(), json, "outVariable")),
+          base.get("collection").copyString())),
+      _outVariable(varFromVPack(plan->getAst(), base, "outVariable")),
       _indexes(),
       _condition(nullptr),
-      _reverse(JsonHelper::checkAndGetBooleanValue(json.json(), "reverse")) {
-  auto indexes = JsonHelper::checkAndGetArrayValue(json.json(), "indexes");
+      _reverse(base.get("reverse").getBoolean()) {
+  VPackSlice indexes = base.get("indexes");
 
-  TRI_ASSERT(TRI_IsArrayJson(indexes));
-  size_t length = TRI_LengthArrayJson(indexes);
-  _indexes.reserve(length);
+  if (!indexes.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "\"indexes\" attribute should be an array");
+  }
+
+  _indexes.reserve(indexes.length());
 
   auto trx = plan->getAst()->query()->trx();
-  for (size_t i = 0; i < length; ++i) {
-    auto entry = TRI_LookupArrayJson(indexes, i);
-    std::string iid  = JsonHelper::checkAndGetStringValue(entry, "id");
+  for (auto const& it : VPackArrayIterator(indexes)) {
+    std::string iid  = it.get("id").copyString();
     _indexes.emplace_back(trx->getIndexByIdentifier(_collection->getName(), iid));
   }
 
-  TRI_json_t const* condition =
-      JsonHelper::checkAndGetObjectValue(json.json(), "condition");
+  VPackSlice condition = base.get("condition");
+  if (!condition.isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "\"condition\" attribute should be an object");
+  }
 
-  arangodb::basics::Json conditionJson(TRI_UNKNOWN_MEM_ZONE, condition,
-                                       arangodb::basics::Json::NOFREE);
-  _condition = Condition::fromJson(plan, conditionJson);
+  _condition = Condition::fromVPack(plan, condition);
 
   TRI_ASSERT(_condition != nullptr);
 }

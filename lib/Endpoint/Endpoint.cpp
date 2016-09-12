@@ -51,7 +51,7 @@ Endpoint::Endpoint(DomainType domainType, EndpointType type,
   TRI_invalidatesocket(&_socket);
 }
 
-std::string Endpoint::uriForm (std::string const& endpoint) {
+std::string Endpoint::uriForm(std::string const& endpoint) {
   static std::string illegal;
 
   if (StringUtils::isPrefix(endpoint, "http+tcp://")) {
@@ -86,7 +86,8 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
   }
 
   // read protocol from string
-  if (StringUtils::isPrefix(copy, "http+") || StringUtils::isPrefix(copy, "http@")) {
+  if (StringUtils::isPrefix(copy, "http+") ||
+      StringUtils::isPrefix(copy, "http@")) {
     protocol = TransportType::HTTP;
     prefix = "http+";
     copy = copy.substr(5);
@@ -94,7 +95,7 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
 
   if (StringUtils::isPrefix(copy, "vpp+")) {
     protocol = TransportType::VPP;
-    prefix = "vsp+";
+    prefix = "vpp+";
     copy = copy.substr(4);
   }
 
@@ -159,10 +160,10 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
   // hostname only
 
   if (protocol == TransportType::HTTP) {
-    return prefix + copy + ":" + StringUtils::itoa(EndpointIp::_defaultPortHttp);
-  } else {
     return prefix + copy + ":" +
-           StringUtils::itoa(EndpointIp::_defaultPortVpp);
+           StringUtils::itoa(EndpointIp::_defaultPortHttp);
+  } else {
+    return prefix + copy + ":" + StringUtils::itoa(EndpointIp::_defaultPortVpp);
   }
 }
 
@@ -323,11 +324,12 @@ std::string const Endpoint::defaultEndpoint(TransportType type) {
              StringUtils::itoa(EndpointIp::_defaultPortVpp);
 
     default: {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid transport type");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "invalid transport type");
     }
   }
 
-  return ""; // silence GCC
+  return "";  // silence GCC
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -379,7 +381,8 @@ bool Endpoint::setSocketFlags(TRI_socket_t s) {
   return true;
 }
 
-std::ostream& operator<<(std::ostream& stream, arangodb::Endpoint::TransportType type) {
+std::ostream& operator<<(std::ostream& stream,
+                         arangodb::Endpoint::TransportType type) {
   switch (type) {
     case arangodb::Endpoint::TransportType::HTTP:
       stream << "http";
@@ -391,7 +394,8 @@ std::ostream& operator<<(std::ostream& stream, arangodb::Endpoint::TransportType
   return stream;
 }
 
-std::ostream& operator<<(std::ostream& stream, arangodb::Endpoint::EndpointType type) {
+std::ostream& operator<<(std::ostream& stream,
+                         arangodb::Endpoint::EndpointType type) {
   switch (type) {
     case arangodb::Endpoint::EndpointType::SERVER:
       stream << "server";
@@ -403,7 +407,8 @@ std::ostream& operator<<(std::ostream& stream, arangodb::Endpoint::EndpointType 
   return stream;
 }
 
-std::ostream& operator<<(std::ostream& stream, arangodb::Endpoint::EncryptionType type) {
+std::ostream& operator<<(std::ostream& stream,
+                         arangodb::Endpoint::EncryptionType type) {
   switch (type) {
     case arangodb::Endpoint::EncryptionType::NONE:
       stream << "none";
@@ -415,7 +420,8 @@ std::ostream& operator<<(std::ostream& stream, arangodb::Endpoint::EncryptionTyp
   return stream;
 }
 
-std::ostream& operator<<(std::ostream& stream, arangodb::Endpoint::DomainType type) {
+std::ostream& operator<<(std::ostream& stream,
+                         arangodb::Endpoint::DomainType type) {
   switch (type) {
     case arangodb::Endpoint::DomainType::UNIX:
       stream << "unix";

@@ -28,8 +28,6 @@
 
 using namespace arangodb::aql;
 
-using Json = arangodb::basics::Json;
-
 void SingletonBlock::buildWhitelist() {
   if (!_whitelistBuilt) {
     auto en = static_cast<SingletonNode const*>(getPlanNode());
@@ -64,6 +62,8 @@ int SingletonBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 
   _done = false;
   return TRI_ERROR_NO_ERROR;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();  
 }
 
@@ -137,6 +137,8 @@ int SingletonBlock::getOrSkipSome(size_t,  // atLeast,
 
   _done = true;
   return TRI_ERROR_NO_ERROR;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();  
 }
 
@@ -190,6 +192,8 @@ bool FilterBlock::getBlock(size_t atLeast, size_t atMost) {
   }
 
   return true;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();  
 }
 
@@ -299,6 +303,8 @@ int FilterBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
     }
   }
   return TRI_ERROR_NO_ERROR;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();  
 }
 
@@ -326,6 +332,8 @@ bool FilterBlock::hasMore() {
   // in it.
 
   return true;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();  
 }
 
@@ -338,6 +346,8 @@ int LimitBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   _state = 0;
   _count = 0;
   return TRI_ERROR_NO_ERROR;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();  
 }
 
@@ -424,6 +434,8 @@ int LimitBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
   }
 
   return TRI_ERROR_NO_ERROR;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -480,6 +492,8 @@ AqlItemBlock* ReturnBlock::getSome(size_t atLeast, size_t atMost) {
   res.release();
 
   return stripped.release();
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -495,6 +509,8 @@ RegisterId ReturnBlock::returnInheritedResults() {
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
 
   return it->second.registerId;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -503,6 +519,8 @@ int NoResultsBlock::initializeCursor(AqlItemBlock*, size_t) {
   DEBUG_BEGIN_BLOCK();  
   _done = true;
   return TRI_ERROR_NO_ERROR;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();  
 }
 

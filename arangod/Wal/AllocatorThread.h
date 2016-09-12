@@ -36,7 +36,7 @@ namespace wal {
 
 class LogfileManager;
 
-class AllocatorThread : public Thread {
+class AllocatorThread final : public Thread {
   AllocatorThread(AllocatorThread const&) = delete;
   AllocatorThread& operator=(AllocatorThread const&) = delete;
 

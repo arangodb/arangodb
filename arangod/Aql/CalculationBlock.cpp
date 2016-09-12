@@ -32,8 +32,6 @@
 
 using namespace arangodb::aql;
 
-using Json = arangodb::basics::Json;
-
 CalculationBlock::CalculationBlock(ExecutionEngine* engine,
                                    CalculationNode const* en)
     : ExecutionBlock(engine, en),
@@ -203,5 +201,7 @@ AqlItemBlock* CalculationBlock::getSome(size_t atLeast, size_t atMost) {
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
   return res.release();
+
+  // cppcheck-suppress *
   DEBUG_END_BLOCK();
 }

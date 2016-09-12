@@ -25,44 +25,30 @@
 #define ARANGOD_STATISTICS_STATISTICS_AGENT_H 1
 
 #include "Basics/Common.h"
+#include "Meta/utility.h"
 
 #include "Statistics/StatisticsFeature.h"
 #include "Statistics/statistics.h"
 
 namespace arangodb {
 namespace rest {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief request statistics agent
-////////////////////////////////////////////////////////////////////////////////
-
 template <typename STAT, typename FUNC>
 class StatisticsAgent {
   StatisticsAgent(StatisticsAgent const&) = delete;
   StatisticsAgent& operator=(StatisticsAgent const&) = delete;
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief constructs a new agent
-  //////////////////////////////////////////////////////////////////////////////
+  StatisticsAgent(bool standalone = false)
+      : _statistics(standalone ? FUNC::acquire() : nullptr),
+        _lastReadStart(0.0) {}
 
-  StatisticsAgent() : _statistics(nullptr), _lastReadStart(0.0) {}
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief destructs an agent
-  //////////////////////////////////////////////////////////////////////////////
-
-  ~StatisticsAgent() {
+  virtual ~StatisticsAgent() {
     if (_statistics != nullptr) {
       FUNC::release(_statistics);
     }
   }
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief acquires a new statistics block
-  //////////////////////////////////////////////////////////////////////////////
-
   STAT* acquire() {
     if (_statistics != nullptr) {
       return _statistics;
@@ -72,10 +58,6 @@ class StatisticsAgent {
     return _statistics = FUNC::acquire();
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief releases a statistics block
-  //////////////////////////////////////////////////////////////////////////////
-
   void release() {
     if (_statistics != nullptr) {
       FUNC::release(_statistics);
@@ -83,18 +65,10 @@ class StatisticsAgent {
     }
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief transfers statistics information to another agent
-  //////////////////////////////////////////////////////////////////////////////
-
   void transferTo(StatisticsAgent* agent) {
     agent->replace(_statistics);
     _statistics = nullptr;
   }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief transfers statistics information
-  //////////////////////////////////////////////////////////////////////////////
 
   STAT* steal() {
     STAT* statistics = _statistics;
@@ -102,10 +76,6 @@ class StatisticsAgent {
 
     return statistics;
   }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the time elapsed since read started
-  //////////////////////////////////////////////////////////////////////////////
 
   double elapsedSinceReadStart() {
     if (_lastReadStart != 0.0) {
@@ -116,23 +86,10 @@ class StatisticsAgent {
   }
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief statistics
-  //////////////////////////////////////////////////////////////////////////////
-
   STAT* _statistics;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief last read
-  //////////////////////////////////////////////////////////////////////////////
-
   double _lastReadStart;
 
  protected:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief replaces a statistics block
-  //////////////////////////////////////////////////////////////////////////////
-
   void replace(STAT* statistics) {
     if (_statistics != nullptr) {
       FUNC::release(_statistics);
@@ -141,15 +98,6 @@ class StatisticsAgent {
     _statistics = statistics;
   }
 };
-}
-}
-
-namespace arangodb {
-namespace rest {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief request statistics description
-////////////////////////////////////////////////////////////////////////////////
 
 struct RequestStatisticsAgentDesc {
   static TRI_request_statistics_t* acquire() {
@@ -161,29 +109,30 @@ struct RequestStatisticsAgentDesc {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief request statistics agent
-////////////////////////////////////////////////////////////////////////////////
-
 class RequestStatisticsAgent
     : public StatisticsAgent<TRI_request_statistics_t,
                              RequestStatisticsAgentDesc> {
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief sets the request type
-  //////////////////////////////////////////////////////////////////////////////
+  RequestStatisticsAgent(bool standalone = false)
+      : StatisticsAgent(standalone) {}
 
-  void requestStatisticsAgentSetRequestType(GeneralRequest::RequestType b) {
+  RequestStatisticsAgent(RequestStatisticsAgent const&) = delete;
+
+  RequestStatisticsAgent(RequestStatisticsAgent&& other) noexcept {
+    _statistics = other._statistics;
+    other._statistics = nullptr;
+
+    _lastReadStart = other._lastReadStart;
+    other._lastReadStart = 0.0;
+  }
+  
+  void requestStatisticsAgentSetRequestType(rest::RequestType b) {
     if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {
         _statistics->_requestType = b;
       }
     }
   }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @Brief sets the async flag
-  //////////////////////////////////////////////////////////////////////////////
 
   void requestStatisticsAgentSetAsync() {
     if (StatisticsFeature::enabled()) {
@@ -193,10 +142,6 @@ class RequestStatisticsAgent
     }
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief sets the read start
-  //////////////////////////////////////////////////////////////////////////////
-
   void requestStatisticsAgentSetReadStart() {
     if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr && _statistics->_readStart == 0.0) {
@@ -204,10 +149,6 @@ class RequestStatisticsAgent
       }
     }
   }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief sets the read end
-  //////////////////////////////////////////////////////////////////////////////
 
   void requestStatisticsAgentSetReadEnd() {
     if (StatisticsFeature::enabled()) {
@@ -217,10 +158,6 @@ class RequestStatisticsAgent
     }
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief sets the write start
-  //////////////////////////////////////////////////////////////////////////////
-
   void requestStatisticsAgentSetWriteStart() {
     if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {
@@ -228,10 +165,6 @@ class RequestStatisticsAgent
       }
     }
   }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief sets the write end
-  //////////////////////////////////////////////////////////////////////////////
 
   void requestStatisticsAgentSetWriteEnd() {
     if (StatisticsFeature::enabled()) {
@@ -241,10 +174,6 @@ class RequestStatisticsAgent
     }
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief sets the queue start
-  //////////////////////////////////////////////////////////////////////////////
-
   void requestStatisticsAgentSetQueueStart() {
     if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {
@@ -252,10 +181,6 @@ class RequestStatisticsAgent
       }
     }
   }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief sets the queue end
-  //////////////////////////////////////////////////////////////////////////////
 
   void requestStatisticsAgentSetQueueEnd() {
     if (StatisticsFeature::enabled()) {
@@ -265,10 +190,6 @@ class RequestStatisticsAgent
     }
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief sets the request start
-  //////////////////////////////////////////////////////////////////////////////
-
   void requestStatisticsAgentSetRequestStart() {
     if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {
@@ -276,10 +197,6 @@ class RequestStatisticsAgent
       }
     }
   }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief sets the request end
-  //////////////////////////////////////////////////////////////////////////////
 
   void requestStatisticsAgentSetRequestEnd() {
     if (StatisticsFeature::enabled()) {
@@ -289,10 +206,6 @@ class RequestStatisticsAgent
     }
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief sets execution error
-  //////////////////////////////////////////////////////////////////////////////
-
   void requestStatisticsAgentSetExecuteError() {
     if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {
@@ -300,10 +213,6 @@ class RequestStatisticsAgent
       }
     }
   }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief sets ignore flag
-  //////////////////////////////////////////////////////////////////////////////
 
   void requestStatisticsAgentSetIgnore() {
     if (StatisticsFeature::enabled()) {
@@ -313,10 +222,6 @@ class RequestStatisticsAgent
     }
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief adds bytes received
-  //////////////////////////////////////////////////////////////////////////////
-
   void requestStatisticsAgentAddReceivedBytes(size_t b) {
     if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {
@@ -324,10 +229,6 @@ class RequestStatisticsAgent
       }
     }
   }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief adds bytes sent
-  //////////////////////////////////////////////////////////////////////////////
 
   void requestStatisticsAgentAddSentBytes(size_t b) {
     if (StatisticsFeature::enabled()) {
@@ -337,15 +238,6 @@ class RequestStatisticsAgent
     }
   }
 };
-}
-}
-
-namespace arangodb {
-namespace rest {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief connection statistics description
-////////////////////////////////////////////////////////////////////////////////
 
 struct ConnectionStatisticsAgentDesc {
   static TRI_connection_statistics_t* acquire() {
@@ -357,18 +249,21 @@ struct ConnectionStatisticsAgentDesc {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief connection statistics agent
-////////////////////////////////////////////////////////////////////////////////
-
 class ConnectionStatisticsAgent
     : public StatisticsAgent<TRI_connection_statistics_t,
                              ConnectionStatisticsAgentDesc> {
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief sets the connection type
-  //////////////////////////////////////////////////////////////////////////////
+  ConnectionStatisticsAgent() {
+    acquire();
+    connectionStatisticsAgentSetStart();
+  }
 
+  virtual ~ConnectionStatisticsAgent() {
+    connectionStatisticsAgentSetEnd();
+    release();
+  }
+
+ public:
   void connectionStatisticsAgentSetHttp() {
     if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {
@@ -378,9 +273,15 @@ class ConnectionStatisticsAgent
     }
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief sets the connection start
-  //////////////////////////////////////////////////////////////////////////////
+  // TODO FIXME -- modify statistics to respect vpp
+  void connectionStatisticsAgentSetVpp() {
+    if (StatisticsFeature::enabled()) {
+      if (_statistics != nullptr) {
+        _statistics->_http = true;
+        TRI_HttpConnectionsStatistics.incCounter();
+      }
+    }
+  }
 
   void connectionStatisticsAgentSetStart() {
     if (StatisticsFeature::enabled()) {
@@ -389,10 +290,6 @@ class ConnectionStatisticsAgent
       }
     }
   }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief sets the connection end
-  //////////////////////////////////////////////////////////////////////////////
 
   void connectionStatisticsAgentSetEnd() {
     if (StatisticsFeature::enabled()) {

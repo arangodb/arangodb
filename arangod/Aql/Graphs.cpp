@@ -57,30 +57,6 @@ void Graph::addVertexCollection(std::string const& name) {
   _vertexColls.insert(name);
 }
 
-arangodb::basics::Json Graph::toJson(TRI_memory_zone_t* z, bool verbose) const {
-  arangodb::basics::Json json(z, arangodb::basics::Json::Object);
-
-  if (!_vertexColls.empty()) {
-    arangodb::basics::Json vcn(z, arangodb::basics::Json::Array,
-                               _vertexColls.size());
-    for (auto const& cn : _vertexColls) {
-      vcn.add(arangodb::basics::Json(cn));
-    }
-    json("vertexCollectionNames", vcn);
-  }
-
-  if (!_edgeColls.empty()) {
-    arangodb::basics::Json ecn(z, arangodb::basics::Json::Array,
-                               _edgeColls.size());
-    for (auto const& cn : _edgeColls) {
-      ecn.add(arangodb::basics::Json(cn));
-    }
-    json("edgeCollectionNames", ecn);
-  }
-
-  return json;
-}
-
 void Graph::toVelocyPack(VPackBuilder& builder, bool verbose) const {
   VPackObjectBuilder guard(&builder);
 

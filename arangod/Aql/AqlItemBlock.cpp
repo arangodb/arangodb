@@ -27,7 +27,6 @@
 
 using namespace arangodb::aql;
 
-using Json = arangodb::basics::Json;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief create the block
@@ -463,7 +462,7 @@ AqlItemBlock* AqlItemBlock::concatenate(
 ///                      corresponding position
 ///  "raw":     List of actual values, positions 0 and 1 are always null
 ///                      such that actual indices start at 2
-void AqlItemBlock::toVelocyPack(arangodb::AqlTransaction* trx,
+void AqlItemBlock::toVelocyPack(arangodb::Transaction* trx,
                                 VPackBuilder& result) const {
   VPackBuilder data;
   data.openArray();

@@ -35,7 +35,6 @@ var jsunity = require('jsunity');
 function runSetup () {
   'use strict';
   internal.debugClearFailAt();
-
   internal.debugSetFailAt('CreateDatabase::tempDirectory');
   try {
     db._createDatabase('UnitTestsRecovery1');

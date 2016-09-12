@@ -106,7 +106,7 @@ void DispatcherFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
     _nrExtraThreads = _nrStandardThreads;
   }
 
-  if (_queueSize <= 128) {
+  if (_queueSize < 128) {
     LOG(FATAL)
         << "invalid value for `--server.maximal-queue-size', need at least 128";
     FATAL_ERROR_EXIT();

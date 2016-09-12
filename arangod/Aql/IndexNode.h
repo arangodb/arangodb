@@ -29,10 +29,11 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/types.h"
 #include "Aql/Variable.h"
-#include "Basics/JsonHelper.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 #include "Utils/Transaction.h"
+
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 
@@ -54,7 +55,7 @@ class IndexNode : public ExecutionNode {
             std::vector<Transaction::IndexHandle> const& indexes,
             Condition* condition, bool reverse);
 
-  IndexNode(ExecutionPlan*, arangodb::basics::Json const& base);
+  IndexNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
   ~IndexNode();
 

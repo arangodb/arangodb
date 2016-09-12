@@ -40,8 +40,8 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _activated(false),
       _size(1),
       _poolSize(1),
-      _minElectionTimeout(0.5),
-      _maxElectionTimeout(2.5),
+      _minElectionTimeout( 2.0),
+      _maxElectionTimeout(10.0),
       _supervision(false),
       _waitForSync(true),
       _supervisionFrequency(5.0),
@@ -181,10 +181,10 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void AgencyFeature::prepare() {
-  //_agencyEndpoints.resize(static_cast<size_t>(_size));
 }
 
 void AgencyFeature::start() {
+
   if (!isEnabled()) {
     return;
   }

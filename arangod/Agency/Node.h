@@ -32,10 +32,8 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <string>
 #include <type_traits>
 #include <utility>
-#include <vector>
 
 namespace arangodb {
 namespace consensus {
@@ -166,7 +164,7 @@ class Node {
   bool handle(arangodb::velocypack::Slice const&);
 
   /// @brief Create Builder representing this store
-  void toBuilder(Builder&) const;
+  void toBuilder(Builder&, bool showHidden = false) const;
 
   /// @brief Access children
   Children& children();

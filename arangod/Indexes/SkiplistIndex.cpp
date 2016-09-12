@@ -29,7 +29,6 @@
 #include "Basics/debugging.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Utils/Transaction.h"
-#include "VocBase/document-collection.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -93,8 +92,8 @@ static int CompareKeyElement(VPackSlice const* left,
   TRI_ASSERT(nullptr != left);
   TRI_ASSERT(nullptr != right);
   auto rightSubobjects = right->subObjects();
-  return arangodb::basics::VelocyPackHelper::compare(*left,
-      rightSubobjects[rightPosition].slice(right->document()), true);
+  return arangodb::basics::VelocyPackHelper::compare(
+      *left, rightSubobjects[rightPosition].slice(right->document()), true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -115,30 +114,25 @@ static int CompareElementElement(TRI_index_element_t const* left,
   return arangodb::basics::VelocyPackHelper::compare(l, r, true);
 }
 
-bool BaseSkiplistLookupBuilder::isEquality() const {
-  return _isEquality;
-}
+bool BaseSkiplistLookupBuilder::isEquality() const { return _isEquality; }
 
 VPackSlice const* BaseSkiplistLookupBuilder::getLowerLookup() const {
   return &_lowerSlice;
 }
 
-bool BaseSkiplistLookupBuilder::includeLower() const {
-  return _includeLower;
-}
+bool BaseSkiplistLookupBuilder::includeLower() const { return _includeLower; }
 
 VPackSlice const* BaseSkiplistLookupBuilder::getUpperLookup() const {
   return &_upperSlice;
 }
 
-bool BaseSkiplistLookupBuilder::includeUpper() const {
-  return _includeUpper;
-}
+bool BaseSkiplistLookupBuilder::includeUpper() const { return _includeUpper; }
 
 SkiplistLookupBuilder::SkiplistLookupBuilder(
     Transaction* trx,
     std::vector<std::vector<arangodb::aql::AstNode const*>>& ops,
-    arangodb::aql::Variable const* var, bool reverse) : BaseSkiplistLookupBuilder(trx) {
+    arangodb::aql::Variable const* var, bool reverse)
+    : BaseSkiplistLookupBuilder(trx) {
   _lowerBuilder->openArray();
   if (ops.empty()) {
     // We only use this skiplist to sort. use empty array for lookup
@@ -167,7 +161,7 @@ SkiplistLookupBuilder::SkiplistLookupBuilder(
       TRI_ASSERT(op->numMembers() == 2);
       auto value = op->getMember(0);
       if (value->isAttributeAccessForVariable(paramPair) &&
-            paramPair.first == var) {
+          paramPair.first == var) {
         value = op->getMember(1);
         TRI_ASSERT(!(value->isAttributeAccessForVariable(paramPair) &&
                      paramPair.first == var));
@@ -191,7 +185,7 @@ SkiplistLookupBuilder::SkiplistLookupBuilder(
 
       auto value = op->getMember(0);
       if (value->isAttributeAccessForVariable(paramPair) &&
-            paramPair.first == var) {
+          paramPair.first == var) {
         value = op->getMember(1);
         TRI_ASSERT(!(value->isAttributeAccessForVariable(paramPair) &&
                      paramPair.first == var));
@@ -199,28 +193,28 @@ SkiplistLookupBuilder::SkiplistLookupBuilder(
       }
       switch (op->type) {
         case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
-          if (isReverseOrder) { 
+          if (isReverseOrder) {
             _includeLower = false;
           } else {
             _includeUpper = false;
           }
-          // Fall through intentional
+        // Fall through intentional
         case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
-          if (isReverseOrder) { 
+          if (isReverseOrder) {
             value->toVelocyPackValue(*(_lowerBuilder.get()));
           } else {
             value->toVelocyPackValue(*(_upperBuilder.get()));
           }
           break;
         case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
-          if (isReverseOrder) { 
+          if (isReverseOrder) {
             _includeUpper = false;
           } else {
             _includeLower = false;
           }
-          // Fall through intentional
+        // Fall through intentional
         case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
-          if (isReverseOrder) { 
+          if (isReverseOrder) {
             value->toVelocyPackValue(*(_upperBuilder.get()));
           } else {
             value->toVelocyPackValue(*(_lowerBuilder.get()));
@@ -244,7 +238,7 @@ SkiplistLookupBuilder::SkiplistLookupBuilder(
       TRI_ASSERT(op->numMembers() == 2);
       auto value = op->getMember(0);
       if (value->isAttributeAccessForVariable(paramPair) &&
-            paramPair.first == var) {
+          paramPair.first == var) {
         value = op->getMember(1);
         TRI_ASSERT(!(value->isAttributeAccessForVariable(paramPair) &&
                      paramPair.first == var));
@@ -268,14 +262,15 @@ SkiplistLookupBuilder::SkiplistLookupBuilder(
 bool SkiplistLookupBuilder::next() {
   // The first search value is created during creation.
   // So next is always false.
-  return false;  
+  return false;
 }
 
 SkiplistInLookupBuilder::SkiplistInLookupBuilder(
     Transaction* trx,
     std::vector<std::vector<arangodb::aql::AstNode const*>>& ops,
-    arangodb::aql::Variable const* var, bool reverse) : BaseSkiplistLookupBuilder(trx), _dataBuilder(trx), _done(false) {
-  TRI_ASSERT(!ops.empty()); // We certainly do not need IN here
+    arangodb::aql::Variable const* var, bool reverse)
+    : BaseSkiplistLookupBuilder(trx), _dataBuilder(trx), _done(false) {
+  TRI_ASSERT(!ops.empty());  // We certainly do not need IN here
   TransactionBuilderLeaser tmp(trx);
   std::set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackSorted<true>>
       unique_set(
@@ -302,7 +297,6 @@ SkiplistInLookupBuilder::SkiplistInLookupBuilder(
                    paramPair.first == var));
     }
     if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-
       if (valueLeft) {
         // Case: value IN x.a
         // This is identical to == for the index.
@@ -343,7 +337,7 @@ SkiplistInLookupBuilder::SkiplistInLookupBuilder(
 
     auto value = op->getMember(0);
     if (value->isAttributeAccessForVariable(paramPair) &&
-          paramPair.first == var) {
+        paramPair.first == var) {
       value = op->getMember(1);
       TRI_ASSERT(!(value->isAttributeAccessForVariable(paramPair) &&
                    paramPair.first == var));
@@ -352,14 +346,14 @@ SkiplistInLookupBuilder::SkiplistInLookupBuilder(
 
     switch (op->type) {
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
-        if (isReverseOrder) { 
+        if (isReverseOrder) {
           _includeLower = false;
         } else {
           _includeUpper = false;
         }
-        // Fall through intentional
+      // Fall through intentional
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
-        if (isReverseOrder) { 
+        if (isReverseOrder) {
           TRI_ASSERT(lower == nullptr);
           lower = value;
         } else {
@@ -368,14 +362,14 @@ SkiplistInLookupBuilder::SkiplistInLookupBuilder(
         }
         break;
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
-        if (isReverseOrder) { 
+        if (isReverseOrder) {
           _includeUpper = false;
         } else {
           _includeLower = false;
         }
-        // Fall through intentional
+      // Fall through intentional
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
-        if (isReverseOrder) { 
+        if (isReverseOrder) {
           TRI_ASSERT(upper == nullptr);
           upper = value;
         } else {
@@ -680,7 +674,8 @@ void SkiplistIterator2::initNextInterval() {
       leftBorder = leftBorder->nextNode();
 
       if (_builder->includeUpper()) {
-        rightBorder = _skiplistIndex->rightKeyLookup(_builder->getUpperLookup());
+        rightBorder =
+            _skiplistIndex->rightKeyLookup(_builder->getUpperLookup());
       } else {
         rightBorder = _skiplistIndex->leftKeyLookup(_builder->getUpperLookup());
       }
@@ -716,7 +711,7 @@ void SkiplistIterator2::initNextInterval() {
 ////////////////////////////////////////////////////////////////////////////////
 
 SkiplistIndex::SkiplistIndex(
-    TRI_idx_iid_t iid, TRI_document_collection_t* collection,
+    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     bool unique, bool sparse)
     : PathBasedIndex(iid, collection, fields, unique, sparse, true),
@@ -725,6 +720,18 @@ SkiplistIndex::SkiplistIndex(
       _skiplistIndex(nullptr) {
   _skiplistIndex =
       new TRI_Skiplist(CmpElmElm, CmpKeyElm, FreeElm, unique, _useExpansion);
+}
+
+/// @brief create the skiplist index
+SkiplistIndex::SkiplistIndex(TRI_idx_iid_t iid,
+                             arangodb::LogicalCollection* collection,
+                             VPackSlice const& info)
+    : PathBasedIndex(iid, collection, info, true),
+      CmpElmElm(this),
+      CmpKeyElm(this),
+      _skiplistIndex(nullptr) {
+  _skiplistIndex =
+      new TRI_Skiplist(CmpElmElm, CmpKeyElm, FreeElm, _unique, _useExpansion);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -812,7 +819,7 @@ int SkiplistIndex::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
         _skiplistIndex->remove(elements[j]);
         // No need to free elements[j] skiplist has taken over already
       }
-    
+
       if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && !_unique) {
         // We ignore unique_constraint violated if we are not unique
         res = TRI_ERROR_NO_ERROR;
@@ -865,6 +872,11 @@ int SkiplistIndex::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
   }
 
   return res;
+}
+
+int SkiplistIndex::unload() {
+  _skiplistIndex->truncate(true);
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -939,7 +951,7 @@ SkiplistIterator* SkiplistIndex::lookup(arangodb::Transaction* trx,
     TransactionBuilderLeaser rightSearch(trx);
     *(rightSearch.builder()) = *leftSearch.builder();
 
-    // Define Lower-Bound 
+    // Define Lower-Bound
     VPackSlice lastLeft = lastNonEq.get(StaticStrings::IndexGe);
     if (!lastLeft.isNone()) {
       TRI_ASSERT(!lastNonEq.hasKey(StaticStrings::IndexGt));
@@ -949,7 +961,8 @@ SkiplistIterator* SkiplistIndex::lookup(arangodb::Transaction* trx,
       leftBorder = _skiplistIndex->leftKeyLookup(&search);
       // leftKeyLookup guarantees that we find the element before search. This
       // should not be in the cursor, but the next one
-      // This is also save for the startNode, it should never be contained in the index.
+      // This is also save for the startNode, it should never be contained in
+      // the index.
       leftBorder = leftBorder->nextNode();
     } else {
       lastLeft = lastNonEq.get(StaticStrings::IndexGt);
@@ -1029,8 +1042,7 @@ SkiplistIterator* SkiplistIndex::lookup(arangodb::Transaction* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 int SkiplistIndex::KeyElementComparator::operator()(
-    VPackSlice const* leftKey,
-    TRI_index_element_t const* rightElement) const {
+    VPackSlice const* leftKey, TRI_index_element_t const* rightElement) const {
   TRI_ASSERT(nullptr != leftKey);
   TRI_ASSERT(nullptr != rightElement);
 
@@ -1041,8 +1053,7 @@ int SkiplistIndex::KeyElementComparator::operator()(
   size_t numFields = leftKey->length();
   for (size_t j = 0; j < numFields; j++) {
     VPackSlice field = leftKey->at(j);
-    int compareResult =
-        CompareKeyElement(&field, rightElement, j);
+    int compareResult = CompareKeyElement(&field, rightElement, j);
     if (compareResult != 0) {
       return compareResult;
     }
@@ -1073,8 +1084,7 @@ int SkiplistIndex::ElementElementComparator::operator()(
   }
 
   for (size_t j = 0; j < _idx->numPaths(); j++) {
-    int compareResult =
-        CompareElementElement(leftElement, j, rightElement, j);
+    int compareResult = CompareElementElement(leftElement, j, rightElement, j);
 
     if (compareResult != 0) {
       return compareResult;
@@ -1094,9 +1104,11 @@ int SkiplistIndex::ElementElementComparator::operator()(
   }
 
   // We break this tie in the key comparison by looking at the key:
-  VPackSlice leftKey = VPackSlice(leftElement->document()->vpack()).get(StaticStrings::KeyString);
-  VPackSlice rightKey = VPackSlice(rightElement->document()->vpack()).get(StaticStrings::KeyString);
- 
+  VPackSlice leftKey = VPackSlice(leftElement->document()->vpack())
+                           .get(StaticStrings::KeyString);
+  VPackSlice rightKey = VPackSlice(rightElement->document()->vpack())
+                            .get(StaticStrings::KeyString);
+
   int compareResult = leftKey.compareString(rightKey.copyString());
 
   if (compareResult < 0) {
@@ -1244,7 +1256,6 @@ void SkiplistIndex::matchAttributes(
   }
 }
 
-
 bool SkiplistIndex::accessFitsIndex(
     arangodb::aql::AstNode const* access, arangodb::aql::AstNode const* other,
     arangodb::aql::AstNode const* op, arangodb::aql::Variable const* reference,
@@ -1360,8 +1371,7 @@ bool SkiplistIndex::findMatchingConditions(
       }
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN: {
         auto m = op->getMember(1);
-        if (accessFitsIndex(op->getMember(0), m, op, reference,
-                            mapping)) {
+        if (accessFitsIndex(op->getMember(0), m, op, reference, mapping)) {
           if (m->numMembers() == 0) {
             // We want to do an IN [].
             // No results
@@ -1395,7 +1405,7 @@ bool SkiplistIndex::findMatchingConditions(
         if (first->getMember(1)->isArray()) {
           usesIn = true;
         }
-        //Fall through intentional
+      // Fall through intentional
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
         TRI_ASSERT(conditions.size() == 1);
         break;
@@ -1418,7 +1428,6 @@ bool SkiplistIndex::findMatchingConditions(
   return true;
 }
 
-
 IndexIterator* SkiplistIndex::iteratorForCondition(
     arangodb::Transaction* trx, IndexIteratorContext*,
     arangodb::aql::AstNode const* node,
@@ -1426,7 +1435,8 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
   std::vector<std::vector<arangodb::aql::AstNode const*>> mapping;
   bool usesIn = false;
   if (node != nullptr) {
-    mapping.resize(_fields.size()); // We use the default constructor. Mapping will have _fields many entries.
+    mapping.resize(_fields.size());  // We use the default constructor. Mapping
+                                     // will have _fields many entries.
     TRI_ASSERT(mapping.size() == _fields.size());
     if (!findMatchingConditions(node, reference, mapping, usesIn)) {
       return new EmptyIndexIterator();
@@ -1442,16 +1452,16 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
   }
 
   if (usesIn) {
-    auto builder =
-        std::make_unique<SkiplistInLookupBuilder>(trx, mapping, reference, reverse);
-    return new SkiplistIterator2(_skiplistIndex, CmpElmElm, reverse, builder.release());
+    auto builder = std::make_unique<SkiplistInLookupBuilder>(
+        trx, mapping, reference, reverse);
+    return new SkiplistIterator2(_skiplistIndex, CmpElmElm, reverse,
+                                 builder.release());
   }
   auto builder =
       std::make_unique<SkiplistLookupBuilder>(trx, mapping, reference, reverse);
-  return new SkiplistIterator2(_skiplistIndex, CmpElmElm, reverse, builder.release());
+  return new SkiplistIterator2(_skiplistIndex, CmpElmElm, reverse,
+                               builder.release());
 }
-
-
 
 bool SkiplistIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,

@@ -34,6 +34,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_LOCKED, "locked");
   REG_ERROR(ERROR_DEADLOCK, "deadlock detected");
   REG_ERROR(ERROR_SHUTTING_DOWN, "shutdown in progress");
+  REG_ERROR(ERROR_ONLY_ENTERPRISE, "only enterprise version");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_HTTP_UNAUTHORIZED, "unauthorized");
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");
@@ -45,7 +46,6 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_HTTP_SUPERFLUOUS_SUFFICES, "superfluous URL suffices");
   REG_ERROR(ERROR_ARANGO_ILLEGAL_STATE, "illegal state");
   REG_ERROR(ERROR_ARANGO_DATAFILE_SEALED, "datafile sealed");
-  REG_ERROR(ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE, "unknown type");
   REG_ERROR(ERROR_ARANGO_READ_ONLY, "read only");
   REG_ERROR(ERROR_ARANGO_DUPLICATE_IDENTIFIER, "duplicate identifier");
   REG_ERROR(ERROR_ARANGO_DATAFILE_UNREADABLE, "datafile unreadable");
@@ -204,13 +204,6 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_SERVICE_INVALID_MOUNT, "invalid mount");
   REG_ERROR(ERROR_SERVICE_DOWNLOAD_FAILED, "service download failed");
   REG_ERROR(ERROR_SERVICE_UPLOAD_FAILED, "service upload failed");
-  REG_ERROR(ERROR_KEYVALUE_INVALID_KEY, "invalid key declaration");
-  REG_ERROR(ERROR_KEYVALUE_KEY_EXISTS, "key already exists");
-  REG_ERROR(ERROR_KEYVALUE_KEY_NOT_FOUND, "key not found");
-  REG_ERROR(ERROR_KEYVALUE_KEY_NOT_UNIQUE, "key is not unique");
-  REG_ERROR(ERROR_KEYVALUE_KEY_NOT_CHANGED, "key value not changed");
-  REG_ERROR(ERROR_KEYVALUE_KEY_NOT_REMOVED, "key value not removed");
-  REG_ERROR(ERROR_KEYVALUE_NO_VALUE, "missing value");
   REG_ERROR(ERROR_TASK_INVALID_ID, "invalid task id");
   REG_ERROR(ERROR_TASK_DUPLICATE_ID, "duplicate task id");
   REG_ERROR(ERROR_TASK_NOT_FOUND, "task not found");
@@ -260,9 +253,6 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_SERVICE_MOUNTPOINT_CONFLICT, "mountpoint already in use");
   REG_ERROR(ERROR_MODULE_NOT_FOUND, "cannot locate module");
   REG_ERROR(ERROR_MODULE_FAILURE, "failed to invoke module");
-  REG_ERROR(RESULT_ELEMENT_EXISTS, "element not inserted into structure, because it already exists");
-  REG_ERROR(RESULT_ELEMENT_NOT_FOUND, "element not found in structure");
-  REG_ERROR(ERROR_QUEUE_ALREADY_EXISTS, "named queue already exists");
   REG_ERROR(ERROR_DISPATCHER_IS_STOPPING, "dispatcher stopped");
   REG_ERROR(ERROR_QUEUE_UNKNOWN, "named queue does not exist");
   REG_ERROR(ERROR_QUEUE_FULL, "named queue is full");

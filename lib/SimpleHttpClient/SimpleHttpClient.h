@@ -119,7 +119,7 @@ class SimpleHttpClient {
   /// have been _maxRetries retries
   //////////////////////////////////////////////////////////////////////////////
 
-  SimpleHttpResult* retryRequest(GeneralRequest::RequestType,
+  SimpleHttpResult* retryRequest(rest::RequestType,
                                  std::string const&, char const*, size_t,
                                  std::unordered_map<std::string, std::string> const&);
 
@@ -132,7 +132,7 @@ class SimpleHttpClient {
   /// have been _maxRetries retries
   //////////////////////////////////////////////////////////////////////////////
 
-  SimpleHttpResult* retryRequest(GeneralRequest::RequestType,
+  SimpleHttpResult* retryRequest(rest::RequestType,
                                  std::string const&, char const*, size_t);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -141,7 +141,7 @@ class SimpleHttpClient {
   /// this version does not allow specifying custom headers
   //////////////////////////////////////////////////////////////////////////////
 
-  SimpleHttpResult* request(GeneralRequest::RequestType,
+  SimpleHttpResult* request(rest::RequestType,
                             std::string const&, char const*, size_t);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -150,7 +150,7 @@ class SimpleHttpClient {
   /// this version allows specifying custom headers
   //////////////////////////////////////////////////////////////////////////////
 
-  SimpleHttpResult* request(GeneralRequest::RequestType,
+  SimpleHttpResult* request(rest::RequestType,
                             std::string const&, char const*, size_t,
                             std::unordered_map<std::string, std::string> const&);
 
@@ -258,7 +258,7 @@ class SimpleHttpClient {
   /// this version allows specifying custom headers
   //////////////////////////////////////////////////////////////////////////////
 
-  SimpleHttpResult* doRequest(GeneralRequest::RequestType,
+  SimpleHttpResult* doRequest(rest::RequestType,
                               std::string const&, char const*, size_t,
                               std::unordered_map<std::string, std::string> const&);
 
@@ -303,7 +303,7 @@ class SimpleHttpClient {
   /// @param headerFields                   list of header fields
   //////////////////////////////////////////////////////////////////////////////
 
-  void setRequest(GeneralRequest::RequestType method,
+  void setRequest(rest::RequestType method,
                   std::string const& location, char const* body,
                   size_t bodyLength,
                   std::unordered_map<std::string, std::string> const& headerFields);
@@ -410,7 +410,7 @@ class SimpleHttpClient {
 
   uint32_t _nextChunkedSize;
 
-  GeneralRequest::RequestType _method;
+  rest::RequestType _method;
 
   SimpleHttpResult* _result;
 

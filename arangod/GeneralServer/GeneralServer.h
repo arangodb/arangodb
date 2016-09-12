@@ -53,27 +53,13 @@ class GeneralServer : protected TaskManager {
   GeneralServer const& operator=(GeneralServer const&) = delete;
 
  public:
-  // destroys an endpoint server
   static int sendChunk(uint64_t, std::string const&);
 
  public:
-  GeneralServer(bool allowMethodOverride,
-                std::vector<std::string> const& accessControlAllowOrigins);
+  GeneralServer() = default;
   virtual ~GeneralServer();
 
  public:
-  // returns the protocol
-  // virtual char const* protocol() const { return "http"; }
-
-  // check, if we allow a method override
-  bool allowMethodOverride() { return _allowMethodOverride; }
-
- public:
-  // list of trusted origin urls for CORS
-  std::vector<std::string> const& trustedOrigins() const {
-    return _accessControlAllowOrigins;
-  }
-
   // adds the endpoint list
   void setEndpointList(const EndpointList* list);
 
@@ -85,44 +71,26 @@ class GeneralServer : protected TaskManager {
 
   // creates a job for asynchronous execution
   bool handleRequestAsync(GeneralCommTask*,
-                          arangodb::WorkItem::uptr<RestHandler>&,
-                          uint64_t* jobId);
+                          arangodb::WorkItem::uptr<RestHandler>,
+                          uint64_t* jobId = nullptr);
 
   // executes the handler directly or add it to the queue
-  bool handleRequest(GeneralCommTask*, arangodb::WorkItem::uptr<RestHandler>&);
-
- protected:
-  // Handler, Job, and Task tuple
-  struct handler_task_job_t {
-    RestHandler* _handler;
-    GeneralCommTask* _task;
-    HttpServerJob* _job;
-  };
+  bool handleRequest(GeneralCommTask*, arangodb::WorkItem::uptr<RestHandler>);
 
  protected:
   // opens a listen port
   bool openEndpoint(Endpoint* endpoint);
 
-  // handle request directly
-  void handleRequestDirectly(RestHandler* handler, GeneralCommTask* task);
-
-  // registers a task
-  void registerHandler(RestHandler* handler, GeneralCommTask* task);
+  // handles request directly
+  void handleRequestDirectly(GeneralCommTask*,
+                             arangodb::WorkItem::uptr<RestHandler>);
 
  protected:
   // active listen tasks
   std::vector<ListenTask*> _listenTasks;
 
   // defined ports and addresses
-  const EndpointList* _endpointList;
-
-  // allow to override the method
-  bool _allowMethodOverride;
-
-  // list of trusted origin urls for CORS
-  std::vector<std::string> const _accessControlAllowOrigins;
-
- private:
+  EndpointList const* _endpointList = nullptr;
 };
 }
 }

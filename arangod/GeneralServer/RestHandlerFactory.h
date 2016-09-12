@@ -51,6 +51,7 @@ class RestHandlerFactory {
   typedef bool (*context_fptr)(GeneralRequest*, void*);
 
  public:
+  // cppcheck-suppress *
   RestHandlerFactory(context_fptr, void*);
 
  public:
@@ -65,13 +66,15 @@ class RestHandlerFactory {
   bool setRequestContext(GeneralRequest*);
 
   // creates a new handler
-  RestHandler* createHandler(GeneralRequest*, GeneralResponse*);
+  RestHandler* createHandler(std::unique_ptr<GeneralRequest>,
+                             std::unique_ptr<GeneralResponse>);
 
   // adds a path and constructor to the factory
-  void addHandler(std::string const& path, create_fptr, void* data = 0);
+  void addHandler(std::string const& path, create_fptr, void* data = nullptr);
 
   // adds a prefix path and constructor to the factory
-  void addPrefixHandler(std::string const& path, create_fptr, void* data = 0);
+  void addPrefixHandler(std::string const& path, create_fptr,
+                        void* data = nullptr);
 
   // adds a path and constructor to the factory
   void addNotFoundHandler(create_fptr);

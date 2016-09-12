@@ -36,6 +36,8 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 
+class LogicalCollection;
+
 namespace httpclient {
 class SimpleHttpResult;
 }
@@ -118,8 +120,8 @@ class InitialSyncer : public Syncer {
       LOG_TOPIC(DEBUG, Logger::REPLICATION) << msg;
     }
 
-    if (_vocbase->_replicationApplier != nullptr) {
-      _vocbase->_replicationApplier->setProgress(msg.c_str(), true);
+    if (_vocbase->replicationApplier() != nullptr) {
+      _vocbase->replicationApplier()->setProgress(msg.c_str(), true);
     }
   }
 
@@ -166,35 +168,37 @@ class InitialSyncer : public Syncer {
   /// @brief determine the number of documents in a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  int64_t getSize(TRI_vocbase_col_t*);
+  int64_t getSize(arangodb::LogicalCollection*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief incrementally fetch data from a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  int handleCollectionDump(TRI_vocbase_col_t*, std::string const&,
+  int handleCollectionDump(arangodb::LogicalCollection*, std::string const&,
                            std::string const&, TRI_voc_tick_t, std::string&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief incrementally fetch data from a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  int handleCollectionSync(TRI_vocbase_col_t*, std::string const&,
+  int handleCollectionSync(arangodb::LogicalCollection*, std::string const&,
                            std::string const&, TRI_voc_tick_t, std::string&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief incrementally fetch data from a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  int handleSyncKeys(TRI_vocbase_col_t*, std::string const&, std::string const&,
-                     std::string const&, TRI_voc_tick_t, std::string&);
+  int handleSyncKeys(arangodb::LogicalCollection*, std::string const&,
+                     std::string const&, std::string const&, TRI_voc_tick_t,
+                     std::string&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief changes the properties of a collection, based on the VelocyPack
   /// provided
   //////////////////////////////////////////////////////////////////////////////
 
-  int changeCollection(TRI_vocbase_col_t*, arangodb::velocypack::Slice const&);
+  int changeCollection(arangodb::LogicalCollection*,
+                       arangodb::velocypack::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle the information about a collection

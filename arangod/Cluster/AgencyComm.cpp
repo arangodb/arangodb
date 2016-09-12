@@ -32,7 +32,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/json.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -962,7 +961,7 @@ AgencyCommResult AgencyComm::sendServerState(double ttl) {
 
 std::string AgencyComm::getVersion() {
   AgencyCommResult result = sendWithFailover(
-      arangodb::GeneralRequest::RequestType::GET,
+      arangodb::rest::RequestType::GET,
       _globalConnectionOptions._requestTimeout, "version", "", false);
 
   if (result.successful()) {
@@ -1065,7 +1064,7 @@ AgencyCommResult AgencyComm::getValues(std::string const& key) {
   }
 
   AgencyCommResult result = sendWithFailover(
-      arangodb::GeneralRequest::RequestType::POST,
+      arangodb::rest::RequestType::POST,
       _globalConnectionOptions._requestTimeout, url, builder.toJson(), false);
 
   if (!result.successful()) {
@@ -1357,7 +1356,7 @@ bool AgencyComm::lock(std::string const& key, double ttl, double timeout,
 
     if (!result.successful() &&
         result.httpCode() ==
-            (int)arangodb::GeneralResponse::ResponseCode::PRECONDITION_FAILED) {
+            (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
       // key does not yet exist. create it now
       result = casValue(key + "/Lock", slice, false, ttl, timeout);
     }
@@ -1538,7 +1537,7 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
   }
 
   AgencyCommResult result = sendWithFailover(
-      arangodb::GeneralRequest::RequestType::POST,
+      arangodb::rest::RequestType::POST,
       timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout, url,
       builder.slice().toJson(), false);
 
@@ -1592,7 +1591,7 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
 ////////////////////////////////////////////////////////////////////////////////
 
 AgencyCommResult AgencyComm::sendWithFailover(
-    arangodb::GeneralRequest::RequestType method, double const timeout,
+    arangodb::rest::RequestType method, double const timeout,
     std::string const& url, std::string const& body, bool isWatch) {
   size_t numEndpoints;
 
@@ -1638,7 +1637,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
     //    LOG(WARN) << result._statusCode;
 
     if (result._statusCode ==
-        (int)arangodb::GeneralResponse::ResponseCode::TEMPORARY_REDIRECT) {
+        (int)arangodb::rest::ResponseCode::TEMPORARY_REDIRECT) {
       // sometimes the agency will return a 307 (temporary redirect)
       // in this case we have to pick it up and use the new location returned
 
@@ -1725,13 +1724,13 @@ AgencyCommResult AgencyComm::sendWithFailover(
 
 AgencyCommResult AgencyComm::send(
     arangodb::httpclient::GeneralClientConnection* connection,
-    arangodb::GeneralRequest::RequestType method, double timeout,
+    arangodb::rest::RequestType method, double timeout,
     std::string const& url, std::string const& body) {
   TRI_ASSERT(connection != nullptr);
 
-  if (method == arangodb::GeneralRequest::RequestType::GET ||
-      method == arangodb::GeneralRequest::RequestType::HEAD ||
-      method == arangodb::GeneralRequest::RequestType::DELETE_REQ) {
+  if (method == arangodb::rest::RequestType::GET ||
+      method == arangodb::rest::RequestType::HEAD ||
+      method == arangodb::rest::RequestType::DELETE_REQ) {
     TRI_ASSERT(body.empty());
   }
 
@@ -1753,7 +1752,7 @@ AgencyCommResult AgencyComm::send(
 
   // set up headers
   std::unordered_map<std::string, std::string> headers;
-  if (method == arangodb::GeneralRequest::RequestType::POST) {
+  if (method == arangodb::rest::RequestType::POST) {
     // the agency needs this content-type for the body
     headers["content-type"] = "application/json";
   }
@@ -1781,7 +1780,7 @@ AgencyCommResult AgencyComm::send(
   result._connected = true;
 
   if (response->getHttpReturnCode() ==
-      (int)arangodb::GeneralResponse::ResponseCode::TEMPORARY_REDIRECT) {
+      (int)arangodb::rest::ResponseCode::TEMPORARY_REDIRECT) {
     // temporary redirect. now save location header
 
     bool found = false;

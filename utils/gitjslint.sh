@@ -15,5 +15,5 @@ if [ -z "${ARANGOSH}" ];  then
 fi
 
 for file in ` git status --short | grep '^\(.[MAU]\|[MAU].\) .*js$' | cut -d " " -f 3`; do
-  ${ARANGOSH} -c etc/relative/arangosh.conf --log.level warning --jslint $file || exit 1
+  ${ARANGOSH} -c etc/relative/arangosh.conf --log.level error --jslint $file || exit 1
 done

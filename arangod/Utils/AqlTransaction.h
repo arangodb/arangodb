@@ -112,11 +112,7 @@ class AqlTransaction : public Transaction {
   /// @brief documentCollection
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_document_collection_t* documentCollection(TRI_voc_cid_t cid) {
-    TRI_transaction_collection_t* trxColl = this->trxCollection(cid);
-    TRI_ASSERT(trxColl != nullptr);
-    return trxColl->_collection->_collection;
-  }
+  LogicalCollection* documentCollection(TRI_voc_cid_t cid);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone, used to make daughter transactions for parts of a
@@ -124,7 +120,7 @@ class AqlTransaction : public Transaction {
   /// AQL query running on the coordinator
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::AqlTransaction* clone() const {
+  arangodb::Transaction* clone() const override {
     return new arangodb::AqlTransaction(
         arangodb::StandaloneTransactionContext::Create(this->_vocbase),
         &_collections, false);
@@ -139,7 +135,7 @@ class AqlTransaction : public Transaction {
   /// order via an HTTP call. This method is used to implement that HTTP action.
   //////////////////////////////////////////////////////////////////////////////
 
-  int lockCollections();
+  int lockCollections() override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief keep a copy of the collections, this is needed for the clone

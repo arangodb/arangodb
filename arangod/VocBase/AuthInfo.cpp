@@ -40,7 +40,6 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/MasterPointer.h"
-#include "VocBase/collection.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -215,7 +214,7 @@ bool AuthInfo::populate(VPackSlice const& slice) {
 void AuthInfo::reload() {
   insertInitial();
 
-  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->vocbase();
+  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
 
   if (vocbase == nullptr) {
     LOG(DEBUG) << "system database is unknown, cannot load authentication "

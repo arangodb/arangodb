@@ -32,6 +32,7 @@
 #include "Basics/StaticStrings.h"
 #include "Utils/OperationCursor.h"
 #include "V8/v8-globals.h"
+#include "VocBase/MasterPointer.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
@@ -200,6 +201,8 @@ int IndexBlock::initialize() {
   }
 
   return res;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -303,6 +306,8 @@ bool IndexBlock::initIndexes() {
     }
   }
   return true;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -408,6 +413,8 @@ bool IndexBlock::readIndex(size_t atMost) {
   }
   _posInDocs = 0;
   return (!_documents.empty());
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -424,6 +431,8 @@ int IndexBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   _posInDocs = 0;
 
   return TRI_ERROR_NO_ERROR;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -522,6 +531,8 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
   return res.release();
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -582,6 +593,8 @@ size_t IndexBlock::skipSome(size_t atLeast, size_t atMost) {
   }
 
   return skipped;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
@@ -612,7 +625,6 @@ arangodb::OperationCursor* IndexBlock::orderCursor(size_t currentIndex) {
     // yet no cursor for index, so create it
     IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
     _cursors[currentIndex].reset(_trx->indexScanForCondition(
-      _collection->getName(), 
       _indexes[currentIndex], 
       conditionNode,
       node->outVariable(), 

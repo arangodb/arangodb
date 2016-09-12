@@ -22,14 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cursor.h"
+#include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackDumper.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/VPackStringBufferAdapter.h"
 #include "Utils/CollectionExport.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/TransactionContext.h"
-#include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -52,8 +51,7 @@ Cursor::Cursor(CursorId id, size_t batchSize,
       _isDeleted(false),
       _isUsed(false) {}
 
-Cursor::~Cursor() {
-}
+Cursor::~Cursor() {}
 
 VPackSlice Cursor::extra() const {
   if (_extra == nullptr) {
@@ -68,16 +66,11 @@ VelocyPackCursor::VelocyPackCursor(TRI_vocbase_t* vocbase, CursorId id,
                                    std::shared_ptr<VPackBuilder> extra,
                                    double ttl, bool hasCount)
     : Cursor(id, batchSize, extra, ttl, hasCount),
-      _vocbase(vocbase),
+      _vocbaseGuard(vocbase),
       _result(std::move(result)),
       _iterator(_result.result->slice()),
       _cached(_result.cached) {
   TRI_ASSERT(_result.result->slice().isArray());
-  TRI_UseVocBase(vocbase);
-}
-
-VelocyPackCursor::~VelocyPackCursor() {
-  TRI_ReleaseVocBase(_vocbase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -111,52 +104,56 @@ VPackSlice VelocyPackCursor::next() {
 
 size_t VelocyPackCursor::count() const { return _iterator.size(); }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump the cursor contents into a string buffer
-////////////////////////////////////////////////////////////////////////////////
-
-void VelocyPackCursor::dump(arangodb::basics::StringBuffer& buffer) {
-  buffer.appendText("\"result\":[");
-
-  size_t const n = batchSize();
-
-  // reserve 48 bytes per result document by default, but only
-  // if the specified batch size does not get out of hand
-  // otherwise specifying a very high batch size would make the allocation fail
-  // in every case, even if there were much less documents in the collection
-  size_t num = n;
-  if (num == 0) {
-    num = 1;
-  } else if (num >= 10000) {
-    num = 10000;
-  }
-  int res = buffer.reserve(num * 48);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  arangodb::basics::VelocyPackDumper dumper(&buffer, _result.context->getVPackOptions());
-
+void VelocyPackCursor::dump(VPackBuilder& builder) {
   try {
+    size_t const n = batchSize();
+    size_t num = n;
+    if (num == 0) {
+      num = 1;
+    } else if (num >= 10000) {
+      num = 10000;
+    }
+    // reserve an arbitrary number of bytes for the result to save
+    // some reallocs
+    // (not accurate, but the actual size is unknown anyway)
+    builder.buffer()->reserve(num * 32);
 
+    VPackOptions const* oldOptions = builder.options;
+
+    builder.options = _result.context->getVPackOptions();
+
+    builder.add("result", VPackValue(VPackValueType::Array));
     for (size_t i = 0; i < n; ++i) {
       if (!hasNext()) {
         break;
       }
-
-      if (i > 0) {
-        buffer.appendChar(',');
-      }
-
-      auto row = next();
-
-      if (row.isNone()) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-      }
-
-      dumper.dumpValue(row);
+      builder.add(next());
     }
+    builder.close();
+
+    // builder.add("hasMore", VPackValue(hasNext() ? "true" : "false"));
+    // //shoudl not be string
+    builder.add("hasMore", VPackValue(hasNext()));
+
+    if (hasNext()) {
+      builder.add("id", VPackValue(std::to_string(id())));
+    }
+
+    if (hasCount()) {
+      builder.add("count", VPackValue(static_cast<uint64_t>(count())));
+    }
+
+    if (extra().isObject()) {
+      builder.add("extra", extra());
+    }
+
+    builder.add("cached", VPackValue(_cached));
+
+    if (!hasNext()) {
+      // mark the cursor as deleted
+      this->deleted();
+    }
+    builder.options = oldOptions;
   } catch (arangodb::basics::Exception const& ex) {
     THROW_ARANGO_EXCEPTION_MESSAGE(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -164,52 +161,17 @@ void VelocyPackCursor::dump(arangodb::basics::StringBuffer& buffer) {
   } catch (...) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
-
-  buffer.appendText("],\"hasMore\":");
-  buffer.appendText(hasNext() ? "true" : "false");
-
-  if (hasNext()) {
-    // only return cursor id if there are more documents
-    buffer.appendText(",\"id\":\"");
-    buffer.appendInteger(id());
-    buffer.appendText("\"");
-  }
-
-  if (hasCount()) {
-    buffer.appendText(",\"count\":");
-    buffer.appendInteger(static_cast<uint64_t>(count()));
-  }
-
-  VPackSlice const extraSlice = extra();
-
-  if (extraSlice.isObject()) {
-    buffer.appendText(",\"extra\":");
-    dumper.dumpValue(extraSlice);
-  }
-
-  buffer.appendText(",\"cached\":");
-  buffer.appendText(_cached ? "true" : "false");
-
-  if (!hasNext()) {
-    // mark the cursor as deleted
-    this->deleted();
-  }
 }
 
 ExportCursor::ExportCursor(TRI_vocbase_t* vocbase, CursorId id,
                            arangodb::CollectionExport* ex, size_t batchSize,
                            double ttl, bool hasCount)
     : Cursor(id, batchSize, nullptr, ttl, hasCount),
-      _vocbase(vocbase),
+      _vocbaseGuard(vocbase),
       _ex(ex),
-      _size(ex->_documents->size()) {
-  TRI_UseVocBase(vocbase);
-}
+      _size(ex->_documents->size()) {}
 
-ExportCursor::~ExportCursor() {
-  delete _ex;
-  TRI_ReleaseVocBase(_vocbase);
-}
+ExportCursor::~ExportCursor() { delete _ex; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the cursor contains more data
@@ -244,9 +206,7 @@ static bool IncludeAttribute(
     std::unordered_set<std::string> const& fields, std::string const& key) {
   if (restrictionType == CollectionExport::Restrictions::RESTRICTION_INCLUDE ||
       restrictionType == CollectionExport::Restrictions::RESTRICTION_EXCLUDE) {
-    bool const keyContainedInRestrictions =
-        (fields.find(key) !=
-         fields.end());
+    bool const keyContainedInRestrictions = (fields.find(key) != fields.end());
     if ((restrictionType ==
              CollectionExport::Restrictions::RESTRICTION_INCLUDE &&
          !keyContainedInRestrictions) ||
@@ -267,89 +227,79 @@ static bool IncludeAttribute(
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump the cursor contents into a string buffer
-////////////////////////////////////////////////////////////////////////////////
+void ExportCursor::dump(VPackBuilder& builder) {
+  auto transactionContext =
+      std::make_shared<StandaloneTransactionContext>(_vocbaseGuard.vocbase());
 
-void ExportCursor::dump(arangodb::basics::StringBuffer& buffer) {
-  auto transactionContext = std::make_shared<StandaloneTransactionContext>(_vocbase);
-  VPackOptions* options = transactionContext->getVPackOptions();
+  VPackOptions const* oldOptions = builder.options;
+
+  builder.options = transactionContext->getVPackOptions();
 
   TRI_ASSERT(_ex != nullptr);
   auto const restrictionType = _ex->_restrictions.type;
 
-  buffer.appendText("\"result\":[");
+  try {
+    builder.add("result", VPackValue(VPackValueType::Array));
+    size_t const n = batchSize();
 
-  VPackBuilder result;
+    for (size_t i = 0; i < n; ++i) {
+      if (!hasNext()) {
+        break;
+      }
 
-  size_t const n = batchSize();
-
-  for (size_t i = 0; i < n; ++i) {
-    if (!hasNext()) {
-      break;
-    }
-
-    if (i > 0) {
-      buffer.appendChar(',');
-    }
-
-    VPackSlice const slice(reinterpret_cast<char const*>(_ex->_documents->at(_position++)));
-
-    {
-      result.clear();
-
-      VPackObjectBuilder b(&result);
+      VPackSlice const slice(
+          reinterpret_cast<char const*>(_ex->_documents->at(_position++)));
+      builder.openObject();
       // Copy over shaped values
       for (auto const& entry : VPackObjectIterator(slice)) {
         std::string key(entry.key.copyString());
 
-        if (!IncludeAttribute(restrictionType, _ex->_restrictions.fields, key)) {
+        if (!IncludeAttribute(restrictionType, _ex->_restrictions.fields,
+                              key)) {
           // Ignore everything that should be excluded or not included
           continue;
         }
         // If we get here we need this entry in the final result
         if (entry.value.isCustom()) {
-          result.add(key, VPackValue(options->customTypeHandler->toString(entry.value, options, slice)));
+          builder.add(key,
+                      VPackValue(builder.options->customTypeHandler->toString(
+                          entry.value, builder.options, slice)));
         } else {
-          result.add(key, entry.value);
+          builder.add(key, entry.value);
         }
       }
+      builder.close();
+    }
+    builder.close();  // close Array
+
+    // builder.add("hasMore", VPackValue(hasNext() ? "true" : "false"));
+    // //should not be string
+    builder.add("hasMore", VPackValue(hasNext()));
+
+    if (hasNext()) {
+      builder.add("id", VPackValue(std::to_string(id())));
     }
 
-    arangodb::basics::VPackStringBufferAdapter bufferAdapter(buffer.stringBuffer());
-
-    try {
-      VPackDumper dumper(&bufferAdapter, options);
-      dumper.dump(result.slice());
-    } catch (arangodb::basics::Exception const& ex) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(ex.code(), ex.what());
-    } catch (std::exception const& ex) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
-    } catch (...) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    if (hasCount()) {
+      builder.add("count", VPackValue(static_cast<uint64_t>(count())));
     }
+
+    if (extra().isObject()) {
+      builder.add("extra", extra());
+    }
+
+    if (!hasNext()) {
+      // mark the cursor as deleted
+      delete _ex;
+      _ex = nullptr;
+      this->deleted();
+    }
+  } catch (arangodb::basics::Exception const& ex) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
-
-  buffer.appendText("],\"hasMore\":");
-  buffer.appendText(hasNext() ? "true" : "false");
-
-  if (hasNext()) {
-    // only return cursor id if there are more documents
-    buffer.appendText(",\"id\":\"");
-    buffer.appendInteger(id());
-    buffer.appendText("\"");
-  }
-
-  if (hasCount()) {
-    buffer.appendText(",\"count\":");
-    buffer.appendInteger(static_cast<uint64_t>(count()));
-  }
-
-  if (!hasNext()) {
-    delete _ex;
-    _ex = nullptr;
-
-    // mark the cursor as deleted
-    this->deleted();
-  }
+  builder.options = oldOptions;
 }

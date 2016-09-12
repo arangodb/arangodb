@@ -23,6 +23,7 @@
 
 #include "v8-vocbaseprivate.h"
 #include "Basics/conversions.h"
+#include "Basics/StaticStrings.h"
 #include "VocBase/KeyGenerator.h"
 #include "V8/v8-conv.h"
 

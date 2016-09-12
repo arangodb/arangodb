@@ -95,13 +95,14 @@ const optionsDocumentation = [
   '   - `loopSleepWhen`: sleep every nth iteration',
   '   - `loopSleepSec`: sleep seconds between iterations',
   '',
-  '   - `server`: server_url for external server',
+  '   - `server`: server_url (e.g. tcp://127.0.0.1:8529) for external server',
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
   '   - `dbServers`: number of DB-Servers to use',
   '   - `coordinators`: number coordinators to use',
   '   - `agency`: if set to true agency tests are done',
   '   - `agencySize`: number of agents in agency',
+  '   - `agencySupervision`: run supervision in agency',
   '   - `test`: path to single test to execute for "single" test target',
   '   - `cleanup`: if set to true (the default), the cluster data files',
   '     and logs are removed after termination of the test.',
@@ -136,6 +137,7 @@ const optionsDocumentation = [
 
 const optionsDefaults = {
   'agencySize': 3,
+  'agencySupervision': true,
   'build': '',
   'buildType': '',
   'cleanup': true,
@@ -1226,6 +1228,8 @@ function shutdownInstance (instanceInfo, options) {
   let count = 0;
   let bar = '[';
 
+  var shutdownTime = require('internal').time();
+
   let toShutdown = instanceInfo.arangods.slice();
   while (toShutdown.length > 0) {
     // Once all other servers are shut down, we take care of the agents,
@@ -1241,13 +1245,8 @@ function shutdownInstance (instanceInfo, options) {
       arangod.exitStatus = statusExternal(arangod.pid, false);
 
       if (arangod.exitStatus.status === 'RUNNING') {
-        ++count;
 
-        if (count % 10 === 0) {
-          bar = bar + '#';
-        }
-
-        if (count > timeout) {
+        if ((require('internal').time() - shutdownTime) > timeout) {
           print('forcefully terminating ' + yaml.safeDump(arangod.pid) +
             ' after ' + timeout + 's grace period; marking crashy.');
           serverCrashed = true;
@@ -1440,6 +1439,7 @@ function startInstanceAgency (instanceInfo, protocol, options,
   const dataDir = fs.join(rootDir, 'data');
 
   const N = options.agencySize;
+  const S = options.agencySupervision;
   if (options.agencyWaitForSync === undefined) {
     options.agencyWaitForSync = false;
   }
@@ -1451,7 +1451,7 @@ function startInstanceAgency (instanceInfo, protocol, options,
     instanceArgs['agency.size'] = String(N);
     instanceArgs['agency.pool-size'] = String(N);
     instanceArgs['agency.wait-for-sync'] = String(wfs);
-    instanceArgs['agency.supervision'] = 'true';
+    instanceArgs['agency.supervision'] = String(S);
     instanceArgs['database.directory'] = dataDir + String(i);
 
     if (i === N - 1) {
@@ -1471,12 +1471,12 @@ function startInstanceAgency (instanceInfo, protocol, options,
     fs.makeDirectoryRecursive(dir);
     fs.makeDirectoryRecursive(instanceArgs['database.directory']);
     instanceInfo.arangods.push(startArango(protocol, options, instanceArgs, rootDir, 'agent'));
-  }
-
   instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;
   instanceInfo.url = instanceInfo.arangods[instanceInfo.arangods.length - 1].url;
   instanceInfo.role = 'agent';
   print('Agency Endpoint: ' + instanceInfo.endpoint);
+  }
+
 
   return instanceInfo;
 }
@@ -1734,99 +1734,55 @@ let testsCases = {
 };
 
 function findTests () {
+  function doOnePathInner(path) {
+    return _.filter(fs.list(makePathUnix(path)),
+                    function (p) {
+                      return p.substr(-3) === '.js';
+                    })
+            .map(function (x) {
+                   return fs.join(makePathUnix(path), x);
+                 }).sort();
+  }
+
+  function doOnePath(path) {
+    var community = doOnePathInner(path);
+    if (global.ARANGODB_CLIENT_VERSION(true)['enterprise-version']) {
+      return community.concat(doOnePathInner('enterprise/Enterprise/' + path));
+    } else {
+      return community;
+    }
+  }
+
+
   if (testsCases.setup) {
     return;
   }
 
-  testsCases.common = _.filter(fs.list(makePathUnix('js/common/tests/shell')),
-    function (p) {
-      return p.substr(-3) === '.js';
-    }).map(
-    function (x) {
-      return fs.join(makePathUnix('js/common/tests/shell'), x);
-    }).sort();
+  testsCases.common = doOnePath('js/common/tests/shell');
 
-  testsCases.server_only = _.filter(fs.list(makePathUnix('js/server/tests/shell')),
-    function (p) {
-      return p.substr(-3) === '.js';
-    }).map(
-    function (x) {
-      return fs.join(makePathUnix('js/server/tests/shell'), x);
-    }).sort();
+  testsCases.server_only = doOnePath('js/server/tests/shell');
 
-  testsCases.client_only = _.filter(fs.list(makePathUnix('js/client/tests/shell')),
-    function (p) {
-      return p.substr(-3) === '.js';
-    }).map(
-    function (x) {
-      return fs.join(makePathUnix('js/client/tests/shell'), x);
-    }).sort();
+  testsCases.client_only = doOnePath('js/client/tests/shell');
 
-  testsCases.server_aql = _.filter(fs.list(makePathUnix('js/server/tests/aql')),
-    function (p) {
-      return p.substr(-3) === '.js' && p.indexOf('ranges-combined') === -1;
-    }).map(
-    function (x) {
-      return fs.join(makePathUnix('js/server/tests/aql'), x);
-    }).sort();
+  testsCases.server_aql = doOnePath('js/server/tests/aql');
+  testsCases.server_aql = _.filter(testsCases.server_aql,
+    function(p) { return p.indexOf('ranges-combined') === -1; });
 
-  testsCases.server_aql_extended =
-    _.filter(fs.list(makePathUnix('js/server/tests/aql')),
-      function (p) {
-        return p.substr(-3) === '.js' && p.indexOf('ranges-combined') !== -1;
-      }).map(
-      function (x) {
-        return fs.join(makePathUnix('js/server/tests/aql'), x);
-      }).sort();
+  testsCases.server_aql_extended = doOnePath('js/server/tests/aql');
+  testsCases.server_aql_extended = _.filter(testsCases.server_aql_extended,
+    function(p) { return p.indexOf('ranges-combined') !== -1; });
 
-  testsCases.server_aql_performance =
-    _.filter(fs.list(makePathUnix('js/server/perftests')),
-      function (p) {
-        return p.substr(-3) === '.js';
-      }).map(
-      function (x) {
-        return fs.join(makePathUnix('js/server/perftests'), x);
-      }).sort();
+  testsCases.server_aql_performance = doOnePath('js/server/perftests');
 
-  testsCases.server_http = _.filter(fs.list(makePathUnix('js/common/tests/http')),
-    function (p) {
-      return p.substr(-3) === '.js';
-    }).map(
-    function (x) {
-      return fs.join(makePathUnix('js/common/tests/http'), x);
-    }).sort();
+  testsCases.server_http = doOnePath('js/common/tests/http');
 
-  testsCases.replication = _.filter(fs.list(makePathUnix('js/common/tests/replication')),
-    function (p) {
-      return p.substr(-3) === '.js';
-    }).map(
-    function (x) {
-      return fs.join(makePathUnix('js/common/tests/replication'), x);
-    }).sort();
+  testsCases.replication = doOnePath('js/common/tests/replication');
 
-  testsCases.agency = _.filter(fs.list(makePathUnix('js/client/tests/agency')),
-    function (p) {
-      return p.substr(-3) === '.js';
-    }).map(
-    function (x) {
-      return fs.join(makePathUnix('js/client/tests/agency'), x);
-    }).sort();
+  testsCases.agency = doOnePath('js/client/tests/agency');
 
-  testsCases.resilience = _.filter(fs.list(makePathUnix('js/server/tests/resilience')),
-    function (p) {
-      return p.substr(-3) === '.js';
-    }).map(
-    function (x) {
-      return fs.join(makePathUnix('js/server/tests/resilience'), x);
-    }).sort();
+  testsCases.resilience = doOnePath('js/server/tests/resilience');
 
-  testsCases.client_resilience = _.filter(fs.list(makePathUnix('js/client/tests/resilience')),
-    function (p) {
-      return p.substr(-3) === '.js';
-    }).map(
-    function (x) {
-      return fs.join(makePathUnix('js/client/tests/resilience'), x);
-    }).sort();
+  testsCases.client_resilience = doOnePath('js/client/tests/resilience');
 
   testsCases.server = testsCases.common.concat(testsCases.server_only);
   testsCases.client = testsCases.common.concat(testsCases.client_only);
@@ -3911,16 +3867,21 @@ function unitTestPrettyPrintResults (r) {
             continue;
           }
 
-          failedMessages += RED + '    [FAILED]  ' + name + RESET + '\n';
+          failedMessages += RED + '    [FAILED]  ' + name + RESET + '\n\n';
 
           let details = failedCases[name];
 
+          let count = 0;
           for (let one in details) {
             if (!details.hasOwnProperty(one)) {
               continue;
             }
 
+            if (count > 0) {
+              failedMessages += '\n';
+            }
             failedMessages += RED + '      "' + one + '" failed: ' + details[one] + RESET + '\n';
+            count++;
           }
         }
       }

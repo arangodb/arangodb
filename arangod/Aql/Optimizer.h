@@ -218,7 +218,7 @@ class Optimizer {
 
     Rule() = delete;
 
-    Rule(std::string const& name, RuleFunction func, RuleLevel level,
+    Rule(std::string const& name, RuleFunction const& func, RuleLevel level,
          bool canCreateAdditionalPlans, bool canBeDisabled, bool isHidden)
         : name(name),
           func(func),
@@ -435,7 +435,7 @@ class Optimizer {
   }
 
   /// @brief register a hidden rule
-  static void registerHiddenRule(std::string const& name, RuleFunction func,
+  static void registerHiddenRule(std::string const& name, RuleFunction const& func,
                                  RuleLevel level, bool canCreateAdditionalPlans, bool canBeDisabled) {
     registerRule(name, func, level, canCreateAdditionalPlans, canBeDisabled, true);
   }

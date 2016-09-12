@@ -70,7 +70,7 @@ class SingleCollectionTransaction : public Transaction {
   /// in two different situations
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_document_collection_t* documentCollection();
+  LogicalCollection* documentCollection();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the underlying collection's id
@@ -133,10 +133,10 @@ class SingleCollectionTransaction : public Transaction {
   TRI_transaction_collection_t* _trxCollection;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief TRI_document_collection_t* cache
+  /// @brief LogicalCollection* cache
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_document_collection_t* _documentCollection;
+  LogicalCollection* _documentCollection;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief collection access type

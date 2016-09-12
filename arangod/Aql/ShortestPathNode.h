@@ -28,6 +28,8 @@
 #include "Aql/Graphs.h"
 #include "Aql/ShortestPathOptions.h"
 
+#include <velocypack/Builder.h>
+
 namespace arangodb {
 
 namespace traverser {
@@ -47,7 +49,7 @@ class ShortestPathNode : public ExecutionNode {
                 uint64_t direction, AstNode const* start, AstNode const* target,
                 AstNode const* graph, ShortestPathOptions const& options);
 
-  ShortestPathNode(ExecutionPlan* plan, arangodb::basics::Json const& base);
+  ShortestPathNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
   ~ShortestPathNode() {}
 
@@ -55,7 +57,7 @@ class ShortestPathNode : public ExecutionNode {
  private:
   ShortestPathNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                    std::vector<std::string> const& edgeColls,
-                   std::vector<TRI_edge_direction_e> directions,
+                   std::vector<TRI_edge_direction_e> const& directions,
                    Variable const* inStartVariable,
                    std::string const& startVertexId,
                    Variable const* inTargetVariable,
@@ -175,8 +177,8 @@ class ShortestPathNode : public ExecutionNode {
   /// @brief input vertexId only used if _inVariable is unused
   std::string _targetVertexId;
 
-  /// @brief input graphJson only used for serialisation & info
-  arangodb::basics::Json _graphJson;
+  /// @brief input graphInfo only used for serialisation & info
+  arangodb::velocypack::Builder _graphInfo;
 
   /// @brief The directions edges are followed
   std::vector<TRI_edge_direction_e> _directions;

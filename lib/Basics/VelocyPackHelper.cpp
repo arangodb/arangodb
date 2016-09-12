@@ -22,51 +22,75 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VelocyPackHelper.h"
-#include "Basics/conversions.h"
 #include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VPackStringBufferAdapter.h"
+#include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/tri-strings.h"
+#include "Logger/Logger.h"
 
 #include <velocypack/AttributeTranslator.h>
-#include <velocypack/velocypack-common.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+#include <velocypack/velocypack-common.h>
 
 extern "C" {
-  unsigned long long XXH64 (const void* input, size_t length, unsigned long long seed);
+unsigned long long XXH64(const void* input, size_t length,
+                         unsigned long long seed);
 }
 
+using namespace arangodb;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 static std::unique_ptr<VPackAttributeTranslator> Translator;
 static std::unique_ptr<VPackAttributeExcludeHandler> ExcludeHandler;
+static std::unique_ptr<VPackCustomTypeHandler> CustomTypeHandler;
+
+// a default custom type handler that prevents throwing exceptions when
+// custom types are encountered during Slice.toJson() and family
+struct DefaultCustomTypeHandler final : public VPackCustomTypeHandler {
+  void dump(VPackSlice const&, VPackDumper* dumper,
+            VPackSlice const&) override {
+    LOG(WARN) << "DefaultCustomTypeHandler called";
+    dumper->appendString("hello from CustomTypeHandler");
+  }
+  std::string toString(VPackSlice const&, VPackOptions const*,
+                       VPackSlice const&) override {
+    LOG(WARN) << "DefaultCustomTypeHandler called";
+    return "hello from CustomTypeHandler";
+  }
+};
 
 // attribute exclude handler for skipping over system attributes
-struct SystemAttributeExcludeHandler : public VPackAttributeExcludeHandler {
+struct SystemAttributeExcludeHandler final
+    : public VPackAttributeExcludeHandler {
   bool shouldExclude(VPackSlice const& key, int nesting) override final {
     VPackValueLength keyLength;
     char const* p = key.getString(keyLength);
 
-    if (p == nullptr || *p != '_' || keyLength < 3 || keyLength > 5 || nesting > 0) {
+    if (p == nullptr || *p != '_' || keyLength < 3 || keyLength > 5 ||
+        nesting > 0) {
       // keep attribute
       return true;
     }
 
     // exclude these attributes (but not _key!)
-    if ((keyLength == 3 && memcmp(p, "_id", static_cast<size_t>(keyLength)) == 0) ||
-        (keyLength == 4 && memcmp(p, "_rev", static_cast<size_t>(keyLength)) == 0) ||
-        (keyLength == 3 && memcmp(p, "_to", static_cast<size_t>(keyLength)) == 0) ||
-        (keyLength == 5 && memcmp(p, "_from", static_cast<size_t>(keyLength)) == 0)) {
+    if ((keyLength == 3 &&
+         memcmp(p, "_id", static_cast<size_t>(keyLength)) == 0) ||
+        (keyLength == 4 &&
+         memcmp(p, "_rev", static_cast<size_t>(keyLength)) == 0) ||
+        (keyLength == 3 &&
+         memcmp(p, "_to", static_cast<size_t>(keyLength)) == 0) ||
+        (keyLength == 5 &&
+         memcmp(p, "_from", static_cast<size_t>(keyLength)) == 0)) {
       return true;
     }
 
@@ -75,10 +99,7 @@ struct SystemAttributeExcludeHandler : public VPackAttributeExcludeHandler {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief static initializer for all VPack values
-////////////////////////////////////////////////////////////////////////////////
-
 void VelocyPackHelper::initialize() {
   LOG(TRACE) << "initializing vpack";
 
@@ -86,9 +107,9 @@ void VelocyPackHelper::initialize() {
   Translator.reset(new VPackAttributeTranslator);
 
   // these attribute names will be translated into short integer values
-  Translator->add(StaticStrings::KeyString, KeyAttribute - AttributeBase); 
+  Translator->add(StaticStrings::KeyString, KeyAttribute - AttributeBase);
   Translator->add(StaticStrings::RevString, RevAttribute - AttributeBase);
-  Translator->add(StaticStrings::IdString, IdAttribute - AttributeBase); 
+  Translator->add(StaticStrings::IdString, IdAttribute - AttributeBase);
   Translator->add(StaticStrings::FromString, FromAttribute - AttributeBase);
   Translator->add(StaticStrings::ToString, ToAttribute - AttributeBase);
 
@@ -96,21 +117,43 @@ void VelocyPackHelper::initialize() {
 
   // set the attribute translator in the global options
   VPackOptions::Defaults.attributeTranslator = Translator.get();
-  VPackOptions::Defaults.unsupportedTypeBehavior = VPackOptions::ConvertUnsupportedType;
-  VPackOptions::Defaults.escapeUnicode = false; // false here, but will be set when converting to JSON for HTTP xfer
+  VPackOptions::Defaults.unsupportedTypeBehavior =
+      VPackOptions::ConvertUnsupportedType;
+
+  CustomTypeHandler.reset(new DefaultCustomTypeHandler);
+
+  VPackOptions::Defaults.customTypeHandler = CustomTypeHandler.get();
+  VPackOptions::Defaults.escapeUnicode = false;  // false here, but will be set
+                                                 // when converting to JSON for
+                                                 // HTTP xfer
 
   // run quick selfs test with the attribute translator
-  TRI_ASSERT(VPackSlice(Translator->translate(StaticStrings::KeyString)).getUInt() == KeyAttribute - AttributeBase);
-  TRI_ASSERT(VPackSlice(Translator->translate(StaticStrings::RevString)).getUInt() == RevAttribute - AttributeBase);
-  TRI_ASSERT(VPackSlice(Translator->translate(StaticStrings::IdString)).getUInt() == IdAttribute - AttributeBase);
-  TRI_ASSERT(VPackSlice(Translator->translate(StaticStrings::FromString)).getUInt() == FromAttribute - AttributeBase); 
-  TRI_ASSERT(VPackSlice(Translator->translate(StaticStrings::ToString)).getUInt() == ToAttribute - AttributeBase);
-  
-  TRI_ASSERT(VPackSlice(Translator->translate(KeyAttribute - AttributeBase)).copyString() == StaticStrings::KeyString); 
-  TRI_ASSERT(VPackSlice(Translator->translate(RevAttribute - AttributeBase)).copyString() == StaticStrings::RevString); 
-  TRI_ASSERT(VPackSlice(Translator->translate(IdAttribute - AttributeBase)).copyString() == StaticStrings::IdString); 
-  TRI_ASSERT(VPackSlice(Translator->translate(FromAttribute - AttributeBase)).copyString() == StaticStrings::FromString); 
-  TRI_ASSERT(VPackSlice(Translator->translate(ToAttribute - AttributeBase)).copyString() == StaticStrings::ToString); 
+  TRI_ASSERT(
+      VPackSlice(Translator->translate(StaticStrings::KeyString)).getUInt() ==
+      KeyAttribute - AttributeBase);
+  TRI_ASSERT(
+      VPackSlice(Translator->translate(StaticStrings::RevString)).getUInt() ==
+      RevAttribute - AttributeBase);
+  TRI_ASSERT(
+      VPackSlice(Translator->translate(StaticStrings::IdString)).getUInt() ==
+      IdAttribute - AttributeBase);
+  TRI_ASSERT(
+      VPackSlice(Translator->translate(StaticStrings::FromString)).getUInt() ==
+      FromAttribute - AttributeBase);
+  TRI_ASSERT(
+      VPackSlice(Translator->translate(StaticStrings::ToString)).getUInt() ==
+      ToAttribute - AttributeBase);
+
+  TRI_ASSERT(VPackSlice(Translator->translate(KeyAttribute - AttributeBase))
+                 .copyString() == StaticStrings::KeyString);
+  TRI_ASSERT(VPackSlice(Translator->translate(RevAttribute - AttributeBase))
+                 .copyString() == StaticStrings::RevString);
+  TRI_ASSERT(VPackSlice(Translator->translate(IdAttribute - AttributeBase))
+                 .copyString() == StaticStrings::IdString);
+  TRI_ASSERT(VPackSlice(Translator->translate(FromAttribute - AttributeBase))
+                 .copyString() == StaticStrings::FromString);
+  TRI_ASSERT(VPackSlice(Translator->translate(ToAttribute - AttributeBase))
+                 .copyString() == StaticStrings::ToString);
 
   // initialize exclude handler for system attributes
   ExcludeHandler.reset(new SystemAttributeExcludeHandler);
@@ -128,7 +171,8 @@ void VelocyPackHelper::disableAssemblerFunctions() {
 /// @brief return the (global) attribute exclude handler instance
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::velocypack::AttributeExcludeHandler* VelocyPackHelper::getExcludeHandler() {
+arangodb::velocypack::AttributeExcludeHandler*
+VelocyPackHelper::getExcludeHandler() {
   return ExcludeHandler.get();
 }
 
@@ -140,15 +184,14 @@ arangodb::velocypack::AttributeTranslator* VelocyPackHelper::getTranslator() {
   return Translator.get();
 }
 
-
-bool VelocyPackHelper::AttributeSorterUTF8::operator()(std::string const& l,
-                                                       std::string const& r) const {
+bool VelocyPackHelper::AttributeSorterUTF8::operator()(
+    std::string const& l, std::string const& r) const {
   // use UTF-8-based comparison of attribute names
   return TRI_compare_utf8(l.c_str(), l.size(), r.c_str(), r.size()) < 0;
 }
 
-bool VelocyPackHelper::AttributeSorterBinary::operator()(std::string const& l,
-                                                         std::string const& r) const {
+bool VelocyPackHelper::AttributeSorterBinary::operator()(
+    std::string const& l, std::string const& r) const {
   // use binary comparison of attribute names
   size_t cmpLength = (std::min)(l.size(), r.size());
   int res = memcmp(l.c_str(), r.c_str(), cmpLength);
@@ -165,15 +208,19 @@ size_t VelocyPackHelper::VPackHash::operator()(VPackSlice const& slice) const {
   return static_cast<size_t>(slice.normalizedHash());
 };
 
-size_t VelocyPackHelper::VPackStringHash::operator()(VPackSlice const& slice) const noexcept {
+size_t VelocyPackHelper::VPackStringHash::operator()(
+    VPackSlice const& slice) const noexcept {
   return static_cast<size_t>(slice.hashString());
 };
 
-bool VelocyPackHelper::VPackEqual::operator()(VPackSlice const& lhs, VPackSlice const& rhs) const {
+bool VelocyPackHelper::VPackEqual::operator()(VPackSlice const& lhs,
+                                              VPackSlice const& rhs) const {
   return VelocyPackHelper::compare(lhs, rhs, false, _options) == 0;
 };
 
-bool VelocyPackHelper::VPackStringEqual::operator()(VPackSlice const& lhs, VPackSlice const& rhs) const noexcept {
+bool VelocyPackHelper::VPackStringEqual::operator()(VPackSlice const& lhs,
+                                                    VPackSlice const& rhs) const
+    noexcept {
   auto const lh = lhs.head();
   auto const rh = rhs.head();
 
@@ -184,21 +231,26 @@ bool VelocyPackHelper::VPackStringEqual::operator()(VPackSlice const& lhs, VPack
   VPackValueLength size;
   if (lh == 0xbf) {
     // long UTF-8 String
-    size = static_cast<VPackValueLength>(velocypack::readInteger<VPackValueLength>(lhs.begin() + 1, 8));
-    if (size !=static_cast<VPackValueLength>(velocypack::readInteger<VPackValueLength>(rhs.begin() + 1, 8))) {
+    size = static_cast<VPackValueLength>(
+        velocypack::readInteger<VPackValueLength>(lhs.begin() + 1, 8));
+    if (size !=
+        static_cast<VPackValueLength>(
+            velocypack::readInteger<VPackValueLength>(rhs.begin() + 1, 8))) {
       return false;
     }
-    return (memcmp(lhs.start() + 1 + 8, rhs.start() + 1 + 8, static_cast<size_t>(size)) == 0);
-  } 
-    
+    return (memcmp(lhs.start() + 1 + 8, rhs.start() + 1 + 8,
+                   static_cast<size_t>(size)) == 0);
+  }
+
   size = static_cast<VPackValueLength>(lh - 0x40);
-  return (memcmp(lhs.start() + 1, rhs.start() + 1, static_cast<size_t>(size)) == 0);
+  return (memcmp(lhs.start() + 1, rhs.start() + 1, static_cast<size_t>(size)) ==
+          0);
 };
 
 static int TypeWeight(VPackSlice const& slice) {
   switch (slice.type()) {
     case VPackValueType::MinKey:
-      return -99; // must be lowest
+      return -99;  // must be lowest
     case VPackValueType::Illegal:
       return -1;
     case VPackValueType::None:
@@ -225,14 +277,14 @@ static int TypeWeight(VPackSlice const& slice) {
     case VPackValueType::External:
       return TypeWeight(slice.resolveExternal());
     case VPackValueType::MaxKey:
-      return 99; // must be highest
+      return 99;  // must be highest
     default:
       // All other values have equal weight
       return 0;
   }
 }
 
-int VelocyPackHelper::compareNumberValues(VPackValueType lhsType, 
+int VelocyPackHelper::compareNumberValues(VPackValueType lhsType,
                                           VPackSlice lhs, VPackSlice rhs) {
   if (lhsType == rhs.type()) {
     // both types are equal
@@ -316,14 +368,12 @@ std::string VelocyPackHelper::checkAndGetStringValue(VPackSlice const& slice,
                                                      std::string const& name) {
   TRI_ASSERT(slice.isObject());
   if (!slice.hasKey(name)) {
-    std::string msg =
-        "The attribute '" + name + "' was not found.";
+    std::string msg = "The attribute '" + name + "' was not found.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
   }
   VPackSlice const sub = slice.get(name);
   if (!sub.isString()) {
-    std::string msg =
-        "The attribute '" + name + "' is not a string.";
+    std::string msg = "The attribute '" + name + "' is not a string.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
   }
   return sub.copyString();
@@ -347,8 +397,7 @@ std::string VelocyPackHelper::getStringValue(VPackSlice const& slice,
 /// or it is not a string
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string VelocyPackHelper::getStringValue(VPackSlice slice,
-                                             char const* name,
+std::string VelocyPackHelper::getStringValue(VPackSlice slice, char const* name,
                                              std::string const& defaultValue) {
   if (slice.isExternal()) {
     slice = VPackSlice(slice.getExternal());
@@ -397,10 +446,6 @@ uint64_t VelocyPackHelper::stringUInt64(VPackSlice const& slice) {
   return 0;
 }
 
-TRI_json_t* VelocyPackHelper::velocyPackToJson(VPackSlice const& slice, VPackOptions const* options) {
-  return JsonHelper::fromString(slice.toJson(options));
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a json file to VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
@@ -410,7 +455,7 @@ std::shared_ptr<VPackBuilder> VelocyPackHelper::velocyPackFromFile(
   size_t length;
   char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, path.c_str(), &length);
   if (content != nullptr) {
-    // The Parser might THROW
+    // The Parser might throw;
     std::shared_ptr<VPackBuilder> b;
     try {
       auto b = VPackParser::fromJson(reinterpret_cast<uint8_t const*>(content),
@@ -433,7 +478,8 @@ static bool PrintVelocyPack(int fd, VPackSlice const& slice,
   }
 
   arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
-  arangodb::basics::VPackStringBufferAdapter bufferAdapter(buffer.stringBuffer());
+  arangodb::basics::VPackStringBufferAdapter bufferAdapter(
+      buffer.stringBuffer());
   try {
     VPackDumper dumper(&bufferAdapter);
     dumper.dump(slice);
@@ -474,29 +520,32 @@ static bool PrintVelocyPack(int fd, VPackSlice const& slice,
 /// @brief writes a VelocyPack to a file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool VelocyPackHelper::velocyPackToFile(char const* filename,
+bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
                                         VPackSlice const& slice,
                                         bool syncFile) {
-  std::string const tmp = std::string(filename) + ".tmp";
+  std::string const tmp = filename + ".tmp";
 
   // remove a potentially existing temporary file
   if (TRI_ExistsFile(tmp.c_str())) {
     TRI_UnlinkFile(tmp.c_str());
   }
 
-  int fd = TRI_CREATE(tmp.c_str(), O_CREAT | O_TRUNC | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+  int fd = TRI_CREATE(tmp.c_str(),
+                      O_CREAT | O_TRUNC | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                       S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 
   if (fd < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG(ERR) << "cannot create json file '" << tmp << "': " << TRI_LAST_ERROR_STR;
+    LOG(ERR) << "cannot create json file '" << tmp
+             << "': " << TRI_LAST_ERROR_STR;
     return false;
   }
 
   if (!PrintVelocyPack(fd, slice, true)) {
     TRI_CLOSE(fd);
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG(ERR) << "cannot write to json file '" << tmp << "': " << TRI_LAST_ERROR_STR;
+    LOG(ERR) << "cannot write to json file '" << tmp
+             << "': " << TRI_LAST_ERROR_STR;
     TRI_UnlinkFile(tmp.c_str());
     return false;
   }
@@ -507,7 +556,8 @@ bool VelocyPackHelper::velocyPackToFile(char const* filename,
     if (!TRI_fsync(fd)) {
       TRI_CLOSE(fd);
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG(ERR) << "cannot sync saved json '" << tmp << "': " << TRI_LAST_ERROR_STR;
+      LOG(ERR) << "cannot sync saved json '" << tmp
+               << "': " << TRI_LAST_ERROR_STR;
       TRI_UnlinkFile(tmp.c_str());
       return false;
     }
@@ -517,16 +567,18 @@ bool VelocyPackHelper::velocyPackToFile(char const* filename,
 
   if (res < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG(ERR) << "cannot close saved file '" << tmp << "': " << TRI_LAST_ERROR_STR;
+    LOG(ERR) << "cannot close saved file '" << tmp
+             << "': " << TRI_LAST_ERROR_STR;
     TRI_UnlinkFile(tmp.c_str());
     return false;
   }
 
-  res = TRI_RenameFile(tmp.c_str(), filename);
+  res = TRI_RenameFile(tmp.c_str(), filename.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
-    LOG(ERR) << "cannot rename saved file '" << tmp << "' to '" << filename << "': " << TRI_LAST_ERROR_STR;
+    LOG(ERR) << "cannot rename saved file '" << tmp << "' to '" << filename
+             << "': " << TRI_LAST_ERROR_STR;
     TRI_UnlinkFile(tmp.c_str());
 
     return false;
@@ -535,9 +587,10 @@ bool VelocyPackHelper::velocyPackToFile(char const* filename,
   return true;
 }
 
-int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs,
-                              bool useUTF8, VPackOptions const* options,
-                              VPackSlice const* lhsBase, VPackSlice const* rhsBase) {
+int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
+                              VPackOptions const* options,
+                              VPackSlice const* lhsBase,
+                              VPackSlice const* rhsBase) {
   {
     // will resolve externals...
     int lWeight = TypeWeight(lhs);
@@ -550,12 +603,12 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs,
     if (lWeight > rWeight) {
       return 1;
     }
-  
+
     TRI_ASSERT(lWeight == rWeight);
   }
-  
-  lhs = lhs.resolveExternal(); // follow externals
-  rhs = rhs.resolveExternal(); // follow externals
+
+  lhs = lhs.resolveExternal();  // follow externals
+  rhs = rhs.resolveExternal();  // follow externals
 
   // lhs and rhs have equal weights
   if (lhs.isNone() || rhs.isNone()) {
@@ -575,7 +628,7 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs,
     case VPackValueType::MaxKey:
     case VPackValueType::None:
     case VPackValueType::Null:
-      return 0;  
+      return 0;
     case VPackValueType::Bool: {
       bool left = lhs.getBoolean();
       bool right = rhs.getBoolean();
@@ -599,11 +652,13 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs,
       VPackValueLength nl;
       char const* left;
       if (lhs.isCustom()) {
-        if (lhsBase == nullptr || options == nullptr || options->customTypeHandler == nullptr) {
+        if (lhsBase == nullptr || options == nullptr ||
+            options->customTypeHandler == nullptr) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                          "Could not extract custom attribute.");
         }
-        lhsString.assign(options->customTypeHandler->toString(lhs, options, *lhsBase));
+        lhsString.assign(
+            options->customTypeHandler->toString(lhs, options, *lhsBase));
         left = lhsString.c_str();
         nl = lhsString.size();
       } else {
@@ -615,11 +670,13 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs,
       VPackValueLength nr;
       char const* right;
       if (rhs.isCustom()) {
-        if (rhsBase == nullptr || options == nullptr || options->customTypeHandler == nullptr) {
+        if (rhsBase == nullptr || options == nullptr ||
+            options->customTypeHandler == nullptr) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                          "Could not extract custom attribute.");
         }
-        rhsString.assign(options->customTypeHandler->toString(rhs, options, *rhsBase));
+        rhsString.assign(
+            options->customTypeHandler->toString(rhs, options, *rhsBase));
         right = rhsString.c_str();
         nr = rhsString.size();
       } else {
@@ -629,7 +686,8 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs,
 
       int res;
       if (useUTF8) {
-        res = TRI_compare_utf8(left, static_cast<size_t>(nl), right, static_cast<size_t>(nr));
+        res = TRI_compare_utf8(left, static_cast<size_t>(nl), right,
+                               static_cast<size_t>(nr));
       } else {
         size_t len = static_cast<size_t>(nl < nr ? nl : nr);
         res = memcmp(left, right, len);
@@ -740,7 +798,8 @@ double VelocyPackHelper::toDouble(VPackSlice const& slice, bool& failed) {
       if (n == 0) {
         return 0.0;
       } else if (n == 1) {
-        return VelocyPackHelper::toDouble(slice.at(0).resolveExternal(), failed);
+        return VelocyPackHelper::toDouble(slice.at(0).resolveExternal(),
+                                          failed);
       }
       break;
     }
@@ -762,6 +821,7 @@ double VelocyPackHelper::toDouble(VPackSlice const& slice, bool& failed) {
   return 0.0;
 }
 
+#ifndef USE_ENTERPRISE
 uint64_t VelocyPackHelper::hashByAttributes(
     VPackSlice slice, std::vector<std::string> const& attributes,
     bool docComplete, int& error, std::string const& key) {
@@ -771,26 +831,28 @@ uint64_t VelocyPackHelper::hashByAttributes(
   if (slice.isObject()) {
     for (auto const& attr : attributes) {
       VPackSlice sub = slice.get(attr).resolveExternal();
+      VPackBuilder temporaryBuilder;
       if (sub.isNone()) {
         if (attr == StaticStrings::KeyString && !key.empty()) {
-          VPackBuilder temporaryBuilder;
           temporaryBuilder.add(VPackValue(key));
-          hash = temporaryBuilder.slice().normalizedHash(hash);
-          continue;
+          sub = temporaryBuilder.slice();
+        } else {
+          if (!docComplete) {
+            error = TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN;
+          }
+          // Null is equal to None/not present
+          sub = VPackSlice::nullSlice();
         }
-        if (!docComplete) {
-          error = TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN;
-        }
-        // Null is equal to None/not present
-        sub = VPackSlice::nullSlice();
       }
       hash = sub.normalizedHash(hash);
     }
   }
   return hash;
 }
+#endif
 
-void VelocyPackHelper::SanitizeExternals(VPackSlice const input, VPackBuilder& output) {
+void VelocyPackHelper::SanitizeExternals(VPackSlice const input,
+                                         VPackBuilder& output) {
   if (input.isExternal()) {
     output.add(input.resolveExternal());
   } else if (input.isObject()) {
@@ -811,8 +873,68 @@ void VelocyPackHelper::SanitizeExternals(VPackSlice const input, VPackBuilder& o
   }
 }
 
-arangodb::LoggerStream& operator<< (arangodb::LoggerStream& logger,
-  VPackSlice const& slice) {
+bool VelocyPackHelper::hasExternals(VPackSlice input) {
+  if (input.isExternal()) {
+    return true;
+  } else if (input.isObject()) {
+    for (auto const& it : VPackObjectIterator(input)) {
+      if (hasExternals(it.value) == true) {
+        return true;
+      };
+    }
+  } else if (input.isArray()) {
+    for (auto const& it : VPackArrayIterator(input)) {
+      if (hasExternals(it) == true) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+VPackBuffer<uint8_t> VelocyPackHelper::sanitizeExternalsChecked(
+    VPackSlice input, VPackOptions const* options, bool checkExternals) {
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer, options);
+  bool resolveExt = true;
+  if (checkExternals) {
+    resolveExt = hasExternals(input);
+  }
+  if (resolveExt) {  // resolve
+    SanitizeExternals(input, builder);
+  } else {
+    builder.add(input);
+  }
+  return buffer;  // elided
+}
+
+/// @brief extract the collection id from VelocyPack
+uint64_t VelocyPackHelper::extractIdValue(VPackSlice const& slice) {
+  if (!slice.isObject()) {
+    return 0;
+  }
+  VPackSlice id = slice.get("id");
+  if (id.isNone()) {
+    // pre-3.1 compatibility
+    id = slice.get("cid");
+  }
+
+  if (id.isString()) {
+    // string cid, e.g. "9988488"
+    return StringUtils::uint64(id.copyString());
+  } else if (id.isNumber()) {
+    // numeric cid, e.g. 9988488
+    return id.getNumericValue<uint64_t>();
+  } else if (!id.isNone()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid value for 'id' attribute");
+  }
+
+  TRI_ASSERT(id.isNone()); 
+  return 0;
+}
+
+arangodb::LoggerStream& operator<<(arangodb::LoggerStream& logger,
+                                   VPackSlice const& slice) {
   size_t const cutoff = 100;
   std::string sliceStr(slice.toJson());
   bool longer = sliceStr.size() > cutoff;

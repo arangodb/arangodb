@@ -24,10 +24,9 @@
 #ifndef ARANGOD_UTILS_REPLICATION_TRANSACTION_H
 #define ARANGOD_UTILS_REPLICATION_TRANSACTION_H 1
 
-#include "Basics/Common.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/Transaction.h"
-#include "VocBase/server.h"
+#include "VocBase/ticks.h"
 #include "VocBase/transaction.h"
 
 struct TRI_vocbase_t;
@@ -36,21 +35,15 @@ namespace arangodb {
 
 class ReplicationTransaction : public Transaction {
  public:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction
-  //////////////////////////////////////////////////////////////////////////////
+  ReplicationTransaction(TRI_vocbase_t* vocbase)
+      : Transaction(StandaloneTransactionContext::Create(vocbase)) {
 
-  ReplicationTransaction(TRI_server_t* server, TRI_vocbase_t* vocbase)
-      : Transaction(StandaloneTransactionContext::Create(vocbase)),
-        _server(server) {
-    TRI_UseDatabaseServer(_server, vocbase->_name);
+    _vocbase->use();
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief end the transaction
-  //////////////////////////////////////////////////////////////////////////////
-
-  ~ReplicationTransaction() { TRI_ReleaseDatabaseServer(_server, vocbase()); }
+  ~ReplicationTransaction() { _vocbase->release(); }
 
  public:
 
@@ -83,9 +76,6 @@ class ReplicationTransaction : public Transaction {
 
     return trxCollection;
   }
-
- private:
-  TRI_server_t* _server;
 };
 }
 

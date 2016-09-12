@@ -30,7 +30,7 @@
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
-SortNode::SortNode(ExecutionPlan* plan, arangodb::basics::Json const& base,
+SortNode::SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
                    SortElementVector const& elements, bool stable)
     : ExecutionNode(plan, base), _elements(elements), _stable(stable) {}
 
@@ -162,7 +162,12 @@ SortInformation SortNode::getSortInformation(
         break;
       }
 
-      expression->stringify(buffer);
+      try {
+        expression->stringify(buffer);
+      } catch (...) {
+        result.isValid = false;
+        return result;
+      }
       result.criteria.emplace_back(
           std::make_tuple(const_cast<ExecutionNode const*>(setter), std::string(buffer->c_str(), buffer->length()), (*it).second));
       buffer->reset();

@@ -24,8 +24,20 @@
 #define APPLICATION_FEATURES_STATISTICS_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/Thread.h"
 
 namespace arangodb {
+
+/// @brief thread used for statistics
+class StatisticsThread final : public Thread {
+ public:
+  StatisticsThread() : Thread("Statistics") {}
+  ~StatisticsThread() { shutdown(); }
+
+ public:
+  void run() override;
+};
+
 class StatisticsFeature final
     : public application_features::ApplicationFeature {
  public:
@@ -49,6 +61,8 @@ class StatisticsFeature final
 
  private:
   bool _statistics;
+
+  std::unique_ptr<StatisticsThread> _statisticsThread;
 };
 }
 

@@ -27,7 +27,7 @@
 #include "Utils/Transaction.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/Ditch.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/LogicalCollection.h"
 #include "Wal/LogfileManager.h"
 
 #include <velocypack/Builder.h>
@@ -38,7 +38,7 @@
 using namespace arangodb;
 
 // custom type value handler, used for deciphering the _id attribute
-struct CustomTypeHandler : public VPackCustomTypeHandler {
+struct CustomTypeHandler final : public VPackCustomTypeHandler {
   CustomTypeHandler(TRI_vocbase_t* vocbase, CollectionNameResolver const* resolver)
       : vocbase(vocbase), resolver(resolver) {}
 
@@ -120,8 +120,9 @@ VPackCustomTypeHandler* TransactionContext::createCustomTypeHandler(TRI_vocbase_
 /// function will return a nullptr!
 //////////////////////////////////////////////////////////////////////////////
 
-DocumentDitch* TransactionContext::orderDitch(TRI_document_collection_t* document) {
-  TRI_voc_cid_t cid = document->_info.id();
+DocumentDitch* TransactionContext::orderDitch(LogicalCollection* collection) {
+
+  TRI_voc_cid_t cid = collection->cid();
 
   auto it = _ditches.find(cid);
 
@@ -134,7 +135,7 @@ DocumentDitch* TransactionContext::orderDitch(TRI_document_collection_t* documen
   }
 
   // this method will not throw, but may return a nullptr
-  auto ditch = document->ditches()->createDocumentDitch(true, __FILE__, __LINE__);
+  auto ditch = collection->ditches()->createDocumentDitch(true, __FILE__, __LINE__);
 
   if (ditch != nullptr) {
     try {

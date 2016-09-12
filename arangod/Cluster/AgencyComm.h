@@ -27,7 +27,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
-#include "Basics/json.h"
 #include "Rest/HttpRequest.h"
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -724,7 +723,7 @@ class AgencyComm {
   //////////////////////////////////////////////////////////////////////////////
 
   AgencyCommResult sendWithFailover(
-      arangodb::GeneralRequest::RequestType,
+      arangodb::rest::RequestType,
       double,
       std::string const&,
       std::string const&,
@@ -736,7 +735,7 @@ class AgencyComm {
   //////////////////////////////////////////////////////////////////////////////
 
   AgencyCommResult send(arangodb::httpclient::GeneralClientConnection*,
-            arangodb::GeneralRequest::RequestType, double,
+            arangodb::rest::RequestType, double,
             std::string const&, std::string const&);
   
   //////////////////////////////////////////////////////////////////////////////

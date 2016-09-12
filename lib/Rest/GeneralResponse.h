@@ -27,10 +27,11 @@
 #include "Basics/Common.h"
 
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
-
+#include "Basics/StringUtils.h"
 #include "GeneralRequest.h"
+#include "lib/Endpoint/Endpoint.h"
+#include "Rest/CommonDefines.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -38,83 +39,16 @@ struct Options;
 class Slice;
 }
 
+using rest::ContentType;
+using rest::ConnectionType;
+using rest::ResponseCode;
+
 class GeneralRequest;
 
 class GeneralResponse {
   GeneralResponse() = delete;
   GeneralResponse(GeneralResponse const&) = delete;
   GeneralResponse& operator=(GeneralResponse const&) = delete;
-
- public:
-  enum class ResponseCode {
-    CONTINUE = 100,
-    SWITCHING_PROTOCOLS = 101,
-    PROCESSING = 102,
-
-    OK = 200,
-    CREATED = 201,
-    ACCEPTED = 202,
-    PARTIAL = 203,
-    NO_CONTENT = 204,
-    RESET_CONTENT = 205,
-    PARTIAL_CONTENT = 206,
-
-    MOVED_PERMANENTLY = 301,
-    FOUND = 302,
-    SEE_OTHER = 303,
-    NOT_MODIFIED = 304,
-    TEMPORARY_REDIRECT = 307,
-    PERMANENT_REDIRECT = 308,
-
-    BAD = 400,
-    UNAUTHORIZED = 401,
-    PAYMENT_REQUIRED = 402,
-    FORBIDDEN = 403,
-    NOT_FOUND = 404,
-    METHOD_NOT_ALLOWED = 405,
-    NOT_ACCEPTABLE = 406,
-    REQUEST_TIMEOUT = 408,
-    CONFLICT = 409,
-    GONE = 410,
-    LENGTH_REQUIRED = 411,
-    PRECONDITION_FAILED = 412,
-    REQUEST_ENTITY_TOO_LARGE = 413,
-    REQUEST_URI_TOO_LONG = 414,
-    UNSUPPORTED_MEDIA_TYPE = 415,
-    REQUESTED_RANGE_NOT_SATISFIABLE = 416,
-    EXPECTATION_FAILED = 417,
-    I_AM_A_TEAPOT = 418,
-    UNPROCESSABLE_ENTITY = 422,
-    LOCKED = 423,
-    PRECONDITION_REQUIRED = 428,
-    TOO_MANY_REQUESTS = 429,
-    REQUEST_HEADER_FIELDS_TOO_LARGE = 431,
-    UNAVAILABLE_FOR_LEGAL_REASONS = 451,
-
-    SERVER_ERROR = 500,
-    NOT_IMPLEMENTED = 501,
-    BAD_GATEWAY = 502,
-    SERVICE_UNAVAILABLE = 503,
-    HTTP_VERSION_NOT_SUPPORTED = 505,
-    BANDWIDTH_LIMIT_EXCEEDED = 509,
-    NOT_EXTENDED = 510
-  };
-
-  enum class ContentType {
-    CUSTOM,  // use Content-Type from _headers
-    JSON,    // application/json
-    VPACK,   // application/x-velocypack
-    TEXT,    // text/plain
-    HTML,    // text/html
-    DUMP     // application/x-arango-dump
-  };
-
-  enum ConnectionType {
-    CONNECTION_NONE,
-    CONNECTION_KEEP_ALIVE,
-    CONNECTION_CLOSE
-  };
-
 
  public:
   // converts the response code to a string for delivering to a http client.
@@ -126,13 +60,30 @@ class GeneralResponse {
   // response code from integer error code
   static ResponseCode responseCode(int);
 
-  // TODO OBI - check what can be implemented in this base class
-  virtual basics::StringBuffer& body() = 0;
-  virtual void setContentType(ContentType type) = 0;
-  virtual void setContentType(std::string const& contentType) = 0;
-  virtual void setContentType(std::string&& contentType) = 0;
-  virtual void setConnectionType(ConnectionType type) = 0;
-  virtual void writeHeader(basics::StringBuffer*) = 0;
+  /// @brief set content-type this sets the contnt type like you expect it
+  void setContentType(ContentType type) { _contentType = type; }
+
+  /// @brief set content-type from a string. this should only be used in
+  /// cases when the content-type is user-defined
+  /// this is a functionality so that user can set a type like application/zip
+  /// from java script code the ContentType will be CUSTOM!!
+  void setContentType(std::string const& contentType) {
+    _headers[arangodb::StaticStrings::ContentTypeHeader] = contentType;
+    _contentType = ContentType::CUSTOM;
+  }
+
+  void setContentType(std::string&& contentType) {
+    _headers[arangodb::StaticStrings::ContentTypeHeader] =
+        std::move(contentType);
+    _contentType = ContentType::CUSTOM;
+  }
+
+  void setConnectionType(ConnectionType type) { _connectionType = type; }
+  void setContentTypeRequested(ContentType type) {
+    _contentTypeRequested = type;
+  }
+
+  virtual arangodb::Endpoint::TransportType transportType() = 0;
 
  protected:
   explicit GeneralResponse(ResponseCode);
@@ -141,6 +92,8 @@ class GeneralResponse {
   virtual ~GeneralResponse() {}
 
  public:
+  // response codes are http response codes, but they are used in other
+  // protocols as well
   ResponseCode responseCode() const { return _responseCode; }
   void setResponseCode(ResponseCode responseCode) {
     _responseCode = responseCode;
@@ -166,17 +119,66 @@ class GeneralResponse {
   }
 
  public:
+  virtual uint64_t messageId() const { return 1; }
+
   virtual void reset(ResponseCode) = 0;
 
   // generates the response body, sets the content type; this might
   // throw an error
-  virtual void setPayload(GeneralRequest const*,
-                          arangodb::velocypack::Slice const&, bool generateBody,
-                          arangodb::velocypack::Options const&) = 0;
+  void setPayload(VPackSlice slice, bool generateBody,
+                  VPackOptions const& options = VPackOptions::Options::Defaults,
+                  bool resolveExternals = true) {
+    _generateBody = generateBody;
+    addPayload(slice, &options, resolveExternals);
+  }
+  // Payload needs to be of type: VPackSlice const&
+  // or VPackBuffer<uint8_t>&&
+  template <typename Payload>
+  void setPayload(Payload&& payload, bool generateBody,
+                  VPackOptions const& options = VPackOptions::Options::Defaults,
+                  bool resolveExternals = true) {
+    _generateBody = generateBody;
+    addPayload(std::forward<Payload>(payload), &options, resolveExternals);
+  }
+
+  void addPayloadPreconditions() { 
+    if (_vpackPayloads.size() != 0) {
+      LOG(ERR) << "Payload set twice";
+      TRI_ASSERT(_vpackPayloads.size() == 0);
+    }
+  }
+  virtual void addPayloadPreHook(bool inputIsBuffer, bool& resolveExternals,
+                                 bool& skipBody) {}
+  void addPayload(VPackSlice const&,
+                  arangodb::velocypack::Options const* = nullptr,
+                  bool resolve_externals = true);
+  void addPayload(VPackBuffer<uint8_t>&&,
+                  arangodb::velocypack::Options const* = nullptr,
+                  bool resolve_externals = true);
+  virtual void addPayloadPostHook(VPackSlice const&,
+                                  arangodb::velocypack::Options const*,
+                                  bool resolveExternals, bool bodySkipped) {}
+
+  virtual int reservePayload(std::size_t size) { return TRI_ERROR_NO_ERROR; }
+  bool generateBody() const { return _generateBody; };  // used for head
+  virtual bool setGenerateBody(bool) {
+    return _generateBody;
+  };  // used for head
+      // resonses
+  void setOptions(VPackOptions options) { _options = std::move(options); };
 
  protected:
-  ResponseCode _responseCode;
-  std::unordered_map<std::string, std::string> _headers;
+  ResponseCode _responseCode;  // http response code
+  std::unordered_map<std::string, std::string>
+      _headers;  // headers/metadata map
+
+  std::vector<VPackBuffer<uint8_t>> _vpackPayloads;
+  std::size_t _numPayloads;
+  ContentType _contentType;
+  ConnectionType _connectionType;
+  velocypack::Options _options;
+  bool _generateBody;
+  ContentType _contentTypeRequested;
 };
 }
 

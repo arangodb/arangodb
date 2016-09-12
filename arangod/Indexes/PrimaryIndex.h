@@ -122,7 +122,7 @@ class PrimaryIndex final : public Index {
  public:
   PrimaryIndex() = delete;
 
-  explicit PrimaryIndex(struct TRI_document_collection_t*);
+  explicit PrimaryIndex(arangodb::LogicalCollection*);
 
   explicit PrimaryIndex(VPackSlice const&);
 
@@ -136,6 +136,8 @@ class PrimaryIndex final : public Index {
   IndexType type() const override final {
     return Index::TRI_IDX_TYPE_PRIMARY_INDEX;
   }
+  
+  bool allowExpansion() const override final { return false; }
 
   bool canBeDropped() const override final { return false; }
 
@@ -144,8 +146,6 @@ class PrimaryIndex final : public Index {
   bool hasSelectivityEstimate() const override final { return true; }
 
   double selectivityEstimate() const override final { return 1.0; }
-
-  bool dumpFields() const override final { return true; }
 
   size_t size() const;
 
@@ -159,6 +159,8 @@ class PrimaryIndex final : public Index {
 
   int remove(arangodb::Transaction*, TRI_doc_mptr_t const*,
              bool) override final;
+
+  int unload() override final;
 
  public:
   TRI_doc_mptr_t* lookupKey(arangodb::Transaction*, VPackSlice const&) const;

@@ -30,6 +30,7 @@ ERROR_FILE_EXISTS,27,"file exists","Will be raised when a file already exists."
 ERROR_LOCKED,28,"locked","Will be raised when a resource or an operation is locked."
 ERROR_DEADLOCK,29,"deadlock detected","Will be raised when a deadlock is detected when accessing collections."
 ERROR_SHUTTING_DOWN,30,"shutdown in progress","Will be raised when a call cannot succeed because a server shutdown is already in progress."
+ERROR_ONLY_ENTERPRISE,31,"only enterprise version","Will be raised when an enterprise-feature is requested from the community edition."
 
 ################################################################################
 ## HTTP error status codes
@@ -57,7 +58,6 @@ ERROR_HTTP_SUPERFLUOUS_SUFFICES,601,"superfluous URL suffices","Will be raised w
 
 ERROR_ARANGO_ILLEGAL_STATE,1000,"illegal state","Internal error that will be raised when the datafile is not in the required state."
 ERROR_ARANGO_DATAFILE_SEALED,1002,"datafile sealed","Internal error that will be raised when trying to write to a datafile."
-ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE,1003,"unknown type","Internal error that will be raised when an unknown collection type is encountered."
 ERROR_ARANGO_READ_ONLY,1004,"read only","Internal error that will be raised when trying to write to a read-only datafile or collection."
 ERROR_ARANGO_DUPLICATE_IDENTIFIER,1005,"duplicate identifier","Internal error that will be raised when a identifier duplicate is detected."
 ERROR_ARANGO_DATAFILE_UNREADABLE,1006,"datafile unreadable","Internal error that will be raised when a datafile is unreadable."
@@ -281,18 +281,6 @@ ERROR_SERVICE_DOWNLOAD_FAILED,1752,"service download failed","Will be raised whe
 ERROR_SERVICE_UPLOAD_FAILED,1753,"service upload failed","Will be raised when a service upload from the client to the ArangoDB server failed."
 
 ################################################################################
-## Key value access errors
-################################################################################
-
-ERROR_KEYVALUE_INVALID_KEY,1800,"invalid key declaration","Will be raised when an invalid key specification is passed to the server"
-ERROR_KEYVALUE_KEY_EXISTS,1801,"key already exists","Will be raised when a key is to be created that already exists"
-ERROR_KEYVALUE_KEY_NOT_FOUND,1802,"key not found","Will be raised when the specified key is not found"
-ERROR_KEYVALUE_KEY_NOT_UNIQUE,1803,"key is not unique","Will be raised when the specified key is not unique"
-ERROR_KEYVALUE_KEY_NOT_CHANGED,1804,"key value not changed","Will be raised when updating the value for a key does not work"
-ERROR_KEYVALUE_KEY_NOT_REMOVED,1805,"key value not removed","Will be raised when deleting a key/value pair does not work"
-ERROR_KEYVALUE_NO_VALUE,1806,"missing value","Will be raised when the value is missing"
-
-################################################################################
 ## Task errors
 ################################################################################
 
@@ -372,18 +360,9 @@ ERROR_MODULE_NOT_FOUND,3100,"cannot locate module","The module path could not be
 ERROR_MODULE_FAILURE,3103,"failed to invoke module","Failed to invoke the module in its context."
 
 ################################################################################
-## Results
-## These are technically not errors.
-################################################################################
-
-RESULT_ELEMENT_EXISTS,10000,"element not inserted into structure, because it already exists","Will be returned if the element was not insert because it already exists."
-RESULT_ELEMENT_NOT_FOUND,10001,"element not found in structure","Will be returned if the element was not found in the structure."
-
-################################################################################
 ## Dispatcher errors
 ################################################################################
 
-ERROR_QUEUE_ALREADY_EXISTS,21000,"named queue already exists","Will be returned if a queue with this name already exists."
 ERROR_DISPATCHER_IS_STOPPING,21001,"dispatcher stopped","Will be returned if a shutdown is in progress."
 ERROR_QUEUE_UNKNOWN,21002,"named queue does not exist","Will be returned if a queue with this name does not exist."
 ERROR_QUEUE_FULL,21003,"named queue is full","Will be returned if a queue with this name is full."

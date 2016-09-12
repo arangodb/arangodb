@@ -44,6 +44,7 @@ var getRawQueryResults = helper.getRawQueryResults;
 function ahuacatlQueryEdgesTestSuite () {
   var vertex = null;
   var edge   = null;
+  var vn = "UnitTestsAhuacatlVertex";
 
   return {
 
@@ -52,10 +53,10 @@ function ahuacatlQueryEdgesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      db._drop("UnitTestsAhuacatlVertex");
+      db._drop(vn);
       db._drop("UnitTestsAhuacatlEdge");
 
-      vertex = db._create("UnitTestsAhuacatlVertex");
+      vertex = db._create(vn);
       edge = db._createEdgeCollection("UnitTestsAhuacatlEdge");
 
       vertex.save({ _key: "v1", name: "v1" });
@@ -67,7 +68,7 @@ function ahuacatlQueryEdgesTestSuite () {
       vertex.save({ _key: "v7", name: "v7" });
 
       function makeEdge (from, to) {
-        edge.save("UnitTestsAhuacatlVertex/" + from, "UnitTestsAhuacatlVertex/" + to, { _key: from + "" + to, what: from + "->" + to });
+        edge.save(vn + "/" + from, vn + "/" + to, { _key: from + "" + to, what: from + "->" + to });
       }
 
       makeEdge("v1", "v2");
@@ -95,7 +96,7 @@ function ahuacatlQueryEdgesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEdgesAny : function () {
-      var q = "FOR v, e IN ANY @start UnitTestsAhuacatlEdge SORT e.what RETURN e.what";
+      var q = `WITH ${vn} FOR v, e IN ANY @start UnitTestsAhuacatlEdge SORT e.what RETURN e.what`;
 
       var actual;
       actual = getQueryResults(q, {start: "UnitTestsAhuacatlVertex/v1"});
@@ -122,7 +123,7 @@ function ahuacatlQueryEdgesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEdgesIn : function () {
-      var q = "FOR v, e IN INBOUND @start UnitTestsAhuacatlEdge SORT e.what RETURN e.what";
+      var q = `WITH ${vn} FOR v, e IN INBOUND @start UnitTestsAhuacatlEdge SORT e.what RETURN e.what`;
      
       var actual;
       actual = getQueryResults(q, {start: "UnitTestsAhuacatlVertex/v1"});
@@ -149,7 +150,7 @@ function ahuacatlQueryEdgesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEdgesOut : function () {
-      var q = "FOR v, e IN OUTBOUND @start UnitTestsAhuacatlEdge SORT e.what RETURN e.what";
+      var q = `WITH ${vn} FOR v, e IN OUTBOUND @start UnitTestsAhuacatlEdge SORT e.what RETURN e.what`;
       var actual;
       actual = getQueryResults(q, {start: "UnitTestsAhuacatlVertex/v1"});
       assertEqual(actual, [ "v1->v2", "v1->v3" ]);
@@ -177,7 +178,7 @@ function ahuacatlQueryEdgesTestSuite () {
     testEdgesAnyInclVertices : function () {
       "use strict";
       let actual;
-      var query = "FOR v, e IN ANY @start @@col SORT e.what RETURN v._key";
+      var query = `WITH ${vn} FOR v, e IN ANY @start @@col SORT e.what RETURN v._key`;
 
       let bindVars = {
         "@col": "UnitTestsAhuacatlEdge"
@@ -215,7 +216,7 @@ function ahuacatlQueryEdgesTestSuite () {
     testEdgesInInclVertices : function () {
       "use strict";
       let actual;
-      let query = "FOR v, e IN INBOUND @start @@col SORT e.what RETURN v._key";
+      let query = `WITH ${vn} FOR v, e IN INBOUND @start @@col SORT e.what RETURN v._key`;
 
       let bindVars = {
         "@col": "UnitTestsAhuacatlEdge",
@@ -253,7 +254,7 @@ function ahuacatlQueryEdgesTestSuite () {
     testEdgesOutInclVertices : function () {
       "use strict";
       let actual;
-      let query = "FOR v, e IN OUTBOUND @start @@col SORT e.what RETURN v._key";
+      let query = `WITH ${vn} FOR v, e IN OUTBOUND @start @@col SORT e.what RETURN v._key`;
 
       let bindVars = {
         "@col": "UnitTestsAhuacatlEdge",
@@ -296,36 +297,36 @@ function ahuacatlQueryEdgesTestSuite () {
       var q;
       var bindVars = {start: "UnitTestsAhuacatlVertex/v3"};
       var actual;
-      q = `FOR v, e IN ANY @start UnitTestsAhuacatlEdge 
+      q = `WITH ${vn} FOR v, e IN ANY @start UnitTestsAhuacatlEdge 
         FILTER e.what == "v1->v3"
         SORT e.what RETURN e.what`;
       actual = getQueryResults(q, bindVars);
       assertEqual(actual, [ "v1->v3" ]);
 
-      q = `FOR v, e IN ANY @start UnitTestsAhuacatlEdge 
+      q = `WITH ${vn} FOR v, e IN ANY @start UnitTestsAhuacatlEdge 
         FILTER e.what == "v1->v3" OR e.what == "v3->v6"
         SORT e.what RETURN e.what`;
       actual = getQueryResults(q, bindVars);
       assertEqual(actual, [ "v1->v3", "v3->v6"]);
 
-      q = `FOR v, e IN ANY @start UnitTestsAhuacatlEdge 
+      q = `WITH ${vn} FOR v, e IN ANY @start UnitTestsAhuacatlEdge 
         SORT e.what RETURN e.what`;
       actual = getQueryResults(q, bindVars);
       assertEqual(actual, [ "v1->v3", "v2->v3", "v3->v4", "v3->v6", "v3->v7", "v6->v3", "v7->v3" ]);
 
-      q = `FOR v, e IN ANY @start UnitTestsAhuacatlEdge 
+      q = `WITH ${vn} FOR v, e IN ANY @start UnitTestsAhuacatlEdge 
         FILTER e.non == "matchable"
         SORT e.what RETURN e.what`;
       actual = getQueryResults(q, bindVars);
       assertEqual(actual, [ ]);
 
-      q = `FOR v, e IN ANY @start UnitTestsAhuacatlEdge 
+      q = `WITH ${vn} FOR v, e IN ANY @start UnitTestsAhuacatlEdge 
         FILTER e.what == "v1->v3" OR e.non == "matchable"
         SORT e.what RETURN e.what`;
       actual = getQueryResults(q, bindVars);
       assertEqual(actual, [ "v1->v3" ]);
 
-      q = `FOR v, e IN ANY @start UnitTestsAhuacatlEdge 
+      q = `WITH ${vn} FOR v, e IN ANY @start UnitTestsAhuacatlEdge 
         FILTER e.what == "v3->v6"
         SORT e.what RETURN e.what`;
       actual = getQueryResults(q, bindVars);
@@ -337,7 +338,7 @@ function ahuacatlQueryEdgesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEdgesStartVertexArray : function () {
-      var q = "FOR s IN @start FOR v, e IN OUTBOUND s UnitTestsAhuacatlEdge SORT e.what RETURN e.what";
+      var q = `WITH ${vn} FOR s IN @start FOR v, e IN OUTBOUND s UnitTestsAhuacatlEdge SORT e.what RETURN e.what`;
      
       var actual;
       actual = getQueryResults(q, {start: [ "UnitTestsAhuacatlVertex/v1", "UnitTestsAhuacatlVertex/v2" ]});
@@ -352,7 +353,7 @@ function ahuacatlQueryEdgesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEdgesStartVertexObject : function () {
-      var q = "FOR v, e IN OUTBOUND @start UnitTestsAhuacatlEdge SORT e.what RETURN e.what";
+      var q = `WITH ${vn} FOR v, e IN OUTBOUND @start UnitTestsAhuacatlEdge SORT e.what RETURN e.what`;
 
       var actual;
       actual = getQueryResults(q, {start: { _id: "UnitTestsAhuacatlVertex/v1" }});
@@ -364,8 +365,8 @@ function ahuacatlQueryEdgesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEdgesStartVertexIllegal : function () {
-      var q = "FOR v, e IN OUTBOUND @start UnitTestsAhuacatlEdge SORT e.what RETURN e.what";
-      var qArray = "FOR s IN @start FOR v, e IN OUTBOUND s UnitTestsAhuacatlEdge SORT e.what RETURN e.what";
+      var q = `WITH ${vn} FOR v, e IN OUTBOUND @start UnitTestsAhuacatlEdge SORT e.what RETURN e.what`;
+      var qArray = `WITH ${vn} FOR s IN @start FOR v, e IN OUTBOUND s UnitTestsAhuacatlEdge SORT e.what RETURN e.what`;
       var actual;
 
       var bindVars = {start: {_id: "v1"}}; // No collection
@@ -401,6 +402,7 @@ function ahuacatlQueryEdgesTestSuite () {
 function ahuacatlQueryNeighborsTestSuite () {
   var vertex = null;
   var edge   = null;
+  var vn = "UnitTestsAhuacatlVertex";
 
   return {
 
@@ -409,10 +411,10 @@ function ahuacatlQueryNeighborsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      db._drop("UnitTestsAhuacatlVertex");
+      db._drop(vn);
       db._drop("UnitTestsAhuacatlEdge");
 
-      vertex = db._create("UnitTestsAhuacatlVertex");
+      vertex = db._create(vn);
       edge = db._createEdgeCollection("UnitTestsAhuacatlEdge");
 
       vertex.save({ _key: "v1", name: "v1" });
@@ -424,7 +426,7 @@ function ahuacatlQueryNeighborsTestSuite () {
       vertex.save({ _key: "v7", name: "v7" });
 
       function makeEdge (from, to) {
-        edge.save("UnitTestsAhuacatlVertex/" + from, "UnitTestsAhuacatlVertex/" + to, { what: from + "->" + to, _key: from + "_" + to });
+        edge.save(vn + "/" + from, vn + "/" + to, { what: from + "->" + to, _key: from + "_" + to });
       }
 
       makeEdge("v1", "v2");
@@ -443,7 +445,7 @@ function ahuacatlQueryNeighborsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      db._drop("UnitTestsAhuacatlVertex");
+      db._drop(vn);
       db._drop("UnitTestsAhuacatlEdge");
     },
 
@@ -462,7 +464,7 @@ function ahuacatlQueryNeighborsTestSuite () {
       var v7 = "UnitTestsAhuacatlVertex/v7";
       var v8 = "UnitTestsAhuacatlVertex/v8";
       var theFox = "UnitTestsAhuacatlVertex/thefox";
-      var queryStart = `FOR n IN ANY "`;
+      var queryStart = `WITH ${vn} FOR n IN ANY "`;
       var queryEnd = `" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: "global"} SORT n._id RETURN n._id`;
       var queryEndData = `" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: "global"} SORT n RETURN n`;
       
@@ -517,7 +519,7 @@ function ahuacatlQueryNeighborsTestSuite () {
       var v8 = "UnitTestsAhuacatlVertex/v8";
       var theFox = "UnitTestsAhuacatlVertex/thefox";
 
-      var queryStart = `FOR n IN INBOUND "`;
+      var queryStart = `WITH ${vn} FOR n IN INBOUND "`;
       var queryEnd = `" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: "global"} SORT n._id RETURN n._id`;
       var queryEndData = `" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: "global"} SORT n RETURN n`;
       
@@ -569,7 +571,7 @@ function ahuacatlQueryNeighborsTestSuite () {
       var v7 = "UnitTestsAhuacatlVertex/v7";
       var v8 = "UnitTestsAhuacatlVertex/v8";
       var theFox = "UnitTestsAhuacatlVertex/thefox";
-      var queryStart = `FOR n IN OUTBOUND "`;
+      var queryStart = `WITH ${vn} FOR n IN OUTBOUND "`;
       var queryEnd = `" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: "global"} SORT n._id RETURN n._id`;
       var queryEndData = `" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: "global"} SORT n RETURN n`;
       
@@ -613,7 +615,7 @@ function ahuacatlQueryNeighborsTestSuite () {
       var v6 = "UnitTestsAhuacatlVertex/v6";
       var v7 = "UnitTestsAhuacatlVertex/v7";
       var createQuery = function (start, filter) {
-        return `FOR n, e IN OUTBOUND "${start}" UnitTestsAhuacatlEdge OPTIONS {bfs: true} ${filter} SORT n._id RETURN n._id`;
+        return `WITH ${vn} FOR n, e IN OUTBOUND "${start}" UnitTestsAhuacatlEdge OPTIONS {bfs: true} ${filter} SORT n._id RETURN n._id`;
       };
 
       // An empty filter should let all edges through
@@ -710,7 +712,7 @@ function ahuacatlQueryBreadthFirstTestSuite () {
     tearDown : cleanUp,
 
     testNonUniqueVerticesDefaultDepth : function() {
-      var query = `
+      var query = `WITH ${vn}
         FOR v IN OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true}
         SORT v._key RETURN v._key`;
@@ -720,7 +722,7 @@ function ahuacatlQueryBreadthFirstTestSuite () {
     },
     
     testNonUniqueVerticesMaxDepth2 : function() {
-      var query = `
+      var query = `WITH ${vn}
         FOR v IN 1..2 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true}
         SORT v._key RETURN v._key`;
@@ -730,7 +732,7 @@ function ahuacatlQueryBreadthFirstTestSuite () {
     },
     
     testNonUniqueVerticesMinDepth0 : function() {
-      var query = `
+      var query = `WITH ${vn}
         FOR v IN 0..2 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true}
         SORT v._key RETURN v._key`;
@@ -740,7 +742,7 @@ function ahuacatlQueryBreadthFirstTestSuite () {
     },
     
     testNonUniqueVerticesMinDepth2 : function() {
-      var query = `
+      var query = `WITH ${vn}
         FOR v IN 2..2 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true}
         SORT v._key RETURN v._key`;
@@ -750,7 +752,7 @@ function ahuacatlQueryBreadthFirstTestSuite () {
     },
     
     testUniqueVerticesMaxDepth2 : function () {
-      var query = `
+      var query = `WITH ${vn}
         FOR v IN 1..2 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true, uniqueVertices: 'global'}
         SORT v._key RETURN v._key`;
@@ -760,7 +762,7 @@ function ahuacatlQueryBreadthFirstTestSuite () {
     },
     
     testUniqueVerticesMinDepth0 : function () {
-      var query = `
+      var query = `WITH ${vn}
         FOR v IN 0..3 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true, uniqueVertices: 'global'}
         SORT v._key RETURN v._key`;
@@ -770,7 +772,7 @@ function ahuacatlQueryBreadthFirstTestSuite () {
     },
     
     testUniqueVerticesMinDepth2 : function () {
-      var query = `
+      var query = `WITH ${vn}
         FOR v IN 2..2 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true, uniqueVertices: 'global'}
         SORT v._key RETURN v._key`;
@@ -784,7 +786,7 @@ function ahuacatlQueryBreadthFirstTestSuite () {
     },
     
     testNonUniqueEdgesDefaultDepth : function() {
-      var query = `
+      var query = `WITH ${vn}
         FOR v,e IN OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true}
         SORT e._key RETURN e._key`;
@@ -794,7 +796,7 @@ function ahuacatlQueryBreadthFirstTestSuite () {
     },
     
     testNonUniqueEdgesMaxDepth2 : function() {
-      var query = `
+      var query = `WITH ${vn}
         FOR v,e IN 1..3 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true}
         SORT e._key RETURN e._key`;
@@ -804,7 +806,7 @@ function ahuacatlQueryBreadthFirstTestSuite () {
     },
     
     testNonUniqueEdgesMinDepth0 : function() {
-      var query = `
+      var query = `WITH ${vn}
         FOR v,e IN 0..3 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: false}
         SORT e._key RETURN e._key`;
@@ -814,7 +816,7 @@ function ahuacatlQueryBreadthFirstTestSuite () {
     },
     
     testNonUniqueEdgesMinDepth2 : function() {
-      var query = `
+      var query = `WITH ${vn}
         FOR v,e IN 2..3 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true}
         SORT e._key RETURN e._key`;
@@ -824,7 +826,7 @@ function ahuacatlQueryBreadthFirstTestSuite () {
     },
     
     testUniqueEdgesMaxDepth4 : function () {
-      var query = `
+      var query = `WITH ${vn}
         FOR v,e IN 1..3 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true, uniqueEdges: 'global'}
         SORT e._key RETURN e._key`;
@@ -834,7 +836,7 @@ function ahuacatlQueryBreadthFirstTestSuite () {
     },
     
     testUniqueEdgesMinDepth0 : function () {
-      var query = `
+      var query = `WITH ${vn}
         FOR v,e IN 0..3 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true, uniqueEdges: 'global'}
         SORT e._key RETURN e._key`;
@@ -844,7 +846,7 @@ function ahuacatlQueryBreadthFirstTestSuite () {
     },
     
     testUniqueEdgesMinDepth2 : function () {
-      var query = `
+      var query = `WITH ${vn}
         FOR v,e IN 2..3 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true, uniqueEdges: 'global'}
         SORT e._key RETURN e._key`;
@@ -854,7 +856,7 @@ function ahuacatlQueryBreadthFirstTestSuite () {
     },
     
     testFilterPathMaxDepth3 : function () {
-      var query = `
+      var query = `WITH ${vn}
         FOR v,e,p IN 1..3 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true, uniqueEdges: 'global'}
         FILTER p.edges[0].type == "friend" && p.edges[1].type == "enemy" 
@@ -865,7 +867,7 @@ function ahuacatlQueryBreadthFirstTestSuite () {
     },
     
     testFilterPathMaxDepth2 : function () {
-      var query = `
+      var query = `WITH ${vn}
         FOR v,e,p IN 1..2 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true, uniqueEdges: 'global'}
         FILTER p.edges[0].type == "friend" && p.edges[1].type == "enemy" 
@@ -876,7 +878,7 @@ function ahuacatlQueryBreadthFirstTestSuite () {
     },
     
     testFilterPathMinDepth3 : function () {
-      var query = `
+      var query = `WITH ${vn}
         FOR v,e,p IN 3..3 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true, uniqueEdges: 'global'}
         FILTER p.edges[0].type == "friend" && p.edges[1].type == "enemy" 
@@ -887,7 +889,7 @@ function ahuacatlQueryBreadthFirstTestSuite () {
     },
     
     testFilterPathDepth3 : function () {
-      var query = `
+      var query = `WITH ${vn}
         FOR v,e,p IN 1..3 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true, uniqueEdges: 'global'}
         FILTER p.edges[0].type == "enemy" && p.edges[1].type == "enemy" && p.edges[2].type == "friend" 
@@ -898,7 +900,7 @@ function ahuacatlQueryBreadthFirstTestSuite () {
     },
     
     testFilterPathStartsWith : function () {
-      var query = `
+      var query = `WITH ${vn}
         FOR v,e,p IN 1..3 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true, uniqueEdges: 'global'}
         FILTER p.edges[0].type == "friend" 
@@ -909,7 +911,7 @@ function ahuacatlQueryBreadthFirstTestSuite () {
     },
     
     testFilterPathStartsWithDepth2 : function () {
-      var query = `
+      var query = `WITH ${vn}
         FOR v,e,p IN 2..3 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true, uniqueEdges: 'global'}
         FILTER p.edges[0].type == "friend" 

@@ -39,7 +39,7 @@ class V8PeriodicTask : public rest::PeriodicTask {
                  double, std::string const&,
                  std::shared_ptr<arangodb::velocypack::Builder>, bool);
 
-  ~V8PeriodicTask();
+  ~V8PeriodicTask() = default;
 
  public:
   static void jobDone(Task*);
@@ -56,7 +56,8 @@ class V8PeriodicTask : public rest::PeriodicTask {
   static std::unordered_set<Task*> RUNNING;
 
  private:
-  TRI_vocbase_t* _vocbase;
+  /// @brief guard to make sure the database is not dropped while used by us
+  VocbaseGuard _vocbaseGuard;
   std::string const _command;
   std::shared_ptr<arangodb::velocypack::Builder> _parameters;
   double _created;

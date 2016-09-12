@@ -53,30 +53,30 @@ bool RestAgencyPrivHandler::isDirect() const { return false; }
 
 inline RestHandler::status RestAgencyPrivHandler::reportErrorEmptyRequest() {
   LOG_TOPIC(WARN, Logger::AGENCY) << "Empty request to agency!";
-  generateError(GeneralResponse::ResponseCode::NOT_FOUND, 404);
+  generateError(rest::ResponseCode::NOT_FOUND, 404);
   return RestHandler::status::DONE;
 }
 
 inline RestHandler::status RestAgencyPrivHandler::reportTooManySuffices() {
   LOG_TOPIC(WARN, Logger::AGENCY)
       << "Agency handles a single suffix: vote, log or configure";
-  generateError(GeneralResponse::ResponseCode::NOT_FOUND, 404);
+  generateError(rest::ResponseCode::NOT_FOUND, 404);
   return RestHandler::status::DONE;
 }
 
 inline RestHandler::status RestAgencyPrivHandler::reportBadQuery(
     std::string const& message) {
-  generateError(GeneralResponse::ResponseCode::BAD, 400, message);
+  generateError(rest::ResponseCode::BAD, 400, message);
   return RestHandler::status::DONE;
 }
 
 inline RestHandler::status RestAgencyPrivHandler::reportMethodNotAllowed() {
-  generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED, 405);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
   return RestHandler::status::DONE;
 }
 
 inline RestHandler::status RestAgencyPrivHandler::reportGone() {
-  generateError(GeneralResponse::ResponseCode::GONE, 410);
+  generateError(rest::ResponseCode::GONE, 410);
   return RestHandler::status::DONE;
 }
 
@@ -95,7 +95,7 @@ RestHandler::status RestAgencyPrivHandler::execute() {
       std::string id;  // leaderId for appendEntries, cadidateId for requestVote
       arangodb::consensus::index_t prevLogIndex, leaderCommit;
       if (_request->suffix()[0] == "appendEntries") {  // appendEntries
-        if (_request->requestType() != GeneralRequest::RequestType::POST) {
+        if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
         if (readValue("term", term) && readValue("leaderId", id) &&
@@ -119,7 +119,7 @@ RestHandler::status RestAgencyPrivHandler::execute() {
           result.add("voteGranted", VPackValue(ret.success));
         }
       } else if (_request->suffix()[0] == "notifyAll") {  // notify
-        if (_request->requestType() != GeneralRequest::RequestType::POST) {
+        if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
         if (readValue("term", term) && readValue("agencyId", id)) {
@@ -130,8 +130,29 @@ RestHandler::status RestAgencyPrivHandler::execute() {
         } else {
           return reportBadQuery();  // bad query
         }
+      } else if (_request->suffix()[0] == "activate") {  // notify
+        if (_request->requestType() != rest::RequestType::POST) {
+          return reportMethodNotAllowed();
+        }
+        arangodb::velocypack::Options options;
+        query_t everything;
+        try {
+          everything = _request->toVelocyPackBuilderPtr(&options);
+        } catch (std::exception const& e) {
+          LOG_TOPIC(ERR, Logger::AGENCY)
+            << "Failure getting activation body: e.what()";
+        }
+        try {
+          query_t res = _agent->activate(everything);
+          for (auto const& i : VPackObjectIterator(res->slice())) {
+            result.add(i.key.copyString(),i.value);
+          }
+        } catch (std::exception const& e) {
+          LOG_TOPIC(ERR, Logger::AGENCY) << "Activation failed: " << e.what();
+        }
+        
       } else if (_request->suffix()[0] == "gossip") {
-        if (_request->requestType() != GeneralRequest::RequestType::POST) {
+        if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
         arangodb::velocypack::Options options;
@@ -145,7 +166,7 @@ RestHandler::status RestAgencyPrivHandler::execute() {
           return reportBadQuery(e.what());
         }
       } else if (_request->suffix()[0] == "activeAgents") {
-        if (_request->requestType() != GeneralRequest::RequestType::GET) {
+        if (_request->requestType() != rest::RequestType::GET) {
           return reportMethodNotAllowed();
         }
         if (_agent->leaderID() != NO_LEADER) {
@@ -161,14 +182,13 @@ RestHandler::status RestAgencyPrivHandler::execute() {
           return reportBadQuery(e.what());
         }
       } else {
-        generateError(GeneralResponse::ResponseCode::NOT_FOUND,
-                      404);  // nothing else here
+        generateError(rest::ResponseCode::NOT_FOUND, 404);  // nothing else here
         return RestHandler::status::DONE;
       }
     }
     result.close();
     VPackSlice s = result.slice();
-    generateResult(GeneralResponse::ResponseCode::OK, s);
+    generateResult(rest::ResponseCode::OK, s);
   } catch (...) {
     // Ignore this error
   }

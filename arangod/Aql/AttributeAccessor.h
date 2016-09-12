@@ -29,10 +29,12 @@
 #include "Aql/types.h"
 
 namespace arangodb {
+class Transaction;
+
 namespace aql {
 
 class AqlItemBlock;
-class AqlTransaction;
+class ExpressionContext;
 struct Variable;
 
 /// @brief AttributeAccessor
@@ -42,9 +44,7 @@ class AttributeAccessor {
   ~AttributeAccessor() = default;
 
   /// @brief execute the accessor
-  AqlValue get(arangodb::AqlTransaction* trx, AqlItemBlock const*, size_t,
-               std::vector<Variable const*> const&,
-               std::vector<RegisterId> const&, bool& mustDestroy);
+  AqlValue get(arangodb::Transaction* trx, ExpressionContext* context, bool& mustDestroy);
     
  public:
   void replaceVariable(std::unordered_map<VariableId, Variable const*> const& replacements);

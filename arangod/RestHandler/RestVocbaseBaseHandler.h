@@ -129,6 +129,16 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   static std::string const UPLOAD_PATH;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief wal path
+  //////////////////////////////////////////////////////////////////////////////
+  
+  static std::string const WAL_PATH;
+
+  /// @brief Internal Traverser path
+
+  static std::string const INTERNAL_TRAVERSER_PATH;
 
  public:
   RestVocbaseBaseHandler(GeneralRequest*, GeneralResponse*);
@@ -154,14 +164,14 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void generateOk() {
-    setResponseCode(GeneralResponse::ResponseCode::NO_CONTENT);
+    resetResponse(rest::ResponseCode::NO_CONTENT);
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates ok message with no body but with certain status code
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateOk(GeneralResponse::ResponseCode code) { setResponseCode(code); }
+  void generateOk(rest::ResponseCode code) { resetResponse(code); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates message for a saved document
@@ -185,7 +195,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   void generateDocumentNotFound(std::string const& /* collection name */,
                                 std::string const& /* document key */) {
-    generateError(GeneralResponse::ResponseCode::NOT_FOUND,
+    generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
 
@@ -255,12 +265,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   bool extractBooleanParameter(char const* name, bool def) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief parses the body as VelocyPack
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::shared_ptr<VPackBuilder> parseVelocyPackBody(VPackOptions const*, bool&);
 
  protected:
   //////////////////////////////////////////////////////////////////////////////

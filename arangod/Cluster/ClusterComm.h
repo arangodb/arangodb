@@ -75,10 +75,10 @@ enum ClusterCommOpStatus {
   CL_COMM_DROPPED = 7,    // operation was dropped, not known
                           // this is only used to report an error
                           // in the wait or enquire methods
-  CL_COMM_BACKEND_UNAVAILABLE = 8 // communication problem with the backend
-                                  // note that in this case result and answer
-                                  // are not set and one can assume that
-                                  // already the connection could not be opened
+  CL_COMM_BACKEND_UNAVAILABLE = 8  // communication problem with the backend
+                                   // note that in this case result and answer
+                                   // are not set and one can assume that
+                                   // already the connection could not be opened
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,7 +96,7 @@ enum ClusterCommOpStatus {
 /// "ssl://", then `status` is set to CL_COMM_BACKEND_UNAVAILABLE,
 /// `errorMessage` is set but `result` and `answer` are both set
 /// to nullptr. The flag `sendWasComplete` remains false and the
-/// `answer_code` remains GeneralResponse::ResponseCode::PROCESSING.
+/// `answer_code` remains rest::ResponseCode::PROCESSING.
 /// A potentially given ClusterCommCallback is called.
 ///
 /// If no error occurs so far, the status is set to CL_COMM_SUBMITTED.
@@ -192,7 +192,7 @@ struct ClusterCommResult {
   // the field answer is != nullptr if status is == CL_COMM_RECEIVED
   // answer_code is valid iff answer is != 0
   std::shared_ptr<GeneralRequest> answer;
-  GeneralResponse::ResponseCode answer_code;
+  rest::ResponseCode answer_code;
 
   // The following flag indicates whether or not the complete request was
   // sent to the other side. This is often important to judge whether or
@@ -204,7 +204,7 @@ struct ClusterCommResult {
       : status(CL_COMM_BACKEND_UNAVAILABLE),
         dropped(false),
         single(false),
-        answer_code(GeneralResponse::ResponseCode::PROCESSING),
+        answer_code(rest::ResponseCode::PROCESSING),
         sendWasComplete(false) {}
 
   //////////////////////////////////////////////////////////////////////////////
@@ -212,7 +212,7 @@ struct ClusterCommResult {
   //////////////////////////////////////////////////////////////////////////////
 
   void setDestination(std::string const& dest, bool logConnectionErrors);
-  
+
   /// @brief stringify the internal error state
   std::string stringifyErrorMessage() const;
 
@@ -261,7 +261,7 @@ typedef double ClusterCommTimeout;
 
 struct ClusterCommOperation {
   ClusterCommResult result;
-  GeneralRequest::RequestType reqtype;
+  rest::RequestType reqtype;
   std::string path;
   std::shared_ptr<std::string const> body;
   std::unique_ptr<std::unordered_map<std::string, std::string>> headerFields;
@@ -282,26 +282,27 @@ void ClusterCommRestCallback(std::string& coordinator,
 ////////////////////////////////////////////////////////////////////////////////
 
 struct ClusterCommRequest {
-  std::string                                         destination;
-  GeneralRequest::RequestType                         requestType;
-  std::string                                         path;
-  std::shared_ptr<std::string const>                  body;
+  std::string destination;
+  rest::RequestType requestType;
+  std::string path;
+  std::shared_ptr<std::string const> body;
   std::unique_ptr<std::unordered_map<std::string, std::string>> headerFields;
-  ClusterCommResult                                   result;
-  bool                                                done;
+  ClusterCommResult result;
+  bool done;
 
-  ClusterCommRequest() : done(false) {
-  }
+  ClusterCommRequest() : done(false) {}
 
-  ClusterCommRequest(std::string const& dest,
-                     GeneralRequest::RequestType type,
+  ClusterCommRequest(std::string const& dest, rest::RequestType type,
                      std::string const& path,
                      std::shared_ptr<std::string const> body)
-    : destination(dest), requestType(type), path(path), body(body), done(false)
-  {
-  }
+      : destination(dest),
+        requestType(type),
+        path(path),
+        body(body),
+        done(false) {}
 
-  void setHeaders(std::unique_ptr<std::unordered_map<std::string, std::string>>& headers) {
+  void setHeaders(
+      std::unique_ptr<std::unordered_map<std::string, std::string>>& headers) {
     headerFields = std::move(headers);
   }
 };
@@ -380,10 +381,10 @@ class ClusterComm {
   OperationID asyncRequest(
       ClientTransactionID const clientTransactionID,
       CoordTransactionID const coordTransactionID,
-      std::string const& destination,
-      GeneralRequest::RequestType reqtype, std::string const& path,
-      std::shared_ptr<std::string const> body,
-      std::unique_ptr<std::unordered_map<std::string, std::string>>& headerFields,
+      std::string const& destination, rest::RequestType reqtype,
+      std::string const& path, std::shared_ptr<std::string const> body,
+      std::unique_ptr<std::unordered_map<std::string, std::string>>&
+          headerFields,
       std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
       bool singleRequest = false, ClusterCommTimeout initTimeout = -1.0);
 
@@ -394,9 +395,8 @@ class ClusterComm {
   std::unique_ptr<ClusterCommResult> syncRequest(
       ClientTransactionID const& clientTransactionID,
       CoordTransactionID const coordTransactionID,
-      std::string const& destination,
-      GeneralRequest::RequestType reqtype, std::string const& path,
-      std::string const& body,
+      std::string const& destination, rest::RequestType reqtype,
+      std::string const& path, std::string const& body,
       std::unordered_map<std::string, std::string> const& headerFields,
       ClusterCommTimeout timeout);
 
@@ -428,8 +428,8 @@ class ClusterComm {
   /// @brief process an answer coming in on the HTTP socket
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string processAnswer(std::string& coordinatorHeader,
-                            GeneralRequest* answer);
+  std::string processAnswer(std::string const& coordinatorHeader,
+                            std::unique_ptr<GeneralRequest>&& answer);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief send an answer HTTP request to a coordinator
@@ -454,8 +454,7 @@ class ClusterComm {
   //////////////////////////////////////////////////////////////////////////////
 
   size_t performRequests(std::vector<ClusterCommRequest>& requests,
-                         ClusterCommTimeout timeout,
-                         size_t& nrDone,
+                         ClusterCommTimeout timeout, size_t& nrDone,
                          arangodb::LogTopic const& logTopic);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -468,9 +467,8 @@ class ClusterComm {
 
  private:
   size_t performSingleRequest(std::vector<ClusterCommRequest>& requests,
-                         ClusterCommTimeout timeout,
-                         size_t& nrDone,
-                         arangodb::LogTopic const& logTopic);
+                              ClusterCommTimeout timeout, size_t& nrDone,
+                              arangodb::LogTopic const& logTopic);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the pointer to the singleton instance

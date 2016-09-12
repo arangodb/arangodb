@@ -29,7 +29,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Utils/TransactionContext.h"
-#include "VocBase/document-collection.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/transaction.h"
 
 #include <velocypack/Iterator.h>
@@ -452,7 +452,7 @@ HashIndex::MultiArray::~MultiArray() {
 ////////////////////////////////////////////////////////////////////////////////
 
 HashIndex::HashIndex(
-    TRI_idx_iid_t iid, TRI_document_collection_t* collection,
+    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     bool unique, bool sparse)
     : PathBasedIndex(iid, collection, fields, unique, sparse, false),
@@ -461,13 +461,54 @@ HashIndex::HashIndex(
 
   if (collection != nullptr) {
     // document is a nullptr in the coordinator case
-    indexBuckets = collection->_info.indexBuckets();
+    indexBuckets = collection->indexBuckets();
   }
 
   auto func = std::make_unique<HashElementFunc>(_paths.size());
   auto compare = std::make_unique<IsEqualElementElementByKey>(_paths.size());
 
   if (unique) {
+    auto array = std::make_unique<TRI_HashArray_t>(
+        HashKey, *(func.get()), IsEqualKeyElementHash, IsEqualElementElement,
+        *(compare.get()), indexBuckets,
+        []() -> std::string { return "unique hash-array"; });
+
+    _uniqueArray =
+        new HashIndex::UniqueArray(array.get(), func.get(), compare.get());
+    array.release();
+  } else {
+    _multiArray = nullptr;
+
+    auto array = std::make_unique<TRI_HashArrayMulti_t>(
+        HashKey, *(func.get()), IsEqualKeyElement, IsEqualElementElement,
+        *(compare.get()), indexBuckets, 64,
+        []() -> std::string { return "multi hash-array"; });
+
+    _multiArray =
+        new HashIndex::MultiArray(array.get(), func.get(), compare.get());
+
+    array.release();
+  }
+  compare.release();
+
+  func.release();
+}
+
+HashIndex::HashIndex(TRI_idx_iid_t iid, LogicalCollection* collection,
+                     VPackSlice const& info)
+    : PathBasedIndex(iid, collection, info, false), _uniqueArray(nullptr) {
+  uint32_t indexBuckets = 1;
+
+  if (collection != nullptr) {
+    // document is a nullptr in the coordinator case
+    // TODO: That ain't true any more
+    indexBuckets = collection->indexBuckets();
+  }
+
+  auto func = std::make_unique<HashElementFunc>(_paths.size());
+  auto compare = std::make_unique<IsEqualElementElementByKey>(_paths.size());
+
+  if (_unique) {
     auto array = std::make_unique<TRI_HashArray_t>(
         HashKey, *(func.get()), IsEqualKeyElementHash, IsEqualElementElement,
         *(compare.get()), indexBuckets,
@@ -523,9 +564,9 @@ double HashIndex::selectivityEstimate() const {
     return 1.0;
   }
 
-  if (_multiArray == nullptr) {
+  if (_multiArray == nullptr || ServerState::instance()->isCoordinator()) {
     // use hard-coded selectivity estimate in case of cluster coordinator
-    return _selectivityEstimate;
+    return 0.1;
   }
 
   double estimate = _multiArray->_hashArray->selectivity();
@@ -573,6 +614,71 @@ void HashIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   }
 }
 
+/// @brief Test if this index matches the definition
+bool HashIndex::matchesDefinition(VPackSlice const& info) const {
+  TRI_ASSERT(info.isObject());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  VPackSlice typeSlice = info.get("type");
+  TRI_ASSERT(typeSlice.isString());
+  StringRef typeStr(typeSlice);
+  TRI_ASSERT(typeStr == typeName());
+#endif
+  auto value = info.get("id");
+  if (!value.isNone()) {
+    // We already have an id.
+    if(!value.isString()) {
+      // Invalid ID
+      return false;
+    }
+    // Short circuit. If id is correct the index is identical.
+    StringRef idRef(value);
+    return idRef == std::to_string(_iid);
+  }
+
+  value = info.get("fields");
+  if (!value.isArray()) {
+    return false;
+  }
+
+  size_t const n = static_cast<size_t>(value.length());
+  if (n != _fields.size()) {
+    return false;
+  }
+  if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
+                     info, "unique", false)) {
+    return false;
+  }
+  if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
+                     info, "sparse", false)) {
+    return false;
+  }
+
+  // This check does not take ordering of attributes into account.
+  std::vector<arangodb::basics::AttributeName> translate;
+  for (auto const& f : VPackArrayIterator(value)) {
+    bool found = false;
+    if (!f.isString()) {
+      // Invalid field definition!
+      return false;
+    }
+    translate.clear();
+    arangodb::StringRef in(f);
+    TRI_ParseAttributeString(in, translate, true);
+
+    for (size_t i = 0; i < n; ++i) {
+      if (arangodb::basics::AttributeName::isIdentical(_fields[i], translate,
+                                                        false)) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      return false;
+    }
+  }
+  return true;
+}
+
 int HashIndex::insert(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
                       bool isRollback) {
   if (_unique) {
@@ -603,6 +709,15 @@ int HashIndex::batchInsert(arangodb::Transaction* trx,
   }
 
   return batchInsertMulti(trx, documents, numThreads);
+}
+  
+int HashIndex::unload() {
+  if (_unique) {
+    _uniqueArray->_hashArray->truncate(FreeElement);
+  } else {
+    _multiArray->_hashArray->truncate(FreeElement);
+  }
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

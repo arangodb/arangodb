@@ -31,10 +31,11 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-#include "VocBase/server.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/ticks.h"
+
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
-
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -47,11 +48,11 @@ using namespace arangodb::basics;
   CreateAgencyException(args, data); \
   return;
 
-#define ONLY_IN_CLUSTER \
+#define ONLY_IN_CLUSTER                                 \
   if (!ServerState::instance()->isRunningInCluster()) { \
-    TRI_V8_THROW_EXCEPTION_INTERNAL("ArangoDB is not running in cluster mode"); \
+    TRI_V8_THROW_EXCEPTION_INTERNAL(                    \
+        "ArangoDB is not running in cluster mode");     \
   }
-
 
 static void CreateAgencyException(
     v8::FunctionCallbackInfo<v8::Value> const& args,
@@ -247,7 +248,6 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   for (auto const& a : VPackArrayIterator(result.slice())) {
     for (auto const& o : VPackObjectIterator(a)) {
-
       std::string const key = o.key.copyString();
       VPackSlice const slice = o.value;
 
@@ -674,18 +674,19 @@ static void JS_GetCollectionInfoClusterInfo(
         "getCollectionInfo(<database-id>, <collection-id>)");
   }
 
-  std::shared_ptr<CollectionInfo> ci = ClusterInfo::instance()->getCollection(
+  std::shared_ptr<LogicalCollection> ci = ClusterInfo::instance()->getCollection(
       TRI_ObjectToString(args[0]), TRI_ObjectToString(args[1]));
+  TRI_ASSERT(ci != nullptr);
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  std::string const cid = arangodb::basics::StringUtils::itoa(ci->id());
+  std::string const cid = ci->cid_as_string();
   std::string const& name = ci->name();
   result->Set(TRI_V8_ASCII_STRING("id"), TRI_V8_STD_STRING(cid));
   result->Set(TRI_V8_ASCII_STRING("name"), TRI_V8_STD_STRING(name));
   result->Set(TRI_V8_ASCII_STRING("type"),
               v8::Number::New(isolate, (int)ci->type()));
   result->Set(TRI_V8_ASCII_STRING("status"),
-              v8::Number::New(isolate, (int)ci->status()));
+              v8::Number::New(isolate, (int)ci->getStatusLocked()));
 
   std::string const statusString = ci->statusString();
   result->Set(TRI_V8_ASCII_STRING("statusString"),
@@ -702,7 +703,7 @@ static void JS_GetCollectionInfoClusterInfo(
   result->Set(TRI_V8_ASCII_STRING("waitForSync"),
               v8::Boolean::New(isolate, ci->waitForSync()));
   result->Set(TRI_V8_ASCII_STRING("journalSize"),
-              v8::Number::New(isolate, ci->journalSize()));
+              v8::Number::New(isolate, static_cast<double>(ci->journalSize())));
   result->Set(TRI_V8_ASCII_STRING("replicationFactor"),
               v8::Number::New(isolate, ci->replicationFactor()));
 
@@ -724,8 +725,9 @@ static void JS_GetCollectionInfoClusterInfo(
     shardIds->Set(TRI_V8_STD_STRING(p.first), list);
   }
   result->Set(TRI_V8_ASCII_STRING("shards"), shardIds);
-
-  v8::Handle<v8::Value> indexes = TRI_VPackToV8(isolate, ci->getIndexes());
+  VPackBuilder tmp;
+  ci->getIndexesVPack(tmp, false);
+  v8::Handle<v8::Value> indexes = TRI_VPackToV8(isolate, tmp.slice());
   result->Set(TRI_V8_ASCII_STRING("indexes"), indexes);
 
   TRI_V8_RETURN(result);
@@ -749,12 +751,13 @@ static void JS_GetCollectionInfoCurrentClusterInfo(
 
   ShardID shardID = TRI_ObjectToString(args[2]);
 
-  std::shared_ptr<CollectionInfo> ci = ClusterInfo::instance()->getCollection(
+  std::shared_ptr<LogicalCollection> ci = ClusterInfo::instance()->getCollection(
       TRI_ObjectToString(args[0]), TRI_ObjectToString(args[1]));
+  TRI_ASSERT(ci != nullptr);
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   // First some stuff from Plan for which Current does not make sense:
-  std::string const cid = arangodb::basics::StringUtils::itoa(ci->id());
+  std::string const cid = ci->cid_as_string();
   std::string const& name = ci->name();
   result->Set(TRI_V8_ASCII_STRING("id"), TRI_V8_STD_STRING(cid));
   result->Set(TRI_V8_ASCII_STRING("name"), TRI_V8_STD_STRING(name));
@@ -781,7 +784,8 @@ static void JS_GetCollectionInfoCurrentClusterInfo(
                 TRI_V8_STD_STRING(errorMessage));
   }
   auto servers = cic->servers(shardID);
-  v8::Handle<v8::Array> list = v8::Array::New(isolate, static_cast<int>(servers.size()));
+  v8::Handle<v8::Array> list =
+      v8::Array::New(isolate, static_cast<int>(servers.size()));
   uint32_t pos = 0;
   for (auto const& s : servers) {
     list->Set(pos++, TRI_V8_STD_STRING(s));
@@ -1118,7 +1122,8 @@ static void JS_isFoxxmaster(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_getFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_getFoxxmasterQueueupdate(
+  v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1458,7 +1463,7 @@ static void JS_StatusServerState(
 
 static void PrepareClusterCommRequest(
     v8::FunctionCallbackInfo<v8::Value> const& args,
-    arangodb::GeneralRequest::RequestType& reqType, std::string& destination,
+    arangodb::rest::RequestType& reqType, std::string& destination,
     std::string& path, std::string& body,
     std::unordered_map<std::string, std::string>& headerFields,
     ClientTransactionID& clientTransactionID,
@@ -1470,13 +1475,13 @@ static void PrepareClusterCommRequest(
   ONLY_IN_CLUSTER
   TRI_ASSERT(args.Length() >= 4);
 
-  reqType = arangodb::GeneralRequest::RequestType::GET;
+  reqType = arangodb::rest::RequestType::GET;
   if (args[0]->IsString()) {
     TRI_Utf8ValueNFC UTF8(TRI_UNKNOWN_MEM_ZONE, args[0]);
     std::string methstring = *UTF8;
     reqType = arangodb::HttpRequest::translateMethod(methstring);
-    if (reqType == arangodb::GeneralRequest::RequestType::ILLEGAL) {
-      reqType = arangodb::GeneralRequest::RequestType::GET;
+    if (reqType == arangodb::rest::RequestType::ILLEGAL) {
+      reqType = arangodb::rest::RequestType::GET;
     }
   }
 
@@ -1661,27 +1666,28 @@ static void Return_PrepareClusterCommResultForJS(
       r->Set(ErrorMessageKey,
              TRI_V8_ASCII_STRING("required backend was not available"));
     } else if (res.status == CL_COMM_RECEIVED) {  // Everything is OK
+      // FIXME HANDLE VPP
+      auto httpRequest = std::dynamic_pointer_cast<HttpRequest>(res.answer);
+      if (httpRequest == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+
       // The headers:
       v8::Handle<v8::Object> h = v8::Object::New(isolate);
       TRI_GET_GLOBAL_STRING(StatusKey);
       r->Set(StatusKey, TRI_V8_ASCII_STRING("RECEIVED"));
       TRI_ASSERT(res.answer != nullptr);
-      std::unordered_map<std::string, std::string> headers = res.answer->headers();
+      std::unordered_map<std::string, std::string> headers =
+          res.answer->headers();
       headers["content-length"] =
-          StringUtils::itoa(res.answer->contentLength());
+          StringUtils::itoa(httpRequest->contentLength());
       for (auto& it : headers) {
         h->Set(TRI_V8_STD_STRING(it.first), TRI_V8_STD_STRING(it.second));
       }
       r->Set(TRI_V8_ASCII_STRING("headers"), h);
 
       // The body:
-      auto httpRequest = std::dynamic_pointer_cast<HttpRequest>(res.answer);
-
-      if(httpRequest == nullptr){
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-      }
       std::string const& body = httpRequest->body();
-
       if (!body.empty()) {
         r->Set(TRI_V8_ASCII_STRING("body"), TRI_V8_STD_STRING(body));
       }
@@ -1723,11 +1729,12 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "clustercomm object not found");
   }
 
-  arangodb::GeneralRequest::RequestType reqType;
+  arangodb::rest::RequestType reqType;
   std::string destination;
   std::string path;
   auto body = std::make_shared<std::string>();
-  auto headerFields = std::make_unique<std::unordered_map<std::string, std::string>>();
+  auto headerFields =
+      std::make_unique<std::unordered_map<std::string, std::string>>();
   ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   double timeout;
@@ -1748,7 +1755,8 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "couldn't queue async request");
   }
 
-  LOG(DEBUG) << "JS_AsyncRequest: request has been submitted";
+  LOG_TOPIC(DEBUG, Logger::CLUSTER)
+    << "JS_AsyncRequest: request has been submitted";
 
   Return_PrepareClusterCommResultForJS(args, res);
   TRI_V8_TRY_CATCH_END
@@ -1788,11 +1796,12 @@ static void JS_SyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "clustercomm object not found");
   }
 
-  arangodb::GeneralRequest::RequestType reqType;
+  arangodb::rest::RequestType reqType;
   std::string destination;
   std::string path;
   std::string body;
-  auto headerFields = std::make_unique<std::unordered_map<std::string, std::string>>();
+  auto headerFields =
+      std::make_unique<std::unordered_map<std::string, std::string>>();
   ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   double timeout;
@@ -1813,7 +1822,7 @@ static void JS_SyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "couldn't do sync request");
   }
 
-  LOG(DEBUG) << "JS_SyncRequest: request has been done";
+  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "JS_SyncRequest: request has been done";
 
   Return_PrepareClusterCommResultForJS(args, *res);
   TRI_V8_TRY_CATCH_END
@@ -1841,7 +1850,8 @@ static void JS_Enquire(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   OperationID operationID = TRI_ObjectToUInt64(args[0], true);
 
-  LOG(DEBUG) << "JS_Enquire: calling ClusterComm::enquire()";
+  LOG_TOPIC(DEBUG, Logger::CLUSTER)
+    << "JS_Enquire: calling ClusterComm::enquire()";
 
   ClusterCommResult const res = cc->enquire(operationID);
 
@@ -1910,7 +1920,7 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  LOG(DEBUG) << "JS_Wait: calling ClusterComm::wait()";
+  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "JS_Wait: calling ClusterComm::wait()";
 
   ClusterCommResult const res =
       cc->wait(myclientTransactionID, mycoordTransactionID, myoperationID,
@@ -1972,7 +1982,7 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  LOG(DEBUG) << "JS_Drop: calling ClusterComm::drop()";
+  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "JS_Drop: calling ClusterComm::drop()";
 
   cc->drop(myclientTransactionID, mycoordTransactionID, myoperationID,
            myshardID);

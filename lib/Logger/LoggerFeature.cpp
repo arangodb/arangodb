@@ -63,6 +63,10 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer* server,
   _foregroundTty = (isatty(STDOUT_FILENO) != 0);
 }
 
+LoggerFeature::~LoggerFeature() {
+  Logger::shutdown(true);
+}
+
 void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("log.tty", "log.foreground-tty");
   options->addOldOption("log.content-filter", "");
@@ -179,5 +183,4 @@ void LoggerFeature::prepare() {
 
 void LoggerFeature::unprepare() {
   Logger::flush();
-  Logger::shutdown(true);
 }

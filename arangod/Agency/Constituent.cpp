@@ -41,7 +41,6 @@
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "VocBase/collection.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::consensus;
@@ -230,6 +229,9 @@ std::string Constituent::endpoint(std::string id) const {
 /// @brief Vote
 bool Constituent::vote(term_t term, std::string id, index_t prevLogIndex,
                        term_t prevLogTerm, bool appendEntries) {
+
+  TRI_ASSERT(_vocbase);
+  
   term_t t = 0;
   std::string lid;
 
@@ -296,9 +298,10 @@ void Constituent::callElection() {
       auto headerFields =
           std::make_unique<std::unordered_map<std::string, std::string>>();
       operationIDs[i] = ClusterComm::instance()->asyncRequest(
-          "1", 1, _agent->config().poolAt(i), GeneralRequest::RequestType::GET,
-          path.str(), std::make_shared<std::string>(body), headerFields,
-          nullptr, respTimeout, true, initTimeout);
+        "1", 1, _agent->config().poolAt(i),
+        rest::RequestType::GET, path.str(),
+        std::make_shared<std::string>(body), headerFields,
+        nullptr, respTimeout, true, initTimeout);
     }
   }
 
@@ -412,9 +415,10 @@ void Constituent::run() {
   }
 
   std::vector<std::string> act = _agent->config().active();
-  while (!this->isStopping() && ((size_t)(find(act.begin(), act.end(), _id) -
-                                          act.begin()) >= size())) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+  while (!this->isStopping() && find(act.begin(), act.end(), _id) == act.end()) {
+    CONDITION_LOCKER(guardv, _cv);
+    _cv.wait(50000);
+    act = _agent->config().active();
   }
 
   if (size() == 1) {
@@ -428,33 +432,33 @@ void Constituent::run() {
           MUTEX_LOCKER(guard, _castLock);
           _cast = false;  // New round set not cast vote
         }
-
+        
         int32_t left = static_cast<int32_t>(1000000.0 *
                                             _agent->config().minPing()),
-                right = static_cast<int32_t>(1000000.0 *
-                                             _agent->config().maxPing());
+          right = static_cast<int32_t>(1000000.0 *
+                                       _agent->config().maxPing());
         long rand_wait =
-            static_cast<long>(RandomGenerator::interval(left, right));
-
+          static_cast<long>(RandomGenerator::interval(left, right));
+        
         {
           CONDITION_LOCKER(guardv, _cv);
           _cv.wait(rand_wait);
         }
-
+        
         {
           MUTEX_LOCKER(guard, _castLock);
           cast = _cast;
         }
-
+        
         if (!cast) {
           candidate();  // Next round, we are running
         }
-
+        
       } else if (_role == CANDIDATE) {
         callElection();  // Run for office
       } else {
         int32_t left =
-            static_cast<int32_t>(100000.0 * _agent->config().minPing());
+          static_cast<int32_t>(100000.0 * _agent->config().minPing());
         long rand_wait = static_cast<long>(left);
         {
           CONDITION_LOCKER(guardv, _cv);

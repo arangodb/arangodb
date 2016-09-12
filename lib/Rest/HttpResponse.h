@@ -38,8 +38,8 @@ class GeneralCommTask;
 }
 
 class HttpResponse : public GeneralResponse {
-  friend class rest::GeneralCommTask;
   friend class rest::HttpCommTask;
+  friend class rest::GeneralCommTask;
   friend class RestBatchHandler;  // TODO must be removed
 
  public:
@@ -65,47 +65,38 @@ class HttpResponse : public GeneralResponse {
   // information to the string buffer. Note that adding data to the body
   // invalidates any previously returned header. You must call header
   // again.
-  basics::StringBuffer& body() override { return _body; }
+  basics::StringBuffer& body() { return _body; }
   size_t bodySize() const;
 
-  /// @brief set type of connection
-  void setConnectionType(ConnectionType type) override {
-    _connectionType = type;
-  }
-
-  /// @brief set content-type
-  void setContentType(ContentType type) override { _contentType = type; }
-
-  /// @brief set content-type from a string. this should only be used in
-  /// cases when the content-type is user-defined
-  void setContentType(std::string const& contentType) override {
-    _headers[arangodb::StaticStrings::ContentTypeHeader] = contentType;
-    _contentType = ContentType::CUSTOM;
-  }
-
-  void setContentType(std::string&& contentType) override {
-    _headers[arangodb::StaticStrings::ContentTypeHeader] =
-        std::move(contentType);
-    _contentType = ContentType::CUSTOM;
-  }
-
   // you should call writeHeader only after the body has been created
-  void writeHeader(basics::StringBuffer*) override;
+  void writeHeader(basics::StringBuffer*);  // override;
 
  public:
   void reset(ResponseCode code) override final;
 
-  void setPayload(GeneralRequest const*, arangodb::velocypack::Slice const&,
-                  bool generateBody,
-                  arangodb::velocypack::Options const&) override final;
+  void addPayloadPreHook(bool inputIsBuffer, bool& resolveExternals,
+                         bool& skipBody) override {
+    if (_contentType == ContentType::JSON) {
+      skipBody = true;
+    }
+  }
+
+  bool setGenerateBody(bool generateBody) override final {
+    return _generateBody = generateBody;
+  }  // used for head-responses
+  int reservePayload(std::size_t size) override { return _body.reserve(size); }
+  void addPayloadPostHook(VPackSlice const&, VPackOptions const* options,
+                          bool resolveExternals, bool bodySkipped) override;
+
+  arangodb::Endpoint::TransportType transportType() override {
+    return arangodb::Endpoint::TransportType::HTTP;
+  }
 
  private:
   // the body must already be set. deflate is then run on the existing body
   int deflate(size_t = 16384);
 
  private:
-  ConnectionType _connectionType;
-  ContentType _contentType;
   bool _isHeadResponse;
   std::vector<std::string> _cookies;
   basics::StringBuffer _body;

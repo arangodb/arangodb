@@ -386,7 +386,7 @@ ArangoDatabase.prototype._truncate = function (id) {
 // / @brief drops a collection
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._drop = function (id) {
+ArangoDatabase.prototype._drop = function (id, options) {
   var name;
 
   for (name in this) {
@@ -395,7 +395,7 @@ ArangoDatabase.prototype._drop = function (id) {
 
       if (collection instanceof this._collectionConstructor) {
         if (collection._id === id || collection._name === id) {
-          return collection.drop();
+          return collection.drop(options);
         }
       }
     }
@@ -403,7 +403,7 @@ ArangoDatabase.prototype._drop = function (id) {
 
   var c = this._collection(id);
   if (c) {
-    return c.drop();
+    return c.drop(options);
   }
   return undefined;
 };
@@ -526,12 +526,13 @@ ArangoDatabase.prototype._dropIndex = function (id) {
 // / @brief returns the database version
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._version = function () {
-  var requestResult = this._connection.GET('/_api/version');
+ArangoDatabase.prototype._version = function (details) {
+  var requestResult = this._connection.GET('/_api/version' +
+                        (details ? '?details=true' : ''));
 
   arangosh.checkRequestResult(requestResult);
 
-  return requestResult.version;
+  return details ? requestResult : requestResult.version;
 };
 
 // //////////////////////////////////////////////////////////////////////////////

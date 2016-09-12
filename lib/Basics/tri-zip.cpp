@@ -46,10 +46,12 @@ static int ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
   char* filenameWithoutPath;
   char* fullPath;
   char* p;
-  FILE* fout;
   unz_file_info64 fileInfo;
   long systemError;
   int err;
+
+  // cppcheck-suppress *
+  FILE* fout;
 
   filenameInZip[0] = '\0';
   err = unzGetCurrentFileInfo64(uf, &fileInfo, filenameInZip,
@@ -348,7 +350,7 @@ int TRI_ZipFile(char const* filename, char const* dir,
         if (res != 0) {
           break;
         }
-      } else if (sizeRead <= 0) {
+      } else /* if (sizeRead <= 0) */ {
         break;
       }
     }

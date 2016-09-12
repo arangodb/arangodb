@@ -168,7 +168,7 @@ class SkiplistInLookupBuilder : public BaseSkiplistLookupBuilder {
 /// are non-empty.
 ////////////////////////////////////////////////////////////////////////////////
 
-class SkiplistIterator : public IndexIterator {
+class SkiplistIterator final : public IndexIterator {
  private:
   friend class SkiplistIndex;
 
@@ -223,7 +223,7 @@ class SkiplistIterator : public IndexIterator {
 /// are non-empty.
 ////////////////////////////////////////////////////////////////////////////////
 
-class SkiplistIterator2 : public IndexIterator {
+class SkiplistIterator2 final : public IndexIterator {
  private:
   // Shorthand for the skiplist node
   typedef arangodb::basics::SkipListNode<VPackSlice,
@@ -253,7 +253,7 @@ class SkiplistIterator2 : public IndexIterator {
   SkiplistIterator2(
       TRI_Skiplist const* skiplist,
       std::function<int(TRI_index_element_t const*, TRI_index_element_t const*,
-                        arangodb::basics::SkipListCmpType)> CmpElmElm,
+                        arangodb::basics::SkipListCmpType)> const& CmpElmElm,
       bool reverse, BaseSkiplistLookupBuilder* builder)
       : _skiplistIndex(skiplist),
         _reverse(reverse),
@@ -349,8 +349,11 @@ class SkiplistIndex final : public PathBasedIndex {
  public:
   SkiplistIndex() = delete;
 
+  SkiplistIndex(TRI_idx_iid_t, LogicalCollection*,
+                arangodb::velocypack::Slice const&);
+
   SkiplistIndex(
-      TRI_idx_iid_t, struct TRI_document_collection_t*,
+      TRI_idx_iid_t, arangodb::LogicalCollection*,
       std::vector<std::vector<arangodb::basics::AttributeName>> const&, bool,
       bool);
 
@@ -363,6 +366,8 @@ class SkiplistIndex final : public PathBasedIndex {
     return Index::TRI_IDX_TYPE_SKIPLIST_INDEX;
   }
   
+  bool allowExpansion() const override final { return true; }
+
   bool canBeDropped() const override final { return true; }
 
   bool isSorted() const override final { return true; }
@@ -379,6 +384,8 @@ class SkiplistIndex final : public PathBasedIndex {
 
   int remove(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
+  
+  int unload() override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief attempts to locate an entry in the skip list index

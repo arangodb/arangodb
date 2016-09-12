@@ -1,6 +1,6 @@
 
 @startDocuBlock JSF_put_api_replication_serverID
-@brief fetch this servers uniq identifier
+@brief fetch this server's unique identifier
 
 @RESTHEADER{GET /_api/replication/server-id, Return server id}
 

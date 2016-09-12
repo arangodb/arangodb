@@ -34,9 +34,7 @@
 #include "V8/v8-vpack.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
-#include "VocBase/server.h"
 #include "VocBase/vocbase.h"
-
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -61,7 +59,7 @@ DBServerAgencySync::DBServerAgencySync(HeartbeatThread* heartbeat)
 DBServerAgencySync::~DBServerAgencySync() {}
 
 void DBServerAgencySync::work() {
-  LOG(TRACE) << "starting plan update handler";
+  LOG_TOPIC(TRACE, Logger::CLUSTER) << "starting plan update handler";
 
   if (_shutdown != 0) {
     return;
@@ -97,7 +95,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   DatabaseFeature* database = 
     ApplicationServer::getFeature<DatabaseFeature>("Database");
 
-  TRI_vocbase_t* const vocbase = database->vocbase();
+  TRI_vocbase_t* const vocbase = database->systemDatabase();
 
   DBServerAgencySyncResult result;
   if (vocbase == nullptr) {
@@ -108,8 +106,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   auto plan = clusterInfo->getPlan();
   auto current = clusterInfo->getCurrent();
   
-  TRI_UseVocBase(vocbase);
-  TRI_DEFER(TRI_ReleaseVocBase(vocbase));
+  VocbaseGuard guard(vocbase);
 
   V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, true);
 
@@ -139,11 +136,12 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     }
 
     if (!handlePlanChange->IsFunction()) {
-      LOG(ERR) << "handlePlanChange is not a function";
+      LOG_TOPIC(ERR, Logger::CLUSTER) << "handlePlanChange is not a function";
       return result;
     }
 
-    v8::Handle<v8::Function> func = v8::Handle<v8::Function>::Cast(handlePlanChange);
+    v8::Handle<v8::Function> func =
+      v8::Handle<v8::Function>::Cast(handlePlanChange);
     v8::Handle<v8::Value> args[2];
     // Keep the shared_ptr to the builder while we run TRI_VPackToV8 on the
     // slice(), just to be on the safe side:
@@ -152,7 +150,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     builder = clusterInfo->getCurrent();
     args[1] = TRI_VPackToV8(isolate, builder->slice());
     
-    v8::Handle<v8::Value> res = func->Call(isolate->GetCurrentContext()->Global(), 2, args);
+    v8::Handle<v8::Value> res =
+      func->Call(isolate->GetCurrentContext()->Global(), 2, args);
     
     if (tryCatch.HasCaught()) {
       TRI_LogV8Exception(isolate, &tryCatch);
@@ -175,16 +174,19 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         
         if (value->IsNumber()) {
           if (strcmp(*str, "plan") == 0) {
-            result.planVersion = static_cast<uint64_t>(value->ToUint32()->Value());
+            result.planVersion =
+              static_cast<uint64_t>(value->ToUint32()->Value());
           } else if (strcmp(*str, "current") == 0) {
-            result.currentVersion = static_cast<uint64_t>(value->ToUint32()->Value());
+            result.currentVersion =
+              static_cast<uint64_t>(value->ToUint32()->Value());
           }
         } else if (value->IsBoolean() && strcmp(*str, "success")) {
           result.success = TRI_ObjectToBoolean(value);
         }
       }
     } else {
-      LOG(ERR) << "handlePlanChange returned a non-object";
+      LOG_TOPIC(ERR, Logger::CLUSTER)
+        << "handlePlanChange returned a non-object";
       return result;
     }
     // invalidate our local cache, even if an error occurred

@@ -46,21 +46,21 @@ RestHandler::status WorkMonitorHandler::execute() {
   size_t const len = suffix.size();
   auto const type = _request->requestType();
 
-  if (type == GeneralRequest::RequestType::GET) {
+  if (type == rest::RequestType::GET) {
     if (len != 0) {
-      generateError(GeneralResponse::ResponseCode::BAD,
+      generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expecting GET /_admin/work-monitor");
       return status::DONE;
     }
 
-    WorkMonitor::requestWorkOverview(_taskId);
+    WorkMonitor::requestWorkOverview(this);
     return status::ASYNC;
   }
 
-  if (type == GeneralRequest::RequestType::DELETE_REQ) {
+  if (type == rest::RequestType::DELETE_REQ) {
     if (len != 1) {
-      generateError(GeneralResponse::ResponseCode::BAD,
+      generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expecting DELETE /_admin/work-monitor/<id>");
 
@@ -77,11 +77,11 @@ RestHandler::status WorkMonitorHandler::execute() {
 
     VPackSlice s(b.start());
 
-    generateResult(GeneralResponse::ResponseCode::OK, s);
+    generateResult(rest::ResponseCode::OK, s);
     return status::DONE;
   }
 
-  generateError(GeneralResponse::ResponseCode::BAD,
+  generateError(rest::ResponseCode::BAD,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED, "expecting GET or DELETE");
   return status::DONE;
 }

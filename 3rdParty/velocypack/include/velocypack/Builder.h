@@ -45,8 +45,8 @@
 
 namespace arangodb {
 namespace velocypack {
-  class ArrayIterator;
-  class ObjectIterator;
+class ArrayIterator;
+class ObjectIterator;
 
 class Builder {
   friend class Parser;  // The parser needs access to internals.
@@ -145,7 +145,9 @@ class Builder {
   }
 
   explicit Builder(Options const* options = &Options::Defaults)
-      : _buffer(new Buffer<uint8_t>()), _pos(0), _keyWritten(false),
+      : _buffer(new Buffer<uint8_t>()),
+        _pos(0),
+        _keyWritten(false),
         options(options) {
     _start = _buffer->data();
     _size = _buffer->size();
@@ -157,7 +159,7 @@ class Builder {
 
   explicit Builder(Buffer<uint8_t>& buffer,
                    Options const* options = &Options::Defaults)
-    : _pos(buffer.size()), _keyWritten(false), options(options) {
+      : _pos(buffer.size()), _keyWritten(false), options(options) {
     _buffer.reset(&buffer, BufferNonDeleter<uint8_t>());
     _start = _buffer->data();
     _size = _buffer->size();
@@ -261,10 +263,8 @@ class Builder {
     _pos = 0;
     return res;
   }
-  
-  uint8_t const* data() const {
-    return _buffer.get()->data();
-  }
+
+  uint8_t const* data() const { return _buffer.get()->data(); }
 
   std::string toString() const;
 
@@ -278,7 +278,7 @@ class Builder {
 
     Builder b(options);
     b.add(slice);
-    return b;   // Use return value optimization
+    return b;  // Use return value optimization
   }
 
   // Clear and start from scratch:
@@ -297,8 +297,8 @@ class Builder {
   }
 
   // Return a Slice of the result:
-  Slice slice() const { 
-    if (isEmpty()) { 
+  Slice slice() const {
+    if (isEmpty()) {
       return Slice();
     }
     return Slice(start());
@@ -331,7 +331,7 @@ class Builder {
     ValueLength const tos = _stack.back();
     return _start[tos] == 0x0b || _start[tos] == 0x14;
   }
-  
+
   // Add a subvalue into an object from a Value:
   uint8_t* add(std::string const& attrName, Value const& sub);
   uint8_t* add(char const* attrName, Value const& sub);
@@ -346,7 +346,7 @@ class Builder {
   uint8_t* add(std::string const& attrName, ValuePair const& sub);
   uint8_t* add(char const* attrName, ValuePair const& sub);
   uint8_t* add(char const* attrName, size_t attrLength, ValuePair const& sub);
-  
+
   // Add all subkeys and subvalues into an object from an ObjectIterator
   // and leaves open the object intentionally
   uint8_t* add(ObjectIterator& sub);
@@ -354,7 +354,7 @@ class Builder {
 
   // Add a subvalue into an array from a Value:
   uint8_t* add(Value const& sub);
-  
+
   // Add an External slice to an array
   uint8_t* addExternal(uint8_t const* sub) {
     if (options->disallowExternals) {
@@ -365,7 +365,7 @@ class Builder {
 
     bool haveReported = false;
     if (!_stack.empty()) {
-      if (! _keyWritten) {
+      if (!_keyWritten) {
         reportAdd();
         haveReported = true;
       }
@@ -393,7 +393,7 @@ class Builder {
 
   // Add a subvalue into an array from a ValuePair:
   uint8_t* add(ValuePair const& sub);
-  
+
   // Add all subvalues into an array from an ArrayIterator
   // and leaves open the array intentionally
   uint8_t* add(ArrayIterator& sub);
@@ -454,8 +454,7 @@ class Builder {
     return *this;
   }
 
-private:
-
+ private:
   // close for the empty case:
   Builder& closeEmptyArrayOrObject(ValueLength tos, bool isArray);
 
@@ -539,7 +538,6 @@ private:
   }
 
  public:
-
   inline void openArray(bool unindexed = false) {
     openCompoundValue(unindexed ? 0x13 : 0x06);
   }
@@ -549,20 +547,17 @@ private:
   }
 
  private:
-
   inline void checkKeyIsString(bool isString) {
-    if (! _stack.empty()) {
+    if (!_stack.empty()) {
       ValueLength const tos = _stack.back();
       if (_start[tos] == 0x0b || _start[tos] == 0x14) {
-        if (! _keyWritten) {
+        if (!_keyWritten) {
           if (isString) {
             _keyWritten = true;
-          }
-          else {
+          } else {
             throw Exception(Exception::BuilderKeyMustBeString);
           }
-        }
-        else {
+        } else {
           _keyWritten = false;
         }
       }
@@ -581,7 +576,7 @@ private:
   uint8_t* addInternal(T const& sub) {
     bool haveReported = false;
     if (!_stack.empty()) {
-      if (! _keyWritten) {
+      if (!_keyWritten) {
         reportAdd();
         haveReported = true;
       }
@@ -641,12 +636,12 @@ private:
       throw;
     }
   }
-  
+
   template <typename T>
   uint8_t* addInternal(char const* attrName, T const& sub) {
     return addInternal<T>(attrName, strlen(attrName), sub);
   }
-  
+
   template <typename T>
   uint8_t* addInternal(char const* attrName, size_t attrLength, T const& sub) {
     bool haveReported = false;
@@ -709,14 +704,13 @@ private:
     bool haveReported = false;
     if (!_stack.empty()) {
       ValueLength& tos = _stack.back();
-      if (! _keyWritten) {
+      if (!_keyWritten) {
         if (_start[tos] != 0x06 && _start[tos] != 0x13) {
           throw Exception(Exception::BuilderNeedOpenArray);
         }
         reportAdd();
         haveReported = true;
-      }
-      else {
+      } else {
         _keyWritten = false;
       }
     }
@@ -806,65 +800,68 @@ private:
 };
 
 struct BuilderNonDeleter {
-  void operator()(Builder*) {
-  }
+  void operator()(Builder*) {}
 };
 
 struct BuilderContainer {
-  BuilderContainer (Builder* builder) : builder(builder) {}
+  BuilderContainer(Builder* builder) : builder(builder) {}
 
-  Builder& operator*() {
-    return *builder;
-  }
-  Builder const& operator*() const {
-    return *builder;
-  }
-  Builder* operator->() {
-    return builder;
-  }
-  Builder const* operator->() const {
-    return builder;
-  }
+  Builder& operator*() { return *builder; }
+  Builder const& operator*() const { return *builder; }
+  Builder* operator->() { return builder; }
+  Builder const* operator->() const { return builder; }
   Builder* builder;
 };
 
 // convenience class scope guard for building objects
-struct ObjectBuilder final : public BuilderContainer, private NonHeapAllocatable, NonCopyable {
-  ObjectBuilder(Builder* builder, bool allowUnindexed = false) : BuilderContainer(builder) {
+struct ObjectBuilder final : public BuilderContainer,
+                             private NonHeapAllocatable,
+                             NonCopyable {
+  ObjectBuilder(Builder* builder, bool allowUnindexed = false)
+      : BuilderContainer(builder) {
     builder->openObject(allowUnindexed);
   }
-  ObjectBuilder(Builder* builder, std::string const& attributeName, bool allowUnindexed = false) : BuilderContainer(builder) {
-    builder->add(attributeName, Value(ValueType::Object, allowUnindexed)); 
+  ObjectBuilder(Builder* builder, std::string const& attributeName,
+                bool allowUnindexed = false)
+      : BuilderContainer(builder) {
+    builder->add(attributeName, Value(ValueType::Object, allowUnindexed));
   }
-  ObjectBuilder(Builder* builder, char const* attributeName, bool allowUnindexed = false) : BuilderContainer(builder) {
-    builder->add(attributeName, Value(ValueType::Object, allowUnindexed)); 
+  ObjectBuilder(Builder* builder, char const* attributeName,
+                bool allowUnindexed = false)
+      : BuilderContainer(builder) {
+    builder->add(attributeName, Value(ValueType::Object, allowUnindexed));
   }
   ~ObjectBuilder() {
     try {
       builder->close();
-    }
-    catch (...) {
+    } catch (...) {
       // destructors must not throw
     }
   }
 };
 
 // convenience class scope guard for building arrays
-struct ArrayBuilder final : public BuilderContainer, private NonHeapAllocatable, NonCopyable {
-  ArrayBuilder(Builder* builder, bool allowUnindexed = false) : BuilderContainer(builder) {
+struct ArrayBuilder final : public BuilderContainer,
+                            private NonHeapAllocatable,
+                            NonCopyable {
+  ArrayBuilder(Builder* builder, bool allowUnindexed = false)
+      : BuilderContainer(builder) {
     builder->openArray(allowUnindexed);
   }
-  ArrayBuilder(Builder* builder, std::string const& attributeName, bool allowUnindexed = false) : BuilderContainer(builder) {
+  ArrayBuilder(Builder* builder, std::string const& attributeName,
+               bool allowUnindexed = false)
+      : BuilderContainer(builder) {
     builder->add(attributeName, Value(ValueType::Array, allowUnindexed));
   }
-  ArrayBuilder(Builder* builder, char const* attributeName, bool allowUnindexed = false) : BuilderContainer(builder) {
+  ArrayBuilder(Builder* builder, char const* attributeName,
+               bool allowUnindexed = false)
+      : BuilderContainer(builder) {
     builder->add(attributeName, Value(ValueType::Array, allowUnindexed));
   }
   ~ArrayBuilder() {
     try {
       builder->close();
-    }
-    catch (...) {
+    } catch (...) {
       // destructors must not throw
     }
   }

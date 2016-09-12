@@ -28,6 +28,9 @@
 #include <iosfwd>
 
 namespace arangodb {
+
+class StringRef;
+
 namespace basics {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -40,11 +43,12 @@ struct AttributeName {
   std::string name;
   bool shouldExpand;
 
-  explicit AttributeName(std::string const& name)
-      : AttributeName(name, false) {}
-
-  AttributeName(std::string const& name, bool expand)
+  explicit AttributeName(std::string const& name, bool expand)
       : name(name), shouldExpand(expand) {}
+
+  explicit AttributeName(arangodb::StringRef const& name);
+
+  AttributeName(arangodb::StringRef const& name, bool expand);
 
   AttributeName(AttributeName const& other)
       : name(other.name), shouldExpand(other.shouldExpand) {}
@@ -84,8 +88,17 @@ struct AttributeName {
 /// @brief Parse an input string into attribute names and expansion flags
 ////////////////////////////////////////////////////////////////////////////////
 
+void TRI_ParseAttributeString(arangodb::StringRef const& input,
+                              std::vector<AttributeName>& result,
+                              bool allowExpansion);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Parse an input string into attribute names and expansion flags
+////////////////////////////////////////////////////////////////////////////////
+
 void TRI_ParseAttributeString(std::string const& input,
-                              std::vector<AttributeName>& result);
+                              std::vector<AttributeName>& result,
+                              bool allowExpansion);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transform a vector of AttributeNames back into a string

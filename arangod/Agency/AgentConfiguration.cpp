@@ -194,6 +194,34 @@ bool config_t::addToPool(std::pair<std::string, std::string> const& i) {
   return true;
 }
 
+bool config_t::swapActiveMember(
+  std::string const& failed, std::string const& repl) {
+  WRITE_LOCKER(writeLocker, _lock);
+  try {
+    std::replace (_active.begin(), _active.end(), failed, repl);
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::AGENCY)
+      << "Replacing " << failed << " with " << repl << "failed miserably";
+    return false;
+  }
+  return true;
+}
+
+std::string config_t::nextAgentInLine() const {
+
+  READ_LOCKER(writeLocker, _lock);
+
+  if (_poolSize > _agencySize) {
+    for (const auto& p : _pool) {
+      if (std::find(_active.begin(), _active.end(), p.first) == _active.end()) {
+        return p.first;
+      }
+    }
+  }
+  
+  return ""; // No one left
+}
+
 size_t config_t::compactionStepSize() const {
   READ_LOCKER(readLocker, _lock);
   return _compactionStepSize;
@@ -402,8 +430,7 @@ bool config_t::setId(std::string const& i) {
 
 /// @brief merge from persisted configuration
 bool config_t::merge(VPackSlice const& conf) {
-  WRITE_LOCKER(writeLocker,
-               _lock);  // All must happen under the lock or else ...
+  WRITE_LOCKER(writeLocker, _lock); // All must happen under the lock or else ...
 
   _id = conf.get(idStr).copyString();  // I get my id
   _pool[_id] = _endpoint;              // Register my endpoint with it

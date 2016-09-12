@@ -24,7 +24,9 @@
 #define ARANGOD_AQL_SHORTEST_PATH_OPTIONS_H 1
 
 #include "Basics/Common.h"
-#include "Basics/JsonHelper.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace aql {
@@ -32,15 +34,13 @@ namespace aql {
 /// @brief TraversalOptions
 struct ShortestPathOptions {
 
-  /// @brief constructor, using JSON
-  ShortestPathOptions(arangodb::basics::Json const&);
+  /// @brief constructor
+  explicit ShortestPathOptions(arangodb::velocypack::Slice const&);
 
   /// @brief constructor, using default values
   ShortestPathOptions()
       : weightAttribute(""),
         defaultWeight(1) {}
-
-  void toJson(arangodb::basics::Json&, TRI_memory_zone_t*) const;
 
   void toVelocyPack(arangodb::velocypack::Builder&) const;
 

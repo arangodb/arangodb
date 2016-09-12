@@ -26,6 +26,7 @@
 
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/VppCommTask.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Ssl/SslServerFeature.h"
@@ -38,7 +39,7 @@ using namespace arangodb::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 GeneralListenTask::GeneralListenTask(GeneralServer* server, Endpoint* endpoint,
-                                     ConnectionType connectionType)
+                                     ProtocolType connectionType)
     : Task("GeneralListenTask"),
       ListenTask(endpoint),
       _server(server),
@@ -62,20 +63,20 @@ bool GeneralListenTask::handleConnected(TRI_socket_t socket,
   GeneralCommTask* commTask = nullptr;
 
   switch (_connectionType) {
-    case ConnectionType::VPPS:
+    case ProtocolType::VPPS:
       commTask =
-          new HttpCommTask(_server, socket, std::move(info), _keepAliveTimeout);
+          new VppCommTask(_server, socket, std::move(info), _keepAliveTimeout);
       break;
-    case ConnectionType::VPP:
+    case ProtocolType::VPP:
       commTask =
-          new HttpCommTask(_server, socket, std::move(info), _keepAliveTimeout);
+          new VppCommTask(_server, socket, std::move(info), _keepAliveTimeout);
       break;
-    case ConnectionType::HTTPS:
+    case ProtocolType::HTTPS:
       commTask = new HttpsCommTask(_server, socket, std::move(info),
                                    _keepAliveTimeout, _sslContext,
                                    _verificationMode, _verificationCallback);
       break;
-    case ConnectionType::HTTP:
+    case ProtocolType::HTTP:
       commTask =
           new HttpCommTask(_server, socket, std::move(info), _keepAliveTimeout);
       break;

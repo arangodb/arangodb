@@ -101,31 +101,50 @@ typedef struct process_state_s {
   /* ld */
   long rss;
   /* lu */
+  // cppcheck-suppress *
   unsigned long rsslim;
+  // cppcheck-suppress *
   unsigned long startcode;
+  // cppcheck-suppress *
   unsigned long endcode;
+  // cppcheck-suppress *
   unsigned long startstack;
+  // cppcheck-suppress *
   unsigned long kstkesp;
+  // cppcheck-suppress *
   unsigned long signal;
   /* obsolete lu*/
+  // cppcheck-suppress *
   unsigned long blocked;
+  // cppcheck-suppress *
   unsigned long sigignore;
+  // cppcheck-suppress *
   unsigned int sigcatch;
+  // cppcheck-suppress *
   unsigned long wchan;
   /* no maintained lu */
+  // cppcheck-suppress *
   unsigned long nswap;
+  // cppcheck-suppress *
   unsigned long cnswap;
   /* d */
+  // cppcheck-suppress *
   int exit_signal;
+  // cppcheck-suppress *
   int processor;
   /* u */
+  // cppcheck-suppress *
   unsigned rt_priority;
+  // cppcheck-suppress *
   unsigned policy;
   /* llu */
+  // cppcheck-suppress *
   long long unsigned int delayacct_blkio_ticks;
   /* lu */
+  // cppcheck-suppress *
   unsigned long guest_time;
   /* ld */
+  // cppcheck-suppress *
   long cguest_time;
 } process_state_t;
 
@@ -699,6 +718,7 @@ TRI_process_info_t TRI_ProcessInfo(TRI_pid_t pid) {
       }
     }
 
+    // cppcheck-suppress *
     sscanf(str,
            "%d %s %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %lu %ld %ld %ld %ld "
            "%ld %ld %llu %lu %ld",

@@ -28,23 +28,26 @@
 using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 
-ActivationCallback::ActivationCallback() : _agent(0), _last(0) {}
+ActivationCallback::ActivationCallback() : _agent(nullptr){}
 
-ActivationCallback::ActivationCallback(Agent* agent, std::string const& slaveID,
-                             index_t last)
-    : _agent(agent), _last(last), _slaveID(slaveID) {}
+ActivationCallback::ActivationCallback(
+  Agent* agent, std::string const& failed, std::string const& replacement)
+  : _agent(agent),
+    _failed(failed),
+    _replacement(replacement) {}
 
-void ActivationCallback::shutdown() { _agent = 0; }
+void ActivationCallback::shutdown() { _agent = nullptr; }
 
 bool ActivationCallback::operator()(arangodb::ClusterCommResult* res) {
   if (res->status == CL_COMM_SENT) {
     if (_agent) {
-      _agent->reportIn(_slaveID, _last);
+      auto v = res->result->getBodyVelocyPack();
+      _agent->reportActivated(_failed, _replacement, v);
     }
   } else {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "comm_status(" << res->status
-                                     << "), last(" << _last << "), follower("
-                                     << _slaveID << ")";
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "activation_comm_status(" << res->status << "), replacement("
+      << _replacement << ")";
   }
   return true;
 }

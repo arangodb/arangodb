@@ -90,7 +90,7 @@ std::string ArangoClientHelper::getHttpErrorMessage(SimpleHttpResult* result,
 // check if server is a coordinator of a cluster
 bool ArangoClientHelper::getArangoIsCluster(int* err) {
   std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-      GeneralRequest::RequestType::GET, "/_admin/server/role", "", 0));
+      rest::RequestType::GET, "/_admin/server/role", "", 0));
 
   if (response == nullptr || !response->isComplete()) {
     return false;
@@ -98,7 +98,7 @@ bool ArangoClientHelper::getArangoIsCluster(int* err) {
 
   std::string role = "UNDEFINED";
 
-  if (response->getHttpReturnCode() == (int) GeneralResponse::ResponseCode::OK) {
+  if (response->getHttpReturnCode() == (int) rest::ResponseCode::OK) {
     try {
       std::shared_ptr<VPackBuilder> parsedBody = response->getBodyVelocyPack();
       VPackSlice const body = parsedBody->slice();

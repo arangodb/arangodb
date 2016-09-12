@@ -45,7 +45,6 @@
 #include "V8Server/V8Context.h"
 #include "V8Server/v8-actions.h"
 #include "V8Server/v8-user-structures.h"
-#include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
 #include "3rdParty/valgrind/valgrind.h"
@@ -231,7 +230,7 @@ void V8DealerFeature::start() {
   DatabaseFeature* database =
       ApplicationServer::getFeature<DatabaseFeature>("Database");
 
-  loadJavascript(database->vocbase(), "server/initialize.js");
+  loadJavascript(database->systemDatabase(), "server/initialize.js");
 
   startGarbageCollection();
 }
@@ -423,6 +422,8 @@ void V8DealerFeature::startGarbageCollection() {
 V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
                                          bool allowUseDatabase,
                                          ssize_t forceContext) {
+  TRI_ASSERT(vocbase != nullptr);
+
   if (_stopping) {
     return nullptr;
   }
@@ -556,10 +557,14 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
       v8g->_vocbase = vocbase;
       v8g->_allowUseDatabase = allowUseDatabase;
 
-      TRI_UseVocBase(vocbase);
+      vocbase->use();
 
-      LOG(TRACE) << "entering V8 context " << context->_id;
-      context->handleGlobalContextMethods();
+      try {
+        LOG(TRACE) << "entering V8 context " << context->_id;
+        context->handleGlobalContextMethods();
+      } catch (...) {
+        // ignore errors here
+      }
     }
   }
 
@@ -610,7 +615,7 @@ void V8DealerFeature::exitContext(V8Context* context) {
 
     TRI_ASSERT(vocbase != nullptr);
     // release last recently used vocbase
-    TRI_ReleaseVocBase(vocbase);
+    vocbase->release();
 
     // check for cancelation requests
     canceled = v8g->_canceled;
@@ -714,7 +719,7 @@ void V8DealerFeature::applyContextUpdates() {
       auto vocbase = p.second;
 
       if (vocbase == nullptr) {
-        vocbase = DatabaseFeature::DATABASE->vocbase();
+        vocbase = DatabaseFeature::DATABASE->systemDatabase();
       }
 
       V8Context* context = V8DealerFeature::DEALER->enterContext(

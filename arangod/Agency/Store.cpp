@@ -284,7 +284,7 @@ std::vector<bool> Store::apply(std::vector<VPackSlice> const& queries,
           std::make_unique<std::unordered_map<std::string, std::string>>();
 
       arangodb::ClusterComm::instance()->asyncRequest(
-          "1", 1, endpoint, GeneralRequest::RequestType::POST, path,
+          "1", 1, endpoint, rest::RequestType::POST, path,
           std::make_shared<std::string>(body.toString()), headerFields,
           std::make_shared<StoreCallback>(), 1.0, true);
 
@@ -466,7 +466,7 @@ query_t Store::clearExpired() const {
 /// Dump internal data to builder
 void Store::dumpToBuilder(Builder& builder) const {
   MUTEX_LOCKER(storeLocker, _storeLock);
-  toBuilder(builder);
+  toBuilder(builder, true);
   {
     VPackObjectBuilder guard(&builder);
     for (auto const& i : _timeTable) {
@@ -521,7 +521,9 @@ void Store::run() {
     }
 
     toClear = clearExpired();
-    _agent->write(toClear);
+    if (_agent) {
+      _agent->write(toClear);
+    }
   }
 }
 
@@ -591,7 +593,8 @@ Store& Store::operator=(VPackSlice const& slice) {
 }
 
 /// Put key value store in velocypack
-void Store::toBuilder(Builder& b) const { _node.toBuilder(b); }
+void Store::toBuilder(Builder& b, bool showHidden) const {
+  _node.toBuilder(b, showHidden); }
 
 /// Get kv-store at path vector
 Node Store::operator()(std::vector<std::string> const& pv) { return _node(pv); }

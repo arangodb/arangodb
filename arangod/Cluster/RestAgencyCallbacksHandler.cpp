@@ -42,15 +42,15 @@ RestHandler::status RestAgencyCallbacksHandler::execute() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid callback");
     return status::DONE;
   }
 
   // extract the sub-request type
   auto const type = _request->requestType();
-  if (type != GeneralRequest::RequestType::POST) {
-    generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
+  if (type != rest::RequestType::POST) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return status::DONE;
   }
@@ -61,7 +61,7 @@ RestHandler::status RestAgencyCallbacksHandler::execute() {
   std::shared_ptr<VPackBuilder> parsedBody =
       parseVelocyPackBody(&options, parseSuccess);
   if (!parseSuccess) {
-    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid JSON");
     return status::DONE;
   }
@@ -72,12 +72,13 @@ RestHandler::status RestAgencyCallbacksHandler::execute() {
     ss >> index;
 
     auto callback = _agencyCallbackRegistry->getCallback(index);
-    LOG(DEBUG) << "Agency callback has been triggered. refetching!";
+    LOG_TOPIC(DEBUG, Logger::CLUSTER)
+      << "Agency callback has been triggered. refetching!";
     callback->refetchAndUpdate(true);
-    setResponseCode(arangodb::GeneralResponse::ResponseCode::ACCEPTED);
+    resetResponse(arangodb::rest::ResponseCode::ACCEPTED);
   } catch (arangodb::basics::Exception const&) {
     // mop: not found...expected
-    setResponseCode(arangodb::GeneralResponse::ResponseCode::NOT_FOUND);
+    resetResponse(arangodb::rest::ResponseCode::NOT_FOUND);
   }
   return status::DONE;
 }
