@@ -705,9 +705,20 @@ static void CreateCollectionCoordinator(
           v8::Handle<v8::Value> v = k->Get(i);
           if (v->IsString()) {
             std::string const key = TRI_ObjectToString(v);
-
+            // remove : char at the beginning or end (for enterprise)
+            std::string stripped;
+            if (!key.empty()) {
+              if (key.front() == ':') {
+                stripped = key.substr(1);
+              } else if (key.back() == ':') {
+                stripped = key.substr(0, key.size()-1);
+              } else {
+                stripped = key;
+              }
+            }
             // system attributes are not allowed (except _key)
-            if (!key.empty() && (key[0] != '_' || key == "_key")) {
+            if (!stripped.empty() && stripped != StaticStrings::IdString &&
+                stripped != StaticStrings::RevString) {
               shardKeys.push_back(key);
             }
           }
