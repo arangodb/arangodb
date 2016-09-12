@@ -55,10 +55,8 @@
 #  License text for the above reference.)
 
 if (UNIX)
-  find_package(PkgConfig)# QUIET)
+  find_package(PkgConfig QUIET)
   pkg_check_modules(_OPENSSL openssl)
-message("unixxxx _OPENSSL_ROOT_HINTS_AND_PATHS    ${_OPENSSL_ROOT_HINTS_AND_PATHS}")
-message("_OPENSSL_LIBDIR ${_OPENSSL_LIBDIR}")
 endif ()
 
 # Support preference of static libs by adjusting CMAKE_FIND_LIBRARY_SUFFIXES
@@ -357,11 +355,7 @@ if(WIN32 AND NOT CYGWIN)
     set(OPENSSL_LIBRARIES ${SSL_EAY} ${LIB_EAY} )
   endif()
 else()
-message("inelse ----------")
-message("_OPENSSL_ROOT_HINTS_AND_PATHS    ${_OPENSSL_ROOT_HINTS_AND_PATHS}")
-message("_OPENSSL_LIBDIR ${_OPENSSL_LIBDIR}")
-
-      find_library(OPENSSL_SSL_LIBRARY
+  find_library(OPENSSL_SSL_LIBRARY
     NAMES
       ssl
       ssleay32
@@ -478,10 +472,6 @@ else ()
     OPENSSL_INCLUDE_DIR
   )
 endif ()
-get_cmake_property(_variableNames VARIABLES)
-foreach (_variableName ${_variableNames})
-    message(STATUS "${_variableName}=${${_variableName}}")
-endforeach()
 
 mark_as_advanced(OPENSSL_INCLUDE_DIR OPENSSL_LIBRARIES)
 if(OPENSSL_FOUND)
