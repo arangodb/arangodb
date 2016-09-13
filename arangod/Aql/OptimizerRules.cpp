@@ -194,6 +194,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, ExecutionPlan* plan,
     plan->registerNode(calculationNode);
 
     // make the new node a parent of the original calculation node
+    TRI_ASSERT(setter != nullptr);
     calculationNode->addDependency(setter);
     auto oldParent = setter->getFirstParent();
     TRI_ASSERT(oldParent != nullptr);
@@ -1079,6 +1080,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt, ExecutionPlan* plan,
 
       TRI_ASSERT(collectNode->hasDependency());
       auto dep = collectNode->getFirstDependency();
+      TRI_ASSERT(dep != nullptr);
       sortNode->addDependency(dep);
       collectNode->replaceDependency(dep, sortNode);
 
@@ -2340,12 +2342,14 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, ExecutionPlan* plan,
       ExecutionNode* scatterNode =
           new ScatterNode(plan, plan->nextId(), vocbase, collection);
       plan->registerNode(scatterNode);
+      TRI_ASSERT(!deps.empty());
       scatterNode->addDependency(deps[0]);
 
       // insert a remote node
       ExecutionNode* remoteNode =
           new RemoteNode(plan, plan->nextId(), vocbase, collection, "", "", "");
       plan->registerNode(remoteNode);
+      TRI_ASSERT(scatterNode);
       remoteNode->addDependency(scatterNode);
 
       // re-link with the remote node
@@ -2355,12 +2359,14 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, ExecutionPlan* plan,
       remoteNode =
           new RemoteNode(plan, plan->nextId(), vocbase, collection, "", "", "");
       plan->registerNode(remoteNode);
+      TRI_ASSERT(node);
       remoteNode->addDependency(node);
 
       // insert a gather node
       ExecutionNode* gatherNode =
           new GatherNode(plan, plan->nextId(), vocbase, collection);
       plan->registerNode(gatherNode);
+      TRI_ASSERT(remoteNode);
       gatherNode->addDependency(remoteNode);
 
       // and now link the gather node with the rest of the plan
@@ -2565,6 +2571,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt, ExecutionPlan* plan,
 
     if (originalParent != nullptr) {
       // we did not replace the root node
+      TRI_ASSERT(gatherNode);
       originalParent->addDependency(gatherNode);
     } else {
       // we replaced the root node, set a new root node
@@ -3801,6 +3808,7 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
             if (it != returnNode) {
               // we skip over the subquery's return node. we don't need it anymore
               insert->removeDependencies();
+              TRI_ASSERT(it != nullptr);
               insert->addDependency(it);
               insert = it;
 
