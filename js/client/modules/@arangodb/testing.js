@@ -3924,9 +3924,7 @@ function unitTestPrettyPrintResults (r) {
     }
     print(SuccessMessages);
     print(failedMessages);
-    if (failedMessages.length > 0) {
-      fs.write("out/testfailures.txt", failedMessages);
-    }
+    fs.write("out/testfailures.txt", failedMessages);
     /* jshint forin: true */
 
     let color = (!r.crashed && r.status === true) ? GREEN : RED;
