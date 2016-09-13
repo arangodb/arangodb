@@ -114,24 +114,76 @@ void Inception::gossip() {
 void Inception::activeAgency() {  // Do we have an active agency?
 
   auto config = _agent->config();
-  std::string const path = "/api/agency_priv/activeAgency";
-  auto out = std::make_shared<Builder>();
+  std::string const path = pubApiPrefix + "config";
   
   if (config.poolComplete()) {
+
     for (auto const& pair : config.pool()) { // pool entries
+
       if (pair.first != config.id()) {
+
         std::string clientId = config.id();
         auto comres = arangodb::ClusterComm::instance()->syncRequest(
-          clientId, 1, pair.second, rest::RequestType::POST, path, out->toJson(),
-          std::unordered_map<std::string, std::string>(), 10.0);
+          clientId, 1, pair.second, rest::RequestType::GET, path, std::string(),
+          std::unordered_map<std::string, std::string>(), 1.0);
+        
+        if (comres->status == CL_COMM_SENT) {
+
+          auto body = comres->result->getBodyVelocyPack();
+          auto config = body->slice();
+          
+          std::string leaderId;
+
+          try {
+            leaderId = config.get("leaderId").copyString();
+          } catch (std::exception const& e) {
+            LOG_TOPIC(DEBUG, Logger::AGENCY)
+              << "Failed to get leaderId from" << pair.second << ": "
+              << e.what();
+          }
+
+          if (leaderId != "") {
+            try {
+              LOG_TOPIC(DEBUG, Logger::AGENCY)
+                << "Found active agency with leader " << leaderId
+                << " at endpoint "
+                << config.get("configuration").get(
+                  "pool").get(leaderId).copyString();
+            } catch (std::exception const& e) {
+              LOG_TOPIC(DEBUG, Logger::AGENCY)
+                << "Failed to get leaderId from" << pair.second << ": "
+                << e.what();
+            }
+
+            auto agency = std::make_shared<Builder>();
+            agency->openObject();
+            agency->add("term", config.get("term"));
+            agency->add("id", VPackValue(leaderId));
+            agency->add("active", config.get("configuration").get("active"));
+            agency->add("pool", config.get("configuration").get("pool"));
+            agency->close();
+            _agent->notify(agency);
+            
+            break;
+            
+          } else {
+
+            LOG_TOPIC(DEBUG, Logger::AGENCY)
+              << "Failed to get leaderId from" << pair.second;
+
+          }
+          
+        }
+        
       }
+      
     }
   }
-
+  
 }
 
 void Inception::run() {
-  //activeAgency();
+  activeAgency();
 
   config_t config = _agent->config();
   if (!config.poolComplete()) {
