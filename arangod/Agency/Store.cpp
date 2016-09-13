@@ -285,13 +285,10 @@ std::vector<bool> Store::apply(std::vector<VPackSlice> const& queries,
         auto headerFields =
           std::make_unique<std::unordered_map<std::string, std::string>>();
 
-        LOG_TOPIC(WARN, Logger::AGENCY) << body.toJson();
-        LOG_TOPIC(DEBUG, Logger::AGENCY) << endpoint.substr(6) + path;
-        
         arangodb::ClusterComm::instance()->asyncRequest(
           "1", 1, endpoint, rest::RequestType::POST, path,
           std::make_shared<std::string>(body.toString()), headerFields,
-          std::make_shared<StoreCallback>(), 0.01, true);
+          std::make_shared<StoreCallback>(path, body.toJson()), 1.0, true, 0.01);
         
       } else {
         LOG_TOPIC(WARN, Logger::AGENCY) << "Malformed URL " << url;

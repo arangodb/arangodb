@@ -46,8 +46,8 @@ fi
 
 SECONDARIES="$5"
 
-MINP=1.0
-MAXP=5.0
+MINP=0.5
+MAXP=2.5
 SFRE=5.0
 COMP=1000
 BASE=4001
@@ -83,6 +83,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --server.threads 16 \
         --log.file cluster/$port.log \
         --log.force-direct true \
+        --log.level agency=debug \
         > cluster/$port.stdout 2>&1 &
 done
 

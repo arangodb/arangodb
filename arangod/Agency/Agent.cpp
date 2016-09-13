@@ -267,7 +267,7 @@ bool Agent::recvAppendEntriesRPC(
     size_t ndups = _state.removeConflicts(queries);
 
     if (nqs > ndups) {
-      LOG_TOPIC(DEBUG, Logger::AGENCY)
+      LOG_TOPIC(TRACE, Logger::AGENCY)
         << "Appending " << nqs - ndups << " entries to state machine."
         << nqs << " " << ndups;
 
@@ -341,7 +341,7 @@ void Agent::sendAppendEntriesRPC() {
       
       // Verbose output
       if (unconfirmed.size() > 1) {
-        LOG_TOPIC(DEBUG, Logger::AGENCY)
+        LOG_TOPIC(TRACE, Logger::AGENCY)
           << "Appending " << unconfirmed.size() - 1 << " entries up to index "
           << highest << " to follower " << followerId;
       }
