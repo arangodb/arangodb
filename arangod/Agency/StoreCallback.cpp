@@ -26,12 +26,14 @@
 using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 
-StoreCallback::StoreCallback() {}
+StoreCallback::StoreCallback(std::string const& path, std::string const& body)
+  : _path(path) , _body(body){}
 
 bool StoreCallback::operator()(arangodb::ClusterCommResult* res) {
   if (res->status != CL_COMM_SENT) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
-      << res->endpoint << "(" << res->status << ", " << res->errorMessage << ")";
+      << res->endpoint + _path << "(" << res->status << ", " << res->errorMessage
+      << "): " << _body;
   }
   return true;
 }

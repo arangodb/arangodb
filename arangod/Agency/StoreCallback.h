@@ -31,13 +31,17 @@ namespace consensus {
 
 class StoreCallback : public arangodb::ClusterCommCallback {
  public:
-  StoreCallback();
+  StoreCallback(std::string const&, std::string const&);
 
   virtual bool operator()(arangodb::ClusterCommResult*) override final;
 
   void shutdown();
 
  private:
+
+  std::string _path;
+  std::string _body;
+  
 };
 }
 }  // namespace

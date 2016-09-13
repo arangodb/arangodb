@@ -1303,7 +1303,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
     return [subArgs, subDir];
   };
 
-  options.agencySize = 1;
+//  options.agencySize = 1;
   options.agencyWaitForSync = false;
   startInstanceAgency(instanceInfo, protocol, options, ...makeArgs('agency', {}));
 
