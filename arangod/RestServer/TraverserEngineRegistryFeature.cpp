@@ -36,6 +36,7 @@ TraverserEngineRegistryFeature::TraverserEngineRegistryFeature(
       requiresElevatedPrivileges(false);
       startsAfter("DatabasePath");
       startsAfter("Database");
+      startsAfter("LogfileManager");
     }
 
 
