@@ -4111,7 +4111,6 @@ function unitTest (cases, options) {
 
     let result = testFuncs[currentTest](options);
     results[currentTest] = result;
-    print(result); //TODO
     let status = true;
 
     for (let i in result) {
