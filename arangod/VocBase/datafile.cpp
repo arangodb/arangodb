@@ -44,6 +44,22 @@ using namespace arangodb::basics;
 
 namespace {
 
+static std::string hexValue(uint64_t value) {
+  static const uint64_t Bits[] = { 56, 48, 40, 32, 24, 16, 8, 0 };
+
+  std::string line("0x");
+  for (uint64_t i = 0; i < 8; ++i) {
+    uint8_t c = static_cast<uint8_t>((static_cast<uint64_t>(value) >> Bits[i]) & 0xFFULL);
+    uint8_t n1 = c >> 4;
+    uint8_t n2 = c & 0x0F;
+
+    line.push_back((n1 < 10) ? ('0' + n1) : 'A' + n1 - 10);
+    line.push_back((n2 < 10) ? ('0' + n2) : 'A' + n2 - 10);
+  }
+
+  return line;
+}
+
 /// @brief check if a marker appears to be created by ArangoDB 28
 static TRI_voc_crc_t Crc28(TRI_voc_crc_t crc, void const* data, size_t length) {
   static TRI_voc_crc_t const CrcPolynomial = 0xEDB88320; 
@@ -445,7 +461,7 @@ char const* TRI_NameMarkerDatafile(TRI_df_marker_t const* marker) {
       return "abort transaction";
 
     default:
-      return "unused/unknown";
+      return "unknown";
   }
 }
 
@@ -472,7 +488,7 @@ bool TRI_IsValidMarkerDatafile(TRI_df_marker_t const* marker) {
   }
 
   if (marker->getSize() >= DatafileHelper::MaximalMarkerSize()) {
-    // a single marker bigger than 256 MB seems unreasonable
+    // a single marker bigger than this limit seems unreasonable
     // note: this is an arbitrary limit
     return false;
   }
@@ -1184,8 +1200,9 @@ bool TRI_datafile_t::check(bool ignoreFailures) {
   // this function must not be called for non-physical datafiles
   TRI_ASSERT(isPhysical());
 
-  char* ptr = _data;
-  char* end = _data + _currentSize;
+  char const* ptr = _data;
+  char const* end = _data + _currentSize;
+  char const* lastGood = nullptr;
   TRI_voc_size_t currentSize = 0;
 
   if (_currentSize == 0) {
@@ -1200,7 +1217,7 @@ bool TRI_datafile_t::check(bool ignoreFailures) {
       [](TRI_voc_tick_t maxTick) -> void { TRI_UpdateTickServer(maxTick); };
 
   while (ptr < end) {
-    TRI_df_marker_t* marker = reinterpret_cast<TRI_df_marker_t*>(ptr);
+    TRI_df_marker_t const* marker = reinterpret_cast<TRI_df_marker_t const*>(ptr);
     TRI_voc_size_t const size = marker->getSize();
     TRI_voc_tick_t const tick = marker->getTick();
     TRI_df_marker_type_t const type = marker->getType();
@@ -1249,6 +1266,10 @@ bool TRI_datafile_t::check(bool ignoreFailures) {
       _state = TRI_DF_STATE_OPEN_ERROR;
 
       LOG(WARN) << "marker in datafile '" << getName() << "' points with size " << size << " beyond end of file";
+      if (lastGood != nullptr) {
+        LOG(INFO) << "last good marker found at: " << hexValue(static_cast<uint64_t>(static_cast<uintptr_t>(lastGood - _data)));
+      }
+      printMarker(marker, end - ptr, _data, end);
 
       updateTick(maxTick);
 
@@ -1256,8 +1277,7 @@ bool TRI_datafile_t::check(bool ignoreFailures) {
     }
 
     // the following sanity check offers some, but not 100% crash-protection
-    // when reading
-    // totally corrupted datafiles
+    // when reading totally corrupted datafiles
     if (!TRI_IsValidMarkerDatafile(marker)) {
       if (type == 0 && size < 128) {
         // ignore markers with type 0 and a small size
@@ -1273,6 +1293,10 @@ bool TRI_datafile_t::check(bool ignoreFailures) {
         _state = TRI_DF_STATE_OPEN_ERROR;
 
         LOG(WARN) << "marker in datafile '" << getName() << "' is corrupt: type: " << type << ", size: " << size;
+        if (lastGood != nullptr) {
+          LOG(INFO) << "last good marker found at: " << hexValue(static_cast<uint64_t>(static_cast<uintptr_t>(lastGood - _data)));
+        }
+        printMarker(marker, size, _data, end); 
 
         updateTick(maxTick);
 
@@ -1347,70 +1371,11 @@ bool TRI_datafile_t::check(bool ignoreFailures) {
         LOG(WARN) << "crc mismatch found inside marker of type '" << TRI_NameMarkerDatafile(marker) 
                   << "' and size " << size
                   << ". expected crc: " << CalculateCrcValue(marker) << ", actual crc: " << marker->getCrc();
- 
-        {
-          LOG(INFO) << "raw marker data following:";
-          char const* p = reinterpret_cast<char const*>(marker);
-          char const* e = reinterpret_cast<char const*>(marker) + DatafileHelper::AlignedSize<size_t>(size);
 
-          if (e + 16 < end) {
-            // add some extra bytes for following data
-            e += 16;
-          }
-
-          std::string line;
-          std::string raw;
-          size_t printed = 0;
-          while (p < e) {
-            // print offset
-            line.append("0x");
-            static const uint64_t Bits[] = { 56, 48, 40, 32, 24, 16, 8, 0 };
-            uint64_t offset = static_cast<uint64_t>(static_cast<uintptr_t>(p - _data));
-            for (uint64_t i = 0; i < 8; ++i) {
-              uint8_t c = static_cast<uint8_t>((static_cast<uint64_t>(offset) >> Bits[i]) & 0xFFULL);
-              uint8_t n1 = c >> 4;
-              uint8_t n2 = c & 0x0F;
-
-              line.push_back((n1 < 10) ? ('0' + n1) : 'A' + n1 - 10);
-              line.push_back((n2 < 10) ? ('0' + n2) : 'A' + n2 - 10);
-            }
-
-            // print data
-            line.append(": ");
-            for (size_t i = 0; i < 16; ++i) {
-              if (i == 8) {
-                // separate groups of 8 bytes
-                line.push_back(' ');
-                raw.push_back(' ');
-              }
-
-              if (p >= e) {
-                line.append("   ");
-              } else {
-                uint8_t c = static_cast<uint8_t>(*p++);
-                uint8_t n1 = c >> 4;
-                uint8_t n2 = c & 0x0F;
-
-                line.push_back((n1 < 10) ? ('0' + n1) : 'A' + n1 - 10);
-                line.push_back((n2 < 10) ? ('0' + n2) : 'A' + n2 - 10);
-                line.push_back(' ');
-
-                raw.push_back((c < 32 || c >= 127) ? '.' : static_cast<unsigned char>(c));
-
-                ++printed;
-              }
-            }
-
-            LOG(INFO) << line << "  " << raw;
-            line.clear();
-            raw.clear();
-
-            if (printed >= 2048) {
-              LOG(INFO) << "(output truncated due to excessive length)";
-              break;
-            }
-          }
+        if (lastGood != nullptr) {
+          LOG(INFO) << "last good marker found at: " << hexValue(static_cast<uint64_t>(static_cast<uintptr_t>(lastGood - _data)));
         }
+        printMarker(marker, size, _data, end); 
 
         if (nextMarkerOk) {
           LOG(INFO) << "data directly following this marker looks ok so repairing the marker may recover it";
@@ -1443,11 +1408,68 @@ bool TRI_datafile_t::check(bool ignoreFailures) {
       return true;
     }
 
+    lastGood = ptr;
     ptr += alignedSize;
   }
 
   updateTick(maxTick);
   return true;
+}
+
+void TRI_datafile_t::printMarker(TRI_df_marker_t const* marker, TRI_voc_size_t size, char const* begin, char const* end) const {
+  LOG(INFO) << "raw marker data following:";
+  LOG(INFO) << "type: " << TRI_NameMarkerDatafile(marker) << ", size: " << marker->getSize() << ", crc: " << marker->getCrc();
+  LOG(INFO) << "(expected layout: size (4 bytes), crc (4 bytes), type and tick (8 bytes), payload following)";
+  char const* p = reinterpret_cast<char const*>(marker);
+  char const* e = reinterpret_cast<char const*>(marker) + DatafileHelper::AlignedSize<size_t>(size);
+
+  if (e + 16 < end) {
+    // add some extra bytes for following data
+    e += 16;
+  }
+
+  std::string line;
+  std::string raw;
+  size_t printed = 0;
+  while (p < e) {
+    // print offset
+    line.append(hexValue(static_cast<uint64_t>(static_cast<uintptr_t>(p - begin))));
+
+    // print data
+    line.append(": ");
+    for (size_t i = 0; i < 16; ++i) {
+      if (i == 8) {
+        // separate groups of 8 bytes
+        line.push_back(' ');
+        raw.push_back(' ');
+      }
+
+      if (p >= e) {
+        line.append("   ");
+      } else {
+        uint8_t c = static_cast<uint8_t>(*p++);
+        uint8_t n1 = c >> 4;
+        uint8_t n2 = c & 0x0F;
+
+        line.push_back((n1 < 10) ? ('0' + n1) : 'A' + n1 - 10);
+        line.push_back((n2 < 10) ? ('0' + n2) : 'A' + n2 - 10);
+        line.push_back(' ');
+
+        raw.push_back((c < 32 || c >= 127) ? '.' : static_cast<unsigned char>(c));
+
+        ++printed;
+      }
+    }
+
+    LOG(INFO) << line << "  " << raw;
+    line.clear();
+    raw.clear();
+
+    if (printed >= 2048) {
+      LOG(INFO) << "(output truncated due to excessive length)";
+      break;
+    }
+  }
 }
 
 /// @brief fixes a corrupted datafile
