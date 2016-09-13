@@ -189,40 +189,43 @@ bool Agent::waitFor(index_t index, double timeout) {
 
 //  AgentCallback reports id of follower and its highest processed index
 void Agent::reportIn(std::string const& id, index_t index) {
-  MUTEX_LOCKER(mutexLocker, _ioLock);
 
-  // Update last acknowledged answer
-  _lastAcked[id] = system_clock::now();
+  {
+    MUTEX_LOCKER(mutexLocker, _ioLock);
 
-  if (index > _confirmed[id]) {  // progress this follower?
-    _confirmed[id] = index;
-  }
-
-  if (index > _lastCommitIndex) {  // progress last commit?
-
-    size_t n = 0;
-
-    for (auto const& i : _config.active()) {
-      n += (_confirmed[i] >= index);
+    // Update last acknowledged answer
+    _lastAcked[id] = system_clock::now();
+    
+    if (index > _confirmed[id]) {  // progress this follower?
+      _confirmed[id] = index;
     }
-
-    // catch up read database and commit index
-    if (n > size() / 2) {
-
-      LOG_TOPIC(TRACE, Logger::AGENCY)
-        << "Critical mass for commiting " << _lastCommitIndex + 1
-        << " through " << index << " to read db";
-
-      _readDB.apply(_state.slices(_lastCommitIndex + 1, index));
-      _lastCommitIndex = index;
-
-      if (_lastCommitIndex >= _nextCompationAfter) {
-        _state.compact(_lastCommitIndex);
-        _nextCompationAfter += _config.compactionStepSize();
+    
+    if (index > _lastCommitIndex) {  // progress last commit?
+      
+      size_t n = 0;
+      
+      for (auto const& i : _config.active()) {
+        n += (_confirmed[i] >= index);
+      }
+      
+      // catch up read database and commit index
+      if (n > size() / 2) {
+        
+        LOG_TOPIC(TRACE, Logger::AGENCY)
+          << "Critical mass for commiting " << _lastCommitIndex + 1
+          << " through " << index << " to read db";
+        
+        _readDB.apply(_state.slices(_lastCommitIndex + 1, index));
+        _lastCommitIndex = index;
+        
+        if (_lastCommitIndex >= _nextCompationAfter) {
+          _state.compact(_lastCommitIndex);
+          _nextCompationAfter += _config.compactionStepSize();
+        }
+        
       }
       
     }
-    
   }
 
   {
@@ -614,7 +617,7 @@ void Agent::run() {
       // Detect faulty agent and replace
       // if possible and only if not already activating
       if (_activator == nullptr && 
-          duration<double>(system_clock::now() - tp).count() > 5.0) {
+          duration<double>(system_clock::now() - tp).count() > 10.0) {
         detectActiveAgentFailures();
         tp = system_clock::now();
       }
@@ -681,7 +684,7 @@ void Agent::detectActiveAgentFailures() {
       if (id != this->id()) {
         auto ds = duration<double>(
           system_clock::now() - _lastAcked.at(id)).count();
-        if (ds > 10.0) {
+        if (ds > 180.0) {
           std::string repl = _config.nextAgentInLine();
           LOG_TOPIC(DEBUG, Logger::AGENCY) << "Active agent " << id << " has failed. << "
                     << repl << " will be promoted to active agency membership";

@@ -83,7 +83,6 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --server.threads 16 \
         --log.file cluster/$port.log \
         --log.force-direct true \
-        --log.level agency=debug \
         > cluster/$port.stdout 2>&1 &
 done
 
