@@ -303,7 +303,7 @@ characters and sequences:
 - `(xyz)` – defines and matches a pattern group
 - `(x|y)` – matches either *x* or *y*
 - `^` – matches the beginning of the string (e.g. `^xyz`)
-- `$` – matches the end of the string (e.g. `xyz$`)
+- <code>$</code> – matches the end of the string (e.g. <code>xyz$</code>)
 
 Note that the characters `.`, `*`, `?`, `[`, `]`, `(`, `)`, `{`, `}`, `^`, 
 and `$` have a special meaning in regular expressions and may need to be 

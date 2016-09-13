@@ -137,6 +137,10 @@ class Slots {
   /// @brief handout a region and advance the handout index
   Slot::TickType handout();
 
+  /// @brief return the next slots that would be handed out, without 
+  /// actually handing it out
+  size_t nextHandoutIndex() const;
+
   /// @brief wait until all data has been synced up to a certain marker
   bool waitForTick(Slot::TickType);
 

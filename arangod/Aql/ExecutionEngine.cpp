@@ -913,6 +913,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       engineInfo.close(); // edges
 
       engineInfo.close(); // shards
+
+      en->enhanceEngineInfo(engineInfo);
+
       engineInfo.close(); // base
 
       arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();

@@ -239,6 +239,8 @@ class TraversalNode : public ExecutionNode {
 
   void getConditionVariables(std::vector<Variable const*>&) const;
 
+  void enhanceEngineInfo(arangodb::velocypack::Builder&) const;
+
   /// @brief Compute the traversal options containing the expressions
   ///        MUST! be called after optimization and before creation
   ///        of blocks.

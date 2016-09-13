@@ -176,12 +176,14 @@ comparison with the next example until there are no more examples left.
 The *examples* can be an array of 1..n example documents or a single document,
 with any number of attributes each.
 
+Note that *MATCHES()* can not utilize indexes.
+
 - **document** (object): document to determine whether it matches any example
 - **examples** (object|array): a single document, or an array of documents to compare
   against. Specifying an empty array is not allowed.
 - **returnIndex** (bool): by setting this flag to *true*, the index of the example that
   matched will be returned (starting at offset 0), or *-1* if there was no match.
-  The default is **false** and makes the function return a boolean.
+  The default is *false* and makes the function return a boolean.
 - returns **match** (bool|number): if *document* matches one of the examples, *true* is
   returned, otherwise *false*. A number is returned instead if *returnIndex* is used.
 
@@ -194,7 +196,7 @@ LET doc = {
 RETURN MATCHES(doc, { age: 27, active: true } )
 ```
 
-This will return **true**, because all attributes of the example are present in the document.
+This will return *true*, because all attributes of the example are present in the document.
 
 ```js
 RETURN MATCHES(
@@ -206,8 +208,8 @@ RETURN MATCHES(
     ], true)
 ```
 
-  This will return *2*, because the third example matches, and because the
-  *returnIndex* flag is set to *true*.
+This will return *2*, because the third example matches, and because the
+*returnIndex* flag is set to *true*.
 
 !SUBSECTION MERGE()
 

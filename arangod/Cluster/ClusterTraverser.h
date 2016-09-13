@@ -51,6 +51,7 @@ class ClusterTraverser final : public Traverser {
 
   void setStartVertex(std::string const& id) override;
 
+ protected:
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
   ///        Also apppends the _id value of the vertex in the given vector
@@ -64,7 +65,6 @@ class ClusterTraverser final : public Traverser {
   bool getSingleVertex(arangodb::velocypack::Slice, arangodb::velocypack::Slice,
                        size_t, arangodb::velocypack::Slice&) override;
 
- protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to fetch the real data of a vertex into an AQLValue
   //////////////////////////////////////////////////////////////////////////////

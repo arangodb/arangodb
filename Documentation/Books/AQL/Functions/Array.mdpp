@@ -2,6 +2,10 @@
 
 AQL provides functions for higher-level array manipulation. Also see the
 [numeric functions](Numeric.md) for functions that work on number arrays.
+If you want to concatenate the elements of an array equivalent to `join()`
+in JavaScript, see [CONCAT()](String.md#concat) and
+[CONCAT_SEPARATOR()](String.md#concatseparator) in the string functions chapter.
+
 Apart from that, AQL also offers several language constructs:
 
 - simple [array access](../Fundamentals/DataTypes.md#arrays--lists) of individual elements,
@@ -13,11 +17,6 @@ Apart from that, AQL also offers several language constructs:
   [SORT](../Operations/Sort.md), [LIMIT](../Operations/Limit.md),
   as well as [COLLECT](../Operations/Collect.md) for grouping,
   which also offers efficient aggregation.
-
-!SUBSECTION CONCAT_SEPARATOR()
-
-[The function CONCAT_SEPARATOR which is equivilant to javascript join() is documented with the string functions.](String.md#concatseparator)
-
 
 !SUBSECTION APPEND()
 

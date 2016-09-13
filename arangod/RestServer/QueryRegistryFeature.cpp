@@ -44,6 +44,7 @@ QueryRegistryFeature::QueryRegistryFeature(ApplicationServer* server)
   requiresElevatedPrivileges(false);
   startsAfter("DatabasePath");
   startsAfter("Database");
+  startsAfter("LogfileManager");
 }
 
 void QueryRegistryFeature::collectOptions(
