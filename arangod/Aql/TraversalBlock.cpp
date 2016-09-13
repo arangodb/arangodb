@@ -30,6 +30,9 @@
 #include "Basics/StringRef.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterTraverser.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Cluster/SmartGraphTraverser.h"
+#endif
 #include "Utils/OperationCursor.h"
 #include "Utils/Transaction.h"
 #include "V8/v8-globals.h"
