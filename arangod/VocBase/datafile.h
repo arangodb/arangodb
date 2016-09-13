@@ -263,6 +263,8 @@ struct TRI_datafile_t {
   /// @brief tries to repair a datafile
   bool tryRepair();
 
+  void printMarker(TRI_df_marker_t const* marker, TRI_voc_size_t size, char const* begin, char const* end) const;
+
  private:
   std::string _filename;  // underlying filename
   TRI_voc_fid_t const _fid;  // datafile identifier

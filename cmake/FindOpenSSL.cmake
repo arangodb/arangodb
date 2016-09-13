@@ -56,7 +56,7 @@
 
 if (UNIX)
   find_package(PkgConfig QUIET)
-  pkg_check_modules(_OPENSSL QUIET openssl)
+  pkg_check_modules(_OPENSSL openssl)
 endif ()
 
 # Support preference of static libs by adjusting CMAKE_FIND_LIBRARY_SUFFIXES
@@ -355,7 +355,6 @@ if(WIN32 AND NOT CYGWIN)
     set(OPENSSL_LIBRARIES ${SSL_EAY} ${LIB_EAY} )
   endif()
 else()
-
   find_library(OPENSSL_SSL_LIBRARY
     NAMES
       ssl
