@@ -59,7 +59,8 @@ const functionsDocumentation = {
   'single_server': 'run one test suite on the server; options required\n' +
     '            run without arguments to get more detail',
   'ssl_server': 'https server tests',
-  'upgrade': 'upgrade tests'
+  'upgrade': 'upgrade tests',
+  'fail': 'this job will always produce a failed result'
 };
 
 const optionsDocumentation = [
@@ -1958,6 +1959,42 @@ let testFuncs = {
   'all': function () {}
 };
 
+testFuncs.fail = function (options) {
+
+  return {
+    failSuite: {
+      status: false,
+      total: 1,
+      message: "this suite will always fail.",
+      duration: 2,
+      failed: 1,
+      failTest: {
+        status: false,
+        total: 1,
+        duration: 1,
+        message: "this testcase will always fail."
+      },
+      failSuccessTest: {
+        status: true,
+        duration: 1,
+        message: "this testcase will always succeed, though its in the fail testsuite."
+      }
+    },
+    successSuite: {
+      status: true,
+      total: 1,
+      message: "this suite will always be successfull",
+      duration: 1,
+      failed: 0,
+      success: {
+        status: true,
+        message: "this testcase will always be successfull",
+        duration: 1       
+      }
+    }
+  };
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: arangosh
 // //////////////////////////////////////////////////////////////////////////////
@@ -2073,7 +2110,6 @@ testFuncs.arangosh = function (options) {
   }
 
   print();
-
   return ret;
 };
 
@@ -3888,6 +3924,9 @@ function unitTestPrettyPrintResults (r) {
     }
     print(SuccessMessages);
     print(failedMessages);
+    if (failedMessages.length > 0) {
+      fs.write("out/testfailures.txt", failedMessages);
+    }
     /* jshint forin: true */
 
     let color = (!r.crashed && r.status === true) ? GREEN : RED;
@@ -4072,7 +4111,6 @@ function unitTest (cases, options) {
 
     let result = testFuncs[currentTest](options);
     results[currentTest] = result;
-
     let status = true;
 
     for (let i in result) {
