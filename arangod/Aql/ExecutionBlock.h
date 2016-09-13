@@ -89,7 +89,10 @@ class ExecutionBlock {
   void throwIfKilled();
 
   /// @brief add a dependency
-  void addDependency(ExecutionBlock* ep) { _dependencies.emplace_back(ep); }
+  void addDependency(ExecutionBlock* ep) { 
+    TRI_ASSERT(ep != nullptr);
+    _dependencies.emplace_back(ep); 
+  }
 
   /// @brief get all dependencies
   std::vector<ExecutionBlock*> getDependencies() const { return _dependencies; }

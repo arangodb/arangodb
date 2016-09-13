@@ -126,6 +126,7 @@ class ExecutionNode {
 
   /// @brief add a dependency
   void addDependency(ExecutionNode* ep) {
+    TRI_ASSERT(ep != nullptr);
     _dependencies.emplace_back(ep);
     ep->_parents.emplace_back(this);
   }
