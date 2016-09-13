@@ -30,8 +30,7 @@ StoreCallback::StoreCallback() {}
 
 bool StoreCallback::operator()(arangodb::ClusterCommResult* res) {
   if (res->status != CL_COMM_SENT) {
- 
-    LOG_TOPIC(WARN, Logger::AGENCY)
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
       << res->endpoint << "(" << res->status << ", " << res->errorMessage << ")";
   }
   return true;

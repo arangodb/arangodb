@@ -1200,6 +1200,7 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
     CONDITION_LOCKER(locker, agencyCallback->_cv);
     
     while (true) {
+
       if (dbServerResult >= 0) {
         return dbServerResult;
       }
