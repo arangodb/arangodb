@@ -243,6 +243,39 @@ All `ArangoError` exceptions have a truthy attribute `isArangoError` that helps 
 
 Instead of defining our own response logic for the error case we just use `res.throw`, which makes the response object throw an exception Foxx can recognize and convert to the appropriate server response. We also pass along the exception itself so Foxx can provide more diagnostic information when we want it to.
 
+We could extend the post route to support arrays of objects as well, each object following a certain schema:
+
+```js
+// store schema in variable to make it re-usable, see .body()
+const docSchema = joi.object().required().keys({
+  name: joi.string().required(),
+  age: joi.number().required()
+}).unknown(); // allow additional attributes
+
+router.post('/entries', function (req, res) {
+  const multiple = Array.isArray(req.body);
+  const body = multiple ? req.body : [req.body];
+
+  let data = [];
+  for (var doc of body) {
+    const meta = foxxColl.save(doc);
+    data.push(Object.assign(doc, meta));
+  }
+  res.send(multiple ? data : data[0]);
+
+})
+.body(joi.alternatives().try(
+  docSchema,
+  joi.array().items(docSchema)
+), 'Entry or entries to store in the collection.')
+.response(joi.alternatives().try(
+  joi.object().required(),
+  joi.array().items(joi.object().required())
+), 'Entry or entries stored in the collection.')
+.summary('Store entry or entries')
+.description('Store a single entry or multiple entries in the "myFoxxCollection" collection.');
+```
+
 !SECTION Writing database queries
 
 Storing and retrieving entries is fine, but right now we have to memorize each key when we create an entry. Let's add a route that gives us a list of the keys of all entries so we can use those to look an entry up in detail.
