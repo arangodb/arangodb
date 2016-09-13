@@ -4,7 +4,7 @@
 @RESTHEADER{DELETE /_api/gharial/{graph-name}, Drop a graph}
 
 @RESTDESCRIPTION
-Removes a graph from the collection *\_graphs*.
+Removes a graph from the collection *_graphs*.
 
 @RESTURLPARAMETERS
 

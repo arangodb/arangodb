@@ -5,7 +5,7 @@
 @RESTHEADER{GET /_api/gharial/{graph-name}, Get a graph}
 
 @RESTDESCRIPTION
-Gets a graph from the collection *\_graphs*.
+Gets a graph from the collection *_graphs*.
 Returns the definition content of this graph.
 
 @RESTURLPARAMETERS
