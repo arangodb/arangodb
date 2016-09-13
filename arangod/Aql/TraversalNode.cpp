@@ -1,3 +1,4 @@
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Implementation of Traversal Execution Node
 ///
 /// @file arangod/Aql/TraversalNode.cpp
@@ -902,6 +903,9 @@ void TraversalNode::prepareOptions() {
         info.idxHandles[0]);
     TRI_ASSERT(res);  // Right now we have an enforced edge index which will
                       // always fit.
+    if (!res) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "expected edge index not found");
+    }
 
     // We now have to check if we need _from / _to inside the index lookup and which position
     // it is used in. Such that the traverser can update the respective string value
@@ -966,6 +970,10 @@ void TraversalNode::prepareOptions() {
           info.idxHandles[0]);
       TRI_ASSERT(res);  // Right now we have an enforced edge index which will
                         // always fit.
+      if (!res) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "expected edge index not found");
+      }
+
       // We now have to check if we need _from / _to inside the index lookup and which position
       // it is used in. Such that the traverser can update the respective string value
       // in-place

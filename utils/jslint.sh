@@ -32,6 +32,12 @@ if [ "x$@" == "x" ] ; then
     ./js/server/upgrade-database.js \
     \
   "
+  if [ -d ./enterprise ] ; then
+    echo Considering enterprise files...
+    JAVASCRIPT_JSLINT="$JAVASCRIPT_JSLINT \
+      `find ./enterprise/Enterprise/js -name "*.js"` \
+      "
+  fi
 else
   JAVASCRIPT_JSLINT="$@"
 fi

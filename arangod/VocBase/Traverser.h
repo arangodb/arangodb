@@ -303,7 +303,7 @@ class Traverser {
 
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
-  ///        Also apppends the _id value of the vertex in the given vector
+  ///        Also appends the _id value of the vertex in the given vector
 
  protected:
   virtual bool getVertex(arangodb::velocypack::Slice,
@@ -364,7 +364,7 @@ class Traverser {
   TraverserOptions const* options() { return _opts; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Simple check if there potentially more paths.
+  /// @brief Simple check if there are potentially more paths.
   ///        It might return true although there are no more paths available.
   ///        If it returns false it is guaranteed that there are no more paths.
   //////////////////////////////////////////////////////////////////////////////
