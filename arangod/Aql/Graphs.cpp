@@ -111,3 +111,6 @@ Graph::Graph(VPackSlice const& info) : _vertexColls(), _edgeColls() {
     insertVertexCollections(orphans);
   }
 }
+
+void Graph::enhanceEngineInfo(VPackBuilder&) const {
+}

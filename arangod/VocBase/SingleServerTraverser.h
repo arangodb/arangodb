@@ -81,6 +81,7 @@ class SingleServerTraverser final : public Traverser {
   void setStartVertex(std::string const& v) override;
 
 
+ protected:
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
   ///        Adds the _id of the vertex into the given vector
@@ -94,7 +95,6 @@ class SingleServerTraverser final : public Traverser {
   bool getSingleVertex(arangodb::velocypack::Slice, arangodb::velocypack::Slice,
                        size_t depth, arangodb::velocypack::Slice&) override;
 
- protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to fetch the real data of a vertex into an AQLValue
   //////////////////////////////////////////////////////////////////////////////

@@ -1096,8 +1096,16 @@ void TraversalNode::getConditionVariables(
   }
 }
 
+void TraversalNode::enhanceEngineInfo(VPackBuilder& builder) const {
+  if (_graphObj != nullptr) {
+    _graphObj->enhanceEngineInfo(builder);
+  } else {
+    // TODO enhance the Info based on EdgeCollections.
+  }
+}
+
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-void checkConditionsDefined() const {
+void TraversalNode::checkConditionsDefined() const {
   TRI_ASSERT(_tmpObjVariable != nullptr);
   TRI_ASSERT(_tmpObjVarNode != nullptr);
   TRI_ASSERT(_tmpIdNode != nullptr);

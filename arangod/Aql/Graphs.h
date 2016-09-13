@@ -39,7 +39,7 @@ class Graph {
  public:
   explicit Graph(arangodb::velocypack::Slice const&);
 
-  ~Graph() {}
+  virtual ~Graph() {}
 
  private:
   /// @brief the cids of all vertexCollections
@@ -76,6 +76,8 @@ class Graph {
 
   /// @brief return a VelocyPack representation of the graph
   void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
+
+  virtual void enhanceEngineInfo(arangodb::velocypack::Builder&) const;
 };
 
 }  // namespace aql

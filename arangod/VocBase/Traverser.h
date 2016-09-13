@@ -305,6 +305,7 @@ class Traverser {
   ///        Returns true if the vertex passes filtering conditions
   ///        Also apppends the _id value of the vertex in the given vector
 
+ protected:
   virtual bool getVertex(arangodb::velocypack::Slice,
                          std::vector<arangodb::velocypack::Slice>&) = 0;
 
@@ -314,6 +315,7 @@ class Traverser {
   virtual bool getSingleVertex(arangodb::velocypack::Slice,
                                arangodb::velocypack::Slice, size_t,
                                arangodb::velocypack::Slice&) = 0;
+ public:
  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds only the last vertex as AQLValue
