@@ -135,7 +135,7 @@ SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId
   uint32_t alignedSize = DatafileHelper::AlignedSize<uint32_t>(size);
   int iterations = 0;
   bool hasWaited = false;
-  bool mustWritePrologue = false;
+  bool mustWritePrologue = false; 
 
   TRI_ASSERT(size > 0);
 
@@ -146,7 +146,13 @@ SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId
       Slot* slot = &_slots[_handoutIndex];
       TRI_ASSERT(slot != nullptr);
 
-      if (slot->isUnused()) {
+      // check if next slot is free for writing
+      // and also is the slot following it is also free for writing
+      // this is required because in some cases we need two free slots
+      // to write a WAL entry: the first slot for the prologue marker
+      // and the second slot for the actual marker
+      if (slot->isUnused() && 
+          _slots[nextHandoutIndex()].isUnused()) {
         if (hasWaited) {
           CONDITION_LOCKER(guard, _condition);
           TRI_ASSERT(_waiting > 0);
@@ -275,13 +281,14 @@ SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId
     CONDITION_LOCKER(guard, _condition);
     if (!hasWaited) {
       ++_waiting;
+      _logfileManager->signalSync(true);
       hasWaited = true;
     }
 
     bool mustWait;
     {
       MUTEX_LOCKER(mutexLocker, _lock);
-      mustWait = (_freeSlots == 0);
+      mustWait = (_freeSlots < 2);
     }
 
     if (mustWait) {
@@ -581,7 +588,7 @@ int Slots::closeLogfile(Slot::TickType& lastCommittedTick, bool& worked) {
     bool mustWait;
     {
       MUTEX_LOCKER(mutexLocker, _lock);
-      mustWait = (_freeSlots == 0);
+      mustWait = (_freeSlots < 2);
     }
 
     if (mustWait) {
@@ -665,6 +672,16 @@ Slot::TickType Slots::handout() {
 
   _lastAssignedTick = static_cast<Slot::TickType>(TRI_NewTickServer());
   return _lastAssignedTick;
+}
+
+/// @brief return the next slots that would be handed out, without 
+/// actually handing it out
+size_t Slots::nextHandoutIndex() const {
+  size_t handoutIndex = _handoutIndex;
+  if (++handoutIndex == _numberOfSlots) {
+    handoutIndex = 0;
+  }
+  return handoutIndex;
 }
 
 /// @brief wait until all data has been synced up to a certain marker
