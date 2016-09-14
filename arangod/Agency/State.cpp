@@ -763,14 +763,14 @@ query_t State::allLogs() const {
 
   try {
     everything->add("compact", compqResult.result->slice());
-  } catch (std::exception const& e) {
+  } catch (std::exception const&) {
     LOG_TOPIC(ERR, Logger::AGENCY)
       << "Failed to assemble compaction part of everything package";
   }
 
   try{
     everything->add("logs", logsqResult.result->slice());
-  } catch (std::exception const& e) {
+  } catch (std::exception const&) {
     LOG_TOPIC(ERR, Logger::AGENCY)
       << "Failed to assemble remaining part of everything package";
   }

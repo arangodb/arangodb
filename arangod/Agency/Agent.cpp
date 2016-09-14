@@ -276,7 +276,7 @@ bool Agent::recvAppendEntriesRPC(
 
       try {
         _state.log(queries, ndups);
-      } catch (std::exception const& e) {
+      } catch (std::exception const&) {
         LOG_TOPIC(DEBUG, Logger::AGENCY)
           << "Malformed query: " << __FILE__ << __LINE__;
       }
