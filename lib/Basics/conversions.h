@@ -204,6 +204,6 @@ size_t TRI_StringUInt64OctalInPlace(uint64_t, char*);
 /// @brief converts a time stamp to a string
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string TRI_StringTimeStamp(double);
+std::string TRI_StringTimeStamp(double, bool useLocalTime);
 
 #endif

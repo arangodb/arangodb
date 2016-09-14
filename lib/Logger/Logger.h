@@ -187,6 +187,7 @@ class Logger {
   static void setShowLineNumber(bool);
   static void setShowThreadIdentifier(bool);
   static void setUseLocalTime(bool);
+  static bool getUseLocalTime() {return _useLocalTime;};
   static void setKeepLogrotate(bool);
 
   static std::string const& translateLogLevel(LogLevel);

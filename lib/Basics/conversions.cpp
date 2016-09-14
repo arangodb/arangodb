@@ -837,13 +837,18 @@ size_t TRI_StringUInt64OctalInPlace(uint64_t attr, char* buffer) {
 /// @brief converts a time stamp to a string
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string TRI_StringTimeStamp(double stamp) {
+std::string TRI_StringTimeStamp(double stamp, bool useLocalTime) {
   char buffer[32];
   size_t len;
   struct tm tb;
   time_t tt = static_cast<time_t>(stamp);
 
-  TRI_gmtime(tt, &tb);
+  if (useLocalTime) {
+    TRI_localtime(tt, &tb);
+  }
+  else {
+    TRI_gmtime(tt, &tb);
+  }
   len = strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
 
   return std::string(buffer, len);

@@ -1444,7 +1444,7 @@ static void JS_QueriesCurrentAql(
     auto result = v8::Array::New(isolate, static_cast<int>(queries.size()));
 
     for (auto q : queries) {
-      auto const&& timeString = TRI_StringTimeStamp(q.started);
+      auto const&& timeString = TRI_StringTimeStamp(q.started, false);
       auto const& queryState = q.queryState.substr(8, q.queryState.size() - 9);
 
       v8::Handle<v8::Object> obj = v8::Object::New(isolate);
@@ -1497,7 +1497,7 @@ static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     auto result = v8::Array::New(isolate, static_cast<int>(queries.size()));
 
     for (auto q : queries) {
-      auto const&& timeString = TRI_StringTimeStamp(q.started);
+      auto const&& timeString = TRI_StringTimeStamp(q.started, false);
       auto const& queryState = q.queryState.substr(8, q.queryState.size() - 9);
 
       v8::Handle<v8::Object> obj = v8::Object::New(isolate);
