@@ -5,7 +5,7 @@ shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/gharia
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
-etag: <span class="hljs-number">8993</span>
+etag: <span class="hljs-number">8986</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 { 
@@ -13,8 +13,8 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
   <span class="hljs-string">"edge"</span> : { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndBob"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"aliceAndBob"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"8993"</span>, 
-    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"8978"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"8986"</span>, 
+    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"8971"</span> 
   }, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span> 
 }

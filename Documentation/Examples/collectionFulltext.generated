@@ -1,6 +1,6 @@
 arangosh&gt; db.emails.ensureFulltextIndex(<span class="hljs-string">"content"</span>);
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"emails/15308"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"emails/15324"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"fulltext"</span>, 
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"content"</span> 
@@ -14,35 +14,35 @@ arangosh&gt; db.emails.ensureFulltextIndex(<span class="hljs-string">"content"</
 arangosh&gt; db.emails.save({ content:
 ........&gt; <span class="hljs-string">"Hello Alice, how are you doing? Regards, Bob"</span>});
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"emails/15311"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15311"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15311"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"emails/15327"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15327"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15327"</span> 
 }
 arangosh&gt; db.emails.save({ content:
 ........&gt; <span class="hljs-string">"Hello Charlie, do Alice and Bob know about it?"</span>});
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"emails/15315"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15315"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15315"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"emails/15331"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15331"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15331"</span> 
 }
 arangosh&gt; db.emails.save({ content: <span class="hljs-string">"I think they don't know. Regards, Eve"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"emails/15318"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15318"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15318"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"emails/15334"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15334"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15334"</span> 
 }
 arangosh&gt; db.emails.fulltext(<span class="hljs-string">"content"</span>, <span class="hljs-string">"charlie,|eve"</span>).toArray();
 [ 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15315"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"emails/15315"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15315"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15331"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"emails/15331"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15331"</span>, 
     <span class="hljs-string">"content"</span> : <span class="hljs-string">"Hello Charlie, do Alice and Bob know about it?"</span> 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15318"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"emails/15318"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15318"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15334"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"emails/15334"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"15334"</span>, 
     <span class="hljs-string">"content"</span> : <span class="hljs-string">"I think they don't know. Regards, Eve"</span> 
   } 
 ]

@@ -1,12 +1,12 @@
-shell> curl --dump - http://localhost:8529/_api/document/products/10429
+shell> curl --dump - http://localhost:8529/_api/document/products/10428
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: <span class="hljs-string">"10429"</span>
+etag: <span class="hljs-string">"10428"</span>
 
 { 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10429"</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10429"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"10429"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10428"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10428"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"10428"</span>, 
   <span class="hljs-string">"hello"</span> : <span class="hljs-string">"world"</span> 
 }
