@@ -398,7 +398,7 @@
             collName: collName,
             wfs: wfs,
             isSystem: isSystem,
-            collSize: collSize,
+            journalSize: collSize,
             replicationFactor: replicationFactor,
             collType: collType,
             shards: shards,
