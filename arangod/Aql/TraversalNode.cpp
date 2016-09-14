@@ -936,9 +936,6 @@ void TraversalNode::prepareOptions() {
     auto ins = _options->_depthLookupInfo.emplace(
         it.first, std::vector<traverser::TraverserOptions::LookupInfo>());
     // We probably have to adopt minDepth. We cannot fulfill a condition of larger depth anyway
-    if (_options->minDepth < it.first + 1) {
-      _options->minDepth = it.first + 1;
-    }
     TRI_ASSERT(ins.second);
     auto& infos = ins.first->second;
     infos.reserve(numEdgeColls);
@@ -1007,9 +1004,6 @@ void TraversalNode::prepareOptions() {
       it.second->addMember(jt);
     }
     _options->_vertexExpressions.emplace(it.first, new Expression(ast, it.second));
-    if (_options->minDepth < it.first) {
-      _options->minDepth = it.first;
-    }
     TRI_ASSERT(!_options->_vertexExpressions[it.first]->isV8());
   }
   if (!_globalVertexConditions.empty()) {

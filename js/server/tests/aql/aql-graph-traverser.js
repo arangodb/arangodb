@@ -1841,10 +1841,11 @@ function complexFilteringSuite () {
         // 1 Primary Lookups A -> D (D)
         // 0 Primary Lookups A -> B -> C
         // 0 Primary Lookups A -> B -> F
-        assertEqual(stats.scannedIndex, 12);
+        assertEqual(stats.scannedIndex, 13);
       }
+      // 2 Filter (B, C) too short
       // 2 Filter (E, G)
-      assertEqual(stats.filtered, 2);
+      assertEqual(stats.filtered, 4);
     },
 
     testVertexLevelsCombined: function () {
@@ -1868,7 +1869,7 @@ function complexFilteringSuite () {
         // 2 Primary lookup B,D
         // 2 Edge Lookups (0 B) (2 D)
         // 2 Primary Lookups (E, G)
-        assertEqual(stats.scannedIndex, 8);
+        assertEqual(stats.scannedIndex, 9);
       }
       else {
         // 2 Edge Lookups (A)
@@ -1876,11 +1877,11 @@ function complexFilteringSuite () {
         // 2 Edge Lookups (0 B) (2 D)
         // 2 Primary Lookups for Eval (E, G)
         // 1 Primary Lookups A -> D
-        assertEqual(stats.scannedIndex, 8);
+        assertEqual(stats.scannedIndex, 9);
       }
-      // 1 Filter (B)
+      // 2 Filter (B, D) too short
       // 2 Filter (E, G)
-      assertEqual(stats.filtered, 3);
+      assertEqual(stats.filtered, 4);
     },
 
     testEdgeLevel0: function () {
@@ -1950,10 +1951,11 @@ function complexFilteringSuite () {
         // 1 Primary Lookups A -> D
         // 1 Primary Lookups A -> B -> C
         // 1 Primary Lookups A -> B -> F
-        assertEqual(stats.scannedIndex, 10);
+        assertEqual(stats.scannedIndex, 11);
       }
+      // 2 Filter On (B, D) too short 
       // 2 Filter On (D->E, D->G)
-      assertEqual(stats.filtered, 2);
+      assertEqual(stats.filtered, 4);
     },
 
     testVertexLevel1Less: function () {
@@ -2969,7 +2971,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       assertEqual(stats.scannedIndex, 9);
-      assertEqual(stats.filtered, 2);
+      assertEqual(stats.filtered, 4);
     },
 
     testAllEdgesAndDepth: function () {
@@ -2992,7 +2994,7 @@ function optimizeQuantifierSuite() {
       } else {
         assertEqual(stats.scannedIndex, 7);
       }
-      assertEqual(stats.filtered, 2);
+      assertEqual(stats.filtered, 4);
     }
   };
 };
