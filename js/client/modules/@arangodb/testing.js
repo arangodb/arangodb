@@ -239,6 +239,7 @@ let JS_DIR;
 let LOGS_DIR;
 let PEM_FILE;
 let UNITTESTS_DIR;
+let GDB_OUTPUT;
 
 function makeResults (testname) {
   const startTime = time();
@@ -419,8 +420,9 @@ function readImportantLogLines (logPath) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
-  let command;
+  let gdbOutputFile = fs.getTempFile();
 
+  let command;
   command = '(';
   command += "printf 'bt full\\n thread apply all bt\\n';";
   command += 'sleep 10;';
@@ -433,11 +435,14 @@ function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
   } else {
     command += options.coreDirectory + '/*core*' + pid + '*';
   }
-
+  command += " > " + gdbOutputFile + " 2>&1";
   const args = ['-c', command];
   print(JSON.stringify(args));
 
   executeExternalAndWait('/bin/bash', args);
+  GDB_OUTPUT = fs.read(gdbOutputFile);
+  print(GDB_OUTPUT);
+  
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -3925,6 +3930,7 @@ function unitTestPrettyPrintResults (r) {
     print(SuccessMessages);
     print(failedMessages);
     fs.write("out/testfailures.txt", failedMessages);
+    fs.write("out/testfailures.txt", GDB_OUTPUT);
     /* jshint forin: true */
 
     let color = (!r.crashed && r.status === true) ? GREEN : RED;
