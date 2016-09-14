@@ -28,10 +28,10 @@
 #include "Cluster/ClusterMethods.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "VocBase/Graphs.h"
 
 using namespace arangodb;
 
+#ifndef USE_ENTERPRISE
 std::string const GRAPHS = "_graphs";
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,3 +74,4 @@ arangodb::aql::Graph* arangodb::lookupGraphByName(TRI_vocbase_t* vocbase,
 
   return new arangodb::aql::Graph(result.slice());
 }
+#endif
