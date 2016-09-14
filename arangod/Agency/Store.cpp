@@ -306,7 +306,7 @@ std::vector<bool> Store::apply(
       arangodb::ClusterComm::instance()->asyncRequest(
           "1", 1, endpoint, GeneralRequest::RequestType::POST, path,
           std::make_shared<std::string>(body.toString()), headerFields,
-          std::make_shared<StoreCallback>(), 1.0, true);
+          std::make_shared<StoreCallback>(), 1.0, true, 0.05);
 
     } else {
       LOG_TOPIC(WARN, Logger::AGENCY) << "Malformed URL " << url;
