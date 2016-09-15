@@ -72,6 +72,7 @@ devel
 * bug in RAFT implementation of reads. dethroned leader still answered
   requests in isolation
 
+* all lambdas in ClusterInfo might have been left with dangling references.
 
 v3.0.8 (XXXX-XX-XX)
 -------------------
