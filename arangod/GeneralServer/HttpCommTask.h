@@ -67,7 +67,6 @@ class HttpCommTask : public GeneralCommTask {
   bool _allowMethodOverride;  // allow method override
   bool _denyCredentials;  // whether or not to allow credentialed requests (only
                           // CORS)
-  bool _acceptDeflate;    // whether the client accepts deflate algorithm
   bool _newRequest;       // new request started
   // TODO(fc) remove
   rest::RequestType _requestType;  // type of request (GET, POST, ...)
