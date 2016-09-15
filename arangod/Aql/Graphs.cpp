@@ -77,8 +77,7 @@ void Graph::toVelocyPack(VPackBuilder& builder, bool verbose) const {
   }
 }
 
-Graph::Graph(VPackSlice const& info) : _vertexColls(), _edgeColls() {
-  VPackSlice const slice = info.resolveExternal();
+Graph::Graph(VPackSlice const& slice) : _vertexColls(), _edgeColls() {
   if (slice.hasKey(_attrEdgeDefs)) {
     auto edgeDefs = slice.get(_attrEdgeDefs);
 
