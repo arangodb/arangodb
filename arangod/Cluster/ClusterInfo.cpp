@@ -798,10 +798,11 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
 
   std::vector<ServerID> DBServers = getCurrentDBServers();
 
-  int dbServerResult = -1;
+  std::shared_ptr<int> dbServerResult = std::make_shared<int>(-1);
+  std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
   std::function<bool(VPackSlice const& result)> dbServerChanged =
-    [&](VPackSlice const& result) {
+    [=](VPackSlice const& result) {
     size_t numDbServers;
     numDbServers = DBServers.size();
     if (result.isObject() && result.length() >= numDbServers) {
@@ -834,12 +835,12 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
         }
       }
       if (tmpHaveError) {
-        errorMsg = "Error in creation of database:" + tmpMsg;
-        dbServerResult = TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE;
+        *errMsg = "Error in creation of database:" + tmpMsg;
+        *dbServerResult = TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE;
         return true;
       }
       loadCurrent();  // update our cache
-      dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
+      *dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, *errMsg);
     }
     return true;
   };
@@ -882,6 +883,9 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
 
     int count = 0;  // this counts, when we have to reload the DBServers
     while (true) {
+
+      errorMsg = *errMsg;
+      
       if (++count >= static_cast<int>(getReloadServerListTimeout() / interval)) {
         // We update the list of DBServers every minute in case one of them
         // was taken away since we last looked. This also helps (slightly)
@@ -892,8 +896,8 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
         count = 0;
       }
 
-      if (dbServerResult >= 0) {
-        return dbServerResult;
+      if (*dbServerResult >= 0) {
+        return *dbServerResult;
       }
 
       if (TRI_microtime() > endTime) {
@@ -922,11 +926,11 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
 
-  int dbServerResult = -1;
+  std::shared_ptr<int> dbServerResult = std::make_shared<int>(-1);
   std::function<bool(VPackSlice const& result)> dbServerChanged =
-    [&](VPackSlice const& result) {
+    [=](VPackSlice const& result) {
     if (result.isObject() && result.length() == 0) {
-      dbServerResult = 0;
+      *dbServerResult = 0;
     }
     return true;
   };
@@ -964,7 +968,7 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
   {
     CONDITION_LOCKER(locker, agencyCallback->_cv);
     while (true) {
-      if (dbServerResult >= 0) {
+      if (*dbServerResult >= 0) {
         res = ac.removeValues(where, true);
         if (res.successful()) {
           return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
@@ -1031,10 +1035,11 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     return setErrormsg(TRI_ERROR_CLUSTER_COLLECTION_ID_EXISTS, errorMsg);
   }
   
-  int dbServerResult = -1;
-
+  std::shared_ptr<int> dbServerResult = std::make_shared<int>(-1);
+  std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
+  
   std::function<bool(VPackSlice const& result)> dbServerChanged =
-    [&](VPackSlice const& result) {
+    [=](VPackSlice const& result) {
     if (result.isObject() && result.length() == (size_t) numberOfShards) {
       std::string tmpMsg = "";
       bool tmpHaveError = false;
@@ -1059,11 +1064,11 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
       }
       loadCurrent();
       if (tmpHaveError) {
-        errorMsg = "Error in creation of collection:" + tmpMsg;
-        dbServerResult = TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION;
+        *errMsg = "Error in creation of collection:" + tmpMsg;
+        *dbServerResult = TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION;
         return true;
       }
-      dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
+      *dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, *errMsg);
     }
     return true;
   };
@@ -1113,8 +1118,11 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     CONDITION_LOCKER(locker, agencyCallback->_cv);
 
     while (true) {
-      if (dbServerResult >= 0) {
-        return dbServerResult;
+
+      errorMsg = *errMsg;
+      
+      if (*dbServerResult >= 0) {
+        return *dbServerResult;
       }
 
       if (TRI_microtime() > endTime) {
@@ -1144,24 +1152,27 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
   
-  int dbServerResult = -1;
-  std::function<bool(VPackSlice const& result)> dbServerChanged = [&](VPackSlice const& result) {
+  auto dbServerResult = std::make_shared<int>(-1);
+  auto errMsg = std::make_shared<std::string>();
+  std::function<bool(VPackSlice const& result)> dbServerChanged =
+    [=](VPackSlice const& result) {
+    AgencyComm ac;
     if (result.isObject() && result.length() == 0) {
       // ...remove the entire directory for the collection
       AgencyCommResult res;
       res = ac.removeValues(
         "Current/Collections/" + databaseName + "/" + collectionID, true);
       if (res.successful()) {
-        dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
+        *dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, *errMsg);
         return true;
       }
-      dbServerResult = setErrormsg(
+      *dbServerResult = setErrormsg(
         TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT,
-        errorMsg);
+        *errMsg);
       return true;
       
       loadCurrent();
-      dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
+      *dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, *errMsg);
       return true;
     }
     return true;
@@ -1201,8 +1212,10 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
     
     while (true) {
 
-      if (dbServerResult >= 0) {
-        return dbServerResult;
+      errorMsg = *errMsg;
+
+      if (*dbServerResult >= 0) {
+        return *dbServerResult;
       }
       
       if (TRI_microtime() > endTime) {
@@ -1413,9 +1426,11 @@ int ClusterInfo::ensureIndexCoordinator(
   // and the write lock we acquire below something has changed. Therefore
   // we first get the previous value and then do a compare and swap operation.
 
-  Mutex numberOfShardsMutex;
-  int numberOfShards = 0;
+  auto numberOfShardsMutex = std::make_shared<Mutex>();
+  auto numberOfShards = std::make_shared<int>(0);
+  auto resBuilder = std::make_shared<VPackBuilder>();
   auto collectionBuilder = std::make_shared<VPackBuilder>();
+  
   {
     std::shared_ptr<LogicalCollection> c =
       getCollection(databaseName, collectionID);
@@ -1433,9 +1448,9 @@ int ClusterInfo::ensureIndexCoordinator(
     
     std::shared_ptr<VPackBuilder> tmp = std::make_shared<VPackBuilder>();
     c->getIndexesVPack(*(tmp.get()), false);
-    MUTEX_LOCKER(guard, numberOfShardsMutex);
+    MUTEX_LOCKER(guard, *numberOfShardsMutex);
     {
-      numberOfShards = c->numberOfShards();
+      *numberOfShards = c->numberOfShards();
     }
     VPackSlice const indexes = tmp->slice();
     
@@ -1460,12 +1475,13 @@ int ClusterInfo::ensureIndexCoordinator(
           // found an existing index...
           {
             // Copy over all elements in slice.
-            VPackObjectBuilder b(&resultBuilder);
+            VPackObjectBuilder b(resBuilder.get());
             for (auto const& entry : VPackObjectIterator(other)) {
-              resultBuilder.add(entry.key.copyString(), entry.value);
+              resBuilder->add(entry.key.copyString(), entry.value);
             }
-            resultBuilder.add("isNewlyCreated", VPackValue(false));
+            resBuilder->add("isNewlyCreated", VPackValue(false));
           }
+          resultBuilder = *resBuilder;
           return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
         }
       }
@@ -1482,7 +1498,7 @@ int ClusterInfo::ensureIndexCoordinator(
   }
   VPackSlice const collectionSlice = collectionBuilder->slice();
   
-  VPackBuilder newBuilder;
+  auto newBuilder = std::make_shared<VPackBuilder>();
   if (!collectionSlice.isObject()) {
     return setErrormsg(TRI_ERROR_CLUSTER_AGENCY_STRUCTURE_INVALID, errorMsg);
   }
@@ -1490,7 +1506,7 @@ int ClusterInfo::ensureIndexCoordinator(
   std::string const idString = arangodb::basics::StringUtils::itoa(iid);
 
   try {
-    VPackObjectBuilder b(&newBuilder);
+    VPackObjectBuilder b(newBuilder.get());
     // Create a new collection VPack with the new Index
     for (auto const& entry : VPackObjectIterator(collectionSlice)) {
       TRI_ASSERT(entry.key.isString());
@@ -1498,41 +1514,42 @@ int ClusterInfo::ensureIndexCoordinator(
       
       if (key == "indexes") {
         TRI_ASSERT(entry.value.isArray());
-        newBuilder.add(key, VPackValue(VPackValueType::Array));
+        newBuilder->add(key, VPackValue(VPackValueType::Array));
         // Copy over all indexes known so far
         for (auto const& idx : VPackArrayIterator(entry.value)) {
-          newBuilder.add(idx);
+          newBuilder->add(idx);
         }
         {
-          VPackObjectBuilder ob(&newBuilder);
+          VPackObjectBuilder ob(newBuilder.get());
           // Add the new index ignoring "id"
           for (auto const& e : VPackObjectIterator(slice)) {
             TRI_ASSERT(e.key.isString());
             std::string tmpkey = e.key.copyString();
             if (tmpkey != "id") {
-              newBuilder.add(tmpkey, e.value);
+              newBuilder->add(tmpkey, e.value);
             }
           }
-          newBuilder.add("id", VPackValue(idString));
+          newBuilder->add("id", VPackValue(idString));
         }
-        newBuilder.close();  // the array
+        newBuilder->close();  // the array
       } else {
         // Plain copy everything else
-        newBuilder.add(key, entry.value);
+        newBuilder->add(key, entry.value);
       }
     }
   } catch (...) {
     return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
   }
 
-  int dbServerResult = -1;
+  std::shared_ptr<int> dbServerResult = std::make_shared<int>(-1);
+  std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
   std::function<bool(VPackSlice const& result)> dbServerChanged =
-    [&](VPackSlice const& result) {
+    [=](VPackSlice const& result) {
     int localNumberOfShards;
     {
-      MUTEX_LOCKER(guard, numberOfShardsMutex);
-      localNumberOfShards = numberOfShards;
+      MUTEX_LOCKER(guard, *numberOfShardsMutex);
+      localNumberOfShards = *numberOfShards;
     }
     
     // mop: uhhhh....we didn't even set the plan yet :O
@@ -1544,7 +1561,7 @@ int ClusterInfo::ensureIndexCoordinator(
       return true;
     }
 
-    if (result.length() == (size_t)numberOfShards) {
+    if (result.length() == (size_t)*numberOfShards) {
       size_t found = 0;
       for (auto const& shard : VPackObjectIterator(result)) {
 
@@ -1566,7 +1583,7 @@ int ClusterInfo::ensureIndexCoordinator(
               // Returns the specific error number if set, or the general
               // error
               // otherwise
-              dbServerResult = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+              *dbServerResult = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
                   v, "errorNum", TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
               return true;
             }
@@ -1585,8 +1602,8 @@ int ClusterInfo::ensureIndexCoordinator(
         }
       }
 
-      if (found == (size_t)numberOfShards) {
-        VPackSlice indexFinder = newBuilder.slice();
+      if (found == (size_t)*numberOfShards) {
+        VPackSlice indexFinder = newBuilder->slice();
         TRI_ASSERT(indexFinder.isObject());
         indexFinder = indexFinder.get("indexes");
         TRI_ASSERT(indexFinder.isArray());
@@ -1595,15 +1612,15 @@ int ClusterInfo::ensureIndexCoordinator(
         TRI_ASSERT(indexFinder.isObject());
         {
           // Copy over all elements in slice.
-          VPackObjectBuilder b(&resultBuilder);
+          VPackObjectBuilder b(resBuilder.get());
           for (auto const& entry : VPackObjectIterator(indexFinder)) {
-            resultBuilder.add(entry.key.copyString(), entry.value);
+            resBuilder->add(entry.key.copyString(), entry.value);
           }
-          resultBuilder.add("isNewlyCreated", VPackValue(true));
+          resBuilder->add("isNewlyCreated", VPackValue(true));
         }
         loadCurrent();
-
-        dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
+        
+        *dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, *errMsg);
         return true;
       }
     }
@@ -1622,7 +1639,7 @@ int ClusterInfo::ensureIndexCoordinator(
   TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
 
   AgencyOperation newValue(
-    key, AgencyValueOperationType::SET, newBuilder.slice());
+    key, AgencyValueOperationType::SET, newBuilder->slice());
   AgencyOperation incrementVersion(
     "Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
   AgencyPrecondition oldValue(key, AgencyPrecondition::VALUE, collection);
@@ -1631,20 +1648,25 @@ int ClusterInfo::ensureIndexCoordinator(
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
   
   if (!result.successful()) {
+    resultBuilder = *resBuilder;
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN,
                        errorMsg);
   }
   
   loadPlan();
   
-  TRI_ASSERT(numberOfShards > 0);
+  TRI_ASSERT(*numberOfShards > 0);
   
   {
     CONDITION_LOCKER(locker, agencyCallback->_cv);
-    
+
     while (true) {
-      if (dbServerResult >= 0) {
-        return dbServerResult;
+
+      errorMsg = *errMsg;
+      resultBuilder = *resBuilder;
+      
+      if (*dbServerResult >= 0) {
+        return *dbServerResult;
       }
       
       if (TRI_microtime() > endTime) {
@@ -1673,8 +1695,8 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
   
-  Mutex numberOfShardsMutex;
-  int numberOfShards = 0;
+  auto numberOfShardsMutex = std::make_shared<Mutex>();
+  auto numberOfShards = std::make_shared<int>(0);
   std::string const idString = arangodb::basics::StringUtils::itoa(iid);
 
   std::string const key =
@@ -1699,14 +1721,15 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   std::string where =
       "Current/Collections/" + databaseName + "/" + collectionID;
   
-  int dbServerResult = -1;
+  auto dbServerResult = std::make_shared<int>(-1);
+  auto errMsg = std::make_shared<std::string>();
   std::function<bool(VPackSlice const& result)> dbServerChanged =
-    [&](VPackSlice const& current) {
+    [=](VPackSlice const& current) {
     int localNumberOfShards;
     
     {
-      MUTEX_LOCKER(guard, numberOfShardsMutex);
-      localNumberOfShards = numberOfShards;
+      MUTEX_LOCKER(guard, *numberOfShardsMutex);
+      localNumberOfShards = *numberOfShards;
     }
     
     if (localNumberOfShards == 0) {
@@ -1745,7 +1768,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
 
       if (!found) {
         loadCurrent();
-        dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
+        *dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, *errMsg);
       }
     }
     return true;
@@ -1786,8 +1809,8 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
       return setErrormsg(TRI_ERROR_ARANGO_INDEX_NOT_FOUND, errorMsg);
     }
     
-    MUTEX_LOCKER(guard, numberOfShardsMutex);
-    numberOfShards = c->numberOfShards();
+    MUTEX_LOCKER(guard, *numberOfShardsMutex);
+    *numberOfShards = c->numberOfShards();
   }
   
   bool found = false;
@@ -1849,16 +1872,19 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   loadPlan();
   
   {
-    MUTEX_LOCKER(guard, numberOfShardsMutex);
-    TRI_ASSERT(numberOfShards > 0);
+    MUTEX_LOCKER(guard, *numberOfShardsMutex);
+    TRI_ASSERT(*numberOfShards > 0);
   }
 
   {
     CONDITION_LOCKER(locker, agencyCallback->_cv);
 
     while (true) {
-      if (dbServerResult >= 0) {
-        return dbServerResult;
+
+      errorMsg = *errMsg;
+      
+      if (*dbServerResult >= 0) {
+        return *dbServerResult;
       }
 
       if (TRI_microtime() > endTime) {
