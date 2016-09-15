@@ -810,8 +810,8 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
 
   std::vector<ServerID> DBServers = getCurrentDBServers();
 
-  std::shared_ptr<int> dbServerResult = std::make_shared<int>(-1);
-  std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
+  auto dbServerResult = std::make_shared<int>(-1);
+  auto errMsg = std::make_shared<std::string>();
 
   std::function<bool(VPackSlice const& result)> dbServerChanged =
     [=](VPackSlice const& result) {
@@ -937,7 +937,7 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
 
-  std::shared_ptr<int> dbServerResult = std::make_shared<int>(-1);
+  auto dbServerResult = std::make_shared<int>(-1);
   std::function<bool(VPackSlice const& result)> dbServerChanged =
     [=](VPackSlice const& result) {
     if (result.isObject() && result.length() == 0) {
@@ -1066,8 +1066,8 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     return setErrormsg(TRI_ERROR_CLUSTER_COLLECTION_ID_EXISTS, errorMsg);
   }
   
-  std::shared_ptr<int> dbServerResult = std::make_shared<int>(-1);
-  std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
+  auto dbServerResult = std::make_shared<int>(-1);
+  auto errMsg = std::make_shared<std::string>();
   
   std::function<bool(VPackSlice const& result)> dbServerChanged =
     [=](VPackSlice const& result) {
@@ -1184,8 +1184,8 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
   
-  std::shared_ptr<int> dbServerResult = std::make_shared<int>(-1);
-  std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
+  auto dbServerResult = std::make_shared<int>(-1);
+  auto errMsg = std::make_shared<std::string>();
   std::function<bool(VPackSlice const& result)> dbServerChanged =
     [=](VPackSlice const& result) {
     
@@ -1447,14 +1447,14 @@ int ClusterInfo::ensureIndexCoordinator(
   TRI_ASSERT(resultBuilder.isEmpty());
 
   std::string const idString = arangodb::basics::StringUtils::itoa(iid);
-  std::shared_ptr<int> numberOfShards = std::make_shared<int>(0);
+  auto numberOfShards = std::make_shared<int>(0);
 
-  std::shared_ptr<Mutex> numberOfShardsMutex = std::make_shared<Mutex>();
+  auto numberOfShardsMutex = std::make_shared<Mutex>();
 
-  std::shared_ptr<int> dbServerResult = std::make_shared<int>(-1);
-  std::shared_ptr<VPackBuilder> newBuilder = std::make_shared<VPackBuilder>();
-  std::shared_ptr<VPackBuilder> resBuilder = std::make_shared<VPackBuilder>();
-  std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
+  auto dbServerResult = std::make_shared<int>(-1);
+  auto newBuilder = std::make_shared<VPackBuilder>();
+  auto resBuilder = std::make_shared<VPackBuilder>();
+  auto errMsg = std::make_shared<std::string>();
 
   std::function<bool(VPackSlice const& result)> dbServerChanged =
     [=](VPackSlice const& result) {
@@ -1741,8 +1741,8 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
   
-  std::shared_ptr<Mutex>  numberOfShardsMutex = std::make_shared<Mutex>();
-  int numberOfShards = 0;
+  auto numberOfShardsMutex = std::make_shared<Mutex>();
+  auto numberOfShards = std::make_shared<int>(0);
   std::string const idString = arangodb::basics::StringUtils::itoa(iid);
 
   std::string const key =
@@ -1767,14 +1767,14 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   std::string where =
       "Current/Collections/" + databaseName + "/" + collectionID;
   
-  std::shared_ptr<int> dbServerResult = std::make_shared<int>(-1);
-  std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
+  auto dbServerResult = std::make_shared<int>(-1);
+  auto errMsg = std::make_shared<std::string>();
   std::function<bool(VPackSlice const& result)> dbServerChanged =
     [=](VPackSlice const& current) {
     int localNumberOfShards;
     {
       MUTEX_LOCKER(guard, *numberOfShardsMutex);
-      localNumberOfShards = numberOfShards;
+      localNumberOfShards = *numberOfShards;
     }
     
     if (localNumberOfShards == 0) {
@@ -1858,7 +1858,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
       }
 
       MUTEX_LOCKER(guard, *numberOfShardsMutex);
-      numberOfShards = c->numberOfShards();
+      *numberOfShards = c->numberOfShards();
     }
 
     bool found = false;
@@ -1917,7 +1917,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   
   {
     MUTEX_LOCKER(guard, *numberOfShardsMutex);
-    TRI_ASSERT(numberOfShards > 0);
+    TRI_ASSERT(*numberOfShards > 0);
   }
 
   {
