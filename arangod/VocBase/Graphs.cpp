@@ -71,7 +71,11 @@ arangodb::aql::Graph* arangodb::lookupGraphByName(TRI_vocbase_t* vocbase,
     THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up graph '%s'",
                                   name.c_str());
   }
+  VPackSlice info = result.slice();
+  if (result.isExternal()) {
+    info = info.resolveExternal();
+  }
 
-  return new arangodb::aql::Graph(result.slice());
+  return new arangodb::aql::Graph(info);
 }
 #endif
