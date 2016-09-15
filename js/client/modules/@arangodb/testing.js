@@ -1753,7 +1753,7 @@ function findTests () {
   function doOnePath(path) {
     var community = doOnePathInner(path);
     if (global.ARANGODB_CLIENT_VERSION(true)['enterprise-version']) {
-      return community.concat(doOnePathInner('enterprise/Enterprise/' + path));
+      return community.concat(doOnePathInner('enterprise/' + path));
     } else {
       return community;
     }
