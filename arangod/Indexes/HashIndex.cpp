@@ -910,6 +910,7 @@ int HashIndex::removeMulti(arangodb::Transaction* trx,
     for (auto& hashElement : elements) {
       FreeElement(hashElement);
     }
+    return res;
   }
 
   for (auto& hashElement : elements) {
