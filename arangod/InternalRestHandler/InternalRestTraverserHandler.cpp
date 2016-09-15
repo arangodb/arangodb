@@ -129,7 +129,7 @@ void InternalRestTraverserHandler::queryEngine() {
     return;
   
   }
-  traverser::TraverserEngine* engine = _registry->get(engineId);
+  traverser::BaseTraverserEngine* engine = _registry->get(engineId);
   if (engine == nullptr) {
     generateError(
         ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
