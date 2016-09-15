@@ -42,19 +42,9 @@ static const std::string EDGES = "edges";
 static const std::string VARIABLES = "variables";
 static const std::string VERTICES = "vertices";
 
-TraverserEngine::TraverserEngine(TRI_vocbase_t* vocbase,
-                                 arangodb::velocypack::Slice info)
-    : _opts(nullptr),
-      _query(nullptr),
-      _trx(nullptr),
-      _collections(vocbase) {
-  VPackSlice optsSlice = info.get(OPTIONS);
-  if (optsSlice.isNone() || !optsSlice.isObject()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "The body requires a " + OPTIONS + " attribute.");
-  }
-
+BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t* vocbase,
+                                         arangodb::velocypack::Slice info)
+    : _opts(nullptr), _query(nullptr), _trx(nullptr), _collections(vocbase) {
   VPackSlice shardsSlice = info.get(SHARDS);
   if (shardsSlice.isNone() || !shardsSlice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -115,7 +105,6 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t* vocbase,
           "The optional " + VARIABLES + " has to be an array.");
     }
     for (auto v : VPackArrayIterator(variablesSlice)) {
-      // TODO do we have to keep the variable somewhere?
       _query->ast()->variables()->createVariable(v);
     }
   }
@@ -123,10 +112,9 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t* vocbase,
 
   _trx->begin(); // We begin the transaction before we lock.
                  // We also setup indexes before we lock.
-  _opts.reset(new TraverserOptions(_query, optsSlice, edgesSlice));
 }
 
-TraverserEngine::~TraverserEngine() {
+BaseTraverserEngine::~BaseTraverserEngine() {
   /*
   auto resolver = _trx->resolver();
   // TODO Do we need this or will delete trx do this already?
@@ -151,7 +139,7 @@ TraverserEngine::~TraverserEngine() {
   }
 }
 
-void TraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder& builder) {
+void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder& builder) {
   // We just hope someone has locked the shards properly. We have no clue... Thanks locking
 
   TRI_ASSERT(vertex.isString() || vertex.isArray());
@@ -200,7 +188,7 @@ void TraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder& bu
   builder.close();
 }
 
-void TraverserEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
+void BaseTraverserEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
   // We just hope someone has locked the shards properly. We have no clue...
   // Thanks locking
   TRI_ASSERT(vertex.isString() || vertex.isArray());
@@ -248,7 +236,7 @@ void TraverserEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
   builder.close(); // The outer object
 }
 
-void TraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
+void BaseTraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
                                     VPackBuilder& builder) {
   // We just hope someone has locked the shards properly. We have no clue...
   // Thanks locking
@@ -305,12 +293,12 @@ void TraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
   builder.close();
 }
 
-void TraverserEngine::smartSearch(VPackSlice,
+void BaseTraverserEngine::smartSearch(VPackSlice,
                                   VPackBuilder&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ONLY_ENTERPRISE);
 }
 
-bool TraverserEngine::lockCollection(std::string const& shard) {
+bool BaseTraverserEngine::lockCollection(std::string const& shard) {
   if (_locked.find(shard) != _locked.end()) {
     return false;
   }
@@ -329,6 +317,25 @@ bool TraverserEngine::lockCollection(std::string const& shard) {
   return true;
 }
 
-std::shared_ptr<arangodb::TransactionContext> TraverserEngine::context() const {
+std::shared_ptr<arangodb::TransactionContext> BaseTraverserEngine::context() const {
   return _trx->transactionContext();
+}
+
+TraverserEngine::TraverserEngine(TRI_vocbase_t* vocbase,
+                                 arangodb::velocypack::Slice info)
+    : BaseTraverserEngine(vocbase, info) {
+  VPackSlice optsSlice = info.get(OPTIONS);
+  if (optsSlice.isNone() || !optsSlice.isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "The body requires a " + OPTIONS + " attribute.");
+  }
+  VPackSlice shardsSlice = info.get(SHARDS);
+  VPackSlice edgesSlice = shardsSlice.get(EDGES);
+
+  _opts.reset(new TraverserOptions(_query, optsSlice, edgesSlice));
+}
+
+
+TraverserEngine::~TraverserEngine() {
 }

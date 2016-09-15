@@ -63,7 +63,7 @@ struct Variable;
 }
 
 namespace traverser {
-class TraverserEngine;
+class BaseTraverserEngine;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -76,7 +76,7 @@ struct OperationCursor;
 class TransactionContext;
 
 class Transaction {
-  friend class traverser::TraverserEngine;
+  friend class traverser::BaseTraverserEngine;
 
  public:
 

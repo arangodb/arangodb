@@ -46,8 +46,7 @@ class Slice;
 namespace traverser {
 struct TraverserOptions;
 
-class TraverserEngine {
-
+class BaseTraverserEngine {
   friend class TraverserEngineRegistry;
   protected:
   // These are private on purpose.
@@ -56,13 +55,13 @@ class TraverserEngine {
   // We can get into undefined state if sth.
   // deletes an engine but the registry
   // does not get informed properly
-    TraverserEngine(TRI_vocbase_t*, arangodb::velocypack::Slice);
+    BaseTraverserEngine(TRI_vocbase_t*, arangodb::velocypack::Slice);
 
   public:
-    virtual ~TraverserEngine();
+    virtual ~BaseTraverserEngine();
 
    // The engine is NOT copyable.
-   TraverserEngine(TraverserEngine const&) = delete;
+   BaseTraverserEngine(BaseTraverserEngine const&) = delete;
 
    void getEdges(arangodb::velocypack::Slice, size_t,
                  arangodb::velocypack::Builder&);
@@ -80,7 +79,7 @@ class TraverserEngine {
 
    std::shared_ptr<TransactionContext> context() const;
 
-  private:
+  protected:
     std::unique_ptr<TraverserOptions> _opts;
     arangodb::aql::Query* _query;
     arangodb::Transaction* _trx;
@@ -88,6 +87,22 @@ class TraverserEngine {
     std::unordered_set<std::string> _locked;
     std::unordered_map<std::string, std::vector<std::string>> _vertexShards;
 };
+
+class TraverserEngine : public BaseTraverserEngine {
+  friend class TraverserEngineRegistry;
+  private:
+  // These are private on purpose.
+  // Only the Registry (friend) is allowed
+  // to create and destroy engines.
+  // We can get into undefined state if sth.
+  // deletes an engine but the registry
+  // does not get informed properly
+ 
+    TraverserEngine(TRI_vocbase_t*, arangodb::velocypack::Slice);
+  public:
+    ~TraverserEngine();
+};
+
 } // namespace traverser
 } // namespace arangodb
 
