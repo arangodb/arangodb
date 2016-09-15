@@ -171,8 +171,11 @@ void SchedulerThread::destroyTask(Task* task) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerThread::signalTask(std::unique_ptr<TaskData>& data) {
-  _taskData.push(data.release());
-  _scheduler->wakeupLoop(_loop);
+  bool result = _taskData.push(data.get());
+  if (result) {
+    data.release();
+    _scheduler->wakeupLoop(_loop);
+  }
 }
 
 void SchedulerThread::run() {
