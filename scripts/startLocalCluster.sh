@@ -129,6 +129,7 @@ start() {
                 --cluster.my-role $ROLE \
                 --log.file cluster/$PORT.log \
                 --log.level info \
+                --log.force-direct true \
                 --server.statistics true \
                 --server.threads 5 \
                 --javascript.startup-directory ./js \
