@@ -72,7 +72,7 @@ arangodb::aql::Graph* arangodb::lookupGraphByName(TRI_vocbase_t* vocbase,
                                   name.c_str());
   }
   VPackSlice info = result.slice();
-  if (result.isExternal()) {
+  if (info.isExternal()) {
     info = info.resolveExternal();
   }
 
