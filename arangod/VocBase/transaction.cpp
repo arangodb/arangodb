@@ -955,6 +955,7 @@ bool TRI_IsContainedCollectionTransaction(TRI_transaction_t* trx,
 
 int TRI_AddOperationTransaction(TRI_transaction_t* trx,
                                 arangodb::wal::DocumentOperation& operation,
+                                arangodb::wal::Marker const* marker,
                                 bool& waitForSync) {
   TRI_ASSERT(operation.header != nullptr);
 
@@ -990,7 +991,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
   TRI_voc_fid_t fid = 0;
   void const* position = nullptr;
 
-  if (operation.marker->fid() == 0) {
+  if (marker->fid() == 0) {
     // this is a "real" marker that must be written into the logfiles
     // just append it to the WAL:
 
@@ -1014,7 +1015,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(
             trx->_vocbase->id(), collection->cid(), 
-            operation.marker, wakeUpSynchronizer,
+            marker, wakeUpSynchronizer,
             localWaitForSync, waitForTick);
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       // some error occurred
@@ -1032,8 +1033,8 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
   } else {
     // this is an envelope marker that has been written to the logfiles before.
     // avoid writing it again!
-    fid = operation.marker->fid();
-    position = static_cast<wal::MarkerEnvelope const*>(operation.marker)->mem();
+    fid = marker->fid();
+    position = static_cast<wal::MarkerEnvelope const*>(marker)->mem();
   }
 
   TRI_ASSERT(fid > 0);
@@ -1105,8 +1106,14 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     trxCollection->_operations->push_back(copy);
     copy->handle();
   }
-
-  collection->setRevision(operation.rid, false);
+   
+  { 
+    VPackSlice s(static_cast<uint8_t*>(marker->vpack()));
+    VPackValueLength l;
+    char const* p = s.get(StaticStrings::RevString).getString(l);
+    TRI_voc_rid_t rid = TRI_StringToRid(p, l);
+    collection->setRevision(rid, false);
+  }
 
   TRI_IF_FAILURE("TransactionOperationAtEnd") { return TRI_ERROR_DEBUG; }
 

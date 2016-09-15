@@ -43,6 +43,7 @@ class Slice;
 
 namespace wal {
 struct DocumentOperation;
+class Marker;
 }
 
 typedef std::string ServerID;      // ID of a server
@@ -387,11 +388,11 @@ class LogicalCollection {
                     arangodb::velocypack::Slice const);
 
   int updateDocument(arangodb::Transaction*, TRI_voc_rid_t, TRI_doc_mptr_t*,
-                     arangodb::wal::DocumentOperation&,
+                     arangodb::wal::DocumentOperation&, arangodb::wal::Marker const*,
                      TRI_doc_mptr_t*, bool&);
   int insertDocument(arangodb::Transaction*, TRI_doc_mptr_t*,
-                     arangodb::wal::DocumentOperation&, TRI_doc_mptr_t*,
-                     bool&);
+                     arangodb::wal::DocumentOperation&, arangodb::wal::Marker const*,
+                     TRI_doc_mptr_t*, bool&);
 
   int insertPrimaryIndex(arangodb::Transaction*, TRI_doc_mptr_t*);
  public:

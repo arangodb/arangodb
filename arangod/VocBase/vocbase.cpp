@@ -1249,10 +1249,9 @@ TRI_voc_rid_t TRI_ExtractRevisionId(VPackSlice slice) {
 
   VPackSlice r(slice.get(StaticStrings::RevString));
   if (r.isString()) {
-    bool isOld;
     VPackValueLength l;
     char const* p = r.getString(l);
-    return TRI_StringToRid(p, l, isOld);
+    return TRI_StringToRid(p, l);
   }
   if (r.isInteger()) {
     return r.getNumber<TRI_voc_rid_t>();
@@ -1320,6 +1319,12 @@ std::string TRI_RidToString(TRI_voc_rid_t rid) {
 /// @brief Convert a string into a revision ID, no check variant
 TRI_voc_rid_t TRI_StringToRid(std::string const& ridStr, bool& isOld) {
   return TRI_StringToRid(ridStr.c_str(), ridStr.size(), isOld);
+}
+
+/// @brief Convert a string into a revision ID, no check variant
+TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len) {
+  bool isOld;
+  return TRI_StringToRid(p, len, isOld);
 }
 
 /// @brief Convert a string into a revision ID, no check variant

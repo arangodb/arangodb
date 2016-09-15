@@ -69,6 +69,9 @@ std::string TRI_RidToString(TRI_voc_rid_t rid);
 TRI_voc_rid_t TRI_StringToRid(std::string const& ridStr, bool& isOld);
 
 /// @brief Convert a string into a revision ID, no check variant
+TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len);
+
+/// @brief Convert a string into a revision ID, no check variant
 TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool& isOld);
 
 /// @brief Convert a string into a revision ID, returns 0 if format invalid
