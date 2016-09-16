@@ -1459,17 +1459,19 @@ function startInstanceAgency (instanceInfo, protocol, options,
     instanceArgs['agency.wait-for-sync'] = String(wfs);
     instanceArgs['agency.supervision'] = String(S);
     instanceArgs['database.directory'] = dataDir + String(i);
+    const port = findFreePort(options.maxPort);
+    instanceArgs['server.endpoint'] = protocol + '://127.0.0.1:' + port;
+    instanceArgs['agency.my-address'] = protocol + '://127.0.0.1:' + port;
+    
 
     if (i === N - 1) {
-      const port = findFreePort(options.maxPort);
-      instanceArgs['server.endpoint'] = 'tcp://127.0.0.1:' + port;
       let l = [];
       instanceInfo.arangods.forEach(arangod => {
         l.push('--agency.endpoint');
         l.push(arangod.endpoint);
       });
       l.push('--agency.endpoint');
-      l.push('tcp://127.0.0.1:' + port);
+      l.push(protocol + '://127.0.0.1:' + port);
 
       instanceArgs['flatCommands'] = l;
     }

@@ -1,19 +1,39 @@
 #!/bin/bash
 
-if [ $# -eq 0 ]
-then
-    echo Number of agents not specified starting with 3.
-    NRAGENTS=3
-else
-    NRAGENTS=$1
-    echo Number of Agents: $NRAGENTS
-fi
+NRAGENTS=3
+POOLSZ=""
+TRANSPORT="tcp"
+LOG_LEVEL="INFO"
 
+while getopts ":a:p:t:l:" opt; do
+  case $opt in
+    a) NRAGENTS="$OPTARG"
+    ;;
+    p) POOLSZ="$OPTARG"
+    ;;
+    t) TRANSPORT="$OPTARG"
+    ;;
+    l) LOG_LEVEL="$OPTARG"
+    ;;
+    \?) echo "Invalid option -$OPTARG" >&2
+    ;;
+  esac
+done
 
-POOLSZ=$2
 if [ "$POOLSZ" == "" ] ; then
     POOLSZ=$NRAGENTS
 fi
+
+if [ "$TRANSPORT" == "ssl" ]; then
+    SSLKEYFILE="--ssl.keyfile UnitTests/server.pem"
+else
+    SSLKEYFILE=""
+fi
+
+printf "agency-size: %s\n" "$NRAGENTS"
+printf "pool-size: %s\n" "$POOLSZ"
+printf "transport: %s\n" "$TRANSPORT"
+printf "log-level: %s\n" "$LOG_LEVEL"
 
 if [ ! -d arangod ] || [ ! -d arangosh ] || [ ! -d UnitTests ] ; then
     echo Must be started in the main ArangoDB source directory.
@@ -39,29 +59,31 @@ for aid in `seq 0 $(( $POOLSZ - 1 ))`; do
     build/bin/arangod \
         -c none \
         --agency.activate true \
-        --agency.endpoint tcp://localhost:$BASE \
-        --agency.size $NRAGENTS \
+        --agency.election-timeout-min $MINP \
+        --agency.election-timeout-max $MAXP \
+        --agency.endpoint $TRANSPORT://localhost:$BASE \
+        --agency.my-address $TRANSPORT://localhost:$port \
+        --agency.compaction-step-size $COMP \
         --agency.pool-size $POOLSZ \
+        --agency.size $NRAGENTS \
         --agency.supervision true \
         --agency.supervision-frequency $SFRE \
         --agency.wait-for-sync false \
-        --agency.election-timeout-min $MINP \
-        --agency.election-timeout-max $MAXP \
         --database.directory agency/data$port \
         --javascript.app-path ./js/apps \
         --javascript.startup-directory ./js \
         --javascript.v8-contexts 1 \
         --log.file agency/$port.log \
-        --server.authentication false \
-        --server.endpoint tcp://0.0.0.0:$port \
-        --server.statistics false \
-        --agency.compaction-step-size $COMP \
         --log.force-direct true \
-        --log.level agency=debug \
+        --log.level agency=$LOG_LEVEL \
+        --server.authentication false \
+        --server.endpoint $TRANSPORT://localhost:$port \
+        --server.statistics false \
+        $SSLKEYFILE \
         > agency/$port.stdout 2>&1 &
 done
 
-echo " done."
+echo "done."
 echo "Your agents are ready at port $BASE onward"
 
 
