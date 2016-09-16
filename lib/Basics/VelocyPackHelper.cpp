@@ -213,6 +213,13 @@ size_t VelocyPackHelper::VPackStringHash::operator()(
   return static_cast<size_t>(slice.hashString());
 };
 
+size_t VelocyPackHelper::VPackKeyHash::operator()(
+    VPackSlice const& slice) const {
+  return static_cast<size_t>(slice.get(StaticStrings::KeyString).hashString());
+};
+
+
+
 bool VelocyPackHelper::VPackEqual::operator()(VPackSlice const& lhs,
                                               VPackSlice const& rhs) const {
   return VelocyPackHelper::compare(lhs, rhs, false, _options) == 0;
@@ -246,6 +253,43 @@ bool VelocyPackHelper::VPackStringEqual::operator()(VPackSlice const& lhs,
   return (memcmp(lhs.start() + 1, rhs.start() + 1, static_cast<size_t>(size)) ==
           0);
 };
+
+bool VelocyPackHelper::VPackIdEqual::operator()(VPackSlice const& lhs,
+                                                VPackSlice const& rhs) const {
+  if (lhs.get(StaticStrings::IdString) != rhs.get(StaticStrings::IdString)) {
+    // short-cut, we are in a different collection
+    return false;
+  }
+  // Same collection now actually compare the key
+  VPackSlice lhsKey = lhs.get(StaticStrings::KeyString);
+  VPackSlice rhsKey = rhs.get(StaticStrings::KeyString);
+  auto const lh = lhsKey.head();
+  auto const rh = rhsKey.head();
+
+  if (lh != rh) {
+    return false;
+  }
+
+  VPackValueLength size;
+  if (lh == 0xbf) {
+    // long UTF-8 String
+    size = static_cast<VPackValueLength>(
+        velocypack::readInteger<VPackValueLength>(lhsKey.begin() + 1, 8));
+    if (size !=
+        static_cast<VPackValueLength>(
+            velocypack::readInteger<VPackValueLength>(rhsKey.begin() + 1, 8))) {
+      return false;
+    }
+    return (memcmp(lhsKey.start() + 1 + 8, rhsKey.start() + 1 + 8,
+                   static_cast<size_t>(size)) == 0);
+  }
+
+  size = static_cast<VPackValueLength>(lh - 0x40);
+  return (memcmp(lhsKey.start() + 1, rhsKey.start() + 1, static_cast<size_t>(size)) ==
+          0);
+};
+
+
 
 static int TypeWeight(VPackSlice const& slice) {
   switch (slice.type()) {

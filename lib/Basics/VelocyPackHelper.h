@@ -66,6 +66,13 @@ class VelocyPackHelper {
     size_t operator()(arangodb::velocypack::Slice const&) const noexcept;
   };
 
+  
+  /// @brief hash computation based on key only comparator for VelocyPack values
+  struct VPackKeyHash {
+    size_t operator()(arangodb::velocypack::Slice const&) const;
+  };
+
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief equality comparator for VelocyPack values
   ////////////////////////////////////////////////////////////////////////////////
@@ -86,6 +93,12 @@ class VelocyPackHelper {
   struct VPackStringEqual {
     bool operator()(arangodb::velocypack::Slice const&,
                     arangodb::velocypack::Slice const&) const noexcept;
+  };
+
+  /// @brief Comparator that only takes _id/_key into account.
+  struct VPackIdEqual {
+    bool operator()(arangodb::velocypack::Slice const&,
+                    arangodb::velocypack::Slice const&) const;
   };
 
   ////////////////////////////////////////////////////////////////////////////////
