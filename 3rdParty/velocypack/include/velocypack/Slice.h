@@ -776,7 +776,12 @@ class Slice {
 
   Slice makeKey() const;
 
-  int compareString(std::string const& attribute) const;
+  int compareString(char const* value, size_t length) const;
+  
+  int compareString(std::string const& attribute) const {
+    return compareString(attribute.c_str(), attribute.size());
+  }
+
   bool isEqualString(std::string const& attribute) const;
 
   // check if two Slices are equal on the binary level
