@@ -84,3 +84,16 @@ To load your own JavaScript code into the current JavaScript interpreter context
     require("internal").load("c:\\tmp\\test.js") // <- Windows
 
 Exiting arangosh can be done using the key combination ```<CTRL> + D``` or by typing ```quit<CR>```
+
+
+!SUBSECTION Escaping
+In Arangosh as in AQL escaping is done traditionaly with the backslash character: `\`.
+As seen above, this leads to double backslashes when specifying windows paths.
+If you want to then execute an AQL command, you need to double the escaping:
+
+     db._query('RETURN "c:\\\\tmp\\\\test.js"')
+
+You can use [bind variables](../../../AQL/Invocation/WithArangosh.html) to work around this:
+
+    var somepath = "c:\\tmp\\test.js"
+    db._query(aql`RETURN ${somepath}`)
