@@ -55,6 +55,7 @@
     "ERROR_ARANGO_DATAFILE_UNREADABLE" : { "code" : 1006, "message" : "datafile unreadable" },
     "ERROR_ARANGO_DATAFILE_EMPTY"  : { "code" : 1007, "message" : "datafile empty" },
     "ERROR_ARANGO_RECOVERY"        : { "code" : 1008, "message" : "logfile recovery error" },
+    "ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND" : { "code" : 1009, "message" : "datafile statistics not found" },
     "ERROR_ARANGO_CORRUPTED_DATAFILE" : { "code" : 1100, "message" : "corrupted datafile" },
     "ERROR_ARANGO_ILLEGAL_PARAMETER_FILE" : { "code" : 1101, "message" : "illegal or unreadable parameter file" },
     "ERROR_ARANGO_CORRUPTED_COLLECTION" : { "code" : 1102, "message" : "corrupted collection" },

@@ -70,7 +70,7 @@ void TraverserEngineRegistry::destroy(TraverserEngineID id) {
 }
 
 /// @brief Get the engine with the given id
-TraverserEngine* TraverserEngineRegistry::get(TraverserEngineID id) {
+BaseTraverserEngine* TraverserEngineRegistry::get(TraverserEngineID id) {
   WRITE_LOCKER(writeLocker, _lock);
   auto e = _engines.find(id);
   if (e == _engines.end()) {

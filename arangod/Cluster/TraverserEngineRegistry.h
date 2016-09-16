@@ -32,13 +32,13 @@ struct TRI_vocbase_t;
 namespace arangodb {
 namespace traverser {
 
-class TraverserEngine;
+class BaseTraverserEngine;
 
 /// @brief type of a Traverser Engine Id
 typedef TRI_voc_tick_t TraverserEngineID;
 
 class TraverserEngineRegistry {
-  friend class TraverserEngine;
+  friend class BaseTraverserEngine;
  public:
   TraverserEngineRegistry() {}
 
@@ -53,7 +53,7 @@ class TraverserEngineRegistry {
   /// @brief Get the engine with the given ID.
   ///        TODO Test what happens if this pointer
   ///        is requested twice in parallel?
-  TraverserEngine* get(TraverserEngineID);
+  BaseTraverserEngine* get(TraverserEngineID);
 
   /// @brief Destroys the engine with the given id.
   void destroy(TraverserEngineID);
@@ -68,11 +68,11 @@ class TraverserEngineRegistry {
   void destroy(TraverserEngineID, bool doLock);
 
   struct EngineInfo {
-    bool _isInUse;                            // Flag if this engine is in use
-    std::unique_ptr<TraverserEngine> _engine; // The real engine
+    bool _isInUse;                                 // Flag if this engine is in use
+    std::unique_ptr<BaseTraverserEngine> _engine;  // The real engine
 
-    double _timeToLive;                       // in seconds
-    double _expires;                          // UNIX UTC timestamp for expiration
+    double _timeToLive;                            // in seconds
+    double _expires;                               // UNIX UTC timestamp for expiration
 
     EngineInfo(TRI_vocbase_t*, arangodb::velocypack::Slice);
     ~EngineInfo();

@@ -67,7 +67,7 @@ struct TraverserOptions {
  public:
   enum UniquenessLevel { NONE, PATH, GLOBAL };
 
- private:
+ protected:
 
   struct LookupInfo {
     // This struct does only take responsibility for the expression
@@ -93,7 +93,7 @@ struct TraverserOptions {
     void buildEngineInfo(arangodb::velocypack::Builder&) const;
   };
 
- private:
+ protected:
   arangodb::Transaction* _trx;
   std::vector<LookupInfo> _baseLookupInfos;
   std::unordered_map<size_t, std::vector<LookupInfo>> _depthLookupInfo;
@@ -135,7 +135,7 @@ struct TraverserOptions {
   ///        After planning this node should not be copied anywhere.
   TraverserOptions(TraverserOptions const&);
 
-  ~TraverserOptions();
+  virtual ~TraverserOptions();
 
   /// @brief Build a velocypack for cloning in the plan.
   void toVelocyPack(arangodb::velocypack::Builder&) const;

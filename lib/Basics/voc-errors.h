@@ -103,6 +103,8 @@
 ///   Internal error that will be raised when a datafile is empty.
 /// - 1008: @LIT{logfile recovery error}
 ///   Will be raised when an error occurred during WAL log file recovery.
+/// - 1009: @LIT{datafile statistics not found}
+///   Will be raised when a required datafile statistics object was not found.
 /// - 1100: @LIT{corrupted datafile}
 ///   Will be raised when a corruption is detected in a datafile.
 /// - 1101: @LIT{illegal or unreadable parameter file}
@@ -1077,6 +1079,16 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_RECOVERY                                         (1008)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1009: ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND
+///
+/// datafile statistics not found
+///
+/// Will be raised when a required datafile statistics object was not found.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND                    (1009)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1100: ERROR_ARANGO_CORRUPTED_DATAFILE
