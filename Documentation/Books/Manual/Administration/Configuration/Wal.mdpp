@@ -30,11 +30,6 @@ not present, it will be created.
 <!-- arangod/Wal/LogfileManager.h -->
 @startDocuBlock WalLogfileAllowOversizeEntries
 
-!SUBSECTION Suppress shape information
-
-<!-- arangod/Wal/LogfileManager.h -->
-@startDocuBlock WalLogfileSuppressShapeInformation
-
 !SUBSECTION Number of reserve logfiles
 
 <!-- arangod/Wal/LogfileManager.h -->

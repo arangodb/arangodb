@@ -105,15 +105,17 @@ TRI_doc_mptr_t* IndexIterator::next() { return nullptr; }
 void IndexIterator::nextBabies(std::vector<TRI_doc_mptr_t*>& result, size_t batchSize) {
   result.clear();
 
-  while (true) {
-    TRI_doc_mptr_t* mptr = next();
-    if (mptr == nullptr) {
-      return;
-    }
-    result.emplace_back(mptr);
-    batchSize--;
-    if (batchSize == 0) {
-      return;
+  if (batchSize > 0) {
+    while (true) {
+      TRI_doc_mptr_t* mptr = next();
+      if (mptr == nullptr) {
+        return;
+      }
+      result.emplace_back(mptr);
+      batchSize--;
+      if (batchSize == 0) {
+        return;
+      }
     }
   }
 }

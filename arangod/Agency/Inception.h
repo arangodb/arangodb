@@ -38,24 +38,42 @@ namespace consensus {
 
 class Agent;
 
+/// @brief This class organises the startup of the agency until the point
+///        where the RAFT implementation can commence function
 class Inception : public Thread {
- public:
+
+public:
+
+  /// @brief Default ctor
   Inception();
+
+  /// @brief Construct with agent
   explicit Inception(Agent*);
+
+  /// @brief Defualt dtor
   virtual ~Inception();
 
   void beginShutdown() override;
   void run() override;
 
  private:
-  void activeAgency();
+
+  /// @brief Find active agency from persisted 
+  bool activeAgencyFromPersistence();
+  bool restartingActiveAgent();
+  
+  /// @brief Find active agency from command line
+  bool activeAgencyFromCommandLine();
+
+  /// @brief Gossip your way into the agency
   void gossip();
 
-  Agent* _agent;
-  arangodb::basics::ConditionVariable _cv;
+  
+  Agent* _agent;                           //< @brief The agent
+  arangodb::basics::ConditionVariable _cv; //< @brief For proper shutdown
 
 };
-}
-}
+
+}}
 
 #endif

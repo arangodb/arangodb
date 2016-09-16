@@ -67,7 +67,8 @@ For a list of available methods for the *db* object, type
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock shellHelp
 
-you can paste multiple lines into arangosh, given the first line ends with an opening brace:
+you can paste multiple lines into arangosh, given the first line ends with an
+opening brace:
 
     @startDocuBlockInline shellPaste
     @EXAMPLE_ARANGOSH_OUTPUT{shellPaste}
@@ -78,9 +79,27 @@ you can paste multiple lines into arangosh, given the first line ends with an op
     @endDocuBlock shellPaste
 
 
-To load your own JavaScript code into the current JavaScript interpreter context, use the load command:
+To load your own JavaScript code into the current JavaScript interpreter context,
+use the load command:
 
     require("internal").load("/tmp/test.js")     // <- Linux / MacOS
     require("internal").load("c:\\tmp\\test.js") // <- Windows
 
-Exiting arangosh can be done using the key combination ```<CTRL> + D``` or by typing ```quit<CR>```
+Exiting arangosh can be done using the key combination ```<CTRL> + D``` or by
+typing ```quit<CR>```
+
+!SUBSECTION Escaping
+
+In AQL, escaping is done traditionally with the backslash character: `\`.
+As seen above, this leads to double backslashes when specifying Windows paths.
+Arangosh requires another level of escaping, also with the backslash character.
+It adds up to four backslashes that need to be written in Arangosh for a single
+literal backslash (`c:\tmp\test.js`):
+
+    db._query('RETURN "c:\\\\tmp\\\\test.js"')
+
+You can use [bind variables](../../../AQL/Invocation/WithArangosh.html) to
+mitigate this:
+
+    var somepath = "c:\\tmp\\test.js"
+    db._query(aql`RETURN ${somepath}`)

@@ -1104,12 +1104,12 @@ int SkiplistIndex::ElementElementComparator::operator()(
   }
 
   // We break this tie in the key comparison by looking at the key:
-  VPackSlice leftKey = VPackSlice(leftElement->document()->vpack())
-                           .get(StaticStrings::KeyString);
-  VPackSlice rightKey = VPackSlice(rightElement->document()->vpack())
-                            .get(StaticStrings::KeyString);
+  VPackSlice leftKey = Transaction::extractKeyFromDocument(VPackSlice(leftElement->document()->vpack()));
+  VPackSlice rightKey = Transaction::extractKeyFromDocument(VPackSlice(rightElement->document()->vpack()));
 
-  int compareResult = leftKey.compareString(rightKey.copyString());
+  VPackValueLength l;
+  char const* p = rightKey.getString(l);
+  int compareResult = leftKey.compareString(p, l);
 
   if (compareResult < 0) {
     return -1;
