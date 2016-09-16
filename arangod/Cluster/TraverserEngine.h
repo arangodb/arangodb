@@ -73,7 +73,7 @@ class BaseTraverserEngine {
                       arangodb::velocypack::Builder&);
 
    virtual void smartSearch(arangodb::velocypack::Slice,
-                            arangodb::velocypack::Builder&);
+                            arangodb::velocypack::Builder&) = 0;
 
    bool lockCollection(std::string const&);
 
@@ -101,6 +101,9 @@ class TraverserEngine : public BaseTraverserEngine {
     TraverserEngine(TRI_vocbase_t*, arangodb::velocypack::Slice);
   public:
     ~TraverserEngine();
+
+    void smartSearch(arangodb::velocypack::Slice,
+                     arangodb::velocypack::Builder&);
 };
 
 } // namespace traverser
