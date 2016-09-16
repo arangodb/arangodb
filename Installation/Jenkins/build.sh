@@ -520,5 +520,5 @@ if test -n "${TARGET_DIR}";  then
     fi
 
     gzip < ${TARFILE_TMP} > ${dir}/${TARFILE}
-    ${MD5} < ${dir}/${TARFILE} > ${dir}/${TARFILE}.md5
+    ${MD5} < ${dir}/${TARFILE}  |sed "s; .*;;" > ${dir}/${TARFILE}.md5
 fi
