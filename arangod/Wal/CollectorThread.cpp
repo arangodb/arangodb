@@ -463,6 +463,13 @@ int CollectorThread::processQueuedOperations(bool& worked) {
         res = processCollectionOperations((*it2));
       } catch (arangodb::basics::Exception const& ex) {
         res = ex.code();
+        LOG_TOPIC(TRACE, Logger::COLLECTOR) << "caught exception while applying queued operations: " << ex.what();
+      } catch (std::exception const& ex) {
+        res = TRI_ERROR_INTERNAL;
+        LOG_TOPIC(TRACE, Logger::COLLECTOR) << "caught exception while applying queued operations: " << ex.what();
+      } catch (...) {
+        res = TRI_ERROR_INTERNAL;
+        LOG_TOPIC(TRACE, Logger::COLLECTOR) << "caught unknown exception while applying queued operations";
       }
 
       if (res == TRI_ERROR_LOCK_TIMEOUT) {
@@ -672,8 +679,13 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
     res = TRI_ERROR_NO_ERROR;
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
+    LOG_TOPIC(TRACE, Logger::COLLECTOR) << "wal collector caught exception: " << ex.what();
+  } catch (std::exception const& ex) {
+    res = TRI_ERROR_INTERNAL;
+    LOG_TOPIC(TRACE, Logger::COLLECTOR) << "wal collector caught exception: " << ex.what();
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
+    LOG_TOPIC(TRACE, Logger::COLLECTOR) << "wal collector caught unknown exception";
   }
 
   // always release the locks
@@ -789,8 +801,13 @@ int CollectorThread::collect(Logfile* logfile) {
 
       } catch (arangodb::basics::Exception const& ex) {
         res = ex.code();
+        LOG_TOPIC(TRACE, Logger::COLLECTOR) << "caught exception in collect: " << ex.what();
+      } catch (std::exception const& ex) {
+        res = TRI_ERROR_INTERNAL;
+        LOG_TOPIC(TRACE, Logger::COLLECTOR) << "caught exception in collect: " << ex.what();
       } catch (...) {
         res = TRI_ERROR_INTERNAL;
+        LOG_TOPIC(TRACE, Logger::COLLECTOR) << "caught unknown exception in collect";
       }
 
       if (res != TRI_ERROR_NO_ERROR &&
@@ -860,8 +877,13 @@ int CollectorThread::transferMarkers(Logfile* logfile,
     }
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
+    LOG_TOPIC(TRACE, Logger::COLLECTOR) << "caught exception in transferMarkers: " << ex.what();
+  } catch (std::exception const& ex) {
+    LOG_TOPIC(TRACE, Logger::COLLECTOR) << "caught exception in transferMarkers: " << ex.what();
+    res = TRI_ERROR_INTERNAL;
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
+    LOG_TOPIC(TRACE, Logger::COLLECTOR) << "caught unknown exception in transferMarkers";
   }
 
   return res;

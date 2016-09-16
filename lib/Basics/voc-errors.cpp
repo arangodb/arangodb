@@ -51,6 +51,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_ARANGO_DATAFILE_UNREADABLE, "datafile unreadable");
   REG_ERROR(ERROR_ARANGO_DATAFILE_EMPTY, "datafile empty");
   REG_ERROR(ERROR_ARANGO_RECOVERY, "logfile recovery error");
+  REG_ERROR(ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND, "datafile statistics not found");
   REG_ERROR(ERROR_ARANGO_CORRUPTED_DATAFILE, "corrupted datafile");
   REG_ERROR(ERROR_ARANGO_ILLEGAL_PARAMETER_FILE, "illegal or unreadable parameter file");
   REG_ERROR(ERROR_ARANGO_CORRUPTED_COLLECTION, "corrupted collection");

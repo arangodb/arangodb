@@ -63,6 +63,7 @@ ERROR_ARANGO_DUPLICATE_IDENTIFIER,1005,"duplicate identifier","Internal error th
 ERROR_ARANGO_DATAFILE_UNREADABLE,1006,"datafile unreadable","Internal error that will be raised when a datafile is unreadable."
 ERROR_ARANGO_DATAFILE_EMPTY,1007,"datafile empty","Internal error that will be raised when a datafile is empty."
 ERROR_ARANGO_RECOVERY,1008,"logfile recovery error","Will be raised when an error occurred during WAL log file recovery."
+ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND,1009,"datafile statistics not found","Will be raised when a required datafile statistics object was not found."
 
 ################################################################################
 ## External ArangoDB storage errors
