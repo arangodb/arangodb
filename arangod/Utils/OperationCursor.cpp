@@ -132,6 +132,9 @@ void OperationCursor::getMoreMptr(std::vector<TRI_doc_mptr_t*>& result,
 
   _indexIterator->nextBabies(result, atMost);
 
+  TRI_ASSERT(_limit >= atMost);
+  _limit -= atMost;
+
   if (result.empty()) {
     // Index is empty
     _hasMore = false;

@@ -309,6 +309,11 @@ TRI_doc_mptr_t* HashIndexIterator::next() {
 
 void HashIndexIterator::nextBabies(std::vector<TRI_doc_mptr_t*>& result, size_t atMost) {
   result.clear();
+  
+  if (atMost == 0) {
+    return;
+  }
+
   while (true) {
     if (_posInBuffer >= _buffer.size()) {
       if (!_lookups.hasAndGetNext()) {
