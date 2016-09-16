@@ -242,12 +242,6 @@ class LogfileManager final : public application_features::ApplicationFeature {
   // signal that a sync operation is required
   void signalSync(bool);
 
-  // reserve space in a logfile
-  SlotInfo allocate(uint32_t);
-
-  // reserve space in a logfile
-  SlotInfo allocate(TRI_voc_tick_t, TRI_voc_cid_t, uint32_t);
-
   // write data into the logfile, using database id and collection id
   /// this is a convenience function that combines allocate, memcpy and finalize
   SlotInfoCopy allocateAndWrite(TRI_voc_tick_t databaseId, 
@@ -379,9 +373,14 @@ class LogfileManager final : public application_features::ApplicationFeature {
   void waitForCollector();
 
  private:
-
   // hashes the transaction id into a bucket
   size_t getBucket(TRI_voc_tid_t id) const { return std::hash<TRI_voc_cid_t>()(id) % numBuckets; }
+  
+  // reserve space in a logfile
+  SlotInfo allocate(uint32_t);
+
+  // reserve space in a logfile
+  SlotInfo allocate(TRI_voc_tick_t, TRI_voc_cid_t, uint32_t);
 
   // memcpy the data into the WAL region and return the filled slot
   // to the WAL logfile manager
