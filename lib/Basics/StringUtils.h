@@ -592,6 +592,15 @@ std::string encodeHex(std::string const& str);
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string decodeHex(std::string const& str);
+
+bool gzipUncompress(char const* compressed, size_t compressedLength, std::string& uncompressed);
+
+bool gzipUncompress(std::string const& compressed, std::string& uncompressed);
+
+bool gzipDeflate(char const* compressed, size_t compressedLength, std::string& uncompressed);
+
+bool gzipDeflate(std::string const& compressed, std::string& uncompressed);
+
 }
 }
 }

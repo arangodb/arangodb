@@ -159,6 +159,10 @@ struct Functions {
                           VPackFunctionParameters const&);
   static AqlValue Zip(arangodb::aql::Query*, arangodb::Transaction*,
                       VPackFunctionParameters const&);
+  static AqlValue JsonStringify(arangodb::aql::Query*, arangodb::Transaction*,
+                                VPackFunctionParameters const&);
+  static AqlValue JsonParse(arangodb::aql::Query*, arangodb::Transaction*,
+                            VPackFunctionParameters const&);
   static AqlValue ParseIdentifier(arangodb::aql::Query*,
                                   arangodb::Transaction*,
                                   VPackFunctionParameters const&);
