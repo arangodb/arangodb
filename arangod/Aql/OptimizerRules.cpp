@@ -3792,6 +3792,8 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
     Variable const* out = subqueryNode->outVariable();
     TRI_ASSERT(out != nullptr);
 
+    std::unordered_set<Variable const*> varsUsed;
+
     current = n;
     // now check where the subquery is used
     while (current->hasParent()) {
@@ -3865,11 +3867,20 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
           RedundantCalculationsReplacer finder(replacements);
           plan->root()->walk(&finder);
     
+          // abort optimization
           current = nullptr;
         }
       }
 
       if (current == nullptr) {
+        break;
+      }
+         
+      varsUsed.clear(); 
+      current->getVariablesUsedHere(varsUsed);
+      if (varsUsed.find(out) != varsUsed.end()) {
+        // we found another node that uses the subquery variable
+        // we need to stop the optimization attempts here
         break;
       }
 

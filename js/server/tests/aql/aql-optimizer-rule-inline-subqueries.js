@@ -226,6 +226,18 @@ function optimizerRuleCollectionTestSuite () {
       var query = "LET x = (FOR doc IN @@cn RETURN doc) FOR doc2 IN x RETURN x";
       var result = AQL_EXPLAIN(query, { "@cn" : cn });
       assertEqual(-1, result.plan.rules.indexOf(ruleName), query); // no optimization
+    },
+
+    testSpecificPlan4 : function () {
+      var query = "LET x = (FOR doc IN @@cn RETURN doc) FOR i IN 1..10 FILTER LENGTH(x) FOR y IN x RETURN y";
+      var result = AQL_EXPLAIN(query, { "@cn" : cn });
+      assertEqual(-1, result.plan.rules.indexOf(ruleName), query); // no optimization
+    },
+
+    testSpecificPlan5 : function () {
+      var query = "FOR j IN 1..10 LET x = (FOR doc IN @@cn RETURN doc) FOR i IN 1..10 FILTER LENGTH(x) FOR y IN x RETURN y";
+      var result = AQL_EXPLAIN(query, { "@cn" : cn });
+      assertEqual(-1, result.plan.rules.indexOf(ruleName), query); // no optimization
     }
 
   };
