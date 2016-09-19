@@ -159,6 +159,12 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
     uniqueVertices =
         arangodb::traverser::TraverserOptions::UniquenessLevel::PATH;
   } else if (tmp == "global") {
+    if (!useBreadthFirst) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "uniqueVertices: 'global' is only "
+                                     "supported, with bfs: true due to "
+                                     "unpredictable results.");
+    }
     uniqueVertices =
         arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL;
   } else {
@@ -171,6 +177,10 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
     uniqueEdges =
         arangodb::traverser::TraverserOptions::UniquenessLevel::NONE;
   } else if (tmp == "global") {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "uniqueEdges: 'global' is not supported, "
+                                   "due to unpredictable results. Use 'path' "
+                                   "or 'none' instead");
     uniqueEdges =
         arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL;
   } else {
@@ -326,6 +336,13 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
     }
     _baseVertexExpression = new aql::Expression(query->ast(), read);
   }
+  // Check for illegal option combination:
+  TRI_ASSERT(uniqueEdges !=
+             arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL);
+  TRI_ASSERT(
+      uniqueVertices !=
+          arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL ||
+      useBreadthFirst);
 }
 
 arangodb::traverser::TraverserOptions::TraverserOptions(
@@ -344,6 +361,14 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
   TRI_ASSERT(other._vertexExpressions.empty());
   TRI_ASSERT(other._tmpVar == nullptr);
   TRI_ASSERT(other._baseVertexExpression == nullptr);
+
+  // Check for illegal option combination:
+  TRI_ASSERT(uniqueEdges !=
+             arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL);
+  TRI_ASSERT(
+      uniqueVertices !=
+          arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL ||
+      useBreadthFirst);
 }
 
 arangodb::traverser::TraverserOptions::~TraverserOptions() {

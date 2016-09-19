@@ -124,12 +124,23 @@ static std::unique_ptr<traverser::TraverserOptions> CreateTraversalOptions(
             options->uniqueEdges =
                 arangodb::traverser::TraverserOptions::UniquenessLevel::NONE;
           } else if (value->stringEquals("global", true)) {
-            options->uniqueEdges =
-                arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL;
+            THROW_ARANGO_EXCEPTION_MESSAGE(
+                TRI_ERROR_BAD_PARAMETER,
+                "uniqueEdges: 'global' is not supported, "
+                "due to unpredictable results. Use 'path' "
+                "or 'none' instead");
           }
         }
       }
     }
+  }
+  if (options->uniqueVertices ==
+          arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL &&
+      !options->useBreadthFirst) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "uniqueVertices: 'global' is only "
+                                   "supported, with bfs: true due to "
+                                   "unpredictable results.");
   }
   return options;
 }
