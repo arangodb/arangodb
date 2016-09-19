@@ -1158,13 +1158,13 @@ def unwrapPostJson(reference, layer):
         if '$ref' in thisParam:
             subStructRef = getReference(thisParam, reference, None)
 
-            rc += ' ' * layer + " - **" + param + "**:\n"
+            rc += '  ' * layer + "- **" + param + "**:\n"
             rc += unwrapPostJson(subStructRef, layer + 1)
     
         elif thisParam['type'] == 'object':
-            rc += ' ' * layer + " - **" + param + "**: " + TrimThisParam(brTrim(thisParam['description']), layer) + "\n"
+            rc += '  ' * layer + "- **" + param + "**: " + TrimThisParam(brTrim(thisParam['description']), layer) + "\n"
         elif swagger['definitions'][reference]['properties'][param]['type'] == 'array':
-            rc += ' ' * layer + " - **" + param + "**"
+            rc += '  ' * layer + "- **" + param + "**"
             trySubStruct = False
             if 'type' in thisParam['items']:
                 rc += " (" + thisParam['items']['type']  + ")"
@@ -1182,7 +1182,7 @@ def unwrapPostJson(reference, layer):
                     print >>sys.stderr, thisParam
                 rc += "\n" + unwrapPostJson(subStructRef, layer + 1)
         else:
-            rc += ' ' * layer + " - **" + param + "**: " + TrimThisParam(thisParam['description'], layer) + '\n'
+            rc += '  ' * layer + "- **" + param + "**: " + TrimThisParam(thisParam['description'], layer) + '\n'
     return rc
 
 
