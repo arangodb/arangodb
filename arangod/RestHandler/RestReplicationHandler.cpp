@@ -980,9 +980,9 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
     // generate the result
     size_t length = 0;
     if (useVpp) {
-      length = TRI_LengthStringBuffer(dump._buffer);
-    } else {
       length = dump._slices.size();
+    } else {
+      length = TRI_LengthStringBuffer(dump._buffer);
     }
 
     if (length == 0) {
@@ -991,25 +991,25 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
       resetResponse(rest::ResponseCode::OK);
     }
 
+    // transfer ownership of the buffer contents
+    _response->setContentType(rest::ContentType::DUMP);
+
+    // set headers
+    _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
+                            checkMore ? "true" : "false");
+
+    _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
+                            StringUtils::itoa(dump._lastFoundTick));
+
+    _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
+                            StringUtils::itoa(state.lastCommittedTick));
+
+    _response->setHeaderNC(TRI_REPLICATION_HEADER_ACTIVE, "true");
+
+    _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
+                            dump._fromTickIncluded ? "true" : "false");
+
     if (length > 0) {
-      // transfer ownership of the buffer contents
-      _response->setContentType(rest::ContentType::DUMP);
-
-      // set headers
-      _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
-                             checkMore ? "true" : "false");
-
-      _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
-                             StringUtils::itoa(dump._lastFoundTick));
-
-      _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
-                             StringUtils::itoa(state.lastCommittedTick));
-
-      _response->setHeaderNC(TRI_REPLICATION_HEADER_ACTIVE, "true");
-
-      _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
-                             dump._fromTickIncluded ? "true" : "false");
-
       if (useVpp) {
         for (auto message : dump._slices) {
           _response->addPayload(std::move(message), &dump._vpackOptions, true);
