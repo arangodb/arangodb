@@ -31,6 +31,9 @@
 #include "Basics/tri-strings.h"
 #include "Basics/StringBuffer.h"
 
+#include "zlib.h"
+#include "zconf.h"  
+
 // -----------------------------------------------------------------------------
 // helper functions
 // -----------------------------------------------------------------------------
@@ -2234,6 +2237,82 @@ std::string decodeHex(std::string const& str) {
 
   return result;
 }
+
+bool gzipUncompress(char const* compressed, size_t compressedLength, std::string& uncompressed) {
+  uncompressed.clear();
+
+  if (compressedLength == 0) {
+    /* empty input */
+    return true;
+  }  
+
+  z_stream strm;  
+  memset(&strm, 0, sizeof(strm));
+  strm.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(compressed));
+  strm.avail_in = compressedLength; 
+
+  if (inflateInit2(&strm, (16 + MAX_WBITS)) != Z_OK) {  
+    return false;  
+  }  
+  
+  int ret;
+  char outbuffer[32768];
+
+  do {
+    strm.next_out = reinterpret_cast<Bytef*>(outbuffer);
+    strm.avail_out = sizeof(outbuffer);
+
+    ret = inflate(&strm, 0);
+
+    if (uncompressed.size() < strm.total_out) {
+      uncompressed.append(outbuffer, strm.total_out - uncompressed.size());
+    }
+  } while (ret == Z_OK);
+  
+  inflateEnd(&strm);
+
+  return (ret == Z_STREAM_END);
+}  
+
+bool gzipUncompress(std::string const& compressed, std::string& uncompressed) {
+  return gzipUncompress(compressed.c_str(), compressed.size(), uncompressed);
+}
+
+bool gzipDeflate(char const* compressed, size_t compressedLength, std::string& uncompressed) {
+  uncompressed.clear();
+
+  z_stream strm;
+  memset(&strm, 0, sizeof(strm));
+  strm.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(compressed));
+  strm.avail_in = compressedLength;
+  
+  if (inflateInit(&strm) != Z_OK) {
+    return false;
+  }
+
+  int ret;
+  char outbuffer[32768];
+
+  do {
+    strm.next_out = reinterpret_cast<Bytef*>(outbuffer);
+    strm.avail_out = sizeof(outbuffer);
+
+    ret = inflate(&strm, 0);
+
+    if (uncompressed.size() < strm.total_out) {
+      uncompressed.append(outbuffer, strm.total_out - uncompressed.size());
+    }
+  } while (ret == Z_OK);
+
+  inflateEnd(&strm);
+
+  return (ret == Z_STREAM_END);
+}
+
+bool gzipDeflate(std::string const& compressed, std::string& uncompressed) {
+  return gzipDeflate(compressed.c_str(), compressed.size(), uncompressed);
+}
+
 }
 }
 }
