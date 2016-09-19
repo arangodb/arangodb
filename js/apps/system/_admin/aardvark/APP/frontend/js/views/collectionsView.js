@@ -488,7 +488,7 @@
                 'new-replication-factor',
                 'Replication factor',
                 '',
-                'Numeric value. Must be at least 1. Description: TODO',
+                'Numeric value. Must be at least 1. Total number of copies of the shards in the cluster.',
                 '',
                 false,
                 [
