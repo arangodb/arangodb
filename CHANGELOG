@@ -1,6 +1,8 @@
 v3.0.9 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #2060
+
 * speed up `collection.any()` and skiplist index creation
 
 
