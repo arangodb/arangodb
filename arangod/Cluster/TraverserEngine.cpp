@@ -293,11 +293,6 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
   builder.close();
 }
 
-void BaseTraverserEngine::smartSearch(VPackSlice,
-                                  VPackBuilder&) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_ONLY_ENTERPRISE);
-}
-
 bool BaseTraverserEngine::lockCollection(std::string const& shard) {
   if (_locked.find(shard) != _locked.end()) {
     return false;
@@ -338,4 +333,8 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t* vocbase,
 
 
 TraverserEngine::~TraverserEngine() {
+}
+
+void TraverserEngine::smartSearch(VPackSlice, VPackBuilder&) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_ONLY_ENTERPRISE);
 }

@@ -58,10 +58,6 @@ logfiles:
 @startDocuBlock WalLogfileAllowOversizeEntries
 
 
-<!-- arangod/Wal/LogfileManager.h -->
-@startDocuBlock WalLogfileSuppressShapeInformation
-
-
 When data gets copied from the write-ahead logfiles into the journals or datafiles
 of collections, files will be created on the collection level. How big these files
 are is determined by the following global configuration value:

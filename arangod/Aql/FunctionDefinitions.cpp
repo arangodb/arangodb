@@ -355,6 +355,10 @@ struct FunctionDefiner {
                            false, true, true});
     add({"ZIP", "AQL_ZIP", "l,l", true, true, false, true, true,
                      &Functions::Zip});
+    add({"JSON_STRINGIFY", "AQL_JSON_STRINGIFY", ".", true, true, false, true, true,
+                     &Functions::JsonStringify});
+    add({"JSON_PARSE", "AQL_JSON_PARSE", ".", true, true, false, true, true,
+                     &Functions::JsonParse});
   }
 
   void addGeoFunctions() {

@@ -1,6 +1,10 @@
 devel
 -----
 
+* added experimental AQL functions `JSON_STRINGIFY` and `JSON_PARSE`
+
+* added experimental support for incoming gzip-compressed requests
+
 * added HTTP REST APIs for online loglevel adjustments:
 
   - GET `/_admin/log/level` returns the current loglevel settings
@@ -74,7 +78,14 @@ devel
 
 * all lambdas in ClusterInfo might have been left with dangling references.
 
-v3.0.8 (XXXX-XX-XX)
+
+v3.0.9 (XXXX-XX-XX)
+-------------------
+
+* speed up `collection.any()` and skiplist index creation
+
+
+v3.0.8 (2016-09-14)
 -------------------
 
 * fixed issue #2052

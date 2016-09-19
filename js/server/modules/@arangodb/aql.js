@@ -4473,6 +4473,35 @@ function AQL_ZIP (keys, values) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief JSON.stringify
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_JSON_STRINGIFY (value) {
+  'use strict';
+
+  return JSON.stringify(value);
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief JSON.parse
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_JSON_PARSE (value) {
+  'use strict';
+
+  try {
+    if (typeof value !== 'string') {
+      WARN('JSON_PARSE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      return null;
+    }
+    return JSON.parse(value);
+  } catch (err) {
+    WARN('JSON_PARSE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
+  }
+}
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief unset specific attributes from a document
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -5601,6 +5630,8 @@ exports.AQL_HAS = AQL_HAS;
 exports.AQL_ATTRIBUTES = AQL_ATTRIBUTES;
 exports.AQL_VALUES = AQL_VALUES;
 exports.AQL_ZIP = AQL_ZIP;
+exports.AQL_JSON_STRINGIFY = AQL_JSON_STRINGIFY;
+exports.AQL_JSON_PARSE = AQL_JSON_PARSE;
 exports.AQL_UNSET = AQL_UNSET;
 exports.AQL_UNSET_RECURSIVE = AQL_UNSET_RECURSIVE;
 exports.AQL_KEEP = AQL_KEEP;
