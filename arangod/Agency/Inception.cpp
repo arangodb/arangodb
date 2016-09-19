@@ -244,7 +244,6 @@ bool Inception::restartingActiveAgent() {
               auto myActive = myConfig.activeToBuilder()->toJson();
               
               if (theirActive != myActive) {
-                LOG(WARN) << "unequal: " << theirActive<< " != " << myActive;
                 LOG_TOPIC(FATAL, Logger::AGENCY)
                   << "Assumed active RAFT peer and I disagree on active membership."
                   << "Administrative intervention needed.";
@@ -290,8 +289,6 @@ bool Inception::restartingActiveAgent() {
     }
   }
 
-  LOG(WARN) << "LEAVING";
-  
   return false;
     
 
