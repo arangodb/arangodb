@@ -51,7 +51,8 @@ Agent::Agent(config_t const& config)
       _serveActiveAgent(false),
       _nextCompationAfter(_config.compactionStepSize()),
       _inception(std::make_unique<Inception>(this)),
-      _activator(nullptr) {
+      _activator(nullptr),
+      _ready(false) {
   _state.configure(this);
   _constituent.configure(this);
 }
@@ -988,5 +989,22 @@ query_t Agent::gossip(query_t const& in, bool isCallback) {
                                    << out->slice().toJson();
   return out;
 }
+
+
+void Agent::ready(bool b) {
+  _ready = b;
 }
-}  // namespace
+
+
+bool Agent::ready() const {
+
+  if (size() == 1) {
+    return true;
+  }
+
+  return _ready;
+
+}
+
+
+}}  // namespace

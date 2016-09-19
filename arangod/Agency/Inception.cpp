@@ -204,58 +204,94 @@ bool Inception::restartingActiveAgent() {
   auto myConfig = _agent->config();
   std::string const path = pubApiPrefix + "config";
 
+  auto s = std::chrono::system_clock::now();
+  std::chrono::seconds timeout(60);
+  
   // Can only be done responcibly, if we are complete
   if (myConfig.poolComplete()) {
     
-    for (const auto& i : myConfig.active()) {
-      
-      if (i != myConfig.id()) {
+    auto pool = myConfig.pool();
+    auto active = myConfig.active();
+    
+    CONDITION_LOCKER(guard, _cv);
+
+    while (!this->isStopping() && !_agent->isStopping()) {
+
+      active.erase(
+        std::remove(active.begin(), active.end(), myConfig.id()), active.end());
+      active.erase(
+        std::remove(active.begin(), active.end(), ""), active.end());
+
+      if (active.empty()) {
+        return true;
+      }
+
+      for (auto& i : active) {
         
-        auto clientId = myConfig.id();
-        auto comres   = arangodb::ClusterComm::instance()->syncRequest(
-          clientId, 1, i, rest::RequestType::GET, path, std::string(),
-          std::unordered_map<std::string, std::string>(), 20.0);
-        
-        if (comres->status == CL_COMM_SENT) {
+        if (i != myConfig.id() && i != "") {
           
-          auto theirConfig = comres->result->getBodyVelocyPack()->slice();
+          auto clientId = myConfig.id();
+          auto comres   = arangodb::ClusterComm::instance()->syncRequest(
+            clientId, 1, pool.at(i), rest::RequestType::GET, path, std::string(),
+            std::unordered_map<std::string, std::string>(), 2.0);
           
-          try {
-            
-            auto theirActive = theirConfig.get("configuration").get("active");
-            auto myActive = myConfig.activeToBuilder()->slice();
-            
-            if (theirActive != myActive) {
+          if (comres->status == CL_COMM_SENT) {
+
+            try {
+
+              auto theirActive = comres->result->getBodyVelocyPack()->
+                slice().get("configuration").get("active").toJson();
+              auto myActive = myConfig.activeToBuilder()->toJson();
+              
+              if (theirActive != myActive) {
+                LOG(WARN) << "unequal: " << theirActive<< " != " << myActive;
+                LOG_TOPIC(FATAL, Logger::AGENCY)
+                  << "Assumed active RAFT peer and I disagree on active membership."
+                  << "Administrative intervention needed.";
+                FATAL_ERROR_EXIT();
+                return false;
+              } else {
+                i = "";
+              }
+
+            } catch (std::exception const& e) {
               LOG_TOPIC(FATAL, Logger::AGENCY)
-                << "Assumed active RAFT peer and I disagree on active membership."
+                << "Assumed active RAFT peer has no active agency list: " << e.what()
                 << "Administrative intervention needed.";
-              FATAL_ERROR_EXIT();
-              return false;
+                FATAL_ERROR_EXIT();
+                return false;
             }
             
-          } catch (std::exception const& e) {
-            
-            LOG_TOPIC(FATAL, Logger::AGENCY)
-              << "Assumed active RAFT peer has no active agency list: " << e.what()
+          } else {
+            /*
+              LOG_TOPIC(FATAL, Logger::AGENCY)
+              << "Assumed active RAFT peer and I disagree on active membership."
               << "Administrative intervention needed.";
-            FATAL_ERROR_EXIT();
-            return false;
-            
+              FATAL_ERROR_EXIT();
+              return false;*/
           }
-          
-        } else {
-          LOG_TOPIC(FATAL, Logger::AGENCY)
-            << "Assumed active RAFT peer and I disagree on active membership."
-            << "Administrative intervention needed.";
-          FATAL_ERROR_EXIT();
-          return false;
         }
+        
       }
       
+      // Timed out? :(
+      if ((std::chrono::system_clock::now() - s) > timeout) {
+        if (myConfig.poolComplete()) {
+          LOG_TOPIC(DEBUG, Logger::AGENCY) << "Stopping active gossipping!";
+        } else {
+          LOG_TOPIC(ERR, Logger::AGENCY)
+            << "Failed to find complete pool of agents. Giving up!";
+        }
+        break;
+      }
+      
+      _cv.wait(500000);
+
     }
-    
   }
 
+  LOG(WARN) << "LEAVING";
+  
   return false;
     
 
@@ -272,11 +308,13 @@ void Inception::run() {
 
   // 1. If active agency, do as you're told
   if (activeAgencyFromPersistence()) {
+    _agent->ready(true);  
     return;
   }
 
   // 2. If we think that we used to be active agent
   if (restartingActiveAgent()) {
+  _agent->ready(true);  
     return;
   }
 
@@ -285,7 +323,9 @@ void Inception::run() {
   if (!config.poolComplete()) {
     gossip();
   }
-  
+
+  _agent->ready(true);
+
 }
 
 // @brief Graceful shutdown

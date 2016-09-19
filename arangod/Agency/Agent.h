@@ -173,7 +173,11 @@ class Agent : public arangodb::Thread {
   bool active() const;
 
   /// @brief Am I active agent
-  query_t activate(query_t const&);  
+  query_t activate(query_t const&);
+
+  /// @brief Inception thread still done?
+  bool ready() const;
+  void ready(bool b);
 
   /// @brief State reads persisted state and prepares the agent
   friend class State;
@@ -259,6 +263,9 @@ class Agent : public arangodb::Thread {
 
   std::unique_ptr<Inception> _inception;
   std::unique_ptr<AgentActivator> _activator;
+
+  std::atomic<bool> _ready;
+  
 };
 }
 }

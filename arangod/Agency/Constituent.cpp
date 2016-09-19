@@ -380,9 +380,6 @@ bool Constituent::start(TRI_vocbase_t* vocbase,
 
 /// Get persisted information and run election process
 void Constituent::run() {
-  LOG_TOPIC(DEBUG, Logger::AGENCY)
-      << "Pool complete. Starting constituent personality";
-
   _id = _agent->config().id();
 
   TRI_ASSERT(_vocbase != nullptr);
@@ -415,7 +412,10 @@ void Constituent::run() {
   }
 
   std::vector<std::string> act = _agent->config().active();
-  while (!this->isStopping() && find(act.begin(), act.end(), _id) == act.end()) {
+  while (
+    !this->isStopping() // Obvious
+    && (!_agent->ready()
+        || find(act.begin(), act.end(), _id) == act.end())) { // Active agent 
     CONDITION_LOCKER(guardv, _cv);
     _cv.wait(50000);
     act = _agent->config().active();
