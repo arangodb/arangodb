@@ -201,7 +201,8 @@ bool config_t::swapActiveMember(
     std::replace (_active.begin(), _active.end(), failed, repl);
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCY)
-      << "Replacing " << failed << " with " << repl << "failed miserably";
+      << "Replacing " << failed << " with " << repl
+      << "failed miserably: " << e.what();
     return false;
   }
   return true;

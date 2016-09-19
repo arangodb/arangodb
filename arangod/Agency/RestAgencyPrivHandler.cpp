@@ -140,7 +140,7 @@ RestHandler::status RestAgencyPrivHandler::execute() {
           everything = _request->toVelocyPackBuilderPtr(&options);
         } catch (std::exception const& e) {
           LOG_TOPIC(ERR, Logger::AGENCY)
-            << "Failure getting activation body: e.what()";
+            << "Failure getting activation body:" <<  e.what();
         }
         try {
           query_t res = _agent->activate(everything);

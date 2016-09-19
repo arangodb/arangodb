@@ -328,7 +328,11 @@ static int SliceifyMarker(TRI_replication_dump_t* dump,
   TRI_ASSERT(MustReplicateWalMarkerType(marker));
   TRI_df_marker_type_t const type = marker->getType();
 
-  VPackBuilder builder(&dump->_vpackOptions);
+  VPackBuffer<uint8_t> buffer;
+  std::shared_ptr<VPackBuffer<uint8_t>> bufferPtr;
+  bufferPtr.reset(&buffer, arangodb::velocypack::BufferNonDeleter<uint8_t>());
+
+  VPackBuilder builder(bufferPtr, &dump->_vpackOptions);
   builder.openObject();
 
   if (!isDump) {
@@ -437,6 +441,9 @@ static int SliceifyMarker(TRI_replication_dump_t* dump,
   }
 
   builder.close();
+
+  dump->_slices.push_back(std::move(buffer));
+
   return TRI_ERROR_NO_ERROR;
 }
 ////////////////////////////////////////////////////////////////////////////////
@@ -948,7 +955,7 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
     dump->_lastFoundTick = lastFoundTick;
     // LOG(INFO) << "last tick2: " << lastFoundTick;
 
-    (dump->_slices).push_back(std::move(buffer));
+    dump->_slices.push_back(std::move(buffer));
 
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
