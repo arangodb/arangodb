@@ -1202,7 +1202,7 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
         // ...remove the entire directory for the collection
         ac.removeValues(
           "Current/Collections/" + databaseName + "/" + collectionID, true);
-        loadCurrent()
+        loadCurrent();
         return *dbServerResult;
       }
 
