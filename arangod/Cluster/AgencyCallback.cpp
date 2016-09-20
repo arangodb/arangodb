@@ -65,6 +65,8 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex) {
   AgencyCommResult result = _agency.getValues(key);
 
   if (!result.successful()) {
+    LOG(ERR) << "Callback getValues to agency was not successful: "
+             << result.errorCode() << " " << result.errorMessage();
     return;
   }
   
