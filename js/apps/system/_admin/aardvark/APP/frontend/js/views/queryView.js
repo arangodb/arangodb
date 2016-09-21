@@ -1551,7 +1551,7 @@
         //when finished send a delete req to api (free db space)
         if (data.id) {
           $.ajax({
-            url: '/_api/cursor/' + encodeURIComponent(data.id),
+            url: arangoHelper.databaseUrl('/_api/cursor/' + encodeURIComponent(data.id)),
             type: 'DELETE'
           });
         }
