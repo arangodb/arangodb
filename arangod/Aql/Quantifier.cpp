@@ -59,6 +59,16 @@ std::string Quantifier::Stringify(int64_t value) {
   return "none";
 }
 
+bool Quantifier::IsAllOrAny(AstNode const* quantifier) {
+  TRI_ASSERT(quantifier != nullptr);
+
+  if (quantifier->type == NODE_TYPE_QUANTIFIER) {
+    auto const value = quantifier->getIntValue(true);
+    return (value == Quantifier::ALL || value == Quantifier::ANY);
+  }
+  return false;
+}
+
 /// @brief determine the min/max number of matches for an array comparison
 std::pair<size_t, size_t> Quantifier::RequiredMatches(size_t inputSize, AstNode const* quantifier) {
   TRI_ASSERT(quantifier != nullptr);

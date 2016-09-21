@@ -1142,6 +1142,18 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
   }
 
   size_t const n = left.length();
+  
+  if (n == 0) {
+    if (Quantifier::IsAllOrAny(node->getMember(2))) {
+      // [] ALL ... 
+      // [] ANY ... 
+      return AqlValue(false);
+    } else {
+      // [] NONE ...
+      return AqlValue(true);
+    }
+  }
+
   std::pair<size_t, size_t> requiredMatches = Quantifier::RequiredMatches(n, node->getMember(2));
 
   TRI_ASSERT(requiredMatches.first <= requiredMatches.second);

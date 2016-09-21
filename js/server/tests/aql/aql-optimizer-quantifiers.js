@@ -51,6 +51,45 @@ function optimizerQuantifiersTestSuite () {
     tearDown : function () {
       db._drop("UnitTestsCollection");
     },
+    
+    testAllEmpty : function () {
+      var query = "[] ALL == '1'", result;
+      
+      result = AQL_EXECUTE("RETURN (" + query + ")").json[0];
+      assertEqual(false, result);
+
+      result = AQL_EXECUTE("RETURN NOOPT(" + query + ")").json[0];
+      assertEqual(false, result);
+      
+      result = AQL_EXECUTE("RETURN V8(" + query + ")").json[0];
+      assertEqual(false, result);
+    },
+    
+    testAnyEmpty : function () {
+      var query = "[] ANY == '1'", result;
+      
+      result = AQL_EXECUTE("RETURN (" + query + ")").json[0];
+      assertEqual(false, result);
+
+      result = AQL_EXECUTE("RETURN NOOPT(" + query + ")").json[0];
+      assertEqual(false, result);
+      
+      result = AQL_EXECUTE("RETURN V8(" + query + ")").json[0];
+      assertEqual(false, result);
+    },
+
+    testNoneEmpty : function () {
+      var query = "[] NONE == '1'", result;
+      
+      result = AQL_EXECUTE("RETURN (" + query + ")").json[0];
+      assertEqual(true, result);
+
+      result = AQL_EXECUTE("RETURN NOOPT(" + query + ")").json[0];
+      assertEqual(true, result);
+      
+      result = AQL_EXECUTE("RETURN V8(" + query + ")").json[0];
+      assertEqual(true, result);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test ALL IN

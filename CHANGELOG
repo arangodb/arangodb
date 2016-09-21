@@ -1,6 +1,25 @@
 devel
 -----
 
+* changed behavior of AQL array comparison operators for empty arrays:
+  * `ALL` and `ANY` now always returns `false` when the left-hand operand is an
+    empty array. The behavior for non-empty arrays does not change:
+    * `[] ALL == 1` will return `false`
+    * `[1] ALL == 1` will return `true`
+    * `[1, 2] ALL == 1` will return `false`
+    * `[2, 2] ALL == 1` will return `false`
+    * `[] ANY == 1` will return `false`
+    * `[1] ANY == 1` will return `true`
+    * `[1, 2] ANY == 1` will return `true`
+    * `[2, 2] ANY == 1` will return `false`
+
+  * `NONE` now always returns `true` when the left-hand operand is an empty array.
+    The behavior for non-empty arrays does not change:
+    * `[] NONE == 1` will return `true`
+    * `[1] NONE == 1` will return `false`
+    * `[1, 2] ALL == 1` will return `false`
+    * `[2, 2] ALL == 1` will return `true`
+
 * added experimental AQL functions `JSON_STRINGIFY` and `JSON_PARSE`
 
 * added experimental support for incoming gzip-compressed requests

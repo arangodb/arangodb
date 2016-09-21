@@ -2736,9 +2736,9 @@ function optimizeQuantifierSuite() {
         RETURN v._id
       `;
       let cursor = db._query(query);
-      assertEqual(cursor.count(), 4);
+      assertEqual(cursor.count(), 3);
       let result = cursor.toArray();
-      assertEqual(result, [vertices.A, vertices.B, vertices.C, vertices.D]);
+      assertEqual(result, [vertices.B, vertices.C, vertices.D]);
 
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
@@ -2747,7 +2747,7 @@ function optimizeQuantifierSuite() {
       } else {
         assertEqual(stats.scannedIndex, 8);
       }
-      assertEqual(stats.filtered, 1);
+      assertEqual(stats.filtered, 2);
 
       query = `
         FOR v, e, p IN 0..2 OUTBOUND "${vertices.A}" GRAPH "${gn}"
@@ -2756,9 +2756,9 @@ function optimizeQuantifierSuite() {
         RETURN v._id
       `;
       cursor = db._query(query);
-      assertEqual(cursor.count(), 4);
+      assertEqual(cursor.count(), 3);
       result = cursor.toArray();
-      assertEqual(result, [vertices.A, vertices.E, vertices.F, vertices.G]);
+      assertEqual(result, [vertices.E, vertices.F, vertices.G]);
 
       stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
@@ -2767,7 +2767,7 @@ function optimizeQuantifierSuite() {
       } else {
         assertEqual(stats.scannedIndex, 8);
       }
-      assertEqual(stats.filtered, 1);
+      assertEqual(stats.filtered, 2);
     },
 
     testNoneVerticesSingle: function () {
@@ -2872,9 +2872,9 @@ function optimizeQuantifierSuite() {
         RETURN v._id
       `;
       let cursor = db._query(query);
-      assertEqual(cursor.count(), 3);
+      assertEqual(cursor.count(), 2);
       let result = cursor.toArray();
-      assertEqual(result, [vertices.A, vertices.B, vertices.C]);
+      assertEqual(result, [vertices.B, vertices.C]);
 
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
@@ -2883,7 +2883,7 @@ function optimizeQuantifierSuite() {
       } else {
         assertEqual(stats.scannedIndex, 7);
       }
-      assertEqual(stats.filtered, 2);
+      assertEqual(stats.filtered, 3);
     },
 
     testAllNoneVerticesMultiple: function () {
@@ -2914,9 +2914,9 @@ function optimizeQuantifierSuite() {
         RETURN v._id
       `;
       let cursor = db._query(query);
-      assertEqual(cursor.count(), 3);
+      assertEqual(cursor.count(), 2);
       let result = cursor.toArray();
-      assertEqual(result, [vertices.A, vertices.B, vertices.C]);
+      assertEqual(result, [vertices.B, vertices.C]);
 
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
@@ -2925,7 +2925,7 @@ function optimizeQuantifierSuite() {
       } else {
         assertEqual(stats.scannedIndex, 7);
       }
-      assertEqual(stats.filtered, 2);
+      assertEqual(stats.filtered, 3);
     },
 
     testAllVerticesDepth: function () {
