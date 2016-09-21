@@ -1,8 +1,8 @@
-/* A Bison parser, made by GNU Bison 3.0.4.  */
+/* A Bison parser, made by GNU Bison 3.0.2.  */
 
 /* Bison implementation for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2015 Free Software Foundation, Inc.
+   Copyright (C) 1984, 1989-1990, 2000-2013 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -44,7 +44,7 @@
 #define YYBISON 1
 
 /* Bison version.  */
-#define YYBISON_VERSION "3.0.4"
+#define YYBISON_VERSION "3.0.2"
 
 /* Skeleton name.  */
 #define YYSKELETON_NAME "yacc.c"
@@ -189,7 +189,7 @@ extern int Aqldebug;
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
-
+typedef union YYSTYPE YYSTYPE;
 union YYSTYPE
 {
 #line 19 "Aql/grammar.y" /* yacc.c:355  */
@@ -204,8 +204,6 @@ union YYSTYPE
 
 #line 206 "Aql/grammar.cpp" /* yacc.c:355  */
 };
-
-typedef union YYSTYPE YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
 #endif
@@ -402,7 +400,7 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 }
 
 
-#line 406 "Aql/grammar.cpp" /* yacc.c:358  */
+#line 404 "Aql/grammar.cpp" /* yacc.c:358  */
 
 #ifdef short
 # undef short
@@ -2094,7 +2092,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 2098 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2096 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 3:
@@ -2107,7 +2105,7 @@ yyreduce:
       }
       (yyval.node) = (yyvsp[0].node);
     }
-#line 2111 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2109 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 4:
@@ -2116,7 +2114,7 @@ yyreduce:
        auto node = static_cast<AstNode*>(parser->peekStack());
        node->addMember((yyvsp[0].node));
      }
-#line 2120 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2118 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 5:
@@ -2125,7 +2123,7 @@ yyreduce:
        auto node = static_cast<AstNode*>(parser->peekStack());
        node->addMember((yyvsp[0].node));
      }
-#line 2129 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2127 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 6:
@@ -2134,14 +2132,14 @@ yyreduce:
        auto node = static_cast<AstNode*>(parser->peekStack());
        node->addMember((yyvsp[0].node));
      }
-#line 2138 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2136 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 7:
 #line 397 "Aql/grammar.y" /* yacc.c:1646  */
     {
      }
-#line 2145 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2143 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 8:
@@ -2150,7 +2148,7 @@ yyreduce:
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
      }
-#line 2154 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2152 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 9:
@@ -2160,28 +2158,28 @@ yyreduce:
       auto withNode = parser->ast()->createNodeWithCollections(node);
       parser->ast()->addOperation(withNode);
      }
-#line 2164 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2162 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 10:
 #line 410 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 2171 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2169 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 11:
 #line 415 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 2178 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2176 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 12:
 #line 420 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 2185 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2183 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 13:
@@ -2189,7 +2187,7 @@ yyreduce:
     {
       parser->ast()->scopes()->endNested();
     }
-#line 2193 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2191 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 14:
@@ -2197,7 +2195,7 @@ yyreduce:
     {
       parser->ast()->scopes()->endNested();
     }
-#line 2201 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2199 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 15:
@@ -2205,7 +2203,7 @@ yyreduce:
     {
       parser->ast()->scopes()->endNested();
     }
-#line 2209 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2207 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 16:
@@ -2213,7 +2211,7 @@ yyreduce:
     {
       parser->ast()->scopes()->endNested();
     }
-#line 2217 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2215 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 17:
@@ -2221,98 +2219,98 @@ yyreduce:
     {
       parser->ast()->scopes()->endNested();
     }
-#line 2225 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2223 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 18:
 #line 440 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 2232 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2230 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 19:
 #line 442 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 2239 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2237 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 20:
 #line 447 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 2246 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2244 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 21:
 #line 449 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 2253 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2251 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 22:
 #line 451 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 2260 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2258 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 23:
 #line 453 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 2267 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2265 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 24:
 #line 455 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 2274 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2272 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 25:
 #line 457 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 2281 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2279 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 26:
 #line 459 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 2288 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2286 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 27:
 #line 461 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 2295 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2293 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 28:
 #line 463 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 2302 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2300 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 29:
 #line 465 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 2309 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2307 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 30:
 #line 467 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 2316 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2314 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 31:
@@ -2323,21 +2321,21 @@ yyreduce:
       auto node = parser->ast()->createNodeFor((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node), true);
       parser->ast()->addOperation(node);
     }
-#line 2327 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2325 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 32:
 #line 478 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 2334 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2332 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 33:
 #line 480 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 2341 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2339 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 34:
@@ -2347,7 +2345,7 @@ yyreduce:
       auto node = parser->ast()->createNodeTraversal((yyvsp[-5].strval).value, (yyvsp[-5].strval).length, (yyvsp[-3].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2351 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2349 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 35:
@@ -2357,7 +2355,7 @@ yyreduce:
       auto node = parser->ast()->createNodeTraversal((yyvsp[-7].strval).value, (yyvsp[-7].strval).length, (yyvsp[-5].strval).value, (yyvsp[-5].strval).length, (yyvsp[-3].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2361 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2359 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 36:
@@ -2367,7 +2365,7 @@ yyreduce:
       auto node = parser->ast()->createNodeTraversal((yyvsp[-9].strval).value, (yyvsp[-9].strval).length, (yyvsp[-7].strval).value, (yyvsp[-7].strval).length, (yyvsp[-5].strval).value, (yyvsp[-5].strval).length, (yyvsp[-3].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2371 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2369 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 37:
@@ -2380,7 +2378,7 @@ yyreduce:
       auto node = parser->ast()->createNodeShortestPath((yyvsp[-8].strval).value, (yyvsp[-8].strval).length, (yyvsp[-6].intval), (yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2384 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2382 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 38:
@@ -2393,7 +2391,7 @@ yyreduce:
       auto node = parser->ast()->createNodeShortestPath((yyvsp[-10].strval).value, (yyvsp[-10].strval).length, (yyvsp[-8].strval).value, (yyvsp[-8].strval).length, (yyvsp[-6].intval), (yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2397 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2395 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 39:
@@ -2403,28 +2401,28 @@ yyreduce:
       auto node = parser->ast()->createNodeFilter((yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2407 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2405 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 40:
 #line 530 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 2414 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2412 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 41:
 #line 535 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 2421 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2419 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 42:
 #line 537 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 2428 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2426 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 43:
@@ -2433,7 +2431,7 @@ yyreduce:
       auto node = parser->ast()->createNodeLet((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node), true);
       parser->ast()->addOperation(node);
     }
-#line 2437 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2435 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 44:
@@ -2445,7 +2443,7 @@ yyreduce:
 
       (yyval.strval) = (yyvsp[0].strval);
     }
-#line 2449 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2447 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 45:
@@ -2454,7 +2452,7 @@ yyreduce:
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 2458 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2456 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 46:
@@ -2467,7 +2465,7 @@ yyreduce:
       }
       (yyval.node) = list;
     }
-#line 2471 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2469 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 47:
@@ -2481,7 +2479,7 @@ yyreduce:
       auto node = parser->ast()->createNodeCollectCount(parser->ast()->createNodeArray(), (yyvsp[-1].strval).value, (yyvsp[-1].strval).length, (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2485 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2483 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 48:
@@ -2497,7 +2495,7 @@ yyreduce:
       auto node = parser->ast()->createNodeCollectCount((yyvsp[-2].node), (yyvsp[-1].strval).value, (yyvsp[-1].strval).length, (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2501 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2499 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 49:
@@ -2532,7 +2530,7 @@ yyreduce:
       auto node = parser->ast()->createNodeCollect(parser->ast()->createNodeArray(), (yyvsp[-2].node), into, intoExpression, nullptr, (yyvsp[-1].node));
       parser->ast()->addOperation(node);
     }
-#line 2536 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2534 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 50:
@@ -2604,7 +2602,7 @@ yyreduce:
       auto node = parser->ast()->createNodeCollect((yyvsp[-3].node), (yyvsp[-2].node), into, intoExpression, nullptr, (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2608 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2606 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 51:
@@ -2634,7 +2632,7 @@ yyreduce:
       auto node = parser->ast()->createNodeCollect((yyvsp[-2].node), parser->ast()->createNodeArray(), into, intoExpression, nullptr, (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2638 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2636 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 52:
@@ -2669,21 +2667,21 @@ yyreduce:
       auto node = parser->ast()->createNodeCollect((yyvsp[-3].node), parser->ast()->createNodeArray(), into, intoExpression, (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2673 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2671 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 53:
 #line 748 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 2680 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2678 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 54:
 #line 750 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 2687 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2685 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 55:
@@ -2692,7 +2690,7 @@ yyreduce:
       auto node = parser->ast()->createNodeAssign((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
       parser->pushArrayElement(node);
     }
-#line 2696 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2694 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 56:
@@ -2700,7 +2698,7 @@ yyreduce:
     {
       (yyval.node) = nullptr;
     }
-#line 2704 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2702 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 57:
@@ -2708,7 +2706,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 2712 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2710 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 58:
@@ -2719,7 +2717,7 @@ yyreduce:
       node->addMember((yyvsp[0].node));
       (yyval.node) = node;
     }
-#line 2723 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2721 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 59:
@@ -2738,7 +2736,7 @@ yyreduce:
       node->setFlag(FLAG_KEEP_VARIABLENAME);
       parser->pushArrayElement(node);
     }
-#line 2742 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2740 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 60:
@@ -2757,7 +2755,7 @@ yyreduce:
       node->setFlag(FLAG_KEEP_VARIABLENAME);
       parser->pushArrayElement(node);
     }
-#line 2761 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2759 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 61:
@@ -2770,7 +2768,7 @@ yyreduce:
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 2774 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2772 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 62:
@@ -2779,7 +2777,7 @@ yyreduce:
       auto list = static_cast<AstNode*>(parser->popStack());
       (yyval.node) = list;
     }
-#line 2783 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2781 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 63:
@@ -2788,7 +2786,7 @@ yyreduce:
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 2792 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2790 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 64:
@@ -2797,7 +2795,7 @@ yyreduce:
       auto list = static_cast<AstNode*>(parser->popStack());
       (yyval.node) = list;
     }
-#line 2801 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2799 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 65:
@@ -2806,7 +2804,7 @@ yyreduce:
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 2810 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2808 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 66:
@@ -2816,7 +2814,7 @@ yyreduce:
       auto node = parser->ast()->createNodeSort(list);
       parser->ast()->addOperation(node);
     }
-#line 2820 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2818 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 67:
@@ -2824,7 +2822,7 @@ yyreduce:
     {
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 2828 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2826 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 68:
@@ -2832,7 +2830,7 @@ yyreduce:
     {
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 2836 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2834 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 69:
@@ -2840,7 +2838,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeSortElement((yyvsp[-1].node), (yyvsp[0].node));
     }
-#line 2844 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2842 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 70:
@@ -2848,7 +2846,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeValueBool(true);
     }
-#line 2852 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2850 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 71:
@@ -2856,7 +2854,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeValueBool(true);
     }
-#line 2860 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2858 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 72:
@@ -2864,7 +2862,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeValueBool(false);
     }
-#line 2868 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2866 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 73:
@@ -2872,7 +2870,7 @@ yyreduce:
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 2876 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2874 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 74:
@@ -2882,7 +2880,7 @@ yyreduce:
       auto node = parser->ast()->createNodeLimit(offset, (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2886 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2884 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 75:
@@ -2891,7 +2889,7 @@ yyreduce:
       auto node = parser->ast()->createNodeLimit((yyvsp[-2].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2895 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2893 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 76:
@@ -2901,7 +2899,7 @@ yyreduce:
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
     }
-#line 2905 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2903 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 77:
@@ -2909,7 +2907,7 @@ yyreduce:
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 2913 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2911 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 78:
@@ -2917,7 +2915,7 @@ yyreduce:
     {
        (yyval.node) = (yyvsp[0].node);
      }
-#line 2921 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2919 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 79:
@@ -2929,7 +2927,7 @@ yyreduce:
       auto node = parser->ast()->createNodeRemove((yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2933 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2931 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 80:
@@ -2941,7 +2939,7 @@ yyreduce:
       auto node = parser->ast()->createNodeInsert((yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2945 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2943 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 81:
@@ -2954,7 +2952,7 @@ yyreduce:
       AstNode* node = parser->ast()->createNodeUpdate(nullptr, (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2958 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2956 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 82:
@@ -2967,14 +2965,14 @@ yyreduce:
       AstNode* node = parser->ast()->createNodeUpdate((yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2971 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2969 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 83:
 #line 941 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 2978 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2976 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 84:
@@ -2987,7 +2985,7 @@ yyreduce:
       AstNode* node = parser->ast()->createNodeReplace(nullptr, (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2991 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2989 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 85:
@@ -3000,14 +2998,14 @@ yyreduce:
       AstNode* node = parser->ast()->createNodeReplace((yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 3004 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3002 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 86:
 #line 965 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 3011 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3009 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 87:
@@ -3015,7 +3013,7 @@ yyreduce:
     {
       (yyval.intval) = static_cast<int64_t>(NODE_TYPE_UPDATE);
     }
-#line 3019 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3017 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 88:
@@ -3023,7 +3021,7 @@ yyreduce:
     {
       (yyval.intval) = static_cast<int64_t>(NODE_TYPE_REPLACE);
     }
-#line 3027 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3025 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 89:
@@ -3033,7 +3031,7 @@ yyreduce:
       // and in a later return thing
       parser->pushStack(parser->ast()->createNodeVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD), true));
     }
-#line 3037 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3035 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 90:
@@ -3082,7 +3080,7 @@ yyreduce:
       auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>((yyvsp[-3].intval)), parser->ast()->createNodeReference(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD)), (yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 3086 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3084 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 91:
@@ -3090,7 +3088,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeQuantifier(Quantifier::ALL);
     }
-#line 3094 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3092 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 92:
@@ -3098,7 +3096,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeQuantifier(Quantifier::ANY);
     }
-#line 3102 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3100 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 93:
@@ -3106,7 +3104,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeQuantifier(Quantifier::NONE);
     }
-#line 3110 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3108 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 94:
@@ -3119,7 +3117,7 @@ yyreduce:
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "cannot use DISTINCT modifier on top-level query element", yylloc.first_line, yylloc.first_column);
       }
     }
-#line 3123 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3121 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 95:
@@ -3127,7 +3125,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeDistinct((yyvsp[0].node));
     }
-#line 3131 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3129 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 96:
@@ -3135,7 +3133,7 @@ yyreduce:
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3139 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3137 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 97:
@@ -3143,7 +3141,7 @@ yyreduce:
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3147 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3145 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 98:
@@ -3151,7 +3149,7 @@ yyreduce:
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3155 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3153 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 99:
@@ -3159,7 +3157,7 @@ yyreduce:
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3163 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3161 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 100:
@@ -3167,7 +3165,7 @@ yyreduce:
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3171 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3169 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 101:
@@ -3175,7 +3173,7 @@ yyreduce:
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3179 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3177 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 102:
@@ -3183,7 +3181,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeRange((yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 3187 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3185 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 103:
@@ -3191,7 +3189,7 @@ yyreduce:
     {
       (yyval.strval) = (yyvsp[0].strval);
     }
-#line 3195 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3193 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 104:
@@ -3209,7 +3207,7 @@ yyreduce:
       (yyval.strval).value = p;
       (yyval.strval).length = temp.size();
     }
-#line 3213 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3211 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 105:
@@ -3220,7 +3218,7 @@ yyreduce:
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 3224 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3222 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 106:
@@ -3229,7 +3227,7 @@ yyreduce:
       auto list = static_cast<AstNode const*>(parser->popStack());
       (yyval.node) = parser->ast()->createNodeFunctionCall(static_cast<char const*>(parser->popStack()), list);
     }
-#line 3233 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3231 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 107:
@@ -3238,7 +3236,7 @@ yyreduce:
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 3242 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3240 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 108:
@@ -3247,7 +3245,7 @@ yyreduce:
       auto list = static_cast<AstNode const*>(parser->popStack());
       (yyval.node) = parser->ast()->createNodeFunctionCall("LIKE", list);
     }
-#line 3251 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3249 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 109:
@@ -3255,7 +3253,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_PLUS, (yyvsp[0].node));
     }
-#line 3259 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3257 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 110:
@@ -3263,7 +3261,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_MINUS, (yyvsp[0].node));
     }
-#line 3267 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3265 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 111:
@@ -3271,7 +3269,7 @@ yyreduce:
     { 
       (yyval.node) = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, (yyvsp[0].node));
     }
-#line 3275 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3273 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 112:
@@ -3279,7 +3277,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_OR, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 3283 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3281 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 113:
@@ -3287,7 +3285,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 3291 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3289 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 114:
@@ -3295,7 +3293,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_PLUS, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 3299 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3297 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 115:
@@ -3303,7 +3301,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_MINUS, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 3307 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3305 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 116:
@@ -3311,7 +3309,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_TIMES, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 3315 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3313 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 117:
@@ -3319,7 +3317,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_DIV, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 3323 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3321 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 118:
@@ -3327,7 +3325,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_MOD, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 3331 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3329 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 119:
@@ -3335,7 +3333,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 3339 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3337 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 120:
@@ -3343,7 +3341,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NE, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 3347 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3345 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 121:
@@ -3351,7 +3349,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_LT, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 3355 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3353 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 122:
@@ -3359,7 +3357,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_GT, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 3363 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3361 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 123:
@@ -3367,7 +3365,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_LE, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 3371 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3369 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 124:
@@ -3375,7 +3373,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_GE, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 3379 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3377 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 125:
@@ -3383,7 +3381,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 3387 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3385 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 126:
@@ -3391,7 +3389,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NIN, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 3395 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3393 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 127:
@@ -3402,7 +3400,7 @@ yyreduce:
       arguments->addMember((yyvsp[0].node));
       (yyval.node) = parser->ast()->createNodeFunctionCall("LIKE", arguments);
     }
-#line 3406 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3404 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 128:
@@ -3413,7 +3411,7 @@ yyreduce:
       arguments->addMember((yyvsp[0].node));
       (yyval.node) = parser->ast()->createNodeFunctionCall("REGEX_TEST", arguments);
     }
-#line 3417 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3415 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 129:
@@ -3425,7 +3423,7 @@ yyreduce:
       AstNode* node = parser->ast()->createNodeFunctionCall("REGEX_TEST", arguments);
       (yyval.node) = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, node);
     }
-#line 3429 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3427 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 130:
@@ -3433,7 +3431,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 3437 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3435 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 131:
@@ -3441,7 +3439,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NE, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 3445 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3443 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 132:
@@ -3449,7 +3447,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_LT, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 3453 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3451 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 133:
@@ -3457,7 +3455,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_GT, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 3461 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3459 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 134:
@@ -3465,7 +3463,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_LE, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 3469 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3467 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 135:
@@ -3473,7 +3471,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_GE, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 3477 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3475 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 136:
@@ -3481,7 +3479,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_IN, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 3485 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3483 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 137:
@@ -3489,7 +3487,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 3493 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3491 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 138:
@@ -3497,21 +3495,21 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeTernaryOperator((yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 3501 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3499 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 139:
 #line 1226 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 3508 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3506 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 140:
 #line 1228 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 3515 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3513 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 141:
@@ -3519,7 +3517,7 @@ yyreduce:
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3523 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3521 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 142:
@@ -3528,7 +3526,7 @@ yyreduce:
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_SUBQUERY);
       parser->ast()->startSubQuery();
     }
-#line 3532 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3530 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 143:
@@ -3543,7 +3541,7 @@ yyreduce:
 
       (yyval.node) = parser->ast()->createNodeReference(variableName);
     }
-#line 3547 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3545 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 144:
@@ -3551,7 +3549,7 @@ yyreduce:
     {
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 3555 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3553 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 145:
@@ -3559,7 +3557,7 @@ yyreduce:
     {
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 3563 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3561 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 146:
@@ -3567,7 +3565,7 @@ yyreduce:
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3571 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3569 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 147:
@@ -3575,7 +3573,7 @@ yyreduce:
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3579 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3577 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 148:
@@ -3584,7 +3582,7 @@ yyreduce:
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 3588 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3586 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 149:
@@ -3592,21 +3590,21 @@ yyreduce:
     {
       (yyval.node) = static_cast<AstNode*>(parser->popStack());
     }
-#line 3596 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3594 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 150:
 #line 1279 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 3603 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3601 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 151:
 #line 1281 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 3610 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3608 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 152:
@@ -3614,7 +3612,7 @@ yyreduce:
     {
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 3618 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3616 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 153:
@@ -3622,7 +3620,7 @@ yyreduce:
     {
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 3626 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3624 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 154:
@@ -3630,7 +3628,7 @@ yyreduce:
     {
       (yyval.node) = nullptr;
     }
-#line 3634 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3632 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 155:
@@ -3646,7 +3644,7 @@ yyreduce:
 
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3650 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3648 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 156:
@@ -3655,7 +3653,7 @@ yyreduce:
       auto node = parser->ast()->createNodeObject();
       parser->pushStack(node);
     }
-#line 3659 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3657 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 157:
@@ -3663,35 +3661,35 @@ yyreduce:
     {
       (yyval.node) = static_cast<AstNode*>(parser->popStack());
     }
-#line 3667 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3665 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 158:
 #line 1321 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 3674 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3672 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 159:
 #line 1323 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 3681 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3679 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 160:
 #line 1328 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 3688 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3686 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 161:
 #line 1330 "Aql/grammar.y" /* yacc.c:1646  */
     {
     }
-#line 3695 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3693 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 162:
@@ -3710,7 +3708,7 @@ yyreduce:
       auto node = ast->createNodeReference(variable);
       parser->pushObjectElement((yyvsp[0].strval).value, (yyvsp[0].strval).length, node);
     }
-#line 3714 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3712 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 163:
@@ -3719,7 +3717,7 @@ yyreduce:
       // attribute-name : attribute-value
       parser->pushObjectElement((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
     }
-#line 3723 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3721 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 164:
@@ -3733,7 +3731,7 @@ yyreduce:
       auto param = parser->ast()->createNodeParameter((yyvsp[-2].strval).value, (yyvsp[-2].strval).length);
       parser->pushObjectElement(param, (yyvsp[0].node));
     }
-#line 3737 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3735 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 165:
@@ -3742,7 +3740,7 @@ yyreduce:
       // [ attribute-name-expression ] : attribute-value
       parser->pushObjectElement((yyvsp[-3].node), (yyvsp[0].node));
     }
-#line 3746 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3744 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 166:
@@ -3750,7 +3748,7 @@ yyreduce:
     {
       (yyval.intval) = 1;
     }
-#line 3754 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3752 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 167:
@@ -3758,7 +3756,7 @@ yyreduce:
     {
       (yyval.intval) = (yyvsp[-1].intval) + 1;
     }
-#line 3762 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3760 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 168:
@@ -3766,7 +3764,7 @@ yyreduce:
     {
       (yyval.node) = nullptr;
     }
-#line 3770 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3768 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 169:
@@ -3774,7 +3772,7 @@ yyreduce:
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3778 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3776 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 170:
@@ -3782,7 +3780,7 @@ yyreduce:
     {
       (yyval.node) = nullptr;
     }
-#line 3786 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3784 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 171:
@@ -3790,7 +3788,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeArrayLimit(nullptr, (yyvsp[0].node));
     }
-#line 3794 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3792 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 172:
@@ -3798,7 +3796,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeArrayLimit((yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 3802 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3800 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 173:
@@ -3806,7 +3804,7 @@ yyreduce:
     {
       (yyval.node) = nullptr;
     }
-#line 3810 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3808 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 174:
@@ -3814,7 +3812,7 @@ yyreduce:
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3818 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3816 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 175:
@@ -3822,7 +3820,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 3826 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3824 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 176:
@@ -3835,7 +3833,7 @@ yyreduce:
       }
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3839 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3837 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 177:
@@ -3844,7 +3842,7 @@ yyreduce:
       auto tmp = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       (yyval.node) = parser->ast()->createNodeCollectionDirection((yyvsp[-1].intval), tmp);
     }
-#line 3848 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3846 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 178:
@@ -3857,7 +3855,7 @@ yyreduce:
       }
       (yyval.node) = parser->ast()->createNodeCollectionDirection((yyvsp[-1].intval), (yyvsp[0].node));
     }
-#line 3861 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3859 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 179:
@@ -3866,7 +3864,7 @@ yyreduce:
        auto node = static_cast<AstNode*>(parser->peekStack());
        node->addMember((yyvsp[0].node));
      }
-#line 3870 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3868 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 180:
@@ -3875,7 +3873,7 @@ yyreduce:
        auto node = static_cast<AstNode*>(parser->peekStack());
        node->addMember((yyvsp[0].node));
      }
-#line 3879 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3877 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 181:
@@ -3885,7 +3883,7 @@ yyreduce:
       node->addMember((yyvsp[0].node));
       (yyval.node) = parser->ast()->createNodeCollectionList(node);
     }
-#line 3889 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3887 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 182:
@@ -3895,7 +3893,7 @@ yyreduce:
       parser->pushStack(node);
       node->addMember((yyvsp[-1].node));
     }
-#line 3899 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3897 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 183:
@@ -3904,7 +3902,7 @@ yyreduce:
       auto node = static_cast<AstNode*>(parser->popStack());
       (yyval.node) = parser->ast()->createNodeCollectionList(node);
     }
-#line 3908 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3906 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 184:
@@ -3918,7 +3916,7 @@ yyreduce:
       }
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3922 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3920 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 185:
@@ -3927,7 +3925,7 @@ yyreduce:
       // graph name
       (yyval.node) = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 3931 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3929 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 186:
@@ -3935,7 +3933,7 @@ yyreduce:
     {
       (yyval.intval) = 2;
     }
-#line 3939 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3937 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 187:
@@ -3943,7 +3941,7 @@ yyreduce:
     {
       (yyval.intval) = 1;
     }
-#line 3947 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3945 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 188:
@@ -3951,7 +3949,7 @@ yyreduce:
     {
       (yyval.intval) = 0; 
     }
-#line 3955 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3953 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 189:
@@ -3959,7 +3957,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeDirection((yyvsp[0].intval), 1);
     }
-#line 3963 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3961 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 190:
@@ -3967,7 +3965,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeDirection((yyvsp[0].intval), (yyvsp[-1].node));
     }
-#line 3971 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3969 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 191:
@@ -4004,7 +4002,7 @@ yyreduce:
 
       (yyval.node) = node;
     }
-#line 4008 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4006 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 192:
@@ -4012,7 +4010,7 @@ yyreduce:
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4016 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4014 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 193:
@@ -4020,7 +4018,7 @@ yyreduce:
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4024 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4022 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 194:
@@ -4032,7 +4030,7 @@ yyreduce:
         ABORT_OOM
       }
     }
-#line 4036 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4034 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 195:
@@ -4047,7 +4045,7 @@ yyreduce:
         (yyval.node) = (yyvsp[-1].node);
       }
     }
-#line 4051 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4049 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 196:
@@ -4056,7 +4054,7 @@ yyreduce:
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_SUBQUERY);
       parser->ast()->startSubQuery();
     }
-#line 4060 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4058 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 197:
@@ -4071,7 +4069,7 @@ yyreduce:
 
       (yyval.node) = parser->ast()->createNodeReference(variableName);
     }
-#line 4075 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4073 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 198:
@@ -4091,7 +4089,7 @@ yyreduce:
         (yyval.node) = parser->ast()->createNodeAttributeAccess((yyvsp[-2].node), (yyvsp[0].strval).value, (yyvsp[0].strval).length);
       }
     }
-#line 4095 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4093 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 199:
@@ -4110,7 +4108,7 @@ yyreduce:
         (yyval.node) = parser->ast()->createNodeBoundAttributeAccess((yyvsp[-2].node), (yyvsp[0].node));
       }
     }
-#line 4114 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4112 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 200:
@@ -4129,7 +4127,7 @@ yyreduce:
         (yyval.node) = parser->ast()->createNodeIndexedAccess((yyvsp[-3].node), (yyvsp[-1].node));
       }
     }
-#line 4133 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4131 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 201:
@@ -4157,7 +4155,7 @@ yyreduce:
       auto scopes = parser->ast()->scopes();
       scopes->stackCurrentVariable(scopes->getVariable(nextName));
     }
-#line 4161 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4159 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 202:
@@ -4180,7 +4178,7 @@ yyreduce:
         (yyval.node) = parser->ast()->createNodeExpansion((yyvsp[-5].intval), iterator, parser->ast()->createNodeReference(variable->name), (yyvsp[-3].node), (yyvsp[-2].node), (yyvsp[-1].node));
       }
     }
-#line 4184 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4182 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 203:
@@ -4188,7 +4186,7 @@ yyreduce:
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4192 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4190 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 204:
@@ -4196,7 +4194,7 @@ yyreduce:
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4200 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4198 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 205:
@@ -4208,7 +4206,7 @@ yyreduce:
       
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4212 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4210 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 206:
@@ -4220,7 +4218,7 @@ yyreduce:
 
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4224 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4222 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 207:
@@ -4228,7 +4226,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 4232 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4230 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 208:
@@ -4236,7 +4234,7 @@ yyreduce:
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4240 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4238 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 209:
@@ -4244,7 +4242,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeValueNull();
     }
-#line 4248 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4246 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 210:
@@ -4252,7 +4250,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeValueBool(true);
     }
-#line 4256 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4254 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 211:
@@ -4260,7 +4258,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeValueBool(false);
     }
-#line 4264 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4262 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 212:
@@ -4268,7 +4266,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeCollection((yyvsp[0].strval).value, TRI_TRANSACTION_WRITE);
     }
-#line 4272 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4270 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 213:
@@ -4276,7 +4274,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeCollection((yyvsp[0].strval).value, TRI_TRANSACTION_WRITE);
     }
-#line 4280 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4278 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 214:
@@ -4288,7 +4286,7 @@ yyreduce:
 
       (yyval.node) = parser->ast()->createNodeParameter((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 4292 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4290 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 215:
@@ -4296,7 +4294,7 @@ yyreduce:
     {
       (yyval.node) = parser->ast()->createNodeParameter((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 4300 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4298 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 216:
@@ -4304,7 +4302,7 @@ yyreduce:
     {
       (yyval.strval) = (yyvsp[0].strval);
     }
-#line 4308 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4306 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 217:
@@ -4312,7 +4310,7 @@ yyreduce:
     {
       (yyval.strval) = (yyvsp[0].strval);
     }
-#line 4316 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4314 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 218:
@@ -4320,11 +4318,11 @@ yyreduce:
     {
       (yyval.strval) = (yyvsp[0].strval);
     }
-#line 4324 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4322 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
 
-#line 4328 "Aql/grammar.cpp" /* yacc.c:1646  */
+#line 4326 "Aql/grammar.cpp" /* yacc.c:1646  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires

@@ -248,6 +248,8 @@ std::vector<bool> Store::apply(
   }
 
   // Find possibly affected callbacks
+  if (_agent->leading()) {
+    double minPing = _agent->config().minPing;
   std::multimap<std::string, std::shared_ptr<notify_t>> in;
   for (auto const& i : queries) {
     for (auto const& j : VPackObjectIterator(i)) {
@@ -306,13 +308,13 @@ std::vector<bool> Store::apply(
       arangodb::ClusterComm::instance()->asyncRequest(
           "1", 1, endpoint, GeneralRequest::RequestType::POST, path,
           std::make_shared<std::string>(body.toString()), headerFields,
-          std::make_shared<StoreCallback>(), 1.0, true, 0.05);
+          std::make_shared<StoreCallback>(), 0.5*minPing, true, 0.25*minPing);
 
     } else {
       LOG_TOPIC(WARN, Logger::AGENCY) << "Malformed URL " << url;
     }
   }
-
+  }
   return applied;
 }
 
