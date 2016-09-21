@@ -1,6 +1,9 @@
 #!/bin/bash
 if [ -z "$XTERM" ] ; then
-    XTERM=xterm
+    XTERM=x-terminal-emulator
+fi
+if [ -z "$XTERMOPTIONS" ] ; then
+    XTERMOPTIONS="--geometry=80x43"
 fi
 
 if [ ! -d arangod ] || [ ! -d arangosh ] || [ ! -d UnitTests ] ; then
