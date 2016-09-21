@@ -1318,12 +1318,21 @@ function RELATIONAL_ARRAY_FUNC (lhs, rhs, quantifier, func) {
   var n = lhs.length, min, max;
   if (quantifier === 1) {
     // NONE
+    if (n === 0) {
+      return true;
+    }
     min = max = 0;
   } else if (quantifier === 2) {
     // ALL
+    if (n === 0) {
+      return false;
+    }
     min = max = n;
   } else if (quantifier === 3) {
     // ANY
+    if (n === 0) {
+      return false;
+    }
     min = (n === 0 ? 0 : 1);
     max = n;
   }
