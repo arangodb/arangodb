@@ -224,6 +224,8 @@ void InternalRestTraverserHandler::queryEngine() {
     }
   } else if (option == "smartSearch") {
     engine->smartSearch(body, result);
+  } else if (option == "smartSearchBFS") {
+    engine->smartSearchBFS(body, result);
   } else {
     // PATH Info wrong other error
     generateError(

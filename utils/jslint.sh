@@ -35,7 +35,7 @@ if [ "x$@" == "x" ] ; then
   if [ -d ./enterprise ] ; then
     echo Considering enterprise files...
     JAVASCRIPT_JSLINT="$JAVASCRIPT_JSLINT \
-      `find ./enterprise/Enterprise/js -name "*.js"` \
+      `find ./enterprise/js -name "*.js"` \
       "
   fi
 else

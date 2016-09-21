@@ -65,6 +65,8 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex) {
   AgencyCommResult result = _agency.getValues(key);
 
   if (!result.successful()) {
+    LOG(ERR) << "Callback getValues to agency was not successful: "
+             << result.errorCode() << " " << result.errorMessage();
     return;
   }
   
@@ -124,18 +126,11 @@ bool AgencyCallback::execute(std::shared_ptr<VPackBuilder> newData) {
 void AgencyCallback::executeByCallbackOrTimeout(double maxTimeout) {
   // One needs to acquire the mutex of the condition variable
   // before entering this function!
-  auto compareBuilder = std::make_shared<VPackBuilder>();
-  if (_lastData) {
-    compareBuilder = _lastData;
-  }
-  
   if (!_cv.wait(static_cast<uint64_t>(maxTimeout * 1000000.0))) {
-    if (!_lastData || !_lastData->slice().equals(compareBuilder->slice())) {
-      LOG_TOPIC(DEBUG, Logger::CLUSTER)
-        << "Waiting done and nothing happended. Refetching to be sure";
-      // mop: watches have not triggered during our sleep...recheck to be sure
-      refetchAndUpdate(false);
-    }
+    LOG_TOPIC(DEBUG, Logger::CLUSTER)
+      << "Waiting done and nothing happended. Refetching to be sure";
+    // mop: watches have not triggered during our sleep...recheck to be sure
+    refetchAndUpdate(false);
   }
 }
 
