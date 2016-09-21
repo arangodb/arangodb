@@ -52,25 +52,25 @@ Related blog posts:
 
 - *--test-case*: Name of test case to perform (default: "version").
   Possible values:
-    - version
-    - document
-    - collection,
-    - import-document
-    - hash
-    - skiplist
-    - edge
-    - shapes
-    - shapes-append
-    - random-shapes
-    - crud
-    - crud-append
-    - crud-write-read
-    - aqltrx
-    - counttrx
-    - multitrx
-    - multi-collection
-    - aqlinsert
-    - aqlv8
+    - version           : requests /_api/version
+    - document          : creates documents
+    - collection        : creates collections
+    - import-document   : creates documents via the import API
+    - hash              : Create/Read/Update/Read documents indexed by a hash index
+    - skiplist          : Create/Read/Update/Read documents indexed by a skiplist
+    - edge              : Create/Read/Update edge documents
+    - shapes            : Create & Delete documents with heterogeneous attribute names
+    - shapes-append     : Create documents with heterogeneous attribute names
+    - random-shapes     : Create/Read/Delete heterogeneous documents with random values
+    - crud              : Create/Read/Update/Delete
+    - crud-append       : Create/Read/Update/Read again
+    - crud-write-read   : Create/Read Documents
+    - aqltrx            : AQL Transactions with deep nested AQL `FOR` - loops 
+    - counttrx          : uses JS transactions to count the documents and insert the result again
+    - multitrx          : multiple transactions combining reads & writes from js
+    - multi-collection  : multiple transactions combining reads & writes from js on multiple collections
+    - aqlinsert         : insert documents via AQL
+    - aqlv8             : execute AQL with V8 functions to insert random documents
 
 - *--verbose*: Print out replies if the HTTP header indicates DB errors.
   (default: false).
