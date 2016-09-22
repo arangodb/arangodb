@@ -271,6 +271,33 @@
       display: none;
     }
   }
+
+  // nodes view
+  #nodesContent {
+    .sectionHeader .title {
+      font-size: 9pt;
+      margin-left: 10px !important;
+    }
+
+    .sectionHeader .information span:first-child {
+      margin-left: 0 !important;
+    }
+
+    .sectionHeader .information span.warning {
+      margin-right: -10px;
+    }
+
+    .pure-table {
+      padding-left: 10px !important;
+      padding-right: 10px !important;
+    }
+
+    .pure-table-row {
+      div:nth-child(4) {
+        display: none;
+      }
+    }
+  }
 }
 
 @media (min-width: 569px) and (max-width: 738px) {

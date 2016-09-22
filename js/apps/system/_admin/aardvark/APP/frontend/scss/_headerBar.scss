@@ -300,6 +300,7 @@ div.headerBar {
     font-weight: 100;
     line-height: 20pt;
     margin-left: 10px;
+    white-space: nowrap;
   }
 
   .information {
@@ -372,14 +373,34 @@ div.headerBar {
 
     input {
       @extend %inputs;
-      background: rgb(64, 74, 83) !important;
-      border-color: rgba(255, 255, 255, .3);
-      color: $c-white;
+      background: rgba(255, 255, 255, .9) !important;
+      border-color: rgba(239, 240, 241, .5);
+      color: $c-black;
       font-weight: 100;
       height: 10px;
       text-align: center;
       width: 40px;
+
+      &:hover {
+        cursor: pointer;
+      }
+
+      &:focus {
+        background: rgba(255, 255, 255, 1) !important;
+        border-color: rgba(239, 240, 241, 1);
+      }
     }
 
+    &.no-hover {
+      cursor: not-allowed;
+
+      *,
+      span,
+      div,
+      .fa,
+      input {
+        cursor: not-allowed;
+      }
+    }
   }
 }
