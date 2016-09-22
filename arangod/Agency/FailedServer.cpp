@@ -190,10 +190,8 @@ bool FailedServer::create() {
   _jb->close();
 
   // Failed server entry
-  path = _agencyPrefix + failedServersPrefix;
-  _jb->add(path, VPackValue(VPackValueType::Object));
-  _jb->add("op", VPackValue("push"));
-  _jb->add("new", VPackValue(_server));
+  path = _agencyPrefix + failedServersPrefix + "/" + _server;
+  _jb->add(path, VPackValue(VPackValueType::Array));
   _jb->close();
 
   // Raise plan version
