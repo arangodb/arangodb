@@ -519,7 +519,7 @@ router.get("/coordshort", function(req, res) {
               return resolve(JSON.parse(response.body));
             } catch (e) {
               console.error("Couldn't read statistics response:", response.body);
-              return reject({});
+              return reject([]);
             }
           } else {
             return resolve({});
