@@ -97,10 +97,23 @@ devel
 * all lambdas in ClusterInfo might have been left with dangling references.
 
 
-v3.0.9 (XXXX-XX-XX)
+v3.0.10 (XXXX-XX-XX)
+--------------------
+
+* fixed issue #2070
+
+
+v3.0.9 (2016-09-21)
 -------------------
 
+* fixed issue #2064
+
+* fixed issue #2060
+
 * speed up `collection.any()` and skiplist index creation
+
+* fixed multiple issues where ClusterInfo bug hung agency in limbo
+  timeouting on multiple collection and database callbacks
 
 
 v3.0.8 (2016-09-14)
@@ -111,6 +124,9 @@ v3.0.8 (2016-09-14)
 * fixed issue #2005
 
 * fixed issue #2039
+
+* fixed multiple issues where ClusterInfo bug hung agency in limbo
+  timeouting on multiple collection and database callbacks
 
 
 v3.0.7 (2016-09-05)
