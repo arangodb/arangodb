@@ -217,7 +217,7 @@ function optimizerRuleTestSuite() {
     testMultipleConditions : function () {
       var query = "FOR v IN " + colName + " FILTER v.d == 'foo' || v.d == 'bar' RETURN v";
       var result = AQL_EXPLAIN(query);
-      assertEqual([ "remove-filter-covered-by-index", "use-indexes", "replace-or-with-in" ].sort(),  
+      assertEqual([ "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "use-indexes", "replace-or-with-in" ].sort(),  
         removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
       hasNoFilterNode(result);
       hasIndexNodeWithRanges(result);
@@ -376,6 +376,26 @@ function optimizerRuleTestSuite() {
         assertEqual([ IndexesRule, FilterRemoveRule ], 
           removeAlwaysOnClusterRules(result.plan.rules), query);
         hasNoFilterNode(result);
+        hasIndexNodeWithRanges(result);
+      });
+    },
+
+    testNoOptimizeAwayUsedVariablesOr : function() {
+      var queries = [ 
+        "FOR v IN " + colName + " LET cond1 = v.a == 1 LET cond2 = v.d == 1 FILTER cond1 || cond2 RETURN v",
+        "FOR v IN " + colName + " LET cond1 = v.a == 1 LET cond2 = v.d == 1 FILTER cond1 || cond2 RETURN { v, cond1, cond2 }"
+      ];
+      queries.forEach(function(query) {
+        var result;
+
+        result = AQL_EXPLAIN(query, { }, paramIndexRangeFilter);
+        assertEqual([ IndexesRule ], 
+          removeAlwaysOnClusterRules(result.plan.rules), query);
+        hasIndexNodeWithRanges(result);
+
+        result = AQL_EXPLAIN(query, { }, paramIndexRangeSortFilter);
+        assertEqual([ IndexesRule ], 
+          removeAlwaysOnClusterRules(result.plan.rules), query);
         hasIndexNodeWithRanges(result);
       });
     }
