@@ -34,6 +34,8 @@ const _ = require('lodash');
 
 const STATISTICS_INTERVAL = require('@arangodb/statistics').STATISTICS_INTERVAL;
 const STATISTICS_HISTORY_INTERVAL = require('@arangodb/statistics').STATISTICS_HISTORY_INTERVAL;
+const TIMEOUT = 10;
+const HTTP_PROTOCOL = 'http';
 
 const joi = require('joi');
 const httperr = require('http-errors');
@@ -92,15 +94,15 @@ const STAT_SERIES = {
   bytesSentPerSecond: [ "client", "bytesSentPerSecond" ],
   bytesReceivedPerSecond: [ "client", "bytesReceivedPerSecond" ],
 
-  asyncPerSecond: [ "http", "requestsAsyncPerSecond" ],
-  optionsPerSecond: [ "http", "requestsOptionsPerSecond" ],
-  putsPerSecond: [ "http", "requestsPutPerSecond" ],
-  headsPerSecond: [ "http", "requestsHeadPerSecond" ],
-  postsPerSecond: [ "http", "requestsPostPerSecond" ],
-  getsPerSecond: [ "http", "requestsGetPerSecond" ],
-  deletesPerSecond: [ "http", "requestsDeletePerSecond" ],
-  othersPerSecond: [ "http", "requestsOptionsPerSecond" ],
-  patchesPerSecond: [ "http", "requestsPatchPerSecond" ],
+  asyncPerSecond: [ HTTP_PROTOCOL, "requestsAsyncPerSecond" ],
+  optionsPerSecond: [ HTTP_PROTOCOL, "requestsOptionsPerSecond" ],
+  putsPerSecond: [ HTTP_PROTOCOL, "requestsPutPerSecond" ],
+  headsPerSecond: [ HTTP_PROTOCOL, "requestsHeadPerSecond" ],
+  postsPerSecond: [ HTTP_PROTOCOL, "requestsPostPerSecond" ],
+  getsPerSecond: [ HTTP_PROTOCOL, "requestsGetPerSecond" ],
+  deletesPerSecond: [ HTTP_PROTOCOL, "requestsDeletePerSecond" ],
+  othersPerSecond: [ HTTP_PROTOCOL, "requestsOptionsPerSecond" ],
+  patchesPerSecond: [ HTTP_PROTOCOL, "requestsPatchPerSecond" ],
 
   systemTimePerSecond: [ "system", "systemTimePerSecond" ],
   userTimePerSecond: [ "system", "userTimePerSecond" ],
@@ -134,7 +136,7 @@ function computeStatisticsRaw (result, start, clusterId) {
       + "  return s",
     { start: start - 2 * STATISTICS_INTERVAL, clusterId: clusterId });
 
-  result.enabled = internal.enabledStatistics(); 
+  result.enabled = internal.enabledStatistics();
   result.times = [];
 
   for (let key in STAT_SERIES) {
@@ -189,11 +191,11 @@ function computeStatisticsRaw (result, start, clusterId) {
     result.residentSizePercent = lastRaw.system.residentSizePercent;
 
     result.asyncPerSecondCurrent = lastRaw.http.requestsAsyncPerSecond;
-    result.asyncPerSecondPercentChange = percentChange(lastRaw, lastRaw2, 'http', 'requestsAsyncPerSecond');
+    result.asyncPerSecondPercentChange = percentChange(lastRaw, lastRaw2, HTTP_PROTOCOL, 'requestsAsyncPerSecond');
 
     result.syncPerSecondCurrent = lastRaw.http.requestsTotalPerSecond - lastRaw.http.requestsAsyncPerSecond;
     result.syncPerSecondPercentChange
-        = percentChange2(lastRaw, lastRaw2, 'http', 'requestsTotalPerSecond', 'requestsAsyncPerSecond');
+        = percentChange2(lastRaw, lastRaw2, HTTP_PROTOCOL, 'requestsTotalPerSecond', 'requestsAsyncPerSecond');
 
     result.clientConnectionsCurrent = lastRaw.client.httpConnections;
     result.clientConnectionsPercentChange = percentChange(lastRaw, lastRaw2, 'client', 'httpConnections');
@@ -280,11 +282,11 @@ function computeStatisticsRaw15M (result, start, clusterId) {
     result.virtualSize15MPercentChange = percentChange(lastRaw, lastRaw2, 'system', 'virtualSize');
 
     result.asyncPerSecond15M = lastRaw.http.requestsAsyncPerSecond;
-    result.asyncPerSecond15MPercentChange = percentChange(lastRaw, lastRaw2, 'http', 'requestsAsyncPerSecond');
+    result.asyncPerSecond15MPercentChange = percentChange(lastRaw, lastRaw2, HTTP_PROTOCOL, 'requestsAsyncPerSecond');
 
     result.syncPerSecond15M = lastRaw.http.requestsTotalPerSecond - lastRaw.http.requestsAsyncPerSecond;
     result.syncPerSecond15MPercentChange
-      = percentChange2(lastRaw, lastRaw2, 'http', 'requestsTotalPerSecond', 'requestsAsyncPerSecond');
+      = percentChange2(lastRaw, lastRaw2, HTTP_PROTOCOL, 'requestsTotalPerSecond', 'requestsAsyncPerSecond');
 
     result.clientConnections15M = lastRaw.client.httpConnections;
     result.clientConnections15MPercentChange = percentChange(lastRaw, lastRaw2, 'client', 'httpConnections');
@@ -494,22 +496,55 @@ router.get("/coordshort", function(req, res) {
     });
   };
 
-  var coordinators = global.ArangoClusterInfo.getCoordinators();
-  
-  var coordinatorStats = coordinators.map(coordinator => {
-    var endpoint = global.ArangoClusterInfo.getServerEndpoint(coordinator);
-    var response = download(endpoint.replace(/^tcp/, "http") + "/_db/_system/_admin/aardvark/statistics/short?count=" + coordinators.length);
+  var coordinators = global.ArangoClusterInfo.getCoordinators() || [];
+  if (coordinators.length === 0) {
+    console.error('No coordinators to map');
+    mergeHistory({});
+    res.status(200).json({ enabled: [].some(stat => stat.enabled), data: merged });
 
-    try {
-      return JSON.parse(response.body);
-    } catch (e) {
-      console.error("Couldn't read statistics response:", response.body);
-      throw e;
-    }
-  });
-  
-  mergeHistory(coordinatorStats);
-  res.json({"enabled": coordinatorStats.some(stat => stat.enabled), "data": merged});
+  } else {
+    var coordinatorPromiseArray = () => {
+      return coordinators.map( (coordinator) => {
+        return new Promise ( (resolve, reject) => {
+          var endpoint = global.ArangoClusterInfo.getServerEndpoint(coordinator) || '';
+          var address = endpoint.replace(/^(http|tcp)/, HTTP_PROTOCOL).replace(/^(https|ssl)/, 'https') + "/_db/_system/_admin/aardvark/statistics/short?count=" + coordinators.length;
+          var response = download(address); // internal.download needs to be replaced with http.get or request.get or become asynchronous with a callback
+          var timeout = 200;
+          var before = Date.now();
+
+          while (Date.now() < (before + timeout) ) {};
+
+          if (response) {
+            try {
+              return resolve(JSON.parse(response.body));
+            } catch (e) {
+              console.error("Couldn't read statistics response:", response.body);
+              return reject({});
+            }
+          } else {
+            return resolve({});
+          }
+        });
+      });
+    };
+
+    var response = () => {
+      return new Promise ( (resolve, reject) => {
+        Promise.all(coordinatorPromiseArray()).then(coordinatorStats => {
+          mergeHistory(coordinatorStats);
+          resolve({enabled: coordinatorStats.some(stat => stat.enabled), data: merged});
+        }).catch( err => {
+          mergeHistory(err);
+          resolve({enabled: err.some(stat => stat.enabled), data: merged});
+        });
+      })
+    };
+
+
+    response().then( result => {
+      return res.status(200).json(result);
+    });
+  }
 })
 .summary("Short term history for all coordinators")
 .description("This function is used to get the statistics history.");
@@ -553,7 +588,8 @@ router.get("/cluster", function (req, res) {
 
   const DBserver = req.queryParams.DBserver;
   let type = req.queryParams.type;
-  const options = { timeout: 10 };
+  let timeout = req.queryParams.timeout || TIMEOUT;
+  const options = { timeout: timeout };
 
   if (type !== "short" && type !== "long") {
     type = "short";
