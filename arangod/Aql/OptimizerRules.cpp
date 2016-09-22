@@ -2059,8 +2059,9 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
             if (newNode == nullptr) {
               // no condition left...
               // FILTER node can be completely removed
-              toUnlink.emplace(setter);
               toUnlink.emplace(node);
+              // note: we must leave the calculation node intact, in case it is
+              // still used by other nodes in the plan
               modified = true;
               handled = true;
             } else if (newNode != condition->root()) {

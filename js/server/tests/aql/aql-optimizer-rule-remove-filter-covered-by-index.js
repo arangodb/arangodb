@@ -305,6 +305,30 @@ function optimizerRuleTestSuite() {
                     );
         }
       });
+    },
+
+    testNoOptimizeAwayUsedVariables : function() {
+      var queries = [ 
+        "FOR v IN " + colName + " LET cond1 = v.a == 1 FILTER cond1 RETURN v",
+        "FOR v IN " + colName + " LET cond1 = v.a == 1 FILTER cond1 RETURN { v, cond1 }",
+        "FOR v IN " + colName + " LET cond1 = v.a == 1 LET cond2 = v.b == 1 FILTER cond1 FILTER cond2 RETURN v",
+        "FOR v IN " + colName + " LET cond1 = v.a == 1 LET cond2 = v.b == 1 FILTER cond1 FILTER cond2 RETURN { v, cond1, cond2 }"
+      ];
+      queries.forEach(function(query) {
+        var result;
+
+        result = AQL_EXPLAIN(query, { }, paramIndexRangeFilter);
+        assertEqual([ IndexesRule, FilterRemoveRule ], 
+          removeAlwaysOnClusterRules(result.plan.rules), query);
+        hasNoFilterNode(result);
+        hasIndexNodeWithRanges(result);
+
+        result = AQL_EXPLAIN(query, { }, paramIndexRangeSortFilter);
+        assertEqual([ IndexesRule, FilterRemoveRule ], 
+          removeAlwaysOnClusterRules(result.plan.rules), query);
+        hasNoFilterNode(result);
+        hasIndexNodeWithRanges(result);
+      });
     }
 
   };
