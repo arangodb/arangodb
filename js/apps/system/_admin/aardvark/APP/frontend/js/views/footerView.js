@@ -63,6 +63,11 @@
 
           // show offline overlay
           $('#offlinePlaceholder').show();
+
+          // remove error messages
+          $.noty.clearQueue();
+          $.noty.closeAll();
+
           this.reconnectAnimation(0);
         }
       } else {

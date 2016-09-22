@@ -49,6 +49,7 @@
     },
 
     render: function () {
+      var self = this;
       this.$el.html(this.template.render({}));
       // this.initValues()
 
@@ -61,6 +62,12 @@
         this.initDone = true;
       }
       this.initGraphs();
+
+      // directly rerender coord, db, data
+      var callback = function (data) {
+        self.rerenderValues(data);
+      };
+      this.getCoordStatHistory(callback);
     },
 
     waitForCoordinators: function () {
