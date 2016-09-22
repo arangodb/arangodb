@@ -1749,7 +1749,7 @@ OperationResult Transaction::insertCoordinator(std::string const& collectionName
       errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    return clusterResultInsert(responseCode, responseCode, errorCounter);
+    return clusterResultInsert(responseCode, resultBody, errorCounter);
   }
   return OperationResult(res);
 }
