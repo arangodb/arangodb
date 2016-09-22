@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #2071
+
 * changed behavior of AQL array comparison operators for empty arrays:
   * `ALL` and `ANY` now always returns `false` when the left-hand operand is an
     empty array. The behavior for non-empty arrays does not change:
