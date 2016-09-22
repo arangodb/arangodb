@@ -737,6 +737,10 @@ bool LogicalCollection::waitForSync() const {
   return _waitForSync;
 }
 
+bool LogicalCollection::isSmart() const {
+  return false;
+}
+
 std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
   return _followers;
 }
