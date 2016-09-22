@@ -821,11 +821,29 @@ class Transaction {
 
  private:
 
-/// @brief Helper create a Cluster Communication result
-  OperationResult clusterResult(
+/// @brief Helper create a Cluster Communication document
+  OperationResult clusterResultDocument(
       rest::ResponseCode const& responseCode,
       std::shared_ptr<arangodb::velocypack::Builder> const& resultBody,
-      std::unordered_map<int, size_t> errorCounter) const;
+      std::unordered_map<int, size_t> const& errorCounter) const;
+
+/// @brief Helper create a Cluster Communication insert
+  OperationResult clusterResultInsert(
+      rest::ResponseCode const& responseCode,
+      std::shared_ptr<arangodb::velocypack::Builder> const& resultBody,
+      std::unordered_map<int, size_t> const& errorCounter) const;
+
+/// @brief Helper create a Cluster Communication modify result
+  OperationResult clusterResultModify(
+      rest::ResponseCode const& responseCode,
+      std::shared_ptr<arangodb::velocypack::Builder> const& resultBody,
+      std::unordered_map<int, size_t> const& errorCounter) const;
+
+/// @brief Helper create a Cluster Communication remove result
+  OperationResult clusterResultRemove(
+      rest::ResponseCode const& responseCode,
+      std::shared_ptr<arangodb::velocypack::Builder> const& resultBody,
+      std::unordered_map<int, size_t> const& errorCounter) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sort ORs for the same attribute so they are in ascending value
