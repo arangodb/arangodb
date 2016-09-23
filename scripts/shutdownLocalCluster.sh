@@ -49,7 +49,7 @@ if [ -n "$SECONDARIES" ]; then
   done
 fi
 
-echo Shutting down Coordiantors...
+echo Shutting down Coordinators...
 PORTTOPCO=`expr 8530 + $NRCOORDINATORS - 1`
 for p in `seq 8530 $PORTTOPCO` ; do
     shutdown $p
@@ -61,7 +61,27 @@ for p in `seq 8629 $PORTTOPDB` ; do
     shutdown $p
 done
 
-sleep 1
+testServerDown() {
+    PORT=$1
+    while true ; do
+        curl -s -f -X GET "http://127.0.0.1:$PORT/_api/version" > /dev/null 2>&1
+        if [ "$?" != "0" ] ; then
+            echo Server on port $PORT does not answer any more.
+            break
+        else
+            echo Server on port $PORT is still running
+        fi
+        sleep 1
+    done
+}
+
+for p in `seq 8530 $PORTTOPCO` ; do
+    testServerDown $p
+done
+
+for p in `seq 8629 $PORTTOPDB` ; do
+    testServerDown $p
+done
 
 echo Shutting down agency ... 
 for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
