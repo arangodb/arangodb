@@ -1154,6 +1154,7 @@ static TRI_fulltext_result_t* MakeListResult (index_t* const idx,
   TRI_fulltext_result_t* result;
   TRI_fulltext_list_entry_t* listEntries;
   uint32_t numResults;
+  uint32_t originalNumResults;
   uint32_t i, pos;
 
   if (list == nullptr) {
@@ -1163,6 +1164,7 @@ static TRI_fulltext_result_t* MakeListResult (index_t* const idx,
   // we have a list of handles
   // now turn the handles into documents and exclude deleted ones on the fly
   numResults = TRI_NumEntriesListFulltextIndex(list);
+  originalNumResults = numResults;
   if (static_cast<size_t>(numResults) > maxResults && maxResults > 0) {
     // cap the number of results
     numResults = static_cast<uint32_t>(maxResults);
@@ -1176,7 +1178,7 @@ static TRI_fulltext_result_t* MakeListResult (index_t* const idx,
   pos = 0;
   listEntries = TRI_StartListFulltextIndex(list);
 
-  for (i = 0; i < numResults; ++i) {
+  for (i = 0; i < originalNumResults; ++i) {
     TRI_fulltext_handle_t handle;
     TRI_fulltext_doc_t doc;
 
@@ -1189,6 +1191,9 @@ static TRI_fulltext_result_t* MakeListResult (index_t* const idx,
     }
 
     result->_documents[pos++] = doc;
+    if (pos >= numResults) {
+      break;
+    }
   }
 
   result->_numDocuments = pos;
@@ -1600,8 +1605,6 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex (TRI_fts_index_t* const ftx,
     }
   }
 
-  TRI_ReadUnlockReadWriteLock(&idx->_lock);
-
   TRI_FreeQueryFulltextIndex(query);
 
   if (result == nullptr) {
@@ -1611,7 +1614,10 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex (TRI_fts_index_t* const ftx,
 
   // now convert the handle list into a result (this will also filter out
   // deleted documents)
-  return MakeListResult(idx, result, maxResults);
+  TRI_fulltext_result_t* r = MakeListResult(idx, result, maxResults);
+  TRI_ReadUnlockReadWriteLock(&idx->_lock);
+
+  return r;
 }
 
 // -----------------------------------------------------------------------------
