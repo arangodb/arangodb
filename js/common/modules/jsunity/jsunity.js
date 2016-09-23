@@ -322,7 +322,7 @@ var jsUnity = exports.jsUnity = (function () {
         if (typeof fn === "function") {
           if (/^test/.test(name)) {
             suite.tests.push({ name: name, fn: fn });
-          } else if (/^(setUp|tearDown)$/.test(name)) {
+          } else if (/^(setUp|tearDown|setUpAll|tearDownAll)$/.test(name)) {
             suite[name] = fn;
           }
         }
@@ -399,6 +399,8 @@ var jsUnity = exports.jsUnity = (function () {
       this.tests = [];
       this.setUp = undefined;
       this.tearDown = undefined;
+      this.setUpAll = undefined;
+      this.tearDownAll = undefined;
     },
 
     TestResults: function () {
@@ -486,63 +488,90 @@ var jsUnity = exports.jsUnity = (function () {
         
         var setUp = getFixtureUtil("setUp", suite);
         var tearDown = getFixtureUtil("tearDown", suite);
+        var setUpAll = getFixtureUtil("setUpAll", suite);
+        var tearDownAll = getFixtureUtil("tearDownAll", suite);
+        var runSuite;
 
-        for (var j = 0; j < cnt; j++) {
-          var test = suite.tests[j];
-          
-          counter = 0;
-          
-          try {
-            setUp(test.name);
-            test.fn.call(suite.scope, test.name);
-            tearDown(test.name);
+        try {
+          setUpAll(suite.suiteName);
+          runSuite = true;
+        } catch (setUpAllError) {
+          runSuite = false;
+          if (setUpAllError.stack !== undefined) {
+            this.results.fail(0, suite.suiteName,
+                              setUpAllError + " - " + String(setUpAllError.stack) + 
+                              " - setUpAll failed");
+          }
+        }
 
-            this.results.pass(j + 1, test.name);
-
-            results.passed++;
-          } catch (e) {
+        if (runSuite) {
+          for (var j = 0; j < cnt; j++) {
+            var test = suite.tests[j];
+            
+            counter = 0;
+            
             try {
-              tearDown(test.name); // if tearDown above throws exc, will call again!
-            }
-            catch (x) {
-              var xstack; 
-              if (x.stack !== undefined) {
-                xstack = x.stack;
+              setUp(test.name);
+              test.fn.call(suite.scope, test.name);
+              tearDown(test.name);
+
+              this.results.pass(j + 1, test.name);
+
+              results.passed++;
+            } catch (e) {
+              try {
+                tearDown(test.name); // if tearDown above throws exc, will call again!
               }
+              catch (x) {
+                var xstack; 
+                if (x.stack !== undefined) {
+                  xstack = x.stack;
+                }
+                if (e.stack !== undefined) {
+                  this.results.fail(j + 1,
+                                    test.name,
+                                    e + " - " + String(e.stack) + 
+                                    " - teardown failed - " +
+                                    x +
+                                    " - " +
+                                    xstack);
+                }
+                else {
+                  this.results.fail(j + 1,
+                                    test.name,
+                                    e +
+                                    " - teardown failed - " +
+                                    x +
+                                    " - " +
+                                    xstack);
+                }             
+
+                this.log.error("Teardown failed (again): " +
+                              x +
+                              " - " +
+                              xstack +
+                              " aborting tests");
+
+                i = arguments.length; j = cnt; break;
+              }
+
               if (e.stack !== undefined) {
-                this.results.fail(j + 1,
-                                  test.name,
-                                  e + " - " + String(e.stack) + 
-                                  " - teardown failed - " +
-                                  x +
-                                  " - " +
-                                  xstack);
+                this.results.fail(j + 1, test.name, e + " - " + String(e.stack));
               }
               else {
-                this.results.fail(j + 1,
-                                  test.name,
-                                  e +
-                                  " - teardown failed - " +
-                                  x +
-                                  " - " +
-                                  xstack);
-              }             
-
-              this.log.error("Teardown failed (again): " +
-                             x +
-                             " - " +
-                             xstack +
-                             " aborting tests");
-
-              i = arguments.length; j = cnt; break;
+                this.results.fail(j + 1, test.name, e);
+              }
             }
-
-            if (e.stack !== undefined) {
-              this.results.fail(j + 1, test.name, e + " - " + String(e.stack));
-            }
-            else {
-              this.results.fail(j + 1, test.name, e);
-            }
+          }
+        }
+        
+        try {
+          tearDownAll(suite.suiteName);
+        } catch (tearDownAllError) {
+          if (tearDownAllError.stack !== undefined) {
+            this.results.fail(0, suite.suiteName,
+                              tearDownAllError + " - " + String(tearDownAllError.stack) + 
+                              " - tearDownAll failed");
           }
         }
       }

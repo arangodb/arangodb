@@ -126,86 +126,6 @@
 
         <table class="figures1 arango-table">
           <tr class="figuresHeader">
-            <th class="">Type</th>
-            <th>Count</th>
-            <th>Size</th>
-            <th>Info</th>
-          </tr>
-          <tr>
-            <th class="modal-text">Datafiles</th>
-            <th class="modal-text"><%=numeral(figuresData.figures.datafiles.count).format('0,0')%></th>
-            <th class="modal-text">
-            <%=prettyBytes(figuresData.figures.datafiles.fileSize)%>
-            </th>
-            <th class="tooltipInfoTh">
-              <div>
-                <a class="modalTooltips" data-toggle="tooltip" data-placement="left" title="Number and total size of active datafiles.">
-                  <span class="arangoicon icon_arangodb_info"></span>
-                </a>
-              </div>
-            </th>
-          </tr>
-          <tr>
-            <th class="modal-text">Journals</th>
-            <th class="modal-text"><%=numeral(figuresData.figures.journals.count).format('0,0')%></th>
-            <th class="modal-text">
-            <%=prettyBytes(figuresData.figures.journals.fileSize)%>
-            </th>
-            <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Number and total size of journal files.">
-                <span class="arangoicon icon_arangodb_info"></span></a>
-            </th>
-          </tr>
-          <tr>
-            <th class="modal-text">Compactors</th>
-            <th class="modal-text"><%=numeral(figuresData.figures.compactors.count).format('0,0')%></th>
-            <th class="modal-text">
-            <%=prettyBytes(figuresData.figures.compactors.fileSize)%>
-            </th>
-            <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Number and total size of compactor files.">
-                <span class="arangoicon icon_arangodb_info"></span></a>
-            </th>
-          </tr>
-          <tr>
-            <th class="modal-text">Indexes</th>
-            <th class="modal-text"><%=numeral(figuresData.figures.indexes.count).format('0,0')%></th>
-            <th class="modal-text">
-            <%=prettyBytes(figuresData.figures.indexes.size)%>
-            </th>
-            <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Number and total memory usage of indexes.">
-                <span class="arangoicon icon_arangodb_info"></span></a>
-            </th>
-          </tr>
-        </table>
-
-        <table class="figures2 arango-table">
-          <tr class="figuresHeader">
-            <th>Type</th>
-            <th>Count</th>
-            <th>Info</th>
-          </tr>
-          <tr>
-            <th class="modal-text">Uncollected</th>
-            <th class="modal-text"><%=figuresData.figures.uncollectedLogfileEntries%></th>
-            <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Total number of uncollected WAL entries">
-                <span class="arangoicon icon_arangodb_info"></span></a>
-            </th>
-          </tr>
-          <tr>
-            <th class="modal-text">References</th>
-            <th class="modal-text"><%=figuresData.figures.documentReferences%></th>
-            <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Total number of objects pointing to documents in collection datafiles">
-                <span class="arangoicon icon_arangodb_info"></span></a>
-            </th>
-          </tr>
-        </table>
-
-        <table class="figures3 arango-table">
-          <tr class="figuresHeader">
             <th>Type</th>
             <th>Count</th>
             <th>Size</th>
@@ -243,6 +163,97 @@
 
           </tr>
           <tr><th><div> </div></th></tr>
+        </table>
+
+        <table class="figures2 arango-table">
+          <tr class="figuresHeader">
+            <th>Type</th>
+            <th>Count</th>
+            <th>Size</th>
+            <th></th>
+            <th>Info</th>
+          </tr>
+          <tr>
+            <th class="modal-text">Datafiles</th>
+            <th class="modal-text"><%=numeral(figuresData.figures.datafiles.count).format('0,0')%></th>
+            <th class="modal-text">
+              <%= prettyBytes(figuresData.figures.datafiles.fileSize) %>
+            </th>
+            <th class="modal-text">&nbsp;</th>
+            <th class="tooltipInfoTh">
+              <div>
+                <a class="modalTooltips" data-toggle="tooltip" data-placement="left" title="Number and total size of active datafiles.">
+                  <span class="arangoicon icon_arangodb_info"></span>
+                </a>
+              </div>
+            </th>
+          </tr>
+          <tr>
+            <th class="modal-text">Journals</th>
+            <th class="modal-text"><%=numeral(figuresData.figures.journals.count).format('0,0')%></th>
+            <th class="modal-text">
+            <%=prettyBytes(figuresData.figures.journals.fileSize)%>
+            </th>
+            <th class="modal-text">&nbsp;</th>
+            <th class="tooltipInfoTh">
+              <a class="modalTooltips" title="Number and total size of journal files.">
+                <span class="arangoicon icon_arangodb_info"></span></a>
+            </th>
+          </tr>
+          <tr>
+            <th class="modal-text">Compactors</th>
+            <th class="modal-text"><%=numeral(figuresData.figures.compactors.count).format('0,0')%></th>
+            <th class="modal-text">
+            <%=prettyBytes(figuresData.figures.compactors.fileSize)%>
+            </th>
+            <th class="modal-text">&nbsp;</th>
+            <th class="tooltipInfoTh">
+              <a class="modalTooltips" title="Number and total size of compactor files.">
+                <span class="arangoicon icon_arangodb_info"></span></a>
+            </th>
+          </tr>
+          <tr>
+            <th class="modal-text">Indexes</th>
+            <th class="modal-text"><%=numeral(figuresData.figures.indexes.count).format('0,0')%></th>
+            <th class="modal-text">
+            <%=prettyBytes(figuresData.figures.indexes.size)%>
+            </th>
+            <th class="modal-text">&nbsp;</th>
+            <th class="tooltipInfoTh">
+              <a class="modalTooltips" title="Number and total memory usage of indexes.">
+                <span class="arangoicon icon_arangodb_info"></span></a>
+            </th>
+          </tr>
+        </table>
+
+        <table class="figures3 arango-table">
+          <tr class="figuresHeader">
+            <th>Type</th>
+            <th>Count</th>
+            <th></th>
+            <th></th>
+            <th>Info</th>
+          </tr>
+          <tr>
+            <th class="modal-text">Uncollected</th>
+            <th class="modal-text"><%=figuresData.figures.uncollectedLogfileEntries%></th>
+            <th class="modal-text">&nbsp;</th>
+            <th class="modal-text">&nbsp;</th>
+            <th class="tooltipInfoTh">
+              <a class="modalTooltips" title="Total number of uncollected WAL entries">
+                <span class="arangoicon icon_arangodb_info"></span></a>
+            </th>
+          </tr>
+          <tr>
+            <th class="modal-text">References</th>
+            <th class="modal-text"><%=figuresData.figures.documentReferences%></th>
+            <th class="modal-text">&nbsp;</th>
+            <th class="modal-text">&nbsp;</th>
+            <th class="tooltipInfoTh">
+              <a class="modalTooltips" title="Total number of objects pointing to documents in collection datafiles">
+                <span class="arangoicon icon_arangodb_info"></span></a>
+            </th>
+          </tr>
         </table>
 
 </script>

@@ -99,6 +99,8 @@ function Run (testsuite) {
   var tests = [];
   var setUp;
   var tearDown;
+  var setUpAll;
+  var tearDownAll;
 
   if (definition.hasOwnProperty('setUp')) {
     setUp = definition.setUp;
@@ -107,17 +109,27 @@ function Run (testsuite) {
   if (definition.hasOwnProperty('tearDown')) {
     tearDown = definition.tearDown;
   }
+  
+  if (definition.hasOwnProperty('setUpAll')) {
+    setUpAll = definition.setUpAll;
+  }
+
+  if (definition.hasOwnProperty('tearDownAll')) {
+    tearDownAll = definition.tearDownAll;
+  }
 
   var scope = {};
   scope.setUp = setUp;
   scope.tearDown = tearDown;
+  scope.setUpAll = setUpAll;
+  scope.tearDownAll = tearDownAll;
 
   for (var key in definition) {
     if (key.indexOf('test') === 0) {
       var test = { name: key, fn: definition[key]};
 
       tests.push(test);
-    } else if (key !== 'tearDown' && key !== 'setUp') {
+    } else if (key !== 'tearDown' && key !== 'setUp' && key !== 'tearDownAll' && key !== 'setUpAll') {
       console.error('unknown function: %s', key);
     }
   }
@@ -127,6 +139,8 @@ function Run (testsuite) {
   suite.tests = tests;
   suite.setUp = setUp;
   suite.tearDown = tearDown;
+  suite.setUpAll = setUpAll;
+  suite.tearDownAll = tearDownAll;
 
   var result = jsUnity.run(suite);
   TOTAL += result.total;
@@ -148,7 +162,6 @@ function Run (testsuite) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function Done (suiteName) {
-  //  console.log("%d total, %d passed, %d failed, %d ms", TOTAL, PASSED, FAILED, DURATION)
   internal.printf('%d total, %d passed, %d failed, %d ms', TOTAL, PASSED, FAILED, DURATION);
   print();
 
