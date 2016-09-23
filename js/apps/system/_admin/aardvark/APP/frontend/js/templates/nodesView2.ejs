@@ -60,7 +60,7 @@
         <div class="pure-table-row <%= disabled %>" node="<%= id %>">
 
           <div class="pure-u-9-24 left"><%= name %></div>
-          <div class="pure-u-8-24 left"><%= node.Endpoint %></div>
+          <div class="pure-u-8-24 left"><%= node.Endpoint %><i class="fa fa-bar-chart"></i></div>
 
           <% var formatted = (node.LastHeartbeatAcked).substr(11, 18).slice(0, -1); %> 
           <div class="pure-u-3-24 hide-small mid"><%= formatted %></div>

@@ -17,6 +17,14 @@
   .pure-table {
     padding-left: 20px;
     padding-right: 20px;
+
+    .fa {
+      margin-left: 5px;
+
+      &.fa-bar-chart {
+        color: rgb(64, 74, 83);
+      }
+    }
   }
 
   .sectionHeader .title {
