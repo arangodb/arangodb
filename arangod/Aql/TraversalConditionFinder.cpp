@@ -339,6 +339,13 @@ static void transformCondition(AstNode const* node, Variable const* pvar,
       VariableId toReplace;
 
       if (matchesArrayAccessPattern(testee, pvar, isEdge, toReplace)) {
+        auto quantifier = baseCondition->getMemberUnchecked(2);
+        TRI_ASSERT(quantifier->type == NODE_TYPE_QUANTIFIER);
+        int val = quantifier->getIntValue(true);
+        if (val == Quantifier::ANY) {
+          // Nono optimize for ANY
+          continue;
+        }
         AstNode* newCondition = createGlobalCondition(ast, baseCondition);
         std::unordered_map<VariableId, Variable const*> replacements;
         replacements.emplace(toReplace, tn->getTemporaryVariable());

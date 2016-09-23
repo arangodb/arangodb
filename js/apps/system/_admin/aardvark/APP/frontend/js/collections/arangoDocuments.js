@@ -291,7 +291,7 @@
               });
             };
 
-            window.progressView.showWithDelay(300, 'Fetching documents...', cancelRunningCursor);
+            window.progressView.showWithDelay(1000, 'Fetching documents...', cancelRunningCursor);
 
             checkCursorStatus(jobid);
           } else {

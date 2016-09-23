@@ -7,7 +7,7 @@
   window.NodesView2 = Backbone.View.extend({
     el: '#content',
     template: templateEngine.createTemplate('nodesView2.ejs'),
-    interval: 10000,
+    interval: 1000000,
     knownServers: [],
 
     events: {
@@ -15,7 +15,65 @@
       'click #addCoord': 'addCoord',
       'click #removeCoord': 'removeCoord',
       'click #addDBs': 'addDBs',
-      'click #removeDBs': 'removeDBs'
+      'click #removeDBs': 'removeDBs',
+      'keyup #plannedCoords': 'checkKey',
+      'keyup #plannedDBs': 'checkKey'
+    },
+
+    checkKey: function (e) {
+      if (e.keyCode === 13) {
+        var self = this;
+
+        var callbackFunction = function (e) {
+          var number;
+          if (e.target.id === 'plannedCoords') {
+            try {
+              number = JSON.parse($('#plannedCoords').val());
+              if (typeof number === 'number') {
+                window.modalView.hide();
+                self.setCoordSize(number);
+              } else {
+                arangoHelper.arangoError('Error', 'Invalid value. Must be a number.');
+              }
+            } catch (e) {
+              arangoHelper.arangoError('Error', 'Invalid value. Must be a number.');
+            }
+          } else if (e.target.id === 'plannedDBs') {
+            try {
+              number = JSON.parse($('#plannedCoords').val());
+              if (typeof number === 'number') {
+                window.modalView.hide();
+                self.setDBsSize(number);
+              } else {
+                arangoHelper.arangoError('Error', 'Invalid value. Must be a number.');
+              }
+            } catch (e) {
+              arangoHelper.arangoError('Error', 'Invalid value. Must be a number.');
+            }
+          }
+        };
+
+        this.changePlanModal(callbackFunction.bind(null, e));
+      }
+    },
+
+    changePlanModal: function (func, element) {
+      var buttons = []; var tableContent = [];
+      tableContent.push(
+        window.modalView.createReadOnlyEntry(
+          'plan-confirm-button',
+          'Caution',
+          'You are changing the cluster plan. Continue?',
+          undefined,
+          undefined,
+          false,
+          /[<>&'"]/
+        )
+      );
+      buttons.push(
+        window.modalView.createSuccessButton('Yes', func.bind(this, element))
+      );
+      window.modalView.show('modalTable.ejs', 'Modify Cluster Plan', buttons, tableContent);
     },
 
     initialize: function () {
@@ -166,6 +224,8 @@
     },
 
     renderCounts: function (scale, callback) {
+      var self = this;
+
       var renderFunc = function (id, ok, pending, error) {
         var string = '<span class="positive"><span>' + ok + '</span><i class="fa fa-check-circle"></i></span>';
         if (pending && scale === true) {
@@ -229,6 +289,12 @@
               renderFunc('#infoDBs', dbs, dbsPending, dbsErrors);
               renderFunc('#infoCoords', coords, coordsPending, coordsErrors);
             }
+
+            if (!self.isPlanFinished()) {
+              $('.scaleGroup').addClass('no-hover');
+              $('#plannedCoords').attr('disabled', 'disabled');
+              $('#plannedDBs').attr('disabled', 'disabled');
+            }
           }
         });
       };
@@ -245,20 +311,74 @@
       });
     },
 
+    isPlanFinished: function () {
+      var boolean;
+
+      if ($('#infoDBs').find('.warning').length > 0) {
+        boolean = false;
+      } else if ($('#infoCoords').find('.warning').length > 0) {
+        boolean = false;
+      } else {
+        boolean = true;
+      }
+
+      return boolean;
+    },
+
     addCoord: function () {
-      this.setCoordSize(this.readNumberFromID('#plannedCoords', true));
+      var func = function () {
+        window.modalView.hide();
+        this.setCoordSize(this.readNumberFromID('#plannedCoords', true));
+      };
+
+      if (this.isPlanFinished()) {
+        this.changePlanModal(func.bind(this));
+      } else {
+        arangoHelper.arangoNotification('Cluster Plan', 'Planned state not yet finished.');
+        $('.noty_buttons .button-danger').remove();
+      }
     },
 
     removeCoord: function () {
-      this.setCoordSize(this.readNumberFromID('#plannedCoords', false, true));
+      var func = function () {
+        window.modalView.hide();
+        this.setCoordSize(this.readNumberFromID('#plannedCoords', false, true));
+      };
+
+      if (this.isPlanFinished()) {
+        this.changePlanModal(func.bind(this));
+      } else {
+        arangoHelper.arangoNotification('Cluster Plan', 'Planned state not yet finished.');
+        $('.noty_buttons .button-danger').remove();
+      }
     },
 
     addDBs: function () {
-      this.setDBsSize(this.readNumberFromID('#plannedDBs', true));
+      var func = function () {
+        window.modalView.hide();
+        this.setDBsSize(this.readNumberFromID('#plannedDBs', true));
+      };
+
+      if (this.isPlanFinished()) {
+        this.changePlanModal(func.bind(this));
+      } else {
+        arangoHelper.arangoNotification('Cluster Plan', 'Planned state not yet finished.');
+        $('.noty_buttons .button-danger').remove();
+      }
     },
 
     removeDBs: function () {
-      this.setDBsSize(this.readNumberFromID('#plannedDBs', false, true));
+      var func = function () {
+        window.modalView.hide();
+        this.setDBsSize(this.readNumberFromID('#plannedDBs', false, true));
+      };
+
+      if (this.isPlanFinished()) {
+        this.changePlanModal(func.bind(this));
+      } else {
+        arangoHelper.arangoNotification('Cluster Plan', 'Planned state not yet finished.');
+        $('.noty_buttons .button-danger').remove();
+      }
     },
 
     readNumberFromID: function (id, increment, decrement) {

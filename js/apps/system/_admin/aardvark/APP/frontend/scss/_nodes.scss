@@ -14,6 +14,23 @@
 #nodesContent {
   padding-top: 0;
 
+  .pure-table {
+    padding-left: 20px;
+    padding-right: 20px;
+
+    .fa {
+      margin-left: 5px;
+
+      &.fa-bar-chart {
+        color: rgb(64, 74, 83);
+      }
+    }
+  }
+
+  .sectionHeader .title {
+    margin-left: 20px;
+  }
+
   .pure-table-body {
     .fa-check-circle,
     .fa-exclamation-circle {
