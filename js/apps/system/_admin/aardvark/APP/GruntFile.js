@@ -98,11 +98,6 @@
             "frontend/src/mode-json.js",
             "frontend/src/mode-aql.js"
           ],
-          graphViewer: [
-            "frontend/js/graphViewer/graph/*",
-            "frontend/js/graphViewer/ui/*",
-            "frontend/js/graphViewer/graphViewer.js"
-          ],
           modules: [
             "frontend/js/arango/arango.js",
             "frontend/js/arango/templateEngine.js",
@@ -258,7 +253,6 @@
         default: {
           files: {
             'frontend/build/app.js': [
-              '<%=project.standalone.graphViewer %>',
               '<%=project.standalone.modules %>',
               '<%=project.standalone.js %>'
             ]
@@ -307,7 +301,6 @@
               '<%=project.standalone.modules %>'
             ],
             'frontend/build/app.test.js': [
-              '<%=project.standalone.graphViewer %>',
               '<%=project.standalone.js %>'
             ]
           },
@@ -393,7 +386,6 @@
           files: [
             '!frontend/js/modules/**/*.js',
             'frontend/js/{,*/}*.js',
-            'frontend/js/graphViewer/**/*.js'
           ],
           tasks: [
             'concat_in_order:default',
