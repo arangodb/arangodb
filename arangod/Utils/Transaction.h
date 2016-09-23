@@ -62,6 +62,10 @@ class SortCondition;
 struct Variable;
 }
 
+namespace rest {
+  enum class ResponseCode; 
+}
+
 namespace traverser {
 class BaseTraverserEngine;
 }
@@ -816,6 +820,30 @@ class Transaction {
   int unlock(TRI_transaction_collection_t*, TRI_transaction_type_e);
 
  private:
+
+/// @brief Helper create a Cluster Communication document
+  OperationResult clusterResultDocument(
+      rest::ResponseCode const& responseCode,
+      std::shared_ptr<arangodb::velocypack::Builder> const& resultBody,
+      std::unordered_map<int, size_t> const& errorCounter) const;
+
+/// @brief Helper create a Cluster Communication insert
+  OperationResult clusterResultInsert(
+      rest::ResponseCode const& responseCode,
+      std::shared_ptr<arangodb::velocypack::Builder> const& resultBody,
+      std::unordered_map<int, size_t> const& errorCounter) const;
+
+/// @brief Helper create a Cluster Communication modify result
+  OperationResult clusterResultModify(
+      rest::ResponseCode const& responseCode,
+      std::shared_ptr<arangodb::velocypack::Builder> const& resultBody,
+      std::unordered_map<int, size_t> const& errorCounter) const;
+
+/// @brief Helper create a Cluster Communication remove result
+  OperationResult clusterResultRemove(
+      rest::ResponseCode const& responseCode,
+      std::shared_ptr<arangodb::velocypack::Builder> const& resultBody,
+      std::unordered_map<int, size_t> const& errorCounter) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sort ORs for the same attribute so they are in ascending value

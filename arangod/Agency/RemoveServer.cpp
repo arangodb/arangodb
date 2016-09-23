@@ -294,23 +294,19 @@ bool RemoveServer::scheduleAddFollowers() {
   }
 
   // Remove cleaned from ist
-  if (_snapshot.exists("/Target/CleanedServers").size() == 2) {
-    for (auto const& srv :
+  for (auto const& srv :
          VPackArrayIterator(_snapshot("/Target/CleanedServers").slice())) {
-      availServers.erase(std::remove(availServers.begin(), availServers.end(),
-                                     srv.copyString()),
-                         availServers.end());
-    }
+    availServers.erase(std::remove(availServers.begin(), availServers.end(),
+                                   srv.copyString()),
+                       availServers.end());
   }
 
   // Remove failed from list
-  if (_snapshot.exists("/Target/FailedServers").size() == 2) {
-    for (auto const& srv :
-         VPackArrayIterator(_snapshot("/Target/FailedServers").slice())) {
-      availServers.erase(std::remove(availServers.begin(), availServers.end(),
-                                     srv.copyString()),
-                         availServers.end());
-    }
+  for (auto const& srv :
+         VPackObjectIterator(_snapshot("/Target/FailedServers").slice())) {
+    availServers.erase(std::remove(availServers.begin(), availServers.end(),
+                                   srv.key.copyString()),
+                       availServers.end());
   }
 
   // Minimum 1 DB server must remain

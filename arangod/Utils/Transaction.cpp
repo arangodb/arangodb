@@ -1460,6 +1460,105 @@ int Transaction::documentFastPathLocal(std::string const& collectionName,
   return TRI_ERROR_NO_ERROR;
 }
 
+/// @brief Create Cluster Communication result for document
+OperationResult Transaction::clusterResultDocument(
+    rest::ResponseCode const& responseCode,
+    std::shared_ptr<VPackBuilder> const& resultBody,
+    std::unordered_map<int, size_t> const& errorCounter) const {
+  switch (responseCode) {
+    case rest::ResponseCode::OK:
+    case rest::ResponseCode::PRECONDITION_FAILED:
+      return OperationResult(resultBody->steal(), nullptr, "",
+                             responseCode == rest::ResponseCode::OK
+                                 ? TRI_ERROR_NO_ERROR
+                                 : TRI_ERROR_ARANGO_CONFLICT,
+                             false, errorCounter);
+    case rest::ResponseCode::NOT_FOUND:
+      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+    default:
+      return OperationResult(TRI_ERROR_INTERNAL);
+  }
+}
+
+/// @brief Create Cluster Communication result for insert
+OperationResult Transaction::clusterResultInsert(
+    rest::ResponseCode const& responseCode,
+    std::shared_ptr<VPackBuilder> const& resultBody,
+    std::unordered_map<int, size_t> const& errorCounter) const {
+  switch (responseCode) {
+    case rest::ResponseCode::ACCEPTED:
+    case rest::ResponseCode::CREATED:
+      return OperationResult(
+          resultBody->steal(), nullptr, "", TRI_ERROR_NO_ERROR,
+          responseCode == rest::ResponseCode::CREATED, errorCounter);
+    case rest::ResponseCode::PRECONDITION_FAILED:
+      return OperationResult(TRI_ERROR_ARANGO_CONFLICT);
+    case rest::ResponseCode::BAD:
+      return DBServerResponseBad(resultBody);
+    case rest::ResponseCode::NOT_FOUND:
+      return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    case rest::ResponseCode::CONFLICT:
+      return OperationResult(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+    default:
+      return OperationResult(TRI_ERROR_INTERNAL);
+    }
+
+}
+
+/// @brief Create Cluster Communication result for modify
+OperationResult Transaction::clusterResultModify(
+    rest::ResponseCode const& responseCode,
+    std::shared_ptr<VPackBuilder> const& resultBody,
+    std::unordered_map<int, size_t> const& errorCounter) const {
+  int errorCode = TRI_ERROR_NO_ERROR;
+  switch (responseCode) {
+    case rest::ResponseCode::CONFLICT:
+      errorCode = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+      // Fall through
+    case rest::ResponseCode::PRECONDITION_FAILED:
+      if (errorCode == TRI_ERROR_NO_ERROR) {
+        errorCode = TRI_ERROR_ARANGO_CONFLICT;
+      }
+      // Fall through
+    case rest::ResponseCode::ACCEPTED:
+    case rest::ResponseCode::CREATED:
+      return OperationResult(
+          resultBody->steal(), nullptr, "", errorCode,
+          responseCode == rest::ResponseCode::CREATED,
+          errorCounter);
+    case rest::ResponseCode::BAD:
+      return DBServerResponseBad(resultBody);
+    case rest::ResponseCode::NOT_FOUND:
+      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+    default:
+      return OperationResult(TRI_ERROR_INTERNAL);
+  }
+}
+
+/// @brief Helper create a Cluster Communication remove result
+OperationResult Transaction::clusterResultRemove(
+    rest::ResponseCode const& responseCode,
+    std::shared_ptr<VPackBuilder> const& resultBody,
+    std::unordered_map<int, size_t> const& errorCounter) const {
+  switch (responseCode) {
+    case rest::ResponseCode::OK:
+    case rest::ResponseCode::ACCEPTED:
+    case rest::ResponseCode::PRECONDITION_FAILED:
+      return OperationResult(
+          resultBody->steal(), nullptr, "",
+          responseCode == rest::ResponseCode::PRECONDITION_FAILED
+              ? TRI_ERROR_ARANGO_CONFLICT
+              : TRI_ERROR_NO_ERROR,
+          responseCode != rest::ResponseCode::ACCEPTED, errorCounter);
+    case rest::ResponseCode::BAD:
+      return DBServerResponseBad(resultBody);
+    case rest::ResponseCode::NOT_FOUND:
+      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+    default:
+      return OperationResult(TRI_ERROR_INTERNAL);
+  }
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief return one or multiple documents from a collection
 //////////////////////////////////////////////////////////////////////////////
@@ -1485,6 +1584,7 @@ OperationResult Transaction::document(std::string const& collectionName,
 /// @brief read one or multiple documents in a collection, coordinator
 //////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_ENTERPRISE
 OperationResult Transaction::documentCoordinator(std::string const& collectionName,
                                                  VPackSlice const value,
                                                  OperationOptions& options) {
@@ -1504,19 +1604,11 @@ OperationResult Transaction::documentCoordinator(std::string const& collectionNa
       _vocbase->name(), collectionName, value, options, headers, responseCode, errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    if (responseCode == rest::ResponseCode::OK ||
-        responseCode == rest::ResponseCode::PRECONDITION_FAILED) {
-      return OperationResult(resultBody->steal(), nullptr, "", 
-          responseCode == rest::ResponseCode::OK ?
-          TRI_ERROR_NO_ERROR : TRI_ERROR_ARANGO_CONFLICT, false, errorCounter);
-    } else if (responseCode == rest::ResponseCode::NOT_FOUND) {
-      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-    } else {
-      return OperationResult(TRI_ERROR_INTERNAL);
-    }
+    return clusterResultDocument(responseCode, resultBody, errorCounter);
   }
   return OperationResult(res);
 }
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief read one or multiple documents in a collection, local
@@ -1642,6 +1734,7 @@ OperationResult Transaction::insert(std::string const& collectionName,
 /// if it fails, clean up after itself
 //////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_ENTERPRISE
 OperationResult Transaction::insertCoordinator(std::string const& collectionName,
                                                VPackSlice const value,
                                                OperationOptions& options) {
@@ -1656,25 +1749,11 @@ OperationResult Transaction::insertCoordinator(std::string const& collectionName
       errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    if (responseCode == rest::ResponseCode::ACCEPTED ||
-        responseCode == rest::ResponseCode::CREATED) {
-      return OperationResult(
-          resultBody->steal(), nullptr, "", TRI_ERROR_NO_ERROR,
-          responseCode == rest::ResponseCode::CREATED, errorCounter);
-    } else if (responseCode == rest::ResponseCode::PRECONDITION_FAILED) {
-      return OperationResult(TRI_ERROR_ARANGO_CONFLICT);
-    } else if (responseCode == rest::ResponseCode::BAD) {
-      return DBServerResponseBad(resultBody);
-    } else if (responseCode == rest::ResponseCode::NOT_FOUND) {
-      return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-    } else if (responseCode == rest::ResponseCode::CONFLICT) {
-      return OperationResult(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
-    } else {
-      return OperationResult(TRI_ERROR_INTERNAL);
-    }
+    return clusterResultInsert(responseCode, resultBody, errorCounter);
   }
   return OperationResult(res);
 }
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief create one or multiple documents in a collection, local
@@ -1904,6 +1983,7 @@ OperationResult Transaction::update(std::string const& collectionName,
 /// if it fails, clean up after itself
 //////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_ENTERPRISE
 OperationResult Transaction::updateCoordinator(std::string const& collectionName,
                                                VPackSlice const newValue,
                                                OperationOptions& options) {
@@ -1919,32 +1999,11 @@ OperationResult Transaction::updateCoordinator(std::string const& collectionName
       resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    int errorCode = TRI_ERROR_NO_ERROR;
-    switch (responseCode) {
-      case rest::ResponseCode::CONFLICT:
-        errorCode = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
-        // Fall through
-      case rest::ResponseCode::PRECONDITION_FAILED:
-        if (errorCode == TRI_ERROR_NO_ERROR) {
-          errorCode = TRI_ERROR_ARANGO_CONFLICT;
-        }
-        // Fall through
-      case rest::ResponseCode::ACCEPTED:
-      case rest::ResponseCode::CREATED:
-        return OperationResult(
-            resultBody->steal(), nullptr, "", errorCode,
-            responseCode == rest::ResponseCode::CREATED,
-            errorCounter);
-      case rest::ResponseCode::BAD:
-        return DBServerResponseBad(resultBody);
-      case rest::ResponseCode::NOT_FOUND:
-        return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-      default:
-        return OperationResult(TRI_ERROR_INTERNAL);
-    }
+    return clusterResultModify(responseCode, resultBody, errorCounter);
   }
   return OperationResult(res);
 }
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief replace one or multiple documents in a collection
@@ -1978,6 +2037,7 @@ OperationResult Transaction::replace(std::string const& collectionName,
 /// if it fails, clean up after itself
 //////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_ENTERPRISE
 OperationResult Transaction::replaceCoordinator(std::string const& collectionName,
                                                 VPackSlice const newValue,
                                                 OperationOptions& options) {
@@ -1992,31 +2052,11 @@ OperationResult Transaction::replaceCoordinator(std::string const& collectionNam
       resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    int errorCode = TRI_ERROR_NO_ERROR;
-    switch (responseCode) {
-      case rest::ResponseCode::CONFLICT:
-        errorCode = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
-      case rest::ResponseCode::PRECONDITION_FAILED:
-        if (errorCode == TRI_ERROR_NO_ERROR) {
-          errorCode = TRI_ERROR_ARANGO_CONFLICT;
-        }
-        // Fall through
-      case rest::ResponseCode::ACCEPTED:
-      case rest::ResponseCode::CREATED:
-        return OperationResult(
-            resultBody->steal(), nullptr, "", errorCode,
-            responseCode == rest::ResponseCode::CREATED,
-            errorCounter);
-      case rest::ResponseCode::BAD:
-        return DBServerResponseBad(resultBody);
-      case rest::ResponseCode::NOT_FOUND:
-        return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-      default:
-        return OperationResult(TRI_ERROR_INTERNAL);
-    }
+    return clusterResultModify(responseCode, resultBody, errorCounter);
   }
   return OperationResult(res);
 }
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief replace one or multiple documents in a collection, local
@@ -2255,6 +2295,7 @@ OperationResult Transaction::remove(std::string const& collectionName,
 /// if it fails, clean up after itself
 //////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_ENTERPRISE
 OperationResult Transaction::removeCoordinator(std::string const& collectionName,
                                                VPackSlice const value,
                                                OperationOptions& options) {
@@ -2268,26 +2309,11 @@ OperationResult Transaction::removeCoordinator(std::string const& collectionName
       errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    if (responseCode == rest::ResponseCode::OK ||
-        responseCode == rest::ResponseCode::ACCEPTED ||
-        responseCode == rest::ResponseCode::PRECONDITION_FAILED) {
-      return OperationResult(
-          resultBody->steal(), nullptr, "",
-          responseCode == rest::ResponseCode::PRECONDITION_FAILED
-              ? TRI_ERROR_ARANGO_CONFLICT
-              : TRI_ERROR_NO_ERROR,
-          responseCode != rest::ResponseCode::ACCEPTED,
-          errorCounter);
-    } else if (responseCode == rest::ResponseCode::BAD) {
-      return DBServerResponseBad(resultBody);
-    } else if (responseCode == rest::ResponseCode::NOT_FOUND) {
-      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-    } else {
-      return OperationResult(TRI_ERROR_INTERNAL);
-    }
+    return clusterResultRemove(responseCode, resultBody, errorCounter);
   }
   return OperationResult(res);
 }
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief remove one or multiple documents in a collection, local

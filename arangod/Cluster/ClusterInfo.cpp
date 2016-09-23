@@ -2107,18 +2107,18 @@ void ClusterInfo::loadCurrentDBServers() {
       decltype(_DBServers) newDBServers;
 
       for (auto const& dbserver : VPackObjectIterator(currentDBServers)) {
-        if (failedDBServers.isArray()) {
-          bool found = false;
-          for (auto const& failedServer : VPackArrayIterator(failedDBServers)) {
-            if (dbserver.key == failedServer) {
-              found = true;
-              continue;
-            }
-          }
-          if (found) {
+
+        bool found = false;
+        for (auto const& failedServer : VPackObjectIterator(failedDBServers)) {
+          if (dbserver.key == failedServer.key) {
+            found = true;
             continue;
           }
         }
+        if (found) {
+          continue;
+        }
+
         if (cleanedDBServers.isArray()) {
           bool found = false;
           for (auto const& cleanedServer : VPackArrayIterator(cleanedDBServers)) {

@@ -192,42 +192,40 @@ bool UnassumedLeadership::reassignShard() {
   for (auto const& srv : dbservers) {
     availServers.push_back(srv.first);
   }
-
+  
   // Remove this server
   availServers.erase(
-      std::remove(availServers.begin(), availServers.end(), _from),
-      availServers.end());
-
-  // Remove cleaned from ist
-  if (_snapshot.exists("/Target/CleanedServers").size() == 2) {
-    for (auto const& srv :
+    std::remove(availServers.begin(), availServers.end(), _from),
+    availServers.end());
+  
+  // Remove cleaned from list
+  for (auto const& srv :
          VPackArrayIterator(_snapshot("/Target/CleanedServers").slice())) {
-      availServers.erase(std::remove(availServers.begin(), availServers.end(),
-                                     srv.copyString()),
-                         availServers.end());
-    }
+    availServers.erase(
+      std::remove(availServers.begin(), availServers.end(), srv.copyString()),
+      availServers.end());
   }
-
-  // Remove failed from ist
-  if (_snapshot.exists("/Target/FailedServers").size() == 2) {
-    for (auto const& srv :
-         VPackArrayIterator(_snapshot("/Target/FailedServers").slice())) {
-      availServers.erase(std::remove(availServers.begin(), availServers.end(),
-                                     srv.copyString()),
-                         availServers.end());
-    }
+  
+  // Remove failed from list
+  for (auto const& srv :
+         VPackObjectIterator(_snapshot("/Target/FailedServers").slice())) {
+    availServers.erase(
+      std::remove(
+        availServers.begin(), availServers.end(), srv.key.copyString()),
+      availServers.end());
   }
-
-  // Only destinations, which are not already holding this shard
+  
+// Only destinations, which are not already holding this shard
   std::string path =
-      planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
+    planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
   auto const& plannedservers = _snapshot(path);
   for (auto const& dbserver : VPackArrayIterator(plannedservers.slice())) {
-    availServers.erase(std::remove(availServers.begin(), availServers.end(),
-                                   dbserver.copyString()),
-                       availServers.end());
+    availServers.erase(
+      std::remove(
+        availServers.begin(), availServers.end(), dbserver.copyString()),
+      availServers.end());
   }
-
+  
   // Minimum 1 DB server must remain
   if (availServers.empty()) {
     LOG_TOPIC(ERR, Logger::AGENCY) << "No DB servers left as target.";

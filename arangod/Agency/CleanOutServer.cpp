@@ -331,29 +331,25 @@ bool CleanOutServer::checkFeasibility() {
   }
 
   // Server has not been cleaned already
-  if (_snapshot.exists("/Target/CleanedServers").size() == 2) {
-    for (auto const& srv :
+  for (auto const& srv :
          VPackArrayIterator(_snapshot("/Target/CleanedServers").slice())) {
-      if (srv.copyString() == _server) {
-        LOG_TOPIC(ERR, Logger::AGENCY) << _server
-                                       << " has been cleaned out already!";
-        return false;
-      }
+    if (srv.copyString() == _server) {
+      LOG_TOPIC(ERR, Logger::AGENCY) << _server
+                                     << " has been cleaned out already!";
+      return false;
     }
   }
 
-  // Server has not been cleaned already
-  if (_snapshot.exists("/Target/FailedServers").size() == 2) {
-    for (auto const& srv :
-         VPackArrayIterator(_snapshot("/Failed/CleanedServers").slice())) {
-      if (srv.copyString() == _server) {
-        LOG_TOPIC(ERR, Logger::AGENCY) << _server
-                                       << " has been cleaned out already!";
-        return false;
-      }
+  // Server has not failed already
+  for (auto const& srv :
+         VPackObjectIterator(_snapshot("/Target/FailedServers").slice())) {
+    if (srv.key.copyString() == _server) {
+      LOG_TOPIC(ERR, Logger::AGENCY) << _server
+                                     << " has failed!";
+      return false;
     }
   }
-
+  
   if (_snapshot.exists(serverStatePrefix + _server + "/cleaning").size() == 4) {
     LOG_TOPIC(ERR, Logger::AGENCY) << _server
                                    << " has been cleaned out already!";

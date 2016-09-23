@@ -52,7 +52,7 @@ FailedLeader::FailedLeader(Node const& snapshot, Agent* agent,
       }
     }
   } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
     finish("Shards/" + _shard, false, e.what());
   }
 }
@@ -68,6 +68,8 @@ bool FailedLeader::create() {
   _jb = std::make_shared<Builder>();
   _jb->openArray();
   _jb->openObject();
+
+  // Todo entry
   _jb->add(path, VPackValue(VPackValueType::Object));
   _jb->add("creator", VPackValue(_creator));
   _jb->add("type", VPackValue("failedLeader"));
@@ -81,6 +83,14 @@ bool FailedLeader::create() {
   _jb->add("timeCreated",
            VPackValue(timepointToString(std::chrono::system_clock::now())));
   _jb->close();
+
+  // Add shard to /arango/Target/FailedServers/<server> array
+  path = _agencyPrefix + failedServersPrefix + "/" + _from;
+  _jb->add(path, VPackValue(VPackValueType::Object));
+  _jb->add("op", VPackValue("push"));
+  _jb->add("new", VPackValue(_shard));
+  _jb->close();
+  
   _jb->close();
   _jb->close();
 
@@ -125,7 +135,7 @@ bool FailedLeader::start() {
       return false;
     }
   } else {
-    todo.add(_jb->slice()[0].valueAt(0));
+    todo.add(_jb->slice().get(_agencyPrefix + toDoPrefix + _jobId).valueAt(0));
   }
   todo.close();
 
@@ -236,6 +246,20 @@ JOB_STATUS FailedLeader::status() {
     Node const& current = _snapshot(curPath);
 
     if (planned.slice()[0] == current.slice()[0]) {
+
+      // Remove shard to /arango/Target/FailedServers/<server> array
+      Builder del;
+      del.openArray();
+      del.openObject();
+      std::string path = _agencyPrefix + failedServersPrefix + "/" + _from;
+      del.add(path, VPackValue(VPackValueType::Object));
+      del.add("op", VPackValue("erase"));
+      del.add("val", VPackValue(_shard));
+      del.close();
+      del.close();
+      del.close();
+      write_ret_t res = transact(_agent, del);
+  
       if (finish("Shards/" + shard)) {
         return FINISHED;
       }
