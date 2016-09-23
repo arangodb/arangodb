@@ -63,7 +63,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUp: function () {
+    setUpAll: function () {
       db._drop(v1);
       db._drop(v2);
       db._drop(v3);
@@ -125,7 +125,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown: function () {
+    tearDownAll: function () {
       db._drop(v1);
       db._drop(v2);
       db._drop(v3);
@@ -714,7 +714,7 @@ function ahuacatlQueryGeneralCommonTestSuite() {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUp: function () {
+    setUpAll: function () {
       db._drop("UnitTestsAhuacatlVertex1");
       db._drop("UnitTestsAhuacatlVertex2");
       db._drop("UnitTestsAhuacatlEdge1");
@@ -776,7 +776,7 @@ function ahuacatlQueryGeneralCommonTestSuite() {
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown: function () {
+    tearDownAll: function () {
       db._drop("UnitTestsAhuacatlVertex1");
       db._drop("UnitTestsAhuacatlVertex2");
       db._drop("UnitTestsAhuacatlEdge1");
@@ -998,7 +998,7 @@ function ahuacatlQueryGeneralPathsTestSuite() {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUp: function () {
+    setUpAll: function () {
       db._drop("UnitTestsAhuacatlVertex1");
       db._drop("UnitTestsAhuacatlVertex2");
       db._drop("UnitTestsAhuacatlVertex3");
@@ -1056,7 +1056,7 @@ function ahuacatlQueryGeneralPathsTestSuite() {
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown: function () {
+    tearDownAll: function () {
       db._drop("UnitTestsAhuacatlVertex1");
       db._drop("UnitTestsAhuacatlVertex2");
       db._drop("UnitTestsAhuacatlVertex3");
@@ -1236,7 +1236,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUp: function () {
+    setUpAll: function () {
       db._drop("UnitTests_Berliner");
       db._drop("UnitTests_Hamburger");
       db._drop("UnitTests_Frankfurter");
@@ -1303,7 +1303,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown: function () {
+    tearDownAll: function () {
       graph._drop("werKenntWen", true);
     },
 
@@ -2062,7 +2062,7 @@ function ahuacatlQueryGeneralCyclesSuite() {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUp: function () {
+    setUpAll: function () {
       db._drop("UnitTests_Berliner");
       db._drop("UnitTests_Hamburger");
       db._drop("UnitTests_Frankfurter");
@@ -2125,7 +2125,7 @@ function ahuacatlQueryGeneralCyclesSuite() {
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown: function () {
+    tearDownAll: function () {
       db._drop("UnitTests_Berliner");
       db._drop("UnitTests_Hamburger");
       db._drop("UnitTests_Frankfurter");
@@ -2496,7 +2496,7 @@ function ahuacatlQueryMultiCollectionMadnessTestSuite() {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUp: function () {
+    setUpAll: function () {
       db._drop(v1);
       db._drop(v2);
       db._drop(v3);
@@ -2540,7 +2540,7 @@ function ahuacatlQueryMultiCollectionMadnessTestSuite() {
       graph._registerCompatibilityFunctions();
     },
 
-    tearDown: function () {
+    tearDownAll: function () {
       graph._drop(gN, true);
     },
 
@@ -2596,8 +2596,3 @@ jsunity.run(ahuacatlQueryGeneralEdgesTestSuite);
 jsunity.run(ahuacatlQueryMultiCollectionMadnessTestSuite);
 
 return jsunity.done();
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

@@ -73,7 +73,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUp: function () {
+    setUpAll: function () {
       db._drop(v1);
       db._drop(v2);
       db._drop(v3);
@@ -134,7 +134,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown: function () {
+    tearDownAll: function () {
       db._drop(v1);
       db._drop(v2);
       db._drop(v3);
@@ -682,7 +682,7 @@ function ahuacatlQueryGeneralCommonTestSuite() {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUp: function () {
+    setUpAll: function () {
       db._drop("UnitTestsAhuacatlVertex1");
       db._drop("UnitTestsAhuacatlVertex2");
       db._drop("UnitTestsAhuacatlEdge1");
@@ -743,7 +743,7 @@ function ahuacatlQueryGeneralCommonTestSuite() {
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown: function () {
+    tearDownAll: function () {
       db._drop("UnitTestsAhuacatlVertex1");
       db._drop("UnitTestsAhuacatlVertex2");
       db._drop("UnitTestsAhuacatlEdge1");
@@ -1024,7 +1024,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUp: function () {
+    setUpAll: function () {
       db._drop(v1);
       db._drop(v2);
       db._drop(v3);
@@ -1090,7 +1090,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown: function () {
+    tearDownAll: function () {
       graph._drop("werKenntWen", true);
     },
 
@@ -1358,7 +1358,7 @@ function ahuacatlQueryGeneralCyclesSuite() {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUp: function () {
+    setUpAll: function () {
       db._drop(v1);
       db._drop(v2);
       db._drop(v3);
@@ -1420,7 +1420,7 @@ function ahuacatlQueryGeneralCyclesSuite() {
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown: function () {
+    tearDownAll: function () {
       db._drop("UnitTests_Berliner");
       db._drop("UnitTests_Hamburger");
       db._drop("UnitTests_Frankfurter");
@@ -1524,7 +1524,7 @@ function ahuacatlQueryMultiCollectionMadnessTestSuite() {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUp: function () {
+    setUpAll: function () {
       db._drop(v1);
       db._drop(v2);
       db._drop(v3);
@@ -1567,7 +1567,7 @@ function ahuacatlQueryMultiCollectionMadnessTestSuite() {
       );
     },
 
-    tearDown: function () {
+    tearDownAll: function () {
       graph._drop(gN, true);
     },
 
@@ -1615,7 +1615,7 @@ function ahuacatlQueryShortestPathTestSuite() {
   const graphName = "abc";
   
   return {
-    setUp: function () {
+    setUpAll: function () {
       db._drop(v1);
       db._drop(v2);
       db._drop(v3);
@@ -1672,7 +1672,7 @@ function ahuacatlQueryShortestPathTestSuite() {
       makeEdge(B._id, A._id, g[e2], 2);
     },
     
-    tearDown: function () {
+    tearDownAll: function () {
       db._drop(v1);
       db._drop(v2);
       db._drop(v3);

@@ -52,7 +52,7 @@ function ahuacatlQueryEdgesTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       db._drop(vn);
       db._drop("UnitTestsAhuacatlEdge");
 
@@ -86,7 +86,7 @@ function ahuacatlQueryEdgesTestSuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop("UnitTestsAhuacatlVertex");
       db._drop("UnitTestsAhuacatlEdge");
     },
@@ -410,7 +410,7 @@ function ahuacatlQueryNeighborsTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       db._drop(vn);
       db._drop("UnitTestsAhuacatlEdge");
 
@@ -444,7 +444,7 @@ function ahuacatlQueryNeighborsTestSuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop(vn);
       db._drop("UnitTestsAhuacatlEdge");
     },
@@ -673,7 +673,7 @@ function ahuacatlQueryBreadthFirstTestSuite () {
 ///       +--> C <--+
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       cleanUp();
 
       vertex = db._create(vn);
@@ -709,7 +709,7 @@ function ahuacatlQueryBreadthFirstTestSuite () {
       makeEdge("C","A","friend");
     },
 
-    tearDown : cleanUp,
+    tearDownAll : cleanUp,
 
     testNonUniqueVerticesDefaultDepth : function() {
       var query = `WITH ${vn}
@@ -843,7 +843,7 @@ function ahuacatlQueryShortestPathTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       db._drop(vn);
       db._drop(en);
 
@@ -866,7 +866,7 @@ function ahuacatlQueryShortestPathTestSuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop(vn);
       db._drop(en);
 
@@ -1005,7 +1005,7 @@ function ahuacatlQueryNeighborsErrorsSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       db._drop(vn);
       db._drop(en);
       internal.debugClearFailAt();
@@ -1028,7 +1028,7 @@ function ahuacatlQueryNeighborsErrorsSuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop(vn);
       db._drop(en);
       internal.debugClearFailAt();
@@ -1094,7 +1094,7 @@ function ahuacatlQueryShortestpathErrorsSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       db._drop(vn);
       db._drop(en);
       internal.debugClearFailAt();
@@ -1117,7 +1117,7 @@ function ahuacatlQueryShortestpathErrorsSuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop(vn);
       db._drop(en);
       internal.debugClearFailAt();

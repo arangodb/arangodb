@@ -101,7 +101,7 @@ function namedGraphSuite () {
 
   return {
 
-    setUp: function() {
+    setUpAll: function() {
       opts.allPlans = true;
       opts.verbosePlans = true;
       cleanup();
@@ -114,7 +114,7 @@ function namedGraphSuite () {
       g = gm._create(gn, [gm._relation(en, vn, vn)]);
     },
 
-    tearDown: function () {
+    tearDownAll: function () {
       gm._drop(gn);
       cleanup();
     },
@@ -432,7 +432,7 @@ function multiCollectionGraphSuite () {
 
   return {
 
-    setUp: function() {
+    setUpAll: function() {
       opts.allPlans = true;
       opts.verbosePlans = true;
       cleanup();
@@ -449,7 +449,7 @@ function multiCollectionGraphSuite () {
       db[en2].save(vn2 + "/G", vn + "/D", {});
     },
 
-    tearDown: function() {
+    tearDownAll: function() {
       gm._drop(gn);
       db._drop(vn2);
       db._drop(en2);
@@ -946,7 +946,7 @@ function multiEdgeCollectionGraphSuite () {
 
   return {
 
-    setUp: function() {
+    setUpAll: function() {
       opts.allPlans = true;
       opts.verbosePlans = true;
       cleanup();
@@ -974,7 +974,7 @@ function multiEdgeCollectionGraphSuite () {
       edge.EA = ec2.save(vertex.E, vertex.A, {})._id;
     },
 
-    tearDown: function() {
+    tearDownAll: function() {
       gm._drop(gn);
       db._drop(vn);
       db._drop(en);
@@ -1009,7 +1009,7 @@ function potentialErrorsSuite () {
 
   return {
 
-    setUp: function () {
+    setUpAll: function () {
       cleanup();
       vc = db._create(vn);
       ec = db._createEdgeCollection(en);
@@ -1020,7 +1020,7 @@ function potentialErrorsSuite () {
       ec.save(vertex.B, vertex.C, {});
     },
 
-    tearDown: cleanup,
+    tearDownAll: cleanup,
 
     testNonIntegerSteps: function () {
       var query = "FOR x IN 2.5 OUTBOUND @startId @@eCol RETURN x";
@@ -1446,7 +1446,7 @@ function optimizeInSuite () {
 
   return {
 
-    setUp: function () {
+    setUpAll: function () {
       cleanup();
       vc = db._create(vn, {numberOfShards: 4});
       ec = db._createEdgeCollection(en, {numberOfShards: 4});
@@ -1462,7 +1462,7 @@ function optimizeInSuite () {
       }
     },
 
-    tearDown: cleanup,
+    tearDownAll: cleanup,
 
     testSingleOptimize: function () {
       var vertexQuery = `WITH ${vn}
@@ -1660,7 +1660,7 @@ function complexFilteringSuite () {
    ***********************************************************************/
 
   return {
-    setUp: function() {
+    setUpAll: function() {
       cleanup();
       var vc = db._create(vn, {numberOfShards: 4});
       var ec = db._createEdgeCollection(en, {numberOfShards: 4});
@@ -1688,7 +1688,7 @@ function complexFilteringSuite () {
       edge.Tri31 = ec.save(vertex.Tri3, vertex.Tri1, {isLoop: true, lateLoop: true})._id;
     },
 
-    tearDown: cleanup,
+    tearDownAll: cleanup,
 
     testVertexEarlyPruneHighDepth: function () {
       var query = `WITH ${vn}
@@ -2071,7 +2071,7 @@ function brokenGraphSuite () {
 
   return {
 
-    setUp: function () {
+    setUpAll: function () {
       cleanup();
       vc = db._create(vn, {numberOfShards: 4});
       ec = db._createEdgeCollection(en, {numberOfShards: 4});
@@ -2083,7 +2083,7 @@ function brokenGraphSuite () {
       ec.save(vn + "/missing", vertex.B, {});
     },
 
-    tearDown: cleanup,
+    tearDownAll: cleanup,
 
     testRequestMissingVertex: function () {
       var query = `WITH ${vn} FOR x IN OUTBOUND @startId @@eCol RETURN x._id`;
@@ -2185,7 +2185,7 @@ function multiEdgeDirectionSuite () {
 
   return {
 
-    setUp: function () {
+    setUpAll: function () {
       cleanup();
       db._drop(en2);
 
@@ -2216,7 +2216,7 @@ function multiEdgeDirectionSuite () {
       ec.save(vertex.E, vertex.F, {});
     },
 
-    tearDown: function () {
+    tearDownAll: function () {
       cleanup();
       db._drop(en2);
     },
@@ -2315,7 +2315,7 @@ function subQuerySuite () {
      *
      */
 
-    setUp: function () {
+    setUpAll: function () {
       cleanup();
       vc = db._create(vn, {numberOfShards: 4});
       ec = db._createEdgeCollection(en, {numberOfShards: 4});
@@ -2374,7 +2374,7 @@ function subQuerySuite () {
       ec.save(vertex.D, vertex.D5, {});
     },
 
-    tearDown: function () {
+    tearDownAll: function () {
       try {
         gm._drop(gn);
       } catch (e) {
@@ -2659,7 +2659,7 @@ function optimizeQuantifierSuite() {
   let edges = {};
 
   return {
-    setUp: function () {
+    setUpAll: function () {
       cleanup();
       vc = db._create(vn, {numberOfShards: 4});
       ec = db._createEdgeCollection(en, {numberOfShards: 4});
@@ -2687,7 +2687,7 @@ function optimizeQuantifierSuite() {
       gm._create(gn, [gm._relation(en, vn, vn)]);
     },
 
-    tearDown: function () {
+    tearDownAll: function () {
       try {
         gm._drop(gn);
       } catch (e) {
