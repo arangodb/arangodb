@@ -331,6 +331,7 @@ TRI_fulltext_handle_t TRI_InsertHandleFulltextIndex(
 
   // fill in document
   slot->_documents[slotPosition] = document;
+  slot->_deleted[slotPosition] = 0;
   slot->_numUsed++;
   // no need to fill in deleted flag as it is initialized to false
 
