@@ -48,13 +48,14 @@ set(CMAKE_TARGET_ARCHITECTURES @CMAKE_TARGET_ARCHITECTURES@)
 
 set(ORIGINAL_SOURCE_DIR @PROJECT_SOURCE_DIR@)
 set(PROJECT_SOURCE_DIR @PROJECT_SOURCE_DIR@)
+set(CPACK_PACKAGE_NAME @CPACK_PACKAGE_NAME@)
 
 
 ################################################################################
 # Get the final values for cpack:
 ################################################################################
 set(CPACK_PACKAGE_VERSION "${ARANGODB_VERSION}")
-set(CPACK_PACKAGE_NAME "arangodb3-client")
+set(CPACK_PACKAGE_NAME "${CPACK_PACKAGE_NAME}-client")
 set(CPACK_DEBIAN_PACKAGE_SECTION "shell")
 set(CPACK_PACKAGE_VENDOR  ${ARANGODB_PACKAGE_VENDOR})
 set(CPACK_PACKAGE_CONTACT ${ARANGODB_PACKAGE_CONTACT})

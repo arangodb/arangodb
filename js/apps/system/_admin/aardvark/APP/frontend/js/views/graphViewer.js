@@ -114,9 +114,10 @@
       sigma.plugins.image(this.currentGraph, this.currentGraph.renderers[0], {
         download: true,
         size: size,
+        clip: true,
         labels: true,
         background: 'white',
-        zoom: true
+        zoom: false
       });
     },
 
@@ -158,19 +159,26 @@
 
               // FULLSCREEN STYLING
               $('#toggleForce').css('bottom', '10px');
+              $('#toggleForce').css('right', '10px');
 
               $('#objectCount').css('bottom', '10px');
-              $('#objectCount').css('left', '25px');
+              $('#objectCount').css('left', '10px');
+
+              $('.nodeInfoDiv').css('top', '10px');
+              $('.nodeInfoDiv').css('left', '10px');
             } else {
               self.isFullscreen = false;
 
               // NO FULLSCREEN STYLING
               $('#toggleForce').css('bottom', '40px');
+              $('#toggleForce').css('right', '40px');
 
               $('#objectCount').css('bottom', '50px');
               $('#objectCount').css('left', '25px');
+
+              $('.nodeInfoDiv').css('top', '');
+              $('.nodeInfoDiv').css('left', '165px');
             }
-            console.log(self.isFullscreen);
           }
         };
 
@@ -1582,9 +1590,9 @@
               var callback = function (error, data) {
                 if (!error) {
                   var attributes = '';
-                  attributes += '<span>ID </span> <span class="nodeId">' + data._id + '</span>';
+                  attributes += '<span class="title">ID </span> <span class="nodeId">' + data._id + '</span>';
                   if (Object.keys(data).length > 3) {
-                    attributes += '<span>ATTRIBUTES </span>';
+                    attributes += '<span class="title">ATTRIBUTES </span>';
                   }
                   _.each(data, function (value, key) {
                     if (key !== '_key' && key !== '_id' && key !== '_rev' && key !== '_from' && key !== '_to') {
@@ -1594,6 +1602,10 @@
                   var string = '<div id="nodeInfoDiv" class="nodeInfoDiv" style="display: none;">' + attributes + '</div>';
 
                   $('#graph-container').append(string);
+                  if (self.isFullscreen) {
+                    $('.nodeInfoDiv').css('top', '10px');
+                    $('.nodeInfoDiv').css('left', '10px');
+                  }
                   $('#nodeInfoDiv').fadeIn('slow');
                 }
               };
@@ -1706,20 +1718,18 @@
 
         var unhighlightNodes = function () {
           self.nodeHighlighted = false;
-          if (s.graph.getNodesCount() < 250) {
-            self.activeNodes = [];
+          self.activeNodes = [];
 
-            s.graph.nodes().forEach(function (n) {
-              n.color = n.originalColor;
-            });
+          s.graph.nodes().forEach(function (n) {
+            n.color = n.originalColor;
+          });
 
-            s.graph.edges().forEach(function (e) {
-              e.color = e.originalColor;
-            });
+          s.graph.edges().forEach(function (e) {
+            e.color = e.originalColor;
+          });
 
-            $('.nodeInfoDiv').remove();
-            s.refresh({ skipIndexation: true });
-          }
+          $('.nodeInfoDiv').remove();
+          s.refresh({ skipIndexation: true });
         };
 
         s.bind('rightClickStage', function (e) {
