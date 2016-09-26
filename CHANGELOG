@@ -131,6 +131,7 @@ devel
 
 * all lambdas in ClusterInfo might have been left with dangling references.
 
+* Agency bug fix for handling of empty json objects as values.
 
 v3.0.10 (XXXX-XX-XX)
 --------------------

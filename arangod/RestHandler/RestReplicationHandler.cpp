@@ -1704,7 +1704,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
 
   // shards
   std::vector<std::string> dbServers;  // will be filled
-  std::map<std::string, std::vector<std::string>> shardDistribution =
+  std::unordered_map<std::string, std::vector<std::string>> shardDistribution =
       arangodb::distributeShards(numberOfShards, replicationFactor,
                                   dbServers);
   if (shardDistribution.empty()) {

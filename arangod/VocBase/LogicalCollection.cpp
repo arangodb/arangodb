@@ -132,11 +132,14 @@ static TRI_voc_cid_t ReadCid(VPackSlice info) {
     return 0;
   }
 
+  // Somehow the cid is now propagated to dbservers
   TRI_voc_cid_t cid = Helper::extractIdValue(info);
 
   if (cid == 0) {
     if (ServerState::instance()->isDBServer()) {
       cid = ClusterInfo::instance()->uniqid();
+    } else if (ServerState::instance()->isCoordinator()) {
+      cid = ClusterInfo::instance()->uniqid(1);
     } else {
       cid = TRI_NewTickServer();
     }
@@ -309,6 +312,7 @@ LogicalCollection::LogicalCollection(
       _planId(other->planId()),
       _type(other->type()),
       _name(other->name()),
+      _distributeShardsLike(other->distributeShardsLike()),
       _status(other->status()),
       _isLocal(false),
       _isDeleted(other->_isDeleted),
@@ -337,7 +341,6 @@ LogicalCollection::LogicalCollection(
       _lastCompactionStatus(nullptr),
       _lastCompactionStamp(0.0),
       _uncollectedLogfileEntries(0) {
-        
   _keyGenerator.reset(KeyGenerator::factory(other->keyOptions()));
   
   createPhysical();
@@ -359,13 +362,15 @@ LogicalCollection::LogicalCollection(
 // @brief Constructor used in coordinator case.
 // The Slice contains the part of the plan that
 // is relevant for this collection.
-LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice const& info, bool isPhysical)
+LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
+                                     VPackSlice const& info, bool isPhysical)
     : _internalVersion(0),
       _cid(ReadCid(info)),
       _planId(ReadPlanId(info, _cid)),
       _type(ReadNumericValue<TRI_col_type_e, int>(info, "type",
                                                   TRI_COL_TYPE_UNKNOWN)),
       _name(ReadStringValue(info, "name", "")),
+      _distributeShardsLike(ReadStringValue(info, "distributeShardsLike", "")),
       _status(ReadNumericValue<TRI_vocbase_col_status_e, int>(
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
       _isLocal(!ServerState::instance()->isCoordinator()),
@@ -382,9 +387,10 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice const& i
                                            TRI_JOURNAL_DEFAULT_SIZE))),
       _keyOptions(CopySliceValue(info, "keyOptions")),
       _version(ReadNumericValue<uint32_t>(info, "version", minimumVersion())),
-      _indexBuckets(ReadNumericValue<uint32_t>(info, "indexBuckets", DatabaseFeature::defaultIndexBuckets())),
+      _indexBuckets(ReadNumericValue<uint32_t>(
+          info, "indexBuckets", DatabaseFeature::defaultIndexBuckets())),
       _replicationFactor(ReadNumericValue<int>(info, "replicationFactor", 1)),
-      _numberOfShards(GetObjectLength(info, "shards", 1)),
+      _numberOfShards(ReadNumericValue<size_t>(info, "numberOfShards", 1)),
       _allowUserKeys(ReadBooleanValue(info, "allowUserKeys", true)),
       _shardIds(new ShardMap()),
       _vocbase(vocbase),
@@ -400,14 +406,15 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice const& i
       _lastCompactionStatus(nullptr),
       _lastCompactionStamp(0.0),
       _uncollectedLogfileEntries(0) {
- 
   if (!IsAllowedName(info)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
   
   if (_version < minimumVersion()) { 
     // collection is too "old"
-    std::string errorMsg(std::string("collection '") + _name + "' has a too old version. Please start the server with the --database.auto-upgrade option.");
+    std::string errorMsg(std::string("collection '") + _name +
+                         "' has a too old version. Please start the server "
+                         "with the --database.auto-upgrade option.");
 
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, errorMsg);
   }
@@ -418,20 +425,76 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice const& i
         TRI_ERROR_BAD_PARAMETER,
         "volatile collections do not support the waitForSync option");
   }
+
   if (_journalSize < TRI_JOURNAL_MINIMAL_SIZE) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "<properties>.journalSize too small");
   }
-  if (info.isObject()) {
-    // Otherwise the cluster communication is broken.
-    // We cannot store anything further.
-    auto shardKeysSlice = info.get("shardKeys");
-    if (shardKeysSlice.isArray()) {
-      for (auto const& shardKey : VPackArrayIterator(shardKeysSlice)) {
-        _shardKeys.push_back(shardKey.copyString());
+
+  // Cluster only tests
+  if (ServerState::instance()->isCoordinator()) {
+    if (_numberOfShards == 0 || _numberOfShards > 1000) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "invalid number of shards");
+    }
+
+    VPackSlice keyGenSlice = info.get("keyOptions");
+    if (keyGenSlice.isObject()) {
+      keyGenSlice = keyGenSlice.get("type");
+      if (keyGenSlice.isString()) {
+        StringRef tmp(keyGenSlice);
+        if (!tmp.empty() && tmp != "traditional") {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNSUPPORTED,
+                                         "non-traditional key generators are "
+                                         "not supported for sharded "
+                                         "collections");
+        }
       }
     }
 
+    VPackSlice shardKeysSlice = info.get("shardKeys");
+
+    if (shardKeysSlice.isNone()) {
+      // Use default.
+      _shardKeys.emplace_back(StaticStrings::KeyString);
+    } else {
+      if (shardKeysSlice.isArray()) {
+        for (auto const& sk : VPackArrayIterator(shardKeysSlice)) {
+          if (sk.isString()) {
+            StringRef key(sk);
+            // remove : char at the beginning or end (for enterprise)
+            StringRef stripped;
+            if (!key.empty()) {
+              if (key.front() == ':') {
+                stripped = key.substr(1);
+              } else if (key.back() == ':') {
+                stripped = key.substr(0, key.size()-1);
+              } else {
+                stripped = key;
+              }
+            }
+            // system attributes are not allowed (except _key)
+            if (!stripped.empty() && stripped != StaticStrings::IdString &&
+                stripped != StaticStrings::RevString) {
+              _shardKeys.push_back(key.toString());
+            }
+          }
+        }
+      }
+    }
+
+    if (_shardKeys.empty() || _shardKeys.size() > 8) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "invalid number of shard keys");
+    }
+
+    if (_replicationFactor == 0 ||_replicationFactor > 10) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "invalid replicationFactor");
+    }
+  }
+
+  if (info.isObject()) {
     auto shardsSlice = info.get("shards");
     if (shardsSlice.isObject()) {
       for (auto const& shardSlice : VPackObjectIterator(shardsSlice)) {
@@ -447,11 +510,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice const& i
       }
     }
   
-   /* 
-    if (!isCluster) {
-      createInitialIndexes();
-    }
-*/
     auto indexesSlice = info.get("indexes");
     if (indexesSlice.isArray()) {
       bool const isCluster = ServerState::instance()->isRunningInCluster();
@@ -469,12 +527,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice const& i
         if (isCluster) {
           addIndexCoordinator(idx, false);
         } else {
-/*          if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
-              idx->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
-            // already added those types earlier
-            continue;
-          }
-*/          
           addIndex(idx);
         }
       }
@@ -493,6 +545,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase, VPackSlice const& i
       }
     }
   }
+
 
   _keyGenerator.reset(KeyGenerator::factory(info.get("keyOptions")));
 
@@ -640,6 +693,10 @@ std::string LogicalCollection::name() const {
   // TODO Activate this lock. Right now we have some locks outside.
   // READ_LOCKER(readLocker, _lock);
   return _name;
+}
+
+std::string const& LogicalCollection::distributeShardsLike() const {
+  return _distributeShardsLike;
 }
 
 std::string LogicalCollection::dbName() const {
@@ -830,6 +887,10 @@ std::shared_ptr<ShardMap> LogicalCollection::shardIds() const {
   return _shardIds;
 }
 
+void LogicalCollection::setShardMap(std::shared_ptr<ShardMap>& map) {
+  _shardIds = map;
+}
+
 // SECTION: Modification Functions
 
 // asks the storage engine to rename the collection to the given name
@@ -939,10 +1000,61 @@ void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
   } 
 }
 
+// TODO Make this pretty. Copy of other with only one swith. Ambigous
+void LogicalCollection::toVelocyPackForAgency(VPackBuilder& result) {
+  _status = TRI_VOC_COL_STATUS_LOADED;
+  result.openObject();
+  result.add("id", VPackValue(std::to_string(_cid)));
+  result.add("name", VPackValue(_name));
+  result.add("type", VPackValue(static_cast<int>(_type)));
+  result.add("status", VPackValue(_status));
+  result.add("deleted", VPackValue(_isDeleted));
+  result.add("doCompact", VPackValue(_doCompact));
+  result.add("isSystem", VPackValue(_isSystem));
+  result.add("isVolatile", VPackValue(_isVolatile));
+  result.add("waitForSync", VPackValue(_waitForSync));
+  result.add("journalSize", VPackValue(_journalSize));
+  result.add("indexBuckets", VPackValue(_indexBuckets));
+  result.add("replicationFactor", VPackValue(_replicationFactor));
+  
+  if (_keyGenerator != nullptr) {
+    result.add(VPackValue("keyOptions"));
+    result.openObject();
+    _keyGenerator->toVelocyPack(result);
+    result.close();
+  }
+
+  result.add(VPackValue("shardKeys"));
+  result.openArray();
+  for (auto const& key : _shardKeys) {
+    result.add(VPackValue(key));
+  }
+  result.close(); // shardKeys
+
+  result.add(VPackValue("shards"));
+  result.openObject();
+  for (auto const& shards : *_shardIds) {
+    result.add(VPackValue(shards.first));
+    result.openArray();
+    for (auto const& servers : shards.second) {
+      result.add(VPackValue(servers));
+    }
+    result.close(); // server array
+  }
+  result.close(); // shards
+
+
+  result.add(VPackValue("indexes"));
+  getIndexesVPack(result, false);
+
+  result.close(); // Base Object
+}
+
 void LogicalCollection::toVelocyPack(VPackBuilder& result, bool withPath) const {
   result.openObject();
   result.add("id", VPackValue(std::to_string(_cid)));
   result.add("cid", VPackValue(std::to_string(_cid))); // export cid for compatibility, too
+  result.add("planId", VPackValue(std::to_string(_planId))); // export planId for cluster
   result.add("name", VPackValue(_name));
   result.add("status", VPackValue(_status));
   result.add("deleted", VPackValue(_isDeleted));
@@ -954,8 +1066,11 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result, bool withPath) const 
   result.add("journalSize", VPackValue(_journalSize));
   result.add("version", VPackValue(_version)); 
   
-  if (_keyOptions != nullptr) {
-    result.add("keyOptions", VPackSlice(_keyOptions->data()));
+  if (_keyGenerator != nullptr) {
+    result.add(VPackValue("keyOptions"));
+    result.openObject();
+    _keyGenerator->toVelocyPack(result);
+    result.close();
   }
 
   if (withPath) {

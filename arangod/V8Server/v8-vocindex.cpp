@@ -638,135 +638,12 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
 /// @brief create a collection on the coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-static void CreateCollectionCoordinator(
-    v8::FunctionCallbackInfo<v8::Value> const& args,
-    TRI_col_type_e collectionType, std::string const& databaseName,
-    LogicalCollection* parameters) {
-  v8::Isolate* isolate = args.GetIsolate();
-  v8::HandleScope scope(isolate);
-
-  std::string const name = TRI_ObjectToString(args[0]);
-
-  bool allowUserKeys = true;
-  uint64_t numberOfShards = 1;
-  std::vector<std::string> shardKeys;
-  uint64_t replicationFactor = 1;
-
-  // default shard key
-  shardKeys.push_back(StaticStrings::KeyString);
-
-  std::string distributeShardsLike;
-
-  std::string cid = "";  // Could come from properties
-  if (2 <= args.Length()) {
-    if (!args[1]->IsObject()) {
-      TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
-    }
-
-    v8::Handle<v8::Object> p = args[1]->ToObject();
-
-    if (p->Has(TRI_V8_ASCII_STRING("keyOptions")) &&
-        p->Get(TRI_V8_ASCII_STRING("keyOptions"))->IsObject()) {
-      v8::Handle<v8::Object> o = v8::Handle<v8::Object>::Cast(
-          p->Get(TRI_V8_ASCII_STRING("keyOptions")));
-
-      if (o->Has(TRI_V8_ASCII_STRING("type"))) {
-        std::string const type =
-            TRI_ObjectToString(o->Get(TRI_V8_ASCII_STRING("type")));
-
-        if (type != "" && type != "traditional") {
-          // invalid key generator
-          TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNSUPPORTED,
-                                         "non-traditional key generators are "
-                                         "not supported for sharded "
-                                         "collections");
-        }
-      }
-
-      if (o->Has(TRI_V8_ASCII_STRING("allowUserKeys"))) {
-        allowUserKeys =
-            TRI_ObjectToBoolean(o->Get(TRI_V8_ASCII_STRING("allowUserKeys")));
-      }
-    }
-
-    if (p->Has(TRI_V8_ASCII_STRING("numberOfShards"))) {
-      numberOfShards = TRI_ObjectToUInt64(
-          p->Get(TRI_V8_ASCII_STRING("numberOfShards")), false);
-    }
-
-    if (p->Has(TRI_V8_ASCII_STRING("shardKeys"))) {
-      shardKeys.clear();
-
-      if (p->Get(TRI_V8_ASCII_STRING("shardKeys"))->IsArray()) {
-        v8::Handle<v8::Array> k = v8::Handle<v8::Array>::Cast(
-            p->Get(TRI_V8_ASCII_STRING("shardKeys")));
-
-        for (uint32_t i = 0; i < k->Length(); ++i) {
-          v8::Handle<v8::Value> v = k->Get(i);
-          if (v->IsString()) {
-            std::string const key = TRI_ObjectToString(v);
-            // remove : char at the beginning or end (for enterprise)
-            std::string stripped;
-            if (!key.empty()) {
-              if (key.front() == ':') {
-                stripped = key.substr(1);
-              } else if (key.back() == ':') {
-                stripped = key.substr(0, key.size()-1);
-              } else {
-                stripped = key;
-              }
-            }
-            // system attributes are not allowed (except _key)
-            if (!stripped.empty() && stripped != StaticStrings::IdString &&
-                stripped != StaticStrings::RevString) {
-              shardKeys.push_back(key);
-            }
-          }
-        }
-      }
-    }
-
-    if (p->Has(TRI_V8_ASCII_STRING("distributeShardsLike")) &&
-        p->Get(TRI_V8_ASCII_STRING("distributeShardsLike"))->IsString()) {
-      distributeShardsLike = TRI_ObjectToString(
-          p->Get(TRI_V8_ASCII_STRING("distributeShardsLike")));
-    }
-
-    auto idKey = TRI_V8_ASCII_STRING("id");
-    if (p->Has(idKey) && p->Get(idKey)->IsString()) {
-      cid = TRI_ObjectToString(p->Get(idKey));
-    }
-
-    if (p->Has(TRI_V8_ASCII_STRING("replicationFactor"))) {
-      replicationFactor = TRI_ObjectToUInt64(p->Get(TRI_V8_ASCII_STRING("replicationFactor")), false);
-    }
-  }
-
-  if (numberOfShards == 0 || numberOfShards > 1000) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER("invalid number of shards");
-  }
-
-  if (replicationFactor == 0 || replicationFactor > 10) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER("invalid replicationFactor");
-  }
-
-  if (shardKeys.empty() || shardKeys.size() > 8) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER("invalid number of shard keys");
-  }
-
-  ClusterInfo* ci = ClusterInfo::instance();
-
-  // fetch a unique id for the new collection, this is also used for the
-  // edge index, if that is needed, therefore we create the id anyway:
-  uint64_t const id = ci->uniqid(1);
-  if (cid.empty()) {
-    // collection id is the first unique id we got
-    cid = StringUtils::itoa(id);
-    // if id was given, the first unique id is wasted, this does not matter
-  }
+LogicalCollection* CreateCollectionCoordinator(LogicalCollection* parameters) {
+  std::string distributeShardsLike = parameters->distributeShardsLike();
 
   std::vector<std::string> dbServers;
 
+  ClusterInfo* ci = ClusterInfo::instance();
   if (!distributeShardsLike.empty()) {
     CollectionNameResolver resolver(parameters->vocbase());
     TRI_voc_cid_t otherCid =
@@ -776,7 +653,7 @@ static void CreateCollectionCoordinator(
           = arangodb::basics::StringUtils::itoa(otherCid);
       try {
         std::shared_ptr<LogicalCollection> collInfo =
-            ci->getCollection(databaseName, otherCidString);
+            ci->getCollection(parameters->dbName(), otherCidString);
         auto shards = collInfo->shardIds();
         auto shardList = ci->getShardList(otherCidString);
         for (auto const& s : *shardList) {
@@ -796,94 +673,34 @@ static void CreateCollectionCoordinator(
   // distributeShards below.
 
   // Now create the shards:
-  std::map<std::string, std::vector<std::string>> shards
-      = arangodb::distributeShards(numberOfShards, replicationFactor,
-                                   dbServers);
-  if (shards.empty()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+  auto shards = std::make_shared<
+      std::unordered_map<std::string, std::vector<std::string>>>(
+      arangodb::distributeShards(parameters->numberOfShards(),
+                                 parameters->replicationFactor(), dbServers));
+  if (shards->empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "no database servers found in cluster");
   }
+  parameters->setShardMap(shards);
 
-  // now create the VelocyPack for the collection
-  arangodb::velocypack::Builder velocy;
-  using arangodb::velocypack::Value;
-  using arangodb::velocypack::ValueType;
-  using arangodb::velocypack::ObjectBuilder;
-  using arangodb::velocypack::ArrayBuilder;
-
-  {
-    ObjectBuilder ob(&velocy);
-    velocy("id",           Value(cid))
-          ("name",         Value(name))
-          ("type",         Value((int) collectionType))
-          ("status",       Value((int) TRI_VOC_COL_STATUS_LOADED))
-          ("deleted",      Value(parameters->deleted()))
-          ("doCompact",    Value(parameters->doCompact()))
-          ("isSystem",     Value(parameters->isSystem()))
-          ("isVolatile",   Value(parameters->isVolatile()))
-          ("waitForSync",  Value(parameters->waitForSync()))
-          ("journalSize",  Value(parameters->journalSize()))
-          ("indexBuckets", Value(parameters->indexBuckets()))
-          ("replicationFactor", Value(replicationFactor))
-          ("keyOptions",   Value(ValueType::Object))
-              ("type",          Value("traditional"))
-              ("allowUserKeys", Value(allowUserKeys))
-           .close();
-
-    {
-      ArrayBuilder ab(&velocy, "shardKeys");
-      for (auto const& sk : shardKeys) {
-        velocy(Value(sk));
-      }
-    }
-
-    {
-      ObjectBuilder ob(&velocy, "shards");
-      for (auto const& p : shards) {
-        ArrayBuilder ab(&velocy, p.first);
-        for (auto const& s : p.second) {
-          velocy(Value(s));
-        }
-      }
-    }
-
-    {
-      ArrayBuilder ab(&velocy, "indexes");
-
-      // create a dummy primary index
-      arangodb::LogicalCollection* doc = nullptr;
-      std::unique_ptr<arangodb::PrimaryIndex> primaryIndex(
-          new arangodb::PrimaryIndex(doc));
-
-      velocy.openObject();
-      primaryIndex->toVelocyPack(velocy, false);
-      velocy.close();
-
-      if (collectionType == TRI_COL_TYPE_EDGE) {
-        // create a dummy edge index
-        auto edgeIndex = std::make_unique<arangodb::EdgeIndex>(id, nullptr);
-
-        velocy.openObject();
-        edgeIndex->toVelocyPack(velocy, false);
-        velocy.close();
-      }
-    }
-  }
+  VPackBuilder velocy;
+  parameters->toVelocyPackForAgency(velocy);
 
   std::string errorMsg;
   int myerrno = ci->createCollectionCoordinator(
-      databaseName, cid, numberOfShards, velocy.slice(), errorMsg, 240.0);
+      parameters->dbName(), parameters->cid_as_string(),
+      parameters->numberOfShards(), velocy.slice(), errorMsg, 240.0);
 
   if (myerrno != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(myerrno, errorMsg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(myerrno, errorMsg);
   }
   ci->loadPlan();
 
-  std::shared_ptr<LogicalCollection> c = ci->getCollection(databaseName, cid);
+  std::shared_ptr<LogicalCollection> c = ci->getCollection(parameters->dbName(), parameters->cid_as_string());
   // If we get a nullptr here the create collection should have failed before.
   TRI_ASSERT(c != nullptr);
   auto newCol = std::make_unique<LogicalCollection>(c);
-  TRI_V8_RETURN(WrapCollection(isolate, newCol.release()));
+  return newCol.release();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1264,10 +1081,15 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   infoSlice = builder.slice();
 
   if (ServerState::instance()->isCoordinator()) {
+#ifndef USE_ENTERPRISE
     auto parameters = std::make_unique<LogicalCollection>(vocbase, infoSlice, false);
-    CreateCollectionCoordinator(args, collectionType, vocbase->name(),
-                                parameters.get());
-    return;
+    TRI_V8_RETURN(
+        WrapCollection(isolate, CreateCollectionCoordinator(parameters.get())));
+#else
+    TRI_V8_RETURN(
+        WrapCollection(isolate, CreateCollectionCoordinatorEnterprise(
+                                    collectionType, vocbase, infoSlice)));
+#endif
   }
 
   try {

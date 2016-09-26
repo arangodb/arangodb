@@ -642,6 +642,9 @@ bool Node::applies(VPackSlice const& slice) {
   std::regex reg("/+");
 
   if (slice.isObject()) {
+    if (slice.isEmptyObject()) {
+      *this = slice;
+    }
     for (auto const& i : VPackObjectIterator(slice)) {
       std::string key = std::regex_replace(i.key.copyString(), reg, "/");
       if (key.find('/') != std::string::npos) {
