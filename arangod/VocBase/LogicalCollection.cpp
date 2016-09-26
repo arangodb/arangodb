@@ -189,17 +189,6 @@ static std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const> CopySliceVal
   return VPackBuilder::clone(info).steal();
 }
 
-static int GetObjectLength(VPackSlice info, std::string const& name, int def) {
-  if (!info.isObject()) {
-    return def;
-  }
-  info = info.get(name);
-  if (!info.isObject()) {
-    return def;
-  }
-  return static_cast<int>(info.length());
-}
-
 // Creates an index object.
 // It does not modify anything and does not insert things into
 // the index.
@@ -355,7 +344,7 @@ LogicalCollection::LogicalCollection(
   for (auto const& idx : other->_indexes) {
     _indexes.emplace_back(idx);
   }
-  
+
   setCompactionStatus("compaction not yet started");
 }
 
@@ -406,6 +395,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _lastCompactionStatus(nullptr),
       _lastCompactionStamp(0.0),
       _uncollectedLogfileEntries(0) {
+
   if (!IsAllowedName(info)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
@@ -431,6 +421,44 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
                                    "<properties>.journalSize too small");
   }
 
+
+  VPackSlice shardKeysSlice = info.get("shardKeys");
+
+  if (shardKeysSlice.isNone()) {
+    // Use default.
+    _shardKeys.emplace_back(StaticStrings::KeyString);
+  } else {
+    if (shardKeysSlice.isArray()) {
+      for (auto const& sk : VPackArrayIterator(shardKeysSlice)) {
+        if (sk.isString()) {
+          std::string key = sk.copyString();
+          // remove : char at the beginning or end (for enterprise)
+          std::string stripped;
+          if (!key.empty()) {
+            if (key.front() == ':') {
+              stripped = key.substr(1);
+            } else if (key.back() == ':') {
+              stripped = key.substr(0, key.size()-1);
+            } else {
+              stripped = key;
+            }
+          }
+          // system attributes are not allowed (except _key)
+          if (!stripped.empty() && stripped != StaticStrings::IdString &&
+              stripped != StaticStrings::RevString) {
+            _shardKeys.emplace_back(key);
+          }
+        }
+      }
+    }
+  }
+
+  if (_shardKeys.empty() || _shardKeys.size() > 8) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "invalid number of shard keys");
+  }
+
+
   // Cluster only tests
   if (ServerState::instance()->isCoordinator()) {
     if (_numberOfShards == 0 || _numberOfShards > 1000) {
@@ -450,42 +478,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
                                          "collections");
         }
       }
-    }
-
-    VPackSlice shardKeysSlice = info.get("shardKeys");
-
-    if (shardKeysSlice.isNone()) {
-      // Use default.
-      _shardKeys.emplace_back(StaticStrings::KeyString);
-    } else {
-      if (shardKeysSlice.isArray()) {
-        for (auto const& sk : VPackArrayIterator(shardKeysSlice)) {
-          if (sk.isString()) {
-            StringRef key(sk);
-            // remove : char at the beginning or end (for enterprise)
-            StringRef stripped;
-            if (!key.empty()) {
-              if (key.front() == ':') {
-                stripped = key.substr(1);
-              } else if (key.back() == ':') {
-                stripped = key.substr(0, key.size()-1);
-              } else {
-                stripped = key;
-              }
-            }
-            // system attributes are not allowed (except _key)
-            if (!stripped.empty() && stripped != StaticStrings::IdString &&
-                stripped != StaticStrings::RevString) {
-              _shardKeys.push_back(key.toString());
-            }
-          }
-        }
-      }
-    }
-
-    if (_shardKeys.empty() || _shardKeys.size() > 8) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "invalid number of shard keys");
     }
 
     if (_replicationFactor == 0 ||_replicationFactor > 10) {
