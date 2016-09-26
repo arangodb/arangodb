@@ -2202,12 +2202,12 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector) {
 /// fetched from ClusterInfo and with random_shuffle to mix it up.
 ////////////////////////////////////////////////////////////////////////////////
 
-std::map<std::string, std::vector<std::string>> distributeShards(
+std::unordered_map<std::string, std::vector<std::string>> distributeShards(
     uint64_t numberOfShards,
     uint64_t replicationFactor,
     std::vector<std::string>& dbServers) {
 
-  std::map<std::string, std::vector<std::string>> shards;
+  std::unordered_map<std::string, std::vector<std::string>> shards;
 
   ClusterInfo*  ci = ClusterInfo::instance();
   ci->loadCurrentDBServers();
@@ -2253,7 +2253,7 @@ std::map<std::string, std::vector<std::string>> distributeShards(
     // determine shard id
     std::string shardId = "s" + StringUtils::itoa(id + 1 + i);
 
-    shards.insert(std::make_pair(shardId, serverIds));
+    shards.emplace(shardId, serverIds);
   }
 
   return shards;
