@@ -524,7 +524,7 @@ void SimpleHttpClient::setRequest(
   _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
 
   if (_keepAlive) {
-    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Connection: keep-alive\r\n"));
+    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Connection: Keep-Alive\r\n"));
   } else {
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Connection: Close\r\n"));
   }
