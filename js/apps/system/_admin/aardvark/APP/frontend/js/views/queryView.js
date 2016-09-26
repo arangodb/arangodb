@@ -1,7 +1,7 @@
 /* jshint browser: true */
 /* jshint unused: false */
 /* global Backbone, $, setTimeout, localStorage, ace, Storage, window, _, console, btoa*/
-/* global _, arangoHelper, templateEngine, Joi */
+/* global _, arangoHelper, numeral, templateEngine, Joi */
 
 (function () {
   'use strict';
@@ -82,6 +82,7 @@
       'click #querySpotlight': 'showSpotlight',
       'click #deleteQuery': 'selectAndDeleteQueryFromTable',
       'click #explQuery': 'selectAndExplainQueryFromTable',
+      'click .closeProfile': 'closeProfile',
       'keydown #arangoBindParamTable input': 'updateBindParams',
       'change #arangoBindParamTable input': 'updateBindParams',
       'click #arangoMyQueriesTable tbody tr': 'showQueryPreview',
@@ -95,6 +96,10 @@
 
     clearQuery: function () {
       this.aqlEditor.setValue('', 1);
+    },
+
+    closeProfile: function () {
+      $('.queryProfile').fadeOut('fast');
     },
 
     toggleBindParams: function () {
@@ -1428,6 +1433,10 @@
         if (Object.keys(this.bindParamTableObj).length > 0) {
           data.bindVars = this.bindParamTableObj;
         }
+
+        data.options = {
+          profile: true
+        };
       }
 
       return JSON.stringify(data);
@@ -1628,6 +1637,11 @@
         appendSpan(time, 'fa-clock-o');
 
         if (data.extra) {
+          if (data.extra.profile) {
+            appendSpan('', 'fa-caret-down');
+            self.appendProfileDetails(counter, data.extra.profile);
+          }
+
           if (data.extra.stats) {
             if (data.extra.stats.writesExecuted > 0 || data.extra.stats.writesIgnored > 0) {
               appendSpan(
@@ -1723,6 +1737,108 @@
         });
       };
       checkQueryStatus();
+    },
+
+    appendProfileDetails: function (counter, data) {
+      var element = '#outputEditorWrapper' + counter;
+
+      $(element + ' .fa-caret-down').first().on('click', function () {
+        $(element).find('.queryProfile').remove();
+        $(element).append('<div class="queryProfile"></div>');
+        var queryProfile = $(element + ' .queryProfile').first();
+        queryProfile.hide();
+
+        // var outputPosition = $(element + ' .fa-caret-down').first().offset();
+        queryProfile
+        .css('position', 'absolute')
+        .css('left', 215)
+        .css('top', 55);
+
+        // $("#el").offset().top - $(document).scrollTop()
+        var profileWidth = 590;
+
+        var legend = [
+          'A', 'B', 'C', 'D', 'E', 'F'
+        ];
+
+        var colors = [
+          'rgb(48, 125, 153)',
+          'rgb(241, 124, 176)',
+          'rgb(178, 145, 47)',
+          'rgb(93, 165, 218)',
+          'rgb(250, 164, 58)',
+          'rgb(96, 189, 104)'
+        ];
+
+        var descs = [
+          'startup time for query engine',
+          'query parsing',
+          'abstract syntax tree optimizations',
+          'instanciation of initial execution plan',
+          'execution plan optimization and permutation',
+          'query execution'
+        ];
+
+        queryProfile.append(
+          '<i class="fa fa-close closeProfile"></i>' +
+          '<span class="profileHeader">Profiling information</span>' +
+          '<div class="pure-g pure-table pure-table-body"></div>' +
+          '<div class="prof-progress"></div>' +
+          '<div class="prof-progress-label"></div>' +
+          '<div class="clear"></div>'
+        );
+
+        var total = 0;
+        _.each(data, function (value) {
+          total += value * 1000;
+        });
+
+        var pos = 0;
+        var width;
+        var adjustWidth = 0;
+
+        _.each(data, function (value, key) {
+          var ms = numeral(value * 1000).format('0.000');
+          ms += ' ms';
+
+          queryProfile.find('.pure-g').append(
+            '<div class="pure-table-row noHover">' +
+               '<div class="pure-u-1-24 left"><p class="bold" style="background:' + colors[pos] + '">' + legend[pos] + '</p></div>' +
+               '<div class="pure-u-4-24 left">' + ms + '</div>' +
+               '<div class="pure-u-6-24 left">' + key + '</div>' +
+               '<div class="pure-u-13-24 left">' + descs[pos] + '</div>' +
+            '</div>'
+          );
+
+          width = (value * 1000) / total * 100;
+          if (width < 5) {
+            width = 5;
+            adjustWidth += 5;
+          }
+
+          if (pos === 5 && adjustWidth !== 0) {
+            width = width - adjustWidth;
+            queryProfile.find('.prof-progress').append(
+              '<div style="width: ' + width + '%; background-color: ' + colors[pos] + '"></div>'
+            );
+            queryProfile.find('.prof-progress-label').append(
+              '<div style="width: ' + width + '%;">' + legend[pos] + '</div>'
+            );
+          } else {
+            queryProfile.find('.prof-progress').append(
+              '<div style="width: ' + width + '%; background-color: ' + colors[pos] + '"></div>'
+            );
+            queryProfile.find('.prof-progress-label').append(
+              '<div style="width: ' + width + '%;">' + legend[pos] + '</div>'
+            );
+          }
+          pos++;
+        });
+
+        queryProfile.width(profileWidth);
+        queryProfile.height('auto');
+        queryProfile.fadeIn('fast');
+      });
     },
 
     analyseQuery: function (result) {
