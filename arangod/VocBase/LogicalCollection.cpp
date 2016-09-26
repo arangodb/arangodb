@@ -1008,6 +1008,7 @@ void LogicalCollection::toVelocyPackForAgency(VPackBuilder& result) {
   result.add("journalSize", VPackValue(_journalSize));
   result.add("indexBuckets", VPackValue(_indexBuckets));
   result.add("replicationFactor", VPackValue(_replicationFactor));
+  result.add("numberOfShards", VPackValue(_numberOfShards));
   
   if (_keyGenerator != nullptr) {
     result.add(VPackValue("keyOptions"));
