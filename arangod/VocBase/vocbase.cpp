@@ -296,7 +296,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
   }
 
   arangodb::LogicalCollection* collection =
-      registerCollection(ConditionalWriteLocker::DoNotLock(), parameters);
+      registerCollection(ConditionalWriteLocker<ReadWriteLock>::DoNotLock(), parameters);
 
   // Register collection cannot return a nullptr.
   // If it would return a nullptr it should have thrown instead

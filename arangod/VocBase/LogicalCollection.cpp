@@ -421,8 +421,9 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
                                    "<properties>.journalSize too small");
   }
 
-
   VPackSlice shardKeysSlice = info.get("shardKeys");
+
+  bool const isCluster = ServerState::instance()->isRunningInCluster();
 
   if (shardKeysSlice.isNone()) {
     // Use default.
@@ -449,6 +450,11 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
             _shardKeys.emplace_back(key);
           }
         }
+      }
+      if (_shardKeys.empty() && !isCluster) {
+        // Compatibility. Old configs might store empty shard-keys locally.
+        // This is translated to ["_key"]. In cluster-case this always was forbidden.
+        _shardKeys.emplace_back(StaticStrings::KeyString);
       }
     }
   }
@@ -504,7 +510,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
   
     auto indexesSlice = info.get("indexes");
     if (indexesSlice.isArray()) {
-      bool const isCluster = ServerState::instance()->isRunningInCluster();
       for (auto const& v : VPackArrayIterator(indexesSlice)) {
         if (arangodb::basics::VelocyPackHelper::getBooleanValue(
                 v, "error", false)) {
@@ -1009,6 +1014,9 @@ void LogicalCollection::toVelocyPackForAgency(VPackBuilder& result) {
   result.add("indexBuckets", VPackValue(_indexBuckets));
   result.add("replicationFactor", VPackValue(_replicationFactor));
   result.add("numberOfShards", VPackValue(_numberOfShards));
+  if (!_distributeShardsLike.empty()) {
+    result.add("distributeShardsLike", VPackValue(_distributeShardsLike));
+  }
   
   if (_keyGenerator != nullptr) {
     result.add(VPackValue("keyOptions"));
