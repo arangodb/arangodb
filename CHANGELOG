@@ -5,6 +5,8 @@ v3.0.10 (XXXX-XX-XX)
 
 * fixed issue #2070
 
+* fixed slow cluster starup issues. supervision will demonstrate more
+  patience with db servers
 
 v3.0.9 (2016-09-21)
 -------------------

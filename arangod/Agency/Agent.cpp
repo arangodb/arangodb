@@ -204,7 +204,7 @@ void Agent::reportIn(arangodb::consensus::id_t id, index_t index) {
     // catch up read database and commit index
     if (n > size() / 2) {
 
-      LOG_TOPIC(DEBUG, Logger::AGENCY) << "Critical mass for commiting "
+      LOG_TOPIC(TRACE, Logger::AGENCY) << "Critical mass for commiting "
                                        << _lastCommitIndex + 1 << " through "
                                        << index << " to read db";
 
@@ -261,7 +261,7 @@ bool Agent::recvAppendEntriesRPC(term_t term,
     
     if (nqs > ndups) {
       
-      LOG_TOPIC(DEBUG, Logger::AGENCY)
+      LOG_TOPIC(TRACE, Logger::AGENCY)
         << "Appending " << nqs - ndups << " entries to state machine." <<
         nqs << " " << ndups;
 
@@ -331,7 +331,7 @@ priv_rpc_ret_t Agent::sendAppendEntriesRPC(
 
   // Verbose output
   if (unconfirmed.size() > 1) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Appending " << unconfirmed.size() - 1
+    LOG_TOPIC(TRACE, Logger::AGENCY) << "Appending " << unconfirmed.size() - 1
                                      << " entries up to index " << highest
                                      << " to follower " << follower_id;
   }

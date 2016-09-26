@@ -161,6 +161,7 @@ class Supervision : public arangodb::Thread {
   uint64_t _jobIdMax;
 
   static std::string _agencyPrefix;
+  
 };
 
 inline std::string timepointToString(Supervision::TimePoint const& t) {

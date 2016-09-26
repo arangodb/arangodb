@@ -47,7 +47,7 @@ Supervision::Supervision()
       _agent(nullptr),
       _snapshot("Supervision"),
       _frequency(5),
-      _gracePeriod(15),
+      _gracePeriod(120),
       _jobId(0),
       _jobIdMax(0) {}
 
@@ -134,21 +134,40 @@ std::vector<check_t> Supervision::checkDBServers() {
     }
       
     if (good) {
+      
       report->add("LastHeartbeatAcked",
                   VPackValue(
                     timepointToString(std::chrono::system_clock::now())));
       report->add("Status", VPackValue("GOOD"));
+
+      try{
+        Builder builder;
+        builder.openArray();
+        builder.openObject();
+        builder.add(_agencyPrefix + failedServersPrefix, VPackValue(VPackValueType::Object));
+        builder.add("op", VPackValue("erase"));
+        builder.add("val", VPackValue(serverID));
+        builder.close();
+        builder.close();
+        builder.close();
+        transact(_agent, builder);
+      } catch (std::exception const& e) {
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << e.what() << __FILE__ << __LINE__;
+      }
+
     } else {
       std::chrono::seconds t{0};
       t = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::system_clock::now()-stringToTimepoint(lastHeartbeatAcked));
       if (t.count() > _gracePeriod) {  // Failure
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Detected failed server " + serverID;
         if (lastStatus == "BAD") {
           report->add("Status", VPackValue("FAILED"));
           FailedServer fsj(_snapshot, _agent, std::to_string(_jobId++),
                            "supervision", _agencyPrefix, serverID);
         }
       } else {
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Detected failed server " + serverID;
         report->add("Status", VPackValue("BAD"));
       }
     }
@@ -269,6 +288,7 @@ std::vector<check_t> Supervision::checkCoordinators() {
           report->add("Status", VPackValue("FAILED"));
         }
       } else {
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Detected failed server " + serverID;
         report->add("Status", VPackValue("BAD"));
       }
     }
