@@ -245,7 +245,8 @@ inline RestHandler::status RestAgencyHandler::handleRead() {
     try {
       query = _request->toVelocyPackBuilderPtr(&options);
     } catch (std::exception const& e) {
-      LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << ":" << __LINE__;
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
+        << e.what() << " " << __FILE__ << ":" << __LINE__;
       generateError(rest::ResponseCode::BAD, 400);
       return status::DONE;
     }
