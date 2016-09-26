@@ -129,7 +129,7 @@ echo "GRUNT"
 (
   cd js/apps/system/_admin/aardvark/APP
   rm -rf node_modules
-  npm install --only=dev
+  npm install
   grunt deploy
 )
 

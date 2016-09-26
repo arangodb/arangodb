@@ -97,7 +97,11 @@ else()
   message("-- Will not compile in hand-optimized assembler code for CRC32.")
 endif()
 
-
+if (USE_LOCAL_CLOCK_GETTIME)
+  SET(LIB_CLOCK_GETTIME
+    Utilities/clock_gettime.cpp
+  )
+endif ()
 
 add_library(${LIB_ARANGO} STATIC
   ${LIB_ARANGO_APPLE}
@@ -105,6 +109,7 @@ add_library(${LIB_ARANGO} STATIC
   ${LIB_ARANGO_POSIX}
   ${LIB_ARANGO_LINENOISE}
   ${LIB_ARANGO_VPACK}
+  ${LIB_CLOCK_GETTIME}
   ${LIB_ASM_SOURCES}
   ApplicationFeatures/ApplicationFeature.cpp
   ApplicationFeatures/ApplicationServer.cpp
