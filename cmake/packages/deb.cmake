@@ -63,4 +63,9 @@ add_custom_target(package-arongodb-client
   WORKING_DIRECTORY ${CLIENT_BUILD_DIR})
 
 
+
 list(APPEND PACKAGES_LIST package-arongodb-client)
+
+
+add_custom_target(copy_packages
+  COMMAND cp *.deb ${PACKAGE_TARGET_DIR})

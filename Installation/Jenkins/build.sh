@@ -293,6 +293,7 @@ while [ $# -gt 0 ];  do
         --targetDir)
             shift
             TARGET_DIR=$1
+            CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DPACKAGE_TARGET_DIR=$1"
             shift
             ;;
         
@@ -472,53 +473,58 @@ if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
 fi
 # and install
 
+
 if test -n "${TARGET_DIR}";  then
     echo "building distribution tarball"
     mkdir -p "${TARGET_DIR}"
     dir="${TARGET_DIR}"
-    TARFILE=arangodb-`uname`${TAR_SUFFIX}.tar.gz
-    TARFILE_TMP=`pwd`/arangodb.tar.$$
+    if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
+        ${PACKAGE_MAKE} copy_packages
+    else
+        TARFILE=arangodb-`uname`${TAR_SUFFIX}.tar.gz
+        TARFILE_TMP=`pwd`/arangodb.tar.$$
 
-    mkdir -p ${dir}
-    trap "rm -rf ${TARFILE_TMP}" EXIT
-
-    (cd ${SOURCE_DIR}
-
-     touch 3rdParty/.keepme
-     touch arangod/.keepme
-     touch arangosh/.keepme
-
-     tar -c -f ${TARFILE_TMP} \
-         VERSION utils scripts etc/relative UnitTests Documentation js \
-         lib/Basics/errors.dat \
-         3rdParty/.keepme \
-         arangod/.keepme \
-         arangosh/.keepme
-    )
-    
-    tar -u -f ${TARFILE_TMP} \
-        bin etc tests
-
-    find . -name *.gcno > files.$$
-
-    if [ -s files.$$ ]; then
-        tar -u -f ${TARFILE_TMP} \
-            --files-from files.$$
+        mkdir -p ${dir}
+        trap "rm -rf ${TARFILE_TMP}" EXIT
 
         (cd ${SOURCE_DIR}
 
-         find . \
-              \( -name *.cpp -o -name *.h -o -name *.c -o -name *.hpp -o -name *.ll -o -name *.y \) > files.$$
+         touch 3rdParty/.keepme
+         touch arangod/.keepme
+         touch arangosh/.keepme
 
-         tar -u -f ${TARFILE_TMP} \
-             --files-from files.$$
-
-         rm files.$$
+         tar -c -f ${TARFILE_TMP} \
+             VERSION utils scripts etc/relative UnitTests Documentation js \
+             lib/Basics/errors.dat \
+             3rdParty/.keepme \
+             arangod/.keepme \
+             arangosh/.keepme
         )
+        
+        tar -u -f ${TARFILE_TMP} \
+            bin etc tests
 
-        rm files.$$
+        find . -name *.gcno > files.$$
+
+        if [ -s files.$$ ]; then
+            tar -u -f ${TARFILE_TMP} \
+                --files-from files.$$
+
+            (cd ${SOURCE_DIR}
+
+             find . \
+                  \( -name *.cpp -o -name *.h -o -name *.c -o -name *.hpp -o -name *.ll -o -name *.y \) > files.$$
+
+             tar -u -f ${TARFILE_TMP} \
+                 --files-from files.$$
+
+             rm files.$$
+            )
+
+            rm files.$$
+        fi
+
+        gzip < ${TARFILE_TMP} > ${dir}/${TARFILE}
+        ${MD5} < ${dir}/${TARFILE}  |sed "s; .*;;" > ${dir}/${TARFILE}.md5
     fi
-
-    gzip < ${TARFILE_TMP} > ${dir}/${TARFILE}
-    ${MD5} < ${dir}/${TARFILE}  |sed "s; .*;;" > ${dir}/${TARFILE}.md5
 fi
