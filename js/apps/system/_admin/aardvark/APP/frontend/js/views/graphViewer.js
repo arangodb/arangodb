@@ -114,9 +114,10 @@
       sigma.plugins.image(this.currentGraph, this.currentGraph.renderers[0], {
         download: true,
         size: size,
+        clip: true,
         labels: true,
         background: 'white',
-        zoom: true
+        zoom: false
       });
     },
 
