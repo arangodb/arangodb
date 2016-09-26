@@ -101,7 +101,7 @@ function lastEntry (collection, start, clusterId) {
   var filter = '';
   var bindVars = { start: start, '@collection': collection };
 
-  if (clusterId !== undefined && clusterId !== null) {
+  if (clusterId) {
     filter = ' FILTER s.clusterId == @clusterId ';
     bindVars.clusterId = clusterId;
   }
@@ -292,7 +292,7 @@ function compute15Minute (start, clusterId) {
   var filter = '';
   var bindVars = { start: start };
 
-  if (clusterId !== undefined && clusterId !== null) {
+  if (clusterId) {
     filter = ' FILTER s.clusterId == @clusterId ';
     bindVars.clusterId = clusterId;
   }
@@ -449,11 +449,7 @@ exports.historian = function () {
     return;
   }
 
-  var clusterId;
-
-  if (cluster.isCluster() && (clusterId !== undefined && clusterId !== null)) {
-    clusterId = global.ArangoServerState.id();
-  }
+  var clusterId = cluster.isCluster() && global.ArangoServerState.id();
 
   try {
     var now = internal.time();
@@ -471,7 +467,7 @@ exports.historian = function () {
     raw.http = internal.httpStatistics();
     raw.server = internal.serverStatistics();
 
-    if (clusterId !== undefined) {
+    if (clusterId) {
       raw.clusterId = clusterId;
     }
 
@@ -482,7 +478,7 @@ exports.historian = function () {
       var perSecs = computePerSeconds(raw, prevRaw);
 
       if (perSecs !== null) {
-        if (clusterId !== undefined) {
+        if (clusterId) {
           perSecs.clusterId = clusterId;
         }
 
@@ -505,10 +501,9 @@ exports.historianAverage = function () {
 
   var stats15m = db._statistics15;
 
-  var clusterId;
+  var clusterId = cluster.isCluster() && global.ArangoServerState.id();
 
   if (cluster.isCluster()) {
-    clusterId = global.ArangoServerState.id();
   }
 
   try {
@@ -532,7 +527,7 @@ exports.historianAverage = function () {
     stat15 = compute15Minute(start, clusterId);
 
     if (stat15 !== undefined) {
-      if (clusterId !== undefined) {
+      if (clusterId) {
         stat15.clusterId = clusterId;
       }
 
