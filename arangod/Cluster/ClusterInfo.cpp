@@ -796,15 +796,14 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
 
-  std::vector<ServerID> DBServers = getCurrentDBServers();
-
+  auto DBServers =
+    std::make_shared<std::vector<ServerID>>(getCurrentDBServers());
   std::shared_ptr<int> dbServerResult = std::make_shared<int>(-1);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
   std::function<bool(VPackSlice const& result)> dbServerChanged =
     [=](VPackSlice const& result) {
-    size_t numDbServers;
-    numDbServers = DBServers.size();
+    size_t numDbServers = DBServers->size();
     if (result.isObject() && result.length() >= numDbServers) {
       // We use >= here since the number of DBservers could have increased
       // during the creation of the database and we might not yet have
@@ -891,7 +890,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
         // if a new DBServer was added. However, in this case we report
         // success a bit too early, which is not too bad.
         loadCurrentDBServers();
-        DBServers = getCurrentDBServers();
+        *DBServers = getCurrentDBServers();
         count = 0;
       }
 
