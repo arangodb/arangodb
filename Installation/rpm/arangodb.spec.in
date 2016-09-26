@@ -43,7 +43,7 @@ Release:        @ARANGODB_PACKAGE_REVISION@
 Summary:        The open-source, multi-model NoSQL database
 License:        Apache-2.0
 Group:          Productivity/Databases/Servers
-Conflicts:	@CPACK_PACKAGE_NAME@-client
+Conflicts:	arangodb, @CPACKG_PACKAGE_CONFLICTS@, @CPACKG_PACKAGE_CONFLICTS@-client, @CPACK_PACKAGE_NAME@-client
 Url:            http://www.arangodb.com
 Vendor:         @CPACK_PACKAGE_VENDOR@
 Prefix:         @CPACK_PACKAGING_INSTALL_PREFIX@
@@ -60,7 +60,7 @@ BuildRoot:      @CMAKE_CURRENT_BINARY_DIR@/_CPack_Packages/Linux/RPM/@CPACK_PACK
 %package @CPACK_PACKAGE_NAME@-client
 Summary:        ArangoDB shell as stand-alone package
 Group:          Productivity/Databases/Servers
-Conflicts:	@CPACK_PACKAGE_NAME@
+Conflicts:	arangodb, @CPACKG_PACKAGE_CONFLICTS@, @CPACKG_PACKAGE_CONFLICTS@-client, @CPACK_PACKAGE_NAME@
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       description

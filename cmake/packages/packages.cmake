@@ -13,9 +13,11 @@ set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
 set(CPACK_STRIP_FILES "ON")
 
 if (${USE_ENTERPRISE})
+  set(CPACKG_PACKAGE_CONFLICTS "arangodb3")
   set(CPACK_PACKAGE_NAME "arangodb3e")
 else ()
   set(CPACK_PACKAGE_NAME "arangodb3")
+  set(CPACKG_PACKAGE_CONFLICTS "arangodb3e")
 endif ()
 set(ARANGODB_PACKAGE_ARCHITECTURE ${CMAKE_SYSTEM_PROCESSOR})
 # eventually the package string will be modified later on:
