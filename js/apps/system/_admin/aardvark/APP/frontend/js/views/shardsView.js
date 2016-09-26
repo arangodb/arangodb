@@ -99,59 +99,63 @@
       var obj = {};
       var array = [];
 
-      self.dbServers[0].each(function (db) {
-        if (db.get('name') !== fromServer) {
-          obj[db.get('name')] = {
-            value: db.get('name'),
-            label: db.get('name')
-          };
+      self.dbServers[0].fetch({
+        success: function () {
+          self.dbServers[0].each(function (db) {
+            if (db.get('name') !== fromServer) {
+              obj[db.get('name')] = {
+                value: db.get('name'),
+                label: db.get('name')
+              };
+            }
+          });
+
+          _.each(self.shardDistribution[collectionName].Plan[shardName].followers, function (follower) {
+            delete obj[follower];
+          });
+
+          if (from) {
+            delete obj[leader];
+          }
+
+          _.each(obj, function (value) {
+            array.push(value);
+          });
+
+          array = array.reverse();
+
+          if (array.length === 0) {
+            arangoHelper.arangoMessage('Shards', 'No database server for moving the shard is available.');
+            return;
+          }
+
+          tableContent.push(
+            window.modalView.createSelectEntry(
+              'toDBServer',
+              'Destination',
+              undefined,
+              // this.users !== null ? this.users.whoAmI() : 'root',
+              'Please select the target databse server. The selected database ' +
+                'server will be the new leader of the shard.',
+                array
+            )
+          );
+
+          buttons.push(
+            window.modalView.createSuccessButton(
+              'Move',
+              self.confirmMoveShards.bind(this, dbName, collectionName, shardName, fromServer)
+            )
+          );
+
+          window.modalView.show(
+            'modalTable.ejs',
+            'Move shard: ' + shardName,
+            buttons,
+            tableContent
+          );
         }
       });
-
-      _.each(self.shardDistribution[collectionName].Plan[shardName].followers, function (follower) {
-        delete obj[follower];
-      });
-
-      if (from) {
-        delete obj[leader];
-      }
-
-      _.each(obj, function (value) {
-        array.push(value);
-      });
-
-      array = array.reverse();
-
-      if (array.length === 0) {
-        arangoHelper.arangoMessage('Shards', 'No database server for moving the shard is available.');
-        return;
-      }
-
-      tableContent.push(
-        window.modalView.createSelectEntry(
-          'toDBServer',
-          'Destination',
-          undefined,
-          // this.users !== null ? this.users.whoAmI() : 'root',
-          'Please select the target databse server. The selected database ' +
-          'server will be the new leader of the shard.',
-          array
-        )
-      );
-
-      buttons.push(
-        window.modalView.createSuccessButton(
-          'Move',
-          this.confirmMoveShards.bind(this, dbName, collectionName, shardName, fromServer)
-        )
-      );
-
-      window.modalView.show(
-        'modalTable.ejs',
-        'Move shard: ' + shardName,
-        buttons,
-        tableContent
-      );
     },
 
     confirmMoveShards: function (dbName, collectionName, shardName, fromServer) {

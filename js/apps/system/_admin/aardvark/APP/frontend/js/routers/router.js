@@ -693,7 +693,7 @@
         }
         this.graphViewer.remove();
       }
-      this.graphViewer = new window.GraphViewer2({
+      this.graphViewer = new window.GraphViewer({
         name: name,
         documentStore: this.arangoDocumentStore,
         collection: new window.GraphCollection(),

@@ -4,7 +4,7 @@
 (function () {
   'use strict';
 
-  window.GraphViewer2 = Backbone.View.extend({
+  window.GraphViewer = Backbone.View.extend({
     el: '#content',
 
     remove: function () {

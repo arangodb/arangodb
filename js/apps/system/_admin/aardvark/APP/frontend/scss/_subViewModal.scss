@@ -97,11 +97,20 @@
   .figures3 {
     margin-left: 0 !important;
     margin-top: 40px;
+    table-layout: fixed;
     width: 100%;
 
     .icon_arangodb_info {
       position: relative;
       text-align: center;
     }
+  }
+
+  .figures2 {
+    margin-top: -20px;
+  }
+
+  .figures3 {
+    margin-bottom: 40px;
   }
 }
