@@ -102,3 +102,6 @@ add_custom_target(package-arongodb-client-nsis
 
 
 list(APPEND PACKAGES_LIST package-arongodb-client-nsis)
+
+add_custom_target(copy_packages
+  COMMAND cp *.exe ${PACKAGE_TARGET_DIR})

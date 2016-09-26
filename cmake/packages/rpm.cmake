@@ -52,3 +52,6 @@ list(APPEND PACKAGES_LIST package-arongodb-server)
 #
 #
 #list(APPEND PACKAGES_LIST package-arongodb-client)
+
+add_custom_target(copy_packages
+  COMMAND cp *.rpm ${PACKAGE_TARGET_DIR})

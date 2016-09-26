@@ -109,7 +109,6 @@ git add -f \
   arangod/Aql/tokens.cpp \
   arangod/Aql/grammar.cpp \
   arangod/Aql/grammar.h \
-  lib/JsonParser/json-parser.cpp \
   lib/V8/v8-json.cpp \
   lib/Basics/voc-errors.h \
   lib/Basics/voc-errors.cpp \
