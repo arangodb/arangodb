@@ -166,7 +166,6 @@ Node& Node::operator=(VPackSlice const& slice) {
   // 2. clear children map
   // 3. copy from rhs buffer to my buffer
   // Must not copy _parent, _ttl, _observers
-  LOG(WARN) << slice.toJson();
   removeTimeToLive();
   _children.clear();
   _value.clear();
