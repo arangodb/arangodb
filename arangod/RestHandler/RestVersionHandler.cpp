@@ -50,6 +50,12 @@ RestHandler::status RestVersionHandler::execute() {
   result.add("server", VPackValue("arango"));
   result.add("version", VPackValue(ARANGODB_VERSION));
 
+  #ifdef USE_ENTERPRISE
+    result.add("license", VPackValue("enterprise"));
+  #else
+    result.add("license", VPackValue("community"));
+  #endif
+
   bool found;
   std::string const& detailsStr = _request->value("details", found);
 
