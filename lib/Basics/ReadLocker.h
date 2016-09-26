@@ -42,23 +42,23 @@
 #ifdef TRI_SHOW_LOCK_TIME
 
 #define READ_LOCKER(obj, lock) \
-  arangodb::basics::ReadLocker obj(&lock, __FILE__, __LINE__)
+  arangodb::basics::ReadLocker<std::decay<decltype (lock)>::type> obj(&lock, __FILE__, __LINE__)
 
 #define READ_LOCKER_EVENTUAL(obj, lock, t) \
-  arangodb::basics::ReadLocker obj(&lock, t, __FILE__, __LINE__)
+  arangodb::basics::ReadLocker<std::decay<decltype (lock)>::type> obj(&lock, t, __FILE__, __LINE__)
 
 #else
 
-#define READ_LOCKER(obj, lock) arangodb::basics::ReadLocker obj(&lock)
+#define READ_LOCKER(obj, lock) arangodb::basics::ReadLocker<std::decay<decltype (lock)>::type> obj(&lock)
 
 #define READ_LOCKER_EVENTUAL(obj, lock, t) \
-  arangodb::basics::ReadLocker obj(&lock, t)
+  arangodb::basics::ReadLocker<std::decay<decltype (lock)>::type> obj(&lock, t)
 
 #endif
 
-#define TRY_READ_LOCKER(obj, lock) arangodb::basics::TryReadLocker obj(&lock)
+#define TRY_READ_LOCKER(obj, lock) arangodb::basics::TryReadLocker<std::decay<decltype (lock)>::type> obj(&lock)
 
-#define CONDITIONAL_READ_LOCKER(obj, lock, condition) arangodb::basics::ConditionalReadLocker obj(&lock, (condition))
+#define CONDITIONAL_READ_LOCKER(obj, lock, condition) arangodb::basics::ConditionalReadLocker<std::decay<decltype (lock)>::type> obj(&lock, (condition))
 
 namespace arangodb {
 namespace basics {
@@ -66,6 +66,7 @@ namespace basics {
 /// @brief read locker
 /// A ReadLocker read-locks a read-write lock during its lifetime and unlocks
 /// the lock when it is destroyed.
+template<class LockType>
 class ReadLocker {
   ReadLocker(ReadLocker const&) = delete;
   ReadLocker& operator=(ReadLocker const&) = delete;
@@ -75,7 +76,7 @@ class ReadLocker {
 
   /// @brief acquires a read-lock
   /// The constructors read-locks the lock, the destructors unlocks the lock.
-  ReadLocker(ReadWriteLock* readWriteLock, char const* file, int line)
+  ReadLocker(LockType* readWriteLock, char const* file, int line)
       : _readWriteLock(readWriteLock), _file(file), _line(line), _isLocked(false) {
     double t = TRI_microtime();
     lock();
@@ -84,7 +85,7 @@ class ReadLocker {
   
   /// @brief acquires a read-lock, with periodic sleeps while not acquired
   /// sleep time is specified in nanoseconds
-  ReadLocker(ReadWriteLock* readWriteLock, uint64_t sleepTime, char const* file,
+  ReadLocker(LockType* readWriteLock, uint64_t sleepTime, char const* file,
              int line)
       : _readWriteLock(readWriteLock), _file(file), _line(line), _isLocked(false) {
     double t = TRI_microtime();
@@ -96,14 +97,14 @@ class ReadLocker {
 
   /// @brief acquires a read-lock
   /// The constructors read-locks the lock, the destructors unlocks the lock.
-  explicit ReadLocker(ReadWriteLock* readWriteLock)
+  explicit ReadLocker(LockType* readWriteLock)
       : _readWriteLock(readWriteLock), _isLocked(false) {
     lock();
   }
 
   /// @brief acquires a read-lock, with periodic sleeps while not acquired
   /// sleep time is specified in nanoseconds
-  ReadLocker(ReadWriteLock* readWriteLock, uint64_t sleepTime)
+  ReadLocker(LockType* readWriteLock, uint64_t sleepTime)
       : _readWriteLock(readWriteLock), _isLocked(false) {
     lockEventual(sleepTime);
   }
@@ -168,7 +169,7 @@ class ReadLocker {
 
  private:
   /// @brief the read-write lock
-  ReadWriteLock* _readWriteLock;
+  LockType* _readWriteLock;
 
 #ifdef TRI_SHOW_LOCK_TIME
 
@@ -186,6 +187,7 @@ class ReadLocker {
   bool _isLocked;
 };
 
+template<class LockType>
 class TryReadLocker {
   TryReadLocker(TryReadLocker const&) = delete;
   TryReadLocker& operator=(TryReadLocker const&) = delete;
@@ -194,7 +196,7 @@ class TryReadLocker {
   /// @brief tries to acquire a read-lock
   /// The constructor tries to read-lock the lock, the destructors unlocks the
   /// lock if it was acquired in the constructor
-  explicit TryReadLocker(ReadWriteLock* readWriteLock)
+  explicit TryReadLocker(LockType* readWriteLock)
       : _readWriteLock(readWriteLock), _isLocked(false) {
     _isLocked = _readWriteLock->tryReadLock();
   }
@@ -251,12 +253,13 @@ class TryReadLocker {
 
  private:
   /// @brief the read-write lock
-  ReadWriteLock* _readWriteLock;
+  LockType* _readWriteLock;
 
   /// @brief whether or not we acquired the lock
   bool _isLocked;
 };
 
+template<class LockType>
 class ConditionalReadLocker {
   ConditionalReadLocker(ConditionalReadLocker const&) = delete;
   ConditionalReadLocker& operator=(ConditionalReadLocker const&) = delete;
@@ -265,7 +268,7 @@ class ConditionalReadLocker {
   /// @brief acquire a read-lock
   /// The constructor tries to read-lock the lock, the destructors unlocks the
   /// lock if it was acquired in the constructor
-  ConditionalReadLocker(ReadWriteLock* readWriteLock, bool condition)
+  ConditionalReadLocker(LockType* readWriteLock, bool condition)
       : _readWriteLock(readWriteLock), _isLocked(false) {
     if (condition) {
       _readWriteLock->readLock();
@@ -328,7 +331,7 @@ class ConditionalReadLocker {
 
  private:
   /// @brief the read-write lock
-  ReadWriteLock* _readWriteLock;
+  LockType* _readWriteLock;
 
   /// @brief whether or not we acquired the lock
   bool _isLocked;
