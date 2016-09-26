@@ -43,6 +43,13 @@
 
             // now fetch the statistics history
             self.getCoordStatHistory(callback);
+          } else {
+            var cb2 = function (data) {
+              self.rerenderGraphs(data, true);
+            };
+
+            // only fetch data when view is not active
+            self.getCoordStatHistory(cb2);
           }
         }, this.interval);
       }
@@ -475,7 +482,7 @@
       return arr;
     },
 
-    rerenderGraphs: function (input) {
+    rerenderGraphs: function (input, noRender) {
       if (!this.statsEnabled) {
         return;
       }
@@ -495,11 +502,13 @@
         }
         data = c.options;
 
-        // update nvd3 chart
-        if (data[0].values.length > 0) {
-          if (self.historyInit) {
-            if (self.charts[c.id]) {
-              self.charts[c.id].update();
+        if (noRender === undefined || noRender === false) {
+          // update nvd3 chart
+          if (data[0].values.length > 0) {
+            if (self.historyInit) {
+              if (self.charts[c.id]) {
+                self.charts[c.id].update();
+              }
             }
           }
         }
