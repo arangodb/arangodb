@@ -464,33 +464,20 @@ SRC=`pwd`
 if test -n "${ENTERPRISE_GIT_URL}" ; then
     GITSHA=`git log -n1 --pretty='%h'`
     if git describe --exact-match --tags ${GITSHA}; then
-        TAG=`git describe --exact-match --tags ${GITSHA}`
-        echo "I'm on tag: ${TAG}"
+        GITARGS=`git describe --exact-match --tags ${GITSHA}`
+        echo "I'm on tag: ${GITARGS}"
     else
-        BRANCH=`git branch --no-color -q|sed "s;\* *;;"`        
-        echo "I'm on Branch: ${BRANCH}"
+        GITARGS=`git branch --no-color -q|sed "s;\* *;;"`        
+        echo "I'm on Branch: ${GITARGS}"
     fi
     # clean up if we're commanded to:
     if test -d enterprise -a ${CLEAN_IT} -eq 1; then
         rm -rf enterprise
     fi
-    if test -d enterprise; then
-        # we want to update an existing copy
-        if test -n "${BRANCH}"; then
-            GITARGS="${BRANCH}"
-        else
-            GITARGS="--tag ${TAG}"
-        fi
-        (cd enterprise; git pull --all; git checkout ${GITARGS} )
-    else
-        # this is a fresh checkout:
-        if test -n "${BRANCH}"; then
-            GITARGS="-b ${BRANCH}"
-        else
-            GITARGS="--tag ${TAG}"
-        fi
-        (git clone ${ENTERPRISE_GIT_URL} ${GITARGS} enterprise)
+    if test ! -d enterprise; then
+        git clone ${ENTERPRISE_GIT_URL} enterprise
     fi
+    (cd enterprise; git checkout master; git pull --all; git checkout ${GITARGS} )
 fi
 
 
