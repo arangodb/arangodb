@@ -105,6 +105,7 @@ set(BIN_ARANGOVPACK   arangovpack)
 set(TEST_BASICS_SUITE basics_suite)
 set(TEST_GEO_SUITE    geo_suite)
 set(PACKAGES_LIST)
+
 ################################################################################
 ## VERSION FILES
 ################################################################################
@@ -133,9 +134,10 @@ configure_file(
   NEWLINE_STYLE UNIX
 )
 
-
 ################################################################################
 ## Find the git revision
+################################################################################
+
 find_program (GIT_EXE git)
 if (DEFINED GIT_EXE AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/.git")
   execute_process(
@@ -328,7 +330,7 @@ if (MSVC)
   
   # https://blogs.msdn.microsoft.com/vcblog/2016/04/14/stl-fixes-in-vs-2015-update-2/
   # https://connect.microsoft.com/VisualStudio/feedback/details/1892487
-  #http://lists.boost.org/boost-users/2016/04/85968.php
+  # http://lists.boost.org/boost-users/2016/04/85968.php
   add_definitions("-D_ENABLE_ATOMIC_ALIGNMENT_FIX")
   
   set(MSVC_LIBS Shlwapi.lib;crypt32.lib;WINMM.LIB;Ws2_32.lib)
@@ -340,6 +342,27 @@ else ()
   set(CMAKE_EXE_LINKER_FLAGS
     "${CMAKE_EXE_LINKER_FLAGS} ${BASE_LD_FLAGS}"
   )
+endif ()
+
+# broken clock_gettime on MacOSX
+SET(USE_LOCAL_CLOCK_GETTIME FALSE)
+
+if (APPLE)
+  TRY_RUN(RUN_CLOCK_GETTIME
+          COMPILE_CLOCK_GETTIME
+          ${PROJECT_BINARY_DIR}/test_clock_gettime
+          ${CMAKE_SOURCE_DIR}/cmake/test_clock_gettime.c
+          OUTPUT_VARIABLE OUTPUT_CLOCK_GETTIME)
+
+  if (${COMPILE_CLOCK_GETTIME})
+    if (${RUN_CLOCK_GETTIME} STREQUAL "FAILED_TO_RUN")
+      set(USE_LOCAL_CLOCK_GETTIME TRUE)
+    endif ()
+  endif ()
+
+  if (USE_LOCAL_CLOCK_GETTIME) 
+    message(STATUS "using a home-made clock_gettime")
+  endif ()
 endif ()
 
 ################################################################################
@@ -909,4 +932,4 @@ add_custom_target(packages
   DEPENDS ${PACKAGES_LIST}
   )
 
-message(INFO " Building for git revision: ${ARANGODB_BUILD_REPOSITORY}")
+message(STATUS "building for git revision: ${ARANGODB_BUILD_REPOSITORY}")

@@ -140,6 +140,7 @@ GOLD=0
 SANITIZE=0
 VERBOSE=0
 MSVC=
+ENTERPRISE_GIT_URL=
 
 case "$1" in
     standard)
@@ -311,6 +312,13 @@ while [ $# -gt 0 ];  do
             CXGCC=1
             shift
             ;;
+
+        --enterprise)
+            shift
+            ENTERPRISE_GIT_URL=$1
+            shift
+            CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DUSE_ENTERPRISE=On"
+            ;;
         *)
             echo "Unknown option: $1"
             exit 1
@@ -452,6 +460,40 @@ if test ${CLEAN_IT} -eq 1; then
 fi
 
 SRC=`pwd`
+
+if test -n "${ENTERPRISE_GIT_URL}" ; then
+    GITSHA=`git log -n1 --pretty='%h'`
+    if git describe --exact-match --tags ${GITSHA}; then
+        TAG=`git describe --exact-match --tags ${GITSHA}`
+        echo "I'm on tag: ${TAG}"
+    else
+        BRANCH=`git branch --no-color -q|sed "s;\* *;;"`        
+        echo "I'm on Branch: ${BRANCH}"
+    fi
+    # clean up if we're commanded to:
+    if test -d enterprise -a ${CLEAN_IT} -eq 1; then
+        rm -rf enterprise
+    fi
+    if test -d enterprise; then
+        # we want to update an existing copy
+        if test -n "${BRANCH}"; then
+            GITARGS="${BRANCH}"
+        else
+            GITARGS="--tag ${TAG}"
+        fi
+        (cd enterprise; git pull --all; git checkout ${GITARGS} )
+    else
+        # this is a fresh checkout:
+        if test -n "${BRANCH}"; then
+            GITARGS="-b ${BRANCH}"
+        else
+            GITARGS="--tag ${TAG}"
+        fi
+        (git clone ${ENTERPRISE_GIT_URL} ${GITARGS} enterprise)
+    fi
+fi
+
+
 
 test -d ${BUILD_DIR} || mkdir ${BUILD_DIR}
 cd ${BUILD_DIR}

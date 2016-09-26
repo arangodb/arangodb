@@ -49,6 +49,7 @@ static const std::string activeStr = "active";
 static const std::string supervisionStr = "supervision";
 static const std::string waitForSyncStr = "wait for sync";
 static const std::string supervisionFrequencyStr = "supervision frequency";
+static const std::string supervisionGracePeriodStr = "supervision grace period";
 static const std::string compactionStepSizeStr = "compaction step size";
 static const std::string defaultEndpointStr = "tcp://localhost:8529";
 
@@ -66,6 +67,7 @@ struct config_t {
   bool _waitForSync;
   double _supervisionFrequency;
   uint64_t _compactionStepSize;
+  double _supervisionGracePeriod;
 
   mutable arangodb::basics::ReadWriteLock _lock;
 
@@ -75,7 +77,7 @@ struct config_t {
   /// @brief ctor
   config_t(size_t as, size_t ps, double minp, double maxp, std::string const& e,
            std::vector<std::string> const& g, bool s, bool w, double f,
-           uint64_t c);
+           uint64_t c, double p);
 
   /// @brief copy constructor
   config_t(config_t const&);
@@ -165,6 +167,8 @@ struct config_t {
 
   /// @brief Get maximum RAFT timeout
   double maxPing() const;
+
+  double supervisionGracePeriod() const;
 
   /// @brief Get replacement for deceased active agent
   bool swapActiveMember(std::string const&, std::string const&);

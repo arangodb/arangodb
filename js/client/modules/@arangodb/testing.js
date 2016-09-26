@@ -1462,6 +1462,7 @@ function startInstanceAgency (instanceInfo, protocol, options,
     const port = findFreePort(options.maxPort);
     instanceArgs['server.endpoint'] = protocol + '://127.0.0.1:' + port;
     instanceArgs['agency.my-address'] = protocol + '://127.0.0.1:' + port;
+    instanceArgs['agency.supervision-grace-period'] = '5';
     
 
     if (i === N - 1) {

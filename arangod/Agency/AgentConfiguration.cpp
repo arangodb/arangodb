@@ -38,11 +38,13 @@ config_t::config_t()
       _waitForSync(true),
       _supervisionFrequency(5.0),
       _compactionStepSize(1000),
-      _lock() {}
+      _supervisionGracePeriod(120),
+      _lock()
+      {}
 
 config_t::config_t(size_t as, size_t ps, double minp, double maxp,
                    std::string const& e, std::vector<std::string> const& g,
-                   bool s, bool w, double f, uint64_t c)
+                   bool s, bool w, double f, uint64_t c, double p)
     : _agencySize(as),
       _poolSize(ps),
       _minPing(minp),
@@ -53,6 +55,7 @@ config_t::config_t(size_t as, size_t ps, double minp, double maxp,
       _waitForSync(w),
       _supervisionFrequency(f),
       _compactionStepSize(c),
+      _supervisionGracePeriod(p),
       _lock() {}
 
 config_t::config_t(config_t const& other) { *this = other; }
@@ -70,7 +73,8 @@ config_t::config_t(config_t&& other)
       _supervision(std::move(other._supervision)),
       _waitForSync(std::move(other._waitForSync)),
       _supervisionFrequency(std::move(other._supervisionFrequency)),
-      _compactionStepSize(std::move(other._compactionStepSize)) {}
+      _compactionStepSize(std::move(other._compactionStepSize)),
+      _supervisionGracePeriod(std::move(other._supervisionGracePeriod)) {}
 
 config_t& config_t::operator=(config_t const& other) {
   _id = other._id;
@@ -86,6 +90,7 @@ config_t& config_t::operator=(config_t const& other) {
   _waitForSync = other._waitForSync;
   _supervisionFrequency = other._supervisionFrequency;
   _compactionStepSize = other._compactionStepSize;
+  _supervisionGracePeriod = other._supervisionGracePeriod;
   return *this;
 }
 
@@ -103,7 +108,13 @@ config_t& config_t::operator=(config_t&& other) {
   _waitForSync = std::move(other._waitForSync);
   _supervisionFrequency = std::move(other._supervisionFrequency);
   _compactionStepSize = std::move(other._compactionStepSize);
+  _supervisionGracePeriod = std::move(other._supervisionGracePeriod);
   return *this;
+}
+
+double config_t::supervisionGracePeriod() const {
+  READ_LOCKER(readLocker, _lock);
+  return _supervisionGracePeriod;
 }
 
 double config_t::minPing() const {
@@ -413,6 +424,7 @@ query_t config_t::toBuilder() const {
     ret->add(supervisionStr, VPackValue(_supervision));
     ret->add(supervisionFrequencyStr, VPackValue(_supervisionFrequency));
     ret->add(compactionStepSizeStr, VPackValue(_compactionStepSize));
+    ret->add(supervisionGracePeriodStr, VPackValue(_supervisionGracePeriod));
   }
   ret->close();
   return ret;

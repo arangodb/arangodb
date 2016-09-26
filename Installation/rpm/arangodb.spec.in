@@ -43,7 +43,7 @@ Release:        @ARANGODB_PACKAGE_REVISION@
 Summary:        The open-source, multi-model NoSQL database
 License:        Apache-2.0
 Group:          Productivity/Databases/Servers
-Conflicts:	arangodb3-client
+Conflicts:	arangodb, @CPACKG_PACKAGE_CONFLICTS@, @CPACKG_PACKAGE_CONFLICTS@-client, @CPACK_PACKAGE_NAME@-client
 Url:            http://www.arangodb.com
 Vendor:         @CPACK_PACKAGE_VENDOR@
 Prefix:         @CPACK_PACKAGING_INSTALL_PREFIX@
@@ -57,10 +57,10 @@ BuildRoot:      @CMAKE_CURRENT_BINARY_DIR@/_CPack_Packages/Linux/RPM/@CPACK_PACK
 ## --SECTION--                                                build dependencies
 ## -----------------------------------------------------------------------------
 
-%package client
+%package @CPACK_PACKAGE_NAME@-client
 Summary:        ArangoDB shell as stand-alone package
 Group:          Productivity/Databases/Servers
-Conflicts:	arangodb3
+Conflicts:	arangodb, @CPACKG_PACKAGE_CONFLICTS@, @CPACKG_PACKAGE_CONFLICTS@-client, @CPACK_PACKAGE_NAME@
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       description
@@ -74,7 +74,7 @@ The ArangoDB consists of a server, a separate shell, which allows you to adminis
 It is written in C/C++.
 
 
-%description client
+%description @CPACK_PACKAGE_NAME@-client
 The ArangoDB shell as stand-alone program. It also contains the utility programs: arangobench (benchmark), arangorestore & arangodump (backup), arangoimp (import).
 
 ## -----------------------------------------------------------------------------
@@ -136,7 +136,7 @@ mkdir -p %{buildroot}%{_piddir}
 %endif
 
 
-%files client
+%files @CPACK_PACKAGE_NAME@-client
 %defattr(-,root,root,0755)
 #%doc README
 #%doc README.md

@@ -45,7 +45,8 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _supervision(false),
       _waitForSync(true),
       _supervisionFrequency(5.0),
-      _compactionStepSize(1000) {
+      _compactionStepSize(1000),
+      _supervisionGracePeriod(120.0) {
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Database");
@@ -96,6 +97,10 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--agency.supervision-frequency",
                      "arangodb cluster supervision frequency [s]",
                      new DoubleParameter(&_supervisionFrequency));
+
+  options->addOption("--agency.supervision-grace-period",
+                     "supervision time, after which a server is considered to have failed [s]",
+                     new DoubleParameter(&_supervisionGracePeriod));
 
   options->addOption("--agency.compaction-step-size",
                      "step size between state machine compactions",
@@ -217,7 +222,7 @@ void AgencyFeature::start() {
   _agent.reset(new consensus::Agent(consensus::config_t(
       _size, _poolSize, _minElectionTimeout, _maxElectionTimeout, endpoint,
       _agencyEndpoints, _supervision, _waitForSync, _supervisionFrequency,
-      _compactionStepSize)));
+      _compactionStepSize, _supervisionGracePeriod)));
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting agency personality";
   _agent->start();
