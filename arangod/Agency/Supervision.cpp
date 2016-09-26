@@ -50,7 +50,7 @@ Supervision::Supervision()
       _agent(nullptr),
       _snapshot("Supervision"),
       _frequency(5),
-      _gracePeriod(15),
+      _gracePeriod(120),
       _jobId(0),
       _jobIdMax(0),
       _selfShutdown(false) {}
@@ -129,15 +129,33 @@ std::vector<check_t> Supervision::checkDBServers() {
     }
 
     if (good) {
+      
       report->add(
           "LastHeartbeatAcked",
           VPackValue(timepointToString(std::chrono::system_clock::now())));
       report->add("Status", VPackValue(Supervision::HEALTH_STATUS_GOOD));
+      
+      std::string failedServerPath = failedServersPrefix + "/" + serverID;
+      if (_snapshot.exists(failedServerPath).size() == 3) {
+        Builder del;
+        del.openArray();
+        del.openObject();
+        del.add(_agencyPrefix + failedServerPath,
+                VPackValue(VPackValueType::Object));
+        del.add("op", VPackValue("delete"));
+        del.close();
+        del.close();
+        del.close();
+        transact(_agent, del);
+      }
+      
     } else {
+      
       std::chrono::seconds t{0};
       t = std::chrono::duration_cast<std::chrono::seconds>(
           std::chrono::system_clock::now() -
           stringToTimepoint(lastHeartbeatAcked));
+
       if (t.count() > _gracePeriod) {  // Failure
         if (lastStatus == "BAD") {
           report->add("Status", VPackValue("FAILED"));
@@ -147,15 +165,18 @@ std::vector<check_t> Supervision::checkDBServers() {
       } else {
         report->add("Status", VPackValue("BAD"));
       }
+      
     }
 
     report->close();
     report->close();
     report->close();
     report->close();
+    
     if (!this->isStopping()) {
       _agent->write(report);
     }
+    
   }
 
   if (!todelete.empty()) {
@@ -686,7 +707,7 @@ bool Supervision::start() {
 bool Supervision::start(Agent* agent) {
   _agent = agent;
   _frequency = static_cast<long>(_agent->config().supervisionFrequency());
-
+  _gracePeriod = _agent->config().supervisionGracePeriod();
   return start();
 }
 

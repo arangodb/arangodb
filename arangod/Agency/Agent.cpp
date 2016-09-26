@@ -312,6 +312,11 @@ void Agent::sendAppendEntriesRPC() {
 
       index_t last_confirmed = _confirmed[followerId];
       std::vector<log_t> unconfirmed = _state.get(last_confirmed);
+
+      if (unconfirmed.empty()) {
+        continue;
+      }
+
       index_t highest = unconfirmed.back().index;
 
       duration<double> m =

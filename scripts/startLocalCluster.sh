@@ -72,6 +72,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --agency.size $NRAGENTS \
         --agency.supervision true \
         --agency.supervision-frequency $SFRE \
+        --agency.supervision-grace-period 15 \
         --agency.wait-for-sync false \
         --database.directory cluster/data$port \
         --javascript.app-path ./js/apps \
