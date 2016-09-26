@@ -3,7 +3,7 @@ shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/transac
   <span class="hljs-string">"collections"</span> : { 
     <span class="hljs-string">"write"</span> : <span class="hljs-string">"products"</span> 
   }, 
-  <span class="hljs-string">"action"</span> : <span class="hljs-string">"function () {var db = require('internal').db;db.products.save({ _key: 'abc'});db.products.save({ _key: 'abc'});}"</span> 
+  <span class="hljs-string">"action"</span> : <span class="hljs-string">"function () {var db = require('@arangodb').db;db.products.save({ _key: 'abc'});db.products.save({ _key: 'abc'});}"</span> 
 }
 EOF
 
@@ -15,10 +15,10 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
   <span class="hljs-string">"stacktrace"</span> : [ 
     <span class="hljs-string">"ArangoError: unique constraint violated"</span>, 
     <span class="hljs-string">"    at Error (native)"</span>, 
-    <span class="hljs-string">"    at eval (eval at post_api_transaction (js/actions/api-transaction.js:49:16), &lt;anonymous&gt;:3:99)"</span>, 
-    <span class="hljs-string">"    at eval (eval at post_api_transaction (js/actions/api-transaction.js:49:16), &lt;anonymous&gt;:3:122)"</span>, 
-    <span class="hljs-string">"    at post_api_transaction (js/actions/api-transaction.js:49:16)"</span>, 
-    <span class="hljs-string">"    at Function.actions.defineHttp.callback (js/actions/api-transaction.js:66:11)"</span> 
+    <span class="hljs-string">"    at eval (eval at post_api_transaction (/local/home/willi/src/stable-3.1/js/actions/api-transaction.js:48:16), &lt;anonymous&gt;:3:100)"</span>, 
+    <span class="hljs-string">"    at eval (eval at post_api_transaction (/local/home/willi/src/stable-3.1/js/actions/api-transaction.js:48:16), &lt;anonymous&gt;:3:123)"</span>, 
+    <span class="hljs-string">"    at post_api_transaction (/local/home/willi/src/stable-3.1/js/actions/api-transaction.js:48:16)"</span>, 
+    <span class="hljs-string">"    at Function.actions.defineHttp.callback (/local/home/willi/src/stable-3.1/js/actions/api-transaction.js:64:11)"</span> 
   ], 
   <span class="hljs-string">"message"</span> : <span class="hljs-string">"unique constraint violated"</span>, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 

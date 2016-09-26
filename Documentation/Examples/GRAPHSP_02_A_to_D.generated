@@ -6,15 +6,15 @@ arangosh&gt; db._query(<span class="hljs-string">"FOR v, e IN OUTBOUND SHORTEST_
   ], 
   [ 
     <span class="hljs-string">"B"</span>, 
-    <span class="hljs-string">"7787"</span> 
+    <span class="hljs-string">"7462"</span> 
   ], 
   [ 
     <span class="hljs-string">"C"</span>, 
-    <span class="hljs-string">"7791"</span> 
+    <span class="hljs-string">"7466"</span> 
   ], 
   [ 
     <span class="hljs-string">"D"</span>, 
-    <span class="hljs-string">"7794"</span> 
+    <span class="hljs-string">"7469"</span> 
   ] 
 ]
 [object ArangoQueryCursor, count: <span class="hljs-number">4</span>, hasMore: <span class="hljs-literal">false</span>]
@@ -26,15 +26,15 @@ arangosh&gt; db._query(<span class="hljs-string">"FOR v, e IN OUTBOUND SHORTEST_
   ], 
   [ 
     <span class="hljs-string">"B"</span>, 
-    <span class="hljs-string">"7787"</span> 
+    <span class="hljs-string">"7462"</span> 
   ], 
   [ 
     <span class="hljs-string">"C"</span>, 
-    <span class="hljs-string">"7791"</span> 
+    <span class="hljs-string">"7466"</span> 
   ], 
   [ 
     <span class="hljs-string">"D"</span>, 
-    <span class="hljs-string">"7794"</span> 
+    <span class="hljs-string">"7469"</span> 
   ] 
 ]
 [object ArangoQueryCursor, count: <span class="hljs-number">4</span>, hasMore: <span class="hljs-literal">false</span>]

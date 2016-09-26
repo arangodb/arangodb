@@ -14,6 +14,6 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
   <span class="hljs-string">"updated"</span> : <span class="hljs-number">0</span>, 
   <span class="hljs-string">"ignored"</span> : <span class="hljs-number">0</span>, 
   <span class="hljs-string">"details"</span> : [ 
-    <span class="hljs-string">"at position 2: creating document failed with error 'unique constraint violated', offending document: {\"_key\":\"abc\",\"value1\":\"bar\",\"value2\":\"baz\"}"</span> 
+    <span class="hljs-string">"at position 1: creating document failed with error 'unique constraint violated', offending document: {\"_key\":\"abc\",\"value1\":\"bar\",\"value2\":\"baz\"}"</span> 
   ] 
 }

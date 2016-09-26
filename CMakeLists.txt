@@ -64,8 +64,8 @@ endif ()
 ################################################################################
 
 set(ARANGODB_VERSION_MAJOR      "3")
-set(ARANGODB_VERSION_MINOR      "0")
-set(ARANGODB_VERSION_REVISION   "devel")
+set(ARANGODB_VERSION_MINOR      "1")
+set(ARANGODB_VERSION_REVISION   "rc0")
 set(ARANGODB_PACKAGE_REVISION   "1")
 
 set(ARANGODB_VERSION

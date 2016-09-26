@@ -1,17 +1,17 @@
 arangosh&gt; db.example.save({ Hello : <span class="hljs-string">"world"</span>, foo : <span class="hljs-string">"bar"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/6597"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"6597"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"6597"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/6592"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"6592"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_T0WXv7a---"</span> 
 }
 arangosh&gt; db.example.updateByExample({ Hello: <span class="hljs-string">"world"</span> }, { Hello: <span class="hljs-string">"foo"</span>, World: <span class="hljs-string">"bar"</span> }, <span class="hljs-literal">false</span>);
 <span class="hljs-number">1</span>
 arangosh&gt; db.example.byExample({ Hello: <span class="hljs-string">"foo"</span> }).toArray()
 [ 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"6597"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/6597"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"6601"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"6592"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/6592"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_T0WXv7m---"</span>, 
     <span class="hljs-string">"Hello"</span> : <span class="hljs-string">"foo"</span>, 
     <span class="hljs-string">"foo"</span> : <span class="hljs-string">"bar"</span>, 
     <span class="hljs-string">"World"</span> : <span class="hljs-string">"bar"</span> 

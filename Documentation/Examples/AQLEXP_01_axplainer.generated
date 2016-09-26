@@ -1,9 +1,9 @@
 arangosh&gt; db._create("test"); 
-[ArangoCollection 7249, "test" (type document, status loaded)]
+[ArangoCollection 6941, "test" (type document, status loaded)]
 arangosh&gt; for (i = 0; i &lt; 100; ++i) { db.test.save({ value: i }); }
 arangosh&gt; db.test.ensureIndex({ type: "skiplist", fields: [ "value" ] });
 { 
-  "id" : "test/7553", 
+  "id" : "test/7245", 
   "type" : "skiplist", 
   "fields" : [ 
     "value" 
@@ -40,5 +40,6 @@ Optimization rules applied:
   7   use-indexes
   8   remove-filter-covered-by-index
   9   use-index-for-sort
+ 10   remove-unnecessary-calculations-2
 
 
