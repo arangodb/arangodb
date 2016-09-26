@@ -40,5 +40,6 @@ Optimization rules applied:
   7   use-indexes
   8   remove-filter-covered-by-index
   9   use-index-for-sort
+ 10   remove-unnecessary-calculations-2
 
 

@@ -9,9 +9,9 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 { 
   <span class="hljs-string">"result"</span> : [ 
-    <span class="hljs-string">"/_db/_system/_api/document/products/10440"</span>, 
-    <span class="hljs-string">"/_db/_system/_api/document/products/10437"</span>, 
-    <span class="hljs-string">"/_db/_system/_api/document/products/10433"</span> 
+    <span class="hljs-string">"/_db/_system/_api/document/products/10453"</span>, 
+    <span class="hljs-string">"/_db/_system/_api/document/products/10449"</span>, 
+    <span class="hljs-string">"/_db/_system/_api/document/products/10456"</span> 
   ], 
   <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"cached"</span> : <span class="hljs-literal">false</span>, 
@@ -22,7 +22,7 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
       <span class="hljs-string">"scannedFull"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0003001689910888672</span> 
+      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00022602081298828125</span> 
     }, 
     <span class="hljs-string">"warnings"</span> : [ ] 
   }, 

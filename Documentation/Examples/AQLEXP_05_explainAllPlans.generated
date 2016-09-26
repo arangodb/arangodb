@@ -116,7 +116,8 @@ arangosh&gt; stmt.explain({ allPlans: <span class="hljs-literal">true</span> });
         <span class="hljs-string">"move-filters-up-2"</span>, 
         <span class="hljs-string">"use-indexes"</span>, 
         <span class="hljs-string">"remove-filter-covered-by-index"</span>, 
-        <span class="hljs-string">"use-index-for-sort"</span> 
+        <span class="hljs-string">"use-index-for-sort"</span>, 
+        <span class="hljs-string">"remove-unnecessary-calculations-2"</span> 
       ], 
       <span class="hljs-string">"collections"</span> : [ 
         { 
