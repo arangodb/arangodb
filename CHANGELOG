@@ -1,5 +1,15 @@
-devel
------
+v3.1.rc0 (2016-09-26)
+---------------------
+
+* candidate for new build pipeline
+
+
+v3.1.alpha2 (2016-09-01)
+------------------------
+
+* added module.context.createDocumentationRouter to replace module.context.apiDocumentation
+
+* bug in RAFT implementation of reads. dethroned leader still answered requests in isolation
 
 * fixed issue #2071
 
@@ -132,6 +142,7 @@ devel
 * all lambdas in ClusterInfo might have been left with dangling references.
 
 * Agency bug fix for handling of empty json objects as values.
+
 
 v3.0.10 (XXXX-XX-XX)
 --------------------
