@@ -57,7 +57,7 @@ BuildRoot:      @CMAKE_CURRENT_BINARY_DIR@/_CPack_Packages/Linux/RPM/@CPACK_PACK
 ## --SECTION--                                                build dependencies
 ## -----------------------------------------------------------------------------
 
-%package @CPACK_PACKAGE_NAME@-client
+%package client
 Summary:        ArangoDB shell as stand-alone package
 Group:          Productivity/Databases/Servers
 Conflicts:	arangodb, @CPACKG_PACKAGE_CONFLICTS@, @CPACKG_PACKAGE_CONFLICTS@-client, @CPACK_PACKAGE_NAME@
@@ -74,7 +74,7 @@ The ArangoDB consists of a server, a separate shell, which allows you to adminis
 It is written in C/C++.
 
 
-%description @CPACK_PACKAGE_NAME@-client
+%description client
 The ArangoDB shell as stand-alone program. It also contains the utility programs: arangobench (benchmark), arangorestore & arangodump (backup), arangoimp (import).
 
 ## -----------------------------------------------------------------------------
@@ -136,7 +136,7 @@ mkdir -p %{buildroot}%{_piddir}
 %endif
 
 
-%files @CPACK_PACKAGE_NAME@-client
+%files client
 %defattr(-,root,root,0755)
 #%doc README
 #%doc README.md
