@@ -677,7 +677,7 @@ LogicalCollection* CreateCollectionCoordinator(LogicalCollection* parameters) {
       std::unordered_map<std::string, std::vector<std::string>>>(
       arangodb::distributeShards(parameters->numberOfShards(),
                                  parameters->replicationFactor(), dbServers));
-  if (shards->empty()) {
+  if (shards->empty() && !parameters->isSmart()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "no database servers found in cluster");
   }

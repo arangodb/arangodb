@@ -223,7 +223,7 @@ class LogicalCollection {
 
   // SECTION: Serialisation
   void toVelocyPack(arangodb::velocypack::Builder&, bool withPath) const;
-  void toVelocyPackForAgency(arangodb::velocypack::Builder&);
+  virtual void toVelocyPackForAgency(arangodb::velocypack::Builder&);
 
   /// @brief transform the information for this collection to velocypack
   ///        The builder has to be an opened Type::Object
@@ -356,7 +356,7 @@ class LogicalCollection {
   int endRead(bool useDeadlockDetector);
   int endWrite(bool useDeadlockDetector);
 
- private:
+ protected:
   // SECTION: Private functions
 
   PhysicalCollection* createPhysical();
@@ -402,7 +402,7 @@ class LogicalCollection {
  public:
   // FIXME needs to be private
   int deletePrimaryIndex(arangodb::Transaction*, TRI_doc_mptr_t const*);
- private:
+ protected:
 
   int insertSecondaryIndexes(arangodb::Transaction*, TRI_doc_mptr_t const*,
                              bool);
@@ -453,7 +453,9 @@ class LogicalCollection {
 
   void increaseInternalVersion();
 
- private:
+  void toVelocyPackInObject(VPackBuilder& result) const;
+
+ protected:
   // SECTION: Private variables
 
   // SECTION: Meta Information
@@ -509,7 +511,7 @@ class LogicalCollection {
   int const _replicationFactor;
 
   // SECTION: Sharding
-  size_t const _numberOfShards;
+  size_t _numberOfShards;
   bool const _allowUserKeys;
   std::vector<std::string> _shardKeys;
   // This is shared_ptr because it is thread-safe
