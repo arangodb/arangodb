@@ -2149,7 +2149,10 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(
     Optimizer* opt, ExecutionPlan* plan, Optimizer::Rule const* rule) {
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, EN::ENUMERATE_COLLECTION, true);
+
+  std::vector<ExecutionNode::NodeType> const types = {
+      ExecutionNode::ENUMERATE_COLLECTION, ExecutionNode::ENUMERATE_LIST };
+  plan->findNodesOfType(nodes, types, true);
 
   std::unordered_set<ExecutionNode*> nodesSet;
   for (auto const& n : nodes) {
@@ -2178,7 +2181,12 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(
 
         auto dep = nwalker->getFirstDependency();
 
-        if (dep->getType() != EN::ENUMERATE_COLLECTION) {
+        if (dep->getType() != EN::ENUMERATE_COLLECTION && 
+            dep->getType() != EN::ENUMERATE_LIST) {
+          break;
+        }
+
+        if (n->getType() == EN::ENUMERATE_LIST && dep->getType() == EN::ENUMERATE_LIST) {
           break;
         }
 
