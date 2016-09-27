@@ -24,6 +24,7 @@
 
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/files.h"
+#include "Basics/FileUtils.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -47,6 +48,12 @@ void TempFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--temp.path", "path for temporary files",
                      new StringParameter(&_path));
+}
+
+void TempFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  if (_path.length() > 0 ) {
+    basics::FileUtils::makePathAbsolute(_path);
+  }
 }
 
 void TempFeature::prepare() {
