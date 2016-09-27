@@ -302,6 +302,7 @@ LogicalCollection::LogicalCollection(
       _type(other->type()),
       _name(other->name()),
       _distributeShardsLike(other->distributeShardsLike()),
+      _isSmart(other->isSmart()),
       _status(other->status()),
       _isLocal(false),
       _isDeleted(other->_isDeleted),
@@ -360,6 +361,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
                                                   TRI_COL_TYPE_UNKNOWN)),
       _name(ReadStringValue(info, "name", "")),
       _distributeShardsLike(ReadStringValue(info, "distributeShardsLike", "")),
+      _isSmart(ReadBooleanValue(info, "isSmart", false)),
       _status(ReadNumericValue<TRI_vocbase_col_status_e, int>(
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
       _isLocal(!ServerState::instance()->isCoordinator()),
@@ -467,7 +469,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
 
   // Cluster only tests
   if (ServerState::instance()->isCoordinator()) {
-    if (_numberOfShards == 0 || _numberOfShards > 1000) {
+    if ( (_numberOfShards == 0 && !_isSmart) || _numberOfShards > 1000) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "invalid number of shards");
     }
@@ -789,7 +791,7 @@ bool LogicalCollection::waitForSync() const {
 }
 
 bool LogicalCollection::isSmart() const {
-  return false;
+  return _isSmart;
 }
 
 std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {

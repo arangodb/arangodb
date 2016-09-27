@@ -171,7 +171,7 @@ class LogicalCollection {
   bool isSystem() const;
   bool isVolatile() const;
   bool waitForSync() const;
-  virtual bool isSmart() const;
+  bool isSmart() const;
   
   void waitForSync(bool value) { _waitForSync = value; }
 
@@ -477,6 +477,10 @@ class LogicalCollection {
 
   // @brief Name of other collection this shards should be distributed like
   std::string _distributeShardsLike;
+
+  // @brief Flag if this collection is a smart one. (Enterprise only)
+
+  bool _isSmart;
 
   // the following contains in the cluster/DBserver case the information
   // which other servers are in sync with this shard. It is unset in all
