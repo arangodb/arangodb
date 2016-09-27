@@ -132,7 +132,7 @@ mkdir -p %{buildroot}%{_piddir}
 %{_sysconfdir}/init.d/arangodb3
 
 %if 0%{?suse_version} >= 1210
-%{_unitdir}/arangodb3.service
+%{_unitdir}/@CPACK_PACKAGE_NAME@.service
 %endif
 
 
@@ -176,7 +176,7 @@ mkdir -p %{buildroot}%{_piddir}
 %restart_on_update arangodb3
 
 %if 0%{?suse_version} >= 1210
-%service_add_post arangodb3.service
+%service_add_post @CPACK_PACKAGE_NAME@.service
 %endif
 
 %else
