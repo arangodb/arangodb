@@ -73,7 +73,7 @@
       buttons.push(
         window.modalView.createSuccessButton('Yes', func.bind(this, element))
       );
-      window.modalView.show('modalTable.ejs', 'Modify Cluster Plan', buttons, tableContent);
+      window.modalView.show('modalTable.ejs', 'Modify Cluster Size', buttons, tableContent);
     },
 
     initialize: function () {

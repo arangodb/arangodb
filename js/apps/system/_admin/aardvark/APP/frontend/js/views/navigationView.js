@@ -131,6 +131,10 @@
       var navigateTo = tab.id;
       var dropdown = false;
 
+      if (navigateTo === 'enterprise') {
+        return;
+      }
+
       if ($(tab).hasClass('fa')) {
         return;
       }
@@ -287,6 +291,11 @@
 
     switchTab: function (e) {
       var id = $(e.currentTarget).children().first().attr('id');
+
+      if (id === 'enterprise') {
+        window.open('https://www.arangodb.com/download-arangodb-enterprise/', '_blank');
+        return;
+      }
 
       if (id) {
         this.selectMenuItem(id + '-menu');

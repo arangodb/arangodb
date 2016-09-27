@@ -954,10 +954,7 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
   {
     WRITE_LOCKER(writeLocker, _collectionsLock);
   // The collection is renamed. Now swap cache entries.
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto it2 =
-#endif
-    _collectionsByName.emplace(newName, collection);
+    auto it2 = _collectionsByName.emplace(newName, collection);
     TRI_ASSERT(it2.second);
 
     _collectionsByName.erase(oldName);

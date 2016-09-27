@@ -53,8 +53,8 @@ var buildUrlBroken = function (append) {
 
 function RequestSuite () {
   return { 
-    testVersionJsonJson : verionJsonJson,
-    testVersionVpackJson: verionVpackJson,
+    testVersionJsonJson : versionJsonJson,
+    testVersionVpackJson: versionVpackJson,
     testVersionJsonVpack: versionJsonVpack,
     testVersionVpackVpack: versionVpackVpack,
     testEchoVpackVpack: echoVpackVpack
@@ -62,7 +62,7 @@ function RequestSuite () {
 };
 
 
-function verionJsonJson() {
+function versionJsonJson() {
   var path = '/_api/version';
   var headers = {
     'content-type': 'application/json',
@@ -77,11 +77,17 @@ function verionJsonJson() {
   expect(String(res.headers['content-type'])).to.have.string("application/json");
 
   var obj = JSON.parse(res.body);
-  var expected = { "server" : "arango" , "version" : "3.0.devel" };
-  expect(obj).to.eql(expected); //eql compares deep
+
+  expect(obj).to.have.property('server');
+  expect(obj).to.have.property('version');
+  expect(obj).to.have.property('license');
+
+  expect(obj.server).to.be('arango');
+  expect(obj.version).to.match(/[0-9]+\.[0-9]+\.+devel/);
+  expect(obj.license).to.match(/enterprise|community/g);
 };
 
-function verionVpackJson() {
+function versionVpackJson() {
   var path = '/_api/version';
   var headers = {
     'content-type': 'application/x-velocypack',
@@ -96,8 +102,14 @@ function verionVpackJson() {
   expect(String(res.headers['content-type'])).to.have.string("application/json");
 
   var obj = JSON.parse(res.body);
-  var expected = { "server" : "arango" , "version" : "3.0.devel" };
-  expect(obj).to.eql(expected); //eql compares deep
+
+  expect(obj).to.have.property('server');
+  expect(obj).to.have.property('version');
+  expect(obj).to.have.property('license');
+
+  expect(obj.server).to.be('arango');
+  expect(obj.version).to.match(/[0-9]+\.[0-9]+\.+devel/);
+  expect(obj.license).to.match(/enterprise|community/g);
 };
 
 function versionJsonVpack () {
@@ -115,8 +127,14 @@ function versionJsonVpack () {
   expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
 
   var obj = VPACK_TO_V8(res.body);
-  var expected = { "server" : "arango" , "version" : "3.0.devel" };
-  expect(obj).to.eql(expected); //eql compares deep
+
+  expect(obj).to.have.property('server');
+  expect(obj).to.have.property('version');
+  expect(obj).to.have.property('license');
+
+  expect(obj.server).to.be('arango');
+  expect(obj.version).to.match(/[0-9]+\.[0-9]+\.+devel/);
+  expect(obj.license).to.match(/enterprise|community/g);
 };
 
 function versionVpackVpack () {
@@ -134,8 +152,14 @@ function versionVpackVpack () {
   expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
 
   var obj = VPACK_TO_V8(res.body);
-  var expected = { "server" : "arango" , "version" : "3.0.devel" };
-  expect(obj).to.eql(expected); //eql compares deep
+
+  expect(obj).to.have.property('server');
+  expect(obj).to.have.property('version');
+  expect(obj).to.have.property('license');
+
+  expect(obj.server).to.be('arango');
+  expect(obj.version).to.match(/[0-9]+\.[0-9]+\.+devel/);
+  expect(obj.license).to.match(/enterprise|community/g);
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////
