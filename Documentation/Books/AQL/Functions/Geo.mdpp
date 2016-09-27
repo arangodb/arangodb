@@ -12,13 +12,13 @@ with an error.
 `NEAR(coll, latitude, longitude, limit, distanceName) → docArray`
 
 Return at most *limit* documents from collection *coll* that are near *latitude*
-and *longitude*. The result contains at most *limit* documents, returned in
-any order. If more than *limit* documents qualify, it is undefined which of the qualifying
-documents are returned. Optionally, the distances between the specified coordinate
-(*latitude* and *longitude*) and the document coordinates can be returned as well.
-To make use of that, the desired attribute name for the distance result has to be specified
-in the *distanceName* argument. The result documents will contain the distance value in
-an attribute of that name.
+and *longitude*. The result contains at most *limit* documents, returned sorted by
+distance, with closest distances being returned first. If more than *limit* documents 
+qualify, it is undefined which of the qualifying documents are returned. Optionally, 
+the distances between the specified coordinate (*latitude* and *longitude*) and the 
+document coordinates can be returned as well. To make use of that, the desired attribute 
+name for the distance result has to be specified in the *distanceName* argument. The 
+result documents will contain the distance value in an attribute of that name.
 
 - **coll** (collection): a collection
 - **latitude** (number): the latitude portion of the search coordinate
@@ -35,12 +35,12 @@ an attribute of that name.
 `WITHIN(coll, latitude, longitude, radius, distanceName) → docArray`
 
 Return all documents from collection *coll* that are within a radius of *radius*
-around the specified coordinate (*latitude* and *longitude*). The order in which the
-result documents are returned is undefined. Optionally, the distance between the
-search coordinate and the document coordinates can be returned as well. To make use
-of that, an attribute name for the distance result has to be specified in
-the *distanceName* argument. The result documents will contain the distance value in
-an attribute of that name.
+around the specified coordinate (*latitude* and *longitude*). The documents returned
+are sorted by distance to the search coordinate, with the closest distances being 
+returned first. Optionally, the distance between the search coordinate and the document 
+coordinates can  be returned as well. To make use of that, an attribute name for the distance 
+result has to be specified in the *distanceName* argument. The result documents will contain 
+the distance value in an attribute of that name.
 
 - **coll** (collection): a collection
 - **latitude** (number): the latitude portion of the search coordinate
