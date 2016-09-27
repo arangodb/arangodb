@@ -287,11 +287,11 @@
       // arangoHelper.buildGraphSubNav(self.name, 'Content');
       $(this.el).append(
         '<div id="calculatingGraph" style="position: absolute; left: 25px; top: 130px;">' +
-        '<i class="fa fa-circle-o-notch fa-spin" style="margin-right: 10px;"></i>' +
-        '<span id="calcText">Fetching graph data. Please wait ... </span></br></br></br>' +
-        '<span style="font-weight: 100; opacity: 0.6; font-size: 9pt;">If it`s taking too much time to draw the graph, please navigate to: ' +
-        '<a style="font-weight: 500" href="' + window.location.href + '/graphs">Graphs View</a></br>Click the settings icon and reset the display settings.' +
-        'It is possible that the graph is too big to be handled by the browser.</span></div>'
+          '<i class="fa fa-circle-o-notch fa-spin" style="margin-right: 10px;"></i>' +
+            '<span id="calcText">Fetching graph data. Please wait ... </span></br></br></br>' +
+              '<span style="font-weight: 100; opacity: 0.6; font-size: 9pt;">If it`s taking too much time to draw the graph, please navigate to: ' +
+                '<a style="font-weight: 500" href="' + window.location.href + '/graphs">Graphs View</a></br>Click the settings icon and reset the display settings.' +
+                  'It is possible that the graph is too big to be handled by the browser.</span></div>'
       );
 
       var continueFetchGraph = function () {
@@ -299,7 +299,7 @@
         if (this.graphConfig) {
           ajaxData = _.clone(this.graphConfig);
 
-          // remove not needed params
+          // remove not needed params - client only
           delete ajaxData.layout;
           delete ajaxData.edgeType;
           delete ajaxData.renderer;
@@ -346,27 +346,60 @@
           },
           error: function (e) {
             try {
-              arangoHelper.arangoError('Graph', e.responseJSON.exception);
-
-              var found = e.responseJSON.exception.search('1205');
-              if (found !== -1) {
-                var string = 'Starting point: <span style="font-weight: 400">' + self.graphConfig.nodeStart + '</span> is invalid';
-                $('#calculatingGraph').html(
-                  '<div style="font-weight: 300; font-size: 10.5pt"><span style="font-weight: 400">Stopped. </span></br></br>' +
-                  string +
-                  '. Please <a style="color: #3498db" href="' + window.location.href +
-                  '/settings">choose a different start node.</a></div>'
-                );
+              var message;
+              if (e.responseJSON.exception) {
+                message = e.responseJSON.exception;
+                var found = e.responseJSON.exception.search('1205');
+                if (found !== -1) {
+                  var string = 'Starting point: <span style="font-weight: 400">' + self.graphConfig.nodeStart + '</span> is invalid';
+                  $('#calculatingGraph').html(
+                    '<div style="font-weight: 300; font-size: 10.5pt"><span style="font-weight: 400">Stopped. </span></br></br>' +
+                    string +
+                    '. Please <a style="color: #3498db" href="' + window.location.href +
+                    '/settings">choose a different start node.</a></div>'
+                  );
+                } else {
+                  $('#calculatingGraph').html('Failed to fetch graph information.');
+                }
               } else {
-                $('#calculatingGraph').html('Failed to fetch graph information.');
+                message = e.responseJSON.errorMessage;
+                $('#calculatingGraph').html('Failed to fetch graph information: ' + e.responseJSON.errorMessage);
               }
+              arangoHelper.arangoError('Graph', message);
             } catch (ignore) {}
           }
         });
       }.bind(this);
 
-      // load graph configuration
-      this.getGraphSettings(continueFetchGraph);
+      if (this.graphConfig === undefined || this.graphConfig === null) {
+        var setDefaultsCB = function () {
+          self.userConfig.fetch({
+            success: function (data) {
+              var combinedName = frontendConfig.db + '_' + self.name;
+              try {
+                self.graphConfig = data.toJSON().graphs[combinedName];
+                self.getGraphSettings(continueFetchGraph);
+              } catch (ignore) {
+                // continue without config
+                self.getGraphSettings(continueFetchGraph);
+              }
+            }
+          });
+        };
+
+        // init settings view
+        if (self.graphSettingsView) {
+          self.graphSettingsView.remove();
+        }
+        self.graphSettingsView = new window.GraphSettingsView({
+          name: self.name,
+          userConfig: self.userConfig,
+          saveCallback: self.render
+        });
+        self.graphSettingsView.setDefaults(true, true, setDefaultsCB);
+      } else {
+        this.getGraphSettings(continueFetchGraph);
+      }
     },
 
     setupSigma: function () {
@@ -804,25 +837,37 @@
     },
 
     updateColors: function (nodes, edges, ncolor, ecolor) {
-      var combinedName = window.App.currentDB.toJSON().name + '_' + this.name;
+      var combinedName = frontendConfig.db + '_' + this.name;
       var self = this;
 
       this.userConfig.fetch({
         success: function (data) {
           if (nodes === true) {
             self.graphConfig = data.toJSON().graphs[combinedName];
-            self.currentGraph.graph.nodes().forEach(function (n) {
-              n.color = ncolor;
-            });
+            try {
+              self.currentGraph.graph.nodes().forEach(function (n) {
+                n.color = ncolor;
+              });
+            } catch (e) {
+              self.graphNotInitialized = true;
+              self.tmpGraphArray = [nodes, edges, ncolor, ecolor];
+            }
           }
 
           if (edges === true) {
-            self.currentGraph.graph.edges().forEach(function (e) {
-              e.color = ecolor;
-            });
+            try {
+              self.currentGraph.graph.edges().forEach(function (e) {
+                e.color = ecolor;
+              });
+            } catch (ignore) {
+              self.graphNotInitialized = true;
+              self.tmpGraphArray = [nodes, edges, ncolor, ecolor];
+            }
           }
 
-          self.currentGraph.refresh();
+          if (self.currentGraph) {
+            self.currentGraph.refresh();
+          }
         }
       });
     },
@@ -832,62 +877,62 @@
       this.openNodesDate = new Date();
     },
 
-    // click nodes context menu
-    /*
-    createNodesContextMenu: function () {
-      var self = this;
-      var e = self.nodesContextEventState;
+      // click nodes context menu
+      /*
+      createNodesContextMenu: function () {
+        var self = this;
+        var e = self.nodesContextEventState;
 
-      var x = e.clientX - 50;
-      var y = e.clientY - 50;
-      self.clearOldContextMenu();
+        var x = e.clientX - 50;
+        var y = e.clientY - 50;
+        self.clearOldContextMenu();
 
-      var generateMenu = function (e) {
-        var Wheelnav = wheelnav;
+        var generateMenu = function (e) {
+          var Wheelnav = wheelnav;
 
-        var wheel = new Wheelnav('nodeContextMenu');
-        wheel.maxPercent = 1.0;
-        wheel.wheelRadius = 50;
-        wheel.clockwise = false;
-        wheel.colors = self.colors.hotaru;
-        wheel.multiSelect = true;
-        wheel.clickModeRotate = false;
-        wheel.slicePathFunction = slicePath().DonutSlice;
-        if (self.viewStates.captureMode) {
-          wheel.createWheel([icon.plus, icon.trash]);
-        } else {
-          wheel.createWheel([icon.trash, icon.arrowleft2]);
-        }
+          var wheel = new Wheelnav('nodeContextMenu');
+          wheel.maxPercent = 1.0;
+          wheel.wheelRadius = 50;
+          wheel.clockwise = false;
+          wheel.colors = self.colors.hotaru;
+          wheel.multiSelect = true;
+          wheel.clickModeRotate = false;
+          wheel.slicePathFunction = slicePath().DonutSlice;
+          if (self.viewStates.captureMode) {
+            wheel.createWheel([icon.plus, icon.trash]);
+          } else {
+            wheel.createWheel([icon.trash, icon.arrowleft2]);
+          }
 
-        wheel.navItems[0].selected = false;
-        wheel.navItems[0].hovered = false;
-        // add menu events
+          wheel.navItems[0].selected = false;
+          wheel.navItems[0].hovered = false;
+          // add menu events
 
-        // function 0: remove all selectedNodes
-        wheel.navItems[0].navigateFunction = function (e) {
-          self.clearOldContextMenu();
-          self.deleteNodesModal();
+          // function 0: remove all selectedNodes
+          wheel.navItems[0].navigateFunction = function (e) {
+            self.clearOldContextMenu();
+            self.deleteNodesModal();
+          };
+
+          // function 1: clear contextmenu
+          wheel.navItems[1].navigateFunction = function (e) {
+            self.clearOldContextMenu();
+          };
+
+          // deselect active default entry
+          wheel.navItems[0].selected = false;
+          wheel.navItems[0].hovered = false;
         };
 
-        // function 1: clear contextmenu
-        wheel.navItems[1].navigateFunction = function (e) {
-          self.clearOldContextMenu();
-        };
+        $('#nodeContextMenu').css('position', 'fixed');
+        $('#nodeContextMenu').css('left', x);
+        $('#nodeContextMenu').css('top', y);
+        $('#nodeContextMenu').width(100);
+        $('#nodeContextMenu').height(100);
 
-        // deselect active default entry
-        wheel.navItems[0].selected = false;
-        wheel.navItems[0].hovered = false;
-      };
-
-      $('#nodeContextMenu').css('position', 'fixed');
-      $('#nodeContextMenu').css('left', x);
-      $('#nodeContextMenu').css('top', y);
-      $('#nodeContextMenu').width(100);
-      $('#nodeContextMenu').height(100);
-
-      generateMenu(e);
-    },
-    */
+        generateMenu(e);
+      },
+      */
 
     // right click background context menu
     createContextMenu: function (e) {
@@ -1109,13 +1154,13 @@
           });
 
           /* TODO
-          wheel.navItems[0].navSlice.mouseover(function (a) {
-            $(a.target).css('opacity', '1');
-          });
-          wheel.navItems[0].navSlice.mouseout(function (a) {
-            $(a.target).css('opacity', '0.8');
-          });
-          */
+             wheel.navItems[0].navSlice.mouseover(function (a) {
+             $(a.target).css('opacity', '1');
+             });
+             wheel.navItems[0].navSlice.mouseout(function (a) {
+             $(a.target).css('opacity', '0.8');
+             });
+           */
 
           // deselect active default entry
           wheel.navItems[0].selected = false;
@@ -1251,18 +1296,18 @@
       console.log(node);
 
       self.currentGraph.cameras[0].goTo({
-        x: node['read_cam0:x'],
-        y: node['read_cam0:y']
+      x: node['read_cam0:x'],
+      y: node['read_cam0:y']
       });
-      /*
-      sigma.misc.animation.camera(
-        self.currentGraph.camera,
-        {
-          x: node[self.currentGraph.camera.readPrefix + 'x'],
-          y: node[self.currentGraph.camera.readPrefix + 'y'],
-          ratio: 1
-        },
-        {duration: self.currentGraph.settings('animationsTime') || 300}
+          /*
+          sigma.misc.animation.camera(
+          self.currentGraph.camera,
+          {
+      x: node[self.currentGraph.camera.readPrefix + 'x'],
+      y: node[self.currentGraph.camera.readPrefix + 'y'],
+      ratio: 1
+      },
+      {duration: self.currentGraph.settings('animationsTime') || 300}
       );
     },
     */
@@ -1289,10 +1334,10 @@
 
     getGraphSettings: function (callback) {
       var self = this;
-      var combinedName = frontendConfig.db + '_' + this.name;
 
       this.userConfig.fetch({
         success: function (data) {
+          var combinedName = frontendConfig.db + '_' + self.name;
           self.graphConfig = data.toJSON().graphs[combinedName];
 
           // init settings view
@@ -1304,10 +1349,25 @@
             userConfig: self.userConfig,
             saveCallback: self.render
           });
-          self.graphSettingsView.render();
 
-          if (callback) {
-            callback(self.graphConfig);
+          var continueFunction = function () {
+            self.graphSettingsView.render();
+
+            if (callback) {
+              callback(self.graphConfig);
+            }
+          };
+
+          if (self.graphConfig === undefined) {
+            self.graphSettingsView.setDefaults(true, true);
+            self.userConfig.fetch({
+              success: function (data) {
+                self.graphConfig = data.toJSON().graphs[combinedName];
+                continueFunction();
+              }
+            });
+          } else {
+            continueFunction();
           }
         }
       });
@@ -1356,41 +1416,41 @@
       sigmaInstance.refresh();
 
       /*
-      this.Sigma.plugins.Lasso = sigma.plugins.lasso;
+         this.Sigma.plugins.Lasso = sigma.plugins.lasso;
 
-      var lasso = new this.Sigma.plugins.Lasso(sigmaInstance, sigmaInstance.renderers[0], {
-        'strokeStyle': 'black',
-        'lineWidth': 1,
-        'fillWhileDrawing': true,
-        'fillStyle': 'rgba(41, 41, 41, 0.2)',
-        'cursor': 'crosshair'
-      });
+         var lasso = new this.Sigma.plugins.Lasso(sigmaInstance, sigmaInstance.renderers[0], {
+         'strokeStyle': 'black',
+         'lineWidth': 1,
+         'fillWhileDrawing': true,
+         'fillStyle': 'rgba(41, 41, 41, 0.2)',
+         'cursor': 'crosshair'
+         });
 
       // Listen for selectedNodes event
       lasso.bind('selectedNodes', function (event) {
-        // Do something with the selected nodes
-        var nodes = event.data;
+      // Do something with the selected nodes
+      var nodes = event.data;
 
-        if (nodes.length === 0) {
-          self.selectedNodes = [];
-        } else {
-          _.each(nodes, function (val, key) {
-            self.selectedNodes[key] = val.id;
-          });
-        }
+      if (nodes.length === 0) {
+      self.selectedNodes = [];
+      } else {
+      _.each(nodes, function (val, key) {
+      self.selectedNodes[key] = val.id;
+      });
+      }
 
-        var style = 'position: absolute; right: 25px; bottom: 45px;';
+      var style = 'position: absolute; right: 25px; bottom: 45px;';
 
-        if (!$('#deleteNodes').is(':visible')) {
-          $(self.el).append(
-            '<button style=" ' + style + ' "id="deleteNodes" class="button-danger fadeIn animated">Delete selected nodes</button>'
-          );
-          var c = document.getElementById('deleteNodes');
-          c.addEventListener('click', self.deleteNodesModal.bind(self), false);
-        }
+      if (!$('#deleteNodes').is(':visible')) {
+      $(self.el).append(
+      '<button style=" ' + style + ' "id="deleteNodes" class="button-danger fadeIn animated">Delete selected nodes</button>'
+      );
+      var c = document.getElementById('deleteNodes');
+      c.addEventListener('click', self.deleteNodesModal.bind(self), false);
+      }
 
-        self.activeNodes = nodes;
-        sigmaInstance.refresh();
+      self.activeNodes = nodes;
+      sigmaInstance.refresh();
       });
 
       return lasso;
@@ -1794,7 +1854,7 @@
         $('#graph-container').append(
           '<div id="toggleForce" style="' + style2 + '">' +
             '<i style="margin-right: 5px;" class="fa fa-pause"></i><span> Stop layout</span>' +
-          '</div>'
+              '</div>'
         );
         self.startLayout();
 
@@ -1842,32 +1902,32 @@
       }
 
       /*
-      var enableLasso = function () {
-        self.graphLasso = self.initializeGraph(s, graph);
-        self.graphLasso.activate();
-        self.graphLasso.deactivate();
-      };
+         var enableLasso = function () {
+         self.graphLasso = self.initializeGraph(s, graph);
+         self.graphLasso.activate();
+         self.graphLasso.deactivate();
+         };
 
       // init graph lasso
       if (this.graphConfig) {
-        if (this.graphConfig.renderer === 'canvas') {
-          enableLasso();
-        } else {
-          $('#selectNodes').parent().hide();
-        }
+      if (this.graphConfig.renderer === 'canvas') {
+      enableLasso();
       } else {
-        if (renderer === 'canvas') {
-          enableLasso();
-        } else {
-          $('#selectNodes').parent().hide();
-        }
+      $('#selectNodes').parent().hide();
+      }
+      } else {
+      if (renderer === 'canvas') {
+      enableLasso();
+      } else {
+      $('#selectNodes').parent().hide();
+      }
       }
       */
 
       /* if (self.graphLasso) {
-        // add lasso event
-        // Toggle lasso activation on Alt + l
-        window.App.listenerFunctions['graphViewer'] = this.keyUpFunction.bind(this);
+      // add lasso event
+      // Toggle lasso activation on Alt + l
+      window.App.listenerFunctions['graphViewer'] = this.keyUpFunction.bind(this);
       } */
 
       // clear up info div
@@ -1882,11 +1942,11 @@
             // var length = s.graph.nodes().length;
 
             /*
-            factor = 0.35;
-            maxNodeSize = maxNodeSize * factor;
-            s.settings('maxNodeSize', maxNodeSize);
-            s.refresh({});
-           */
+               factor = 0.35;
+               maxNodeSize = maxNodeSize * factor;
+               s.settings('maxNodeSize', maxNodeSize);
+               s.refresh({});
+               */
           }
         }
       }
@@ -1895,6 +1955,11 @@
       // console.log('Client side calculation took ' + Math.abs(self.calcFinished.getTime() - self.calcStart.getTime()) + ' ms');
       if (graph.empty === true) {
         $('.sigma-background').before('<span id="emptyGraph" style="position: absolute; margin-left: 10px; margin-top: 10px;">The graph is empty. Please right-click to add a node.<span>');
+      }
+      if (self.graphNotInitialized === true) {
+        self.updateColors(self.tmpGraphArray);
+        self.graphNotInitialized = false;
+        self.tmpGraphArray = [];
       }
     },
 
@@ -1918,33 +1983,33 @@
     },
 
     /*
-    toggleLasso: function () {
-      var self = this;
+toggleLasso: function () {
+var self = this;
 
-      if (this.graphLasso.isActive) {
-        var y = document.getElementById('deleteNodes');
-        y.removeEventListener('click', self.deleteNodesModal, false);
-        $('#deleteNodes').remove();
+if (this.graphLasso.isActive) {
+var y = document.getElementById('deleteNodes');
+y.removeEventListener('click', self.deleteNodesModal, false);
+$('#deleteNodes').remove();
 
-        // remove event
-        var c = document.getElementsByClassName('sigma-lasso')[0];
-        c.removeEventListener('mouseup', this.nodesContextMenuCheck.bind(this), false);
+    // remove event
+    var c = document.getElementsByClassName('sigma-lasso')[0];
+    c.removeEventListener('mouseup', this.nodesContextMenuCheck.bind(this), false);
 
-        $('#selectNodes').removeClass('activated');
-        this.graphLasso.deactivate();
+    $('#selectNodes').removeClass('activated');
+    this.graphLasso.deactivate();
 
-        // clear selected nodes state
-        this.selectedNodes = {};
-        this.activeNodes = [];
-        this.currentGraph.refresh({ skipIndexation: true });
-      } else {
-        $('#selectNodes').addClass('activated');
-        this.graphLasso.activate();
+    // clear selected nodes state
+    this.selectedNodes = {};
+    this.activeNodes = [];
+    this.currentGraph.refresh({ skipIndexation: true });
+    } else {
+    $('#selectNodes').addClass('activated');
+    this.graphLasso.activate();
 
-        // add event
-        var x = document.getElementsByClassName('sigma-lasso')[0];
-        x.addEventListener('mouseup', self.nodesContextMenuCheck.bind(this), false);
-      }
+    // add event
+    var x = document.getElementsByClassName('sigma-lasso')[0];
+    x.addEventListener('mouseup', self.nodesContextMenuCheck.bind(this), false);
+    }
     },
     */
 

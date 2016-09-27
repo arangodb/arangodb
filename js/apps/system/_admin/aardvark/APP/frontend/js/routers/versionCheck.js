@@ -137,6 +137,14 @@
       success: function (data) {
         var currentVersion =
         window.versionHelper.fromString(data.version);
+
+        console.log(data);
+        if (data.license) {
+          if (data.license !== 'community') {
+            $('#ArangoDBLogo').attr('src', 'img/arangodb_logo_alt.png');
+          }
+        }
+
         $('.navbar #currentVersion').html(
           ' ' + data.version.substr(0, 5) + '<i class="fa fa-exclamation-circle"></i>'
         );
