@@ -91,10 +91,10 @@ if (IS_DIRECTORY /usr/lib/systemd/system)
     ${PROJECT_BINARY_DIR}/usr/lib/systemd/system/arangodb3.service
     NEWLINE_STYLE UNIX)
   if (${USE_ENTERPRISE})
-    install(${PROJECT_BINARY_DIR}/usr/lib/systemd/system/arangodb3.service
+    install(FILES ${PROJECT_BINARY_DIR}/usr/lib/systemd/system/arangodb3.service
       DESTINATION /usr/lib/systemd/system/arangodb3e.service)
   else()
-    install(${PROJECT_BINARY_DIR}/usr/lib/systemd/system/arangodb3.service
+    install(FILES ${PROJECT_BINARY_DIR}/usr/lib/systemd/system/arangodb3.service
       DESTINATION /usr/lib/systemd/system/arangodb3.service)
   endif()
 endif()
