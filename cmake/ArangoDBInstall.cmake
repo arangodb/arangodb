@@ -81,6 +81,22 @@ install(
   DESTINATION ${CMAKE_INSTALL_LOCALSTATEDIR}/lib)
 
 ################################################################################
+### @brief install systemd service file
+################################################################################
+if (${USE_ENTERPRISE})
+  configure_file (
+    FILES ${ARANGODB_SOURCE_DIR}/Installation/systemd/arangodb3.service.in
+    DESTINATION ${PROJECT_BINARY_DIR}/usr/lib/systemd/system/arangodb3e.service
+    NEWLINE_STYLE UNIX)
+else()
+  configure_file (
+    ${ARANGODB_SOURCE_DIR}/Installation/systemd/arangodb3.service.in
+    ${PROJECT_BINARY_DIR}/usr/lib/systemd/system/arangodb3.service
+    NEWLINE_STYLE UNIX)
+endif()
+
+
+################################################################################
 ### @brief propagate the locations into our programms:
 ################################################################################
 
