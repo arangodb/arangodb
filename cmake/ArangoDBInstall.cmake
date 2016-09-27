@@ -1,11 +1,11 @@
 include(${CMAKE_SOURCE_DIR}/cmake/GNUInstallDirs.cmake)
 
 set(ARANGODB_SOURCE_DIR ${CMAKE_SOURCE_DIR})
-set(CMAKE_INSTALL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_SYSCONFDIR}/arangodb3")
-set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_FULL_SYSCONFDIR}/arangodb3")
+set(CMAKE_INSTALL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_SYSCONFDIR}/${CMAKE_PROJECT_NAME}")
+set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_FULL_SYSCONFDIR}/${CMAKE_PROJECT_NAME}")
 
-set(CMAKE_INSTALL_DATAROOTDIR_ARANGO "${CMAKE_INSTALL_DATAROOTDIR}/arangodb3")
-set(CMAKE_INSTALL_FULL_DATAROOTDIR_ARANGO "${CMAKE_INSTALL_FULL_DATAROOTDIR}/arangodb3")
+set(CMAKE_INSTALL_DATAROOTDIR_ARANGO "${CMAKE_INSTALL_DATAROOTDIR}/${CMAKE_PROJECT_NAME}")
+set(CMAKE_INSTALL_FULL_DATAROOTDIR_ARANGO "${CMAKE_INSTALL_FULL_DATAROOTDIR}/${CMAKE_PROJECT_NAME}")
 
 if (MSVC OR DARWIN)
   set(ENABLE_UID_CFG false)
@@ -13,17 +13,19 @@ else ()
   set(ENABLE_UID_CFG true)
 endif ()
 
-set(CMAKE_INSTALL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_SYSCONFDIR}/arangodb3")
-set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_FULL_SYSCONFDIR}/arangodb3")
+set(CMAKE_INSTALL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_SYSCONFDIR}/${CMAKE_PROJECT_NAME}")
+set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_FULL_SYSCONFDIR}/${CMAKE_PROJECT_NAME}")
 
-# database directory 
-FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb3")
+# database directory
+set(ARANGODB_DB_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/${CMAKE_PROJECT_NAME}")
+FILE(MAKE_DIRECTORY ${ARANGODB_DB_DIRECTORY})
 
 # apps
-FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb3-apps")
+set(ARANGODB_APPS_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/${CMAKE_PROJECT_NAME}-apps")
+FILE(MAKE_DIRECTORY "${ARANGODB_APPS_DIRECTORY}")
 
 # logs
-FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/arangodb3")
+FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/${CMAKE_PROJECT_NAME}")
 
 include(InstallMacros)
 
@@ -69,7 +71,7 @@ install(
 ################################################################################
 
 install(
-  DIRECTORY ${PROJECT_BINARY_DIR}/var/lib/arangodb3
+  DIRECTORY ${ARANGODB_DB_DIRECTORY}
   DESTINATION ${CMAKE_INSTALL_LOCALSTATEDIR}/lib)
 
 ################################################################################
@@ -77,22 +79,24 @@ install(
 ################################################################################
 
 install(
-  DIRECTORY ${PROJECT_BINARY_DIR}/var/lib/arangodb3-apps
+  DIRECTORY ${ARANGODB_APPS_DIRECTORY}
   DESTINATION ${CMAKE_INSTALL_LOCALSTATEDIR}/lib)
 
 ################################################################################
-### @brief install systemd service file
+### @brief detect if we're on a systemd enabled system; if install unit file.
 ################################################################################
-if (${USE_ENTERPRISE})
-  configure_file (
-    FILES ${ARANGODB_SOURCE_DIR}/Installation/systemd/arangodb3.service.in
-    DESTINATION ${PROJECT_BINARY_DIR}/usr/lib/systemd/system/arangodb3e.service
-    NEWLINE_STYLE UNIX)
-else()
+if (IS_DIRECTORY /usr/lib/systemd/system)
   configure_file (
     ${ARANGODB_SOURCE_DIR}/Installation/systemd/arangodb3.service.in
     ${PROJECT_BINARY_DIR}/usr/lib/systemd/system/arangodb3.service
     NEWLINE_STYLE UNIX)
+  if (${USE_ENTERPRISE})
+    install(FILES ${PROJECT_BINARY_DIR}/usr/lib/systemd/system/arangodb3.service
+      DESTINATION /usr/lib/systemd/system/arangodb3e.service)
+  else()
+    install(FILES ${PROJECT_BINARY_DIR}/usr/lib/systemd/system/arangodb3.service
+      DESTINATION /usr/lib/systemd/system/arangodb3.service)
+  endif()
 endif()
 
 
