@@ -486,65 +486,62 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       }
     }
 
-    if (_replicationFactor == 0 ||_replicationFactor > 10) {
+    if (_replicationFactor == 0 || _replicationFactor > 10) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "invalid replicationFactor");
     }
   }
 
-  if (info.isObject()) {
-    auto shardsSlice = info.get("shards");
-    if (shardsSlice.isObject()) {
-      for (auto const& shardSlice : VPackObjectIterator(shardsSlice)) {
-        if (shardSlice.key.isString() && shardSlice.value.isArray()) {
-          ShardID shard = shardSlice.key.copyString();
+  _keyGenerator.reset(KeyGenerator::factory(info.get("keyOptions")));
 
-          std::vector<ServerID> servers;
-          for (auto const& serverSlice : VPackArrayIterator(shardSlice.value)) {
-            servers.push_back(serverSlice.copyString());
-          }
-          _shardIds->emplace(shard, servers);
+  auto shardsSlice = info.get("shards");
+  if (shardsSlice.isObject()) {
+    for (auto const& shardSlice : VPackObjectIterator(shardsSlice)) {
+      if (shardSlice.key.isString() && shardSlice.value.isArray()) {
+        ShardID shard = shardSlice.key.copyString();
+
+        std::vector<ServerID> servers;
+        for (auto const& serverSlice : VPackArrayIterator(shardSlice.value)) {
+          servers.push_back(serverSlice.copyString());
         }
-      }
-    }
-  
-    auto indexesSlice = info.get("indexes");
-    if (indexesSlice.isArray()) {
-      for (auto const& v : VPackArrayIterator(indexesSlice)) {
-        if (arangodb::basics::VelocyPackHelper::getBooleanValue(
-                v, "error", false)) {
-          // We have an error here.
-          // Do not add index.
-          // TODO Handle Properly
-          continue;
-        }
-
-        auto idx = PrepareIndexFromSlice(v, false, this, true);
-
-        if (isCluster) {
-          addIndexCoordinator(idx, false);
-        } else {
-          addIndex(idx);
-        }
-      }
-    }
-
-    if (_indexes.empty()) {
-      createInitialIndexes();
-    }
-
-    if (!ServerState::instance()->isCoordinator() && isPhysical) {
-      // If we are not in the coordinator we need a path
-      // to the physical data.
-      StorageEngine* engine = EngineSelectorFeature::ENGINE;
-      if (_path.empty()) { 
-        _path = engine->createCollection(_vocbase, _cid, this);
+        _shardIds->emplace(shard, servers);
       }
     }
   }
 
+  auto indexesSlice = info.get("indexes");
+  if (indexesSlice.isArray()) {
+    for (auto const& v : VPackArrayIterator(indexesSlice)) {
+      if (arangodb::basics::VelocyPackHelper::getBooleanValue(v, "error",
+                                                              false)) {
+        // We have an error here.
+        // Do not add index.
+        // TODO Handle Properly
+        continue;
+      }
 
-  _keyGenerator.reset(KeyGenerator::factory(info.get("keyOptions")));
+      auto idx = PrepareIndexFromSlice(v, false, this, true);
+
+      if (isCluster) {
+        addIndexCoordinator(idx, false);
+      } else {
+        addIndex(idx);
+      }
+    }
+  }
+
+  if (_indexes.empty()) {
+    createInitialIndexes();
+  }
+
+  if (!ServerState::instance()->isCoordinator() && isPhysical) {
+    // If we are not in the coordinator we need a path
+    // to the physical data.
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    if (_path.empty()) {
+      _path = engine->createCollection(_vocbase, _cid, this);
+    }
+  }
 
   createPhysical();
 
