@@ -302,6 +302,7 @@ LogicalCollection::LogicalCollection(
       _type(other->type()),
       _name(other->name()),
       _distributeShardsLike(other->distributeShardsLike()),
+      _isSmart(other->isSmart()),
       _status(other->status()),
       _isLocal(false),
       _isDeleted(other->_isDeleted),
@@ -360,6 +361,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
                                                   TRI_COL_TYPE_UNKNOWN)),
       _name(ReadStringValue(info, "name", "")),
       _distributeShardsLike(ReadStringValue(info, "distributeShardsLike", "")),
+      _isSmart(ReadBooleanValue(info, "isSmart", false)),
       _status(ReadNumericValue<TRI_vocbase_col_status_e, int>(
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
       _isLocal(!ServerState::instance()->isCoordinator()),
@@ -467,7 +469,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
 
   // Cluster only tests
   if (ServerState::instance()->isCoordinator()) {
-    if (_numberOfShards == 0 || _numberOfShards > 1000) {
+    if ( (_numberOfShards == 0 && !_isSmart) || _numberOfShards > 1000) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "invalid number of shards");
     }
@@ -789,7 +791,7 @@ bool LogicalCollection::waitForSync() const {
 }
 
 bool LogicalCollection::isSmart() const {
-  return false;
+  return _isSmart;
 }
 
 std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
@@ -994,10 +996,31 @@ void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
   } 
 }
 
-// TODO Make this pretty. Copy of other with only one swith. Ambigous
 void LogicalCollection::toVelocyPackForAgency(VPackBuilder& result) {
   _status = TRI_VOC_COL_STATUS_LOADED;
   result.openObject();
+  toVelocyPackInObject(result);
+
+  result.close(); // Base Object
+}
+
+void LogicalCollection::toVelocyPack(VPackBuilder& result, bool withPath) const {
+  result.openObject();
+  toVelocyPackInObject(result);
+  result.add("cid", VPackValue(std::to_string(_cid))); // export cid for compatibility, too
+  result.add("planId", VPackValue(std::to_string(_planId))); // export planId for cluster
+  result.add("version", VPackValue(_version)); 
+
+  if (withPath) {
+    result.add("path", VPackValue(_path));
+  }
+  result.add("allowUserKeys", VPackValue(_allowUserKeys));
+
+  result.close();
+}
+
+// Internal helper that inserts VPack info into an existing object and leaves the object open
+void LogicalCollection::toVelocyPackInObject(VPackBuilder& result) const {
   result.add("id", VPackValue(std::to_string(_cid)));
   result.add("name", VPackValue(_name));
   result.add("type", VPackValue(static_cast<int>(_type)));
@@ -1041,63 +1064,8 @@ void LogicalCollection::toVelocyPackForAgency(VPackBuilder& result) {
   }
   result.close(); // shards
 
-
   result.add(VPackValue("indexes"));
   getIndexesVPack(result, false);
-
-  result.close(); // Base Object
-}
-
-void LogicalCollection::toVelocyPack(VPackBuilder& result, bool withPath) const {
-  result.openObject();
-  result.add("id", VPackValue(std::to_string(_cid)));
-  result.add("cid", VPackValue(std::to_string(_cid))); // export cid for compatibility, too
-  result.add("planId", VPackValue(std::to_string(_planId))); // export planId for cluster
-  result.add("name", VPackValue(_name));
-  result.add("status", VPackValue(_status));
-  result.add("deleted", VPackValue(_isDeleted));
-  result.add("type", VPackValue(static_cast<int>(_type)));
-  result.add("doCompact", VPackValue(_doCompact));
-  result.add("isSystem", VPackValue(_isSystem));
-  result.add("isVolatile", VPackValue(_isVolatile));
-  result.add("waitForSync", VPackValue(_waitForSync));
-  result.add("journalSize", VPackValue(_journalSize));
-  result.add("version", VPackValue(_version)); 
-  
-  if (_keyGenerator != nullptr) {
-    result.add(VPackValue("keyOptions"));
-    result.openObject();
-    _keyGenerator->toVelocyPack(result);
-    result.close();
-  }
-
-  if (withPath) {
-    result.add("path", VPackValue(_path));
-  }
-
-  result.add("indexBuckets", VPackValue(_indexBuckets));
-  result.add(VPackValue("indexes"));
-  getIndexesVPack(result, false);
-  result.add("replicationFactor", VPackValue(_replicationFactor));
-  result.add(VPackValue("shards"));
-  result.openObject();
-  for (auto const& shards : *_shardIds) {
-    result.add(VPackValue(shards.first));
-    result.openArray();
-    for (auto const& servers : shards.second) {
-      result.add(VPackValue(servers));
-    }
-    result.close(); // server array
-  }
-  result.close(); // shards
-  result.add("allowUserKeys", VPackValue(_allowUserKeys));
-  result.add(VPackValue("shardKeys"));
-  result.openArray();
-  for (auto const& key : _shardKeys) {
-    result.add(VPackValue(key));
-  }
-  result.close(); // shardKeys
-  result.close(); // Base Object
 }
 
 void LogicalCollection::toVelocyPack(VPackBuilder& builder, bool includeIndexes,

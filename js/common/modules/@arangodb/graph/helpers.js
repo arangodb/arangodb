@@ -172,22 +172,7 @@ function makeClusteredGraph(clusterSizes, intDegree, intDegreeDelta,
 
 // In-memory simulation of graph traversals:
 
-function simulateBreadthFirstSearch(graph, startVertexId, minDepth, maxDepth,
-                                    uniqueness, mode, dir) {
-  // <graph> is an object with attributes 'vertices' and 'edges', which
-  // simply contain the list of vertices (with their _id attributes)
-  // and edges (with _id, _from and _to attributes, all strings).
-  // <startVertexId> is the id of the start vertex as a string,
-  // <minDepth> (>= 0) and <maxDepth> (>= <minDepth>) are what they
-  // say, <uniqueness> can be 'none', 'edgePath', 'vertexPath' or
-  // 'vertexGlobal', and <mode> can be 'vertex', 'edge' or 'path', which
-  // produces output containing the last vertex, the last vertex and
-  // edge, or the complete path is. <dir> can be 'OUT' or 'IN' or 'ANY'
-  // for the direction of travel. The result is an object with an array
-  // of results (according to <mode>) in the 'res' component as well as
-  // an array of indices indicating where the depths start.
-
-  // First create index tables:
+function makeGraphIndex(graph) {
   if (graph.table === undefined ||
       graph.fromTable === undefined || graph.toTable === undefined) {
     graph.table = {};
@@ -205,6 +190,53 @@ function simulateBreadthFirstSearch(graph, startVertexId, minDepth, maxDepth,
       a.push(i);
     }
   }
+}
+
+function produceResult(schreier, minDepth, mode) {
+  let r = { res: [], depths: [] };
+  for (let i = 0; i < schreier.length; ++i) {
+    if (schreier[i].depth < minDepth) {
+      continue;
+    }
+    if (mode === 'vertex') {
+      r.res.push(schreier[i].vertex);
+    } else if (mode === 'edge') {
+      r.res.push({vertex: schreier[i].vertex, edge: schreier[i].edge});
+    } else {
+      let pos = i;
+      let p = {vertices: [], edges: []};
+      while (pos !== null) {
+        p.vertices.push(schreier[pos].vertex);
+        p.edges.push(schreier[pos].edge);
+        pos = schreier[pos].pred;
+      }
+      p.edges.pop();
+      p.vertices = p.vertices.reverse();
+      p.edges = p.edges.reverse();
+      r.res.push(p);
+    }
+    r.depths.push(schreier[i].depth);
+  }
+  return r;
+}
+
+function simulateBreadthFirstSearch(graph, startVertexId, minDepth, maxDepth,
+                                    uniqueness, mode, dir) {
+  // <graph> is an object with attributes 'vertices' and 'edges', which
+  // simply contain the list of vertices (with their _id attributes)
+  // and edges (with _id, _from and _to attributes, all strings).
+  // <startVertexId> is the id of the start vertex as a string,
+  // <minDepth> (>= 0) and <maxDepth> (>= <minDepth>) are what they
+  // say, <uniqueness> can be 'none', 'edgePath', 'vertexPath' or
+  // 'vertexGlobal', and <mode> can be 'vertex', 'edge' or 'path', which
+  // produces output containing the last vertex, the last vertex and
+  // edge, or the complete path is. <dir> can be 'OUT' or 'IN' or 'ANY'
+  // for the direction of travel. The result is an object with an array
+  // of results (according to <mode>) in the 'res' component as well as
+  // an array of indices indicating where the depths start.
+
+  // First create index tables:
+  makeGraphIndex(graph);
 
   // Now start the breadth first search:
   let schreier = [{vertex: graph.table[startVertexId], edge: null,
@@ -276,32 +308,93 @@ function simulateBreadthFirstSearch(graph, startVertexId, minDepth, maxDepth,
   }
 
   // Now produce the result:
-  let r = { res: [], depths: [] };
-  for (let i = 0; i < schreier.length; ++i) {
-    if (schreier[i].depth < minDepth) {
-      continue;
+  return produceResult(schreier, minDepth, mode);
+}
+
+function simulateDepthFirstSearch(graph, startVertexId, minDepth, maxDepth,
+                                  uniqueness, mode, dir) {
+  // <graph> is an object with attributes 'vertices' and 'edges', which
+  // simply contain the list of vertices (with their _id attributes)
+  // and edges (with _id, _from and _to attributes, all strings).
+  // <startVertexId> is the id of the start vertex as a string,
+  // <minDepth> (>= 0) and <maxDepth> (>= <minDepth>) are what they
+  // say, <uniqueness> can be 'none', 'edgePath', 'vertexPath',
+  // and <mode> can be 'vertex', 'edge' or 'path', which
+  // produces output containing the last vertex, the last vertex and
+  // edge, or the complete path is. <dir> can be 'OUT' or 'IN' or 'ANY'
+  // for the direction of travel. The result is an object with an array
+  // of results (according to <mode>) in the 'res' component as well as
+  // an array of indices indicating where the depths start.
+
+  // First create index tables:
+  makeGraphIndex(graph);
+
+  // Now start the depth first search:
+  let schreier = [{vertex: graph.table[startVertexId], edge: null,
+                   depth: 0, pred: null}];
+
+  function doRecurse(pos) {
+    if (schreier[pos].depth >= maxDepth) {
+      return;
     }
-    if (mode === 'vertex') {
-      r.res.push(schreier[i].vertex);
-    } else if (mode === 'edge') {
-      r.res.push({vertex: schreier[i].vertex, edge: schreier[i].edge});
-    } else {
-      let pos = i;
-      let p = {vertices: [], edges: []};
-      while (pos !== null) {
-        p.vertices.push(schreier[pos].vertex);
-        p.edges.push(schreier[pos].edge);
-        pos = schreier[pos].pred;
+
+    let id = schreier[pos].vertex._id;
+    let outEdges = graph.fromTable[id];
+    let inEdges = graph.toTable[id];
+    let done = {};
+
+    let doStep = (edge, vertex) => {
+      let useThisEdge = true;
+      // add more checks here depending on uniqueness mode
+      if (uniqueness === 'edgePath') {
+        let p = pos;
+        while (p !== 0) {
+          if (schreier[p].edge._id === edge._id) {
+            useThisEdge = false;
+            break;
+          }
+          p = schreier[p].pred;
+        }
+      } else if (uniqueness === 'vertexPath') {
+        let p = pos;
+        while (p !== null) {
+          if (schreier[p].vertex._id === vertex._id) {
+            useThisEdge = false;
+            break;
+          }
+          p = schreier[p].pred;
+        }
       }
-      p.edges.pop();
-      p.vertices = p.vertices.reverse();
-      p.edges = p.edges.reverse();
-      r.res.push(p);
+      if (useThisEdge) {
+        schreier.push({vertex: vertex, edge: edge,
+                       depth: schreier[pos].depth + 1, pred: pos});
+        doRecurse(schreier.length - 1);
+      }
+    };
+
+    if (dir === 'OUT' || dir === 'ANY') {
+      for (let i = 0; i < outEdges.length; ++i) {
+        let edge = graph.edges[outEdges[i]];
+        doStep(edge, graph.table[edge._to]);
+        done[edge._id] = true;
+      }
     }
-    r.depths.push(schreier[i].depth);
+    if (dir === 'IN' || dir === 'ANY') {
+      for (let i = 0; i < inEdges.length; ++i) {
+        let edge = graph.edges[inEdges[i]];
+        if (done[edge._id] === true) {
+          continue;
+        }
+        doStep(edge, graph.table[edge._from]);
+      }
+    }
   }
 
-  return r;
+  // Fire off the computation:
+  doRecurse(0);
+
+  // Now produce the result:
+  return produceResult(schreier, minDepth, mode);
 }
 
 function pathCompare(a, b) {
@@ -453,6 +546,46 @@ function checkBFSResult(pattern, toCheck) {
   return { error: false };
 }
 
+function checkDFSResult(pattern, toCheck) {
+  // This tries to check a DFS result against a given pattern. Some
+  // fuzziness is needed since AQL does not promise the order in which
+  // edges are followed from a vertex during the traversal. The only mode
+  // is 'path' and refers to the following form of query:
+  //   FOR v, e, p IN 0..5 ... RETURN p
+  // The pattern is of the form
+  //   { 'res': [...], 'depths': [...] }
+  // with two arrays of equal length as returned by simulateDepthFirstSearch.
+  // Further filterings may have been applied to the results.
+  // The following checks are done:
+  //  (1) Number of results are equal
+  //  (2) The set of paths is the same in both results
+  // This function returns an object of the form:
+  //   res = { 'error': true/false, 'errorMessage': '' }
+  // where errorMessage is set iff error is true. This can be used as in:
+  //   assertFalse(res.error, res.errorMessage)
+  if (pattern.res.length !== toCheck.length) {
+    return { error: true, errorMessage: 'Number of results does not match' };
+  }
+  if (pattern.res.length === 0) {
+    return { error: false };
+  }
+
+  let colA = pattern.res.map(i => i);
+  let colB = toCheck.map(i => i);
+  colA.sort(pathCompare);
+  colB.sort(pathCompare);
+  for (let j = 0; j < colA.length; ++j) {
+    if (pathCompare(colA[j], colB[j]) !== 0) {
+      return { error: true, errorMessage: 'Path sets do not match, here is a ' +
+               'sample: ' + JSON.stringify(colA) + ' (pattern) as opposed '+
+               ' to ' + JSON.stringify(colB) + ' (toCheck)' };
+    }
+  }
+
+  // All done, all is fine:
+  return { error: false };
+}
+
 function storeGraph(r, Vname, Ename, Gname) {
   // r a graph made by makeTree or makeClusteredGraph, Vname a string for the
   // name of the vertex collection, Ename a string for the name of the edge
@@ -489,5 +622,7 @@ exports.makeTree = makeTree;
 exports.PoorMansRandom = PoorMansRandom;
 exports.makeClusteredGraph = makeClusteredGraph;
 exports.simulateBreadthFirstSearch = simulateBreadthFirstSearch;
+exports.simulateDepthFirstSearch = simulateDepthFirstSearch;
 exports.checkBFSResult = checkBFSResult;
+exports.checkDFSResult = checkDFSResult;
 exports.storeGraph = storeGraph;

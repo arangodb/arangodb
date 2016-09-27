@@ -138,10 +138,11 @@
         var currentVersion =
         window.versionHelper.fromString(data.version);
 
-        console.log(data);
         if (data.license) {
           if (data.license !== 'community') {
             $('#ArangoDBLogo').attr('src', 'img/arangodb_logo_alt.png');
+          } else {
+            $('.enterprise-menu').show();
           }
         }
 

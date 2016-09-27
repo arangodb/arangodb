@@ -42,6 +42,10 @@
 #include "RestServer/DatabaseFeature.h"
 #include "VocBase/LogicalCollection.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/VocBase/VirtualCollection.h"
+#endif
+
 #ifdef _WIN32
 // turn off warnings about too long type name for debug symbols blabla in MSVC
 // only...
@@ -452,7 +456,17 @@ void ClusterInfo::loadPlan() {
             
             std::string const collectionId = collectionPairSlice.key.copyString();
             try {
-              auto newCollection = std::make_shared<LogicalCollection>(vocbase, collectionSlice, false);
+              std::shared_ptr<LogicalCollection> newCollection;
+#ifndef USE_ENTERPRISE
+              newCollection = std::make_shared<LogicalCollection>(vocbase, collectionSlice, false);
+#else 
+              VPackSlice isSmart = collectionSlice.get("isSmart");
+              if (isSmart.isBoolean() && isSmart.getBool()) {
+                newCollection = std::make_shared<VirtualSmartEdgeCollection>(vocbase, collectionSlice);
+              } else {
+                newCollection = std::make_shared<LogicalCollection>(vocbase, collectionSlice, false);
+              }
+#endif
               std::string const collectionName = newCollection->name();
               
               // mop: register with name as well as with id

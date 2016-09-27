@@ -81,7 +81,7 @@ The ArangoDB shell as stand-alone program. It also contains the utility programs
 ## --SECTION--                                                             build
 ## -----------------------------------------------------------------------------
 # requires source:
-#%prep
+%prep
 #%setup -q -n arangodb-%{version}
 #%setup -q -n arangodb-%{version} -T -D -a 1
 
