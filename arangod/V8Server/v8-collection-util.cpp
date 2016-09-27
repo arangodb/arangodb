@@ -94,7 +94,7 @@ static void WeakCollectionCallback(const v8::WeakCallbackData<
   // decrease the reference-counter for the database
   collection->vocbase()->release();
 
-// find the persistent handle
+  // find the persistent handle
 #if ARANGODB_ENABLE_MAINTAINER_MODE
   auto const& it = v8g->JSCollections.find(collection);
   TRI_ASSERT(it != v8g->JSCollections.end());
