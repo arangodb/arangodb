@@ -1404,7 +1404,7 @@
       this.outputCounter++;
     },
 
-    readQueryData: function (selected) {
+    readQueryData: function (selected, forExecute) {
       // var selectedText = this.aqlEditor.session.getTextRange(this.aqlEditor.getSelectionRange())
       var sizeBox = $('#querySize');
       var data = {
@@ -1434,9 +1434,12 @@
           data.bindVars = this.bindParamTableObj;
         }
 
-        data.options = {
-          profile: true
-        };
+        // add profile flag for query execution
+        if (forExecute) {
+          data.options = {
+            profile: true
+          };
+        }
       }
 
       return JSON.stringify(data);
@@ -1445,7 +1448,7 @@
     fillResult: function (outputEditor, sentQueryEditor, counter, selected) {
       var self = this;
 
-      var queryData = this.readQueryData(selected);
+      var queryData = this.readQueryData(selected, true);
 
       if (queryData === 'false') {
         return;

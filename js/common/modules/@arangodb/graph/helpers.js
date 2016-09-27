@@ -250,8 +250,10 @@ function simulateBreadthFirstSearch(graph, startVertexId, minDepth, maxDepth,
         }
         used[vertex._id] = true;
       }
-      schreier.push({vertex: vertex, edge: edge,
-                     depth: schreier[pos].depth + 1, pred: pos});
+      if (useThisEdge) {
+        schreier.push({vertex: vertex, edge: edge,
+                       depth: schreier[pos].depth + 1, pred: pos});
+      }
     };
 
     if (dir === 'OUT' || dir === 'ANY') {
@@ -358,14 +360,14 @@ function checkBFSResult(pattern, toCheck) {
   // where errorMessage is set iff error is true. This can be used as in:
   //   assertFalse(res.error, res.errorMessage)
   if (pattern.res.length !== toCheck.length) {
-    return { error: true, errorMessage: 'Number of results does not match.' };
+    return { error: true, errorMessage: 'Number of results does not match' };
   }
   if (pattern.res.length === 0) {
     return { error: false };
   }
   let guck = pattern.res[0];
   if (typeof guck !== 'object') {
-    return { error: true, errorMessage: 'Cannot recognize mode.' };
+    return { error: true, errorMessage: 'Cannot recognize mode' };
   }
   let mode;
   if (guck.hasOwnProperty('vertices') && guck.hasOwnProperty('edges')) {
@@ -383,7 +385,7 @@ function checkBFSResult(pattern, toCheck) {
     if (pattern.depths[i] !== depth) {
       if (depth !== null && pattern.depths[i] < depth) {
         return { error: true,
-                 errorMessage: 'Depths are decreasing.' };
+                 errorMessage: 'Depths are decreasing' };
       }
       depth = pattern.depths[i];
       newDepths.push(i);
@@ -402,7 +404,7 @@ function checkBFSResult(pattern, toCheck) {
         if (tab[toCheck[j]._id] !== true) {
           return { error: true, errorMessage: 'Ids in depth ' +
                    pattern.depths[j] + ' do not match, "' +
-                   toCheck[j]._id + '" in toCheck is not in pattern.' };
+                   toCheck[j]._id + '" in toCheck is not in pattern' };
         }
       }
     } else if (mode === 'edge') {
@@ -410,18 +412,21 @@ function checkBFSResult(pattern, toCheck) {
       let eTab = {};
       for (let j = newDepths[i]; j < newDepths[i+1]; ++j) {
         vTab[pattern.res[j].vertex._id] = true;
-        eTab[pattern.res[j].edge._id] = true;
+        if (pattern.res[j].edge !== null) {
+          eTab[pattern.res[j].edge._id] = true;
+        }
       }
       for (let j = newDepths[i]; j < newDepths[i+1]; ++j) {
         if (vTab[toCheck[j].vertex._id] !== true) {
           return { error: true, errorMessage: 'Vertex ids in depth ' +
                    pattern.depths[j] + ' do not match, "' +
-                   toCheck[j].vertex._id + '" in toCheck is not in pattern.' };
+                   toCheck[j].vertex._id + '" in toCheck is not in pattern' };
         }
-        if (eTab[toCheck[j].edge._id] !== true) {
+        if (toCheck[j].edge !== null &&
+            eTab[toCheck[j].edge._id] !== true) {
           return { error: true, errorMessage: 'Edge ids in depth ' +
                    pattern.depths[j] + ' do not match, "' +
-                   toCheck[j].edge._id + '" in toCheck is not in pattern.' };
+                   toCheck[j].edge._id + '" in toCheck is not in pattern' };
         }
       }
     } else {   // mode === 'path'
