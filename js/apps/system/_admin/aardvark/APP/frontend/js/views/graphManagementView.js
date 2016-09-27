@@ -752,8 +752,11 @@
         name: graphName,
         userConfig: window.App.userConfig
       });
-      test.setDefaults(true);
+      test.setDefaults(true, true);
       test.remove();
+
+      window.modalView.hide();
+      arangoHelper.arangoNotification('Graph', 'Reset successful.');
     },
 
     showHideDefinition: function (e) {

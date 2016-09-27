@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global arangoHelper, Backbone, templateEngine, $, window, _ */
+/* global arangoHelper, frontendConfig, Backbone, templateEngine, $, window, _ */
 (function () {
   'use strict';
 
@@ -269,7 +269,7 @@
 
     getGraphSettings: function (render) {
       var self = this;
-      var combinedName = window.App.currentDB.toJSON().name + '_' + this.name;
+      var combinedName = frontendConfig.db + '_' + this.name;
 
       this.userConfig.fetch({
         success: function (data) {
@@ -285,10 +285,10 @@
       this.saveGraphSettings(null, true);
     },
 
-    saveGraphSettings: function (event, color, nodeStart, overwrite) {
+    saveGraphSettings: function (event, color, nodeStart, overwrite, silent, userCallback) {
       var self = this;
       self.lastSaved = new Date();
-      var combinedName = window.App.currentDB.toJSON().name + '_' + this.name;
+      var combinedName = frontendConfig.db + '_' + this.name;
 
       var config = {};
 
@@ -329,14 +329,19 @@
             window.App.graphViewer.render(self.lastFocussed);
           }
         } else {
-          arangoHelper.arangoNotification('Graph ' + this.name, 'Configuration saved.');
+          if (!silent) {
+            arangoHelper.arangoNotification('Graph ' + this.name, 'Configuration saved.');
+          }
+        }
+        if (userCallback) {
+          userCallback();
         }
       }.bind(this);
 
       this.userConfig.setItem('graphs', config, callback);
     },
 
-    setDefaults: function (onlySave) {
+    setDefaults: function (saveOnly, silent, callback) {
       var obj = {
         layout: 'force',
         renderer: 'canvas',
@@ -360,10 +365,14 @@
         barnesHutOptimize: true
       };
 
-      if (onlySave === true) {
-        this.saveGraphSettings(null, null, null, obj);
+      if (saveOnly === true) {
+        if (silent) {
+          this.saveGraphSettings(null, null, null, obj, silent, callback);
+        } else {
+          this.saveGraphSettings(null, null, null, obj);
+        }
       } else {
-        this.saveGraphSettings(null, null, null, obj);
+        this.saveGraphSettings(null, null, null, obj, null);
         this.render();
         window.App.graphViewer.render(this.lastFocussed);
       }

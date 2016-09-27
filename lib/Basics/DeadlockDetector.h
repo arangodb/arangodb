@@ -182,25 +182,15 @@ class DeadlockDetector {
 
       if (res != TRI_ERROR_NO_ERROR) {
         // clean up
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        auto erased =
-#endif
-        _blocked.erase(tid);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        auto erased = _blocked.erase(tid);
         TRI_ASSERT(erased == 1);
-#endif
       }
 
       return res;
     } catch (...) {
       // clean up
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto erased =
-#endif
-      _blocked.erase(tid);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      auto erased = _blocked.erase(tid);
       TRI_ASSERT(erased == 1);
-#endif
       throw;
     }
   }
@@ -215,13 +205,8 @@ class DeadlockDetector {
       return;
     }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto erased =
-#endif
-    _blocked.erase(tid);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto erased = _blocked.erase(tid);
     TRI_ASSERT(erased == 1);
-#endif
   }
 
   /// @brief unregister a thread from the list of active threads
@@ -263,13 +248,8 @@ class DeadlockDetector {
 
       if (!wasLast) {
         // we're not the last thread, so we simply unregister ourselves from the list
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        auto erased =
-#endif
-        (*it).second.first.erase(tid);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        auto erased = (*it).second.first.erase(tid);
         TRI_ASSERT(erased == 1);
-#endif
         // we shouldn't be in the list anymore
         TRI_ASSERT((*it).second.first.find(tid) == (*it).second.first.end());
       }
@@ -285,13 +265,8 @@ class DeadlockDetector {
 
     if (wasLast) {
       // delete last reader/writer
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto erased =
-#endif
-      _active.erase(value);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      auto erased = _active.erase(value);
       TRI_ASSERT(erased == 1);
-#endif
     }
   }
 
@@ -319,25 +294,15 @@ class DeadlockDetector {
       // if someone else is already there, this must be a reader, as readers can
       // share a resource, but writers are exclusive
       TRI_ASSERT(!isWrite);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto result =
-#endif
-        (*it).second.first.emplace(tid);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      auto result = (*it).second.first.emplace(tid);
       TRI_ASSERT(result.second);
-#endif
       TRI_ASSERT(!(*it).second.second);
       TRI_ASSERT((*it).second.first.find(tid) != (*it).second.first.end());
     }
 
     if (wasBlockedBefore) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto erased =
-#endif
-      _blocked.erase(tid);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      auto erased = _blocked.erase(tid);
       TRI_ASSERT(erased == 1);
-#endif
     }
   }
 

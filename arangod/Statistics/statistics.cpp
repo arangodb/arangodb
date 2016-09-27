@@ -127,12 +127,8 @@ static void ProcessRequestStatistics(TRI_request_statistics_t* statistics) {
   statistics->reset();
 
 // put statistics item back onto the freelist
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool ok = RequestFreeList.push(statistics);
   TRI_ASSERT(ok);
-#else
-  RequestFreeList.push(statistics);
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -179,21 +175,13 @@ void TRI_ReleaseRequestStatistics(TRI_request_statistics_t* statistics) {
   }
 
   if (!statistics->_ignore) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     bool ok = RequestFinishedList.push(statistics);
     TRI_ASSERT(ok);
-#else
-    RequestFinishedList.push(statistics);
-#endif
   } else {
     statistics->reset();
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     bool ok = RequestFreeList.push(statistics);
     TRI_ASSERT(ok);
-#else
-    RequestFreeList.push(statistics);
-#endif
   }
 }
 
@@ -276,12 +264,8 @@ void TRI_ReleaseConnectionStatistics(TRI_connection_statistics_t* statistics) {
   statistics->reset();
 
 // put statistics item back onto the freelist
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool ok = ConnectionFreeList.push(statistics);
   TRI_ASSERT(ok);
-#else
-  ConnectionFreeList.push(statistics);
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -544,12 +528,8 @@ void TRI_InitializeStatistics() {
 
   for (size_t i = 0; i < QUEUE_SIZE; ++i) {
     auto entry = new TRI_request_statistics_t;
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     bool ok = RequestFreeList.push(entry);
     TRI_ASSERT(ok);
-#else
-    RequestFreeList.push(entry);
-#endif
   }
 
   // .............................................................................
@@ -558,12 +538,8 @@ void TRI_InitializeStatistics() {
 
   for (size_t i = 0; i < QUEUE_SIZE; ++i) {
     auto entry = new TRI_connection_statistics_t;
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     bool ok = ConnectionFreeList.push(entry);
     TRI_ASSERT(ok);
-#else
-    ConnectionFreeList.push(entry);
-#endif
   }
 }
 
