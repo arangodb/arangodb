@@ -721,7 +721,20 @@ std::string Transaction::makeIdFromCustom(CollectionNameResolver const* resolver
   // create a buffer big enough for collection name + _key
   std::string buffer;
   buffer.reserve(TRI_COL_NAME_LENGTH + TRI_VOC_KEY_MAX_LENGTH + 2);
-  buffer.append(resolver->getCollectionNameCluster(cid));
+  std::string resolved = resolver->getCollectionNameCluster(cid);
+#ifdef USE_ENTERPRISE
+  if (size_t pos = resolved.find("_local_") != std::string::npos) {
+    resolved.erase(pos,7);
+  }
+  if (size_t pos = resolved.find("_from_") != std::string::npos) {
+    resolved.erase(pos,6);
+  }
+  if (size_t pos = resolved.find("_to_") != std::string::npos) {
+    resolved.erase(pos,4);
+  }
+#endif
+  buffer.append(resolved);
+  
   buffer.append("/");
 
   VPackValueLength keyLength;
