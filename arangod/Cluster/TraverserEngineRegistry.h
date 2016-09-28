@@ -69,6 +69,8 @@ class TraverserEngineRegistry {
 
   struct EngineInfo {
     bool _isInUse;                                 // Flag if this engine is in use
+    bool _toBeDeleted;                             // Should be deleted after
+                                                   // next return
     std::unique_ptr<BaseTraverserEngine> _engine;  // The real engine
 
     double _timeToLive;                            // in seconds
