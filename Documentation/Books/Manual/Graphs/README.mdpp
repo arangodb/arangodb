@@ -51,6 +51,10 @@ You may use anonymous graphs in the [traversals](Traversals/README.md) and in th
 Anonymous graphs don't have *edge definitions* describing which *vertex collection* is connected by which *edge collection*. The graph model has to be maintained in the client side code.
 This gives you more freedom than the strict *named graphs*.
 
+- [AQL Graph Operations](../../AQL/Graphs/index.html) are available for both, named and anonymous graphs:
+  - [AQL Traversals](../../AQL/Graphs/Traversals.html)
+  - [AQL Shortest Path](../../AQL/Graphs/ShortestPath.html)
+
 !SUBSUBSECTION When to choose anonymous or named graphs?
 
 As noted above, named graphs ensure graph integrity, both when inserting or removing edges or vertices.
