@@ -797,6 +797,7 @@ static void JS_DocumentVocbaseCol(
 /// @brief drops a collection, case of a coordinator in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_ENTERPRISE
 static void DropVocbaseColCoordinator(
     v8::FunctionCallbackInfo<v8::Value> const& args,
     arangodb::LogicalCollection* collection) {
@@ -823,6 +824,7 @@ static void DropVocbaseColCoordinator(
 
   TRI_V8_RETURN_UNDEFINED();
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock collectionDrop
