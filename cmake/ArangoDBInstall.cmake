@@ -85,14 +85,14 @@ install(
 ################################################################################
 ### @brief detect if we're on a systemd enabled system; if install unit file.
 ################################################################################
-set(IS_SYSTEMD_INSTALL false)
+set(IS_SYSTEMD_INSTALL 0)
 set(SYSTEMD_UNIT_DIR "")
 if (UNIX)
   find_package(PkgConfig QUIET)
   pkg_check_modules(SYSTEMD systemd)
   if (SYSTEMD_FOUND)
     pkg_get_variable(SYSTEMD_UNIT_DIR systemd systemdsystemunitdir)
-    set(IS_SYSTEMD_INSTALL true)
+    set(IS_SYSTEMD_INSTALL 1)
     configure_file (
         ${ARANGODB_SOURCE_DIR}/Installation/systemd/arangodb3.service.in
         ${PROJECT_BINARY_DIR}${SYSTEMD_UNIT_DIR}/arangodb3.service
