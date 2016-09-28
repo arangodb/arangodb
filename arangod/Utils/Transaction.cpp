@@ -1071,7 +1071,17 @@ void Transaction::buildDocumentIdentity(LogicalCollection* collection,
                                         TRI_doc_mptr_t const* newMptr) {
   builder.openObject();
   if (ServerState::isRunningInCluster(_serverRole)) {
-    builder.add(StaticStrings::IdString, VPackValue(resolver()->getCollectionName(cid) + "/" + key.toString()));
+    std::string resolved = resolver()->getCollectionNameCluster(cid);
+#ifdef USE_ENTERPRISE
+  if (resolved.compare(0, 7, "_local_") == 0) {
+    resolved.erase(0, 7);
+  } else if (resolved.compare(0, 6, "_from_") == 0) {
+    resolved.erase(0, 6);
+  } else if (resolved.compare(0, 4, "_to_") == 0) {
+    resolved.erase(0,4);
+  }
+#endif
+    builder.add(StaticStrings::IdString, VPackValue(resolved + "/" + key.toString()));
   } else {
     builder.add(StaticStrings::IdString,
                 VPackValue(collection->name() + "/" + key.toString()));
