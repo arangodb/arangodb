@@ -7,7 +7,7 @@
   window.NodesView2 = Backbone.View.extend({
     el: '#content',
     template: templateEngine.createTemplate('nodesView2.ejs'),
-    interval: 1000000,
+    interval: 10000,
     knownServers: [],
 
     events: {

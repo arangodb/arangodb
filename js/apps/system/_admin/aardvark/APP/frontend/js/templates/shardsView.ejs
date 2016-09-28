@@ -1,8 +1,8 @@
 <script id="shardsView.ejs" type="text/template">
 
   <div id="shardsContent" class="innerContent">
-      <% var genClass1 = 'pure-u-1-5'; %>
-      <% var genClass2 = 'pure-u-3-5'; %>
+      <% var genClass1 = 'pure-u-6-24'; %>
+      <% var genClass2 = 'pure-u-6-24'; %>
       <% var disabled = ' '; %>
       <% var collectionName; %>
       <% var first = 0; %>
@@ -30,13 +30,19 @@
               <div class="<%= genClass1 %> left">Shard</div>
               <div class="<%= genClass1 %> left">Leader</div>
               <div class="<%= genClass2 %> left">Followers</div>
+              <div class="<%= genClass1 %> left">Sync</div>
             </div>
           </div>
 
-          <% var counter = 0; %>
+          <% var counter = 0; var shardClass; %>
           <% _.each(collection.Plan, function(shard, name) { %>
             <div class="pure-g pure-table pure-table-body">
-              <div class="pure-table-row noHover" collection="<%= collectionName %>" shard="<%= name %>" leader="<%= shard.leader%>">
+
+              <% if (shard.progress) { %>
+              <%   shardClass = 'disabled';%>
+              <% } %>
+
+              <div class="pure-table-row noHover <%= shardClass %>" collection="<%= collectionName %>" shard="<%= name %>" leader="<%= shard.leader%>">
 
                 <% if (shard.leader.substring(0,1) === '_') { %>
                 <%   shard.leader = shard.leader.slice(1) %>
@@ -80,6 +86,13 @@
                     <% });  %>
                     
                     <div class="shardFollowers <%= genClass2 %> left"><%= string %></div>
+
+                    <% if (shard.progress) { %>
+                      <% var percent = numeral(shard.progress.current / shard.progress.total).format('0.00%'); %>
+                      <div class="<%= genClass1 %> left"><%= percent %></div>
+                    <% } else { %>
+                      <div class="<%= genClass1 %> left"><i style="margin-left: 10px;" class="fa fa-check-circle"></i></div>
+                    <% } %>
                   <% } %>
                 <% } %>
 

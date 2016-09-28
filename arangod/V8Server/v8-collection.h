@@ -56,4 +56,9 @@ void TRI_InitV8Collection(v8::Handle<v8::Context> context,
                           TRI_v8_global_t* v8g, v8::Isolate* isolate,
                           v8::Handle<v8::ObjectTemplate> ArangoDBNS);
 
+#ifdef USE_ENTERPRISE
+void DropVocbaseColCoordinatorEnterprise(
+  v8::FunctionCallbackInfo<v8::Value> const& args,
+  arangodb::LogicalCollection* collection);
+#endif
 #endif

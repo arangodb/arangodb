@@ -85,14 +85,17 @@ install(
 ################################################################################
 ### @brief detect if we're on a systemd enabled system; if install unit file.
 ################################################################################
-set(IS_SYSTEMD_INSTALL false)
+set(IS_SYSTEMD_INSTALL 0)
 set(SYSTEMD_UNIT_DIR "")
 if (UNIX)
   find_package(PkgConfig QUIET)
   pkg_check_modules(SYSTEMD systemd)
   if (SYSTEMD_FOUND)
-    pkg_get_variable(SYSTEMD_UNIT_DIR systemd systemdsystemunitdir)
-    set(IS_SYSTEMD_INSTALL true)
+    # cmake to old: pkg_get_variable(SYSTEMD_UNIT_DIR systemd systemdsystemunitdir)
+    execute_process(COMMAND ${PKG_CONFIG_EXECUTABLE} systemd --variable=systemdsystemunitdir
+      OUTPUT_VARIABLE SYSTEMD_UNIT_DIR
+      OUTPUT_STRIP_TRAILING_WHITESPACE)
+    set(IS_SYSTEMD_INSTALL 1)
     configure_file (
         ${ARANGODB_SOURCE_DIR}/Installation/systemd/arangodb3.service.in
         ${PROJECT_BINARY_DIR}${SYSTEMD_UNIT_DIR}/arangodb3.service

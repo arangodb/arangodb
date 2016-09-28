@@ -1664,16 +1664,14 @@ if (list.length > 0) {
             </th>
             <th class="collectionInfoTh">
             </th>
-          </tr>
-          <tr>
-            <th class="collectionInfoTh2">Compaction status:</th>
-            <th class="collectionInfoTh">
-              <div class="modal-text"><%=figuresData.figures.compactionStatus.message + " (" + figuresData.figures.compactionStatus.time + ")" %></div>
-            </th>
-            <th class="collectionInfoTh">
-            </th>
-          </tr>
-          <tr>
+          </tr> <% if (!frontendConfig.isCluster) { %> <tr>
+              <th class="collectionInfoTh2">Compaction status:</th>
+              <th class="collectionInfoTh">
+                <div class="modal-text"><%=figuresData.figures.compactionStatus.message + " (" + figuresData.figures.compactionStatus.time + ")" %></div>
+              </th>
+              <th class="collectionInfoTh">
+              </th>
+            </tr> <% } %> <tr>
             <th class="collectionInfoTh2">Waiting for:</th>
             <th class="collectionInfoTh">
               <div class="modal-text"><%=figuresData.figures.waitingFor%></div>
@@ -2033,6 +2031,7 @@ if (list.length > 0) {
       <li class="settings-menu"><a id="settings" class="tab" href="#settings"><i class="fa fa-cog"></i>Settings</a></li> <% } %> --> <% if (currentDB.get('isSystem') || currentDB.get(!isCluster)) { %> <li class="navbar-spacer big"></li> <% } %> <% if (currentDB.get('isSystem')) { %> <li class="databases-menu"><a id="databases" class="tab" href="#databases"><i class="fa fa-database"></i>Databases</a></li> <% } %> <% if (!isCluster) { %> <li class="logs-menu"><a id="logs" class="tab" href="#logs"><i class="fa fa-file-text"></i>Logs</a></li> <% } %> <li class="navbar-spacer big"></li>
     <li class="support-menu"><a id="support" class="tab" href="#support"><i class="fa fa-support"></i>Support</a></li>
     <li class="helpus-menu"><a id="helpus" class="tab" href="#helpus"><i class="fa fa-heart"></i>Help Us</a></li>
+    <li class="enterprise-menu" style="display: none; cursor: pointer"><a id="enterprise" class="tab" target="_blank"><i class="fa fa-external-link-square"></i>Get enterprise</a></li>
     <!--
     <li class="navbar-spacer big"></li>
     <li class="dropdown tools-menu" id="toolsDropdown">
@@ -2131,14 +2130,14 @@ if (list.length > 0) {
         <div class="pure-u-8-24 left">Endpoint</div>
         <div class="pure-u-3-24 mid hide-small">Heartbeat</div>
         <div class="pure-u-3-24 mid">Status</div>
-        <div class="pure-u-1-24 mid">Health</div>
+        <div class="pure-u-1-24 mid"></div>
       </div>
     </div>
 
     <div class="pure-g cluster-nodes coords-nodes pure-table pure-table-body"> <% _.each(coords, function(node, name) { %> <% var id = name + "-node"; %> <div class="pure-table-row <%= disabled %>" node="<%= id %>">
 
-          <div class="pure-u-9-24 left"><%= name %></div>
-          <div class="pure-u-8-24 left"><%= node.Endpoint %><i class="fa fa-bar-chart"></i></div> <% var formatted = (node.LastHeartbeatAcked).substr(11, 18).slice(0, -1); %> <div class="pure-u-3-24 hide-small mid"><%= formatted %></div>
+          <div class="pure-u-9-24 left"><%= name %><i class="fa fa-bar-chart"></i></div>
+          <div class="pure-u-8-24 left"><%= node.Endpoint %></div> <% var formatted = (node.LastHeartbeatAcked).substr(11, 18).slice(0, -1); %> <div class="pure-u-3-24 hide-small mid"><%= formatted %></div>
           <div class="pure-u-3-24 mid"><%= node.LastHeartbeatStatus %></div> <% if(node.Status === 'GOOD') { %> <div class="pure-u-1-24 mid state"><i class="fa fa-check-circle"></i></div> <% } else { %> <div class="pure-u-1-24 mid state"><i class="fa fa-exclamation-circle"></i></div> <% } %> </div> <% }); %> </div>
   </div> <% } %> <% if (Object.keys(dbs).length > 0) { %> <% var disabled = ''; %> <% disabled = " disabled"; %> <div class="pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-2">
     
@@ -2168,7 +2167,7 @@ if (list.length > 0) {
         <div class="pure-u-8-24 left">Endpoint</div>
         <div class="pure-u-3-24 mid hide-small">Heartbeat</div>
         <div class="pure-u-3-24 mid">Status</div>
-        <div class="pure-u-1-24 mid">Health</div>
+        <div class="pure-u-1-24 mid"></div>
       </div>
     </div> <% } %> <div class="pure-g cluster-nodes dbs-nodes pure-table pure-table-body"> <% _.each(dbs, function(node, name) { %> <% var id = name + "-node"; %> <div class="pure-table-row <%= disabled %>" id="<%= id %>">
 
@@ -2372,7 +2371,7 @@ if (list.length > 0) {
 
     </div>
 
-  </div></script><script id="shardsView.ejs" type="text/template"><div id="shardsContent" class="innerContent"> <% var genClass1 = 'pure-u-1-5'; %> <% var genClass2 = 'pure-u-3-5'; %> <% var disabled = ' '; %> <% var collectionName; %> <% var first = 0; %> <% _.each(collections, function(collection, name) { %> <% if (name.substring(0,1) !== '_') { %> <% collectionName = name%> <% if (first === 0) { %> <div class="sectionHeader pure-g" style="margin-top: -20px;"> <% first++; %> <% } else { %> <div class="sectionHeader pure-g"> <% } %> <div class="pure-u-1-1">
+  </div></script><script id="shardsView.ejs" type="text/template"><div id="shardsContent" class="innerContent"> <% var genClass1 = 'pure-u-6-24'; %> <% var genClass2 = 'pure-u-6-24'; %> <% var disabled = ' '; %> <% var collectionName; %> <% var first = 0; %> <% _.each(collections, function(collection, name) { %> <% if (name.substring(0,1) !== '_') { %> <% collectionName = name%> <% if (first === 0) { %> <div class="sectionHeader pure-g" style="margin-top: -20px;"> <% first++; %> <% } else { %> <div class="sectionHeader pure-g"> <% } %> <div class="pure-u-1-1">
               <div class="title" style="position: relative; top: -4px;"> <%= name %> </div>
             </div>
           </div>
@@ -2382,9 +2381,9 @@ if (list.length > 0) {
               <div class="<%= genClass1 %> left">Shard</div>
               <div class="<%= genClass1 %> left">Leader</div>
               <div class="<%= genClass2 %> left">Followers</div>
+              <div class="<%= genClass1 %> left">Sync</div>
             </div>
-          </div> <% var counter = 0; %> <% _.each(collection.Plan, function(shard, name) { %> <div class="pure-g pure-table pure-table-body">
-              <div class="pure-table-row noHover" collection="<%= collectionName %>" shard="<%= name %>" leader="<%= shard.leader%>"> <% if (shard.leader.substring(0,1) === '_') { %> <%   shard.leader = shard.leader.slice(1) %> <% } %> <div class="<%= genClass1 %> left"><%= name %></div> <% if (name === Object.keys(collection.Current)[counter]) { %> <div class="shardLeader <%= genClass1 %> positive left"><span><%= shard.leader %></span></div> <% } else { %> <div class="<%= genClass1 %> negative left"><%= shard.leader %></div> <% } %> <% var found = null;  %> <% _.each(shard.followers, function(db) {  %> <% if (db === shard.leader) { %> <% found = true; %> <% } %> <% }); %> <% if (found) { %> <div class="<%= genClass2 %> mid"><i class="fa fa-circle-o-notch fa-spin"></i></div> <% } else { %> <% if (shard.followers.length === 0) { %> <div class="<%= genClass2 %> left"> no followers </div> <% } else { %> <% var string = ''; %> <% var counter2 = 0; %> <% _.each(shard.followers, function(db) {  %> <% if (shard.followers.length === 1) { %> <% string += '<span>' + db + '</span> '; %> <% } else { %> <% if (counter2 === 0) { %> <% string += '<span>' + db + '</span>'; counter2++; %> <% } else { %> <% string += ", " + '<span>' + db + '</span>'; %> <% } %> <% } %> <% });  %> <div class="shardFollowers <%= genClass2 %> left"><%= string %></div> <% } %> <% } %> </div>
+          </div> <% var counter = 0; var shardClass; %> <% _.each(collection.Plan, function(shard, name) { %> <div class="pure-g pure-table pure-table-body"> <% if (shard.progress) { %> <%   shardClass = 'disabled';%> <% } %> <div class="pure-table-row noHover <%= shardClass %>" collection="<%= collectionName %>" shard="<%= name %>" leader="<%= shard.leader%>"> <% if (shard.leader.substring(0,1) === '_') { %> <%   shard.leader = shard.leader.slice(1) %> <% } %> <div class="<%= genClass1 %> left"><%= name %></div> <% if (name === Object.keys(collection.Current)[counter]) { %> <div class="shardLeader <%= genClass1 %> positive left"><span><%= shard.leader %></span></div> <% } else { %> <div class="<%= genClass1 %> negative left"><%= shard.leader %></div> <% } %> <% var found = null;  %> <% _.each(shard.followers, function(db) {  %> <% if (db === shard.leader) { %> <% found = true; %> <% } %> <% }); %> <% if (found) { %> <div class="<%= genClass2 %> mid"><i class="fa fa-circle-o-notch fa-spin"></i></div> <% } else { %> <% if (shard.followers.length === 0) { %> <div class="<%= genClass2 %> left"> no followers </div> <% } else { %> <% var string = ''; %> <% var counter2 = 0; %> <% _.each(shard.followers, function(db) {  %> <% if (shard.followers.length === 1) { %> <% string += '<span>' + db + '</span> '; %> <% } else { %> <% if (counter2 === 0) { %> <% string += '<span>' + db + '</span>'; counter2++; %> <% } else { %> <% string += ", " + '<span>' + db + '</span>'; %> <% } %> <% } %> <% });  %> <div class="shardFollowers <%= genClass2 %> left"><%= string %></div> <% if (shard.progress) { %> <% var percent = numeral(shard.progress.current / shard.progress.total).format('0.00%'); %> <div class="<%= genClass1 %> left"><%= percent %></div> <% } else { %> <div class="<%= genClass1 %> left"><i style="margin-left: 10px;" class="fa fa-check-circle"></i></div> <% } %> <% } %> <% } %> </div>
             </div> <% counter++; %> <% }); %> <% } %> <% }); %> <button id="rebalanceShards" style="margin-top: 20px;" class="button-success pull-right">Rebalance Shards</button>
   </div></script><script id="shellView.ejs" type="text/template"><div class="headerBar">
     <a class="arangoHeader">JS Shell</a>
@@ -2747,4 +2746,4 @@ var cutByResolution = function (str) {
   </div>
 
   <div id="workMonitorContent" class="innerContent">
-  </div></script></head><body><nav class="navbar" style="display: none"><div class="primary"><div class="navlogo"><a class="logo big" href="#"><img id="ArangoDBLogo" class="arangodbLogo" src="img/arangodb_logo_big.png"></a><a class="logo small" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a><a class="version"><span>VERSION: </span><span id="currentVersion"></span></a></div><div class="statmenu" id="statisticBar"></div><div class="navmenu" id="navigationBar"></div></div></nav><div id="modalPlaceholder"></div><div class="bodyWrapper" style="display: none"><div class="centralRow"><div id="navbar2" class="navbarWrapper secondary"><div class="subnavmenu" id="subNavigationBar"></div></div><div class="resizecontainer contentWrapper"><div id="loadingScreen" class="loadingScreen" style="display: none"><i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw margin-bottom"></i> <span class="sr-only">Loading...</span></div><div id="content" class="centralContent"></div><footer class="footer"><div id="footerBar"></div></footer></div></div></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><div id="graphSettingsContent" style="display: none"></div><div id="offlinePlaceholder" style="display:none"><div class="offline-div"><div class="pure-u"><div class="pure-u-1-4"></div><div class="pure-u-1-2 offline-window"><div class="offline-header"><h3>You have been disconnected from the server</h3></div><div class="offline-body"><p>The connection to the server has been lost. The server may be under heavy load.</p><p>Trying to reconnect in <span id="offlineSeconds">10</span> seconds.</p><p class="animation_state"><span><button class="button-success">Reconnect now</button></span></p></div></div><div class="pure-u-1-4"></div></div></div></div><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="libs.js?version=1474976126035"></script><script src="app.js?version=1474976126035"></script></body></html>
+  </div></script></head><body><nav class="navbar" style="display: none"><div class="primary"><div class="navlogo"><a class="logo big" href="#"><img id="ArangoDBLogo" class="arangodbLogo" src="img/arangodb_logo_big.svg"></a><a class="logo small" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a><a class="version"><span>VERSION: </span><span id="currentVersion"></span></a></div><div class="statmenu" id="statisticBar"></div><div class="navmenu" id="navigationBar"></div></div></nav><div id="modalPlaceholder"></div><div class="bodyWrapper" style="display: none"><div class="centralRow"><div id="navbar2" class="navbarWrapper secondary"><div class="subnavmenu" id="subNavigationBar"></div></div><div class="resizecontainer contentWrapper"><div id="loadingScreen" class="loadingScreen" style="display: none"><i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw margin-bottom"></i> <span class="sr-only">Loading...</span></div><div id="content" class="centralContent"></div><footer class="footer"><div id="footerBar"></div></footer></div></div></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><div id="graphSettingsContent" style="display: none"></div><div id="offlinePlaceholder" style="display:none"><div class="offline-div"><div class="pure-u"><div class="pure-u-1-4"></div><div class="pure-u-1-2 offline-window"><div class="offline-header"><h3>You have been disconnected from the server</h3></div><div class="offline-body"><p>The connection to the server has been lost. The server may be under heavy load.</p><p>Trying to reconnect in <span id="offlineSeconds">10</span> seconds.</p><p class="animation_state"><span><button class="button-success">Reconnect now</button></span></p></div></div><div class="pure-u-1-4"></div></div></div></div><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="libs.js?version=1475071254442"></script><script src="app.js?version=1475071254442"></script></body></html>

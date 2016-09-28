@@ -222,12 +222,24 @@
     },
 
     continueRender: function (collections) {
+      var self = this;
+
       delete collections.code;
       delete collections.error;
 
       this.$el.html(this.template.render({
         collections: collections
       }));
+
+      _.each(collections, function (shard) {
+        _.each(shard.Plan, function (val, key) {
+          if (val.progress) {
+            window.setTimeout(function () {
+              self.render();
+            }, 1500);
+          }
+        });
+      });
     },
 
     updateServerTime: function () {

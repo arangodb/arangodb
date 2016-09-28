@@ -33,7 +33,7 @@
 
 var actions = require('@arangodb/actions');
 var cluster = require('@arangodb/cluster');
-var internal = require('internal');
+// var internal = require('internal');
 var _ = require('lodash');
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1132,6 +1132,53 @@ actions.defineHttp({
     }
 
     var result = require('@arangodb/cluster').shardDistribution();
+    var dbsToCheck = []; var diff;
+
+    var getDifference = function (a, b) {
+      return a.filter(function (i) {
+        return b.indexOf(i) < 0;
+      });
+    };
+
+    _.each(result.results, function (info, collection) {
+      _.each(info.Plan, function (shard, shardkey) {
+        // check if shard is out of sync
+        if (!_.isEqual(shard.followers, info.Current[shardkey].followers)) {
+          // if not in sync, get document counts of leader and compare with follower
+          diff = getDifference(shard.followers, info.Current[shardkey].followers);
+
+          dbsToCheck.push({
+            shard: shardkey,
+            toCheck: diff,
+            leader: info.Plan[shardkey].leader,
+            collection: collection
+          });
+        }
+      });
+    });
+
+    var leaderOP, followerOP, leaderR, followerR, leaderBody, followerBody;
+    var options = { timeout: 10 };
+
+    _.each(dbsToCheck, function (shard) {
+      // get counts of leader and follower shard
+      leaderOP = ArangoClusterComm.asyncRequest('GET', 'server:' + shard.leader, '_system',
+        '/_api/collection/' + shard.shard + '/count', '', {}, options);
+      followerOP = ArangoClusterComm.asyncRequest('GET', 'server:' + shard.toCheck, '_system',
+        '/_api/collection/' + shard.shard + '/count', '', {}, options);
+
+      leaderR = ArangoClusterComm.wait(leaderOP);
+      followerR = ArangoClusterComm.wait(followerOP);
+
+      leaderBody = JSON.parse(leaderR.body);
+      followerBody = JSON.parse(followerR.body);
+
+      result.results[shard.collection].Plan[shard.shard].progress = {
+        total: leaderBody.count,
+        current: followerBody.count
+      };
+    });
+
     actions.resultOk(req, res, actions.HTTP_OK, result);
   }
 });

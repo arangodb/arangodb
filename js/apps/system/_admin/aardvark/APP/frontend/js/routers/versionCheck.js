@@ -140,7 +140,7 @@
 
         if (data.license) {
           if (data.license !== 'community') {
-            $('#ArangoDBLogo').attr('src', 'img/arangodb_logo_alt.png');
+            $('#ArangoDBLogo').attr('src', 'img/arangodb_logo_alt.svg');
           } else {
             $('.enterprise-menu').show();
           }
