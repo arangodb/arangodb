@@ -1034,7 +1034,6 @@ void LogicalCollection::toVelocyPackInObject(VPackBuilder& result) const {
   result.add("indexBuckets", VPackValue(_indexBuckets));
   result.add("replicationFactor", VPackValue(_replicationFactor));
   result.add("numberOfShards", VPackValue(_numberOfShards));
-  result.add("isSmart", VPackValue(_isSmart));
   if (!_distributeShardsLike.empty()) {
     result.add("distributeShardsLike", VPackValue(_distributeShardsLike));
   }
