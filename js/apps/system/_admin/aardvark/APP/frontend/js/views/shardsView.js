@@ -179,11 +179,11 @@
         data: JSON.stringify(data),
         async: true,
         success: function (data) {
-          if (data === true) {
-            window.setTimeout(function () {
-              self.render(false);
-            }, 1500);
+          if (data.id) {
             arangoHelper.arangoNotification('Shard ' + shardName + ' will be moved to ' + toServer + '.');
+            window.setTimeout(function () {
+              window.App.shardsView.render();
+            }, 2000);
           }
         },
         error: function () {
