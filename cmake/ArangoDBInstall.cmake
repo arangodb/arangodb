@@ -85,21 +85,27 @@ install(
 ################################################################################
 ### @brief detect if we're on a systemd enabled system; if install unit file.
 ################################################################################
-if (IS_DIRECTORY /usr/lib/systemd/system)
-  configure_file (
-    ${ARANGODB_SOURCE_DIR}/Installation/systemd/arangodb3.service.in
-    ${PROJECT_BINARY_DIR}/usr/lib/systemd/system/arangodb3.service
-    NEWLINE_STYLE UNIX)
-  if (${USE_ENTERPRISE})
-    install(FILES ${PROJECT_BINARY_DIR}/usr/lib/systemd/system/arangodb3.service
-      DESTINATION /usr/lib/systemd/system/arangodb3e.service)
-  else()
-    install(FILES ${PROJECT_BINARY_DIR}/usr/lib/systemd/system/arangodb3.service
-      DESTINATION /usr/lib/systemd/system/arangodb3.service)
+set(IS_SYSTEMD_INSTALL false)
+set(SYSTEMD_UNIT_DIR "")
+if (UNIX)
+  find_package(PkgConfig QUIET)
+  pkg_check_modules(SYSTEMD systemd)
+  if (SYSTEMD_FOUND)
+    pkg_get_variable(SYSTEMD_UNIT_DIR systemd systemdsystemunitdir)
+    set(IS_SYSTEMD_INSTALL true)
+    configure_file (
+        ${ARANGODB_SOURCE_DIR}/Installation/systemd/arangodb3.service.in
+        ${PROJECT_BINARY_DIR}${SYSTEMD_UNIT_DIR}/arangodb3.service
+        NEWLINE_STYLE UNIX)
+      if (${USE_ENTERPRISE})
+        install(FILES ${PROJECT_BINARY_DIR}${SYSTEMD_UNIT_DIR}/arangodb3.service
+          DESTINATION ${SYSTEMD_UNIT_DIR}/arangodb3e.service)
+      else()
+        install(FILES ${PROJECT_BINARY_DIR}${SYSTEMD_UNIT_DIR}/arangodb3.service
+          DESTINATION ${SYSTEMD_UNIT_DIR}/arangodb3.service)
+      endif()
   endif()
 endif()
-
-
 ################################################################################
 ### @brief propagate the locations into our programms:
 ################################################################################
