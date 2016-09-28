@@ -49,7 +49,7 @@
         <div class="pure-u-8-24 left">Endpoint</div>
         <div class="pure-u-3-24 mid hide-small">Heartbeat</div>
         <div class="pure-u-3-24 mid">Status</div>
-        <div class="pure-u-1-24 mid">Health</div>
+        <div class="pure-u-1-24 mid"></div>
       </div>
     </div>
 
@@ -59,8 +59,8 @@
 
         <div class="pure-table-row <%= disabled %>" node="<%= id %>">
 
-          <div class="pure-u-9-24 left"><%= name %></div>
-          <div class="pure-u-8-24 left"><%= node.Endpoint %><i class="fa fa-bar-chart"></i></div>
+          <div class="pure-u-9-24 left"><%= name %><i class="fa fa-bar-chart"></i></div>
+          <div class="pure-u-8-24 left"><%= node.Endpoint %></div>
 
           <% var formatted = (node.LastHeartbeatAcked).substr(11, 18).slice(0, -1); %> 
           <div class="pure-u-3-24 hide-small mid"><%= formatted %></div>
@@ -125,7 +125,7 @@
         <div class="pure-u-8-24 left">Endpoint</div>
         <div class="pure-u-3-24 mid hide-small">Heartbeat</div>
         <div class="pure-u-3-24 mid">Status</div>
-        <div class="pure-u-1-24 mid">Health</div>
+        <div class="pure-u-1-24 mid"></div>
       </div>
     </div>
   <% } %>
