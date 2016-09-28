@@ -44,6 +44,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/VocBase/VirtualCollection.h"
+#include "Enterprise/VocBase/SmartVertexCollection.h"
 #endif
 
 #ifdef _WIN32
@@ -461,8 +462,15 @@ void ClusterInfo::loadPlan() {
               newCollection = std::make_shared<LogicalCollection>(vocbase, collectionSlice, false);
 #else 
               VPackSlice isSmart = collectionSlice.get("isSmart");
-              if (isSmart.isBoolean() && isSmart.getBool()) {
-                newCollection = std::make_shared<VirtualSmartEdgeCollection>(vocbase, collectionSlice);
+              if (isSmart.isTrue()) {
+                VPackSlice type = collectionSlice.get("type");
+                if (type.isInteger() && type.getUInt() == TRI_COL_TYPE_EDGE) {
+                  newCollection = std::make_shared<VirtualSmartEdgeCollection>(
+                      vocbase, collectionSlice);
+                } else {
+                  newCollection = std::make_shared<SmartVertexCollection>(
+                      vocbase, collectionSlice);
+                }
               } else {
                 newCollection = std::make_shared<LogicalCollection>(vocbase, collectionSlice, false);
               }
