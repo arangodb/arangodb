@@ -35,6 +35,7 @@ using namespace arangodb::traverser;
 TraverserEngineRegistry::EngineInfo::EngineInfo(TRI_vocbase_t* vocbase,
                                                 VPackSlice info)
     : _isInUse(false),
+      _toBeDeleted(false),
       _engine(new TraverserEngine(vocbase, info)),
       _timeToLive(0),
       _expires(0) {}
@@ -93,13 +94,16 @@ void TraverserEngineRegistry::returnEngine(TraverserEngineID id) {
   auto e = _engines.find(id);
   if (e == _engines.end()) {
     // Nothing to return
-    // TODO: Should we throw an error instead?
     return;
   }
   if (e->second->_isInUse) {
     e->second->_isInUse = false;
+    if (e->second->_toBeDeleted) {
+      auto engine = e->second;
+      _engines.erase(e);
+      delete engine;
+    }
   }
-  // TODO Should we throw an error if we are not allowed to return this
 }
 
 /// @brief Destroy the engine with the given id, worker function
@@ -111,15 +115,14 @@ void TraverserEngineRegistry::destroy(TraverserEngineID id, bool doLock) {
     auto e = _engines.find(id);
     if (e == _engines.end()) {
       // Nothing to destroy
-      // TODO: Should we throw an error instead?
       return;
     }
     // TODO what about shard locking?
     // TODO what about multiple dbs?
     if (e->second->_isInUse) {
-      // Someone is still working with this engine.
-      // TODO can we just delete it? Or throw an error?
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEADLOCK);
+      // Someone is still working with this engine. Mark it as to be deleted
+      e->second->_toBeDeleted = true;
+      return;
     }
 
     engine = e->second;
