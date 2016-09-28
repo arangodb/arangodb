@@ -792,6 +792,7 @@ static void JS_DocumentVocbaseCol(
   TRI_V8_TRY_CATCH_END
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops a collection, case of a coordinator in a cluster
 ////////////////////////////////////////////////////////////////////////////////
@@ -842,7 +843,11 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
+#ifdef USE_ENTERPRISE
+    DropVocbaseColCoordinatorEnterprise(args, collection);
+#else
     DropVocbaseColCoordinator(args, collection);
+#endif
     return;
   }
 
