@@ -104,14 +104,16 @@
             <th class="collectionInfoTh">
             </th>
           </tr>
-          <tr>
-            <th class="collectionInfoTh2">Compaction status:</th>
-            <th class="collectionInfoTh">
-              <div class="modal-text"><%=figuresData.figures.compactionStatus.message + " (" + figuresData.figures.compactionStatus.time + ")" %></div>
-            </th>
-            <th class="collectionInfoTh">
-            </th>
-          </tr>
+          <% if (!frontendConfig.isCluster) { %>
+            <tr>
+              <th class="collectionInfoTh2">Compaction status:</th>
+              <th class="collectionInfoTh">
+                <div class="modal-text"><%=figuresData.figures.compactionStatus.message + " (" + figuresData.figures.compactionStatus.time + ")" %></div>
+              </th>
+              <th class="collectionInfoTh">
+              </th>
+            </tr>
+          <% } %>
           <tr>
             <th class="collectionInfoTh2">Waiting for:</th>
             <th class="collectionInfoTh">
