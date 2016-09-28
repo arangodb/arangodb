@@ -295,31 +295,31 @@ static std::shared_ptr<Index> PrepareIndexFromSlice(VPackSlice info,
 ///        modifications and can be freed
 ///        Can only be given to V8, cannot be used for functionality.
 LogicalCollection::LogicalCollection(
-    std::shared_ptr<LogicalCollection> const& other)
+    LogicalCollection const& other)
     : _internalVersion(0),
-      _cid(other->cid()),
-      _planId(other->planId()),
-      _type(other->type()),
-      _name(other->name()),
-      _distributeShardsLike(other->distributeShardsLike()),
-      _isSmart(other->isSmart()),
-      _status(other->status()),
+      _cid(other.cid()),
+      _planId(other.planId()),
+      _type(other.type()),
+      _name(other.name()),
+      _distributeShardsLike(other.distributeShardsLike()),
+      _isSmart(other.isSmart()),
+      _status(other.status()),
       _isLocal(false),
-      _isDeleted(other->_isDeleted),
-      _doCompact(other->doCompact()),
-      _isSystem(other->isSystem()),
-      _isVolatile(other->isVolatile()),
-      _waitForSync(other->waitForSync()),
-      _journalSize(other->journalSize()),
-      _keyOptions(other->_keyOptions),
-      _version(other->_version),
-      _indexBuckets(other->indexBuckets()),
+      _isDeleted(other._isDeleted),
+      _doCompact(other.doCompact()),
+      _isSystem(other.isSystem()),
+      _isVolatile(other.isVolatile()),
+      _waitForSync(other.waitForSync()),
+      _journalSize(other.journalSize()),
+      _keyOptions(other._keyOptions),
+      _version(other._version),
+      _indexBuckets(other.indexBuckets()),
       _indexes(),
-      _replicationFactor(other->replicationFactor()),
-      _numberOfShards(other->numberOfShards()),
-      _allowUserKeys(other->allowUserKeys()),
+      _replicationFactor(other.replicationFactor()),
+      _numberOfShards(other.numberOfShards()),
+      _allowUserKeys(other.allowUserKeys()),
       _shardIds(new ShardMap()),  // Not needed
-      _vocbase(other->vocbase()),
+      _vocbase(other.vocbase()),
       _cleanupIndexes(0),
       _persistentIndexes(0),
       _physical(nullptr),
@@ -331,7 +331,7 @@ LogicalCollection::LogicalCollection(
       _lastCompactionStatus(nullptr),
       _lastCompactionStamp(0.0),
       _uncollectedLogfileEntries(0) {
-  _keyGenerator.reset(KeyGenerator::factory(other->keyOptions()));
+  _keyGenerator.reset(KeyGenerator::factory(other.keyOptions()));
   
   createPhysical();
 
@@ -341,8 +341,8 @@ LogicalCollection::LogicalCollection(
   }
 
   // Copy over index definitions
-  _indexes.reserve(other->_indexes.size());
-  for (auto const& idx : other->_indexes) {
+  _indexes.reserve(other._indexes.size());
+  for (auto const& idx : other._indexes) {
     _indexes.emplace_back(idx);
   }
 
@@ -704,7 +704,7 @@ std::string const& LogicalCollection::path() const {
   return _path;
 }
 
-TRI_vocbase_col_status_e LogicalCollection::status() {
+TRI_vocbase_col_status_e LogicalCollection::status() const {
   return _status;
 }
 
