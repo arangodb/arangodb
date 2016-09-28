@@ -462,7 +462,7 @@ void ClusterInfo::loadPlan() {
               newCollection = std::make_shared<LogicalCollection>(vocbase, collectionSlice, false);
 #else 
               VPackSlice isSmart = collectionSlice.get("isSmart");
-              if (isSmart.isBoolean() && isSmart.getBool()) {
+              if (isSmart.isTrue()) {
                 VPackSlice type = collectionSlice.get("type");
                 if (type.isInteger() && type.getUInt() == TRI_COL_TYPE_EDGE) {
                   newCollection = std::make_shared<VirtualSmartEdgeCollection>(
