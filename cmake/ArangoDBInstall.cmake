@@ -91,7 +91,10 @@ if (UNIX)
   find_package(PkgConfig QUIET)
   pkg_check_modules(SYSTEMD systemd)
   if (SYSTEMD_FOUND)
-    pkg_get_variable(SYSTEMD_UNIT_DIR systemd systemdsystemunitdir)
+    # cmake to old: pkg_get_variable(SYSTEMD_UNIT_DIR systemd systemdsystemunitdir)
+    execute_process(COMMAND ${PKG_CONFIG_EXECUTABLE} systemd --variable=systemdsystemunitdir
+      OUTPUT_VARIABLE SYSTEMD_UNIT_DIR
+      OUTPUT_STRIP_TRAILING_WHITESPACE)
     set(IS_SYSTEMD_INSTALL 1)
     configure_file (
         ${ARANGODB_SOURCE_DIR}/Installation/systemd/arangodb3.service.in
