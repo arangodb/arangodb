@@ -1439,16 +1439,22 @@ void Ast::injectBindParameters(BindParameters& parameters) {
           _query->collections()->add(n, TRI_TRANSACTION_READ);
         }
         auto eColls = graph->edgeCollections();
-        auto ci = ClusterInfo::instance();
-        for (const auto& n : eColls) {
-          auto c = ci->getCollection(_query->vocbase()->name(), n);
-          if (!c->isSmart()) {
+        if (ServerState::instance()->isRunningInCluster()) {
+          auto ci = ClusterInfo::instance();
+          for (const auto& n : eColls) {
+            auto c = ci->getCollection(_query->vocbase()->name(), n);
+            if (!c->isSmart()) {
+              _query->collections()->add(n, TRI_TRANSACTION_READ);
+            } else {
+              // This is only enterprise:
+              _query->collections()->add("_local_" + n, TRI_TRANSACTION_READ);
+              _query->collections()->add("_from_" + n, TRI_TRANSACTION_READ);
+              _query->collections()->add("_to_" + n, TRI_TRANSACTION_READ);
+            }
+          }
+        } else {
+          for (const auto& n : eColls) {
             _query->collections()->add(n, TRI_TRANSACTION_READ);
-          } else {
-            // This is only enterprise:
-            _query->collections()->add("_local_" + n, TRI_TRANSACTION_READ);
-            _query->collections()->add("_from_" + n, TRI_TRANSACTION_READ);
-            _query->collections()->add("_to_" + n, TRI_TRANSACTION_READ);
           }
         }
       }
