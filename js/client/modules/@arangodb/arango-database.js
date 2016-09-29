@@ -313,8 +313,8 @@ ArangoDatabase.prototype._create = function (name, properties, type) {
   if (properties !== undefined) {
     [ 'waitForSync', 'journalSize', 'isSystem', 'isVolatile',
       'doCompact', 'keyOptions', 'shardKeys', 'numberOfShards',
-      'distributeShardsLike', 'indexBuckets', 'id',
-      'replicationFactor' ].forEach(function (p) {
+      'distributeShardsLike', 'indexBuckets', 'id', 'isSmart',
+      'replicationFactor', 'smartGraphAttribute'].forEach(function (p) {
       if (properties.hasOwnProperty(p)) {
         body[p] = properties[p];
       }
