@@ -1,50 +1,144 @@
 #!/bin/bash
-if [ -z "$XTERM" ] ; then
-    XTERM=x-terminal-emulator
+
+function help() {
+  echo "USAGE: scripts/startLocalCluster.sh [options]"
+  echo ""
+  echo "OPTIONS:"
+  echo "  -a/--nagents       # agents            (odd integer      default: 1))"
+  echo "  -c/--ncoordinators # coordinators      (odd integer      default: 1))"
+  echo "  -d/--ndbservers    # db servers        (odd integer      default: 2))"
+  echo "  -s/--secondaries   Start secondaries   (0|1              default: 0)"
+  echo "  -t/--transport     Protocol            (ssl|tcp          default: tcp)"
+  echo "     --log-level-a   Log level (agency)  (INFO|DEBUG|TRACE default: INFO)"
+  echo "     --log-level-c   Log level (cluster) (INFO|DEBUG|TRACE default: INFO)"
+  echo "  -i/--interactive   Interactive mode    (C|D|R            default: '')"
+  
+  echo "  -x/--xterm         XTerm command       (default: xterm)"
+  echo "  -o/--xterm-options XTerm options       (default: --geometry=80x43)"
+  echo ""
+  echo "EXAMPLES:"
+  echo "  scripts/startLocalCluster.sh"
+  echo "  scripts/startLocalCluster.sh -a 1 -c 1 -d 3 -t ssl"
+  echo "  scripts/startLocalCluster.sh -a 3 -c 1 -d 2 -t tcp -i C"
+  
+}
+
+# defaults
+NRAGENTS=1
+NRDBSERVERS=2
+NRCOORDINATORS=1
+POOLSZ=""
+TRANSPORT="tcp"
+LOG_LEVEL="INFO"
+XTERM="x-terminal-emulator"
+XTERMOPTIONS="--geometry=80x43"
+SECONDARIES=0
+
+while [[ ${1} ]]; do
+    case "${1}" in
+    -a|--agency-size)
+      NRAGENTS=${2}
+      shift
+      ;;
+    -c|--ncoordinators)
+      NRCOORDINATORS=${2}
+      shift
+      ;;
+    -d|--ndbservers)
+      NRDBSERVERS=${2}
+      shift
+      ;;
+    -s|--secondaries)
+      SECONDARIES=${2}
+      shift
+      ;;
+    -t|--transport)
+      TRANSPORT=${2}
+      shift
+      ;;
+    --log-level-agency)
+      LOG_LEVEL_AGENCY=${2}
+      shift
+      ;;
+    --log-level-cluster)
+      LOG_LEVEL_CLUSTER=${2}
+      shift
+      ;;
+    -i|--interactive)
+      INTERACTIVE_MODE=${2}
+      shift
+      ;;
+    -x|--xterm)
+      XTERM=${2}
+      shift
+      ;;
+    -o|--xterm-options)
+      XTERM_OPTIONS=${2}
+      shift
+      ;;
+    -h|--help)
+      help
+      exit 1  
+      ;;
+    *)
+      echo "Unknown parameter: ${1}" >&2
+      help
+      exit 1
+      ;;
+  esac
+  
+  if ! shift; then
+    echo 'Missing parameter argument.' >&2
+    return 1
+  fi
+done
+
+if [ "$POOLSZ" == "" ] ; then
+  POOLSZ=$NRAGENTS
 fi
-if [ -z "$XTERMOPTIONS" ] ; then
-    XTERMOPTIONS="--geometry=80x43"
+
+if [ "$TRANSPORT" == "ssl" ]; then
+  SSLKEYFILE="--ssl.keyfile UnitTests/server.pem"
+  CURL="curl --insecure -ks https://"
+else
+  SSLKEYFILE=""
+  CURL="curl -s http://"
+fi
+
+printf "Starting agency ... \n"
+printf "  # agents: %s," "$NRAGENTS"
+printf " # db servers: %s," "$NRDBSERVERS"
+printf " # coordinators: %s," "$NRCOORDINATORS"
+printf " transport: %s\n" "$TRANSPORT"
+
+if [ ! -d arangod ] || [ ! -d arangosh ] || [ ! -d UnitTests ] ; then
+  echo Must be started in the main ArangoDB source directory.
+  exit 1
+fi
+
+if [[ $(( $NRAGENTS % 2 )) == 0 ]]; then
+  echo "**ERROR: Number of agents must be odd! Bailing out."
+  exit 1
 fi
 
 if [ ! -d arangod ] || [ ! -d arangosh ] || [ ! -d UnitTests ] ; then
-    echo Must be started in the main ArangoDB source directory.
+    echo "Must be started in the main ArangoDB source directory! Bailing out."
     exit 1
 fi
 
-NRAGENTS=$1
-if [ "$NRAGENTS" == "" ] ; then
-    NRAGENTS=1
-fi
-if [[ $(( $NRAGENTS % 2 )) == 0 ]]; then
-    echo Number of agents must be odd.
-    exit 1
-fi
-echo Number of Agents: $NRAGENTS
-NRDBSERVERS=$2
-if [ "$NRDBSERVERS" == "" ] ; then
-    NRDBSERVERS=2
-fi
-echo Number of DBServers: $NRDBSERVERS
-NRCOORDINATORS=$3
-if [ "$NRCOORDINATORS" == "" ] ; then
-    NRCOORDINATORS=1
-fi
-echo Number of Coordinators: $NRCOORDINATORS
 
-if [ ! -z "$4" ] ; then
-    if [ "$4" == "C" ] ; then
+if [ ! -z "$INTERACTIVE_MODE" ] ; then
+    if [ "$INTERACTIVE_MODE" == "C" ] ; then
         COORDINATORCONSOLE=1
-        echo Starting one coordinator in terminal with --console
-    elif [ "$4" == "D" ] ; then
+        echo "Starting one coordinator in terminal with --console"
+    elif [ "$INTERACTIVE_MODE" == "D" ] ; then
         CLUSTERDEBUGGER=1
         echo Running cluster in debugger.
-    elif [ "$4" == "R" ] ; then
+    elif [ "$INTERACTIVE_MODE" == "R" ] ; then
         RRDEBUGGER=1
         echo Running cluster in rr with --console.
     fi
 fi
-
-SECONDARIES="$5"
 
 MINP=0.5
 MAXP=2.5
@@ -58,6 +152,7 @@ if [ -d cluster-init ];then
   cp -a cluster-init cluster
 fi
 mkdir -p cluster
+
 echo Starting agency ... 
 for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
     port=$(( $BASE + $aid ))
@@ -89,31 +184,32 @@ done
 
 start() {
     if [ "$1" == "dbserver" ]; then
-      ROLE="PRIMARY"
+        ROLE="PRIMARY"
     elif [ "$1" == "coordinator" ]; then
-      ROLE="COORDINATOR"
+        ROLE="COORDINATOR"
     fi
     TYPE=$1
     PORT=$2
     mkdir cluster/data$PORT
     echo Starting $TYPE on port $PORT
     mkdir -p cluster/apps$PORT 
-    build/bin/arangod -c none \
-                --database.directory cluster/data$PORT \
-                --cluster.agency-endpoint tcp://127.0.0.1:$BASE \
-                --cluster.my-address tcp://127.0.0.1:$PORT \
-                --server.endpoint tcp://127.0.0.1:$PORT \
-                --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
-                --cluster.my-role $ROLE \
-                --log.file cluster/$PORT.log \
-                --log.level info \
-                --server.statistics true \
-                --server.threads 5 \
-                --server.authentication false \
-                --javascript.startup-directory ./js \
-                --javascript.app-path cluster/apps$PORT \
-                --log.force-direct true \
-                > cluster/$PORT.stdout 2>&1 &
+    build/bin/arangod
+       -c none \
+       --database.directory cluster/data$PORT \
+       --cluster.agency-endpoint tcp://127.0.0.1:$BASE \
+       --cluster.my-address tcp://127.0.0.1:$PORT \
+       --server.endpoint tcp://127.0.0.1:$PORT \
+       --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
+       --cluster.my-role $ROLE \
+       --log.file cluster/$PORT.log \
+       --log.level info \
+       --server.statistics true \
+       --server.threads 5 \
+       --server.authentication false \
+       --javascript.startup-directory ./js \
+       --javascript.app-path cluster/apps$PORT \
+       --log.force-direct true \
+       > cluster/$PORT.stdout 2>&1 &
 }
 
 startTerminal() {
@@ -126,76 +222,78 @@ startTerminal() {
     PORT=$2
     mkdir cluster/data$PORT
     echo Starting $TYPE on port $PORT
-    $XTERM $XTERMOPTIONS -e build/bin/arangod -c none \
-                --database.directory cluster/data$PORT \
-                --cluster.agency-endpoint tcp://127.0.0.1:$BASE \
-                --cluster.my-address tcp://127.0.0.1:$PORT \
-                --server.endpoint tcp://127.0.0.1:$PORT \
-                --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
-                --cluster.my-role $ROLE \
-                --log.file cluster/$PORT.log \
-                --log.level info \
-                --server.statistics true \
-                --server.threads 5 \
-                --javascript.startup-directory ./js \
-                --javascript.app-path ./js/apps \
-                --server.authentication false \
-                --console &
+    $XTERM $XTERMOPTIONS -e build/bin/arangod
+        -c none \
+        --database.directory cluster/data$PORT \
+        --cluster.agency-endpoint tcp://127.0.0.1:$BASE \
+        --cluster.my-address tcp://127.0.0.1:$PORT \
+        --server.endpoint tcp://127.0.0.1:$PORT \
+        --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
+        --cluster.my-role $ROLE \
+        --log.file cluster/$PORT.log \
+        --log.level info \
+        --server.statistics true \
+        --server.threads 5 \
+        --javascript.startup-directory ./js \
+        --javascript.app-path ./js/apps \
+        --server.authentication false \
+        --console &
 }
 
 startDebugger() {
     if [ "$1" == "dbserver" ]; then
-      ROLE="PRIMARY"
+        ROLE="PRIMARY"
     elif [ "$1" == "coordinator" ]; then
-      ROLE="COORDINATOR"
+        ROLE="COORDINATOR"
     fi
     TYPE=$1
     PORT=$2
     mkdir cluster/data$PORT
     echo Starting $TYPE on port $PORT with debugger
-    build/bin/arangod -c none \
-                --database.directory cluster/data$PORT \
-                --cluster.agency-endpoint tcp://127.0.0.1:$BASE \
-                --cluster.my-address tcp://127.0.0.1:$PORT \
-                --server.endpoint tcp://127.0.0.1:$PORT \
-                --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
-                --cluster.my-role $ROLE \
-                --log.file cluster/$PORT.log \
-                --log.level info \
-                --server.statistics false \
-                --server.threads 5 \
-                --javascript.startup-directory ./js \
-                --javascript.app-path ./js/apps \
-                --server.authentication false &
-    $XTERM $XTERMOPTIONS -e gdb build/bin/arangod -p $! &
+    build/bin/arangod
+      -c none \
+      --database.directory cluster/data$PORT \
+      --cluster.agency-endpoint tcp://127.0.0.1:$BASE \
+      --cluster.my-address tcp://127.0.0.1:$PORT \
+      --server.endpoint tcp://127.0.0.1:$PORT \
+      --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
+      --cluster.my-role $ROLE \
+      --log.file cluster/$PORT.log \
+      --log.level info \
+      --server.statistics false \
+      --server.threads 5 \
+      --javascript.startup-directory ./js \
+      --javascript.app-path ./js/apps \
+      --server.authentication false &
+      $XTERM $XTERMOPTIONS -e gdb build/bin/arangod -p $! &
 }
 
 startRR() {
     if [ "$1" == "dbserver" ]; then
-      ROLE="PRIMARY"
+        ROLE="PRIMARY"
     elif [ "$1" == "coordinator" ]; then
-      ROLE="COORDINATOR"
+        ROLE="COORDINATOR"
     fi
     TYPE=$1
     PORT=$2
     mkdir cluster/data$PORT
     echo Starting $TYPE on port $PORT with rr tracer
     $XTERM $XTERMOPTIONS -e rr build/bin/arangod \
-                -c none \
-                --database.directory cluster/data$PORT \
-                --cluster.agency-endpoint tcp://127.0.0.1:$BASE \
-                --cluster.my-address tcp://127.0.0.1:$PORT \
-                --server.endpoint tcp://127.0.0.1:$PORT \
-                --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
-                --cluster.my-role $ROLE \
-                --log.file cluster/$PORT.log \
-                --log.level info \
-                --server.statistics true \
-                --server.threads 5 \
-                --javascript.startup-directory ./js \
-                --javascript.app-path ./js/apps \
-                --server.authentication false \
-                --console &
+        -c none \
+        --database.directory cluster/data$PORT \
+        --cluster.agency-endpoint tcp://127.0.0.1:$BASE \
+        --cluster.my-address tcp://127.0.0.1:$PORT \
+        --server.endpoint tcp://127.0.0.1:$PORT \
+        --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
+        --cluster.my-role $ROLE \
+        --log.file cluster/$PORT.log \
+        --log.level info \
+        --server.statistics true \
+        --server.threads 5 \
+        --javascript.startup-directory ./js \
+        --javascript.app-path ./js/apps \
+        --server.authentication false \
+        --console &
 }
 
 PORTTOPDB=`expr 8629 + $NRDBSERVERS - 1`
@@ -250,31 +348,32 @@ for p in `seq 8530 $PORTTOPCO` ; do
 done
 
 if [ -n "$SECONDARIES" ]; then
-  let index=1
-  PORTTOPSE=`expr 8729 + $NRDBSERVERS - 1` 
-  for PORT in `seq 8729 $PORTTOPSE` ; do
-    mkdir cluster/data$PORT
-
-    CLUSTER_ID="Secondary$index"
-    
-    echo Registering secondary $CLUSTER_ID for "DBServer$index"
-    curl -f -X PUT --data "{\"primary\": \"DBServer$index\", \"oldSecondary\": \"none\", \"newSecondary\": \"$CLUSTER_ID\"}" -H "Content-Type: application/json" localhost:8530/_admin/cluster/replaceSecondary
-    echo Starting Secondary $CLUSTER_ID on port $PORT
-    build/bin/arangod -c none \
-                --database.directory cluster/data$PORT \
-                --cluster.agency-endpoint tcp://127.0.0.1:$BASE \
-                --cluster.my-address tcp://127.0.0.1:$PORT \
-                --server.endpoint tcp://127.0.0.1:$PORT \
-                --cluster.my-id $CLUSTER_ID \
-                --log.file cluster/$PORT.log \
-                --server.statistics true \
-                --javascript.startup-directory ./js \
-                --server.authentication false \
-                --javascript.app-path ./js/apps \
-                > cluster/$PORT.stdout 2>&1 &
-
-    let index=$index+1
-  done
+    let index=1
+    PORTTOPSE=`expr 8729 + $NRDBSERVERS - 1` 
+    for PORT in `seq 8729 $PORTTOPSE` ; do
+        mkdir cluster/data$PORT
+        
+        CLUSTER_ID="Secondary$index"
+        
+        echo Registering secondary $CLUSTER_ID for "DBServer$index"
+        curl -f -X PUT --data "{\"primary\": \"DBServer$index\", \"oldSecondary\": \"none\", \"newSecondary\": \"$CLUSTER_ID\"}" -H "Content-Type: application/json" localhost:8530/_admin/cluster/replaceSecondary
+        echo Starting Secondary $CLUSTER_ID on port $PORT
+        build/bin/arangod
+            -c none \
+            --database.directory cluster/data$PORT \
+            --cluster.agency-endpoint tcp://127.0.0.1:$BASE \
+            --cluster.my-address tcp://127.0.0.1:$PORT \
+            --server.endpoint tcp://127.0.0.1:$PORT \
+            --cluster.my-id $CLUSTER_ID \
+            --log.file cluster/$PORT.log \
+            --server.statistics true \
+            --javascript.startup-directory ./js \
+            --server.authentication false \
+            --javascript.app-path ./js/apps \
+            > cluster/$PORT.stdout 2>&1 &
+            
+            let index=$index+1
+    done
 fi
 
 echo Done, your cluster is ready at

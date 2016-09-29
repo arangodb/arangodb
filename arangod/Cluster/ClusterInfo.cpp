@@ -1200,9 +1200,7 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
 
   size_t numberOfShards = 0;
   res = ac.getValues(
-    "Plan/Collections/" + databaseName+"/" + collectionID);
-
-  res = ac.getValues("Plan/Collections/" + databaseName+"/" + collectionID + "/shards");
+    "Plan/Collections/" + databaseName+"/" + collectionID + "/shards");
 
   if (res.successful()) {
     velocypack::Slice shards =
