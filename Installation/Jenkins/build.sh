@@ -477,7 +477,7 @@ if test -n "${ENTERPRISE_GIT_URL}" ; then
     if test ! -d enterprise; then
         git clone ${ENTERPRISE_GIT_URL} enterprise
     fi
-    (cd enterprise; git checkout master; git pull --all; git checkout ${GITARGS} )
+    (cd enterprise; git checkout master; git fetch --tags; git pull --all; git checkout ${GITARGS} )
 fi
 
 
