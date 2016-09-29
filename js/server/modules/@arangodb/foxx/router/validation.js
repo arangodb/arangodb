@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
+const joi = require('joi');
 const assert = require('assert');
 const typeIs = require('type-is');
 const mediaTyper = require('media-typer');
@@ -113,12 +114,16 @@ exports.parseRequestBody = function parseRequestBody(def, req) {
 exports.validateRequestBody = function validateRequestBody(def, req) {
   let body = req.body;
 
-  const schema = def.model && (def.model.schema || def.model);
+  let schema = def.model && (def.model.schema || def.model);
   if (!schema) {
     return body;
   }
 
   if (schema.isJoi) {
+    if (def.multiple) {
+      schema = joi.array().items(schema).required();
+    }
+
     const result = schema.validate(body);
 
     if (result.error) {
@@ -130,7 +135,11 @@ exports.validateRequestBody = function validateRequestBody(def, req) {
   }
 
   if (def.model && def.model.fromClient) {
-    body = def.model.fromClient(body);
+    if (def.multiple) {
+      body = body.map((body) => def.model.fromClient(body));
+    } else {
+      body = def.model.fromClient(body);
+    }
   }
 
   return body;
