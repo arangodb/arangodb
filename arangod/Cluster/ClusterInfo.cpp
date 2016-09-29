@@ -1213,7 +1213,7 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
       numberOfShards = shards.length();
     } else {
       LOG_TOPIC(ERR, Logger::CLUSTER) << "Missing shards information on dropping"
-                                << databaseName << "/" << collectionID;
+                                      << databaseName << "/" << collectionID;
     }
   }
 
