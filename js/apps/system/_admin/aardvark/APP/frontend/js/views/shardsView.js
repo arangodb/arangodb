@@ -161,7 +161,6 @@
     },
 
     confirmMoveShards: function (dbName, collectionName, shardName, fromServer) {
-      var self = this;
       var toServer = $('#toDBServer').val();
 
       var data = {
