@@ -296,8 +296,8 @@
 
       var continueFetchGraph = function () {
         var ajaxData = {};
-        if (this.graphConfig) {
-          ajaxData = _.clone(this.graphConfig);
+        if (self.graphConfig) {
+          ajaxData = _.clone(self.graphConfig);
 
           // remove not needed params - client only
           delete ajaxData.layout;
@@ -315,12 +315,12 @@
           }
         }
 
-        this.setupSigma();
+        self.setupSigma();
 
         self.fetchStarted = new Date();
         $.ajax({
           type: 'GET',
-          url: arangoHelper.databaseUrl('/_admin/aardvark/graph/' + encodeURIComponent(this.name)),
+          url: arangoHelper.databaseUrl('/_admin/aardvark/graph/' + encodeURIComponent(self.name)),
           contentType: 'application/json',
           data: ajaxData,
           success: function (data) {
@@ -369,34 +369,40 @@
             } catch (ignore) {}
           }
         });
-      }.bind(this);
+      };
 
-      if (this.graphConfig === undefined || this.graphConfig === null) {
-        var setDefaultsCB = function () {
-          self.userConfig.fetch({
-            success: function (data) {
-              var combinedName = frontendConfig.db + '_' + self.name;
-              try {
-                self.graphConfig = data.toJSON().graphs[combinedName];
-                self.getGraphSettings(continueFetchGraph);
-              } catch (ignore) {
-                // continue without config
-                self.getGraphSettings(continueFetchGraph);
+      if (self.graphConfig === undefined || self.graphConfig === null) {
+        self.userConfig.fetch({
+          success: function (data) {
+            var combinedName = frontendConfig.db + '_' + self.name;
+            try {
+              self.graphConfig = data.toJSON().graphs[combinedName];
+              self.getGraphSettings(continueFetchGraph);
+
+              if (self.graphConfig === undefined || self.graphConfig === null) {
+                self.graphSettingsView = new window.GraphSettingsView({
+                  name: self.name,
+                  userConfig: self.userConfig,
+                  saveCallback: self.render
+                });
+                self.graphSettingsView.setDefaults(true, true);
+              } else {
+                // init settings view
+                if (self.graphSettingsView) {
+                  self.graphSettingsView.remove();
+                }
+                self.graphSettingsView = new window.GraphSettingsView({
+                  name: self.name,
+                  userConfig: self.userConfig,
+                  saveCallback: self.render
+                });
               }
+            } catch (ignore) {
+              // continue without config
+              self.getGraphSettings(continueFetchGraph);
             }
-          });
-        };
-
-        // init settings view
-        if (self.graphSettingsView) {
-          self.graphSettingsView.remove();
-        }
-        self.graphSettingsView = new window.GraphSettingsView({
-          name: self.name,
-          userConfig: self.userConfig,
-          saveCallback: self.render
+          }
         });
-        self.graphSettingsView.setDefaults(true, true, setDefaultsCB);
       } else {
         this.getGraphSettings(continueFetchGraph);
       }
@@ -1284,7 +1290,7 @@
           self.currentGraph.refresh();
           // self.cameraToNode(origin);
         } else if (self.algorithm === 'noverlap') {
-          self.startLayout(true, origin); // tmp bugfix, rerender with noverlap currently not possible
+          self.startLayout(true, origin); // TODO: tmp bugfix, rerender with noverlap currently not possible
           // self.currentGraph.startNoverlap();
         }
       }
@@ -1876,12 +1882,15 @@
         // Start the Fruchterman-Reingold algorithm:
         sigma.layouts.fruchtermanReingold.start(s);
       }
-      var dragListener = sigma.plugins.dragNodes(s, s.renderers[0]);
 
-      dragListener.bind('drag', function (event) {
+      // drag nodes listener
+      this.dragListener = sigma.plugins.dragNodes(s, s.renderers[0]);
+
+      this.dragListener.bind('drag', function (event) {
         self.dragging = true;
       });
-      dragListener.bind('drop', function (event) {
+
+      this.dragListener.bind('drop', function (event) {
         window.setTimeout(function () {
           self.dragging = false;
         }, 400);
@@ -2015,6 +2024,7 @@ $('#deleteNodes').remove();
       var self = this;
       this.currentGraph.settings('drawLabels', false);
       this.currentGraph.settings('drawEdgeLabels', false);
+      sigma.plugins.killDragNodes(this.currentGraph);
 
       if (kill === true) {
         this.currentGraph.killForceAtlas2();
@@ -2023,7 +2033,7 @@ $('#deleteNodes').remove();
           self.stopLayout();
 
           if (origin) {
-            self.currentGraph.refresh();
+            this.currentGraph.refresh({ skipIndexation: true });
             // self.cameraToNode(origin);
           }
         }, 500);
@@ -2050,10 +2060,10 @@ $('#deleteNodes').remove();
       $('#toggleForce span').html('Resume layout');
       this.layouting = false;
       this.currentGraph.stopForceAtlas2();
-      sigma.plugins.dragNodes(this.currentGraph, this.currentGraph.renderers[0]);
       this.currentGraph.settings('drawLabels', true);
       this.currentGraph.settings('drawEdgeLabels', true);
       this.currentGraph.refresh({ skipIndexation: true });
+      this.dragListener = sigma.plugins.dragNodes(this.currentGraph, this.currentGraph.renderers[0]);
     }
 
   });
