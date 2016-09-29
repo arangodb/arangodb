@@ -464,6 +464,8 @@
         return;
       }
 
+      this.lastSentQueryString = this.aqlEditor.getValue();
+
       this.$(this.outputDiv).prepend(this.outputTemplate.render({
         counter: this.outputCounter,
         type: 'Explain'
@@ -1412,6 +1414,8 @@
       $('#outputEditorWrapper' + this.outputCounter).hide();
       $('#outputEditorWrapper' + this.outputCounter).show('fast');
 
+      this.lastSentQueryString = this.aqlEditor.getValue();
+
       this.renderQueryResultBox(this.outputCounter, selected);
     },
 
@@ -1594,116 +1598,126 @@
 
     renderQueryResult: function (data, counter, cached) {
       var self = this;
-      var outputEditor = ace.edit('outputEditor' + counter);
 
-      // handle explain query case
-      if (!data.msg) {
-        // handle usual query
-        var result = self.analyseQuery(data.result);
-        // console.log('Using ' + result.defaultType + ' as data format.');
-        if (result.defaultType === 'table') {
-          $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after(
-            '<div id="outputTable' + counter + '" class="outputTable"></div>'
-          );
-          $('#outputTable' + counter).show();
-          self.renderOutputTable(result, counter);
+      if (window.location.hash === '#queries') {
+        var outputEditor = ace.edit('outputEditor' + counter);
 
-          // apply max height for table output dynamically
-          var maxHeight = $('.centralRow').height() - 250;
-          $('.outputEditorWrapper .tableWrapper').css('max-height', maxHeight);
+        // handle explain query case
+        if (!data.msg) {
+          // handle usual query
+          var result = self.analyseQuery(data.result);
+          // console.log('Using ' + result.defaultType + ' as data format.');
+          if (result.defaultType === 'table') {
+            $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after(
+              '<div id="outputTable' + counter + '" class="outputTable"></div>'
+            );
+            $('#outputTable' + counter).show();
+            self.renderOutputTable(result, counter);
 
-          $('#outputEditor' + counter).hide();
-        } else if (result.defaultType === 'graph') {
-          $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after('<div id="outputGraph' + counter + '"></div>');
-          $('#outputGraph' + counter).show();
-          self.renderOutputGraph(result, counter);
+            // apply max height for table output dynamically
+            var maxHeight = $('.centralRow').height() - 250;
+            $('.outputEditorWrapper .tableWrapper').css('max-height', maxHeight);
 
-          $('#outputEditor' + counter).hide();
-        }
+            $('#outputEditor' + counter).hide();
+          } else if (result.defaultType === 'graph') {
+            $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after('<div id="outputGraph' + counter + '"></div>');
+            $('#outputGraph' + counter).show();
+            self.renderOutputGraph(result, counter);
 
-        // add active class to choosen display method
-        $('#' + result.defaultType + '-switch').addClass('active').css('display', 'inline');
-
-        var appendSpan = function (value, icon, css) {
-          if (!css) {
-            css = '';
-          }
-          $('#outputEditorWrapper' + counter + ' .arangoToolbarTop .pull-left').append(
-            '<span class="' + css + '"><i class="fa ' + icon + '"></i><i class="iconText">' + value + '</i></span>'
-          );
-        };
-
-        var time = '-';
-        if (data && data.extra && data.extra.stats) {
-          time = data.extra.stats.executionTime.toFixed(3) + ' s';
-        }
-        appendSpan(
-          data.result.length + ' elements', 'fa-calculator'
-        );
-        appendSpan(time, 'fa-clock-o');
-
-        if (data.extra) {
-          if (data.extra.profile) {
-            appendSpan('', 'fa-caret-down');
-            self.appendProfileDetails(counter, data.extra.profile);
+            $('#outputEditor' + counter).hide();
           }
 
-          if (data.extra.stats) {
-            if (data.extra.stats.writesExecuted > 0 || data.extra.stats.writesIgnored > 0) {
-              appendSpan(
-                data.extra.stats.writesExecuted + ' writes', 'fa-check-circle positive'
-              );
-              if (data.extra.stats.writesIgnored === 0) {
+          // add active class to choosen display method
+          $('#' + result.defaultType + '-switch').addClass('active').css('display', 'inline');
+
+          var appendSpan = function (value, icon, css) {
+            if (!css) {
+              css = '';
+            }
+            $('#outputEditorWrapper' + counter + ' .arangoToolbarTop .pull-left').append(
+              '<span class="' + css + '"><i class="fa ' + icon + '"></i><i class="iconText">' + value + '</i></span>'
+            );
+          };
+
+          var time = '-';
+          if (data && data.extra && data.extra.stats) {
+            time = data.extra.stats.executionTime.toFixed(3) + ' s';
+          }
+          appendSpan(
+            data.result.length + ' elements', 'fa-calculator'
+          );
+          appendSpan(time, 'fa-clock-o');
+
+          if (data.extra) {
+            if (data.extra.profile) {
+              appendSpan('', 'fa-caret-down');
+              self.appendProfileDetails(counter, data.extra.profile);
+            }
+
+            if (data.extra.stats) {
+              if (data.extra.stats.writesExecuted > 0 || data.extra.stats.writesIgnored > 0) {
                 appendSpan(
-                  data.extra.stats.writesIgnored + ' writes ignored', 'fa-check-circle positive', 'additional'
+                  data.extra.stats.writesExecuted + ' writes', 'fa-check-circle positive'
                 );
-              } else {
-                appendSpan(
-                  data.extra.stats.writesIgnored + ' writes ignored', 'fa-exclamation-circle warning', 'additional'
-                );
+                if (data.extra.stats.writesIgnored === 0) {
+                  appendSpan(
+                    data.extra.stats.writesIgnored + ' writes ignored', 'fa-check-circle positive', 'additional'
+                  );
+                } else {
+                  appendSpan(
+                    data.extra.stats.writesIgnored + ' writes ignored', 'fa-exclamation-circle warning', 'additional'
+                  );
+                }
               }
             }
           }
         }
-      }
 
-      $('#outputEditorWrapper' + counter + ' .pull-left #spinner').remove();
-      $('#outputEditorWrapper' + counter + ' #cancelCurrentQuery').remove();
+        $('#outputEditorWrapper' + counter + ' .pull-left #spinner').remove();
+        $('#outputEditorWrapper' + counter + ' #cancelCurrentQuery').remove();
 
-      self.warningsFunc(data, outputEditor);
-      window.progressView.hide();
+        self.warningsFunc(data, outputEditor);
+        window.progressView.hide();
 
-      $('#outputEditorWrapper' + counter + ' .switchAce').show();
-      $('#outputEditorWrapper' + counter + ' .fa-close').show();
-      $('#outputEditor' + counter).css('opacity', '1');
+        $('#outputEditorWrapper' + counter + ' .switchAce').show();
+        $('#outputEditorWrapper' + counter + ' .fa-close').show();
+        $('#outputEditor' + counter).css('opacity', '1');
 
-      if (!data.msg) {
-        $('#outputEditorWrapper' + counter + ' #downloadQueryResult').show();
-        $('#outputEditorWrapper' + counter + ' #copy2aqlEditor').show();
-      }
+        if (!data.msg) {
+          $('#outputEditorWrapper' + counter + ' #downloadQueryResult').show();
+          $('#outputEditorWrapper' + counter + ' #copy2aqlEditor').show();
+        }
 
-      self.setEditorAutoHeight(outputEditor);
-      self.deselect(outputEditor);
+        self.setEditorAutoHeight(outputEditor);
+        self.deselect(outputEditor);
 
-      // when finished send a delete req to api (free db space)
-      if (data.id) {
-        $.ajax({
-          url: arangoHelper.databaseUrl('/_api/cursor/' + encodeURIComponent(data.id)),
-          type: 'DELETE'
-        });
-      }
+        // when finished send a delete req to api (free db space)
+        if (data.id) {
+          $.ajax({
+            url: arangoHelper.databaseUrl('/_api/cursor/' + encodeURIComponent(data.id)),
+            type: 'DELETE'
+          });
+        }
 
-      if (!cached) {
-        // cache the query
+        if (!cached) {
+          // cache the query
+          self.cachedQueries[counter] = data;
+
+          // cache the original sent aql string
+          this.cachedQueries[counter].sentQuery = self.aqlEditor.getValue();
+        }
+
+        if (data.msg) {
+          $('#outputEditorWrapper' + counter + ' .toolbarType').html('Explain');
+          outputEditor.setValue(data.msg, 1);
+        }
+      } else {
+        // if result comes in when view is not active
+        // store the data into cachedQueries obj
         self.cachedQueries[counter] = data;
+        self.cachedQueries[counter].sentQuery = self.lastSentQueryString;
 
-        // cache the original sent aql string
-        this.cachedQueries[counter].sentQuery = self.aqlEditor.getValue();
-      }
-
-      if (data.msg) {
-        $('#outputEditorWrapper' + counter + ' .toolbarType').html('Explain');
-        outputEditor.setValue(data.msg, 1);
+        arangoHelper.arangoNotification('Query finished', 'Return to queries view to see the result.');
       }
     },
 
@@ -1845,7 +1859,7 @@
           var colors = [
             'rgb(48, 125, 153)',
             'rgb(241, 124, 176)',
-            'rgb(178, 145, 47)',
+            'rgb(137, 110, 37)',
             'rgb(93, 165, 218)',
             'rgb(250, 164, 58)',
             'rgb(96, 189, 104)'
