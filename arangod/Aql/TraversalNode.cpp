@@ -282,6 +282,23 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
         }
         
         auto addEdgeColl = [&](std::string const& n) -> void {
+          if (_isSmart) {
+            if (n.compare(0, 6, "_from_") == 0) {
+              if (baseDirection == TRI_EDGE_ANY || baseDirection == TRI_EDGE_OUT) {
+                _directions.emplace_back(TRI_EDGE_OUT);
+                _edgeColls.emplace_back(std::make_unique<aql::Collection>(
+                    n, _vocbase, TRI_TRANSACTION_READ));
+              }
+              return;
+            } else if (n.compare(0, 4, "_to_") == 0) {
+              if (baseDirection == TRI_EDGE_ANY || baseDirection == TRI_EDGE_IN) {
+                _directions.emplace_back(TRI_EDGE_IN);
+                _edgeColls.emplace_back(std::make_unique<aql::Collection>(
+                    n, _vocbase, TRI_TRANSACTION_READ));
+              }
+              return;
+            }
+          }
           if (baseDirection == TRI_EDGE_ANY) {
             _directions.emplace_back(TRI_EDGE_OUT);
             _edgeColls.emplace_back(std::make_unique<aql::Collection>(
