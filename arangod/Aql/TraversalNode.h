@@ -100,6 +100,11 @@ class TraversalNode : public ExecutionNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return TRAVERSAL; }
 
+  /// @brief flag, ob smart traversal (enterprise edition only!) is done
+  bool isSmart() const {
+    return _isSmart;
+  }
+
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
                           bool) const override final;
@@ -345,6 +350,8 @@ class TraversalNode : public ExecutionNode {
   /// @brief The list of traverser engines grouped by server.
   std::unordered_map<ServerID, traverser::TraverserEngineID> _engines;
 
+  /// @brief flag, if traversal is smart (enterprise edition only!)
+  bool _isSmart;
 };
 
 }  // namespace arangodb::aql

@@ -92,6 +92,7 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
 // //////////////////////////////////////////////////////////////////////////////
 
 function parseBodyForCreateCollection (req, res) {
+
   var body = actions.getJsonBody(req, res);
 
   if (body === undefined) {
@@ -155,6 +156,14 @@ function parseBodyForCreateCollection (req, res) {
 
     if (body.hasOwnProperty('distributeShardsLike')) {
       r.parameters.distributeShardsLike = body.distributeShardsLike || '';
+    }
+
+    if (body.hasOwnProperty('isSmart')) {
+      r.parameters.isSmart = body.isSmart || '';
+    }
+
+    if (body.hasOwnProperty('smartGraphAttribute')) {
+      r.parameters.smartGraphAttribute = body.smartGraphAttribute || '';
     }
 
     if (body.hasOwnProperty('replicationFactor')) {

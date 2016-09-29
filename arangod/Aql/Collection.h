@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/LogicalCollection.h"
 
 namespace arangodb {
 namespace aql {
@@ -82,6 +83,11 @@ struct Collection {
 
   /// @brief set the underlying collection
   void setCollection(arangodb::LogicalCollection* coll) { collection = coll; }
+
+  /// @brief check smartness of the underlying collection
+  bool isSmart() const {
+    return collection != nullptr && collection->isSmart();
+  }
 
  private:
 
