@@ -1875,7 +1875,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
         TRI_V8_RETURN(v8::Handle<v8::Value>());
       }
 
-      collection = new LogicalCollection(ci);
+      collection = ci->clone();
     } else {
       collection = vocbase->lookupCollection(std::string(key));
     }

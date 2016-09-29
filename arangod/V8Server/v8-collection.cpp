@@ -178,7 +178,7 @@ static int ParseDocumentOrDocumentHandle(v8::Isolate* isolate,
       try {
         std::shared_ptr<LogicalCollection> col =
             ci->getCollection(vocbase->name(), collectionName);
-        collection = new LogicalCollection(col);
+        collection = col->clone();
       } catch (...) {
         return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
       }
@@ -239,7 +239,7 @@ static std::vector<LogicalCollection*> GetCollectionsCluster(
       ClusterInfo::instance()->getCollections(vocbase->name());
 
   for (auto& collection : collections) {
-    auto c = std::make_unique<LogicalCollection>(collection);
+    std::unique_ptr<LogicalCollection> c(collection->clone());
     result.emplace_back(c.get());
     c.release();
   }
@@ -792,10 +792,12 @@ static void JS_DocumentVocbaseCol(
   TRI_V8_TRY_CATCH_END
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops a collection, case of a coordinator in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_ENTERPRISE
 static void DropVocbaseColCoordinator(
     v8::FunctionCallbackInfo<v8::Value> const& args,
     arangodb::LogicalCollection* collection) {
@@ -822,6 +824,7 @@ static void DropVocbaseColCoordinator(
 
   TRI_V8_RETURN_UNDEFINED();
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock collectionDrop
@@ -842,7 +845,11 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
+#ifdef USE_ENTERPRISE
+    DropVocbaseColCoordinatorEnterprise(args, collection);
+#else
     DropVocbaseColCoordinator(args, collection);
+#endif
     return;
   }
 
@@ -2526,7 +2533,7 @@ static void JS_CollectionVocbase(
     try {
       std::shared_ptr<LogicalCollection> const ci =
           ClusterInfo::instance()->getCollection(vocbase->name(), name);
-      collection = new LogicalCollection(ci);
+      collection = ci->clone();
     } catch (...) {
       // not found
       TRI_V8_RETURN_NULL();

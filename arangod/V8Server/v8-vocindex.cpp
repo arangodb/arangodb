@@ -699,7 +699,7 @@ LogicalCollection* CreateCollectionCoordinator(LogicalCollection* parameters) {
   std::shared_ptr<LogicalCollection> c = ci->getCollection(parameters->dbName(), parameters->cid_as_string());
   // If we get a nullptr here the create collection should have failed before.
   TRI_ASSERT(c != nullptr);
-  auto newCol = std::make_unique<LogicalCollection>(c);
+  std::unique_ptr<LogicalCollection> newCol(c->clone());
   return newCol.release();
 }
 

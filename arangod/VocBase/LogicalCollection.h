@@ -68,14 +68,19 @@ class LogicalCollection {
  public:
   LogicalCollection(TRI_vocbase_t*, arangodb::velocypack::Slice const&, bool isPhysical);
 
-  explicit LogicalCollection(std::shared_ptr<LogicalCollection> const&);
+  explicit LogicalCollection(LogicalCollection const&);
 
   virtual ~LogicalCollection();
 
-  LogicalCollection(LogicalCollection const&) = delete;
+ private:
   LogicalCollection& operator=(LogicalCollection const&) = delete;
+ public:
   LogicalCollection() = delete;
   
+  virtual LogicalCollection* clone() {
+    return new LogicalCollection(*this);
+  }
+
   /// @brief hard-coded minimum version number for collections
   static constexpr uint32_t minimumVersion() { return 5; } 
 
@@ -135,7 +140,7 @@ class LogicalCollection {
   std::string const& path() const;
   std::string const& distributeShardsLike() const;
 
-  TRI_vocbase_col_status_e status();
+  TRI_vocbase_col_status_e status() const;
   TRI_vocbase_col_status_e getStatusLocked();
 
   void executeWhileStatusLocked(std::function<void()> const& callback);
