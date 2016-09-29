@@ -913,7 +913,7 @@ var _graph = function (graphName) {
     throw err;
   }
   if (g.isSmart) {
-    var err = new ArangoError();
+    err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_GRAPH.code;
     err.errorMessage = "The graph you requested is a SmartGraph (Enterprise Only)";
     throw err;
@@ -1054,7 +1054,7 @@ var _drop = function (graphId, dropCollections) {
 
   var graph = gdb.document(graphId);
   if (graph.isSmart) {
-    var err = new ArangoError();
+    err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_GRAPH.code;
     err.errorMessage = "The graph you requested is a SmartGraph (Enterprise Only)";
     throw err;

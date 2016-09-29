@@ -70,8 +70,8 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
   _opts = ep->options();
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    auto node = static_cast<TraversalNode const*>(getPlanNode());
 #ifdef USE_ENTERPRISE
+    auto node = static_cast<TraversalNode const*>(getPlanNode());
     if (node->isSmart()) {
       _traverser.reset(new arangodb::traverser::SmartGraphTraverser(
           _opts,
