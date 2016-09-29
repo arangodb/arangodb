@@ -30,6 +30,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ClusterInfo.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -1438,8 +1439,17 @@ void Ast::injectBindParameters(BindParameters& parameters) {
           _query->collections()->add(n, TRI_TRANSACTION_READ);
         }
         auto eColls = graph->edgeCollections();
+        auto ci = ClusterInfo::instance();
         for (const auto& n : eColls) {
-          _query->collections()->add(n, TRI_TRANSACTION_READ);
+          auto c = ci->getCollection(_query->vocbase()->name(), n);
+          if (!c->isSmart()) {
+            _query->collections()->add(n, TRI_TRANSACTION_READ);
+          } else {
+            // This is only enterprise:
+            _query->collections()->add("_local_" + n, TRI_TRANSACTION_READ);
+            _query->collections()->add("_from_" + n, TRI_TRANSACTION_READ);
+            _query->collections()->add("_to_" + n, TRI_TRANSACTION_READ);
+          }
         }
       }
     } else if (node->type == NODE_TYPE_SHORTEST_PATH) {
@@ -1454,8 +1464,17 @@ void Ast::injectBindParameters(BindParameters& parameters) {
           _query->collections()->add(n, TRI_TRANSACTION_READ);
         }
         auto eColls = graph->edgeCollections();
+        auto ci = ClusterInfo::instance();
         for (const auto& n : eColls) {
-          _query->collections()->add(n, TRI_TRANSACTION_READ);
+          auto c = ci->getCollection(_query->vocbase()->name(), n);
+          if (!c->isSmart()) {
+            _query->collections()->add(n, TRI_TRANSACTION_READ);
+          } else {
+            // This is only enterprise:
+            _query->collections()->add("_local_" + n, TRI_TRANSACTION_READ);
+            _query->collections()->add("_from_" + n, TRI_TRANSACTION_READ);
+            _query->collections()->add("_to_" + n, TRI_TRANSACTION_READ);
+          }
         }
       }
     }
