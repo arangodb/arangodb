@@ -1476,16 +1476,14 @@
           }
 
           var style = 'position: absolute; left: 25px; bottom: 50px;';
-          if (this.aqlMode) {
-            style = 'position: absolute; left: 30px; margin-top: -37px;';
-          }
-
-          $('#graph-container').append(
-            '<div id="objectCount" style="' + style + ' animated fadeIn">' +
-              '<span style="margin-right: 10px" class="arangoState"><span id="nodesCount">' + graph.nodes.length + '</span> nodes</span>' +
+          if (!this.aqlMode) {
+            $('#graph-container').append(
+              '<div id="objectCount" style="' + style + ' animated fadeIn">' +
+                '<span style="margin-right: 10px" class="arangoState"><span id="nodesCount">' + graph.nodes.length + '</span> nodes</span>' +
                 '<span class="arangoState"><span id="edgesCount">' + graph.edges.length + '</span> edges</span>' +
-                  '</div>'
-          );
+              '</div>'
+            );
+          }
         }
       }
       this.Sigma = sigma;

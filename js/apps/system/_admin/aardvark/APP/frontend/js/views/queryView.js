@@ -20,6 +20,7 @@
     renderComplete: false,
 
     customQueries: [],
+    cachedQueries: {},
     queries: [],
 
     state: {
@@ -70,7 +71,7 @@
       'click #clearQuery': 'clearQuery',
       'click .outputEditorWrapper #downloadQueryResult': 'downloadQueryResult',
       'click .outputEditorWrapper .switchAce span': 'switchAce',
-      'click .outputEditorWrapper .fa-close': 'closeResult',
+      'click .outputEditorWrapper .closeResult': 'closeResult',
       'click #toggleQueries1': 'toggleQueries',
       'click #toggleQueries2': 'toggleQueries',
       'click #createNewQuery': 'createAQL',
@@ -98,8 +99,14 @@
       this.aqlEditor.setValue('', 1);
     },
 
-    closeProfile: function () {
-      $('.queryProfile').fadeOut('fast');
+    closeProfile: function (e) {
+      var count = $(e.currentTarget).parent().attr('counter');
+
+      _.each($('.queryProfile'), function (elem) {
+        if ($(elem).attr('counter') === count) {
+          $(elem).fadeOut('fast');
+        }
+      });
     },
 
     toggleBindParams: function () {
@@ -166,6 +173,7 @@
     },
 
     removeResults: function () {
+      this.cachedQueries = {};
       $('.outputEditorWrapper').hide('fast', function () {
         $('.outputEditorWrapper').remove();
       });
@@ -518,6 +526,9 @@
               self.removeOutputEditor(counter);
               arangoHelper.arangoError('Explain', data.msg);
             } else {
+              // cache explain results
+              self.cachedQueries[counter] = data;
+
               outputEditor.setValue(data.msg, 1);
               self.deselect(outputEditor);
               $.noty.clearQueue();
@@ -620,10 +631,17 @@
     },
 
     closeResult: function (e) {
+      var self = this;
       var target = $('#' + $(e.currentTarget).attr('element')).parent();
+      var id = $(target).attr('id');
+      var counter = id.substring(id.length - 1, id.length - 0);
+
+      delete this.cachedQueries[counter];
+
       $(target).hide('fast', function () {
         $(target).remove();
         if ($('.outputEditorWrapper').length === 0) {
+          self.cachedQueries = {};
           $('#removeResults').hide();
         }
       });
@@ -672,6 +690,29 @@
         self.resize();
       }, 10);
       self.deselect(self.aqlEditor);
+
+      this.restoreCachedQueries();
+    },
+
+    restoreCachedQueries: function () {
+      var self = this;
+
+      if (Object.keys(this.cachedQueries).length > 0) {
+        _.each(this.cachedQueries, function (query, counter) {
+          self.renderQueryResultBox(counter, null, true);
+          self.renderQueryResult(query, counter, true);
+          self.fillSentQueryValue(counter);
+
+          if (query.sentQuery) {
+            self.bindQueryResultButtons(null, counter);
+          }
+        });
+      }
+    },
+
+    fillSentQueryValue: function (counter) {
+      var sentQueryEditor = ace.edit('sentQueryEditor' + counter);
+      sentQueryEditor.setValue(this.cachedQueries[counter].sentQuery, 1);
     },
 
     showSpotlight: function (type) {
@@ -1368,15 +1409,18 @@
         return;
       }
 
-      this.$(this.outputDiv).prepend(this.outputTemplate.render({
-        counter: this.outputCounter,
-        type: 'Query'
-      }));
-
       $('#outputEditorWrapper' + this.outputCounter).hide();
       $('#outputEditorWrapper' + this.outputCounter).show('fast');
 
-      var counter = this.outputCounter;
+      this.renderQueryResultBox(this.outputCounter, selected);
+    },
+
+    renderQueryResultBox: function (counter, selected, cached) {
+      this.$(this.outputDiv).prepend(this.outputTemplate.render({
+        counter: counter,
+        type: 'Query'
+      }));
+
       var outputEditor = ace.edit('outputEditor' + counter);
       var sentQueryEditor = ace.edit('sentQueryEditor' + counter);
       var sentBindParamEditor = ace.edit('sentBindParamEditor' + counter);
@@ -1400,8 +1444,10 @@
       sentBindParamEditor.setReadOnly(true);
       this.setEditorAutoHeight(sentBindParamEditor);
 
-      this.fillResult(outputEditor, sentQueryEditor, counter, selected);
-      this.outputCounter++;
+      if (!cached) {
+        this.fillResult(counter, selected);
+        this.outputCounter++;
+      }
     },
 
     readQueryData: function (selected, forExecute) {
@@ -1445,7 +1491,7 @@
       return JSON.stringify(data);
     },
 
-    fillResult: function (outputEditor, sentQueryEditor, counter, selected) {
+    fillResult: function (counter, selected) {
       var self = this;
 
       var queryData = this.readQueryData(selected, true);
@@ -1455,6 +1501,7 @@
       }
 
       if (queryData) {
+        var sentQueryEditor = ace.edit('sentQueryEditor' + counter);
         sentQueryEditor.setValue(self.aqlEditor.getValue(), 1);
 
         $.ajax({
@@ -1468,7 +1515,7 @@
           processData: false,
           success: function (data, textStatus, xhr) {
             if (xhr.getResponseHeader('x-arango-async-id')) {
-              self.queryCallbackFunction(xhr.getResponseHeader('x-arango-async-id'), outputEditor, counter);
+              self.queryCallbackFunction(xhr.getResponseHeader('x-arango-async-id'), counter);
             }
             $.noty.clearQueue();
             $.noty.closeAll();
@@ -1530,70 +1577,28 @@
       editor.focus();
     },
 
-    queryCallbackFunction: function (queryID, outputEditor, counter) {
-      var self = this;
-
-      var cancelRunningQuery = function (id, counter) {
-        $.ajax({
-          url: arangoHelper.databaseUrl('/_api/job/' + encodeURIComponent(id) + '/cancel'),
-          type: 'PUT',
-          success: function () {
-            window.clearTimeout(self.checkQueryTimer);
-            $('#outputEditorWrapper' + counter).remove();
-            arangoHelper.arangoNotification('Query', 'Query canceled.');
-          }
+    warningsFunc: function (data, outputEditor) {
+      var warnings = '';
+      if (data.extra && data.extra.warnings && data.extra.warnings.length > 0) {
+        warnings += 'Warnings:' + '\r\n\r\n';
+        data.extra.warnings.forEach(function (w) {
+          warnings += '[' + w.code + "], '" + w.message + "'\r\n";
         });
-      };
+      }
+      if (warnings !== '') {
+        warnings += '\r\n' + 'Result:' + '\r\n\r\n';
+      }
+      outputEditor.setValue(warnings + JSON.stringify(data.result, undefined, 2), 1);
+      outputEditor.getSession().setScrollTop(0);
+    },
 
-      $('#outputEditorWrapper' + counter + ' #cancelCurrentQuery').bind('click', function () {
-        cancelRunningQuery(queryID, counter);
-      });
+    renderQueryResult: function (data, counter, cached) {
+      var self = this;
+      var outputEditor = ace.edit('outputEditor' + counter);
 
-      $('#outputEditorWrapper' + counter + ' #copy2aqlEditor').bind('click', function () {
-        if (!$('#toggleQueries1').is(':visible')) {
-          self.toggleQueries();
-        }
-
-        var aql = ace.edit('sentQueryEditor' + counter).getValue();
-        var bindParam = JSON.parse(ace.edit('sentBindParamEditor' + counter).getValue());
-        self.aqlEditor.setValue(aql, 1);
-        self.deselect(self.aqlEditor);
-        if (Object.keys(bindParam).length > 0) {
-          self.bindParamTableObj = bindParam;
-          self.setCachedQuery(self.aqlEditor.getValue(), JSON.stringify(self.bindParamTableObj));
-
-          if ($('#bindParamEditor').is(':visible')) {
-            self.renderBindParamTable();
-          } else {
-            self.bindParamAceEditor.setValue(JSON.stringify(bindParam), 1);
-            self.deselect(self.bindParamAceEditor);
-          }
-        }
-        $('.centralRow').animate({ scrollTop: 0 }, 'fast');
-        self.resize();
-      });
-
-      this.execPending = false;
-
-      var warningsFunc = function (data) {
-        var warnings = '';
-        if (data.extra && data.extra.warnings && data.extra.warnings.length > 0) {
-          warnings += 'Warnings:' + '\r\n\r\n';
-          data.extra.warnings.forEach(function (w) {
-            warnings += '[' + w.code + "], '" + w.message + "'\r\n";
-          });
-        }
-        if (warnings !== '') {
-          warnings += '\r\n' + 'Result:' + '\r\n\r\n';
-        }
-        outputEditor.setValue(warnings + JSON.stringify(data.result, undefined, 2), 1);
-        outputEditor.getSession().setScrollTop(0);
-      };
-
-      var fetchQueryResult = function (data) {
-        warningsFunc(data);
-        window.progressView.hide();
-
+      // handle explain query case
+      if (!data.msg) {
+        // handle usual query
         var result = self.analyseQuery(data.result);
         // console.log('Using ' + result.defaultType + ' as data format.');
         if (result.defaultType === 'table') {
@@ -1628,8 +1633,6 @@
           );
         };
 
-        $('#outputEditorWrapper' + counter + ' .pull-left #spinner').remove();
-
         var time = '-';
         if (data && data.extra && data.extra.stats) {
           time = data.extra.stats.executionTime.toFixed(3) + ' s';
@@ -1662,25 +1665,99 @@
             }
           }
         }
+      }
 
-        $('#outputEditorWrapper' + counter + ' .switchAce').show();
-        $('#outputEditorWrapper' + counter + ' .fa-close').show();
-        $('#outputEditor' + counter).css('opacity', '1');
+      $('#outputEditorWrapper' + counter + ' .pull-left #spinner').remove();
+      $('#outputEditorWrapper' + counter + ' #cancelCurrentQuery').remove();
+
+      self.warningsFunc(data, outputEditor);
+      window.progressView.hide();
+
+      $('#outputEditorWrapper' + counter + ' .switchAce').show();
+      $('#outputEditorWrapper' + counter + ' .fa-close').show();
+      $('#outputEditor' + counter).css('opacity', '1');
+
+      if (!data.msg) {
         $('#outputEditorWrapper' + counter + ' #downloadQueryResult').show();
         $('#outputEditorWrapper' + counter + ' #copy2aqlEditor').show();
-        $('#outputEditorWrapper' + counter + ' #cancelCurrentQuery').remove();
+      }
 
-        self.setEditorAutoHeight(outputEditor);
-        self.deselect(outputEditor);
+      self.setEditorAutoHeight(outputEditor);
+      self.deselect(outputEditor);
 
-        // when finished send a delete req to api (free db space)
-        if (data.id) {
+      // when finished send a delete req to api (free db space)
+      if (data.id) {
+        $.ajax({
+          url: arangoHelper.databaseUrl('/_api/cursor/' + encodeURIComponent(data.id)),
+          type: 'DELETE'
+        });
+      }
+
+      if (!cached) {
+        // cache the query
+        self.cachedQueries[counter] = data;
+
+        // cache the original sent aql string
+        this.cachedQueries[counter].sentQuery = self.aqlEditor.getValue();
+      }
+
+      if (data.msg) {
+        $('#outputEditorWrapper' + counter + ' .toolbarType').html('Explain');
+        outputEditor.setValue(data.msg, 1);
+      }
+    },
+
+    bindQueryResultButtons: function (queryID, counter) {
+      var self = this;
+
+      if (queryID) {
+        var cancelRunningQuery = function (id, counter) {
           $.ajax({
-            url: arangoHelper.databaseUrl('/_api/cursor/' + encodeURIComponent(data.id)),
-            type: 'DELETE'
+            url: arangoHelper.databaseUrl('/_api/job/' + encodeURIComponent(id) + '/cancel'),
+            type: 'PUT',
+            success: function () {
+              window.clearTimeout(self.checkQueryTimer);
+              $('#outputEditorWrapper' + counter).remove();
+              arangoHelper.arangoNotification('Query', 'Query canceled.');
+            }
           });
+        };
+      }
+
+      $('#outputEditorWrapper' + counter + ' #cancelCurrentQuery').bind('click', function () {
+        cancelRunningQuery(queryID, counter);
+      });
+
+      $('#outputEditorWrapper' + counter + ' #copy2aqlEditor').bind('click', function () {
+        if (!$('#toggleQueries1').is(':visible')) {
+          self.toggleQueries();
         }
-      };
+
+        var aql = ace.edit('sentQueryEditor' + counter).getValue();
+        var bindParam = JSON.parse(ace.edit('sentBindParamEditor' + counter).getValue());
+        self.aqlEditor.setValue(aql, 1);
+        self.deselect(self.aqlEditor);
+        if (Object.keys(bindParam).length > 0) {
+          self.bindParamTableObj = bindParam;
+          self.setCachedQuery(self.aqlEditor.getValue(), JSON.stringify(self.bindParamTableObj));
+
+          if ($('#bindParamEditor').is(':visible')) {
+            self.renderBindParamTable();
+          } else {
+            self.bindParamAceEditor.setValue(JSON.stringify(bindParam), 1);
+            self.deselect(self.bindParamAceEditor);
+          }
+        }
+        $('.centralRow').animate({ scrollTop: 0 }, 'fast');
+        self.resize();
+      });
+    },
+
+    queryCallbackFunction: function (queryID, counter) {
+      var self = this;
+
+      this.bindQueryResultButtons(queryID, counter);
+      this.execPending = false;
 
       // check if async query is finished
       var checkQueryStatus = function () {
@@ -1692,7 +1769,7 @@
           success: function (data, textStatus, xhr) {
             // query finished, now fetch results
             if (xhr.status === 201) {
-              fetchQueryResult(data);
+              self.renderQueryResult(data, counter);
             } else if (xhr.status === 204) {
             // query not ready yet, retry
               self.checkQueryTimer = window.setTimeout(function () {
@@ -1746,101 +1823,105 @@
       var element = '#outputEditorWrapper' + counter;
 
       $(element + ' .fa-caret-down').first().on('click', function () {
-        $(element).find('.queryProfile').remove();
-        $(element).append('<div class="queryProfile"></div>');
-        var queryProfile = $(element + ' .queryProfile').first();
-        queryProfile.hide();
+        var alreadyRendered = $(element).find('.queryProfile');
+        if (!$(alreadyRendered).is(':visible')) {
+          $(element).append('<div class="queryProfile" counter="' + counter + '"></div>');
+          var queryProfile = $(element + ' .queryProfile').first();
+          queryProfile.hide();
 
-        // var outputPosition = $(element + ' .fa-caret-down').first().offset();
-        queryProfile
-        .css('position', 'absolute')
-        .css('left', 215)
-        .css('top', 55);
+          // var outputPosition = $(element + ' .fa-caret-down').first().offset();
+          queryProfile
+          .css('position', 'absolute')
+          .css('left', 215)
+          .css('top', 55);
 
-        // $("#el").offset().top - $(document).scrollTop()
-        var profileWidth = 590;
+          // $("#el").offset().top - $(document).scrollTop()
+          var profileWidth = 590;
 
-        var legend = [
-          'A', 'B', 'C', 'D', 'E', 'F'
-        ];
+          var legend = [
+            'A', 'B', 'C', 'D', 'E', 'F'
+          ];
 
-        var colors = [
-          'rgb(48, 125, 153)',
-          'rgb(241, 124, 176)',
-          'rgb(178, 145, 47)',
-          'rgb(93, 165, 218)',
-          'rgb(250, 164, 58)',
-          'rgb(96, 189, 104)'
-        ];
+          var colors = [
+            'rgb(48, 125, 153)',
+            'rgb(241, 124, 176)',
+            'rgb(178, 145, 47)',
+            'rgb(93, 165, 218)',
+            'rgb(250, 164, 58)',
+            'rgb(96, 189, 104)'
+          ];
 
-        var descs = [
-          'startup time for query engine',
-          'query parsing',
-          'abstract syntax tree optimizations',
-          'instanciation of initial execution plan',
-          'execution plan optimization and permutation',
-          'query execution'
-        ];
+          var descs = [
+            'startup time for query engine',
+            'query parsing',
+            'abstract syntax tree optimizations',
+            'instanciation of initial execution plan',
+            'execution plan optimization and permutation',
+            'query execution'
+          ];
 
-        queryProfile.append(
-          '<i class="fa fa-close closeProfile"></i>' +
-          '<span class="profileHeader">Profiling information</span>' +
-          '<div class="pure-g pure-table pure-table-body"></div>' +
-          '<div class="prof-progress"></div>' +
-          '<div class="prof-progress-label"></div>' +
-          '<div class="clear"></div>'
-        );
-
-        var total = 0;
-        _.each(data, function (value) {
-          total += value * 1000;
-        });
-
-        var pos = 0;
-        var width;
-        var adjustWidth = 0;
-
-        _.each(data, function (value, key) {
-          var ms = numeral(value * 1000).format('0.000');
-          ms += ' ms';
-
-          queryProfile.find('.pure-g').append(
-            '<div class="pure-table-row noHover">' +
-               '<div class="pure-u-1-24 left"><p class="bold" style="background:' + colors[pos] + '">' + legend[pos] + '</p></div>' +
-               '<div class="pure-u-4-24 left">' + ms + '</div>' +
-               '<div class="pure-u-6-24 left">' + key + '</div>' +
-               '<div class="pure-u-13-24 left">' + descs[pos] + '</div>' +
-            '</div>'
+          queryProfile.append(
+            '<i class="fa fa-close closeProfile"></i>' +
+              '<span class="profileHeader">Profiling information</span>' +
+                '<div class="pure-g pure-table pure-table-body"></div>' +
+                  '<div class="prof-progress"></div>' +
+                    '<div class="prof-progress-label"></div>' +
+                      '<div class="clear"></div>'
           );
 
-          width = (value * 1000) / total * 100;
-          if (width < 5) {
-            width = 5;
-            adjustWidth += 5;
-          }
+          var total = 0;
+          _.each(data, function (value) {
+            total += value * 1000;
+          });
 
-          if (pos === 5 && adjustWidth !== 0) {
-            width = width - adjustWidth;
-            queryProfile.find('.prof-progress').append(
-              '<div style="width: ' + width + '%; background-color: ' + colors[pos] + '"></div>'
-            );
-            queryProfile.find('.prof-progress-label').append(
-              '<div style="width: ' + width + '%;">' + legend[pos] + '</div>'
-            );
-          } else {
-            queryProfile.find('.prof-progress').append(
-              '<div style="width: ' + width + '%; background-color: ' + colors[pos] + '"></div>'
-            );
-            queryProfile.find('.prof-progress-label').append(
-              '<div style="width: ' + width + '%;">' + legend[pos] + '</div>'
-            );
-          }
-          pos++;
-        });
+          var pos = 0;
+          var width;
+          var adjustWidth = 0;
 
-        queryProfile.width(profileWidth);
-        queryProfile.height('auto');
-        queryProfile.fadeIn('fast');
+          _.each(data, function (value, key) {
+            var ms = numeral(value * 1000).format('0.000');
+            ms += ' ms';
+
+            queryProfile.find('.pure-g').append(
+              '<div class="pure-table-row noHover">' +
+                '<div class="pure-u-1-24 left"><p class="bold" style="background:' + colors[pos] + '">' + legend[pos] + '</p></div>' +
+                  '<div class="pure-u-4-24 left">' + ms + '</div>' +
+                    '<div class="pure-u-6-24 left">' + key + '</div>' +
+                      '<div class="pure-u-13-24 left">' + descs[pos] + '</div>' +
+                        '</div>'
+            );
+
+            width = (value * 1000) / total * 100;
+            if (width < 5) {
+              width = 5;
+              adjustWidth += 5;
+            }
+
+            if (pos === 5 && adjustWidth !== 0) {
+              width = width - adjustWidth;
+              queryProfile.find('.prof-progress').append(
+                '<div style="width: ' + width + '%; background-color: ' + colors[pos] + '"></div>'
+              );
+              queryProfile.find('.prof-progress-label').append(
+                '<div style="width: ' + width + '%;">' + legend[pos] + '</div>'
+              );
+            } else {
+              queryProfile.find('.prof-progress').append(
+                '<div style="width: ' + width + '%; background-color: ' + colors[pos] + '"></div>'
+              );
+              queryProfile.find('.prof-progress-label').append(
+                '<div style="width: ' + width + '%;">' + legend[pos] + '</div>'
+              );
+            }
+            pos++;
+          });
+
+          queryProfile.width(profileWidth);
+          queryProfile.height('auto');
+          queryProfile.fadeIn('fast');
+        } else {
+          $(element).find('.queryProfile').remove();
+        }
       });
     },
 
