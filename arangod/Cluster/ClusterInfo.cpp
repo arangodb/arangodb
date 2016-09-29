@@ -1130,6 +1130,11 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   // Update our cache:
   loadPlan();
 
+  if (numberOfShards == 0) {
+    loadCurrent();
+    return TRI_ERROR_NO_ERROR;
+  }
+
   {
     CONDITION_LOCKER(locker, agencyCallback->_cv);
 
