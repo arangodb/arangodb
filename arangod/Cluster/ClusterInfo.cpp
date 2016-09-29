@@ -1199,10 +1199,9 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
   TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
 
   size_t numberOfShards = 0;
-  res = ac.getValues(
-    "Plan/Collections/" + databaseName+"/" + collectionID);
 
-  res = ac.getValues("Plan/Collections/" + databaseName+"/" + collectionID + "/shards");
+  res = ac.getValues(
+    "Plan/Collections/" + databaseName+"/" + collectionID + "/shards");
 
   if (res.successful()) {
     velocypack::Slice shards =
