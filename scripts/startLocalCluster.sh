@@ -163,7 +163,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --agency.election-timeout-min $MINP \
         --agency.election-timeout-max $MAXP \
         --agency.endpoint $TRANSPORT://localhost:$BASE \
-        --agency.my-address $TRANSPORT://localhost:$BASE \
+        --agency.my-address $TRANSPORT://localhost:$port \
         --agency.pool-size $NRAGENTS \
         --agency.size $NRAGENTS \
         --agency.supervision true \
