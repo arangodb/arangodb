@@ -441,12 +441,11 @@ var _relation = function (
 // //////////////////////////////////////////////////////////////////////////////
 
 var _list = function () {
-  var gdb = getGraphCollection();
-  return _.map(gdb.toArray(), '_key');
+  return db._query(`FOR x IN _graphs FILTER !x.isSmart RETURN x._key`).toArray();
 };
 
 var _listObjects = function () {
-  return getGraphCollection().toArray();
+  return db._query(`FOR x IN _graphs FILTER !x.isSmart RETURN x`).toArray();
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -693,7 +692,7 @@ var bindEdgeCollections = function (self, edgeCollections) {
       if (edgeId.indexOf('/') === -1) {
         edgeId = key + '/' + edgeId;
       }
-      var graphs = getGraphCollection().toArray();
+      var graphs = _listObjects();
       var edgeCollection = edgeId.split('/')[0];
       self.__collectionsToLock[edgeCollection] = 1;
       removeEdge(graphs, edgeCollection, edgeId, self);
@@ -742,7 +741,7 @@ var bindVertexCollections = function (self, vertexCollections) {
     var wrap = wrapCollection(obj);
     wrap.remove = function (vertexId, options) {
       // delete all edges using the vertex in all graphs
-      var graphs = getGraphCollection().toArray();
+      var graphs = _listObjects();
       var vertexCollectionName = key;
       if (vertexId.indexOf('/') === -1) {
         vertexId = key + '/' + vertexId;
@@ -913,6 +912,12 @@ var _graph = function (graphName) {
     err.errorMessage = arangodb.errors.ERROR_GRAPH_NOT_FOUND.message;
     throw err;
   }
+  if (g.isSmart) {
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_GRAPH.code;
+    err.errorMessage = "The graph you requested is a SmartGraph (Enterprise Only)";
+    throw err;
+  }
 
   collections = findOrCreateCollectionsByEdgeDefinitions(g.edgeDefinitions, true);
   orphanCollections = g.orphanCollections;
@@ -948,6 +953,9 @@ var _renameCollection = function (oldName, newName) {
         return;
       }
       gdb.toArray().forEach(function (doc) {
+        if (doc.isSmart) {
+          return;
+        }
         var c = Object.assign({}, doc), i, j, changed = false;
         if (c.edgeDefinitions) {
           for (i = 0; i < c.edgeDefinitions.length; ++i) {
@@ -1044,15 +1052,22 @@ var _drop = function (graphId, dropCollections) {
     throw err;
   }
 
+  var graph = gdb.document(graphId);
+  if (graph.isSmart) {
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_GRAPH.code;
+    err.errorMessage = "The graph you requested is a SmartGraph (Enterprise Only)";
+    throw err;
+  }
+ 
   if (dropCollections === true) {
-    var graph = gdb.document(graphId);
+    graphs = _listObjects();
     var edgeDefinitions = graph.edgeDefinitions;
     edgeDefinitions.forEach(
       function (edgeDefinition) {
         var from = edgeDefinition.from;
         var to = edgeDefinition.to;
         var collection = edgeDefinition.collection;
-        graphs = getGraphCollection().toArray();
         if (checkIfMayBeDropped(collection, graph._key, graphs)) {
           db._drop(collection);
         }
@@ -1073,7 +1088,6 @@ var _drop = function (graphId, dropCollections) {
       }
     );
     // drop orphans
-    graphs = getGraphCollection().toArray();
     if (!graph.orphanCollections) {
       graph.orphanCollections = [];
     }
@@ -2039,7 +2053,7 @@ Graph.prototype._editEdgeDefinitions = function (edgeDefinition) {
     }
   );
   // change definition for ALL graphs
-  var graphs = getGraphCollection().toArray();
+  var graphs = _listObjects();
   graphs.forEach(
     function (graph) {
       changeEdgeDefinitionsForGraph(graph, edgeDefinition, newCollections, possibleOrphans, self);
@@ -2175,7 +2189,7 @@ Graph.prototype._removeVertexCollection = function (vertexCollectionName, dropCo
   db._graphs.update(this.__name, {orphanCollections: this.__orphanCollections});
 
   if (dropCollection === true) {
-    var graphs = getGraphCollection().toArray();
+    var graphs = _listObjects();
     if (checkIfMayBeDropped(vertexCollectionName, null, graphs)) {
       db._drop(vertexCollectionName);
     }
