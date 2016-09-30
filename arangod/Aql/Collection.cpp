@@ -86,15 +86,7 @@ size_t Collection::count() const {
 /// @brief returns the collection's plan id
 TRI_voc_cid_t Collection::getPlanId() const {
   auto clusterInfo = arangodb::ClusterInfo::instance();
-  auto collectionInfo =
-      clusterInfo->getCollection(vocbase->name(), name);
-
-  if (collectionInfo.get() == nullptr) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL,
-                                  "collection not found '%s' -> '%s'",
-                                  vocbase->name().c_str(), name.c_str());
-  }
-
+  auto collectionInfo = clusterInfo->getCollection(vocbase->name(), name);
   return collectionInfo.get()->cid();
 }
 
@@ -117,13 +109,7 @@ std::vector<std::string> Collection::shardKeys() const {
     id = name;
   }
 
-  auto collectionInfo =
-      clusterInfo->getCollection(vocbase->name(), id);
-  if (collectionInfo.get() == nullptr) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL,
-                                  "collection not found '%s' -> '%s'",
-                                  vocbase->name().c_str(), name.c_str());
-  }
+  auto collectionInfo = clusterInfo->getCollection(vocbase->name(), id);
 
   std::vector<std::string> keys;
   for (auto const& x : collectionInfo.get()->shardKeys()) {

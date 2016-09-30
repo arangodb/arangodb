@@ -1867,14 +1867,8 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
 
   try {
     if (ServerState::instance()->isCoordinator()) {
-      std::shared_ptr<LogicalCollection> ci =
-          ClusterInfo::instance()->getCollection(vocbase->name(),
-                                                std::string(key));
-
-      if (ci == nullptr) {
-        TRI_V8_RETURN(v8::Handle<v8::Value>());
-      }
-
+      auto ci = ClusterInfo::instance()->getCollection(vocbase->name(),
+                                                       std::string(key));
       collection = ci->clone();
     } else {
       collection = vocbase->lookupCollection(std::string(key));

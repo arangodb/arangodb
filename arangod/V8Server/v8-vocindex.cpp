@@ -580,12 +580,7 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
 
     std::string const dbname(collection->dbName());
     std::string const collname(collection->name());
-    std::shared_ptr<LogicalCollection> c =
-        ClusterInfo::instance()->getCollection(dbname, collname);
-
-    if (c == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-    }
+    auto c = ClusterInfo::instance()->getCollection(dbname, collname);
 
     // check if there is an attempt to create a unique index on non-shard keys
     if (create) {
@@ -696,8 +691,10 @@ LogicalCollection* CreateCollectionCoordinator(LogicalCollection* parameters) {
   }
   ci->loadPlan();
 
-  std::shared_ptr<LogicalCollection> c = ci->getCollection(parameters->dbName(), parameters->cid_as_string());
-  // If we get a nullptr here the create collection should have failed before.
+  auto c = ci->getCollection(parameters->dbName(), parameters->cid_as_string());
+  // We never get a nullptr here because an exception is thrown if the
+  // collection does not exist. Also, the create collection should have
+  // failed before.
   TRI_ASSERT(c != nullptr);
   std::unique_ptr<LogicalCollection> newCol(c->clone());
   return newCol.release();
@@ -861,12 +858,7 @@ static void GetIndexesCoordinator(
   std::string const cid = collection->cid_as_string();
   std::string const collectionName(collection->name());
 
-  std::shared_ptr<LogicalCollection> c =
-      ClusterInfo::instance()->getCollection(databaseName, cid);
-
-  if (c == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-  }
+  auto c = ClusterInfo::instance()->getCollection(databaseName, cid);
 
   v8::Handle<v8::Array> ret = v8::Array::New(isolate);
 

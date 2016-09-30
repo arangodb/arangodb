@@ -990,10 +990,17 @@ AstNode* Ast::createNodeWithCollections (AstNode const* collections) {
       std::string name = c->getString();
       if (ServerState::instance()->isRunningInCluster()) {
         auto ci = ClusterInfo::instance();
-        auto c = ci->getCollection(_query->vocbase()->name(), name);
-        auto names = c->realNames();
-        for (auto const& n : names) {
-          _query->collections()->add(n, TRI_TRANSACTION_READ);
+        // We want to tolerate that a collection name is given here
+        // which does not exist, if only for some unit tests:
+        try {
+          auto coll = ci->getCollection(_query->vocbase()->name(), name);
+          auto names = coll->realNames();
+          for (auto const& n : names) {
+            _query->collections()->add(n, TRI_TRANSACTION_READ);
+          }
+        }
+        catch (...) {
+          _query->collections()->add(name, TRI_TRANSACTION_READ);
         }
       } else {  // single server
         _query->collections()->add(name, TRI_TRANSACTION_READ);
@@ -1020,10 +1027,15 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections) {
 
   auto doTheAdd = [&](std::string name) {
     if (ss->isRunningInCluster()) {
-      auto c = ci->getCollection(_query->vocbase()->name(), name);
-      auto names = c->realNames();
-      for (auto const& n : names) {
-        _query->collections()->add(n, TRI_TRANSACTION_READ);
+      try {
+        auto c = ci->getCollection(_query->vocbase()->name(), name);
+        auto names = c->realNames();
+        for (auto const& n : names) {
+          _query->collections()->add(n, TRI_TRANSACTION_READ);
+        }
+      }
+      catch (...) {
+        _query->collections()->add(name, TRI_TRANSACTION_READ);
       }
     } else {
       _query->collections()->add(name, TRI_TRANSACTION_READ);

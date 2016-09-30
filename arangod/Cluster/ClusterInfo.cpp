@@ -714,7 +714,8 @@ std::shared_ptr<LogicalCollection> ClusterInfo::getCollection(
     loadPlan();
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                 "Collection not found: " + collectionID);
+                                 "Collection not found: " + collectionID +
+                                 " in database " + databaseID);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
