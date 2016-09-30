@@ -83,7 +83,7 @@ void DatabasePathFeature::validateOptions(std::shared_ptr<ProgramOptions> option
     FATAL_ERROR_EXIT();
   }
 
-  ctx->getCheckPath(_directory, "database.directory", false);
+  ctx->normalizePath(_directory, "database.directory", false);
 }
 
 void DatabasePathFeature::start() {

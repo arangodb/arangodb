@@ -923,6 +923,14 @@ std::string rTrim(std::string const& sourceStr, std::string const& trimStr) {
   return std::string(sourceStr, 0, e + 1);
 }
 
+void rTrimInPlace(std::string& str, std::string const& trimStr) {
+  size_t e = str.find_last_not_of(trimStr);
+
+  if (e + 1 < str.length()) {
+    str.erase(e + 1);
+  }
+}
+
 std::string lFill(std::string const& sourceStr, size_t size, char fill) {
   size_t l = sourceStr.size();
 

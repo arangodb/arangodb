@@ -26,14 +26,16 @@
 #include <DbgHelp.h>
 #endif
 
+#include "Basics/FileUtils.h"
+#include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 #include "Basics/files.h"
-#include "Basics/FileUtils.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "Rest/InitializeRest.h"
 
 using namespace arangodb;
+using namespace arangodb::basics;
 
 static void AbortHandler(int signum) {
   TRI_PrintBacktrace();
@@ -108,18 +110,20 @@ LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS* e) {
 
 ArangoGlobalContext* ArangoGlobalContext::CONTEXT = nullptr;
 
-ArangoGlobalContext::ArangoGlobalContext(int argc, char* argv[], const char *InstallDirectory)
+ArangoGlobalContext::ArangoGlobalContext(int argc, char* argv[],
+                                         const char* InstallDirectory)
     : _binaryName(TRI_BinaryName(argv[0])),
-      _runRoot(TRI_GetInstallRoot(TRI_LocateBinaryPath(argv[0]), InstallDirectory)),
+      _runRoot(
+          TRI_GetInstallRoot(TRI_LocateBinaryPath(argv[0]), InstallDirectory)),
       _ret(EXIT_FAILURE),
       _useEventLog(true) {
-
   static char const* serverName = "arangod";
   if (_binaryName.size() < strlen(serverName) ||
-      _binaryName.substr(_binaryName.size() - strlen(serverName)) != serverName) {
+      _binaryName.substr(_binaryName.size() - strlen(serverName)) !=
+          serverName) {
     // turn off event-logging for all binaries except arangod
     // the reason is that all other tools are client tools that will directly
-    // print all errors so the user can handle them 
+    // print all errors so the user can handle them
     _useEventLog = false;
   }
 
@@ -155,9 +159,7 @@ void ArangoGlobalContext::installHup() {
 #endif
 }
 
-void ArangoGlobalContext::installSegv() {
-  signal(SIGSEGV, AbortHandler);
-}
+void ArangoGlobalContext::installSegv() { signal(SIGSEGV, AbortHandler); }
 
 void ArangoGlobalContext::maskAllSignals() {
 #ifdef TRI_HAVE_POSIX_THREADS
@@ -179,9 +181,9 @@ void ArangoGlobalContext::runStartupChecks() {
   // test if this binary uses and stdlib that supports std::regex properly
   if (!TRI_SupportsRegexDebugging()) {
     LOG(FATAL) << "the required std::regex functionality required to run "
-               << "ArangoDB is not provided by this build. please try " 
+               << "ArangoDB is not provided by this build. please try "
                << "rebuilding ArangoDB in a build environment that properly "
-               << "supports std::regex"; 
+               << "supports std::regex";
     FATAL_ERROR_EXIT();
   }
 
@@ -237,7 +239,7 @@ void ArangoGlobalContext::runStartupChecks() {
           LOG(FATAL)
               << "possibly incompatible CPU alignment settings found in '"
               << filename << "'. this may cause arangod to abort with "
-                                     "SIGBUS. please set the value in '"
+                             "SIGBUS. please set the value in '"
               << filename << "' to 2";
           FATAL_ERROR_EXIT();
         }
@@ -264,16 +266,26 @@ void ArangoGlobalContext::runStartupChecks() {
 #endif
 }
 
-void ArangoGlobalContext::tempPathAvailable() {
+void ArangoGlobalContext::createMiniDumpFilename() {
 #ifdef _WIN32
   miniDumpFilename = TRI_GetTempPath();
 
   miniDumpFilename +=
-    "\\minidump_" + std::to_string(GetCurrentProcessId()) + ".dmp";
+      "\\minidump_" + std::to_string(GetCurrentProcessId()) + ".dmp";
 #endif
 }
 
-void ArangoGlobalContext::getCheckPath(std::string &path, const char *whichPath, bool fatal) {
+void ArangoGlobalContext::normalizePath(std::vector<std::string>& paths,
+                                        const char* whichPath, bool fatal) {
+  for (auto& path : paths) {
+    normalizePath(path, whichPath, fatal);
+  }
+}
+
+void ArangoGlobalContext::normalizePath(std::string& path,
+                                        const char* whichPath, bool fatal) {
+  StringUtils::rTrimInPlace(path, TRI_DIR_SEPARATOR_STR);
+
   if (!arangodb::basics::FileUtils::exists(path)) {
     std::string directory;
     directory = arangodb::basics::FileUtils::buildFilename(_runRoot, path);
@@ -281,13 +293,14 @@ void ArangoGlobalContext::getCheckPath(std::string &path, const char *whichPath,
       if (!fatal) {
         return;
       }
-      LOG(ERR) << "failed to locate " << whichPath << " directory, its neither available in  '" << path << "' nor in '" << directory << "'";
+      LOG(ERR) << "failed to locate " << whichPath
+               << " directory, its neither available in  '" << path
+               << "' nor in '" << directory << "'";
       FATAL_ERROR_EXIT();
     }
     arangodb::basics::FileUtils::normalizePath(directory);
     path = directory;
-  }
-  else {
+  } else {
     if (!TRI_PathIsAbsolute(path)) {
       arangodb::basics::FileUtils::makePathAbsolute(path);
     }
