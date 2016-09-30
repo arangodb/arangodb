@@ -139,6 +139,7 @@ class LogicalCollection {
   std::string dbName() const;
   std::string const& path() const;
   std::string const& distributeShardsLike() const;
+  void distributeShardsLike(std::string const&);
 
   TRI_vocbase_col_status_e status() const;
   TRI_vocbase_col_status_e getStatusLocked();
