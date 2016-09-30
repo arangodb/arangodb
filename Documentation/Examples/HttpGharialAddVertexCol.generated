@@ -5,8 +5,8 @@ shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/gharial
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
-etag: _T0WX0gG---
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+etag: _T1siz5m---
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
@@ -29,7 +29,7 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
       <span class="hljs-string">"otherVertices"</span> 
     ], 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/social"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_T0WX0gG---"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_T1siz5m---"</span> 
   }, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span> 
 }

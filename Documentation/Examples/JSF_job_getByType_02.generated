@@ -2,7 +2,7 @@ shell> curl -X PUT --header 'x-arango-async: store' --dump - http://localhost:85
 
 HTTP/1.1 202 Accepted
 content-type: text/plain; charset=utf-8
-x-arango-async-id: 147488674098137
+x-arango-async-id: 147524817855387
 
 shell> curl --dump - http://localhost:8529/_api/job/pending
 
