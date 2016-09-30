@@ -77,10 +77,7 @@ class PoorMansRandom {
     this.x = seed === undefined ? 1234567 : seed;
   }
   next() {
-    if (this.x <= 1000) {   // to get rid of silly small values
-      this.x = 1234567;
-    }
-    this.x = Math.floor(this.x * this.x / 1000) % 10000000;
+    this.x = Math.floor(this.x * 15485867 + 17263) % 10000000;
     return this.x;
   }
   nextUnitInterval() {
@@ -153,11 +150,11 @@ function makeClusteredGraph(clusterSizes, intDegree, intDegreeDelta,
                   name: v.name + '->' + toVertex.name };
         r.edges.push(e);
       }
-      if (rand.nextUnitInterval() < extDegree) {
+      if (rand.nextUnitInterval() > 1.0 - extDegree) {
         let toCluster;
         do {
           toCluster = rand.next() % clusters.length;
-        } while (toCluster !== i);
+        } while (toCluster === i);
         let toVertexPos = rand.next() % clusters[toCluster].length;
         let toVertex = r.vertices[clusters[toCluster][toVertexPos].pos];
         let e = { _from: vv.pos, _to: clusters[toCluster][toVertexPos].pos,
