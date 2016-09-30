@@ -231,6 +231,11 @@
       delete collections.code;
       delete collections.error;
 
+      collections['_from_abc'] = collections.female;
+      collections['_to_abc'] = collections.male;
+      collections['abc'] = collections.male;
+      collections['_local_abc'] = collections.male;
+
       _.each(collections, function (attr, name) {
         // smart found
         var combined = {
@@ -266,8 +271,14 @@
         }
       });
 
+      // order results
+      var ordered = {};
+      Object.keys(collections).sort().forEach(function (key) {
+        ordered[key] = collections[key];
+      });
+
       this.$el.html(this.template.render({
-        collections: collections
+        collections: ordered
       }));
 
       _.each(collections, function (shard) {
