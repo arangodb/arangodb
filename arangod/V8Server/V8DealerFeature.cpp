@@ -25,10 +25,11 @@
 #include <thread>
 
 #include "ApplicationFeatures/V8PlatformFeature.h"
+#include "Basics/ArangoGlobalContext.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WorkMonitor.h"
-#include "Basics/ArangoGlobalContext.h"
 #include "Cluster/ServerState.h"
 #include "Dispatcher/DispatcherFeature.h"
 #include "Dispatcher/DispatcherThread.h"
@@ -128,7 +129,12 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "--javascript.startup-directory",
       "path to the directory containing JavaScript startup scripts",
-      new StringParameter(&_startupPath));
+      new StringParameter(&_startupDirectory));
+
+  options->addHiddenOption(
+      "--javascript.module-directory",
+      "additional paths containing JavaScript modules",
+      new VectorParameter<StringParameter>(&_moduleDirectory));
 
   options->addOption(
       "--javascript.v8-contexts",
@@ -138,26 +144,25 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // check the startup path
-  if (_startupPath.empty()) {
+  if (_startupDirectory.empty()) {
     LOG(FATAL)
         << "no 'javascript.startup-directory' has been supplied, giving up";
     FATAL_ERROR_EXIT();
   }
 
   // remove trailing / from path and set path
-  _startupPath = StringUtils::rTrim(_startupPath, TRI_DIR_SEPARATOR_STR);
-
   auto ctx = ArangoGlobalContext::CONTEXT;
-    
+
   if (ctx == nullptr) {
     LOG(ERR) << "failed to get global context.  ";
     FATAL_ERROR_EXIT();
   }
-  
-  ctx->getCheckPath(_startupPath, "javascript.startup-directory", true);
-  
-  _startupLoader.setDirectory(_startupPath);
-  ServerState::instance()->setJavaScriptPath(_startupPath);
+
+  ctx->normalizePath(_startupDirectory, "javascript.startup-directory", true);
+  ctx->normalizePath(_moduleDirectory, "javascript.module-directory", false);
+
+  _startupLoader.setDirectory(_startupDirectory);
+  ServerState::instance()->setJavaScriptPath(_startupDirectory);
 
   // check whether app-path was specified
   if (_appPath.empty()) {
@@ -165,8 +170,8 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  ctx->getCheckPath(_appPath, "javascript.app-directory", true);
-  
+  ctx->normalizePath(_appPath, "javascript.app-directory", true);
+
   // use a minimum of 1 second for GC
   if (_gcFrequency < 1) {
     _gcFrequency = 1;
@@ -178,7 +183,12 @@ void V8DealerFeature::start() {
   {
     std::vector<std::string> paths;
 
-    paths.push_back(std::string("startup '" + _startupPath + "'"));
+    paths.push_back(std::string("startup '" + _startupDirectory + "'"));
+
+    if (!_moduleDirectory.empty()) {
+      paths.push_back(std::string(
+          "module '" + StringUtils::join(_moduleDirectory, ";") + "'"));
+    }
 
     if (!_appPath.empty()) {
       paths.push_back(std::string("application '" + _appPath + "'"));
@@ -936,16 +946,27 @@ void V8DealerFeature::initializeContext(size_t i) {
       globalObj->Set(TRI_V8_ASCII_STRING("global"), globalObj);
       globalObj->Set(TRI_V8_ASCII_STRING("root"), globalObj);
 
-      std::string modulesPath = _startupPath + TRI_DIR_SEPARATOR_STR +
-                                "server" + TRI_DIR_SEPARATOR_STR + "modules;" +
-                                _startupPath + TRI_DIR_SEPARATOR_STR +
-                                "common" + TRI_DIR_SEPARATOR_STR + "modules;" +
-                                _startupPath + TRI_DIR_SEPARATOR_STR + "node";
+      std::string modules = "";
+      std::string sep = "";
+
+      std::vector<std::string> directories;
+      directories.insert(directories.end(), _moduleDirectory.begin(),
+                         _moduleDirectory.end());
+      directories.emplace_back(_startupDirectory);
+
+      for (auto directory : directories) {
+        modules += sep;
+        sep = ";";
+
+        modules += FileUtils::buildFilename(directory, "server/modules") + sep +
+                   FileUtils::buildFilename(directory, "common/modules") + sep +
+                   FileUtils::buildFilename(directory, "node");
+      }
 
       TRI_InitV8UserStructures(isolate, localContext);
       TRI_InitV8Buffer(isolate, localContext);
-      TRI_InitV8Utils(isolate, localContext, _startupPath, modulesPath);
-      TRI_InitV8DebugUtils(isolate, localContext, _startupPath, modulesPath);
+      TRI_InitV8Utils(isolate, localContext, _startupDirectory, modules);
+      TRI_InitV8DebugUtils(isolate, localContext, _startupDirectory, modules);
       TRI_InitV8Shell(isolate, localContext);
 
       {

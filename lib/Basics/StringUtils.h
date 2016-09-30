@@ -218,6 +218,8 @@ std::string lTrim(std::string const& sourceStr,
 std::string rTrim(std::string const& sourceStr,
                   std::string const& trimStr = " \t\n\r");
 
+void rTrimInPlace(std::string& str, std::string const& trimStr = " \t\n\r");
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fills string from left
 ////////////////////////////////////////////////////////////////////////////////
@@ -593,14 +595,15 @@ std::string encodeHex(std::string const& str);
 
 std::string decodeHex(std::string const& str);
 
-bool gzipUncompress(char const* compressed, size_t compressedLength, std::string& uncompressed);
+bool gzipUncompress(char const* compressed, size_t compressedLength,
+                    std::string& uncompressed);
 
 bool gzipUncompress(std::string const& compressed, std::string& uncompressed);
 
-bool gzipDeflate(char const* compressed, size_t compressedLength, std::string& uncompressed);
+bool gzipDeflate(char const* compressed, size_t compressedLength,
+                 std::string& uncompressed);
 
 bool gzipDeflate(std::string const& compressed, std::string& uncompressed);
-
 }
 }
 }

@@ -52,39 +52,69 @@ include(InstallArangoDBJSClient)
 ################################################################################
 
 install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/js/actions ${PROJECT_SOURCE_DIR}/js/apps ${PROJECT_SOURCE_DIR}/js/contrib ${PROJECT_SOURCE_DIR}/js/server
-  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/js
-  REGEX "^.*/server/tests$" EXCLUDE
-  REGEX "^.*/aardvark/APP/node_modules$" EXCLUDE
+  DIRECTORY
+    ${PROJECT_SOURCE_DIR}/js/actions
+    ${PROJECT_SOURCE_DIR}/js/apps
+    ${PROJECT_SOURCE_DIR}/js/contrib
+    ${PROJECT_SOURCE_DIR}/js/server
+  DESTINATION
+    ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/js
+  REGEX
+    "^.*/server/tests$" EXCLUDE
+  REGEX
+    "^.*/aardvark/APP/node_modules$" EXCLUDE
 )
+
+if (USE_ENTERPRISE)
+  install(
+    DIRECTORY
+      ${PROJECT_SOURCE_DIR}/enterprise/js/server
+    DESTINATION
+      ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/js
+    REGEX
+      "^.*/server/tests$" EXCLUDE
+    REGEX
+      "^.*/aardvark/APP/node_modules$" EXCLUDE
+  )
+endif ()
 
 ################################################################################
 ### @brief install log directory
 ################################################################################
 
 install(
-  DIRECTORY ${PROJECT_BINARY_DIR}/var/log/arangodb3
-  DESTINATION ${CMAKE_INSTALL_LOCALSTATEDIR}/log)
+  DIRECTORY
+    ${PROJECT_BINARY_DIR}/var/log/arangodb3
+  DESTINATION
+    ${CMAKE_INSTALL_LOCALSTATEDIR}/log
+)
 
 ################################################################################
 ### @brief install database directory
 ################################################################################
 
 install(
-  DIRECTORY ${ARANGODB_DB_DIRECTORY}
-  DESTINATION ${CMAKE_INSTALL_LOCALSTATEDIR}/lib)
+  DIRECTORY
+    ${ARANGODB_DB_DIRECTORY}
+  DESTINATION
+    ${CMAKE_INSTALL_LOCALSTATEDIR}/lib
+)
 
 ################################################################################
 ### @brief install apps directory
 ################################################################################
 
 install(
-  DIRECTORY ${ARANGODB_APPS_DIRECTORY}
-  DESTINATION ${CMAKE_INSTALL_LOCALSTATEDIR}/lib)
+  DIRECTORY
+    ${ARANGODB_APPS_DIRECTORY}
+  DESTINATION
+    ${CMAKE_INSTALL_LOCALSTATEDIR}/lib
+)
 
 ################################################################################
 ### @brief detect if we're on a systemd enabled system; if install unit file.
 ################################################################################
+
 set(IS_SYSTEMD_INSTALL 0)
 set(SYSTEMD_UNIT_DIR "")
 if (UNIX)

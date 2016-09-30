@@ -73,6 +73,6 @@ void TempFeature::start() {
   auto context = ArangoGlobalContext::CONTEXT;
 
   if (context != nullptr) {
-    context->tempPathAvailable();
+    context->createMiniDumpFilename();
   }
 }
