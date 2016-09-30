@@ -1078,7 +1078,7 @@
     },
 
     // click node context menu
-    createNodeContextMenu: function (nodeId, e, noDefinedGraph) {
+    createNodeContextMenu: function (nodeId, e) {
       var self = this;
       var x; var y; var size;
 
@@ -1129,7 +1129,7 @@
         wheel.sliceHoverAttr = {stroke: '#fff', 'stroke-width': 2};
         wheel.slicePathFunction = slicePath().DonutSlice;
 
-        if (!noDefinedGraph) {
+        if (!self.noDefinedGraph) {
           wheel.createWheel([
             'imgsrc:img/gv_edit.png',
             'imgsrc:img/gv_trash.png',
@@ -1163,7 +1163,7 @@
             self.removeHelp();
           };
 
-          if (!noDefinedGraph) {
+          if (!self.noDefinedGraph) {
             // function 2: mark as start node
             wheel.navItems[2].navigateFunction = function (e) {
               self.clearOldContextMenu();
@@ -1201,7 +1201,7 @@
             'Delete node.'
           ];
 
-          if (!noDefinedGraph) {
+          if (!self.noDefinedGraph) {
             descriptions.push('Set as startnode.');
             descriptions.push('Draw edge.');
             descriptions.push('Expand the node.');
@@ -1545,18 +1545,18 @@
       this.Sigma = sigma;
 
       // defaults
-      var algorithm = 'force';
-      var renderer = 'canvas';
+      self.algorithm = 'force';
+      self.renderer = 'canvas';
 
       if (this.graphConfig) {
         if (this.graphConfig.layout) {
-          algorithm = this.graphConfig.layout;
+          self.algorithm = this.graphConfig.layout;
         }
 
         if (this.graphConfig.renderer) {
-          renderer = this.graphConfig.renderer;
+          self.renderer = this.graphConfig.renderer;
 
-          if (renderer === 'canvas') {
+          if (self.renderer === 'canvas') {
             self.isEditable = true;
           }
         }
@@ -1602,7 +1602,7 @@
       settings.edgeHaloSize = 10;
       settings.drawHalo = true;
 
-      if (renderer === 'canvas') {
+      if (self.renderer === 'canvas') {
         settings.autoCurveSortByDirection = true;
       }
 
@@ -1625,10 +1625,10 @@
 
       if (aqlMode) {
         // aql editor settings
-        renderer = 'webgl';
+        self.renderer = 'webgl';
 
         if (graph.nodes.length < 500) {
-          algorithm = 'fruchtermann';
+          self.algorithm = 'fruchtermann';
         } else {
           settings.scalingMode = 'outside';
         }
@@ -1639,7 +1639,7 @@
       }
 
       // adjust display settings for webgl renderer
-      if (renderer === 'webgl') {
+      if (self.renderer === 'webgl') {
         settings.enableEdgeHovering = false;
       }
 
@@ -1649,7 +1649,7 @@
         container: 'graph-container',
         renderer: {
           container: document.getElementById('graph-container'),
-          type: renderer
+          type: self.renderer
         },
         settings: settings
       });
@@ -1669,7 +1669,7 @@
         e.originalColor = e.color;
       });
 
-      if (algorithm === 'noverlap') {
+      if (self.algorithm === 'noverlap') {
         var noverlapListener = s.configNoverlap({
           nodeMargin: 0.1,
           scaleNodes: 1.05,
@@ -1684,7 +1684,7 @@
           if (e.type === 'interpolate') {
           }
         });
-      } else if (algorithm === 'fruchtermann') {
+      } else if (self.algorithm === 'fruchtermann') {
         var frListener = sigma.layouts.fruchtermanReingold.configure(s, {
           iterations: 100,
           easing: 'quadraticInOut',
@@ -1761,7 +1761,7 @@
               }
 
               // halo on active nodes:
-              if (renderer === 'canvas') {
+              if (self.renderer === 'canvas') {
                 self.currentGraph.renderers[0].halo({
                   nodes: self.currentGraph.graph.nodes(),
                   nodeHaloColor: '#DF0101',
@@ -1772,17 +1772,13 @@
               showAttributes(e, true);
               self.activeNodes = [e.data.node];
 
-              if (renderer === 'canvas') {
+              if (self.renderer === 'canvas') {
                 s.renderers[0].halo({
                   nodes: [e.data.node]
                 });
               }
 
-              if (!this.noDefinedGraph) {
-                self.createNodeContextMenu(e.data.node.id, e, true);
-              } else if (!this.aqlMode) {
-                self.createNodeContextMenu(e.data.node.id, e);
-              }
+              self.createNodeContextMenu(e.data.node.id, e);
             }
           }
         });
@@ -1827,7 +1823,7 @@
         }
       }
 
-      if (renderer === 'canvas') {
+      if (self.renderer === 'canvas') {
         // render parallel edges
         if (this.graphConfig) {
           if (this.graphConfig.edgeType === 'curve') {
@@ -1905,14 +1901,11 @@
         }
       }
 
-      // store in view
-      self.algorithm = algorithm;
-
       // Initialize the dragNodes plugin:
-      if (algorithm === 'noverlap') {
+      if (self.algorithm === 'noverlap') {
         s.startNoverlap();
         // allow draggin nodes
-      } else if (algorithm === 'force') {
+      } else if (self.algorithm === 'force') {
         // add buttons for start/stopping calculation
         var style2 = 'color: rgb(64, 74, 83); cursor: pointer; position: absolute; right: 30px; bottom: 40px;';
 
@@ -1944,12 +1937,12 @@
           self.stopLayout();
           self.reInitDragListener();
         }, duration);
-      } else if (algorithm === 'fruchtermann') {
+      } else if (self.algorithm === 'fruchtermann') {
         // Start the Fruchterman-Reingold algorithm:
         sigma.layouts.fruchtermanReingold.start(s);
       }
 
-      if (algorithm !== 'force') {
+      if (self.algorithm !== 'force') {
         self.reInitDragListener();
       }
 

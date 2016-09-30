@@ -296,21 +296,12 @@
         var nodes = !$('#g_nodeColor').is(':disabled');
         var edges = !$('#g_edgeColor').is(':disabled');
 
-        if (!self.noDefinedGraph) {
-          window.App.graphViewer.updateColors(
-            nodes,
-            edges,
-            $('#g_nodeColor').val(),
-            $('#g_edgeColor').val()
-          );
-        } else {
-          window.App.queryView.graphViewer.updateColors(
-            nodes,
-            edges,
-            $('#g_nodeColor').val(),
-            $('#g_edgeColor').val()
-          );
-        }
+        window.App.graphViewer.updateColors(
+          nodes,
+          edges,
+          $('#g_nodeColor').val(),
+          $('#g_edgeColor').val()
+        );
       };
 
       if (!this.noDefinedGraph) {
