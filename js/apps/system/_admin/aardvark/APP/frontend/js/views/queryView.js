@@ -1625,6 +1625,11 @@
             self.renderOutputGraph(result, counter);
 
             $('#outputEditor' + counter).hide();
+
+            $('#outputEditorWrapper' + counter + ' #copy2gV').show();
+            $('#outputEditorWrapper' + counter + ' #copy2gV').bind('click', function () {
+              self.showResultInGraphViewer(result, counter);
+            });
           }
 
           // add active class to choosen display method
@@ -2164,7 +2169,29 @@
         id: '#outputGraph' + counter,
         data: data
       });
-      this.graphViewer.renderAQL();
+      this.graphViewer.renderAQLPreview();
+    },
+
+    showResultInGraphViewer: function (data, counter) {
+      window.location.hash = '#aql_graph';
+
+      // TODO better manage mechanism for both gv's
+      if (window.App.graphViewer) {
+        if (window.App.graphViewer.graphSettingsView) {
+          window.App.graphViewer.graphSettingsView.remove();
+        }
+        window.App.graphViewer.remove();
+      }
+
+      window.App.graphViewer = new window.GraphViewer({
+        name: undefined,
+        documentStore: window.App.arangoDocumentStore,
+        collection: new window.GraphCollection(),
+        userConfig: window.App.userConfig,
+        noDefinedGraph: true,
+        data: data
+      });
+      window.App.graphViewer.renderAQL();
     },
 
     getAQL: function (originCallback) {
