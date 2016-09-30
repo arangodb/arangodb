@@ -666,9 +666,12 @@ LogicalCollection* CreateCollectionCoordinator(LogicalCollection* parameters) {
         }
       } catch (...) {
       }
+      parameters->distributeShardsLike(otherCidString);
     }
   }
 
+  
+  
   // If the list dbServers is still empty, it will be filled in
   // distributeShards below.
 
