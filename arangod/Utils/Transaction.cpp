@@ -3300,14 +3300,7 @@ Transaction* Transaction::clone() const {
 std::shared_ptr<Index> Transaction::indexForCollectionCoordinator(
     std::string const& name, std::string const& id) const {
   auto clusterInfo = arangodb::ClusterInfo::instance();
-  auto collectionInfo =
-      clusterInfo->getCollection(_vocbase->name(), name);
-
-  if (collectionInfo.get() == nullptr) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL,
-                                  "collection not found '%s' in database '%s'",
-                                  name.c_str(), _vocbase->name().c_str());
-  }
+  auto collectionInfo = clusterInfo->getCollection(_vocbase->name(), name);
 
   auto idxs = collectionInfo->getIndexes();
   TRI_idx_iid_t iid = basics::StringUtils::uint64(id);
@@ -3326,14 +3319,7 @@ std::shared_ptr<Index> Transaction::indexForCollectionCoordinator(
 std::vector<std::shared_ptr<Index>>
 Transaction::indexesForCollectionCoordinator(std::string const& name) const {
   auto clusterInfo = arangodb::ClusterInfo::instance();
-  auto collectionInfo =
-      clusterInfo->getCollection(_vocbase->name(), name);
-
-  if (collectionInfo.get() == nullptr) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL,
-                                  "collection not found '%s' in database '%s'",
-                                  name.c_str(), _vocbase->name().c_str());
-  }
+  auto collectionInfo = clusterInfo->getCollection(_vocbase->name(), name);
   return collectionInfo->getIndexes();
 }
 

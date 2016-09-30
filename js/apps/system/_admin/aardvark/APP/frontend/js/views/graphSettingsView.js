@@ -50,7 +50,7 @@
           val: 'canvas'
         },
         webgl: {
-          name: 'WebGL',
+          name: 'WebGL (experimental)',
           val: 'webgl'
         }
       },
@@ -231,6 +231,10 @@
       this.name = options.name;
       this.userConfig = options.userConfig;
       this.saveCallback = options.saveCallback;
+
+      if (options.noDefinedGraph) {
+        this.noDefinedGraph = options.noDefinedGraph;
+      }
     },
 
     events: {
@@ -287,58 +291,71 @@
 
     saveGraphSettings: function (event, color, nodeStart, overwrite, silent, userCallback) {
       var self = this;
-      self.lastSaved = new Date();
-      var combinedName = frontendConfig.db + '_' + this.name;
 
-      var config = {};
+      var updateCols = function () {
+        var nodes = !$('#g_nodeColor').is(':disabled');
+        var edges = !$('#g_edgeColor').is(':disabled');
 
-      if (overwrite) {
-        config[combinedName] = overwrite;
-      } else {
-        var object = {};
+        window.App.graphViewer.updateColors(
+          nodes,
+          edges,
+          $('#g_nodeColor').val(),
+          $('#g_edgeColor').val()
+        );
+      };
 
-        var id;
-        $('#graphSettingsView select').each(function (key, elem) {
-          id = elem.id;
-          object[id.substr(2, elem.id.length)] = $(elem).val();
-        });
-        $('#graphSettingsView input').each(function (key, elem) {
-          id = elem.id;
-          object[id.substr(2, elem.id.length)] = $(elem).val();
-        });
+      if (!this.noDefinedGraph) {
+        self.lastSaved = new Date();
+        var combinedName = frontendConfig.db + '_' + this.name;
 
-        config[combinedName] = object;
-      }
+        var config = {};
 
-      if (nodeStart) {
-        config[combinedName].nodeStart = nodeStart;
-      }
-
-      var callback = function () {
-        if (window.App.graphViewer) {
-          if (color !== '' && color !== undefined) {
-            var nodes = !$('#g_nodeColor').is(':disabled');
-            var edges = !$('#g_edgeColor').is(':disabled');
-            window.App.graphViewer.updateColors(
-              nodes,
-              edges,
-              $('#g_nodeColor').val(),
-              $('#g_edgeColor').val()
-            );
-          } else {
-            window.App.graphViewer.render(self.lastFocussed);
-          }
+        if (overwrite) {
+          config[combinedName] = overwrite;
         } else {
-          if (!silent) {
-            arangoHelper.arangoNotification('Graph ' + this.name, 'Configuration saved.');
-          }
-        }
-        if (userCallback) {
-          userCallback();
-        }
-      }.bind(this);
+          var object = {};
 
-      this.userConfig.setItem('graphs', config, callback);
+          var id;
+          $('#graphSettingsView select').each(function (key, elem) {
+            id = elem.id;
+            object[id.substr(2, elem.id.length)] = $(elem).val();
+          });
+          $('#graphSettingsView input').each(function (key, elem) {
+            id = elem.id;
+            object[id.substr(2, elem.id.length)] = $(elem).val();
+          });
+
+          config[combinedName] = object;
+        }
+
+        if (nodeStart) {
+          config[combinedName].nodeStart = nodeStart;
+        }
+
+        var callback = function () {
+          if (window.App.graphViewer) {
+            if (color !== '' && color !== undefined) {
+              updateCols();
+            } else {
+              window.App.graphViewer.render(self.lastFocussed);
+            }
+          } else {
+            if (!silent) {
+              arangoHelper.arangoNotification('Graph ' + this.name, 'Configuration saved.');
+            }
+          }
+          if (userCallback) {
+            userCallback();
+          }
+        }.bind(this);
+
+        this.userConfig.setItem('graphs', config, callback);
+      } else {
+        // aql mode - only visual
+        if (color) {
+          updateCols();
+        }
+      }
     },
 
     setDefaults: function (saveOnly, silent, callback) {
@@ -395,8 +412,14 @@
     },
 
     render: function () {
-      this.getGraphSettings(true);
-      this.lastSaved = new Date();
+      if (this.noDefinedGraph) {
+        // aql render mode
+        this.continueRender();
+      } else {
+        // standard gv mode
+        this.getGraphSettings(true);
+        this.lastSaved = new Date();
+      }
     },
 
     handleDependencies: function () {
@@ -437,10 +460,25 @@
           $('#g_' + key).val(val);
         });
       } else {
-        this.setDefaults(true);
+        if (!this.noDefinedGraph) {
+          this.setDefaults(true);
+        } else {
+          this.fitSettingsAQLMode();
+        }
       }
 
       this.handleDependencies();
+    },
+
+    fitSettingsAQLMode: function () {
+      var toDisable = [
+        'g_nodeStart', 'g_depth', 'g_limit'
+      ];
+
+      _.each(toDisable, function (elem) {
+        $('#' + elem).parent().prev().remove();
+        $('#' + elem).parent().remove();
+      });
     }
 
   });

@@ -86,21 +86,28 @@ size_t Collection::count() const {
 /// @brief returns the collection's plan id
 TRI_voc_cid_t Collection::getPlanId() const {
   auto clusterInfo = arangodb::ClusterInfo::instance();
-  auto collectionInfo =
-      clusterInfo->getCollection(vocbase->name(), name);
-
-  if (collectionInfo.get() == nullptr) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL,
-                                  "collection not found '%s' -> '%s'",
-                                  vocbase->name().c_str(), name.c_str());
-  }
-
+  auto collectionInfo = clusterInfo->getCollection(vocbase->name(), name);
   return collectionInfo.get()->cid();
 }
 
 /// @brief returns the shard ids of a collection
 std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
   auto clusterInfo = arangodb::ClusterInfo::instance();
+  auto collectionInfo = clusterInfo->getCollection(vocbase->name(), name);
+  if (collectionInfo->isSmart() &&
+      collectionInfo->type() == TRI_COL_TYPE_EDGE) {
+    auto names = collectionInfo->realNamesForRead();
+    auto res = std::make_shared<std::vector<std::string>>();
+    for (auto const& n : names) {
+      collectionInfo = clusterInfo->getCollection(vocbase->name(), n);
+      auto list = clusterInfo->getShardList(
+          arangodb::basics::StringUtils::itoa(collectionInfo->cid()));
+      for (auto const& x : *list) {
+        res->push_back(x);
+      }
+    }
+    return res;
+  }
   return clusterInfo->getShardList(
       arangodb::basics::StringUtils::itoa(getPlanId()));
 }
@@ -117,13 +124,7 @@ std::vector<std::string> Collection::shardKeys() const {
     id = name;
   }
 
-  auto collectionInfo =
-      clusterInfo->getCollection(vocbase->name(), id);
-  if (collectionInfo.get() == nullptr) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL,
-                                  "collection not found '%s' -> '%s'",
-                                  vocbase->name().c_str(), name.c_str());
-  }
+  auto collectionInfo = clusterInfo->getCollection(vocbase->name(), id);
 
   std::vector<std::string> keys;
   for (auto const& x : collectionInfo.get()->shardKeys()) {

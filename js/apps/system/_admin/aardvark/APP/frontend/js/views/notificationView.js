@@ -55,7 +55,7 @@
         if (event.add) {
           var latestModel = this.collection.at(this.collection.length - 1);
           var message = latestModel.get('title');
-          var time = 3000;
+          var time = 5000;
           var closeWidth = ['click'];
           var buttons;
 

@@ -25,10 +25,12 @@ window.ArangoDocument = Backbone.Collection.extend({
       }
     });
   },
+
   addDocument: function (collectionID, key) {
     var self = this;
     self.createTypeDocument(collectionID, key);
   },
+
   createTypeEdge: function (collectionID, from, to, key, callback) {
     var newEdge;
 
@@ -60,6 +62,7 @@ window.ArangoDocument = Backbone.Collection.extend({
       }
     });
   },
+
   createTypeDocument: function (collectionID, key, callback, returnNew) {
     var newDocument;
 
@@ -96,6 +99,7 @@ window.ArangoDocument = Backbone.Collection.extend({
       }
     });
   },
+
   getCollectionInfo: function (identifier, callback, toRun) {
     var self = this;
 
@@ -114,9 +118,11 @@ window.ArangoDocument = Backbone.Collection.extend({
       }
     });
   },
+
   getEdge: function (colid, docid, callback) {
     this.getDocument(colid, docid, callback);
   },
+
   getDocument: function (colid, docid, callback) {
     var self = this;
     this.clearDocument();
@@ -132,6 +138,7 @@ window.ArangoDocument = Backbone.Collection.extend({
       },
       error: function (data) {
         arangoHelper.arangoError('Error', data.responseJSON.errorMessage + ' - error number: ' + data.responseJSON.errorNum);
+        callback(true, data, colid + '/' + docid);
         self.add(true, data);
       }
     });

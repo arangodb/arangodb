@@ -332,6 +332,8 @@ LogicalCollection::LogicalCollection(
       _lastCompactionStamp(0.0),
       _uncollectedLogfileEntries(0) {
   _keyGenerator.reset(KeyGenerator::factory(other.keyOptions()));
+
+  
   
   createPhysical();
 
@@ -693,6 +695,10 @@ std::string LogicalCollection::name() const {
 
 std::string const& LogicalCollection::distributeShardsLike() const {
   return _distributeShardsLike;
+}
+
+void LogicalCollection::distributeShardsLike(std::string const& cid) {
+  _distributeShardsLike = cid;
 }
 
 std::string LogicalCollection::dbName() const {
@@ -1613,12 +1619,7 @@ void LogicalCollection::createInitialIndexes() {
 
   // create edges index
   if (_type == TRI_COL_TYPE_EDGE) {
-    TRI_idx_iid_t iid = _cid;
-    if (!_isLocal) {
-      iid = _planId;
-    }
-
-    auto edgeIndex = std::make_shared<arangodb::EdgeIndex>(iid, this);
+    auto edgeIndex = std::make_shared<arangodb::EdgeIndex>(1, this);
 
     addIndex(edgeIndex);
   }

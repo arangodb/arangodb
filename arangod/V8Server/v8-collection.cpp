@@ -1183,7 +1183,7 @@ static void JS_PropertiesVocbaseCol(
     result->Set(TRI_V8_ASCII_STRING("indexBuckets"),
                 v8::Number::New(isolate, info->indexBuckets()));
 
-    std::shared_ptr<LogicalCollection> c = ClusterInfo::instance()->getCollection(
+    auto c = ClusterInfo::instance()->getCollection(
         databaseName, StringUtils::itoa(collection->cid()));
     v8::Handle<v8::Array> shardKeys = v8::Array::New(isolate);
     std::vector<std::string> const sks = c->shardKeys();

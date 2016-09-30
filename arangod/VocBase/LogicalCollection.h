@@ -139,6 +139,20 @@ class LogicalCollection {
   std::string dbName() const;
   std::string const& path() const;
   std::string const& distributeShardsLike() const;
+  void distributeShardsLike(std::string const&);
+
+  // For normal collections the realNames is just a vector of length 1
+  // with its name. For smart edge collections (enterprise only) this is
+  // different.
+  virtual std::vector<std::string> realNames() const {
+    std::vector<std::string> res {name()};
+    return res;
+  }
+  // Same here, this is for reading in AQL:
+  virtual std::vector<std::string> realNamesForRead() const {
+    std::vector<std::string> res {name()};
+    return res;
+  }
 
   TRI_vocbase_col_status_e status() const;
   TRI_vocbase_col_status_e getStatusLocked();

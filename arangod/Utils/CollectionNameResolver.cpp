@@ -274,8 +274,13 @@ std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
       } else {
         // DBserver case of a shard:
         name = arangodb::basics::StringUtils::itoa((*it).second->planId());
-        auto ci = ClusterInfo::instance()->getCollection(
-            (*it).second->dbName(), name);
+        std::shared_ptr<LogicalCollection> ci;
+        try {
+          ci = ClusterInfo::instance()->getCollection(
+              (*it).second->dbName(), name);
+        }
+        catch (...) {
+        }
         if (ci == nullptr) {
           name = ""; // collection unknown
         } else {

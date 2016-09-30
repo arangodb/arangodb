@@ -51,7 +51,8 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   double _gcFrequency;
   uint64_t _gcInterval;
   std::string _appPath;
-  std::string _startupPath;
+  std::string _startupDirectory;
+  std::vector<std::string> _moduleDirectory;
   uint64_t _nrContexts;
 
  public:

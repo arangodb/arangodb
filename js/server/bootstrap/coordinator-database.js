@@ -48,14 +48,16 @@
   var res = internal.loadStartup('server/bootstrap/local-database.js');
 
   // Wait for synchronous replication to settle:
-  var db = require('internal').db;
-  var dbName = db._name();
-  if (dbName !== '_system') {
-    // for _system we run this already at bootstrap
-    var colls = db._collections();
-    colls = colls.filter(c => c.name()[0] === '_');
-    require('@arangodb/cluster').waitForSyncRepl(dbName, colls);
-  }
+  // We do not do this for performance reasons and because it should not
+  // be necessary. We leave the code here in case we need it again.
+  //var db = require('internal').db;
+  //var dbName = db._name();
+  //if (dbName !== '_system') {
+  //  // for _system we run this already at bootstrap
+  //  var colls = db._collections();
+  //  colls = colls.filter(c => c.name()[0] === '_');
+  //  require('@arangodb/cluster').waitForSyncRepl(dbName, colls);
+  //}
 
   return res;
 }());

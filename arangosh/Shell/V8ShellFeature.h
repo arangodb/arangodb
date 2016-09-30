@@ -49,6 +49,7 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
 
  private:
   std::string _startupDirectory;
+  std::vector<std::string> _moduleDirectory;
   bool _currentModuleDirectory;
   uint64_t _gcInterval;
 

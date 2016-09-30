@@ -17,28 +17,28 @@ v3.1.alpha2 (2016-09-01)
 
   make the AQL query optimizer inject filter condition expressions referred to by variables during filter condition aggregation.
   for example, in the following query
-  
+
       FOR doc IN collection
 	LET cond1 = (doc.value == 1)
 	LET cond2 = (doc.value == 2)
 	FILTER cond1 || cond2
 	RETURN { doc, cond1, cond2 }
-  
-  the optimizer will now inject the conditions for `cond1` and `cond2` into the filter condition `cond1 || cond2`, expanding it to 
+
+  the optimizer will now inject the conditions for `cond1` and `cond2` into the filter condition `cond1 || cond2`, expanding it to
   `(doc.value == 1) || (doc.value == 2)` and making these conditions available for index searching.
 
-  note that the optimizer previously already injected some conditions into other conditions, but only if the variable that defined 
+  note that the optimizer previously already injected some conditions into other conditions, but only if the variable that defined
   the condition was not used elsewhere. for example, the filter condition in the query
-  
+
       FOR doc IN collection
 	LET cond = (doc.value == 1)
 	FILTER cond
 	RETURN { doc }
-  
-  already got optimized before because `cond` was only used once in the query and the optimizer decided to inject it into the 
+
+  already got optimized before because `cond` was only used once in the query and the optimizer decided to inject it into the
   place where it was used.
-  
-  this only worked for variables that were referred to once in the query. when a variable was used multiple times, the condition 
+
+  this only worked for variables that were referred to once in the query. when a variable was used multiple times, the condition
   was not injected as in the following query
 
       FOR doc IN collection
@@ -144,6 +144,12 @@ v3.1.alpha2 (2016-09-01)
 * all lambdas in ClusterInfo might have been left with dangling references.
 
 * Agency bug fix for handling of empty json objects as values.
+
+	
+v3.0.11 (2016-XX-XX)
+--------------------
+
+* fixed issue #2038
 
 
 v3.0.10 (XXXX-XX-XX)
@@ -272,7 +278,7 @@ v3.0.3 (2016-07-17)
 
 * fixed issue #1941
 
-* fixed array index batch insertion issues for hash indexes that caused problems when 
+* fixed array index batch insertion issues for hash indexes that caused problems when
   no elements remained for insertion
 
 * fixed AQL MERGE() function with External objects originating from traversals
@@ -292,7 +298,7 @@ v3.0.2 (2016-07-09)
 
 * fixed assertion failure in case multiple remove operations were used in the same query
 
-* fixed upsert behavior in case upsert was used in a loop with the same document example 
+* fixed upsert behavior in case upsert was used in a loop with the same document example
 
 * fixed issue #1930
 
@@ -309,10 +315,10 @@ v3.0.2 (2016-07-09)
 
 * honor presence of persistent index for sorting
 
-* make AQL query optimizer not skip "use-indexes-rule", even if enough 
+* make AQL query optimizer not skip "use-indexes-rule", even if enough
   plans have been created already
 
-* make AQL optimizer not skip "use-indexes-rule", even if enough execution plans 
+* make AQL optimizer not skip "use-indexes-rule", even if enough execution plans
   have been created already
 
 * fix double precision value loss in VelocyPack JSON parser
@@ -349,10 +355,10 @@ v3.0.1 (XXXX-XX-XX)
 
 * fixed issue #1914: fix unterminated buffer
 
-* don't remove lockfile if we are the same (now stale) pid    
+* don't remove lockfile if we are the same (now stale) pid
   fixes docker setups (our pid will always be 1)
 
-* do not use revision id comparisons in compaction for determining whether a 
+* do not use revision id comparisons in compaction for determining whether a
   revision is obsolete, but marker memory addresses
   this ensures revision ids don't matter when compacting documents
 
@@ -417,10 +423,10 @@ v3.0.0-rc2 (2015-06-12)
 v3.0.0-rc1 (2015-06-10)
 -----------------------
 
-* forward ported V8 Comparator bugfix for inline heuristics from 
+* forward ported V8 Comparator bugfix for inline heuristics from
   https://github.com/v8/v8/commit/5ff7901e24c2c6029114567de5a08ed0f1494c81
 
-* changed to-string conversion for AQL objects and arrays, used by the AQL 
+* changed to-string conversion for AQL objects and arrays, used by the AQL
   function `TO_STRING()` and implicit to-string casts in AQL
 
   - arrays are now converted into their JSON-stringify equivalents, e.g.
@@ -428,7 +434,7 @@ v3.0.0-rc1 (2015-06-10)
     - `[ ]` is now converted to `[]`
     - `[ 1, 2, 3 ]` is now converted to `[1,2,3]`
     - `[ "test", 1, 2 ] is now converted to `["test",1,2]`
-    
+
     Previous versions of ArangoDB converted arrays with no members into the
     empty string, and non-empty arrays into a comma-separated list of member
     values, without the surrounding angular brackets. Additionally, string
@@ -437,19 +443,19 @@ v3.0.0-rc1 (2015-06-10)
     - `[ ]` was converted to ``
     - `[ 1, 2, 3 ]` was converted to `1,2,3`
     - `[ "test", 1, 2 ] was converted to `test,1,2`
-  
+
   - objects are now converted to their JSON-stringify equivalents, e.g.
 
     - `{ }` is converted to `{}`
     - `{ a: 1, b: 2 }` is converted to `{"a":1,"b":2}`
     - `{ "test" : "foobar" }` is converted to `{"test":"foobar"}`
-    
+
     Previous versions of ArangoDB always converted objects into the string
-    `[object Object]`  
+    `[object Object]`
 
   This change affects also the AQL functions `CONCAT()` and `CONCAT_SEPARATOR()`
   which treated array values differently in previous versions. Previous versions
-  of ArangoDB automatically flattened array values on the first level of the array, 
+  of ArangoDB automatically flattened array values on the first level of the array,
   e.g. `CONCAT([1, 2, 3, [ 4, 5, 6 ]])` produced `1,2,3,4,5,6`. Now this will produce
   `[1,2,3,[4,5,6]]`. To flatten array members on the top level, you can now use
   the more explicit `CONCAT(FLATTEN([1, 2, 3, [4, 5, 6]], 1))`.
@@ -470,7 +476,7 @@ v3.0.0-rc1 (2015-06-10)
   Additionally the `db` object's `_listEndpoints()` function was renamed to just
   `_endpoints()`.
 
-* changed default value of `--server.authentication` from `false` to `true` in 
+* changed default value of `--server.authentication` from `false` to `true` in
   configuration files etc/relative/arangod.conf and etc/arangodb/arangod.conf.in.
   This means the server will be started with authentication enabled by default,
   requiring all client connections to provide authentication data when connecting
@@ -480,7 +486,7 @@ v3.0.0-rc1 (2015-06-10)
 
 * Changed result format for querying all collections via the API GET `/_api/collection`.
 
-  Previous versions of ArangoDB returned an object with an attribute named `collections` 
+  Previous versions of ArangoDB returned an object with an attribute named `collections`
   and an attribute named `names`. Both contained all available collections, but
   `collections` contained the collections as an array, and `names` contained the
   collections again, contained in an object in which the attribute names were the
@@ -548,28 +554,28 @@ v3.0.0-rc1 (2015-06-10)
   loop one level higher, eliminating the subquery completely. For example, the query
 
       FOR i IN (FOR j IN [1,2,3] RETURN j) RETURN i
-      
+
   will be transformed by the rule to:
-   
+
       FOR i IN [1,2,3] RETURN i
-      
+
   The query
 
       FOR name IN (FOR doc IN _users FILTER doc.status == 1 RETURN doc.name) LIMIT 2 RETURN name
-      
+
   will be transformed into
-  
+
       FOR tmp IN _users FILTER tmp.status == 1 LIMIT 2 RETURN tmp.name
-       
+
   The rule will only fire when the subquery is used as an operand to a `FOR` loop, and
   if the subquery does not contain a `COLLECT` with an `INTO` variable.
 
 * added new endpoint "srv://" for DNS service records
 
-* The result order of the AQL functions VALUES and ATTRIBUTES has never been 
-  guaranteed and it only had the "correct" ordering by accident when iterating 
-  over objects that were not loaded from the database. This accidental behavior 
-  is now changed by introduction of VelocyPack. No ordering is guaranteed unless 
+* The result order of the AQL functions VALUES and ATTRIBUTES has never been
+  guaranteed and it only had the "correct" ordering by accident when iterating
+  over objects that were not loaded from the database. This accidental behavior
+  is now changed by introduction of VelocyPack. No ordering is guaranteed unless
   you specify the sort parameter.
 
 * removed configure option `--enable-logger`
@@ -749,16 +755,16 @@ v2.8.9 (2016-05-13)
 v2.8.8 (2016-04-19)
 -------------------
 
-* fixed issue #1805: Query: internal error (location: arangod/Aql/AqlValue.cpp:182). 
+* fixed issue #1805: Query: internal error (location: arangod/Aql/AqlValue.cpp:182).
   Please report this error to arangodb.com (while executing)
 
 * allow specifying collection name prefixes for `_from` and `_to` in arangoimp:
 
   To avoid specifying complete document ids (consisting of collection names and document
   keys) for *_from* and *_to* values when importing edges with arangoimp, there are now
-  the options *--from-collection-prefix* and *--to-collection-prefix*. 
-  
-  If specified, these values will be automatically prepended to each value in *_from* 
+  the options *--from-collection-prefix* and *--to-collection-prefix*.
+
+  If specified, these values will be automatically prepended to each value in *_from*
   (or *_to* resp.). This allows specifying only document keys inside *_from* and/or *_to*.
 
   *Example*
@@ -811,7 +817,7 @@ v2.8.6 (2016-03-23)
   `#!arangosh --javascript.execute`:
 
       > cat /path/to/script.js
-      #!arangosh --javascript.execute 
+      #!arangosh --javascript.execute
       print("hello from script.js");
 
   If the script file is made executable
@@ -819,15 +825,15 @@ v2.8.6 (2016-03-23)
       > chmod a+x /path/to/script.js
 
   it can be invoked on the shell directly and use arangosh for its execution:
-      
+
       > /path/to/script.js
       hello from script.js
-  
+
   This did not work in previous versions of ArangoDB, as the whole script contents
-  (including the shebang) were treated as JavaScript code. 
-  Now shebangs in script files will now be ignored for all files passed to arangosh's 
+  (including the shebang) were treated as JavaScript code.
+  Now shebangs in script files will now be ignored for all files passed to arangosh's
   `--javascript.execute` parameter.
-  
+
   The alternative way of executing a JavaScript file with arangosh still works:
 
       > arangosh --javascript.execute /path/to/script.js

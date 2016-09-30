@@ -23,11 +23,11 @@
 #include "V8ShellFeature.h"
 
 #include "ApplicationFeatures/V8PlatformFeature.h"
+#include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/shell-colors.h"
-#include "Basics/ArangoGlobalContext.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -73,6 +73,11 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                            "startup paths containing the Javascript files",
                            new StringParameter(&_startupDirectory));
 
+  options->addHiddenOption(
+      "--javascript.module-directory",
+      "additional paths containing JavaScript modules",
+      new VectorParameter<StringParameter>(&_moduleDirectory));
+
   options->addOption("--javascript.current-module-directory",
                      "add current directory to module path",
                      new BooleanParameter(&_currentModuleDirectory));
@@ -86,12 +91,19 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 void V8ShellFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   if (_startupDirectory.empty()) {
-    LOG(FATAL) << "'--javascript.startup-directory' is empty, giving up";
+    LOG(FATAL)
+        << "no 'javascript.startup-directory' has been supplied, giving up";
     FATAL_ERROR_EXIT();
   }
 
   LOG_TOPIC(DEBUG, Logger::V8) << "using Javascript startup files at '"
                                << _startupDirectory << "'";
+
+  if (!_moduleDirectory.empty()) {
+    LOG_TOPIC(DEBUG, Logger::V8) << "using Javascript modules at '"
+                                 << StringUtils::join(_moduleDirectory, ";")
+                                 << "'";
+  }
 }
 
 void V8ShellFeature::start() {
@@ -209,8 +221,7 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
 
     if (v8connection != nullptr) {
       if (v8connection->isConnected() &&
-          v8connection->lastHttpReturnCode() ==
-              (int)rest::ResponseCode::OK) {
+          v8connection->lastHttpReturnCode() == (int)rest::ResponseCode::OK) {
         std::ostringstream is;
 
         is << "Connected to ArangoDB '" << v8connection->endpointSpecification()
@@ -835,7 +846,8 @@ void V8ShellFeature::initGlobals() {
       v8::FunctionTemplate::New(_isolate, JS_CompareString)->GetFunction());
 
   TRI_AddGlobalVariableVocbase(
-      _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "ARANGODB_CLIENT_VERSION"),
+      _isolate, context,
+      TRI_V8_ASCII_STRING2(_isolate, "ARANGODB_CLIENT_VERSION"),
       v8::FunctionTemplate::New(_isolate, JS_VersionClient)->GetFunction());
 
   // is quite
@@ -844,23 +856,39 @@ void V8ShellFeature::initGlobals() {
                                v8::Boolean::New(_isolate, _console->quiet()));
 
   auto ctx = ArangoGlobalContext::CONTEXT;
-    
+
   if (ctx == nullptr) {
     LOG(ERR) << "failed to get global context.  ";
     FATAL_ERROR_EXIT();
   }
 
-  ctx->getCheckPath(_startupDirectory, "javascript.startup-directory", true);
+  ctx->normalizePath(_startupDirectory, "javascript.startup-directory", true);
+  ctx->normalizePath(_moduleDirectory, "javascript.module-directory", false);
 
   // initialize standard modules
-  std::string modules =
-      FileUtils::buildFilename(_startupDirectory, "client/modules") + ";" +
-      FileUtils::buildFilename(_startupDirectory, "common/modules") + ";" +
-      FileUtils::buildFilename(_startupDirectory, "node");
+  std::vector<std::string> directories;
+  directories.insert(directories.end(), _moduleDirectory.begin(),
+                     _moduleDirectory.end());
+  directories.emplace_back(_startupDirectory);
+
+  std::string modules = "";
+  std::string sep = "";
+
+  for (auto directory : directories) {
+    modules += sep;
+    sep = ";";
+
+    modules += FileUtils::buildFilename(directory, "client/modules") + sep +
+               FileUtils::buildFilename(directory, "common/modules") + sep +
+               FileUtils::buildFilename(directory, "node");
+  }
 
   if (_currentModuleDirectory) {
-    modules += ";" + FileUtils::currentDirectory();
+    modules += sep + FileUtils::currentDirectory();
   }
+
+  // we take the last entry in _startupDirectory as global path;
+  // all the other entries are only used for the modules
 
   TRI_InitV8Buffer(_isolate, context);
   TRI_InitV8Utils(_isolate, context, _startupDirectory, modules);

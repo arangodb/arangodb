@@ -18,11 +18,18 @@
     initialize: function (options) {
       var self = this;
 
+      // aql preview only mode
       if (options.id) {
         // dynamically set id if available
         this.setElement(options.id);
         this.graphData = options.data;
         this.aqlMode = true;
+      }
+
+      // aql to graph viewer mode
+      if (options.noDefinedGraph) {
+        this.noDefinedGraph = options.noDefinedGraph;
+        this.graphData = options.data;
       }
 
       this.name = options.name;
@@ -54,7 +61,6 @@
       'click #downloadPNG': 'downloadPNG',
       'click #reloadGraph': 'reloadGraph',
       'click #settingsMenu': 'toggleSettings',
-      'click #noGraphToggle': 'toggleSettings',
       'click #toggleForce': 'toggleLayout',
       'click #selectNodes': 'toggleLasso'
     },
@@ -191,7 +197,7 @@
       }
     },
 
-    renderAQL: function (data) {
+    renderAQLPreview: function (data) {
       this.$el.html(this.template.render({}));
 
       // remove not needed elements
@@ -204,6 +210,32 @@
       // render
       this.graphData.modified = this.parseData(this.graphData.original, this.graphData.graphInfo);
       this.renderGraph(this.graphData.modified, null, true);
+    },
+
+    renderAQL: function (data) {
+      this.$el.html(this.template.render({}));
+
+      // render navigation
+      $('#subNavigationBar .breadcrumb').html(
+        'AQL Graph'
+      );
+      $('#subNavigationBar .bottom').html('');
+      $('.queries-menu').removeClass('active');
+
+      this.resize();
+      this.graphData.modified = this.parseData(this.graphData.original, this.graphData.graphInfo);
+      this.renderGraph(this.graphData.modified, null, false);
+
+      this.initFullscreen();
+
+      // init & render graph settings view
+      this.graphSettingsView = new window.GraphSettingsView({
+        name: this.name,
+        userConfig: undefined,
+        saveCallback: undefined,
+        noDefinedGraph: true
+      });
+      this.graphSettingsView.render();
     },
 
     parseData: function (data, type) {
@@ -296,8 +328,8 @@
 
       var continueFetchGraph = function () {
         var ajaxData = {};
-        if (this.graphConfig) {
-          ajaxData = _.clone(this.graphConfig);
+        if (self.graphConfig) {
+          ajaxData = _.clone(self.graphConfig);
 
           // remove not needed params - client only
           delete ajaxData.layout;
@@ -315,12 +347,12 @@
           }
         }
 
-        this.setupSigma();
+        self.setupSigma();
 
         self.fetchStarted = new Date();
         $.ajax({
           type: 'GET',
-          url: arangoHelper.databaseUrl('/_admin/aardvark/graph/' + encodeURIComponent(this.name)),
+          url: arangoHelper.databaseUrl('/_admin/aardvark/graph/' + encodeURIComponent(self.name)),
           contentType: 'application/json',
           data: ajaxData,
           success: function (data) {
@@ -369,34 +401,40 @@
             } catch (ignore) {}
           }
         });
-      }.bind(this);
+      };
 
-      if (this.graphConfig === undefined || this.graphConfig === null) {
-        var setDefaultsCB = function () {
-          self.userConfig.fetch({
-            success: function (data) {
-              var combinedName = frontendConfig.db + '_' + self.name;
-              try {
-                self.graphConfig = data.toJSON().graphs[combinedName];
-                self.getGraphSettings(continueFetchGraph);
-              } catch (ignore) {
-                // continue without config
-                self.getGraphSettings(continueFetchGraph);
+      if (self.graphConfig === undefined || self.graphConfig === null) {
+        self.userConfig.fetch({
+          success: function (data) {
+            var combinedName = frontendConfig.db + '_' + self.name;
+            try {
+              self.graphConfig = data.toJSON().graphs[combinedName];
+              self.getGraphSettings(continueFetchGraph);
+
+              if (self.graphConfig === undefined || self.graphConfig === null) {
+                self.graphSettingsView = new window.GraphSettingsView({
+                  name: self.name,
+                  userConfig: self.userConfig,
+                  saveCallback: self.render
+                });
+                self.graphSettingsView.setDefaults(true, true);
+              } else {
+                // init settings view
+                if (self.graphSettingsView) {
+                  self.graphSettingsView.remove();
+                }
+                self.graphSettingsView = new window.GraphSettingsView({
+                  name: self.name,
+                  userConfig: self.userConfig,
+                  saveCallback: self.render
+                });
               }
+            } catch (ignore) {
+              // continue without config
+              self.getGraphSettings(continueFetchGraph);
             }
-          });
-        };
-
-        // init settings view
-        if (self.graphSettingsView) {
-          self.graphSettingsView.remove();
-        }
-        self.graphSettingsView = new window.GraphSettingsView({
-          name: self.name,
-          userConfig: self.userConfig,
-          saveCallback: self.render
+          }
         });
-        self.graphSettingsView.setDefaults(true, true, setDefaultsCB);
       } else {
         this.getGraphSettings(continueFetchGraph);
       }
@@ -473,14 +511,16 @@
       collectionId = documentKey.split('/')[0];
       documentId = documentKey.split('/')[1];
 
+      var url = arangoHelper.databaseUrl(
+        '/_api/gharial/' + encodeURIComponent(self.name) + '/vertex/' + encodeURIComponent(documentKey.split('/')[0]) + '/' + encodeURIComponent(documentKey.split('/')[1])
+      );
+
       if ($('#delete-node-edges-attr').val() === 'yes') {
         $.ajax({
           cache: false,
           type: 'DELETE',
           contentType: 'application/json',
-          url: arangoHelper.databaseUrl(
-            '/_api/gharial/' + encodeURIComponent(self.name) + '/vertex/' + encodeURIComponent(documentKey.split('/')[0]) + '/' + encodeURIComponent(documentKey.split('/')[1])
-          ),
+          url: url,
           success: function (data) {
             self.currentGraph.graph.dropNode(documentKey);
             self.currentGraph.refresh();
@@ -555,24 +595,26 @@
         window.modalView.createReadOnlyEntry('delete-node-attr-id', 'Really delete node', nodeId)
       );
 
-      tableContent.push(
-        window.modalView.createSelectEntry(
-          'delete-node-edges-attr',
-          'Also delete edges?',
-          undefined,
-          undefined,
-          [
-            {
-              value: 'yes',
-              label: 'Yes'
-            },
-            {
-              value: 'no',
-              label: 'No'
-            }
-          ]
-        )
-      );
+      if (!this.noDefinedGraph) {
+        tableContent.push(
+          window.modalView.createSelectEntry(
+            'delete-node-edges-attr',
+            'Also delete edges?',
+            undefined,
+            undefined,
+            [
+              {
+                value: 'yes',
+                label: 'Yes'
+              },
+              {
+                value: 'no',
+                label: 'No'
+              }
+            ]
+          )
+        );
+      }
 
       buttons.push(
         window.modalView.createDeleteButton('Delete', this.deleteNode.bind(this))
@@ -1086,13 +1128,21 @@
         wheel.clickModeRotate = false;
         wheel.sliceHoverAttr = {stroke: '#fff', 'stroke-width': 2};
         wheel.slicePathFunction = slicePath().DonutSlice;
-        wheel.createWheel([
-          'imgsrc:img/gv_edit.png',
-          'imgsrc:img/gv_trash.png',
-          'imgsrc:img/gv_flag.png',
-          'imgsrc:img/gv_link.png',
-          'imgsrc:img/gv_expand.png'
-        ]);
+
+        if (!self.noDefinedGraph) {
+          wheel.createWheel([
+            'imgsrc:img/gv_edit.png',
+            'imgsrc:img/gv_trash.png',
+            'imgsrc:img/gv_flag.png',
+            'imgsrc:img/gv_link.png',
+            'imgsrc:img/gv_expand.png'
+          ]);
+        } else {
+          wheel.createWheel([
+            'imgsrc:img/gv_edit.png',
+            'imgsrc:img/gv_trash.png'
+          ]);
+        }
 
         $('#nodeContextMenu').addClass('animated bounceIn');
 
@@ -1103,64 +1153,65 @@
           wheel.navItems[0].navigateFunction = function (e) {
             self.clearOldContextMenu();
             self.editNode(nodeId);
+            self.removeHelp();
           };
 
           // function 1: delete
           wheel.navItems[1].navigateFunction = function (e) {
             self.clearOldContextMenu();
             self.deleteNodeModal(nodeId);
+            self.removeHelp();
           };
 
-          // function 2: mark as start node
-          wheel.navItems[2].navigateFunction = function (e) {
-            self.clearOldContextMenu();
-            self.setStartNode(nodeId);
-          };
+          if (!self.noDefinedGraph) {
+            // function 2: mark as start node
+            wheel.navItems[2].navigateFunction = function (e) {
+              self.clearOldContextMenu();
+              self.setStartNode(nodeId);
+              self.removeHelp();
+            };
 
-          // function 3: create edge
-          wheel.navItems[3].navigateFunction = function (e) {
-            self.contextState.createEdge = true;
-            self.contextState._from = nodeId;
-            self.contextState.fromX = x;
-            self.contextState.fromY = y;
+            // function 3: create edge
+            wheel.navItems[3].navigateFunction = function (e) {
+              self.contextState.createEdge = true;
+              self.contextState._from = nodeId;
+              self.contextState.fromX = x;
+              self.contextState.fromY = y;
 
-            var c = document.getElementsByClassName('sigma-mouse')[0];
-            self.drawHelp('Now click destination node, or click background to cancel.');
-            c.addEventListener('mousemove', self.drawLine.bind(this), false);
+              var c = document.getElementsByClassName('sigma-mouse')[0];
+              self.drawHelp('Now click destination node, or click background to cancel.');
+              c.addEventListener('mousemove', self.drawLine.bind(this), false);
 
-            self.clearOldContextMenu();
-          };
+              self.clearOldContextMenu();
+              self.removeHelp();
+            };
 
-          // function 4: mark as start node
-          wheel.navItems[4].navigateFunction = function (e) {
-            self.clearOldContextMenu();
-            self.expandNode(nodeId);
-          };
+            // function 4: mark as start node
+            wheel.navItems[4].navigateFunction = function (e) {
+              self.clearOldContextMenu();
+              self.expandNode(nodeId);
+              self.removeHelp();
+            };
+          }
 
           // add menu hover functions
 
           var descriptions = [
             'Edit the node.',
-            'Delete node.',
-            'Set as startnode.',
-            'Draw edge.',
-            'Expand the node.'
+            'Delete node.'
           ];
+
+          if (!self.noDefinedGraph) {
+            descriptions.push('Set as startnode.');
+            descriptions.push('Draw edge.');
+            descriptions.push('Expand the node.');
+          }
 
           // hover functions
           _.each(descriptions, function (val, key) {
             wheel.navItems[key].navTitle.mouseover(function () { self.drawHelp(val); });
             wheel.navItems[key].navTitle.mouseout(function () { self.removeHelp(); });
           });
-
-          /* TODO
-             wheel.navItems[0].navSlice.mouseover(function (a) {
-             $(a.target).css('opacity', '1');
-             });
-             wheel.navItems[0].navSlice.mouseout(function (a) {
-             $(a.target).css('opacity', '0.8');
-             });
-           */
 
           // deselect active default entry
           wheel.navItems[0].selected = false;
@@ -1278,13 +1329,14 @@
       // rerender graph
       if (newNodeCounter > 0 || newEdgeCounter > 0) {
         if (self.algorithm === 'force') {
+          console.log(origin);
           self.startLayout(true, origin);
         } else if (self.algorithm === 'fruchtermann') {
           sigma.layouts.fruchtermanReingold.start(self.currentGraph);
           self.currentGraph.refresh();
           // self.cameraToNode(origin);
         } else if (self.algorithm === 'noverlap') {
-          self.startLayout(true, origin); // tmp bugfix, rerender with noverlap currently not possible
+          self.startLayout(true, origin); // TODO: tmp bugfix, rerender with noverlap currently not possible
           // self.currentGraph.startNoverlap();
         }
       }
@@ -1379,7 +1431,11 @@
     },
 
     editNode: function (id) {
-      var callback = function () {};
+      var callback = function (a, b) {
+        console.log(1);
+        console.log(a);
+        console.log(b);
+      };
       arangoHelper.openDocEditor(id, 'doc', callback);
     },
 
@@ -1476,33 +1532,31 @@
           }
 
           var style = 'position: absolute; left: 25px; bottom: 50px;';
-          if (this.aqlMode) {
-            style = 'position: absolute; left: 30px; margin-top: -37px;';
-          }
-
-          $('#graph-container').append(
-            '<div id="objectCount" style="' + style + ' animated fadeIn">' +
-              '<span style="margin-right: 10px" class="arangoState"><span id="nodesCount">' + graph.nodes.length + '</span> nodes</span>' +
+          if (!this.aqlMode) {
+            $('#graph-container').append(
+              '<div id="objectCount" style="' + style + ' animated fadeIn">' +
+                '<span style="margin-right: 10px" class="arangoState"><span id="nodesCount">' + graph.nodes.length + '</span> nodes</span>' +
                 '<span class="arangoState"><span id="edgesCount">' + graph.edges.length + '</span> edges</span>' +
-                  '</div>'
-          );
+              '</div>'
+            );
+          }
         }
       }
       this.Sigma = sigma;
 
       // defaults
-      var algorithm = 'force';
-      var renderer = 'canvas';
+      self.algorithm = 'force';
+      self.renderer = 'canvas';
 
       if (this.graphConfig) {
         if (this.graphConfig.layout) {
-          algorithm = this.graphConfig.layout;
+          self.algorithm = this.graphConfig.layout;
         }
 
         if (this.graphConfig.renderer) {
-          renderer = this.graphConfig.renderer;
+          self.renderer = this.graphConfig.renderer;
 
-          if (renderer === 'canvas') {
+          if (self.renderer === 'canvas') {
             self.isEditable = true;
           }
         }
@@ -1548,7 +1602,7 @@
       settings.edgeHaloSize = 10;
       settings.drawHalo = true;
 
-      if (renderer === 'canvas') {
+      if (self.renderer === 'canvas') {
         settings.autoCurveSortByDirection = true;
       }
 
@@ -1571,10 +1625,10 @@
 
       if (aqlMode) {
         // aql editor settings
-        renderer = 'webgl';
+        self.renderer = 'webgl';
 
         if (graph.nodes.length < 500) {
-          algorithm = 'fruchtermann';
+          self.algorithm = 'fruchtermann';
         } else {
           settings.scalingMode = 'outside';
         }
@@ -1585,7 +1639,7 @@
       }
 
       // adjust display settings for webgl renderer
-      if (renderer === 'webgl') {
+      if (self.renderer === 'webgl') {
         settings.enableEdgeHovering = false;
       }
 
@@ -1595,7 +1649,7 @@
         container: 'graph-container',
         renderer: {
           container: document.getElementById('graph-container'),
-          type: renderer
+          type: self.renderer
         },
         settings: settings
       });
@@ -1615,7 +1669,7 @@
         e.originalColor = e.color;
       });
 
-      if (algorithm === 'noverlap') {
+      if (self.algorithm === 'noverlap') {
         var noverlapListener = s.configNoverlap({
           nodeMargin: 0.1,
           scaleNodes: 1.05,
@@ -1630,7 +1684,7 @@
           if (e.type === 'interpolate') {
           }
         });
-      } else if (algorithm === 'fruchtermann') {
+      } else if (self.algorithm === 'fruchtermann') {
         var frListener = sigma.layouts.fruchtermanReingold.configure(s, {
           iterations: 100,
           easing: 'quadraticInOut',
@@ -1647,7 +1701,7 @@
 
           if (self.contextState.createEdge === false) {
             if (window.location.hash.indexOf('graph') > -1) {
-              var callback = function (error, data) {
+              var callback = function (error, data, id) {
                 if (!error) {
                   var attributes = '';
                   attributes += '<span class="title">ID </span> <span class="nodeId">' + data._id + '</span>';
@@ -1667,6 +1721,11 @@
                     $('.nodeInfoDiv').css('left', '10px');
                   }
                   $('#nodeInfoDiv').fadeIn('slow');
+                } else {
+                  // node not available any more
+                  self.currentGraph.graph.dropNode(id);
+                  // rerender graph
+                  self.currentGraph.refresh();
                 }
               };
 
@@ -1702,7 +1761,7 @@
               }
 
               // halo on active nodes:
-              if (renderer === 'canvas') {
+              if (self.renderer === 'canvas') {
                 self.currentGraph.renderers[0].halo({
                   nodes: self.currentGraph.graph.nodes(),
                   nodeHaloColor: '#DF0101',
@@ -1713,52 +1772,58 @@
               showAttributes(e, true);
               self.activeNodes = [e.data.node];
 
-              if (renderer === 'canvas') {
+              if (self.renderer === 'canvas') {
                 s.renderers[0].halo({
                   nodes: [e.data.node]
                 });
               }
 
-              if (!this.aqlMode) {
-                self.createNodeContextMenu(e.data.node.id, e);
-              }
+              self.createNodeContextMenu(e.data.node.id, e);
             }
           }
         });
 
-        s.bind('clickStage', function (e) {
-          if (e.data.captor.isDragging) {
-            self.clearOldContextMenu(true);
-            self.clearMouseCanvas();
-          } else if (self.contextState.createEdge === true) {
+        if (!self.noDefinedGraph) {
+          s.bind('clickStage', function (e) {
+            if (e.data.captor.isDragging) {
+              self.clearOldContextMenu(true);
+              self.clearMouseCanvas();
+            } else if (self.contextState.createEdge === true) {
+              self.clearOldContextMenu(true);
+              self.clearMouseCanvas();
+              self.removeHelp();
+            } else {
+              // stage menu
+              if (!$('#nodeContextMenu').is(':visible')) {
+                var offset = $('#graph-container').offset();
+                self.addNodeX = sigma.utils.getX(e) - offset.left / 2;
+                self.addNodeY = sigma.utils.getY(e) - offset.top / 2;
+                // self.addNodeX = e.data.captor.x;
+                // self.addNodeY = e.data.captor.y;
+                self.createContextMenu(e);
+                self.clearMouseCanvas();
+              } else {
+                // cleanup
+                self.clearOldContextMenu(true);
+                self.clearMouseCanvas();
+              }
+
+              // remember halo
+              s.renderers[0].halo({
+                nodes: self.activeNodes
+              });
+            }
+          });
+        } else {
+          s.bind('clickStage', function (e) {
             self.clearOldContextMenu(true);
             self.clearMouseCanvas();
             self.removeHelp();
-          } else {
-            // stage menu
-            if (!$('#nodeContextMenu').is(':visible')) {
-              var offset = $('#graph-container').offset();
-              self.addNodeX = sigma.utils.getX(e) - offset.left / 2;
-              self.addNodeY = sigma.utils.getY(e) - offset.top / 2;
-              // self.addNodeX = e.data.captor.x;
-              // self.addNodeY = e.data.captor.y;
-              self.createContextMenu(e);
-              self.clearMouseCanvas();
-            } else {
-              // cleanup
-              self.clearOldContextMenu(true);
-              self.clearMouseCanvas();
-            }
-
-            // remember halo
-            s.renderers[0].halo({
-              nodes: self.activeNodes
-            });
-          }
-        });
+          });
+        }
       }
 
-      if (renderer === 'canvas') {
+      if (self.renderer === 'canvas') {
         // render parallel edges
         if (this.graphConfig) {
           if (this.graphConfig.edgeType === 'curve') {
@@ -1836,14 +1901,11 @@
         }
       }
 
-      // store in view
-      self.algorithm = algorithm;
-
       // Initialize the dragNodes plugin:
-      if (algorithm === 'noverlap') {
+      if (self.algorithm === 'noverlap') {
         s.startNoverlap();
         // allow draggin nodes
-      } else if (algorithm === 'force') {
+      } else if (self.algorithm === 'force') {
         // add buttons for start/stopping calculation
         var style2 = 'color: rgb(64, 74, 83); cursor: pointer; position: absolute; right: 30px; bottom: 40px;';
 
@@ -1873,21 +1935,16 @@
 
         window.setTimeout(function () {
           self.stopLayout();
+          self.reInitDragListener();
         }, duration);
-      } else if (algorithm === 'fruchtermann') {
+      } else if (self.algorithm === 'fruchtermann') {
         // Start the Fruchterman-Reingold algorithm:
         sigma.layouts.fruchtermanReingold.start(s);
       }
-      var dragListener = sigma.plugins.dragNodes(s, s.renderers[0]);
 
-      dragListener.bind('drag', function (event) {
-        self.dragging = true;
-      });
-      dragListener.bind('drop', function (event) {
-        window.setTimeout(function () {
-          self.dragging = false;
-        }, 400);
-      });
+      if (self.algorithm !== 'force') {
+        self.reInitDragListener();
+      }
 
       // add listener to keep track of cursor position
       var c = document.getElementsByClassName('sigma-mouse')[0];
@@ -1963,6 +2020,23 @@
       }
     },
 
+    reInitDragListener: function () {
+      var self = this;
+
+      // drag nodes listener
+      this.dragListener = sigma.plugins.dragNodes(this.currentGraph, this.currentGraph.renderers[0]);
+
+      this.dragListener.bind('drag', function (event) {
+        self.dragging = true;
+      });
+
+      this.dragListener.bind('drop', function (event) {
+        window.setTimeout(function () {
+          self.dragging = false;
+        }, 400);
+      });
+    },
+
     keyUpFunction: function (event) {
       var self = this;
       switch (event.keyCode) {
@@ -2017,6 +2091,7 @@ $('#deleteNodes').remove();
       var self = this;
       this.currentGraph.settings('drawLabels', false);
       this.currentGraph.settings('drawEdgeLabels', false);
+      sigma.plugins.killDragNodes(this.currentGraph);
 
       if (kill === true) {
         this.currentGraph.killForceAtlas2();
@@ -2025,7 +2100,7 @@ $('#deleteNodes').remove();
           self.stopLayout();
 
           if (origin) {
-            self.currentGraph.refresh();
+            this.currentGraph.refresh({ skipIndexation: true });
             // self.cameraToNode(origin);
           }
         }, 500);
@@ -2052,10 +2127,10 @@ $('#deleteNodes').remove();
       $('#toggleForce span').html('Resume layout');
       this.layouting = false;
       this.currentGraph.stopForceAtlas2();
-      sigma.plugins.dragNodes(this.currentGraph, this.currentGraph.renderers[0]);
       this.currentGraph.settings('drawLabels', true);
       this.currentGraph.settings('drawEdgeLabels', true);
       this.currentGraph.refresh({ skipIndexation: true });
+      this.reInitDragListener();
     }
 
   });

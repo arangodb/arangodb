@@ -509,10 +509,6 @@ bool shardKeysChanged(std::string const& dbname, std::string const& collname,
   std::shared_ptr<LogicalCollection> c = ci->getCollection(dbname, collname);
 
   TRI_ASSERT(c != nullptr);
-  if (c == nullptr) {
-    // Default behaviour if shardKeys is empty
-    return false;
-  }
   std::vector<std::string> const& shardKeys = c->shardKeys();
 
   for (size_t i = 0; i < shardKeys.size(); ++i) {
@@ -946,7 +942,7 @@ int deleteDocumentOnCoordinator(
         // We have invalid input at this point.
         // However we can work with the other babies.
         // This is for compatibility with single server
-        // We just asign it to any shard and pretend the user has given a key
+        // We just assign it to any shard and pretend the user has given a key
         std::shared_ptr<std::vector<ShardID>> shards = ci->getShardList(collid);
         shardID = shards->at(0);
       } else {
@@ -1792,9 +1788,6 @@ int getFilteredEdgesOnCoordinator(
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo =
       ci->getCollection(dbname, collname);
-  if (collinfo == nullptr) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
 
   auto shards = collinfo->shardIds();
   std::string queryParameters = "?vertex=" + StringUtils::urlEncode(vertex);
@@ -1912,9 +1905,6 @@ int modifyDocumentOnCoordinator(
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo =
       ci->getCollection(dbname, collname);
-  if (collinfo == nullptr) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
   std::string collid = collinfo->cid_as_string();
 
   // We have a fast path and a slow path. The fast path only asks one shard

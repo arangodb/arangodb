@@ -43,14 +43,21 @@ class IniFileParser {
     // a line that starts a section, e.g. [server]
     _matchers.section = std::regex("^[ \t]*\\[([-_A-Za-z0-9]*)\\][ \t]*$",
                                    std::regex::ECMAScript);
+    // a line that starts a community section, e.g. [server:community]
+    _matchers.communitySection =
+        std::regex("^[ \t]*\\[([-_A-Za-z0-9]*):community\\][ \t]*$",
+                   std::regex::ECMAScript);
+    // a line that starts an enterprise section, e.g. [server:enterprise]
+    _matchers.enterpriseSection =
+        std::regex("^[ \t]*\\[([-_A-Za-z0-9]*):enterprise\\][ \t]*$",
+                   std::regex::ECMAScript);
     // a line that assigns a value to a named variable
     _matchers.assignment = std::regex(
         "^[ \t]*(([-_A-Za-z0-9]*\\.)?[-_A-Za-z0-9]*)[ \t]*=[ \t]*(.*?)?[ \t]*$",
         std::regex::ECMAScript);
     // an include line
     _matchers.include = std::regex(
-        "^[ \t]*@include[ \t]*([-_A-Za-z0-9]*)[ \t]*$",
-        std::regex::ECMAScript);
+        "^[ \t]*@include[ \t]*([-_A-Za-z0-9]*)[ \t]*$", std::regex::ECMAScript);
   }
 
   // parse a config file. returns true if all is well, false otherwise
@@ -59,9 +66,12 @@ class IniFileParser {
     std::ifstream ifs(filename, std::ifstream::in);
 
     if (!ifs.is_open()) {
-      return _options->fail("unable to open configuration file '" + filename + "'");
+      return _options->fail("unable to open configuration file '" + filename +
+                            "'");
     }
 
+    bool isCommunity = false;
+    bool isEnterprise = false;
     std::string currentSection;
     size_t lineNumber = 0;
 
@@ -84,11 +94,23 @@ class IniFileParser {
       if (std::regex_match(line, match, _matchers.section)) {
         // found section
         currentSection = match[1].str();
+        isCommunity = false;
+        isEnterprise = false;
+      } else if (std::regex_match(line, match, _matchers.communitySection)) {
+        // found section
+        currentSection = match[1].str();
+        isCommunity = true;
+        isEnterprise = false;
+      } else if (std::regex_match(line, match, _matchers.enterpriseSection)) {
+        // found section
+        currentSection = match[1].str();
+        isCommunity = false;
+        isEnterprise = true;
       } else if (std::regex_match(line, match, _matchers.include)) {
         // found include
         std::string option;
         std::string value(match[1].str());
-        
+
         _includes.emplace_back(value);
       } else if (std::regex_match(line, match, _matchers.assignment)) {
         // found assignment
@@ -102,6 +124,16 @@ class IniFileParser {
           // use option prefixed with current section
           option = currentSection + "." + match[1].str();
         }
+
+#ifdef USE_ENTERPRISE
+        if (isCommunity) {
+          continue;
+        }
+#else
+        if (isEnterprise) {
+          continue;
+        }
+#endif
 
         if (!_options->setValue(option, value)) {
           return false;
@@ -118,9 +150,7 @@ class IniFileParser {
   }
 
   // seen includes
-  std::vector<std::string> const& includes() const {
-    return _includes;
-  }
+  std::vector<std::string> const& includes() const { return _includes; }
 
  private:
   ProgramOptions* _options;
@@ -129,6 +159,8 @@ class IniFileParser {
   struct {
     std::regex comment;
     std::regex section;
+    std::regex enterpriseSection;
+    std::regex communitySection;
     std::regex assignment;
     std::regex include;
   } _matchers;

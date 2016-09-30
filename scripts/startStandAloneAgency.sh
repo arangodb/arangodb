@@ -118,6 +118,7 @@ for aid in `seq 0 $(( $POOLSZ - 1 ))`; do
     --server.authentication false \
     --server.endpoint $TRANSPORT://localhost:$port \
     --server.statistics false \
+    --server.threads 4 \
     $SSLKEYFILE \
     > agency/$port.stdout 2>&1 &
   PIDS+=$!
