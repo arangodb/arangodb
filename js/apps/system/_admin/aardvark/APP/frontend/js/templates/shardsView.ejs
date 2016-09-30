@@ -69,14 +69,12 @@
                   <% if (shard.followers.length === 0) { %>
                     <div class="<%= genClass2 %> left"> no followers </div>
                   <% } else { %>
-
                     <% var string = ''; %>
                     <% var counter2 = 0; %>
                     <% _.each(shard.followers, function(db) {  %>
                       <% if (shard.followers.length === 1) { %>
                         <% string += '<span>' + db + '</span> '; %>
                       <% } else { %>
-
                         <% if (counter2 === 0) { %>
                           <% string += '<span>' + db + '</span>'; counter2++; %>
                         <% } else { %>
@@ -86,13 +84,13 @@
                     <% });  %>
                     
                     <div class="shardFollowers <%= genClass2 %> left"><%= string %></div>
+                  <% } %>
 
-                    <% if (shard.progress) { %>
-                      <% var percent = numeral(shard.progress.current / shard.progress.total).format('0.00%'); %>
-                      <div class="<%= genClass1 %> left"><%= percent %></div>
-                    <% } else { %>
-                      <div class="<%= genClass1 %> left"><i style="margin-left: 10px;" class="fa fa-check-circle"></i></div>
-                    <% } %>
+                  <% if (shard.progress) { %>
+                    <% var percent = numeral(shard.progress.current / shard.progress.total).format('0.00%'); %>
+                    <div class="<%= genClass1 %> left"><%= percent %></div>
+                  <% } else { %>
+                    <div class="<%= genClass1 %> left"><i style="margin-left: 10px;" class="fa fa-check-circle"></i></div>
                   <% } %>
                 <% } %>
 
