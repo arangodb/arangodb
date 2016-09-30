@@ -93,6 +93,21 @@ TRI_voc_cid_t Collection::getPlanId() const {
 /// @brief returns the shard ids of a collection
 std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
   auto clusterInfo = arangodb::ClusterInfo::instance();
+  auto collectionInfo = clusterInfo->getCollection(vocbase->name(), name);
+  if (collectionInfo->isSmart() &&
+      collectionInfo->type() == TRI_COL_TYPE_EDGE) {
+    auto names = collectionInfo->realNamesForRead();
+    auto res = std::make_shared<std::vector<std::string>>();
+    for (auto const& n : names) {
+      collectionInfo = clusterInfo->getCollection(vocbase->name(), n);
+      auto list = clusterInfo->getShardList(
+          arangodb::basics::StringUtils::itoa(collectionInfo->cid()));
+      for (auto const& x : *list) {
+        res->push_back(x);
+      }
+    }
+    return res;
+  }
   return clusterInfo->getShardList(
       arangodb::basics::StringUtils::itoa(getPlanId()));
 }
