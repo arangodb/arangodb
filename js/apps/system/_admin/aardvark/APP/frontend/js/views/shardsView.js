@@ -231,11 +231,6 @@
       delete collections.code;
       delete collections.error;
 
-      collections['_from_abc'] = collections.female;
-      collections['_to_abc'] = collections.male;
-      collections['abc'] = collections.male;
-      collections['_local_abc'] = collections.male;
-
       _.each(collections, function (attr, name) {
         // smart found
         var combined = {
