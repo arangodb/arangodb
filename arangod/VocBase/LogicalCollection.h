@@ -139,6 +139,7 @@ class LogicalCollection {
   std::string dbName() const;
   std::string const& path() const;
   std::string const& distributeShardsLike() const;
+  void distributeShardsLike(std::string const&);
 
   // For normal collections the realNames is just a vector of length 1
   // with its name. For smart edge collections (enterprise only) this is

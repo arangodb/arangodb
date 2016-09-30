@@ -73,7 +73,7 @@ while [[ ${1} ]]; do
       shift
       ;;
     -o|--xterm-options)
-      XTERM_OPTIONS=${2}
+      XTERMOPTIONS=${2}
       shift
       ;;
     -h|--help)

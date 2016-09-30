@@ -332,6 +332,8 @@ LogicalCollection::LogicalCollection(
       _lastCompactionStamp(0.0),
       _uncollectedLogfileEntries(0) {
   _keyGenerator.reset(KeyGenerator::factory(other.keyOptions()));
+
+  
   
   createPhysical();
 
@@ -693,6 +695,10 @@ std::string LogicalCollection::name() const {
 
 std::string const& LogicalCollection::distributeShardsLike() const {
   return _distributeShardsLike;
+}
+
+void LogicalCollection::distributeShardsLike(std::string const& cid) {
+  _distributeShardsLike = cid;
 }
 
 std::string LogicalCollection::dbName() const {
