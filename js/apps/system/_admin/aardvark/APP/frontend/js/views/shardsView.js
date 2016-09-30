@@ -47,13 +47,16 @@
           async: true,
           success: function (data) {
             var collsAvailable = false;
-            var collName;
             self.shardDistribution = data.results;
 
             _.each(data.results, function (ignore, name) {
-              collName = name.substring(0, 1);
-              if (collName !== '_' && name !== 'error' && name !== 'code') {
-                collsAvailable = true;
+              if (name !== 'error' && name !== 'code') {
+                if (name.substring(0, 1) !== '_') {
+                  collsAvailable = true;
+                }
+                if (name.startsWith('_local_') || name.startsWith('_to_') || name.startsWith('_from_')) {
+                  collsAvailable = true;
+                }
               }
             });
 
@@ -227,6 +230,41 @@
 
       delete collections.code;
       delete collections.error;
+
+      _.each(collections, function (attr, name) {
+        // smart found
+        var combined = {
+          Plan: {},
+          Current: {}
+        };
+
+        if (name.startsWith('_local_')) {
+          // if prefix avail., get the collection name
+          var cName = name.substr(7, name.length - 1);
+
+          var toFetch = [
+            '_local_' + cName,
+            '_from_' + cName,
+            '_to_' + cName,
+            cName
+          ];
+
+          var pos = 0;
+          _.each(toFetch, function (val, key) {
+            _.each(collections[toFetch[pos]].Current, function (shardVal, shardName) {
+              combined.Current[shardName] = shardVal;
+            });
+
+            _.each(collections[toFetch[pos]].Plan, function (shardVal, shardName) {
+              combined.Plan[shardName] = shardVal;
+            });
+
+            delete collections[toFetch[pos]];
+            collections[cName] = combined;
+            pos++;
+          });
+        }
+      });
 
       this.$el.html(this.template.render({
         collections: collections
