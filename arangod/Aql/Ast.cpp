@@ -987,7 +987,17 @@ AstNode* Ast::createNodeWithCollections (AstNode const* collections) {
     auto c = collections->getMember(i);
 
     if (c->isStringValue()) {
-      _query->collections()->add(c->getString(), TRI_TRANSACTION_READ);
+      std::string name = c->getString();
+      if (ServerState::instance()->isRunningInCluster()) {
+        auto ci = ClusterInfo::instance();
+        auto c = ci->getCollection(_query->vocbase()->name(), name);
+        auto names = c->realNames();
+        for (auto const& n : names) {
+          _query->collections()->add(n, TRI_TRANSACTION_READ);
+        }
+      } else {  // single server
+        _query->collections()->add(name, TRI_TRANSACTION_READ);
+      }
     }// else bindParameter use default for collection bindVar
     // We do not need to propagate these members
     node->addMember(c);
@@ -1005,16 +1015,31 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections) {
 
   TRI_ASSERT(edgeCollections->type == NODE_TYPE_ARRAY);
 
+  auto ci = ClusterInfo::instance();
+  auto ss = ServerState::instance();
+
+  auto doTheAdd = [&](std::string name) {
+    if (ss->isRunningInCluster()) {
+      auto c = ci->getCollection(_query->vocbase()->name(), name);
+      auto names = c->realNames();
+      for (auto const& n : names) {
+        _query->collections()->add(n, TRI_TRANSACTION_READ);
+      }
+    } else {
+      _query->collections()->add(name, TRI_TRANSACTION_READ);
+    }
+  };
+
   for (size_t i = 0; i < edgeCollections->numMembers(); ++i) {
     // TODO Direction Parsing!
     auto eC = edgeCollections->getMember(i);
     if (eC->isStringValue()) {
-      _query->collections()->add(eC->getString(), TRI_TRANSACTION_READ);
+      doTheAdd(eC->getString());
     } else if (eC->type == NODE_TYPE_DIRECTION) {
       TRI_ASSERT(eC->numMembers() == 2);
       auto eCSub = eC->getMember(1);
       if (eCSub->isStringValue()) {
-        _query->collections()->add(eCSub->getString(), TRI_TRANSACTION_READ);
+        doTheAdd(eCSub->getString());
       }
     }// else bindParameter use default for collection bindVar
     // We do not need to propagate these members
@@ -1443,13 +1468,9 @@ void Ast::injectBindParameters(BindParameters& parameters) {
           auto ci = ClusterInfo::instance();
           for (const auto& n : eColls) {
             auto c = ci->getCollection(_query->vocbase()->name(), n);
-            if (!c->isSmart()) {
-              _query->collections()->add(n, TRI_TRANSACTION_READ);
-            } else {
-              // This is only enterprise:
-              _query->collections()->add("_local_" + n, TRI_TRANSACTION_READ);
-              _query->collections()->add("_from_" + n, TRI_TRANSACTION_READ);
-              _query->collections()->add("_to_" + n, TRI_TRANSACTION_READ);
+            auto names = c->realNames();
+            for (auto const& name : names) {
+              _query->collections()->add(name, TRI_TRANSACTION_READ);
             }
           }
         } else {
@@ -1470,16 +1491,18 @@ void Ast::injectBindParameters(BindParameters& parameters) {
           _query->collections()->add(n, TRI_TRANSACTION_READ);
         }
         auto eColls = graph->edgeCollections();
-        auto ci = ClusterInfo::instance();
-        for (const auto& n : eColls) {
-          auto c = ci->getCollection(_query->vocbase()->name(), n);
-          if (!c->isSmart()) {
+        if (ServerState::instance()->isRunningInCluster()) {
+          auto ci = ClusterInfo::instance();
+          for (const auto& n : eColls) {
+            auto c = ci->getCollection(_query->vocbase()->name(), n);
+            auto names = c->realNames();
+            for (auto const& name : names) {
+              _query->collections()->add(name, TRI_TRANSACTION_READ);
+            }
+          }
+        } else {
+          for (const auto& n : eColls) {
             _query->collections()->add(n, TRI_TRANSACTION_READ);
-          } else {
-            // This is only enterprise:
-            _query->collections()->add("_local_" + n, TRI_TRANSACTION_READ);
-            _query->collections()->add("_from_" + n, TRI_TRANSACTION_READ);
-            _query->collections()->add("_to_" + n, TRI_TRANSACTION_READ);
           }
         }
       }

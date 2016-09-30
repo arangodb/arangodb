@@ -264,20 +264,22 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
 
         // First determine whether all edge collections are smart and sharded
         // like a common collection:
-        _isSmart = true;
-        std::string distributeShardsLike;
         auto ci = ClusterInfo::instance();
-        for (auto const& n : eColls) {
-          auto c = ci->getCollection(_vocbase->name(), n);
-          if (!c->isSmart() || c->distributeShardsLike().empty()) {
-            _isSmart = false;
-            break;
-          }
-          if (distributeShardsLike.empty()) {
-            distributeShardsLike = c->distributeShardsLike().empty();
-          } else if (distributeShardsLike != c->distributeShardsLike()) {
-            _isSmart = false;
-            break;
+        if (ServerState::instance()->isRunningInCluster()) {
+          _isSmart = true;
+          std::string distributeShardsLike;
+          for (auto const& n : eColls) {
+            auto c = ci->getCollection(_vocbase->name(), n);
+            if (!c->isSmart() || c->distributeShardsLike().empty()) {
+              _isSmart = false;
+              break;
+            }
+            if (distributeShardsLike.empty()) {
+              distributeShardsLike = c->distributeShardsLike().empty();
+            } else if (distributeShardsLike != c->distributeShardsLike()) {
+              _isSmart = false;
+              break;
+            }
           }
         }
         
@@ -315,15 +317,23 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
         };
 
         for (const auto& n : eColls) {
-          auto c = ci->getCollection(_vocbase->name(), n);
-          if (!c->isSmart()) {
-            addEdgeColl(n);
-          } else {
-            addEdgeColl("_local_" + n);
-            addEdgeColl("_from_" + n);
-            if (_isSmart) {
-              addEdgeColl("_to_" + n);
+          if (ServerState::instance()->isRunningInCluster()) {
+            auto c = ci->getCollection(_vocbase->name(), n);
+            if (!c->isSmart()) {
+              addEdgeColl(n);
+            } else {
+              std::vector<std::string> names;
+              if (_isSmart) {
+                names = c->realNames();
+              } else {
+                names = c->realNamesForRead();
+              }
+              for (auto const& name : names) {
+                addEdgeColl(name);
+              }
             }
+          } else {
+            addEdgeColl(n);
           }
         }
 
