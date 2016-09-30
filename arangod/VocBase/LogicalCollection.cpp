@@ -1619,12 +1619,7 @@ void LogicalCollection::createInitialIndexes() {
 
   // create edges index
   if (_type == TRI_COL_TYPE_EDGE) {
-    TRI_idx_iid_t iid = _cid;
-    if (!_isLocal) {
-      iid = _planId;
-    }
-
-    auto edgeIndex = std::make_shared<arangodb::EdgeIndex>(iid, this);
+    auto edgeIndex = std::make_shared<arangodb::EdgeIndex>(1, this);
 
     addIndex(edgeIndex);
   }
