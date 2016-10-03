@@ -144,6 +144,8 @@ class IniFileParser {
       }
     }
 
+    isCommunity ^= isEnterprise;
+
     // all is well
     _options->endPass();
     return true;
