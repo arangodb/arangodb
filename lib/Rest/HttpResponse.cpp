@@ -50,7 +50,7 @@ HttpResponse::HttpResponse(ResponseCode code)
       _bodySize(0) {
   _generateBody = false;
   _contentType = ContentType::TEXT;
-  _connectionType = rest::CONNECTION_KEEP_ALIVE;
+  _connectionType = rest::ConnectionType::C_KEEP_ALIVE;
   if (_body.c_str() == nullptr) {
     // no buffer could be reserved. out of memory!
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -60,7 +60,7 @@ HttpResponse::HttpResponse(ResponseCode code)
 void HttpResponse::reset(ResponseCode code) {
   _responseCode = code;
   _headers.clear();
-  _connectionType = rest::CONNECTION_KEEP_ALIVE;
+  _connectionType = rest::ConnectionType::C_KEEP_ALIVE;
   _contentType = ContentType::TEXT;
   _isHeadResponse = false;
   _body.clear();
@@ -219,13 +219,13 @@ void HttpResponse::writeHeader(StringBuffer* output) {
   // add "Connection" response header
   if (!seenConnectionHeader) {
     switch (_connectionType) {
-      case rest::ConnectionType::CONNECTION_KEEP_ALIVE:
+      case rest::ConnectionType::C_KEEP_ALIVE:
         output->appendText(TRI_CHAR_LENGTH_PAIR("Connection: Keep-Alive\r\n"));
         break;
-      case rest::ConnectionType::CONNECTION_CLOSE:
+      case rest::ConnectionType::C_CLOSE:
         output->appendText(TRI_CHAR_LENGTH_PAIR("Connection: Close\r\n"));
         break;
-      case rest::ConnectionType::CONNECTION_NONE:
+      case rest::ConnectionType::C_NONE:
         output->appendText(TRI_CHAR_LENGTH_PAIR("Connection: \r\n"));
         break;
     }

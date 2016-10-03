@@ -231,14 +231,19 @@ function put_api_user (req, res) {
     const isActive = users.document(user).active;
 
     if (isActive) {
-      if (needMyself(req, res, user)) {
+      if (needSystemUser(req, res, user)) {
+        actions.resultOk(req, res, actions.HTTP_OK,
+          users.replace(user, json.passwd, json.active, json.extra,
+                        json.changePassword));
+      } else if (needMyself(req, res, user)) {
         actions.resultOk(req, res, actions.HTTP_OK,
           users.replace(user, json.passwd, json.active, json.extra));
       }
     } else {
       if (needSystemUser(req, res, user)) {
         actions.resultOk(req, res, actions.HTTP_OK,
-          users.replace(user, json.passwd, json.active, json.extra));
+          users.replace(user, json.passwd, json.active, json.extra,
+                        json.changePassword));
       }
     }
 
@@ -333,14 +338,19 @@ function patch_api_user (req, res) {
     const isActive = users.document(user).active;
 
     if (isActive) {
-      if (needMyself(req, res, user)) {
+      if (needSystemUser(req, res, user)) {
+        actions.resultOk(req, res, actions.HTTP_OK,
+          users.update(user, json.passwd, json.active, json.extra,
+                       json.changePassword));
+      } else if (needMyself(req, res, user)) {
         actions.resultOk(req, res, actions.HTTP_OK,
           users.update(user, json.passwd, json.active, json.extra));
       }
     } else {
       if (needSystemUser(req, res, user)) {
         actions.resultOk(req, res, actions.HTTP_OK,
-          users.update(user, json.passwd, json.active, json.extra));
+          users.update(user, json.passwd, json.active, json.extra,
+                       json.changePassword));
       }
     }
 

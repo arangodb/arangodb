@@ -107,21 +107,22 @@ RestHandler::status RestAuthHandler::execute() {
     return badRequest();
   }
 
-  std::string const username = usernameSlice.copyString();
+  _username = usernameSlice.copyString();
   std::string const password = passwordSlice.copyString();
 
   AuthResult auth =
-      GeneralServerFeature::AUTH_INFO.checkPassword(username, password);
+      GeneralServerFeature::AUTH_INFO.checkPassword(_username, password);
 
   if (auth._authorized) {
     VPackBuilder resultBuilder;
     {
       VPackObjectBuilder b(&resultBuilder);
-      std::string jwt = generateJwt(username, password);
+      std::string jwt = generateJwt(_username, password);
       resultBuilder.add("jwt", VPackValue(jwt));
       resultBuilder.add("must_change_password", VPackValue(auth._mustChange));
     }
 
+    _isValid = true;
     generateDocument(resultBuilder.slice(), true, &VPackOptions::Defaults);
     return status::DONE;
   } else {

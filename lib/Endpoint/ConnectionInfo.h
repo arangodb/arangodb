@@ -56,6 +56,10 @@ struct ConnectionInfo {
     }
   }
 
+  std::string fullClient() const {
+    return clientAddress + ":" + std::to_string(clientPort);
+  }
+
   int serverPort;
   int clientPort;
 

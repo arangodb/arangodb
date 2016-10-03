@@ -1564,7 +1564,7 @@ LogfileManagerState LogfileManager::state() {
   // now fill the state
   _slots->statistics(state.lastAssignedTick, state.lastCommittedTick,
                      state.lastCommittedDataTick, state.numEvents, state.numEventsSync);
-  state.timeString = TRI_timeString();
+  state.timeString = utilities::timeString();
 
   return state;
 }
@@ -1850,7 +1850,7 @@ int LogfileManager::writeShutdownInfo(bool writeShutdownTime) {
     builder.add("lastSealed", VPackValue(val));
 
     if (writeShutdownTime) {
-      std::string const t(TRI_timeString());
+      std::string const t(utilities::timeString());
       builder.add("shutdownTime", VPackValue(t));
     }
     builder.close();

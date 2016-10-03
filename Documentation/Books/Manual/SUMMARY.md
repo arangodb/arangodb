@@ -169,6 +169,10 @@
     * [Upgrading to 2.3](Administration/Upgrading/Upgrading23.md)
     * [Upgrading to 2.2](Administration/Upgrading/Upgrading22.md)
 #
+* [Auditing](Auditing/README.md)
+  * [Configuration](Auditing/AuditConfiguration.md)
+  * [Events](Auditing/AuditEvents.md)
+#
 * [Troubleshooting](Troubleshooting/README.md)
   * [arangod](Troubleshooting/Arangod.md)
   * [Emergency Console](Troubleshooting/EmergencyConsole.md)

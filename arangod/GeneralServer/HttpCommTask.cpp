@@ -121,8 +121,8 @@ void HttpCommTask::addResponse(HttpResponse* response) {
 
   // set "connection" header, keep-alive is the default
   response->setConnectionType(
-      _closeRequested ? rest::ConnectionType::CONNECTION_CLOSE
-                      : rest::ConnectionType::CONNECTION_KEEP_ALIVE);
+      _closeRequested ? rest::ConnectionType::C_CLOSE
+                      : rest::ConnectionType::C_KEEP_ALIVE);
 
   size_t const responseBodyLength = response->bodySize();
 

@@ -301,6 +301,7 @@ add_executable(${BIN_ARANGOD}
   Utils/CollectionNameResolver.cpp
   Utils/Cursor.cpp
   Utils/CursorRepository.cpp
+  Utils/Events.cpp
   Utils/OperationCursor.cpp
   Utils/SingleCollectionTransaction.cpp
   Utils/StandaloneTransactionContext.cpp

@@ -46,13 +46,13 @@ bool VppResponse::HIDE_PRODUCT_HEADER = false;
 VppResponse::VppResponse(ResponseCode code, uint64_t id)
     : GeneralResponse(code), _header(nullptr), _messageId(id) {
   _contentType = ContentType::VPACK;
-  _connectionType = rest::CONNECTION_KEEP_ALIVE;
+  _connectionType = rest::ConnectionType::C_KEEP_ALIVE;
 }
 
 void VppResponse::reset(ResponseCode code) {
   _responseCode = code;
   _headers.clear();
-  _connectionType = rest::CONNECTION_KEEP_ALIVE;
+  _connectionType = rest::ConnectionType::C_KEEP_ALIVE;
   _contentType = ContentType::VPACK;
   _generateBody = false;  // payload has to be set
 }

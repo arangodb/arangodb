@@ -31,6 +31,7 @@
 #include "Logger/LogLevel.h"
 
 namespace arangodb {
+class LogTopic;
 struct LogMessage;
 
 class LogAppender {
@@ -41,7 +42,7 @@ class LogAppender {
                           std::string const& contentFilter = "");
   static void addTtyAppender();
 
-  static std::shared_ptr<LogAppender> buildAppender(
+  static std::pair<std::shared_ptr<LogAppender>, LogTopic*> buildAppender(
       std::string const& definition, std::string const& contentFilter);
 
   static void log(LogMessage*);
@@ -61,6 +62,10 @@ class LogAppender {
   virtual std::string details() = 0;
 
  public:
+  bool logMessage(LogLevel level, std::string const& message) {
+    return logMessage(level, message, 0);
+  }
+
   bool checkContent(std::string const& message) {
     return _filter.empty() ||
            TRI_IsContainedString(message.c_str(), _filter.c_str());
@@ -75,7 +80,8 @@ class LogAppender {
   static std::map<size_t, std::vector<std::shared_ptr<LogAppender>>>
       _topics2appenders;
   static std::map<std::pair<std::string, std::string>,
-                  std::shared_ptr<LogAppender>> _definition2appenders;
+                  std::shared_ptr<LogAppender>>
+      _definition2appenders;
   static std::vector<std::function<void(LogMessage*)>> _loggers;
 };
 }

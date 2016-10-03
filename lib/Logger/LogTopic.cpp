@@ -26,10 +26,13 @@
 #include "Basics/MutexLocker.h"
 #include "Logger/Logger.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Audit/AuditFeature.h"
+#endif
+
 using namespace arangodb;
 
 namespace {
-// std::atomic_uint_fast16_t NEXT_TOPIC_ID(0);
 std::atomic<uint16_t> NEXT_TOPIC_ID(0);
 }
 
@@ -53,6 +56,11 @@ LogTopic Logger::REQUESTS("requests", LogLevel::FATAL);  // suppress
 LogTopic Logger::STARTUP("startup", LogLevel::INFO);
 LogTopic Logger::THREADS("threads", LogLevel::WARN);
 LogTopic Logger::V8("v8", LogLevel::WARN);
+
+#ifdef USE_ENTERPRISE
+LogTopic AuditFeature::AUDIT_SERVICE("audit-service", LogLevel::INFO);
+LogTopic AuditFeature::AUTHENTICATION("audit-authentication", LogLevel::INFO);
+#endif
 
 std::vector<std::pair<std::string, LogLevel>> LogTopic::logLevelTopics() {
   std::vector<std::pair<std::string, LogLevel>> levels;
