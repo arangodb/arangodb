@@ -54,6 +54,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
 #include "Wal/LogfileManager.h"
+#include "Pregel/Conductor.h"
+#include "Pregel/Execution.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/HexDump.h>
@@ -1804,6 +1806,60 @@ static void JS_UpdateVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief todo
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_Pregel(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  
+  // check the arguments
+  uint32_t const argLength = args.Length();
+  if (argLength != 3) {
+    // TODO extend this for named graphs, use the Graph class
+      TRI_V8_THROW_EXCEPTION_USAGE("_pregel(<vertexCollection>, <edgeCollection>)");
+  }
+  if (!args[1]->IsString() || !args[2]->IsString()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+  
+  int result = 0;
+  if (ServerState::instance()->isCoordinator()) {
+    //TRI_V8_THROW_EXCEPTION_USAGE("Cluster use is unsupported for now");
+    TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+    LOG(WARN) << "Called as a controller";
+
+    result = pregel::Conductor::instance()->createExecutionNumber();
+    std::string const vertexCollectionName = TRI_ObjectToString(args[1]);
+    std::string const edgeCollectionName = TRI_ObjectToString(args[2]);
+    pregel::Execution* e = new pregel::Execution(result,
+                                                 vocbase,
+                                                 vertexCollectionName,
+                                                 edgeCollectionName,
+                                                 "");
+    
+    pregel::Conductor::instance()->addExecution(e, result);
+    
+  } else {
+    TRI_V8_THROW_EXCEPTION_USAGE("Only call on coordinator");
+    // execute locally?
+    /*
+    LogicalCollection const* col = nullptr;
+    std::string collectionName;
+    
+    TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+    
+    auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
+    //*/
+    
+  }
+  
+  TRI_V8_RETURN(v8::Integer::New(isolate, result));
+  
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief fetch the revision for a local collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2670,6 +2726,7 @@ static void JS_CompletionsVocbase(
   result->Set(j++, TRI_V8_ASCII_STRING("_update()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_useDatabase()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_version()"));
+  result->Set(j++, TRI_V8_ASCII_STRING("_pregel()"));
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -2951,6 +3008,8 @@ void TRI_InitV8Collection(v8::Handle<v8::Context> context,
                        JS_ReplaceVocbase);
   TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_update"),
                        JS_UpdateVocbase);
+  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_pregel"),
+                       JS_Pregel);
 
   // an internal API used for storing a document without wrapping a V8
   // collection object

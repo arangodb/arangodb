@@ -251,6 +251,7 @@ add_executable(${BIN_ARANGOD}
   RestHandler/RestVersionHandler.cpp
   RestHandler/RestVocbaseBaseHandler.cpp
   RestHandler/RestWalHandler.cpp
+  RestHandler/RestPregelHandler.cpp
   RestHandler/WorkMonitorHandler.cpp
   RestServer/AffinityFeature.cpp
   RestServer/BootstrapFeature.cpp
@@ -359,6 +360,11 @@ add_executable(${BIN_ARANGOD}
   Wal/Slot.cpp
   Wal/Slots.cpp
   Wal/SynchronizerThread.cpp
+  Pregel/Conductor.cpp
+  Pregel/Execution.cpp
+  Pregel/MessageQueue.cpp
+  Pregel/Vertex.cpp
+  Pregel/WorkerThread.cpp
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}
 )
 
