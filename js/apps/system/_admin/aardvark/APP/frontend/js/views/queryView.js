@@ -331,7 +331,7 @@
         this.toggleQueries();
       }
 
-      var lastQueryName = $('#lastQueryName').html();
+      var lastQueryName = localStorage.getItem('lastOpenQuery');
       // backup the last query
       this.state.lastQuery.query = this.aqlEditor.getValue();
       this.state.lastQuery.bindParam = this.bindParamTableObj;
@@ -1025,6 +1025,27 @@
           '<td></td>' +
           '</tr>'
         );
+      }
+
+      // check if existing entry already has a stored value
+      var queryName = localStorage.getItem('lastOpenQuery');
+      var query = this.collection.findWhere({name: queryName});
+
+      try {
+        query = query.toJSON();
+      } catch (ignore) {
+      }
+
+      if (query) {
+        var attributeName;
+        _.each($('#arangoBindParamTable input'), function (elem) {
+          attributeName = $(elem).attr('name');
+          _.each(query.parameter, function (qVal, qKey) {
+            if (qKey === attributeName) {
+              $(elem).val(qVal);
+            }
+          });
+        });
       }
     },
 
