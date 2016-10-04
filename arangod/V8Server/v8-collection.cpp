@@ -178,7 +178,8 @@ static int ParseDocumentOrDocumentHandle(v8::Isolate* isolate,
       try {
         std::shared_ptr<LogicalCollection> col =
             ci->getCollection(vocbase->name(), collectionName);
-        collection = col->clone();
+        auto colCopy = col->clone();
+        collection = colCopy.release();
       } catch (...) {
         return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
       }
@@ -2533,7 +2534,8 @@ static void JS_CollectionVocbase(
     try {
       std::shared_ptr<LogicalCollection> const ci =
           ClusterInfo::instance()->getCollection(vocbase->name(), name);
-      collection = ci->clone();
+      auto colCopy = ci->clone();
+      collection = colCopy.release();
     } catch (...) {
       // not found
       TRI_V8_RETURN_NULL();

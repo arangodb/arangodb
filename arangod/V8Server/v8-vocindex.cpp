@@ -633,7 +633,7 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
 /// @brief create a collection on the coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-LogicalCollection* CreateCollectionCoordinator(LogicalCollection* parameters) {
+std::unique_ptr<LogicalCollection> CreateCollectionCoordinator(LogicalCollection* parameters) {
   std::string distributeShardsLike = parameters->distributeShardsLike();
 
   std::vector<std::string> dbServers;
@@ -664,8 +664,6 @@ LogicalCollection* CreateCollectionCoordinator(LogicalCollection* parameters) {
       parameters->distributeShardsLike(otherCidString);
     }
   }
-
-  
   
   // If the list dbServers is still empty, it will be filled in
   // distributeShards below.
@@ -699,8 +697,7 @@ LogicalCollection* CreateCollectionCoordinator(LogicalCollection* parameters) {
   // collection does not exist. Also, the create collection should have
   // failed before.
   TRI_ASSERT(c != nullptr);
-  std::unique_ptr<LogicalCollection> newCol(c->clone());
-  return newCol.release();
+  return c->clone();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1079,11 +1076,11 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
 #ifndef USE_ENTERPRISE
     auto parameters = std::make_unique<LogicalCollection>(vocbase, infoSlice, false);
     TRI_V8_RETURN(
-        WrapCollection(isolate, CreateCollectionCoordinator(parameters.get())));
+        WrapCollection(isolate, CreateCollectionCoordinator(parameters.get()).release()));
 #else
     TRI_V8_RETURN(
         WrapCollection(isolate, CreateCollectionCoordinatorEnterprise(
-                                    collectionType, vocbase, infoSlice)));
+                                    collectionType, vocbase, infoSlice).release()));
 #endif
   }
 
