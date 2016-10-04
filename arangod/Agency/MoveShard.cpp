@@ -110,9 +110,7 @@ bool MoveShard::create() {
           shardsLikeMe.push_back(opos->first);
         }
       }
-    } catch (std::exception const& e) {
-      LOG(WARN) << e.what();
-    }
+    } catch (...) {}
   }
   
   std::string path, now(timepointToString(std::chrono::system_clock::now()));

@@ -1076,6 +1076,8 @@ actions.defineHttp({
         "body must be an object with string attributes 'database', 'collection', 'shard', 'fromServer' and 'toServer'");
       return;
     }
+    body.shards=[body.shard];
+    body.collections=[body.collection];
     var r = require('@arangodb/cluster').moveShard(body);
     if (r.error) {
       actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE, r);

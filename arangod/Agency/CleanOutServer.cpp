@@ -241,27 +241,6 @@ bool CleanOutServer::start() {
   return false;
 }
 
-template<class Iter>
-struct iter_pair_range : std::pair<Iter,Iter> {
-  iter_pair_range(std::pair<Iter,Iter> const& x)
-    : std::pair<Iter,Iter>(x)
-    {}
-  Iter begin() const {return this->first;}
-  Iter end()   const {return this->second;}
-};
-
-template<class Iter>
-inline iter_pair_range<Iter> as_range(std::pair<Iter,Iter> const& x)
-{ return iter_pair_range<Iter>(x); }
-
-//template<class T, class S>
-/*std::ostream& operator<< (std::ostream& os, std::multimap<std::string,std::string> const& mm) {
-  for (const auto& i : mm) {
-    os << i.first << ": " << i.second;
-  }
-  return os;
-  }*/
-
 bool CleanOutServer::scheduleMoveShards() {
   std::vector<std::string> availServers;
 
@@ -307,11 +286,6 @@ bool CleanOutServer::scheduleMoveShards() {
       }
     }
 
-    LOG(WARN) << originals;
-    for (const auto& i : clones) {
-      LOG(WARN) << i.first << ": " << i.second;
-    }
-    
     for (const auto& original : originals) {
 
       auto const& collection = (*(database.second))(original);
