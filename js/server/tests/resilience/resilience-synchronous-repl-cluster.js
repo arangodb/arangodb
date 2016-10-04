@@ -298,14 +298,14 @@ function SynchronousReplicationSuite () {
     c.remove([ids[0]._key, ids[1]._key]);
 
     if (healing.place === 17) { healFailure(healing); }
-    if (failure.place === 18) { makeFailure(failure); }
+/*    if (failure.place === 18) { makeFailure(failure); }
 
     docs = c.document([ids[0]._key, ids[1]._key]);
     assertEqual(2, docs.length);
     assertTrue(docs[0].error);
     assertTrue(docs[1].error);
 
-    if (healing.place === 18) { healFailure(healing); }
+    if (healing.place === 18) { healFailure(healing); }*/
   }
 
 ////////////////////////////////////////////////////////////////////////////////
