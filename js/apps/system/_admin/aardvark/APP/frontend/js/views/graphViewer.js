@@ -938,6 +938,8 @@
       var self = this;
       var from = self.contextState._from;
       var to = self.contextState._to;
+      console.log(from);
+      console.log(to);
 
       var collectionName;
       if ($('.modal-body #new-edge-collection-attr').val() === '') {
@@ -1958,7 +1960,7 @@
             // validate edgeDefinitions
             var foundEdgeDefinitions = self.getEdgeDefinitionCollections(fromCollection, toCollection);
             self.addEdgeModal(foundEdgeDefinitions, self.contextState._from, self.contextState._to);
-            self.clearOldContextMenu(true);
+            self.clearOldContextMenu(false);
           } else {
             if (!self.dragging) {
               if (self.contextState.createEdge === true) {
