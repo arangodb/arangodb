@@ -259,7 +259,7 @@ class LogicalCollection {
   virtual int update(arangodb::velocypack::Slice const&, bool);
 
   /// @brief return the figures for a collection
-  std::shared_ptr<arangodb::velocypack::Builder> figures();
+  virtual std::shared_ptr<arangodb::velocypack::Builder> figures();
   
   /// @brief opens an existing collection
   void open(bool ignoreErrors);
