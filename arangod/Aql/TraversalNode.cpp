@@ -184,12 +184,69 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
 
   std::unordered_map<std::string, TRI_edge_direction_e> seenCollections;
 
+  auto addEdgeColl = [&](std::string const& n, TRI_edge_direction_e dir) -> void {
+    if (_isSmart) {
+      if (n.compare(0, 6, "_from_") == 0) {
+        if (dir != TRI_EDGE_IN) {
+          _directions.emplace_back(TRI_EDGE_OUT);
+          _edgeColls.emplace_back(std::make_unique<aql::Collection>(
+              n, _vocbase, TRI_TRANSACTION_READ));
+        }
+        return;
+      } else if (n.compare(0, 4, "_to_") == 0) {
+        if (dir != TRI_EDGE_OUT) {
+          _directions.emplace_back(TRI_EDGE_IN);
+          _edgeColls.emplace_back(std::make_unique<aql::Collection>(
+              n, _vocbase, TRI_TRANSACTION_READ));
+        }
+        return;
+      }
+    }
+
+    if (dir == TRI_EDGE_ANY) {
+      _directions.emplace_back(TRI_EDGE_OUT);
+      _edgeColls.emplace_back(std::make_unique<aql::Collection>(
+          n, _vocbase, TRI_TRANSACTION_READ));
+
+      _directions.emplace_back(TRI_EDGE_IN);
+      _edgeColls.emplace_back(std::make_unique<aql::Collection>(
+          n, _vocbase, TRI_TRANSACTION_READ));
+    } else {
+      _edgeColls.emplace_back(std::make_unique<aql::Collection>(
+          n, _vocbase, TRI_TRANSACTION_READ));
+      _directions.emplace_back(dir);
+    }
+  };
+
   if (graph->type == NODE_TYPE_COLLECTION_LIST) {
     size_t edgeCollectionCount = graph->numMembers();
 
     _graphInfo.openArray();
     _edgeColls.reserve(edgeCollectionCount);
     _directions.reserve(edgeCollectionCount);
+
+    // First determine whether all edge collections are smart and sharded
+    // like a common collection:
+    auto ci = ClusterInfo::instance();
+    if (ServerState::instance()->isRunningInCluster()) {
+      _isSmart = true;
+      std::string distributeShardsLike;
+      for (size_t i = 0; i < edgeCollectionCount; ++i) {
+        std::string n = graph->getMember(i)->getString();
+        auto c = ci->getCollection(_vocbase->name(), n);
+        if (!c->isSmart() || c->distributeShardsLike().empty()) {
+          _isSmart = false;
+          break;
+        }
+        if (distributeShardsLike.empty()) {
+          distributeShardsLike = c->distributeShardsLike();
+        } else if (distributeShardsLike != c->distributeShardsLike()) {
+          _isSmart = false;
+          break;
+        }
+      }
+    }
+   
     // List of edge collection names
     for (size_t i = 0; i < edgeCollectionCount; ++i) {
       auto col = graph->getMember(i);
@@ -219,8 +276,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
       }
       seenCollections.emplace(eColName, dir);
       
-      auto eColType = resolver->getCollectionTypeCluster(eColName);
-      if (eColType != TRI_COL_TYPE_EDGE) {
+      if (resolver->getCollectionTypeCluster(eColName) != TRI_COL_TYPE_EDGE) {
         std::string msg("collection type invalid for collection '" +
                         std::string(eColName) +
                         ": expecting collection type 'edge'");
@@ -229,20 +285,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
       }
       
       _graphInfo.add(VPackValue(eColName));
-      if (dir == TRI_EDGE_ANY) {
-        // If we have any direction we simply add it twice, once IN once OUT.
-        _directions.emplace_back(TRI_EDGE_OUT);
-        _edgeColls.emplace_back(std::make_unique<aql::Collection>(
-            eColName, _vocbase, TRI_TRANSACTION_READ));
-
-        _directions.emplace_back(TRI_EDGE_IN);
-        _edgeColls.emplace_back(std::make_unique<aql::Collection>(
-            eColName, _vocbase, TRI_TRANSACTION_READ));
-      } else {
-        _directions.emplace_back(dir);
-        _edgeColls.emplace_back(std::make_unique<aql::Collection>(
-            eColName, _vocbase, TRI_TRANSACTION_READ));
-      }
+      addEdgeColl(eColName, dir);
     }
     _graphInfo.close();
   } else {
@@ -275,7 +318,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
               break;
             }
             if (distributeShardsLike.empty()) {
-              distributeShardsLike = c->distributeShardsLike().empty();
+              distributeShardsLike = c->distributeShardsLike();
             } else if (distributeShardsLike != c->distributeShardsLike()) {
               _isSmart = false;
               break;
@@ -283,44 +326,11 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
           }
         }
         
-        auto addEdgeColl = [&](std::string const& n) -> void {
-          if (_isSmart) {
-            if (n.compare(0, 6, "_from_") == 0) {
-              if (baseDirection == TRI_EDGE_ANY || baseDirection == TRI_EDGE_OUT) {
-                _directions.emplace_back(TRI_EDGE_OUT);
-                _edgeColls.emplace_back(std::make_unique<aql::Collection>(
-                    n, _vocbase, TRI_TRANSACTION_READ));
-              }
-              return;
-            } else if (n.compare(0, 4, "_to_") == 0) {
-              if (baseDirection == TRI_EDGE_ANY || baseDirection == TRI_EDGE_IN) {
-                _directions.emplace_back(TRI_EDGE_IN);
-                _edgeColls.emplace_back(std::make_unique<aql::Collection>(
-                    n, _vocbase, TRI_TRANSACTION_READ));
-              }
-              return;
-            }
-          }
-          if (baseDirection == TRI_EDGE_ANY) {
-            _directions.emplace_back(TRI_EDGE_OUT);
-            _edgeColls.emplace_back(std::make_unique<aql::Collection>(
-                n, _vocbase, TRI_TRANSACTION_READ));
-
-            _directions.emplace_back(TRI_EDGE_IN);
-            _edgeColls.emplace_back(std::make_unique<aql::Collection>(
-                n, _vocbase, TRI_TRANSACTION_READ));
-          } else {
-            _edgeColls.emplace_back(std::make_unique<aql::Collection>(
-                n, _vocbase, TRI_TRANSACTION_READ));
-            _directions.emplace_back(baseDirection);
-          }
-        };
-
         for (const auto& n : eColls) {
           if (ServerState::instance()->isRunningInCluster()) {
             auto c = ci->getCollection(_vocbase->name(), n);
             if (!c->isSmart()) {
-              addEdgeColl(n);
+              addEdgeColl(n, baseDirection);
             } else {
               std::vector<std::string> names;
               if (_isSmart) {
@@ -329,11 +339,11 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
                 names = c->realNamesForRead();
               }
               for (auto const& name : names) {
-                addEdgeColl(name);
+                addEdgeColl(name, baseDirection);
               }
             }
           } else {
-            addEdgeColl(n);
+            addEdgeColl(n, baseDirection);
           }
         }
 
@@ -1154,6 +1164,7 @@ void TraversalNode::getConditionVariables(
   }
 }
 
+#ifndef USE_ENTERPRISE
 void TraversalNode::enhanceEngineInfo(VPackBuilder& builder) const {
   if (_graphObj != nullptr) {
     _graphObj->enhanceEngineInfo(builder);
@@ -1161,6 +1172,7 @@ void TraversalNode::enhanceEngineInfo(VPackBuilder& builder) const {
     // TODO enhance the Info based on EdgeCollections.
   }
 }
+#endif
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 void TraversalNode::checkConditionsDefined() const {
