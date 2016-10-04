@@ -360,8 +360,8 @@
       } else {
         // aql mode - only visual
 
-        var value ;
-        if(color) {
+        var value;
+        if (color) {
           updateCols();
         } else if (event.currentTarget.id === 'g_layout') {
           window.App.graphViewer.rerenderAQL($('#g_layout').val(), null);
@@ -390,8 +390,6 @@
           window.App.graphViewer.switchEdgeType($('#g_edgeType').val());
         }
       }
-;
-        if
       this.handleDependencies();
     },
 
