@@ -49,7 +49,16 @@
 
     colors: {
       hotaru: ['#364C4A', '#497C7F', '#92C5C0', '#858168', '#CCBCA5'],
-      random1: ['#292F36', '#4ECDC4', '#F7FFF7', '#DD6363', '#FFE66D']
+      random1: ['#292F36', '#4ECDC4', '#F7FFF7', '#DD6363', '#FFE66D'],
+      gv: [
+        '#68BDF6',
+        '#6DCE9E',
+        '#FF756E',
+        '#DE9BF9',
+        '#FB95AF',
+        '#FFD86E',
+        '#A5ABB6'
+      ]
     },
 
     activeNodes: [],
@@ -238,13 +247,182 @@
       this.graphSettingsView.render();
     },
 
+    killCurrentGraph: function () {
+      for (var i in this.currentGraph.renderers) {
+        this.currentGraph.renderers[i].clear();
+        this.currentGraph.kill(i);
+      }
+    },
+
+    rerenderAQL: function (layout, renderer) {
+      this.killCurrentGraph();
+      // TODO add WebGL features
+      this.renderGraph(this.graphData.modified, null, false, layout, 'canvas');
+
+      if ($('#g_nodeColorByCollection').val() === 'true') {
+        this.switchNodeColorByCollection(true);
+      } else {
+        if (this.ncolor) {
+          this.updateColors(true, true, this.ncolor, this.ecolor);
+        } else {
+          this.updateColors(true, true, '#2ecc71', '#2ecc71');
+        }
+      }
+
+      if ($('#g_edgeColorByCollection').val() === 'true') {
+        this.switchEdgeColorByCollection(true);
+      } else {
+        if (this.ecolor) {
+          this.updateColors(true, true, this.ncolor, this.ecolor);
+        } else {
+          this.updateColors(true, true, '#2ecc71', '#2ecc71');
+        }
+      }
+    },
+
+    buildCollectionColors: function () {
+      var self = this;
+
+      if (!self.collectionColors) {
+        self.collectionColors = {};
+        var pos = 0;
+        var tmpNodes = {};
+        var tmpEdges = {};
+
+        _.each(this.graphData.modified.nodes, function (node) {
+          tmpNodes[node.id] = undefined;
+        });
+
+        _.each(this.graphData.modified.edges, function (edge) {
+          tmpEdges[edge.id] = undefined;
+        });
+
+        _.each(tmpNodes, function (node, key) {
+          if (self.collectionColors[key.split('/')[0]] === undefined) {
+            self.collectionColors[key.split('/')[0]] = {color: self.colors.gv[pos]};
+            pos++;
+          }
+        });
+
+        pos = 0;
+        _.each(tmpEdges, function (edge, key) {
+          if (self.collectionColors[key.split('/')[0]] === undefined) {
+            self.collectionColors[key.split('/')[0]] = {color: self.colors.gv[pos]};
+            pos++;
+          }
+        });
+      }
+    },
+
+    switchNodeColorByCollection: function (boolean) {
+      var self = this;
+      self.buildCollectionColors();
+      if (boolean) {
+        self.currentGraph.graph.nodes().forEach(function (n) {
+          n.color = self.collectionColors[n.id.split('/')[0]].color;
+        });
+
+        self.currentGraph.refresh();
+      } else {
+        if (this.ncolor) {
+          this.updateColors(true, null, this.ncolor, this.ecolor);
+        } else {
+          this.updateColors(true, null, '#2ecc71', '#2ecc71');
+        }
+      }
+    },
+
+    switchEdgeColorByCollection: function (boolean) {
+      var self = this;
+      self.buildCollectionColors();
+
+      if (boolean) {
+        self.currentGraph.graph.edges().forEach(function (n) {
+          n.color = self.collectionColors[n.id.split('/')[0]].color;
+        });
+
+        self.currentGraph.refresh();
+      } else {
+        if (this.ecolor) {
+          this.updateColors(null, true, this.ncolor, this.ecolor);
+        } else {
+          this.updateColors(null, true, '#2ecc71', '#2ecc71');
+        }
+      }
+    },
+
+    buildCollectionSizes: function () {
+      var self = this;
+
+      if (!self.nodeEdgesCount) {
+        self.nodeEdgesCount = {};
+        var handledEdges = {};
+
+        _.each(this.graphData.modified.edges, function (edge) {
+          if (handledEdges[edge.id] === undefined) {
+            handledEdges[edge.id] = true;
+
+            if (self.nodeEdgesCount[edge.source] === undefined) {
+              self.nodeEdgesCount[edge.source] = 1;
+            } else {
+              self.nodeEdgesCount[edge.source] += 1;
+            }
+
+            if (self.nodeEdgesCount[edge.target] === undefined) {
+              self.nodeEdgesCount[edge.target] = 1;
+            } else {
+              self.nodeEdgesCount[edge.target] += 1;
+            }
+          }
+        });
+      }
+    },
+
+    switchNodeSizeByCollection: function (boolean) {
+      var self = this;
+      if (boolean) {
+        self.buildCollectionSizes();
+        self.currentGraph.graph.nodes().forEach(function (n) {
+          n.size = self.nodeEdgesCount[n.id];
+        });
+      } else {
+        self.currentGraph.graph.nodes().forEach(function (n) {
+          n.size = 15;
+        });
+      }
+      self.currentGraph.refresh();
+    },
+
+    switchEdgeType: function (edgeType) {
+      this.killCurrentGraph();
+      this.renderGraph(this.graphData.modified, null, false, null, null, edgeType);
+    },
+
+    switchLayout: function (layout) {
+      this.killCurrentGraph();
+      this.renderGraph(this.graphData.modified, null, false, layout);
+
+      if ($('#g_nodeColorByCollection').val() === 'true') {
+        this.switchNodeColorByCollection(true);
+      }
+      if ($('#g_edgeColorByCollection').val() === 'true') {
+        this.switchEdgeColorByCollection(true);
+      }
+    },
+
     parseData: function (data, type) {
       var vertices = {}; var edges = {};
+      var color = '#2ecc71';
+
       var returnObj = {
         nodes: [],
         edges: [],
         settings: {}
       };
+
+      if (this.ncolor) {
+        color = this.ncolor;
+      }
 
       if (type === 'object') {
         _.each(data, function (obj) {
@@ -266,7 +444,7 @@
                 id: node._id,
                 label: node._key,
                 // size: 0.3,
-                color: '#2ecc71',
+                color: color,
                 x: Math.random(),
                 y: Math.random()
               };
@@ -300,7 +478,7 @@
             id: key,
             label: key,
             size: 0.3,
-            color: '#2ecc71',
+            color: color,
             x: Math.random(),
             y: Math.random()
           });
@@ -645,7 +823,7 @@
             id: id,
             label: id.split('/')[1] || '',
             size: self.graphConfig.nodeSize || 15,
-            color: self.graphConfig.nodeColor || '#2ecc71',
+            color: self.graphConfig.nodeColor || self.ncolor || '#2ecc71',
             x: x,
             y: y
           });
@@ -760,6 +938,8 @@
       var self = this;
       var from = self.contextState._from;
       var to = self.contextState._to;
+      console.log(from);
+      console.log(to);
 
       var collectionName;
       if ($('.modal-body #new-edge-collection-attr').val() === '') {
@@ -778,14 +958,14 @@
               size: 1,
               target: to,
               id: data._id,
-              color: self.graphConfig.edgeColor
+              color: self.graphConfig.edgeColor || self.ecolor
             });
           } else {
             self.currentGraph.graph.addEdge({
               source: from,
               target: to,
               id: data._id,
-              color: self.graphConfig.edgeColor
+              color: self.graphConfig.edgeColor || self.ecolor
             });
           }
 
@@ -881,6 +1061,13 @@
     updateColors: function (nodes, edges, ncolor, ecolor) {
       var combinedName = frontendConfig.db + '_' + this.name;
       var self = this;
+
+      if (ncolor) {
+        self.ncolor = ncolor;
+      }
+      if (ecolor) {
+        self.ecolor = ecolor;
+      }
 
       this.userConfig.fetch({
         success: function (data) {
@@ -1329,7 +1516,6 @@
       // rerender graph
       if (newNodeCounter > 0 || newEdgeCounter > 0) {
         if (self.algorithm === 'force') {
-          console.log(origin);
           self.startLayout(true, origin);
         } else if (self.algorithm === 'fruchtermann') {
           sigma.layouts.fruchtermanReingold.start(self.currentGraph);
@@ -1432,9 +1618,6 @@
 
     editNode: function (id) {
       var callback = function (a, b) {
-        console.log(1);
-        console.log(a);
-        console.log(b);
       };
       arangoHelper.openDocEditor(id, 'doc', callback);
     },
@@ -1513,10 +1696,21 @@
       */
     },
 
-    renderGraph: function (graph, toFocus, aqlMode) {
+    renderGraph: function (graph, toFocus, aqlMode, layout, renderer, edgeType) {
       var self = this;
 
+      if (this.graphData === undefined) {
+        this.graphData = {};
+        this.graphData.modified = graph;
+      }
+
       this.graphSettings = graph.settings;
+
+      var color = '#2ecc71';
+
+      if (self.ncolor) {
+        color = self.ncolor;
+      }
 
       if (graph.edges) {
         if (graph.nodes) {
@@ -1525,7 +1719,7 @@
               id: graph.settings.startVertex._id,
               label: graph.settings.startVertex._key,
               size: 10,
-              color: '#2ecc71',
+              color: color,
               x: Math.random(),
               y: Math.random()
             });
@@ -1545,21 +1739,33 @@
       this.Sigma = sigma;
 
       // defaults
-      self.algorithm = 'force';
-      self.renderer = 'canvas';
+      if (!layout) {
+        self.algorithm = 'force';
+      } else {
+        self.algorithm = layout;
+      }
+      if (!renderer) {
+        self.renderer = 'canvas';
+      } else {
+        self.renderer = renderer;
+      }
 
       if (this.graphConfig) {
         if (this.graphConfig.layout) {
-          self.algorithm = this.graphConfig.layout;
+          if (!layout) {
+            self.layout = this.graphConfig.layout;
+          }
         }
 
         if (this.graphConfig.renderer) {
-          self.renderer = this.graphConfig.renderer;
-
-          if (self.renderer === 'canvas') {
-            self.isEditable = true;
+          if (!renderer) {
+            self.renderer = this.graphConfig.renderer;
           }
         }
+      }
+
+      if (self.renderer === 'canvas') {
+        self.isEditable = true;
       }
 
       // sigmajs graph settings
@@ -1616,11 +1822,14 @@
       if (this.graphConfig) {
         if (this.graphConfig.edgeType) {
           settings.defaultEdgeType = this.graphConfig.edgeType;
-
-          if (this.graphConfig.edgeType === 'arrow') {
-            settings.minArrowSize = 7;
-          }
         }
+      }
+
+      if (edgeType) {
+        settings.defaultEdgeType = edgeType;
+      }
+      if (settings.defaultEdgeType === 'arrow') {
+        settings.minArrowSize = 7;
       }
 
       if (aqlMode) {
@@ -1751,7 +1960,7 @@
             // validate edgeDefinitions
             var foundEdgeDefinitions = self.getEdgeDefinitionCollections(fromCollection, toCollection);
             self.addEdgeModal(foundEdgeDefinitions, self.contextState._from, self.contextState._to);
-            self.clearOldContextMenu(true);
+            self.clearOldContextMenu(false);
           } else {
             if (!self.dragging) {
               if (self.contextState.createEdge === true) {
