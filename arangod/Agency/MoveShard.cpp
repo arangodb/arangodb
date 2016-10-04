@@ -321,15 +321,17 @@ JOB_STATUS MoveShard::status() {
 
     try {
       _database = _snapshot(pos[status] + _jobId + "/database").getString();
-      _collection = _snapshot(pos[status] + _jobId + "/collections").slice()[0].copyString();
+      _collection =
+        _snapshot(pos[status] + _jobId + "/collections").slice()[0].copyString();
       _from = _snapshot(pos[status] + _jobId + "/fromServer").getString();
       _to = _snapshot(pos[status] + _jobId + "/toServer").getString();
-      _shard = _snapshot(pos[status] + _jobId + "/shards").slice()[0].copyString();
+      _shard =
+        _snapshot(pos[status] + _jobId + "/shards").slice()[0].copyString();
     } catch (std::exception const& e) {
-      std::stringstream err;
-      err << "Failed to find job " << _jobId << " in agency: " << e.what();
-      LOG_TOPIC(ERR, Logger::AGENCY) << err.str();
-      finish("Shards/" + _shard, false, err.str());
+      std::string err = 
+        std::string("Failed to find job ") + _jobId + " in agency: " + e.what();
+      LOG_TOPIC(ERR, Logger::AGENCY) << err;
+      finish("Shards/" + _shard, false, err);
       return FAILED;
     }
   }
