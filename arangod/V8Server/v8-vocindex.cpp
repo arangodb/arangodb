@@ -448,40 +448,18 @@ static int EnhanceIndexJson(v8::FunctionCallbackInfo<v8::Value> const& args,
 /// @brief ensures an index, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-static void EnsureIndexCoordinator(
-    v8::FunctionCallbackInfo<v8::Value> const& args,
-    LogicalCollection const* collection, VPackSlice const slice, bool create) {
-  v8::Isolate* isolate = args.GetIsolate();
-  v8::HandleScope scope(isolate);
-
+int EnsureIndexCoordinator(
+    LogicalCollection const* collection, VPackSlice const slice, bool create,
+    VPackBuilder& resultBuilder, std::string& errorMsg) {
   TRI_ASSERT(collection != nullptr);
   TRI_ASSERT(!slice.isNone());
 
   std::string const databaseName(collection->dbName());
   std::string const cid = collection->cid_as_string();
-  std::string const collectionName(collection->name());
 
-  VPackBuilder resultBuilder;
-  std::string errorMsg;
-  int res = ClusterInfo::instance()->ensureIndexCoordinator(
+  return ClusterInfo::instance()->ensureIndexCoordinator(
       databaseName, cid, slice, create, &arangodb::Index::Compare,
       resultBuilder, errorMsg, 360.0);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res, errorMsg);
-  }
-
-  if (resultBuilder.slice().isNone()) {
-    if (!create) {
-      // did not find a suitable index
-      TRI_V8_RETURN_NULL();
-    }
-
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
-
-  v8::Handle<v8::Value> ret = IndexRep(isolate, collectionName, resultBuilder.slice());
-  TRI_V8_RETURN(ret);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -623,7 +601,26 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
   TRI_ASSERT(!slice.isNone());
   // ensure an index, coordinator case
   if (ServerState::instance()->isCoordinator()) {
-    EnsureIndexCoordinator(args, collection, slice, create);
+    VPackBuilder resultBuilder;
+    std::string errorMsg;
+#ifdef USE_ENTERPRISE
+    int res = EnsureIndexCoordinatorEnterprise(collection, slice, create, resultBuilder, errorMsg);
+#else
+    int res = EnsureIndexCoordinator(collection, slice, create, resultBuilder, errorMsg);
+#endif
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(res, errorMsg);
+    }
+    if (resultBuilder.slice().isNone()) {
+      if (!create) {
+        // did not find a suitable index
+        TRI_V8_RETURN_NULL();
+      }
+
+      TRI_V8_THROW_EXCEPTION_MEMORY();
+    }
+    v8::Handle<v8::Value> ret = IndexRep(isolate, collection->name(), resultBuilder.slice());
+    TRI_V8_RETURN(ret);
   } else {
     EnsureIndexLocal(args, collection, slice, create);
   }

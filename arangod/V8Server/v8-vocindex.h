@@ -60,4 +60,17 @@ std::unique_ptr<arangodb::LogicalCollection> CreateCollectionCoordinatorEnterpri
     TRI_col_type_e collectionType, TRI_vocbase_t* vocbase,
     arangodb::velocypack::Slice parameters);
 #endif
+
+int EnsureIndexCoordinator(arangodb::LogicalCollection const* collection,
+                           arangodb::velocypack::Slice const slice, bool create,
+                           arangodb::velocypack::Builder& resultBuilder,
+                           std::string& errorMessage);
+
+#ifdef USE_ENTERPRISE
+int EnsureIndexCoordinatorEnterprise(
+    arangodb::LogicalCollection const* collection,
+    arangodb::velocypack::Slice const slice, bool create,
+    arangodb::velocypack::Builder& resultBuilder, std::string& errorMessage);
+#endif
+
 #endif
