@@ -1480,8 +1480,17 @@
           data.batchSize = parseInt(sizeBox.val(), 10);
         }
 
+        var bindVars = {};
         if (Object.keys(this.bindParamTableObj).length > 0) {
+          _.each(this.bindParamTableObj, function (val, key) {
+            if (data.query.indexOf(key) > -1) {
+              bindVars[key] = val;
+            }
+          });
           data.bindVars = this.bindParamTableObj;
+        }
+        if (Object.keys(data.bindVars).length > 0) {
+          data.bindVars = bindVars;
         }
 
         // add profile flag for query execution
