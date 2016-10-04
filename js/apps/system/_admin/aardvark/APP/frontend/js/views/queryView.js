@@ -331,6 +331,7 @@
         this.toggleQueries();
       }
 
+      var lastQueryName = $('#lastQueryName').html();
       // backup the last query
       this.state.lastQuery.query = this.aqlEditor.getValue();
       this.state.lastQuery.bindParam = this.bindParamTableObj;
@@ -350,10 +351,12 @@
       // render a button to revert back to last query
       $('#lastQuery').remove();
 
-      $('#queryContent .arangoToolbarTop .pull-left')
-        .append('<span id="lastQuery" class="clickable">Previous Query</span>');
+      if (lastQueryName !== name) {
+        $('#queryContent .arangoToolbarTop .pull-left')
+          .append('<span id="lastQuery" class="clickable">Previous Query</span>');
 
-      this.breadcrumb(name);
+        this.breadcrumb(name);
+      }
 
       $('#lastQuery').hide().fadeIn(500)
         .on('click', function () {
@@ -1206,7 +1209,6 @@
     addAQL: function () {
       // update queries first, before showing
       this.refreshAQL(true);
-
       // render options
       this.createCustomQueryModal();
       setTimeout(function () {
@@ -1218,14 +1220,19 @@
       var content = this.aqlEditor.getValue();
       var queryName = localStorage.getItem('lastOpenQuery');
       var query = this.collection.findWhere({name: queryName});
+
       if (query) {
+        // SET QUERY STRING
         query.set('value', content);
+        // SET QUERY BIND PARAMS
+        query.set('parameter', this.bindParamTableObj);
+
         var callback = function (error) {
           if (error) {
             arangoHelper.arangoError('Query', 'Could not save query');
           } else {
             var self = this;
-            arangoHelper.arangoNotification('Queries', 'Saved query ' + queryName);
+            arangoHelper.arangoNotification('Saved query', '"' + queryName + '"');
             this.collection.fetch({
               success: function () {
                 self.updateLocalQueries();
@@ -1376,7 +1383,7 @@
       window.setTimeout(function () {
         if (name) {
           $('#subNavigationBar .breadcrumb').html(
-            'Query: ' + name
+            'Query: <span id="lastQueryName">' + name + '</span>'
           );
         } else {
           $('#subNavigationBar .breadcrumb').html('');
@@ -1480,8 +1487,17 @@
           data.batchSize = parseInt(sizeBox.val(), 10);
         }
 
+        var bindVars = {};
         if (Object.keys(this.bindParamTableObj).length > 0) {
+          _.each(this.bindParamTableObj, function (val, key) {
+            if (data.query.indexOf(key) > -1) {
+              bindVars[key] = val;
+            }
+          });
           data.bindVars = this.bindParamTableObj;
+        }
+        if (Object.keys(data.bindVars).length > 0) {
+          data.bindVars = bindVars;
         }
 
         // add profile flag for query execution

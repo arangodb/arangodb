@@ -286,19 +286,30 @@
       if (!self.collectionColors) {
         self.collectionColors = {};
         var pos = 0;
-        var tmp = {};
+        var tmpNodes = {};
+        var tmpEdges = {};
 
         _.each(this.graphData.modified.nodes, function (node) {
-          tmp[node.id] = undefined;
+          tmpNodes[node.id] = undefined;
         });
 
         _.each(this.graphData.modified.edges, function (edge) {
-          tmp[edge.id] = undefined;
+          tmpEdges[edge.id] = undefined;
         });
 
-        _.each(tmp, function (node, key) {
-          self.collectionColors[key.split('/')[0]] = {color: self.colors.gv[pos]};
-          pos++;
+        _.each(tmpNodes, function (node, key) {
+          if (self.collectionColors[key.split('/')[0]] === undefined) {
+            self.collectionColors[key.split('/')[0]] = {color: self.colors.gv[pos]};
+            pos++;
+          }
+        });
+
+        pos = 0;
+        _.each(tmpEdges, function (edge, key) {
+          if (self.collectionColors[key.split('/')[0]] === undefined) {
+            self.collectionColors[key.split('/')[0]] = {color: self.colors.gv[pos]};
+            pos++;
+          }
         });
       }
     },
@@ -306,7 +317,6 @@
     switchNodeColorByCollection: function (boolean) {
       var self = this;
       self.buildCollectionColors();
-
       if (boolean) {
         self.currentGraph.graph.nodes().forEach(function (n) {
           n.color = self.collectionColors[n.id.split('/')[0]].color;
@@ -391,6 +401,13 @@
     switchLayout: function (layout) {
       this.killCurrentGraph();
       this.renderGraph(this.graphData.modified, null, false, layout);
+
+      if ($('#g_nodeColorByCollection').val() === 'true') {
+        this.switchNodeColorByCollection(true);
+      }
+      if ($('#g_edgeColorByCollection').val() === 'true') {
+        this.switchEdgeColorByCollection(true);
+      }
     },
 
     parseData: function (data, type) {
@@ -1941,7 +1958,7 @@
             // validate edgeDefinitions
             var foundEdgeDefinitions = self.getEdgeDefinitionCollections(fromCollection, toCollection);
             self.addEdgeModal(foundEdgeDefinitions, self.contextState._from, self.contextState._to);
-            self.clearOldContextMenu(true);
+            self.clearOldContextMenu(false);
           } else {
             if (!self.dragging) {
               if (self.contextState.createEdge === true) {

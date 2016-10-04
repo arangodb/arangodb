@@ -135,6 +135,7 @@ class Logger {
   static LogTopic CONFIG;
   static LogTopic CLUSTER;
   static LogTopic DATAFILES;
+  static LogTopic GRAPHS;
   static LogTopic HEARTBEAT;
   static LogTopic MMAP;
   static LogTopic PERFORMANCE;
