@@ -61,6 +61,58 @@ bool MoveShard::create() {
   LOG_TOPIC(INFO, Logger::AGENCY)
       << "Todo: Move shard " + _shard + " from " + _from + " to " << _to;
 
+  // Are we distributeShardsLiking other shard?
+  // Invoke moveShard there
+  auto collection = _snapshot(planColPrefix + _database + "/" + _collection);
+  auto myshards = _snapshot(
+    planColPrefix + _database + "/" + _collection + "/shards").children();
+  auto mpos = std::distance(myshards.begin(),
+                            myshards.find(_shard));
+
+  std::string distributeShardsLike, othershard;
+
+  try {
+
+    distributeShardsLike = collection("distributeShardsLike").getString();
+    auto othershards = _snapshot(planColPrefix + _database + "/"
+                                 + distributeShardsLike + "/shards").children();
+    auto opos = othershards.begin();
+    std::advance(opos, mpos);
+    othershard = opos->first;
+    
+  } catch(...) {}
+
+  if (!distributeShardsLike.empty()) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "Distributed like collection " << distributeShardsLike
+      << " shard " << othershard;
+    
+    MoveShard(_snapshot, _agent, _jobId, _creator, _agencyPrefix, _database,
+              distributeShardsLike, othershard, _from, _to);
+    return false;
+  }
+
+  // Are we ditributeShardsLiked by others?
+  // Invoke moveShard here with others
+  auto collections = _snapshot(planColPrefix + _database).children();
+  std::vector<std::string> colsLikeMe;
+  std::vector<std::string> shardsLikeMe;
+  colsLikeMe.push_back(_collection);
+  shardsLikeMe.push_back(_shard);
+  for (auto const& collptr : collections) {
+    auto const& node = *(collptr.second);
+    try {
+      if (node("distributeShardsLike").getString() == _collection) {
+        auto opos = node("shards").children().begin();
+        if (!node("shards").children().empty()) {
+          std::advance(opos, mpos);
+          colsLikeMe.push_back(collptr.first);
+          shardsLikeMe.push_back(opos->first);
+        }
+      }
+    } catch (...) {}
+  }
+  
   std::string path, now(timepointToString(std::chrono::system_clock::now()));
 
   // DBservers
@@ -89,15 +141,27 @@ bool MoveShard::create() {
   _jb->add("creator", VPackValue(_creator));
   _jb->add("type", VPackValue("moveShard"));
   _jb->add("database", VPackValue(_database));
-  _jb->add("collection", VPackValue(_collection));
-  _jb->add("shard", VPackValue(_shard));
+  _jb->add(VPackValue("collections"));
+  {
+    VPackArrayBuilder b(_jb.get());
+    for (auto const& c : colsLikeMe) {
+      _jb->add(VPackValue(c));
+    }
+  }
+  _jb->add(VPackValue("shards"));
+  {
+    VPackArrayBuilder b(_jb.get());
+    for (auto const& s : shardsLikeMe) {
+      _jb->add(VPackValue(s));
+    }
+  }
   _jb->add("fromServer", VPackValue(_from));
   _jb->add("toServer", VPackValue(_to));
   _jb->add("isLeader", VPackValue(current[0].copyString() == _from));
   _jb->add("jobId", VPackValue(_jobId));
   _jb->add("timeCreated", VPackValue(now));
-
   _jb->close();
+
   _jb->close();
   _jb->close();
 
@@ -114,13 +178,13 @@ bool MoveShard::create() {
 bool MoveShard::start() {
   // DBservers
   std::string planPath =
-      planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
+    planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
   std::string curPath =
-      curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
-
+    curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
+  
   Slice current = _snapshot(curPath).slice();
   Slice planned = _snapshot(planPath).slice();
-
+  
   TRI_ASSERT(current.isArray());
   TRI_ASSERT(planned.isArray());
 
@@ -155,10 +219,13 @@ bool MoveShard::start() {
       return false;
     }
   } else {
-    todo.add(_jb->slice()[0].valueAt(0));
+    try {
+      todo.add(_jb->slice()[0].get(_agencyPrefix + toDoPrefix + _jobId));
+    } catch (std::exception const& e) {
+      LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << __FILE__ << __LINE__;
+    }
   }
   todo.close();
-
   // Enter pending, remove todo, block toserver
   pending.openArray();
 
@@ -186,20 +253,30 @@ bool MoveShard::start() {
   pending.close();
 
   // --- Plan changes
-  pending.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Array));
-  if (planned[0].copyString() == _from) {  // Leader
-    pending.add(planned[0]);
-    pending.add(VPackValue(_to));
-    for (size_t i = 1; i < planned.length(); ++i) {
-      pending.add(planned[i]);
+  size_t j = 0;
+  for (auto const& c : VPackArrayIterator(todo.slice()[0].get("collections"))) {
+
+    planPath = planColPrefix + _database + "/" + c.copyString() + "/shards/"
+      + todo.slice()[0].get("shards")[j++].copyString();
+    planned = _snapshot(planPath).slice();
+      
+    pending.add(VPackValue(_agencyPrefix + planPath));
+    {
+      VPackArrayBuilder b(&pending);
+      if (planned[0].copyString() == _from) {  // Leader
+        pending.add(planned[0]);
+        pending.add(VPackValue(_to));
+        for (size_t i = 1; i < planned.length(); ++i) {
+          pending.add(planned[i]);
+        }
+      } else {  // Follower
+        for (auto const& srv : VPackArrayIterator(planned)) {
+          pending.add(srv);
+        }
+        pending.add(VPackValue(_to));
+      }
     }
-  } else {  // Follower
-    for (auto const& srv : VPackArrayIterator(planned)) {
-      pending.add(srv);
-    }
-    pending.add(VPackValue(_to));
   }
-  pending.close();
 
   // --- Increment Plan/Version
   pending.add(_agencyPrefix + planVersion, VPackValue(VPackValueType::Object));
@@ -244,10 +321,10 @@ JOB_STATUS MoveShard::status() {
 
     try {
       _database = _snapshot(pos[status] + _jobId + "/database").getString();
-      _collection = _snapshot(pos[status] + _jobId + "/collection").getString();
+      _collection = _snapshot(pos[status] + _jobId + "/collections").slice()[0].copyString();
       _from = _snapshot(pos[status] + _jobId + "/fromServer").getString();
       _to = _snapshot(pos[status] + _jobId + "/toServer").getString();
-      _shard = _snapshot(pos[status] + _jobId + "/shard").getString();
+      _shard = _snapshot(pos[status] + _jobId + "/shards").slice()[0].copyString();
     } catch (std::exception const& e) {
       std::stringstream err;
       err << "Failed to find job " << _jobId << " in agency: " << e.what();
@@ -258,117 +335,128 @@ JOB_STATUS MoveShard::status() {
   }
 
   if (status == PENDING) {
-    std::string planPath =
-        planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-    std::string curPath = curColPrefix + _database + "/" + _collection + "/" +
-                          _shard + "/servers";
 
-    Slice current = _snapshot(curPath).slice();
-    Slice plan = _snapshot(planPath).slice();
+    Slice collections = _snapshot(pos[status] + _jobId + "/collections").slice();
+    Slice shards = _snapshot(pos[status] + _jobId + "/shards").slice();
 
-    std::vector<std::string> planv, currv;
-    for (auto const& srv : VPackArrayIterator(plan)) {
-      planv.push_back(srv.copyString());
-    }
-    std::sort(planv.begin(), planv.end());
-    for (auto const& srv : VPackArrayIterator(current)) {
-      currv.push_back(srv.copyString());
-    }
-    std::sort(currv.begin(), currv.end());
+    size_t i = 0;
+    size_t done = 0;
+    for (auto const& collslice : VPackArrayIterator(collections)) {
 
-    if (currv == planv) {
-      if (current[0].copyString() ==
-          std::string("_") + _from) {  // Retired leader
+      std::string shard = shards[i++].copyString();
+      std::string collection = collslice.copyString();
 
-        Builder remove;  // remove
-        remove.openArray();
-        remove.openObject();
-        // --- Plan changes
-        remove.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Array));
-        for (size_t i = 1; i < plan.length(); ++i) {
-          remove.add(plan[i]);
-        }
-        remove.close();
-        // --- Plan version
-        remove.add(_agencyPrefix + planVersion,
-                   VPackValue(VPackValueType::Object));
-        remove.add("op", VPackValue("increment"));
-        remove.close();
-        remove.close();
-        remove.close();
-        transact(_agent, remove);
+      std::string planPath =
+        planColPrefix + _database + "/" + collection + "/shards/" + shard;
+      std::string curPath = curColPrefix + _database + "/" + collection + "/" +
+                          shard + "/servers";
 
-        return PENDING;
+      Slice current = _snapshot(curPath).slice();
+      Slice plan = _snapshot(planPath).slice();
 
-      } else {
-        bool foundFrom = false, foundTo = false;
-        for (auto const& srv : VPackArrayIterator(current)) {
-          std::string srv_str = srv.copyString();
-          if (srv_str == _from) {
-            foundFrom = true;
+      std::vector<std::string> planv, currv;
+      for (auto const& srv : VPackArrayIterator(plan)) {
+        planv.push_back(srv.copyString());
+      }
+      std::sort(planv.begin(), planv.end());
+      for (auto const& srv : VPackArrayIterator(current)) {
+        currv.push_back(srv.copyString());
+      }
+      std::sort(currv.begin(), currv.end());
+      if (currv == planv) {
+        if (current[0].copyString() ==
+            std::string("_") + _from) {  // Retired leader
+          
+          Builder remove;  // remove
+          remove.openArray();
+          remove.openObject();
+          // --- Plan changes
+          remove.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Array));
+          for (size_t i = 1; i < plan.length(); ++i) {
+            remove.add(plan[i]);
           }
-          if (srv_str == _to) {
-            foundTo = true;
-          }
-        }
-
-        if (foundFrom && foundTo) {
-          if (plan[0].copyString() == _from) {  // Leader
-
-            Builder underscore;  // serverId -> _serverId
-            underscore.openArray();
-            underscore.openObject();
-            // --- Plan changes
-            underscore.add(_agencyPrefix + planPath,
-                           VPackValue(VPackValueType::Array));
-            underscore.add(VPackValue(std::string("_") + plan[0].copyString()));
-            for (size_t i = 1; i < plan.length(); ++i) {
-              underscore.add(plan[i]);
+          remove.close();
+          // --- Plan version
+          remove.add(_agencyPrefix + planVersion,
+                     VPackValue(VPackValueType::Object));
+          remove.add("op", VPackValue("increment"));
+          remove.close();
+          remove.close();
+          remove.close();
+          transact(_agent, remove);
+          
+        } else {
+          bool foundFrom = false, foundTo = false;
+          for (auto const& srv : VPackArrayIterator(current)) {
+            std::string srv_str = srv.copyString();
+            if (srv_str == _from) {
+              foundFrom = true;
             }
-            underscore.close();
-
-            // --- Plan version
-            underscore.add(_agencyPrefix + planVersion,
-                           VPackValue(VPackValueType::Object));
-            underscore.add("op", VPackValue("increment"));
-            underscore.close();
-            underscore.close();
-            underscore.close();
-            transact(_agent, underscore);
-
-          } else {
-            Builder remove;
-            remove.openArray();
-            remove.openObject();
-            // --- Plan changes
-            remove.add(_agencyPrefix + planPath,
-                       VPackValue(VPackValueType::Array));
-            for (auto const& srv : VPackArrayIterator(plan)) {
-              if (srv.copyString() != _from) {
-                remove.add(srv);
+            if (srv_str == _to) {
+              foundTo = true;
+            }
+          }
+          
+          if (foundFrom && foundTo) {
+            if (plan[0].copyString() == _from) {  // Leader
+              
+              Builder underscore;  // serverId -> _serverId
+              underscore.openArray();
+              underscore.openObject();
+              // --- Plan changes
+              underscore.add(_agencyPrefix + planPath,
+                             VPackValue(VPackValueType::Array));
+              underscore.add(VPackValue(std::string("_") + plan[0].copyString()));
+              for (size_t i = 1; i < plan.length(); ++i) {
+                underscore.add(plan[i]);
               }
+              underscore.close();
+              
+              // --- Plan version
+              underscore.add(_agencyPrefix + planVersion,
+                             VPackValue(VPackValueType::Object));
+              underscore.add("op", VPackValue("increment"));
+              underscore.close();
+              underscore.close();
+              underscore.close();
+              transact(_agent, underscore);
+              
+            } else {
+              Builder remove;
+              remove.openArray();
+              remove.openObject();
+              // --- Plan changes
+              remove.add(_agencyPrefix + planPath,
+                         VPackValue(VPackValueType::Array));
+              for (auto const& srv : VPackArrayIterator(plan)) {
+                if (srv.copyString() != _from) {
+                  remove.add(srv);
+                }
+              }
+              remove.close();
+              // --- Plan version
+              remove.add(_agencyPrefix + planVersion,
+                         VPackValue(VPackValueType::Object));
+              remove.add("op", VPackValue("increment"));
+              remove.close();
+              remove.close();
+              remove.close();
+              transact(_agent, remove);
             }
-            remove.close();
-            // --- Plan version
-            remove.add(_agencyPrefix + planVersion,
-                       VPackValue(VPackValueType::Object));
-            remove.add("op", VPackValue("increment"));
-            remove.close();
-            remove.close();
-            remove.close();
-            transact(_agent, remove);
-          }
-
-          return PENDING;
-
-        } else if (foundTo && !foundFrom) {
-          if (finish("Shards/" + _shard)) {
-            return FINISHED;
+            
+          } else if (foundTo && !foundFrom) {
+            done++;
           }
         }
       }
     }
-  }
 
+    if (done == collections.length()) {
+      if (finish("Shards/" + _shard)) {
+        return FINISHED;
+      }
+    }
+  }
+    
   return status;
 }

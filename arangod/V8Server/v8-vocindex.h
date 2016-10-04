@@ -50,11 +50,13 @@ void TRI_InitV8indexCollection(v8::Isolate* isolate,
                                v8::Handle<v8::ObjectTemplate> rt);
 
 // This could be static but is used in enterprise version as well
-arangodb::LogicalCollection* CreateCollectionCoordinator(
+// Note that this returns a newly allocated object and ownership is transferred
+// to the caller, which is expressed by the returned unique_ptr.
+std::unique_ptr<arangodb::LogicalCollection> CreateCollectionCoordinator(
     arangodb::LogicalCollection* parameters);
 
 #ifdef USE_ENTERPRISE
-arangodb::LogicalCollection* CreateCollectionCoordinatorEnterprise(
+std::unique_ptr<arangodb::LogicalCollection> CreateCollectionCoordinatorEnterprise(
     TRI_col_type_e collectionType, TRI_vocbase_t* vocbase,
     arangodb::velocypack::Slice parameters);
 #endif

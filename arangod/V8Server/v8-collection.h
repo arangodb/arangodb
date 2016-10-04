@@ -46,7 +46,12 @@ bool EqualCollection(arangodb::CollectionNameResolver const* resolver,
                      std::string const& collectionName,
                      arangodb::LogicalCollection const* collection);
 
+////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a LogicalCollection
+/// Note that if collection is a local collection, then the object will never
+/// be freed. If it is not a local collection (coordinator case), then delete
+/// will be called when the V8 object is garbage collected.
+////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Object> WrapCollection(
     v8::Isolate* isolate, arangodb::LogicalCollection const* collection);
