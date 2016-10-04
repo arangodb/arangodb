@@ -1751,7 +1751,7 @@
       if (this.graphConfig) {
         if (this.graphConfig.layout) {
           if (!layout) {
-            self.layout = this.graphConfig.layout;
+            self.algorithm = this.graphConfig.layout;
           }
         }
 
@@ -2307,7 +2307,7 @@ $('#deleteNodes').remove();
           self.stopLayout();
 
           if (origin) {
-            this.currentGraph.refresh({ skipIndexation: true });
+            self.currentGraph.refresh({ skipIndexation: true });
             // self.cameraToNode(origin);
           }
         }, 500);
