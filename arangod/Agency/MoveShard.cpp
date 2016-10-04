@@ -83,10 +83,10 @@ bool MoveShard::create() {
   } catch(...) {}
 
   if (!distributeShardsLike.empty()) {
-  LOG_TOPIC(INFO, Logger::AGENCY)
-    << "Distributed like collection " << distributeShardsLike
-    << " shard " << othershard;
-
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "Distributed like collection " << distributeShardsLike
+      << " shard " << othershard;
+    
     MoveShard(_snapshot, _agent, _jobId, _creator, _agencyPrefix, _database,
               distributeShardsLike, othershard, _from, _to);
     return false;
