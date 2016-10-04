@@ -1166,14 +1166,17 @@ def unwrapPostJson(reference, layer):
         elif swagger['definitions'][reference]['properties'][param]['type'] == 'array':
             rc += '  ' * layer + "- **" + param + "**"
             trySubStruct = False
+            lf=""
             if 'type' in thisParam['items']:
                 rc += " (" + thisParam['items']['type']  + ")"
+                lf="\n"
             else:
                 if len(thisParam['items']) == 0:
                     rc += " (anonymous json object)"
+                    lf="\n"
                 else:
                     trySubStruct = True
-            rc += ": " + TrimThisParam(brTrim(thisParam['description']), layer)
+            rc += ": " + TrimThisParam(brTrim(thisParam['description']), layer) + lf
             if trySubStruct:
                 try:
                     subStructRef = getReference(thisParam['items'], reference, None)
@@ -1189,7 +1192,7 @@ def unwrapPostJson(reference, layer):
 
 
 if len(sys.argv) < 4:
-  print >> sys.stderr, "usage: " + sys.argv[0] + " <scriptDir> <outDir> <relDir> <docublockdir>"
+  print >> sys.stderr, "usage: " + sys.argv[0] + " <scriptDir> <outDir> <relDir> <docublockdir> <optional: filter>"
   sys.exit(1)
 
 scriptDir = sys.argv[1]
@@ -1204,6 +1207,10 @@ relDir = sys.argv[3]
 if not relDir.endswith("/"):
   relDir += "/"
 
+fileFilter = ""
+if len(sys.argv) > 5:
+    fileFilter = sys.argv[5]
+    print >> sys.stderr, "Filtering for: [" + fileFilter + "]"
 # read ArangoDB version
 f = open(scriptDir + "VERSION", "r")
 for version in f:
@@ -1226,6 +1233,9 @@ for chapter in os.listdir(topdir):
     files[chapter] = []
     curPath = os.path.join(topdir, chapter)
     for oneFile in os.listdir(curPath):
+        if fileFilter != "" and oneFile != fileFilter:
+            print >> sys.stderr, "Skipping: [" + oneFile + "]"
+            continue
         curPath2 = os.path.join(curPath, oneFile)
         if os.path.isfile(curPath2) and oneFile[0] != "." and oneFile.endswith(".md"):
             files[chapter].append(os.path.join(topdir, chapter, oneFile))
