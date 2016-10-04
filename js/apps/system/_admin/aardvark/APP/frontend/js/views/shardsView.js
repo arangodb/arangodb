@@ -168,8 +168,8 @@
 
       var data = {
         database: dbName,
-        collection: collectionName,
-        shard: shardName,
+        collections: [collectionName],
+        shards: [shardName],
         fromServer: fromServer,
         toServer: toServer
       };
