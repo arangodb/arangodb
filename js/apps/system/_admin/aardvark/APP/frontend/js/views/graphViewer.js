@@ -938,8 +938,6 @@
       var self = this;
       var from = self.contextState._from;
       var to = self.contextState._to;
-      console.log(from);
-      console.log(to);
 
       var collectionName;
       if ($('.modal-body #new-edge-collection-attr').val() === '') {
