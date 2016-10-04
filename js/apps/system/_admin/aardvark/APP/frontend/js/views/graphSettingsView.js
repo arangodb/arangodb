@@ -336,15 +336,40 @@
 
         var callback = function () {
           if (window.App.graphViewer) {
+            // no complete rerender needed
+            // LAYOUT
+            var value;
+
+            if (event) {
+              if (event.currentTarget.id === 'g_layout') {
+                window.App.graphViewer.switchLayout($('#g_layout').val());
+                return;
+                // NODES COLORING
+              } else if (event.currentTarget.id === 'g_nodeColorByCollection') {
+                value = $('#g_nodeColorByCollection').val();
+                if (value === 'true') {
+                  window.App.graphViewer.switchNodeColorByCollection(true);
+                } else {
+                  window.App.graphViewer.switchNodeColorByCollection(false);
+                }
+                return;
+                // EDGES COLORING
+              } else if (event.currentTarget.id === 'g_edgeColorByCollection') {
+                value = $('#g_edgeColorByCollection').val();
+                if (value === 'true') {
+                  window.App.graphViewer.switchEdgeColorByCollection(true);
+                } else {
+                  window.App.graphViewer.switchEdgeColorByCollection(false);
+                }
+                return;
+              }
+            }
+
             if (color !== '' && color !== undefined) {
               updateCols();
             } else {
-              // no complete rerender needed
-              if (event.currentTarget.id === 'g_layout') {
-                window.App.graphViewer.switchLayout($('#g_layout').val());
-              } else {
-                window.App.graphViewer.render(self.lastFocussed);
-              }
+              // complete render necessary - e.g. data needed
+              window.App.graphViewer.render(self.lastFocussed);
             }
           } else {
             if (!silent) {
