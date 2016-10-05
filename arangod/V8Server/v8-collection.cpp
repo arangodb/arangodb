@@ -801,7 +801,7 @@ static void JS_DocumentVocbaseCol(
 
 static int ULVocbaseColCoordinator(std::string const& databaseName,
                                    std::string const& collectionCID,
-                                   arangodb::TRI_VOC_COL_STATUS_UNLOADED  status) {
+                                   TRI_vocbase_col_status_e status) {
   
   return ClusterInfo::instance()->setCollectionStatusCoordinator(
     databaseName, collectionCID, s);
