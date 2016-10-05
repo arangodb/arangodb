@@ -360,6 +360,13 @@ ERROR_SERVICE_MOUNTPOINT_CONFLICT,3011,"mountpoint already in use","A service ha
 ERROR_MODULE_NOT_FOUND,3100,"cannot locate module","The module path could not be resolved."
 ERROR_MODULE_FAILURE,3103,"failed to invoke module","Failed to invoke the module in its context."
 
+
+################################################################################
+## Enterprise errors
+################################################################################
+
+ERROR_NO_SMART_COLLECTION,4000,"collection is not smart","The requested collection needs to be smart, but it ain't"
+
 ################################################################################
 ## Dispatcher errors
 ################################################################################
