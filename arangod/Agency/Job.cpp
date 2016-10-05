@@ -23,7 +23,7 @@
 
 #include "Job.h"
 
-namespace arangodb::consensus;
+using namespace arangodb::consensus;
 
 Job::Job(Node const& snapshot, Agent* agent, std::string const& jobId,
          std::string const& creator, std::string const& agencyPrefix) :
@@ -36,7 +36,7 @@ Job::Job(Node const& snapshot, Agent* agent, std::string const& jobId,
 
 Job::~Job() {}
 
-virtual JOB_STATUS Job::exists() const {
+JOB_STATUS Job::exists() const {
 
   Node const& target = _snapshot("/Target");
   
@@ -55,8 +55,8 @@ virtual JOB_STATUS Job::exists() const {
 }
 
 
-virtual bool Job::finish(std::string const& type, bool success,
-                         std::string const& reason) const {
+bool Job::finish(std::string const& type, bool success,
+                 std::string const& reason) const {
   
   Builder pending, finished;
   
