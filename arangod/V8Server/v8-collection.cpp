@@ -804,7 +804,7 @@ static int ULVocbaseColCoordinator(std::string const& databaseName,
                                    TRI_vocbase_col_status_e status) {
   
   return ClusterInfo::instance()->setCollectionStatusCoordinator(
-    databaseName, collectionCID, s);
+    databaseName, collectionCID, status);
   
 }
 
