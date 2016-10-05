@@ -232,7 +232,11 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
       _isSmart = true;
       std::string distributeShardsLike;
       for (size_t i = 0; i < edgeCollectionCount; ++i) {
-        std::string n = graph->getMember(i)->getString();
+        auto col = graph->getMember(i);
+        if (col->type == NODE_TYPE_DIRECTION) {
+          col = col->getMember(1); // The first member always is the collection
+        }
+        std::string n = col->getString();
         auto c = ci->getCollection(_vocbase->name(), n);
         if (!c->isSmart() || c->distributeShardsLike().empty()) {
           _isSmart = false;
