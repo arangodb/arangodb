@@ -1687,7 +1687,12 @@ int ClusterInfo::ensureIndexCoordinator(
 
   loadPlan();
 
-  TRI_ASSERT(*numberOfShards > 0);
+  if (*numberOfShards == 0) {
+    errorMsg = *errMsg;
+    resultBuilder = *resBuilder;
+    loadCurrent();
+    return TRI_ERROR_NO_ERROR;
+  }
 
   {
     CONDITION_LOCKER(locker, agencyCallback->_cv);
@@ -1902,6 +1907,10 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
 
   // load our own cache:
   loadPlan();
+  if (*numberOfShards == 0) {
+    loadCurrent();
+    return TRI_ERROR_NO_ERROR;
+  }
 
   {
     MUTEX_LOCKER(guard, *numberOfShardsMutex);

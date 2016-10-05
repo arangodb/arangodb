@@ -289,11 +289,11 @@
         var tmpNodes = {};
         var tmpEdges = {};
 
-        _.each(this.graphData.modified.nodes, function (node) {
+        _.each(this.currentGraph.graph.nodes(), function (node) {
           tmpNodes[node.id] = undefined;
         });
 
-        _.each(this.graphData.modified.edges, function (edge) {
+        _.each(self.currentGraph.graph.edges(), function (edge) {
           tmpEdges[edge.id] = undefined;
         });
 
@@ -358,7 +358,7 @@
         self.nodeEdgesCount = {};
         var handledEdges = {};
 
-        _.each(this.graphData.modified.edges, function (edge) {
+        _.each(this.currentGraph.graph.edges(), function (edge) {
           if (handledEdges[edge.id] === undefined) {
             handledEdges[edge.id] = true;
 
@@ -394,13 +394,25 @@
     },
 
     switchEdgeType: function (edgeType) {
+      var data = {
+        nodes: this.currentGraph.graph.nodes(),
+        edges: this.currentGraph.graph.edges(),
+        settings: {}
+      };
+
       this.killCurrentGraph();
-      this.renderGraph(this.graphData.modified, null, false, null, null, edgeType);
+      this.renderGraph(data, null, false, null, null, edgeType);
     },
 
     switchLayout: function (layout) {
+      var data = {
+        nodes: this.currentGraph.graph.nodes(),
+        edges: this.currentGraph.graph.edges(),
+        settings: {}
+      };
+
       this.killCurrentGraph();
-      this.renderGraph(this.graphData.modified, null, false, layout);
+      this.renderGraph(data, null, false, layout);
 
       if ($('#g_nodeColorByCollection').val() === 'true') {
         this.switchNodeColorByCollection(true);
@@ -1696,12 +1708,6 @@
 
     renderGraph: function (graph, toFocus, aqlMode, layout, renderer, edgeType) {
       var self = this;
-
-      if (this.graphData === undefined) {
-        this.graphData = {};
-        this.graphData.modified = graph;
-      }
-
       this.graphSettings = graph.settings;
 
       var color = '#2ecc71';
@@ -2114,7 +2120,7 @@
         // allow draggin nodes
       } else if (self.algorithm === 'force') {
         // add buttons for start/stopping calculation
-        var style2 = 'color: rgb(64, 74, 83); cursor: pointer; position: absolute; right: 30px; bottom: 40px;';
+        var style2 = 'color: rgb(64, 74, 83); cursor: pointer; position: absolute; right: 30px; bottom: 40px; z-index: 9999;';
 
         if (self.aqlMode) {
           style2 = 'color: rgb(64, 74, 83); cursor: pointer; position: absolute; right: 30px; margin-top: -30px;';
