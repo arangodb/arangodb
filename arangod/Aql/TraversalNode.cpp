@@ -285,7 +285,24 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
       }
       
       _graphInfo.add(VPackValue(eColName));
-      addEdgeColl(eColName, dir);
+      if (ServerState::instance()->isRunningInCluster()) {
+        auto c = ci->getCollection(_vocbase->name(), eColName);
+        if (!c->isSmart()) {
+          addEdgeColl(eColName, dir);
+        } else {
+          std::vector<std::string> names;
+          if (_isSmart) {
+            names = c->realNames();
+          } else {
+            names = c->realNamesForRead();
+          }
+          for (auto const& name : names) {
+            addEdgeColl(name, baseDirection);
+          }
+        }
+      } else {
+        addEdgeColl(eColName, dir);
+      }
     }
     _graphInfo.close();
   } else {

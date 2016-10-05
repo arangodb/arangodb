@@ -563,7 +563,23 @@ AstNode* Ast::createNodeCollection(char const* name,
   AstNode* node = createNode(NODE_TYPE_COLLECTION);
   node->setStringValue(name, strlen(name));
 
-  _query->collections()->add(name, accessType);
+  if (ServerState::instance()->isRunningInCluster()) {
+    auto ci = ClusterInfo::instance();
+    // We want to tolerate that a collection name is given here
+    // which does not exist, if only for some unit tests:
+    try {
+      auto coll = ci->getCollection(_query->vocbase()->name(), name);
+      auto names = coll->realNames();
+      for (auto const& n : names) {
+        _query->collections()->add(n, accessType);
+      }
+    }
+    catch (...) {
+      _query->collections()->add(name, accessType);
+    }
+  } else {  // single server
+    _query->collections()->add(name, accessType);
+  }
 
   return node;
 }
@@ -1528,7 +1544,24 @@ void Ast::injectBindParameters(BindParameters& parameters) {
   // add all collections used in data-modification statements
   for (auto& it : _writeCollections) {
     if (it->type == NODE_TYPE_COLLECTION) {
-      _query->collections()->add(it->getString(), TRI_TRANSACTION_WRITE);
+      std::string name = it->getString();
+      if (ServerState::instance()->isRunningInCluster()) {
+        auto ci = ClusterInfo::instance();
+        // We want to tolerate that a collection name is given here
+        // which does not exist, if only for some unit tests:
+        try {
+          auto coll = ci->getCollection(_query->vocbase()->name(), name);
+          auto names = coll->realNames();
+          for (auto const& n : names) {
+            _query->collections()->add(n, TRI_TRANSACTION_WRITE);
+          }
+        }
+        catch (...) {
+          _query->collections()->add(name, TRI_TRANSACTION_WRITE);
+        }
+      } else {  // single server
+        _query->collections()->add(name, TRI_TRANSACTION_WRITE);
+      }
     }
   }
 
