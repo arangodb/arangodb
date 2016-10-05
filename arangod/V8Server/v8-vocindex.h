@@ -61,7 +61,7 @@ std::unique_ptr<arangodb::LogicalCollection> CreateCollectionCoordinatorEnterpri
     arangodb::velocypack::Slice parameters);
 #endif
 
-int EnsureIndexCoordinator(arangodb::LogicalCollection const* collection,
+int EnsureIndexCoordinator(std::string const& dbName, std::string const& cid,
                            arangodb::velocypack::Slice const slice, bool create,
                            arangodb::velocypack::Builder& resultBuilder,
                            std::string& errorMessage);
@@ -71,6 +71,16 @@ int EnsureIndexCoordinatorEnterprise(
     arangodb::LogicalCollection const* collection,
     arangodb::velocypack::Slice const slice, bool create,
     arangodb::velocypack::Builder& resultBuilder, std::string& errorMessage);
+#endif
+
+int DropIndexCoordinator(
+    std::string const& databaseName,
+    std::string const& cid,
+    TRI_idx_iid_t const iid);
+
+#ifdef USE_ENTERPRISE
+int DropIndexCoordinatorEnterprise(
+    arangodb::LogicalCollection const* collection, TRI_idx_iid_t const iid);
 #endif
 
 #endif
