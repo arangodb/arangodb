@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Utils/CollectionNameResolver.h"
 #include "V8Server/v8-vocbase.h"
+#include "VocBase/vocbase.h"
 
 namespace arangodb {
 class LogicalCollection;
@@ -65,5 +66,11 @@ void TRI_InitV8Collection(v8::Handle<v8::Context> context,
 void DropVocbaseColCoordinatorEnterprise(
   v8::FunctionCallbackInfo<v8::Value> const& args,
   arangodb::LogicalCollection* collection);
+
+int ULVocbaseColCoordinatorEnterprise(std::string const& databaseName,
+                                      std::string const& collectionCID,
+                                      TRI_vocbase_col_status_e status);
+
 #endif
+
 #endif
