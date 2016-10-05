@@ -357,7 +357,7 @@ static int distributeBabyOnShards(
     // We have invalid input at this point.
     // However we can work with the other babies.
     // This is for compatibility with single server
-    // We just asign it to any shard and pretend the user has given a key
+    // We just assign it to any shard and pretend the user has given a key
     std::shared_ptr<std::vector<ShardID>> shards = ci->getShardList(collid);
     shardID = shards->at(0);
     userSpecifiedKey = true;
@@ -1789,7 +1789,20 @@ int getFilteredEdgesOnCoordinator(
   std::shared_ptr<LogicalCollection> collinfo =
       ci->getCollection(dbname, collname);
 
-  auto shards = collinfo->shardIds();
+  std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> shards;
+  if (collinfo->isSmart() && collinfo->type() == TRI_COL_TYPE_EDGE) {
+    auto names = collinfo->realNamesForRead();
+    shards = std::make_shared<std::unordered_map<std::string, std::vector<std::string>>>();
+    for (auto const& n : names) {
+      collinfo = ci->getCollection(dbname, n);
+      auto smap = collinfo->shardIds();
+      for (auto const& x : *smap) {
+        shards->insert(x);
+      }
+    }
+  } else {
+    shards = collinfo->shardIds();
+  }
   std::string queryParameters = "?vertex=" + StringUtils::urlEncode(vertex);
   if (direction == TRI_EDGE_IN) {
     queryParameters += "&direction=in";
