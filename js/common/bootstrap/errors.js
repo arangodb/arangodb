@@ -258,6 +258,7 @@
     "ERROR_SERVICE_MOUNTPOINT_CONFLICT" : { "code" : 3011, "message" : "mountpoint already in use" },
     "ERROR_MODULE_NOT_FOUND"       : { "code" : 3100, "message" : "cannot locate module" },
     "ERROR_MODULE_FAILURE"         : { "code" : 3103, "message" : "failed to invoke module" },
+    "ERROR_NO_SMART_COLLECTION"    : { "code" : 4000, "message" : "collection is not smart" },
     "ERROR_DISPATCHER_IS_STOPPING" : { "code" : 21001, "message" : "dispatcher stopped" },
     "ERROR_QUEUE_UNKNOWN"          : { "code" : 21002, "message" : "named queue does not exist" },
     "ERROR_QUEUE_FULL"             : { "code" : 21003, "message" : "named queue is full" }
