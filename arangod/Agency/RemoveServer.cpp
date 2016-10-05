@@ -208,12 +208,12 @@ bool RemoveServer::start() {
     try {
       _snapshot(toDoPrefix + _jobId).toBuilder(todo);
     } catch (std::exception const&) {
-      LOG_TOPIC(INFO, Logger::AGENCY) << "Failed to get key " + toDoPrefix +
-                                             _jobId + " from agency snapshot";
+      LOG_TOPIC(INFO, Logger::AGENCY)
+        << "Failed to get key " + toDoPrefix + _jobId + " from agency snapshot";
       return false;
     }
   } else {
-    todo.add(_jb->slice()[0].valueAt(0));
+    todo.add(_jb->slice()[0].get(_agencyPrefix + toDoPrefix + _jobId));
   }
   todo.close();
 
