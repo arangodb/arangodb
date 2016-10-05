@@ -246,12 +246,14 @@ bool MoveShard::start() {
   pending.add("op", VPackValue("delete"));
   pending.close();
 
-  // --- Block shard
-  pending.add(_agencyPrefix + blockedShardsPrefix + _shard,
-              VPackValue(VPackValueType::Object));
-  pending.add("jobId", VPackValue(_jobId));
-  pending.close();
-
+  // --- Block shards
+  for (auto const& shard : VPackArrayIterator(todo.slice()[0].get("shards"))) {
+    pending.add(_agencyPrefix + blockedShardsPrefix + shard,
+                VPackValue(VPackValueType::Object));
+    pending.add("jobId", VPackValue(_jobId));
+    pending.close();
+  }
+  
   // --- Plan changes
   size_t j = 0;
   for (auto const& c : VPackArrayIterator(todo.slice()[0].get("collections"))) {

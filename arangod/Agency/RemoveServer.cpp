@@ -285,32 +285,11 @@ bool RemoveServer::start() {
 }
 
 bool RemoveServer::scheduleAddFollowers() {
-  std::vector<std::string> availServers;
 
-  // Get servers from plan
-  Node::Children const& dbservers = _snapshot("/Plan/DBServers").children();
-  for (auto const& srv : dbservers) {
-    availServers.push_back(srv.first);
-  }
-
-  // Remove cleaned from ist
-  for (auto const& srv :
-         VPackArrayIterator(_snapshot("/Target/CleanedServers").slice())) {
-    availServers.erase(std::remove(availServers.begin(), availServers.end(),
-                                   srv.copyString()),
-                       availServers.end());
-  }
-
-  // Remove failed from list
-  for (auto const& srv :
-         VPackObjectIterator(_snapshot("/Target/FailedServers").slice())) {
-    availServers.erase(std::remove(availServers.begin(), availServers.end(),
-                                   srv.key.copyString()),
-                       availServers.end());
-  }
+  std::vector<std::string> servers = availableServers();
 
   // Minimum 1 DB server must remain
-  if (availServers.size() == 1) {
+  if (servers.size() == 1) {
     LOG_TOPIC(ERR, Logger::AGENCY) << "DB server " << _server
                                    << " is the last standing db server.";
     return false;
@@ -320,10 +299,20 @@ bool RemoveServer::scheduleAddFollowers() {
 
   size_t sub = 0;
   for (auto const& database : databases) {
+
     for (auto const& collptr : database.second->children()) {
+
       Node const& collection = *(collptr.second);
+
+      try { // distributeShardsLike entry means we only follow
+        if (collection("distributeShardsLike").slice().copyString() != "") {
+          continue;
+        }
+      } catch (...) {}
+
       uint64_t replFactor = collection("replicationFactor").getUInt();
       Node::Children const& shards = collection("shards").children();
+
       // mop: special case..we already have at least one more follower than we
       // should have...
       // we could simply kill the server now...
@@ -331,6 +320,7 @@ bool RemoveServer::scheduleAddFollowers() {
       if (shards.size() > replFactor) {
         continue;
       }
+      
       for (auto const& shard : shards) {
         bool found = false;
         VPackArrayIterator dbsit(shard.second->slice());
@@ -347,22 +337,21 @@ bool RemoveServer::scheduleAddFollowers() {
         }
 
         // Only destinations, which are not already holding this shard
-        std::vector<std::string> myServers = availServers;
         for (auto const& dbserver : dbsit) {
-          myServers.erase(std::remove(myServers.begin(), myServers.end(),
-                                      dbserver.copyString()),
-                          myServers.end());
+          servers.erase(
+            std::remove(servers.begin(), servers.end(), dbserver.copyString()),
+            servers.end());
         }
 
         // Among those a random destination
         std::string newServer;
-        if (myServers.empty()) {
-          LOG_TOPIC(ERR, Logger::AGENCY) << "No servers remain as target for "
-                                         << "RemoveServer";
+        if (servers.empty()) {
+          LOG_TOPIC(ERR, Logger::AGENCY)
+            << "No servers remain as target for RemoveServer";
           return false;
         }
 
-        newServer = myServers.at(rand() % myServers.size());
+        newServer = servers.at(rand() % servers.size());
 
         AddFollower(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                     _jobId, _agencyPrefix, database.first, collptr.first,

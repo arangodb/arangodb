@@ -125,3 +125,38 @@ bool Job::finish(std::string const& type, bool success,
   return false;
 }
 
+
+std::vector<std::string> Job::availableServers() const {
+
+  std::vector<std::string> ret;
+
+  // Get servers from plan
+  Node::Children const& dbservers = _snapshot(plannedServers).children();
+  for (auto const& srv : dbservers) {
+    ret.push_back(srv.first);
+  }
+  
+  // Remove cleaned servers from ist
+  try {
+    for (auto const& srv :
+           VPackArrayIterator(_snapshot(cleanedPrefix).slice())) {
+      ret.erase(
+        std::remove(ret.begin(), ret.end(), srv.copyString()),
+        ret.end());
+    }
+  } catch (...) {}
+
+  
+  // Remove failed servers from list
+  try {
+    for (auto const& srv :
+           VPackArrayIterator(_snapshot(failedServersPrefix).slice())) {
+      ret.erase(
+        std::remove(ret.begin(), ret.end(), srv.copyString()),
+        ret.end());
+    }
+  } catch (...) {}
+  
+  return ret;
+  
+}

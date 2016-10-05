@@ -53,6 +53,7 @@ static std::string const blockedServersPrefix = "/Supervision/DBServers/";
 static std::string const blockedShardsPrefix = "/Supervision/Shards/";
 static std::string const serverStatePrefix = "/Sync/ServerStates/";
 static std::string const planVersion = "/Plan/Version";
+static std::string const plannedServers = "/Plan/DBServers";
 
 inline arangodb::consensus::write_ret_t transact(Agent* _agent,
                                                  Builder const& transaction,
@@ -106,6 +107,8 @@ struct Job {
   virtual bool create() = 0;
 
   virtual bool start() = 0;
+
+  virtual std::vector<std::string> availableServers() const;
 
   Node const _snapshot;
   Agent* _agent;
