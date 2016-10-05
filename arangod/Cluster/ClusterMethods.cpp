@@ -357,7 +357,7 @@ static int distributeBabyOnShards(
     // We have invalid input at this point.
     // However we can work with the other babies.
     // This is for compatibility with single server
-    // We just asign it to any shard and pretend the user has given a key
+    // We just assign it to any shard and pretend the user has given a key
     std::shared_ptr<std::vector<ShardID>> shards = ci->getShardList(collid);
     shardID = shards->at(0);
     userSpecifiedKey = true;
