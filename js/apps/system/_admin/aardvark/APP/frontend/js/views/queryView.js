@@ -1517,7 +1517,7 @@
           });
           data.bindVars = this.bindParamTableObj;
         }
-        if (Object.keys(data.bindVars).length > 0) {
+        if (Object.keys(bindVars).length > 0) {
           data.bindVars = bindVars;
         }
 
