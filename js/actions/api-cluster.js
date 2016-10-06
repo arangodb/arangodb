@@ -1078,7 +1078,6 @@ actions.defineHttp({
     }
     body.shards=[body.shard];
     body.collections=[body.collection];
-    require('internal').print(body);
     var r = require('@arangodb/cluster').moveShard(body);
     if (r.error) {
       actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE, r);
