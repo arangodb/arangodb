@@ -321,6 +321,14 @@ void Inception::run() {
     gossip();
   }
 
+  // 4. If still incomplete bail out :(
+  config = _agent->config();
+  if (!config.poolComplete()) {
+    LOG_TOPIC(FATAL, Logger::AGENCY)
+      << "Failed to build environment for RAFT algorithm. Bailing out!";
+    FATAL_ERROR_EXIT();
+  }
+
   _agent->ready(true);
 
 }

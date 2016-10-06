@@ -81,6 +81,7 @@ function SynchronousReplicationSuite () {
         console.info("Replication up and running!");
         return true;
       }
+      require('internal').print("Plan:", cinfo.shards, "Current:", ccinfo.map(s => s.servers));
       console.info("Plan:", cinfo.shards, "Current:", ccinfo.map(s => s.servers));
       wait(0.5);
       global.ArangoClusterInfo.flush();
