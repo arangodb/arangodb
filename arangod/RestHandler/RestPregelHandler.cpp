@@ -28,8 +28,9 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Pregel/JobMapping.h"
 #include "Pregel/Conductor.h"
-#include "Pregel/Execution.h"
+#include "Pregel/Worker.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -78,27 +79,19 @@ RestHandler::status RestPregelHandler::execute() {
 void RestPregelHandler::nextGSS(VPackSlice &body) {
   VPackSlice executionNum = body.get("en");
   if (executionNum.isInt()) {
-    Execution *exe = Conductor::instance()->execution(executionNum.getInt());
+    Worker *w = JobMapping::instance()->worker(executionNum.getInt());
     
-    if (!exe) {// can happen if gss == 0
-      VPackSlice vertex = body.get("vertex");
-      VPackSlice edge = body.get("edge");
-      VPackSlice algo = body.get("algo");
-
-      exe = new Execution(executionNum.getInt(),
-                          _vocbase,
-                          vertex.copyString(),
-                          edge.copyString(),
-                          algo.copyString());
+    if (!w) {// can happen if gss == 0
+      w = new Worker(executionNum.getInt(), _vocbase, body);
     }
-    exe->nextGlobalStep(body);
+    w->nextGlobalStep(body);
   }
 }
 
 void RestPregelHandler::finishedGSS(VPackSlice &body) {
   VPackSlice executionNum = body.get("en");
   if (executionNum.isInt()) {
-    Execution *exe = Conductor::instance()->execution(executionNum.getInt());
+    Conductor *exe = JobMapping::instance()->conductor(executionNum.getInt());
     if (exe) {
       exe->finishedGlobalStep(body);
     }
@@ -109,7 +102,7 @@ void RestPregelHandler::finishedGSS(VPackSlice &body) {
 void RestPregelHandler::receivedMessages(VPackSlice &body) {
   VPackSlice executionNum = body.get("en");
   if (executionNum.isInt()) {
-    Execution *exe = Conductor::instance()->execution(executionNum.getInt());
+    Worker *exe = JobMapping::instance()->worker(executionNum.getInt());
     
     if (exe) {
       //exe->nextGlobalStep(body);

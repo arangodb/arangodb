@@ -20,51 +20,27 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_EXECUTION_H
-#define ARANGODB_PREGEL_EXECUTION_H 1
+#ifndef ARANGODB_PREGEL_WORKER_H
+#define ARANGODB_PREGEL_WORKER_H 1
 
-#include <mutex>
+#include <vector>
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/vocbase.h"
 
-
 namespace arangodb {
 namespace pregel {
+  class Vertex;
   
-  class WorkerThread;
-  enum ExecutionState {RUNNING, FINISHED, ERROR};
-  
-  class Execution {
+  class Worker {
   public:
-    
-    Execution(int executionNumber,
-              TRI_vocbase_t *vocbase,
-              arangodb::CollectionID const& vertexCollection,
-              arangodb::CollectionID const& edgeCollection,
-              std::string const& algorithm);
-    
-    
-    void finishedGlobalStep(VPackSlice &data);//
+    Worker(int executionNumber, TRI_vocbase_t *vocbase, VPackSlice &s);
+      
     void nextGlobalStep(VPackSlice &data);// called by coordinator
-    void cancel();
-    
-    ExecutionState getState() {return _state;}
     
   private:
-    std::mutex mtx;
-    int _executionNumber;
-    size_t _globalSuperstep;
-    size_t _dbServerCount = 0;
-    size_t _responseCount = 0;
-    
-    TRI_vocbase_t *_vocbase;
-    ExecutionState _state = ExecutionState::RUNNING;
-    WorkerThread *_worker;
-    bool _isCoordinator;
     std::string _coordinatorId;
-    
-    int sendToAllDBServers(std::string url, VPackSlice const& body);
+    std::vector<Vertex> _vertices;
   };
 }
 }

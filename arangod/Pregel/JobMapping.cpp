@@ -20,4 +20,30 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "WorkerThread.h"
+#include "JobMapping.h"
+#include "Conductor.h"
+#include "Worker.h"
+
+using namespace arangodb::pregel;
+
+static int _exeI = 0;
+int JobMapping::createExecutionNumber() {
+  return _exeI++;
+}
+
+void JobMapping::addExecution(Conductor *exec, int executionNumber) {
+  //_executions.
+  _conductors[executionNumber] = exec;
+}
+
+Conductor* JobMapping::conductor(int executionNumber) {
+  auto it = _conductors.find(executionNumber);
+  if (it != _conductors.end()) return it->second;
+  else return nullptr;
+}
+
+Worker* JobMapping::worker(int executionNumber) {
+  auto it = _workers.find(executionNumber);
+  if (it != _workers.end()) return it->second;
+  else return nullptr;
+}

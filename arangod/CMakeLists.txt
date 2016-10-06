@@ -361,10 +361,11 @@ add_executable(${BIN_ARANGOD}
   Wal/Slots.cpp
   Wal/SynchronizerThread.cpp
   Pregel/Conductor.cpp
-  Pregel/Execution.cpp
+  Pregel/JobMapping.cpp
   Pregel/MessageQueue.cpp
   Pregel/Vertex.cpp
-  Pregel/WorkerThread.cpp
+  Pregel/Worker.cpp
+  Pregel/Utils.cpp
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}
 )
 

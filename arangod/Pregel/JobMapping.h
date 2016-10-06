@@ -20,19 +20,40 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_WORKER_H
-#define ARANGODB_PREGEL_WORKER_H 1
+#ifndef ARANGODB_PREGEL_JOBMAPPING_H
+#define ARANGODB_PREGEL_JOBMAPPING_H 1
 
-#include <vector>
+#include <map>
 
 namespace arangodb {
 namespace pregel {
-  class WorkerThread {
-    
-    
   
+  class Conductor;
+  class Worker;
+  
+  class JobMapping {
+  public:
+    
+    
+    static JobMapping* instance() {
+      return &_Instance;
+    };
+    
+    int createExecutionNumber();
+    void addExecution(Conductor *exec, int executionNumber);
+    Conductor* conductor(int executionNumber);
+    Worker* worker(int executionNumber);
+
+    
   private:
+    std::map<int, Conductor*> _conductors;
+    std::map<int, Worker*> _workers;
+
+    JobMapping() {};
+    JobMapping(const JobMapping &c) {};
+    static JobMapping _Instance;
   };
 }
 }
+
 #endif

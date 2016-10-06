@@ -23,32 +23,45 @@
 #ifndef ARANGODB_PREGEL_CONDUCTOR_H
 #define ARANGODB_PREGEL_CONDUCTOR_H 1
 
-#include <map>
+#include <mutex>
+#include "Basics/Common.h"
+#include "Cluster/ClusterInfo.h"
+#include "VocBase/vocbase.h"
+
 
 namespace arangodb {
 namespace pregel {
   
-  class Execution;
+  class WorkerThread;
+  enum ExecutionState {RUNNING, FINISHED, ERROR};
+  
   class Conductor {
   public:
     
+    Conductor(int executionNumber,
+              TRI_vocbase_t *vocbase,
+              arangodb::CollectionID const& vertexCollection,
+              arangodb::CollectionID const& edgeCollection,
+              std::string const& algorithm);
     
-    static Conductor* instance() {
-      return &_Instance;
-    };
     
-    int createExecutionNumber();
-    void addExecution(Execution *exec, int executionNumber);
-    Execution* execution(int executionNumber);
+    void finishedGlobalStep(VPackSlice &data);//
+    void cancel();
+    
+    ExecutionState getState() {return _state;}
     
   private:
-    std::map<int, Execution*> _executions;
+    std::mutex mtx;
+    int _executionNumber;
+    size_t _globalSuperstep;
+    size_t _dbServerCount = 0;
+    size_t _responseCount = 0;
     
-    Conductor() {};
-    Conductor(const Conductor &c) {};
-    static Conductor _Instance;
+    TRI_vocbase_t *_vocbase;
+    ExecutionState _state = ExecutionState::RUNNING;
+    
+    int sendToAllDBServers(std::string url, VPackSlice const& body);
   };
 }
 }
-
 #endif

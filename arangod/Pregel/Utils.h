@@ -20,52 +20,31 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <string>
-#include <iterator>
+#ifndef ARANGODB_PREGEL_UTILS_H
+#define ARANGODB_PREGEL_UTILS_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/vocbase.h"
 
-#ifndef ARANGODB_PREGEL_VERTEX_H
-#define ARANGODB_PREGEL_VERTEX_H 1
 namespace arangodb {
 namespace pregel {
-  
-  enum VertexActivationState {
-    ACTIVE,
-    STOPPED
-  };
-  
-  
-  struct Edge {
-    std::string edgeId;
-    std::string toId;
+  class Utils {
+    Utils() = delete;
     
-    int value;// demo
-  };
-  
-  class Vertex {
   public:
-    //typedef std::iterator<std::forward_iterator_tag, VPackSlice> MessageIterator;
-    Vertex(VPackSlice &document);
-    void compute(velocypack::ArrayIterator &messages);
+    // constants
+    static std::string const nextGSSPath;
+    static std::string const finishedGSSPath;
     
-    VertexActivationState state() {return _activationState;}
-    std::vector<VPackSlice> messages() {return _messages;}
+    static std::string const executionNumberKey;
+    static std::string const vertexCollectionKey;
+    static std::string const edgeCollectionKey;
+    static std::string const algorithmKey;
+    static std::string const coordinatorIdKey;
     
-    std::vector<Edge> _edges;
-
-  protected:
-    void voteHalt() {_activationState = VertexActivationState::STOPPED;}
-    void sendMessage(VPackBuilder &message) {_messages.push_back(message.slice());}
-
-  private:
-    VertexActivationState _activationState;
-    std::vector<VPackSlice> _messages;
-    
-    int _vertexState;// demo
+    static std::string const globalSuperstepKey;
+    static std::string const messagesKey;
+  
   };
-
 }
 }
 #endif
