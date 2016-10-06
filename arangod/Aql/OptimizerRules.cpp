@@ -1863,6 +1863,14 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
     // attributes
     bool handled = false;
 
+    if (indexes.size() == 1 && isSorted) {
+      // if we have just a single index and we can use it for the filtering condition,
+      // then we can use the index for sorting, too. regardless of it the index is sparse or not.
+      // because the index would only return non-null attributes anyway, so we do not need
+      // to care about null values when sorting here
+      isSparse = false;
+    }
+
     SortCondition sortCondition(_sorts, cond->getConstAttributes(outVariable, !isSparse), _variableDefinitions);
 
     bool const isOnlyAttributeAccess =

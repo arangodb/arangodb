@@ -422,18 +422,21 @@ class SkiplistIndex final : public PathBasedIndex {
       arangodb::aql::AstNode const*, arangodb::aql::AstNode const*,
       arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
       std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&,
+      std::unordered_set<std::string>& nonNullAttributes,
       bool) const;
 
   bool accessFitsIndex(
       arangodb::aql::AstNode const*, arangodb::aql::AstNode const*,
       arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
-      std::vector<std::vector<arangodb::aql::AstNode const*>>&) const;
-
+      std::vector<std::vector<arangodb::aql::AstNode const*>>&,
+      std::unordered_set<std::string>& nonNullAttributes) const;
 
   void matchAttributes(
       arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
       std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&,
-      size_t&, bool) const;
+      size_t& values, 
+      std::unordered_set<std::string>& nonNullAttributes,
+      bool) const;
 
   bool findMatchingConditions(
       arangodb::aql::AstNode const*, arangodb::aql::Variable const*,

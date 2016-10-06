@@ -361,6 +361,7 @@ class Index {
                            arangodb::aql::AstNode const* other,
                            arangodb::aql::AstNode const* op,
                            arangodb::aql::Variable const* reference,
+                           std::unordered_set<std::string>& nonNullAttributes,
                            bool) const;
 
   //////////////////////////////////////////////////////////////////////////////

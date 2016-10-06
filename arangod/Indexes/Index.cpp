@@ -598,6 +598,7 @@ bool Index::canUseConditionPart(arangodb::aql::AstNode const* access,
                                 arangodb::aql::AstNode const* other,
                                 arangodb::aql::AstNode const* op,
                                 arangodb::aql::Variable const* reference,
+                                std::unordered_set<std::string>& nonNullAttributes,
                                 bool isExecution) const {
   if (_sparse) {
     if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN) {
@@ -634,12 +635,33 @@ bool Index::canUseConditionPart(arangodb::aql::AstNode const* access,
       if (!other->isConstant()) {
         return false;
       }
+  
+
+      if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE &&
+          other->isNullValue()) {
+        // != null. now note that a certain attribute cannot become null
+        try { nonNullAttributes.emplace(access->toString()); } catch (...) {}
+      } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT) {
+        // > null. now note that a certain attribute cannot become null
+        try { nonNullAttributes.emplace(access->toString()); } catch (...) {}
+      } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE &&
+                 !other->isNullValue()) {
+        // >= non-null. now note that a certain attribute cannot become null
+        try { nonNullAttributes.emplace(access->toString()); } catch (...) {}
+      }
 
       if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT ||
           op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE) {
         // <  and  <= are not supported with sparse indexes as this may include
         // null values
-        return false;
+        try {
+          // check if we've marked this attribute as being non-null already
+          if (nonNullAttributes.find(access->toString()) == nonNullAttributes.end()) {
+            return false;
+          }
+        } catch (...) {
+          return false;
+        }
       }
 
       if (other->isNullValue() &&
@@ -647,7 +669,14 @@ bool Index::canUseConditionPart(arangodb::aql::AstNode const* access,
            op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE)) {
         // ==  and  >= null are not supported with sparse indexes for the same
         // reason
-        return false;
+        try {
+          // check if we've marked this attribute as being non-null already
+          if (nonNullAttributes.find(access->toString()) == nonNullAttributes.end()) {
+            return false;
+          }
+        } catch (...) {
+          return false;
+        }
       }
 
       if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
