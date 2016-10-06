@@ -59,8 +59,11 @@ LogTopic Logger::THREADS("threads", LogLevel::WARN);
 LogTopic Logger::V8("v8", LogLevel::WARN);
 
 #ifdef USE_ENTERPRISE
+LogTopic AuditFeature::AUDIT_AUTHENTICATION("audit-authentication", LogLevel::INFO);
+LogTopic AuditFeature::AUDIT_DATABASE("audit-database", LogLevel::INFO);
+LogTopic AuditFeature::AUDIT_COLLECTION("audit-collection", LogLevel::INFO);
+LogTopic AuditFeature::AUDIT_DOCUMENT("audit-documentation", LogLevel::INFO);
 LogTopic AuditFeature::AUDIT_SERVICE("audit-service", LogLevel::INFO);
-LogTopic AuditFeature::AUTHENTICATION("audit-authentication", LogLevel::INFO);
 #endif
 
 std::vector<std::pair<std::string, LogLevel>> LogTopic::logLevelTopics() {

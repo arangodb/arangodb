@@ -612,8 +612,9 @@ bool RocksDBIndex::accessFitsIndex(
     arangodb::aql::AstNode const* op, arangodb::aql::Variable const* reference,
     std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
         found,
+    std::unordered_set<std::string>& nonNullAttributes,
     bool isExecution) const {
-  if (!this->canUseConditionPart(access, other, op, reference, isExecution)) {
+  if (!this->canUseConditionPart(access, other, op, reference, nonNullAttributes, isExecution)) {
     return false;
   }
 
@@ -709,7 +710,9 @@ void RocksDBIndex::matchAttributes(
     arangodb::aql::Variable const* reference,
     std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
         found,
-    size_t& values, bool isExecution) const {
+    size_t& values, 
+    std::unordered_set<std::string>& nonNullAttributes,
+    bool isExecution) const {
   for (size_t i = 0; i < node->numMembers(); ++i) {
     auto op = node->getMember(i);
 
@@ -721,14 +724,14 @@ void RocksDBIndex::matchAttributes(
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
         TRI_ASSERT(op->numMembers() == 2);
         accessFitsIndex(op->getMember(0), op->getMember(1), op, reference,
-                        found, isExecution);
+                        found, nonNullAttributes, isExecution);
         accessFitsIndex(op->getMember(1), op->getMember(0), op, reference,
-                        found, isExecution);
+                        found, nonNullAttributes, isExecution);
         break;
 
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
         if (accessFitsIndex(op->getMember(0), op->getMember(1), op, reference,
-                            found, isExecution)) {
+                            found, nonNullAttributes, isExecution)) {
           auto m = op->getMember(1);
           if (m->isArray() && m->numMembers() > 1) {
             // attr IN [ a, b, c ]  =>  this will produce multiple items, so
@@ -749,8 +752,9 @@ bool RocksDBIndex::supportsFilterCondition(
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
+  std::unordered_set<std::string> nonNullAttributes;
   size_t values = 0;
-  matchAttributes(node, reference, found, values, false);
+  matchAttributes(node, reference, found, values, nonNullAttributes, false);
 
   bool lastContainsEquality = true;
   size_t attributesCovered = 0;
@@ -908,8 +912,9 @@ IndexIterator* RocksDBIndex::iteratorForCondition(
     VPackArrayBuilder guard(&searchValues);
 
     std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
+    std::unordered_set<std::string> nonNullAttributes;
     size_t unused = 0;
-    matchAttributes(node, reference, found, unused, true);
+    matchAttributes(node, reference, found, unused, nonNullAttributes, true);
 
     // found contains all attributes that are relevant for this node.
     // It might be less than fields().
@@ -1086,8 +1091,9 @@ arangodb::aql::AstNode* RocksDBIndex::specializeCondition(
     arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) const {
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
+  std::unordered_set<std::string> nonNullAttributes;
   size_t values = 0;
-  matchAttributes(node, reference, found, values, false);
+  matchAttributes(node, reference, found, values, nonNullAttributes, false);
 
   std::vector<arangodb::aql::AstNode const*> children;
   bool lastContainsEquality = true;

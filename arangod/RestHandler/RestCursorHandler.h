@@ -57,6 +57,10 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
  public:
   virtual status execute() override;
 
+#ifdef USE_ENTERPRISE
+  void finalizeExecute() override;
+#endif
+
   bool cancel() override;
 
  protected:

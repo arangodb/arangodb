@@ -657,6 +657,30 @@ void Condition::optimize(ExecutionPlan* plan) {
     }
 
     TRI_ASSERT(andNumMembers > 1);
+    
+    // sort AND parts of each sub-condition so > and >= come before < and <=
+    // we use this to some advantage when we check the conditions for a sparse index
+    // later.
+    // if a sparse index is asked whether it can supported a condition such as `attr < value1`,
+    // this range would include `null`, which the sparse index cannot provide. however, if we
+    // first check other conditions we may find a condition on the same attribute, e.g. `attr > value2`.
+    // this other condition may exclude `null` so we then use the full range `value2 < attr < value1`
+    // and do not have to discard sub-conditions anymore
+    andNode->sortMembers([](AstNode const* lhs, AstNode const* rhs) {
+      if ((lhs->type != NODE_TYPE_OPERATOR_BINARY_LT && lhs->type != NODE_TYPE_OPERATOR_BINARY_LE) &&
+          (rhs->type == NODE_TYPE_OPERATOR_BINARY_LT || rhs->type == NODE_TYPE_OPERATOR_BINARY_LE)) {
+        // sort < and <= after other comparison operators
+        return true;
+      }
+      if ((lhs->type == NODE_TYPE_OPERATOR_BINARY_LT || lhs->type == NODE_TYPE_OPERATOR_BINARY_LE) &&
+          (rhs->type != NODE_TYPE_OPERATOR_BINARY_LT && rhs->type != NODE_TYPE_OPERATOR_BINARY_LE)) {
+        // sort < and <= after other comparison operators
+        return false;
+      }
+      // compare pointers as last resort
+      return (lhs->type < rhs->type);
+    });
+
 
     if (inComparisons > 0) {
       // move IN operations to the front to make comparison code below simpler
@@ -686,7 +710,7 @@ void Condition::optimize(ExecutionPlan* plan) {
         stack.pop_back();
       }
     }
-
+  
     // optimization is only necessary if an AND node has multiple members
     VariableUsageType variableUsage;
 

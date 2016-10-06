@@ -72,23 +72,11 @@
       var res = '';
       var parts = _.map(this.filters, function (f, i) {
         if (f.op === 'LIKE') {
-          res = ' ' + f.op + '(x.`' + f.attr + '`, @param';
+          res = ' ' + f.op + '(x.@attr, @param';
           res += i;
           res += ')';
         } else {
-          if (f.op === 'IN' || f.op === 'NOT IN') {
-            res = ' ';
-          } else {
-            res = ' x.`';
-          }
-
-          res += f.attr;
-
-          if (f.op === 'IN' || f.op === 'NOT IN') {
-            res += ' ';
-          } else {
-            res += '` ';
-          }
+          res += ' x.@attr ';
 
           res += f.op;
 
@@ -101,6 +89,12 @@
         }
 
         bindVars['param' + i] = f.val;
+        if (f.attr.indexOf('.') !== -1) {
+          bindVars['attr'] = f.attr.split('.');
+        } else {
+          bindVars['attr'] = f.attr;
+        }
+
         return res;
       });
       return query + parts.join(' &&');

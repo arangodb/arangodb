@@ -52,6 +52,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CursorRepository.h"
+#include "Utils/Events.h"
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
@@ -292,6 +293,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
   auto it = _collectionsByName.find(name);
 
   if (it != _collectionsByName.end()) {
+    events::CreateCollection(name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
   }
 
@@ -311,6 +313,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
     if (writeMarker) {
       collection->toVelocyPack(builder, false);
     }
+    events::CreateCollection(name, TRI_ERROR_NO_ERROR);
     return collection;
   } catch (...) {
     unregisterCollection(collection);
@@ -481,6 +484,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
   if (collection->status() == TRI_VOC_COL_STATUS_DELETED) {
     // mark collection as deleted
     unregisterCollection(collection);
+    events::DropCollection(colName, TRI_ERROR_NO_ERROR);
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -497,6 +501,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
         engine->changeCollection(this, collection->cid(), collection, doSync);
       } catch (arangodb::basics::Exception const& ex) {
         collection->setDeleted(false);
+        events::DropCollection(colName, ex.code());
         return ex.code();
       }
     }
@@ -512,6 +517,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
   
     DropCollectionCallback(collection);
 
+    events::DropCollection(colName, TRI_ERROR_NO_ERROR);
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -520,6 +526,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
     // loop until status changes
     // try again later
     state = DROP_AGAIN;
+    events::DropCollection(colName, TRI_ERROR_NO_ERROR);
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -550,10 +557,12 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
     }
 
     state = DROP_PERFORM;
+    events::DropCollection(colName, TRI_ERROR_NO_ERROR);
     return TRI_ERROR_NO_ERROR;
   }
 
   // unknown status
+  events::DropCollection(colName, TRI_ERROR_INTERNAL);
   return TRI_ERROR_INTERNAL;
 }
 

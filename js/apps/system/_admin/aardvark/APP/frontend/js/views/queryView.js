@@ -539,6 +539,9 @@
               $.noty.clearQueue();
               $.noty.closeAll();
               self.handleResult(counter);
+
+              // SCROLL TO RESULT BOX
+              $('.centralRow').animate({ scrollTop: $('#queryContent').height() }, 'fast');
             }
             afterResult();
           },
@@ -1584,8 +1587,6 @@
       window.setTimeout(function () {
         self.aqlEditor.focus();
       }, 300);
-
-      $('.centralRow').animate({ scrollTop: $('#queryContent').height() }, 'fast');
     },
 
     setEditorAutoHeight: function (editor) {
@@ -1832,6 +1833,9 @@
                 checkQueryStatus();
               }, 500);
             }
+
+            // SCROLL TO RESULT BOX
+            $('.centralRow').animate({ scrollTop: $('#queryContent').height() }, 'fast');
           },
           error: function (resp) {
             var error;

@@ -25,6 +25,9 @@
 
 #include "Basics/Common.h"
 
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Rest/CommonDefines.h"
 
 namespace arangodb {
@@ -37,6 +40,13 @@ void CredentialsBad(GeneralRequest*, rest::AuthenticationMethod);
 void PasswordChangeRequired(GeneralRequest const*);
 void Authenticated(GeneralRequest*, rest::AuthenticationMethod);
 void NotAuthorized(GeneralRequest const*);
+void CreateCollection(std::string const& name, int result);
+void DropCollection(std::string const& name, int result);
+void TruncateCollection(std::string const& name, int result);
+void CreateDatabase(std::string const& name, int result);
+void DropDatabase(std::string const& name, int result);
+void CreateIndex(std::string const& col, VPackSlice const&);
+void DropIndex(std::string const& col, std::string const& idx, int result);
 }
 }
 

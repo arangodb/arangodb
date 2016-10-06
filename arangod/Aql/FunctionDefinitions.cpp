@@ -367,6 +367,8 @@ struct FunctionDefiner {
                       false, true, &Functions::Near, NotInCoordinator});
     add({"WITHIN", "AQL_WITHIN", "hs,n,n,n|s", true, false, true,
                         false, true, &Functions::Within, NotInCoordinator});
+    add({"DISTANCE", "AQL_DISTANCE", "n,n,n,n", true, true, false, true, true,
+                        &Functions::Distance});
     add({"WITHIN_RECTANGLE", "AQL_WITHIN_RECTANGLE", "hs,d,d,d,d", true,
               false, true, false, true});
     add({"IS_IN_POLYGON", "AQL_IS_IN_POLYGON", "l,ln|nb",
