@@ -2170,10 +2170,12 @@ void ClusterInfo::loadCurrentDBServers() {
 
       for (auto const& dbserver : VPackObjectIterator(currentDBServers)) {
         bool found = false;
-        for (auto const& failedServer : VPackObjectIterator(failedDBServers)) {
-          if (dbserver.key == failedServer.key) {
-            found = true;
-            continue;
+        if (failedDBServers.isObject()) {
+          for (auto const& failedServer : VPackObjectIterator(failedDBServers)) {
+            if (dbserver.key == failedServer.key) {
+              found = true;
+              break;
+            }
           }
         }
         if (found) {
