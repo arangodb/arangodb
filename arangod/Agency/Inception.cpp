@@ -326,7 +326,6 @@ void Inception::run() {
     LOG_TOPIC(FATAL, Logger::AGENCY)
       << "Failed to build environment for RAFT algorithm. Bailing out!";
     FATAL_ERROR_EXIT();
-    return false;
   }
 
   _agent->ready(true);

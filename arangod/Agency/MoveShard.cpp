@@ -248,7 +248,7 @@ bool MoveShard::start() {
 
   // --- Block shards
   for (auto const& shard : VPackArrayIterator(todo.slice()[0].get("shards"))) {
-    pending.add(_agencyPrefix + blockedShardsPrefix + shard,
+    pending.add(_agencyPrefix + blockedShardsPrefix + shard.copyString(),
                 VPackValue(VPackValueType::Object));
     pending.add("jobId", VPackValue(_jobId));
     pending.close();
