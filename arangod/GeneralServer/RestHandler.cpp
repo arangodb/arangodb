@@ -39,6 +39,8 @@ std::atomic_uint_fast64_t NEXT_HANDLER_ID(
     static_cast<uint64_t>(TRI_microtime() * 100000.0));
 }
 
+thread_local RestHandler const* RestHandler::CURRENT_HANDLER = nullptr;
+
 RestHandler::RestHandler(GeneralRequest* request, GeneralResponse* response)
     : _handlerId(NEXT_HANDLER_ID.fetch_add(1, std::memory_order_seq_cst)),
       _request(request),

@@ -33,6 +33,7 @@
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/Index.h"
 #include "Indexes/PrimaryIndex.h"
+#include "Utils/Events.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8/v8-conv.h"
@@ -595,6 +596,8 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
   }
 
   TRI_ASSERT(!slice.isNone());
+  events::CreateIndex(collection->name(), slice);
+
   // ensure an index, coordinator case
   if (ServerState::instance()->isCoordinator()) {
     VPackBuilder resultBuilder;
