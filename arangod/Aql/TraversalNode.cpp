@@ -232,7 +232,11 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
       _isSmart = true;
       std::string distributeShardsLike;
       for (size_t i = 0; i < edgeCollectionCount; ++i) {
-        std::string n = graph->getMember(i)->getString();
+        auto col = graph->getMember(i);
+        if (col->type == NODE_TYPE_DIRECTION) {
+          col = col->getMember(1); // The first member always is the collection
+        }
+        std::string n = col->getString();
         auto c = ci->getCollection(_vocbase->name(), n);
         if (!c->isSmart() || c->distributeShardsLike().empty()) {
           _isSmart = false;
@@ -285,7 +289,24 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
       }
       
       _graphInfo.add(VPackValue(eColName));
-      addEdgeColl(eColName, dir);
+      if (ServerState::instance()->isRunningInCluster()) {
+        auto c = ci->getCollection(_vocbase->name(), eColName);
+        if (!c->isSmart()) {
+          addEdgeColl(eColName, dir);
+        } else {
+          std::vector<std::string> names;
+          if (_isSmart) {
+            names = c->realNames();
+          } else {
+            names = c->realNamesForRead();
+          }
+          for (auto const& name : names) {
+            addEdgeColl(name, baseDirection);
+          }
+        }
+      } else {
+        addEdgeColl(eColName, dir);
+      }
     }
     _graphInfo.close();
   } else {

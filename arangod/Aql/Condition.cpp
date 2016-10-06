@@ -414,13 +414,13 @@ std::vector<std::vector<arangodb::basics::AttributeName>> Condition::getConstAtt
 
       if (lhs->isAttributeAccessForVariable(parts) &&
           parts.first == reference) {
-        if (includeNull || (rhs->isConstant() && !rhs->isNullValue())) {
+        if (includeNull || ((rhs->isConstant() || rhs->type == NODE_TYPE_REFERENCE) && !rhs->isNullValue())) {
           result.emplace_back(std::move(parts.second));
         }
       }
       else if (rhs->isAttributeAccessForVariable(parts) &&
                parts.first == reference) {
-        if (includeNull || (lhs->isConstant() && !lhs->isNullValue())) {
+        if (includeNull || ((lhs->isConstant() || lhs->type == NODE_TYPE_REFERENCE) && !lhs->isNullValue())) {
           result.emplace_back(std::move(parts.second));
         }
       }
