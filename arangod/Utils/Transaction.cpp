@@ -41,6 +41,7 @@
 #include "Indexes/SkiplistIndex.h"
 #include "Logger/Logger.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/Events.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/TransactionContext.h"
@@ -2618,12 +2619,16 @@ OperationResult Transaction::truncate(std::string const& collectionName,
   TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
   
   OperationOptions optionsCopy = options;
+  OperationResult result;
 
   if (ServerState::isCoordinator(_serverRole)) {
-    return truncateCoordinator(collectionName, optionsCopy);
+    result = truncateCoordinator(collectionName, optionsCopy);
+  } else {
+    result = truncateLocal(collectionName, optionsCopy);
   }
 
-  return truncateLocal(collectionName, optionsCopy);
+  events::TruncateCollection(collectionName, result.code);
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

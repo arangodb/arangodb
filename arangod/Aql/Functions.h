@@ -155,6 +155,8 @@ struct Functions {
                        VPackFunctionParameters const&);
   static AqlValue Within(arangodb::aql::Query*, arangodb::Transaction*,
                          VPackFunctionParameters const&);
+  static AqlValue Distance(arangodb::aql::Query*, arangodb::Transaction*,
+                           VPackFunctionParameters const&);
   static AqlValue Flatten(arangodb::aql::Query*, arangodb::Transaction*,
                           VPackFunctionParameters const&);
   static AqlValue Zip(arangodb::aql::Query*, arangodb::Transaction*,

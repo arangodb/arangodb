@@ -35,6 +35,10 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
  public:
   status execute() override final;
 
+#ifdef USE_ENTERPRISE
+  void finalizeExecute() override;
+#endif
+
  protected:
   virtual TRI_col_type_e getCollectionType() const {
     return TRI_COL_TYPE_DOCUMENT;
@@ -66,7 +70,6 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
 
   // deletes a document
   bool deleteDocument();
-
 };
 }
 
