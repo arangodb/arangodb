@@ -4170,6 +4170,28 @@ function AQL_WITHIN_RECTANGLE (collection, latitude1, longitude1, latitude2, lon
   ).toArray();
 }
 
+function AQL_DISTANCE (latitude1, longitude1, latitude2, longitude2) {
+  if (TYPEWEIGHT(latitude1) !== TYPEWEIGHT_NUMBER ||
+    TYPEWEIGHT(longitude1) !== TYPEWEIGHT_NUMBER ||
+    TYPEWEIGHT(latitude2) !== TYPEWEIGHT_NUMBER ||
+    TYPEWEIGHT(longitude2) !== TYPEWEIGHT_NUMBER) {
+    WARN('DISTANCE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
+  }
+
+  var p1 = AQL_TO_NUMBER(latitude1) * (Math.PI / 180.0);
+  var p2 = AQL_TO_NUMBER(latitude2) * (Math.PI / 180.0);
+  var d1 = AQL_TO_NUMBER(latitude2 - latitude1) * (Math.PI / 180.0);
+  var d2 = AQL_TO_NUMBER(longitude2 - longitude1) * (Math.PI / 180.0);
+
+  var a = Math.sin(d1 / 2.0) * Math.sin(d1 / 2.0) +
+          Math.cos(p1) * Math.cos(p2) *
+          Math.sin(d2 / 2.0) * Math.sin(d2 / 2.0);
+  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1.0 - a));
+
+  return AQL_TO_NUMBER(6371e3 * c);
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief return true if a point is contained inside a polygon
 // //////////////////////////////////////////////////////////////////////////////
@@ -5628,6 +5650,7 @@ exports.AQL_STDDEV_POPULATION = AQL_STDDEV_POPULATION;
 exports.AQL_NEAR = AQL_NEAR;
 exports.AQL_WITHIN = AQL_WITHIN;
 exports.AQL_WITHIN_RECTANGLE = AQL_WITHIN_RECTANGLE;
+exports.AQL_DISTANCE = AQL_DISTANCE;
 exports.AQL_IS_IN_POLYGON = AQL_IS_IN_POLYGON;
 exports.AQL_FULLTEXT = AQL_FULLTEXT;
 exports.AQL_NOT_NULL = AQL_NOT_NULL;
