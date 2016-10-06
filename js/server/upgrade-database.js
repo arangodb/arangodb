@@ -371,7 +371,10 @@
         }
 
         // same version
-        if (Math.floor(lastVersion / 100) === Math.floor(currentVersion / 100)) {
+        const lv = Math.floor(lastVersion / 100);
+        const cv = Math.floor(currentVersion / 100);
+
+        if (lv === cv || (lv === 300 && cv === 301)) {
           return runTasks(cluster, DATABASE_EXISTING, lastVersion);
         }
 
