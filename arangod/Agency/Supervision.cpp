@@ -57,7 +57,11 @@ Supervision::Supervision()
 
 Supervision::~Supervision() { shutdown(); };
 
-void Supervision::wakeUp() { _cv.signal(); }
+void Supervision::wakeUp() {
+  updateSnapshot();
+  upgradeAgency();
+  _cv.signal();
+}
 
 static std::string const syncPrefix = "/Sync/ServerStates/";
 static std::string const healthPrefix = "/Supervision/Health/";
@@ -66,6 +70,37 @@ static std::string const planCoordinatorsPrefix = "/Plan/Coordinators";
 static std::string const currentServersRegisteredPrefix =
     "/Current/ServersRegistered";
 static std::string const foxxmaster = "/Current/Foxxmaster";
+
+void Supervision::upgradeAgency() {
+  try {
+    if (_snapshot(failedServersPrefix).slice().isArray()) {
+      Builder builder;
+      builder.openArray();
+      builder.openObject();
+      builder.add(
+        _agencyPrefix + failedServersPrefix, VPackValue(VPackValueType::Object));
+      for (auto const& failed :
+             VPackArrayIterator(_snapshot(failedServersPrefix).slice())) {
+        builder.add(failed.copyString(), VPackValue(VPackValueType::Object));
+        builder.close();
+      }
+      builder.close();
+      builder.close();
+      builder.close();
+      transact(_agent, builder);
+    }
+  } catch (std::exception const& e) {
+    Builder builder;
+    builder.openArray();
+    builder.openObject();
+    builder.add(
+      _agencyPrefix + failedServersPrefix, VPackValue(VPackValueType::Object));
+    builder.close();
+    builder.close();
+    builder.close();
+    transact(_agent, builder);    
+  }
+}
 
 std::vector<check_t> Supervision::checkDBServers() {
   std::vector<check_t> ret;
@@ -334,14 +369,17 @@ std::vector<check_t> Supervision::checkCoordinators() {
 }
 
 bool Supervision::updateSnapshot() {
+
   if (_agent == nullptr || this->isStopping()) {
     return false;
   }
+  
   try {
     _snapshot = _agent->readDB().get(_agencyPrefix);
-  } catch (...) {
-  }
+  } catch (...) {}
+  
   return true;
+  
 }
 
 bool Supervision::doChecks() {
@@ -370,7 +408,6 @@ void Supervision::run() {
     }
 
     while (!this->isStopping()) {
-      updateSnapshot();
       // mop: always do health checks so shutdown is able to detect if a server
       // failed otherwise
       if (_agent->leading()) {
