@@ -258,8 +258,6 @@ bool CleanOutServer::scheduleMoveShards() {
   for (auto const& database : databases) {
     
     // Find shardsLike dependencies
-    std::vector<std::string> originals;
-    
     for (auto const& collptr : database.second->children()) {
       
       auto const& collection = *(collptr.second);
