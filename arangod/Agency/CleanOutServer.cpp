@@ -242,26 +242,11 @@ bool CleanOutServer::start() {
 }
 
 bool CleanOutServer::scheduleMoveShards() {
-  std::vector<std::string> availServers;
 
-  // Get servers from plan
-  Node::Children const& dbservers = _snapshot("/Plan/DBServers").children();
-  for (auto const& srv : dbservers) {
-    availServers.push_back(srv.first);
-  }
-
-  // Remove cleaned from ist
-  if (_snapshot.exists("/Target/CleanedServers").size() == 2) {
-    for (auto const& srv :
-         VPackArrayIterator(_snapshot("/Target/CleanedServers").slice())) {
-      availServers.erase(std::remove(availServers.begin(), availServers.end(),
-                                     srv.copyString()),
-                         availServers.end());
-    }
-  }
+  std::vector<std::string> servers = availableServers();
 
   // Minimum 1 DB server must remain
-  if (availServers.size() == 1) {
+  if (servers.size() == 1) {
     LOG_TOPIC(ERR, Logger::AGENCY) << "DB server " << _server
                                    << " is the last standing db server.";
     return false;
@@ -271,24 +256,19 @@ bool CleanOutServer::scheduleMoveShards() {
   size_t sub = 0;
 
   for (auto const& database : databases) {
-
+    
     // Find shardsLike dependencies
     std::vector<std::string> originals;
-    std::multimap<std::string, std::string> clones;
+    
     for (auto const& collptr : database.second->children()) {
+      
       auto const& collection = *(collptr.second);
-      try {
-        clones.emplace(collection("distributeShardsLike").slice().copyString(),
-                       collptr.first);
-        
-      } catch (...) {
-        originals.push_back(collptr.first);
-      }
-    }
-
-    for (const auto& original : originals) {
-
-      auto const& collection = (*(database.second))(original);
+      
+      try { // distributeShardsLike entry means we only follow
+        if (collection("distributeShardsLike").slice().copyString() != "") {
+          continue;
+        }
+      } catch (...) {}
 
       for (auto const& shard : collection("shards").children()) {
         
@@ -307,39 +287,38 @@ bool CleanOutServer::scheduleMoveShards() {
         }
 
         // Only destinations, which are not already holding this shard
-        std::vector<std::string> myServers = availServers;
         for (auto const& dbserver : dbsit) {
-          myServers.erase(
-            std::remove(
-              myServers.begin(), myServers.end(), dbserver.copyString()),
-            myServers.end());
+          servers.erase(
+            std::remove(servers.begin(), servers.end(), dbserver.copyString()),
+            servers.end());
         }
 
         // Among those a random destination
         std::string toServer;
-        if (myServers.empty()) {
+        if (servers.empty()) {
           LOG_TOPIC(ERR, Logger::AGENCY)
             << "No servers remain as target for MoveShard";
           return false;
         }
 
         try {
-          toServer = myServers.at(rand() % myServers.size());
+          toServer = servers.at(rand() % servers.size());
         } catch (...) {
           LOG_TOPIC(ERR, Logger::AGENCY)
-              << "Range error picking destination for shard " + shard.first;
+            << "Range error picking destination for shard " + shard.first;
         }
 
         // Schedule move
         MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                  _jobId, _agencyPrefix, database.first, original, shard.first,
-                  _server, toServer);
+                  _jobId, _agencyPrefix, database.first, collptr.first,
+                  shard.first, _server, toServer);
         
       }
     }
   }
 
   return true;
+  
 }
 
 bool CleanOutServer::checkFeasibility() {

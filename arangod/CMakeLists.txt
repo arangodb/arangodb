@@ -98,6 +98,7 @@ add_executable(${BIN_ARANGOD}
   Agency/FailedServer.cpp
   Agency/GossipCallback.cpp
   Agency/Inception.cpp
+  Agency/Job.cpp
   Agency/MoveShard.cpp
   Agency/NotifyCallback.cpp
   Agency/Node.cpp

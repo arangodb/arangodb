@@ -53,6 +53,7 @@ static std::string const blockedServersPrefix = "/Supervision/DBServers/";
 static std::string const blockedShardsPrefix = "/Supervision/Shards/";
 static std::string const serverStatePrefix = "/Sync/ServerStates/";
 static std::string const planVersion = "/Plan/Version";
+static std::string const plannedServers = "/Plan/DBServers";
 
 inline arangodb::consensus::write_ret_t transact(Agent* _agent,
                                                  Builder const& transaction,
@@ -91,107 +92,23 @@ struct JobCallback {
 };
 
 struct Job {
+  
   Job(Node const& snapshot, Agent* agent, std::string const& jobId,
-      std::string const& creator, std::string const& agencyPrefix)
-      : _snapshot(snapshot),
-        _agent(agent),
-        _jobId(jobId),
-        _creator(creator),
-        _agencyPrefix(agencyPrefix),
-        _jb(nullptr) {}
+      std::string const& creator, std::string const& agencyPrefix);
 
-  virtual ~Job() {}
+  virtual ~Job();
 
-  virtual JOB_STATUS exists() const {
-    Node const& target = _snapshot("/Target");
-
-    if (target.exists(std::string("/ToDo/") + _jobId).size() == 2) {
-      return TODO;
-    } else if (target.exists(std::string("/Pending/") + _jobId).size() == 2) {
-      return PENDING;
-    } else if (target.exists(std::string("/Finished/") + _jobId).size() == 2) {
-      return FINISHED;
-    } else if (target.exists(std::string("/Failed/") + _jobId).size() == 2) {
-      return FAILED;
-    }
-
-    return NOTFOUND;
-  }
+  virtual JOB_STATUS exists() const;
 
   virtual bool finish(std::string const& type, bool success = true,
-                      std::string const& reason = std::string()) const {
-    Builder pending, finished;
-
-    // Get todo entry
-    pending.openArray();
-    if (_snapshot.exists(pendingPrefix + _jobId).size() == 3) {
-      _snapshot(pendingPrefix + _jobId).toBuilder(pending);
-    } else if (_snapshot.exists(toDoPrefix + _jobId).size() == 3) {
-      _snapshot(toDoPrefix + _jobId).toBuilder(pending);
-    } else {
-      LOG_TOPIC(DEBUG, Logger::AGENCY)
-          << "Nothing in pending to finish up for job " << _jobId;
-      return false;
-    }
-    pending.close();
-
-    // Prepare peding entry, block toserver
-    finished.openArray();
-
-    // --- Add finished
-    finished.openObject();
-    finished.add(
-        _agencyPrefix + (success ? finishedPrefix : failedPrefix) + _jobId,
-        VPackValue(VPackValueType::Object));
-    finished.add(
-        "timeFinished",
-        VPackValue(timepointToString(std::chrono::system_clock::now())));
-    for (auto const& obj : VPackObjectIterator(pending.slice()[0])) {
-      finished.add(obj.key.copyString(), obj.value);
-    }
-    if (!reason.empty()) {
-      finished.add("reason", VPackValue(reason));
-    }
-    finished.close();
-
-    // --- Delete pending
-    finished.add(_agencyPrefix + pendingPrefix + _jobId,
-                 VPackValue(VPackValueType::Object));
-    finished.add("op", VPackValue("delete"));
-    finished.close();
-
-    // --- Delete todo
-    finished.add(_agencyPrefix + toDoPrefix + _jobId,
-                 VPackValue(VPackValueType::Object));
-    finished.add("op", VPackValue("delete"));
-    finished.close();
-
-    // --- Remove block if specified
-    if (type != "") {
-      finished.add(_agencyPrefix + "/Supervision/" + type,
-                   VPackValue(VPackValueType::Object));
-      finished.add("op", VPackValue("delete"));
-      finished.close();
-    }
-
-    // --- Need precond?
-    finished.close();
-    finished.close();
-
-    write_ret_t res = transact(_agent, finished);
-    if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-      LOG_TOPIC(INFO, Logger::AGENCY) << "Successfully finished job " << type << "(" << _jobId << ")";
-      return true;
-    }
-
-    return false;
-  }
-
+                      std::string const& reason = std::string()) const;
   virtual JOB_STATUS status() = 0;
 
   virtual bool create() = 0;
 
   virtual bool start() = 0;
+
+  virtual std::vector<std::string> availableServers() const;
 
   Node const _snapshot;
   Agent* _agent;
@@ -200,7 +117,9 @@ struct Job {
   std::string _agencyPrefix;
 
   std::shared_ptr<Builder> _jb;
+  
 };
+
 }
 }
 

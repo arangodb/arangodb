@@ -419,6 +419,8 @@
       }
       if ($('#g_edgeColorByCollection').val() === 'true') {
         this.switchEdgeColorByCollection(true);
+      } else {
+        this.switchEdgeColorByCollection(false);
       }
     },
 
@@ -2230,6 +2232,12 @@
         self.updateColors(self.tmpGraphArray);
         self.graphNotInitialized = false;
         self.tmpGraphArray = [];
+      }
+
+      if (self.algorithm === 'force') {
+        $('#toggleForce').fadeIn('fast');
+      } else {
+        $('#toggleForce').fadeOut('fast');
       }
     },
 
