@@ -105,3 +105,12 @@ list(APPEND PACKAGES_LIST package-arongodb-client-nsis)
 
 add_custom_target(copy_packages
   COMMAND cp *.exe ${PACKAGE_TARGET_DIR})
+
+add_custom_target(remove_packages
+  COMMAND rm -f *.zip
+  COMMAND rm -f *.exe
+  COMMAND rm -rf _CPack_Packages
+  )
+
+list(APPEND CLEAN_PACKAGES_LIST remove_packages)
+
