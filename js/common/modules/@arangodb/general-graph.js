@@ -542,6 +542,7 @@ var bindVertexCollections = function (self, vertexCollections) {
     self[key] = wrap;
   });
 };
+
 var updateBindCollections = function (graph) {
   // remove all binded collections
   Object.keys(graph).forEach(
@@ -716,6 +717,10 @@ class Graph {
     createHiddenProperty(this, '__id', info._id);
     createHiddenProperty(this, '__rev', info._rev);
     createHiddenProperty(this, '__orphanCollections', info.orphanCollections || []);
+
+    // Create Hidden Functions
+    createHiddenProperty(this, '__updateBindCollections', updateBindCollections);
+    createHiddenProperty(this, '__sortEdgeDefinition', sortEdgeDefinition);
     updateBindCollections(self);
   }
 
@@ -1757,6 +1762,7 @@ class Graph {
 // / @brief print basic information for the graph
 // //////////////////////////////////////////////////////////////////////////////
 
+/*
   _PRINT (context) {
     var name = this.__name;
     var edgeDefs = printEdgeDefinitions(this.__edgeDefinitions);
@@ -1768,6 +1774,7 @@ class Graph {
     internal.printRecursive(this.__orphanCollections, context);
     context.output += ' ]';
   }
+  */
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1816,7 +1823,7 @@ exports._relation = function (relationName, fromVertexCollections, toVertexColle
 // / @brief was docuBlock JSF_general_graph_graph
 // //////////////////////////////////////////////////////////////////////////////
 
-exports._graph = (graphName) => {
+exports._graph = function (graphName) {
   let gdb = getGraphCollection();
   let g;
   let collections;
@@ -1881,7 +1888,7 @@ exports._extendEdgeDefinitions = function (edgeDefinition) {
 // / @brief was docuBlock JSF_general_graph_create
 // //////////////////////////////////////////////////////////////////////////////
 
-exports._create = (graphName, edgeDefinitions, orphanCollections, options) => {
+exports._create = function (graphName, edgeDefinitions, orphanCollections, options) {
   if (!Array.isArray(orphanCollections)) {
     orphanCollections = [];
   }
@@ -1984,7 +1991,7 @@ exports._create = (graphName, edgeDefinitions, orphanCollections, options) => {
 // / @brief was docuBlock JSF_general_graph_drop
 // //////////////////////////////////////////////////////////////////////////////
 
-exports._drop = (graphId, dropCollections) => {
+exports._drop = function (graphId, dropCollections) {
   let gdb = getGraphCollection();
   let graphs;
 
@@ -1996,12 +2003,6 @@ exports._drop = (graphId, dropCollections) => {
   }
 
   var graph = gdb.document(graphId);
-  if (graph.isSmart) {
-    let err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_GRAPH.code;
-    err.errorMessage = 'The graph you requested is a SmartGraph (Enterprise Only)';
-    throw err;
-  }
 
   if (dropCollections === true) {
     graphs = exports._listObjects();
@@ -2053,7 +2054,7 @@ exports._drop = (graphId, dropCollections) => {
 // / @brief check if a graph exists.
 // //////////////////////////////////////////////////////////////////////////////
 
-exports._exists = (graphId) => {
+exports._exists = function (graphId) {
   var gCol = getGraphCollection();
   return gCol.exists(graphId);
 };
@@ -2062,7 +2063,7 @@ exports._exists = (graphId) => {
 // / @brief rename a collection inside the _graphs collections
 // //////////////////////////////////////////////////////////////////////////////
 
-exports._renameCollection = (oldName, newName) => {
+exports._renameCollection = function (oldName, newName) {
   db._executeTransaction({
     collections: {
       write: '_graphs'
@@ -2122,11 +2123,11 @@ exports._renameCollection = (oldName, newName) => {
 // / @brief was docuBlock JSF_general_graph_list
 // //////////////////////////////////////////////////////////////////////////////
 
-exports._list = () => {
+exports._list = function () {
   return db._query(`FOR x IN _graphs FILTER !x.isSmart RETURN x._key`).toArray();
 };
 
-exports._listObjects = () => {
+exports._listObjects = function () {
   return db._query(`FOR x IN _graphs FILTER !x.isSmart RETURN x`).toArray();
 };
 
@@ -2137,7 +2138,7 @@ exports._listObjects = () => {
 // /        Most of these AQL functions can be simply replaced by calls to these.
 // //////////////////////////////////////////////////////////////////////////////
 
-exports._registerCompatibilityFunctions = () => {
+exports._registerCompatibilityFunctions = function () {
   const aqlfunctions = require('@arangodb/aql/functions');
   aqlfunctions.register('arangodb::GRAPH_EDGES', function (graphName, vertexExample, options) {
     var gm = require('@arangodb/general-graph');

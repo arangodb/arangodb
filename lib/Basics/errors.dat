@@ -366,6 +366,7 @@ ERROR_MODULE_FAILURE,3103,"failed to invoke module","Failed to invoke the module
 ################################################################################
 
 ERROR_NO_SMART_COLLECTION,4000,"collection is not smart","The requested collection needs to be smart, but it ain't"
+ERROR_CANNOT_DROP_SMART_COLLECTION,4001,"cannot drop this smart collection","This smart collection cannot be dropped, it dictates sharding in the graph."
 
 ################################################################################
 ## Dispatcher errors
