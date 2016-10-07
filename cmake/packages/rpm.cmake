@@ -55,3 +55,10 @@ list(APPEND PACKAGES_LIST package-arongodb-server)
 
 add_custom_target(copy_packages
   COMMAND cp *.rpm ${PACKAGE_TARGET_DIR})
+
+add_custom_target(remove_packages
+  COMMAND rm -f *.rpm
+  COMMAND rm -rf _CPack_Packages
+  )
+
+list(APPEND CLEAN_PACKAGES_LIST remove_packages)

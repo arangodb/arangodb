@@ -556,7 +556,7 @@ function checkArangoAlive (arangod, options) {
       )
     ) {
       arangod.exitStatus = res;
-      analyzeServerCrash(arangod, options, 'health Check');
+      analyzeServerCrash(arangod, options, 'health Check  - ' + res.signal);
     }
   }
 
@@ -1271,7 +1271,7 @@ function shutdownInstance (instanceInfo, options) {
         }
       } else if (arangod.exitStatus.status !== 'TERMINATED') {
         if (arangod.exitStatus.hasOwnProperty('signal')) {
-          analyzeServerCrash(arangod, options, 'instance Shutdown');
+          analyzeServerCrash(arangod, options, 'instance Shutdown - ' + arangod.exitStatus.signal);
         }
       } else {
         print('Server shutdown: Success.');

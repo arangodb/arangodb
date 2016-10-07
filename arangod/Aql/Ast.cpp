@@ -563,6 +563,8 @@ AstNode* Ast::createNodeCollection(char const* name,
   AstNode* node = createNode(NODE_TYPE_COLLECTION);
   node->setStringValue(name, strlen(name));
 
+  _query->collections()->add(name, accessType);
+
   if (ServerState::instance()->isRunningInCluster()) {
     auto ci = ClusterInfo::instance();
     // We want to tolerate that a collection name is given here
@@ -575,10 +577,7 @@ AstNode* Ast::createNodeCollection(char const* name,
       }
     }
     catch (...) {
-      _query->collections()->add(name, accessType);
     }
-  } else {  // single server
-    _query->collections()->add(name, accessType);
   }
 
   return node;
@@ -1004,6 +1003,7 @@ AstNode* Ast::createNodeWithCollections (AstNode const* collections) {
 
     if (c->isStringValue()) {
       std::string name = c->getString();
+      _query->collections()->add(name, TRI_TRANSACTION_READ);
       if (ServerState::instance()->isRunningInCluster()) {
         auto ci = ClusterInfo::instance();
         // We want to tolerate that a collection name is given here
@@ -1016,10 +1016,7 @@ AstNode* Ast::createNodeWithCollections (AstNode const* collections) {
           }
         }
         catch (...) {
-          _query->collections()->add(name, TRI_TRANSACTION_READ);
         }
-      } else {  // single server
-        _query->collections()->add(name, TRI_TRANSACTION_READ);
       }
     }// else bindParameter use default for collection bindVar
     // We do not need to propagate these members
@@ -1042,6 +1039,7 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections) {
   auto ss = ServerState::instance();
 
   auto doTheAdd = [&](std::string name) {
+    _query->collections()->add(name, TRI_TRANSACTION_READ);
     if (ss->isRunningInCluster()) {
       try {
         auto c = ci->getCollection(_query->vocbase()->name(), name);
@@ -1051,10 +1049,7 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections) {
         }
       }
       catch (...) {
-        _query->collections()->add(name, TRI_TRANSACTION_READ);
       }
-    } else {
-      _query->collections()->add(name, TRI_TRANSACTION_READ);
     }
   };
 
@@ -1492,18 +1487,20 @@ void Ast::injectBindParameters(BindParameters& parameters) {
           _query->collections()->add(n, TRI_TRANSACTION_READ);
         }
         auto eColls = graph->edgeCollections();
+        for (const auto& n : eColls) {
+          _query->collections()->add(n, TRI_TRANSACTION_READ);
+        }
         if (ServerState::instance()->isRunningInCluster()) {
           auto ci = ClusterInfo::instance();
           for (const auto& n : eColls) {
-            auto c = ci->getCollection(_query->vocbase()->name(), n);
-            auto names = c->realNames();
-            for (auto const& name : names) {
-              _query->collections()->add(name, TRI_TRANSACTION_READ);
+            try {
+              auto c = ci->getCollection(_query->vocbase()->name(), n);
+              auto names = c->realNames();
+              for (auto const& name : names) {
+                _query->collections()->add(name, TRI_TRANSACTION_READ);
+              }
+            } catch (...) {
             }
-          }
-        } else {
-          for (const auto& n : eColls) {
-            _query->collections()->add(n, TRI_TRANSACTION_READ);
           }
         }
       }
@@ -1519,18 +1516,20 @@ void Ast::injectBindParameters(BindParameters& parameters) {
           _query->collections()->add(n, TRI_TRANSACTION_READ);
         }
         auto eColls = graph->edgeCollections();
+        for (const auto& n : eColls) {
+          _query->collections()->add(n, TRI_TRANSACTION_READ);
+        }
         if (ServerState::instance()->isRunningInCluster()) {
           auto ci = ClusterInfo::instance();
           for (const auto& n : eColls) {
-            auto c = ci->getCollection(_query->vocbase()->name(), n);
-            auto names = c->realNames();
-            for (auto const& name : names) {
-              _query->collections()->add(name, TRI_TRANSACTION_READ);
+            try {
+              auto c = ci->getCollection(_query->vocbase()->name(), n);
+              auto names = c->realNames();
+              for (auto const& name : names) {
+                _query->collections()->add(name, TRI_TRANSACTION_READ);
+              }
+            } catch (...) {
             }
-          }
-        } else {
-          for (const auto& n : eColls) {
-            _query->collections()->add(n, TRI_TRANSACTION_READ);
           }
         }
       }
@@ -1545,6 +1544,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
   for (auto& it : _writeCollections) {
     if (it->type == NODE_TYPE_COLLECTION) {
       std::string name = it->getString();
+      _query->collections()->add(name, TRI_TRANSACTION_WRITE);
       if (ServerState::instance()->isRunningInCluster()) {
         auto ci = ClusterInfo::instance();
         // We want to tolerate that a collection name is given here
@@ -1555,12 +1555,8 @@ void Ast::injectBindParameters(BindParameters& parameters) {
           for (auto const& n : names) {
             _query->collections()->add(n, TRI_TRANSACTION_WRITE);
           }
+        } catch (...) {
         }
-        catch (...) {
-          _query->collections()->add(name, TRI_TRANSACTION_WRITE);
-        }
-      } else {  // single server
-        _query->collections()->add(name, TRI_TRANSACTION_WRITE);
       }
     }
   }

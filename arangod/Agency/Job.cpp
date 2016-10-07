@@ -72,6 +72,14 @@ bool Job::finish(std::string const& type, bool success,
     return false;
   }
   pending.close();
+
+  std::string jobType;
+  try {
+    jobType = pending.slice()[0].get("type").copyString();
+  } catch (std::exception const& e) {
+    LOG_TOPIC(WARN, Logger::AGENCY)
+      << "Failed to obtain type of job " << _jobId;
+  }
   
   // Prepare peding entry, block toserver
   finished.openArray();
@@ -105,7 +113,15 @@ bool Job::finish(std::string const& type, bool success,
   finished.close();
 
   // --- Remove block if specified
-  if (type != "") {
+  if (jobType == "moveShard") {
+    for (auto const& shard :
+           VPackArrayIterator(pending.slice()[0].get("shards"))) {
+      finished.add(_agencyPrefix + "/Supervision/Shards/" + shard.copyString(),
+                   VPackValue(VPackValueType::Object));
+      finished.add("op", VPackValue("delete"));
+      finished.close();
+    }
+  } else if (type != "") {
     finished.add(_agencyPrefix + "/Supervision/" + type,
                  VPackValue(VPackValueType::Object));
     finished.add("op", VPackValue("delete"));
@@ -118,7 +134,8 @@ bool Job::finish(std::string const& type, bool success,
 
   write_ret_t res = transact(_agent, finished);
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    LOG_TOPIC(INFO, Logger::AGENCY) << "Successfully finished job " << type << "(" << _jobId << ")";
+    LOG_TOPIC(INFO, Logger::AGENCY)
+      << "Successfully finished job " << type << "(" << _jobId << ")";
     return true;
   }
 

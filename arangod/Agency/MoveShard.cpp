@@ -59,62 +59,10 @@ MoveShard::~MoveShard() {}
 
 bool MoveShard::create() {
   LOG_TOPIC(INFO, Logger::AGENCY)
-      << "Todo: Move shard " + _shard + " from " + _from + " to " << _to;
-
-  // Are we distributeShardsLiking other shard?
-  // Invoke moveShard there
-  auto collection = _snapshot(planColPrefix + _database + "/" + _collection);
-  auto myshards = _snapshot(
-    planColPrefix + _database + "/" + _collection + "/shards").children();
-  auto mpos = std::distance(myshards.begin(),
-                            myshards.find(_shard));
-
-  std::string distributeShardsLike, othershard;
-
-  try {
-
-    distributeShardsLike = collection("distributeShardsLike").getString();
-    auto othershards = _snapshot(planColPrefix + _database + "/"
-                                 + distributeShardsLike + "/shards").children();
-    auto opos = othershards.begin();
-    std::advance(opos, mpos);
-    othershard = opos->first;
-    
-  } catch(...) {}
-
-  if (!distributeShardsLike.empty()) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
-      << "Distributed like collection " << distributeShardsLike
-      << " shard " << othershard;
-    
-    MoveShard(_snapshot, _agent, _jobId, _creator, _agencyPrefix, _database,
-              distributeShardsLike, othershard, _from, _to);
-    return false;
-  }
-
-  // Are we ditributeShardsLiked by others?
-  // Invoke moveShard here with others
-  auto collections = _snapshot(planColPrefix + _database).children();
-  std::vector<std::string> colsLikeMe;
-  std::vector<std::string> shardsLikeMe;
-  colsLikeMe.push_back(_collection);
-  shardsLikeMe.push_back(_shard);
-  for (auto const& collptr : collections) {
-    auto const& node = *(collptr.second);
-    try {
-      if (node("distributeShardsLike").getString() == _collection) {
-        auto opos = node("shards").children().begin();
-        if (!node("shards").children().empty()) {
-          std::advance(opos, mpos);
-          colsLikeMe.push_back(collptr.first);
-          shardsLikeMe.push_back(opos->first);
-        }
-      }
-    } catch (...) {}
-  }
+    << "Todo: Move shard " + _shard + " from " + _from + " to " << _to;
   
   std::string path, now(timepointToString(std::chrono::system_clock::now()));
-
+  
   // DBservers
   std::string curPath =
       curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
@@ -144,16 +92,12 @@ bool MoveShard::create() {
   _jb->add(VPackValue("collections"));
   {
     VPackArrayBuilder b(_jb.get());
-    for (auto const& c : colsLikeMe) {
-      _jb->add(VPackValue(c));
-    }
+    _jb->add(VPackValue(_collection));
   }
   _jb->add(VPackValue("shards"));
   {
     VPackArrayBuilder b(_jb.get());
-    for (auto const& s : shardsLikeMe) {
-      _jb->add(VPackValue(s));
-    }
+    _jb->add(VPackValue(_shard));
   }
   _jb->add("fromServer", VPackValue(_from));
   _jb->add("toServer", VPackValue(_to));
@@ -176,6 +120,54 @@ bool MoveShard::create() {
 }
 
 bool MoveShard::start() {
+
+  // Are we distributeShardsLiking other shard?
+  // Invoke moveShard there
+  auto collection = _snapshot(planColPrefix + _database + "/" + _collection);
+  auto myshards = _snapshot(
+    planColPrefix + _database + "/" + _collection + "/shards").children();
+  auto mpos = std::distance(myshards.begin(),
+                            myshards.find(_shard));
+  std::string distributeShardsLike;
+  while(true) {
+    try {
+      distributeShardsLike = collection("distributeShardsLike").getString();
+      if (!distributeShardsLike.empty()) {
+        _collection = distributeShardsLike;
+        collection = _snapshot(planColPrefix + _database + "/" + _collection);
+        auto othershards =
+          _snapshot(planColPrefix + _database + "/" + _collection + "/shards")
+          .children();
+        auto opos = othershards.begin();
+        std::advance(opos, mpos);
+        _shard = opos->first;
+      }
+    } catch(...) {
+      break;
+    }
+  }
+  
+  // Are we ditributeShardsLiked by others?
+  // Invoke moveShard here with others
+  auto collections = _snapshot(planColPrefix + _database).children();
+  std::vector<std::string> colsLikeMe;
+  std::vector<std::string> shardsLikeMe;
+  colsLikeMe.push_back(_collection);
+  shardsLikeMe.push_back(_shard);
+  for (auto const& collptr : collections) {
+    auto const& node = *(collptr.second);
+    try {
+      if (node("distributeShardsLike").getString() == _collection) {
+        auto opos = node("shards").children().begin();
+        if (!node("shards").children().empty()) {
+          std::advance(opos, mpos);
+          colsLikeMe.push_back(collptr.first);
+          shardsLikeMe.push_back(opos->first);
+        }
+      }
+    } catch (...) {}
+  }
+    
   // DBservers
   std::string planPath =
     planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
@@ -187,7 +179,7 @@ bool MoveShard::start() {
   
   TRI_ASSERT(current.isArray());
   TRI_ASSERT(planned.isArray());
-
+  
   for (auto const& srv : VPackArrayIterator(current)) {
     TRI_ASSERT(srv.isString());
     if (srv.copyString() == _to) {
@@ -226,6 +218,7 @@ bool MoveShard::start() {
     }
   }
   todo.close();
+  
   // Enter pending, remove todo, block toserver
   pending.openArray();
 
@@ -236,7 +229,22 @@ bool MoveShard::start() {
   pending.add("timeStarted",
               VPackValue(timepointToString(std::chrono::system_clock::now())));
   for (auto const& obj : VPackObjectIterator(todo.slice()[0])) {
-    pending.add(obj.key.copyString(), obj.value);
+    std::string key = obj.key.copyString();
+    if (key == "collections") {
+      pending.add(VPackValue(key));
+      VPackArrayBuilder b(&pending);
+      for (auto const& col : colsLikeMe) {
+        pending.add(VPackValue(col));
+      }
+    } else if (key == "shards") {
+      pending.add(VPackValue(key));
+      VPackArrayBuilder b(&pending);
+      for (auto const& shard : shardsLikeMe) {
+        pending.add(VPackValue(shard));
+      }
+    } else {
+      pending.add(obj.key.copyString(), obj.value);
+    }
   }
   pending.close();
 
@@ -247,8 +255,8 @@ bool MoveShard::start() {
   pending.close();
 
   // --- Block shards
-  for (auto const& shard : VPackArrayIterator(todo.slice()[0].get("shards"))) {
-    pending.add(_agencyPrefix + blockedShardsPrefix + shard.copyString(),
+  for (auto const& shard : shardsLikeMe) {
+    pending.add(_agencyPrefix + blockedShardsPrefix + shard,
                 VPackValue(VPackValueType::Object));
     pending.add("jobId", VPackValue(_jobId));
     pending.close();
@@ -256,12 +264,12 @@ bool MoveShard::start() {
   
   // --- Plan changes
   size_t j = 0;
-  for (auto const& c : VPackArrayIterator(todo.slice()[0].get("collections"))) {
-
-    planPath = planColPrefix + _database + "/" + c.copyString() + "/shards/"
-      + todo.slice()[0].get("shards")[j++].copyString();
+  for (auto const& c : colsLikeMe) {
+    
+    planPath = planColPrefix + _database + "/" + c + "/shards/"
+      + shardsLikeMe[j++];
     planned = _snapshot(planPath).slice();
-      
+  
     pending.add(VPackValue(_agencyPrefix + planPath));
     {
       VPackArrayBuilder b(&pending);
