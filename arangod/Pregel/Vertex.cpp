@@ -34,7 +34,8 @@ using namespace arangodb::pregel;
 
 Vertex::Vertex(VPackSlice document)  {
   documentId = document.get(StaticStrings::IdString).copyString();
-  _vertexState = document.get("value").getInt();
+  VPackSlice s = document.get("value");
+  _vertexState = s.getSmallInt() || s.getInt() ? s.getInt() : -1;
 }
 
 Vertex::~Vertex() {
@@ -44,7 +45,7 @@ Vertex::~Vertex() {
   _edges.clear();
 }
 
-void Vertex::compute(int64_t gss, VPackArrayIterator const &messages, OutMessageCache *cache) {
+void Vertex::compute(int gss, VPackArrayIterator const &messages, OutMessageCache* const cache) {
   
   int current = _vertexState;
   for (auto const &msg : messages) {

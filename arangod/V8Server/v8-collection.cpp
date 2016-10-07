@@ -1841,37 +1841,39 @@ static void JS_Pregel(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!args[0]->IsString() || !args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
-  std::string const vertexCollectionName = TRI_ObjectToString(args[0]);
-  std::string const edgeCollectionName = TRI_ObjectToString(args[1]);
-  LOG(DEBUG) << "Called _pregel(" << vertexCollectionName << "," << edgeCollectionName << ")";
+  std::string vName = TRI_ObjectToString(args[0]);
+  std::string eName = TRI_ObjectToString(args[1]);
+  LOG(INFO) << "Called _pregel(" << vName << "," << eName << ")";
   
   int result = 0;
   if (ServerState::instance()->isCoordinator()) {
-    //TRI_V8_THROW_EXCEPTION_USAGE("Cluster use is unsupported for now");
+    LOG(INFO) << "Called as a controller";
+    
     TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-    LOG(DEBUG) << "Called as a controller";
+    CollectionID vID;
+    try {
+      std::shared_ptr<LogicalCollection> const ci1 =
+      ClusterInfo::instance()->getCollection(vocbase->name(), vName);
+      std::shared_ptr<LogicalCollection> const ci2 =
+      ClusterInfo::instance()->getCollection(vocbase->name(), eName);
+      if (ci1->isSystem() || ci2->isSystem()) {
+        TRI_V8_THROW_EXCEPTION_USAGE("Cannot use pregel on system collection");
+      }
+      vID = ci1->cid_as_string();
+      //eName = ci2->cid_as_string();
+    } catch (...) {
+      TRI_V8_THROW_EXCEPTION_USAGE("Collections do not exist");
+    }
 
     result = pregel::JobMapping::instance()->createExecutionNumber();
-    pregel::Conductor* e = new pregel::Conductor(result,
-                                                 vocbase,
-                                                 vertexCollectionName,
-                                                 edgeCollectionName,
-                                                 "");
-    
+    pregel::Conductor* e = new pregel::Conductor(result, vName, vID, eName, "todo");
     pregel::JobMapping::instance()->addExecution(e, result);
+    
+    LOG(INFO) << "Starting...";
+    e->start();
     
   } else {
     TRI_V8_THROW_EXCEPTION_USAGE("Only call on coordinator");
-    // execute locally?
-    /*
-    LogicalCollection const* col = nullptr;
-    std::string collectionName;
-    
-    TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-    
-    auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
-    //*/
-    
   }
   
   TRI_V8_RETURN(v8::Integer::New(isolate, result));

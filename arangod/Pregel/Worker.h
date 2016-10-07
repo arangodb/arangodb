@@ -43,14 +43,15 @@ namespace pregel {
       
     void nextGlobalStep(VPackSlice data);// called by coordinator
     void receivedMessages(VPackSlice data);
+    void writeResults();
     
   private:
     /// @brief guard to make sure the database is not dropped while used by us
     VocbaseGuard _vocbaseGuard;
     
     int _executionNumber;
+    int _globalSuperstep;
     std::string _coordinatorId;
-    int64_t _globalSuperstep;
     std::string _vertexCollection, _edgeCollection;
     
     std::unordered_map<std::string, Vertex*> _vertices;

@@ -41,10 +41,11 @@ namespace pregel {
     };
     
     int createExecutionNumber();
-    void addExecution(Conductor *exec, int executionNumber);
-    Conductor* conductor(int executionNumber);
+    void addExecution(Conductor* const exec, int executionNumber);
+    Conductor* conductor(int32_t executionNumber);
+    
+    void addWorker(Worker* const worker, int executionNumber);
     Worker* worker(int executionNumber);
-
     
   private:
     std::map<int, Conductor*> _conductors;

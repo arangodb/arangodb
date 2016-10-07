@@ -49,22 +49,22 @@ Worker::Worker(int executionNumber,
                TRI_vocbase_t *vocbase,
                VPackSlice s) : _vocbaseGuard(vocbase), _executionNumber(executionNumber) {
 
-  LOG(DEBUG) << "starting worker";
   //VPackSlice algo = s.get("algo");
-  _vertexCollection = s.get("vertex").copyString();
-  _edgeCollection = s.get("edge").copyString();
+  _vertexCollection = s.get(Utils::vertexCollectionKey).copyString();
+  _edgeCollection = s.get(Utils::edgeCollectionKey).copyString();
+  LOG(INFO) << "starting worker with (" << _vertexCollection << ", " << _edgeCollection << ")";
   
   _cache1 = new InMessageCache();
   _cache2 = new InMessageCache();
   _currentCache = _cache1;
-  
   
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(vocbase),
                                   _vertexCollection, TRI_TRANSACTION_READ);
   int res = trx.begin();
   
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot start transaction to load authentication";
+    THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up vertices '%s'",
+                                  _vertexCollection.c_str());
     return;
   }
   
@@ -85,13 +85,13 @@ Worker::Worker(int executionNumber,
     vertices = vertices.resolveExternal();
   }
   
-  
   SingleCollectionTransaction trx2(StandaloneTransactionContext::Create(vocbase),
                                   _edgeCollection, TRI_TRANSACTION_READ);
   res = trx2.begin();
   
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot start transaction to load authentication";
+    THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up edges '%s'",
+                                  _vertexCollection.c_str());
     return;
   }
   
@@ -125,7 +125,9 @@ Worker::Worker(int executionNumber,
     e->value = it.get("value").getInt();
     sortBucket[e->toId].push_back(e);
   }*/
-  for (auto const &it : velocypack::ArrayIterator(vertices)) {
+  VPackArrayIterator arr = VPackArrayIterator(vertices);
+  LOG(INFO) << "Found vertices: " << arr.size();
+  for (auto const &it : arr) {
     Vertex *v = new Vertex(it);
     _vertices[v->documentId] = v;
     
@@ -144,7 +146,8 @@ Worker::Worker(int executionNumber,
       std::unique_ptr<Edge> e(new Edge());
       e->edgeId = it.get(StaticStrings::IdString).copyString();
       e->toId = it.get(StaticStrings::ToString).copyString();
-      e->value = it.get("value").getInt();
+      VPackSlice i = it.get("value");
+      e->value = i.isSmallInt() || i.isInt() ? i.getInt() : 1;
       v->_edges.push_back(e.get());
       e.release();
     }
@@ -179,7 +182,7 @@ void Worker::nextGlobalStep(VPackSlice data) {
   
   std::unique_ptr<rest::Job> job(new WorkerJob(this, inCache));
   DispatcherFeature::DISPATCHER->addJob(job, false);
-  LOG(DEBUG) << "Worker started new gss computation\n";
+  LOG(INFO) << "Worker started new gss computation\n";
 }
 
 void Worker::receivedMessages(VPackSlice data) {
@@ -194,9 +197,44 @@ void Worker::receivedMessages(VPackSlice data) {
   }
   
   _currentCache->addMessages(VPackArrayIterator(messageSlice));
-  LOG(DEBUG) << "Worker received messages\n";
+  LOG(INFO) << "Worker received messages\n";
 }
 
+void Worker::writeResults() {
+  
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbaseGuard.vocbase()),
+                                  _vertexCollection, TRI_TRANSACTION_WRITE);
+  int res = trx.begin();
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(ERR) << "cannot start transaction to load authentication";
+    return;
+  }
+
+  OperationResult result;
+  OperationOptions options;
+  options.waitForSync = false;
+  options.mergeObjects = true;
+  for (auto const &pair : _vertices) {
+    TransactionBuilderLeaser b(&trx);
+    b->openObject();
+    b->add(StaticStrings::KeyString, VPackValue(pair.second->documentId));
+    b->add("value", VPackValue(pair.second->_vertexState));
+    b->close();
+    result = trx.update(_vertexCollection, b->slice(), options);
+    if (!result.successful()) {
+      THROW_ARANGO_EXCEPTION_FORMAT(result.code, "while looking up graph '%s'",
+                                    _vertexCollection.c_str());
+    }
+  }
+  // Commit or abort.
+  res = trx.finish(result.code);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up graph '%s'",
+                                  _vertexCollection.c_str());
+  }
+}
 // ========== WorkerJob
 
 /*
@@ -213,7 +251,7 @@ void WorkerJob::work() {
   if (_canceled) {
     return;
   }
-  LOG(DEBUG) << "Worker job started\n";
+  LOG(INFO) << "Worker job started\n";
   
   OutMessageCache outCache(_worker->_vertexCollection);
   
@@ -225,13 +263,13 @@ void WorkerJob::work() {
     
     for (auto const &it : _worker->_vertices) {
       Vertex *v = it.second;
-      VPackArrayIterator messages = _worker->_currentCache->getMessages(v->documentId);
+      VPackArrayIterator messages = _inCache->getMessages(v->documentId);
       v->compute(gss, messages, &outCache);
       _worker->_activationMap[it.first] = v->state() == VertexActivationState::ACTIVE;
     }
   } else {
     for (auto &it : _worker->_activationMap) {
-      VPackArrayIterator messages = _worker->_currentCache->getMessages(it.first);
+      VPackArrayIterator messages = _inCache->getMessages(it.first);
       if (messages.size() > 0 || it.second) {
         isDone = false;
         
@@ -241,7 +279,7 @@ void WorkerJob::work() {
       }
     }
   }
-  LOG(DEBUG) << "Worker job computations done, now distributing results\n";
+  LOG(INFO) << "Worker job computations done, now distributing results\n";
 
   if (_canceled) {
     return;
@@ -264,13 +302,13 @@ void WorkerJob::work() {
       package.add(Utils::messagesKey, messages.slice());
       package.close();
       
-      auto body = std::make_shared<std::string const>(package.toString());
+      auto body = std::make_shared<std::string const>(package.toJson());
       requests.emplace_back("shard:" + *it, rest::RequestType::POST, Utils::messagesPath, body);
     }
     size_t nrDone = 0;
     cc->performRequests(requests, 120, nrDone, LogTopic("Pregel message transfer"));
   } else {
-    LOG(DEBUG) << "Worker job has nothing more to process\n";
+    LOG(INFO) << "Worker job has nothing more to process\n";
   }
   
   // notify the conductor that we are done.
@@ -284,14 +322,14 @@ void WorkerJob::work() {
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
   auto headers =
   std::make_unique<std::unordered_map<std::string, std::string>>();
-  auto body = std::make_shared<std::string const>(package.toString());
+  auto body = std::make_shared<std::string const>(package.toJson());
   cc->asyncRequest("", coordinatorTransactionID,
                    "server:"+_worker->_coordinatorId,
                    rest::RequestType::POST,
                    Utils::finishedGSSPath,
                    body, headers, nullptr, 90.0);
   
-  LOG(DEBUG) << "Worker job finished sending results\n";
+  LOG(INFO) << "Worker job finished sending results\n";
 }
 
 bool WorkerJob::cancel() {

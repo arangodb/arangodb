@@ -46,11 +46,12 @@ namespace pregel {
   };
   
   class Vertex {
+    friend class Worker;
   public:
     //typedef std::iterator<std::forward_iterator_tag, VPackSlice> MessageIterator;
     Vertex(VPackSlice document);
     ~Vertex();
-    void compute(int64_t gss, VPackArrayIterator const &messages, OutMessageCache *cache);
+    void compute(int gss, VPackArrayIterator const &messages, OutMessageCache* const cache);
     
     VertexActivationState state() {return _activationState;}
     //std::vector<VPackSlice> messages() {return _messages;}

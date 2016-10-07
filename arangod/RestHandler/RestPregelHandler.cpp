@@ -31,6 +31,7 @@
 #include "Pregel/JobMapping.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/Worker.h"
+#include "Pregel/Utils.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -41,31 +42,64 @@ RestPregelHandler::RestPregelHandler(GeneralRequest* request, GeneralResponse* r
 : RestVocbaseBaseHandler(request, response) {}
 
 RestHandler::status RestPregelHandler::execute() {
+  LOG(INFO) << "Received request\n";
   
   bool parseSuccess = true;
   std::shared_ptr<VPackBuilder> parsedBody =
   parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
+  VPackSlice body(parsedBody->start());// never nullptr
   
-  if (!parseSuccess) {
+  if (!parseSuccess || !body.isObject()) {
+    LOG(ERR) << "Bad request body\n";
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_NOT_IMPLEMENTED, "illegal request for /_api/pregel");
   } else if (_request->requestType() == rest::RequestType::POST) {
     
-    VPackSlice s(parsedBody->start());
-    
     std::vector<std::string> const& suffix = _request->suffix();
-  
+    VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
+    if (!sExecutionNum.isSmallInt() && !sExecutionNum.isInt()) {
+      LOG(ERR) << "Invalid execution number";
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+      return status::DONE;
+    }
+    
+    int executionNumber = sExecutionNum.getInt();
+
     if (suffix.size() != 1) {
+      LOG(ERR) << "Invalid suffix";
       generateError(rest::ResponseCode::NOT_FOUND,
                     TRI_ERROR_HTTP_NOT_FOUND);
       return status::DONE;
     } else if (suffix[0] == "finishedGSS") {
-      finishedGSS(s);
+      LOG(INFO) << "finishedGSS";
+      Conductor *exe = JobMapping::instance()->conductor(executionNumber);
+      if (exe) {
+        exe->finishedGlobalStep(body);
+      } else {
+        LOG(ERR) << "Conductor not found\n";
+      }
     } else if (suffix[0] == "nextGSS") {
-      nextGSS(s);
+      LOG(INFO) << "nextGSS";
+      Worker *w = JobMapping::instance()->worker(executionNumber);
+      if (!w) {// can happen if gss == 0
+        LOG(INFO) << "creating worker";
+        w = new Worker(executionNumber, _vocbase, body);
+        JobMapping::instance()->addWorker(w, executionNumber);
+      }
+      w->nextGlobalStep(body);
     } else if (suffix[0] == "messages") {
-      receivedMessages(s);
+      LOG(INFO) << "messages";
+      Worker *exe = JobMapping::instance()->worker(executionNumber);
+      if (exe) {
+        exe->receivedMessages(body);
+      }
+    } else if (suffix[0] == "writeResults") {
+      Worker *exe = JobMapping::instance()->worker(executionNumber);
+      if (exe) {
+        exe->writeResults();
+      }
     }
+    
     VPackBuilder result;
     result.add(VPackValue("thanks"));
     generateResult(rest::ResponseCode::OK, result.slice());
@@ -76,39 +110,4 @@ RestHandler::status RestPregelHandler::execute() {
   }
   
   return status::DONE;
-}
-
-void RestPregelHandler::nextGSS(VPackSlice body) {
-  VPackSlice executionNum = body.get("en");
-  if (executionNum.isInt()) {
-    Worker *w = JobMapping::instance()->worker(executionNum.getInt());
-    
-    if (!w) {// can happen if gss == 0
-      w = new Worker(executionNum.getInt(), _vocbase, body);
-    }
-    w->nextGlobalStep(body);
-  }
-}
-
-void RestPregelHandler::finishedGSS(VPackSlice body) {
-  VPackSlice executionNum = body.get("en");
-  if (executionNum.isInt()) {
-    Conductor *exe = JobMapping::instance()->conductor(executionNum.getInt());
-    if (exe) {
-      exe->finishedGlobalStep(body);
-    }
-  }
-}
-
-
-void RestPregelHandler::receivedMessages(VPackSlice body) {
-  VPackSlice executionNum = body.get("en");
-  if (executionNum.isInt()) {
-    Worker *exe = JobMapping::instance()->worker(executionNum.getInt());
-    if (exe) {
-      exe->receivedMessages(body);
-    } else {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "there is no registered worker");
-    }
-  }
 }

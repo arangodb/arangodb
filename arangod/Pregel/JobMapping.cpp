@@ -28,10 +28,10 @@ using namespace arangodb::pregel;
 
 static int _exeI = 0;
 int JobMapping::createExecutionNumber() {
-  return _exeI++;
+  return ++_exeI;
 }
 
-void JobMapping::addExecution(Conductor *exec, int executionNumber) {
+void JobMapping::addExecution(Conductor* const exec, int executionNumber) {
   //_executions.
   _conductors[executionNumber] = exec;
 }
@@ -40,6 +40,10 @@ Conductor* JobMapping::conductor(int executionNumber) {
   auto it = _conductors.find(executionNumber);
   if (it != _conductors.end()) return it->second;
   else return nullptr;
+}
+
+void JobMapping::addWorker(Worker* const worker, int executionNumber) {
+  _workers[executionNumber] = worker;
 }
 
 Worker* JobMapping::worker(int executionNumber) {

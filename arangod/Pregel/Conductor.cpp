@@ -21,15 +21,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Conductor.h"
-
 #include "Utils.h"
 
+#include "Basics/MutexLocker.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterComm.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
-#include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -39,105 +39,109 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 
 Conductor::Conductor(int executionNumber,
-                     TRI_vocbase_t *vocbase,
-                     CollectionID const& vertexCollection,
-                     CollectionID const& edgeCollection,
-                     std::string const& algorithm) : _executionNumber(executionNumber), _vocbase(vocbase) {
+                     //TRI_vocbase_t *vocbase,
+                     std::string const&vertexCollection,
+                     CollectionID vertexCollectionID,
+                     std::string const& edgeCollection,
+                     std::string const& algorithm) :
+_executionNumber(executionNumber),
+//_vocbase(vocbase),
+_vertexCollection(vertexCollection),
+_edgeCollection(edgeCollection),
+_vertexCollectionID(vertexCollectionID),
+_algorithm(algorithm) {
   
   bool isCoordinator = ServerState::instance()->isCoordinator();
   assert(isCoordinator);
-  string coordinatorId = ServerState::instance()->getId();
   LOG(INFO) << "constructed conductor";
+}
 
+void Conductor::start() {
+  _globalSuperstep = 0;
+  _state = ExecutionState::RUNNING;
+  
+  string coordinatorId = ServerState::instance()->getId();
+  LOG(INFO) << "My id: " << coordinatorId;
   
   VPackBuilder b;
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
   b.add(Utils::coordinatorIdKey, VPackValue(coordinatorId));
-  b.add(Utils::vertexCollectionKey, VPackValue(vertexCollection));
-  b.add(Utils::edgeCollectionKey, VPackValue(edgeCollection));
+  b.add(Utils::vertexCollectionKey, VPackValue(_vertexCollection));
+  b.add(Utils::edgeCollectionKey, VPackValue(_edgeCollection));
   b.add(Utils::globalSuperstepKey, VPackValue(0));
-  b.add(Utils::algorithmKey, VPackValue(algorithm));
+  b.add(Utils::algorithmKey, VPackValue(_algorithm));
   b.close();
   
-  sendToAllDBServers(Utils::nextGSSPath, b.slice());
+  sendToAllShards(Utils::nextGSSPath, b.slice());
 }
 
-void Conductor::start() {
-
-}
-
-static int _abcd = 0;
 void Conductor::finishedGlobalStep(VPackSlice &data) {
-  mtx.lock();
-  LOG(INFO) << "Conductor received finished callback\n";
+  MUTEX_LOCKER(locker, writeMutex);
+
+  LOG(INFO) << "Conductor received finished callback";
+  if (_state != ExecutionState::RUNNING) {
+    LOG(WARN) << "Conductor did not expect another finishedGlobalStep()";
+    return;
+  }
   
   _responseCount++;
   if (_responseCount >= _dbServerCount) {
-    if (_abcd++ > 25) return;
-    
     _globalSuperstep++;
     
-    VPackBuilder b;
-    b.openObject();
-    b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
-    b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-    b.close();
-    sendToAllDBServers(Utils::nextGSSPath, b.slice());
-    LOG(INFO) << "Conductor started new gss\n";
+    if (_globalSuperstep >= 25) {
+      LOG(INFO) << "We did 25 rounds";
+      VPackBuilder b;
+      b.openObject();
+      b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+      b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
+      b.close();
+      sendToAllShards(Utils::writeResultsPath, b.slice());
+      _state = ExecutionState::FINISHED;
+    } else {
+      VPackBuilder b;
+      b.openObject();
+      b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+      b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
+      b.close();
+      sendToAllShards(Utils::nextGSSPath, b.slice());
+      LOG(INFO) << "Conductor started new gss\n";
+    }
   }
-  
-  mtx.unlock();
 }
 
 void Conductor::cancel() {
   _state = ExecutionState::ERROR;
 }
 
-int Conductor::sendToAllDBServers(std::string path, VPackSlice const& config) {
+int Conductor::sendToAllShards(std::string path, VPackSlice const& config) {
   
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
   //CoordTransactionID coordTransactionID = TRI_NewTickServer();
   
-  shared_ptr<vector<ShardID>> shardIDs = ci->getShardList(_vertexCollection);// ->getCurrentDBServers();
-  assert(_dbServerCount == 0 || (int64_t)shardIDs->size() == _dbServerCount);
+  
+  
+  shared_ptr<vector<ShardID>> shardIDs = ci->getShardList(_vertexCollectionID);// ->getCurrentDBServers();
   _dbServerCount = shardIDs->size();
   _responseCount = 0;
   
-  auto body = std::make_shared<std::string const>(config.toString());
+  if (shardIDs->size() == 0) {
+    LOG(WARN) << "No shards registered for " << _vertexCollection;
+    return TRI_ERROR_FAILED;
+  }
   
+  auto body = std::make_shared<std::string const>(config.toJson());
   vector<ClusterCommRequest> requests;
   for (auto it = shardIDs->begin(); it != shardIDs->end(); ++it) {
     requests.emplace_back("shard:" + *it, rest::RequestType::POST, path, body);
   }
   
+  LOG(INFO) << "Constructed requests";
+
   size_t nrDone = 0;
   cc->performRequests(requests, 120.0, nrDone, LogTopic("Pregel Conductor"));
-  //if (nrDone != nrGood) {
-  //  return TRI_ERROR_INTERNAL;
-  //}
-  
-  
-  /*for (auto it = DBservers->begin(); it != DBservers->end(); ++it) {
-    auto headers =
-    std::make_unique<std::unordered_map<std::string, std::string>>();
-    // set collection name (shard id)
-    cc->asyncRequest("", coordTransactionID, "shard:" + *it,
-                     arangodb::rest::RequestType::PUT, path, body,
-                     headers, nullptr, 120.0);
-  }
-  
-  // Now listen to the results:
-  int count;
-  for (count = (int)DBservers->size(); count > 0; count--) {
-    auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
-    if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code == arangodb::rest::ResponseCode::OK) {
-        nrDone++;
-      }
-    }
-  }*/
-  
+  LOG(INFO) << "Send messages to " << nrDone << " shards of " << _vertexCollection;
+
   return TRI_ERROR_NO_ERROR;
 }

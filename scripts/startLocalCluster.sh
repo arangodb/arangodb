@@ -30,10 +30,8 @@ NRCOORDINATORS=1
 POOLSZ=""
 TRANSPORT="tcp"
 LOG_LEVEL="INFO"
-#XTERM="x-terminal-emulator"
-#XTERMOPTIONS="--geometry=80x43"
-XTERM="xterm"
-XTERMOPTIONS=""
+XTERM="x-terminal-emulator"
+XTERMOPTIONS="--geometry=80x43"
 SECONDARIES=0
 BUILD="build"
 
@@ -324,18 +322,21 @@ for p in `seq 8629 $PORTTOPDB` ; do
         start dbserver $p
     fi
 done
-PORTTOPCO=`expr 8530 + $NRCOORDINATORS - 1`
-for p in `seq 8530 $PORTTOPCO` ; do
-    if [ "$CLUSTERDEBUGGER" == "1" ] ; then
-        startDebugger coordinator $p
-    elif [ $p == "8530" -a ! -z "$COORDINATORCONSOLE" ] ; then
-        startTerminal coordinator $p
-    elif [ "$RRDEBUGGER" == "1" ] ; then
-        startRR coordinator $p
-    else
-        start coordinator $p
-    fi
-done
+if [ "$NRCOORDINATORS" -gt 0 ]
+then
+  PORTTOPCO=`expr 8530 + $NRCOORDINATORS - 1`
+  for p in `seq 8530 $PORTTOPCO` ; do
+      if [ "$CLUSTERDEBUGGER" == "1" ] ; then
+          startDebugger coordinator $p
+      elif [ $p == "8530" -a ! -z "$COORDINATORCONSOLE" ] ; then
+          startTerminal coordinator $p
+      elif [ "$RRDEBUGGER" == "1" ] ; then
+          startRR coordinator $p
+      else
+          start coordinator $p
+      fi
+  done
+fi
 
 if [ "$CLUSTERDEBUGGER" == "1" ] ; then
     echo Waiting for you to setup debugger windows, hit RETURN to continue!
@@ -361,9 +362,12 @@ testServer() {
 for p in `seq 8629 $PORTTOPDB` ; do
     testServer $p
 done
-for p in `seq 8530 $PORTTOPCO` ; do
-    testServer $p
-done
+if [ "$NRCOORDINATORS" -gt 0 ]
+then
+  for p in `seq 8530 $PORTTOPCO` ; do
+      testServer $p
+  done
+fi
 
 if [ "$SECONDARIES" == "1" ] ; then
     let index=1
@@ -397,7 +401,10 @@ if [ "$SECONDARIES" == "1" ] ; then
 fi
 
 echo Done, your cluster is ready at
+if [ "$NRCOORDINATORS" -gt 0 ]
+then
 for p in `seq 8530 $PORTTOPCO` ; do
     echo "   ${BUILD}/bin/arangosh --server.endpoint $TRANSPORT://127.0.0.1:$p"
 done
+fi
 

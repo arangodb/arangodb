@@ -24,8 +24,9 @@
 #define ARANGODB_PREGEL_CONDUCTOR_H 1
 
 #include <string>
-#include <mutex>
+
 #include "Basics/Common.h"
+#include "Basics/Mutex.h"
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/vocbase.h"
 
@@ -39,10 +40,11 @@ namespace pregel {
   class Conductor {
   public:
     
-    Conductor(int executionNumber,
-              TRI_vocbase_t *vocbase,
-              arangodb::CollectionID const& vertexCollection,
-              arangodb::CollectionID const& edgeCollection,
+    Conductor(int32_t executionNumber,
+              //TRI_vocbase_t *vocbase,
+              std::string const&vertexCollection,
+              CollectionID vertexCollectionID,
+              std::string const& edgeCollection,
               std::string const& algorithm);
     
     void start();
@@ -52,17 +54,21 @@ namespace pregel {
     ExecutionState getState() {return _state;}
     
   private:
-    std::mutex mtx;
+    Mutex writeMutex;// prevents concurrent calls to finishedGlobalStep
+    
     int _executionNumber;
-    int64_t _globalSuperstep;
-    int64_t _dbServerCount = 0;
-    int64_t _responseCount = 0;
+    int _globalSuperstep;
+    int32_t _dbServerCount = 0;
+    int32_t _responseCount = 0;
     
-    TRI_vocbase_t *_vocbase;
+    //TRI_vocbase_t *_vocbase;
     std::string _vertexCollection, _edgeCollection;
-    ExecutionState _state = ExecutionState::RUNNING;
+    CollectionID _vertexCollectionID;
+    std::string _algorithm;
     
-    int sendToAllDBServers(std::string url, VPackSlice const& body);
+    ExecutionState _state = ExecutionState::RUNNING;
+    // convenience
+    int sendToAllShards(std::string url, VPackSlice const& body);
   };
 }
 }
