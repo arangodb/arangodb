@@ -114,6 +114,10 @@ class ExecutionNode {
   /// @brief return the node's id
   inline size_t id() const { return _id; }
 
+  /// @brief set the id, use with care! The purpose is to use a cloned node
+  /// together with the original in the same plan.
+  void setId(size_t id) { _id = id; }
+
   /// @brief return the type of the node
   virtual NodeType getType() const = 0;
 
@@ -538,7 +542,7 @@ class ExecutionNode {
 
  protected:
   /// @brief node id
-  size_t const _id;
+  size_t _id;
 
   /// @brief our dependent nodes
   std::vector<ExecutionNode*> _dependencies;

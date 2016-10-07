@@ -248,6 +248,9 @@ class DistributeNode : public ExecutionNode {
   /// @brief return the collection
   Collection const* collection() const { return _collection; }
 
+  /// @brief set collection
+  void setCollection(Collection* coll) { _collection = coll; }
+
  private:
   /// @brief the underlying database
   TRI_vocbase_t* _vocbase;

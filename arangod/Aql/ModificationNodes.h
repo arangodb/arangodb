@@ -71,7 +71,10 @@ class ModificationNode : public ExecutionNode {
   TRI_vocbase_t* vocbase() const { return _vocbase; }
 
   /// @brief return the collection
-  Collection const* collection() const { return _collection; }
+  Collection* collection() const { return _collection; }
+
+  /// @brief modify collection afterwards
+  void setCollection(Collection* coll) { _collection = coll; }
 
   /// @brief estimateCost
   /// Note that all the modifying nodes use this estimateCost method which is
@@ -110,6 +113,16 @@ class ModificationNode : public ExecutionNode {
 
   /// @brief clear the "$NEW" out variable
   void clearOutVariableNew() { _outVariableNew = nullptr; }
+
+  /// @brief set the "$OLD" out variable
+  void setOutVariableOld(Variable const* oldVar) {
+    _outVariableOld = oldVar;
+  }
+
+  /// @brief set the "$NEW" out variable
+  void setOutVariableNew(Variable const* newVar) {
+    _outVariableNew = newVar;
+  }
 
   /// @brief whether or not the node is a data modification node
   bool isModificationNode() const override { return true; }
@@ -173,6 +186,10 @@ class RemoveNode : public ModificationNode {
     vars.emplace(_inVariable);
   }
 
+  void setInVariable(Variable const* var) {
+    _inVariable = var;
+  }
+
  private:
   /// @brief input variable
   Variable const* _inVariable;
@@ -219,6 +236,10 @@ class InsertNode : public ModificationNode {
   void getVariablesUsedHere(
       std::unordered_set<Variable const*>& vars) const override final {
     vars.emplace(_inVariable);
+  }
+
+  void setInVariable(Variable const* var) {
+    _inVariable = var;
   }
 
  private:
@@ -281,6 +302,11 @@ class UpdateNode : public ModificationNode {
     if (_inKeyVariable != nullptr) {
       vars.emplace(_inKeyVariable);
     }
+  }
+
+  /// @brief set the input document variable
+  void setInDocVariable(Variable const* var) {
+    _inDocVariable = var;
   }
 
  private:
@@ -348,6 +374,11 @@ class ReplaceNode : public ModificationNode {
     }
   }
 
+  /// @brief set the input document variable
+  void setInDocVariable(Variable const* var) {
+    _inDocVariable = var;
+  }
+
  private:
   /// @brief input variable for documents
   Variable const* _inDocVariable;
@@ -411,6 +442,18 @@ class UpsertNode : public ModificationNode {
     vars.emplace(_inDocVariable);
     vars.emplace(_insertVariable);
     vars.emplace(_updateVariable);
+  }
+
+  void setInDocVariable(Variable const* var) {
+    _inDocVariable = var;
+  }
+
+  void setInsertVariable(Variable const* var) {
+    _insertVariable = var;
+  }
+
+  void setUpdateVariable(Variable const* var) {
+    _updateVariable = var;
   }
 
  private:

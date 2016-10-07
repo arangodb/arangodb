@@ -43,6 +43,7 @@
 #include "Basics/SmallVector.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
+#include "Cluster/ClusterInfo.h"
 #include "Utils/Transaction.h"
 #include "VocBase/TraverserOptions.h"
 
@@ -2479,6 +2480,16 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt, ExecutionPlan* plan,
     Collection const* collection =
         static_cast<ModificationNode*>(node)->collection();
 
+#ifdef USE_ENTERPRISE
+    auto ci = ClusterInfo::instance();
+    auto collInfo = ci->getCollection(collection->vocbase->name(),
+                                      collection->name);
+    // Throws if collection is not found!
+    if (collInfo->isSmart() && collInfo->type() == TRI_COL_TYPE_EDGE) {
+      distributeInClusterRuleSmartEdgeCollection(opt, plan, rule);
+      return;
+    }
+#endif
     bool const defaultSharding = collection->usesDefaultSharding();
 
     if (nodeType == ExecutionNode::REMOVE ||
