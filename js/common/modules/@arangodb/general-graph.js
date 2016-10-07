@@ -118,10 +118,15 @@ var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCrea
       throw err;
     }
 
-    e.from.concat(e.to).forEach(function (v) {
+    e.from.forEach(function (v) {
       findOrCreateCollectionByName(v, ArangoCollection.TYPE_DOCUMENT, noCreate);
       vertexCollections[v] = db[v];
     });
+    e.to.forEach(function (v) {
+      findOrCreateCollectionByName(v, ArangoCollection.TYPE_DOCUMENT, noCreate);
+      vertexCollections[v] = db[v];
+    });
+
     findOrCreateCollectionByName(e.collection, ArangoCollection.TYPE_EDGE, noCreate);
     edgeCollections[e.collection] = db[e.collection];
   });
@@ -672,18 +677,25 @@ var checkIfMayBeDropped = function (colName, graphName, graphs) {
 
 // @brief Class Graph. Defines a graph in the Database.
 class Graph {
-  constructor (graphName, edgeDefinitions, vertexCollections, edgeCollections,
-    orphanCollections, revision, id) {
-    edgeDefinitions.forEach(
-      function (eD, index) {
-        var tmp = sortEdgeDefinition(eD);
-        edgeDefinitions[index] = tmp;
-      }
-    );
+  constructor (info) {
+    // We assume well-formedness of the input.
+    // User cannot directly call this constructor.
 
-    if (!orphanCollections) {
-      orphanCollections = [];
-    }
+    let vertexCollections = {};
+    let edgeCollections = {};
+
+    info.edgeDefinitions.forEach((e) => {
+      // Link the edge collection
+      edgeCollections[e.collection] = db[e.collection];
+      // Link from collections
+      e.from.forEach((v) => {
+        vertexCollections[v] = db[v];
+      });
+      // Link to collections
+      e.to.forEach((v) => {
+        vertexCollections[v] = db[v];
+      });
+    });
 
     // we can call the "fast" version of some edge functions if we are
     // running server-side and are not a coordinator
@@ -695,15 +707,15 @@ class Graph {
     var self = this;
     // Create Hidden Properties
     createHiddenProperty(this, '__useBuiltIn', useBuiltIn);
-    createHiddenProperty(this, '__name', graphName);
+    createHiddenProperty(this, '__name', info._key);
     createHiddenProperty(this, '__vertexCollections', vertexCollections);
     createHiddenProperty(this, '__edgeCollections', edgeCollections);
-    createHiddenProperty(this, '__edgeDefinitions', edgeDefinitions);
+    createHiddenProperty(this, '__edgeDefinitions', info.edgeDefinitions);
     createHiddenProperty(this, '__idsToRemove', {});
     createHiddenProperty(this, '__collectionsToLock', {});
-    createHiddenProperty(this, '__id', id);
-    createHiddenProperty(this, '__rev', revision);
-    createHiddenProperty(this, '__orphanCollections', orphanCollections);
+    createHiddenProperty(this, '__id', info._id);
+    createHiddenProperty(this, '__rev', info._rev);
+    createHiddenProperty(this, '__orphanCollections', info.orphanCollections || []);
     updateBindCollections(self);
   }
 
@@ -1828,14 +1840,8 @@ exports._graph = (graphName) => {
     throw err;
   }
 
-  collections = findOrCreateCollectionsByEdgeDefinitions(g.edgeDefinitions, true);
-  orphanCollections = g.orphanCollections;
-  if (!orphanCollections) {
-    orphanCollections = [];
-  }
-
-  return new Graph(graphName, g.edgeDefinitions, collections[0], collections[1], orphanCollections,
-    g._rev, g._id);
+  findOrCreateCollectionsByEdgeDefinitions(g.edgeDefinitions, true);
+  return new Graph(g);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1971,10 +1977,7 @@ exports._create = (graphName, edgeDefinitions, orphanCollections, options) => {
   }, options);
   data.orphanCollections = orphanCollections;
   data.edgeDefinitions = edgeDefinitions;
-  // return new Graph(data);
-  result = new Graph(graphName, edgeDefinitions, collections[0], collections[1],
-    orphanCollections, data._rev , data._id);
-  return result;
+  return new Graph(data);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
