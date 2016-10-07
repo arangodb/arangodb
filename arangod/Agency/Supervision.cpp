@@ -408,6 +408,7 @@ void Supervision::run() {
     }
 
     while (!this->isStopping()) {
+      updateSnapshot();
       // mop: always do health checks so shutdown is able to detect if a server
       // failed otherwise
       if (_agent->leading()) {
