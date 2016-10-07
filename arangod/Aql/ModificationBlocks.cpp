@@ -261,6 +261,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
   options.waitForSync = ep->_options.waitForSync;
   options.ignoreRevs = true;
   options.returnOld = producesOutput;
+  options.isRestore = ep->getOptions().useIsRestore;
 
   // loop over all blocks
   size_t dstRow = 0;
@@ -405,6 +406,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
   options.silent = !producesOutput;
   options.waitForSync = ep->_options.waitForSync;
   options.returnNew = producesOutput;
+  options.isRestore = ep->getOptions().useIsRestore;
 
   VPackBuilder babyBuilder;
   // loop over all blocks
@@ -532,6 +534,7 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
   options.returnOld = (producesOutput && ep->_outVariableOld != nullptr);
   options.returnNew = (producesOutput && ep->_outVariableNew != nullptr);
   options.ignoreRevs = true;
+  options.isRestore = ep->getOptions().useIsRestore;
         
   // loop over all blocks
   size_t dstRow = 0;
@@ -718,6 +721,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
   options.keepNull = !ep->_options.nullMeansRemove;
   options.returnNew = producesOutput;
   options.ignoreRevs = true;
+  options.isRestore = ep->getOptions().useIsRestore;
   
   VPackBuilder keyBuilder;
   VPackBuilder insertBuilder;
@@ -953,6 +957,7 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
   options.returnOld = (producesOutput && ep->_outVariableOld != nullptr);
   options.returnNew = (producesOutput && ep->_outVariableNew != nullptr);
   options.ignoreRevs = true;
+  options.isRestore = ep->getOptions().useIsRestore;
         
   // loop over all blocks
   size_t dstRow = 0;

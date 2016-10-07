@@ -366,6 +366,7 @@ ERROR_MODULE_FAILURE,3103,"failed to invoke module","Failed to invoke the module
 ################################################################################
 
 ERROR_NO_SMART_COLLECTION,4000,"collection is not smart","The requested collection needs to be smart, but it ain't"
+ERROR_NO_SMART_GRAPH_ATTRIBUTE,4001,"smart graph attribute not given","The given document does not have the smart graph attribute set."
 
 ################################################################################
 ## Dispatcher errors
