@@ -236,10 +236,11 @@ let ARANGORESTORE_BIN;
 let ARANGOSH_BIN;
 let CONFIG_RELATIVE_DIR;
 let JS_DIR;
+let JS_ENTERPRISE_DIR;
 let LOGS_DIR;
 let PEM_FILE;
 let UNITTESTS_DIR;
-let GDB_OUTPUT;
+let GDB_OUTPUT="";
 
 function makeResults (testname) {
   const startTime = time();
@@ -302,6 +303,7 @@ function makeArgsArangod (options, appDir) {
     'database.maximal-journal-size': '1048576',
     'javascript.app-path': appDir,
     'javascript.startup-directory': JS_DIR,
+    'javascript.module-directory': JS_ENTERPRISE_DIR,
     'javascript.v8-contexts': '5',
     'http.trusted-origin': options.httpTrustedOrigin || 'all',
     'log.level': 'warn',
@@ -321,6 +323,7 @@ function makeArgsArangosh (options) {
   return {
     'configuration': 'none',
     'javascript.startup-directory': JS_DIR,
+    'javascript.module-directory': JS_ENTERPRISE_DIR,
     'server.username': options.username,
     'server.password': options.password,
     'flatCommands': ['--console.colors', 'false', '--quiet']
@@ -4056,6 +4059,7 @@ function unitTest (cases, options) {
   ARANGOSH_BIN = fs.join(BIN_DIR, 'arangosh');
   CONFIG_RELATIVE_DIR = fs.join(TOP_DIR, 'etc', 'relative');
   JS_DIR = fs.join(TOP_DIR, 'js');
+  JS_ENTERPRISE_DIR = fs.join(TOP_DIR, 'enterprise/js');
   LOGS_DIR = fs.join(TOP_DIR, 'logs');
   PEM_FILE = fs.join(TOP_DIR, 'UnitTests', 'server.pem');
 

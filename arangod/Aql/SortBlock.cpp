@@ -29,7 +29,7 @@
 using namespace arangodb::aql;
 
 SortBlock::SortBlock(ExecutionEngine* engine, SortNode const* en)
-    : ExecutionBlock(engine, en), _sortRegisters(), _stable(en->_stable) {
+    : ExecutionBlock(engine, en), _sortRegisters(), _stable(en->_stable), _mustFetchAll(true) {
   for (auto const& p : en->_elements) {
     auto it = en->getRegisterPlan()->varInfo.find(p.first->id);
     TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
@@ -42,27 +42,40 @@ SortBlock::SortBlock(ExecutionEngine* engine, SortNode const* en)
 SortBlock::~SortBlock() {}
 
 int SortBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK();  
+  DEBUG_BEGIN_BLOCK(); 
   int res = ExecutionBlock::initializeCursor(items, pos);
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
-  // suck all blocks into _buffer
-  while (getBlock(DefaultBatchSize(), DefaultBatchSize())) {
-  }
 
-  if (_buffer.empty()) {
-    _done = true;
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  doSorting();
-
-  _done = false;
+  _mustFetchAll = !_done;
   _pos = 0;
 
   return TRI_ERROR_NO_ERROR;
 
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();  
+}
+
+int SortBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
+                             AqlItemBlock*& result, size_t& skipped) {
+  DEBUG_BEGIN_BLOCK(); 
+  
+  TRI_ASSERT(result == nullptr && skipped == 0);
+  
+  if (_mustFetchAll) {
+    // suck all blocks into _buffer
+    while (getBlock(DefaultBatchSize(), DefaultBatchSize())) {
+    }
+
+    _mustFetchAll = false;
+    if (!_buffer.empty()) {
+      doSorting();
+    }
+  }
+
+  return ExecutionBlock::getOrSkipSome(atLeast, atMost, skipping, result, skipped);
+  
   // cppcheck-suppress style
   DEBUG_END_BLOCK();  
 }
