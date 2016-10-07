@@ -538,7 +538,7 @@ exports.checkAvailableVersions = function (version) {
   try {
     var u = "https://www.arangodb.com/repositories/versions.php?version=" + version +
             "&os=" + internal.platform;
-    var d = internal.download(u, "", {timeout: 300});
+    var d = internal.download(u, "", {timeout: 5});
     var v = JSON.parse(d.body);
 
     if (v.hasOwnProperty("bugfix")) {
