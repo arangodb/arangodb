@@ -1245,7 +1245,7 @@ global.DEFINE_MODULE('internal', (function () {
             if (context.level > 0 && !showFunction) {
               var a = s.split('\n');
               var f = a[0];
-
+              
               var m = funcRE.exec(f);
 
               if (m !== null) {
@@ -1256,7 +1256,6 @@ global.DEFINE_MODULE('internal', (function () {
                 }
               } else {
                 m = func2RE.exec(f);
-
                 if (m !== null) {
                   if (m[1] === undefined) {
                     context.output += 'function ' + '(' + m[2] + ') { ... }';
@@ -1268,7 +1267,7 @@ global.DEFINE_MODULE('internal', (function () {
                     f = f.substr(8, f.length - 10).trim();
                     context.output += '[Function "' + f + '" ...]';
                   } else {
-                    context.output += f;
+                    context.output += f.replace(/^[^(]+/, '');
                   }
                 }
               }
