@@ -2511,7 +2511,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
       if (!doc.isNone() && type != REPLICATION_MARKER_REMOVE) {
         ShardID responsibleShard;
         bool usesDefaultSharding;
-        res = ci->getResponsibleShard(col->cid_as_string(), doc, true,
+        res = ci->getResponsibleShard(col.get(), doc, true,
                                       responsibleShard, usesDefaultSharding);
         if (res != TRI_ERROR_NO_ERROR) {
           errorMsg = "error during determining responsible shard";

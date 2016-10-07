@@ -2357,7 +2357,7 @@ std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef USE_ENTERPRISE
-int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
+int ClusterInfo::getResponsibleShard(LogicalCollection* collInfo,
                                      VPackSlice slice, bool docComplete,
                                      ShardID& shardID,
                                      bool& usesDefaultShardingAttributes,
@@ -2373,18 +2373,19 @@ int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
   std::shared_ptr<std::vector<std::string>> shardKeysPtr;
   std::shared_ptr<std::vector<ShardID>> shards;
   bool found = false;
+  CollectionID collectionId = collInfo->planId();
 
   while (true) {
     {
       // Get the sharding keys and the number of shards:
       READ_LOCKER(readLocker, _planProt.lock);
       // _shards is a map-type <CollectionId, shared_ptr<vector<string>>>
-      auto it = _shards.find(collectionID);
+      auto it = _shards.find(collectionId);
 
       if (it != _shards.end()) {
         shards = it->second;
         // _shardKeys is a map-type <CollectionID, shared_ptr<vector<string>>>
-        auto it2 = _shardKeys.find(collectionID);
+        auto it2 = _shardKeys.find(collectionId);
         if (it2 != _shardKeys.end()) {
           shardKeysPtr = it2->second;
           usesDefaultShardingAttributes =

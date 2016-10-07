@@ -1070,11 +1070,10 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
   std::string shardId;
   bool usesDefaultShardingAttributes;
   auto clusterInfo = arangodb::ClusterInfo::instance();
-  auto const planId =
-      arangodb::basics::StringUtils::itoa(_collection->getPlanId());
+  auto collInfo = _collection->getCollection();
 
-  int res = clusterInfo->getResponsibleShard(planId, value, true, shardId,
-                                             usesDefaultShardingAttributes);
+  int res = clusterInfo->getResponsibleShard(collInfo.get(), value, true,
+      shardId, usesDefaultShardingAttributes);
 
   // std::cout << "SHARDID: " << shardId << "\n";
 
