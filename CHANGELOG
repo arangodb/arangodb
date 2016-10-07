@@ -606,7 +606,7 @@ v2.8.12 (XXXX-XX-XX)
 * export aqlQuery template handler as require('org/arangodb').aql for forwards-compatibility
 
 
-v2.8.11 (XXXX-XX-XX)
+v2.8.11 (2016-07-13)
 --------------------
 
 * fixed array index batch insertion issues for hash indexes that caused problems when 
