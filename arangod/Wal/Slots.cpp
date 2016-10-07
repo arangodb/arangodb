@@ -243,6 +243,7 @@ SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId
         char* mem = _logfile->reserve(alignedSize);
 
         if (mem == nullptr) {
+          LOG(WARN) << "could not find free WAL slot"; 
           return SlotInfo(TRI_ERROR_INTERNAL);
         }
 
