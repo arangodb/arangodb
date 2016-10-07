@@ -1,6 +1,8 @@
 v2.8.12 (XXXX-XX-XX)
 --------------------
 
+* issue #2091: decrease connect timeout to 5 seconds on startup
+
 * fixed issue #2072
 
 * slightly better error diagnostics for some replication errors
