@@ -32,7 +32,7 @@ using namespace arangodb;
 using namespace arangodb::velocypack;
 using namespace arangodb::pregel;
 
-Vertex::Vertex(VPackSlice document) {
+Vertex::Vertex(VPackSlice document)  {
   documentId = document.get(StaticStrings::IdString).copyString();
   _vertexState = document.get("value").getInt();
 }
@@ -44,15 +44,14 @@ Vertex::~Vertex() {
   _edges.clear();
 }
 
-void Vertex::compute(int64_t gss, VPackArrayIterator const &messages, OutMessageCache *outCache) {
+void Vertex::compute(int64_t gss, VPackArrayIterator const &messages, OutMessageCache *cache) {
   
   int current = _vertexState;
   for (auto const &msg : messages) {
     int val = msg.getInt();
     if (val < current) current = val;
   }
-  if (current == _vertexState) voteHalt();
-  else {
+  if (current >= 0 && (gss == 0 || current != _vertexState))  {
     _vertexState = current;
     for (auto const &edge : _edges) {
       VPackBuilder b;
@@ -60,7 +59,7 @@ void Vertex::compute(int64_t gss, VPackArrayIterator const &messages, OutMessage
       b.add(StaticStrings::ToString, VPackValue(edge->toId));
       b.add("val", VPackValue(edge->value + current));
       b.close();
-      outCache->addMessage(edge->toId, b.slice());
+      cache->addMessage(edge->toId, b.slice());
     }
-  }
+  } else voteHalt();
 }

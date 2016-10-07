@@ -45,7 +45,7 @@ namespace pregel {
               arangodb::CollectionID const& edgeCollection,
               std::string const& algorithm);
     
-    
+    void start();
     void finishedGlobalStep(VPackSlice &data);//
     void cancel();
     

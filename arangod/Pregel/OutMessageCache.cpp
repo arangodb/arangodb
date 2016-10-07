@@ -32,7 +32,7 @@
 using namespace arangodb;
 using namespace arangodb::pregel;
 
-OutMessageCache::OutMessageCache(CollectionID vertexCollection) : _vertexCollection(vertexCollection) {
+OutMessageCache::OutMessageCache(CollectionID &vertexCollection) : _collection(vertexCollection) {
   _ci = ClusterInfo::instance();
   
   auto shardMap = _ci->getShardList(vertexCollection);
@@ -61,13 +61,15 @@ void OutMessageCache::clean() {
 }
 
 void OutMessageCache::addMessage(std::string key, VPackSlice slice) {
+  LOG(INFO) << "Adding messages to out queue\n";
+  
   ShardID responsibleShard;
   bool usesDefaultShardingAttributes;
   VPackBuilder keyDoc;
   keyDoc.openObject();
   keyDoc.add(StaticStrings::KeyString, VPackValue(key));
   keyDoc.close();
-  int res = _ci->getResponsibleShard(_vertexCollection, keyDoc.slice(), true,
+  int res = _ci->getResponsibleShard(_collection, keyDoc.slice(), true,
                                      responsibleShard, usesDefaultShardingAttributes);
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);

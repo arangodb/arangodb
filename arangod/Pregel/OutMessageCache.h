@@ -40,7 +40,7 @@ namespace pregel {
  processing */
 class OutMessageCache {
 public:
-  OutMessageCache(CollectionID vertexCollection);
+  OutMessageCache(CollectionID &vertexCollection);
   ~OutMessageCache();
   
   void addMessage(std::string key, VPackSlice slice);
@@ -50,9 +50,9 @@ public:
   
 private:
   // two stage map: shard -> vertice -> message
-  CollectionID _vertexCollection;
   std::unordered_map<std::string, std::unordered_map<std::string, VPackBuilder*>> _map;
   ClusterInfo *_ci;
+  CollectionID _collection;
 };
 
 }}

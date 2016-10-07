@@ -27,7 +27,7 @@
 #include "VocBase/vocbase.h"
 #include "Scheduler/Task.h"
 #include "Cluster/ClusterInfo.h"
-
+#include "Dispatcher/Job.h"
 
 namespace arangodb {
 namespace pregel {
@@ -36,6 +36,7 @@ namespace pregel {
   class OutMessageCache;
   
   class Worker {
+    friend class WorkerJob;
   public:
     Worker(int executionNumber, TRI_vocbase_t *vocbase, VPackSlice s);
     ~Worker();
@@ -44,14 +45,37 @@ namespace pregel {
     void receivedMessages(VPackSlice data);
     
   private:
+    /// @brief guard to make sure the database is not dropped while used by us
+    VocbaseGuard _vocbaseGuard;
+    
+    int _executionNumber;
     std::string _coordinatorId;
     int64_t _globalSuperstep;
+    std::string _vertexCollection, _edgeCollection;
+    
     std::unordered_map<std::string, Vertex*> _vertices;
     std::map<std::string, bool> _activationMap;
     
     InMessageCache *_cache1, *_cache2;
     InMessageCache *_currentCache;
-    OutMessageCache *_outCache;
+  };
+  
+  class WorkerJob : public rest::Job {
+    WorkerJob(WorkerJob const&) = delete;
+    WorkerJob& operator=(WorkerJob const&) = delete;
+    
+  public:
+    WorkerJob(Worker *worker, InMessageCache *inCache);
+    
+    void work() override;
+    bool cancel() override;
+    void cleanup(rest::DispatcherQueue*) override;
+    void handleError(basics::Exception const& ex) override;
+
+  private:
+    std::atomic<bool> _canceled;
+    Worker *_worker;
+    InMessageCache *_inCache;
   };
 }
 }

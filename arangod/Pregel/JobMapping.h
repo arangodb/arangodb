@@ -36,7 +36,8 @@ namespace pregel {
     
     
     static JobMapping* instance() {
-      return &_Instance;
+      static JobMapping *Instance = new JobMapping();
+      return Instance;
     };
     
     int createExecutionNumber();
@@ -51,7 +52,6 @@ namespace pregel {
 
     JobMapping() {};
     JobMapping(const JobMapping &c) {};
-    static JobMapping _Instance;
   };
 }
 }

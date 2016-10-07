@@ -47,6 +47,7 @@ void InMessageCache::clean() {
 
 void InMessageCache::addMessages(VPackArrayIterator incomingMessages) {
   MUTEX_LOCKER(locker, writeMutex);
+  LOG(INFO) << "Adding messages to in queue\n";
   
   //unordered_map<string, vector<VPackSlice>> messageBucket;
   //VPackSlice messages = data.get(Utils::messagesKey);
@@ -87,6 +88,7 @@ void InMessageCache::addMessages(VPackArrayIterator incomingMessages) {
 }
 
 VPackArrayIterator InMessageCache::getMessages(std::string const& vertexId) {
+  LOG(INFO) << "Querying messages from in queue\n";
   auto vmsg = _messages.find(vertexId);
   if (vmsg != _messages.end()) return VPackArrayIterator(vmsg->second->slice());
   else return VPackArrayIterator(VPackSlice());

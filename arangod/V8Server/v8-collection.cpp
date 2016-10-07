@@ -1834,23 +1834,24 @@ static void JS_Pregel(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   // check the arguments
   uint32_t const argLength = args.Length();
-  if (argLength != 3) {
+  if (argLength < 2) {
     // TODO extend this for named graphs, use the Graph class
       TRI_V8_THROW_EXCEPTION_USAGE("_pregel(<vertexCollection>, <edgeCollection>)");
   }
-  if (!args[1]->IsString() || !args[2]->IsString()) {
+  if (!args[0]->IsString() || !args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
+  std::string const vertexCollectionName = TRI_ObjectToString(args[0]);
+  std::string const edgeCollectionName = TRI_ObjectToString(args[1]);
+  LOG(DEBUG) << "Called _pregel(" << vertexCollectionName << "," << edgeCollectionName << ")";
   
   int result = 0;
   if (ServerState::instance()->isCoordinator()) {
     //TRI_V8_THROW_EXCEPTION_USAGE("Cluster use is unsupported for now");
     TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-    LOG(WARN) << "Called as a controller";
+    LOG(DEBUG) << "Called as a controller";
 
     result = pregel::JobMapping::instance()->createExecutionNumber();
-    std::string const vertexCollectionName = TRI_ObjectToString(args[1]);
-    std::string const edgeCollectionName = TRI_ObjectToString(args[2]);
     pregel::Conductor* e = new pregel::Conductor(result,
                                                  vocbase,
                                                  vertexCollectionName,

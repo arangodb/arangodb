@@ -44,7 +44,9 @@ namespace pregel {
     
     static std::string const globalSuperstepKey;
     static std::string const messagesKey;
-  
+    static std::string const senderKey;
+    static std::string const doneKey;
+
   };
 }
 }

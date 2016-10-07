@@ -35,3 +35,5 @@ std::string const Utils::coordinatorIdKey = "coordinatorId";
 std::string const Utils::algorithmKey = "algorithm";
 std::string const Utils::globalSuperstepKey = "gss";
 std::string const Utils::messagesKey = "msgs";
+std::string const Utils::senderKey = "sender";
+std::string const Utils::doneKey = "done";

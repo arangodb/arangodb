@@ -30,8 +30,10 @@ NRCOORDINATORS=1
 POOLSZ=""
 TRANSPORT="tcp"
 LOG_LEVEL="INFO"
-XTERM="x-terminal-emulator"
-XTERMOPTIONS="--geometry=80x43"
+#XTERM="x-terminal-emulator"
+#XTERMOPTIONS="--geometry=80x43"
+XTERM="xterm"
+XTERMOPTIONS=""
 SECONDARIES=0
 BUILD="build"
 
@@ -152,7 +154,7 @@ COMP=1000
 BASE=4001
 NATH=$(( $NRDBSERVERS + $NRCOORDINATORS + $NRAGENTS ))
 
-rm -rf cluster
+#rm -rf cluster
 if [ -d cluster-init ];then
   cp -a cluster-init cluster
 fi

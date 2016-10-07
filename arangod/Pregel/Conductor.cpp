@@ -46,13 +46,13 @@ Conductor::Conductor(int executionNumber,
   
   bool isCoordinator = ServerState::instance()->isCoordinator();
   assert(isCoordinator);
-  
-  LOG(DEBUG) << "start execution as coordinator";
   string coordinatorId = ServerState::instance()->getId();
+  LOG(INFO) << "constructed conductor";
+
   
   VPackBuilder b;
   b.openObject();
-  b.add(Utils::executionNumberKey, VPackValue(executionNumber));
+  b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
   b.add(Utils::coordinatorIdKey, VPackValue(coordinatorId));
   b.add(Utils::vertexCollectionKey, VPackValue(vertexCollection));
   b.add(Utils::edgeCollectionKey, VPackValue(edgeCollection));
@@ -61,24 +61,33 @@ Conductor::Conductor(int executionNumber,
   b.close();
   
   sendToAllDBServers(Utils::nextGSSPath, b.slice());
+}
+
+void Conductor::start() {
 
 }
 
+static int _abcd = 0;
 void Conductor::finishedGlobalStep(VPackSlice &data) {
-    mtx.lock();
-    _responseCount++;
-    if (_responseCount >= _dbServerCount) {
-      
-      _globalSuperstep++;
-      
-      VPackBuilder b;
-      b.openObject();
-      b.add("gss", VPackValue(_globalSuperstep));
-      b.close();
-      sendToAllDBServers(Utils::nextGSSPath, b.slice());
-    }
+  mtx.lock();
+  LOG(INFO) << "Conductor received finished callback\n";
+  
+  _responseCount++;
+  if (_responseCount >= _dbServerCount) {
+    if (_abcd++ > 25) return;
     
-    mtx.unlock();
+    _globalSuperstep++;
+    
+    VPackBuilder b;
+    b.openObject();
+    b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+    b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
+    b.close();
+    sendToAllDBServers(Utils::nextGSSPath, b.slice());
+    LOG(INFO) << "Conductor started new gss\n";
+  }
+  
+  mtx.unlock();
 }
 
 void Conductor::cancel() {
@@ -91,21 +100,24 @@ int Conductor::sendToAllDBServers(std::string path, VPackSlice const& config) {
   ClusterComm* cc = ClusterComm::instance();
   //CoordTransactionID coordTransactionID = TRI_NewTickServer();
   
-  shared_ptr<vector<ShardID>> DBservers = ci->getShardList(_vertexCollection);// ->getCurrentDBServers();
-  assert(_dbServerCount == 0 || (int64_t)DBservers->size() == _dbServerCount);
-  _dbServerCount = DBservers->size();
+  shared_ptr<vector<ShardID>> shardIDs = ci->getShardList(_vertexCollection);// ->getCurrentDBServers();
+  assert(_dbServerCount == 0 || (int64_t)shardIDs->size() == _dbServerCount);
+  _dbServerCount = shardIDs->size();
   _responseCount = 0;
   
   auto body = std::make_shared<std::string const>(config.toString());
   
   vector<ClusterCommRequest> requests;
-  for (auto it = DBservers->begin(); it != DBservers->end(); ++it) {
-    ClusterCommRequest r("shard:" + *it, rest::RequestType::POST, path, body);
-    requests.push_back(r);
+  for (auto it = shardIDs->begin(); it != shardIDs->end(); ++it) {
+    requests.emplace_back("shard:" + *it, rest::RequestType::POST, path, body);
   }
   
   size_t nrDone = 0;
-  size_t nrGood = cc->performRequests(requests, 120.0, nrDone, LogTopic("Pregel Conductor"));
+  cc->performRequests(requests, 120.0, nrDone, LogTopic("Pregel Conductor"));
+  //if (nrDone != nrGood) {
+  //  return TRI_ERROR_INTERNAL;
+  //}
+  
   
   /*for (auto it = DBservers->begin(); it != DBservers->end(); ++it) {
     auto headers =
@@ -126,10 +138,6 @@ int Conductor::sendToAllDBServers(std::string path, VPackSlice const& config) {
       }
     }
   }*/
-  
-  if (nrDone != nrGood) {
-    return TRI_ERROR_INTERNAL;
-  }
   
   return TRI_ERROR_NO_ERROR;
 }
