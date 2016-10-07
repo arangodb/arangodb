@@ -488,6 +488,7 @@ function analyzeServerCrash (arangod, options, checkStr) {
   if (fs.isFile(cpf)) {
     var matchApport = /.*apport.*/;
     var matchVarTmp = /\/var\/tmp/;
+    var matchSystemdCoredump = /.*systemd-coredump*/;
     var corePattern = fs.readBuffer(cpf);
     var cp = corePattern.asciiSlice(0, corePattern.length);
 
@@ -495,7 +496,11 @@ function analyzeServerCrash (arangod, options, checkStr) {
       print(RED + "apport handles corefiles on your system. Uninstall it if you want us to get corefiles for analysis.");
       return;
     }
-    if (matchVarTmp.exec(cp) == null) {
+    
+    if (matchSystemdCoredump.exec(cp) == null) {
+      options.coreDirectory = "/var/lib/systemd/coredump";
+    }
+    else if (matchVarTmp.exec(cp) == null) {
       print(RED + "Don't know howto locate corefiles in your system. '" + cpf + "' contains: '" + cp + "'");
       return;
     }
@@ -548,7 +553,7 @@ function checkArangoAlive (arangod, options) {
       )
     ) {
       arangod.exitStatus = res;
-      analyzeServerCrash(arangod, options, 'health Check');
+      analyzeServerCrash(arangod, options, 'health Check  - ' + res.signal);
     }
   }
 
@@ -1263,7 +1268,7 @@ function shutdownInstance (instanceInfo, options) {
         }
       } else if (arangod.exitStatus.status !== 'TERMINATED') {
         if (arangod.exitStatus.hasOwnProperty('signal')) {
-          analyzeServerCrash(arangod, options, 'instance Shutdown');
+          analyzeServerCrash(arangod, options, 'instance Shutdown - ' + arangod.exitStatus.signal);
         }
       } else {
         print('Server shutdown: Success.');

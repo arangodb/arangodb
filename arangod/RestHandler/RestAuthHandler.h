@@ -46,10 +46,18 @@ class RestAuthHandler : public RestVocbaseBaseHandler {
   bool isDirect() const override;
   status execute() override;
 
+#ifdef USE_ENTERPRISE
+  void finalizeExecute() override;
+#endif
+
+ private:
+  status badRequest();
+
  private:
   std::string _jwtSecret;
+  std::string _username;
+  bool _isValid = false;
   std::chrono::seconds _validFor;
-  status badRequest();
 };
 }
 

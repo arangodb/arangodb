@@ -1,5 +1,3 @@
-
-
 @brief the group id to use for the process
 `--gid gid`
 

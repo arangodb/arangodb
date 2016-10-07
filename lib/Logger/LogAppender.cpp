@@ -53,6 +53,23 @@ void LogAppender::addLogger(std::function<void(LogMessage*)> func) {
 
 void LogAppender::addAppender(std::string const& definition,
                               std::string const& filter) {
+  MUTEX_LOCKER(guard, _appendersLock);
+  std::pair<std::shared_ptr<LogAppender>, LogTopic*> appender(
+      buildAppender(definition, filter));
+
+  if (appender.first == nullptr) {
+    return;
+  }
+
+  LogTopic* topic = appender.second;
+  size_t n = (topic == nullptr) ? LogTopic::MAX_LOG_TOPICS : topic->id();
+  _topics2appenders[n].emplace_back(appender.first);
+}
+
+void LogAppender::addTtyAppender() { _ttyAppender.reset(new LogAppenderTty()); }
+
+std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
+    std::string const& definition, std::string const& filter) {
   std::vector<std::string> v = StringUtils::split(definition, '=');
   std::string topicName;
   std::string output;
@@ -72,7 +89,7 @@ void LogAppender::addAppender(std::string const& definition,
     }
   } else {
     LOG(ERR) << "strange output definition '" << definition << "' ignored";
-    return;
+    return {nullptr, nullptr};
   }
 
   LogTopic* topic = nullptr;
@@ -83,25 +100,10 @@ void LogAppender::addAppender(std::string const& definition,
     if (topic == nullptr) {
       LOG(ERR) << "strange topic '" << topicName
                << "', ignoring whole defintion";
-      return;
+      return {nullptr, nullptr};
     }
   }
 
-  MUTEX_LOCKER(guard, _appendersLock);
-  std::shared_ptr<LogAppender> appender(buildAppender(output, contentFilter));
-
-  if (appender == nullptr) {
-    return;
-  }
-
-  size_t n = (topic == nullptr) ? LogTopic::MAX_LOG_TOPICS : topic->id();
-  _topics2appenders[n].emplace_back(appender);
-}
-
-void LogAppender::addTtyAppender() { _ttyAppender.reset(new LogAppenderTty()); }
-
-std::shared_ptr<LogAppender> LogAppender::buildAppender(
-    std::string const& output, std::string const& contentFilter) {
   auto key = make_pair(output, contentFilter);
 
 #ifdef ARANGODB_ENABLE_SYSLOG
@@ -113,7 +115,7 @@ std::shared_ptr<LogAppender> LogAppender::buildAppender(
   auto it = _definition2appenders.find(key);
 
   if (it != _definition2appenders.end()) {
-    return it->second;
+    return {it->second, topic};
   }
 
 #ifdef ARANGODB_ENABLE_SYSLOG
@@ -124,7 +126,7 @@ std::shared_ptr<LogAppender> LogAppender::buildAppender(
     if (s.size() < 1 || s.size() > 2) {
       LOG(ERR) << "unknown syslog definition '" << output << "', expecting "
                << "'syslog://facility/identifier'";
-      return nullptr;
+      return {nullptr, nullptr};
     }
 
     std::string identifier = "";
@@ -137,7 +139,7 @@ std::shared_ptr<LogAppender> LogAppender::buildAppender(
         std::make_shared<LogAppenderSyslog>(s[0], identifier, contentFilter);
     _definition2appenders[key] = result;
 
-    return result;
+    return {result, topic};
   }
 #endif
 
@@ -150,17 +152,17 @@ std::shared_ptr<LogAppender> LogAppender::buildAppender(
     filename = output.substr(7);
   } else {
     LOG(ERR) << "unknown output definition '" << output << "'";
-    return nullptr;
+    return {nullptr, nullptr};
   }
 
   try {
     auto result = std::make_shared<LogAppenderFile>(filename, contentFilter);
     _definition2appenders[key] = result;
 
-    return result;
+    return {result, topic};
   } catch (...) {
     // cannot open file for logging
-    return nullptr;
+    return {nullptr, nullptr};
   }
 }
 

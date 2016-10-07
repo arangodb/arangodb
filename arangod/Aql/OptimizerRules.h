@@ -122,6 +122,11 @@ void scatterInClusterRule(Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 void distributeInClusterRule(Optimizer*, ExecutionPlan*,
                              Optimizer::Rule const*);
 
+#ifdef USE_ENTERPRISE
+void distributeInClusterRuleSmartEdgeCollection(Optimizer*, ExecutionPlan*,
+                             Optimizer::Rule const*);
+#endif
+
 void distributeFilternCalcToClusterRule(Optimizer*, ExecutionPlan*,
                                         Optimizer::Rule const*);
 

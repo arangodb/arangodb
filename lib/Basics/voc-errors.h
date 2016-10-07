@@ -605,6 +605,8 @@
 ///   The module path could not be resolved.
 /// - 3103: @LIT{failed to invoke module}
 ///   Failed to invoke the module in its context.
+/// - 4000: @LIT{collection is not smart}
+///   The requested collection needs to be smart, but it ain't
 /// - 21001: @LIT{dispatcher stopped}
 ///   Will be returned if a shutdown is in progress.
 /// - 21002: @LIT{named queue does not exist}
@@ -3194,6 +3196,16 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_MODULE_FAILURE                                          (3103)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 4000: ERROR_NO_SMART_COLLECTION
+///
+/// collection is not smart
+///
+/// The requested collection needs to be smart, but it ain't
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_NO_SMART_COLLECTION                                     (4000)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 21001: ERROR_DISPATCHER_IS_STOPPING

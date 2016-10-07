@@ -41,16 +41,16 @@ static size_t sortWeight(arangodb::aql::AstNode const* node) {
       return 1;
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
       return 2;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
-      return 3;
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
-      return 4;
-    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
-      return 5;
+      return 3;
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+      return 4;
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
+      return 5;
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
       return 6;
     default:
-      return 42;
+      return 42; /* OPST_CIRCUS */
   }
 }
 
@@ -1124,8 +1124,9 @@ bool SkiplistIndex::accessFitsIndex(
     arangodb::aql::AstNode const* op, arangodb::aql::Variable const* reference,
     std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
         found,
+    std::unordered_set<std::string>& nonNullAttributes,
     bool isExecution) const {
-  if (!this->canUseConditionPart(access, other, op, reference, isExecution)) {
+  if (!this->canUseConditionPart(access, other, op, reference, nonNullAttributes, isExecution)) {
     return false;
   }
 
@@ -1221,7 +1222,9 @@ void SkiplistIndex::matchAttributes(
     arangodb::aql::Variable const* reference,
     std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
         found,
-    size_t& values, bool isExecution) const {
+    size_t& values, 
+    std::unordered_set<std::string>& nonNullAttributes,
+    bool isExecution) const {
   for (size_t i = 0; i < node->numMembers(); ++i) {
     auto op = node->getMember(i);
 
@@ -1233,14 +1236,14 @@ void SkiplistIndex::matchAttributes(
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
         TRI_ASSERT(op->numMembers() == 2);
         accessFitsIndex(op->getMember(0), op->getMember(1), op, reference,
-                        found, isExecution);
+                        found, nonNullAttributes, isExecution);
         accessFitsIndex(op->getMember(1), op->getMember(0), op, reference,
-                        found, isExecution);
+                        found, nonNullAttributes, isExecution);
         break;
 
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
         if (accessFitsIndex(op->getMember(0), op->getMember(1), op, reference,
-                            found, isExecution)) {
+                            found, nonNullAttributes, isExecution)) {
           auto m = op->getMember(1);
           if (m->isArray() && m->numMembers() > 1) {
             // attr IN [ a, b, c ]  =>  this will produce multiple items, so
@@ -1259,8 +1262,9 @@ void SkiplistIndex::matchAttributes(
 bool SkiplistIndex::accessFitsIndex(
     arangodb::aql::AstNode const* access, arangodb::aql::AstNode const* other,
     arangodb::aql::AstNode const* op, arangodb::aql::Variable const* reference,
-    std::vector<std::vector<arangodb::aql::AstNode const*>>& found) const {
-  if (!this->canUseConditionPart(access, other, op, reference, true)) {
+    std::vector<std::vector<arangodb::aql::AstNode const*>>& found,
+    std::unordered_set<std::string>& nonNullAttributes) const {
+  if (!this->canUseConditionPart(access, other, op, reference, nonNullAttributes, true)) {
     return false;
   }
 
@@ -1351,6 +1355,7 @@ bool SkiplistIndex::findMatchingConditions(
     arangodb::aql::Variable const* reference,
     std::vector<std::vector<arangodb::aql::AstNode const*>>& mapping,
     bool& usesIn) const {
+  std::unordered_set<std::string> nonNullAttributes;
   usesIn = false;
 
   for (size_t i = 0; i < node->numMembers(); ++i) {
@@ -1364,14 +1369,14 @@ bool SkiplistIndex::findMatchingConditions(
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE: {
         TRI_ASSERT(op->numMembers() == 2);
         accessFitsIndex(op->getMember(0), op->getMember(1), op, reference,
-                        mapping);
+                        mapping, nonNullAttributes);
         accessFitsIndex(op->getMember(1), op->getMember(0), op, reference,
-                        mapping);
+                        mapping, nonNullAttributes);
         break;
       }
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN: {
         auto m = op->getMember(1);
-        if (accessFitsIndex(op->getMember(0), m, op, reference, mapping)) {
+        if (accessFitsIndex(op->getMember(0), m, op, reference, mapping, nonNullAttributes)) {
           if (m->numMembers() == 0) {
             // We want to do an IN [].
             // No results
@@ -1468,8 +1473,9 @@ bool SkiplistIndex::supportsFilterCondition(
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
+  std::unordered_set<std::string> nonNullAttributes;
   size_t values = 0;
-  matchAttributes(node, reference, found, values, false);
+  matchAttributes(node, reference, found, values, nonNullAttributes, false);
 
   bool lastContainsEquality = true;
   size_t attributesCovered = 0;
@@ -1604,8 +1610,9 @@ arangodb::aql::AstNode* SkiplistIndex::specializeCondition(
     arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) const {
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
+  std::unordered_set<std::string> nonNullAttributes;
   size_t values = 0;
-  matchAttributes(node, reference, found, values, false);
+  matchAttributes(node, reference, found, values, nonNullAttributes, false);
 
   std::vector<arangodb::aql::AstNode const*> children;
   bool lastContainsEquality = true;

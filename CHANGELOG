@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #2086
+
 * fixed issue #2079
 
 * fixed issue #2071
@@ -137,6 +139,8 @@ devel
 
 v3.0.11 (2016-XX-XX)
 --------------------
+
+* fixed issue #2081
 
 * fixed issue #2038
 
@@ -694,8 +698,32 @@ v3.0.0-rc1 (2015-06-10)
   using a backwards-compatible "legacy mode"
 
 
-v2.8.11 (XXXX-XX-XX)
+v2.8.12 (XXXX-XX-XX)
 --------------------
+
+* issue #2091: decrease connect timeout to 5 seconds on startup
+
+* fixed issue #2072
+
+* slightly better error diagnostics for some replication errors
+
+* fixed issue #1977
+
+* fixed issue in `INTERSECTION` AQL function with duplicate elements
+  in the source arrays
+
+* fixed issue #1962
+
+* fixed issue #1959
+
+* export aqlQuery template handler as require('org/arangodb').aql for forwards-compatibility
+
+
+v2.8.11 (2016-07-13)
+--------------------
+
+* fixed array index batch insertion issues for hash indexes that caused problems when 
+  no elements remained for insertion
 
 * fixed issue #1937
 
