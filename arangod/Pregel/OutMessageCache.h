@@ -20,14 +20,40 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include
+#ifndef ARANGODB_OUT_MESSAGE_CACHE_H
+#define ARANGODB_OUT_MESSAGE_CACHE_H 1
+
+#include <string>
+
+#include <velocypack/vpack.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Basics/Common.h"
+#include "Basics/Mutex.h"
+#include "Cluster/ClusterInfo.h"
+
 
 namespace arangodb {
 namespace pregel {
 
-class MessageQueue {
+/* In the longer run, maybe write optimized implementations for certain use cases. For example threaded
+ processing */
+class OutMessageCache {
 public:
-  addMessage()
+  OutMessageCache(CollectionID vertexCollection);
+  ~OutMessageCache();
+  
+  void addMessage(std::string key, VPackSlice slice);
+  //void addMessages(VPackArrayIterator messages);
+  void getMessages(ShardID const& shardId, VPackBuilder &outBuilder);
+  void clean();
+  
+private:
+  // two stage map: shard -> vertice -> message
+  CollectionID _vertexCollection;
+  std::unordered_map<std::string, std::unordered_map<std::string, VPackBuilder*>> _map;
+  ClusterInfo *_ci;
 };
 
 }}
+#endif

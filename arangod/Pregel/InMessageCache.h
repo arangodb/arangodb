@@ -20,4 +20,38 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-//using namespace arangodb;
+#ifndef ARANGODB_IN_MESSAGE_CACHE_H
+#define ARANGODB_IN_MESSAGE_CACHE_H 1
+
+#include <string>
+#include <velocypack/vpack.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Basics/Common.h"
+#include "Basics/Mutex.h"
+#include "Cluster/ClusterInfo.h"
+
+
+namespace arangodb {
+  //class Mutex;
+  
+namespace pregel {
+
+/* In the longer run, maybe write optimized implementations for certain use cases. For example threaded
+ processing */
+class InMessageCache {
+public:
+  InMessageCache() {}
+  ~InMessageCache();
+  
+  void addMessages(VPackArrayIterator messages);
+  arangodb::velocypack::ArrayIterator getMessages(ShardID const& shardId);
+  void clean();
+  
+private:
+  std::unordered_map<std::string, VPackBuilder*> _messages;
+  Mutex writeMutex;
+};
+
+}}
+#endif

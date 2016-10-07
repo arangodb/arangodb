@@ -20,11 +20,10 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <string>
-#include <iterator>
-
 #include "Basics/Common.h"
 #include "VocBase/vocbase.h"
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 #ifndef ARANGODB_PREGEL_VERTEX_H
 #define ARANGODB_PREGEL_VERTEX_H 1
@@ -36,8 +35,10 @@ namespace pregel {
     STOPPED
   };
   
+  class OutMessageCache;
   
   struct Edge {
+  public:
     std::string edgeId;
     std::string toId;
     
@@ -47,21 +48,23 @@ namespace pregel {
   class Vertex {
   public:
     //typedef std::iterator<std::forward_iterator_tag, VPackSlice> MessageIterator;
-    Vertex(VPackSlice &document);
-    void compute(velocypack::ArrayIterator &messages);
+    Vertex(VPackSlice document);
+    ~Vertex();
+    void compute(int64_t gss, VPackArrayIterator const &messages, OutMessageCache* cache);
     
     VertexActivationState state() {return _activationState;}
-    std::vector<VPackSlice> messages() {return _messages;}
+    //std::vector<VPackSlice> messages() {return _messages;}
     
-    std::vector<Edge> _edges;
+    std::vector<Edge*> _edges;
+    std::string documentId;
 
   protected:
     void voteHalt() {_activationState = VertexActivationState::STOPPED;}
-    void sendMessage(VPackBuilder &message) {_messages.push_back(message.slice());}
+    //void sendMessage(VPackBuilder &message) {_messages.push_back(message.slice());}
 
   private:
     VertexActivationState _activationState;
-    std::vector<VPackSlice> _messages;
+    //std::vector<VPackSlice> _messages;
     
     int _vertexState;// demo
   };

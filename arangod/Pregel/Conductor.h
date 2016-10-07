@@ -23,6 +23,7 @@
 #ifndef ARANGODB_PREGEL_CONDUCTOR_H
 #define ARANGODB_PREGEL_CONDUCTOR_H 1
 
+#include <string>
 #include <mutex>
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
@@ -53,11 +54,12 @@ namespace pregel {
   private:
     std::mutex mtx;
     int _executionNumber;
-    size_t _globalSuperstep;
-    size_t _dbServerCount = 0;
-    size_t _responseCount = 0;
+    int64_t _globalSuperstep;
+    int64_t _dbServerCount = 0;
+    int64_t _responseCount = 0;
     
     TRI_vocbase_t *_vocbase;
+    std::string _vertexCollection, _edgeCollection;
     ExecutionState _state = ExecutionState::RUNNING;
     
     int sendToAllDBServers(std::string url, VPackSlice const& body);

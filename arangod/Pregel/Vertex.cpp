@@ -21,18 +21,46 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Vertex.h"
+#include "OutMessageCache.h"
 
 #include "Basics/StaticStrings.h"
-#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 
 using namespace std;
 using namespace arangodb;
 using namespace arangodb::velocypack;
 using namespace arangodb::pregel;
 
-Vertex::Vertex(VPackSlice &document) {
+Vertex::Vertex(VPackSlice document) {
+  documentId = document.get(StaticStrings::IdString).copyString();
   _vertexState = document.get("value").getInt();
 }
-void Vertex::compute(velocypack::ArrayIterator &messages) {
+
+Vertex::~Vertex() {
+  for (auto const &it : _edges) {
+    delete(it);
+  }
+  _edges.clear();
+}
+
+void Vertex::compute(int64_t gss, VPackArrayIterator const &messages, OutMessageCache *outCache) {
   
+  int current = _vertexState;
+  for (auto const &msg : messages) {
+    int val = msg.getInt();
+    if (val < current) current = val;
+  }
+  if (current == _vertexState) voteHalt();
+  else {
+    _vertexState = current;
+    for (auto const &edge : _edges) {
+      VPackBuilder b;
+      b.openObject();
+      b.add(StaticStrings::ToString, VPackValue(edge->toId));
+      b.add("val", VPackValue(edge->value + current));
+      b.close();
+      outCache->addMessage(edge->toId, b.slice());
+    }
+  }
 }

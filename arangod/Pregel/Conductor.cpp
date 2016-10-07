@@ -51,7 +51,7 @@ Conductor::Conductor(int executionNumber,
   string coordinatorId = ServerState::instance()->getId();
   
   VPackBuilder b;
-  b(VPackValue(VPackValueType::Object));
+  b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(executionNumber));
   b.add(Utils::coordinatorIdKey, VPackValue(coordinatorId));
   b.add(Utils::vertexCollectionKey, VPackValue(vertexCollection));
@@ -72,7 +72,9 @@ void Conductor::finishedGlobalStep(VPackSlice &data) {
       _globalSuperstep++;
       
       VPackBuilder b;
+      b.openObject();
       b.add("gss", VPackValue(_globalSuperstep));
+      b.close();
       sendToAllDBServers(Utils::nextGSSPath, b.slice());
     }
     
@@ -83,40 +85,49 @@ void Conductor::cancel() {
   _state = ExecutionState::ERROR;
 }
 
-int Conductor::sendToAllDBServers(std::string url, VPackSlice const& config) {
+int Conductor::sendToAllDBServers(std::string path, VPackSlice const& config) {
   
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
-  CoordTransactionID coordTransactionID = TRI_NewTickServer();
+  //CoordTransactionID coordTransactionID = TRI_NewTickServer();
   
-  std::vector<ServerID> DBservers = ci->getCurrentDBServers();
-  _dbServerCount = DBservers.size();
+  shared_ptr<vector<ShardID>> DBservers = ci->getShardList(_vertexCollection);// ->getCurrentDBServers();
+  assert(_dbServerCount == 0 || (int64_t)DBservers->size() == _dbServerCount);
+  _dbServerCount = DBservers->size();
   _responseCount = 0;
   
   auto body = std::make_shared<std::string const>(config.toString());
   
-  for (auto it = DBservers.begin(); it != DBservers.end(); ++it) {
+  vector<ClusterCommRequest> requests;
+  for (auto it = DBservers->begin(); it != DBservers->end(); ++it) {
+    ClusterCommRequest r("shard:" + *it, rest::RequestType::POST, path, body);
+    requests.push_back(r);
+  }
+  
+  size_t nrDone = 0;
+  size_t nrGood = cc->performRequests(requests, 120.0, nrDone, LogTopic("Pregel Conductor"));
+  
+  /*for (auto it = DBservers->begin(); it != DBservers->end(); ++it) {
     auto headers =
     std::make_unique<std::unordered_map<std::string, std::string>>();
     // set collection name (shard id)
-    cc->asyncRequest("", coordTransactionID, "server:" + *it,
-                     arangodb::rest::RequestType::PUT, url, body,
+    cc->asyncRequest("", coordTransactionID, "shard:" + *it,
+                     arangodb::rest::RequestType::PUT, path, body,
                      headers, nullptr, 120.0);
   }
   
   // Now listen to the results:
   int count;
-  int nrok = 0;
-  for (count = (int)DBservers.size(); count > 0; count--) {
+  for (count = (int)DBservers->size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
       if (res.answer_code == arangodb::rest::ResponseCode::OK) {
-        nrok++;
+        nrDone++;
       }
     }
-  }
+  }*/
   
-  if (nrok != (int)DBservers.size()) {
+  if (nrDone != nrGood) {
     return TRI_ERROR_INTERNAL;
   }
   

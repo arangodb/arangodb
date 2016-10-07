@@ -362,7 +362,8 @@ add_executable(${BIN_ARANGOD}
   Wal/SynchronizerThread.cpp
   Pregel/Conductor.cpp
   Pregel/JobMapping.cpp
-  Pregel/MessageQueue.cpp
+  Pregel/InMessageCache.cpp
+  Pregel/OutMessageCache.cpp
   Pregel/Vertex.cpp
   Pregel/Worker.cpp
   Pregel/Utils.cpp

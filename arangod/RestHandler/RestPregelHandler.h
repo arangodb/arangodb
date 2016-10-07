@@ -31,13 +31,13 @@ namespace arangodb {
     explicit RestPregelHandler(GeneralRequest*, GeneralResponse*);
     
   public:
-    bool isDirect() const override { return true; }
+    bool isDirect() const override { return false; }
     status execute() override;
     
   private:
-    void nextGSS(VPackSlice &body);
-    void finishedGSS(VPackSlice &body);
-    void receivedMessages(VPackSlice &body);
+    void nextGSS(VPackSlice body);
+    void finishedGSS(VPackSlice body);
+    void receivedMessages(VPackSlice body);
   };
 }
 

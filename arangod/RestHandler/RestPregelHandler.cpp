@@ -63,6 +63,8 @@ RestHandler::status RestPregelHandler::execute() {
       finishedGSS(s);
     } else if (suffix[0] == "nextGSS") {
       nextGSS(s);
+    } else if (suffix[0] == "messages") {
+      receivedMessages(s);
     }
     VPackBuilder result;
     result.add(VPackValue("thanks"));
@@ -76,7 +78,7 @@ RestHandler::status RestPregelHandler::execute() {
   return status::DONE;
 }
 
-void RestPregelHandler::nextGSS(VPackSlice &body) {
+void RestPregelHandler::nextGSS(VPackSlice body) {
   VPackSlice executionNum = body.get("en");
   if (executionNum.isInt()) {
     Worker *w = JobMapping::instance()->worker(executionNum.getInt());
@@ -88,7 +90,7 @@ void RestPregelHandler::nextGSS(VPackSlice &body) {
   }
 }
 
-void RestPregelHandler::finishedGSS(VPackSlice &body) {
+void RestPregelHandler::finishedGSS(VPackSlice body) {
   VPackSlice executionNum = body.get("en");
   if (executionNum.isInt()) {
     Conductor *exe = JobMapping::instance()->conductor(executionNum.getInt());
@@ -99,14 +101,14 @@ void RestPregelHandler::finishedGSS(VPackSlice &body) {
 }
 
 
-void RestPregelHandler::receivedMessages(VPackSlice &body) {
+void RestPregelHandler::receivedMessages(VPackSlice body) {
   VPackSlice executionNum = body.get("en");
   if (executionNum.isInt()) {
     Worker *exe = JobMapping::instance()->worker(executionNum.getInt());
-    
     if (exe) {
-      //exe->nextGlobalStep(body);
+      exe->receivedMessages(body);
+    } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "there is no registered worker");
     }
-    
   }
 }

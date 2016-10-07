@@ -26,6 +26,7 @@ using namespace arangodb::pregel;
 
 std::string const Utils::nextGSSPath = "/_api/pregel/nextGSS";
 std::string const Utils::finishedGSSPath = "/_api/pregel/finishedGSS";
+std::string const Utils::messagesPath = "/_api/pregel/messages";
 
 std::string const Utils::executionNumberKey = "extn";
 std::string const Utils::vertexCollectionKey = "vxcln";

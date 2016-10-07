@@ -23,24 +23,35 @@
 #ifndef ARANGODB_PREGEL_WORKER_H
 #define ARANGODB_PREGEL_WORKER_H 1
 
-#include <vector>
 #include "Basics/Common.h"
-#include "Cluster/ClusterInfo.h"
 #include "VocBase/vocbase.h"
+#include "Scheduler/Task.h"
+#include "Cluster/ClusterInfo.h"
+
 
 namespace arangodb {
 namespace pregel {
   class Vertex;
+  class InMessageCache;
+  class OutMessageCache;
   
   class Worker {
   public:
-    Worker(int executionNumber, TRI_vocbase_t *vocbase, VPackSlice &s);
+    Worker(int executionNumber, TRI_vocbase_t *vocbase, VPackSlice s);
+    ~Worker();
       
-    void nextGlobalStep(VPackSlice &data);// called by coordinator
+    void nextGlobalStep(VPackSlice data);// called by coordinator
+    void receivedMessages(VPackSlice data);
     
   private:
     std::string _coordinatorId;
-    std::vector<Vertex> _vertices;
+    int64_t _globalSuperstep;
+    std::unordered_map<std::string, Vertex*> _vertices;
+    std::map<std::string, bool> _activationMap;
+    
+    InMessageCache *_cache1, *_cache2;
+    InMessageCache *_currentCache;
+    OutMessageCache *_outCache;
   };
 }
 }

@@ -69,6 +69,10 @@ namespace rest {
 namespace traverser {
 class BaseTraverserEngine;
 }
+  
+namespace pregel {
+  class Worker;
+}
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief forward declarations
@@ -81,13 +85,14 @@ class TransactionContext;
 
 class Transaction {
   friend class traverser::BaseTraverserEngine;
-
  public:
 
   double const TRX_FOLLOWER_TIMEOUT = 3.0;
 
   class IndexHandle {
     friend class Transaction;
+    friend class pregel::Worker;
+
     std::shared_ptr<arangodb::Index> _index;
    public:
     IndexHandle() = default;

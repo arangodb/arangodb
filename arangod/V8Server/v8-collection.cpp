@@ -55,7 +55,7 @@
 #include "VocBase/modes.h"
 #include "Wal/LogfileManager.h"
 #include "Pregel/Conductor.h"
-#include "Pregel/Execution.h"
+#include "Pregel/JobMapping.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/HexDump.h>
@@ -1829,16 +1829,16 @@ static void JS_Pregel(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
     LOG(WARN) << "Called as a controller";
 
-    result = pregel::Conductor::instance()->createExecutionNumber();
+    result = pregel::JobMapping::instance()->createExecutionNumber();
     std::string const vertexCollectionName = TRI_ObjectToString(args[1]);
     std::string const edgeCollectionName = TRI_ObjectToString(args[2]);
-    pregel::Execution* e = new pregel::Execution(result,
+    pregel::Conductor* e = new pregel::Conductor(result,
                                                  vocbase,
                                                  vertexCollectionName,
                                                  edgeCollectionName,
                                                  "");
     
-    pregel::Conductor::instance()->addExecution(e, result);
+    pregel::JobMapping::instance()->addExecution(e, result);
     
   } else {
     TRI_V8_THROW_EXCEPTION_USAGE("Only call on coordinator");
