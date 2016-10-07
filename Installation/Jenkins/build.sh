@@ -210,6 +210,11 @@ while [ $# -gt 0 ];  do
             shift
             ;;
 
+        --noopt)
+            CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off"
+            shift
+            ;;
+        
         --coverage)
             TAR_SUFFIX="-coverage"
             COVERAGE=1
