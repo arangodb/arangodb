@@ -350,13 +350,11 @@ function GeneralGraphCreationSuite() {
     },
 
     testExtendEdgeDefinitions : function () {
-
-
       //with empty args
       assertEqual(graph._edgeDefinitions(), []);
 
       //with args
-      var ed =graph._edgeDefinitions(
+      var ed = graph._edgeDefinitions(
         graph._relation("relationName", "vertexC1", "vertexC1"),
         graph._relation("relationName",
           ["vertexC1", "vertexC2"], ["vertexC3", "vertexC4"])
@@ -381,7 +379,6 @@ function GeneralGraphCreationSuite() {
           to: ["vertexC1"]
         }
       ]);
-
     },
 
 
