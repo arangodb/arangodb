@@ -2549,7 +2549,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt, ExecutionPlan* plan,
       distNode = new DistributeNode(plan, plan->nextId(), vocbase, collection,
                                     inputVariable->id, false, v.size() > 1);
     } else if (nodeType == ExecutionNode::UPSERT) {
-      // an UPSERT nodes has two input variables!
+      // an UPSERT node has two input variables!
       std::vector<Variable const*> v(node->getVariablesUsedHere());
       TRI_ASSERT(v.size() >= 2);
 
