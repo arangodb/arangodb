@@ -231,7 +231,7 @@ class LogicalCollection {
   // SECTION: Sharding
   int numberOfShards() const;
   bool allowUserKeys() const;
-  bool usesDefaultShardKeys() const;
+  virtual bool usesDefaultShardKeys() const;
   std::vector<std::string> const& shardKeys() const;
   std::shared_ptr<ShardMap> shardIds() const;
   void setShardMap(std::shared_ptr<ShardMap>& map);
