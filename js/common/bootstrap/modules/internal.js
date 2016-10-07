@@ -1103,8 +1103,9 @@ global.DEFINE_MODULE('internal', (function () {
     context.level = newLevel;
 
     var keys;
+
     try {
-      keys = Object.keys(object);
+      keys = Object.getOwnPropertyNames(Object.getPrototypeOf(object));
     } catch (err) {
       // ES6 proxy objects don't support key enumeration
       keys = [];
@@ -1113,7 +1114,11 @@ global.DEFINE_MODULE('internal', (function () {
     for (let i = 0, n = keys.length; i < n; ++i) {
       var k = keys[i];
       var val = object[k];
-
+      if (val === object.constructor) {
+        // hide ctor
+        continue;
+      }
+              
       if (useColor) {
         context.output += colors.COLOR_PUNCTUATION;
       }
