@@ -1244,7 +1244,7 @@ global.DEFINE_MODULE('internal', (function () {
 
             if (context.level > 0 && !showFunction) {
               var a = s.split('\n');
-              var f = a[0];
+              var f = a[0].replace(/^(.*?\)).*$/, '$1');
               
               var m = funcRE.exec(f);
 
@@ -1267,7 +1267,7 @@ global.DEFINE_MODULE('internal', (function () {
                     f = f.substr(8, f.length - 10).trim();
                     context.output += '[Function "' + f + '" ...]';
                   } else {
-                    context.output += f.replace(/^[^(]+/, '');
+                    context.output += f.replace(/^[^(]+/, '') + ' { ... }';
                   }
                 }
               }
