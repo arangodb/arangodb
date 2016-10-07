@@ -240,7 +240,7 @@ let JS_ENTERPRISE_DIR;
 let LOGS_DIR;
 let PEM_FILE;
 let UNITTESTS_DIR;
-let GDB_OUTPUT;
+let GDB_OUTPUT="";
 
 function makeResults (testname) {
   const startTime = time();
