@@ -1105,7 +1105,14 @@ global.DEFINE_MODULE('internal', (function () {
     var keys;
 
     try {
-      keys = Object.getOwnPropertyNames(Object.getPrototypeOf(object));
+      // try to detect an ES6 class. note that this won't work 100% correct
+      if (object.constructor && object.constructor.name !== 'Object') { 
+        // probably an object of an ES6 class
+        keys = Object.getOwnPropertyNames(Object.getPrototypeOf(object));
+      } else {
+        // other object
+        keys = Object.keys(object);
+      }
     } catch (err) {
       // ES6 proxy objects don't support key enumeration
       keys = [];
