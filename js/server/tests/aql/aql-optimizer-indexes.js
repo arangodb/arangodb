@@ -3189,7 +3189,7 @@ function optimizerIndexesTestSuite () {
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
       c.ensureSkiplist("value2", { sparse: true });
-      var query = "FOR i IN " + c.name() + " FILTER i.value2 < 10 SORT i.value2 RETURN i.value2";
+      var query = "FOR i IN " + c.name() + " FILTER i.value2 < 10 RETURN i.value2";
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
@@ -3199,7 +3199,7 @@ function optimizerIndexesTestSuite () {
       assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
-      assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ], results.json, query);
+      assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ], results.json.sort(), query);
       assertEqual(0, results.stats.scannedIndex);
       assertEqual(2000, results.stats.scannedFull);
     },
@@ -3212,7 +3212,7 @@ function optimizerIndexesTestSuite () {
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
       c.ensureSkiplist("value2", { sparse: true });
-      var query = "FOR i IN " + c.name() + " FILTER i.value2 < 10 && i.value2 >= null SORT i.value2 RETURN i.value2";
+      var query = "FOR i IN " + c.name() + " FILTER i.value2 < 10 && i.value2 >= null RETURN i.value2";
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
@@ -3220,10 +3220,9 @@ function optimizerIndexesTestSuite () {
       });
 
       assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
 
       var results = AQL_EXECUTE(query);
-      assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ], results.json, query);
+      assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ], results.json.sort(), query);
       assertEqual(0, results.stats.scannedIndex);
       assertEqual(2000, results.stats.scannedFull);
     },
