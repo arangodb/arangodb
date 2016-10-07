@@ -1259,8 +1259,12 @@ global.DEFINE_MODULE('internal', (function () {
                     context.output += 'function ' + m[1] + ' (' + m[2] + ') { ... }';
                   }
                 } else {
-                  f = f.substr(8, f.length - 10).trim();
-                  context.output += '[Function "' + f + '" ...]';
+                  if (f.substr(0, 8) === 'function') {
+                    f = f.substr(8, f.length - 10).trim();
+                    context.output += '[Function "' + f + '" ...]';
+                  } else {
+                    context.output += f;
+                  }
                 }
               }
             } else {
