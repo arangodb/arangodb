@@ -565,7 +565,7 @@ AstNode* Ast::createNodeCollection(char const* name,
 
   _query->collections()->add(name, accessType);
 
-  if (ServerState::instance()->isRunningInCluster()) {
+  if (ServerState::instance()->isCoordinator()) {
     auto ci = ClusterInfo::instance();
     // We want to tolerate that a collection name is given here
     // which does not exist, if only for some unit tests:
@@ -1004,7 +1004,7 @@ AstNode* Ast::createNodeWithCollections (AstNode const* collections) {
     if (c->isStringValue()) {
       std::string name = c->getString();
       _query->collections()->add(name, TRI_TRANSACTION_READ);
-      if (ServerState::instance()->isRunningInCluster()) {
+      if (ServerState::instance()->isCoordinator()) {
         auto ci = ClusterInfo::instance();
         // We want to tolerate that a collection name is given here
         // which does not exist, if only for some unit tests:
@@ -1040,7 +1040,7 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections) {
 
   auto doTheAdd = [&](std::string name) {
     _query->collections()->add(name, TRI_TRANSACTION_READ);
-    if (ss->isRunningInCluster()) {
+    if (ss->isCoordinator()) {
       try {
         auto c = ci->getCollection(_query->vocbase()->name(), name);
         auto names = c->realNames();
@@ -1490,7 +1490,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
         for (const auto& n : eColls) {
           _query->collections()->add(n, TRI_TRANSACTION_READ);
         }
-        if (ServerState::instance()->isRunningInCluster()) {
+        if (ServerState::instance()->isCoordinator()) {
           auto ci = ClusterInfo::instance();
           for (const auto& n : eColls) {
             try {
@@ -1519,7 +1519,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
         for (const auto& n : eColls) {
           _query->collections()->add(n, TRI_TRANSACTION_READ);
         }
-        if (ServerState::instance()->isRunningInCluster()) {
+        if (ServerState::instance()->isCoordinator()) {
           auto ci = ClusterInfo::instance();
           for (const auto& n : eColls) {
             try {
@@ -1545,7 +1545,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
     if (it->type == NODE_TYPE_COLLECTION) {
       std::string name = it->getString();
       _query->collections()->add(name, TRI_TRANSACTION_WRITE);
-      if (ServerState::instance()->isRunningInCluster()) {
+      if (ServerState::instance()->isCoordinator()) {
         auto ci = ClusterInfo::instance();
         // We want to tolerate that a collection name is given here
         // which does not exist, if only for some unit tests:

@@ -1692,6 +1692,8 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
   std::string&& newId = StringUtils::itoa(newIdTick);
   toMerge.openObject();
   toMerge.add("id", VPackValue(newId));
+  toMerge.add("cid", VPackValue(newId));
+  toMerge.add("planId", VPackValue(newId));
 
   // shard keys
   VPackSlice const shardKeys = parameters.get("shardKeys");

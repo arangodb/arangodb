@@ -609,6 +609,9 @@
 ///   The requested collection needs to be smart, but it ain't
 /// - 4001: @LIT{smart graph attribute not given}
 ///   The given document does not have the smart graph attribute set.
+/// - 4002: @LIT{cannot drop this smart collection}
+///   This smart collection cannot be dropped, it dictates sharding in the
+///   graph.
 /// - 21001: @LIT{dispatcher stopped}
 ///   Will be returned if a shutdown is in progress.
 /// - 21002: @LIT{named queue does not exist}
@@ -3218,6 +3221,16 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_NO_SMART_GRAPH_ATTRIBUTE                                (4001)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 4002: ERROR_CANNOT_DROP_SMART_COLLECTION
+///
+/// cannot drop this smart collection
+///
+/// This smart collection cannot be dropped, it dictates sharding in the graph.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CANNOT_DROP_SMART_COLLECTION                            (4002)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 21001: ERROR_DISPATCHER_IS_STOPPING
