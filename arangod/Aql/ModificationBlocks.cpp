@@ -432,7 +432,8 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
           // value is no object
           errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
         } else {
-          if (!_collection->getCollection()->skipForAqlWrite(a.slice())) {
+          if (!ep->_options.consultAqlWriteFilter ||
+              !_collection->getCollection()->skipForAqlWrite(a.slice())) {
             OperationResult opRes = _trx->insert(_collection->name, a.slice(), options); 
             errorCode = opRes.code;
 
@@ -458,7 +459,8 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
         // only copy 1st row of registers inherited from previous frame(s)
         inheritRegisters(res, result.get(), i, dstRow);
         // TODO This may be optimized with externals
-        if (!_collection->getCollection()->skipForAqlWrite(a.slice())) {
+        if (!ep->_options.consultAqlWriteFilter ||
+            !_collection->getCollection()->skipForAqlWrite(a.slice())) {
           babyBuilder.add(a.slice());
         }
         ++dstRow;
@@ -476,15 +478,19 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
           TRI_ASSERT(resultList.isArray());
           auto iter = VPackArrayIterator(resultList);
           for (size_t i = 0; i < n; ++i) {
-            TRI_ASSERT(iter.valid());
-            auto elm = iter.value();
-            bool wasError = arangodb::basics::VelocyPackHelper::getBooleanValue(
-                elm, "error", false);
-            if (!wasError) {
-              // return $NEW
-              result->setValue(dstRow, _outRegNew, AqlValue(elm.get("new")));
+            AqlValue a = res->getValue(i, registerId);
+            if (!ep->_options.consultAqlWriteFilter ||
+                !_collection->getCollection()->skipForAqlWrite(a.slice())) {
+              TRI_ASSERT(iter.valid());
+              auto elm = iter.value();
+              bool wasError = arangodb::basics::VelocyPackHelper::getBooleanValue(
+                  elm, "error", false);
+              if (!wasError) {
+                // return $NEW
+                result->setValue(dstRow, _outRegNew, AqlValue(elm.get("new")));
+              }
+              ++iter;
             }
-            ++iter;
             ++dstRow;
           }
         }
