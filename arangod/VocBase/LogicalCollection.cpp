@@ -3402,3 +3402,11 @@ void LogicalCollection::newObjectForRemove(
   builder.add(StaticStrings::RevString, VPackValue(rev));
   builder.close();
 } 
+
+/// @brief a method to skip certain documents in AQL write operations,
+/// this is only used in the enterprise edition for smart graphs
+#ifndef USE_ENTERPRISE
+bool LogicalCollection::skipForAqlWrite(arangodb::velocypack::Slice document) const {
+  return false;
+}
+#endif

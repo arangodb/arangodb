@@ -432,12 +432,16 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
           // value is no object
           errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
         } else {
-          OperationResult opRes = _trx->insert(_collection->name, a.slice(), options); 
-          errorCode = opRes.code;
+          if (!_collection->getCollection()->skipForAqlWrite(a.slice())) {
+            OperationResult opRes = _trx->insert(_collection->name, a.slice(), options); 
+            errorCode = opRes.code;
 
-          if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
-            // return $NEW
-            result->setValue(dstRow, _outRegNew, AqlValue(opRes.slice().get("new")));
+            if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
+              // return $NEW
+              result->setValue(dstRow, _outRegNew, AqlValue(opRes.slice().get("new")));
+            }
+          } else {
+            errorCode = TRI_ERROR_NO_ERROR;
           }
         }
 
@@ -454,32 +458,40 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
         // only copy 1st row of registers inherited from previous frame(s)
         inheritRegisters(res, result.get(), i, dstRow);
         // TODO This may be optimized with externals
-        babyBuilder.add(a.slice());
+        if (!_collection->getCollection()->skipForAqlWrite(a.slice())) {
+          babyBuilder.add(a.slice());
+        }
         ++dstRow;
       }
       babyBuilder.close();
       VPackSlice toSend = babyBuilder.slice();
-      OperationResult opRes =
-          _trx->insert(_collection->name, toSend, options);
+      OperationResult opRes;
+      if (toSend.length() > 0) {
+        opRes = _trx->insert(_collection->name, toSend, options);
 
-      if (producesOutput) {
-        // Reset dstRow
-        dstRow -= n;
-        VPackSlice resultList = opRes.slice();
-        TRI_ASSERT(resultList.isArray());
-        for (auto const& elm: VPackArrayIterator(resultList)) {
-          bool wasError = arangodb::basics::VelocyPackHelper::getBooleanValue(
-              elm, "error", false);
-          if (!wasError) {
-            // return $NEW
-            result->setValue(dstRow, _outRegNew, AqlValue(elm.get("new")));
+        if (producesOutput) {
+          // Reset dstRow
+          dstRow -= n;
+          VPackSlice resultList = opRes.slice();
+          TRI_ASSERT(resultList.isArray());
+          auto iter = VPackArrayIterator(resultList);
+          for (size_t i = 0; i < n; ++i) {
+            TRI_ASSERT(iter.valid());
+            auto elm = iter.value();
+            bool wasError = arangodb::basics::VelocyPackHelper::getBooleanValue(
+                elm, "error", false);
+            if (!wasError) {
+              // return $NEW
+              result->setValue(dstRow, _outRegNew, AqlValue(elm.get("new")));
+            }
+            ++iter;
+            ++dstRow;
           }
-          ++dstRow;
         }
-      }
 
-      handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toSend.length()),
-                       ep->_options.ignoreErrors);
+        handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toSend.length()),
+                         ep->_options.ignoreErrors);
+      }
     }
     // now free it already
     (*it) = nullptr;
