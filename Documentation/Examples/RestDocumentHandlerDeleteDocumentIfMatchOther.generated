@@ -1,7 +1,7 @@
-shell> curl -X DELETE --header 'If-Match: "_T1sjZbS--_"' --dump - http://localhost:8529/_api/document/products/9643
+shell> curl -X DELETE --header 'If-Match: "_T4igAPW---"' --dump - http://localhost:8529/_api/document/products/9642
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">412</span> Precondition Failed
-etag: <span class="hljs-string">"_T1sjZbS---"</span>
+etag: <span class="hljs-string">"_T4igAPS---"</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 { 
@@ -9,7 +9,7 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
   <span class="hljs-string">"code"</span> : <span class="hljs-number">412</span>, 
   <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1200</span>, 
   <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"precondition failed"</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/9643"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9643"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_T1sjZbS---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/9642"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9642"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_T4igAPS---"</span> 
 }

@@ -2,38 +2,38 @@ arangosh&gt; db.users.save({ name: <span class="hljs-string">"Gerhard"</span> })
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/137"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"137"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_T1sixTy---"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_T4ifY5i---"</span> 
 }
 arangosh&gt; db.users.save({ name: <span class="hljs-string">"Helmut"</span> });
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/141"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"141"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_T1sixT2---"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_T4ifY5i--_"</span> 
 }
 arangosh&gt; db.users.save({ name: <span class="hljs-string">"Angela"</span> });
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/144"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"144"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_T1sixT6---"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_T4ifY5i--A"</span> 
 }
 arangosh&gt; db.users.all().toArray();
 [ 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"141"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/141"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_T1sixT2---"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_T4ifY5i--_"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Helmut"</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"144"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/144"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_T1sixT6---"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_T4ifY5i--A"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Angela"</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"137"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/137"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_T1sixTy---"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_T4ifY5i---"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Gerhard"</span> 
   } 
 ]
@@ -44,7 +44,7 @@ arangosh&gt; db.users.byExample({ <span class="hljs-string">"name"</span> : <spa
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"137"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/137"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_T1sixTy---"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_T4ifY5i---"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Gerhard"</span> 
   } 
 ]
