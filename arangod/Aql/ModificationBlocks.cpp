@@ -443,6 +443,9 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
             }
           } else {
             errorCode = TRI_ERROR_NO_ERROR;
+            if (producesOutput) {
+              result->setValue(dstRow, _outRegNew, res->getValue(i, registerId));
+            }
           }
         }
 
