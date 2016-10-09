@@ -877,9 +877,11 @@ bool LogicalCollection::allowUserKeys() const {
   return _allowUserKeys;
 }
 
+#ifndef USE_ENTERPRISE
 bool LogicalCollection::usesDefaultShardKeys() const {
   return (_shardKeys.size() == 1 && _shardKeys[0] == StaticStrings::KeyString);
 }
+#endif
 
 std::vector<std::string> const& LogicalCollection::shardKeys() const {
   return _shardKeys;
