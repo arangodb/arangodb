@@ -2373,7 +2373,7 @@ int ClusterInfo::getResponsibleShard(LogicalCollection* collInfo,
   std::shared_ptr<std::vector<std::string>> shardKeysPtr;
   std::shared_ptr<std::vector<ShardID>> shards;
   bool found = false;
-  CollectionID collectionId = collInfo->planId();
+  CollectionID collectionId = std::to_string(collInfo->planId());
 
   while (true) {
     {
