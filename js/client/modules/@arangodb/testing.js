@@ -236,10 +236,11 @@ let ARANGORESTORE_BIN;
 let ARANGOSH_BIN;
 let CONFIG_RELATIVE_DIR;
 let JS_DIR;
+let JS_ENTERPRISE_DIR;
 let LOGS_DIR;
 let PEM_FILE;
 let UNITTESTS_DIR;
-let GDB_OUTPUT;
+let GDB_OUTPUT="";
 
 function makeResults (testname) {
   const startTime = time();
@@ -302,6 +303,7 @@ function makeArgsArangod (options, appDir) {
     'database.maximal-journal-size': '1048576',
     'javascript.app-path': appDir,
     'javascript.startup-directory': JS_DIR,
+    'javascript.module-directory': JS_ENTERPRISE_DIR,
     'javascript.v8-contexts': '5',
     'http.trusted-origin': options.httpTrustedOrigin || 'all',
     'log.level': 'warn',
@@ -321,6 +323,7 @@ function makeArgsArangosh (options) {
   return {
     'configuration': 'none',
     'javascript.startup-directory': JS_DIR,
+    'javascript.module-directory': JS_ENTERPRISE_DIR,
     'server.username': options.username,
     'server.password': options.password,
     'flatCommands': ['--console.colors', 'false', '--quiet']
@@ -488,6 +491,7 @@ function analyzeServerCrash (arangod, options, checkStr) {
   if (fs.isFile(cpf)) {
     var matchApport = /.*apport.*/;
     var matchVarTmp = /\/var\/tmp/;
+    var matchSystemdCoredump = /.*systemd-coredump*/;
     var corePattern = fs.readBuffer(cpf);
     var cp = corePattern.asciiSlice(0, corePattern.length);
 
@@ -495,7 +499,11 @@ function analyzeServerCrash (arangod, options, checkStr) {
       print(RED + "apport handles corefiles on your system. Uninstall it if you want us to get corefiles for analysis.");
       return;
     }
-    if (matchVarTmp.exec(cp) == null) {
+    
+    if (matchSystemdCoredump.exec(cp) == null) {
+      options.coreDirectory = "/var/lib/systemd/coredump";
+    }
+    else if (matchVarTmp.exec(cp) == null) {
       print(RED + "Don't know howto locate corefiles in your system. '" + cpf + "' contains: '" + cp + "'");
       return;
     }
@@ -548,7 +556,7 @@ function checkArangoAlive (arangod, options) {
       )
     ) {
       arangod.exitStatus = res;
-      analyzeServerCrash(arangod, options, 'health Check');
+      analyzeServerCrash(arangod, options, 'health Check  - ' + res.signal);
     }
   }
 
@@ -1263,7 +1271,7 @@ function shutdownInstance (instanceInfo, options) {
         }
       } else if (arangod.exitStatus.status !== 'TERMINATED') {
         if (arangod.exitStatus.hasOwnProperty('signal')) {
-          analyzeServerCrash(arangod, options, 'instance Shutdown');
+          analyzeServerCrash(arangod, options, 'instance Shutdown - ' + arangod.exitStatus.signal);
         }
       } else {
         print('Server shutdown: Success.');
@@ -4051,6 +4059,7 @@ function unitTest (cases, options) {
   ARANGOSH_BIN = fs.join(BIN_DIR, 'arangosh');
   CONFIG_RELATIVE_DIR = fs.join(TOP_DIR, 'etc', 'relative');
   JS_DIR = fs.join(TOP_DIR, 'js');
+  JS_ENTERPRISE_DIR = fs.join(TOP_DIR, 'enterprise/js');
   LOGS_DIR = fs.join(TOP_DIR, 'logs');
   PEM_FILE = fs.join(TOP_DIR, 'UnitTests', 'server.pem');
 

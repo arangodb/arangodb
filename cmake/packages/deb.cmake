@@ -69,3 +69,11 @@ list(APPEND PACKAGES_LIST package-arongodb-client)
 
 add_custom_target(copy_packages
   COMMAND cp *.deb ${PACKAGE_TARGET_DIR})
+
+add_custom_target(remove_packages
+  COMMAND rm -f *.deb
+  COMMAND rm -rf _CPack_Packages
+  COMMAND rm -rf packages
+  )
+
+list(APPEND CLEAN_PACKAGES_LIST remove_packages)

@@ -33,6 +33,7 @@ LOG_LEVEL="INFO"
 XTERM="x-terminal-emulator"
 XTERMOPTIONS="--geometry=80x43"
 SECONDARIES=0
+BUILD="build"
 
 while [[ ${1} ]]; do
     case "${1}" in
@@ -79,6 +80,10 @@ while [[ ${1} ]]; do
     -h|--help)
       help
       exit 1  
+      ;;
+    -B|--build)
+      BUILD=${2}
+      shift
       ;;
     *)
       echo "Unknown parameter: ${1}" >&2
@@ -156,7 +161,7 @@ mkdir -p cluster
 echo Starting agency ... 
 for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
     port=$(( $BASE + $aid ))
-    build/bin/arangod \
+    ${BUILD}/bin/arangod \
         -c none \
         --agency.activate true \
         --agency.compaction-step-size $COMP \
@@ -173,6 +178,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --database.directory cluster/data$port \
         --javascript.app-path ./js/apps \
         --javascript.startup-directory ./js \
+        --javascript.module-directory ./enterprise/js \
         --javascript.v8-contexts 1 \
         --server.authentication false \
         --server.endpoint $TRANSPORT://0.0.0.0:$port \
@@ -195,7 +201,7 @@ start() {
     mkdir cluster/data$PORT
     echo Starting $TYPE on port $PORT
     mkdir -p cluster/apps$PORT 
-    build/bin/arangod \
+    ${BUILD}/bin/arangod \
        -c none \
        --database.directory cluster/data$PORT \
        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
@@ -209,6 +215,7 @@ start() {
        --server.threads 5 \
        --server.authentication false \
        --javascript.startup-directory ./js \
+       --javascript.module-directory ./enterprise/js \
        --javascript.app-path cluster/apps$PORT \
        --log.force-direct true \
         $SSLKEYFILE \
@@ -225,7 +232,7 @@ startTerminal() {
     PORT=$2
     mkdir cluster/data$PORT
     echo Starting $TYPE on port $PORT
-    $XTERM $XTERMOPTIONS -e build/bin/arangod \
+    $XTERM $XTERMOPTIONS -e ${BUILD}/bin/arangod \
         -c none \
         --database.directory cluster/data$PORT \
         --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
@@ -238,6 +245,7 @@ startTerminal() {
         --server.statistics true \
         --server.threads 5 \
         --javascript.startup-directory ./js \
+        --javascript.module-directory ./enterprise/js \
         --javascript.app-path ./js/apps \
         --server.authentication false \
         $SSLKEYFILE \
@@ -254,7 +262,7 @@ startDebugger() {
     PORT=$2
     mkdir cluster/data$PORT
     echo Starting $TYPE on port $PORT with debugger
-    build/bin/arangod \
+    ${BUILD}/bin/arangod \
       -c none \
       --database.directory cluster/data$PORT \
       --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
@@ -267,10 +275,11 @@ startDebugger() {
       --server.statistics false \
       --server.threads 5 \
       --javascript.startup-directory ./js \
+      --javascript.module-directory ./enterprise/js \
       --javascript.app-path ./js/apps \
-        $SSLKEYFILE \
+      $SSLKEYFILE \
       --server.authentication false &
-      $XTERM $XTERMOPTIONS -e gdb build/bin/arangod -p $! &
+      $XTERM $XTERMOPTIONS -e gdb ${BUILD}/bin/arangod -p $! &
 }
 
 startRR() {
@@ -283,7 +292,7 @@ startRR() {
     PORT=$2
     mkdir cluster/data$PORT
     echo Starting $TYPE on port $PORT with rr tracer
-    $XTERM $XTERMOPTIONS -e rr build/bin/arangod \
+    $XTERM $XTERMOPTIONS -e rr ${BUILD}/bin/arangod \
         -c none \
         --database.directory cluster/data$PORT \
         --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
@@ -296,6 +305,7 @@ startRR() {
         --server.statistics true \
         --server.threads 5 \
         --javascript.startup-directory ./js \
+        --javascript.module-directory ./enterprise/js \
         --javascript.app-path ./js/apps \
         --server.authentication false \
         $SSLKEYFILE \
@@ -364,7 +374,7 @@ if [ "$SECONDARIES" == "1" ] ; then
         echo Registering secondary $CLUSTER_ID for "DBServer$index"
         curl -f -X PUT --data "{\"primary\": \"DBServer$index\", \"oldSecondary\": \"none\", \"newSecondary\": \"$CLUSTER_ID\"}" -H "Content-Type: application/json" localhost:8530/_admin/cluster/replaceSecondary
         echo Starting Secondary $CLUSTER_ID on port $PORT
-        build/bin/arangod \
+        ${BUILD}/bin/arangod \
             -c none \
             --database.directory cluster/data$PORT \
             --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
@@ -374,8 +384,9 @@ if [ "$SECONDARIES" == "1" ] ; then
             --log.file cluster/$PORT.log \
             --server.statistics true \
             --javascript.startup-directory ./js \
+            --javascript.module-directory ./enterprise/js \
             --server.authentication false \
-        $SSLKEYFILE \
+            $SSLKEYFILE \
             --javascript.app-path ./js/apps \
             > cluster/$PORT.stdout 2>&1 &
             
@@ -385,6 +396,6 @@ fi
 
 echo Done, your cluster is ready at
 for p in `seq 8530 $PORTTOPCO` ; do
-    echo "   build/bin/arangosh --server.endpoint $TRANSPORT://127.0.0.1:$p"
+    echo "   ${BUILD}/bin/arangosh --server.endpoint $TRANSPORT://127.0.0.1:$p"
 done
 

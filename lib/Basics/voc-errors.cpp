@@ -254,6 +254,8 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_SERVICE_MOUNTPOINT_CONFLICT, "mountpoint already in use");
   REG_ERROR(ERROR_MODULE_NOT_FOUND, "cannot locate module");
   REG_ERROR(ERROR_MODULE_FAILURE, "failed to invoke module");
+  REG_ERROR(ERROR_NO_SMART_COLLECTION, "collection is not smart");
+  REG_ERROR(ERROR_NO_SMART_GRAPH_ATTRIBUTE, "smart graph attribute not given");
   REG_ERROR(ERROR_DISPATCHER_IS_STOPPING, "dispatcher stopped");
   REG_ERROR(ERROR_QUEUE_UNKNOWN, "named queue does not exist");
   REG_ERROR(ERROR_QUEUE_FULL, "named queue is full");

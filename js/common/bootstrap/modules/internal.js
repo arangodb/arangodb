@@ -1103,8 +1103,16 @@ global.DEFINE_MODULE('internal', (function () {
     context.level = newLevel;
 
     var keys;
+
     try {
-      keys = Object.keys(object);
+      // try to detect an ES6 class. note that this won't work 100% correct
+      if (object.constructor && object.constructor.name !== 'Object') { 
+        // probably an object of an ES6 class
+        keys = Object.getOwnPropertyNames(Object.getPrototypeOf(object));
+      } else {
+        // other object
+        keys = Object.keys(object);
+      }
     } catch (err) {
       // ES6 proxy objects don't support key enumeration
       keys = [];
@@ -1113,7 +1121,11 @@ global.DEFINE_MODULE('internal', (function () {
     for (let i = 0, n = keys.length; i < n; ++i) {
       var k = keys[i];
       var val = object[k];
-
+      if (val === object.constructor) {
+        // hide ctor
+        continue;
+      }
+              
       if (useColor) {
         context.output += colors.COLOR_PUNCTUATION;
       }
@@ -1239,8 +1251,8 @@ global.DEFINE_MODULE('internal', (function () {
 
             if (context.level > 0 && !showFunction) {
               var a = s.split('\n');
-              var f = a[0];
-
+              var f = a[0].replace(/^(.*?\)).*$/, '$1');
+              
               var m = funcRE.exec(f);
 
               if (m !== null) {
@@ -1251,7 +1263,6 @@ global.DEFINE_MODULE('internal', (function () {
                 }
               } else {
                 m = func2RE.exec(f);
-
                 if (m !== null) {
                   if (m[1] === undefined) {
                     context.output += 'function ' + '(' + m[2] + ') { ... }';
@@ -1259,8 +1270,12 @@ global.DEFINE_MODULE('internal', (function () {
                     context.output += 'function ' + m[1] + ' (' + m[2] + ') { ... }';
                   }
                 } else {
-                  f = f.substr(8, f.length - 10).trim();
-                  context.output += '[Function "' + f + '" ...]';
+                  if (f.substr(0, 8) === 'function') {
+                    f = f.substr(8, f.length - 10).trim();
+                    context.output += '[Function "' + f + '" ...]';
+                  } else {
+                    context.output += f.replace(/^[^(]+/, '') + ' { ... }';
+                  }
                 }
               }
             } else {

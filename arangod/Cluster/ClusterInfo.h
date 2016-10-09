@@ -458,7 +458,7 @@ class ClusterInfo {
   /// @brief find the shard that is responsible for a document
   //////////////////////////////////////////////////////////////////////////////
 
-  int getResponsibleShard(CollectionID const&, arangodb::velocypack::Slice,
+  int getResponsibleShard(LogicalCollection*, arangodb::velocypack::Slice,
                           bool docComplete, ShardID& shardID,
                           bool& usesDefaultShardingAttributes,
                           std::string const& key = "");

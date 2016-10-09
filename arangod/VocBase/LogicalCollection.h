@@ -68,17 +68,19 @@ class LogicalCollection {
  public:
   LogicalCollection(TRI_vocbase_t*, arangodb::velocypack::Slice const&, bool isPhysical);
 
-  explicit LogicalCollection(LogicalCollection const&);
-
   virtual ~LogicalCollection();
+
+ protected:  // If you need a copy outside the class, use clone below.
+  explicit LogicalCollection(LogicalCollection const&);
 
  private:
   LogicalCollection& operator=(LogicalCollection const&) = delete;
  public:
   LogicalCollection() = delete;
   
-  virtual LogicalCollection* clone() {
-    return new LogicalCollection(*this);
+  virtual std::unique_ptr<LogicalCollection> clone() {
+    auto p = new LogicalCollection(*this);
+    return std::unique_ptr<LogicalCollection>(p);
   }
 
   /// @brief hard-coded minimum version number for collections
@@ -229,7 +231,7 @@ class LogicalCollection {
   // SECTION: Sharding
   int numberOfShards() const;
   bool allowUserKeys() const;
-  bool usesDefaultShardKeys() const;
+  virtual bool usesDefaultShardKeys() const;
   std::vector<std::string> const& shardKeys() const;
   std::shared_ptr<ShardMap> shardIds() const;
   void setShardMap(std::shared_ptr<ShardMap>& map);
@@ -257,7 +259,7 @@ class LogicalCollection {
   virtual int update(arangodb::velocypack::Slice const&, bool);
 
   /// @brief return the figures for a collection
-  std::shared_ptr<arangodb::velocypack::Builder> figures();
+  virtual std::shared_ptr<arangodb::velocypack::Builder> figures();
   
   /// @brief opens an existing collection
   void open(bool ignoreErrors);

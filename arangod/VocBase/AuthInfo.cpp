@@ -96,7 +96,7 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice) {
 
   // extract "changePassword" attribute
   bool mustChange =
-      VelocyPackHelper::getBooleanValue(slice, "changePassword", false);
+      VelocyPackHelper::getBooleanValue(authDataSlice, "changePassword", false);
 
   // extract "databases" attribute
   VPackSlice const databasesSlice = slice.get("databases");
@@ -267,6 +267,7 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
   }
 
   AuthResult result;
+  result._username = username;
 
   // look up username
   READ_LOCKER(readLocker, _authInfoLock);
@@ -283,7 +284,6 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
     return result;
   }
 
-  result._username = username;
   result._mustChange = auth.mustChange();
 
   std::string salted = auth.passwordSalt() + password;

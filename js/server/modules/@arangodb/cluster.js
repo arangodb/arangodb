@@ -1784,8 +1784,8 @@ function moveShard (info) {
     id = global.ArangoClusterInfo.uniqid();
     var todo = { 'type': 'moveShard',
       'database': info.database,
-      'collection': collInfo.id,
-      'shard': info.shard,
+      'collections': [collInfo.id],
+      'shards': [info.shard],
       'fromServer': info.fromServer,
       'toServer': info.toServer,
       'jobId': id,

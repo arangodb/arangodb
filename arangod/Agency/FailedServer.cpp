@@ -54,7 +54,7 @@ FailedServer::~FailedServer() {}
 
 bool FailedServer::start() {
   LOG_TOPIC(INFO, Logger::AGENCY)
-      << "Trying to start FailedLeader job" + _jobId + " for server " + _server;
+      << "Trying to start FailedServer job" + _jobId + " for server " + _server;
 
   // Copy todo to pending
   Builder todo, pending;
@@ -118,7 +118,7 @@ bool FailedServer::start() {
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     LOG_TOPIC(INFO, Logger::AGENCY)
-        << "Pending: DB Server " + _server + " failed.";
+      << "Pending job for failed DB Server " << _server;
 
     auto const& databases = _snapshot("/Plan/Collections").children();
     auto const& current = _snapshot("/Current/Collections").children();
@@ -130,19 +130,19 @@ bool FailedServer::start() {
 
       for (auto const& collptr : database.second->children()) {
         Node const& collection = *(collptr.second);
-
+        
         if (!cdatabase.find(collptr.first)->second->children().empty()) {
           Node const& collection = *(collptr.second);
           Node const& replicationFactor = collection("replicationFactor");
           if (replicationFactor.slice().getUInt() > 1) {
             for (auto const& shard : collection("shards").children()) {
               VPackArrayIterator dbsit(shard.second->slice());
-
+              
               // Only proceed if leader and create job
               if ((*dbsit.begin()).copyString() != _server) {
                 continue;
               }
-
+              
               FailedLeader(
                   _snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                   _jobId, _agencyPrefix, database.first, collptr.first,

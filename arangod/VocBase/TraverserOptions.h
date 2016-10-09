@@ -93,8 +93,9 @@ struct TraverserOptions {
     void buildEngineInfo(arangodb::velocypack::Builder&) const;
   };
 
- protected:
+ public:
   arangodb::Transaction* _trx;
+ protected:
   std::vector<LookupInfo> _baseLookupInfos;
   std::unordered_map<size_t, std::vector<LookupInfo>> _depthLookupInfo;
   std::unordered_map<size_t, aql::Expression*> _vertexExpressions;

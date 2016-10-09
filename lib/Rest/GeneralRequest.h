@@ -26,14 +26,14 @@
 #define ARANGODB_REST_GENERAL_REQUEST_H 1
 
 #include "Basics/Common.h"
-#include "Endpoint/ConnectionInfo.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
-#include <limits>
-#include "CommonDefines.h"
+
+#include "Endpoint/ConnectionInfo.h"
+#include "Rest/CommonDefines.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -177,6 +177,14 @@ class GeneralRequest {
   ContentType contentType() const { return _contentType; }
   ContentType contentTypeResponse() const { return _contentTypeResponse; }
 
+  rest::AuthenticationMethod authenticationMethod() const {
+    return _authenticationMethod;
+  }
+
+  void setAuthenticationMethod(rest::AuthenticationMethod method) {
+    _authenticationMethod = method;
+  }
+
  protected:
   ProtocolVersion _version;
   char const* _protocol;  // http, https or vpp
@@ -190,6 +198,8 @@ class GeneralRequest {
   // request context
   RequestContext* _requestContext;
   bool _isRequestContextOwner;
+  rest::AuthenticationMethod _authenticationMethod =
+      rest::AuthenticationMethod::NONE;
 
   // information about the payload
   RequestType _type;  // GET, POST, ..

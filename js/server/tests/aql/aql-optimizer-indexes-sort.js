@@ -625,15 +625,15 @@ function optimizerIndexesSortTestSuite () {
       var idx = c.ensureSkiplist("value2", { sparse: true });
 
       var queries = [
-        [ "FOR i IN " + c.name() + " FILTER i.value2 > 10 SORT i.value2 RETURN i.value2", true ],
-        [ "FOR i IN " + c.name() + " FILTER i.value2 >= 10 SORT i.value2 RETURN i.value2", true ],
-        [ "FOR i IN " + c.name() + " FILTER i.value2 == 10 SORT i.value2 RETURN i.value2", false ],
-        [ "FOR i IN " + c.name() + " FILTER i.value2 > null SORT i.value2 RETURN i.value2", true ],
-        [ "FOR i IN " + c.name() + " FILTER i.value2 >= true SORT i.value2 RETURN i.value2", true ]
+        "FOR i IN " + c.name() + " FILTER i.value2 > 10 SORT i.value2 RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 >= 10 SORT i.value2 RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 10 SORT i.value2 RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 > null SORT i.value2 RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 >= true SORT i.value2 RETURN i.value2"
       ];
 
       queries.forEach(function(query) {
-        var plan = AQL_EXPLAIN(query[0]).plan;
+        var plan = AQL_EXPLAIN(query).plan;
         var nodeTypes = plan.nodes.map(function(node) {
           if (node.type === "IndexNode") {
             assertEqual(node.indexes.length, 1);
@@ -647,12 +647,7 @@ function optimizerIndexesSortTestSuite () {
         // index is used for sorting we made sure it is not null
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         // right now sparse indexes are not able to deliver sorting
-        if (query[1]) {
-          assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
-        }
-        else {
-          assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
-        }
+        assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
       });
     },
 
@@ -731,12 +726,12 @@ function optimizerIndexesSortTestSuite () {
       var idx = c.ensureSkiplist("value2", "value3", { sparse: true });
 
       var queries = [
-        [ "FOR i IN " + c.name() + " FILTER i.value2 == 10 && i.value3 >= 4 SORT i.value2, i.value3 RETURN i.value2", true ],
-        [ "FOR i IN " + c.name() + " FILTER i.value2 == 10 && i.value3 == 4 SORT i.value2, i.value3 RETURN i.value2", false ]
+        "FOR i IN " + c.name() + " FILTER i.value2 == 10 && i.value3 >= 4 SORT i.value2, i.value3 RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 10 && i.value3 == 4 SORT i.value2, i.value3 RETURN i.value2"
       ];
 
       queries.forEach(function(query) {
-        var plan = AQL_EXPLAIN(query[0]).plan;
+        var plan = AQL_EXPLAIN(query).plan;
         var nodeTypes = plan.nodes.map(function(node) {
           if (node.type === "IndexNode") {
             assertEqual(node.indexes.length, 1);
@@ -749,12 +744,7 @@ function optimizerIndexesSortTestSuite () {
 
         // index is used for sorting and filtering. We made sure it is never null
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-        if (query[1]) {
-          assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
-        }
-        else {
-          assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
-        }
+        assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
       });
     },
 

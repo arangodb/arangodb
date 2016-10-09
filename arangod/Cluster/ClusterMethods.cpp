@@ -311,7 +311,7 @@ static int distributeBabyOnShards(
   // Now find the responsible shard:
   bool usesDefaultShardingAttributes;
   ShardID shardID;
-  int error = ci->getResponsibleShard(collid, node, false, shardID,
+  int error = ci->getResponsibleShard(collinfo.get(), node, false, shardID,
                                       usesDefaultShardingAttributes);
   if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
     return TRI_ERROR_CLUSTER_SHARD_GONE;
@@ -357,7 +357,7 @@ static int distributeBabyOnShards(
     // We have invalid input at this point.
     // However we can work with the other babies.
     // This is for compatibility with single server
-    // We just asign it to any shard and pretend the user has given a key
+    // We just assign it to any shard and pretend the user has given a key
     std::shared_ptr<std::vector<ShardID>> shards = ci->getShardList(collid);
     shardID = shards->at(0);
     userSpecifiedKey = true;
@@ -384,10 +384,10 @@ static int distributeBabyOnShards(
     bool usesDefaultShardingAttributes;
     int error = TRI_ERROR_NO_ERROR;
     if (userSpecifiedKey) {
-      error = ci->getResponsibleShard(collid, node, true, shardID,
+      error = ci->getResponsibleShard(collinfo.get(), node, true, shardID,
                                       usesDefaultShardingAttributes);
     } else {
-      error = ci->getResponsibleShard(collid, node, true, shardID,
+      error = ci->getResponsibleShard(collinfo.get(), node, true, shardID,
                                       usesDefaultShardingAttributes, _key);
     }
     if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
@@ -949,7 +949,8 @@ int deleteDocumentOnCoordinator(
         // Now find the responsible shard:
         bool usesDefaultShardingAttributes;
         int error = ci->getResponsibleShard(
-            collid, arangodb::basics::VelocyPackHelper::EmptyObjectValue(), true,
+            collinfo.get(),
+            arangodb::basics::VelocyPackHelper::EmptyObjectValue(), true,
             shardID, usesDefaultShardingAttributes, _key.toString());
 
         if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
@@ -1453,8 +1454,8 @@ static void insertIntoShardMap(
     bool usesDefaultShardingAttributes;
     ShardID shardID;
 
-    int error = ci->getResponsibleShard(collid, partial.slice(), true, shardID,
-                                        usesDefaultShardingAttributes);
+    int error = ci->getResponsibleShard(collinfo.get(), partial.slice(), true,
+           shardID, usesDefaultShardingAttributes);
     if (error != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(error);
     }
@@ -1789,7 +1790,20 @@ int getFilteredEdgesOnCoordinator(
   std::shared_ptr<LogicalCollection> collinfo =
       ci->getCollection(dbname, collname);
 
-  auto shards = collinfo->shardIds();
+  std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> shards;
+  if (collinfo->isSmart() && collinfo->type() == TRI_COL_TYPE_EDGE) {
+    auto names = collinfo->realNamesForRead();
+    shards = std::make_shared<std::unordered_map<std::string, std::vector<std::string>>>();
+    for (auto const& n : names) {
+      collinfo = ci->getCollection(dbname, n);
+      auto smap = collinfo->shardIds();
+      for (auto const& x : *smap) {
+        shards->insert(x);
+      }
+    }
+  } else {
+    shards = collinfo->shardIds();
+  }
   std::string queryParameters = "?vertex=" + StringUtils::urlEncode(vertex);
   if (direction == TRI_EDGE_IN) {
     queryParameters += "&direction=in";

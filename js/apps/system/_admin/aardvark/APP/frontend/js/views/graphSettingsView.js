@@ -118,7 +118,7 @@
       },
       'nodeSizeByEdges': {
         type: 'select',
-        name: 'Size By Collections',
+        name: 'Size By Connections',
         yes: {
           name: 'Yes',
           val: 'true'
@@ -267,7 +267,7 @@
 
     checkEnterKey: function (e) {
       if (e.keyCode === 13) {
-        this.saveGraphSettings();
+        this.saveGraphSettings(e);
       }
     },
 
@@ -305,6 +305,8 @@
       };
 
       if (!this.noDefinedGraph) {
+        // usual graph view mode
+        // communication is needed
         self.lastSaved = new Date();
         var combinedName = frontendConfig.db + '_' + this.name;
 
@@ -334,9 +336,39 @@
 
         var callback = function () {
           if (window.App.graphViewer) {
+            // no complete rerender needed
+            // LAYOUT
+            var value;
+
+            if (event) {
+              if (event.currentTarget.id === 'g_layout') {
+                window.App.graphViewer.switchLayout($('#g_layout').val());
+                return;
+                // NODES COLORING
+              } else if (event.currentTarget.id === 'g_nodeColorByCollection') {
+                value = $('#g_nodeColorByCollection').val();
+                if (value === 'true') {
+                  window.App.graphViewer.switchNodeColorByCollection(true);
+                } else {
+                  window.App.graphViewer.switchNodeColorByCollection(false);
+                }
+                return;
+                // EDGES COLORING
+              } else if (event.currentTarget.id === 'g_edgeColorByCollection') {
+                value = $('#g_edgeColorByCollection').val();
+                if (value === 'true') {
+                  window.App.graphViewer.switchEdgeColorByCollection(true);
+                } else {
+                  window.App.graphViewer.switchEdgeColorByCollection(false);
+                }
+                return;
+              }
+            }
+
             if (color !== '' && color !== undefined) {
               updateCols();
             } else {
+              // complete render necessary - e.g. data needed
               window.App.graphViewer.render(self.lastFocussed);
             }
           } else {
@@ -352,10 +384,38 @@
         this.userConfig.setItem('graphs', config, callback);
       } else {
         // aql mode - only visual
+
+        var value;
         if (color) {
           updateCols();
+        } else if (event.currentTarget.id === 'g_layout') {
+          window.App.graphViewer.rerenderAQL($('#g_layout').val(), null);
+        } else if (event.currentTarget.id === 'g_nodeColorByCollection') {
+          value = $('#g_nodeColorByCollection').val();
+          if (value === 'true') {
+            window.App.graphViewer.switchNodeColorByCollection(true);
+          } else {
+            window.App.graphViewer.switchNodeColorByCollection(false);
+          }
+        } else if (event.currentTarget.id === 'g_edgeColorByCollection') {
+          value = $('#g_edgeColorByCollection').val();
+          if (value === 'true') {
+            window.App.graphViewer.switchEdgeColorByCollection(true);
+          } else {
+            window.App.graphViewer.switchEdgeColorByCollection(false);
+          }
+        } else if (event.currentTarget.id === 'g_nodeSizeByEdges') {
+          value = $('#g_nodeSizeByEdges').val();
+          if (value === 'true') {
+            window.App.graphViewer.switchNodeSizeByCollection(true);
+          } else {
+            window.App.graphViewer.switchNodeSizeByCollection(false);
+          }
+        } else if (event.currentTarget.id === 'g_edgeType') {
+          window.App.graphViewer.switchEdgeType($('#g_edgeType').val());
         }
       }
+      this.handleDependencies();
     },
 
     setDefaults: function (saveOnly, silent, callback) {
@@ -426,24 +486,38 @@
       // node sizing
       if ($('#g_nodeSizeByEdges').val() === 'true') {
         $('#g_nodeSize').prop('disabled', true);
+      } else {
+        $('#g_nodeSize').removeAttr('disabled');
       }
 
       // node color
       if ($('#g_nodeColorByCollection').val() === 'true') {
         $('#g_nodeColorAttribute').prop('disabled', true);
         $('#g_nodeColor').prop('disabled', true);
+      } else {
+        $('#g_nodeColorAttribute').removeAttr('disabled');
+        $('#g_nodeColor').removeAttr('disabled');
       }
-      if ($('#g_nodeColorAttribute').val() !== '') {
-        $('#g_nodeColor').prop('disabled', true);
+
+      if (!this.noDefinedGraph) {
+        if ($('#g_nodeColorAttribute').val() !== '') {
+          $('#g_nodeColor').prop('disabled', true);
+        }
       }
 
       // edge color
       if ($('#g_edgeColorByCollection').val() === 'true') {
         $('#g_edgeColorAttribute').prop('disabled', true);
         $('#g_edgeColor').prop('disabled', true);
+      } else {
+        $('#g_edgeColorAttribute').removeAttr('disabled');
+        $('#g_edgeColor').removeAttr('disabled');
       }
-      if ($('#g_edgeColorAttribute').val() !== '') {
-        $('#g_edgeColor').prop('disabled', true);
+
+      if (!this.noDefinedGraph) {
+        if ($('#g_edgeColorAttribute').val() !== '') {
+          $('#g_edgeColor').prop('disabled', true);
+        }
       }
     },
 
@@ -472,13 +546,25 @@
 
     fitSettingsAQLMode: function () {
       var toDisable = [
-        'g_nodeStart', 'g_depth', 'g_limit'
+        'g_nodeStart', 'g_depth', 'g_limit', 'g_renderer',
+        'g_nodeLabel', 'g_nodeLabelByCollection', 'g_nodeColorAttribute',
+        'g_nodeSize', 'g_edgeLabel', 'g_edgeColorAttribute', 'g_edgeLabelByCollection'
       ];
 
       _.each(toDisable, function (elem) {
         $('#' + elem).parent().prev().remove();
         $('#' + elem).parent().remove();
       });
+
+      $('#saveGraphSettings').remove();
+      $('#restoreGraphSettings').remove();
+
+      // overwrite usual defaults
+      $('#g_nodeColorByCollection').val('false');
+      $('#g_edgeColorByCollection').val('false');
+      $('#g_nodeSizeByEdges').val('false');
+      $('#g_edgeType').val('arrow');
+      $('#g_layout').val('force');
     }
 
   });

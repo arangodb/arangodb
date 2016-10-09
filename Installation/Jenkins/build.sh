@@ -210,6 +210,11 @@ while [ $# -gt 0 ];  do
             shift
             ;;
 
+        --noopt)
+            CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off"
+            shift
+            ;;
+        
         --coverage)
             TAR_SUFFIX="-coverage"
             COVERAGE=1
@@ -509,6 +514,7 @@ if test -n "${TARGET_DIR}";  then
     dir="${TARGET_DIR}"
     if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
         ${PACKAGE_MAKE} copy_packages
+        ${PACKAGE_MAKE} clean_packages
     else
         TARFILE=arangodb-`uname`${TAR_SUFFIX}.tar.gz
         TARFILE_TMP=`pwd`/arangodb.tar.$$

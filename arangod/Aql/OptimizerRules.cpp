@@ -43,6 +43,7 @@
 #include "Basics/SmallVector.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
+#include "Cluster/ClusterInfo.h"
 #include "Utils/Transaction.h"
 #include "VocBase/TraverserOptions.h"
 
@@ -1863,6 +1864,14 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
     // attributes
     bool handled = false;
 
+    if (indexes.size() == 1 && isSorted) {
+      // if we have just a single index and we can use it for the filtering condition,
+      // then we can use the index for sorting, too. regardless of it the index is sparse or not.
+      // because the index would only return non-null attributes anyway, so we do not need
+      // to care about null values when sorting here
+      isSparse = false;
+    }
+
     SortCondition sortCondition(_sorts, cond->getConstAttributes(outVariable, !isSparse), _variableDefinitions);
 
     bool const isOnlyAttributeAccess =
@@ -2471,6 +2480,16 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt, ExecutionPlan* plan,
     Collection const* collection =
         static_cast<ModificationNode*>(node)->collection();
 
+#ifdef USE_ENTERPRISE
+    auto ci = ClusterInfo::instance();
+    auto collInfo = ci->getCollection(collection->vocbase->name(),
+                                      collection->name);
+    // Throws if collection is not found!
+    if (collInfo->isSmart() && collInfo->type() == TRI_COL_TYPE_EDGE) {
+      distributeInClusterRuleSmartEdgeCollection(opt, plan, rule);
+      return;
+    }
+#endif
     bool const defaultSharding = collection->usesDefaultSharding();
 
     if (nodeType == ExecutionNode::REMOVE ||
@@ -2541,7 +2560,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt, ExecutionPlan* plan,
       distNode = new DistributeNode(plan, plan->nextId(), vocbase, collection,
                                     inputVariable->id, false, v.size() > 1);
     } else if (nodeType == ExecutionNode::UPSERT) {
-      // an UPSERT nodes has two input variables!
+      // an UPSERT node has two input variables!
       std::vector<Variable const*> v(node->getVariablesUsedHere());
       TRI_ASSERT(v.size() >= 2);
 

@@ -360,6 +360,15 @@ ERROR_SERVICE_MOUNTPOINT_CONFLICT,3011,"mountpoint already in use","A service ha
 ERROR_MODULE_NOT_FOUND,3100,"cannot locate module","The module path could not be resolved."
 ERROR_MODULE_FAILURE,3103,"failed to invoke module","Failed to invoke the module in its context."
 
+
+################################################################################
+## Enterprise errors
+################################################################################
+
+ERROR_NO_SMART_COLLECTION,4000,"collection is not smart","The requested collection needs to be smart, but it ain't"
+ERROR_NO_SMART_GRAPH_ATTRIBUTE,4001,"smart graph attribute not given","The given document does not have the smart graph attribute set."
+ERROR_CANNOT_DROP_SMART_COLLECTION,4002,"cannot drop this smart collection","This smart collection cannot be dropped, it dictates sharding in the graph."
+
 ################################################################################
 ## Dispatcher errors
 ################################################################################

@@ -178,7 +178,8 @@ static int ParseDocumentOrDocumentHandle(v8::Isolate* isolate,
       try {
         std::shared_ptr<LogicalCollection> col =
             ci->getCollection(vocbase->name(), collectionName);
-        collection = col->clone();
+        auto colCopy = col->clone();
+        collection = colCopy.release();
       } catch (...) {
         return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
       }
@@ -793,11 +794,24 @@ static void JS_DocumentVocbaseCol(
 }
 
 
+#ifndef USE_ENTERPRISE
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unloads a collection, case of a coordinator in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+static int ULVocbaseColCoordinator(std::string const& databaseName,
+                                   std::string const& collectionCID,
+                                   TRI_vocbase_col_status_e status) {
+  
+  return ClusterInfo::instance()->setCollectionStatusCoordinator(
+    databaseName, collectionCID, status);
+  
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops a collection, case of a coordinator in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef USE_ENTERPRISE
 static void DropVocbaseColCoordinator(
     v8::FunctionCallbackInfo<v8::Value> const& args,
     arangodb::LogicalCollection* collection) {
@@ -987,37 +1001,41 @@ static void JS_LoadVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    std::string const databaseName(collection->dbName());
-    std::string const cid = collection->cid_as_string();
-
-    int res = ClusterInfo::instance()->setCollectionStatusCoordinator(
-        databaseName, cid, TRI_VOC_COL_STATUS_LOADED);
-
+    int res = 
+#ifdef USE_ENTERPRISE
+      ULVocbaseColCoordinatorEnterprise(
+        collection->dbName(), collection->cid_as_string(),
+        TRI_VOC_COL_STATUS_LOADED);
+#else
+      ULVocbaseColCoordinator(
+        collection->dbName(), collection->cid_as_string(),
+        TRI_VOC_COL_STATUS_LOADED);
+#endif
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
-
     TRI_V8_RETURN_UNDEFINED();
   }
 
   SingleCollectionTransaction trx(
-      V8TransactionContext::Create(collection->vocbase(), true),
-      collection->cid(), TRI_TRANSACTION_READ);
-
+    V8TransactionContext::Create(collection->vocbase(), true),
+    collection->cid(), TRI_TRANSACTION_READ);
+  
   int res = trx.begin();
-
+  
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-
+  
   res = trx.finish(res);
   
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-
+  
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1158,6 +1176,7 @@ static void JS_PropertiesVocbaseCol(
           TRI_V8_THROW_EXCEPTION_PARAMETER(
               "indexBuckets must be a two-power between 1 and 1024");
         }
+        
         int res = info->update(slice, false);
 
         if (res != TRI_ERROR_NO_ERROR) {
@@ -2413,11 +2432,18 @@ static void JS_UnloadVocbaseCol(
   int res;
 
   if (ServerState::instance()->isCoordinator()) {
-    std::string const databaseName(collection->dbName());
-
-    res = ClusterInfo::instance()->setCollectionStatusCoordinator(
-        databaseName, collection->cid_as_string(),
+    
+    res = 
+#ifdef USE_ENTERPRISE
+      ULVocbaseColCoordinatorEnterprise(
+        collection->dbName(), collection->cid_as_string(),
         TRI_VOC_COL_STATUS_UNLOADED);
+#else
+      ULVocbaseColCoordinator(
+        collection->dbName(), collection->cid_as_string(),
+        TRI_VOC_COL_STATUS_UNLOADED);
+#endif
+
   } else {
     res = collection->vocbase()->unloadCollection(collection, false);
   }
@@ -2533,7 +2559,8 @@ static void JS_CollectionVocbase(
     try {
       std::shared_ptr<LogicalCollection> const ci =
           ClusterInfo::instance()->getCollection(vocbase->name(), name);
-      collection = ci->clone();
+      auto colCopy = ci->clone();
+      collection = colCopy.release();
     } catch (...) {
       // not found
       TRI_V8_RETURN_NULL();

@@ -2294,6 +2294,60 @@ AqlValue Functions::Within(arangodb::aql::Query* query,
   return buildGeoResult(trx, query, cors, cid, attributeName);
 }
 
+/// @brief function DISTANCE
+AqlValue Functions::Distance(arangodb::aql::Query* query,
+                             arangodb::Transaction* trx,
+                             VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "DISTANCE", 4, 4);
+
+  AqlValue lat1 = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue lon1 = ExtractFunctionParameterValue(trx, parameters, 1);
+  AqlValue lat2 = ExtractFunctionParameterValue(trx, parameters, 2);
+  AqlValue lon2 = ExtractFunctionParameterValue(trx, parameters, 3);
+
+  // non-numeric input...
+  if (!lat1.isNumber() || !lon1.isNumber() || !lat2.isNumber() || !lon2.isNumber()) {
+    RegisterWarning(query, "DISTANCE",
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+
+  bool failed;
+  bool error = false;
+  double lat1Value = lat1.toDouble(trx, failed);
+  error |= failed;
+  double lon1Value = lon1.toDouble(trx, failed);
+  error |= failed;
+  double lat2Value = lat2.toDouble(trx, failed);
+  error |= failed;
+  double lon2Value = lon2.toDouble(trx, failed);
+  error |= failed;
+    
+  if (error) {
+    RegisterWarning(query, "DISTANCE",
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+
+  auto toRadians = [](double degrees) -> double {
+    return degrees * (std::acos(-1.0) / 180.0);
+  };
+
+  double p1 = toRadians(lat1Value); 
+  double p2 = toRadians(lat2Value); 
+  double d1 = toRadians(lat2Value - lat1Value);
+  double d2 = toRadians(lon2Value - lon1Value);
+
+  double a = std::sin(d1 / 2.0) * std::sin(d1 / 2.0) +
+             std::cos(p1) * std::cos(p2) *
+             std::sin(d2 / 2.0) * std::sin(d2 / 2.0);
+
+  double c = 2.0 * std::atan2(std::sqrt(a), std::sqrt(1.0 - a));
+  double const EARTHRADIAN = 6371000.0; // metres
+
+  return NumberValue(trx, EARTHRADIAN * c, true);
+}
+
 /// @brief function FLATTEN
 AqlValue Functions::Flatten(arangodb::aql::Query* query,
                             arangodb::Transaction* trx,

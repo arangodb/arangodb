@@ -142,6 +142,7 @@ void WorkMonitor::pushHandler(RestHandler* handler) {
   TRI_ASSERT(desc->_type == WorkType::HANDLER);
 
   activateWorkDescription(desc);
+  RestHandler::CURRENT_HANDLER = handler;
 }
 
 WorkDescription* WorkMonitor::popHandler(RestHandler* handler, bool free) {
@@ -161,6 +162,8 @@ WorkDescription* WorkMonitor::popHandler(RestHandler* handler, bool free) {
     }
   }
 
+  // TODO(fc) we might have a stack of handlers
+  RestHandler::CURRENT_HANDLER = nullptr;
   return desc;
 }
 

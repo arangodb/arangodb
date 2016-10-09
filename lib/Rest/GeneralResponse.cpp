@@ -475,7 +475,7 @@ GeneralResponse::GeneralResponse(ResponseCode responseCode)
       _vpackPayloads(),
       _numPayloads(),
       _contentType(ContentType::UNSET),
-      _connectionType(ConnectionType::CONNECTION_NONE),
+      _connectionType(ConnectionType::C_NONE),
       _options(velocypack::Options::Defaults),
       _generateBody(false),
       _contentTypeRequested(ContentType::UNSET) {}
