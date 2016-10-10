@@ -1,6 +1,7 @@
 ################################################################################
 ## INSTALL
 ################################################################################
+
 if (NOT CMAKE_INSTALL_SYSCONFDIR_ARANGO
     OR NOT CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO
     OR NOT CMAKE_INSTALL_DATAROOTDIR_ARANGO
