@@ -212,9 +212,9 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
       _edgeColls.emplace_back(std::make_unique<aql::Collection>(
           n, _vocbase, TRI_TRANSACTION_READ));
     } else {
+      _directions.emplace_back(dir);
       _edgeColls.emplace_back(std::make_unique<aql::Collection>(
           n, _vocbase, TRI_TRANSACTION_READ));
-      _directions.emplace_back(dir);
     }
   };
 
@@ -301,7 +301,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
             names = c->realNamesForRead();
           }
           for (auto const& name : names) {
-            addEdgeColl(name, baseDirection);
+            addEdgeColl(name, dir);
           }
         }
       } else {
