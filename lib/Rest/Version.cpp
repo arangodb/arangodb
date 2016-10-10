@@ -301,9 +301,9 @@ std::string Version::getCompiler() {
 #if defined(__clang__)
   return "clang [" + (std::string)__VERSION__ + "]";
 #elif defined(__GNUC__) || defined(__GNUG__)
-  return "gcc  [" + (std::string)__VERSION__ + "]";
+  return "gcc [" + (std::string)__VERSION__ + "]";
 #elif defined(_MSC_VER)
-  return "msvc  [" + (std::string)_MSC_VER + "]";
+  return "msvc [" + (std::string)_MSC_VER + "]";
 #endif
   return "unknown";
 }
