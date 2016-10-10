@@ -1,5 +1,7 @@
 !CHAPTER Audit Configuration
 
+__This feature is available in the Enterprise Edition.__
+
 !SECTION Output
 
 `--audit.output output`

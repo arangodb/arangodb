@@ -1538,7 +1538,7 @@ int ClusterInfo::ensureIndexCoordinator(
     }
 
     // now create a new index
-    c->toVelocyPack(*collectionBuilder, false);
+    c->toVelocyPackForAgency(*collectionBuilder);
   }
   VPackSlice const collectionSlice = collectionBuilder->slice();
 

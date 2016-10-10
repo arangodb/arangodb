@@ -138,7 +138,7 @@ static TRI_voc_cid_t ReadCid(VPackSlice info) {
 
   if (cid == 0) {
     if (ServerState::instance()->isDBServer()) {
-      cid = ClusterInfo::instance()->uniqid();
+      cid = ClusterInfo::instance()->uniqid(1);
     } else if (ServerState::instance()->isCoordinator()) {
       cid = ClusterInfo::instance()->uniqid(1);
     } else {
