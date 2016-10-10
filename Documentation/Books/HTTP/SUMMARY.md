@@ -52,4 +52,5 @@
 * [Endpoints](Endpoints/README.md)
 * [User Management](UserManagement/README.md)
 * [Tasks](Tasks/README.md)
+* [Agency](Agency/README.md)
 * [Miscellaneous functions](MiscellaneousFunctions/README.md)
