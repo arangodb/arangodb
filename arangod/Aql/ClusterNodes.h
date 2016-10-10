@@ -251,6 +251,17 @@ class DistributeNode : public ExecutionNode {
   /// @brief set collection
   void setCollection(Collection* coll) { _collection = coll; }
 
+  /// @brief set varId
+  void setVarId(VariableId varId) { _varId = varId; }
+
+  /// @brief set alternativeVarId
+  void setAlternativeVarId(VariableId alternativeVarId) {
+    _alternativeVarId = alternativeVarId;
+  }
+
+  /// @brief set createKeys
+  void setCreateKeys(bool b) { _createKeys = b; }
+
  private:
   /// @brief the underlying database
   TRI_vocbase_t* _vocbase;
@@ -259,14 +270,14 @@ class DistributeNode : public ExecutionNode {
   Collection const* _collection;
 
   /// @brief the variable we must inspect to know where to distribute
-  VariableId const _varId;
+  VariableId _varId;
 
   /// @brief an optional second variable we must inspect to know where to
   /// distribute
-  VariableId const _alternativeVarId;
+  VariableId _alternativeVarId;
 
   /// @brief the node is responsible for creating document keys
-  bool const _createKeys;
+  bool _createKeys;
 
   /// @brief allow conversion of key to object
   bool const _allowKeyConversionToObject;

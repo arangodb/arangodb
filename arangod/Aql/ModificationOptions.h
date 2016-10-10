@@ -44,7 +44,8 @@ struct ModificationOptions {
         mergeObjects(true),
         ignoreDocumentNotFound(false),
         readCompleteInput(true),
-        useIsRestore(false) {}
+        useIsRestore(false),
+        consultAqlWriteFilter(false) {}
 
   void toVelocyPack(arangodb::velocypack::Builder&) const;
 
@@ -55,6 +56,7 @@ struct ModificationOptions {
   bool ignoreDocumentNotFound;
   bool readCompleteInput;
   bool useIsRestore;
+  bool consultAqlWriteFilter;
 };
 
 }  // namespace arangodb::aql
