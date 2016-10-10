@@ -36,14 +36,6 @@ more information see [here](../Administration/Configuration/Logging.md).
 
 @startDocuBlock server_authentication
 
-<!-- ApplicationEndpointServer.h -->
-
-@startDocuBlock keep_alive_timeout
-
-<!-- ApplicationEndpointServer.h -->
-
-@startDocuBlock serverEndpoint
-
 `--daemon`
 
 Runs the server as a "daemon" (as a background process).

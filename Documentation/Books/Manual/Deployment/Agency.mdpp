@@ -79,6 +79,7 @@ To highlight some details in the above output look for "term" and "leaderId". Bo
 Read API
 
 Generally all read and write accesses are transactions moreover any read and write access may consist of multiple transactions formulated as arrays of arrays in JSON documents. 
+
 !SUBSECTION Read transaction
 
 An agency started from scratch will deal with the simplest query as follows:

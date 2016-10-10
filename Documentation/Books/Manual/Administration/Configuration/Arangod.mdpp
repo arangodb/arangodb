@@ -1,36 +1,10 @@
 !CHAPTER Command-Line Options for arangod
 
-!SUBSECTION Endpoint
-@startDocuBlock serverEndpoint
-
-
-!SUBSECTION Reuse address
-
-
-try to reuse address
-`--tcp.reuse-address`
-
-If this boolean option is set to *true* then the socket option
-SO_REUSEADDR is set on all server endpoints, which is the default.
-If this option is set to *false* it is possible that it takes up
-to a minute after a server has terminated until it is possible for
-a new server to use the same endpoint again. This is why this is
-activated by default.
-
-Please note however that under some operating systems this can be
-a security risk because it might be possible for another process
-to bind to the same address and port, possibly hijacking network
-traffic. Under Windows, ArangoDB additionally sets the flag
-SO_EXCLUSIVEADDRUSE as a measure to alleviate this problem.
-
-
-
 !SUBSECTION Enable/disable authentication  
 @startDocuBlock server_authentication
 
 
 !SUBSECTION Enable/disable authentication for UNIX domain sockets
-
 
 disable authentication for requests via UNIX domain sockets
 `--server.authentication-unix-sockets value`
@@ -46,14 +20,11 @@ The default value is *false*.
 **Note**: this option is only available on platforms that support UNIX
 domain sockets.
 
-
-
 !SUBSECTION Enable/disable authentication for system API requests only
 @startDocuBlock serverAuthenticateSystemOnly
 
 
 !SUBSECTION Enable/disable replication applier
-
 
 Enable/disable the replication applier on server startup
 `--database.replication-applier flag`
@@ -70,14 +41,17 @@ from the file *REPLICATION-APPLIER-CONFIG* on startup, and use the value of the
 
 The default is *true*.
 
-
-
 !SUBSECTION Keep-alive timeout
-@startDocuBlock keep_alive_timeout
 
+`--http.keep-alive-timeout`
+
+Allows to specify the timeout for HTTP keep-alive connections. The timeout
+value must be specified in seconds.
+Idle keep-alive connections will be closed by the server automatically
+when the timeout is reached. A keep-alive-timeout value 0 will disable the keep
+alive feature entirely.
 
 !SUBSECTION Hide Product header
-
 
 hide the "Server: ArangoDB" header in HTTP responses
 `--http.hide-product-header`
@@ -88,12 +62,8 @@ responses.
 
 The default is *false*.
 
-
-
 !SUBSECTION Allow method override
 
-
-allow HTTP method override via custom headers?
 `--http.allow-method-override`
 
 When this option is set to *true*, the HTTP request method will optionally
@@ -115,216 +85,12 @@ be used in controlled environments.
 
 The default value for this option is *false*.
 
-
-
 !SUBSECTION Server threads
 
-
-number of dispatcher threads
 `--server.threads number`
 
 Specifies the *number* of threads that are spawned to handle HTTP REST
 requests.
-
-
-
-!SUBSECTION Keyfile
-
-
-keyfile containing server certificate
-`--ssl.keyfile filename`
-
-If SSL encryption is used, this option must be used to specify the filename
-of the server private key. The file must be PEM formatted and contain both
-the certificate and the server's private key.
-
-The file specified by *filename* should have the following structure:
-
-```
-# create private key in file "server.key"
-openssl genrsa -des3 -out server.key 1024
-
-# create certificate signing request (csr) in file "server.csr"
-openssl req -new -key server.key -out server.csr
-
-# copy away original private key to "server.key.org"
-cp server.key server.key.org
-
-# remove passphrase from the private key
-openssl rsa -in server.key.org -out server.key
-
-# sign the csr with the key, creates certificate PEM file "server.crt"
-openssl x509 -req -days 365 -in server.csr -signkey server.key -out
-server.crt
-
-# combine certificate and key into single PEM file "server.pem"
-cat server.crt server.key > server.pem
-```
-
-You may use certificates issued by a Certificate Authority or self-signed
-certificates. Self-signed certificates can be created by a tool of your
-choice. When using OpenSSL for creating the self-signed certificate, the
-following commands should create a valid keyfile:
-
-```
------BEGIN CERTIFICATE-----
-
-(base64 encoded certificate)
-
------END CERTIFICATE-----
------BEGIN RSA PRIVATE KEY-----
-
-(base64 encoded private key)
-
------END RSA PRIVATE KEY-----
-```
-
-For further information please check the manuals of the tools you use to
-create the certificate.
-
-**Note**: the \-\-ssl.keyfile option must be set if the server is
-started with at least one SSL endpoint.
-
-
-
-!SUBSECTION Cafile
-
-
-CA file
-`--ssl.cafile filename`
-
-This option can be used to specify a file with CA certificates that are
-sent
-to the client whenever the server requests a client certificate. If the
-file is specified, The server will only accept client requests with
-certificates issued by these CAs. Do not specify this option if you want
-clients to be able to connect without specific certificates.
-
-The certificates in *filename* must be PEM formatted.
-
-**Note**: this option is only relevant if at least one SSL endpoint is
-used.
-
-
-
-!SUBSECTION SSL protocol
-
-
-SSL protocol type to use `--ssl.protocol value`
-
-Use this option to specify the default encryption protocol to be used.
-The following variants are available:
-- 1: SSLv2
-- 2: SSLv23
-- 3: SSLv3
-- 4: TLSv1
-- 5: TLSv1.2 (recommended)
-
-The default *value* is 4 (i.e. TLSv1). If available, set it to 5
-(i.e. TLSv1.2), because lower protocol versions are known to be vulnerable
-to POODLE attack variants.
-
-**Note**: this option is only relevant if at least one SSL endpoint is used.
-
-
-
-!SUBSECTION SSL cache
-
-
-whether or not to use SSL session caching
-`--ssl.session-cache value`
-
-Set to true if SSL session caching should be used.
-
-*value* has a default value of *false* (i.e. no caching).
-
-**Note**: this option is only relevant if at least one SSL endpoint is used, and
-only if the client supports sending the session id.
-
-
-
-!SUBSECTION SSL options
-
-
-ssl options to use
-`--ssl.options value`
-
-This option can be used to set various SSL-related options. Individual
-option values must be combined using bitwise OR.
-
-Which options are available on your platform is determined by the OpenSSL
-version you use. The list of options available on your platform might be
-retrieved by the following shell command:
-
-```
- > grep "#define SSL_OP_.*" /usr/include/openssl/ssl.h
-
- #define SSL_OP_MICROSOFT_SESS_ID_BUG                    0x00000001L
- #define SSL_OP_NETSCAPE_CHALLENGE_BUG                   0x00000002L
- #define SSL_OP_LEGACY_SERVER_CONNECT                    0x00000004L
- #define SSL_OP_NETSCAPE_REUSE_CIPHER_CHANGE_BUG         0x00000008L
- #define SSL_OP_SSLREF2_REUSE_CERT_TYPE_BUG              0x00000010L
- #define SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER               0x00000020L
- ...
-```
-
-A description of the options can be found online in the
-[OpenSSL
-documentation](http://www.openssl.org/docs/ssl/SSL_CTX_set_options.html)
-
-**Note**: this option is only relevant if at least one SSL endpoint is
-used.
-
-
-
-!SUBSECTION SSL cipher
-
-
-ssl cipher list to use
-`--ssl.cipher-list cipher-list`
-
-This option can be used to restrict the server to certain SSL ciphers
-only,
-and to define the relative usage preference of SSL ciphers.
-
-The format of *cipher-list* is documented in the OpenSSL documentation.
-
-To check which ciphers are available on your platform, you may use the
-following shell command:
-
-```
-> openssl ciphers -v
-
-ECDHE-RSA-AES256-SHA    SSLv3 Kx=ECDH     Au=RSA  Enc=AES(256)  Mac=SHA1
-ECDHE-ECDSA-AES256-SHA  SSLv3 Kx=ECDH     Au=ECDSA Enc=AES(256)  Mac=SHA1
-DHE-RSA-AES256-SHA      SSLv3 Kx=DH       Au=RSA  Enc=AES(256)  Mac=SHA1
-DHE-DSS-AES256-SHA      SSLv3 Kx=DH       Au=DSS  Enc=AES(256)  Mac=SHA1
-DHE-RSA-CAMELLIA256-SHA SSLv3 Kx=DH       Au=RSA  Enc=Camellia(256)
-Mac=SHA1
-...
-```
-
-The default value for *cipher-list* is "ALL".
-
-**Note**: this option is only relevant if at least one SSL endpoint is used.
-
-
-
-!SUBSECTION Backlog size
-
-
-listen backlog size
-`--tcp.backlog-size`
-
-Allows to specify the size of the backlog for the *listen* system call
-The default value is 10. The maximum value is platform-dependent.
-Specifying
-a higher value than defined in the system header's SOMAXCONN may result in
-a warning on server start. The actual value used by *listen* may also be
-silently truncated on some platforms (this happens inside the *listen*
-system call).
-
-
 
 !SUBSECTION Toggling server statistics 
 
@@ -334,9 +100,7 @@ If this option is *value* is *false*, then ArangoDB's statistics gathering
 is turned off. Statistics gathering causes regular CPU activity so using this
 option to turn it off might relieve heavy-loaded instances a bit.
 
-
 !SUBSECTION Session timeout
-
 
 time to live for server sessions
 `--server.session-timeout value`
@@ -346,20 +110,14 @@ to the web interface (/_admin/aardvark) and related areas.
 
 Sessions are only used when authentication is turned on.
 
-
-
 !SUBSECTION Foxx queues 
 @startDocuBlock foxxQueues
-
 
 !SUBSECTION Foxx queues poll interval
 @startDocuBlock foxxQueuesPollInterval
 
-
 !SUBSECTION Directory
 
-
-path to the database
 `--database.directory directory`
 
 The directory containing the collections and datafiles. Defaults
