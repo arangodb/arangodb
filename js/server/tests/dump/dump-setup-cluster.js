@@ -65,9 +65,11 @@
 
   // create lots of documents
   c = db._create("UnitTestsDumpMany");
+  var l = [];
   for (i = 0; i < 100000; ++i) {
-    c.save({ _key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i });
+    l.push({ _key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i });
   }
+  c.save(l);
 
   c = db._createEdgeCollection("UnitTestsDumpEdges");
   for (i = 0; i < 10; ++i) {
@@ -88,15 +90,19 @@
   
   // we apply a series of updates & removals here
   c = db._create("UnitTestsDumpRemoved");
+  l = [];
   for (i = 0; i < 10000; ++i) {
-    c.save({ _key: "test" + i, value1: i });
+    l.push({ _key: "test" + i, value1: i });
   }
+  c.save(l);
   for (i = 0; i < 1000; ++i) {
     c.update("test" + i, { value2: i + 1 });
   }
+  l = [];
   for (i = 0; i < 10000; i += 10) {
-    c.remove("test" + i);
+    l.push("test" + i);
   }
+  c.remove(l);
   
   // we create a lot of (meaningless) indexes here
   c = db._create("UnitTestsDumpIndexes", { indexBuckets: 32 });
@@ -112,16 +118,20 @@
 
   // we insert data and remove it
   c = db._create("UnitTestsDumpTruncated", { isVolatile: true });
+  l = [];
   for (i = 0; i < 10000; ++i) {
-    c.save({ _key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i });
+    l.push({ _key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i });
   }
+  c.save(l);
   c.truncate();
 
   // more than one shard:
   c = db._create("UnitTestsDumpShards", { numberOfShards : 9 });
+  l = [];
   for (i = 0; i < 1000; ++i) {
-    c.save({ _key : String(7 + (i*42)), value: i, more: { value: [ i, i ] } });
+    l.push({ _key : String(7 + (i*42)), value: i, more: { value: [ i, i ] } });
   }
+  c.save(l);
   
   // strings
   c = db._create("UnitTestsDumpStrings");
