@@ -161,6 +161,8 @@ struct TraverserOptions {
 
   void linkTraverser(arangodb::traverser::ClusterTraverser*);
 
+  void serializeVariables(arangodb::velocypack::Builder&) const;
+
  private:
   EdgeCursor* nextCursorLocal(arangodb::velocypack::Slice, size_t,
                               std::vector<LookupInfo>&) const;

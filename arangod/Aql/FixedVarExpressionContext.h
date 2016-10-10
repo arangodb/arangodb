@@ -50,6 +50,9 @@ class FixedVarExpressionContext : public ExpressionContext {
 
   void setVariableValue(Variable const*, AqlValue);
 
+  void serializeAllVariables(arangodb::Transaction*,
+                             arangodb::velocypack::Builder&) const;
+
  private:
   /// @brief temporary storage for expression data context
   std::unordered_map<Variable const*, AqlValue> _vars;
