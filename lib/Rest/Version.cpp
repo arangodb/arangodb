@@ -303,7 +303,7 @@ std::string Version::getCompiler() {
 #elif defined(__GNUC__) || defined(__GNUG__)
   return "gcc [" + std::string(__VERSION__) + "]";
 #elif defined(_MSC_VER)
-  return "msvc [" + std::string(_MSC_VER) + "]";
+  return "msvc [" + std::to_string(_MSC_VER) + "]";
 #endif
   return "unknown";
 }
