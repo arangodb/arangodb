@@ -335,7 +335,8 @@ OperationID ClusterComm::asyncRequest(
 
   std::unique_ptr<HttpRequest> request;
   if (prepared.second == nullptr) {
-    request.reset(HttpRequest::createHttpRequest(ContentType::JSON, "", 0, {}));
+    std::unordered_map<std::string, std::string> unusedHeaders;
+    request.reset(HttpRequest::createHttpRequest(ContentType::JSON, "", 0, unusedHeaders));
     request->setRequestType(reqtype); // mop: a fake but a good one
   } else {
     request.reset(prepared.second);

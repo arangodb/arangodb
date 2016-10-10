@@ -50,6 +50,7 @@ struct RequestInProgress {
         _ticketId(ticketId),
         _requestBody(requestBody),
         _requestHeaders(nullptr),
+        _startTime(0.0),
         _responseBody(new StringBuffer(TRI_UNKNOWN_MEM_ZONE, false)),
         _options(options) {
     _errorBuffer[0] = '\0';
@@ -146,8 +147,6 @@ class Communicator {
 #else
   int _fds[2];
 #endif
-
-  int _numFds;
 
  private:
   void createRequestInProgress(NewRequest const& newRequest);
