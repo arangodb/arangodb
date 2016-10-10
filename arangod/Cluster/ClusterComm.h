@@ -260,7 +260,8 @@ struct ClusterCommResult {
     // containing the body of our response
     // :snake: OPST_CIRCUS
     answer_code = dynamic_cast<HttpResponse*>(response.get())->responseCode();
-    HttpRequest* request = HttpRequest::createHttpRequest(ContentType::JSON, dynamic_cast<HttpResponse*>(response.get())->body().c_str(), dynamic_cast<HttpResponse*>(response.get())->body().length(), {});
+    std::unordered_map<std::string, std::string> unusedHeaders;
+    HttpRequest* request = HttpRequest::createHttpRequest(ContentType::JSON, dynamic_cast<HttpResponse*>(response.get())->body().c_str(), dynamic_cast<HttpResponse*>(response.get())->body().length(), unusedHeaders);
     
     auto headers = response->headers();
     auto errorCodes = headers.find(StaticStrings::ErrorCodes);
