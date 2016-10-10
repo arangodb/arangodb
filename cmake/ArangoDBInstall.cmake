@@ -35,8 +35,13 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/Documentation/man/
 
 install_readme(README README.txt)
 install_readme(README.md README.md)
-install_readme(LICENSE LICENSE.txt)
 install_readme(LICENSES-OTHER-COMPONENTS.md LICENSES-OTHER-COMPONENTS.md)
+
+if (USE_ENTERPRISE)
+  install_readme(enterprise/LICENSE LICENSE.txt)
+else ()
+  install_readme(LICENSE LICENSE.txt)
+endif ()
 
 # Custom targets ----------------------------------------------------------------
 # love

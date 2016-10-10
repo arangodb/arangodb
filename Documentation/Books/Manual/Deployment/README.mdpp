@@ -12,4 +12,5 @@ or using Docker containers.
 - [Cluster: Test setup on a local machine](Local.md)
 - [Cluster: Starting processes on different machines](Distributed.md)
 - [Cluster: Launching an ArangoDB cluster using Docker containers](Docker.md)
+- [Agency](Agency.md)
 
