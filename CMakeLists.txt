@@ -495,6 +495,8 @@ endif ()
 ## JEMALLOC
 ################################################################################
 
+set(DEFAULT_LIBRARY_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
+set(CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_STATIC_LIBRARY_SUFFIX})
 find_package(jemalloc)
 set(JEMALLOC_DEFAULT_VALUE ${JEMALLOC_FOUND})
 
@@ -521,6 +523,7 @@ if (USE_JEMALLOC)
     set(SYS_LIBS ${SYS_LIBS} ${FORCE_JEMALLOC_LIB})
   endif ()
 endif ()
+set(CMAKE_FIND_LIBRARY_SUFFIXES ${DEFAULT_LIBRARY_SUFFIXES})
 
 ################################################################################
 ## TCMALLOC
