@@ -26,16 +26,18 @@ The below commands start up a 3-host agency on one physical/logical box with por
 ./build/bin/arangod --agency.activate true --agency.size 3 --agency.my-address tcp://localhost:8529 --server.authentication false --server.endpoint tcp://0.0.0.0:8529 agency-8529
 ./build/bin/arangod --agency.activate true --agency.size 3 --agency.endpoint tcp://localhost:8529 --agency.my-address tcp://localhost:8530 --server.authentication false --server.endpoint tcp://0.0.0.0:8530 agency-8530
 ./build/bin/arangod --agency.activate true --agency.size 3 --agency.endpoint tcp://localhost:8529 --agency.my-address tcp://localhost:8531 --server.authentication false --server.endpoint tcp://0.0.0.0:8531 agency-8531 
+```
 
 Parameter "agency.endpoint" is the key ingridient for the second and third instances to find the first instance and thus form a complete agency. Please refer to the the shell-script startStandaloneAgency.sh on github or in the source directory.
-```
 
 !SUBSECTION Key-value-store API
 
 The agency should be up and running within a couple of seconds, during which the instances have gossiped their way into knowing the other agents and having elected a leader. The public API can be checked for the state of the configuration:
 
 ```
-> curl -s localhost:8529/_api/agency/config
+curl -s localhost:8529/_api/agency/config
+```
+```js
 {
   "term": 1,
   "leaderId": "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98",
