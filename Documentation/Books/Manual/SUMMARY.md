@@ -120,6 +120,7 @@
   * [Cluster: Local test](Deployment/Local.md)
   * [Cluster: Processes](Deployment/Distributed.md)
   * [Cluster: Docker](Deployment/Docker.md)
+  * [Agency](Deployment/Agency.md)
 #
 * [Administration](Administration/README.md)
   * [Web Interface](Administration/WebInterface/README.md)

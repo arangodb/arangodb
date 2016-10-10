@@ -360,13 +360,13 @@ The observer is notified of any changes to that target until such time that it r
       "url": “http://<host>:<port>/<path>" } } ]
 ```
 
-Note that the last document removes all observations from entities below "/a/b/c". In particular, issuing
+Note that the last document removes all observations from entities below `"/a/b/c"`. In particular, issuing
 
 ```js
 [ { "/": "unobserve", "url": "http://<host>:<port>/<path>"} ] 
 ```
 
-will result in the removal of all observations for URL "http://<host>:<port>/<path>".
+will result in the removal of all observations for URL `"http://<host>:<port>/<path>"`.
 The notifying POST requests are submitted immediately with any complete array of changes to the read db of the leader of create, modify and delete events accordingly; The body  
 ```js
 { "term": "5", 

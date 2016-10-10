@@ -649,3 +649,9 @@ void arangodb::traverser::TraverserOptions::linkTraverser(
   _traverser = trav;
 }
 
+void arangodb::traverser::TraverserOptions::serializeVariables(
+    VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenArray());
+  _ctx->serializeAllVariables(_trx, builder);
+}
+
