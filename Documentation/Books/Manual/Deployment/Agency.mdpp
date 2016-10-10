@@ -74,12 +74,12 @@ curl -s localhost:8529/_api/agency/config
 
 To highlight some details in the above output look for "term" and "leaderId". Both are key information about the current state of the Raft algorithm. You may have noted that the first election term has established a random leader for the agency, who is in charge of replication of the state machine and for all external read and write requests until such time that the process gets isolated from the other two subsequenctly losing its leadership.
 
-! SUBSECTION Read and Write APIs
+!SUBSECTION Read and Write APIs
 
 Read API
 
 Generally all read and write accesses are transactions moreover any read and write access may consist of multiple transactions formulated as arrays of arrays in JSON documents. 
-! SUBSECTION Read transaction
+!SUBSECTION Read transaction
 
 An agency started from scratch will deal with the simplest query as follows:
 ```
