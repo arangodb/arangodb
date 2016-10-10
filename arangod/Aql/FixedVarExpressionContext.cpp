@@ -61,3 +61,14 @@ void FixedVarExpressionContext::setVariableValue(Variable const* var,
                                                  AqlValue value) {
   _vars.emplace(var, value);
 }
+
+void FixedVarExpressionContext::serializeAllVariables(
+    arangodb::Transaction* trx, VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenArray());
+  for (auto const& it : _vars) {
+    builder.openArray();
+    it.first->toVelocyPack(builder);
+    it.second.toVelocyPack(trx, builder, true);
+    builder.close();
+  }
+}

@@ -259,6 +259,9 @@ class DistributeNode : public ExecutionNode {
     _alternativeVarId = alternativeVarId;
   }
 
+  /// @brief set createKeys
+  void setCreateKeys(bool b) { _createKeys = b; }
+
  private:
   /// @brief the underlying database
   TRI_vocbase_t* _vocbase;
@@ -274,7 +277,7 @@ class DistributeNode : public ExecutionNode {
   VariableId _alternativeVarId;
 
   /// @brief the node is responsible for creating document keys
-  bool const _createKeys;
+  bool _createKeys;
 
   /// @brief allow conversion of key to object
   bool const _allowKeyConversionToObject;
