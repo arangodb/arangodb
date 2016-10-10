@@ -29,6 +29,9 @@ namespace arangodb {
 namespace httpclient {
 
 class SimpleHttpCommunicatorResult: public SimpleHttpResult {
+  using SimpleHttpResult::getBody;
+  using SimpleHttpResult::getBodyVelocyPack;
+
   public:
     SimpleHttpCommunicatorResult() = delete;
     explicit SimpleHttpCommunicatorResult(HttpResponse* response)
@@ -42,8 +45,8 @@ class SimpleHttpCommunicatorResult: public SimpleHttpResult {
     virtual std::string getHttpReturnMessage() const override { return GeneralResponse::responseString(_response->responseCode()); }
     virtual bool hasContentLength() const override { return true; }
     virtual size_t getContentLength() const override { return _response->body().length(); }
-    virtual arangodb::basics::StringBuffer& getBody() override { return _response->body(); }
-    virtual std::shared_ptr<VPackBuilder> getBodyVelocyPack(VPackOptions const& options) const override {
+    arangodb::basics::StringBuffer& getBody() override { return _response->body(); }
+    std::shared_ptr<VPackBuilder> getBodyVelocyPack(VPackOptions const& options) const override {
       return VPackParser::fromJson(_response->body().c_str(), _response->body().length(), &options);
     }
     virtual enum resultTypes getResultType() const override {
