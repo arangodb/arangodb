@@ -25,6 +25,7 @@ if (NOT (CMAKE_BUILD_TYPE STREQUAL "Debug"
       OR CMAKE_BUILD_TYPE STREQUAL "None"))
   message(FATAL_ERROR "expecting CMAKE_BUILD_TYPE: None Debug Release RelWithDebInfo MinSizeRel, got ${CMAKE_BUILD_TYPE}.")
 endif ()
+add_definitions(-DCURL_STATICLIB=1)
 
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE STRING "deployment target for MacOSX; adjust to your sysem")
 
@@ -38,6 +39,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # where to find CMAKE modules
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
+
+option(SKIP_PACKAGING OFF)
 
 # be verbose about flags used
 option(VERBOSE OFF)
@@ -806,12 +809,24 @@ include_directories(${ZLIB_INCLUDE_DIR})
 add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 
 ################################################################################
+## cURL
+################################################################################
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/curl/curl-7.50.3/include/ ${CMAKE_CURRENT_BINARY_DIR}/3rdParty/curl/curl-7.50.3/include/curl/)
+################################################################################
 ## PATHS, installation, packages
 ################################################################################
 
-include(ArangoDBInstall)
+if (MSVC)
+  # versioning
+  set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/Installation/Windows/version")
+  include(generate_product_version)
+endif()
 
-include(packages/packages)
+include(ArangoDBInstall)
+if (NOT(SKIP_PACKAGING))
+  include(packages/packages)
+endif()
 ################################################################################
 ## ERRORS FILE
 ################################################################################
@@ -890,6 +905,7 @@ list(INSERT SYSTEM_LIBRARIES 0
   ${ZLIB_LIBS}
   ${ICU_LIBS}
   ${OPENSSL_LIBRARIES}
+  libcurl
   ${BASE_LIBS}
   ${CMAKE_DL_LIBS}
   ${SYS_LIBS}

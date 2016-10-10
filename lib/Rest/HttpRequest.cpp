@@ -798,7 +798,7 @@ std::string const& HttpRequest::value(std::string const& key) const {
   return value(key, unused);
 }
 
-HttpRequest* HttpRequest::createFakeRequest(
+HttpRequest* HttpRequest::createHttpRequest(
     ContentType contentType, char const* body, int64_t contentLength,
     std::unordered_map<std::string, std::string> const& headers) {
   return new HttpRequest(contentType, body, contentLength, headers);

@@ -2155,17 +2155,26 @@ void ClusterInfo::loadCurrentDBServers() {
   AgencyCommResult cleaned = _agency.getValues(prefixTargetCleaned);
 
   if (result.successful()) {
-    velocypack::Slice currentDBServers =
+    velocypack::Slice currentDBServers;
+    velocypack::Slice failedDBServers;
+    velocypack::Slice cleanedDBServers;
+    
+    if (result.slice().length() > 0) {
+      currentDBServers =
         result.slice()[0].get(std::vector<std::string>(
             {AgencyComm::prefix(), "Current", "DBServers"}));
-    velocypack::Slice failedDBServers =
+    }
+    if (!failed.slice().isNone()) {
+      failedDBServers = 
         failed.slice()[0].get(std::vector<std::string>(
-            {AgencyComm::prefix(), "Target", "FailedServers"}));
-    velocypack::Slice cleanedDBServers =
+              {AgencyComm::prefix(), "Target", "FailedServers"}));
+    }
+    if (!cleaned.slice().isNone()) {
+      cleanedDBServers =
         cleaned.slice()[0].get(std::vector<std::string>(
-            {AgencyComm::prefix(), "Target", "CleanedOutServers"}));
-
-    if (currentDBServers.isObject()) {
+              {AgencyComm::prefix(), "Target", "CleanedOutServers"}));
+    }
+    if (currentDBServers.isObject() && failedDBServers.isObject()) {
       decltype(_DBServers) newDBServers;
 
       for (auto const& dbserver : VPackObjectIterator(currentDBServers)) {

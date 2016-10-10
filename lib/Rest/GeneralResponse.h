@@ -30,7 +30,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "GeneralRequest.h"
-#include "lib/Endpoint/Endpoint.h"
+#include "Endpoint/Endpoint.h"
 #include "Rest/CommonDefines.h"
 
 namespace arangodb {
@@ -97,6 +97,10 @@ class GeneralResponse {
   ResponseCode responseCode() const { return _responseCode; }
   void setResponseCode(ResponseCode responseCode) {
     _responseCode = responseCode;
+  }
+
+  void setHeaders(std::unordered_map<std::string, std::string>&& headers) {
+    _headers = std::move(headers);
   }
 
   std::unordered_map<std::string, std::string> headers() const {

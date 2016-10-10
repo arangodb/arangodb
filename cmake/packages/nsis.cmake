@@ -59,11 +59,6 @@ message(STATUS "RELATIVE_ARANGO_ICON: ${RELATIVE_ARANGO_ICON}")
 message(STATUS "ARANGO_IMG:  ${ARANGO_IMG}")
 message(STATUS "ARANGO_ICON: ${ARANGO_ICON}")
 
-# versioning
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${W_INSTALL_FILES}/version")
-
-include("${W_INSTALL_FILES}/version/generate_product_version.cmake")
-
 set(CPACK_ARANGODB_NSIS_DEFINES "
     !define BITS ${BITS}
     !define TRI_FRIENDLY_SVC_NAME '${ARANGODB_FRIENDLY_STRING}'

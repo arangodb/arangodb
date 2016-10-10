@@ -363,7 +363,7 @@ void Agent::sendAppendEntriesRPC() {
         arangodb::rest::RequestType::POST, path.str(),
         std::make_shared<std::string>(builder.toJson()), headerFields,
         std::make_shared<AgentCallback>(this, followerId, highest),
-        .5 * _config.minPing(), true);
+        0.7 * _config.minPing(), true);
       
       {
         MUTEX_LOCKER(mutexLocker, _ioLock);

@@ -1111,7 +1111,7 @@ static bool throwExceptionAfterBadSyncRequest(ClusterCommResult* res,
     std::string errorMessage;
     TRI_ASSERT(nullptr != res->result);
 
-    StringBuffer const& responseBodyBuf(res->result->getBody());
+    arangodb::basics::StringBuffer const& responseBodyBuf(res->result->getBody());
 
     // extract error number and message from response
     int errorNum = TRI_ERROR_NO_ERROR;

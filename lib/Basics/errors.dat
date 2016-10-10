@@ -342,6 +342,11 @@ SIMPLE_CLIENT_COULD_NOT_WRITE,2002,"could not write to server","Will be raised w
 SIMPLE_CLIENT_COULD_NOT_READ,2003,"could not read from server","Will be raised when the client could not read data."
 
 ################################################################################
+## Communicator errors
+################################################################################
+COMMUNICATOR_REQUEST_ABORTED,2100,"Request aborted", "Request was aborted."
+
+################################################################################
 ## Foxx Manager errors
 ################################################################################
 
