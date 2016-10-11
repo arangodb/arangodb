@@ -41,6 +41,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   RestAqlHandler(GeneralRequest*, GeneralResponse*, QueryRegistry*);
 
  public:
+  char const* name() const override final { return "RestAqlHandler"; }
   bool isDirect() const override;
   size_t queue() const override;
   status execute() override;

@@ -35,6 +35,7 @@ class RestShutdownHandler : public RestBaseHandler {
   explicit RestShutdownHandler(GeneralRequest*, GeneralResponse*);
 
  public:
+  char const* name() const override final { return "RestShutdownHandler"; }
   bool isDirect() const override;
   status execute() override;
 };

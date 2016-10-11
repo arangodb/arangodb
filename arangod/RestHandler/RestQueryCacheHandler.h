@@ -33,6 +33,7 @@ class RestQueryCacheHandler : public RestVocbaseBaseHandler {
   explicit RestQueryCacheHandler(GeneralRequest*, GeneralResponse*);
 
  public:
+  char const* name() const override final { return "RestQueryCacheHandler"; }
   bool isDirect() const override;
   status execute() override;
 

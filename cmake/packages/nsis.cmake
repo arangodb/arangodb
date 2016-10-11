@@ -70,6 +70,11 @@ set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${AR
 ################################################################################
 # hook to build the server package
 ################################################################################
+# other platforms link the file into the binary
+install(FILES ${ICU_DT}
+  DESTINATION "${INSTALL_ICU_DT_DEST}"
+  RENAME ${ICU_DT_DEST})
+
 add_custom_target(package-arongodb-server-nsis
   COMMAND ${CMAKE_COMMAND} .
   COMMAND ${CMAKE_CPACK_COMMAND} -G NSIS -C ${CMAKE_BUILD_TYPE}

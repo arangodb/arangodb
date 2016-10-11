@@ -31,6 +31,7 @@ class WorkMonitorHandler : public arangodb::RestBaseHandler {
   explicit WorkMonitorHandler(GeneralRequest*, GeneralResponse*);
 
  public:
+  char const* name() const override final { return "RestWorkMonitorHandler"; }
   bool isDirect() const override;
   status execute() override;
 };

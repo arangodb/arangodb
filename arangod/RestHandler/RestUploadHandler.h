@@ -37,6 +37,7 @@ class RestUploadHandler : public RestVocbaseBaseHandler {
   ~RestUploadHandler();
 
  public:
+  char const* name() const override final { return "RestUploadHandler"; }
   RestHandler::status execute();
 
   //////////////////////////////////////////////////////////////////////////////
