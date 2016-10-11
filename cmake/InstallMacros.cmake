@@ -137,3 +137,20 @@ else ()
     endif ()
   endmacro ()
 endif()
+
+macro(to_native_path sourceVarName)
+ 
+  if (MSVC)
+    string(REGEX REPLACE "/" "\\\\\\\\" myVar ${${sourceVarName}} )
+  else()
+    set(myVar "${${sourceVarName}}")
+  endif()
+
+  set("INC_${sourceVarName}" ${myVar})
+  
+get_cmake_property(_variableNames VARIABLES)
+foreach (_variableName ${_variableNames})
+    message(STATUS "${_variableName}=${${_variableName}}")
+endforeach()
+
+endmacro()
