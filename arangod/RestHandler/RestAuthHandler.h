@@ -43,6 +43,7 @@ class RestAuthHandler : public RestVocbaseBaseHandler {
   std::string generateJwt(std::string const&, std::string const&);
 
  public:
+  char const* name() const override final { return "RestAuthHandler"; }
   bool isDirect() const override;
   status execute() override;
 
