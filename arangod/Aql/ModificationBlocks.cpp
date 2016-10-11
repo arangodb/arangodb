@@ -290,26 +290,29 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
       errorCode = TRI_ERROR_NO_ERROR;
 
-      if (a.isObject()) {
-        // value is an object. now extract the _key attribute
-        key.clear();
-        errorCode = extractKey(a, key);
-      } else if (a.isString()) {
-        // value is a string
-        key = a.slice().copyString();
-      } else {
-        errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
-      }
+      if (!ep->_options.consultAqlWriteFilter ||
+          !_collection->getCollection()->skipForAqlWrite(a.slice())) {
+        if (a.isObject()) {
+          // value is an object. now extract the _key attribute
+          key.clear();
+          errorCode = extractKey(a, key);
+        } else if (a.isString()) {
+          // value is a string
+          key = a.slice().copyString();
+        } else {
+          errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
+        }
 
-      if (errorCode == TRI_ERROR_NO_ERROR) {
-        // no error. we expect to have a key
-        // create a slice for the key
-        keyBuilder.openObject();
-        keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
-        keyBuilder.close();
-      } else {
-        // We have an error, handle it
-        handleResult(errorCode, ep->_options.ignoreErrors);
+        if (errorCode == TRI_ERROR_NO_ERROR) {
+          // no error. we expect to have a key
+          // create a slice for the key
+          keyBuilder.openObject();
+          keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
+          keyBuilder.close();
+        } else {
+          // We have an error, handle it
+          handleResult(errorCode, ep->_options.ignoreErrors);
+        }
       }
     }
 
@@ -319,7 +322,8 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
     }
     VPackSlice toRemove = keyBuilder.slice();
 
-    if (!toRemove.isNone()) {
+    if (!toRemove.isNone() &&
+        !(toRemove.isArray() && toRemove.length() == 0)) {
       // all exceptions are caught in _trx->remove()
       OperationResult opRes = _trx->remove(_collection->name, toRemove, options);
       if (isMultiple) {
@@ -327,25 +331,33 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
         VPackSlice removedList = opRes.slice();
         TRI_ASSERT(removedList.isArray());
         if (producesOutput) {
-          for (auto const& it : VPackArrayIterator(removedList)) {
-            bool wasError = arangodb::basics::VelocyPackHelper::getBooleanValue(
-                it, "error", false);
-            errorCode = TRI_ERROR_NO_ERROR;
-            if (wasError) {
-              errorCode =
-                  arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-                      it, "errorNum", TRI_ERROR_NO_ERROR);
-            }
-            if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && _isDBServer &&
-                ignoreDocumentNotFound) {
-              // Ignore document not found on the DBserver:
+          auto iter = VPackArrayIterator(removedList);
+          for (size_t i = 0; i < n; ++i) {
+            AqlValue const& a = res->getValueReference(i, registerId);
+            if (!ep->_options.consultAqlWriteFilter ||
+                !_collection->getCollection()->skipForAqlWrite(a.slice())) {
+              TRI_ASSERT(iter.valid());
+              auto it = iter.value();
+              bool wasError = arangodb::basics::VelocyPackHelper::getBooleanValue(
+                  it, "error", false);
               errorCode = TRI_ERROR_NO_ERROR;
+              if (wasError) {
+                errorCode =
+                    arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+                        it, "errorNum", TRI_ERROR_NO_ERROR);
+              }
+              if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && _isDBServer &&
+                  ignoreDocumentNotFound) {
+                // Ignore document not found on the DBserver:
+                errorCode = TRI_ERROR_NO_ERROR;
+              }
+              if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
+                result->setValue(dstRow, _outRegOld,
+                                 AqlValue(it.get("old")));
+              }
+              handleResult(errorCode, ep->_options.ignoreErrors);
+              ++iter;
             }
-            if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
-              result->setValue(dstRow, _outRegOld,
-                               AqlValue(it.get("old")));
-            }
-            handleResult(errorCode, ep->_options.ignoreErrors);
             ++dstRow;
           }
         } else {
@@ -367,7 +379,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
       }
     } else {
       // Do not send request just increase the row
-      ++dstRow;
+      dstRow += n;
     }
     // done with a block
     // now free it already
