@@ -140,7 +140,7 @@ endif()
 
 macro(to_native_path sourceVarName)
   if (MSVC)
-    string(REGEX REPLACE "/" "\\\\\\\\" myVar ${${sourceVarName}} )
+    string(REGEX REPLACE "/" "\\\\\\\\" "myVar" "${${sourceVarName}}" )
   else()
     set(myVar "${${sourceVarName}}")
   endif()
