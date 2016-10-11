@@ -2014,7 +2014,10 @@
             }
           });
 
-          var percentagea = hitsa / totala * 100;
+          var percentagea = 0;
+          if (totala > 0) {
+            percentagea = hitsa / totala * 100;
+          }
 
           if (percentagea >= 95) {
             found = true;
@@ -2032,7 +2035,10 @@
             }
           });
 
-          var percentageb = hitsb / totalb * 100;
+          var percentageb = 0;
+          if (totalb > 0) {
+            percentageb = hitsb / totalb * 100;
+          }
 
           if (percentageb >= 95) {
             found = true;
@@ -2045,7 +2051,6 @@
 
       // check if result could be displayed as table
       if (!found) {
-        var maxAttributeCount = 0;
         var check = true;
         var length;
         var attributes = {};
@@ -2056,32 +2061,36 @@
 
         if (check) {
           _.each(result, function (obj) {
-            length = _.keys(obj).length;
-
-            if (length > maxAttributeCount) {
-              maxAttributeCount = length;
+            if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) {
+              // not a document and not suitable for tabluar display
+              return;
             }
 
+            length = _.keys(obj).length;
+
             _.each(obj, function (value, key) {
-              if (attributes[key]) {
-                attributes[key] = attributes[key] + 1;
+              if (attributes.hasOwnProperty(key)) {
+                ++attributes[key];
               } else {
                 attributes[key] = 1;
               }
             });
           });
 
-          var rate;
+          var rate = 0;
 
           _.each(attributes, function (val, key) {
-            rate = (val / result.length) * 100;
-
             if (check !== false) {
+              rate = (val / result.length) * 100;
               if (rate <= 95) {
                 check = false;
               }
             }
           });
+
+          if (rate <= 95) {
+            check = false;
+          }
         }
 
         if (check) {
