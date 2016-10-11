@@ -38,6 +38,8 @@ class RestAdminLogHandler : public RestBaseHandler {
   explicit RestAdminLogHandler(GeneralRequest*, GeneralResponse*);
 
  public:
+  char const* name() const override final { return "RestAdminLogHandler"; }
+
   bool isDirect() const override;
 
   //////////////////////////////////////////////////////////////////////////////

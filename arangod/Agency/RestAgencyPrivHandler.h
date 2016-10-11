@@ -39,6 +39,7 @@ class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
   RestAgencyPrivHandler(GeneralRequest*, GeneralResponse*, consensus::Agent*);
 
  public:
+  char const* name() const override final { return "RestAgencyPrivHandler"; }
   bool isDirect() const override;
   status execute() override;
 

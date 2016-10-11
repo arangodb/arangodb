@@ -43,6 +43,8 @@ class RestJobHandler : public RestBaseHandler {
   RestJobHandler(GeneralRequest*, GeneralResponse*, rest::AsyncJobManager*);
 
  public:
+  char const* name() const override final { return "RestJobHandler"; }
+
   bool isDirect() const override;
 
   //////////////////////////////////////////////////////////////////////////////
