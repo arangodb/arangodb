@@ -1,0 +1,64 @@
+!CHAPTER SmartGraphs
+
+__This feature is available in the Enterprise Edition.__
+
+This chapter describes the [smart-graph](../README.md) module.
+It enables you to manage graphs on scale, it will give a vast performance benefit for all graphs sharded in an ArangoDB Cluster.
+On a single server this feature is pointless, hence it is only available in cluster mode.
+In terms of querying there is no difference between smart and general graphs.
+They are a transparent replacement for one another.
+So for querying the graph please refer to [AQL Graph Operations](../../AQL/Graphs/index.html) and [Graph Functions](GeneralGraphs/Functions.md) sections.
+The optimizer is clever enough to identify if we are on a smart graph or not.
+
+The difference is only in the management section: creating and modifying the underlying collections of the graph.
+For a detailed API reference please refer to [Smart Graph Management](SmartGraphs/Management.md).
+
+!SUBSUBSECTION Benefits of SmartGraphs
+
+The idea behind SmartGraphs is to extract domain knowledge from the graph and shard the data based on this knowledge to increase local connectivity of the graph.
+With this knowledge queries can be executed in almost identical time compared to a single-server execution.
+This performance speedup is achieved as we can reduce the network overhead to a minimum with this knowledge.
+However even if the graph has no good local connectivity using a SmartGraph will still be more performant compared to a GeneralGraph.
+
+__TODO Add Performance Chart? Reference to a Perf. BlogPost?__
+
+!SUBSUBSECTION Getting started
+
+First of all SmartGraphs *cannot use existing collections*, when switching to SmartGraph from an existing dataset you have to reimport the data into a fresh SmartGraph.
+This switch can be easily achieved with [arangodump](../Administration/Arangodump.md) and [arangorestore](../Administration/Arangorestore.md).
+The only thing you have to change in this pipeline is that you create the new collections with the SmartGraph before starting arangorestore.
+
+* Create a graph
+  In comparision to general graph we have to add more options when creating the graph. The two options `smartGraphAttribute` and `numberOfShards` are required and cannot be modifed later. 
+
+
+    @startDocuBlockInline smartGraphCreateGraphHowTo1
+      arangosh> var graph_module = require("@arangodb/smart-graph");
+      arangosh> var graph = graph_module._create("myGraph", [], [], {smartGraphAttribute: "region", numberOfShards: 9});
+      arangosh> graph;
+      [ SmartGraph myGraph EdgeDefinitions: [ ] VertexCollections: [ ] ]
+    @endDocuBlock smartGraphCreateGraphHowTo1
+
+
+* Add some vertex collections
+  This is again identical to general graph. The module will setup correct sharding for all these collections. Note: The collections have to be new.
+
+
+    @startDocuBlockInline smartGraphCreateGraphHowTo2
+      arangosh> graph._addVertexCollection("shop");
+      arangosh> graph._addVertexCollection("customer");
+      arangosh> graph._addVertexCollection("pet");
+      arangosh> graph;
+      [ SmartGraph myGraph EdgeDefinitions: [ ] VertexCollections: [ "shop", "customer", "pet" ] ]
+    @endDocuBlock smartGraphCreateGraphHowTo2
+
+
+* Define relations on the Graph
+
+
+    @startDocuBlockInline smartGraphCreateGraphHowTo3
+      arangosh> var rel = graph_module._relation("isCustomer", ["shop"], ["customer"]);
+      arangosh> graph._extendEdgeDefinitions(rel);
+      arangosh> graph;
+      [ SmartGraph myGraph EdgeDefinitions: [   "isCustomer: [shop] -> [customer]" ] VertexCollections: [ "pet" ] ]
+    @endDocuBlock smartGraphCreateGraphHowTo3
