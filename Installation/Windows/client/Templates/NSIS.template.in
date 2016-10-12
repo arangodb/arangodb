@@ -638,14 +638,14 @@ Section "-Core installation"
 
   ;Create shortcuts
   CreateDirectory "$SMPROGRAMS\$STARTMENU_FOLDER"
-  CreateShortCut  "$SMPROGRAMS\$STARTMENU_FOLDER\Arango Shell.lnk"  "$INSTDIR\usr\bin\arangosh.exe"  '' '$INSTDIR\resources\Icons\arangodb.ico' '0' SW_SHOWMAXIMIZED
+  CreateShortCut  "$SMPROGRAMS\$STARTMENU_FOLDER\Arango Shell.lnk"  "$INSTDIR\usr\bin\arangosh.exe"  '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
   CreateShortCut  "$SMPROGRAMS\$STARTMENU_FOLDER\Uninstall.lnk"     "$INSTDIR\Uninstall.exe"
 
   ;Read a value from an InstallOptions INI file
 
   StrCmp "0" "$INSTALL_DESKTOP" noDesktopIcon
-  CreateShortCut  "$DESKTOP\Arango Shell.lnk"  "$INSTDIR\usr\bin\arangosh.exe"  '' '$INSTDIR\resources\Icons\arangodb.ico' '0' SW_SHOWMAXIMIZED
-  CreateShortCut  "$DESKTOP\Arango Management Interface.lnk"  "http://127.0.0.1:8529"  '' '$INSTDIR\resources\Icons\arangodb.ico' '0' SW_SHOWMAXIMIZED
+  CreateShortCut  "$DESKTOP\Arango Shell.lnk"  "$INSTDIR\usr\bin\arangosh.exe"  '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
+  CreateShortCut  "$DESKTOP\Arango Management Interface.lnk"  "http://127.0.0.1:8529"  '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
   noDesktopIcon:
 
   ; Write special uninstall registry entries
