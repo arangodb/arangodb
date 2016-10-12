@@ -47,7 +47,7 @@ int main(int argc, char* argv[]) {
   context.installHup();
 
   std::shared_ptr<options::ProgramOptions> options(new options::ProgramOptions(
-      argv[0], "Usage: arangobench [<options>]", "For more information use:"));
+      argv[0], "Usage: arangobench [<options>]", "For more information use:", BIN_DIRECTORY));
 
   ApplicationServer server(options, BIN_DIRECTORY);
 
