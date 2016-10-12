@@ -37,6 +37,7 @@
           <% } %>
           <% if (scaleProperties.coordsPending && scaling === true) { %>
             <span class="warning"><span> <%= scaleProperties.coordsPending %> </span><i class="fa fa-circle-o-notch fa-spin"></i></span>
+            <button class="abortClusterPlan button-navbar button-default">Abort</button>
           <% } %>
         </div>
       </div>
@@ -112,6 +113,7 @@
             <% } %>
             <% if (scaleProperties.dbsPending && scaling === true) { %>
               <span class="warning"><span> <%= scaleProperties.dbsPending %> </span><i class="fa fa-circle-o-notch fa-spin"></i></span>
+              <button class="abortClusterPlan button-navbar button-default">Abort</button>
             <% } %>
           </div>
 
