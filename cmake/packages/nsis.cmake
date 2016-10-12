@@ -47,7 +47,7 @@ install (FILES "${SSL_EAY_RELEASE_DLL}" DESTINATION "${CMAKE_INSTALL_BINDIR}/" C
 set (ICON_PATH "${W_INSTALL_FILES}/Icons/")
 install(DIRECTORY "${ICON_PATH}" DESTINATION "resources")
 
-file(TO_NATIVE_PATH "resources/Icons/arangodb.ico" RELATIVE_ARANGO_ICON)
+file(TO_NATIVE_PATH "resources/arangodb.ico" RELATIVE_ARANGO_ICON)
 file(TO_NATIVE_PATH "${ICON_PATH}arangodb.bmp" ARANGO_IMG)
 file(TO_NATIVE_PATH "${ICON_PATH}/arangodb.ico" ARANGO_ICON)
 

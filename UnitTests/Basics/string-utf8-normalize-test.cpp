@@ -36,7 +36,7 @@
 
 #if _WIN32
 #include "Basics/win-utils.h"
-#define FIX_ICU_ENV     TRI_FixIcuDataEnv()
+#define FIX_ICU_ENV     TRI_FixIcuDataEnv(SBIN_DIRECTORY)
 #else
 #define FIX_ICU_ENV
 #endif

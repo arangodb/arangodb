@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
   std::string name = context.binaryName();
 
   std::shared_ptr<options::ProgramOptions> options(new options::ProgramOptions(
-      argv[0], "Usage: " + name + " [<options>]", "For more information use:"));
+      argv[0], "Usage: " + name + " [<options>]", "For more information use:", BIN_DIRECTORY));
 
   ApplicationServer server(options, BIN_DIRECTORY);
 
