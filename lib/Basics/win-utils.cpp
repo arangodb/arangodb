@@ -312,12 +312,12 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags) {
 /// @brief fixes the ICU_DATA environment path
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FixIcuDataEnv() {
+void TRI_FixIcuDataEnv(binaryPath) {
   if (getenv("ICU_DATA") != nullptr) {
     return;
   }
 
-  std::string p = TRI_LocateInstallDirectory();
+  std::string p = TRI_LocateInstallDirectory(binaryPath);
 
   if (!p.empty()) {
     std::string e = "ICU_DATA=" + p + ICU_DESTINATION_DIRECTORY;

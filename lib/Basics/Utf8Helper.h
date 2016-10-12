@@ -52,9 +52,9 @@ class Utf8Helper {
   ///     This parameter can instead be an ICU style C locale (e.g. "en_US")
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit Utf8Helper(std::string const& lang);
+  explicit Utf8Helper(std::string const& lang, const char* binaryPath);
 
-  Utf8Helper();
+  Utf8Helper(const char* binaryPath);
 
   ~Utf8Helper();
 
@@ -91,7 +91,7 @@ class Utf8Helper {
   ///     This parameter can instead be an ICU style C locale (e.g. "en_US")
   //////////////////////////////////////////////////////////////////////////////
 
-  bool setCollatorLanguage(std::string const& lang);
+  bool setCollatorLanguage(std::string const& lang, const char* binaryPath);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get collator language

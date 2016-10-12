@@ -31,6 +31,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include "Basics/hashes.h"
+#include "Basics/directories.h"
 #include "Basics/Utf8Helper.h"
 
 #if _WIN32
@@ -51,7 +52,7 @@
 struct CHashesSetup {
   CHashesSetup () {
     FIX_ICU_ENV;
-    if (!arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollatorLanguage("")) {
+    if (!arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollatorLanguage("", SBIN_DIRECTORY)) {
       std::string msg =
         "cannot initialize ICU; please make sure ICU*dat is available; "
         "the variable ICU_DATA='";
