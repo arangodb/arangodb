@@ -2124,11 +2124,11 @@ exports._renameCollection = function (oldName, newName) {
 // //////////////////////////////////////////////////////////////////////////////
 
 exports._list = function () {
-  return db._query(`FOR x IN _graphs FILTER !x.isSmart RETURN x._key`).toArray();
+  return db._query(`FOR x IN _graphs RETURN x._key`).toArray();
 };
 
 exports._listObjects = function () {
-  return db._query(`FOR x IN _graphs FILTER !x.isSmart RETURN x`).toArray();
+  return db._query(`FOR x IN _graphs RETURN x`).toArray();
 };
 
 // //////////////////////////////////////////////////////////////////////////////

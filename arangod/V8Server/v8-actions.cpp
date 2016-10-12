@@ -1332,6 +1332,18 @@ static void JS_SendChunk(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+
+static void JS_IsEnterprise(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+#ifndef USE_ENTERPRISE
+  TRI_V8_RETURN(v8::False(isolate));
+#else
+  TRI_V8_RETURN(v8::True(isolate));
+#endif
+  TRI_V8_TRY_CATCH_END
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 actions function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
@@ -1364,6 +1376,11 @@ void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                                JS_RequestParts, true);
   TRI_AddGlobalFunctionVocbase(
       isolate, context, TRI_V8_ASCII_STRING("SYS_SEND_CHUNK"), JS_SendChunk);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, context,
+      TRI_V8_ASCII_STRING("SYS_IS_ENTERPRISE"),
+      JS_IsEnterprise);
+ 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
