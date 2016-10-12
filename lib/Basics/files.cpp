@@ -2325,10 +2325,10 @@ void TRI_SetUserTempPath(std::string const& path) { TempPath = path; }
 
 #if _WIN32
 
-std::string TRI_LocateInstallDirectory() {
-  return TRI_LocateBinaryPath(nullptr) +
-         std::string(1, TRI_DIR_SEPARATOR_CHAR) + ".." +
-         std::string(1, TRI_DIR_SEPARATOR_CHAR);
+std::string TRI_LocateInstallDirectory(const char *binaryPath) {
+  std::string thisPath = TRI_LocateBinaryPath(null);
+  return TRI_GetInstallRoot(thisPath, binaryPath) + 
+    std::string(1, TRI_DIR_SEPARATOR_CHAR);
 }
 
 #endif
@@ -2341,14 +2341,14 @@ std::string TRI_LocateInstallDirectory() {
 
 #if _WIN32
 
-char* TRI_LocateConfigDirectory() {
+char* TRI_LocateConfigDirectory(const char* binaryPath) {
   char* v = LocateConfigDirectoryEnv();
 
   if (v != nullptr) {
     return v;
   }
 
-  std::string r = TRI_LocateInstallDirectory();
+  std::string r = TRI_LocateInstallDirectory(binaryPath);
 
   r += _SYSCONFDIR_;
 
@@ -2359,7 +2359,7 @@ char* TRI_LocateConfigDirectory() {
 
 #elif defined(_SYSCONFDIR_)
 
-char* TRI_LocateConfigDirectory() {
+char* TRI_LocateConfigDirectory(const char* binaryPath) {
   char* v = LocateConfigDirectoryEnv();
 
   if (v != nullptr) {

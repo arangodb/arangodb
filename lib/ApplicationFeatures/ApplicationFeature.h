@@ -102,7 +102,8 @@ class ApplicationFeature {
 
   // load options from somewhere. this method will only be called for enabled
   // features
-  virtual void loadOptions(std::shared_ptr<options::ProgramOptions>);
+  virtual void loadOptions(std::shared_ptr<options::ProgramOptions>,
+                           const char* binaryPath);
 
   // validate the feature's options. this method will only be called for active
   // features, after the ApplicationServer has determined which features should

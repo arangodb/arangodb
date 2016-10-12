@@ -105,7 +105,7 @@ static int runServer(int argc, char** argv) {
   auto options = std::make_shared<options::ProgramOptions>(
       argv[0], "Usage: " + name + " [<options>]", "For more information use:");
 
-  application_features::ApplicationServer server(options);
+  application_features::ApplicationServer server(options, SBIN_DIRECTORY);
 
   std::vector<std::string> nonServerFeatures = {
       "Action",        "Affinity",

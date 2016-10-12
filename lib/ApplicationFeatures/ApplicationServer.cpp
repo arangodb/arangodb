@@ -34,8 +34,9 @@ using namespace arangodb::options;
 
 ApplicationServer* ApplicationServer::server = nullptr;
 
-ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options)
-    : _options(options), _stopping(false) {
+ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options,
+    const char *binaryPath)
+    : _options(options), _stopping(false), _binaryPath(binaryPath) {
   if (ApplicationServer::server != nullptr) {
     LOG(ERR) << "ApplicationServer initialized twice";
   }
@@ -325,7 +326,7 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
   for (auto it = _orderedFeatures.begin(); it != _orderedFeatures.end(); ++it) {
     if ((*it)->isEnabled()) {
       LOG_TOPIC(TRACE, Logger::STARTUP) << (*it)->name() << "::loadOptions";
-      (*it)->loadOptions(_options);
+      (*it)->loadOptions(_options, _binaryPath);
     }
   }
 }
