@@ -120,7 +120,7 @@ void VelocyPackCursor::dump(VPackBuilder& builder) {
 
     VPackOptions const* oldOptions = builder.options;
 
-    builder.options = _result.context->getVPackOptions();
+    builder.options = _result.context->getVPackOptionsForDump();
 
     builder.add("result", VPackValue(VPackValueType::Array));
     for (size_t i = 0; i < n; ++i) {
