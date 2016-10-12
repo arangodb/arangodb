@@ -195,6 +195,16 @@
   }
 }
 
+%default {
+  background-color: $c-white;
+
+  &:hover,
+  &:focus {
+    background-color: $c-neutral;
+    color: $c-white;
+  }
+}
+
 %icon-neutral {
   color: $c-neutral;
 
