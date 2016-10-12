@@ -34,12 +34,8 @@
 
 #include <openssl/ssl.h>
 
-#include "ApplicationFeatures/ApplicationServer.h"
-
 #include "Basics/socket-utils.h"
 #include "Ssl/ssl-helper.h"
-
-#include "Ssl/SslServerFeature.h"
 
 #ifdef _WIN32
 #define STR_ERROR()                                                  \
@@ -58,7 +54,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
-using namespace arangodb::application_features;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new client connection
@@ -112,62 +107,44 @@ SslClientConnection::~SslClientConnection() {
 
 void SslClientConnection::init(uint64_t sslProtocol) {
   TRI_invalidatesocket(&_socket);
-  long ctx_options = SSL_OP_ALL;
 
   SSL_METHOD SSL_CONST* meth = nullptr;
-  fprintf(stderr, "xxxxxxxxx%d\n", sslProtocol);
+
   switch (protocol_e(sslProtocol)) {
 #ifndef OPENSSL_NO_SSL2
     case SSL_V2:
-      fprintf(stderr, "1 snatoehusnaothue\n");
       meth = SSLv2_method();
       break;
 #endif
 
 #ifndef OPENSSL_NO_SSL3_METHOD
     case SSL_V3:
-      fprintf(stderr, "2 snatoehusnaothue\n");
       meth = SSLv3_method();
       break;
 #endif
 
     case SSL_V23:
-      fprintf(stderr, "3 snatoehusnaothue\n");
       meth = SSLv23_method();
       break;
 
     case TLS_V1:
-      fprintf(stderr, "4 snatoehusnaothue\n");
       meth = TLSv1_method();
-      break;
-
-    case TLS_V12:
-      fprintf(stderr, "5 snatoehusnaothue\n");
-      meth = TLSv1_2_method();
       break;
 
     default:
       // fallback is to use tlsv1
-      fprintf(stderr, "6 snatoehusnaothue\n");
-      //meth = /// SSLv23_client_method();//
-        // TLS_client_method();
-      meth = TLSv1_2_method();
-      break;
+      meth = TLSv1_method();
   }
-  ctx_options &= ~SSL_OP_NETSCAPE_REUSE_CIPHER_CHANGE_BUG;
-  ctx_options |= SSL_OP_NO_SSLv3;
-  fprintf(stderr, "xxxxx snatoehusnaothue\n");
+
   _ctx = SSL_CTX_new(meth);
 
   if (_ctx != nullptr) {
     SSL_CTX_set_cipher_list(_ctx, "ALL");
-    SSL_CTX_set_options(_ctx, ctx_options);
 
     bool sslCache = true;
     SSL_CTX_set_session_cache_mode(
         _ctx, sslCache ? SSL_SESS_CACHE_SERVER : SSL_SESS_CACHE_OFF);
   }
-  SSL_CTX_set_ecdh_auto(_ctx, 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -204,34 +181,7 @@ bool SslClientConnection::connectSocket() {
     _isConnected = false;
     return false;
   }
-  /*
-#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
-  SslServerFeature* sslServer = ApplicationServer::getFeature<SslServerFeature>("SslServer");
-  if (sslServer) {
-    int sslEcdhNid;
-    EC_KEY* ecdhKey;
-    sslEcdhNid = OBJ_sn2nid(sslServer->_ecdhCurve.c_str());
 
-    if (sslEcdhNid == 0) {
-      LOG(FATAL) << "SSL error: " << lastSSLError()
-                 << " Unknown curve name: " << sslServer->_ecdhCurve;
-      FATAL_ERROR_EXIT();
-    }
-
-    // https://www.openssl.org/docs/manmaster/apps/ecparam.html
-    ecdhKey = EC_KEY_new_by_curve_name(sslEcdhNid);
-    if (ecdhKey == nullptr) {
-      LOG(FATAL) << "SSL error: " << lastSSLError()
-                 << " Unable to create curve by name: " << sslServer->_ecdhCurve;
-      FATAL_ERROR_EXIT();
-    }
-
-    SSL_CTX_set_tmp_ecdh(_ssl, ecdhKey);
-    SSL_CTX_set_options(_ssl, SSL_OP_SINGLE_ECDH_USE);
-    EC_KEY_free(ecdhKey);
-  }
-#endif
-  */
   if (SSL_set_fd(_ssl, (int)TRI_get_fd_or_handle_of_socket(_socket)) != 1) {
     _errorDetails = std::string("SSL: failed to create context ") +
                     ERR_error_string(ERR_get_error(), nullptr);
@@ -243,6 +193,7 @@ bool SslClientConnection::connectSocket() {
   SSL_set_verify(_ssl, SSL_VERIFY_NONE, nullptr);
 
   ERR_clear_error();
+
   int ret = SSL_connect(_ssl);
 
   if (ret != 1) {
