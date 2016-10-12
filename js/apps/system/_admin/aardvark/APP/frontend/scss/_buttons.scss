@@ -58,6 +58,10 @@
   @extend %info;
 }
 
+.button-navbar {
+  margin-top: -5px;
+}
+
 [class^='button-']:disabled,
 button.disabled,
 [class*=' button-']:disabled {
@@ -84,6 +88,12 @@ button.disabled,
 .button-close {
   @extend %btn;
   @extend %neutral;
+}
+
+.button-default {
+  @extend %btn;
+  @extend %default;
+  color: $c-black;
 }
 
 .addButton {
