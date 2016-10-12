@@ -2,7 +2,12 @@
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/InstallMacros.cmake)
 set(CMAKE_INSTALL_FULL_SBINDIR     "${CMAKE_INSTALL_FULL_BINDIR}")
 set(W_INSTALL_FILES                "${PROJECT_SOURCE_DIR}/Installation/Windows/")
-set(CPACK_PACKAGE_NAME             "ArangoDB")
+if (${USE_ENTERPRISE})
+  set(CPACK_PACKAGE_NAME             "ArangoDB3e")
+else()
+  set(CPACK_PACKAGE_NAME             "ArangoDB3")
+endif()
+
 set(CPACK_NSIS_DISPLAY_NAME,       ${ARANGODB_DISPLAY_NAME})
 set(CPACK_NSIS_HELP_LINK           ${ARANGODB_HELP_LINK})
 set(CPACK_NSIS_URL_INFO_ABOUT      ${ARANGODB_URL_INFO_ABOUT})
