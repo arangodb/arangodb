@@ -638,13 +638,13 @@ Section "-Core installation"
 
   ;Create shortcuts
   CreateDirectory "$SMPROGRAMS\$STARTMENU_FOLDER"
-  CreateShortCut  "$SMPROGRAMS\$STARTMENU_FOLDER\Arango Shell.lnk"  "$INSTDIR\usr\bin\arangosh.exe"  '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
+  CreateShortCut  "$SMPROGRAMS\$STARTMENU_FOLDER\Arango Shell.lnk"  "$INSTDIR\@CMAKE_BIN_DIR@\arangosh.exe"  '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
   CreateShortCut  "$SMPROGRAMS\$STARTMENU_FOLDER\Uninstall.lnk"     "$INSTDIR\Uninstall.exe"
 
   ;Read a value from an InstallOptions INI file
 
   StrCmp "0" "$INSTALL_DESKTOP" noDesktopIcon
-  CreateShortCut  "$DESKTOP\Arango Shell.lnk"  "$INSTDIR\usr\bin\arangosh.exe"  '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
+  CreateShortCut  "$DESKTOP\Arango Shell.lnk"  "$INSTDIR\@CMAKE_BIN_DIR@\arangosh.exe"  '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
   CreateShortCut  "$DESKTOP\Arango Management Interface.lnk"  "http://127.0.0.1:8529"  '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
   noDesktopIcon:
 
@@ -674,7 +674,7 @@ Function .onInstSuccess
 FunctionEnd
 
 Section "-Add to path"
-  Push $INSTDIR\usr\bin
+  Push $INSTDIR\@CMAKE_BIN_DIR@
   StrCmp "@CPACK_NSIS_MODIFY_PATH@" "ON" 0 doNotAddToPath
   StrCmp $DO_NOT_ADD_TO_PATH "1" doNotAddToPath 0
     Call AddToPath
@@ -981,7 +981,7 @@ Section "Uninstall"
   DeleteRegKey HKCU "Software\@CPACK_NSIS_PACKAGE_NAME@"
   DeleteRegKey HKLM "${TRI_UNINSTALL_REG_PATH}"
 
-  Push $INSTDIR\usr\bin
+  Push $INSTDIR\@CMAKE_BIN_DIR@
   StrCmp $DO_NOT_ADD_TO_PATH_ "1" doNotRemoveFromPath 0
     Call un.RemoveFromPath
   doNotRemoveFromPath:
