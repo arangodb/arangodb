@@ -25,6 +25,7 @@
 #include "Utf8Helper.h"
 #include "Logger/Logger.h"
 #include "Basics/tri-strings.h"
+#include "Basics/directories.h"
 #include "unicode/normalizer2.h"
 #include "unicode/brkiter.h"
 #include "unicode/ucasemap.h"
@@ -38,13 +39,14 @@
 
 using namespace arangodb::basics;
 
-Utf8Helper Utf8Helper::DefaultUtf8Helper;
+Utf8Helper Utf8Helper::DefaultUtf8Helper(SBIN_DIRECTORY);
 
-Utf8Helper::Utf8Helper(std::string const& lang) : _coll(nullptr) {
-  setCollatorLanguage(lang);
+Utf8Helper::Utf8Helper(std::string const& lang, char const* binaryPath)
+     : _coll(nullptr) {
+  setCollatorLanguage(lang, binaryPath);
 }
 
-Utf8Helper::Utf8Helper() : Utf8Helper("") {}
+Utf8Helper::Utf8Helper(char const* binaryPath) : Utf8Helper("", binaryPath) {}
 
 Utf8Helper::~Utf8Helper() {
   if (_coll) {
@@ -127,9 +129,9 @@ int Utf8Helper::compareUtf16(uint16_t const* left, size_t leftLength,
                         (const UChar*)right, (int32_t)rightLength);
 }
 
-bool Utf8Helper::setCollatorLanguage(std::string const& lang) {
+bool Utf8Helper::setCollatorLanguage(std::string const& lang, char const* binaryPath) {
 #ifdef _WIN32
-  TRI_FixIcuDataEnv();
+  TRI_FixIcuDataEnv(binaryPath);
 #endif
 
   UErrorCode status = U_ZERO_ERROR;

@@ -216,6 +216,7 @@ class ApplicationServer {
     _progressReports.emplace_back(reporter);
   }
 
+  const char* getBinaryPath() { return _binaryPath;}
  private:
   // look up a feature and return a pointer to it. may be nullptr
   static ApplicationFeature* lookupFeature(std::string const&);

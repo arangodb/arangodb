@@ -32,10 +32,11 @@
 
 #include "Basics/tri-strings.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/directories.h"
 
 #if _WIN32
 #include "Basics/win-utils.h"
-#define FIX_ICU_ENV     TRI_FixIcuDataEnv()
+#define FIX_ICU_ENV     TRI_FixIcuDataEnv(SBIN_DIRECTORY)
 #else
 #define FIX_ICU_ENV
 #endif
@@ -55,7 +56,7 @@
 struct CNormalizeStringTestSetup {
   CNormalizeStringTestSetup () {
     FIX_ICU_ENV;
-    if (!arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollatorLanguage("")) {
+    if (!arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollatorLanguage("", SBIN_DIRECTORY)) {
       std::string msg =
         "cannot initialize ICU; please make sure ICU*dat is available; "
         "the variable ICU_DATA='";
