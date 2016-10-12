@@ -20,44 +20,25 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_UTILS_H
-#define ARANGODB_PREGEL_UTILS_H 1
+#ifndef ARANGODB_PREGEL_GRAPH_STATE_H
+#define ARANGODB_PREGEL_GRAPH_STATE_H 1
 
 #include "Basics/Common.h"
 
-
-struct TRI_vocbase_t;
 namespace arangodb {
-    
 namespace pregel {
+  
     
-  class Utils {
-    Utils() = delete;
-    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief carry graph data for a worker job
+////////////////////////////////////////////////////////////////////////////////
+  class GraphState {
   public:
-    // constants
-    static std::string const apiPrefix;
+      GraphState() {}
       
-    static std::string const nextGSSPath;
-    static std::string const finishedGSSPath;
-    static std::string const messagesPath;
-    static std::string const writeResultsPath;
-    
-    static std::string const executionNumberKey;
-    static std::string const vertexCollectionKey;
-    static std::string const vertexShardsListKey;
-    static std::string const edgeShardsListKey;
-    static std::string const resultShardKey;
-    static std::string const algorithmKey;
-    static std::string const coordinatorIdKey;
-    
-    static std::string const globalSuperstepKey;
-    static std::string const messagesKey;
-    static std::string const senderKey;
-    static std::string const doneKey;
       
-      static std::string baseUrl(std::string dbName);
-
+  private:
+      
   };
 }
 }

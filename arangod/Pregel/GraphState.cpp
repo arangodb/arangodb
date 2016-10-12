@@ -20,21 +20,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_PREGEL_HANDLER_H
-#define ARANGOD_REST_HANDLER_PREGEL_HANDLER_H 1
+#include "GraphState.h"
 
-#include "RestHandler/RestVocbaseBaseHandler.h"
-
-namespace arangodb {
-  class RestPregelHandler : public arangodb::RestVocbaseBaseHandler {
-  public:
-    explicit RestPregelHandler(GeneralRequest*, GeneralResponse*);
-    
-  public:
-    bool isDirect() const override { return false; }
-    status execute() override;
-    char const* name() const override {return "Pregel Rest Handler";}
-  };
-}
-
-#endif
+using namespace arangodb;
+using namespace arangodb::pregel;

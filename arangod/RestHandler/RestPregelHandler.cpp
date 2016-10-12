@@ -75,7 +75,7 @@ RestHandler::status RestPregelHandler::execute() {
         if (exe) {
           exe->finishedGlobalStep(body);
         } else {
-          LOG(ERR) << "Conductor not found\n";
+          LOG(ERR) << "Conductor not found: " << executionNumber;
         }
       } else if (suffix[0] == "nextGSS") {
         LOG(INFO) << "nextGSS";

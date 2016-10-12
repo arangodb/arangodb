@@ -20,21 +20,23 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_PREGEL_HANDLER_H
-#define ARANGOD_REST_HANDLER_PREGEL_HANDLER_H 1
+#include "WorkerContext.h"
+#include "InMessageCache.h"
 
-#include "RestHandler/RestVocbaseBaseHandler.h"
+using namespace arangodb;
+using namespace arangodb::pregel;
 
-namespace arangodb {
-  class RestPregelHandler : public arangodb::RestVocbaseBaseHandler {
-  public:
-    explicit RestPregelHandler(GeneralRequest*, GeneralResponse*);
-    
-  public:
-    bool isDirect() const override { return false; }
-    status execute() override;
-    char const* name() const override {return "Pregel Rest Handler";}
-  };
+WorkerContext::WorkerContext() {
+    _readCache = new InMessageCache();
+    _writeCache = new InMessageCache();
 }
 
-#endif
+WorkerContext::~WorkerContext() {
+    LOG(ERR) << "dafuq";
+}
+
+void WorkerContext::swapIncomingCaches() {
+    InMessageCache *t = _readCache;
+    _readCache = _writeCache;
+    _writeCache = t;
+}

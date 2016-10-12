@@ -46,6 +46,6 @@ std::string const Utils::messagesKey = "msgs";
 std::string const Utils::senderKey = "sender";
 std::string const Utils::doneKey = "done";
 
-std::string Utils::baseUrl(TRI_vocbase_t *vocbase) {
-  return  "/_db/" + basics::StringUtils::urlEncode(vocbase->name()) + Utils::apiPrefix;
+std::string Utils::baseUrl(std::string dbName) {
+  return  "/_db/" + basics::StringUtils::urlEncode(dbName) + Utils::apiPrefix;
 }

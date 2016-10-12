@@ -36,26 +36,33 @@
 namespace arangodb {
 namespace pregel {
 
+    class InMessageCache;
+    class WorkerContext;
+    
 /* In the longer run, maybe write optimized implementations for certain use cases. For example threaded
  processing */
 class OutMessageCache {
 public:
-  OutMessageCache(CollectionID &vertexCollection, std::string baseUrl);
+  OutMessageCache(std::shared_ptr<WorkerContext> context);
   ~OutMessageCache();
   
   void addMessage(std::string key, VPackSlice slice);
   //void addMessages(VPackArrayIterator messages);
-  void getMessages(ShardID const& shardId, VPackBuilder &outBuilder);
     
-    void sendMessages();
-  void clean();
-
+  void sendMessages();
+  void clear();
+    
+protected:
+    void getMessages(ShardID const& shardId, VPackBuilder &outBuilder);
   
 private:
   // two stage map: shard -> vertice -> message
   std::unordered_map<std::string, std::unordered_map<std::string, VPackBuilder*>> _map;
   ClusterInfo *_ci;
-  CollectionID _collection;
+    std::shared_ptr<WorkerContext> _ctx;
+  std::shared_ptr<LogicalCollection> _collInfo;
+  std::string _baseUrl;
+  
   size_t _numVertices;
 };
 

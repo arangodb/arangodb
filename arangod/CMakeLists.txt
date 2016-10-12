@@ -376,6 +376,8 @@ add_executable(${BIN_ARANGOD}
   Pregel/OutMessageCache.cpp
   Pregel/Vertex.cpp
   Pregel/Worker.cpp
+  Pregel/WorkerContext.cpp
+  Pregel/GraphState.cpp
   Pregel/Utils.cpp
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}
 )

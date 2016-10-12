@@ -70,7 +70,7 @@ void Conductor::start() {
   std::unordered_map<ServerID, std::vector<ShardID>> vertexServerMap, edgeServerMap;
   resolveWorkerServers(vertexServerMap, edgeServerMap);
   
-  std::string const baseUrl = Utils::baseUrl(_vocbaseGuard.vocbase());
+  std::string const baseUrl = Utils::baseUrl(_vocbaseGuard.vocbase()->name());
   
   _globalSuperstep = 0;
   _state = ExecutionState::RUNNING;
@@ -118,7 +118,7 @@ void Conductor::start() {
 }
 
 void Conductor::finishedGlobalStep(VPackSlice &data) {
-  MUTEX_LOCKER(locker, _finishedGSSMutex);
+  MUTEX_LOCKER(mutexLocker, _finishedGSSMutex);
 
   LOG(INFO) << "Conductor received finished callback";
   if (_state != ExecutionState::RUNNING) {
@@ -136,7 +136,7 @@ void Conductor::finishedGlobalStep(VPackSlice &data) {
     LOG(INFO) << "Finished gss " << _globalSuperstep;
     _globalSuperstep++;
     
-    std::string baseUrl = Utils::baseUrl(_vocbaseGuard.vocbase());
+    std::string baseUrl = Utils::baseUrl(_vocbaseGuard.vocbase()->name());
     if (_doneCount == _dbServerCount ||  _globalSuperstep >= 25) {
       LOG(INFO) << "Done. We did " << _globalSuperstep << " rounds";
       VPackBuilder b;

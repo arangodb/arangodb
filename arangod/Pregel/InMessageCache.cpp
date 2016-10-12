@@ -40,7 +40,7 @@ InMessageCache::~InMessageCache() {
   _messages.clear();
 }
 
-void InMessageCache::clean() {
+void InMessageCache::clear() {
   for (auto const &it : _messages) {
     it.second->clear();
   }

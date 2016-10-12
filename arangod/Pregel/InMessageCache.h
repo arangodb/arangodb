@@ -36,21 +36,22 @@ namespace arangodb {
   //class Mutex;
   
 namespace pregel {
-
+    class WorkerContext;
 /* In the longer run, maybe write optimized implementations for certain use cases. For example threaded
  processing */
 class InMessageCache {
 public:
-  InMessageCache() {}
+    InMessageCache(){}//std::shared_ptr<WorkerContext> context
   ~InMessageCache();
   
   void addMessages(VPackArrayIterator messages);
   VPackSlice getMessages(ShardID const& shardId);
-  void clean();
+  void clear();
   
 private:
   std::unordered_map<std::string, VPackBuilder*> _messages;
   Mutex writeMutex;
+  //std::shared_ptr<WorkerContext> _ctx;
 };
 
 }}

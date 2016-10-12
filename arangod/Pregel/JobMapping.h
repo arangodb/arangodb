@@ -23,7 +23,7 @@
 #ifndef ARANGODB_PREGEL_JOBMAPPING_H
 #define ARANGODB_PREGEL_JOBMAPPING_H 1
 
-#include <map>
+#include <unordered_map>
 
 namespace arangodb {
 namespace pregel {
@@ -40,16 +40,18 @@ namespace pregel {
       return Instance;
     };
     
-    int createExecutionNumber();
-    void addExecution(Conductor* const exec, int executionNumber);
+    unsigned int createExecutionNumber();
+    void addExecution(Conductor* const exec, unsigned int executionNumber);
     Conductor* conductor(int32_t executionNumber);
     
-    void addWorker(Worker* const worker, int executionNumber);
-    Worker* worker(int executionNumber);
+    void addWorker(Worker* const worker, unsigned int executionNumber);
+    Worker* worker(unsigned int executionNumber);
     
+      void cleanup(unsigned int executionNumber);
+      
   private:
-    std::map<int, Conductor*> _conductors;
-    std::map<int, Worker*> _workers;
+    std::unordered_map<unsigned int, Conductor*> _conductors;
+    std::unordered_map<unsigned int, Worker*> _workers;
 
     JobMapping() {};
     JobMapping(const JobMapping &c) {};

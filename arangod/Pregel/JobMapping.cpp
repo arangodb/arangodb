@@ -26,12 +26,12 @@
 
 using namespace arangodb::pregel;
 
-static int _exeI = 0;
-int JobMapping::createExecutionNumber() {
+static unsigned int _exeI = 0;
+unsigned int JobMapping::createExecutionNumber() {
   return ++_exeI;
 }
 
-void JobMapping::addExecution(Conductor* const exec, int executionNumber) {
+void JobMapping::addExecution(Conductor* const exec, unsigned int executionNumber) {
   //_executions.
   _conductors[executionNumber] = exec;
 }
@@ -42,12 +42,25 @@ Conductor* JobMapping::conductor(int executionNumber) {
   else return nullptr;
 }
 
-void JobMapping::addWorker(Worker* const worker, int executionNumber) {
+void JobMapping::addWorker(Worker* const worker, unsigned int executionNumber) {
   _workers[executionNumber] = worker;
 }
 
-Worker* JobMapping::worker(int executionNumber) {
+Worker* JobMapping::worker(unsigned int executionNumber) {
   auto it = _workers.find(executionNumber);
   if (it != _workers.end()) return it->second;
   else return nullptr;
+}
+
+void JobMapping::cleanup(unsigned int executionNumber) {
+    auto cit = _conductors.find(executionNumber);
+    if (cit != _conductors.end()) {
+        delete(cit->second);
+        _conductors.erase(executionNumber);
+    }
+    auto wit = _workers.find(executionNumber);
+    if (wit != _workers.end()) {
+        delete(wit->second);
+        _workers.erase(executionNumber);
+    }
 }

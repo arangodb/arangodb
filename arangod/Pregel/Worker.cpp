@@ -23,6 +23,7 @@
 #include "Worker.h"
 #include "Vertex.h"
 #include "Utils.h"
+#include "WorkerContext.h"
 #include "InMessageCache.h"
 #include "OutMessageCache.h"
 
@@ -53,7 +54,7 @@ using namespace arangodb::pregel;
 
 Worker::Worker(unsigned int executionNumber,
                TRI_vocbase_t *vocbase,
-               VPackSlice s) : _vocbase(vocbase), _executionNumber(executionNumber) {
+               VPackSlice s) : _vocbase(vocbase), _ctx(new WorkerContext) {
 
   //VPackSlice algo = s.get("algo");
   
@@ -64,36 +65,34 @@ Worker::Worker(unsigned int executionNumber,
   if (!(coordID.isString() && vertexShardIDs.length() == 1 && edgeShardIDs.length() == 1)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Only one shard per collection supported");
   }
-  _coordinatorId = coordID.copyString();
-  _vertexCollectionName = s.get(Utils::vertexCollectionKey).copyString();// readable name of collection
-  _vertexShardID = vertexShardIDs.at(0).copyString();
-  _edgeShardID = edgeShardIDs.at(0).copyString();
-  LOG(INFO) << "Received collection " << _vertexCollectionName;
-  LOG(INFO) << "starting worker with (" << _vertexShardID << ", " << _edgeShardID << ")";
-  
-  _cache1 = new InMessageCache();
-  _cache2 = new InMessageCache();
-  _currentCache = _cache1;
+    _ctx->_executionNumber = executionNumber;
+    _ctx->_coordinatorId = coordID.copyString();
+    _ctx->_database = vocbase->name();
+  _ctx->_vertexCollectionName = s.get(Utils::vertexCollectionKey).copyString();// readable name of collection
+  _ctx->_vertexShardID = vertexShardIDs.at(0).copyString();
+  _ctx->_edgeShardID = edgeShardIDs.at(0).copyString();
+  LOG(INFO) << "Received collection " << _ctx->_vertexCollectionName;
+  LOG(INFO) << "starting worker with (" << _ctx->_vertexShardID << ", " << _ctx->_edgeShardID << ")";
   
   SingleCollectionTransaction *trx = new SingleCollectionTransaction(StandaloneTransactionContext::Create(_vocbase),
-                                  _vertexShardID, TRI_TRANSACTION_READ);
+                                  _ctx->_vertexShardID, TRI_TRANSACTION_READ);
   int res = trx->begin();
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up vertices '%s'",
-                                  _vertexShardID.c_str());
+                                  _ctx->_vertexShardID.c_str());
     return;
   }
   // resolve planId
-  _vertexCollectionPlanId = trx->documentCollection()->planId_as_string();
+   _ctx->_vertexCollectionPlanId = trx->documentCollection()->planId_as_string();
   
-  OperationResult result = trx->all(_vertexShardID, 0, UINT64_MAX, OperationOptions());
+  OperationResult result = trx->all( _ctx->_vertexShardID, 0, UINT64_MAX, OperationOptions());
   // Commit or abort.
   res = trx->finish(result.code);
   if (!result.successful()) {
-    THROW_ARANGO_EXCEPTION_FORMAT(result.code, "while looking up graph '%s'", _vertexCollectionName.c_str());
+    THROW_ARANGO_EXCEPTION_FORMAT(result.code, "while looking up graph '%s'",  _ctx->_vertexCollectionName.c_str());
   }
   if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up graph '%s'", _vertexCollectionName.c_str());
+    THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up graph '%s'",  _ctx->_vertexCollectionName.c_str());
   }
   VPackSlice vertices = result.slice();
   if (vertices.isExternal()) {
@@ -104,14 +103,14 @@ Worker::Worker(unsigned int executionNumber,
   // ======= Look up edges
   
   trx = new SingleCollectionTransaction(StandaloneTransactionContext::Create(_vocbase),
-                                        _edgeShardID, TRI_TRANSACTION_READ);
+                                         _ctx->_edgeShardID, TRI_TRANSACTION_READ);
   res = trx->begin();
   if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up edges '%s'", _edgeShardID.c_str());
+    THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up edges '%s'",  _ctx->_edgeShardID.c_str());
   }
   _transactions.push_back(trx);
   
-  auto info = std::make_unique<arangodb::traverser::EdgeCollectionInfo>(trx, _edgeShardID, TRI_EDGE_OUT,
+  auto info = std::make_unique<arangodb::traverser::EdgeCollectionInfo>(trx,  _ctx->_edgeShardID, TRI_EDGE_OUT,
                                                                         StaticStrings::FromString, 0);
   
   size_t edgeCount = 0;
@@ -127,13 +126,13 @@ Worker::Worker(unsigned int executionNumber,
     std::unique_ptr<Vertex> v (new Vertex(it));
     _vertices[vertexId] = v.get();
     
-    std::string key = _vertexCollectionName+"/"+vertexId;// TODO geht das schneller
+    std::string key =  _ctx->_vertexCollectionName+"/"+vertexId;// TODO geht das schneller
     LOG(INFO) << "Retrieving edge " << key;
     
     auto cursor = info->getEdges(key);
     if (cursor->failed()) {
       THROW_ARANGO_EXCEPTION_FORMAT(cursor->code, "while looking up edges '%s' from %s",
-                                    key.c_str(), _edgeShardID.c_str());
+                                    key.c_str(),  _ctx->_edgeShardID.c_str());
     }
     
     std::vector<TRI_doc_mptr_t*> result;
@@ -161,7 +160,7 @@ Worker::Worker(unsigned int executionNumber,
   }
   trx->finish(res);
   if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_FORMAT(res, "after looking up edges '%s'", _edgeShardID.c_str());
+    THROW_ARANGO_EXCEPTION_FORMAT(res, "after looking up edges '%s'",  _ctx->_edgeShardID.c_str());
   }
   
   LOG(INFO) << "Resolved " << _vertices.size() << " vertices";
@@ -169,6 +168,7 @@ Worker::Worker(unsigned int executionNumber,
 }
 
 Worker::~Worker() {
+  LOG(INFO) << "worker deconstructor";
   for (auto const &it : _vertices) {
     delete(it.second);
   }
@@ -179,8 +179,9 @@ Worker::~Worker() {
   _transactions.clear();
 }
 
+/// @brief Setup next superstep
 void Worker::nextGlobalStep(VPackSlice data) {
-  LOG(INFO) << "Called next global step: " << data.toString();
+  LOG(INFO) << "Called next global step: " << data.toJson();
   
   // TODO do some work?
   VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
@@ -188,22 +189,23 @@ void Worker::nextGlobalStep(VPackSlice data) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,
                                   "Invalid gss in %s:%d", __FILE__, __LINE__);
   }
-  uint64_t gss = gssSlice.getUInt();
-  _globalSuperstep = gss;
-  InMessageCache *inCache = _currentCache;
-  if (_currentCache == _cache1) {
-    _currentCache = _cache2;
-  } else {
-    _currentCache = _cache1;
-  }
+    unsigned int gss = (unsigned int) gssSlice.getUInt();
+    unsigned int expected = _ctx->_globalSuperstep + 1;
+    if (gss != 0 && expected != gss) {
+        THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER, "Seems like this worker missed a gss, expected %u. Data = %s ",
+                                      expected, data.toJson().c_str());
+    }
+  _ctx->_globalSuperstep = gss;
+  _ctx->readableIncomingCache()->clear();
+  _ctx->swapIncomingCaches();// write cache becomes the readable cache
   
-  std::unique_ptr<rest::Job> job(new WorkerJob(this, inCache));
+  std::unique_ptr<rest::Job> job(new WorkerJob(this, _ctx));
   DispatcherFeature::DISPATCHER->addJob(job, false);
-  LOG(INFO) << "Worker started new gss computation: " << gss;
+  LOG(INFO) << "Worker started new gss: " << gss;
 }
 
 void Worker::receivedMessages(VPackSlice data) {
-  MUTEX_LOCKER(locker, _messagesMutex);
+  LOG(INFO) << "Received message";
   
   VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
   VPackSlice messageSlice = data.get(Utils::messagesKey);
@@ -211,11 +213,15 @@ void Worker::receivedMessages(VPackSlice data) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Bad parameters in body");
   }
   int64_t gss = gssSlice.getInt();
-  if (gss != _globalSuperstep+1) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Superstep out of sync");
-  }
-  
-  _currentCache->addMessages(VPackArrayIterator(messageSlice));
+    if (gss == _ctx->_globalSuperstep) {
+        _ctx->writeableIncomingCache()->addMessages(VPackArrayIterator(messageSlice));
+    } else if (gss == _ctx->_globalSuperstep - 1) {
+        LOG(WARN) << "Should not receive messages from last global superstep, during computation phase";
+        _ctx->_readCache->addMessages(VPackArrayIterator(messageSlice));
+    } else {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Superstep out of sync");
+    }
+    
   LOG(INFO) << "Worker received messages\n";
 }
 
@@ -260,16 +266,7 @@ void Worker::writeResults() {
 
 // ========== WorkerJob ==========
 
-static void waitForResults(std::vector<ClusterCommRequest> &requests) {
-  for (auto const& req : requests) {
-    auto& res = req.result;
-    if (res.status == CL_COMM_RECEIVED) {
-      LOG(INFO) << res.answer->payload().toJson();
-    }
-  }
-}
-
-WorkerJob::WorkerJob(Worker *worker, InMessageCache *inCache) : Job("Pregel Job"), _worker(worker), _inCache(inCache) {
+WorkerJob::WorkerJob(Worker *worker, std::shared_ptr<WorkerContext> ctx) : Job("Pregel Job"), _worker(worker), _ctx(ctx) {
 }
 
 void WorkerJob::work() {
@@ -278,9 +275,9 @@ void WorkerJob::work() {
   }
   LOG(INFO) << "Worker job started\n";
   // TODO cache this
-  OutMessageCache outCache(_worker->_vertexCollectionPlanId);
+  OutMessageCache outCache(_ctx);
 
-  unsigned int gss = _worker->_globalSuperstep;
+  unsigned int gss = _ctx->globalSuperstep();
   bool isDone = true;
 
   if (gss == 0) {
@@ -290,7 +287,7 @@ void WorkerJob::work() {
       Vertex *v = it.second;
       std::string key = v->_data.get(StaticStrings::KeyString).copyString();
       
-      VPackSlice messages = _inCache->getMessages(key);
+      VPackSlice messages = _ctx->readableIncomingCache()->getMessages(key);
       v->compute(gss, MessageIterator(messages), &outCache);
       bool active = v->state() == VertexActivationState::ACTIVE;
       if (!active) LOG(INFO) << "vertex has halted";
@@ -298,7 +295,7 @@ void WorkerJob::work() {
     }
   } else {
     for (auto &it : _worker->_activationMap) {
-      VPackSlice messages = _inCache->getMessages(it.first);
+      VPackSlice messages = _ctx->readableIncomingCache()->getMessages(it.first);
       MessageIterator iterator(messages);
       if (iterator.size() > 0 || it.second) {
         isDone = false;
@@ -309,48 +306,16 @@ void WorkerJob::work() {
       }
     }
   }
-  LOG(INFO) << "Worker job computations done";
+  LOG(INFO) << "Finished executing vertex programs.";
 
   if (_canceled) {
     return;
   }
   
   // ==================== send messages to other shards ====================
-  ClusterComm *cc =  ClusterComm::instance();
-  ClusterInfo *ci = ClusterInfo::instance();
-  std::string baseUrl = Utils::baseUrl(_worker->_vocbase);
   
   if (!isDone) {
-    LOG(INFO) << "Sending messages to shards";
-    std::shared_ptr<std::vector<ShardID>> shards = ci->getShardList(_worker->_vertexCollectionPlanId);
-    LOG(INFO) << "Seeing shards: " << shards->size();
-
-    std::vector<ClusterCommRequest> requests;
-    for (auto const &it : *shards) {
-      
-      VPackBuilder messages;
-      outCache.getMessages(it, messages);
-      if (_worker->_vertexShardID == it) {
-        LOG(INFO) << "Worker: Getting messages for myself";
-        _worker->_currentCache->addMessages(VPackArrayIterator(messages.slice()));
-      } else {
-        LOG(INFO) << "Worker: Sending messages for shard " << it;
-
-        VPackBuilder package;
-        package.openObject();
-        package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-        package.add(Utils::executionNumberKey, VPackValue(_worker->_executionNumber));
-        package.add(Utils::globalSuperstepKey, VPackValue(gss+1));
-        package.add(Utils::messagesKey, messages.slice());
-        package.close();
-        // add a request
-        auto body = std::make_shared<std::string const>(package.toJson());
-        requests.emplace_back("shard:" + it, rest::RequestType::POST, baseUrl + Utils::messagesPath, body);
-      }
-    }
-    size_t nrDone = 0;
-    cc->performRequests(requests, 120, nrDone, LogTopic("Pregel message transfer"));
-    waitForResults(requests);
+      outCache.sendMessages();
   } else {
     LOG(INFO) << "Worker job has nothing more to process\n";
   }
@@ -359,18 +324,22 @@ void WorkerJob::work() {
   VPackBuilder package;
   package.openObject();
   package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-  package.add(Utils::executionNumberKey, VPackValue(_worker->_executionNumber));
+  package.add(Utils::executionNumberKey, VPackValue(_ctx->executionNumber()));
+  package.add(Utils::globalSuperstepKey, VPackValue(gss));
   if (!isDone) package.add(Utils::doneKey, VPackValue(isDone));
   package.close();
   
-  LOG(INFO) << "Sending finishedGSS to coordinator: " << _worker->_coordinatorId;
+  LOG(INFO) << "Sending finishedGSS to coordinator: " << _ctx->coordinatorId();
   // TODO handle communication failures?
+    
+    ClusterComm *cc =  ClusterComm::instance();
+  std::string baseUrl = Utils::baseUrl(_worker->_vocbase->name());
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
   auto headers =
   std::make_unique<std::unordered_map<std::string, std::string>>();
   auto body = std::make_shared<std::string const>(package.toJson());
   cc->asyncRequest("", coordinatorTransactionID,
-                   "server:"+_worker->_coordinatorId,
+                   "server:" + _ctx->coordinatorId(),
                    rest::RequestType::POST,
                    baseUrl + Utils::finishedGSSPath,
                    body, headers, nullptr, 90.0);

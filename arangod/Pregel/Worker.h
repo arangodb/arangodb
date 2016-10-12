@@ -26,7 +26,6 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "VocBase/vocbase.h"
-#include "Scheduler/Task.h"
 #include "Cluster/ClusterInfo.h"
 #include "Dispatcher/Job.h"
 
@@ -34,6 +33,7 @@ namespace arangodb {
     class SingleCollectionTransaction;
 namespace pregel {
   class Vertex;
+    class WorkerContext;
   class InMessageCache;
   class OutMessageCache;
   
@@ -50,19 +50,11 @@ namespace pregel {
   private:
     /// @brief guard to make sure the database is not dropped while used by us
     TRI_vocbase_t* _vocbase;
-    Mutex _messagesMutex;
-    const unsigned int _executionNumber;
-      
-    unsigned int _globalSuperstep;
-    std::string _coordinatorId;
-    std::string _vertexCollectionName, _vertexCollectionPlanId;
-    ShardID _vertexShardID, _edgeShardID;
+    //Mutex _messagesMutex; TODO figure this out
+      std::shared_ptr<WorkerContext> _ctx;
     
     std::unordered_map<std::string, Vertex*> _vertices;
     std::map<std::string, bool> _activationMap;
-    
-    InMessageCache *_cache1, *_cache2;
-    InMessageCache *_currentCache;
     std::vector<SingleCollectionTransaction*> _transactions;
   };
   
@@ -71,7 +63,7 @@ namespace pregel {
     WorkerJob& operator=(WorkerJob const&) = delete;
     
   public:
-    WorkerJob(Worker *worker, InMessageCache *inCache);
+    WorkerJob(Worker *worker, std::shared_ptr<WorkerContext> ctx);
     
     void work() override;
     bool cancel() override;
@@ -81,7 +73,7 @@ namespace pregel {
   private:
     std::atomic<bool> _canceled;
     Worker *_worker;
-    InMessageCache *_inCache;
+      std::shared_ptr<WorkerContext> _ctx;
   };
 }
 }
