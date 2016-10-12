@@ -12,7 +12,7 @@ endif()
 # Global macros ----------------------------------------------------------------
 macro (generate_root_config name)
   FILE(READ ${PROJECT_SOURCE_DIR}/etc/arangodb3/${name}.conf.in FileContent)
-  STRING(REPLACE "@PKGDATADIR@" "@ROOTDIR@/share/arangodb3"
+  STRING(REPLACE "@PKGDATADIR@" "@ROOTDIR@$/{CMAKE_INSTALL_DATAROOTDIR_ARANGO}"
     FileContent "${FileContent}") 
   STRING(REPLACE "@LOCALSTATEDIR@" "@ROOTDIR@/var"
     FileContent "${FileContent}")
