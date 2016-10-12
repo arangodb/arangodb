@@ -65,6 +65,82 @@ describe ArangoDB do
     end
 
 ################################################################################
+## create and using cursors, continuation
+################################################################################
+
+    context "handling a cursor with continuation:" do
+      before do
+        @cn = "users"
+        ArangoDB.drop_collection(@cn)
+        @cid = ArangoDB.create_collection(@cn, false)
+
+        (0...2001).each{|i|
+          ArangoDB.post("/_api/document?collection=#{@cid}", :body => "{ \"_key\" : \"test#{i}\" }")
+        }
+      end
+
+      after do
+        ArangoDB.drop_collection(@cn)
+      end
+
+      it "creates a cursor" do
+        cmd = api
+        body = "{ \"query\" : \"FOR u IN #{@cn} RETURN u\", \"count\" : true }"
+        doc = ArangoDB.log_post("#{prefix}-create-batchsize", cmd, :body => body)
+        
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['id'].should be_kind_of(String)
+        doc.parsed_response['id'].should match(@reId)
+        doc.parsed_response['hasMore'].should eq(true)
+        doc.parsed_response['count'].should eq(2001)
+        doc.parsed_response['result'].length.should eq(1000)
+        doc.parsed_response['cached'].should eq(false)
+
+        id = doc.parsed_response['id']
+
+        cmd = api + "/#{id}"
+        doc = ArangoDB.log_put("#{prefix}-create-batchsize", cmd)
+        
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['id'].should be_kind_of(String)
+        doc.parsed_response['id'].should match(@reId)
+        doc.parsed_response['id'].should eq(id)
+        doc.parsed_response['hasMore'].should eq(true)
+        doc.parsed_response['count'].should eq(2001)
+        doc.parsed_response['result'].length.should eq(1000)
+        doc.parsed_response['cached'].should eq(false)
+
+        cmd = api + "/#{id}"
+        doc = ArangoDB.log_put("#{prefix}-create-batchsize", cmd)
+        
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['id'].should be_nil
+        doc.parsed_response['hasMore'].should eq(false)
+        doc.parsed_response['count'].should eq(2001)
+        doc.parsed_response['result'].length.should eq(1)
+        doc.parsed_response['cached'].should eq(false)
+
+        cmd = api + "/#{id}"
+        doc = ArangoDB.log_put("#{prefix}-create-batchsize", cmd)
+        
+        doc.code.should eq(404)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['errorNum'].should eq(1600)
+        doc.parsed_response['code'].should eq(404)
+      end
+    end
+
+################################################################################
 ## create and using cursors
 ################################################################################
 

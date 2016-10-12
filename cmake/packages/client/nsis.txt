@@ -60,6 +60,7 @@ set(SSL_EAY_RELEASE_DLL @SSL_EAY_RELEASE_DLL@)
 
 set(ICU_DT @ICU_DT@)
 set(ICU_DT_DEST @ICU_DT_DEST@)
+set(INSTALL_ICU_DT_DEST @INSTALL_ICU_DT_DEST@)
 
 ################################################################################
 # Get the final values for cpack:
@@ -171,7 +172,7 @@ install_readme(README.windows README.windows.txt)
 
 # other platforms link the file into the binary
 install(FILES ${ICU_DT}
-  DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/arangodb3"
+  DESTINATION "${INSTALL_ICU_DT_DEST}"
   RENAME ${ICU_DT_DEST})
 
 include(CPack)

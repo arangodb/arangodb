@@ -32,6 +32,7 @@
 
 #include <iomanip>
 
+#include "Basics/directories.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 
@@ -74,7 +75,7 @@ static string hexedump (const string &s) {
 struct StringUtilsSetup {
   StringUtilsSetup () {
     FIX_ICU_ENV;
-    if (!arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollatorLanguage("")) {
+    if (!arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollatorLanguage("", SBIN_DIRECTORY)) {
       std::string msg =
         "cannot initialize ICU; please make sure ICU*dat is available; "
         "the variable ICU_DATA='";

@@ -33,7 +33,8 @@ using namespace arangodb::options;
 
 LanguageFeature::LanguageFeature(
     application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "Language") {
+    : ApplicationFeature(server, "Language"),
+      _binaryPath(server->getBinaryPath()){
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
@@ -46,7 +47,7 @@ void LanguageFeature::collectOptions(
 }
 
 void LanguageFeature::prepare() {
-  if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_language)) {
+  if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_language, _binaryPath)) {
     std::string msg =
         "cannot initialize ICU; please make sure ICU*dat is available; "
         "the variable ICU_DATA='";

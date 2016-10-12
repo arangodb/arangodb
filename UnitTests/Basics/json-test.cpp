@@ -31,6 +31,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include "Basics/json.h"
+#include "Basics/directories.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
 
@@ -58,7 +59,7 @@
 struct CJsonSetup {
   CJsonSetup () {
     FIX_ICU_ENV;
-    if (!arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollatorLanguage("")) {
+    if (!arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollatorLanguage("", SBIN_DIRECTORY)) {
       std::string msg =
         "cannot initialize ICU; please make sure ICU*dat is available; "
         "the variable ICU_DATA='";
