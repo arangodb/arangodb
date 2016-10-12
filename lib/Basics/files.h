@@ -343,7 +343,7 @@ std::string TRI_LocateInstallDirectory();
 /// @brief locate the configuration directory
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_LocateConfigDirectory();
+char* TRI_LocateConfigDirectory(const char * binaryPath);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the address of the null buffer

@@ -40,6 +40,7 @@ class RestSimpleHandler : public RestVocbaseBaseHandler {
   RestSimpleHandler(GeneralRequest*, GeneralResponse*, aql::QueryRegistry*);
 
  public:
+  char const* name() const override final { return "RestSimpleHandler"; }
   status execute() override final;
   bool cancel() override;
 

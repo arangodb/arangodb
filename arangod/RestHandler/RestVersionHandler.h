@@ -32,6 +32,7 @@ class RestVersionHandler : public arangodb::RestBaseHandler {
   explicit RestVersionHandler(GeneralRequest*, GeneralResponse*);
 
  public:
+  char const* name() const override final { return "RestVersionHandler"; }
   bool isDirect() const override;
   status execute() override;
 };

@@ -62,6 +62,7 @@ class PathHandler : public RestHandler {
   PathHandler(GeneralRequest*, GeneralResponse*, Options const*);
 
  public:
+  char const* name() const override final { return "PathHandler"; }
   bool isDirect() const override { return true; }
   status execute() override;
   void handleError(const basics::Exception&) override;

@@ -47,7 +47,7 @@ int main(int argc, char* argv[]) {
   std::shared_ptr<options::ProgramOptions> options(new options::ProgramOptions(
       argv[0], "Usage: arangorestore [<options>]", "For more information use:"));
 
-  ApplicationServer server(options);
+  ApplicationServer server(options, BIN_DIRECTORY);
 
   int ret;
 

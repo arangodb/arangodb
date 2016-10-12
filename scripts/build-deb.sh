@@ -14,6 +14,7 @@ cd ${DIR}/..
     --buildDir build-deb \
     --targetDir /var/tmp/ \
     --jemalloc \
+    --noopt \
     $@
 
 cd ${DIR}/..
