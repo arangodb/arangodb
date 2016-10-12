@@ -63,8 +63,9 @@ void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new BooleanParameter(&_checkConfiguration));
 }
 
-void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options) {
-  loadConfigFile(options, _progname);
+void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options,
+                                const char* binaryPath) {
+  loadConfigFile(options, _progname, binaryPath);
 
   if (_checkConfiguration) {
     exit(EXIT_SUCCESS);
@@ -72,7 +73,8 @@ void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
-                                   std::string const& progname) {
+                                   std::string const& progname,
+                                   const char* binaryPath) {
   if (StringUtils::tolower(_file) == "none") {
     LOG_TOPIC(DEBUG, Logger::CONFIG) << "use no config file at all";
     return;
@@ -151,7 +153,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
 
           if (!FileUtils::exists(filename)) {
             filename =
-              FileUtils::buildFilename(FileUtils::configDirectory(), basename);
+              FileUtils::buildFilename(FileUtils::configDirectory(binaryPath), basename);
 
             LOG_TOPIC(DEBUG, Logger::CONFIG) << "checking '" << filename << "'";
 

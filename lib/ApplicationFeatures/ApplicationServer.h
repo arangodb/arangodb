@@ -162,7 +162,8 @@ class ApplicationServer {
   static void forceDisableFeatures(std::vector<std::string> const&);
 
  public:
-  explicit ApplicationServer(std::shared_ptr<options::ProgramOptions>);
+  explicit ApplicationServer(std::shared_ptr<options::ProgramOptions>,
+                             const char *binaryPath);
 
   ~ApplicationServer();
 
@@ -303,6 +304,9 @@ class ApplicationServer {
 
   // help section displayed
   std::string _helpSection;
+
+  // the install directory of this program:
+  const char* _binaryPath;
 };
 }
 }

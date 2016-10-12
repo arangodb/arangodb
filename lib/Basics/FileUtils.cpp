@@ -592,8 +592,8 @@ std::string homeDirectory() {
   return result;
 }
 
-std::string configDirectory() {
-  char* dir = TRI_LocateConfigDirectory();
+std::string configDirectory(const char* binaryPath) {
+  char* dir = TRI_LocateConfigDirectory(binaryPath);
 
   if (dir == nullptr) {
     return currentDirectory();

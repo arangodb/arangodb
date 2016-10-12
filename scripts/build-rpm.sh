@@ -13,6 +13,7 @@ cd ${DIR}/..
     --buildDir build-rpm \
     --targetDir /var/tmp/ \
     --jemalloc \
+    --noopt \
     $@
 
 cd ${DIR}/..
