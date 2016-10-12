@@ -32,7 +32,7 @@
 using namespace arangodb;
 using namespace arangodb::pregel;
 
-OutMessageCache::OutMessageCache(CollectionID &vertexCollection) : _collection(vertexCollection) {
+OutMessageCache::OutMessageCache(CollectionID &vertexCollection, std::string baseUrl) : _collection(vertexCollection) {
   _ci = ClusterInfo::instance();
   
   auto shardMap = _ci->getShardList(vertexCollection);
@@ -72,10 +72,10 @@ void OutMessageCache::addMessage(std::string key, VPackSlice slice) {
   int res = _ci->getResponsibleShard(_collection, keyDoc.slice(), true,
                                      responsibleShard, usesDefaultShardingAttributes);
   if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
+    THROW_ARANGO_EXCEPTION_MESSAGE(res, "OutMessageCache could not resolve the responsible shard");
   }
   TRI_ASSERT(usesDefaultShardingAttributes);// should be true anyway
-  
+    
   //std::unordered_map<std::string, VPackBuilder*> vertexMap =;
   auto it = _map[responsibleShard].find(key);
   if (it != _map[responsibleShard].end()) {// more than one message
@@ -96,54 +96,17 @@ void OutMessageCache::addMessage(std::string key, VPackSlice slice) {
     b.release();
   }
 }
-/*
-void OutMessageCache::addMessages(VPackArrayIterator incomingMessages) {
-  
-  //unordered_map<string, vector<VPackSlice>> messageBucket;
-  //VPackSlice messages = data.get(Utils::messagesKey);
-  for (auto const &it : incomingMessages) {
-    std::string vertexId = it.get(StaticStrings::ToString).copyString();
-    
-    auto vmsg = _messages.find(vertexId);
-    if (vmsg != _messages.end()) {
-      
-      // if no combiner
-      // vmsg->add(it.slice())
-      
-      // TODO do not hardcode combiner
-      int64_t old = vmsg->second->slice().get("value").getInt();
-      int64_t nw = it.get("value").getInt();
-      if (nw < old) {
-        vmsg->second->clear();
-        vmsg->second->add(it);
-      }
-    } else {
-      // assuming we have a combiner
-      std::unique_ptr<VPackBuilder> b(new VPackBuilder());
-      b->add(it);
-      _messages[vertexId] = b.get();
-      b.release();
-      
-      // if no combiner
-      // VPackBuilder *arr = new VPackBuilder(it);
-      // arr->openArray();
-      // arr->add(it)
-      // _messages[vertexId] = arr;
-    }
-  }
-}*/
 
 void OutMessageCache::getMessages(ShardID const& shardId, VPackBuilder &outBuilder) {
   auto shardIt = _map.find(shardId);
+  outBuilder.openArray();
   if (shardIt != _map.end()) {
     //auto vertices = *shardIt;
-    outBuilder.openArray();
     for (auto messagesPair : shardIt->second) {
       outBuilder.add(VPackArrayIterator(messagesPair.second->slice()));      
     }
-    outBuilder.close();
     //return ArrayIterator(vmsg->second->slice())
-  
   }
+  outBuilder.close();
   //else return VPackSlice();
 }

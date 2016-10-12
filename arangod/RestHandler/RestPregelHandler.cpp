@@ -42,72 +42,76 @@ RestPregelHandler::RestPregelHandler(GeneralRequest* request, GeneralResponse* r
 : RestVocbaseBaseHandler(request, response) {}
 
 RestHandler::status RestPregelHandler::execute() {
-  LOG(INFO) << "Received request\n";
-  
-  bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-  parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
-  VPackSlice body(parsedBody->start());// never nullptr
-  
-  if (!parseSuccess || !body.isObject()) {
-    LOG(ERR) << "Bad request body\n";
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_NOT_IMPLEMENTED, "illegal request for /_api/pregel");
-  } else if (_request->requestType() == rest::RequestType::POST) {
+  try {    
+    bool parseSuccess = true;
+    std::shared_ptr<VPackBuilder> parsedBody =
+    parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
+    VPackSlice body(parsedBody->start());// never nullptr
     
-    std::vector<std::string> const& suffix = _request->suffix();
-    VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
-    if (!sExecutionNum.isSmallInt() && !sExecutionNum.isInt()) {
-      LOG(ERR) << "Invalid execution number";
-      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-      return status::DONE;
-    }
-    
-    int executionNumber = sExecutionNum.getInt();
+    if (!parseSuccess || !body.isObject()) {
+      LOG(ERR) << "Bad request body\n";
+      generateError(rest::ResponseCode::BAD,
+                    TRI_ERROR_NOT_IMPLEMENTED, "illegal request for /_api/pregel");
+    } else if (_request->requestType() == rest::RequestType::POST) {
+      
+      std::vector<std::string> const& suffix = _request->suffix();
+      VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
+      if (!sExecutionNum.isInteger()) {
+        LOG(ERR) << "Invalid execution number";
+        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+        return status::DONE;
+      }
+      
+      unsigned int executionNumber = sExecutionNum.getUInt();
 
-    if (suffix.size() != 1) {
-      LOG(ERR) << "Invalid suffix";
-      generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_HTTP_NOT_FOUND);
-      return status::DONE;
-    } else if (suffix[0] == "finishedGSS") {
-      LOG(INFO) << "finishedGSS";
-      Conductor *exe = JobMapping::instance()->conductor(executionNumber);
-      if (exe) {
-        exe->finishedGlobalStep(body);
-      } else {
-        LOG(ERR) << "Conductor not found\n";
+      if (suffix.size() != 1) {
+        LOG(ERR) << "Invalid suffix";
+        generateError(rest::ResponseCode::NOT_FOUND,
+                      TRI_ERROR_HTTP_NOT_FOUND);
+        return status::DONE;
+      } else if (suffix[0] == "finishedGSS") {
+        LOG(INFO) << "finishedGSS";
+        Conductor *exe = JobMapping::instance()->conductor(executionNumber);
+        if (exe) {
+          exe->finishedGlobalStep(body);
+        } else {
+          LOG(ERR) << "Conductor not found\n";
+        }
+      } else if (suffix[0] == "nextGSS") {
+        LOG(INFO) << "nextGSS";
+        Worker *w = JobMapping::instance()->worker(executionNumber);
+        if (!w) {// can happen if gss == 0
+          LOG(INFO) << "creating worker";
+          w = new Worker(executionNumber, _vocbase, body);
+          JobMapping::instance()->addWorker(w, executionNumber);
+        }
+        w->nextGlobalStep(body);
+      } else if (suffix[0] == "messages") {
+        LOG(INFO) << "messages";
+        Worker *exe = JobMapping::instance()->worker(executionNumber);
+        if (exe) {
+          exe->receivedMessages(body);
+        }
+      } else if (suffix[0] == "writeResults") {
+        Worker *exe = JobMapping::instance()->worker(executionNumber);
+        if (exe) {
+          exe->writeResults();
+        }
       }
-    } else if (suffix[0] == "nextGSS") {
-      LOG(INFO) << "nextGSS";
-      Worker *w = JobMapping::instance()->worker(executionNumber);
-      if (!w) {// can happen if gss == 0
-        LOG(INFO) << "creating worker";
-        w = new Worker(executionNumber, _vocbase, body);
-        JobMapping::instance()->addWorker(w, executionNumber);
-      }
-      w->nextGlobalStep(body);
-    } else if (suffix[0] == "messages") {
-      LOG(INFO) << "messages";
-      Worker *exe = JobMapping::instance()->worker(executionNumber);
-      if (exe) {
-        exe->receivedMessages(body);
-      }
-    } else if (suffix[0] == "writeResults") {
-      Worker *exe = JobMapping::instance()->worker(executionNumber);
-      if (exe) {
-        exe->writeResults();
-      }
+      
+      VPackBuilder result;
+      result.add(VPackValue("thanks"));
+      generateResult(rest::ResponseCode::OK, result.slice());
+      
+    } else {
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                    TRI_ERROR_NOT_IMPLEMENTED, "illegal method for /_api/pregel");
     }
-    
-    VPackBuilder result;
-    result.add(VPackValue("thanks"));
-    generateResult(rest::ResponseCode::OK, result.slice());
-    
-  } else {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_NOT_IMPLEMENTED, "illegal method for /_api/pregel");
+  } catch (std::exception const &e) {
+    LOG(ERR) << e.what();
+  } catch(...) {
+    LOG(ERR) << "Exception";
   }
-  
+    
   return status::DONE;
 }

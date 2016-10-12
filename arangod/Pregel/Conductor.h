@@ -40,11 +40,10 @@ namespace pregel {
   class Conductor {
   public:
     
-    Conductor(int32_t executionNumber,
-              //TRI_vocbase_t *vocbase,
-              std::string const&vertexCollection,
-              CollectionID vertexCollectionID,
-              std::string const& edgeCollection,
+    Conductor(unsigned int executionNumber,
+              TRI_vocbase_t *vocbase,
+              std::shared_ptr<LogicalCollection> vertexCollection,
+              std::shared_ptr<LogicalCollection> edgeCollection,
               std::string const& algorithm);
     
     void start();
@@ -54,20 +53,24 @@ namespace pregel {
     ExecutionState getState() {return _state;}
     
   private:
-    Mutex writeMutex;// prevents concurrent calls to finishedGlobalStep
-    
-    int _executionNumber;
-    int _globalSuperstep;
+    Mutex _finishedGSSMutex;// prevents concurrent calls to finishedGlobalStep
+    VocbaseGuard _vocbaseGuard;
+    const unsigned int _executionNumber;
+      
+    unsigned int _globalSuperstep;
     int32_t _dbServerCount = 0;
     int32_t _responseCount = 0;
-    
-    //TRI_vocbase_t *_vocbase;
-    std::string _vertexCollection, _edgeCollection;
+    int32_t _doneCount = 0;
+      
+    std::shared_ptr<LogicalCollection> _vertexCollection, _edgeCollection;
     CollectionID _vertexCollectionID;
     std::string _algorithm;
     
     ExecutionState _state = ExecutionState::RUNNING;
+      
     // convenience
+      void resolveWorkerServers(std::unordered_map<ServerID, std::vector<ShardID>> &vertexServerMap,
+                                std::unordered_map<ServerID, std::vector<ShardID>> &edgeServerMap);
     int sendToAllShards(std::string url, VPackSlice const& body);
   };
 }

@@ -36,40 +36,108 @@ namespace pregel {
   };
   
   class OutMessageCache;
+    
+    struct Message {
+        Message(VPackSlice slice);
+        
+        int _value; // demo
+    };
+    
+  //template <typename T>
+  class MessageIterator {
+  public:
+      MessageIterator() = delete;
+      
+      typedef MessageIterator iterator;
+      typedef const MessageIterator const_iterator;
+      
+      explicit MessageIterator(VPackSlice slice) : _slice(slice) {
+          if (_slice.isNull() || _slice.isNone()) _size = 0;
+          else if (_slice.isArray()) _size = _slice.length();
+          else _size = 1;
+      }
+      
+      iterator begin() {
+          return MessageIterator(_slice);
+      }
+      const_iterator begin() const {
+          return MessageIterator(_slice);
+      }
+      iterator end() {
+          auto it = MessageIterator(_slice);
+          it._position = it._size;
+          return it;
+      }
+      const_iterator end() const {
+          auto it = MessageIterator(_slice);
+          it._position = it._size;
+          return it;
+      }
+      Message operator*() const {
+          if (_slice.isArray()) {
+              return Message(_slice.at(_position));
+          } else {
+              return Message(_slice);
+          }
+      }
+      
+      // prefix ++
+      MessageIterator& operator++() {
+          ++_position;
+          return *this;
+      }
+      
+      // postfix ++
+      MessageIterator operator++(int) {
+          MessageIterator result(*this);
+          ++(*this);
+          return result;
+      }
+      
+      bool operator!=(MessageIterator const& other) const {
+          return _position != other._position;
+      }
+      
+      size_t size() const {
+          return _size;
+      }
+      
+  private:
+      VPackSlice _slice;
+      size_t _position = 0;
+      size_t _size = 1;
+  };
   
   struct Edge {
-  public:
-    std::string edgeId;
-    std::string toId;
-    
-    int value;// demo
+    Edge(VPackSlice data) : _data(data) {}
+    VPackSlice _data;
+      
+    //protected: virtual void loadData() = 0;
+      
+    int _value;// demo
   };
   
   class Vertex {
     friend class Worker;
+    friend class WorkerJob;
+
   public:
     //typedef std::iterator<std::forward_iterator_tag, VPackSlice> MessageIterator;
     Vertex(VPackSlice document);
     ~Vertex();
-    void compute(int gss, VPackArrayIterator const &messages, OutMessageCache* const cache);
+    void compute(int gss, MessageIterator const &messages, OutMessageCache* const cache);
     
     VertexActivationState state() {return _activationState;}
-    //std::vector<VPackSlice> messages() {return _messages;}
-    
-    std::vector<Edge*> _edges;
-    std::string documentId;
+    std::vector<Edge> _edges;
 
   protected:
     void voteHalt() {_activationState = VertexActivationState::STOPPED;}
-    //void sendMessage(VPackBuilder &message) {_messages.push_back(message.slice());}
+    int _vertexState;// demo
+    VPackSlice _data;
 
   private:
     VertexActivationState _activationState;
-    //std::vector<VPackSlice> _messages;
-    
-    int _vertexState;// demo
   };
-
 }
 }
 #endif

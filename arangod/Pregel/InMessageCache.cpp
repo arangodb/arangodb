@@ -25,6 +25,7 @@
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -87,9 +88,11 @@ void InMessageCache::addMessages(VPackArrayIterator incomingMessages) {
   }
 }
 
-VPackArrayIterator InMessageCache::getMessages(std::string const& vertexId) {
+VPackSlice InMessageCache::getMessages(std::string const& vertexId) {
   LOG(INFO) << "Querying messages from in queue\n";
   auto vmsg = _messages.find(vertexId);
-  if (vmsg != _messages.end()) return VPackArrayIterator(vmsg->second->slice());
-  else return VPackArrayIterator(VPackSlice());
+  if (vmsg != _messages.end()) {
+    return vmsg->second->slice();
+  }
+  else return VPackSlice();
 }

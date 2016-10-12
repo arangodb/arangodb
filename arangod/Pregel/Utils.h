@@ -25,13 +25,19 @@
 
 #include "Basics/Common.h"
 
+
+struct TRI_vocbase_t;
 namespace arangodb {
+    
 namespace pregel {
+    
   class Utils {
     Utils() = delete;
     
   public:
     // constants
+    static std::string const apiPrefix;
+      
     static std::string const nextGSSPath;
     static std::string const finishedGSSPath;
     static std::string const messagesPath;
@@ -39,7 +45,9 @@ namespace pregel {
     
     static std::string const executionNumberKey;
     static std::string const vertexCollectionKey;
-    static std::string const edgeCollectionKey;
+    static std::string const vertexShardsListKey;
+    static std::string const edgeShardsListKey;
+    static std::string const resultShardKey;
     static std::string const algorithmKey;
     static std::string const coordinatorIdKey;
     
@@ -47,6 +55,8 @@ namespace pregel {
     static std::string const messagesKey;
     static std::string const senderKey;
     static std::string const doneKey;
+      
+      static std::string baseUrl(TRI_vocbase_t *vocbase);
 
   };
 }

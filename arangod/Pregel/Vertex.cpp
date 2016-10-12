@@ -32,35 +32,39 @@ using namespace arangodb;
 using namespace arangodb::velocypack;
 using namespace arangodb::pregel;
 
-Vertex::Vertex(VPackSlice document)  {
-  documentId = document.get(StaticStrings::IdString).copyString();
+Message::Message(VPackSlice slice) {
+  VPackSlice s = slice.get("value");
+  _value = s.getSmallInt() || s.getInt() ? s.getInt() : -1;
+}
+
+Vertex::Vertex(VPackSlice document) : _data(document)  {
+  //documentId = document.get(StaticStrings::IdString).copyString();
   VPackSlice s = document.get("value");
-  _vertexState = s.getSmallInt() || s.getInt() ? s.getInt() : -1;
+  _vertexState = s.isInteger() ? s.getInt() : -1;
 }
 
 Vertex::~Vertex() {
-  for (auto const &it : _edges) {
+  /*for (auto const &it : _edges) {
     delete(it);
-  }
+  }*/
   _edges.clear();
 }
 
-void Vertex::compute(int gss, VPackArrayIterator const &messages, OutMessageCache* const cache) {
-  
+void Vertex::compute(int gss, MessageIterator const &messages, OutMessageCache* const cache) {
   int current = _vertexState;
   for (auto const &msg : messages) {
-    int val = msg.getInt();
-    if (val < current) current = val;
+    if (msg._value < current) current = msg._value;
   }
   if (current >= 0 && (gss == 0 || current != _vertexState))  {
     _vertexState = current;
     for (auto const &edge : _edges) {
+      VPackSlice toID = edge._data.get(StaticStrings::ToString);
       VPackBuilder b;
       b.openObject();
-      b.add(StaticStrings::ToString, VPackValue(edge->toId));
-      b.add("val", VPackValue(edge->value + current));
+      b.add(StaticStrings::ToString, toID);
+      b.add("value", VPackValue(edge._value + current));
       b.close();
-      cache->addMessage(edge->toId, b.slice());
+      cache->addMessage(toID.copyString(), b.slice());
     }
   } else voteHalt();
 }

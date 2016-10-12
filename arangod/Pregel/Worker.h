@@ -24,12 +24,14 @@
 #define ARANGODB_PREGEL_WORKER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Mutex.h"
 #include "VocBase/vocbase.h"
 #include "Scheduler/Task.h"
 #include "Cluster/ClusterInfo.h"
 #include "Dispatcher/Job.h"
 
 namespace arangodb {
+    class SingleCollectionTransaction;
 namespace pregel {
   class Vertex;
   class InMessageCache;
@@ -38,7 +40,7 @@ namespace pregel {
   class Worker {
     friend class WorkerJob;
   public:
-    Worker(int executionNumber, TRI_vocbase_t *vocbase, VPackSlice s);
+    Worker(unsigned int executionNumber, TRI_vocbase_t *vocbase, VPackSlice s);
     ~Worker();
       
     void nextGlobalStep(VPackSlice data);// called by coordinator
@@ -47,18 +49,21 @@ namespace pregel {
     
   private:
     /// @brief guard to make sure the database is not dropped while used by us
-    VocbaseGuard _vocbaseGuard;
-    
-    int _executionNumber;
-    int _globalSuperstep;
+    TRI_vocbase_t* _vocbase;
+    Mutex _messagesMutex;
+    const unsigned int _executionNumber;
+      
+    unsigned int _globalSuperstep;
     std::string _coordinatorId;
-    std::string _vertexCollection, _edgeCollection;
+    std::string _vertexCollectionName, _vertexCollectionPlanId;
+    ShardID _vertexShardID, _edgeShardID;
     
     std::unordered_map<std::string, Vertex*> _vertices;
     std::map<std::string, bool> _activationMap;
     
     InMessageCache *_cache1, *_cache2;
     InMessageCache *_currentCache;
+    std::vector<SingleCollectionTransaction*> _transactions;
   };
   
   class WorkerJob : public rest::Job {

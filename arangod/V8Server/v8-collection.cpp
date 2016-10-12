@@ -1850,23 +1850,27 @@ static void JS_Pregel(v8::FunctionCallbackInfo<v8::Value> const& args) {
     LOG(INFO) << "Called as a controller";
     
     TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-    CollectionID vID;
+    std::shared_ptr<LogicalCollection> vertexColl, edgeColl;
     try {
-      std::shared_ptr<LogicalCollection> const ci1 =
-      ClusterInfo::instance()->getCollection(vocbase->name(), vName);
-      std::shared_ptr<LogicalCollection> const ci2 =
-      ClusterInfo::instance()->getCollection(vocbase->name(), eName);
-      if (ci1->isSystem() || ci2->isSystem()) {
+      vertexColl = ClusterInfo::instance()->getCollection(vocbase->name(), vName);
+      edgeColl = ClusterInfo::instance()->getCollection(vocbase->name(), eName);
+      if (edgeColl->isSystem() || edgeColl->isSystem()) {
         TRI_V8_THROW_EXCEPTION_USAGE("Cannot use pregel on system collection");
       }
-      vID = ci1->cid_as_string();
+      if (!vertexColl->usesDefaultShardKeys()) {
+        TRI_V8_THROW_EXCEPTION_USAGE("Vertex collection needs to be shared after '_key'");
+      }
+      std::vector<std::string> eKeys = edgeColl->shardKeys();
+      if (eKeys.size() != 1 || eKeys[0] == StaticStrings::FromString) {
+        TRI_V8_THROW_EXCEPTION_USAGE("Edge collection needs to be sharded after '_from'");
+      }
       //eName = ci2->cid_as_string();
     } catch (...) {
       TRI_V8_THROW_EXCEPTION_USAGE("Collections do not exist");
     }
 
     result = pregel::JobMapping::instance()->createExecutionNumber();
-    pregel::Conductor* e = new pregel::Conductor(result, vName, vID, eName, "todo");
+    pregel::Conductor* e = new pregel::Conductor(result, vocbase, vertexColl, edgeColl, "todo");
     pregel::JobMapping::instance()->addExecution(e, result);
     
     LOG(INFO) << "Starting...";

@@ -21,20 +21,31 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Utils.h"
+#include "Basics/StringUtils.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb::pregel;
 
-std::string const Utils::nextGSSPath = "/_api/pregel/nextGSS";
-std::string const Utils::finishedGSSPath = "/_api/pregel/finishedGSS";
-std::string const Utils::messagesPath = "/_api/pregel/messages";
-std::string const Utils::writeResultsPath = "/_api/pregel/writeResults";
+std::string const Utils::apiPrefix = "/_api/pregel/";
+
+
+std::string const Utils::nextGSSPath = "nextGSS";
+std::string const Utils::finishedGSSPath = "finishedGSS";
+std::string const Utils::messagesPath = "messages";
+std::string const Utils::writeResultsPath = "writeResults";
 
 std::string const Utils::executionNumberKey = "extn";
-std::string const Utils::vertexCollectionKey = "vxcln";
-std::string const Utils::edgeCollectionKey = "ecnln";
+std::string const Utils::vertexCollectionKey = "vertexCollection";
+std::string const Utils::vertexShardsListKey = "vertexShards";
+std::string const Utils::edgeShardsListKey = "edgeShards";
+std::string const Utils::resultShardKey = "resultShard";
 std::string const Utils::coordinatorIdKey = "coordinatorId";
 std::string const Utils::algorithmKey = "algorithm";
 std::string const Utils::globalSuperstepKey = "gss";
 std::string const Utils::messagesKey = "msgs";
 std::string const Utils::senderKey = "sender";
 std::string const Utils::doneKey = "done";
+
+std::string Utils::baseUrl(TRI_vocbase_t *vocbase) {
+  return  "/_db/" + basics::StringUtils::urlEncode(vocbase->name()) + Utils::apiPrefix;
+}

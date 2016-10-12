@@ -45,7 +45,7 @@ public:
   ~InMessageCache();
   
   void addMessages(VPackArrayIterator messages);
-  arangodb::velocypack::ArrayIterator getMessages(ShardID const& shardId);
+  VPackSlice getMessages(ShardID const& shardId);
   void clean();
   
 private:

@@ -26,15 +26,21 @@
 #include "InMessageCache.h"
 #include "OutMessageCache.h"
 
+#include "Basics/MutexLocker.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterComm.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/EdgeCollectionInfo.h"
+
 #include "Indexes/Index.h"
 #include "Dispatcher/DispatcherQueue.h"
 #include "Dispatcher/DispatcherFeature.h"
+#include "Utils/Transaction.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
+#include "Utils/OperationCursor.h"
 #include "Indexes/EdgeIndex.h"
 
 #include <velocypack/Iterator.h>
@@ -45,113 +51,121 @@
 using namespace arangodb;
 using namespace arangodb::pregel;
 
-Worker::Worker(int executionNumber,
+Worker::Worker(unsigned int executionNumber,
                TRI_vocbase_t *vocbase,
-               VPackSlice s) : _vocbaseGuard(vocbase), _executionNumber(executionNumber) {
+               VPackSlice s) : _vocbase(vocbase), _executionNumber(executionNumber) {
 
   //VPackSlice algo = s.get("algo");
-  _vertexCollection = s.get(Utils::vertexCollectionKey).copyString();
-  _edgeCollection = s.get(Utils::edgeCollectionKey).copyString();
-  LOG(INFO) << "starting worker with (" << _vertexCollection << ", " << _edgeCollection << ")";
+  
+  VPackSlice coordID = s.get(Utils::coordinatorIdKey);
+  VPackSlice vertexShardIDs = s.get(Utils::vertexShardsListKey);
+  VPackSlice edgeShardIDs = s.get(Utils::edgeShardsListKey);
+  // TODO support more shards
+  if (!(coordID.isString() && vertexShardIDs.length() == 1 && edgeShardIDs.length() == 1)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Only one shard per collection supported");
+  }
+  _coordinatorId = coordID.copyString();
+  _vertexCollectionName = s.get(Utils::vertexCollectionKey).copyString();// readable name of collection
+  _vertexShardID = vertexShardIDs.at(0).copyString();
+  _edgeShardID = edgeShardIDs.at(0).copyString();
+  LOG(INFO) << "Received collection " << _vertexCollectionName;
+  LOG(INFO) << "starting worker with (" << _vertexShardID << ", " << _edgeShardID << ")";
   
   _cache1 = new InMessageCache();
   _cache2 = new InMessageCache();
   _currentCache = _cache1;
   
-  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(vocbase),
-                                  _vertexCollection, TRI_TRANSACTION_READ);
-  int res = trx.begin();
-  
+  SingleCollectionTransaction *trx = new SingleCollectionTransaction(StandaloneTransactionContext::Create(_vocbase),
+                                  _vertexShardID, TRI_TRANSACTION_READ);
+  int res = trx->begin();
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up vertices '%s'",
-                                  _vertexCollection.c_str());
+                                  _vertexShardID.c_str());
     return;
   }
+  // resolve planId
+  _vertexCollectionPlanId = trx->documentCollection()->planId_as_string();
   
-  OperationResult result = trx.all(_vertexCollection, 0, UINT64_MAX, OperationOptions());
+  OperationResult result = trx->all(_vertexShardID, 0, UINT64_MAX, OperationOptions());
   // Commit or abort.
-  res = trx.finish(result.code);
-  
+  res = trx->finish(result.code);
   if (!result.successful()) {
-    THROW_ARANGO_EXCEPTION_FORMAT(result.code, "while looking up graph '%s'",
-                                  _vertexCollection.c_str());
+    THROW_ARANGO_EXCEPTION_FORMAT(result.code, "while looking up graph '%s'", _vertexCollectionName.c_str());
   }
   if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up graph '%s'",
-                                  _vertexCollection.c_str());
+    THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up graph '%s'", _vertexCollectionName.c_str());
   }
   VPackSlice vertices = result.slice();
   if (vertices.isExternal()) {
     vertices = vertices.resolveExternal();
   }
+  _transactions.push_back(trx);// store transactions, otherwise VPackSlices become invalid
   
-  SingleCollectionTransaction trx2(StandaloneTransactionContext::Create(vocbase),
-                                  _edgeCollection, TRI_TRANSACTION_READ);
-  res = trx2.begin();
+  // ======= Look up edges
   
+  trx = new SingleCollectionTransaction(StandaloneTransactionContext::Create(_vocbase),
+                                        _edgeShardID, TRI_TRANSACTION_READ);
+  res = trx->begin();
   if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up edges '%s'",
-                                  _vertexCollection.c_str());
-    return;
+    THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up edges '%s'", _edgeShardID.c_str());
   }
+  _transactions.push_back(trx);
   
-  /*OperationResult result2 = trx2.all(edgeCollection, 0, UINT64_MAX, OperationOptions());
-  // Commit or abort.
-  res = trx.finish(result.code);
+  auto info = std::make_unique<arangodb::traverser::EdgeCollectionInfo>(trx, _edgeShardID, TRI_EDGE_OUT,
+                                                                        StaticStrings::FromString, 0);
   
-  if (!result2.successful() || res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_FORMAT(result2.code, "while looking up graph '%s'",
-                                  edgeCollection.c_str());
-  }
-  VPackSlice edges = result.slice();
-  if (edges.isExternal()) {
-    edges = vertices.resolveExternal();
-  }*/
-  
-  SingleCollectionTransaction::IndexHandle handle = trx2.edgeIndexHandle(_edgeCollection);
-  if (handle.isEdgeIndex()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-  }
-  
-  std::shared_ptr<Index> edgeIndexPtr = handle.getIndex();
-  EdgeIndex* edgeIndex = static_cast<EdgeIndex*>(edgeIndexPtr.get());
-  
-  
-  /*map<std::string, vector<Edge*>> sortBucket;// TODO hash_map ?
-  for (auto const& it : velocypack::ArrayIterator(edges)) {
-    Edge *e = new Edge();
-    e->edgeId = it.get(StaticStrings::IdString).copyString();
-    e->toId = it.get(StaticStrings::ToString).copyString();
-    e->value = it.get("value").getInt();
-    sortBucket[e->toId].push_back(e);
-  }*/
+  size_t edgeCount = 0;
   VPackArrayIterator arr = VPackArrayIterator(vertices);
   LOG(INFO) << "Found vertices: " << arr.size();
-  for (auto const &it : arr) {
-    Vertex *v = new Vertex(it);
-    _vertices[v->documentId] = v;
-    
-    //v._edges = sortBucket[v.documentId];
-    
-    TransactionBuilderLeaser b(&trx2);
-    b->openArray();
-    b->add(it.get(StaticStrings::IdString));
-    b->add(VPackValue(VPackValueType::Null));
-    b->close();
-    IndexIterator* vit = edgeIndex->iteratorForSlice(&trx2, nullptr, b->slice(), false);
-    TRI_doc_mptr_t *edgePack;
-    while((edgePack = vit->next()) != nullptr) {
-      VPackSlice s(edgePack->vpack());
-      
-      std::unique_ptr<Edge> e(new Edge());
-      e->edgeId = it.get(StaticStrings::IdString).copyString();
-      e->toId = it.get(StaticStrings::ToString).copyString();
-      VPackSlice i = it.get("value");
-      e->value = i.isSmallInt() || i.isInt() ? i.getInt() : 1;
-      v->_edges.push_back(e.get());
-      e.release();
+  for (auto it : arr) {
+    LOG(INFO) << it.toJson();
+    if (it.isExternal()) {
+      it = it.resolveExternal();
     }
+    
+    std::string vertexId = it.get(StaticStrings::KeyString).copyString();
+    std::unique_ptr<Vertex> v (new Vertex(it));
+    _vertices[vertexId] = v.get();
+    
+    std::string key = _vertexCollectionName+"/"+vertexId;// TODO geht das schneller
+    LOG(INFO) << "Retrieving edge " << key;
+    
+    auto cursor = info->getEdges(key);
+    if (cursor->failed()) {
+      THROW_ARANGO_EXCEPTION_FORMAT(cursor->code, "while looking up edges '%s' from %s",
+                                    key.c_str(), _edgeShardID.c_str());
+    }
+    
+    std::vector<TRI_doc_mptr_t*> result;
+    result.reserve(1000);
+    while (cursor->hasMore()) {
+      cursor->getMoreMptr(result, 1000);
+      for (auto const& mptr : result) {
+        
+        VPackSlice s(mptr->vpack());
+        if (s.isExternal()) {
+          s = s.resolveExternal();
+        }
+        LOG(INFO) << s.toJson();
+        
+        VPackSlice i = s.get("value");
+        v->_edges.emplace_back(s);
+        v->_edges.end()->_value = i.isInteger() ? i.getInt() : 1;
+        edgeCount++;
+        
+      }
+    }
+    LOG(INFO) << "done retrieving edge";
+    
+    v.release();
   }
+  trx->finish(res);
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_FORMAT(res, "after looking up edges '%s'", _edgeShardID.c_str());
+  }
+  
+  LOG(INFO) << "Resolved " << _vertices.size() << " vertices";
+  LOG(INFO) << "Resolved " << edgeCount << " edges";
 }
 
 Worker::~Worker() {
@@ -159,33 +173,38 @@ Worker::~Worker() {
     delete(it.second);
   }
   _vertices.clear();
+  for (auto const &it : _transactions) {// clean transactions
+    delete(it);
+  }
+  _transactions.clear();
 }
 
 void Worker::nextGlobalStep(VPackSlice data) {
+  LOG(INFO) << "Called next global step: " << data.toString();
+  
   // TODO do some work?
   VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
-  if (!gssSlice.isInt()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Invalid gss in body");
+  if (!gssSlice.isInteger()) {
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,
+                                  "Invalid gss in %s:%d", __FILE__, __LINE__);
   }
-  
-  int64_t gss = gssSlice.getInt();
-  if (gss == 0) {
-    VPackSlice cid = data.get(Utils::coordinatorIdKey);
-    //VPackSlice algo = data.get(Utils::algorithmKey);
-    if (cid.isString())
-      _coordinatorId = cid.copyString();
-  }
+  uint64_t gss = gssSlice.getUInt();
   _globalSuperstep = gss;
   InMessageCache *inCache = _currentCache;
-  if (_currentCache == _cache1) _currentCache = _cache2;
-  else _currentCache = _cache1;
+  if (_currentCache == _cache1) {
+    _currentCache = _cache2;
+  } else {
+    _currentCache = _cache1;
+  }
   
   std::unique_ptr<rest::Job> job(new WorkerJob(this, inCache));
   DispatcherFeature::DISPATCHER->addJob(job, false);
-  LOG(INFO) << "Worker started new gss computation\n";
+  LOG(INFO) << "Worker started new gss computation: " << gss;
 }
 
 void Worker::receivedMessages(VPackSlice data) {
+  MUTEX_LOCKER(locker, _messagesMutex);
+  
   VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
   VPackSlice messageSlice = data.get(Utils::messagesKey);
   if (!gssSlice.isInt() || !messageSlice.isArray()) {
@@ -202,47 +221,53 @@ void Worker::receivedMessages(VPackSlice data) {
 
 void Worker::writeResults() {
   
-  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbaseGuard.vocbase()),
+  /*SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbaseGuard.vocbase()),
                                   _vertexCollection, TRI_TRANSACTION_WRITE);
   int res = trx.begin();
   
   if (res != TRI_ERROR_NO_ERROR) {
     LOG(ERR) << "cannot start transaction to load authentication";
     return;
-  }
+  }*/
 
   OperationResult result;
   OperationOptions options;
   options.waitForSync = false;
   options.mergeObjects = true;
   for (auto const &pair : _vertices) {
-    TransactionBuilderLeaser b(&trx);
-    b->openObject();
-    b->add(StaticStrings::KeyString, VPackValue(pair.second->documentId));
-    b->add("value", VPackValue(pair.second->_vertexState));
-    b->close();
-    result = trx.update(_vertexCollection, b->slice(), options);
+    //TransactionBuilderLeaser b(&trx);
+    VPackBuilder b;
+    b.openObject();
+    b.add(StaticStrings::KeyString, pair.second->_data.get(StaticStrings::KeyString));
+    b.add("value", VPackValue(pair.second->_vertexState));
+    b.close();
+    LOG(INFO) << b.toString();
+    /*result = trx.update(_vertexCollection, b->slice(), options);
     if (!result.successful()) {
       THROW_ARANGO_EXCEPTION_FORMAT(result.code, "while looking up graph '%s'",
                                     _vertexCollection.c_str());
-    }
+    }*/
   }
   // Commit or abort.
-  res = trx.finish(result.code);
+  /*res = trx.finish(result.code);
   
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up graph '%s'",
                                   _vertexCollection.c_str());
+  }*/
+}
+
+
+// ========== WorkerJob ==========
+
+static void waitForResults(std::vector<ClusterCommRequest> &requests) {
+  for (auto const& req : requests) {
+    auto& res = req.result;
+    if (res.status == CL_COMM_RECEIVED) {
+      LOG(INFO) << res.answer->payload().toJson();
+    }
   }
 }
-// ========== WorkerJob
-
-/*
-V8Job::~V8Job() {
-  if (_task != nullptr) {
-    V8PeriodicTask::jobDone(_task);
-  }
-}*/
 
 WorkerJob::WorkerJob(Worker *worker, InMessageCache *inCache) : Job("Pregel Job"), _worker(worker), _inCache(inCache) {
 }
@@ -252,10 +277,10 @@ void WorkerJob::work() {
     return;
   }
   LOG(INFO) << "Worker job started\n";
-  
-  OutMessageCache outCache(_worker->_vertexCollection);
-  
-  int64_t gss = _worker->_globalSuperstep;
+  // TODO cache this
+  OutMessageCache outCache(_worker->_vertexCollectionPlanId);
+
+  unsigned int gss = _worker->_globalSuperstep;
   bool isDone = true;
 
   if (gss == 0) {
@@ -263,62 +288,83 @@ void WorkerJob::work() {
     
     for (auto const &it : _worker->_vertices) {
       Vertex *v = it.second;
-      VPackArrayIterator messages = _inCache->getMessages(v->documentId);
-      v->compute(gss, messages, &outCache);
-      _worker->_activationMap[it.first] = v->state() == VertexActivationState::ACTIVE;
+      std::string key = v->_data.get(StaticStrings::KeyString).copyString();
+      
+      VPackSlice messages = _inCache->getMessages(key);
+      v->compute(gss, MessageIterator(messages), &outCache);
+      bool active = v->state() == VertexActivationState::ACTIVE;
+      if (!active) LOG(INFO) << "vertex has halted";
+      _worker->_activationMap[it.first] = active;
     }
   } else {
     for (auto &it : _worker->_activationMap) {
-      VPackArrayIterator messages = _inCache->getMessages(it.first);
-      if (messages.size() > 0 || it.second) {
+      VPackSlice messages = _inCache->getMessages(it.first);
+      MessageIterator iterator(messages);
+      if (iterator.size() > 0 || it.second) {
         isDone = false;
         
         Vertex *v = _worker->_vertices[it.first];
-        v->compute(gss, messages, &outCache);
+        v->compute(gss, iterator, &outCache);
         it.second = v->state() == VertexActivationState::ACTIVE;
       }
     }
   }
-  LOG(INFO) << "Worker job computations done, now distributing results\n";
+  LOG(INFO) << "Worker job computations done";
 
   if (_canceled) {
     return;
   }
   
-  // send messages to other shards
+  // ==================== send messages to other shards ====================
   ClusterComm *cc =  ClusterComm::instance();
   ClusterInfo *ci = ClusterInfo::instance();
+  std::string baseUrl = Utils::baseUrl(_worker->_vocbase);
   
   if (!isDone) {
-    std::shared_ptr<std::vector<ShardID>> shards = ci->getShardList(_worker->_vertexCollection);
+    LOG(INFO) << "Sending messages to shards";
+    std::shared_ptr<std::vector<ShardID>> shards = ci->getShardList(_worker->_vertexCollectionPlanId);
+    LOG(INFO) << "Seeing shards: " << shards->size();
+
     std::vector<ClusterCommRequest> requests;
-    for (auto it = shards->begin(); it != shards->end(); ++it) {
-      VPackBuilder package;
-      package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-      package.add(Utils::executionNumberKey, VPackValue(_worker->_executionNumber));
-      package.add(Utils::globalSuperstepKey, VPackValue(gss+1));
-      VPackBuilder messages;
-      outCache.getMessages(*it, messages);
-      package.add(Utils::messagesKey, messages.slice());
-      package.close();
+    for (auto const &it : *shards) {
       
-      auto body = std::make_shared<std::string const>(package.toJson());
-      requests.emplace_back("shard:" + *it, rest::RequestType::POST, Utils::messagesPath, body);
+      VPackBuilder messages;
+      outCache.getMessages(it, messages);
+      if (_worker->_vertexShardID == it) {
+        LOG(INFO) << "Worker: Getting messages for myself";
+        _worker->_currentCache->addMessages(VPackArrayIterator(messages.slice()));
+      } else {
+        LOG(INFO) << "Worker: Sending messages for shard " << it;
+
+        VPackBuilder package;
+        package.openObject();
+        package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
+        package.add(Utils::executionNumberKey, VPackValue(_worker->_executionNumber));
+        package.add(Utils::globalSuperstepKey, VPackValue(gss+1));
+        package.add(Utils::messagesKey, messages.slice());
+        package.close();
+        // add a request
+        auto body = std::make_shared<std::string const>(package.toJson());
+        requests.emplace_back("shard:" + it, rest::RequestType::POST, baseUrl + Utils::messagesPath, body);
+      }
     }
     size_t nrDone = 0;
     cc->performRequests(requests, 120, nrDone, LogTopic("Pregel message transfer"));
+    waitForResults(requests);
   } else {
     LOG(INFO) << "Worker job has nothing more to process\n";
   }
   
   // notify the conductor that we are done.
   VPackBuilder package;
+  package.openObject();
   package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
   package.add(Utils::executionNumberKey, VPackValue(_worker->_executionNumber));
-  package.add(Utils::doneKey, VPackValue(isDone));
+  if (!isDone) package.add(Utils::doneKey, VPackValue(isDone));
   package.close();
   
-  // TODO handle communication failure
+  LOG(INFO) << "Sending finishedGSS to coordinator: " << _worker->_coordinatorId;
+  // TODO handle communication failures?
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
   auto headers =
   std::make_unique<std::unordered_map<std::string, std::string>>();
@@ -326,10 +372,10 @@ void WorkerJob::work() {
   cc->asyncRequest("", coordinatorTransactionID,
                    "server:"+_worker->_coordinatorId,
                    rest::RequestType::POST,
-                   Utils::finishedGSSPath,
+                   baseUrl + Utils::finishedGSSPath,
                    body, headers, nullptr, 90.0);
   
-  LOG(INFO) << "Worker job finished sending results\n";
+  LOG(INFO) << "Worker job finished sending stuff";
 }
 
 bool WorkerJob::cancel() {
