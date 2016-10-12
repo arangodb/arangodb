@@ -34,6 +34,12 @@ const cluster = require('@arangodb/cluster');
 const Graph = require('@arangodb/general-graph');
 const createRouter = require('@arangodb/foxx/router');
 const actions = require('@arangodb/actions');
+const isEnterprise = require('internal').isEnterprise();
+
+let SmartGraph = {};
+if (isEnterprise) {
+  SmartGraph = require('@arangodb/smart-graph');
+}
 
 const NOT_MODIFIED = statuses('not modified');
 const ACCEPTED = statuses('accepted');
@@ -42,6 +48,24 @@ const OK = statuses('ok');
 
 const router = createRouter();
 module.context.use(router);
+
+const loadGraph = (name) => {
+  try {
+    if (isEnterprise) {
+      return SmartGraph._graph(name);
+    } else {
+      return Graph._graph(name);
+    }
+  } catch (e) {
+    if (e.isArangoError && e.errorNum === errors.ERROR_GRAPH_NOT_FOUND.code) {
+      throw Object.assign(
+        new httperr.NotFound(e.errorMessage),
+        {errorNum: e.errorNum, cause: e}
+      );
+    }
+    throw e;
+  }
+};
 
 router.use((req, res, next) => {
   try {
@@ -113,7 +137,8 @@ function setResponse (res, name, body, code) {
   res.json({
     error: false,
     [name]: body,
-  code});
+    code
+  });
 }
 
 function matchVertexRevision (req, rev) {
@@ -197,29 +222,43 @@ router.post('/', function (req, res) {
   const waitForSync = Boolean(req.queryParams.waitForSync);
   let g;
   try {
-    g = Graph._create(
-      req.body.name,
-      req.body.edgeDefinitions,
-      req.body.orphanCollections,
-      {waitForSync}
-    );
-  } catch (e) {
-    if (e.isArangoError && e.errorNum === errors.ERROR_GRAPH_DUPLICATE.code) {
-      throw Object.assign(
-        new httperr.Conflict(e.errorMessage),
-        {errorNum: e.errorNum, cause: e}
+    if (isEnterprise && req.body.isSmart === true) {
+      const smartGraphAttribute = req.body.options.smartGraphAttribute;
+      const numberOfShards = req.body.options.numberOfShards;
+      g = SmartGraph._create(
+        req.body.name,
+        req.body.edgeDefinitions,
+        req.body.orphanCollections,
+        {waitForSync, numberOfShards, smartGraphAttribute}
+      );
+    } else {
+      g = Graph._create(
+        req.body.name,
+        req.body.edgeDefinitions,
+        req.body.orphanCollections,
+        {waitForSync}
       );
     }
-    if (e.isArangoError && [
-        errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code,
-        errors.ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX.code,
-        errors.ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF.code,
-        errors.ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS.code
-      ].indexOf(e.errorNum) !== -1) {
-      throw Object.assign(
-        new httperr.BadRequest(e.errorMessage),
-        {errorNum: e.errorNum, cause: e}
-      );
+  } catch (e) {
+    if (e.isArangoError) {
+      switch (e.errorNum) {
+        case errors.ERROR_BAD_PARAMETER.code:
+        case errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code:
+        case errors.ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX.code:
+        case errors.ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF.code:
+        case errors.ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS.code:
+          throw Object.assign(
+            new httperr.BadRequest(e.errorMessage),
+            {errorNum: e.errorNum, cause: e}
+          );
+
+        case errors.ERROR_GRAPH_DUPLICATE.code:
+          throw Object.assign(
+            new httperr.Conflict(e.errorMessage),
+            {errorNum: e.errorNum, cause: e}
+          );
+        default:
+      }
     }
     throw e;
   }
@@ -228,8 +267,13 @@ router.post('/', function (req, res) {
   .queryParam('waitForSync', waitForSyncFlag)
   .body(joi.object({
     name: joi.string().required(),
-    edgeDefinitions: joi.any().optional(),
-    orphanCollections: joi.any().optional()
+    edgeDefinitions: joi.array().optional(),
+    orphanCollections: joi.array().optional(),
+    isSmart: joi.boolean().optional(),
+    options: joi.object({
+      smartGraphAttribute: joi.string().required(),
+      numberOfShards: joi.number().integer().greater(0).required()
+    }).optional()
   }).required(), 'The required information for a graph')
   .error('bad request', 'Graph creation error.')
   .error('conflict', 'Graph creation error.')
@@ -238,18 +282,7 @@ router.post('/', function (req, res) {
 
 router.get('/:graph', function (req, res) {
   const name = req.pathParams.graph;
-  let g;
-  try {
-    g = Graph._graph(name);
-  } catch (e) {
-    if (e.isArangoError && e.errorNum === errors.ERROR_GRAPH_NOT_FOUND.code) {
-      throw Object.assign(
-        new httperr.NotFound(e.errorMessage),
-        {errorNum: e.errorNum, cause: e}
-      );
-    }
-    throw e;
-  }
+  const g = loadGraph(name);
   setResponse(res, 'graph', graphForClient(g), OK);
 })
   .pathParam('graph', graphName)
@@ -292,18 +325,7 @@ router.delete('/:graph', function (req, res) {
 router.get('/:graph/vertex', function (req, res) {
   const name = req.pathParams.graph;
   const excludeOrphans = req.queryParams.excludeOrphans;
-  let g;
-  try {
-    g = Graph._graph(name);
-  } catch (e) {
-    if (e.isArangoError && e.errorNum === errors.ERROR_GRAPH_NOT_FOUND.code) {
-      throw Object.assign(
-        new httperr.NotFound(e.errorMessage),
-        {errorNum: e.errorNum, cause: e}
-      );
-    }
-    throw e;
-  }
+  const g = loadGraph(name);
   const mapFunc = (
   req.pathParams.collectionObjects
     ? (c) => collectionRepresentation(c, false, false, false)
@@ -318,36 +340,25 @@ router.get('/:graph/vertex', function (req, res) {
 
 router.post('/:graph/vertex', function (req, res) {
   const name = req.pathParams.graph;
-  let g;
-  try {
-    g = Graph._graph(name);
-  } catch (e) {
-    if (e.isArangoError && e.errorNum === errors.ERROR_GRAPH_NOT_FOUND.code) {
-      throw Object.assign(
-        new httperr.NotFound(e.errorMessage),
-        {errorNum: e.errorNum, cause: e}
-      );
-    }
-    throw e;
-  }
+  const g = loadGraph(name);
   try {
     g._addVertexCollection(req.body.collection);
   } catch (e) {
-    if (e.isArangoError && e.errorNum === errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code) {
-      throw Object.assign(
-        new httperr.NotFound(e.errorMessage),
-        {errorNum: e.errorNum, cause: e}
-      );
-    }
-    if (e.isArangoError && [
-        errors.ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX.code,
-        errors.ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF.code,
-        errors.ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS.code
-      ].indexOf(e.errorNum) !== -1) {
-      throw Object.assign(
-        new httperr.BadRequest(e.errorMessage),
-        {errorNum: e.errorNum, cause: e}
-      );
+    if (e.isArangoError) {
+      switch (e.errorNum) {
+        case errors.ERROR_BAD_PARAMETER.code:
+        case errors.ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX.code:
+        case errors.ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF.code:
+        case errors.ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS.code:
+          throw Object.assign(
+              new httperr.BadRequest(e.errorMessage),
+              {errorNum: e.errorNum, cause: e});
+
+        case errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code:
+          throw Object.assign(
+              new httperr.NotFound(e.errorMessage),
+              {errorNum: e.errorNum, cause: e});
+      }
     }
     throw e;
   }
@@ -366,18 +377,7 @@ router.delete('/:graph/vertex/:collection', function (req, res) {
   const dropCollection = Boolean(req.queryParams.dropCollection);
   const name = req.pathParams.graph;
   const defName = req.pathParams.collection;
-  let g;
-  try {
-    g = Graph._graph(name);
-  } catch (e) {
-    if (e.isArangoError && e.errorNum === errors.ERROR_GRAPH_NOT_FOUND.code) {
-      throw Object.assign(
-        new httperr.NotFound(e.errorMessage),
-        {errorNum: e.errorNum, cause: e}
-      );
-    }
-    throw e;
-  }
+  const g = loadGraph(name);
   try {
     g._removeVertexCollection(defName, dropCollection);
   } catch (e) {
@@ -407,18 +407,7 @@ router.delete('/:graph/vertex/:collection', function (req, res) {
 
 router.get('/:graph/edge', function (req, res) {
   const name = req.pathParams.graph;
-  let g;
-  try {
-    g = Graph._graph(name);
-  } catch (e) {
-    if (e.isArangoError && e.errorNum === errors.ERROR_GRAPH_NOT_FOUND.code) {
-      throw Object.assign(
-        new httperr.NotFound(e.errorMessage),
-        {errorNum: e.errorNum, cause: e}
-      );
-    }
-    throw e;
-  }
+  const g = loadGraph(name);
   setResponse(res, 'collections', _.map(g._edgeCollections(), (c) => c.name()).sort(), OK);
 })
   .pathParam('graph', graphName)
@@ -428,30 +417,20 @@ router.get('/:graph/edge', function (req, res) {
 
 router.post('/:graph/edge', function (req, res) {
   const name = req.pathParams.graph;
-  let g;
-  try {
-    g = Graph._graph(name);
-  } catch (e) {
-    if (e.isArangoError && e.errorNum === errors.ERROR_GRAPH_NOT_FOUND.code) {
-      throw Object.assign(
-        new httperr.NotFound(e.errorMessage),
-        {errorNum: e.errorNum, cause: e}
-      );
-    }
-    throw e;
-  }
+  const g = loadGraph(name);
   try {
     g._extendEdgeDefinitions(req.body);
   } catch (e) {
-    if (e.isArangoError && [
-        errors.ERROR_GRAPH_COLLECTION_MULTI_USE.code,
-        errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.code,
-        errors.ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION.code
-      ].indexOf(e.errorNum) !== -1) {
-      throw Object.assign(
-        new httperr.BadRequest(e.errorMessage),
-        {errorNum: e.errorNum, cause: e}
-      );
+    if (e.isArangoError) {
+      switch (e.errorNum) {
+        case errors.ERROR_GRAPH_COLLECTION_MULTI_USE.code:
+        case errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.code:
+        case errors.ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION.code:
+          throw Object.assign(
+            new httperr.BadRequest(e.errorMessage),
+            {errorNum: e.errorNum, cause: e}
+          );
+      }
     }
     throw e;
   }
@@ -471,18 +450,7 @@ router.post('/:graph/edge', function (req, res) {
 router.put('/:graph/edge/:definition', function (req, res) {
   const name = req.pathParams.graph;
   const defName = req.pathParams.definition;
-  let g;
-  try {
-    g = Graph._graph(name);
-  } catch (e) {
-    if (e.isArangoError && e.errorNum === errors.ERROR_GRAPH_NOT_FOUND.code) {
-      throw Object.assign(
-        new httperr.NotFound(e.errorMessage),
-        {errorNum: e.errorNum, cause: e}
-      );
-    }
-    throw e;
-  }
+  const g = loadGraph(name);
   if (defName !== req.body.collection) {
     throw Object.assign(
       new httperr.NotFound(errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.message),
@@ -492,14 +460,15 @@ router.put('/:graph/edge/:definition', function (req, res) {
   try {
     g._editEdgeDefinitions(req.body);
   } catch (e) {
-    if (e.isArangoError && [
-        errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.code,
-        errors.ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION.code
-      ].indexOf(e.errorNum) !== -1) {
-      throw Object.assign(
-        new httperr.BadRequest(e.errorMessage),
-        {errorNum: e.errorNum, cause: e}
-      );
+    if (e.isArangoError) {
+      switch (e.errorNum) {
+        case errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.code:
+        case errors.ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION.code:
+          throw Object.assign(
+            new httperr.BadRequest(e.errorMessage),
+            {errorNum: e.errorNum, cause: e}
+          );
+      }
     }
     throw e;
   }
@@ -522,15 +491,12 @@ router.delete('/:graph/edge/:definition', function (req, res) {
   const dropCollection = Boolean(req.queryParams.dropCollection);
   const name = req.pathParams.graph;
   const defName = req.pathParams.definition;
-  let g;
+  const g = loadGraph(name);
   try {
-    g = Graph._graph(name);
     g._deleteEdgeDefinition(defName, dropCollection);
   } catch (e) {
-    if (e.isArangoError && [
-        errors.ERROR_GRAPH_NOT_FOUND.code,
-        errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.code
-      ].indexOf(e.errorNum) !== -1) {
+    if (e.isArangoError &&
+        errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.code === e.errorNum) {
       throw Object.assign(
         new httperr.NotFound(e.errorMessage),
         {errorNum: e.errorNum, cause: e}
@@ -557,18 +523,7 @@ router.post('/:graph/vertex/:collection', function (req, res) {
   const waitForSync = Boolean(req.queryParams.waitForSync);
   const name = req.pathParams.graph;
   const collection = req.pathParams.collection;
-  let g;
-  try {
-    g = Graph._graph(name);
-  } catch (e) {
-    if (e.isArangoError && e.errorNum === errors.ERROR_GRAPH_NOT_FOUND.code) {
-      throw Object.assign(
-        new httperr.NotFound(e.errorMessage),
-        {errorNum: e.errorNum, cause: e}
-      );
-    }
-    throw e;
-  }
+  const g = loadGraph(name);
   checkCollection(g, collection);
   let meta;
   try {
@@ -598,18 +553,7 @@ router.get('/:graph/vertex/:collection/:key', function (req, res) {
   const collection = req.pathParams.collection;
   const key = req.pathParams.key;
   const id = `${collection}/${key}`;
-  let g;
-  try {
-    g = Graph._graph(name);
-  } catch (e) {
-    if (e.isArangoError && e.errorNum === errors.ERROR_GRAPH_NOT_FOUND.code) {
-      throw Object.assign(
-        new httperr.NotFound(e.errorMessage),
-        {errorNum: e.errorNum, cause: e}
-      );
-    }
-    throw e;
-  }
+  const g = loadGraph(name);
   checkCollection(g, collection);
   let doc;
   try {
@@ -639,18 +583,7 @@ router.put('/:graph/vertex/:collection/:key', function (req, res) {
   const collection = req.pathParams.collection;
   const key = req.pathParams.key;
   const id = `${collection}/${key}`;
-  let g;
-  try {
-    g = Graph._graph(name);
-  } catch (e) {
-    if (e.isArangoError && e.errorNum === errors.ERROR_GRAPH_NOT_FOUND.code) {
-      throw Object.assign(
-        new httperr.NotFound(e.errorMessage),
-        {errorNum: e.errorNum, cause: e}
-      );
-    }
-    throw e;
-  }
+  const g = loadGraph(name);
   checkCollection(g, collection);
   let doc;
   try {
@@ -688,18 +621,7 @@ router.patch('/:graph/vertex/:collection/:key', function (req, res) {
   const collection = req.pathParams.collection;
   const key = req.pathParams.key;
   const id = `${collection}/${key}`;
-  let g;
-  try {
-    g = Graph._graph(name);
-  } catch (e) {
-    if (e.isArangoError && e.errorNum === errors.ERROR_GRAPH_NOT_FOUND.code) {
-      throw Object.assign(
-        new httperr.NotFound(e.errorMessage),
-        {errorNum: e.errorNum, cause: e}
-      );
-    }
-    throw e;
-  }
+  const g = loadGraph(name);
   checkCollection(g, collection);
   let doc;
   try {
@@ -737,18 +659,7 @@ router.delete('/:graph/vertex/:collection/:key', function (req, res) {
   const collection = req.pathParams.collection;
   const key = req.pathParams.key;
   const id = `${collection}/${key}`;
-  let g;
-  try {
-    g = Graph._graph(name);
-  } catch (e) {
-    if (e.isArangoError && e.errorNum === errors.ERROR_GRAPH_NOT_FOUND.code) {
-      throw Object.assign(
-        new httperr.NotFound(e.errorMessage),
-        {errorNum: e.errorNum, cause: e}
-      );
-    }
-    throw e;
-  }
+  const g = loadGraph(name);
   checkCollection(g, collection);
   let doc;
   try {
@@ -799,23 +710,12 @@ router.post('/:graph/edge/:collection', function (req, res) {
       {errorNum: errors.ERROR_GRAPH_INVALID_EDGE.code}
     );
   }
-  let g;
-  try {
-    g = Graph._graph(name);
-  } catch (e) {
-    if (e.isArangoError && e.errorNum === errors.ERROR_GRAPH_NOT_FOUND.code) {
-      throw Object.assign(
-        new httperr.NotFound(e.errorMessage),
-        {errorNum: e.errorNum, cause: e}
-      );
-    }
-    throw e;
-  }
+  const g = loadGraph(name);
   checkCollection(g, collection);
   let meta;
   try {
     meta = g[collection].save(req.body);
-  } catch(e) {
+  } catch (e) {
     if (e.errorNum !== errors.ERROR_GRAPH_INVALID_EDGE.code) {
       throw Object.assign(
         new httperr.Gone(e.errorMessage),
@@ -839,18 +739,7 @@ router.get('/:graph/edge/:collection/:key', function (req, res) {
   const collection = req.pathParams.collection;
   const key = req.pathParams.key;
   const id = `${collection}/${key}`;
-  let g;
-  try {
-    g = Graph._graph(name);
-  } catch (e) {
-    if (e.isArangoError && e.errorNum === errors.ERROR_GRAPH_NOT_FOUND.code) {
-      throw Object.assign(
-        new httperr.NotFound(e.errorMessage),
-        {errorNum: e.errorNum, cause: e}
-      );
-    }
-    throw e;
-  }
+  const g = loadGraph(name);
   checkCollection(g, collection);
   let doc;
   try {
@@ -880,18 +769,7 @@ router.put('/:graph/edge/:collection/:key', function (req, res) {
   const collection = req.pathParams.collection;
   const key = req.pathParams.key;
   const id = `${collection}/${key}`;
-  let g;
-  try {
-    g = Graph._graph(name);
-  } catch (e) {
-    if (e.isArangoError && e.errorNum === errors.ERROR_GRAPH_NOT_FOUND.code) {
-      throw Object.assign(
-        new httperr.NotFound(e.errorMessage),
-        {errorNum: e.errorNum, cause: e}
-      );
-    }
-    throw e;
-  }
+  const g = loadGraph(name);
   checkCollection(g, collection);
   let doc;
   try {
@@ -929,18 +807,7 @@ router.patch('/:graph/edge/:collection/:key', function (req, res) {
   const collection = req.pathParams.collection;
   const key = req.pathParams.key;
   const id = `${collection}/${key}`;
-  let g;
-  try {
-    g = Graph._graph(name);
-  } catch (e) {
-    if (e.isArangoError && e.errorNum === errors.ERROR_GRAPH_NOT_FOUND.code) {
-      throw Object.assign(
-        new httperr.NotFound(e.errorMessage),
-        {errorNum: e.errorNum, cause: e}
-      );
-    }
-    throw e;
-  }
+  const g = loadGraph(name);
   checkCollection(g, collection);
   let doc;
   try {
@@ -978,18 +845,7 @@ router.delete('/:graph/edge/:collection/:key', function (req, res) {
   const collection = req.pathParams.collection;
   const key = req.pathParams.key;
   const id = `${collection}/${key}`;
-  let g;
-  try {
-    g = Graph._graph(name);
-  } catch (e) {
-    if (e.isArangoError && e.errorNum === errors.ERROR_GRAPH_NOT_FOUND.code) {
-      throw Object.assign(
-        new httperr.NotFound(e.errorMessage),
-        {errorNum: e.errorNum, cause: e}
-      );
-    }
-    throw e;
-  }
+  const g = loadGraph(name);
   checkCollection(g, collection);
   let doc;
   try {
