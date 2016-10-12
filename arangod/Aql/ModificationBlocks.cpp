@@ -362,6 +362,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
           }
         } else {
           handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toRemove.length()), ep->_options.ignoreErrors);
+          dstRow += n;
         }
       } else {
         errorCode = opRes.code;
