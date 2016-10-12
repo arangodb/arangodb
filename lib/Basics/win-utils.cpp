@@ -312,7 +312,7 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags) {
 /// @brief fixes the ICU_DATA environment path
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FixIcuDataEnv(binaryPath) {
+void TRI_FixIcuDataEnv(const char* binaryPath) {
   if (getenv("ICU_DATA") != nullptr) {
     return;
   }
