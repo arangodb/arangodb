@@ -103,7 +103,7 @@ set(CLIENT_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/../p)
 configure_file(cmake/packages/client/nsis.txt ${CLIENT_BUILD_DIR}/CMakeLists.txt @ONLY)
 add_custom_target(package-arongodb-client-nsis
   COMMAND ${CMAKE_COMMAND} .
-  COMMAND ${CMAKE_CPACK_COMMAND} -G NSIS -V -C ${CMAKE_BUILD_TYPE}
+  COMMAND ${CMAKE_CPACK_COMMAND} -G NSIS -C ${CMAKE_BUILD_TYPE}
   COMMAND cp *.exe ${PROJECT_BINARY_DIR} 
   WORKING_DIRECTORY ${CLIENT_BUILD_DIR})
 

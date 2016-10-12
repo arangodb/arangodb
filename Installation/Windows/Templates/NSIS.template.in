@@ -778,14 +778,14 @@ Section "-Core installation"
 
   ;Create shortcuts
   CreateDirectory "$SMPROGRAMS\$STARTMENU_FOLDER"
-  CreateShortCut  "$SMPROGRAMS\$STARTMENU_FOLDER\Arango Shell.lnk"  "$INSTDIR\$BIN_DIR\arangosh.exe"  '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
-  CreateShortCut  "$SMPROGRAMS\$STARTMENU_FOLDER\Arango Server.lnk" "$INSTDIR\$SBIN_DIR\arangod.exe"   '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
+  CreateShortCut  "$SMPROGRAMS\$STARTMENU_FOLDER\Arango Shell.lnk"  "$INSTDIR\${BIN_DIR}\arangosh.exe"  '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
+  CreateShortCut  "$SMPROGRAMS\$STARTMENU_FOLDER\Arango Server.lnk" "$INSTDIR\${SBIN_DIR}\arangod.exe"   '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
   CreateShortCut  "$SMPROGRAMS\$STARTMENU_FOLDER\Uninstall.lnk"     "$INSTDIR\Uninstall.exe"
 
   ;Read a value from an InstallOptions INI file
 
   StrCmp "0" "$INSTALL_DESKTOP" noDesktopIcon
-  CreateShortCut  "$DESKTOP\Arango Shell.lnk"  "$INSTDIR\$BIN_DIR\arangosh.exe"  '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
+  CreateShortCut  "$DESKTOP\Arango Shell.lnk"  "$INSTDIR\${BIN_DIR}\arangosh.exe"  '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
   CreateShortCut  "$DESKTOP\Arango Management Interface.lnk"  "http://127.0.0.1:8529"  '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
   noDesktopIcon:
 
@@ -810,7 +810,7 @@ Section "-Core installation"
 
   System::Call 'Kernel32::SetEnvironmentVariable(t, t)i ("ARANGODB_DEFAULT_ROOT_PASSWORD", "$PASSWORD").r0'
   StrCmp $0 0 error
-    ExecWait "$INSTDIR\$SBIN_DIR\arangod.exe --database.init-database"
+    ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --database.init-database"
     Goto done
   error:
     MessageBox MB_OK "Failed to initialize database password."
@@ -819,7 +819,7 @@ Section "-Core installation"
    StrCmp $TRI_INSTALL_TYPE  'Service' 0 nothing
      SimpleSC::StopService    '${TRI_SVC_NAME}' 0 30
      SimpleSC::RemoveService  '${TRI_SVC_NAME}'
-     SimpleSC::InstallService '${TRI_SVC_NAME}' '${TRI_SVC_NAME}'  '16'  '2'  '"$INSTDIR\$SBIN_DIR\arangod.exe" --start-service' '' '' ''
+     SimpleSC::InstallService '${TRI_SVC_NAME}' '${TRI_SVC_NAME}'  '16'  '2'  '"$INSTDIR\${SBIN_DIR}\arangod.exe" --start-service' '' '' ''
      SimpleSC::SetServiceDescription '${TRI_SVC_NAME}' '${TRI_FRIENDLY_SVC_NAME}'
      SimpleSC::StartService '${TRI_SVC_NAME}' '' 30
      Call WaitForServiceUp
@@ -833,7 +833,7 @@ Function .onInstSuccess
 FunctionEnd
 
 Section "-Add to path"
-  Push $INSTDIR/$BIN_DIR
+  Push "$INSTDIR/${BIN_DIR}"
   StrCmp "@CPACK_NSIS_MODIFY_PATH@" "ON" 0 doNotAddToPath
   StrCmp $DO_NOT_ADD_TO_PATH "1" doNotAddToPath 0
     Call AddToPath
@@ -1182,9 +1182,9 @@ Section "Uninstall"
   SimpleSC::GetServiceBinaryPath '${TRI_SVC_NAME}'
   Pop $0 ; returns an errorcode (<>0) otherwise success (0)
   Pop $1 ; returns the binary path of the service
-  ; $1 should contain '"$INSTDIR/$SBIN_DIR/arangod.exe" --start-service' - if $INSTDIR is equal
+  ; $1 should contain '"$INSTDIR/${SBIN_DIR}/arangod.exe" --start-service' - if $INSTDIR is equal
   ; to our $INSTDIR uninstall the service - else its another installation and we jump to Done instead.
-  StrCmp $1 '"$INSTDIR/$SBIN_DIR/arangod.exe" --start-service' '' Done
+  StrCmp $1 '"$INSTDIR/${SBIN_DIR}/arangod.exe" --start-service' '' Done
   DetailPrint 'Shutting down Service'
   SimpleSC::StopService  '${TRI_SVC_NAME}' 0 30
   SimpleSC::RemoveService  '${TRI_SVC_NAME}'
@@ -1275,7 +1275,7 @@ Section "Uninstall"
   ${EndIf}
   DeleteRegKey HKLM "${TRI_UNINSTALL_REG_PATH}"
 
-  Push "$INSTDIR/$BIN_DIR"
+  Push "$INSTDIR/${BIN_DIR}"
   StrCmp $DO_NOT_ADD_TO_PATH_ "1" doNotRemoveFromPath 0
     Call un.RemoveFromPath
   doNotRemoveFromPath:
