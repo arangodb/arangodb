@@ -106,7 +106,7 @@
   * [User management](Foxx/Users.md)
   * [Related modules](Foxx/Modules.md)
     * [Authentication](Foxx/Auth.md)
-#    * [OAuth 2.0](Foxx/OAuth2.md)
+    * [OAuth 2.0](Foxx/OAuth2.md)
 * [Transactions](Transactions/README.md)
   * [Transaction invocation](Transactions/TransactionInvocation.md)
   * [Passing parameters](Transactions/Passing.md)
