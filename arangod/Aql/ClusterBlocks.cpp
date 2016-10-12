@@ -1031,7 +1031,7 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
         // creating one
         VPackBuilder temp;
         temp.openObject();
-        temp.add(StaticStrings::KeyString, VPackValue(createKey()));
+        temp.add(StaticStrings::KeyString, VPackValue(createKey(value)));
         temp.close();
 
         builder2 = VPackCollection::merge(input, temp.slice(), true);
@@ -1053,7 +1053,7 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
         
       VPackBuilder temp;
       temp.openObject();
-      temp.add(StaticStrings::KeyString, VPackValue(createKey()));
+      temp.add(StaticStrings::KeyString, VPackValue(createKey(value)));
       temp.close();
 
       builder2 = VPackCollection::merge(input, temp.slice(), true);
@@ -1070,11 +1070,10 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
   std::string shardId;
   bool usesDefaultShardingAttributes;
   auto clusterInfo = arangodb::ClusterInfo::instance();
-  auto const planId =
-      arangodb::basics::StringUtils::itoa(_collection->getPlanId());
+  auto collInfo = _collection->getCollection();
 
-  int res = clusterInfo->getResponsibleShard(planId, value, true, shardId,
-                                             usesDefaultShardingAttributes);
+  int res = clusterInfo->getResponsibleShard(collInfo.get(), value, true,
+      shardId, usesDefaultShardingAttributes);
 
   // std::cout << "SHARDID: " << shardId << "\n";
 
@@ -1090,12 +1089,14 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
   DEBUG_END_BLOCK();
 }
 
-/// @brief create a new document key
-std::string DistributeBlock::createKey() const {
+/// @brief create a new document key, argument is unused here
+#ifndef USE_ENTERPRISE
+std::string DistributeBlock::createKey(VPackSlice) const {
   ClusterInfo* ci = ClusterInfo::instance();
   uint64_t uid = ci->uniqid();
   return std::to_string(uid);
 }
+#endif
 
 /// @brief local helper to throw an exception if a HTTP request went wrong
 static bool throwExceptionAfterBadSyncRequest(ClusterCommResult* res,
@@ -1110,7 +1111,7 @@ static bool throwExceptionAfterBadSyncRequest(ClusterCommResult* res,
     std::string errorMessage;
     TRI_ASSERT(nullptr != res->result);
 
-    StringBuffer const& responseBodyBuf(res->result->getBody());
+    arangodb::basics::StringBuffer const& responseBodyBuf(res->result->getBody());
 
     // extract error number and message from response
     int errorNum = TRI_ERROR_NO_ERROR;

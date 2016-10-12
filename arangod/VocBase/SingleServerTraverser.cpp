@@ -54,8 +54,13 @@ static int FetchDocumentById(arangodb::Transaction* trx,
   return res;
 }
 
-SingleServerEdgeCursor::SingleServerEdgeCursor(size_t nrCursors)
-    : _cursors(), _currentCursor(0), _currentSubCursor(0), _cachePos(0) {
+SingleServerEdgeCursor::SingleServerEdgeCursor(
+    size_t nrCursors, std::vector<size_t> const* mapping)
+    : _cursors(),
+      _currentCursor(0),
+      _currentSubCursor(0),
+      _cachePos(0),
+      _internalCursorMapping(mapping) {
   _cursors.reserve(nrCursors);
   _cache.reserve(1000);
 };
@@ -68,7 +73,12 @@ bool SingleServerEdgeCursor::next(std::vector<VPackSlice>& result,
   _cachePos++;
   if (_cachePos < _cache.size()) {
     result.emplace_back(_cache[_cachePos]->vpack());
-    cursorId = _currentCursor;
+    if (_internalCursorMapping != nullptr) {
+      TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
+      cursorId = _internalCursorMapping->at(_currentCursor);
+    } else {
+      cursorId = _currentCursor;
+    }
     return true;
   }
   // We need to refill the cache.
@@ -108,7 +118,12 @@ bool SingleServerEdgeCursor::next(std::vector<VPackSlice>& result,
   } while (_cache.empty());
   TRI_ASSERT(_cachePos < _cache.size());
   result.emplace_back(_cache[_cachePos]->vpack());
-  cursorId = _currentCursor;
+  if (_internalCursorMapping != nullptr) {
+    TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
+    cursorId = _internalCursorMapping->at(_currentCursor);
+  } else {
+    cursorId = _currentCursor;
+  }
   return true;
 }
 
@@ -117,7 +132,12 @@ bool SingleServerEdgeCursor::readAll(std::unordered_set<VPackSlice>& result,
   if (_currentCursor >= _cursors.size()) {
     return false;
   }
-  cursorId = _currentCursor;
+  if (_internalCursorMapping != nullptr) {
+    TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
+    cursorId = _internalCursorMapping->at(_currentCursor);
+  } else {
+    cursorId = _currentCursor;
+  }
   auto& cursorSet = _cursors[_currentCursor];
   for (auto& cursor : cursorSet) {
     while (cursor->hasMore()) {

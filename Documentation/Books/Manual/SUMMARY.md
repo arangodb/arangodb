@@ -57,6 +57,8 @@
   * [General Graphs](Graphs/GeneralGraphs/README.md)
     * [Graph Management](Graphs/GeneralGraphs/Management.md)
     * [Graph Functions](Graphs/GeneralGraphs/Functions.md)
+  * [SmartGraphs](Graphs/SmartGraphs/README.md)
+    * [SmartGraph Management](Graphs/SmartGraphs/Management.md)
   * [Traversals](Graphs/Traversals/README.md)
     * [Using Traversal Objects](Graphs/Traversals/UsingTraversalObjects.md)
     * [Example Data](Graphs/Traversals/ExampleData.md)
@@ -120,6 +122,7 @@
   * [Cluster: Local test](Deployment/Local.md)
   * [Cluster: Processes](Deployment/Distributed.md)
   * [Cluster: Docker](Deployment/Docker.md)
+  * [Agency](Deployment/Agency.md)
 #
 * [Administration](Administration/README.md)
   * [Web Interface](Administration/WebInterface/README.md)

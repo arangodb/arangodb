@@ -33,6 +33,7 @@
 #include "V8/v8-vpack.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+#include "V8Server/v8-vocbaseprivate.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -860,9 +861,12 @@ static void JS_GetResponsibleShardClusterInfo(
 
   ShardID shardId;
   CollectionID collectionId = TRI_ObjectToString(args[0]);
+  auto vocbase = GetContextVocBase(isolate);
+  auto ci = ClusterInfo::instance();
+  auto collInfo = ci->getCollection(vocbase->name(), collectionId);
   bool usesDefaultShardingAttributes;
   res = ClusterInfo::instance()->getResponsibleShard(
-      collectionId, builder.slice(), documentIsComplete, shardId,
+      collInfo.get(), builder.slice(), documentIsComplete, shardId,
       usesDefaultShardingAttributes);
 
   if (res != TRI_ERROR_NO_ERROR) {

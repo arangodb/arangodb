@@ -61,6 +61,7 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
   ~RestBatchHandler();
 
  public:
+  char const* name() const override final { return "RestBatchHandler"; }
   RestHandler::status execute() override;
 
  private:

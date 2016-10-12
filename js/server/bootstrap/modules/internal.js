@@ -355,4 +355,14 @@
     exports.DEFAULT_REPLICATION_FACTOR_SYSTEM = global.SYS_DEFAULT_REPLICATION_FACTOR_SYSTEM;
     delete global.SYS_DEFAULT_REPLICATION_FACTOR_SYSTEM;
   }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief returns if we are in enterprise version or not
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_IS_ENTERPRISE) {
+    exports.isEnterprise = global.SYS_IS_ENTERPRISE;
+    delete global.SYS_IS_ENTERPRISE;
+  }
+ 
 }());

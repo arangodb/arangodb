@@ -1,12 +1,14 @@
 ################################################################################
 # the client package is a complete cmake sub package.
 ################################################################################
+
 project(arangodb3-client)
 cmake_minimum_required(VERSION 2.8)
 
 ################################################################################
 # variables from the main build have to be explicitely forwarded:
 ################################################################################
+
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY @CMAKE_BINARY_DIR@/bin)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_X @CMAKE_BINARY_DIR@/bin/$<CONFIGURATION>/)
 
@@ -15,6 +17,7 @@ set(CMAKE_BUILD_TYPE @CMAKE_BUILD_TYPE@)
 ################################################################################
 #   Substitute the install binaries:
 ################################################################################
+
 set(BIN_ARANGOBENCH @BIN_ARANGOBENCH@)
 set(BIN_ARANGODUMP @BIN_ARANGODUMP@)
 set(BIN_ARANGOIMP @BIN_ARANGOIMP@)
@@ -25,6 +28,7 @@ set(BIN_ARANGOVPACK @BIN_ARANGOVPACK@)
 ################################################################################
 #   build specific variables:
 ################################################################################
+
 set(ARANGODB_URL_INFO_ABOUT @ARANGODB_URL_INFO_ABOUT@)
 set(ARANGODB_SOURCE_DIR @ARANGODB_SOURCE_DIR@)
 set(ARANGODB_VERSION @ARANGODB_VERSION@)
@@ -51,31 +55,32 @@ endif ()
 set(ORIGINAL_SOURCE_DIR @PROJECT_SOURCE_DIR@)
 set(PROJECT_SOURCE_DIR @PROJECT_SOURCE_DIR@)
 
-
 set(LIB_EAY_RELEASE_DLL @LIB_EAY_RELEASE_DLL@)
 set(SSL_EAY_RELEASE_DLL @SSL_EAY_RELEASE_DLL@)
 
 set(ICU_DT @ICU_DT@)
 set(ICU_DT_DEST @ICU_DT_DEST@)
-
+set(INSTALL_ICU_DT_DEST @INSTALL_ICU_DT_DEST@)
 
 ################################################################################
 # Get the final values for cpack:
 ################################################################################
+
 set(CPACK_PACKAGE_VERSION "${ARANGODB_VERSION}")
 set(CPACK_PACKAGE_NAME "${CPACK_PACKAGE_NAME}-client")
 set(CPACK_PACKAGE_CONTACT ${ARANGODB_PACKAGE_CONTACT})
-set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
+
+if (USE_ENTERPRISE)
+  set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/enterprise/LICENSE")
+else ()
+  set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
+endif ()
 
 set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}_${ARANGODB_PACKAGE_ARCHITECTURE}")
-
-
-
 
 ################################################################################
 # ------------------------------------------------------------------------------
 ################################################################################
-
 
 # so we don't need to ship dll's twice, make it one directory:
 set(CMAKE_INSTALL_FULL_SBINDIR     "${CMAKE_INSTALL_FULL_BINDIR}")
@@ -167,7 +172,7 @@ install_readme(README.windows README.windows.txt)
 
 # other platforms link the file into the binary
 install(FILES ${ICU_DT}
-  DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/arangodb3"
+  DESTINATION "${INSTALL_ICU_DT_DEST}"
   RENAME ${ICU_DT_DEST})
 
 include(CPack)

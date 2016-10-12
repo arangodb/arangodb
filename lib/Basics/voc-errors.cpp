@@ -245,6 +245,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_CONNECT, "could not connect to server");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_WRITE, "could not write to server");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_READ, "could not read from server");
+  REG_ERROR(COMMUNICATOR_REQUEST_ABORTED, "Request aborted");
   REG_ERROR(ERROR_MALFORMED_MANIFEST_FILE, "malformed manifest file");
   REG_ERROR(ERROR_INVALID_SERVICE_MANIFEST, "manifest file is invalid");
   REG_ERROR(ERROR_INVALID_FOXX_OPTIONS, "invalid foxx options");
@@ -255,6 +256,8 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_MODULE_NOT_FOUND, "cannot locate module");
   REG_ERROR(ERROR_MODULE_FAILURE, "failed to invoke module");
   REG_ERROR(ERROR_NO_SMART_COLLECTION, "collection is not smart");
+  REG_ERROR(ERROR_NO_SMART_GRAPH_ATTRIBUTE, "smart graph attribute not given");
+  REG_ERROR(ERROR_CANNOT_DROP_SMART_COLLECTION, "cannot drop this smart collection");
   REG_ERROR(ERROR_DISPATCHER_IS_STOPPING, "dispatcher stopped");
   REG_ERROR(ERROR_QUEUE_UNKNOWN, "named queue does not exist");
   REG_ERROR(ERROR_QUEUE_FULL, "named queue is full");

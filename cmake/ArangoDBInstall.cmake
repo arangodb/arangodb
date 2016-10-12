@@ -27,6 +27,8 @@ FILE(MAKE_DIRECTORY "${ARANGODB_APPS_DIRECTORY}")
 # logs
 FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/${CMAKE_PROJECT_NAME}")
 
+set(INSTALL_ICU_DT_DEST "${CMAKE_INSTALL_DATAROOTDIR}/arangodb3")
+
 include(InstallMacros)
 
 # install ----------------------------------------------------------------------
@@ -35,8 +37,13 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/Documentation/man/
 
 install_readme(README README.txt)
 install_readme(README.md README.md)
-install_readme(LICENSE LICENSE.txt)
 install_readme(LICENSES-OTHER-COMPONENTS.md LICENSES-OTHER-COMPONENTS.md)
+
+if (USE_ENTERPRISE)
+  install_readme(enterprise/LICENSE LICENSE.txt)
+else ()
+  install_readme(LICENSE LICENSE.txt)
+endif ()
 
 # Custom targets ----------------------------------------------------------------
 # love
@@ -142,6 +149,18 @@ endif()
 ################################################################################
 ### @brief propagate the locations into our programms:
 ################################################################################
+
+set(PATH_SEP "/")
+
+to_native_path("PATH_SEP")
+to_native_path("CMAKE_INSTALL_FULL_LOCALSTATEDIR")
+to_native_path("CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO")
+to_native_path("PKGDATADIR")
+to_native_path("CMAKE_INSTALL_DATAROOTDIR_ARANGO")
+to_native_path("ICU_DT_DEST")
+to_native_path("CMAKE_INSTALL_SBINDIR")
+to_native_path("CMAKE_INSTALL_BINDIR")
+to_native_path("INSTALL_ICU_DT_DEST")
 
 configure_file (
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/directories.h.in"

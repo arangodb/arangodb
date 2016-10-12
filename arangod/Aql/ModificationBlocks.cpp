@@ -261,6 +261,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
   options.waitForSync = ep->_options.waitForSync;
   options.ignoreRevs = true;
   options.returnOld = producesOutput;
+  options.isRestore = ep->getOptions().useIsRestore;
 
   // loop over all blocks
   size_t dstRow = 0;
@@ -289,26 +290,29 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
       errorCode = TRI_ERROR_NO_ERROR;
 
-      if (a.isObject()) {
-        // value is an object. now extract the _key attribute
-        key.clear();
-        errorCode = extractKey(a, key);
-      } else if (a.isString()) {
-        // value is a string
-        key = a.slice().copyString();
-      } else {
-        errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
-      }
+      if (!ep->_options.consultAqlWriteFilter ||
+          !_collection->getCollection()->skipForAqlWrite(a.slice())) {
+        if (a.isObject()) {
+          // value is an object. now extract the _key attribute
+          key.clear();
+          errorCode = extractKey(a, key);
+        } else if (a.isString()) {
+          // value is a string
+          key = a.slice().copyString();
+        } else {
+          errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
+        }
 
-      if (errorCode == TRI_ERROR_NO_ERROR) {
-        // no error. we expect to have a key
-        // create a slice for the key
-        keyBuilder.openObject();
-        keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
-        keyBuilder.close();
-      } else {
-        // We have an error, handle it
-        handleResult(errorCode, ep->_options.ignoreErrors);
+        if (errorCode == TRI_ERROR_NO_ERROR) {
+          // no error. we expect to have a key
+          // create a slice for the key
+          keyBuilder.openObject();
+          keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
+          keyBuilder.close();
+        } else {
+          // We have an error, handle it
+          handleResult(errorCode, ep->_options.ignoreErrors);
+        }
       }
     }
 
@@ -318,7 +322,8 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
     }
     VPackSlice toRemove = keyBuilder.slice();
 
-    if (!toRemove.isNone()) {
+    if (!toRemove.isNone() &&
+        !(toRemove.isArray() && toRemove.length() == 0)) {
       // all exceptions are caught in _trx->remove()
       OperationResult opRes = _trx->remove(_collection->name, toRemove, options);
       if (isMultiple) {
@@ -326,29 +331,38 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
         VPackSlice removedList = opRes.slice();
         TRI_ASSERT(removedList.isArray());
         if (producesOutput) {
-          for (auto const& it : VPackArrayIterator(removedList)) {
-            bool wasError = arangodb::basics::VelocyPackHelper::getBooleanValue(
-                it, "error", false);
-            errorCode = TRI_ERROR_NO_ERROR;
-            if (wasError) {
-              errorCode =
-                  arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-                      it, "errorNum", TRI_ERROR_NO_ERROR);
-            }
-            if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && _isDBServer &&
-                ignoreDocumentNotFound) {
-              // Ignore document not found on the DBserver:
+          auto iter = VPackArrayIterator(removedList);
+          for (size_t i = 0; i < n; ++i) {
+            AqlValue const& a = res->getValueReference(i, registerId);
+            if (!ep->_options.consultAqlWriteFilter ||
+                !_collection->getCollection()->skipForAqlWrite(a.slice())) {
+              TRI_ASSERT(iter.valid());
+              auto it = iter.value();
+              bool wasError = arangodb::basics::VelocyPackHelper::getBooleanValue(
+                  it, "error", false);
               errorCode = TRI_ERROR_NO_ERROR;
+              if (wasError) {
+                errorCode =
+                    arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+                        it, "errorNum", TRI_ERROR_NO_ERROR);
+              }
+              if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && _isDBServer &&
+                  ignoreDocumentNotFound) {
+                // Ignore document not found on the DBserver:
+                errorCode = TRI_ERROR_NO_ERROR;
+              }
+              if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
+                result->setValue(dstRow, _outRegOld,
+                                 AqlValue(it.get("old")));
+              }
+              handleResult(errorCode, ep->_options.ignoreErrors);
+              ++iter;
             }
-            if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
-              result->setValue(dstRow, _outRegOld,
-                               AqlValue(it.get("old")));
-            }
-            handleResult(errorCode, ep->_options.ignoreErrors);
             ++dstRow;
           }
         } else {
           handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toRemove.length()), ep->_options.ignoreErrors);
+          dstRow += n;
         }
       } else {
         errorCode = opRes.code;
@@ -366,7 +380,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
       }
     } else {
       // Do not send request just increase the row
-      ++dstRow;
+      dstRow += n;
     }
     // done with a block
     // now free it already
@@ -405,6 +419,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
   options.silent = !producesOutput;
   options.waitForSync = ep->_options.waitForSync;
   options.returnNew = producesOutput;
+  options.isRestore = ep->getOptions().useIsRestore;
 
   VPackBuilder babyBuilder;
   // loop over all blocks
@@ -430,12 +445,17 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
           // value is no object
           errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
         } else {
-          OperationResult opRes = _trx->insert(_collection->name, a.slice(), options); 
-          errorCode = opRes.code;
+          if (!ep->_options.consultAqlWriteFilter ||
+              !_collection->getCollection()->skipForAqlWrite(a.slice())) {
+            OperationResult opRes = _trx->insert(_collection->name, a.slice(), options); 
+            errorCode = opRes.code;
 
-          if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
-            // return $NEW
-            result->setValue(dstRow, _outRegNew, AqlValue(opRes.slice().get("new")));
+            if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
+              // return $NEW
+              result->setValue(dstRow, _outRegNew, AqlValue(opRes.slice().get("new")));
+            }
+          } else {
+            errorCode = TRI_ERROR_NO_ERROR;
           }
         }
 
@@ -452,32 +472,45 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
         // only copy 1st row of registers inherited from previous frame(s)
         inheritRegisters(res, result.get(), i, dstRow);
         // TODO This may be optimized with externals
-        babyBuilder.add(a.slice());
+        if (!ep->_options.consultAqlWriteFilter ||
+            !_collection->getCollection()->skipForAqlWrite(a.slice())) {
+          babyBuilder.add(a.slice());
+        }
         ++dstRow;
       }
       babyBuilder.close();
       VPackSlice toSend = babyBuilder.slice();
-      OperationResult opRes =
-          _trx->insert(_collection->name, toSend, options);
+      OperationResult opRes;
+      if (toSend.length() > 0) {
+        opRes = _trx->insert(_collection->name, toSend, options);
 
-      if (producesOutput) {
-        // Reset dstRow
-        dstRow -= n;
-        VPackSlice resultList = opRes.slice();
-        TRI_ASSERT(resultList.isArray());
-        for (auto const& elm: VPackArrayIterator(resultList)) {
-          bool wasError = arangodb::basics::VelocyPackHelper::getBooleanValue(
-              elm, "error", false);
-          if (!wasError) {
-            // return $NEW
-            result->setValue(dstRow, _outRegNew, AqlValue(elm.get("new")));
+        if (producesOutput) {
+          // Reset dstRow
+          dstRow -= n;
+          VPackSlice resultList = opRes.slice();
+          TRI_ASSERT(resultList.isArray());
+          auto iter = VPackArrayIterator(resultList);
+          for (size_t i = 0; i < n; ++i) {
+            AqlValue a = res->getValue(i, registerId);
+            if (!ep->_options.consultAqlWriteFilter ||
+                !_collection->getCollection()->skipForAqlWrite(a.slice())) {
+              TRI_ASSERT(iter.valid());
+              auto elm = iter.value();
+              bool wasError = arangodb::basics::VelocyPackHelper::getBooleanValue(
+                  elm, "error", false);
+              if (!wasError) {
+                // return $NEW
+                result->setValue(dstRow, _outRegNew, AqlValue(elm.get("new")));
+              }
+              ++iter;
+            }
+            ++dstRow;
           }
-          ++dstRow;
         }
-      }
 
-      handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toSend.length()),
-                       ep->_options.ignoreErrors);
+        handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toSend.length()),
+                         ep->_options.ignoreErrors);
+      }
     }
     // now free it already
     (*it) = nullptr;
@@ -532,6 +565,7 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
   options.returnOld = (producesOutput && ep->_outVariableOld != nullptr);
   options.returnNew = (producesOutput && ep->_outVariableNew != nullptr);
   options.ignoreRevs = true;
+  options.isRestore = ep->getOptions().useIsRestore;
         
   // loop over all blocks
   size_t dstRow = 0;
@@ -718,6 +752,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
   options.keepNull = !ep->_options.nullMeansRemove;
   options.returnNew = producesOutput;
   options.ignoreRevs = true;
+  options.isRestore = ep->getOptions().useIsRestore;
   
   VPackBuilder keyBuilder;
   VPackBuilder insertBuilder;
@@ -953,6 +988,7 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
   options.returnOld = (producesOutput && ep->_outVariableOld != nullptr);
   options.returnNew = (producesOutput && ep->_outVariableNew != nullptr);
   options.ignoreRevs = true;
+  options.isRestore = ep->getOptions().useIsRestore;
         
   // loop over all blocks
   size_t dstRow = 0;

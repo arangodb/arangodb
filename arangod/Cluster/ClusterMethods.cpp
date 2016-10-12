@@ -311,7 +311,7 @@ static int distributeBabyOnShards(
   // Now find the responsible shard:
   bool usesDefaultShardingAttributes;
   ShardID shardID;
-  int error = ci->getResponsibleShard(collid, node, false, shardID,
+  int error = ci->getResponsibleShard(collinfo.get(), node, false, shardID,
                                       usesDefaultShardingAttributes);
   if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
     return TRI_ERROR_CLUSTER_SHARD_GONE;
@@ -384,10 +384,10 @@ static int distributeBabyOnShards(
     bool usesDefaultShardingAttributes;
     int error = TRI_ERROR_NO_ERROR;
     if (userSpecifiedKey) {
-      error = ci->getResponsibleShard(collid, node, true, shardID,
+      error = ci->getResponsibleShard(collinfo.get(), node, true, shardID,
                                       usesDefaultShardingAttributes);
     } else {
-      error = ci->getResponsibleShard(collid, node, true, shardID,
+      error = ci->getResponsibleShard(collinfo.get(), node, true, shardID,
                                       usesDefaultShardingAttributes, _key);
     }
     if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
@@ -949,7 +949,8 @@ int deleteDocumentOnCoordinator(
         // Now find the responsible shard:
         bool usesDefaultShardingAttributes;
         int error = ci->getResponsibleShard(
-            collid, arangodb::basics::VelocyPackHelper::EmptyObjectValue(), true,
+            collinfo.get(),
+            arangodb::basics::VelocyPackHelper::EmptyObjectValue(), true,
             shardID, usesDefaultShardingAttributes, _key.toString());
 
         if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
@@ -1453,8 +1454,8 @@ static void insertIntoShardMap(
     bool usesDefaultShardingAttributes;
     ShardID shardID;
 
-    int error = ci->getResponsibleShard(collid, partial.slice(), true, shardID,
-                                        usesDefaultShardingAttributes);
+    int error = ci->getResponsibleShard(collinfo.get(), partial.slice(), true,
+           shardID, usesDefaultShardingAttributes);
     if (error != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(error);
     }

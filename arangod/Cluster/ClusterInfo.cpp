@@ -1538,7 +1538,7 @@ int ClusterInfo::ensureIndexCoordinator(
     }
 
     // now create a new index
-    c->toVelocyPack(*collectionBuilder, false);
+    c->toVelocyPackForAgency(*collectionBuilder);
   }
   VPackSlice const collectionSlice = collectionBuilder->slice();
 
@@ -2155,17 +2155,26 @@ void ClusterInfo::loadCurrentDBServers() {
   AgencyCommResult cleaned = _agency.getValues(prefixTargetCleaned);
 
   if (result.successful()) {
-    velocypack::Slice currentDBServers =
+    velocypack::Slice currentDBServers;
+    velocypack::Slice failedDBServers;
+    velocypack::Slice cleanedDBServers;
+    
+    if (result.slice().length() > 0) {
+      currentDBServers =
         result.slice()[0].get(std::vector<std::string>(
             {AgencyComm::prefix(), "Current", "DBServers"}));
-    velocypack::Slice failedDBServers =
+    }
+    if (!failed.slice().isNone()) {
+      failedDBServers = 
         failed.slice()[0].get(std::vector<std::string>(
-            {AgencyComm::prefix(), "Target", "FailedServers"}));
-    velocypack::Slice cleanedDBServers =
+              {AgencyComm::prefix(), "Target", "FailedServers"}));
+    }
+    if (!cleaned.slice().isNone()) {
+      cleanedDBServers =
         cleaned.slice()[0].get(std::vector<std::string>(
-            {AgencyComm::prefix(), "Target", "CleanedOutServers"}));
-
-    if (currentDBServers.isObject()) {
+              {AgencyComm::prefix(), "Target", "CleanedOutServers"}));
+    }
+    if (currentDBServers.isObject() && failedDBServers.isObject()) {
       decltype(_DBServers) newDBServers;
 
       for (auto const& dbserver : VPackObjectIterator(currentDBServers)) {
@@ -2357,7 +2366,7 @@ std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef USE_ENTERPRISE
-int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
+int ClusterInfo::getResponsibleShard(LogicalCollection* collInfo,
                                      VPackSlice slice, bool docComplete,
                                      ShardID& shardID,
                                      bool& usesDefaultShardingAttributes,
@@ -2373,18 +2382,19 @@ int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
   std::shared_ptr<std::vector<std::string>> shardKeysPtr;
   std::shared_ptr<std::vector<ShardID>> shards;
   bool found = false;
+  CollectionID collectionId = std::to_string(collInfo->planId());
 
   while (true) {
     {
       // Get the sharding keys and the number of shards:
       READ_LOCKER(readLocker, _planProt.lock);
       // _shards is a map-type <CollectionId, shared_ptr<vector<string>>>
-      auto it = _shards.find(collectionID);
+      auto it = _shards.find(collectionId);
 
       if (it != _shards.end()) {
         shards = it->second;
         // _shardKeys is a map-type <CollectionID, shared_ptr<vector<string>>>
-        auto it2 = _shardKeys.find(collectionID);
+        auto it2 = _shardKeys.find(collectionId);
         if (it2 != _shardKeys.end()) {
           shardKeysPtr = it2->second;
           usesDefaultShardingAttributes =

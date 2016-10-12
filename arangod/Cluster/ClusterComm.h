@@ -36,11 +36,15 @@
 #include "Rest/GeneralResponse.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+#include "SimpleHttpClient/Communicator.h"
+#include "SimpleHttpClient/SimpleHttpCommunicatorResult.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Utils/Transaction.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
+using namespace communicator;
+
 class ClusterCommThread;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -59,7 +63,7 @@ typedef TRI_voc_tick_t CoordTransactionID;
 /// @brief trype of an operation ID
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef TRI_voc_tick_t OperationID;
+typedef Ticket OperationID;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief status of an (a-)synchronous cluster operation
@@ -221,6 +225,63 @@ struct ClusterCommResult {
 
   /// @brief stringify a cluster comm status
   static char const* stringifyStatus(ClusterCommOpStatus status);
+  
+  void fromError(int errorCode, std::unique_ptr<GeneralResponse> response) {
+    errorMessage = TRI_errno_string(errorCode);
+    switch(errorCode) {
+      case TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT:
+        status = CL_COMM_BACKEND_UNAVAILABLE;
+        break;
+      case TRI_COMMUNICATOR_REQUEST_ABORTED:
+        status = CL_COMM_BACKEND_UNAVAILABLE;
+        break;
+      case TRI_ERROR_CLUSTER_TIMEOUT:
+        status = CL_COMM_TIMEOUT;
+        sendWasComplete = true;
+        break;
+      default:
+        if (response == nullptr) {
+          status = CL_COMM_ERROR;
+        } else {
+          // mop: wow..this is actually the old behaviour :S
+          fromResponse(std::move(response));
+        }
+    }
+  }
+
+  void fromResponse(std::unique_ptr<GeneralResponse> response) {
+    sendWasComplete = true;
+    // mop: simulate the old behaviour where the original request
+    // was sent to the recipient and was simply accepted. Then the backend would
+    // do its work and send a request to the target containing the result of that
+    // operation in this request. This is mind boggling but this is how it used to
+    // work....now it gets even funnier: as the new system only does
+    // request => response we simulate the old behaviour now and fake a request
+    // containing the body of our response
+    // :snake: OPST_CIRCUS
+    answer_code = dynamic_cast<HttpResponse*>(response.get())->responseCode();
+    std::unordered_map<std::string, std::string> unusedHeaders;
+    HttpRequest* request = HttpRequest::createHttpRequest(ContentType::JSON, dynamic_cast<HttpResponse*>(response.get())->body().c_str(), dynamic_cast<HttpResponse*>(response.get())->body().length(), unusedHeaders);
+    
+    auto headers = response->headers();
+    auto errorCodes = headers.find(StaticStrings::ErrorCodes);
+    if (errorCodes != headers.end()) {
+      request->setHeader(StaticStrings::ErrorCodes, errorCodes->second);
+    }
+    request->setHeader("x-arango-response-code", GeneralResponse::responseString(answer_code));
+    answer.reset(request);
+    TRI_ASSERT(response != nullptr);
+    result = std::make_shared<httpclient::SimpleHttpCommunicatorResult>(dynamic_cast<HttpResponse*>(response.release()));
+    // mop: well single requests were processed differently formerly and got
+    // result was available in different status code situations :S
+    if (single) {
+      status = result->wasHttpError() ? CL_COMM_ERROR: CL_COMM_SENT;
+    } else {
+      // mop: actually it will never be an ERROR here...this is and was a dirty hack :S
+      status = CL_COMM_RECEIVED;
+
+    }
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -464,12 +525,20 @@ class ClusterComm {
   /// optimization for the single document operation case.
   /// Exact same semantics as performRequests.
   //////////////////////////////////////////////////////////////////////////////
-
+  std::shared_ptr<communicator::Communicator> communicator() {
+    return _communicator;
+  }
+  
  private:
   size_t performSingleRequest(std::vector<ClusterCommRequest>& requests,
                               ClusterCommTimeout timeout, size_t& nrDone,
                               arangodb::LogTopic const& logTopic);
 
+  communicator::Destination createCommunicatorDestination(std::string const& destination, std::string const& path);
+  std::pair<ClusterCommResult*, HttpRequest*> prepareRequest(std::string const& destination,
+      arangodb::rest::RequestType reqtype,
+      std::string const* body,
+      std::unordered_map<std::string, std::string> const& headerFields);
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the pointer to the singleton instance
   //////////////////////////////////////////////////////////////////////////////
@@ -494,6 +563,14 @@ class ClusterComm {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief received queue with lock and index
   //////////////////////////////////////////////////////////////////////////////
+  
+  struct AsyncResponse {
+    double timestamp;
+    std::shared_ptr<ClusterCommResult> result;
+  };
+
+  typedef std::unordered_map<Ticket, AsyncResponse>::iterator ResponseIterator;
+  std::unordered_map<Ticket, AsyncResponse> responses;
 
   // Receiving answers:
   std::list<ClusterCommOperation*> received;
@@ -524,7 +601,7 @@ class ClusterComm {
 
   bool match(ClientTransactionID const& clientTransactionID,
              CoordTransactionID const coordTransactionID,
-             ShardID const& shardID, ClusterCommOperation* op);
+             ShardID const& shardID, ClusterCommResult* res);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief move an operation from the send to the receive queue
@@ -549,6 +626,8 @@ class ClusterComm {
   //////////////////////////////////////////////////////////////////////////////
 
   bool _logConnectionErrors;
+
+  std::shared_ptr<communicator::Communicator> _communicator;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -567,9 +646,15 @@ class ClusterCommThread : public Thread {
  public:
   void beginShutdown() override;
   bool isSystem() override final { return true; }
+ 
+ private:
+  void abortRequestsToFailedServers();
 
  protected:
   void run() override final;
+
+ private:
+  ClusterComm* _cc;
 };
 }
 

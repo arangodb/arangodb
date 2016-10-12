@@ -458,7 +458,7 @@ class ClusterInfo {
   /// @brief find the shard that is responsible for a document
   //////////////////////////////////////////////////////////////////////////////
 
-  int getResponsibleShard(CollectionID const&, arangodb::velocypack::Slice,
+  int getResponsibleShard(LogicalCollection*, arangodb::velocypack::Slice,
                           bool docComplete, ShardID& shardID,
                           bool& usesDefaultShardingAttributes,
                           std::string const& key = "");
@@ -493,6 +493,9 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<VPackBuilder> getCurrent();
+
+  std::vector<std::string> const& getFailedServers() { MUTEX_LOCKER(guard, _failedServersMutex); return _failedServers; }
+  void setFailedServers(std::vector<std::string> const& failedServers) { MUTEX_LOCKER(guard, _failedServersMutex); _failedServers = failedServers; }
 
  private:
 
@@ -640,6 +643,9 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   static double const reloadServerListTimeout;
+  
+  arangodb::Mutex _failedServersMutex;  
+  std::vector<std::string> _failedServers;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

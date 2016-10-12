@@ -262,7 +262,7 @@ class DistributeBlock : public BlockWithClients {
   size_t sendToClient(AqlItemBlock*);
 
   /// @brief create a new document key
-  std::string createKey() const;
+  std::string createKey(arangodb::velocypack::Slice) const;
 
   /// @brief _distBuffer.at(i) is a deque containing pairs (j,k) such that
   //  _buffer.at(j) row k should be sent to the client with id = i.

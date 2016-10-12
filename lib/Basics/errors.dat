@@ -342,6 +342,11 @@ SIMPLE_CLIENT_COULD_NOT_WRITE,2002,"could not write to server","Will be raised w
 SIMPLE_CLIENT_COULD_NOT_READ,2003,"could not read from server","Will be raised when the client could not read data."
 
 ################################################################################
+## Communicator errors
+################################################################################
+COMMUNICATOR_REQUEST_ABORTED,2100,"Request aborted", "Request was aborted."
+
+################################################################################
 ## Foxx Manager errors
 ################################################################################
 
@@ -366,6 +371,8 @@ ERROR_MODULE_FAILURE,3103,"failed to invoke module","Failed to invoke the module
 ################################################################################
 
 ERROR_NO_SMART_COLLECTION,4000,"collection is not smart","The requested collection needs to be smart, but it ain't"
+ERROR_NO_SMART_GRAPH_ATTRIBUTE,4001,"smart graph attribute not given","The given document does not have the smart graph attribute set."
+ERROR_CANNOT_DROP_SMART_COLLECTION,4002,"cannot drop this smart collection","This smart collection cannot be dropped, it dictates sharding in the graph."
 
 ################################################################################
 ## Dispatcher errors

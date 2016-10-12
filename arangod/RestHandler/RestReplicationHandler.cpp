@@ -1171,6 +1171,9 @@ void RestReplicationHandler::handleCommandInventory() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandClusterInventory() {
+  // TODO: This needs to be reworked, we ought to use the LogicalCollections
+  // data structures to produce the result rather than taking the plan from
+  // the agency.
   std::string const& dbName = _request->databaseName();
   bool found;
   bool includeSystem = true;
@@ -2511,7 +2514,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
       if (!doc.isNone() && type != REPLICATION_MARKER_REMOVE) {
         ShardID responsibleShard;
         bool usesDefaultSharding;
-        res = ci->getResponsibleShard(col->cid_as_string(), doc, true,
+        res = ci->getResponsibleShard(col.get(), doc, true,
                                       responsibleShard, usesDefaultSharding);
         if (res != TRI_ERROR_NO_ERROR) {
           errorMsg = "error during determining responsible shard";

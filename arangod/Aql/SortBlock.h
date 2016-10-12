@@ -45,6 +45,8 @@ class SortBlock : public ExecutionBlock {
 
   int initializeCursor(AqlItemBlock* items, size_t pos) override final;
 
+  int getOrSkipSome(size_t atLeast, size_t atMost, bool skipping, AqlItemBlock*&, size_t& skipped) override final;
+
   /// @brief dosorting
  private:
   void doSorting();
@@ -74,6 +76,8 @@ class SortBlock : public ExecutionBlock {
 
   /// @brief whether or not the sort should be stable
   bool _stable;
+
+  bool _mustFetchAll;
 };
 
 }  // namespace arangodb::aql

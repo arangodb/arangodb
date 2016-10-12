@@ -232,11 +232,15 @@ class LogicalCollection {
   // SECTION: Sharding
   int numberOfShards() const;
   bool allowUserKeys() const;
-  bool usesDefaultShardKeys() const;
+  virtual bool usesDefaultShardKeys() const;
   std::vector<std::string> const& shardKeys() const;
   std::shared_ptr<ShardMap> shardIds() const;
   void setShardMap(std::shared_ptr<ShardMap>& map);
   
+  /// @brief a method to skip certain documents in AQL write operations,
+  /// this is only used in the enterprise edition for smart graphs
+  virtual bool skipForAqlWrite(arangodb::velocypack::Slice document) const;
+
   // SECTION: Modification Functions
   int rename(std::string const&);
   virtual void drop();
@@ -475,7 +479,7 @@ class LogicalCollection {
 
   void increaseInternalVersion();
 
-  void toVelocyPackInObject(VPackBuilder& result) const;
+  void toVelocyPackInObject(arangodb::velocypack::Builder& result) const;
 
  protected:
   // SECTION: Private variables

@@ -8,40 +8,42 @@ SWAGGER=1
 EXAMPLES=1
 LINT=1
 
-if [ "$1" == "--no-lint" ];  then
-  LINT=0
-  shift
-fi
+while [ "$#" -gt 1 ];  do
+  if [ "$1" == "--no-lint" ];  then
+    LINT=0
+    shift
+  fi
 
-if [ "$1" == "--no-build" ];  then
-  BUILD=0
-  shift
-fi
+  if [ "$1" == "--no-build" ];  then
+    BUILD=0
+    shift
+  fi
 
-if [ "$1" == "--recycle-build" ];  then
-  BUILD=2
-  shift
-fi
+  if [ "$1" == "--recycle-build" ];  then
+    BUILD=2
+    shift
+  fi
 
-if [ "$1" == "--no-swagger" ];  then
-  SWAGGER=0
-  shift
-fi
+  if [ "$1" == "--no-swagger" ];  then
+    SWAGGER=0
+    shift
+  fi
 
-if [ "$1" == "--no-examples" ];  then
-  EXAMPLES=0
-  shift
-fi
+  if [ "$1" == "--no-examples" ];  then
+    EXAMPLES=0
+    shift
+  fi
 
-if [ "$1" == "--no-commit" ];  then
-  TAG=0
-  shift
-fi
+  if [ "$1" == "--no-commit" ];  then
+    TAG=0
+    shift
+  fi
 
-if [ "$1" == "--no-book" ];  then
-  BOOK=0
-  shift
-fi
+  if [ "$1" == "--no-book" ];  then
+    BOOK=0
+    shift
+  fi
+done
 
 if [ "$#" -ne 1 ];  then
   echo "usage: $0 <major>.<minor>.<revision>"
@@ -85,8 +87,14 @@ if [ `uname` == "Darwin" ];  then
   CMAKE_CONFIGURE="${CMAKE_CONFIGURE} -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl -DCMAKE_OSX_DEPLOYMENT_TARGET=10.11"
 fi
 
+ENTERPRISE=0
+
+if [ -d enterprise ];  then
+  ENTERPRISE=1
+fi
+
 if [ "$BUILD" != "0" ];  then
-  echo "COMPILING"
+  echo "COMPILING COMMUNITY"
 
   if [ "$BUILD" == "1" ];  then
     rm -rf build && mkdir build
@@ -97,6 +105,20 @@ if [ "$BUILD" != "0" ];  then
     cmake .. ${CMAKE_CONFIGURE}
     make -j 8
   )
+
+  if [ "$ENTERPRISE" == "1" ];  then
+    echo "COMPILING ENTERPRISE"
+
+    if [ "$BUILD" == "1" ];  then
+      rm -rf build-enterprise && mkdir build-enterprise
+    fi
+
+    (
+      cd build-enterprise
+      cmake .. ${CMAKE_CONFIGURE} -DUSE_ENTERPRISE=ON
+      make -j 8
+    )
+  fi
 fi
 
 if [ "$LINT" == "1" ]; then
@@ -157,6 +179,17 @@ if [ "$TAG" == "1" ];  then
 
   git tag "v$VERSION"
   git push --tags
+
+  if [ "$ENTERPRISE" == "1" ];  then
+    (
+      cd enterprise
+      git commit -m "release version $VERSION enterprise" -a
+      git push
+
+      git tag "v$VERSION"
+      git push --tags
+    )
+  fi
 
   echo
   echo "--------------------------------------------------"

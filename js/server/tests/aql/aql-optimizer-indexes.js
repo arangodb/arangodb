@@ -3220,7 +3220,6 @@ function optimizerIndexesTestSuite () {
       });
 
       assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ], results.json, query);

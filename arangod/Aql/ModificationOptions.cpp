@@ -40,6 +40,10 @@ ModificationOptions::ModificationOptions(VPackSlice const& slice) {
       basics::VelocyPackHelper::getBooleanValue(obj, "ignoreDocumentNotFound", false);
   readCompleteInput =
       basics::VelocyPackHelper::getBooleanValue(obj, "readCompleteInput", true);
+  useIsRestore =
+      basics::VelocyPackHelper::getBooleanValue(obj, "useIsRestore", false);
+  consultAqlWriteFilter =
+      basics::VelocyPackHelper::getBooleanValue(obj, "consultAqlWriteFilter", false);
 }
 
 void ModificationOptions::toVelocyPack(VPackBuilder& builder) const {
@@ -50,4 +54,6 @@ void ModificationOptions::toVelocyPack(VPackBuilder& builder) const {
   builder.add("mergeObjects", VPackValue(mergeObjects));
   builder.add("ignoreDocumentNotFound", VPackValue(ignoreDocumentNotFound));
   builder.add("readCompleteInput", VPackValue(readCompleteInput));
+  builder.add("useIsRestore", VPackValue(useIsRestore));
+  builder.add("consultAqlWriteFilter", VPackValue(consultAqlWriteFilter));
 }

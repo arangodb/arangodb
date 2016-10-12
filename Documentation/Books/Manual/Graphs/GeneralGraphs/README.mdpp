@@ -32,12 +32,13 @@ There is no need to include the referenced collections within the query, this mo
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock generalGraphCreateGraphHowTo2
 
-* Define relations on the
+* Define relations on the Graph
 
     @startDocuBlockInline generalGraphCreateGraphHowTo3
     @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraphHowTo3}
     ~ var graph_module = require("@arangodb/general-graph");
     ~ var graph = graph_module._create("myGraph");
+    ~ graph._addVertexCollection("pet");
       var rel = graph_module._relation("isCustomer", ["shop"], ["customer"]);
       graph._extendEdgeDefinitions(rel);
       graph;

@@ -1,6 +1,7 @@
 ################################################################################
 ## INSTALL
 ################################################################################
+
 if (NOT CMAKE_INSTALL_SYSCONFDIR_ARANGO
     OR NOT CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO
     OR NOT CMAKE_INSTALL_DATAROOTDIR_ARANGO
@@ -136,3 +137,13 @@ else ()
     endif ()
   endmacro ()
 endif()
+
+macro(to_native_path sourceVarName)
+  if (MSVC)
+    string(REGEX REPLACE "/" "\\\\\\\\" "myVar" "${${sourceVarName}}" )
+  else()
+    set(myVar "${${sourceVarName}}")
+  endif()
+
+  set("INC_${sourceVarName}" ${myVar})
+endmacro()

@@ -313,7 +313,6 @@ void Constituent::callElection() {
     if (i != _id) {
       ClusterCommResult res =
           arangodb::ClusterComm::instance()->enquire(operationIDs[i]);
-
       if (res.status == CL_COMM_SENT) {  // Request successfully sent
         res = ClusterComm::instance()->wait("1", 1, operationIDs[i], "1");
         std::shared_ptr<Builder> body = res.result->getBodyVelocyPack();

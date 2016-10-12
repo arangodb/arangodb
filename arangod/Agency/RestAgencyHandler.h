@@ -38,6 +38,7 @@ class RestAgencyHandler : public RestBaseHandler {
   RestAgencyHandler(GeneralRequest*, GeneralResponse*, consensus::Agent*);
 
  public:
+  char const* name() const override final { return "RestAgencyHandler"; }
   bool isDirect() const override;
   status execute() override;
 
