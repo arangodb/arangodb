@@ -1664,6 +1664,10 @@ AgencyCommResult AgencyComm::sendWithFailover(
 
       size_t const delim = endpoint.find('/', offset);
 
+      LOG_TOPIC(WARN, Logger::AGENCYCOMM) << "Got a redirect 307 from agency "
+        << "endpoint: " << agencyEndpoint << " location: " << result.location()
+        << " new forced endpoint: " << endpoint;
+
       if (delim == std::string::npos) {
         // invalid location header
         break;
@@ -1675,12 +1679,13 @@ AgencyCommResult AgencyComm::sendWithFailover(
       if (!AgencyComm::hasEndpoint(endpoint)) {
         AgencyComm::addEndpoint(endpoint, true);
 
-        LOG_TOPIC(DEBUG, Logger::AGENCYCOMM) << "adding agency-endpoint '"
-                                             << endpoint << "'";
+        LOG_TOPIC(WARN, Logger::AGENCYCOMM) << "adding agency-endpoint '"
+                                            << endpoint << "'";
 
         // re-check the new endpoint
         if (AgencyComm::hasEndpoint(endpoint)) {
           ++numEndpoints;
+          // do we not need to set forceEndpoint here?
           continue;
         }
 
