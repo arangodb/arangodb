@@ -172,6 +172,9 @@ function graphForClient (g) {
     name: g.__name,
     edgeDefinitions: g.__edgeDefinitions,
     orphanCollections: g._orphanCollections(),
+    isSmart: g.__isSmart || false,
+    numberOfShards: g.__numberOfShards || 0,
+    smartGraphAttribute: g.__smartGraphAttribute || ""
     _id: g.__id,
     _rev: g.__rev
   };
