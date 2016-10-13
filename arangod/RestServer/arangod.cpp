@@ -43,6 +43,7 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Cluster/ClusterFeature.h"
 #include "Dispatcher/DispatcherFeature.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LoggerBufferFeature.h"
 #include "Logger/LoggerFeature.h"
@@ -109,7 +110,7 @@ static int runServer(int argc, char** argv) {
 
   std::vector<std::string> nonServerFeatures = {
       "Action",        "Affinity",
-      "Agency",        "Cluster",
+      "Agency", "Authentication", "Cluster",
       "Daemon",        "Dispatcher",
       "Endpoint",      "FoxxQueues",
       "GeneralServer", "LoggerBufferFeature",
@@ -122,6 +123,7 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new ActionFeature(&server));
   server.addFeature(new AffinityFeature(&server));
   server.addFeature(new AgencyFeature(&server));
+  server.addFeature(new AuthenticationFeature(&server));
   server.addFeature(new BootstrapFeature(&server));
   server.addFeature(new CheckVersionFeature(&server, &ret, nonServerFeatures));
   server.addFeature(new ClusterFeature(&server));

@@ -37,8 +37,7 @@ namespace arangodb {
 
 class RestAuthHandler : public RestVocbaseBaseHandler {
  public:
-  RestAuthHandler(GeneralRequest*, GeneralResponse*,
-                  std::string const* jwtSecret);
+  RestAuthHandler(GeneralRequest*, GeneralResponse*);
 
   std::string generateJwt(std::string const&, std::string const&);
 

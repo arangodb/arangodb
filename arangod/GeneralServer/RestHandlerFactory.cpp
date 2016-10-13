@@ -87,7 +87,7 @@ RestHandler* RestHandlerFactory::createHandler(
     std::unique_ptr<GeneralRequest> request,
     std::unique_ptr<GeneralResponse> response) {
   std::string const& path = request->requestPath();
-
+  
   // In the bootstrap phase, we would like that coordinators answer the
   // following to endpoints, but not yet others:
   if (_maintenanceMode.load()) {

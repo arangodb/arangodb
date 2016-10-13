@@ -207,6 +207,7 @@ add_executable(${BIN_ARANGOD}
   FulltextIndex/fulltext-query.cpp
   FulltextIndex/fulltext-result.cpp
   GeneralServer/AsyncJobManager.cpp
+  GeneralServer/AuthenticationFeature.cpp
   GeneralServer/GeneralCommTask.cpp
   GeneralServer/GeneralListenTask.cpp
   GeneralServer/GeneralServer.cpp

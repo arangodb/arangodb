@@ -26,10 +26,14 @@
 
 #include "Basics/Common.h"
 
+#include <chrono>
+
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Aql/QueryRegistry.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/LruCache.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -90,6 +94,13 @@ class AuthResult {
   bool _mustChange;
 };
 
+class AuthJwtResult: public AuthResult {
+ public:
+  AuthJwtResult() : AuthResult(), _expires(false) {}
+  bool _expires;
+  std::chrono::system_clock::time_point _expireTime;
+};
+
 class AuthInfo {
  public:
   enum class AuthType {
@@ -97,9 +108,18 @@ class AuthInfo {
   };
 
  public:
-  AuthInfo() : _outdated(true) {}
+  AuthInfo()
+    : _outdated(true),
+    _authJwtCache(16384),
+    _jwtSecret(""),
+    _queryRegistry(nullptr) {
+  }
   
  public:
+  void setQueryRegistry(aql::QueryRegistry* registry) {
+    TRI_ASSERT(registry != nullptr);
+    _queryRegistry = registry;
+  };
   void outdate() { _outdated = true; }
 
   AuthResult checkPassword(std::string const& username,
@@ -110,7 +130,12 @@ class AuthInfo {
 
   AuthLevel canUseDatabase(std::string const& username,
                            std::string const& dbname);
-
+  
+  void setJwtSecret(std::string const&);
+  std::string jwtSecret();
+  std::string generateJwt(VPackBuilder const&);
+  std::string generateRawJwt(VPackBuilder const&);
+ 
  private:
   void reload();
   void clear();
@@ -120,16 +145,21 @@ class AuthInfo {
   AuthResult checkAuthenticationBasic(std::string const& secret);
   AuthResult checkAuthenticationJWT(std::string const& secret);
   bool validateJwtHeader(std::string const&);
-  bool validateJwtBody(std::string const&, std::string*);
+  AuthJwtResult validateJwtBody(std::string const&);
   bool validateJwtHMAC256Signature(std::string const&, std::string const&);
   std::shared_ptr<VPackBuilder> parseJson(std::string const&, std::string const&);
 
  private:
   basics::ReadWriteLock _authInfoLock;
+  basics::ReadWriteLock _authJwtLock;
+  Mutex _queryLock;
   std::atomic<bool> _outdated;
 
   std::unordered_map<std::string, arangodb::AuthEntry> _authInfo;
   std::unordered_map<std::string, arangodb::AuthResult> _authBasicCache;
+  arangodb::basics::LruCache<std::string, arangodb::AuthJwtResult> _authJwtCache;
+  std::string _jwtSecret;
+  aql::QueryRegistry* _queryRegistry;
 };
 }
 

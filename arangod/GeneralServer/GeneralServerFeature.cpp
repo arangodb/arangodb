@@ -34,13 +34,13 @@
 #include "Cluster/RestShardHandler.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Dispatcher/DispatcherFeature.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "InternalRestHandler/InternalRestTraverserHandler.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "Random/RandomGenerator.h"
 #include "Rest/Version.h"
 #include "RestHandler/RestAdminLogHandler.h"
 #include "RestHandler/RestAqlFunctionsHandler.h"
@@ -84,17 +84,12 @@ using namespace arangodb::options;
 rest::RestHandlerFactory* GeneralServerFeature::HANDLER_FACTORY = nullptr;
 rest::AsyncJobManager* GeneralServerFeature::JOB_MANAGER = nullptr;
 GeneralServerFeature* GeneralServerFeature::GENERAL_SERVER = nullptr;
-AuthInfo GeneralServerFeature::AUTH_INFO;
 
 GeneralServerFeature::GeneralServerFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "GeneralServer"),
       _allowMethodOverride(false),
-      _authentication(true),
-      _authenticationUnixSockets(true),
-      _authenticationSystemOnly(true),
       _proxyCheck(true),
-      _jwtSecret(""),
       _verificationMode(SSL_VERIFY_NONE),
       _verificationCallback(nullptr),
       _handlerFactory(nullptr),
@@ -102,6 +97,7 @@ GeneralServerFeature::GeneralServerFeature(
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Agency");
+  startsAfter("Authentication");
   startsAfter("CheckVersion");
   startsAfter("Database");
   startsAfter("Dispatcher");
@@ -118,12 +114,6 @@ void GeneralServerFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
 
-  options->addOldOption("server.disable-authentication",
-                        "server.authentication");
-  options->addOldOption("server.disable-authentication-unix-sockets",
-                        "server.authentication-unix-sockets");
-  options->addOldOption("server.authenticate-system-only",
-                        "server.authentication-system-only");
   options->addOldOption("server.allow-method-override",
                         "http.allow-method-override");
   options->addOldOption("server.hide-product-header",
@@ -131,25 +121,6 @@ void GeneralServerFeature::collectOptions(
   options->addOldOption("server.keep-alive-timeout", "http.keep-alive-timeout");
   options->addOldOption("server.default-api-compatibility", "");
   options->addOldOption("no-server", "server.rest-server");
-
-  options->addOption("--server.authentication",
-                     "enable or disable authentication for ALL client requests",
-                     new BooleanParameter(&_authentication));
-
-  options->addOption(
-      "--server.authentication-system-only",
-      "use HTTP authentication only for requests to /_api and /_admin",
-      new BooleanParameter(&_authenticationSystemOnly));
-
-#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
-  options->addOption("--server.authentication-unix-sockets",
-                     "authentication for requests via UNIX domain sockets",
-                     new BooleanParameter(&_authenticationUnixSockets));
-#endif
-
-  options->addOption("--server.jwt-secret",
-                     "secret to use when doing jwt authentication",
-                     new StringParameter(&_jwtSecret));
 
   options->addSection("http", "HttpServer features");
 
@@ -211,14 +182,6 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
                        }),
         _accessControlAllowOrigins.end());
   }
-
-  if (!_jwtSecret.empty()) {
-    if (_jwtSecret.length() > GeneralServerFeature::_maxSecretLength) {
-      LOG(ERR) << "Given JWT secret too long. Max length is "
-               << GeneralServerFeature::_maxSecretLength;
-      FATAL_ERROR_EXIT();
-    }
-  }
 }
 
 static TRI_vocbase_t* LookupDatabaseFromRequest(GeneralRequest* request) {
@@ -244,6 +207,8 @@ static TRI_vocbase_t* LookupDatabaseFromRequest(GeneralRequest* request) {
 }
 
 static bool SetRequestContext(GeneralRequest* request, void* data) {
+  auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>("Authentication");
+  TRI_ASSERT(authentication != nullptr);
   TRI_vocbase_t* vocbase = LookupDatabaseFromRequest(request);
 
   // invalid database name specified, database not found etc.
@@ -258,27 +223,14 @@ static bool SetRequestContext(GeneralRequest* request, void* data) {
   }
 
   VocbaseContext* ctx = new arangodb::VocbaseContext(
-      request, vocbase, GeneralServerFeature::getJwtSecret());
+      request, vocbase);
   request->setRequestContext(ctx, true);
 
   // the "true" means the request is the owner of the context
   return true;
 }
 
-void GeneralServerFeature::generateNewJwtSecret() {
-  _jwtSecret = "";
-  uint16_t m = 254;
-
-  for (size_t i = 0; i < GeneralServerFeature::_maxSecretLength; i++) {
-    _jwtSecret += (1 + RandomGenerator::interval(m));
-  }
-}
-
 void GeneralServerFeature::prepare() {
-  if (_jwtSecret.empty()) {
-    generateNewJwtSecret();
-  }
-
   RestHandlerFactory::setMaintenance(true);
   GENERAL_SERVER = this;
 }
@@ -299,22 +251,13 @@ void GeneralServerFeature::start() {
     server->startListening();
   }
 
-  LOG(INFO) << "Authentication is turned " << (_authentication ? "on" : "off");
-
-  if (_authentication) {
-    if (_authenticationSystemOnly) {
-      LOG(INFO) << "Authentication system only";
-    }
-
-#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
-    LOG(INFO) << "Authentication for unix sockets is turned "
-              << (_authenticationUnixSockets ? "on" : "off");
-#endif
-  }
-
   // populate the authentication cache. otherwise no one can access the new
   // database
-  GeneralServerFeature::AUTH_INFO.outdate();
+  auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>("Authentication");
+  TRI_ASSERT(authentication != nullptr);
+  if (authentication->isEnabled()) {
+    authentication->authInfo()->outdate();
+  }
 }
 
 void GeneralServerFeature::stop() {
@@ -376,6 +319,11 @@ void GeneralServerFeature::defineHandlers() {
       application_features::ApplicationServer::getFeature<ClusterFeature>(
           "Cluster");
   TRI_ASSERT(cluster != nullptr);
+  
+  AuthenticationFeature* authentication =
+      application_features::ApplicationServer::getFeature<AuthenticationFeature>(
+          "Authentication");
+  TRI_ASSERT(authentication != nullptr);
 
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
   auto traverserEngineRegistry =
@@ -541,11 +489,12 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       "/_admin/shutdown",
       RestHandlerCreator<arangodb::RestShutdownHandler>::createNoData);
-
-  _handlerFactory->addPrefixHandler(
-      "/_open/auth", RestHandlerCreator<arangodb::RestAuthHandler>::createData<
-                         std::string const*>,
-      &_jwtSecret);
+  
+  if (authentication->isEnabled()) {
+    _handlerFactory->addPrefixHandler(
+        "/_open/auth",
+        RestHandlerCreator<arangodb::RestAuthHandler>::createNoData);
+  }
 
   // ...........................................................................
   // /_admin

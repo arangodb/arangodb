@@ -32,7 +32,7 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/ConnectionInfo.h"
-#include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "Ssl/SslInterface.h"
 #include "Utils/Events.h"
@@ -46,35 +46,18 @@ using namespace arangodb::rest;
 double VocbaseContext::ServerSessionTtl =
     60.0 * 60.0 * 24 * 60;  // 2 month session timeout
 
-VocbaseContext::VocbaseContext(GeneralRequest* request, TRI_vocbase_t* vocbase,
-                               std::string const& jwtSecret)
-    : RequestContext(request), _vocbase(vocbase), _jwtSecret(jwtSecret) {
+VocbaseContext::VocbaseContext(GeneralRequest* request, TRI_vocbase_t* vocbase)
+    : RequestContext(request),
+    _vocbase(vocbase),
+    _authentication(nullptr) {
   TRI_ASSERT(_vocbase != nullptr);
+  _authentication =
+      application_features::ApplicationServer::getFeature<AuthenticationFeature>(
+          "Authentication");
+  TRI_ASSERT(_authentication != nullptr);
 }
 
 VocbaseContext::~VocbaseContext() { _vocbase->release(); }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not to use special cluster authentication
-////////////////////////////////////////////////////////////////////////////////
-
-bool VocbaseContext::useClusterAuthentication() const {
-  auto role = ServerState::instance()->getRole();
-
-  if (ServerState::instance()->isDBServer(role)) {
-    return true;
-  }
-
-  if (ServerState::instance()->isCoordinator(role)) {
-    std::string const& s = _request->requestPath();
-
-    if (s == "/_api/shard-comm" || s == "/_admin/shutdown") {
-      return true;
-    }
-  }
-
-  return false;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the authentication
@@ -83,11 +66,7 @@ bool VocbaseContext::useClusterAuthentication() const {
 rest::ResponseCode VocbaseContext::authenticate() {
   TRI_ASSERT(_vocbase != nullptr);
 
-  auto restServer =
-      application_features::ApplicationServer::getFeature<GeneralServerFeature>(
-          "GeneralServer");
-
-  if (!restServer->authentication()) {
+  if (!_authentication->isEnabled()) {
     // no authentication required at all
     return rest::ResponseCode::OK;
   }
@@ -108,16 +87,25 @@ rest::ResponseCode VocbaseContext::authenticate() {
       forceOpen = true;
     }
   }
+  
+  if (result != rest::ResponseCode::OK) {
+    return result;
+  }
+  
+  std::string const& username = _request->user();
+  // mop: internal request => no username present
+  if (username.empty()) {
+    return rest::ResponseCode::OK;
+  }
 
   // check that we are allowed to see the database
-  if (result == rest::ResponseCode::OK && !forceOpen) {
+  if (!forceOpen) {
     if (!StringUtils::isPrefix(path, "/_api/user/")) {
-      std::string const& username = _request->user();
       std::string const& dbname = _request->databaseName();
-
+      
       if (!username.empty() || !dbname.empty()) {
         AuthLevel level =
-            GeneralServerFeature::AUTH_INFO.canUseDatabase(username, dbname);
+            _authentication->authInfo()->canUseDatabase(username, dbname);
 
         if (level != AuthLevel::RW) {
           events::NotAuthorized(_request);
@@ -131,16 +119,13 @@ rest::ResponseCode VocbaseContext::authenticate() {
 }
 
 rest::ResponseCode VocbaseContext::authenticateRequest(bool* forceOpen) {
-  auto restServer =
-      application_features::ApplicationServer::getFeature<GeneralServerFeature>(
-          "GeneralServer");
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   // check if we need to run authentication for this type of
   // endpoint
   ConnectionInfo const& ci = _request->connectionInfo();
 
   if (ci.endpointType == Endpoint::DomainType::UNIX &&
-      !restServer->authenticationUnixSockets()) {
+      !_authentication->authenticationUnixSockets()) {
     // no authentication required for unix socket domain connections
     return rest::ResponseCode::OK;
   }
@@ -148,7 +133,7 @@ rest::ResponseCode VocbaseContext::authenticateRequest(bool* forceOpen) {
 
   std::string const& path = _request->requestPath();
 
-  if (restServer->authenticationSystemOnly()) {
+  if (_authentication->authenticationSystemOnly()) {
     // authentication required, but only for /_api, /_admin etc.
 
     if (!path.empty()) {
@@ -209,32 +194,7 @@ rest::ResponseCode VocbaseContext::authenticateRequest(bool* forceOpen) {
 ////////////////////////////////////////////////////////////////////////////////
 
 rest::ResponseCode VocbaseContext::basicAuthentication(const char* auth) {
-  if (useClusterAuthentication()) {
-    std::string const expected = ServerState::instance()->getAuthentication();
-
-    if (expected.substr(6) != std::string(auth)) {
-      events::UnknownAuthenticationMethod(_request);
-      return rest::ResponseCode::UNAUTHORIZED;
-    }
-
-    std::string const up = StringUtils::decodeBase64(auth);
-    std::string::size_type n = up.find(':', 0);
-
-    if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
-      LOG(TRACE) << "invalid authentication data found, cannot extract "
-                    "username/password";
-
-      events::UnknownAuthenticationMethod(_request);
-      return rest::ResponseCode::BAD;
-    }
-
-    _request->setUser(up.substr(0, n));
-
-    events::Authenticated(_request, rest::AuthenticationMethod::BASIC);
-    return rest::ResponseCode::OK;
-  }
-
-  AuthResult result = GeneralServerFeature::AUTH_INFO.checkAuthentication(
+  AuthResult result = _authentication->authInfo()->checkAuthentication(
       AuthInfo::AuthType::BASIC, auth);
 
   _request->setUser(std::move(result._username));
@@ -265,7 +225,7 @@ rest::ResponseCode VocbaseContext::basicAuthentication(const char* auth) {
 ////////////////////////////////////////////////////////////////////////////////
 
 rest::ResponseCode VocbaseContext::jwtAuthentication(std::string const& auth) {
-  AuthResult result = GeneralServerFeature::AUTH_INFO.checkAuthentication(
+  AuthResult result = _authentication->authInfo()->checkAuthentication(
       AuthInfo::AuthType::JWT, auth);
 
   if (!result._authorized) {

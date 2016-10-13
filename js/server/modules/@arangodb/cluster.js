@@ -33,7 +33,7 @@ var arangodb = require('@arangodb');
 var ArangoCollection = arangodb.ArangoCollection;
 var ArangoError = arangodb.ArangoError;
 var errors = require("internal").errors;
-var request = require('@arangodb/request').request;
+var request = require('@arangodb/request').requestCluster;
 var wait = require('internal').wait;
 var _ = require('lodash');
 
@@ -1107,7 +1107,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
             shard, 300);
           console.debug('lockJobId:', lockJobId);
         } catch (err1) {
-          console.error('synchronizeOneShard: exception in startReadLockOnLeader:', err1);
+          console.error('synchronizeOneShard: exception in startReadLockOnLeader:', err1, err1.stack);
         }
         finally {
           cancelBarrier(ep, database, sy.barrierId);
