@@ -41,6 +41,7 @@
 
     bindParamRegExp: /@(@?\w+\d*)/,
     bindParamTableObj: {},
+    bindParamMode: 'table',
 
     bindParamTableDesc: {
       id: 'arangoBindParamTable',
@@ -115,11 +116,13 @@
         $('#bindParamAceEditor').toggle();
 
         if ($('#switchTypes').text() === 'JSON') {
+          this.bindParamMode = 'json';
           $('#switchTypes').text('Table');
           this.updateQueryTable();
           this.bindParamAceEditor.setValue(JSON.stringify(this.bindParamTableObj, null, '\t'), 1);
           this.deselect(this.bindParamAceEditor);
         } else {
+          this.bindParamMode = 'table';
           $('#switchTypes').text('JSON');
           this.renderBindParamTable();
         }
@@ -628,13 +631,15 @@
     },
 
     setCachedQuery: function (query, vars) {
-      if (Storage !== 'undefined') {
-        var myObject = {
-          query: query,
-          parameter: vars
-        };
-        this.currentQuery = myObject;
-        localStorage.setItem('cachedQuery', JSON.stringify(myObject));
+      if (query !== '') {
+        if (Storage !== 'undefined') {
+          var myObject = {
+            query: query,
+            parameter: vars
+          };
+          this.currentQuery = myObject;
+          localStorage.setItem('cachedQuery', JSON.stringify(myObject));
+        }
       }
     },
 
@@ -678,6 +683,10 @@
       if (!this.initDone) {
         // init aql editor width
         this.settings.aqlWidth = $('.aqlEditorWrapper').width();
+      }
+
+      if (this.bindParamMode === 'json') {
+        this.toggleBindParams();
       }
 
       this.initDone = true;
@@ -1105,62 +1114,65 @@
         self.resize();
       });
 
-      this.aqlEditor.commands.addCommand({
-        name: 'togglecomment',
-        bindKey: {win: 'Ctrl-Shift-C', linux: 'Ctrl-Shift-C', mac: 'Command-Shift-C'},
-        exec: function (editor) {
-          editor.toggleCommentLines();
-        },
-        multiSelectAction: 'forEach'
-      });
+      var editors = [this.aqlEditor, this.bindParamAceEditor];
+      _.each(editors, function (editor) {
+        editor.commands.addCommand({
+          name: 'togglecomment',
+          bindKey: {win: 'Ctrl-Shift-C', linux: 'Ctrl-Shift-C', mac: 'Command-Shift-C'},
+          exec: function (editor) {
+            editor.toggleCommentLines();
+          },
+          multiSelectAction: 'forEach'
+        });
 
-      this.aqlEditor.commands.addCommand({
-        name: 'executeQuery',
-        bindKey: {win: 'Ctrl-Return', mac: 'Command-Return', linux: 'Ctrl-Return'},
-        exec: function () {
-          self.executeQuery();
-        }
-      });
+        editor.commands.addCommand({
+          name: 'executeQuery',
+          bindKey: {win: 'Ctrl-Return', mac: 'Command-Return', linux: 'Ctrl-Return'},
+          exec: function () {
+            self.executeQuery();
+          }
+        });
 
-      this.aqlEditor.commands.addCommand({
-        name: 'executeSelectedQuery',
-        bindKey: {win: 'Ctrl-Alt-Return', mac: 'Command-Alt-Return', linux: 'Ctrl-Alt-Return'},
-        exec: function () {
-          self.executeQuery(undefined, true);
-        }
-      });
+        editor.commands.addCommand({
+          name: 'executeSelectedQuery',
+          bindKey: {win: 'Ctrl-Alt-Return', mac: 'Command-Alt-Return', linux: 'Ctrl-Alt-Return'},
+          exec: function () {
+            self.executeQuery(undefined, true);
+          }
+        });
 
-      this.aqlEditor.commands.addCommand({
-        name: 'saveQuery',
-        bindKey: {win: 'Ctrl-Shift-S', mac: 'Command-Shift-S', linux: 'Ctrl-Shift-S'},
-        exec: function () {
-          self.addAQL();
-        }
-      });
+        editor.commands.addCommand({
+          name: 'saveQuery',
+          bindKey: {win: 'Ctrl-Shift-S', mac: 'Command-Shift-S', linux: 'Ctrl-Shift-S'},
+          exec: function () {
+            self.addAQL();
+          }
+        });
 
-      this.aqlEditor.commands.addCommand({
-        name: 'explainQuery',
-        bindKey: {win: 'Ctrl-Shift-Return', mac: 'Command-Shift-Return', linux: 'Ctrl-Shift-Return'},
-        exec: function () {
-          self.explainQuery();
-        }
-      });
+        editor.commands.addCommand({
+          name: 'explainQuery',
+          bindKey: {win: 'Ctrl-Shift-Return', mac: 'Command-Shift-Return', linux: 'Ctrl-Shift-Return'},
+          exec: function () {
+            self.explainQuery();
+          }
+        });
 
-      this.aqlEditor.commands.addCommand({
-        name: 'togglecomment',
-        bindKey: {win: 'Ctrl-Shift-C', linux: 'Ctrl-Shift-C', mac: 'Command-Shift-C'},
-        exec: function (editor) {
-          editor.toggleCommentLines();
-        },
-        multiSelectAction: 'forEach'
-      });
+        editor.commands.addCommand({
+          name: 'togglecomment',
+          bindKey: {win: 'Ctrl-Shift-C', linux: 'Ctrl-Shift-C', mac: 'Command-Shift-C'},
+          exec: function (editor) {
+            editor.toggleCommentLines();
+          },
+          multiSelectAction: 'forEach'
+        });
 
-      this.aqlEditor.commands.addCommand({
-        name: 'showSpotlight',
-        bindKey: {win: 'Ctrl-Space', mac: 'Ctrl-Space', linux: 'Ctrl-Space'},
-        exec: function () {
-          self.showSpotlight();
-        }
+        editor.commands.addCommand({
+          name: 'showSpotlight',
+          bindKey: {win: 'Ctrl-Space', mac: 'Ctrl-Space', linux: 'Ctrl-Space'},
+          exec: function () {
+            self.showSpotlight();
+          }
+        });
       });
 
       this.queryPreview = ace.edit('queryPreview');
