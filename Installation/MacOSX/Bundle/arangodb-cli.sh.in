@@ -4,7 +4,7 @@ ROOTDIR="`echo $0 | sed -e 's:/Contents/MacOS/ArangoDB-CLI::'`"
 
 # create start script
 
-SCRIPTS="`( cd ${ROOTDIR}/Contents/MacOS/opt/arangodb && ls -1 {bin,sbin}/* )`"
+SCRIPTS="`( cd ${ROOTDIR}/Contents/MacOS/opt/arangodb && ls -1 {@CMAKE_INSTALL_BINDIR@,@CMAKE_INSTALL_SBINDIR@}/* )`"
 
 for script in $SCRIPTS; do
   base="`basename $script`"
@@ -15,7 +15,7 @@ for script in $SCRIPTS; do
     echo "export ROOTDIR=\"${ROOTDIR}/Contents/MacOS/opt/arangodb\""
     echo
 
-    echo "exec \"\${ROOTDIR}/$script\" -c \"\${ROOTDIR}/etc/arangodb3/${base}.conf\" \$*"
+    echo "exec \"\${ROOTDIR}/$script\" -c \"\${ROOTDIR}/@CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO@/${base}.conf\" \$*"
   ) > ${ROOTDIR}/Contents/MacOS/$base.$$
 
   chmod 755 ${ROOTDIR}/Contents/MacOS/$base.$$
