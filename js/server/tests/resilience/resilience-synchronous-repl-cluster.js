@@ -72,7 +72,7 @@ function SynchronousReplicationSuite () {
     cinfo = global.ArangoClusterInfo.getCollectionInfo(database, cn);
     shards = Object.keys(cinfo.shards);
     var count = 0;
-    while (++count <= 120) {
+    while (++count <= 180) {
       ccinfo = shards.map(
         s => global.ArangoClusterInfo.getCollectionInfoCurrent(database, cn, s)
       );
