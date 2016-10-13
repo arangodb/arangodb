@@ -104,7 +104,7 @@
 
       _.each($('.queryProfile'), function (elem) {
         if ($(elem).attr('counter') === count) {
-          $(elem).fadeOut('fast');
+          $(elem).fadeOut('fast').remove();
         }
       });
     },
@@ -1899,7 +1899,7 @@
           var profileWidth = 590;
 
           var legend = [
-            'A', 'B', 'C', 'D', 'E', 'F'
+            'A', 'B', 'C', 'D', 'E', 'F', 'G'
           ];
 
           var colors = [
@@ -1908,13 +1908,15 @@
             'rgb(137, 110, 37)',
             'rgb(93, 165, 218)',
             'rgb(250, 164, 58)',
-            'rgb(96, 189, 104)'
+            'rgb(96, 189, 104)',
+            'rgb(64, 74, 83)'
           ];
 
           var descs = [
             'startup time for query engine',
             'query parsing',
             'abstract syntax tree optimizations',
+            'loading collections',
             'instanciation of initial execution plan',
             'execution plan optimization and permutation',
             'query execution'
@@ -1922,11 +1924,11 @@
 
           queryProfile.append(
             '<i class="fa fa-close closeProfile"></i>' +
-              '<span class="profileHeader">Profiling information</span>' +
-                '<div class="pure-g pure-table pure-table-body"></div>' +
-                  '<div class="prof-progress"></div>' +
-                    '<div class="prof-progress-label"></div>' +
-                      '<div class="clear"></div>'
+            '<span class="profileHeader">Profiling information</span>' +
+            '<div class="pure-g pure-table pure-table-body"></div>' +
+            '<div class="prof-progress"></div>' +
+            '<div class="prof-progress-label"></div>' +
+            '<div class="clear"></div>'
           );
 
           var total = 0;
@@ -1944,11 +1946,11 @@
 
             queryProfile.find('.pure-g').append(
               '<div class="pure-table-row noHover">' +
-                '<div class="pure-u-1-24 left"><p class="bold" style="background:' + colors[pos] + '">' + legend[pos] + '</p></div>' +
-                  '<div class="pure-u-4-24 left">' + ms + '</div>' +
-                    '<div class="pure-u-6-24 left">' + key + '</div>' +
-                      '<div class="pure-u-13-24 left">' + descs[pos] + '</div>' +
-                        '</div>'
+              '<div class="pure-u-1-24 left"><p class="bold" style="background:' + colors[pos] + '">' + legend[pos] + '</p></div>' +
+              '<div class="pure-u-4-24 left">' + ms + '</div>' +
+              '<div class="pure-u-6-24 left">' + key + '</div>' +
+              '<div class="pure-u-13-24 left">' + descs[pos] + '</div>' +
+              '</div>'
             );
 
             width = (value * 1000) / total * 100;
@@ -2052,7 +2054,6 @@
       // check if result could be displayed as table
       if (!found) {
         var check = true;
-        var length;
         var attributes = {};
 
         if (result.length <= 1) {
@@ -2065,8 +2066,6 @@
               // not a document and not suitable for tabluar display
               return;
             }
-
-            length = _.keys(obj).length;
 
             _.each(obj, function (value, key) {
               if (attributes.hasOwnProperty(key)) {

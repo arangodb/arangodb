@@ -1014,7 +1014,7 @@ AqlValue AqlValue::CreateFromBlocks(
 /// @brief 3-way comparison for AqlValue objects
 int AqlValue::Compare(arangodb::Transaction* trx, AqlValue const& left,
                       AqlValue const& right, bool compareUtf8) {
-  VPackOptions* options = trx->transactionContext()->getVPackOptions();
+  VPackOptions* options = trx->transactionContextPtr()->getVPackOptions();
 
   AqlValue::AqlValueType const leftType = left.type();
   AqlValue::AqlValueType const rightType = right.type();

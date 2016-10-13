@@ -877,6 +877,15 @@ double VelocyPackHelper::toDouble(VPackSlice const& slice, bool& failed) {
   failed = true;
   return 0.0;
 }
+  
+// modify a VPack double value in place 
+void VelocyPackHelper::patchDouble(VPackSlice slice, double value) {
+  TRI_ASSERT(slice.isDouble());
+  // get pointer to the start of the value
+  uint8_t* p = const_cast<uint8_t*>(slice.begin());
+  // skip one byte for the header and overwrite
+  *reinterpret_cast<double*>(p + 1) = value;
+}
 
 #ifndef USE_ENTERPRISE
 uint64_t VelocyPackHelper::hashByAttributes(

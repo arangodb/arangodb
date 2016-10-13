@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/ExecutionStats.h"
+#include "ExecutionStats.h"
 #include "Basics/Exceptions.h"
 
 #include <velocypack/Builder.h>
