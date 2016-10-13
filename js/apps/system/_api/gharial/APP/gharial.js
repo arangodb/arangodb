@@ -174,7 +174,7 @@ function graphForClient (g) {
     orphanCollections: g._orphanCollections(),
     isSmart: g.__isSmart || false,
     numberOfShards: g.__numberOfShards || 0,
-    smartGraphAttribute: g.__smartGraphAttribute || "",
+    smartGraphAttribute: g.__smartGraphAttribute || '',
     _id: g.__id,
     _rev: g.__rev
   };
