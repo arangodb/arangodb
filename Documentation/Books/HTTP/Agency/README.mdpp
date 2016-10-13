@@ -6,7 +6,7 @@ At all times, i.e. regardless of the state of the agents and the current health 
 
     http://server:port/_api/agency/config
 
-The out put might look somewhat like this
+The output might look somewhat like this
 
 ```js
 {
