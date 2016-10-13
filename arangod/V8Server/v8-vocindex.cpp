@@ -688,6 +688,9 @@ std::unique_ptr<LogicalCollection> CreateCollectionCoordinator(LogicalCollection
       parameters->numberOfShards(), velocy.slice(), errorMsg, 240.0);
 
   if (myerrno != TRI_ERROR_NO_ERROR) {
+    if (errorMsg.empty()) {
+      errorMsg = TRI_errno_string(myerrno);
+    }
     THROW_ARANGO_EXCEPTION_MESSAGE(myerrno, errorMsg);
   }
   ci->loadPlan();
