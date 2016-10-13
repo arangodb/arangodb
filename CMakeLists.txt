@@ -219,6 +219,7 @@ elseif (APPLE)
   elseif (CMAKE_SYSTEM_NAME MATCHES ".*MacOS.*")
     set(MACOSX TRUE)
   endif ()
+  find_program(BREW brew)
 endif ()
 
 ################################################################################

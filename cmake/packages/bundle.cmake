@@ -11,6 +11,9 @@ set(CPACK_BUNDLE_ICON            "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bund
 configure_file("${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/Info.plist.in" "${CMAKE_CURRENT_BINARY_DIR}/Info.plist")
 set(CPACK_BUNDLE_PLIST           "${CMAKE_CURRENT_BINARY_DIR}/Info.plist")
 
+set(CPACK_BUNDLE_PREFIX          "Contents/MacOS")
+set(CPACK_INSTALL_PREFIX         "${CPACK_PACKAGE_NAME}.app/${CPACK_BUNDLE_PREFIX}/${CMAKE_INSTALL_PREFIX}")
+
 configure_file("${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/arangodb-cli.sh.in"
   "${CMAKE_CURRENT_BINARY_DIR}/arangodb-cli.sh"
   @ONLY)

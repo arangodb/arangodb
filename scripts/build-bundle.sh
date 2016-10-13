@@ -12,6 +12,7 @@ cd ${DIR}/..
     --parallel 5 \
     --package Bundle \
     --buildDir build-bundle \
+    --prefix "/opt/arangodb"
     --targetDir /var/tmp/ \
     --clang
 
