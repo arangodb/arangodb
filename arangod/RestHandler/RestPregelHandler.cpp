@@ -94,6 +94,7 @@ RestHandler::status RestPregelHandler::execute() {
         Worker *exe = PregelFeature::instance()->worker(executionNumber);
         if (exe) {
           exe->writeResults();
+            PregelFeature::instance()->cleanup(executionNumber);
         }
       }
       

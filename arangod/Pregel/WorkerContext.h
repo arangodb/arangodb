@@ -65,13 +65,13 @@ namespace pregel {
           return _vertexCollectionPlanId;
       }
       
-      inline ShardID const& vertexShardId() const {
-          return _vertexShardID;
+      inline std::vector<ShardID> const& localVertexShardIDs() const {
+          return _localVertexShardIDs;
       }
       
-      inline ShardID const& edgeShardId() const {
-          return _edgeShardID;
-      }
+      //inline ShardID const& edgeShardId() const {
+      //    return _edgeShardID;
+      //}
       
       inline InMessageCache* readableIncomingCache() {
           return _readCache;
@@ -89,7 +89,8 @@ namespace pregel {
       std::string _coordinatorId;
       std::string _database;
       std::string _vertexCollectionName, _vertexCollectionPlanId;
-      ShardID _vertexShardID, _edgeShardID;
+      std::vector<ShardID> _localVertexShardIDs;
+      //ShardID _vertexShardID, _edgeShardID;
       
       InMessageCache *_readCache, *_writeCache;
       void swapIncomingCaches();// only call when message receiving is locked

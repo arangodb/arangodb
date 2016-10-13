@@ -20,46 +20,34 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_WORKER_H
-#define ARANGODB_PREGEL_WORKER_H 1
+#ifndef ARANGODB_PREGEL_JOB_H
+#define ARANGODB_PREGEL_JOB_H 1
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
-#include "VocBase/vocbase.h"
-#include "Cluster/ClusterInfo.h"
 #include "Dispatcher/Job.h"
 
 namespace arangodb {
     class SingleCollectionTransaction;
 namespace pregel {
-  class Vertex;
+    class Worker;
     class WorkerContext;
-  class InMessageCache;
-  class OutMessageCache;
-  
-  class Worker {
-    friend class WorkerJob;
+    
+  class WorkerJob : public rest::Job {
+    WorkerJob(WorkerJob const&) = delete;
+    WorkerJob& operator=(WorkerJob const&) = delete;
+    
   public:
-    Worker(unsigned int executionNumber, TRI_vocbase_t *vocbase, VPackSlice s);
-    ~Worker();
-      
-    void nextGlobalStep(VPackSlice data);// called by coordinator
-    void receivedMessages(VPackSlice data);
-    void writeResults();
-    void cleanupReadTransactions();
+    WorkerJob(Worker *worker, std::shared_ptr<WorkerContext> ctx);
     
+    void work() override;
+    bool cancel() override;
+    void cleanup(rest::DispatcherQueue*) override;
+    void handleError(basics::Exception const& ex) override;
+
   private:
-    /// @brief guard to make sure the database is not dropped while used by us
-    TRI_vocbase_t* _vocbase;
-    //Mutex _messagesMutex; TODO figure this out
+    std::atomic<bool> _canceled;
+    Worker *_worker;
       std::shared_ptr<WorkerContext> _ctx;
-    
-    std::unordered_map<std::string, Vertex*> _vertices;
-    std::map<std::string, bool> _activationMap;
-    std::vector<SingleCollectionTransaction*> _readTrxList;
-      
-      void lookupVertices(ShardID const& vertexShard);
-      void lookupEdges(ShardID const& edgeShardID);
   };
 }
 }

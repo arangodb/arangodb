@@ -44,7 +44,8 @@ namespace pregel {
     static std::string const writeResultsPath;
     
     static std::string const executionNumberKey;
-    static std::string const vertexCollectionKey;
+    static std::string const vertexCollectionNameKey;
+    static std::string const vertexCollectionPlanIdKey;
     static std::string const vertexShardsListKey;
     static std::string const edgeShardsListKey;
     static std::string const resultShardKey;
@@ -56,6 +57,7 @@ namespace pregel {
     static std::string const senderKey;
     static std::string const doneKey;
       
+    static std::string const edgeShardingKey;
       static std::string baseUrl(std::string dbName);
 
   };

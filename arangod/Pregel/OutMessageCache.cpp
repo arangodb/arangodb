@@ -33,6 +33,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <algorithm>
+
 using namespace arangodb;
 using namespace arangodb::pregel;
 
@@ -121,15 +123,16 @@ void OutMessageCache::getMessages(ShardID const& shardId, VPackBuilder &outBuild
 }
 
 void OutMessageCache::sendMessages() {
-    LOG(INFO) << "Sending messages to shards";
+    LOG(INFO) << "Sending messages to other machines";
+    auto localShards = _ctx->localVertexShardIDs();
     std::shared_ptr<std::vector<ShardID>> shards = _ci->getShardList(_ctx->vertexCollectionPlanId());
-    LOG(INFO) << "Seeing shards: " << shards->size();
     
     std::vector<ClusterCommRequest> requests;
     for (auto const &it : *shards) {
         
-        if (_ctx->vertexShardId() == it) {
+        if (std::find(localShards.begin(), localShards.end(), it) != localShards.end()) {
             LOG(INFO) << "Worker: Getting messages for myself";
+            
             VPackBuilder messages;
             messages.openArray();
             getMessages(it, messages);

@@ -1854,15 +1854,15 @@ static void JS_Pregel(v8::FunctionCallbackInfo<v8::Value> const& args) {
     try {
       vertexColl = ClusterInfo::instance()->getCollection(vocbase->name(), vName);
       edgeColl = ClusterInfo::instance()->getCollection(vocbase->name(), eName);
-      if (edgeColl->isSystem() || edgeColl->isSystem()) {
+      if (vertexColl->isSystem() || edgeColl->isSystem()) {
         TRI_V8_THROW_EXCEPTION_USAGE("Cannot use pregel on system collection");
       }
       if (!vertexColl->usesDefaultShardKeys()) {
         TRI_V8_THROW_EXCEPTION_USAGE("Vertex collection needs to be shared after '_key'");
       }
       std::vector<std::string> eKeys = edgeColl->shardKeys();
-      if (eKeys.size() != 1 || eKeys[0] == StaticStrings::FromString) {
-        TRI_V8_THROW_EXCEPTION_USAGE("Edge collection needs to be sharded after '_from'");
+      if (eKeys.size() != 1 || eKeys[0] != "_vertex") {
+        TRI_V8_THROW_EXCEPTION_USAGE("Edge collection needs to be sharded after '_vertex', or use smart graphs");
       }
       //eName = ci2->cid_as_string();
     } catch (...) {

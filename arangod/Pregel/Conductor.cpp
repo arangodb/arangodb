@@ -89,8 +89,11 @@ void Conductor::start() {
     VPackBuilder b;
     b.openObject();
     b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+    b.add(Utils::globalSuperstepKey, VPackValue(0));
+    b.add(Utils::algorithmKey, VPackValue(_algorithm));
     b.add(Utils::coordinatorIdKey, VPackValue(coordinatorId));
-    b.add(Utils::vertexCollectionKey, VPackValue(_vertexCollection->name()));
+    b.add(Utils::vertexCollectionNameKey, VPackValue(_vertexCollection->name()));
+    b.add(Utils::vertexCollectionPlanIdKey, VPackValue(_vertexCollection->planId_as_string()));
     b.add(Utils::vertexShardsListKey, VPackValue(VPackValueType::Array));
     for (ShardID const &vit : it.second) {
       b.add(VPackValue(vit));
@@ -101,10 +104,6 @@ void Conductor::start() {
       b.add(VPackValue(eit));
     }
     b.close();
-    //b.add(Utils::vertexCollectionKey, VPackValue(_vertexCollection));
-    //b.add(Utils::edgeCollectionKey, VPackValue(_edgeCollection));
-    b.add(Utils::globalSuperstepKey, VPackValue(0));
-    b.add(Utils::algorithmKey, VPackValue(_algorithm));
     b.close();
     
     auto body = std::make_shared<std::string const>(b.toJson());

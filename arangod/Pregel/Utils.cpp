@@ -35,7 +35,8 @@ std::string const Utils::messagesPath = "messages";
 std::string const Utils::writeResultsPath = "writeResults";
 
 std::string const Utils::executionNumberKey = "extn";
-std::string const Utils::vertexCollectionKey = "vertexCollection";
+std::string const Utils::vertexCollectionNameKey = "vertecCollName";
+std::string const Utils::vertexCollectionPlanIdKey = "vertecCollPlanID";
 std::string const Utils::vertexShardsListKey = "vertexShards";
 std::string const Utils::edgeShardsListKey = "edgeShards";
 std::string const Utils::resultShardKey = "resultShard";
@@ -45,6 +46,8 @@ std::string const Utils::globalSuperstepKey = "gss";
 std::string const Utils::messagesKey = "msgs";
 std::string const Utils::senderKey = "sender";
 std::string const Utils::doneKey = "done";
+
+std::string const Utils::edgeShardingKey = "_vertex";
 
 std::string Utils::baseUrl(std::string dbName) {
   return  "/_db/" + basics::StringUtils::urlEncode(dbName) + Utils::apiPrefix;
