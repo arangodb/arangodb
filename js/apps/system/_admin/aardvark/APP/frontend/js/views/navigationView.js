@@ -183,7 +183,7 @@
           view: undefined
         },
         {
-          name: 'Indices',
+          name: 'Indexes',
           view: undefined
         },
         {

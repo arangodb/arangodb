@@ -472,9 +472,13 @@ function createLocalCollections (plannedCollections, planVersion,
       servers: [ ourselves ],
     planVersion: planVersion };
 
+    console.error('creating Current/Collections/' + database + '/' +
+                  collInfo.planId + '/' + shard);
     global.ArangoAgency.set('Current/Collections/' + database + '/' +
     collInfo.planId + '/' + shard,
       payload);
+    console.error('creating Current/Collections/' + database + '/' +
+                  collInfo.planId + '/' + shard + ' done.');
   };
 
   var takeOver = createCollectionAgency;
@@ -782,7 +786,11 @@ function dropLocalCollections (plannedCollections, currentCollections,
 
   var dropCollectionAgency = function (database, shardID, id) {
     try {
+      console.error('dropping Current/Collections/' + database + '/' +
+                    id + '/' + shardID);
       global.ArangoAgency.remove('Current/Collections/' + database + '/' + id + '/' + shardID);
+      console.error('dropping Current/Collections/' + database + '/' +
+                    id + '/' + shardID + ' done.');
     } catch (err) {
       // ignore errors
     }
@@ -888,7 +896,11 @@ function cleanupCurrentCollections (plannedCollections, currentCollections,
   writeLocked) {
   var dropCollectionAgency = function (database, collection, shardID) {
     try {
+      console.error('cleaning Current/Collections/' + database + '/' +
+                    collection + '/' + shardID);
       global.ArangoAgency.remove('Current/Collections/' + database + '/' + collection + '/' + shardID);
+      console.error('cleaning Current/Collections/' + database + '/' +
+                    collection + '/' + shardID + ' done.');
     } catch (err) {
       // ignore errors
     }
