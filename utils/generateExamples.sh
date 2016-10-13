@@ -34,6 +34,7 @@ ${ARANGOSH} \
     --server.endpoint none \
     --log.file ${LOGFILE} \
     --javascript.startup-directory js \
+    --javascript.module-directory enterprise/js \
     --javascript.execute $SCRIPT \
     --server.password "" \
     -- \

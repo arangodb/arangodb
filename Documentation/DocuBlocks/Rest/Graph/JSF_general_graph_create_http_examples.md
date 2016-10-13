@@ -78,4 +78,34 @@ different signature used in any other graph.
 
   graph._drop("myGraph", true);
 @END_EXAMPLE_ARANGOSH_RUN
+
+@EXAMPLE_ARANGOSH_RUN{HttpGharialCreate2}
+  var graph = require("@arangodb/general-graph");
+| if (graph._exists("myGraph")) {
+|    graph._drop("myGraph", true);
+  }
+  var url = "/_api/gharial";
+  body = {
+    name: "myGraph",
+    edgeDefinitions: [{
+      collection: "edges",
+      from: [ "startVertices" ],
+      to: [ "endVertices" ]
+    }],
+    isSmart: true,
+    options: {
+      numberOfShards: 9,
+      smartGraphAttribute: "region"
+    }
+  };
+
+  var response = logCurlRequest('POST', url, body);
+
+  assert(response.code === 202);
+
+  logJsonResponse(response);
+
+  graph._drop("myGraph", true);
+@END_EXAMPLE_ARANGOSH_RUN
+
 @endDocuBlock
