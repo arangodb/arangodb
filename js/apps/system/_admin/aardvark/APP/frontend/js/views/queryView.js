@@ -1827,15 +1827,14 @@
             // query finished, now fetch results
             if (xhr.status === 201) {
               self.renderQueryResult(data, counter);
+              // SCROLL TO RESULT BOX
+              $('.centralRow').animate({ scrollTop: $('#queryContent').height() }, 'fast');
             } else if (xhr.status === 204) {
             // query not ready yet, retry
               self.checkQueryTimer = window.setTimeout(function () {
                 checkQueryStatus();
               }, 500);
             }
-
-            // SCROLL TO RESULT BOX
-            $('.centralRow').animate({ scrollTop: $('#queryContent').height() }, 'fast');
           },
           error: function (resp) {
             var error;
@@ -1908,8 +1907,8 @@
             'rgb(137, 110, 37)',
             'rgb(93, 165, 218)',
             'rgb(250, 164, 58)',
-            'rgb(96, 189, 104)',
-            'rgb(64, 74, 83)'
+            'rgb(64, 74, 83)',
+            'rgb(96, 189, 104)'
           ];
 
           var descs = [
@@ -1938,7 +1937,6 @@
 
           var pos = 0;
           var width;
-          var adjustWidth = 0;
 
           _.each(data, function (value, key) {
             var ms = numeral(value * 1000).format('0.000');
@@ -1953,28 +1951,14 @@
               '</div>'
             );
 
-            width = (value * 1000) / total * 100;
-            if (width < 5) {
-              width = 5;
-              adjustWidth += 5;
-            }
+            width = Math.floor((value * 1000) / total * 100);
 
-            if (pos === 5 && adjustWidth !== 0) {
-              width = width - adjustWidth;
-              queryProfile.find('.prof-progress').append(
-                '<div style="width: ' + width + '%; background-color: ' + colors[pos] + '"></div>'
-              );
-              queryProfile.find('.prof-progress-label').append(
-                '<div style="width: ' + width + '%;">' + legend[pos] + '</div>'
-              );
-            } else {
-              queryProfile.find('.prof-progress').append(
-                '<div style="width: ' + width + '%; background-color: ' + colors[pos] + '"></div>'
-              );
-              queryProfile.find('.prof-progress-label').append(
-                '<div style="width: ' + width + '%;">' + legend[pos] + '</div>'
-              );
-            }
+            queryProfile.find('.prof-progress').append(
+              '<div style="width: ' + width + '%; background-color: ' + colors[pos] + '"></div>'
+            );
+            queryProfile.find('.prof-progress-label').append(
+              '<div style="width: ' + width + '%;">' + legend[pos] + '</div>'
+            );
             pos++;
           });
 
