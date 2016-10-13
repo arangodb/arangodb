@@ -29,6 +29,7 @@ Returned if no graph with this name could be found.
 
 @EXAMPLE_ARANGOSH_RUN{HttpGharialAddVertexCol}
   var examples = require("@arangodb/graph-examples/example-graph.js");
+~ examples.dropGraph("social");
   examples.loadGraph("social");
   var url = "/_api/gharial/social/vertex";
   body = {

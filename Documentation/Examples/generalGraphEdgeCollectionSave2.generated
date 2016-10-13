@@ -1,7 +1,7 @@
-arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/graph-examples/example-graph.js"</span>);
-arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<span class="hljs-string">"social"</span>);
+arangosh&gt; var examples = require("@arangodb/graph-examples/example-graph.js");
+arangosh&gt; var graph = examples.loadGraph("social");
 arangosh&gt; graph.relation.save(
-........&gt;  <span class="hljs-string">"relation/aliceAndBob"</span>,
-........&gt;   <span class="hljs-string">"female/alice"</span>,
-........&gt; {type: <span class="hljs-string">"married"</span>, _key: <span class="hljs-string">"bobAndAlice"</span>});
-[ArangoError <span class="hljs-number">1906</span>: invalid edge between relation/aliceAndBob and female/alice.]
+........&gt;  "relation/aliceAndBob",
+........&gt;   "female/alice",
+........&gt; {type: "married", _key: "bobAndAlice"});
+[ArangoError 1906: invalid edge between relation/aliceAndBob and female/alice. Doesn't conform to any edge definition]
