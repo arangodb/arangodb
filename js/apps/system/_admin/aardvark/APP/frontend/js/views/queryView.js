@@ -1915,6 +1915,7 @@
             'startup time for query engine',
             'query parsing',
             'abstract syntax tree optimizations',
+            'loading collections',
             'instanciation of initial execution plan',
             'execution plan optimization and permutation',
             'query execution'

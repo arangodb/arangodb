@@ -324,6 +324,9 @@ class VelocyPackHelper {
 
   static double toDouble(VPackSlice const&, bool&);
 
+  // modify a VPack double value in place 
+  static void patchDouble(VPackSlice slice, double value);
+
   static uint64_t hashByAttributes(VPackSlice, std::vector<std::string> const&,
                                    bool, int&, std::string const& key = "");
 
