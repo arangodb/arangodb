@@ -291,7 +291,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
       errorCode = TRI_ERROR_NO_ERROR;
 
       if (!ep->_options.consultAqlWriteFilter ||
-          !_collection->getCollection()->skipForAqlWrite(a.slice())) {
+          !_collection->getCollection()->skipForAqlWrite(a.slice(), "")) {
         if (a.isObject()) {
           // value is an object. now extract the _key attribute
           key.clear();
@@ -335,7 +335,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
           for (size_t i = 0; i < n; ++i) {
             AqlValue const& a = res->getValueReference(i, registerId);
             if (!ep->_options.consultAqlWriteFilter ||
-                !_collection->getCollection()->skipForAqlWrite(a.slice())) {
+                !_collection->getCollection()->skipForAqlWrite(a.slice(), "")) {
               TRI_ASSERT(iter.valid());
               auto it = iter.value();
               bool wasError = arangodb::basics::VelocyPackHelper::getBooleanValue(
@@ -446,7 +446,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
           errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
         } else {
           if (!ep->_options.consultAqlWriteFilter ||
-              !_collection->getCollection()->skipForAqlWrite(a.slice())) {
+              !_collection->getCollection()->skipForAqlWrite(a.slice(), "")) {
             OperationResult opRes = _trx->insert(_collection->name, a.slice(), options); 
             errorCode = opRes.code;
 
@@ -473,7 +473,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
         inheritRegisters(res, result.get(), i, dstRow);
         // TODO This may be optimized with externals
         if (!ep->_options.consultAqlWriteFilter ||
-            !_collection->getCollection()->skipForAqlWrite(a.slice())) {
+            !_collection->getCollection()->skipForAqlWrite(a.slice(), "")) {
           babyBuilder.add(a.slice());
         }
         ++dstRow;
@@ -493,7 +493,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
           for (size_t i = 0; i < n; ++i) {
             AqlValue a = res->getValue(i, registerId);
             if (!ep->_options.consultAqlWriteFilter ||
-                !_collection->getCollection()->skipForAqlWrite(a.slice())) {
+                !_collection->getCollection()->skipForAqlWrite(a.slice(), "")) {
               TRI_ASSERT(iter.valid());
               auto elm = iter.value();
               bool wasError = arangodb::basics::VelocyPackHelper::getBooleanValue(
@@ -1007,6 +1007,8 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
     std::string key;
 
     // loop over the complete block
+    std::vector<bool> wasTaken;
+    wasTaken.reserve(n);
     for (size_t i = 0; i < n; ++i) {
       inheritRegisters(res, result.get(), i, dstRow + i);
 
@@ -1018,7 +1020,7 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
         // value is an object
         key.clear();
         if (hasKeyVariable) {
-          // seperate key specification
+          // separate key specification
           AqlValue const& k = res->getValueReference(i, keyRegisterId);
           errorCode = extractKey(k, key);
         } else {
@@ -1032,24 +1034,31 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
       }
 
       if (errorCode == TRI_ERROR_NO_ERROR) {
-        if (hasKeyVariable) {
-          keyBuilder.clear();
-          keyBuilder.openObject();
-          keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
-          keyBuilder.close();
-          VPackBuilder tmp = VPackCollection::merge(
-              a.slice(), keyBuilder.slice(), false, false);
-          if (isMultiple) {
-            object.add(tmp.slice());
+        if (!ep->_options.consultAqlWriteFilter ||
+            !_collection->getCollection()->skipForAqlWrite(a.slice(), key)) {
+          wasTaken.push_back(true);
+          if (hasKeyVariable) {
+            keyBuilder.clear();
+            keyBuilder.openObject();
+            keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
+            keyBuilder.close();
+            VPackBuilder tmp = VPackCollection::merge(
+                a.slice(), keyBuilder.slice(), false, false);
+            if (isMultiple) {
+              object.add(tmp.slice());
+            } else {
+              object = tmp;
+            }
           } else {
-            object = tmp;
+            // Use the original slice for updating
+            object.add(a.slice());
           }
         } else {
-          // Use the original slice for updateing
-          object.add(a.slice());
+          wasTaken.push_back(false);
         }
       } else {
         handleResult(errorCode, ep->_options.ignoreErrors, &errorMessage);
+        wasTaken.push_back(false);
       }
     }
 
@@ -1059,7 +1068,9 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
     VPackSlice toUpdate = object.slice();
 
-    if (toUpdate.isNone()) {
+    if (toUpdate.isNone() ||
+        (toUpdate.isArray() && toUpdate.length() == 0)) {
+      dstRow += n;
       continue;
     }
     // fetch old revision
@@ -1091,22 +1102,28 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
       if (producesOutput) {
         VPackSlice resultList = opRes.slice();
         TRI_ASSERT(resultList.isArray());
-        for (auto const& elm : VPackArrayIterator(resultList)) {
-          bool wasError = arangodb::basics::VelocyPackHelper::getBooleanValue(elm, "error", false);
-          if (!wasError) {
-            if (ep->_outVariableOld != nullptr) {
-              // store $OLD
-              result->setValue(dstRow, _outRegOld, AqlValue(elm.get("old")));
+        auto iter = VPackArrayIterator(resultList);
+        for (size_t i = 0; i < n; ++i) {
+          if (wasTaken[i]) {
+            TRI_ASSERT(iter.valid());
+            auto elm = iter.value();
+            bool wasError = arangodb::basics::VelocyPackHelper::getBooleanValue(elm, "error", false);
+            if (!wasError) {
+              if (ep->_outVariableOld != nullptr) {
+                // store $OLD
+                result->setValue(dstRow, _outRegOld, AqlValue(elm.get("old")));
+              }
+              if (ep->_outVariableNew != nullptr) {
+                // store $NEW
+                result->setValue(dstRow, _outRegNew, AqlValue(elm.get("new")));
+              }
             }
-            if (ep->_outVariableNew != nullptr) {
-              // store $NEW
-              result->setValue(dstRow, _outRegNew, AqlValue(elm.get("new")));
-            }
+            ++iter;
           }
           dstRow++;
         }
       } else {
-        dstRow += static_cast<size_t>(toUpdate.length());
+        dstRow += n;
       }
       handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toUpdate.length()),
                        ep->_options.ignoreErrors);
