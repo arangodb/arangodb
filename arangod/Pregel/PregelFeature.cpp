@@ -20,39 +20,63 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "JobMapping.h"
+#include "PregelFeature.h"
 #include "Conductor.h"
 #include "Worker.h"
 
 using namespace arangodb::pregel;
 
+static PregelFeature *Instance;
+
 static unsigned int _exeI = 0;
-unsigned int JobMapping::createExecutionNumber() {
-  return ++_exeI;
+unsigned int PregelFeature::createExecutionNumber() {
+    return ++_exeI;
 }
 
-void JobMapping::addExecution(Conductor* const exec, unsigned int executionNumber) {
+PregelFeature::PregelFeature(application_features::ApplicationServer* server)
+: ApplicationFeature(server, "Pregel") {
+    setOptional(true);
+    requiresElevatedPrivileges(false);
+    startsAfter("Database");
+    startsAfter("Logger");
+    startsAfter("Dispatcher");
+    Instance = this;
+}
+
+PregelFeature::~PregelFeature() {
+    cleanupAll();
+}
+
+PregelFeature* PregelFeature::instance() {
+    return Instance;
+}
+
+void PregelFeature::beginShutdown() {
+    cleanupAll();
+}
+
+void PregelFeature::addExecution(Conductor* const exec, unsigned int executionNumber) {
   //_executions.
   _conductors[executionNumber] = exec;
 }
 
-Conductor* JobMapping::conductor(int executionNumber) {
+Conductor* PregelFeature::conductor(int executionNumber) {
   auto it = _conductors.find(executionNumber);
   if (it != _conductors.end()) return it->second;
   else return nullptr;
 }
 
-void JobMapping::addWorker(Worker* const worker, unsigned int executionNumber) {
+void PregelFeature::addWorker(Worker* const worker, unsigned int executionNumber) {
   _workers[executionNumber] = worker;
 }
 
-Worker* JobMapping::worker(unsigned int executionNumber) {
+Worker* PregelFeature::worker(unsigned int executionNumber) {
   auto it = _workers.find(executionNumber);
   if (it != _workers.end()) return it->second;
   else return nullptr;
 }
 
-void JobMapping::cleanup(unsigned int executionNumber) {
+void PregelFeature::cleanup(unsigned int executionNumber) {
     auto cit = _conductors.find(executionNumber);
     if (cit != _conductors.end()) {
         delete(cit->second);
@@ -63,4 +87,15 @@ void JobMapping::cleanup(unsigned int executionNumber) {
         delete(wit->second);
         _workers.erase(executionNumber);
     }
+}
+
+void PregelFeature::cleanupAll() {
+    for (auto it : _conductors) {
+        delete(it.second);
+    }
+    _conductors.clear();
+    for (auto it : _workers) {
+        delete(it.second);
+    }
+    _workers.clear();
 }

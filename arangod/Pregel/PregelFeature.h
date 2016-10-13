@@ -20,10 +20,13 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_JOBMAPPING_H
-#define ARANGODB_PREGEL_JOBMAPPING_H 1
+#ifndef ARANGODB_PREGEL_FEATURE_H
+#define ARANGODB_PREGEL_FEATURE_H 1
 
 #include <unordered_map>
+#include "Basics/Common.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
+
 
 namespace arangodb {
 namespace pregel {
@@ -31,14 +34,15 @@ namespace pregel {
   class Conductor;
   class Worker;
   
-  class JobMapping {
+    class PregelFeature final
+    : public application_features::ApplicationFeature {
   public:
+    explicit PregelFeature(application_features::ApplicationServer* server);
+        ~PregelFeature();
+        
+    static PregelFeature* instance();
     
-    
-    static JobMapping* instance() {
-      static JobMapping *Instance = new JobMapping();
-      return Instance;
-    };
+    void beginShutdown() override final;
     
     unsigned int createExecutionNumber();
     void addExecution(Conductor* const exec, unsigned int executionNumber);
@@ -48,13 +52,11 @@ namespace pregel {
     Worker* worker(unsigned int executionNumber);
     
       void cleanup(unsigned int executionNumber);
+      void cleanupAll();
       
   private:
     std::unordered_map<unsigned int, Conductor*> _conductors;
     std::unordered_map<unsigned int, Worker*> _workers;
-
-    JobMapping() {};
-    JobMapping(const JobMapping &c) {};
   };
 }
 }

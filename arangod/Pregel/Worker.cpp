@@ -199,9 +199,9 @@ void Worker::nextGlobalStep(VPackSlice data) {
   
   std::unique_ptr<rest::Job> job(new WorkerJob(this, _ctx));
   int res = DispatcherFeature::DISPATCHER->addJob(job, true);
-if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "Could not start worker job";
-}
+    if (res != TRI_ERROR_NO_ERROR) {
+        LOG(ERR) << "Could not start worker job";
+    }
   LOG(INFO) << "Worker started new gss: " << gss;
 }
 

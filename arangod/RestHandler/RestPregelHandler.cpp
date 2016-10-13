@@ -28,7 +28,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Pregel/JobMapping.h"
+#include "Pregel/PregelFeature.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/Worker.h"
 #include "Pregel/Utils.h"
@@ -69,31 +69,29 @@ RestHandler::status RestPregelHandler::execute() {
         generateError(rest::ResponseCode::NOT_FOUND,
                       TRI_ERROR_HTTP_NOT_FOUND);
         return status::DONE;
-      } else if (suffix[0] == "finishedGSS") {
-        LOG(INFO) << "finishedGSS";
-        Conductor *exe = JobMapping::instance()->conductor(executionNumber);
+      } else if (suffix[0] == Utils::finishedGSSPath) {
+        Conductor *exe = PregelFeature::instance()->conductor(executionNumber);
         if (exe) {
           exe->finishedGlobalStep(body);
         } else {
           LOG(ERR) << "Conductor not found: " << executionNumber;
         }
-      } else if (suffix[0] == "nextGSS") {
-        LOG(INFO) << "nextGSS";
-        Worker *w = JobMapping::instance()->worker(executionNumber);
+      } else if (suffix[0] == Utils::nextGSSPath) {
+        Worker *w = PregelFeature::instance()->worker(executionNumber);
         if (!w) {// can happen if gss == 0
           LOG(INFO) << "creating worker";
           w = new Worker(executionNumber, _vocbase, body);
-          JobMapping::instance()->addWorker(w, executionNumber);
+          PregelFeature::instance()->addWorker(w, executionNumber);
         }
         w->nextGlobalStep(body);
       } else if (suffix[0] == "messages") {
         LOG(INFO) << "messages";
-        Worker *exe = JobMapping::instance()->worker(executionNumber);
+        Worker *exe = PregelFeature::instance()->worker(executionNumber);
         if (exe) {
           exe->receivedMessages(body);
         }
       } else if (suffix[0] == "writeResults") {
-        Worker *exe = JobMapping::instance()->worker(executionNumber);
+        Worker *exe = PregelFeature::instance()->worker(executionNumber);
         if (exe) {
           exe->writeResults();
         }

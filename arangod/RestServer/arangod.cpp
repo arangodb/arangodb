@@ -67,6 +67,7 @@
 #include "RestServer/UnitTestsFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/WorkMonitorFeature.h"
+#include "Pregel/PregelFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Ssl/SslFeature.h"
 #include "Ssl/SslServerFeature.h"
@@ -146,6 +147,7 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new LoggerFeature(&server, true));
   server.addFeature(new NonceFeature(&server));
   server.addFeature(new PageSizeFeature(&server));
+  server.addFeature(new pregel::PregelFeature(&server));
   server.addFeature(new PrivilegeFeature(&server));
   server.addFeature(new QueryRegistryFeature(&server));
   server.addFeature(new TraverserEngineRegistryFeature(&server));
