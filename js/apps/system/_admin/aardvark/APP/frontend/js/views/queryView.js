@@ -104,7 +104,7 @@
 
       _.each($('.queryProfile'), function (elem) {
         if ($(elem).attr('counter') === count) {
-          $(elem).fadeOut('fast');
+          $(elem).fadeOut('fast').remove();
         }
       });
     },
@@ -1909,7 +1909,7 @@
             'rgb(93, 165, 218)',
             'rgb(250, 164, 58)',
             'rgb(96, 189, 104)',
-            'rgb(0, 0, 0)'
+            'rgb(64, 74, 83)'
           ];
 
           var descs = [
@@ -1946,11 +1946,11 @@
 
             queryProfile.find('.pure-g').append(
               '<div class="pure-table-row noHover">' +
-                '<div class="pure-u-1-24 left"><p class="bold" style="background:' + colors[pos] + '">' + legend[pos] + '</p></div>' +
-                  '<div class="pure-u-4-24 left">' + ms + '</div>' +
-                    '<div class="pure-u-6-24 left">' + key + '</div>' +
-                      '<div class="pure-u-13-24 left">' + descs[pos] + '</div>' +
-                        '</div>'
+              '<div class="pure-u-1-24 left"><p class="bold" style="background:' + colors[pos] + '">' + legend[pos] + '</p></div>' +
+              '<div class="pure-u-4-24 left">' + ms + '</div>' +
+              '<div class="pure-u-6-24 left">' + key + '</div>' +
+              '<div class="pure-u-13-24 left">' + descs[pos] + '</div>' +
+              '</div>'
             );
 
             width = (value * 1000) / total * 100;
