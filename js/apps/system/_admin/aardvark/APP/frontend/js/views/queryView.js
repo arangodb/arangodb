@@ -1899,7 +1899,7 @@
           var profileWidth = 590;
 
           var legend = [
-            'A', 'B', 'C', 'D', 'E', 'F'
+            'A', 'B', 'C', 'D', 'E', 'F', 'G'
           ];
 
           var colors = [
@@ -1908,7 +1908,8 @@
             'rgb(137, 110, 37)',
             'rgb(93, 165, 218)',
             'rgb(250, 164, 58)',
-            'rgb(96, 189, 104)'
+            'rgb(96, 189, 104)',
+            'rgb(0, 0, 0)'
           ];
 
           var descs = [
@@ -1923,11 +1924,11 @@
 
           queryProfile.append(
             '<i class="fa fa-close closeProfile"></i>' +
-              '<span class="profileHeader">Profiling information</span>' +
-                '<div class="pure-g pure-table pure-table-body"></div>' +
-                  '<div class="prof-progress"></div>' +
-                    '<div class="prof-progress-label"></div>' +
-                      '<div class="clear"></div>'
+            '<span class="profileHeader">Profiling information</span>' +
+            '<div class="pure-g pure-table pure-table-body"></div>' +
+            '<div class="prof-progress"></div>' +
+            '<div class="prof-progress-label"></div>' +
+            '<div class="clear"></div>'
           );
 
           var total = 0;
