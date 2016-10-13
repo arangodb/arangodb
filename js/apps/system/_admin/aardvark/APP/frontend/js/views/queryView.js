@@ -2054,7 +2054,6 @@
       // check if result could be displayed as table
       if (!found) {
         var check = true;
-        var length;
         var attributes = {};
 
         if (result.length <= 1) {
@@ -2067,8 +2066,6 @@
               // not a document and not suitable for tabluar display
               return;
             }
-
-            length = _.keys(obj).length;
 
             _.each(obj, function (value, key) {
               if (attributes.hasOwnProperty(key)) {
