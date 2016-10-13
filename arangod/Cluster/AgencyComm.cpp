@@ -1434,7 +1434,7 @@ bool AgencyComm::unlock(std::string const& key, VPackSlice const& slice,
 AgencyEndpoint* AgencyComm::popEndpoint(std::string const& endpoint) {
   unsigned long sleepTime = InitialSleepTime;
 
-  while (1) {
+  while (true) {
     {
       WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
 
@@ -1665,7 +1665,8 @@ AgencyCommResult AgencyComm::sendWithFailover(
       size_t const delim = endpoint.find('/', offset);
 
       LOG_TOPIC(WARN, Logger::AGENCYCOMM) << "Got a redirect 307 from agency "
-        << "endpoint: " << agencyEndpoint << " location: " << result.location()
+        << "endpoint: " << agencyEndpoint->_endpoint->specification() 
+        << " location: " << result.location()
         << " new forced endpoint: " << endpoint;
 
       if (delim == std::string::npos) {
@@ -1685,7 +1686,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
         // re-check the new endpoint
         if (AgencyComm::hasEndpoint(endpoint)) {
           ++numEndpoints;
-          // do we not need to set forceEndpoint here?
+          forceEndpoint = endpoint;
           continue;
         }
 
