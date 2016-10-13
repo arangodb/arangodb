@@ -14,6 +14,7 @@ cd ${DIR}/..
     --buildDir build-bundle \
     --prefix "/opt/arangodb" \
     --targetDir /var/tmp/ \
-    --clang
+    --clang \
+    $@
 
 cd ${DIR}/..
