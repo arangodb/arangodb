@@ -67,6 +67,7 @@ static std::string StateNames[] = {
     "initializing",        // INITIALIZATION
     "parsing",             // PARSING
     "optimizing ast",      // AST_OPTIMIZATION
+    "loading collections", // LOADING_COLLECTIONS
     "instantiating plan",  // PLAN_INSTANTIATION
     "optimizing plan",     // PLAN_OPTIMIZATION
     "executing",           // EXECUTION
@@ -456,16 +457,18 @@ QueryResult Query::prepare(QueryRegistry* registry) {
 
     if (_queryString != nullptr) {
       // we have an AST
+      // optimize the ast
+      enterState(AST_OPTIMIZATION);
+
+      parser->ast()->validateAndOptimize();
+      
+      enterState(LOADING_COLLECTIONS);
+    
       int res = trx->begin();
 
       if (res != TRI_ERROR_NO_ERROR) {
         return transactionError(res);
       }
-
-      // optimize the ast
-      enterState(AST_OPTIMIZATION);
-
-      parser->ast()->validateAndOptimize();
 
       enterState(PLAN_INSTANTIATION);
       plan.reset(ExecutionPlan::instantiateFromAst(parser->ast()));
@@ -479,14 +482,14 @@ QueryResult Query::prepare(QueryRegistry* registry) {
       // Run the query optimizer:
       enterState(PLAN_OPTIMIZATION);
       arangodb::aql::Optimizer opt(maxNumberOfPlans());
-      // getenabled/disabled rules
+      // get enabled/disabled rules
       opt.createPlans(plan.release(), getRulesFromOptions(),
                       inspectSimplePlans());
       // Now plan and all derived plans belong to the optimizer
       plan.reset(opt.stealBest());  // Now we own the best one again
       planRegisters = true;
     } else {  // no queryString, we are instantiating from _queryBuilder
-      enterState(PLAN_INSTANTIATION);
+      enterState(PARSING);
 
       VPackSlice const querySlice = _queryBuilder->slice();
       ExecutionPlan::getCollectionsFromVelocyPack(parser->ast(), querySlice);
@@ -495,7 +498,9 @@ QueryResult Query::prepare(QueryRegistry* registry) {
       // creating the plan may have produced some collections
       // we need to add them to the transaction now (otherwise the query will
       // fail)
-
+      
+      enterState(LOADING_COLLECTIONS);
+      
       int res = trx->addCollectionList(_collections.collections());
 
       if (res == TRI_ERROR_NO_ERROR) {
@@ -505,6 +510,8 @@ QueryResult Query::prepare(QueryRegistry* registry) {
       if (res != TRI_ERROR_NO_ERROR) {
         return transactionError(res);
       }
+      
+      enterState(PLAN_INSTANTIATION);
 
       // we have an execution plan in VelocyPack format
       plan.reset(ExecutionPlan::instantiateFromVelocyPack(
@@ -702,9 +709,14 @@ QueryResult Query::execute(QueryRegistry* registry) {
       result.profile = _profile->toVelocyPack();
     }
 
+    // patch stats in place
+    // we do this because "executionTime" should include the whole span of the execution and we have to set it at the very end
+    basics::VelocyPackHelper::patchDouble(result.stats->slice().get("executionTime"), TRI_microtime() - _startTime);
+
     LOG_TOPIC(DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
                                       << "Query::execute:returning"
                                       << " this: " << (uintptr_t) this;
+    
     return result;
   } catch (arangodb::basics::Exception const& ex) {
     setExecutionTime();
@@ -881,6 +893,10 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
     if (_profile != nullptr && profiling()) {
       result.profile = _profile->toVelocyPack();
     }
+    
+    // patch executionTime stats value in place
+    // we do this because "executionTime" should include the whole span of the execution and we have to set it at the very end
+    basics::VelocyPackHelper::patchDouble(result.stats->slice().get("executionTime"), TRI_microtime() - _startTime);
 
     return result;
   } catch (arangodb::basics::Exception const& ex) {
@@ -941,6 +957,8 @@ QueryResult Query::explain() {
     enterState(AST_OPTIMIZATION);
     // optimize and validate the ast
     parser.ast()->validateAndOptimize();
+    
+    enterState(LOADING_COLLECTIONS);
 
     // create the transaction object, but do not start it yet
     _trx = new arangodb::AqlTransaction(createTransactionContext(),
