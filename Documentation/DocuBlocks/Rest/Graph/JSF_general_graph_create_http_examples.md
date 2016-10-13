@@ -17,6 +17,23 @@ An array of definitions for the edge
 @RESTBODYPARAM{orphanCollections,string,optional,string}
 An array of additional vertex collections.
 
+@RESTBODYPARAM{isSmart,boolean,optional,boolean}
+Define if the created graph should be smart.
+This only has effect in Enterprise version.
+
+@RESTBODYPARAM{options,object,optional,post_api_gharial_create_opts}
+a json object which is only useful in Enterprise version and with isSmart set to true.
+It can contain the following attributes:
+
+@RESTSTRUCT{smartGraphAttribute,post_api_gharial_create_opts,string,required,}
+The attribute name that is used to smartly shard the vertices of a graph.
+Every vertex in this Graph has to have this attribute.
+Cannot be modified later.
+
+@RESTSTRUCT{numberOfShards,post_api_gharial_create_opts,integer,required,}
+The number of shards that is used for every collection within this graph.
+Cannot be modified later.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{201}
