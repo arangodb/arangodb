@@ -27,7 +27,7 @@ arangosh&gt; stmt.explain();
         }, 
         <span class="hljs-string">"indexes"</span> : [ 
           { 
-            <span class="hljs-string">"id"</span> : <span class="hljs-string">"7553"</span>, 
+            <span class="hljs-string">"id"</span> : <span class="hljs-string">"7245"</span>, 
             <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
             <span class="hljs-string">"fields"</span> : [ 
               <span class="hljs-string">"value"</span> 
@@ -117,7 +117,8 @@ arangosh&gt; stmt.explain();
       <span class="hljs-string">"move-filters-up-2"</span>, 
       <span class="hljs-string">"use-indexes"</span>, 
       <span class="hljs-string">"remove-filter-covered-by-index"</span>, 
-      <span class="hljs-string">"use-index-for-sort"</span> 
+      <span class="hljs-string">"use-index-for-sort"</span>, 
+      <span class="hljs-string">"remove-unnecessary-calculations-2"</span> 
     ], 
     <span class="hljs-string">"collections"</span> : [ 
       { 

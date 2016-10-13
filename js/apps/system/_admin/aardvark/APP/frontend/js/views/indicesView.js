@@ -24,7 +24,7 @@
       }));
 
       this.breadcrumb();
-      window.arangoHelper.buildCollectionSubNav(this.collectionName, 'Indices');
+      window.arangoHelper.buildCollectionSubNav(this.collectionName, 'Indexes');
 
       this.getIndex();
     },
@@ -159,7 +159,7 @@
 
       $('#infoTab a').bind('click', function (e) {
         $('#indexDeleteModal').remove();
-        if ($(e.currentTarget).html() === 'Indices' && !$(e.currentTarget).parent().hasClass('active')) {
+        if ($(e.currentTarget).html() === 'Indexes' && !$(e.currentTarget).parent().hasClass('active')) {
           $('#newIndexView').hide();
           $('#indexEditView').show();
 
