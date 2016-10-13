@@ -1622,6 +1622,11 @@ AgencyCommResult AgencyComm::sendWithFailover(
 
     TRI_ASSERT(agencyEndpoint != nullptr);
 
+    if (tries > 1) {  // not the first try
+      LOG_TOPIC(WARN, Logger::AGENCYCOMM) << "Retrying agency communication at "
+        << agencyEndpoint->_endpoint->specification();
+    }
+
     try {
       result =
           send(agencyEndpoint->_connection, method, timeout, realUrl, body);
