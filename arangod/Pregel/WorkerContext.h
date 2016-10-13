@@ -38,7 +38,7 @@ namespace pregel {
   class WorkerContext {
     friend class Worker;
   public:
-      WorkerContext();
+      WorkerContext(unsigned int exeNum);
       ~WorkerContext();
       
       inline unsigned int executionNumber() {
@@ -83,8 +83,9 @@ namespace pregel {
     
   private:
     /// @brief guard to make sure the database is not dropped while used by us
-      unsigned int _executionNumber;
-      unsigned int _globalSuperstep;
+      const unsigned int _executionNumber;
+      unsigned int _globalSuperstep = 0;
+      unsigned int _expectedGSS = 0;
       std::string _coordinatorId;
       std::string _database;
       std::string _vertexCollectionName, _vertexCollectionPlanId;

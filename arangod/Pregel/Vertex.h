@@ -40,13 +40,13 @@ namespace pregel {
     struct Message {
         Message(VPackSlice slice);
         
-        int _value; // demo
+        int64_t _value; // demo
     };
     
   //template <typename T>
   class MessageIterator {
   public:
-      MessageIterator() = delete;
+      MessageIterator() : _size(0) {}
       
       typedef MessageIterator iterator;
       typedef const MessageIterator const_iterator;
@@ -109,12 +109,12 @@ namespace pregel {
   };
   
   struct Edge {
-    Edge(VPackSlice data) : _data(data) {}
+      Edge(VPackSlice data);
     VPackSlice _data;
       
     //protected: virtual void loadData() = 0;
       
-    int _value;// demo
+    int64_t _value;// demo
   };
   
   class Vertex {
@@ -132,11 +132,11 @@ namespace pregel {
 
   protected:
     void voteHalt() {_activationState = VertexActivationState::STOPPED;}
-    int _vertexState;// demo
+    int64_t _vertexState;// demo
     VPackSlice _data;
 
   private:
-    VertexActivationState _activationState;
+    VertexActivationState _activationState = VertexActivationState::ACTIVE;
   };
 }
 }

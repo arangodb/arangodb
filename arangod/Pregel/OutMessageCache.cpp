@@ -66,8 +66,8 @@ void OutMessageCache::clear() {
   _map.clear();
 }
 
-void OutMessageCache::addMessage(std::string key, VPackSlice slice) {
-  LOG(INFO) << "Adding messages to out queue\n";
+void OutMessageCache::addMessage(std::string key, VPackSlice mData) {
+  LOG(INFO) << "Adding outgoing messages " << mData.toJson();
   
   ShardID responsibleShard;
   bool usesDefaultShardingAttributes;
@@ -89,15 +89,15 @@ void OutMessageCache::addMessage(std::string key, VPackSlice slice) {
     
     // hardcoded combiner
     int64_t oldValue = b->slice().get("value").getInt();
-    int64_t newValue = slice.get("value").getInt();
+    int64_t newValue = mData.get("value").getInt();
     if (newValue < oldValue) {
       b->clear();
-      b->add(slice);
+      b->add(mData);
     }
     
   } else {// first message for this vertex
      std::unique_ptr<VPackBuilder> b(new VPackBuilder());
-    b->add(slice);
+    b->add(mData);
     _map[responsibleShard][key] = b.get();
     b.release();
   }

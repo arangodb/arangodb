@@ -34,7 +34,12 @@ using namespace arangodb::pregel;
 
 Message::Message(VPackSlice slice) {
   VPackSlice s = slice.get("value");
-  _value = s.getSmallInt() || s.getInt() ? s.getInt() : -1;
+  _value = s.getInt();
+}
+
+Edge::Edge(VPackSlice data) : _data(data) {
+    VPackSlice v = data.get("value");
+    _value = v.isInteger() ? v.getInt() : 1;
 }
 
 Vertex::Vertex(VPackSlice document) : _data(document)  {
@@ -51,20 +56,26 @@ Vertex::~Vertex() {
 }
 
 void Vertex::compute(int gss, MessageIterator const &messages, OutMessageCache* const cache) {
-  int current = _vertexState;
+  int64_t current = _vertexState;
   for (auto const &msg : messages) {
-    if (msg._value < current) current = msg._value;
+      if (current < 0 || msg._value < current) {
+          current = msg._value;
+      };
   }
   if (current >= 0 && (gss == 0 || current != _vertexState))  {
+    LOG(INFO) << "Recomputing value for vertex " << _data.toJson();
+      
     _vertexState = current;
     for (auto const &edge : _edges) {
+      int64_t val = edge._value + current;
       VPackSlice toID = edge._data.get(StaticStrings::ToString);
       VPackBuilder b;
       b.openObject();
       b.add(StaticStrings::ToString, toID);
-      b.add("value", VPackValue(edge._value + current));
+      b.add("value", VPackValue(val));
       b.close();
       cache->addMessage(toID.copyString(), b.slice());
     }
-  } else voteHalt();
+  }
+  voteHalt();
 }

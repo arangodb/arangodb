@@ -137,8 +137,8 @@ void Conductor::finishedGlobalStep(VPackSlice &data) {
     _globalSuperstep++;
     
     std::string baseUrl = Utils::baseUrl(_vocbaseGuard.vocbase()->name());
-    if (_doneCount == _dbServerCount ||  _globalSuperstep >= 25) {
-      LOG(INFO) << "Done. We did " << _globalSuperstep << " rounds";
+    if (_doneCount == _dbServerCount ||  _globalSuperstep == 101) {
+      LOG(INFO) << "Done. We did " << _globalSuperstep-1 << " rounds";
       VPackBuilder b;
       b.openObject();
       b.add(Utils::executionNumberKey, VPackValue(_executionNumber));

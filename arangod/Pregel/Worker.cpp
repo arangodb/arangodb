@@ -54,7 +54,7 @@ using namespace arangodb::pregel;
 
 Worker::Worker(unsigned int executionNumber,
                TRI_vocbase_t *vocbase,
-               VPackSlice s) : _vocbase(vocbase), _ctx(new WorkerContext) {
+               VPackSlice s) : _vocbase(vocbase), _ctx(new WorkerContext(executionNumber)) {
 
   //VPackSlice algo = s.get("algo");
   
@@ -65,7 +65,6 @@ Worker::Worker(unsigned int executionNumber,
   if (!(coordID.isString() && vertexShardIDs.length() == 1 && edgeShardIDs.length() == 1)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Only one shard per collection supported");
   }
-    _ctx->_executionNumber = executionNumber;
     _ctx->_coordinatorId = coordID.copyString();
     _ctx->_database = vocbase->name();
   _ctx->_vertexCollectionName = s.get(Utils::vertexCollectionKey).copyString();// readable name of collection
@@ -147,9 +146,7 @@ Worker::Worker(unsigned int executionNumber,
         }
         LOG(INFO) << s.toJson();
         
-        VPackSlice i = s.get("value");
         v->_edges.emplace_back(s);
-        v->_edges.end()->_value = i.isInteger() ? i.getInt() : 1;
         edgeCount++;
         
       }
@@ -190,17 +187,21 @@ void Worker::nextGlobalStep(VPackSlice data) {
                                   "Invalid gss in %s:%d", __FILE__, __LINE__);
   }
     unsigned int gss = (unsigned int) gssSlice.getUInt();
-    unsigned int expected = _ctx->_globalSuperstep + 1;
-    if (gss != 0 && expected != gss) {
+    if (_ctx->_expectedGSS != gss) {
         THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER, "Seems like this worker missed a gss, expected %u. Data = %s ",
-                                      expected, data.toJson().c_str());
+                                      _ctx->_expectedGSS, data.toJson().c_str());
     }
+    
   _ctx->_globalSuperstep = gss;
+   _ctx->_expectedGSS = gss + 1;
   _ctx->readableIncomingCache()->clear();
   _ctx->swapIncomingCaches();// write cache becomes the readable cache
   
   std::unique_ptr<rest::Job> job(new WorkerJob(this, _ctx));
-  DispatcherFeature::DISPATCHER->addJob(job, false);
+  int res = DispatcherFeature::DISPATCHER->addJob(job, true);
+if (res != TRI_ERROR_NO_ERROR) {
+    LOG(ERR) << "Could not start worker job";
+}
   LOG(INFO) << "Worker started new gss: " << gss;
 }
 
@@ -222,7 +223,7 @@ void Worker::receivedMessages(VPackSlice data) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Superstep out of sync");
     }
     
-  LOG(INFO) << "Worker received messages\n";
+  LOG(INFO) << "Worker received messages";
 }
 
 void Worker::writeResults() {
@@ -247,7 +248,7 @@ void Worker::writeResults() {
     b.add(StaticStrings::KeyString, pair.second->_data.get(StaticStrings::KeyString));
     b.add("value", VPackValue(pair.second->_vertexState));
     b.close();
-    LOG(INFO) << b.toString();
+    LOG(INFO) << b.toJson();
     /*result = trx.update(_vertexCollection, b->slice(), options);
     if (!result.successful()) {
       THROW_ARANGO_EXCEPTION_FORMAT(result.code, "while looking up graph '%s'",
@@ -266,14 +267,16 @@ void Worker::writeResults() {
 
 // ========== WorkerJob ==========
 
-WorkerJob::WorkerJob(Worker *worker, std::shared_ptr<WorkerContext> ctx) : Job("Pregel Job"), _worker(worker), _ctx(ctx) {
+WorkerJob::WorkerJob(Worker *worker,
+                     std::shared_ptr<WorkerContext> ctx) : Job("Pregel Job"), _canceled(false), _worker(worker), _ctx(ctx) {
 }
 
 void WorkerJob::work() {
+  LOG(INFO) << "Worker job started";
   if (_canceled) {
+      LOG(INFO) << "Job was canceled before work started";
     return;
   }
-  LOG(INFO) << "Worker job started\n";
   // TODO cache this
   OutMessageCache outCache(_ctx);
 
@@ -285,24 +288,29 @@ void WorkerJob::work() {
     
     for (auto const &it : _worker->_vertices) {
       Vertex *v = it.second;
-      std::string key = v->_data.get(StaticStrings::KeyString).copyString();
-      
-      VPackSlice messages = _ctx->readableIncomingCache()->getMessages(key);
-      v->compute(gss, MessageIterator(messages), &outCache);
+      //std::string key = v->_data.get(StaticStrings::KeyString).copyString();
+      //VPackSlice messages = _ctx->readableIncomingCache()->getMessages(key);
+      v->compute(gss, MessageIterator(), &outCache);
       bool active = v->state() == VertexActivationState::ACTIVE;
       if (!active) LOG(INFO) << "vertex has halted";
       _worker->_activationMap[it.first] = active;
     }
   } else {
     for (auto &it : _worker->_activationMap) {
-      VPackSlice messages = _ctx->readableIncomingCache()->getMessages(it.first);
+        
+      std::string key = _ctx->vertexCollectionName() + "/" + it.first;
+      VPackSlice messages = _ctx->readableIncomingCache()->getMessages(key);
+        
       MessageIterator iterator(messages);
       if (iterator.size() > 0 || it.second) {
         isDone = false;
+        LOG(INFO) << "Processing messages: " << messages.toString();
         
         Vertex *v = _worker->_vertices[it.first];
         v->compute(gss, iterator, &outCache);
-        it.second = v->state() == VertexActivationState::ACTIVE;
+        bool active = v->state() == VertexActivationState::ACTIVE;
+        it.second = active;
+        if (!active) LOG(INFO) << "vertex has halted";
       }
     }
   }
@@ -317,7 +325,7 @@ void WorkerJob::work() {
   if (!isDone) {
       outCache.sendMessages();
   } else {
-    LOG(INFO) << "Worker job has nothing more to process\n";
+    LOG(INFO) << "Worker job has nothing more to process";
   }
   
   // notify the conductor that we are done.
@@ -326,7 +334,7 @@ void WorkerJob::work() {
   package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
   package.add(Utils::executionNumberKey, VPackValue(_ctx->executionNumber()));
   package.add(Utils::globalSuperstepKey, VPackValue(gss));
-  if (!isDone) package.add(Utils::doneKey, VPackValue(isDone));
+  package.add(Utils::doneKey, VPackValue(isDone));
   package.close();
   
   LOG(INFO) << "Sending finishedGSS to coordinator: " << _ctx->coordinatorId();
@@ -348,6 +356,7 @@ void WorkerJob::work() {
 }
 
 bool WorkerJob::cancel() {
+    LOG(INFO) << "Canceling worker job";
   _canceled = true;
   return true;
 }
