@@ -45,7 +45,7 @@
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-static double const CL_DEFAULT_TIMEOUT = 60.0;
+static double const CL_DEFAULT_TIMEOUT = 90.0;
 
 namespace {
 template<typename T>
