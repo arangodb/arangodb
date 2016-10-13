@@ -1937,6 +1937,7 @@
 
           var pos = 0;
           var width;
+          var adjustWidth = 0;
 
           _.each(data, function (value, key) {
             var ms = numeral(value * 1000).format('0.000');
@@ -1952,13 +1953,41 @@
             );
 
             width = Math.floor((value * 1000) / total * 100);
+            if (width === 0) {
+              width = 1;
+              adjustWidth++;
+            }
 
-            queryProfile.find('.prof-progress').append(
-              '<div style="width: ' + width + '%; background-color: ' + colors[pos] + '"></div>'
-            );
-            queryProfile.find('.prof-progress-label').append(
-              '<div style="width: ' + width + '%;">' + legend[pos] + '</div>'
-            );
+            if (pos !== 6) {
+              queryProfile.find('.prof-progress').append(
+                '<div style="width: ' + width + '%; background-color: ' + colors[pos] + '"></div>'
+              );
+              if (width > 1) {
+                queryProfile.find('.prof-progress-label').append(
+                  '<div style="width: ' + width + '%;">' + legend[pos] + '</div>'
+                );
+              } else {
+                queryProfile.find('.prof-progress-label').append(
+                  '<div style="width: ' + width + '%; font-size: 9px">' + legend[pos] + '</div>'
+                );
+              }
+            } else {
+              if (adjustWidth > 0) {
+                width = width - adjustWidth;
+              }
+              queryProfile.find('.prof-progress').append(
+                '<div style="width: ' + width + '%; background-color: ' + colors[pos] + '"></div>'
+              );
+              if (width > 1) {
+                queryProfile.find('.prof-progress-label').append(
+                  '<div style="width: ' + width + '%;">' + legend[pos] + '</div>'
+                );
+              } else {
+                queryProfile.find('.prof-progress-label').append(
+                  '<div style="width: ' + width + '%; font-size: 9px">' + legend[pos] + '</div>'
+                );
+              }
+            }
             pos++;
           });
 
