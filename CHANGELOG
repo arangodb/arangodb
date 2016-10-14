@@ -137,8 +137,11 @@ devel
 
 * Agency bug fix for handling of empty json objects as values.
 
+
 v3.0.11 (2016-XX-XX)
 --------------------
+
+* fixed issue #2110
 
 * fixed issue #2081
 
