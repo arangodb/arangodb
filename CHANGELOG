@@ -1,5 +1,20 @@
 devel
 -----
+
+* ui: added new graph viewer
+
+* ui: aql-editor added tabular & graph display
+
+* ui: aql-editor improved usability
+
+* ui: aql-editor: query profiling support
+
+* fixed issue #2109
+
+* fixed issue #2111
+
+* fixed issue #2075
+
 * rewrote scheduler and dispatcher based on boost::asio
 
   parameter changed:
