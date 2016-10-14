@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, $, _, window, templateEngine, arangoHelper, GraphViewerUI, require */
+/* global Backbone, $, _, window, templateEngine, arangoHelper, GraphViewerUI, require, Joi */
 
 (function () {
   'use strict';
@@ -529,11 +529,26 @@
         return;
       }
 
-      this.collection.create({
+      var newCollectionObject = {
         name: name,
         edgeDefinitions: edgeDefinitions,
         orphanCollections: vertexCollections
-      }, {
+      };
+
+      // if smart graph
+      if ($('#new-is_smart').is(':checked')) {
+        if ($('#new-numberOfShards').val() === '' || $('#new-smartGraphAttribute').val() === '') {
+          return;
+        } else {
+          newCollectionObject.isSmart = true;
+          newCollectionObject.options = {
+            numberOfShards: $('#new-numberOfShards').val(),
+            smartGraphAttribute: $('#new-smartGraphAttribute').val()
+          };
+        }
+      }
+
+      this.collection.create(newCollectionObject, {
         success: function () {
           self.updateGraphManagementView();
           window.modalView.hide();
@@ -718,9 +733,67 @@
         )
       );
 
-      window.modalView.show(
-        'modalGraphTable.ejs', title, buttons, tableContent, undefined, undefined, this.events
-      );
+      if (window.frontendConfig.license === 'enterprise') {
+        var advanced = {};
+        var advancedTableContent = [];
+
+        advancedTableContent.push(
+          window.modalView.createCheckboxEntry(
+            'new-is_smart',
+            'Smart Graph',
+            true,
+            'Do you want to create a smart graph?',
+            false
+          )
+        );
+
+        advancedTableContent.push(
+          window.modalView.createTextEntry(
+            'new-numberOfShards',
+            'Shards',
+            '',
+            'Number of shards the smart graph is using.',
+            '',
+            false,
+            [
+              {
+                rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                msg: 'Must be a number.'
+              }
+            ]
+          )
+        );
+
+        advancedTableContent.push(
+          window.modalView.createTextEntry(
+            'new-smartGraphAttribute',
+            'SmartGraph Attribute',
+            '',
+            'The attribute name that is used to smartly shard the vertices of a graph. \n' +
+            'Every vertex in this Graph has to have this attribute. \n' +
+            'Cannot be modified later.',
+            '',
+            false,
+            [
+              {
+                rule: Joi.string(),
+                msg: 'Must be a string.'
+              }
+            ]
+          )
+        );
+
+        advanced.header = 'Smart Graph';
+        advanced.content = advancedTableContent;
+
+        window.modalView.show(
+          'modalGraphTable.ejs', title, buttons, tableContent, advanced, undefined, this.events
+        );
+      } else {
+        window.modalView.show(
+          'modalGraphTable.ejs', title, buttons, tableContent, undefined, undefined, this.events
+        );
+      }
 
       if (graph) {
         $('.modal-body table').css('border-collapse', 'separate');
