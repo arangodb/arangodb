@@ -42,20 +42,10 @@ OutMessageCache::OutMessageCache(std::shared_ptr<WorkerContext> context) : _ctx(
   _ci = ClusterInfo::instance();
   _collInfo = _ci->getCollection(_ctx->database(), _ctx->vertexCollectionPlanId());
   _baseUrl = Utils::baseUrl(_ctx->database());
-  
-  auto shardMap = _ci->getShardList(_ctx->vertexCollectionPlanId());
-  for (ShardID const &it : *shardMap) {
-    _map[it];
-  }
 }
 
 OutMessageCache::~OutMessageCache() {
-  for (auto const &it : _map) {
-    for (auto const &it2 : it.second) {
-      delete(it2.second);
-    }
-  }
-  _map.clear();
+    clear();
 }
 
 void OutMessageCache::clear() {
@@ -68,24 +58,28 @@ void OutMessageCache::clear() {
   _map.clear();
 }
 
-void OutMessageCache::addMessage(std::string key, VPackSlice mData) {
+void OutMessageCache::sendMessageTo(std::string const& toValue, VPackSlice mData) {
   LOG(INFO) << "Adding outgoing messages " << mData.toJson();
   
+    std::string vertexKey = Utils::vertexKeyFromToValue(toValue);
+    
   ShardID responsibleShard;
   bool usesDefaultShardingAttributes;
-  VPackBuilder keyDoc;
-  keyDoc.openObject();
-  keyDoc.add(StaticStrings::KeyString, VPackValue(key));
-  keyDoc.close();
-  int res = _ci->getResponsibleShard(_collInfo.get(), keyDoc.slice(), true,
+  VPackBuilder partial;
+  partial.openObject();
+  partial.add(StaticStrings::KeyString, VPackValue(vertexKey));
+  partial.close();
+  LOG(INFO) << "Partial doc: " << partial.toJson();
+  int res = _ci->getResponsibleShard(_collInfo.get(), partial.slice(), true,
                                      responsibleShard, usesDefaultShardingAttributes);
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(res, "OutMessageCache could not resolve the responsible shard");
   }
   TRI_ASSERT(usesDefaultShardingAttributes);// should be true anyway
+  LOG(INFO) << "Responsible shard: " << responsibleShard;
     
   //std::unordered_map<std::string, VPackBuilder*> vertexMap =;
-  auto it = _map[responsibleShard].find(key);
+  auto it = _map[responsibleShard].find(vertexKey);
   if (it != _map[responsibleShard].end()) {// more than one message
     VPackBuilder *b = it->second;
     
@@ -100,13 +94,13 @@ void OutMessageCache::addMessage(std::string key, VPackSlice mData) {
   } else {// first message for this vertex
      std::unique_ptr<VPackBuilder> b(new VPackBuilder());
     b->add(mData);
-    _map[responsibleShard][key] = b.get();
+    _map[responsibleShard][vertexKey] = b.get();
     b.release();
   }
     
     _numVertices++;
 }
-
+/*
 void OutMessageCache::getMessages(ShardID const& shardId, VPackBuilder &outBuilder) {
   auto shardIt = _map.find(shardId);
   if (shardIt != _map.end()) {
@@ -121,38 +115,48 @@ void OutMessageCache::getMessages(ShardID const& shardId, VPackBuilder &outBuild
   //outBuilder.close();
   //else return VPackSlice();
 }
-
+*/
 void OutMessageCache::sendMessages() {
     LOG(INFO) << "Sending messages to other machines";
     auto localShards = _ctx->localVertexShardIDs();
-    std::shared_ptr<std::vector<ShardID>> shards = _ci->getShardList(_ctx->vertexCollectionPlanId());
     
     std::vector<ClusterCommRequest> requests;
-    for (auto const &it : *shards) {
+    for (auto const &it : _map) {
         
-        if (std::find(localShards.begin(), localShards.end(), it) != localShards.end()) {
-            LOG(INFO) << "Worker: Getting messages for myself";
-            
-            VPackBuilder messages;
-            messages.openArray();
-            getMessages(it, messages);
-            messages.close();
-            _ctx->writeableIncomingCache()->addMessages(VPackArrayIterator(messages.slice()));
+        ShardID const& shard = it.first;
+        std::unordered_map<std::string, VPackBuilder*> const& vertexMessageMap = it.second;
+        if (vertexMessageMap.size() == 0) {
+            continue;
+        }
+        
+        if (std::find(localShards.begin(), localShards.end(), shard) != localShards.end()) {
+            for (auto const& pair : vertexMessageMap) {
+                _ctx->writeableIncomingCache()->setDirect(pair.first, pair.second->slice());
+                LOG(INFO) << "Worker: Got messages for myself: " << pair.second->slice().toJson();
+            }
         } else {
-            LOG(INFO) << "Worker: Sending messages for shard " << it;
-            
             VPackBuilder package;
             package.openObject();
+            package.add(Utils::messagesKey, VPackValue(VPackValueType::Array));
+            for (auto const& vertexMessagePair : vertexMessageMap) {
+                package.add(VPackValue(vertexMessagePair.first));
+                VPackSlice msgs = vertexMessagePair.second->slice();
+                if (msgs.isArray()) {
+                    package.add(msgs);
+                } else {
+                    package.add(msgs);
+                }
+            }
+            package.close();
             package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
             package.add(Utils::executionNumberKey, VPackValue(_ctx->executionNumber()));
             package.add(Utils::globalSuperstepKey, VPackValue(_ctx->globalSuperstep()));
-            package.add(Utils::messagesKey, VPackValue(VPackValueType::Array));
-            getMessages(it, package);
-            package.close();
             package.close();
             // add a request
             auto body = std::make_shared<std::string const>(package.toJson());
-            requests.emplace_back("shard:" + it, rest::RequestType::POST, _baseUrl + Utils::messagesPath, body);
+            requests.emplace_back("shard:" + shard, rest::RequestType::POST, _baseUrl + Utils::messagesPath, body);
+            
+            LOG(INFO) << "Worker: Sending messages to other DBServer " << package.toJson();
         }
     }
     size_t nrDone = 0;

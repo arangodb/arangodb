@@ -20,24 +20,24 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "WorkerContext.h"
-#include "InMessageCache.h"
+#include "Basics/Common.h"
+#include "VocBase/vocbase.h"
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
-using namespace arangodb;
-using namespace arangodb::pregel;
-
-WorkerContext::WorkerContext(unsigned int en) : _executionNumber(en) {
-    _readCache = new InMessageCache();
-    _writeCache = new InMessageCache();
+#ifndef ARANGODB_PREGEL_MESSAGE_H
+#define ARANGODB_PREGEL_MESSAGE_H 1
+namespace arangodb {
+namespace pregel {
+    struct Message {
+        Message(VPackSlice slice);
+        
+        int64_t _value; // demo
+    };
+    
+    // struct IntMessage final : public Message ...
+    // struct FloatMessage final : public Message ...
+    // struct VelocyMessage final : public Message ...
 }
-
-WorkerContext::~WorkerContext() {
-    delete _readCache;
-    delete _writeCache;
 }
-
-void WorkerContext::swapIncomingCaches() {
-    InMessageCache *t = _readCache;
-    _readCache = _writeCache;
-    _writeCache = t;
-}
+#endif

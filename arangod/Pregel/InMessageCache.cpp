@@ -22,6 +22,7 @@
 
 #include "InMessageCache.h"
 #include "Utils.h"
+#include "Message.h"
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
@@ -46,53 +47,76 @@ void InMessageCache::clear() {
   }
 }
 
-void InMessageCache::addMessages(VPackArrayIterator incomingMessages) {
+void InMessageCache::parseMessages(VPackSlice incomingMessages) {
   MUTEX_LOCKER(locker, writeMutex);
-  LOG(INFO) << "Adding messages to in queue";
+  LOG(INFO) << "Adding messages to In-Queue " << incomingMessages.toJson();
+    
+    VPackValueLength length = incomingMessages.length();
+    if (length % 2) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "There must always be an even number of entries in messages");
+    }
   
+    VPackValueLength i = 0;
+    std::string vertexId;
+    for (i = 0; i < length; i++) {
+      VPackSlice current = incomingMessages.at(i);
+      if (i % 2 == 0) {// TODO support multiple recipients
+        vertexId = current.copyString();
+      } else {
+        int64_t newValue = current.get("value").getInt();
+        auto vmsg = _messages.find(vertexId);
+        if (vmsg != _messages.end()) {
+          
+          // if no combiner
+          // vmsg->add(it.slice())
+          
+          // TODO hardcoded combiner
+          VPackBuilder *current = vmsg->second;
+          int64_t oldValue = current->slice().get("value").getInt();
+          if (newValue < oldValue) {
+            current->clear();
+            current->openObject();
+            current->add("value", VPackValue(newValue));
+            current->close();
+          }
+        } else {
+          // with a combiner
+          std::unique_ptr<VPackBuilder> b(new VPackBuilder());
+          b->add(current);
+          _messages[vertexId] = b.get();
+          b.release();
+          
+          // if no combiner
+          // VPackBuilder *arr = new VPackBuilder(it);
+          // arr->openArray();
+          // arr->add(it)
+          // _messages[vertexId] = arr;
+        }
+      }
+    }
+    
   //unordered_map<string, vector<VPackSlice>> messageBucket;
   //VPackSlice messages = data.get(Utils::messagesKey);
-  for (auto const &it : incomingMessages) {
-    std::string vertexId = it.get(StaticStrings::ToString).copyString();
-    
-    int64_t newValue = it.get("value").getInt();
-    auto vmsg = _messages.find(vertexId);
-    if (vmsg != _messages.end()) {
-      
-      // if no combiner
-      // vmsg->add(it.slice())
-      
-      // TODO hardcoded combiner
-      VPackBuilder *current = vmsg->second;
-      int64_t oldValue = current->slice().get("value").getInt();
-      if (newValue < oldValue) {
-        current->clear();
-        current->openObject();
-        current->add(StaticStrings::ToString, it.get(StaticStrings::ToString));
-        current->add("value", VPackValue(newValue));
-        current->close();
-      }
-    } else {
-      // with a combiner
-      std::unique_ptr<VPackBuilder> b(new VPackBuilder());
-      b->add(it);
-      _messages[vertexId] = b.get();
-      b.release();
-      
-      // if no combiner
-      // VPackBuilder *arr = new VPackBuilder(it);
-      // arr->openArray();
-      // arr->add(it)
-      // _messages[vertexId] = arr;
-    }
-  }
 }
 
-VPackSlice InMessageCache::getMessages(std::string const& vertexId) {
-  LOG(INFO) << "Querying messages from for " << vertexId;
+void InMessageCache::setDirect(std::string const& vertexId, VPackSlice data) {
+    auto vmsg = _messages.find(vertexId);
+    if (vmsg != _messages.end()) {
+        VPackBuilder *b = vmsg->second;
+         b->add(data);
+    } else {
+        std::unique_ptr<VPackBuilder> b(new VPackBuilder());
+        b->add(data);
+        _messages[vertexId] = b.get();
+        b.release();
+    }
+}
+
+MessageIterator InMessageCache::getMessages(std::string const& vertexId) {
+  LOG(INFO) << "Querying messages for " << vertexId;
   auto vmsg = _messages.find(vertexId);
   if (vmsg != _messages.end()) {
-    return vmsg->second->slice();
+    return MessageIterator(vmsg->second->slice());
   }
-  else return VPackSlice();
+  else return MessageIterator();
 }

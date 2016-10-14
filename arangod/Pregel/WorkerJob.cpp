@@ -24,12 +24,12 @@
 #include "WorkerContext.h"
 #include "Worker.h"
 #include "Vertex.h"
+#include "Message.h"
 #include "Utils.h"
 
 #include "InMessageCache.h"
 #include "OutMessageCache.h"
 
-#include "VocBase/ticks.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterComm.h"
 #include "Dispatcher/DispatcherQueue.h"
@@ -71,16 +71,14 @@ void WorkerJob::work() {
   } else {
     for (auto &it : _worker->_activationMap) {
         
-      std::string key = _ctx->vertexCollectionName() + "/" + it.first;
-      VPackSlice messages = _ctx->readableIncomingCache()->getMessages(key);
+      //std::string key = _ctx->vertexCollectionName() + "/" + it.first;
+      MessageIterator messages = _ctx->readableIncomingCache()->getMessages(it.first);
         
-      MessageIterator iterator(messages);
-      if (iterator.size() > 0 || it.second) {
+      if (messages.size() > 0 || it.second) {
         isDone = false;
-        LOG(INFO) << "Processing messages: " << messages.toString();
         
         Vertex *v = _worker->_vertices[it.first];
-        v->compute(gss, iterator, &outCache);
+        v->compute(gss, messages, &outCache);
         bool active = v->state() == VertexActivationState::ACTIVE;
         it.second = active;
         if (!active) LOG(INFO) << "vertex has halted";
@@ -100,32 +98,7 @@ void WorkerJob::work() {
   } else {
     LOG(INFO) << "Worker job has nothing more to process";
   }
-  
-  // notify the conductor that we are done.
-  VPackBuilder package;
-  package.openObject();
-  package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-  package.add(Utils::executionNumberKey, VPackValue(_ctx->executionNumber()));
-  package.add(Utils::globalSuperstepKey, VPackValue(gss));
-  package.add(Utils::doneKey, VPackValue(isDone));
-  package.close();
-  
-  LOG(INFO) << "Sending finishedGSS to coordinator: " << _ctx->coordinatorId();
-  // TODO handle communication failures?
-    
-    ClusterComm *cc =  ClusterComm::instance();
-  std::string baseUrl = Utils::baseUrl(_worker->_vocbase->name());
-  CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
-  auto headers =
-  std::make_unique<std::unordered_map<std::string, std::string>>();
-  auto body = std::make_shared<std::string const>(package.toJson());
-  cc->asyncRequest("", coordinatorTransactionID,
-                   "server:" + _ctx->coordinatorId(),
-                   rest::RequestType::POST,
-                   baseUrl + Utils::finishedGSSPath,
-                   body, headers, nullptr, 90.0);
-  
-  LOG(INFO) << "Worker job finished sending stuff";
+  _worker->workerJobIsDone(this, isDone);
 }
 
 bool WorkerJob::cancel() {

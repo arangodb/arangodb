@@ -33,9 +33,8 @@ namespace arangodb {
     class SingleCollectionTransaction;
 namespace pregel {
   class Vertex;
-    class WorkerContext;
-  class InMessageCache;
-  class OutMessageCache;
+  class WorkerContext;
+  class WorkerJob;
   
   class Worker {
     friend class WorkerJob;
@@ -60,6 +59,7 @@ namespace pregel {
       
       void lookupVertices(ShardID const& vertexShard);
       void lookupEdges(ShardID const& edgeShardID);
+      void workerJobIsDone(WorkerJob *job, bool allVerticesHalted);
   };
 }
 }

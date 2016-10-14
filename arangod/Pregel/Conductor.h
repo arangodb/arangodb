@@ -71,7 +71,7 @@ namespace pregel {
     // convenience
       void resolveWorkerServers(std::unordered_map<ServerID, std::vector<ShardID>> &vertexServerMap,
                                 std::unordered_map<ServerID, std::vector<ShardID>> &edgeServerMap);
-    int sendToAllShards(std::string url, VPackSlice const& body);
+    int sendToAllDBServers(std::string url, VPackSlice const& body);
   };
 }
 }

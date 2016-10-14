@@ -20,24 +20,12 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "WorkerContext.h"
-#include "InMessageCache.h"
+#include "Message.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 
 using namespace arangodb;
 using namespace arangodb::pregel;
 
-WorkerContext::WorkerContext(unsigned int en) : _executionNumber(en) {
-    _readCache = new InMessageCache();
-    _writeCache = new InMessageCache();
-}
-
-WorkerContext::~WorkerContext() {
-    delete _readCache;
-    delete _writeCache;
-}
-
-void WorkerContext::swapIncomingCaches() {
-    InMessageCache *t = _readCache;
-    _readCache = _writeCache;
-    _writeCache = t;
-}

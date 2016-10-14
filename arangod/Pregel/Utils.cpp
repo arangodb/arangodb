@@ -52,3 +52,8 @@ std::string const Utils::edgeShardingKey = "_vertex";
 std::string Utils::baseUrl(std::string dbName) {
   return  "/_db/" + basics::StringUtils::urlEncode(dbName) + Utils::apiPrefix;
 }
+
+std::string Utils::vertexKeyFromToValue(std::string const& graphKey) {
+    std::size_t pos = graphKey.find('/');
+    return graphKey.substr(pos+1, graphKey.length() - pos - 1);// if pos == -1 (npos) the entire string is returned
+}

@@ -22,7 +22,10 @@
 
 #include "Basics/Common.h"
 #include "VocBase/vocbase.h"
-#include <velocypack/Iterator.h>
+
+#include "Message.h"
+#include "InMessageCache.h"
+
 #include <velocypack/velocypack-aliases.h>
 
 #ifndef ARANGODB_PREGEL_VERTEX_H
@@ -36,78 +39,7 @@ namespace pregel {
   };
   
   class OutMessageCache;
-    
-    struct Message {
-        Message(VPackSlice slice);
-        
-        int64_t _value; // demo
-    };
-    
-  //template <typename T>
-  class MessageIterator {
-  public:
-      MessageIterator() : _size(0) {}
-      
-      typedef MessageIterator iterator;
-      typedef const MessageIterator const_iterator;
-      
-      explicit MessageIterator(VPackSlice slice) : _slice(slice) {
-          if (_slice.isNull() || _slice.isNone()) _size = 0;
-          else if (_slice.isArray()) _size = _slice.length();
-          else _size = 1;
-      }
-      
-      iterator begin() {
-          return MessageIterator(_slice);
-      }
-      const_iterator begin() const {
-          return MessageIterator(_slice);
-      }
-      iterator end() {
-          auto it = MessageIterator(_slice);
-          it._position = it._size;
-          return it;
-      }
-      const_iterator end() const {
-          auto it = MessageIterator(_slice);
-          it._position = it._size;
-          return it;
-      }
-      Message operator*() const {
-          if (_slice.isArray()) {
-              return Message(_slice.at(_position));
-          } else {
-              return Message(_slice);
-          }
-      }
-      
-      // prefix ++
-      MessageIterator& operator++() {
-          ++_position;
-          return *this;
-      }
-      
-      // postfix ++
-      MessageIterator operator++(int) {
-          MessageIterator result(*this);
-          ++(*this);
-          return result;
-      }
-      
-      bool operator!=(MessageIterator const& other) const {
-          return _position != other._position;
-      }
-      
-      size_t size() const {
-          return _size;
-      }
-      
-  private:
-      VPackSlice _slice;
-      size_t _position = 0;
-      size_t _size = 1;
-  };
-  
+
   struct Edge {
       Edge(VPackSlice data);
     VPackSlice _data;

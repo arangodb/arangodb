@@ -32,11 +32,6 @@ using namespace arangodb;
 using namespace arangodb::velocypack;
 using namespace arangodb::pregel;
 
-Message::Message(VPackSlice slice) {
-  VPackSlice s = slice.get("value");
-  _value = s.getInt();
-}
-
 Edge::Edge(VPackSlice data) : _data(data) {
     VPackSlice v = data.get("value");
     _value = v.isInteger() ? v.getInt() : 1;
@@ -68,13 +63,13 @@ void Vertex::compute(int gss, MessageIterator const &messages, OutMessageCache* 
     _vertexState = current;
     for (auto const &edge : _edges) {
       int64_t val = edge._value + current;
-      VPackSlice toID = edge._data.get(StaticStrings::ToString);
       VPackBuilder b;
       b.openObject();
-      b.add(StaticStrings::ToString, toID);
       b.add("value", VPackValue(val));
       b.close();
-      cache->addMessage(toID.copyString(), b.slice());
+        
+        std::string toID = edge._data.get(StaticStrings::ToString).copyString();
+      cache->sendMessageTo(toID, b.slice());
     }
   }
   voteHalt();

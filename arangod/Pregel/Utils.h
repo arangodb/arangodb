@@ -58,7 +58,8 @@ namespace pregel {
     static std::string const doneKey;
       
     static std::string const edgeShardingKey;
-      static std::string baseUrl(std::string dbName);
+    static std::string baseUrl(std::string dbName);
+    static std::string vertexKeyFromToValue(std::string const& graphKey);
 
   };
 }

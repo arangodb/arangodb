@@ -55,7 +55,7 @@ _algorithm(algorithm) {
   LOG(INFO) << "constructed conductor";
 }
 
-static void printResults(std::vector<ClusterCommRequest> &requests) {
+static void printResults(std::vector<ClusterCommRequest> const &requests) {
   for (auto const& req : requests) {
     auto& res = req.result;
     if (res.status == CL_COMM_RECEIVED) {
@@ -143,7 +143,7 @@ void Conductor::finishedGlobalStep(VPackSlice &data) {
       b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
       b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
       b.close();
-      sendToAllShards(baseUrl+Utils::writeResultsPath, b.slice());
+      sendToAllDBServers(baseUrl+Utils::writeResultsPath, b.slice());
       _state = ExecutionState::FINISHED;
       
     } else {// trigger next superstep
@@ -152,7 +152,7 @@ void Conductor::finishedGlobalStep(VPackSlice &data) {
       b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
       b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
       b.close();
-      sendToAllShards(baseUrl+Utils::nextGSSPath, b.slice());
+      sendToAllDBServers(baseUrl+Utils::nextGSSPath, b.slice());
       LOG(INFO) << "Conductor started new gss " << _globalSuperstep;
     }
   }
@@ -162,7 +162,7 @@ void Conductor::cancel() {
   _state = ExecutionState::ERROR;
 }
 
-int Conductor::sendToAllShards(std::string path, VPackSlice const& config) {
+int Conductor::sendToAllDBServers(std::string path, VPackSlice const& config) {
   ClusterComm* cc = ClusterComm::instance();
   std::unordered_map<ServerID, std::vector<ShardID>> vertexServerMap, edgeServerMap;
   resolveWorkerServers(vertexServerMap, edgeServerMap);

@@ -42,22 +42,21 @@ namespace pregel {
 /* In the longer run, maybe write optimized implementations for certain use cases. For example threaded
  processing */
 class OutMessageCache {
+    friend class WorkerJob;
 public:
   OutMessageCache(std::shared_ptr<WorkerContext> context);
   ~OutMessageCache();
   
-  void addMessage(std::string key, VPackSlice slice);
-  //void addMessages(VPackArrayIterator messages);
+  void sendMessageTo(std::string const& toValue, VPackSlice mData);
     
-  void sendMessages();
   void clear();
     
 protected:
-    void getMessages(ShardID const& shardId, VPackBuilder &outBuilder);
+  void sendMessages();
   
 private:
   // two stage map: shard -> vertice -> message
-  std::unordered_map<std::string, std::unordered_map<std::string, VPackBuilder*>> _map;
+  std::unordered_map<ShardID, std::unordered_map<std::string, VPackBuilder*>> _map;
   ClusterInfo *_ci;
     std::shared_ptr<WorkerContext> _ctx;
   std::shared_ptr<LogicalCollection> _collInfo;
