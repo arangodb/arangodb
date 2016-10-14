@@ -41,7 +41,7 @@ WorkMonitorHandler::WorkMonitorHandler(GeneralRequest* request,
 
 bool WorkMonitorHandler::isDirect() const { return true; }
 
-RestHandler::status WorkMonitorHandler::execute() {
+RestStatus WorkMonitorHandler::execute() {
   auto suffix = _request->suffix();
   size_t const len = suffix.size();
   auto const type = _request->requestType();
@@ -51,11 +51,14 @@ RestHandler::status WorkMonitorHandler::execute() {
       generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expecting GET /_admin/work-monitor");
-      return status::DONE;
+      return RestStatus::DONE;
     }
 
-    WorkMonitor::requestWorkOverview(this);
-    return status::ASYNC;
+    std::shared_ptr<RestHandler> self = shared_from_this();
+
+    return RestStatus::WAIT_FOR([self](std::function<void()> next) {
+        WorkMonitor::requestWorkOverview(self, next);
+      }).done();
   }
 
   if (type == rest::RequestType::DELETE_REQ) {
@@ -64,7 +67,7 @@ RestHandler::status WorkMonitorHandler::execute() {
                     TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expecting DELETE /_admin/work-monitor/<id>");
 
-      return status::DONE;
+      return RestStatus::DONE;
     }
 
     uint64_t id = StringUtils::uint64(suffix[0]);
@@ -78,10 +81,10 @@ RestHandler::status WorkMonitorHandler::execute() {
     VPackSlice s(b.start());
 
     generateResult(rest::ResponseCode::OK, s);
-    return status::DONE;
+    return RestStatus::DONE;
   }
 
   generateError(rest::ResponseCode::BAD,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED, "expecting GET or DELETE");
-  return status::DONE;
+  return RestStatus::DONE;
 }

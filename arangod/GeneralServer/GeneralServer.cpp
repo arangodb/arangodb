@@ -24,61 +24,41 @@
 
 #include "GeneralServer.h"
 
+#include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/WorkMonitor.h"
-#include "Dispatcher/Dispatcher.h"
-#include "Dispatcher/DispatcherFeature.h"
 #include "Endpoint/EndpointList.h"
 #include "GeneralServer/AsyncJobManager.h"
-#include "GeneralServer/GeneralCommTask.h"
 #include "GeneralServer/GeneralListenTask.h"
-#include "GeneralServer/GeneralServerFeature.h"
-#include "GeneralServer/GeneralServerJob.h"
 #include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
 #include "Rest/CommonDefines.h"
+#include "Rest/GeneralResponse.h"
 #include "Scheduler/ListenTask.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Scheduler/Task.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an endpoint server
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
-int GeneralServer::sendChunk(uint64_t taskId, std::string const& data) {
-  auto taskData = std::make_unique<TaskData>();
-
-  taskData->_taskId = taskId;
-  taskData->_loop = SchedulerFeature::SCHEDULER->lookupLoopById(taskId);
-  taskData->_type = TaskData::TASK_DATA_CHUNK;
-  taskData->_data = data;
-
-  SchedulerFeature::SCHEDULER->signalTask(taskData);
-
-  return TRI_ERROR_NO_ERROR;
+GeneralServer::~GeneralServer() {
+  for (auto& task : _listenTasks) {
+    delete task;
+  }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructs a general server
-////////////////////////////////////////////////////////////////////////////////
-
-GeneralServer::~GeneralServer() { stopListening(); }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add the endpoint list
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
 
 void GeneralServer::setEndpointList(EndpointList const* list) {
   _endpointList = list;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief starts listening
-////////////////////////////////////////////////////////////////////////////////
 
 void GeneralServer::startListening() {
   for (auto& it : _endpointList->allEndpoints()) {
@@ -99,110 +79,15 @@ void GeneralServer::startListening() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes all listen and comm tasks
-////////////////////////////////////////////////////////////////////////////////
-
 void GeneralServer::stopListening() {
   for (auto& task : _listenTasks) {
-    SchedulerFeature::SCHEDULER->destroyTask(task);
+    task->stop();
   }
-
-  _listenTasks.clear();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a job for asynchronous execution (using the dispatcher)
-////////////////////////////////////////////////////////////////////////////////
-
-bool GeneralServer::handleRequestAsync(GeneralCommTask* task,
-                                       WorkItem::uptr<RestHandler> handler,
-                                       uint64_t* jobId) {
-  auto messageId = handler->request()->messageId();
-  bool startThread = handler->needsOwnThread();
-
-  // extract the coordinator flag
-  bool found;
-  std::string const& hdrStr =
-      handler->request()->header(StaticStrings::Coordinator, found);
-  char const* hdr = found ? hdrStr.c_str() : nullptr;
-
-  // execute the handler using the dispatcher
-  std::unique_ptr<Job> job =
-      std::make_unique<GeneralServerJob>(this, std::move(handler), true);
-  task->getAgent(messageId)->transferTo(job.get());
-
-  // register the job with the job manager
-  if (jobId != nullptr) {
-    GeneralServerFeature::JOB_MANAGER->initAsyncJob(
-        static_cast<GeneralServerJob*>(job.get()), hdr);
-    *jobId = job->jobId();
-  }
-
-  // execute the handler using the dispatcher
-  int res = DispatcherFeature::DISPATCHER->addJob(job, startThread);
-
-  // could not add job to job queue
-  if (res != TRI_ERROR_NO_ERROR) {
-    job->requestStatisticsAgentSetExecuteError();
-    job->RequestStatisticsAgent::transferTo(task->getAgent(messageId));
-    if (res != TRI_ERROR_DISPATCHER_IS_STOPPING) {
-      LOG(WARN) << "unable to add job to the job queue: "
-                << TRI_errno_string(res);
-      task->handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE, res, TRI_errno_string(res), messageId);
-    } else {
-      task->handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE, messageId);
-      return true;
-    }
-    // TODO send info to async work manager?
-    return false;
-  }
-
-  // job is in queue now
-  return res == TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the handler directly or add it to the queue
-////////////////////////////////////////////////////////////////////////////////
-
-bool GeneralServer::handleRequest(GeneralCommTask* task,
-                                  WorkItem::uptr<RestHandler> handler) {
-  TRI_ASSERT(handler != nullptr);
-
-  // direct handlers
-  if (handler->isDirect()) {
-    handleRequestDirectly(task, std::move(handler));
-    return true;
-  }
-
-  bool startThread = handler->needsOwnThread();
-  auto messageId = handler->request()->messageId();
-
-  // use a dispatcher queue, handler belongs to the job
-  std::unique_ptr<Job> job =
-      std::make_unique<GeneralServerJob>(this, std::move(handler));
-  task->getAgent(messageId)->transferTo(job.get());
-
-  LOG(TRACE) << "GeneralCommTask " << (void*)task
-             << " created GeneralServerJob " << (void*)job.get();
-
-  // add the job to the dispatcher
-  int res = DispatcherFeature::DISPATCHER->addJob(job, startThread);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    task->handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE, res, TRI_errno_string(res), messageId);
-
-    return true;
-  }
-
-  // job is in queue now
-  return res == TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief opens a listen port
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
 
 bool GeneralServer::openEndpoint(Endpoint* endpoint) {
   ProtocolType protocolType;
@@ -221,60 +106,14 @@ bool GeneralServer::openEndpoint(Endpoint* endpoint) {
     }
   }
 
-  ListenTask* task = new GeneralListenTask(this, endpoint, protocolType);
-
-  // ...................................................................
-  // For some reason we have failed in our endeavor to bind to the socket -
-  // this effectively terminates the server
-  // ...................................................................
+  std::unique_ptr<ListenTask> task(new GeneralListenTask(
+      SchedulerFeature::SCHEDULER->eventLoop(), this, endpoint, protocolType));
+  task->start();
 
   if (!task->isBound()) {
-    deleteTask(task);
     return false;
   }
 
-  int res = SchedulerFeature::SCHEDULER->registerTask(task);
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    _listenTasks.emplace_back(task);
-    return true;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief handle request directly
-////////////////////////////////////////////////////////////////////////////////
-
-void GeneralServer::handleRequestDirectly(GeneralCommTask* task,
-                                          WorkItem::uptr<RestHandler> handler) {
-  uint64_t messageId = 0UL;
-  auto req = handler->request();
-  auto res = handler->response();
-  if (req) {
-    messageId = req->messageId();
-  } else if (res) {
-    messageId = res->messageId();
-  } else {
-    LOG_TOPIC(WARN, Logger::COMMUNICATION)
-        << "could not find corresponding request/response";
-  }
-
-  HandlerWorkStack work(std::move(handler));
-  task->getAgent(messageId)->transferTo(work.handler());
-  RestHandler::status result = work.handler()->executeFull();
-  work.handler()->RequestStatisticsAgent::transferTo(task->getAgent(messageId));
-
-  switch (result) {
-    case RestHandler::status::FAILED:
-    case RestHandler::status::DONE: {
-      task->addResponse(work.handler()->response());
-      break;
-    }
-
-    case RestHandler::status::ASYNC:
-      handler.release();
-      break;
-  }
+  _listenTasks.emplace_back(task.release());
+  return true;
 }

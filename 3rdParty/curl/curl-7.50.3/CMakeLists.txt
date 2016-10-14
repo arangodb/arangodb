@@ -39,6 +39,9 @@
 # (From Daniel Stenberg) The cmake build selected to run gcc with -fPIC on my box while the plain configure script did not.
 # (From Daniel Stenberg) The gcc command line use neither -g nor any -O options. As a developer, I also treasure our configure scripts's --enable-debug option that sets a long range of "picky" compiler options.
 cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
+if (POLICY CMP0017)
+    cmake_policy(SET CMP0017 NEW)
+endif ()
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake;${CMAKE_MODULE_PATH}")
 include(Utilities)
 include(Macros)
@@ -46,7 +49,7 @@ include(CMakeDependentOption)
 
 project( CURL C )
 
-message(WARNING "the curl cmake build system is poorly maintained. Be aware")
+# message(WARNING "the curl cmake build system is poorly maintained. Be aware")
 
 file (READ ${CURL_SOURCE_DIR}/include/curl/curlver.h CURL_VERSION_H_CONTENTS)
 string (REGEX MATCH "#define LIBCURL_VERSION \"[^\"]*"
@@ -448,18 +451,25 @@ check_library_exists_concat("idn" idna_to_ascii_lz HAVE_LIBIDN)
 check_library_exists("${CURL_LIBS}" dlopen "" HAVE_DLOPEN)
 
 option(CURL_ZLIB "Set to ON to enable building cURL with zlib support." ON)
-set(HAVE_LIBZ OFF)
-set(HAVE_ZLIB_H OFF)
-set(HAVE_ZLIB OFF)
-if(CURL_ZLIB)
-  find_package(ZLIB QUIET)
-  if(ZLIB_FOUND)
-    set(HAVE_ZLIB_H ON)
-    set(HAVE_ZLIB ON)
-    set(HAVE_LIBZ ON)
-    list(APPEND CURL_LIBS ${ZLIB_LIBRARIES})
-    include_directories(${ZLIB_INCLUDE_DIRS})
-    list(APPEND CMAKE_REQUIRED_INCLUDES ${ZLIB_INCLUDE_DIRS})
+
+if(TRUE)
+  set(HAVE_LIBZ OFF)
+  set(HAVE_ZLIB_H OFF)
+  set(HAVE_ZLIB OFF)
+else()
+  set(HAVE_LIBZ OFF)
+  set(HAVE_ZLIB_H OFF)
+  set(HAVE_ZLIB OFF)
+  if(CURL_ZLIB)
+    find_package(ZLIB QUIET)
+    if(ZLIB_FOUND)
+      set(HAVE_ZLIB_H ON)
+      set(HAVE_ZLIB ON)
+      set(HAVE_LIBZ ON)
+      list(APPEND CURL_LIBS ${ZLIB_LIBRARIES})
+      include_directories(${ZLIB_INCLUDE_DIRS})
+      list(APPEND CMAKE_REQUIRED_INCLUDES ${ZLIB_INCLUDE_DIRS})
+    endif()
   endif()
 endif()
 
@@ -1031,9 +1041,9 @@ function(TRANSFORM_MAKEFILE_INC INPUT_FILE OUTPUT_FILE)
   string(REPLACE "$(top_srcdir)"   "\${CURL_SOURCE_DIR}" MAKEFILE_INC_TEXT ${MAKEFILE_INC_TEXT})
   string(REPLACE "$(top_builddir)" "\${CURL_BINARY_DIR}" MAKEFILE_INC_TEXT ${MAKEFILE_INC_TEXT})
 
-  string(REGEX REPLACE "\\\\\n" "§!§" MAKEFILE_INC_TEXT ${MAKEFILE_INC_TEXT})
+  string(REGEX REPLACE "\\\\\n" "?!?" MAKEFILE_INC_TEXT ${MAKEFILE_INC_TEXT})
   string(REGEX REPLACE "([a-zA-Z_][a-zA-Z0-9_]*)[\t ]*=[\t ]*([^\n]*)" "SET(\\1 \\2)" MAKEFILE_INC_TEXT ${MAKEFILE_INC_TEXT})
-  string(REPLACE "§!§" "\n" MAKEFILE_INC_TEXT ${MAKEFILE_INC_TEXT})
+  string(REPLACE "?!?" "\n" MAKEFILE_INC_TEXT ${MAKEFILE_INC_TEXT})
 
   string(REGEX REPLACE "\\$\\(([a-zA-Z_][a-zA-Z0-9_]*)\\)" "\${\\1}" MAKEFILE_INC_TEXT ${MAKEFILE_INC_TEXT})    # Replace $() with ${}
   string(REGEX REPLACE "@([a-zA-Z_][a-zA-Z0-9_]*)@" "\${\\1}" MAKEFILE_INC_TEXT ${MAKEFILE_INC_TEXT})    # Replace @@ with ${}, even if that may not be read by CMake scripts.

@@ -43,6 +43,9 @@ class EndpointSrv final : public Endpoint {
   std::string host() const override;
   std::string hostAndPort() const override;
 
+  void openAcceptor(boost::asio::io_service*,
+                    boost::asio::ip::tcp::acceptor*) override final;
+
  private:
   std::unique_ptr<Endpoint> _endpoint;
 };

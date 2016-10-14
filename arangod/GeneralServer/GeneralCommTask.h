@@ -31,7 +31,7 @@
 
 #include "Basics/Mutex.h"
 #include "Basics/StringBuffer.h"
-#include "Basics/WorkItem.h"
+#include "Scheduler/Socket.h"
 
 namespace arangodb {
 class GeneralRequest;
@@ -43,15 +43,11 @@ class GeneralServer;
 //
 // The flow of events is as follows:
 //
-// (1) As soon as new data is available from the client, then `handleRead()` is
-//     called. This will read new data from the client using
-//     `SocketTask::fillReadBuffer()`.
-//
-// (2) After reading data from the client, `processRead()` is called. Each
-//     sub-class of `GeneralCommTask` must implement this method. While the
-//     function returns true it is called in a loop. Returning false signals
-//     that new data has to be received in order to continue and that all
-//     available data has been processed
+// (1) After reading data from the client, `processRead()` is called. Each
+//     sub-class of `GeneralCommTask` must implement this method. As long as the
+//     function returns true, it is called again in a loop. Returning false
+//     signals that new data has to be received in order to continue and that
+//     all available data has been processed
 //
 // (3) As soon as `processRead()` detects that it has read a complete request,
 //     it must create an instance of a sub-class of `GeneralRequest` and
@@ -66,8 +62,8 @@ class GeneralServer;
 //
 //     As soon as a response is available, `handleResponse()` will be called.
 //     This in turn calls `addResponse()` which must be implemented in the
-//     sub-class. It will be called with an response object and an indicator
-//     if an error has occurred.
+//     sub-class. It will be called with an response object and an indicator if
+//     an error has occurred.
 //
 //     It is the responsibility of the sub-class to govern what is supported.
 //     For example, HTTP will only support one active request executing at a
@@ -80,59 +76,14 @@ class GeneralServer;
 //     called. This will call `addResponse()` with an error indicator, which in
 //     turn will end the responding request.
 //
-// External Interface (called from Scheduler):
-//
-// (1) handleRead
-//
-//     Will be called when new data can be read from the client. It will
-//     use `SocketTask::fillReadBuffer()` to actually read the data into the
-//     read buffer (defined in `SocketTask`).
-//
-// (2) signalTask
-//
-//     `signalTask` will be called when data becomes available from an
-//     asynchronous execution.
-//
-// (3) addResponse
-//
-//     see below.
-//
-// Internal Interface (must be implemented by sub-classes):
-//
-// (1) processRead
-//
-//     Will be called as soon as new data has been read from the client.  The
-//     method must split the read buffer into requests and call `executeRequest`
-//     for each request found. It is the responsiblity of the `processRead` to
-//     cleanup the read buffer periodically.
-//
-// (2) addResponse
-//
-//     Will be called when a new response is available.
-//
-// Ownership and life-time:
-//
-// (1) The Task will live as long as there is at least one active handler.
-//     TODO(fc)
-//
-// (2) The Task owns the handlers and is responsible for destroying them.
-//     TODO(fc)
-//
-
-// handleEvent (defined in SocketTask and arumented in this class) is called
-// when new data is available. handleEvent calls in turn handleWrite and
-// handleRead (virtual function required by SocketTask) that calls processRead
-// (which has to be implemented in derived) as long as new input is available.
 
 class GeneralCommTask : public SocketTask {
-  friend class GeneralServer;
-
   GeneralCommTask(GeneralCommTask const&) = delete;
   GeneralCommTask const& operator=(GeneralCommTask const&) = delete;
 
  public:
-  GeneralCommTask(GeneralServer*, TRI_socket_t, ConnectionInfo&&,
-                  double keepAliveTimeout);
+  GeneralCommTask(EventLoop, GeneralServer*, std::unique_ptr<Socket>,
+                  ConnectionInfo&&, double keepAliveTimeout);
 
   virtual void addResponse(GeneralResponse*) = 0;
   virtual arangodb::Endpoint::TransportType transportType() = 0;
@@ -143,14 +94,10 @@ class GeneralCommTask : public SocketTask {
       return &(agentIt->second);
     } else {
       throw std::logic_error("there should be an agent for every request");
-      //LOG(DEBUG) << "accessing already removed id";
-      //return &_agents[id];
     }
   }
 
  protected:
-  virtual void handleChunk(char const*, size_t) = 0;
-
   virtual std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) = 0;
 
@@ -160,26 +107,29 @@ class GeneralCommTask : public SocketTask {
 
   void processResponse(GeneralResponse*);
 
- public:
   virtual void handleSimpleError(rest::ResponseCode, uint64_t messagid) = 0;
+
   virtual void handleSimpleError(rest::ResponseCode, int code,
                                  std::string const& errorMessage,
                                  uint64_t messageId) = 0;
 
- private:
-  void handleTimeout() override final { _clientClosed = true; }
-  void signalTask(TaskData*) override;
-
  protected:
-  // for asynchronous requests
   GeneralServer* const _server;
 
   // protocol to use http, vpp
   char const* _protocol = "unknown";
-
   rest::ProtocolVersion _protocolVersion = rest::ProtocolVersion::UNKNOWN;
 
   std::unordered_map<uint64_t, RequestStatisticsAgent> _agents;
+
+ private:
+  void handleTimeout() /* override final */ { /* _clientClosed = true; */
+  }
+
+  bool handleRequest(std::shared_ptr<RestHandler>);
+  void handleRequestDirectly(std::shared_ptr<RestHandler>);
+  bool handleRequestAsync(std::shared_ptr<RestHandler>,
+                          uint64_t* jobId = nullptr);
 };
 }
 }

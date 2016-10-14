@@ -34,7 +34,7 @@ class RestDebugHandler : public arangodb::RestVocbaseBaseHandler {
  public:
   char const* name() const override final { return "RestDebugHandler"; }
   bool isDirect() const override;
-  status execute() override;
+  RestStatus execute() override;
 };
 }
 

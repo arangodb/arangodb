@@ -77,12 +77,12 @@ std::string RestAuthHandler::generateJwt(std::string const& username,
   return fullMessage + "." + StringUtils::encodeBase64U(signature);
 }
 
-RestHandler::status RestAuthHandler::execute() {
+RestStatus RestAuthHandler::execute() {
   auto const type = _request->requestType();
   if (type != rest::RequestType::POST) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return status::DONE;
+    return RestStatus::DONE;
   }
 
   VPackOptions options = VPackOptions::Defaults;
@@ -124,17 +124,17 @@ RestHandler::status RestAuthHandler::execute() {
 
     _isValid = true;
     generateDocument(resultBuilder.slice(), true, &VPackOptions::Defaults);
-    return status::DONE;
+    return RestStatus::DONE;
   } else {
     // mop: rfc 2616 10.4.2 (if credentials wrong 401)
     generateError(rest::ResponseCode::UNAUTHORIZED,
                   TRI_ERROR_HTTP_UNAUTHORIZED, "Wrong credentials");
-    return status::DONE;
+    return RestStatus::DONE;
   }
 }
 
-RestHandler::status RestAuthHandler::badRequest() {
+RestStatus RestAuthHandler::badRequest() {
   generateError(rest::ResponseCode::BAD,
                 TRI_ERROR_HTTP_BAD_PARAMETER, "invalid JSON");
-  return status::DONE;
+  return RestStatus::DONE;
 }

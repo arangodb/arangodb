@@ -31,24 +31,20 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ArangoDB server
-////////////////////////////////////////////////////////////////////////////////
-
 RestDebugHandler::RestDebugHandler(GeneralRequest* request,
                                    GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
 bool RestDebugHandler::isDirect() const { return false; }
 
-RestHandler::status RestDebugHandler::execute() {
+RestStatus RestDebugHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
   size_t const len = _request->suffix().size();
 
   if (len == 0 || len > 2 || !(_request->suffix()[0] == "failat")) {
     generateNotImplemented("ILLEGAL /_admin/debug/failat");
-    return status::DONE;
+    return RestStatus::DONE;
   }
   std::vector<std::string> const& suffix = _request->suffix();
 
@@ -70,7 +66,7 @@ RestHandler::status RestDebugHandler::execute() {
       break;
     default:
       generateNotImplemented("ILLEGAL /_admin/debug/failat");
-      return status::DONE;
+      return RestStatus::DONE;
   }
   try {
     VPackBuilder result;
@@ -79,5 +75,5 @@ RestHandler::status RestDebugHandler::execute() {
   } catch (...) {
     // Ignore this error
   }
-  return status::DONE;
+  return RestStatus::DONE;
 }

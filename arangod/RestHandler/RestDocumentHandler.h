@@ -33,8 +33,8 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
   RestDocumentHandler(GeneralRequest*, GeneralResponse*);
 
  public:
+  RestStatus execute() override final;
   char const* name() const override final { return "RestDocumentHandler"; }
-  status execute() override final;
 
 #ifdef USE_ENTERPRISE
   void finalizeExecute() override;
