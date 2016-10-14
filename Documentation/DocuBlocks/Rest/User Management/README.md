@@ -367,7 +367,8 @@ The user with the specified name does not exist.
 @RESTDESCRIPTION
 
 Fetches data about all users. You can only execute this call if you
-have access to the *_system* database.
+have access to the *_system* database. Otherwise, you will only
+get information about yourself.
 
 The call will return a JSON object with at least the following
 attributes on success:

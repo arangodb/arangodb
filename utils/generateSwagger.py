@@ -650,7 +650,7 @@ def restbodyparam(cargo, r=Regexen()):
     if restBodyParam == None:
         # https://github.com/swagger-api/swagger-ui/issues/1430
         # once this is solved we can skip this:
-        operation['description'] += "**A json post document with these Properties is required:**\n"
+        operation['description'] += "\n**A json post document with these Properties is required:**\n"
         restBodyParam = {
             'name': 'Json Post Body',
             'x-description-offset': len(swagger['paths'][httpPath][method]['description']),

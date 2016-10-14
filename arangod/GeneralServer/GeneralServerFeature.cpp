@@ -33,7 +33,6 @@
 #include "Cluster/RestAgencyCallbacksHandler.h"
 #include "Cluster/RestShardHandler.h"
 #include "Cluster/TraverserEngineRegistry.h"
-#include "Dispatcher/DispatcherFeature.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "InternalRestHandler/InternalRestTraverserHandler.h"
@@ -48,6 +47,7 @@
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDebugHandler.h"
+#include "RestHandler/RestDemoHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEchoHandler.h"
 #include "RestHandler/RestEdgesHandler.h"
@@ -71,6 +71,7 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
+#include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Ssl/SslServerFeature.h"
 #include "V8Server/V8DealerFeature.h"
@@ -104,7 +105,6 @@ GeneralServerFeature::GeneralServerFeature(
   startsAfter("Agency");
   startsAfter("CheckVersion");
   startsAfter("Database");
-  startsAfter("Dispatcher");
   startsAfter("Endpoint");
   startsAfter("FoxxQueues");
   startsAfter("LogfileManager");
@@ -222,7 +222,9 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 }
 
 static TRI_vocbase_t* LookupDatabaseFromRequest(GeneralRequest* request) {
-  auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+  auto databaseFeature =
+      application_features::ApplicationServer::getFeature<DatabaseFeature>(
+          "Database");
 
   // get database name from request
   std::string const& dbName = request->databaseName();
@@ -232,11 +234,12 @@ static TRI_vocbase_t* LookupDatabaseFromRequest(GeneralRequest* request) {
     // as a fallback
     request->setDatabaseName(StaticStrings::SystemDatabase);
     if (ServerState::instance()->isCoordinator()) {
-      return databaseFeature->useDatabaseCoordinator(StaticStrings::SystemDatabase);
+      return databaseFeature->useDatabaseCoordinator(
+          StaticStrings::SystemDatabase);
     }
     return databaseFeature->useDatabase(StaticStrings::SystemDatabase);
   }
-  
+
   if (ServerState::instance()->isCoordinator()) {
     return databaseFeature->useDatabaseCoordinator(dbName);
   }
@@ -321,10 +324,6 @@ void GeneralServerFeature::stop() {
   for (auto& server : _servers) {
     server->stopListening();
   }
-
-  for (auto& server : _servers) {
-    server->stopListening();
-  }
 }
 
 void GeneralServerFeature::unprepare() {
@@ -351,7 +350,14 @@ void GeneralServerFeature::buildServers() {
         application_features::ApplicationServer::getFeature<SslServerFeature>(
             "SslServer");
 
-    if (ssl->sslContext() == nullptr) {
+    try {
+      ssl->sslContext();
+    } catch (std::exception& e) {
+      LOG(ERR) << e.what();
+      LOG(FATAL) << "no ssl context is known, cannot create https server, "
+                    "please use the '--ssl.keyfile' option";
+      FATAL_ERROR_EXIT();
+    } catch (...) {
       LOG(FATAL) << "no ssl context is known, cannot create https server, "
                     "please use the '--ssl.keyfile' option";
       FATAL_ERROR_EXIT();
@@ -433,7 +439,7 @@ void GeneralServerFeature::defineHandlers() {
       RestHandlerCreator<RestSimpleQueryHandler>::createData<
           aql::QueryRegistry*>,
       queryRegistry);
-  
+
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::WAL_PATH,
       RestHandlerCreator<RestWalHandler>::createNoData);
@@ -491,13 +497,12 @@ void GeneralServerFeature::defineHandlers() {
         RestHandlerCreator<RestAgencyCallbacksHandler>::createData<
             AgencyCallbackRegistry*>,
         cluster->agencyCallbackRegistry());
-
   }
-    _handlerFactory->addPrefixHandler(
-        RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH,
-        RestHandlerCreator<InternalRestTraverserHandler>::createData<
-            traverser::TraverserEngineRegistry*>,
-        traverserEngineRegistry);
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH,
+      RestHandlerCreator<InternalRestTraverserHandler>::createData<
+          traverser::TraverserEngineRegistry*>,
+      traverserEngineRegistry);
 
   // And now some handlers which are registered in both /_api and /_admin
   _handlerFactory->addPrefixHandler(
@@ -507,6 +512,11 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addHandler(
       "/_api/version", RestHandlerCreator<RestVersionHandler>::createNoData);
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  _handlerFactory->addHandler(
+      "/_admin/demo-engine", RestHandlerCreator<RestDemoHandler>::createNoData);
+#endif
 
   // ...........................................................................
   // /_admin

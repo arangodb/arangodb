@@ -28,9 +28,9 @@
 #define BIND_4_COMPAT 1  // LINUX
 #define BIND_8_COMPAT 1  // MACOSX
 
-#include <netinet/in.h>
 #include <arpa/inet.h>
 #include <arpa/nameser.h>
+#include <netinet/in.h>
 #include <resolv.h>
 
 #include "Basics/StringUtils.h"
@@ -172,7 +172,9 @@ static std::vector<SrvRecord> srvRecords(std::string const& specification) {
 
 #else
 
-static std::vector<SrvRecord> srvRecords(std::string const& specification) { return {}; }
+static std::vector<SrvRecord> srvRecords(std::string const& specification) {
+  return {};
+}
 
 #endif
 
@@ -252,3 +254,6 @@ std::string EndpointSrv::hostAndPort() const {
 
   return "";
 }
+
+void EndpointSrv::openAcceptor(boost::asio::io_service*,
+                               boost::asio::ip::tcp::acceptor*) {}

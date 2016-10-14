@@ -30,5 +30,6 @@
 #include <v8.h>
 
 void TRI_InitV8Dispatcher(v8::Isolate* isolate, v8::Handle<v8::Context> context);
+void TRI_ShutdownV8Dispatcher();
 
 #endif

@@ -22,25 +22,27 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterBlocks.h"
-#include "Aql/ExecutionEngine.h"
-#include "Aql/AqlValue.h"
-#include "Basics/Exceptions.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
-#include "Basics/StringBuffer.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Cluster/ClusterComm.h"
-#include "Cluster/ClusterInfo.h"
-#include "Cluster/ClusterMethods.h"
-#include "Dispatcher/DispatcherThread.h"
-#include "VocBase/ticks.h"
-#include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include "Aql/AqlValue.h"
+#include "Aql/ExecutionEngine.h"
+#include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterMethods.h"
+#include "Scheduler/JobGuard.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "VocBase/ticks.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -355,7 +357,7 @@ size_t GatherBlock::skipSome(size_t atLeast, size_t atMost) {
       if (getBlock(i, atLeast, atMost)) {
         _gatherBlockPos.at(i) = std::make_pair(i, 0);
       }
-    } 
+    }
 
     auto cur = _gatherBlockBuffer.at(i);
     if (!cur.empty()) {
@@ -437,7 +439,8 @@ bool GatherBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
     int cmp = AqlValue::Compare(
         _trx,
         _gatherBlockBuffer.at(a.first).front()->getValue(a.second, reg.first),
-        _gatherBlockBuffer.at(b.first).front()->getValue(b.second, reg.first), true);
+        _gatherBlockBuffer.at(b.first).front()->getValue(b.second, reg.first),
+        true);
 
     if (cmp == -1) {
       return reg.second;
@@ -980,7 +983,7 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
   // inspect cur in row _pos and check to which shard it should be sent . .
   AqlValue val = cur->getValueReference(_pos, _regId);
 
-  VPackSlice input = val.slice(); // will throw when wrong type
+  VPackSlice input = val.slice();  // will throw when wrong type
 
   if (input.isNull() && _alternativeRegId != ExecutionNode::MaxRegisterId) {
     // value is set, but null
@@ -989,7 +992,7 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
     // one for the search document, the other for the insert document)
     val = cur->getValueReference(_pos, _alternativeRegId);
 
-    input = val.slice(); // will throw when wrong type
+    input = val.slice();  // will throw when wrong type
   }
 
   VPackSlice value = input;
@@ -1005,7 +1008,7 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
     builder.openObject();
     builder.add(StaticStrings::KeyString, input);
     builder.close();
-    
+
     // clear the previous value
     cur->destroyValue(_pos, _regId);
 
@@ -1050,7 +1053,7 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
         // a _key was given, but user is not allowed to specify _key
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
       }
-        
+
       VPackBuilder temp;
       temp.openObject();
       temp.add(StaticStrings::KeyString, VPackValue(createKey(value)));
@@ -1102,9 +1105,10 @@ std::string DistributeBlock::createKey(VPackSlice) const {
 static bool throwExceptionAfterBadSyncRequest(ClusterCommResult* res,
                                               bool isShutdown) {
   DEBUG_BEGIN_BLOCK();
-  if (res->status == CL_COMM_TIMEOUT || 
+  if (res->status == CL_COMM_TIMEOUT ||
       res->status == CL_COMM_BACKEND_UNAVAILABLE) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res->getErrorCode(), res->stringifyErrorMessage());
+    THROW_ARANGO_EXCEPTION_MESSAGE(res->getErrorCode(),
+                                   res->stringifyErrorMessage());
   }
 
   if (res->status == CL_COMM_ERROR) {
@@ -1115,7 +1119,8 @@ static bool throwExceptionAfterBadSyncRequest(ClusterCommResult* res,
 
     // extract error number and message from response
     int errorNum = TRI_ERROR_NO_ERROR;
-    std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
+    std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(
+        responseBodyBuf.c_str(), responseBodyBuf.length());
     VPackSlice slice = builder->slice();
 
     if (!slice.hasKey("error") || slice.get("error").getBoolean()) {
@@ -1128,7 +1133,7 @@ static bool throwExceptionAfterBadSyncRequest(ClusterCommResult* res,
 
     if (slice.isObject()) {
       VPackSlice v = slice.get("errorNum");
-      
+
       if (v.isNumber()) {
         if (v.getNumericValue<int>() != TRI_ERROR_NO_ERROR) {
           /* if we've got an error num, error has to be true. */
@@ -1179,7 +1184,8 @@ RemoteBlock::RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,
       _server(server),
       _ownName(ownName),
       _queryId(queryId),
-      _isResponsibleForInitializeCursor(en->isResponsibleForInitializeCursor()) {
+      _isResponsibleForInitializeCursor(
+          en->isResponsibleForInitializeCursor()) {
   TRI_ASSERT(!queryId.empty());
   TRI_ASSERT(
       (arangodb::ServerState::instance()->isCoordinator() && ownName.empty()) ||
@@ -1191,8 +1197,8 @@ RemoteBlock::~RemoteBlock() {}
 
 /// @brief local helper to send a request
 std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
-    arangodb::rest::RequestType type,
-    std::string const& urlPart, std::string const& body) const {
+    arangodb::rest::RequestType type, std::string const& urlPart,
+    std::string const& body) const {
   DEBUG_BEGIN_BLOCK();
   ClusterComm* cc = ClusterComm::instance();
 
@@ -1204,24 +1210,20 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
     headers.emplace("Shard-Id", _ownName);
   }
 
-  auto currentThread = arangodb::rest::DispatcherThread::current();
+  {
+    JobGuard guard(SchedulerFeature::SCHEDULER);
+    guard.block();
 
-  if (currentThread != nullptr) {
-    currentThread->block();
+    auto result =
+        cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
+                        std::string("/_db/") +
+                            arangodb::basics::StringUtils::urlEncode(
+                                _engine->getQuery()->trx()->vocbase()->name()) +
+                            urlPart + _queryId,
+                        body, headers, defaultTimeOut);
+
+    return result;
   }
-
-  auto result = cc->syncRequest(
-      clientTransactionId, coordTransactionId, _server, type,
-      std::string("/_db/") + arangodb::basics::StringUtils::urlEncode(
-                                 _engine->getQuery()->trx()->vocbase()->name()) +
-          urlPart + _queryId,
-      body, headers, defaultTimeOut);
-
-  if (currentThread != nullptr) {
-    currentThread->unblock();
-  }
-
-  return result;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -1230,23 +1232,22 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
 /// @brief initialize
 int RemoteBlock::initialize() {
   DEBUG_BEGIN_BLOCK();
-  
+
   if (!_isResponsibleForInitializeCursor) {
     // do nothing...
     return TRI_ERROR_NO_ERROR;
   }
- 
+
   std::unique_ptr<ClusterCommResult> res =
-      sendRequest(rest::RequestType::PUT,
-                  "/_api/aql/initialize/", "{}");
+      sendRequest(rest::RequestType::PUT, "/_api/aql/initialize/", "{}");
   throwExceptionAfterBadSyncRequest(res.get(), false);
- 
 
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
   StringBuffer const& responseBodyBuf(res->result->getBody());
-    
-  std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
+
+  std::shared_ptr<VPackBuilder> builder =
+      VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
   VPackSlice slice = builder->slice();
 
   if (slice.hasKey("code")) {
@@ -1289,17 +1290,17 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 
   std::string bodyString(builder.slice().toJson());
 
-  std::unique_ptr<ClusterCommResult> res =
-      sendRequest(rest::RequestType::PUT,
-                  "/_api/aql/initializeCursor/", bodyString);
+  std::unique_ptr<ClusterCommResult> res = sendRequest(
+      rest::RequestType::PUT, "/_api/aql/initializeCursor/", bodyString);
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
   StringBuffer const& responseBodyBuf(res->result->getBody());
   {
-    std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
-    
+    std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(
+        responseBodyBuf.c_str(), responseBodyBuf.length());
+
     VPackSlice slice = builder->slice();
 
     if (slice.hasKey("code")) {
@@ -1332,7 +1333,8 @@ int RemoteBlock::shutdown(int errorCode) {
   }
 
   StringBuffer const& responseBodyBuf(res->result->getBody());
-  std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
+  std::shared_ptr<VPackBuilder> builder =
+      VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
   VPackSlice slice = builder->slice();
 
   // read "warnings" attribute if present and add it to our query
@@ -1345,13 +1347,14 @@ int RemoteBlock::shutdown(int errorCode) {
           VPackSlice code = it.get("code");
           VPackSlice message = it.get("message");
           if (code.isNumber() && message.isString()) {
-            query->registerWarning(code.getNumericValue<int>(), message.copyString().c_str());
+            query->registerWarning(code.getNumericValue<int>(),
+                                   message.copyString().c_str());
           }
         }
       }
     }
   }
-  
+
   if (slice.hasKey("code")) {
     return slice.get("code").getNumericValue<int>();
   }
@@ -1374,13 +1377,14 @@ AqlItemBlock* RemoteBlock::getSome(size_t atLeast, size_t atMost) {
 
   std::string bodyString(builder.slice().toJson());
 
-  std::unique_ptr<ClusterCommResult> res = sendRequest(
-      rest::RequestType::PUT, "/_api/aql/getSome/", bodyString);
+  std::unique_ptr<ClusterCommResult> res =
+      sendRequest(rest::RequestType::PUT, "/_api/aql/getSome/", bodyString);
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
-  std::shared_ptr<VPackBuilder> responseBodyBuilder = res->result->getBodyVelocyPack();
+  std::shared_ptr<VPackBuilder> responseBodyBuilder =
+      res->result->getBodyVelocyPack();
   VPackSlice responseBody = responseBodyBuilder->slice();
 
   ExecutionStats newStats(responseBody.get("stats"));
@@ -1411,15 +1415,16 @@ size_t RemoteBlock::skipSome(size_t atLeast, size_t atMost) {
 
   std::string bodyString(builder.slice().toJson());
 
-  std::unique_ptr<ClusterCommResult> res = sendRequest(
-      rest::RequestType::PUT, "/_api/aql/skipSome/", bodyString);
+  std::unique_ptr<ClusterCommResult> res =
+      sendRequest(rest::RequestType::PUT, "/_api/aql/skipSome/", bodyString);
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
   StringBuffer const& responseBodyBuf(res->result->getBody());
   {
-    std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
+    std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(
+        responseBodyBuf.c_str(), responseBodyBuf.length());
     VPackSlice slice = builder->slice();
 
     if (!slice.hasKey("error") || slice.get("error").getBoolean()) {
@@ -1440,16 +1445,17 @@ size_t RemoteBlock::skipSome(size_t atLeast, size_t atMost) {
 bool RemoteBlock::hasMore() {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
-  std::unique_ptr<ClusterCommResult> res = sendRequest(
-      rest::RequestType::GET, "/_api/aql/hasMore/", std::string());
+  std::unique_ptr<ClusterCommResult> res =
+      sendRequest(rest::RequestType::GET, "/_api/aql/hasMore/", std::string());
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
   StringBuffer const& responseBodyBuf(res->result->getBody());
-  std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
+  std::shared_ptr<VPackBuilder> builder =
+      VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
   VPackSlice slice = builder->slice();
-  
+
   if (!slice.hasKey("error") || slice.get("error").getBoolean()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
   }
@@ -1467,20 +1473,21 @@ bool RemoteBlock::hasMore() {
 int64_t RemoteBlock::count() const {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
-  std::unique_ptr<ClusterCommResult> res = sendRequest(
-      rest::RequestType::GET, "/_api/aql/count/", std::string());
+  std::unique_ptr<ClusterCommResult> res =
+      sendRequest(rest::RequestType::GET, "/_api/aql/count/", std::string());
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
   StringBuffer const& responseBodyBuf(res->result->getBody());
-  std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
+  std::shared_ptr<VPackBuilder> builder =
+      VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
   VPackSlice slice = builder->slice();
-  
+
   if (!slice.hasKey("error") || slice.get("error").getBoolean()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
   }
-  
+
   int64_t count = 0;
   if (slice.hasKey("count")) {
     count = slice.get("count").getNumericValue<int64_t>();
@@ -1495,21 +1502,21 @@ int64_t RemoteBlock::count() const {
 int64_t RemoteBlock::remaining() {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
-  std::unique_ptr<ClusterCommResult> res =
-      sendRequest(rest::RequestType::GET, "/_api/aql/remaining/",
-                  std::string());
+  std::unique_ptr<ClusterCommResult> res = sendRequest(
+      rest::RequestType::GET, "/_api/aql/remaining/", std::string());
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
   StringBuffer const& responseBodyBuf(res->result->getBody());
-  std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
+  std::shared_ptr<VPackBuilder> builder =
+      VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
   VPackSlice slice = builder->slice();
-  
+
   if (!slice.hasKey("error") || slice.get("error").getBoolean()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
   }
-  
+
   int64_t remaining = 0;
   if (slice.hasKey("remaining")) {
     remaining = slice.get("remaining").getNumericValue<int64_t>();

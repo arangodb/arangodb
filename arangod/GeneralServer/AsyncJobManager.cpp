@@ -25,7 +25,6 @@
 
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "GeneralServer/GeneralServerJob.h"
 #include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
 #include "Rest/GeneralResponse.h"
@@ -33,10 +32,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief AsyncCallbackContext
-////////////////////////////////////////////////////////////////////////////////
 
 class arangodb::rest::AsyncCallbackContext {
  public:
@@ -50,49 +45,30 @@ class arangodb::rest::AsyncCallbackContext {
   }
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief gets the coordinator header
-  //////////////////////////////////////////////////////////////////////////////
-
   std::string& getCoordinatorHeader() { return _coordHeader; }
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief coordinator header
-  //////////////////////////////////////////////////////////////////////////////
-
   std::string _coordHeader;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief http response
-  //////////////////////////////////////////////////////////////////////////////
-
   GeneralResponse* _response;
 };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor for an unspecified job result
-////////////////////////////////////////////////////////////////////////////////
 
 AsyncJobResult::AsyncJobResult()
     : _jobId(0),
       _response(nullptr),
       _stamp(0.0),
       _status(JOB_UNDEFINED),
-      _ctx(nullptr) {}
+      _ctx(nullptr),
+      _handler(nullptr) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor for a specific job result
-////////////////////////////////////////////////////////////////////////////////
-
-AsyncJobResult::AsyncJobResult(IdType jobId, GeneralResponse* response,
-                               double stamp, Status status,
-                               AsyncCallbackContext* ctx)
+AsyncJobResult::AsyncJobResult(IdType jobId, Status status,
+                               AsyncCallbackContext* ctx,
+                               RestHandler* handler)
     : _jobId(jobId),
-      _response(response),
-      _stamp(stamp),
+      _response(nullptr),
+      _stamp(TRI_microtime()),
       _status(status),
-      _ctx(ctx) {}
+      _ctx(ctx),
+      _handler(handler) {}
 
 AsyncJobResult::~AsyncJobResult() {}
 
@@ -182,10 +158,6 @@ void AsyncJobManager::deleteJobResults() {
   _jobs.clear();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes expired results
-////////////////////////////////////////////////////////////////////////////////
-
 void AsyncJobManager::deleteExpiredJobResults(double stamp) {
   WRITE_LOCKER(writeLocker, _lock);
 
@@ -208,9 +180,24 @@ void AsyncJobManager::deleteExpiredJobResults(double stamp) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the list of pending jobs
-////////////////////////////////////////////////////////////////////////////////
+bool AsyncJobManager::cancelJob(AsyncJobResult::IdType jobId) {
+  WRITE_LOCKER(writeLocker, _lock);
+
+  auto it = _jobs.find(jobId);
+
+  if (it == _jobs.end()) {
+    return false;
+  }
+
+  bool ok = true;
+  auto handler = it->second._handler;
+
+  if (handler != nullptr) {
+    ok = handler->cancel();
+  }
+
+  return ok;
+}
 
 std::vector<AsyncJobResult::IdType> AsyncJobManager::pending(size_t maxCount) {
   return byStatus(AsyncJobResult::JOB_PENDING, maxCount);
@@ -260,7 +247,8 @@ std::vector<AsyncJobResult::IdType> AsyncJobManager::byStatus(
 /// @brief initializes an async job
 ////////////////////////////////////////////////////////////////////////////////
 
-void AsyncJobManager::initAsyncJob(GeneralServerJob* job, char const* hdr) {
+void AsyncJobManager::initAsyncJob(RestHandler* handler, char const* hdr) {
+  AsyncJobResult::IdType jobId = handler->handlerId();
   AsyncCallbackContext* ctx = nullptr;
 
   if (hdr != nullptr) {
@@ -268,20 +256,20 @@ void AsyncJobManager::initAsyncJob(GeneralServerJob* job, char const* hdr) {
     ctx = new AsyncCallbackContext(std::string(hdr));
   }
 
-  AsyncJobResult ajr(job->jobId(), nullptr, TRI_microtime(),
-                     AsyncJobResult::JOB_PENDING, ctx);
+  AsyncJobResult ajr(jobId, AsyncJobResult::JOB_PENDING, ctx, handler);
 
   WRITE_LOCKER(writeLocker, _lock);
 
-  _jobs.emplace(job->jobId(), ajr);
+  _jobs.emplace(jobId, ajr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finishes the execution of an async job
 ////////////////////////////////////////////////////////////////////////////////
 
-void AsyncJobManager::finishAsyncJob(
-    AsyncJobResult::IdType jobId, std::unique_ptr<GeneralResponse> response) {
+void AsyncJobManager::finishAsyncJob(RestHandler* handler) {
+  AsyncJobResult::IdType jobId = handler->handlerId();
+  std::unique_ptr<GeneralResponse> response = handler->stealResponse();
   AsyncCallbackContext* ctx = nullptr;
 
   {

@@ -1605,6 +1605,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
       AgencyCommResult result;
       result._statusCode = 400;
       result._message = "No endpoints for agency found.";
+      LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "No endpoints for agency found.";
       return result;
     }
   }
@@ -1621,6 +1622,11 @@ AgencyCommResult AgencyComm::sendWithFailover(
     AgencyEndpoint* agencyEndpoint = popEndpoint(forceEndpoint);
 
     TRI_ASSERT(agencyEndpoint != nullptr);
+
+    if (tries > 1) {  // not the first try
+      LOG_TOPIC(WARN, Logger::AGENCYCOMM) << "Retrying agency communication at "
+        << agencyEndpoint->_endpoint->specification() << " tries: " << tries;
+    }
 
     try {
       result =
@@ -1721,6 +1727,13 @@ AgencyCommResult AgencyComm::sendWithFailover(
     }
 
     // otherwise, try next
+  }
+
+  if (!result.successful()) {
+    LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Unsuccessful AgencyComm: "
+      << "errorCode   : " << result.errorCode()
+      << "errorMessage: " << result.errorMessage()
+      << "errorDetails: " << result.errorDetails();
   }
 
   return result;

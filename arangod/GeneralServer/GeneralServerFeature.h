@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 #include <openssl/ssl.h>
+#include <boost/asio/ssl.hpp>
 
 #include "Actions/RestActionHandler.h"
 #include "VocBase/AuthInfo.h"
@@ -43,6 +44,8 @@ class GeneralServerFeature final
     : public application_features::ApplicationFeature {
  public:
   typedef int (*verification_callback_fptr)(int, X509_STORE_CTX*);
+  using verification_callback_asio = std::function< int(int, boost::asio::ssl::verify_context&)> ;
+
 
  public:
   static rest::RestHandlerFactory* HANDLER_FACTORY;
@@ -65,6 +68,9 @@ class GeneralServerFeature final
                                      : nullptr;
   };
 
+  static verification_callback_asio verificationCallbackAsio() {
+    return  GENERAL_SERVER->_verificationCallbackAsio;
+  };
   static bool authenticationEnabled() {
     return GENERAL_SERVER != nullptr && GENERAL_SERVER->_authentication;
   }
@@ -126,6 +132,7 @@ class GeneralServerFeature final
   void setVerificationMode(int mode) { _verificationMode = mode; }
   void setVerificationCallback(int (*func)(int, X509_STORE_CTX*)) {
     _verificationCallback = func;
+    _verificationCallbackAsio = [this](int x, boost::asio::ssl::verify_context& v) -> int { return _verificationCallback(x, v.native_handle()); };
   }
 
  private:
@@ -142,6 +149,7 @@ class GeneralServerFeature final
   std::string _jwtSecret;
   int _verificationMode;
   verification_callback_fptr _verificationCallback;
+  verification_callback_asio _verificationCallbackAsio;
 
  public:
   bool authentication() const { return _authentication; }

@@ -29,17 +29,18 @@
 
 #include "Aql/QueryList.h"
 #include "Basics/ConditionLocker.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/StringBuffer.h"
 #include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Scheduler/Task.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       WorkMonitor
+// -----------------------------------------------------------------------------
 
 void WorkMonitor::run() {
   CONDITION_LOCKER(guard, _waiter);
@@ -54,8 +55,10 @@ void WorkMonitor::run() {
       bool found = false;
       WorkDescription* desc;
 
-      while (freeableWorkDescription.pop(desc)) {
+      // handle freeable work descriptions
+      while (_freeableWorkDescription.pop(desc)) {
         found = true;
+
         if (desc != nullptr) {
           deleteWorkDescription(desc, false);
         }
@@ -67,21 +70,23 @@ void WorkMonitor::run() {
         s *= 2;
       }
 
+      // handle cancel requests
       {
-        MUTEX_LOCKER(guard, cancelLock);
+        MUTEX_LOCKER(guard, _cancelLock);
 
-        if (!cancelIds.empty()) {
-          for (auto thread : threads) {
+        if (!_cancelIds.empty()) {
+          for (auto thread : _threads) {
             cancelWorkDescriptions(thread);
           }
 
-          cancelIds.clear();
+          _cancelIds.clear();
         }
       }
 
-      rest::RestHandler* handler;
+      // handle work descriptions requests -- hac - handler and callback
+      std::pair<std::shared_ptr<rest::RestHandler>, std::function<void()>>* hac;
 
-      while (workOverview.pop(handler)) {
+      while (_workOverview.pop(hac)) {
         VPackBuilder builder;
 
         builder.add(VPackValue(VPackValueType::Object));
@@ -90,9 +95,9 @@ void WorkMonitor::run() {
         builder.add("work", VPackValue(VPackValueType::Array));
 
         {
-          MUTEX_LOCKER(guard, threadsLock);
+          MUTEX_LOCKER(guard, _threadsLock);
 
-          for (auto& thread : threads) {
+          for (auto& thread : _threads) {
             WorkDescription* desc = thread->workDescription();
 
             if (desc != nullptr) {
@@ -106,7 +111,9 @@ void WorkMonitor::run() {
         builder.close();
         builder.close();
 
-        sendWorkOverview(handler, builder.steal());
+        addWorkOverview(hac->first, builder.steal());
+        hac->second();  // callback
+        delete hac;
       }
     } catch (...) {
       // must prevent propagation of exceptions from here
@@ -117,54 +124,62 @@ void WorkMonitor::run() {
 
   // indicate that we stopped the work monitor, freeWorkDescription
   // should directly delete old entries
-  stopped.store(true);
+  _stopped.store(true);
 
   // cleanup old entries
   WorkDescription* desc;
 
-  while (freeableWorkDescription.pop(desc)) {
+  while (_freeableWorkDescription.pop(desc)) {
     if (desc != nullptr) {
       deleteWorkDescription(desc, false);
     }
   }
 
-  while (emptyWorkDescription.pop(desc)) {
+  while (_emptyWorkDescription.pop(desc)) {
     if (desc != nullptr) {
       delete desc;
     }
   }
+
+  clearAllHandlers();
 }
 
-void WorkMonitor::pushHandler(RestHandler* handler) {
-  TRI_ASSERT(handler != nullptr);
+void WorkMonitor::clearAllHandlers() {
+  std::shared_ptr<rest::RestHandler>* shared;
+
+  while (_workOverview.pop(shared)) {
+    delete shared;
+  }
+
+  _waiter.broadcast();
+}
+
+void WorkMonitor::pushHandler(std::shared_ptr<RestHandler> handler) {
   WorkDescription* desc = createWorkDescription(WorkType::HANDLER);
-  desc->_data.handler = handler;
   TRI_ASSERT(desc->_type == WorkType::HANDLER);
+
+  new (&desc->_data._handler._handler) std::shared_ptr<RestHandler>(handler);
+  new (&desc->_data._handler._canceled) std::atomic<bool>(false);
 
   activateWorkDescription(desc);
-  RestHandler::CURRENT_HANDLER = handler;
+  RestHandler::CURRENT_HANDLER = handler.get();
 }
 
-WorkDescription* WorkMonitor::popHandler(RestHandler* handler, bool free) {
+void WorkMonitor::popHandler() {
   WorkDescription* desc = deactivateWorkDescription();
-
   TRI_ASSERT(desc != nullptr);
   TRI_ASSERT(desc->_type == WorkType::HANDLER);
-  TRI_ASSERT(desc->_data.handler != nullptr);
-  TRI_ASSERT(desc->_data.handler == handler);
+  TRI_ASSERT(desc->_data._handler._handler != nullptr);
 
-  if (free) {
-    try {
-      freeWorkDescription(desc);
-    } catch (...) {
-      // just to prevent throwing exceptions from here, as this method
-      // will be called in destructors...
-    }
+  try {
+    freeWorkDescription(desc);
+  } catch (...) {
+    // just to prevent throwing exceptions from here, as this method
+    // will be called in destructors...
   }
 
   // TODO(fc) we might have a stack of handlers
   RestHandler::CURRENT_HANDLER = nullptr;
-  return desc;
 }
 
 bool WorkMonitor::cancelAql(WorkDescription* desc) {
@@ -174,10 +189,10 @@ bool WorkMonitor::cancelAql(WorkDescription* desc) {
     return true;
   }
 
-  TRI_vocbase_t* vocbase = desc->_vocbase;
+  TRI_vocbase_t* vocbase = desc->_data._aql._vocbase;
 
   if (vocbase != nullptr) {
-    uint64_t id = desc->_identifier._id;
+    uint64_t id = desc->_data._aql._id;
 
     LOG(WARN) << "cancel query " << id << " in " << vocbase;
 
@@ -189,7 +204,7 @@ bool WorkMonitor::cancelAql(WorkDescription* desc) {
     }
   }
 
-  desc->_canceled.store(true);
+  desc->_data._aql._canceled.store(true);
 
   return true;
 }
@@ -197,11 +212,14 @@ bool WorkMonitor::cancelAql(WorkDescription* desc) {
 void WorkMonitor::deleteHandler(WorkDescription* desc) {
   TRI_ASSERT(desc->_type == WorkType::HANDLER);
 
-  WorkItem::deleter()((WorkItem*)desc->_data.handler);
+  desc->_data._handler._handler
+      .std::shared_ptr<rest::RestHandler>::~shared_ptr<rest::RestHandler>();
+
+  desc->_data._handler._canceled.std::atomic<bool>::~atomic<bool>();
 }
 
 void WorkMonitor::vpackHandler(VPackBuilder* b, WorkDescription* desc) {
-  RestHandler* handler = desc->_data.handler;
+  RestHandler* handler = desc->_data._handler._handler.get();
   GeneralRequest const* request = handler->request();
 
   b->add("type", VPackValue("http-handler"));
@@ -216,6 +234,9 @@ void WorkMonitor::vpackHandler(VPackBuilder* b, WorkDescription* desc) {
 
   if (handler->_statistics != nullptr) {
     b->add("startTime", VPackValue(handler->_statistics->_requestStart));
+  } else {
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+        << "WorkMonitor::vpackHandler - missing statistics";
   }
 
   auto& info = request->connectionInfo();
@@ -236,35 +257,23 @@ void WorkMonitor::vpackHandler(VPackBuilder* b, WorkDescription* desc) {
   b->close();
 }
 
-void WorkMonitor::sendWorkOverview(
-    RestHandler* handler, std::shared_ptr<velocypack::Buffer<uint8_t>> buffer) {
+void WorkMonitor::addWorkOverview(
+    std::shared_ptr<RestHandler> handler,
+    std::shared_ptr<velocypack::Buffer<uint8_t>> buffer) {
   auto response = handler->response();
 
   velocypack::Slice slice(buffer->data());
   response->setResponseCode(rest::ResponseCode::OK);
   response->setPayload(slice, true, VPackOptions::Defaults);
-
-  auto data = std::make_unique<TaskData>();
-
-  data->_taskId = handler->taskId();
-  data->_loop = handler->eventLoop();
-  data->_type = TaskData::TASK_DATA_RESPONSE;
-  data->_response = handler->stealResponse();
-
-  SchedulerFeature::SCHEDULER->signalTask(data);
-
-  delete static_cast<WorkItem*>(handler);
 }
 
-HandlerWorkStack::HandlerWorkStack(RestHandler* handler) : _handler(handler) {
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  HandlerWorkStack
+// -----------------------------------------------------------------------------
+
+HandlerWorkStack::HandlerWorkStack(std::shared_ptr<RestHandler> handler)
+    : _handler(handler) {
   WorkMonitor::pushHandler(_handler);
 }
 
-HandlerWorkStack::HandlerWorkStack(WorkItem::uptr<RestHandler> handler) {
-  _handler = handler.release();
-  WorkMonitor::pushHandler(_handler);
-}
-
-HandlerWorkStack::~HandlerWorkStack() {
-  WorkMonitor::popHandler(_handler, true);
-}
+HandlerWorkStack::~HandlerWorkStack() { WorkMonitor::popHandler(); }

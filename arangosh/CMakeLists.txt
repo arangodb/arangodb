@@ -34,6 +34,8 @@ target_link_libraries(${BIN_ARANGOBENCH}
   ${LINENOISE_LIBS}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
+  boost_system
+  boost_boost
 )
 
 install(
@@ -79,6 +81,8 @@ target_link_libraries(${BIN_ARANGODUMP}
   ${LINENOISE_LIBS}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
+  boost_system
+  boost_boost
 )
 
 install(
@@ -125,6 +129,8 @@ target_link_libraries(${BIN_ARANGOIMP}
   ${LINENOISE_LIBS}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
+  boost_system
+  boost_boost
 )
 
 install(
@@ -170,6 +176,8 @@ target_link_libraries(${BIN_ARANGORESTORE}
   ${LINENOISE_LIBS}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
+  boost_system
+  boost_boost
 )
 
 install(
@@ -220,6 +228,8 @@ target_link_libraries(${BIN_ARANGOSH}
   ${V8_LIBS}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
+  boost_system
+  boost_boost
 )
 
 install(
@@ -261,6 +271,8 @@ target_link_libraries(${BIN_ARANGOVPACK}
   ${LIB_ARANGO}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
+  boost_system
+  boost_boost
 )
 
 install(

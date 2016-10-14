@@ -32,30 +32,17 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a Unix socket endpoint
-////////////////////////////////////////////////////////////////////////////////
-
-EndpointUnixDomain::EndpointUnixDomain(EndpointType type,
-                                       int listenBacklog,
+EndpointUnixDomain::EndpointUnixDomain(EndpointType type, int listenBacklog,
                                        std::string const& path)
     : Endpoint(DomainType::UNIX, type, TransportType::HTTP,
                EncryptionType::NONE, "http+unix://" + path, listenBacklog),
       _path(path) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a Unix socket endpoint
-////////////////////////////////////////////////////////////////////////////////
 
 EndpointUnixDomain::~EndpointUnixDomain() {
   if (_connected) {
     disconnect();
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief connect the endpoint
-////////////////////////////////////////////////////////////////////////////////
 
 TRI_socket_t EndpointUnixDomain::connect(double connectTimeout,
                                          double requestTimeout) {
@@ -151,10 +138,6 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout,
   return _socket;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief disconnect the endpoint
-////////////////////////////////////////////////////////////////////////////////
-
 void EndpointUnixDomain::disconnect() {
   if (_connected) {
     TRI_ASSERT(TRI_isvalidsocket(_socket));
@@ -173,12 +156,11 @@ void EndpointUnixDomain::disconnect() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief init an incoming connection
-////////////////////////////////////////////////////////////////////////////////
-
 bool EndpointUnixDomain::initIncoming(TRI_socket_t incoming) {
   return setSocketFlags(incoming);
 }
+
+void EndpointUnixDomain::openAcceptor(boost::asio::io_service*,
+                                      boost::asio::ip::tcp::acceptor*) {}
 
 #endif

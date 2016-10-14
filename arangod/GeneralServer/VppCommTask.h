@@ -25,19 +25,21 @@
 #define ARANGOD_GENERAL_SERVER_VPP_COMM_TASK_H 1
 
 #include "GeneralServer/GeneralCommTask.h"
-#include "lib/Rest/VppMessage.h"
-#include "lib/Rest/VppRequest.h"
-#include "lib/Rest/VppResponse.h"
 
 #include <boost/optional.hpp>
 #include <stdexcept>
+
+#include "lib/Rest/VppMessage.h"
+#include "lib/Rest/VppRequest.h"
+#include "lib/Rest/VppResponse.h"
 
 namespace arangodb {
 namespace rest {
 
 class VppCommTask : public GeneralCommTask {
  public:
-  VppCommTask(GeneralServer*, TRI_socket_t, ConnectionInfo&&, double timeout);
+  VppCommTask(EventLoop, GeneralServer*, std::unique_ptr<Socket> socket,
+              ConnectionInfo&&, double timeout);
 
   // convert from GeneralResponse to vppResponse ad dispatch request to class
   // internal addResponse
@@ -57,8 +59,6 @@ class VppCommTask : public GeneralCommTask {
   // read data check if chunk and message are complete
   // if message is complete execute a request
   bool processRead() override;
-
-  void handleChunk(char const*, size_t) override final {}
 
   std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) override final;
@@ -133,10 +133,6 @@ class VppCommTask : public GeneralCommTask {
 
   std::string _authenticatedUser;
   bool _authenticationEnabled;
-
-  // user
-  // authenticated or not
-  // database aus url
 };
 }
 }

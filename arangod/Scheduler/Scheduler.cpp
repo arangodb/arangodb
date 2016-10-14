@@ -28,116 +28,224 @@
 
 #include "Scheduler.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Logger/Logger.h"
-#include "Scheduler/SchedulerThread.h"
+#include "Rest/GeneralResponse.h"
+#include "Scheduler/JobQueue.h"
 #include "Scheduler/Task.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief scheduler singleton
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                            SchedulerManagerThread
+// -----------------------------------------------------------------------------
 
-Scheduler::Scheduler(size_t nrThreads)
-    : nrThreads(nrThreads),
-      threads(0),
-      stopping(0),
-      nextLoop(0),
-      _active(true) {
-  // check for multi-threading scheduler
-  multiThreading = (nrThreads > 1);
+namespace {
+class SchedulerManagerThread : public Thread {
+ public:
+  SchedulerManagerThread(Scheduler* scheduler, boost::asio::io_service* service)
+      : Thread("SchedulerManager"), _scheduler(scheduler), _service(service) {}
 
-  if (!multiThreading) {
-    nrThreads = 1;
+  ~SchedulerManagerThread() { shutdown(); }
+
+ public:
+  void run() {
+    while (!_scheduler->isStopping()) {
+      try {
+        _service->run_one();
+        _scheduler->deleteOldThreads();
+      } catch (...) {
+        LOG_TOPIC(ERR, Logger::THREADS)
+            << "manager loop caught an error, restarting";
+      }
+    }
+
+    _scheduler->threadDone(this);
   }
 
-  // report status
-  if (multiThreading) {
-    LOG(TRACE) << "scheduler is multi-threaded, number of threads: "
-               << nrThreads;
-  } else {
-    LOG(TRACE) << "scheduler is single-threaded";
+ private:
+  Scheduler* _scheduler;
+  boost::asio::io_service* _service;
+};
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   SchedulerThread
+// -----------------------------------------------------------------------------
+
+namespace {
+class SchedulerThread : public Thread {
+ public:
+  SchedulerThread(Scheduler* scheduler, boost::asio::io_service* service)
+      : Thread("Scheduler"), _scheduler(scheduler), _service(service) {}
+
+  ~SchedulerThread() { shutdown(); }
+
+ public:
+  void run() {
+    _scheduler->incRunning();
+    LOG_TOPIC(DEBUG, Logger::THREADS) << "running (" << _scheduler->infoStatus()
+                                      << ")";
+
+    auto start = std::chrono::steady_clock::now();
+
+    try {
+      static size_t EVERY_LOOP = 1000;
+      static double MIN_SECONDS = 30;
+
+      size_t counter = 0;
+      while (!_scheduler->isStopping()) {
+        _service->run_one();
+
+        if (++counter > EVERY_LOOP) {
+          auto now = std::chrono::steady_clock::now();
+          std::chrono::duration<double> diff = now - start;
+
+          if (diff.count() > MIN_SECONDS) {
+            if (_scheduler->stopThread()) {
+              auto n = _scheduler->decRunning();
+
+              if (n <= 2) {
+                _scheduler->incRunning();
+              } else {
+                break;
+              }
+            }
+
+            start = std::chrono::steady_clock::now();
+          }
+        }
+      }
+
+      LOG_TOPIC(DEBUG, Logger::THREADS) << "stopped ("
+                                        << _scheduler->infoStatus() << ")";
+    } catch (...) {
+      LOG_TOPIC(ERR, Logger::THREADS)
+          << "scheduler loop caught an error, restarting";
+      _scheduler->decRunning();
+      _scheduler->startNewThread();
+    }
+
+    _scheduler->threadDone(this);
   }
 
+ private:
+  Scheduler* _scheduler;
+  boost::asio::io_service* _service;
+};
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                         Scheduler
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+Scheduler::Scheduler(size_t nrThreads, size_t maxQueueSize)
+    : _nrThreads(nrThreads),
+      _maxQueueSize(maxQueueSize),
+      _stopping(false),
+      _nrBusy(0),
+      _nrWorking(0),
+      _nrBlocked(0),
+      _nrRunning(0),
+      _nrRealMaximum(0),
+      _lastThreadWarning(0) {
   // setup signal handlers
   initializeSignalHandlers();
 }
 
-Scheduler::~Scheduler() {}
+Scheduler::~Scheduler() { deleteOldThreads(); }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief starts scheduler, keeps running
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
 bool Scheduler::start(ConditionVariable* cv) {
-  MUTEX_LOCKER(mutexLocker, schedulerLock);
+  // start the I/O
+  startIoService();
 
-  // start the schedulers threads
-  for (size_t i = 0; i < nrThreads; ++i) {
-    bool ok = threads[i]->start(cv);
+  // initialize thread handling
+  _nrMaximal = _nrThreads;
+  _nrRealMaximum = 4 * _nrMaximal;
 
-    if (!ok) {
-      LOG(FATAL) << "cannot start threads";
-      FATAL_ERROR_EXIT();
-    }
-
-    if (!_affinityCores.empty()) {
-      size_t c = _affinityCores[_affinityPos];
-
-      LOG_TOPIC(DEBUG, Logger::THREADS) << "using core " << c
-                                        << " for scheduler thread " << i;
-      threads[i]->setProcessorAffinity(c);
-
-      ++_affinityPos;
-
-      if (_affinityPos >= _affinityCores.size()) {
-        _affinityPos = 0;
-      }
-    }
+  for (size_t i = 0; i < 2; ++i) {
+    startNewThread();
   }
 
-  // and wait until the threads are started
-  bool waiting = true;
+  startManagerThread();
+  startRebalancer();
 
-  while (waiting) {
-    waiting = false;
+  // initialize the queue handling
+  _jobQueue.reset(new JobQueue(_maxQueueSize, _ioService.get()));
+  _jobQueue->start();
 
-    usleep(1000);
-
-    for (size_t i = 0; i < nrThreads; ++i) {
-      if (!threads[i]->isRunning()) {
-        waiting = true;
-        LOG(TRACE) << "waiting for thread #" << i << " to start";
-      }
-    }
-  }
-
+  // done
   LOG(TRACE) << "all scheduler threads are up and running";
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if the scheduler threads are up and running
-////////////////////////////////////////////////////////////////////////////////
+void Scheduler::startIoService() {
+  _ioService.reset(new boost::asio::io_service());
+  _serviceGuard.reset(new boost::asio::io_service::work(*_ioService));
 
-bool Scheduler::isStarted() { return true; }
+  _managerService.reset(new boost::asio::io_service());
+  _managerGuard.reset(new boost::asio::io_service::work(*_managerService));
+}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if scheduler is still running
-////////////////////////////////////////////////////////////////////////////////
+void Scheduler::startRebalancer() {
+  std::chrono::milliseconds interval(500);
+  _threadManager.reset(new boost::asio::steady_timer(*_managerService));
 
-bool Scheduler::isRunning() {
-  MUTEX_LOCKER(mutexLocker, schedulerLock);
+  _threadHandler = [this, interval](const boost::system::error_code& error) {
+    if (error || isStopping()) {
+      return;
+    }
 
-  for (size_t i = 0; i < nrThreads; ++i) {
-    if (threads[i]->isRunning()) {
+    rebalanceThreads();
+
+    _threadManager->expires_from_now(interval);
+    _threadManager->async_wait(_threadHandler);
+  };
+
+  _threadManager->expires_from_now(interval);
+  _threadManager->async_wait(_threadHandler);
+
+  _lastThreadWarning.store(TRI_microtime());
+}
+
+void Scheduler::startManagerThread() {
+  MUTEX_LOCKER(guard, _threadsLock);
+
+  auto thread = new SchedulerManagerThread(this, _managerService.get());
+
+  _threads.emplace(thread);
+  thread->start();
+}
+
+void Scheduler::startNewThread() {
+  MUTEX_LOCKER(guard, _threadsLock);
+
+  auto thread = new SchedulerThread(this, _ioService.get());
+
+  _threads.emplace(thread);
+  thread->start();
+}
+
+bool Scheduler::stopThread() {
+  if (_nrRunning >= 3) {
+    int64_t low = ((_nrRunning <= 4) ? 0 : (_nrRunning * 1 / 4)) - _nrBlocked;
+
+    if (_nrBusy <= low && _nrWorking <= low) {
       return true;
     }
   }
@@ -145,401 +253,114 @@ bool Scheduler::isRunning() {
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief starts shutdown sequence
-////////////////////////////////////////////////////////////////////////////////
+void Scheduler::threadDone(Thread* thread) {
+  MUTEX_LOCKER(guard, _threadsLock);
+
+  _threads.erase(thread);
+  _deadThreads.insert(thread);
+}
+
+void Scheduler::deleteOldThreads() {
+  // delete old thread objects
+  std::unordered_set<Thread*> deadThreads;
+
+  {
+    MUTEX_LOCKER(guard, _threadsLock);
+
+    if (_deadThreads.empty()) {
+      return;
+    }
+
+    deadThreads.swap(_deadThreads);
+  }
+
+  for (auto thread : deadThreads) {
+    try {
+      delete thread;
+    } catch (...) {
+      LOG_TOPIC(ERR, Logger::THREADS) << "cannot delete thread";
+    }
+  }
+}
+
+void Scheduler::rebalanceThreads() {
+  static double const MIN_WARN_INTERVAL = 10;
+  static double const MIN_ERR_INTERVAL = 300;
+
+  int64_t high = (_nrRunning <= 4) ? 1 : (_nrRunning * 11 / 16);
+  int64_t working = (_nrBusy > _nrWorking) ? _nrBusy : _nrWorking;
+
+  LOG_TOPIC(DEBUG, Logger::THREADS) << "rebalancing threads, high: " << high
+                                    << ", working: " << working << " ("
+                                    << infoStatus() << ")";
+
+  if (working >= high) {
+    if (_nrRunning < _nrMaximal + _nrBlocked) {
+      startNewThread();
+      return;
+    }
+  }
+
+  if (working >= _nrMaximal + _nrBlocked) {
+    double ltw = _lastThreadWarning.load();
+    double now = TRI_microtime();
+
+    if (_nrRunning >= _nrRealMaximum) {
+      if (ltw - now > MIN_ERR_INTERVAL) {
+        LOG_TOPIC(ERR, Logger::THREADS) << "too many threads (" << infoStatus()
+                                        << ")";
+        _lastThreadWarning.store(now);
+      }
+    } else {
+      if (_nrRunning >= _nrRealMaximum * 3 / 4) {
+        if (ltw - now > MIN_WARN_INTERVAL) {
+          LOG_TOPIC(WARN, Logger::THREADS)
+              << "number of threads is reaching a critical limit ("
+              << infoStatus() << ")";
+          _lastThreadWarning.store(now);
+        }
+      }
+
+      LOG_TOPIC(DEBUG, Logger::THREADS) << "overloading threads ("
+                                        << infoStatus() << ")";
+
+      startNewThread();
+    }
+  }
+}
 
 void Scheduler::beginShutdown() {
-  if (stopping != 0) {
+  if (_stopping) {
     return;
   }
 
-  MUTEX_LOCKER(mutexLocker, schedulerLock);
+  _jobQueue->beginShutdown();
 
-  LOG(DEBUG) << "beginning shutdown sequence of scheduler";
+  _threadManager.reset();
 
-  for (size_t i = 0; i < nrThreads; ++i) {
-    threads[i]->beginShutdown();
-  }
+  _managerGuard.reset();
+  _managerService->stop();
+
+  _serviceGuard.reset();
+  _ioService->stop();
 
   // set the flag AFTER stopping the threads
-  stopping = 1;
+  _stopping = true;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if scheduler is shuting down
-////////////////////////////////////////////////////////////////////////////////
-
-bool Scheduler::isShutdownInProgress() { return stopping != 0; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shuts down the scheduler
-////////////////////////////////////////////////////////////////////////////////
 
 void Scheduler::shutdown() {
-  for (auto& it : taskRegistered) {
-    std::string const name = it.second->name();
-    LOG(DEBUG) << "forcefully removing task '" << name << "'";
+  bool done = false;
 
-    deleteTask(it.second);
+  while (!done) {
+    MUTEX_LOCKER(guard, _threadsLock);
+    done = _threads.empty();
   }
 
-  taskRegistered.clear();
-  task2thread.clear();
+  deleteOldThreads();
+
+  _managerService.reset();
+  _ioService.reset();
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief list user tasks
-////////////////////////////////////////////////////////////////////////////////
-
-std::shared_ptr<VPackBuilder> Scheduler::getUserTasks() {
-  auto builder = std::make_shared<VPackBuilder>();
-  try {
-    VPackArrayBuilder b(builder.get());
-    MUTEX_LOCKER(mutexLocker, schedulerLock);
-    for (auto& it : task2thread) {
-      auto const* task = it.first;
-
-      if (task->isUserDefined()) {
-        VPackObjectBuilder b2(builder.get());
-        task->toVelocyPack(*builder);
-      }
-    }
-  } catch (...) {
-    return std::make_shared<VPackBuilder>();
-  }
-  return builder;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a single user task
-////////////////////////////////////////////////////////////////////////////////
-
-std::shared_ptr<VPackBuilder> Scheduler::getUserTask(std::string const& id) {
-  MUTEX_LOCKER(mutexLocker, schedulerLock);
-
-  for (auto& it : task2thread) {
-    auto const* task = it.first;
-
-    if (task->isUserDefined() && task->id() == id) {
-      return task->toVelocyPack();
-    }
-  }
-
-  return nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unregister and delete a user task by id
-////////////////////////////////////////////////////////////////////////////////
-
-int Scheduler::unregisterUserTask(std::string const& id) {
-  if (stopping) {
-    return TRI_ERROR_SHUTTING_DOWN;
-  }
-  if (id.empty()) {
-    return TRI_ERROR_TASK_INVALID_ID;
-  }
-
-  Task* task = nullptr;
-
-  {
-    MUTEX_LOCKER(mutexLocker, schedulerLock);
-
-    for (auto& it : task2thread) {
-      auto const* t = it.first;
-
-      if (t->id() == id) {
-        // found the sought task
-        if (!t->isUserDefined()) {
-          return TRI_ERROR_TASK_NOT_FOUND;
-        }
-
-        task = const_cast<Task*>(t);
-        break;
-      }
-    }
-  }
-
-  if (task == nullptr) {
-    // not found
-    return TRI_ERROR_TASK_NOT_FOUND;
-  }
-
-  return destroyTask(task);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unregister all user tasks
-////////////////////////////////////////////////////////////////////////////////
-
-int Scheduler::unregisterUserTasks() {
-  if (stopping) {
-    return TRI_ERROR_SHUTTING_DOWN;
-  }
-  while (true) {
-    Task* task = nullptr;
-
-    {
-      MUTEX_LOCKER(mutexLocker, schedulerLock);
-
-      for (auto& it : task2thread) {
-        auto const* t = it.first;
-
-        if (t->isUserDefined()) {
-          task = const_cast<Task*>(t);
-          break;
-        }
-      }
-    }
-
-    if (task == nullptr) {
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    destroyTask(task);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief registers a new task
-////////////////////////////////////////////////////////////////////////////////
-
-int Scheduler::registerTask(Task* task) {
-  return registerTask(task, nullptr, -1);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief registers a new task and returns the chosen threads number
-////////////////////////////////////////////////////////////////////////////////
-
-int Scheduler::registerTask(Task* task, ssize_t* tn) {
-  *tn = -1;
-  return registerTask(task, tn, -1);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unregisters a task
-////////////////////////////////////////////////////////////////////////////////
-
-int Scheduler::unregisterTask(Task* task) {
-  if (stopping) {
-    return TRI_ERROR_SHUTTING_DOWN;
-  }
-
-  SchedulerThread* thread = nullptr;
-  std::string const taskName(task->name());
-
-  {
-    MUTEX_LOCKER(mutexLocker, schedulerLock);
-
-    auto it = task2thread.find(
-        task);  // TODO(fc) XXX remove this! This should be in the Task
-
-    if (it == task2thread.end()) {
-      LOG(WARN) << "unregisterTask called for an unknown task " << (void*)task
-                << " (" << taskName << ")";
-
-      return TRI_ERROR_TASK_NOT_FOUND;
-    }
-
-    LOG(TRACE) << "unregisterTask for task " << (void*)task << " (" << taskName
-               << ")";
-
-    thread = (*it).second;
-
-    taskRegistered.erase(task->taskId());
-    task2thread.erase(it);
-  }
-
-  thread->unregisterTask(task);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys task
-////////////////////////////////////////////////////////////////////////////////
-
-int Scheduler::destroyTask(Task* task) {
-  if (stopping) {
-    return TRI_ERROR_SHUTTING_DOWN;
-  }
-
-  SchedulerThread* thread = nullptr;
-  std::string const taskName(task->name());
-
-  {
-    MUTEX_LOCKER(mutexLocker, schedulerLock);
-
-    auto it = task2thread.find(task);
-
-    if (it == task2thread.end()) {
-      LOG(WARN) << "destroyTask called for an unknown task " << (void*)task
-                << " (" << taskName << ")";
-
-      return TRI_ERROR_TASK_NOT_FOUND;
-    }
-
-    LOG(TRACE) << "destroyTask for task " << (void*)task << " (" << taskName
-               << ")";
-
-    thread = (*it).second;
-
-    taskRegistered.erase(task->taskId());
-    task2thread.erase(it);
-  }
-
-  thread->destroyTask(task);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief called to display current status
-////////////////////////////////////////////////////////////////////////////////
-
-void Scheduler::reportStatus() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the process affinity
-////////////////////////////////////////////////////////////////////////////////
-
-void Scheduler::setProcessorAffinity(std::vector<size_t> const& cores) {
-  LOG_TOPIC(DEBUG, Logger::THREADS) << "scheduler cores: " << cores;
-  _affinityCores = cores;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the task for a task id
-////////////////////////////////////////////////////////////////////////////////
-
-Task* Scheduler::lookupTaskById(uint64_t taskId) {
-  MUTEX_LOCKER(mutexLocker, schedulerLock);
-
-  auto task = taskRegistered.find(taskId);
-
-  if (task == taskRegistered.end()) {
-    return nullptr;
-  }
-
-  return task->second;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the loop for a task id
-////////////////////////////////////////////////////////////////////////////////
-
-EventLoop Scheduler::lookupLoopById(uint64_t taskId) {
-  MUTEX_LOCKER(mutexLocker, schedulerLock);
-
-  auto task = taskRegistered.find(taskId);
-
-  if (task == taskRegistered.end()) {
-    return static_cast<EventLoop>(nrThreads);
-  }
-
-  return task->second->eventLoop();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief registers a new task
-/// the caller must not use the task object afterwards, as it may be deleted
-/// by this function or a SchedulerThread
-////////////////////////////////////////////////////////////////////////////////
-
-int Scheduler::registerTask(Task* task, ssize_t* got, ssize_t want) {
-  if (stopping) {
-    return TRI_ERROR_SHUTTING_DOWN;
-  }
-  TRI_ASSERT(task != nullptr);
-
-  if (task->isUserDefined() && task->id().empty()) {
-    // user-defined task without id is invalid
-    deleteTask(task);
-    return TRI_ERROR_TASK_INVALID_ID;
-  }
-
-  std::string const& name = task->name();
-  LOG(TRACE) << "registerTask for task " << (void*)task << " (" << name << ")";
-
-  // determine thread
-  SchedulerThread* thread = nullptr;
-  size_t n = 0;
-  if (0 <= want) {
-    n = want;
-
-    if (nrThreads <= n) {
-      deleteTask(task);
-      return TRI_ERROR_INTERNAL;
-    }
-  }
-
-  try {
-    MUTEX_LOCKER(mutexLocker, schedulerLock);
-
-    int res = checkInsertTask(task);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      deleteTask(task);
-      return res;
-    }
-
-    if (0 > want) {
-      if (multiThreading && !task->needsMainEventLoop()) {
-        n = (++nextLoop) % nrThreads;
-      }
-    }
-
-    thread = threads[n];
-
-    task2thread[task] = thread;
-    taskRegistered[task->taskId()] = task;
-  } catch (...) {
-    destroyTask(task);
-    throw;
-  }
-
-  if (nullptr != got) {
-    *got = static_cast<ssize_t>(n);
-  }
-
-  if (!thread->registerTask(this, task)) {
-    // no need to delete the task here, as SchedulerThread::registerTask
-    // takes over the ownership
-    return TRI_ERROR_INTERNAL;
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether a task can be inserted
-/// the caller must ensure the schedulerLock is held
-////////////////////////////////////////////////////////////////////////////////
-
-int Scheduler::checkInsertTask(Task const* task) {
-  if (task->isUserDefined()) {
-    // this is a user-defined task
-
-    // now check if there is an id conflict
-    std::string const& id = task->id();
-
-    for (auto& it : task2thread) {
-      auto const* t = it.first;
-
-      if (t->isUserDefined() && t->id() == id) {
-        return TRI_ERROR_TASK_DUPLICATE_ID;
-      }
-    }
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes the signal handlers for the scheduler
-////////////////////////////////////////////////////////////////////////////////
 
 void Scheduler::initializeSignalHandlers() {
 #ifdef _WIN32
