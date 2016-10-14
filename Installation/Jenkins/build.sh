@@ -125,7 +125,8 @@ MAKE=make
 PACKAGE_MAKE=make
 MAKE_PARAMS=""
 MAKE_CMD_PREFIX=""
-CONFIGURE_OPTIONS="-DCMAKE_INSTALL_PREFIX=/ $CMAKE_OPENSSL"
+CONFIGURE_OPTIONS="$CMAKE_OPENSSL"
+INSTALL_PREFIX="/"
 MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=off"
 
 TAR_SUFFIX=""
@@ -249,6 +250,12 @@ while [ $# -gt 0 ];  do
             shift
             ;;
         
+        --prefix)
+            shift
+            INSTALL_PREFIX=$1
+            shift
+            ;;
+        
         --buildDir)
             shift
             BUILD_DIR=$1
@@ -332,7 +339,7 @@ while [ $# -gt 0 ];  do
 done
 
 
-
+CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX}"
 
 if test -n "$LASTREV"; then
     lines=`git diff ${LASTREV}: ${COMPILE_MATTERS} | wc -l`

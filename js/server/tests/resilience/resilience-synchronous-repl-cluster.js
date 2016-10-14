@@ -72,7 +72,7 @@ function SynchronousReplicationSuite () {
     cinfo = global.ArangoClusterInfo.getCollectionInfo(database, cn);
     shards = Object.keys(cinfo.shards);
     var count = 0;
-    while (++count <= 120) {
+    while (++count <= 180) {
       ccinfo = shards.map(
         s => global.ArangoClusterInfo.getCollectionInfoCurrent(database, cn, s)
       );
@@ -186,7 +186,7 @@ function SynchronousReplicationSuite () {
 
     if (healing.place === 1) { healFailure(healing); }
     if (failure.place === 2) { makeFailure(failure); }
-
+    
     var doc = c.document(id._key);
     assertEqual(12, doc.Hallo);
 
@@ -341,13 +341,13 @@ function SynchronousReplicationSuite () {
 
     tearDown : function () {
       db._drop(cn);
+      global.ArangoAgency.remove('Target/FailedServers');
       global.ArangoAgency.set('Target/FailedServers', {});
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether we have access to global.instanceInfo
 ////////////////////////////////////////////////////////////////////////////////
-
     testCheckInstanceInfo : function () {
       assertTrue(global.instanceInfo !== undefined);
     },
@@ -588,7 +588,6 @@ function SynchronousReplicationSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fail leader in place 2
 ////////////////////////////////////////////////////////////////////////////////
-
     testBasicOperationsLeaderFail2 : function () {
       assertTrue(waitForSynchronousReplication("_system"));
       runBasicOperations({place:2, follower: false},

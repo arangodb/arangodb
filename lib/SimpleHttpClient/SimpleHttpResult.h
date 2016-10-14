@@ -40,7 +40,7 @@ namespace arangodb {
 namespace httpclient {
 
 class SimpleHttpResult {
- private:
+ protected:
   SimpleHttpResult(SimpleHttpResult const&);
   SimpleHttpResult& operator=(SimpleHttpResult const&);
 
@@ -60,7 +60,7 @@ class SimpleHttpResult {
  public:
   SimpleHttpResult();
 
-  ~SimpleHttpResult();
+  virtual ~SimpleHttpResult();
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -73,13 +73,13 @@ class SimpleHttpResult {
   /// @brief returns whether the response contains an HTTP error
   //////////////////////////////////////////////////////////////////////////////
 
-  bool wasHttpError() const { return (_returnCode >= 400); }
+  virtual bool wasHttpError() const { return (_returnCode >= 400); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the http return code
   //////////////////////////////////////////////////////////////////////////////
 
-  int getHttpReturnCode() const { return _returnCode; }
+  virtual int getHttpReturnCode() const { return _returnCode; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the http return code
@@ -91,7 +91,7 @@ class SimpleHttpResult {
   /// @brief returns the http return message
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string getHttpReturnMessage() const { return _returnMessage; }
+  virtual std::string getHttpReturnMessage() const { return _returnMessage; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the http return message
@@ -109,19 +109,19 @@ class SimpleHttpResult {
   /// @brief whether or not the response contained a content length header
   //////////////////////////////////////////////////////////////////////////////
 
-  bool hasContentLength() const { return _hasContentLength; }
+  virtual bool hasContentLength() const { return _hasContentLength; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the content length
   //////////////////////////////////////////////////////////////////////////////
 
-  size_t getContentLength() const { return _contentLength; }
+  virtual size_t getContentLength() const { return _contentLength; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the content length
   //////////////////////////////////////////////////////////////////////////////
 
-  void setContentLength(size_t len) {
+  virtual void setContentLength(size_t len) {
     _contentLength = len;
     _hasContentLength = true;
   }
@@ -130,55 +130,55 @@ class SimpleHttpResult {
   /// @brief returns the http body
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::StringBuffer& getBody();
+  virtual arangodb::basics::StringBuffer& getBody();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the http body
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::StringBuffer const& getBody() const;
+  virtual arangodb::basics::StringBuffer const& getBody() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the http body as velocypack
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<VPackBuilder> getBodyVelocyPack(VPackOptions const&) const;
+  virtual std::shared_ptr<VPackBuilder> getBodyVelocyPack(VPackOptions const&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the http body as velocypack
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<VPackBuilder> getBodyVelocyPack() const;
+  virtual std::shared_ptr<VPackBuilder> getBodyVelocyPack() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the request result type
   //////////////////////////////////////////////////////////////////////////////
 
-  enum resultTypes getResultType() const { return _requestResultType; }
+  virtual enum resultTypes getResultType() const { return _requestResultType; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns true if result type == OK
   //////////////////////////////////////////////////////////////////////////////
 
-  bool isComplete() const { return _requestResultType == COMPLETE; }
+  virtual bool isComplete() const { return _requestResultType == COMPLETE; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns true if "transfer-encoding: chunked"
   //////////////////////////////////////////////////////////////////////////////
 
-  bool isChunked() const { return _chunked; }
+  virtual bool isChunked() const { return _chunked; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns true if "content-encoding: deflate"
   //////////////////////////////////////////////////////////////////////////////
 
-  bool isDeflated() const { return _deflated; }
+  virtual bool isDeflated() const { return _deflated; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the request result type
   //////////////////////////////////////////////////////////////////////////////
 
-  void setResultType(enum resultTypes requestResultType) {
+  virtual void setResultType(enum resultTypes requestResultType) {
     this->_requestResultType = requestResultType;
   }
 
@@ -186,31 +186,31 @@ class SimpleHttpResult {
   /// @brief returns a message for the result type
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string getResultTypeMessage() const;
+  virtual std::string getResultTypeMessage() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add header field
   //////////////////////////////////////////////////////////////////////////////
 
-  void addHeaderField(char const*, size_t);
+  virtual void addHeaderField(char const*, size_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the value of a single header
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string getHeaderField(std::string const&, bool&) const;
+  virtual std::string getHeaderField(std::string const&, bool&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check if a header is present
   //////////////////////////////////////////////////////////////////////////////
 
-  bool hasHeaderField(std::string const&) const;
+  virtual bool hasHeaderField(std::string const&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get all header fields
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<std::string, std::string> const& getHeaderFields() const {
+  virtual std::unordered_map<std::string, std::string> const& getHeaderFields() const {
     return _headerFields;
   }
 
@@ -218,16 +218,16 @@ class SimpleHttpResult {
   /// @brief returns whether the result is JSON-encoded
   //////////////////////////////////////////////////////////////////////////////
 
-  bool isJson() const { return _isJson; }
+  virtual bool isJson() const { return _isJson; }
 
- private:
+ protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add header field
   //////////////////////////////////////////////////////////////////////////////
 
   void addHeaderField(char const*, size_t, char const*, size_t);
 
- private:
+ protected:
   // header informtion
   std::string _returnMessage;
   size_t _contentLength;

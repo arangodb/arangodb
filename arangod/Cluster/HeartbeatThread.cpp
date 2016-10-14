@@ -335,14 +335,16 @@ void HeartbeatThread::runCoordinator() {
         break;
       }
 
-      AgencyReadTransaction trx(std::vector<std::string>(
-          {_agency.prefixPath() + "Shutdown",
-           _agency.prefixPath() + "Plan/Version",
-           _agency.prefixPath() + "Current/Version",
-           _agency.prefixPath() + "Current/Foxxmaster",
-           _agency.prefixPath() + "Current/FoxxmasterQueueupdate",
-           _agency.prefixPath() + "Sync/Commands/" + _myId,
-           _agency.prefixPath() + "Sync/UserVersion"}));
+      AgencyReadTransaction trx(std::vector<std::string>({
+        _agency.prefixPath() + "Current/Version",
+        _agency.prefixPath() + "Current/Foxxmaster",
+        _agency.prefixPath() + "Current/FoxxmasterQueueupdate",
+        _agency.prefixPath() + "Plan/Version",
+        _agency.prefixPath() + "Shutdown",
+        _agency.prefixPath() + "Sync/Commands/" + _myId,
+        _agency.prefixPath() + "Sync/UserVersion",
+        _agency.prefixPath() + "Target/FailedServers"
+      }));
       AgencyCommResult result = _agency.sendTransactionWithFailover(trx);
 
       if (!result.successful()) {
@@ -445,6 +447,23 @@ void HeartbeatThread::runCoordinator() {
 
             ClusterInfo::instance()->invalidateCurrent();
           }
+        }
+
+        VPackSlice failedServersSlice = result.slice()[0].get(
+          std::vector<std::string>({_agency.prefix(), "Target",
+                "FailedServers"})
+          );
+        
+        if (failedServersSlice.isObject()) {
+          std::vector<std::string> failedServers = {};
+          for (auto const& server : VPackObjectIterator(failedServersSlice)) {
+            if (server.value.isArray() && server.value.length() == 0) {
+              failedServers.push_back(server.key.copyString());
+            }
+          }
+          ClusterInfo::instance()->setFailedServers(failedServers);
+        } else {
+          LOG_TOPIC(WARN, Logger::HEARTBEAT) << "FailedServers is not an object. ignoring for now";
         }
       }
 

@@ -60,6 +60,7 @@ void Constituent::configure(Agent* agent) {
 
   if (size() == 1) {
     _role = LEADER;
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Set _role to LEADER in term "  << _term;
   } else {
     _id = _agent->config().id();
   }
@@ -156,6 +157,7 @@ void Constituent::follow(term_t t) {
 
   _term = t;
   _role = FOLLOWER;
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Set _role to FOLLOWER in term " << _term;
 }
 
 /// Become leader
@@ -168,7 +170,11 @@ void Constituent::lead(std::map<std::string, bool> const& votes) {
     }
 
     _role = LEADER;
-    _leaderID = _id;
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Set _role to LEADER in term " << _term;
+    if (_leaderID != _id) {
+      LOG_TOPIC(INFO, Logger::AGENCY) << "Set _leaderID to " << _id;
+      _leaderID = _id;
+    }
   }
 
   if (!votes.empty()) {
@@ -188,13 +194,16 @@ void Constituent::lead(std::map<std::string, bool> const& votes) {
 void Constituent::candidate() {
   MUTEX_LOCKER(guard, _castLock);
 
-  _leaderID = NO_LEADER;
+  if (_leaderID != NO_LEADER) {
+    _leaderID = NO_LEADER;
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Set _leaderID to NO_LEADER";
+  }
 
-  if (_role != CANDIDATE)
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
-        << _id << ": Converted to candidate in term " << _term;
-
-  _role = CANDIDATE;
+  if (_role != CANDIDATE) {
+    _role = CANDIDATE;
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Set _role to CANDIDATE in term "
+      << _term;
+  }
 }
 
 /// Leading?
@@ -241,7 +250,11 @@ bool Constituent::vote(term_t term, std::string id, index_t prevLogIndex,
     lid = _leaderID;
     _cast = true;
     if (appendEntries && t <= term) {
-      _leaderID = id;
+      if (_leaderID != id) {
+        LOG_TOPIC(INFO, Logger::AGENCY) << "Set _leaderID to " << id
+          << " in term " << _term;
+        _leaderID = id;
+      }
       return true;
     }
   }
@@ -250,6 +263,10 @@ bool Constituent::vote(term_t term, std::string id, index_t prevLogIndex,
     {
       MUTEX_LOCKER(guard, _castLock);
       _votedFor = id;  // The guy I voted for I assume leader.
+      if (_leaderID != id) {
+        LOG_TOPIC(INFO, Logger::AGENCY) << "Set _leaderID to " << id
+          << " in term " << _term;
+      }
       _leaderID = id;
     }
     this->term(term);
@@ -276,6 +293,8 @@ void Constituent::callElection() {
   votes[_id] = true;  // vote for myself
   _cast = true;
   _votedFor = _id;
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Set _leaderID to NO_LEADER"
+    << " in term " << _term;
   _leaderID = NO_LEADER;
   this->term(_term + 1);  // raise my term
 
@@ -313,7 +332,6 @@ void Constituent::callElection() {
     if (i != _id) {
       ClusterCommResult res =
           arangodb::ClusterComm::instance()->enquire(operationIDs[i]);
-
       if (res.status == CL_COMM_SENT) {  // Request successfully sent
         res = ClusterComm::instance()->wait("1", 1, operationIDs[i], "1");
         std::shared_ptr<Builder> body = res.result->getBodyVelocyPack();
@@ -356,7 +374,11 @@ void Constituent::callElection() {
 
 void Constituent::update(std::string const& leaderID, term_t t) {
   MUTEX_LOCKER(guard, _castLock);
-  _leaderID = leaderID;
+  if (_leaderID != leaderID) {
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Set _leaderID to " << leaderID
+      << " in term " << _term;
+    _leaderID = leaderID;
+  }
   _term = t;
 }
 
@@ -423,6 +445,8 @@ void Constituent::run() {
 
   if (size() == 1) {
     _leaderID = _agent->config().id();
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Set _leaderID to " << _leaderID
+      << " in term " << _term;
   } else {
     while (!this->isStopping()) {
       if (_role == FOLLOWER) {

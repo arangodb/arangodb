@@ -461,7 +461,8 @@ void RestCursorHandler::modifyCursor() {
     builder.close();
 
     _response->setContentType(rest::ContentType::JSON);
-    generateResult(rest::ResponseCode::OK, builder.slice());
+    generateResult(rest::ResponseCode::OK, builder.slice(),
+                     static_cast<VelocyPackCursor*>(cursor)->result()->context);
 
     cursors->release(cursor);
   } catch (...) {

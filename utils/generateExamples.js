@@ -143,6 +143,7 @@ function main(argv) {
     serverArgs["database.directory"] = fs.join(tmpDataDir, "data");
     serverArgs["javascript.app-path"] = fs.join(tmpDataDir, "apps");
     serverArgs["javascript.startup-directory"] = "js";
+    serverArgs["javascript.module-directory"] = "enterprise/js";
     serverArgs["log.file"] = fs.join(tmpDataDir, "log");
     serverArgs["server.authentication"] = "false";
     serverArgs["server.endpoint"] = serverEndpoint;

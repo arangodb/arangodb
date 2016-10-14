@@ -1,5 +1,4 @@
 include(${CMAKE_SOURCE_DIR}/cmake/GNUInstallDirs.cmake)
-
 set(ARANGODB_SOURCE_DIR ${CMAKE_SOURCE_DIR})
 set(CMAKE_INSTALL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_SYSCONFDIR}/${CMAKE_PROJECT_NAME}")
 set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_FULL_SYSCONFDIR}/${CMAKE_PROJECT_NAME}")
@@ -12,6 +11,10 @@ if (MSVC OR DARWIN)
 else ()
   set(ENABLE_UID_CFG true)
 endif ()
+if (MSVC)
+  # if we wouldn't do this, we would have to deploy the DLLs twice.
+  set(CMAKE_INSTALL_SBINDIR ${CMAKE_INSTALL_BINDIR})
+endif()
 
 set(CMAKE_INSTALL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_SYSCONFDIR}/${CMAKE_PROJECT_NAME}")
 set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_FULL_SYSCONFDIR}/${CMAKE_PROJECT_NAME}")
@@ -26,6 +29,8 @@ FILE(MAKE_DIRECTORY "${ARANGODB_APPS_DIRECTORY}")
 
 # logs
 FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/${CMAKE_PROJECT_NAME}")
+
+set(INSTALL_ICU_DT_DEST "${CMAKE_INSTALL_DATAROOTDIR}/arangodb3")
 
 include(InstallMacros)
 
@@ -147,6 +152,18 @@ endif()
 ################################################################################
 ### @brief propagate the locations into our programms:
 ################################################################################
+
+set(PATH_SEP "/")
+
+to_native_path("PATH_SEP")
+to_native_path("CMAKE_INSTALL_FULL_LOCALSTATEDIR")
+to_native_path("CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO")
+to_native_path("PKGDATADIR")
+to_native_path("CMAKE_INSTALL_DATAROOTDIR_ARANGO")
+to_native_path("ICU_DT_DEST")
+to_native_path("CMAKE_INSTALL_SBINDIR")
+to_native_path("CMAKE_INSTALL_BINDIR")
+to_native_path("INSTALL_ICU_DT_DEST")
 
 configure_file (
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/directories.h.in"

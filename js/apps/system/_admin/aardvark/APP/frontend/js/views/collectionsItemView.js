@@ -318,7 +318,7 @@
               )
             );
 
-            var tabBar = ['General', 'Indices'];
+            var tabBar = ['General', 'Indexes'];
             var templates = ['modalTable.ejs', 'indicesView.ejs'];
 
             window.modalView.show(
@@ -429,7 +429,7 @@
 
       $('#infoTab a').bind('click', function (e) {
         $('#indexDeleteModal').remove();
-        if ($(e.currentTarget).html() === 'Indices' && !$(e.currentTarget).parent().hasClass('active')) {
+        if ($(e.currentTarget).html() === 'Indexes' && !$(e.currentTarget).parent().hasClass('active')) {
           $('#newIndexView').hide();
           $('#indexEditView').show();
 

@@ -249,6 +249,7 @@
     "SIMPLE_CLIENT_COULD_NOT_CONNECT" : { "code" : 2001, "message" : "could not connect to server" },
     "SIMPLE_CLIENT_COULD_NOT_WRITE" : { "code" : 2002, "message" : "could not write to server" },
     "SIMPLE_CLIENT_COULD_NOT_READ" : { "code" : 2003, "message" : "could not read from server" },
+    "COMMUNICATOR_REQUEST_ABORTED" : { "code" : 2100, "message" : "Request aborted" },
     "ERROR_MALFORMED_MANIFEST_FILE" : { "code" : 3000, "message" : "malformed manifest file" },
     "ERROR_INVALID_SERVICE_MANIFEST" : { "code" : 3001, "message" : "manifest file is invalid" },
     "ERROR_INVALID_FOXX_OPTIONS"   : { "code" : 3004, "message" : "invalid foxx options" },

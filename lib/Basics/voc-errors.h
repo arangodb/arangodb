@@ -587,6 +587,8 @@
 ///   Will be raised when the client could not write data.
 /// - 2003: @LIT{could not read from server}
 ///   Will be raised when the client could not read data.
+/// - 2100: @LIT{Request aborted}
+///    "Request was aborted."
 /// - 3000: @LIT{malformed manifest file}
 ///   The manifest file is malformed. It is not in a valid JSON format.
 /// - 3001: @LIT{manifest file is invalid}
@@ -3111,6 +3113,16 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_SIMPLE_CLIENT_COULD_NOT_READ                                  (2003)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 2100: COMMUNICATOR_REQUEST_ABORTED
+///
+/// Request aborted
+///
+///  "Request was aborted."
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_COMMUNICATOR_REQUEST_ABORTED                                  (2100)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3000: ERROR_MALFORMED_MANIFEST_FILE

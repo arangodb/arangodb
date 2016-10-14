@@ -46,9 +46,11 @@ class SingleServerEdgeCursor : public EdgeCursor {
   size_t _currentSubCursor;
   std::vector<TRI_doc_mptr_t*> _cache;
   size_t _cachePos;
+  std::vector<size_t> const* _internalCursorMapping;
 
  public:
-  explicit SingleServerEdgeCursor(size_t);
+  explicit SingleServerEdgeCursor(size_t,
+                                  std::vector<size_t> const* mapping = nullptr);
 
   ~SingleServerEdgeCursor() {
     for (auto& it : _cursors) {

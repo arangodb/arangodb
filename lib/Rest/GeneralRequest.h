@@ -75,6 +75,7 @@ class GeneralRequest {
   static RequestType findRequestType(char const*, size_t const);
 
  public:
+  GeneralRequest() = default;
   explicit GeneralRequest(ConnectionInfo const& connectionInfo)
       : _version(ProtocolVersion::UNKNOWN),
         _protocol(""),

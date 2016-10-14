@@ -291,6 +291,14 @@ class VelocyPackHelper {
                                  arangodb::velocypack::Slice rhs);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief compares two VelocyPack string values
+  //////////////////////////////////////////////////////////////////////////////
+
+  static int compareStringValues(char const* left, VPackValueLength nl, 
+                                 char const* right, VPackValueLength nr, 
+                                 bool useUTF8);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Compares two VelocyPack slices
   //////////////////////////////////////////////////////////////////////////////
 
@@ -315,6 +323,9 @@ class VelocyPackHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   static double toDouble(VPackSlice const&, bool&);
+
+  // modify a VPack double value in place 
+  static void patchDouble(VPackSlice slice, double value);
 
   static uint64_t hashByAttributes(VPackSlice, std::vector<std::string> const&,
                                    bool, int&, std::string const& key = "");

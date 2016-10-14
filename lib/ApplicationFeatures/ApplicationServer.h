@@ -162,7 +162,8 @@ class ApplicationServer {
   static void forceDisableFeatures(std::vector<std::string> const&);
 
  public:
-  explicit ApplicationServer(std::shared_ptr<options::ProgramOptions>);
+  explicit ApplicationServer(std::shared_ptr<options::ProgramOptions>,
+                             const char *binaryPath);
 
   ~ApplicationServer();
 
@@ -215,6 +216,7 @@ class ApplicationServer {
     _progressReports.emplace_back(reporter);
   }
 
+  const char* getBinaryPath() { return _binaryPath;}
  private:
   // look up a feature and return a pointer to it. may be nullptr
   static ApplicationFeature* lookupFeature(std::string const&);
@@ -303,6 +305,9 @@ class ApplicationServer {
 
   // help section displayed
   std::string _helpSection;
+
+  // the install directory of this program:
+  const char* _binaryPath;
 };
 }
 }

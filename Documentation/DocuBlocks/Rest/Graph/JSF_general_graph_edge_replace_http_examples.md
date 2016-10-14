@@ -50,6 +50,7 @@ Returned if if-match header is given, but the documents revision is different.
 
 @EXAMPLE_ARANGOSH_RUN{HttpGharialPutEdge}
   var examples = require("@arangodb/graph-examples/example-graph.js");
+~ examples.dropGraph("social");
   examples.loadGraph("social");
   var url = "/_api/gharial/social/edge/relation/aliceAndBob";
   body = {

@@ -102,6 +102,7 @@ class ProgramOptions {
 
   ProgramOptions(char const* progname, std::string const& usage,
                  std::string const& more,
+                 const char *binaryPath,
                  TerminalWidthFuncType const& terminalWidth = TRI_ColumnsWidth,
                  SimilarityFuncType const& similarity = TRI_Levenshtein)
       : _progname(progname),
@@ -111,7 +112,8 @@ class ProgramOptions {
         _similarity(similarity),
         _processingResult(),
         _sealed(false),
-        _overrideOptions(false) {
+        _overrideOptions(false),
+        _binaryPath(binaryPath){
     // find progname wildcard in string
     size_t const pos = _usage.find(ARANGODB_PROGRAM_OPTIONS_PROGNAME);
 
@@ -126,7 +128,7 @@ class ProgramOptions {
 
   // sets a value translator
   void setTranslator(
-      std::function<std::string(std::string const&)> translator) {
+      std::function<std::string(std::string const&, char const*)> translator) {
     _translator = translator;
   }
 
@@ -357,7 +359,7 @@ class ProgramOptions {
       return true;
     }
 
-    std::string result = option.parameter->set(_translator(value));
+    std::string result = option.parameter->set(_translator(value, _binaryPath));
 
     if (!result.empty()) {
       // parameter validation failed
@@ -621,7 +623,9 @@ class ProgramOptions {
   // allow or disallow overriding already set options
   bool _overrideOptions;
   // translate input values
-  std::function<std::string(std::string const&)> _translator;
+  std::function<std::string(std::string const&, char const*)> _translator;
+  // directory of this binary
+  char const* _binaryPath;
 };
 }
 }

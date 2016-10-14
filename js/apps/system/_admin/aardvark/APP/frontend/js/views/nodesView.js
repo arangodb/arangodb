@@ -16,6 +16,7 @@
       'click #removeCoord': 'removeCoord',
       'click #addDBs': 'addDBs',
       'click #removeDBs': 'removeDBs',
+      'click .abortClusterPlan': 'abortClusterPlanModal',
       'keyup #plannedCoords': 'checkKey',
       'keyup #plannedDBs': 'checkKey'
     },
@@ -225,13 +226,45 @@
       });
     },
 
+    abortClusterPlanModal: function () {
+      var buttons = []; var tableContent = [];
+      tableContent.push(
+        window.modalView.createReadOnlyEntry(
+          'plan-abort-button',
+          'Caution',
+          'You are aborting the planned cluster plan. All pending servers are going to be removed. Continue?',
+          undefined,
+          undefined,
+          false,
+          /[<>&'"]/
+        )
+      );
+      buttons.push(
+        window.modalView.createSuccessButton('Yes', this.abortClusterPlan.bind(this))
+      );
+      window.modalView.show('modalTable.ejs', 'Modify Cluster Size', buttons, tableContent);
+    },
+
+    abortClusterPlan: function () {
+      window.modalView.hide();
+      try {
+        var coords = JSON.parse($('#infoCoords > .positive > span').text());
+        var dbs = JSON.parse($('#infoDBs > .positive > span').text());
+        this.setCoordSize(coords);
+        this.setDBsSize(dbs);
+      } catch (ignore) {
+        console.log(ignore);
+        arangoHelper.arangoError('Plan', 'Could not abort Cluster Plan');
+      }
+    },
+
     renderCounts: function (scale, callback) {
       var self = this;
-
       var renderFunc = function (id, ok, pending, error) {
         var string = '<span class="positive"><span>' + ok + '</span><i class="fa fa-check-circle"></i></span>';
         if (pending && scale === true) {
-          string = string + '<span class="warning"><span>' + pending + '</span><i class="fa fa-circle-o-notch fa-spin"></i></span>';
+          string = string + '<span class="warning"><span>' + pending +
+            '</span><i class="fa fa-circle-o-notch fa-spin"></i></span><button class="abortClusterPlan button-navbar button-default">Abort</button>';
         }
         if (error) {
           string = string + '<span class="negative"><span>' + error + '</span><i class="fa fa-exclamation-circle"></i></span>';

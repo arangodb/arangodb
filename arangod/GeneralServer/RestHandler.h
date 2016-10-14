@@ -58,6 +58,9 @@ class RestHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   enum class status { DONE, FAILED, ASYNC };
 
  public:
+  // returns the name of the handler
+  virtual char const* name() const = 0;
+
   // returns true if a handler is executed directly
   virtual bool isDirect() const = 0;
 

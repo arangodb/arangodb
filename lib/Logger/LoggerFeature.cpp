@@ -123,7 +123,8 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void LoggerFeature::loadOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+    std::shared_ptr<options::ProgramOptions> options,
+    const char *binaryPath) {
   // for debugging purpose, we set the log levels NOW
   // this might be overwritten latter
   Logger::setLogLevel(_levels);

@@ -44,7 +44,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ~RestReplicationHandler();
 
  public:
-  RestHandler::status execute();
+  char const* name() const override final { return "RestReplicationHandler"; }
+  RestHandler::status execute() override;
 
  public:
   //////////////////////////////////////////////////////////////////////////////
