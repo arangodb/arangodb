@@ -1729,11 +1729,11 @@ AgencyCommResult AgencyComm::sendWithFailover(
     // otherwise, try next
   }
 
-  if (!result.successful()) {
-    LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Unsuccessful AgencyComm: "
-      << "errorCode   : " << result.errorCode()
-      << "errorMessage: " << result.errorMessage()
-      << "errorDetails: " << result.errorDetails();
+  if (!result.successful() && result.httpCode() != 412) {
+    LOG_TOPIC(DEBUG, Logger::AGENCYCOMM) << "Unsuccessful AgencyComm: "
+      << "errorCode: " << result.errorCode()
+      << " errorMessage: " << result.errorMessage()
+      << " errorDetails: " << result.errorDetails();
   }
 
   return result;

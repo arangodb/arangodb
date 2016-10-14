@@ -70,7 +70,10 @@ class Constituent : public arangodb::Thread {
   bool running() const;
 
   /// @brief Called by REST handler
-  bool vote(term_t, std::string, index_t, term_t, bool appendEntries = false);
+  bool vote(term_t, std::string, index_t, term_t);
+
+  /// @brief Check leader
+  bool checkLeader(term_t, std::string, index_t, term_t);
 
   /// @brief My daily business
   void run() override final;
@@ -83,6 +86,7 @@ class Constituent : public arangodb::Thread {
 
   /// @brief Become follower
   void follow(term_t);
+  void followNoLock(term_t);
 
   /// @brief Agency size
   size_t size() const;
@@ -100,6 +104,7 @@ class Constituent : public arangodb::Thread {
 
   /// @brief set term to new term
   void term(term_t);
+  void termNoLock(term_t);
 
   /// @brief Agency endpoints
   std::vector<std::string> const& endpoints() const;
@@ -111,7 +116,8 @@ class Constituent : public arangodb::Thread {
   void candidate();
 
   /// @brief Become leader
-  void lead(std::map<std::string, bool> const& = std::map<std::string, bool>());
+  void lead(term_t,
+            std::map<std::string, bool> const& = std::map<std::string, bool>());
 
   /// @brief Call for vote (by leader or candidates after timeout)
   void callElection();
@@ -129,10 +135,12 @@ class Constituent : public arangodb::Thread {
   aql::QueryRegistry* _queryRegistry;
 
   term_t _term;            /**< @brief term number */
-  std::atomic<bool> _cast; /**< @brief cast a vote this term */
+  bool _cast;              /**< @brief cast a vote this term */
 
   std::string _leaderID; /**< @brief Current leader */
   std::string _id;       /**< @brief My own id */
+
+  double _lastHeartbeatSeen;
 
   role_t _role;  /**< @brief My role */
   Agent* _agent; /**< @brief My boss */

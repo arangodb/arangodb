@@ -134,8 +134,8 @@ priv_rpc_ret_t Agent::requestVote(
   term_t t, std::string const& id, index_t lastLogIndex,
   index_t lastLogTerm, query_t const& query) {
   
-  return priv_rpc_ret_t(
-    _constituent.vote(t, id, lastLogIndex, lastLogTerm), this->term());
+  bool doIVote = _constituent.vote(t, id, lastLogIndex, lastLogTerm);
+  return priv_rpc_ret_t(doIVote, this->term());
 }
 
 /// Get copy of momentary configuration
@@ -260,8 +260,10 @@ bool Agent::recvAppendEntriesRPC(
     }
   }
   
-  if (!_constituent.vote(term, leaderId, prevIndex, prevTerm, true)) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << "Not voting for " << leaderId;
+
+  if (!_constituent.checkLeader(term, leaderId, prevIndex, prevTerm)) {
+    LOG_TOPIC(WARN, Logger::AGENCY) << "Not accepting appendEntries from "
+      << leaderId;
     return false;
   }
 
