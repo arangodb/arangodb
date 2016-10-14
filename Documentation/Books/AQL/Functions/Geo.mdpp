@@ -70,9 +70,35 @@ There is no guaranteed order in which the documents are returned.
 
 !SECTION Geo utility functions
 
-The following helper functions do **not use any geo index**. It is advisable to use
-them in combination with index-accelerated geo functions to limit the number of
-calls to the non-accelerated functions because of their computational costs.
+The following helper functions do **not use any geo index**. On large datasets,
+it is advisable to use them in combination with index-accelerated geo functions
+to limit the number of calls to these non-accelerated functions because of their
+computational costs.
+
+!SUBSECTION DISTANCE()
+
+`DISTANCE(latitude1, longitude1, latitude2, longitude2) → distance`
+
+Calculate the distance between two arbitrary coordinates in meters (as birds
+would fly). The value is computed using the haversine formula, which is based
+on a spherical Earth model. It's fast to compute and is accurate to around 0.3%,
+which is sufficient for most use cases such as location-aware services.
+
+- **latitude1** (number): the latitude portion of the first coordinate
+- **longitude1** (number): the longitude portion of the first coordinate
+- **latitude2** (number): the latitude portion of the second coordinate
+- **longitude2** (number): the longitude portion of the second coordinate
+- returns **distance** (number): the distance between both coordinates in meters
+
+```js
+// Distance between Brandenburg Gate (Berlin) and ArangoDB headquarters (Cologne)
+DISTANCE(52.5163, 13.3777, 50.9322, 6.94) // 476918.89688380965 (~477km)
+
+// Sort a small number of documents based on distance to Central Park (New York)
+FOR doc IN documentSubset // e.g. documents returned by a traversal
+  SORT DISTANCE(doc.latitude, doc.longitude, 40.78, -73.97)
+  RETURN doc
+```
 
 !SUBSECTION IS_IN_POLYGON()
 
