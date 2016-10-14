@@ -1,5 +1,9 @@
 devel
 -----
+
+* added AQL function `DISTANCE` to calculate the distance between two arbitrary
+  coordinates (haversine formula)
+
 * rewrote scheduler and dispatcher based on boost::asio
 
   parameter changed:
