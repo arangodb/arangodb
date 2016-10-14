@@ -802,6 +802,8 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
     // loop over the complete block
     // Prepare both builders
+    std::vector<bool> wasTaken;
+    wasTaken.reserve(n);
     for (size_t i = 0; i < n; ++i) {
       AqlValue const& a = res->getValueReference(i, docRegisterId);
 
@@ -810,31 +812,37 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
       errorCode = TRI_ERROR_NO_ERROR;
 
+      bool tookThis = false;
+
       if (a.isObject()) {
-        // old document present => update case
-        key.clear();
-        errorCode = extractKey(a, key);
+        if (!ep->_options.consultAqlWriteFilter ||
+            !_collection->getCollection()->skipForAqlWrite(a.slice(), "")) {
+          // old document present => update case
+          key.clear();
+          errorCode = extractKey(a, key);
 
-        if (errorCode == TRI_ERROR_NO_ERROR) {
-          AqlValue const& updateDoc = res->getValueReference(i, updateRegisterId);
+          if (errorCode == TRI_ERROR_NO_ERROR) {
+            AqlValue const& updateDoc = res->getValueReference(i, updateRegisterId);
 
-          if (updateDoc.isObject()) {
-            VPackSlice toUpdate = updateDoc.slice();
-         
-            keyBuilder.clear();
-            keyBuilder.openObject();
-            keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
-            keyBuilder.close();
-            if (isMultiple) {
-              VPackBuilder tmp = VPackCollection::merge(toUpdate, keyBuilder.slice(), false, false);
-              updateBuilder.add(tmp.slice());
-              upRows.emplace_back(dstRow);
+            if (updateDoc.isObject()) {
+              tookThis = true;
+              VPackSlice toUpdate = updateDoc.slice();
+           
+              keyBuilder.clear();
+              keyBuilder.openObject();
+              keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
+              keyBuilder.close();
+              if (isMultiple) {
+                VPackBuilder tmp = VPackCollection::merge(toUpdate, keyBuilder.slice(), false, false);
+                updateBuilder.add(tmp.slice());
+                upRows.emplace_back(dstRow);
+              } else {
+                updateBuilder = VPackCollection::merge(toUpdate, keyBuilder.slice(), false, false);
+              }
+
             } else {
-              updateBuilder = VPackCollection::merge(toUpdate, keyBuilder.slice(), false, false);
+              errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
             }
-
-          } else {
-            errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
           }
         }
       } else {
@@ -842,11 +850,15 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
         AqlValue const& insertDoc = res->getValueReference(i, insertRegisterId);
         VPackSlice toInsert = insertDoc.slice();
         if (toInsert.isObject()) {
-          if (_isDBServer && isShardKeyError(toInsert)) {
-            errorCode = TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
-          } else {
-            insertBuilder.add(toInsert);
-            insRows.emplace_back(dstRow);
+          if (!ep->_options.consultAqlWriteFilter ||
+              !_collection->getCollection()->skipForAqlWrite(toInsert, "")) {
+            if (_isDBServer && isShardKeyError(toInsert)) {
+              errorCode = TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
+            } else {
+              tookThis = true;
+              insertBuilder.add(toInsert);
+              insRows.emplace_back(dstRow);
+            }
           }
         } else {
           errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
@@ -857,6 +869,8 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
         // Handle the error here, it won't be send to server
         handleResult(errorCode, ep->_options.ignoreErrors, &errorMessage);
       }
+
+      wasTaken.push_back(tookThis);
       ++dstRow;
     }
     // done with collecting a block

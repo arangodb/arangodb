@@ -985,6 +985,8 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
 
   VPackSlice input = val.slice();  // will throw when wrong type
 
+  bool usedAlternativeRegId = false;
+
   if (input.isNull() && _alternativeRegId != ExecutionNode::MaxRegisterId) {
     // value is set, but null
     // check if there is a second input register available (UPSERT makes use of
@@ -993,6 +995,7 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
     val = cur->getValueReference(_pos, _alternativeRegId);
 
     input = val.slice();  // will throw when wrong type
+    usedAlternativeRegId = true;
   }
 
   VPackSlice value = input;
@@ -1039,11 +1042,14 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
 
         builder2 = VPackCollection::merge(input, temp.slice(), true);
 
-        // clear the previous value
-        cur->destroyValue(_pos, _regId);
-
-        // overwrite with new value
-        cur->setValue(_pos, _regId, AqlValue(builder2));
+        // clear the previous value and overwrite with new value:
+        if (usedAlternativeRegId) {
+          cur->destroyValue(_pos, _alternativeRegId);
+          cur->setValue(_pos, _alternativeRegId, AqlValue(builder2));
+        } else {
+          cur->destroyValue(_pos, _regId);
+          cur->setValue(_pos, _regId, AqlValue(builder2));
+        }
         value = builder2.slice();
       }
     } else {
@@ -1061,11 +1067,14 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
 
       builder2 = VPackCollection::merge(input, temp.slice(), true);
 
-      // clear the previous value
-      cur->destroyValue(_pos, _regId);
-
-      // overwrite with new value
-      cur->setValue(_pos, _regId, AqlValue(builder2.slice()));
+      // clear the previous value and overwrite with new value:
+      if (usedAlternativeRegId) {
+        cur->destroyValue(_pos, _alternativeRegId);
+        cur->setValue(_pos, _alternativeRegId, AqlValue(builder2.slice()));
+      } else {
+        cur->destroyValue(_pos, _regId);
+        cur->setValue(_pos, _regId, AqlValue(builder2.slice()));
+      }
       value = builder2.slice();
     }
   }
