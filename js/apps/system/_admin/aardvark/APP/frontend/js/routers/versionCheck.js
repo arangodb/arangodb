@@ -139,6 +139,7 @@
         window.versionHelper.fromString(data.version);
 
         if (data.license) {
+          window.frontendConfig.license = data.license;
           if (data.license !== 'community') {
             $('#ArangoDBLogo').attr('src', 'img/arangodb_logo_alt.svg');
           } else {

@@ -132,6 +132,8 @@ void opensslCleanup() {
 }
 }
 
+const boost::asio::ssl::detail::openssl_init<true> SslFeature::sslBase{};
+
 SslFeature::SslFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Ssl") {
   setOptional(true);
@@ -141,18 +143,18 @@ SslFeature::SslFeature(application_features::ApplicationServer* server)
 }
 
 void SslFeature::prepare() {
-  SSL_library_init();
-  SSL_load_error_strings();
-  OpenSSL_add_all_algorithms();
-  ERR_load_crypto_strings();
+  // SSL_library_init();
+  // SSL_load_error_strings();
+  // OpenSSL_add_all_algorithms();
+  // ERR_load_crypto_strings();
 
-  opensslSetup();
+  // opensslSetup();
 }
 
 void SslFeature::unprepare() {
-  opensslCleanup();
+  // opensslCleanup();
 
-  ERR_free_strings();
-  EVP_cleanup();
-  CRYPTO_cleanup_all_ex_data();
+  // ERR_free_strings();
+  // EVP_cleanup();
+  // CRYPTO_cleanup_all_ex_data();
 }

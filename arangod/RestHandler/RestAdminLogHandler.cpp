@@ -42,7 +42,7 @@ RestAdminLogHandler::RestAdminLogHandler(GeneralRequest* request,
 
 bool RestAdminLogHandler::isDirect() const { return true; }
 
-RestHandler::status RestAdminLogHandler::execute() {
+RestStatus RestAdminLogHandler::execute() {
   size_t const len = _request->suffix().size();
 
   if (len == 0) {
@@ -50,7 +50,7 @@ RestHandler::status RestAdminLogHandler::execute() {
   } else {
     setLogLevel();
   }
-  return status::DONE; 
+  return RestStatus::DONE; 
 }
 
 void RestAdminLogHandler::reportLogs() {

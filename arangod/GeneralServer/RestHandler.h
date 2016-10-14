@@ -28,10 +28,10 @@
 
 #include "Basics/Exceptions.h"
 #include "Basics/WorkMonitor.h"
-#include "Dispatcher/Dispatcher.h"
-#include "Dispatcher/Job.h"
+#include "GeneralServer/RestEngine.h"
 #include "Rest/GeneralResponse.h"
-#include "Scheduler/events.h"
+#include "Scheduler/EventLoop.h"
+#include "Scheduler/JobQueue.h"
 #include "Statistics/StatisticsAgent.h"
 
 namespace arangodb {
@@ -41,7 +41,8 @@ class WorkMonitor;
 namespace rest {
 class RestHandlerFactory;
 
-class RestHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
+class RestHandler : public RequestStatisticsAgent,
+                    public std::enable_shared_from_this<RestHandler> {
   RestHandler(RestHandler const&) = delete;
   RestHandler& operator=(RestHandler const&) = delete;
 
@@ -50,91 +51,89 @@ class RestHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
 
  public:
   RestHandler(GeneralRequest*, GeneralResponse*);
-
- protected:
   ~RestHandler() = default;
 
  public:
-  enum class status { DONE, FAILED, ASYNC };
+  uint64_t handlerId() const { return _handlerId; }
+  uint64_t messageId() const;
+  bool needsOwnThread() const { return _needsOwnThread; }
 
- public:
-  // returns the name of the handler
-  virtual char const* name() const = 0;
-
-  // returns true if a handler is executed directly
-  virtual bool isDirect() const = 0;
-
-  // returns true if a handler desires to start a new dispatcher thread
-  virtual bool needsOwnThread() const { return _needsOwnThread; }
-
-  // returns the queue name
-  virtual size_t queue() const { return Dispatcher::STANDARD_QUEUE; }
-
-  // prepares execution of a handler, has to be called before execute
-  virtual void prepareExecute() {}
-
-  // executes a handler
-  virtual status execute() = 0;
-
-  // finalizes execution of a handler, has to be called after execute
-  virtual void finalizeExecute() {}
-
-  // tries to cancel an execution
-  virtual bool cancel() { return false; }
-
-  // handles error
-  virtual void handleError(basics::Exception const&) = 0;
-
-  // adds a response
-  virtual void addResponse(RestHandler*) {}
-
- public:
-  // returns the id of the underlying task
-  uint64_t taskId() const { return _taskId; }
-
-  // returns the event loop of the underlying task
-  EventLoop eventLoop() const { return _loop; }
-
-  // sets the id of the underlying task or 0 if dettach
-  void setTaskId(uint64_t id, EventLoop);
-
-  // execution cycle including error handling and prepare
-  status executeFull();
-
-  // return a pointer to the request
   GeneralRequest const* request() const { return _request.get(); }
-
-  // steal the pointer to the request
   std::unique_ptr<GeneralRequest> stealRequest() { return std::move(_request); }
 
-  // returns the response
   GeneralResponse* response() const { return _response.get(); }
-
-  // steal the response
   std::unique_ptr<GeneralResponse> stealResponse() {
     return std::move(_response);
   }
 
+ public:
+  virtual char const* name() const = 0;
+  virtual bool isDirect() const = 0;
+  virtual size_t queue() const { return JobQueue::STANDARD_QUEUE; }
+
+  virtual void prepareExecute() {}
+  virtual RestStatus execute() = 0;
+  virtual void finalizeExecute() {}
+
+  virtual bool cancel() {
+    _canceled.store(true);
+    return false;
+  }
+
+  virtual void handleError(basics::Exception const&) = 0;
+
  protected:
-  // resets the request
   void resetResponse(rest::ResponseCode);
 
  protected:
-  // handler id
   uint64_t const _handlerId;
 
-  // task id or (initially) 0
-  uint64_t _taskId = 0;
-
-  // event loop
-  EventLoop _loop;
+  std::atomic<bool> _canceled;
 
   std::unique_ptr<GeneralRequest> _request;
   std::unique_ptr<GeneralResponse> _response;
 
  private:
   bool _needsOwnThread = false;
+
+ public:
+  void initEngine(EventLoop loop, RequestStatisticsAgent* agent,
+                  std::function<void(RestHandler*)> storeResult) {
+    _storeResult = storeResult;
+    _engine.init(loop, agent);
+  }
+
+  int asyncRunEngine() { return _engine.asyncRun(shared_from_this()); }
+  int syncRunEngine() {
+    _storeResult = [](RestHandler*) {};
+    return _engine.syncRun(shared_from_this());
+  }
+
+  int prepareEngine();
+  int executeEngine();
+  int runEngine(bool synchron);
+  int finalizeEngine();
+
+ private:
+  RestEngine _engine;
+  std::function<void(rest::RestHandler*)> _storeResult;
 };
+
+inline uint64_t RestHandler::messageId() const {
+  uint64_t messageId = 0UL;
+  auto req = _request.get();
+  auto res = _response.get();
+  if (req) {
+    messageId = req->messageId();
+  } else if (res) {
+    messageId = res->messageId();
+  } else {
+    LOG_TOPIC(WARN, Logger::COMMUNICATION)
+        << "could not find corresponding request/response";
+  }
+
+  return messageId;
+}
 }
 }
 

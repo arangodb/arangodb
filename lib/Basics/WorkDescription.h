@@ -29,45 +29,54 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class Thread;
+
 namespace rest {
 class RestHandler;
 }
 
-class Thread;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief type of the current work
-////////////////////////////////////////////////////////////////////////////////
-
 enum class WorkType { THREAD, HANDLER, AQL_STRING, AQL_ID, CUSTOM };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief description of the current work
-////////////////////////////////////////////////////////////////////////////////
-
 struct WorkDescription {
-  WorkDescription(WorkType, WorkDescription*);
+  WorkDescription(WorkType type, WorkDescription* prev)
+      : _type(type), _prev(prev) {}
 
   WorkType _type;
-  std::atomic<WorkDescription*> _prev;
   uint64_t _id;
-  TRI_vocbase_t* _vocbase;
+  std::atomic<WorkDescription*> _prev;
 
-  bool _destroy;
-  std::atomic<bool> _canceled;
+  union Data {
+    Data() {}
+    ~Data() {}
 
-  union identifer {
-    char _customType[16];
-    uint64_t _id;
-  } _identifier;
+    // THREAD
+    struct ThreadMember {
+      ThreadMember(Thread* thread, bool canceled)
+          : _thread(thread), _canceled(canceled) {}
 
-  union data {
-    data() {}
-    ~data() {}
+      Thread* _thread;
+      std::atomic<bool> _canceled;
+    } _thread;
 
-    char text[256];
-    Thread* thread;
-    rest::RestHandler* handler;
+    // HANDLER
+    struct HandlerMember {
+      std::shared_ptr<rest::RestHandler> _handler;
+      std::atomic<bool> _canceled;
+    } _handler;
+
+    // AQL_STRING, AQL_ID
+    struct AqlStringMember {
+      TRI_vocbase_t* _vocbase;
+      uint64_t _id;
+      char _text[256];
+      std::atomic<bool> _canceled;
+    } _aql;
+
+    // CUSTOM
+    struct CustomMember {
+      char _type[16];
+      char _text[256];
+    } _custom;
   } _data;
 };
 }

@@ -23,19 +23,21 @@
 
 #include "Cluster/ClusterComm.h"
 
+
+
 #include "Basics/ConditionLocker.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Dispatcher/DispatcherThread.h"
 #include "Logger/Logger.h"
+#include "Scheduler/JobGuard.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "SimpleHttpClient/ConnectionManager.h"
-#include "SimpleHttpClient/SimpleHttpCommunicatorResult.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
+#include "SimpleHttpClient/SimpleHttpCommunicatorResult.h"
 #include "Utils/Transaction.h"
 #include "VocBase/ticks.h"
-
 using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -204,7 +206,7 @@ char const* ClusterCommResult::stringifyStatus(ClusterCommOpStatus status) {
 
 ClusterComm::ClusterComm()
     : _backgroundThread(nullptr), _logConnectionErrors(false) {
-  _communicator = std::make_shared<communicator::Communicator>();    
+  _communicator = std::make_shared<communicator::Communicator>();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -335,8 +337,7 @@ OperationID ClusterComm::asyncRequest(
 
   std::unique_ptr<HttpRequest> request;
   if (prepared.second == nullptr) {
-    std::unordered_map<std::string, std::string> unusedHeaders;
-    request.reset(HttpRequest::createHttpRequest(ContentType::JSON, "", 0, unusedHeaders));
+    request.reset(HttpRequest::createHttpRequest(ContentType::JSON, "", 0, std::unordered_map<std::string,std::string>()));
     request->setRequestType(reqtype); // mop: a fake but a good one
   } else {
     request.reset(prepared.second);
@@ -348,7 +349,7 @@ OperationID ClusterComm::asyncRequest(
 
   Callbacks callbacks;
   bool doLogConnectionErrors = logConnectionErrors();
-  
+
   if (callback) {
     callbacks._onError = [callback, result, doLogConnectionErrors, this](int errorCode, std::unique_ptr<GeneralResponse> response) {
       {
@@ -404,12 +405,12 @@ OperationID ClusterComm::asyncRequest(
       somethingReceived.broadcast();
     };
   }
-  
+
   TRI_ASSERT(request != nullptr);
   CONDITION_LOCKER(locker, somethingReceived);
   auto ticketId = _communicator->addRequest(createCommunicatorDestination(result->endpoint, path),
                std::move(request), callbacks, opt);
-  
+
   result->operationID = ticketId;
   responses.emplace(ticketId, AsyncResponse{TRI_microtime(), result});
   return ticketId;
@@ -447,7 +448,7 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
   // mop: this is used to distinguish a syncRequest from an asyncRequest while processing
   // the answer...
   result->single = true;
-  
+
   if (prepared.second == nullptr) {
     return result;
   }
@@ -480,7 +481,7 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
       wasSignaled = true;
       cv.signal();
   });
-  
+
   communicator::Options opt;
   opt.requestTimeout = timeout;
   TRI_ASSERT(request != nullptr);
@@ -488,7 +489,7 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
   CONDITION_LOCKER(isen, cv);
   _communicator->addRequest(createCommunicatorDestination(result->endpoint, path),
                std::move(request), callbacks, opt);
-  
+
   while (!wasSignaled) {
     cv.wait(100000);
   }
@@ -561,17 +562,15 @@ ClusterCommResult const ClusterComm::wait(
     ClientTransactionID const& clientTransactionID,
     CoordTransactionID const coordTransactionID, Ticket const ticketId,
     ShardID const& shardID, ClusterCommTimeout timeout) {
-  
+
   ResponseIterator i;
   AsyncResponse response;
 
   // tell Dispatcher that we are waiting:
-  auto dt = arangodb::rest::DispatcherThread::current();
+  JobGuard guard{SchedulerFeature::SCHEDULER};
+  guard.block();
 
-  if (dt != nullptr) {
-    dt->block();
-  }
-  
+
   CONDITION_LOCKER(locker, somethingReceived);
   if (ticketId == 0) {
     for (i = responses.begin(); i != responses.end(); i++) {
@@ -588,23 +587,17 @@ ClusterCommResult const ClusterComm::wait(
     res.operationID = ticketId;
     res.status = CL_COMM_DROPPED;
     // tell Dispatcher that we are back in business
-    if (dt != nullptr) {
-      dt->unblock();
-    }
     return res;
   }
   response = i->second;
-  
+
   ClusterCommOpStatus status = response.result->status;
-  
+
   while (status == CL_COMM_SUBMITTED) {
     somethingReceived.wait(100000);
     status = response.result->status;
   }
   responses.erase(i);
-  if (dt != nullptr) {
-    dt->unblock();
-  }
   return *response.result.get();
 }
 
@@ -1019,8 +1012,8 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
                 << "ClusterComm::performRequests: sending request to "
                 << requests[i].destination << ":" << requests[i].path
                 << "body:" << requests[i].body;
-            
-            dueTime[i] = endTime + 10; 
+
+            dueTime[i] = endTime + 10;
             double localTimeout = endTime - now;
             OperationID opId = asyncRequest(
                 "", coordinatorTransactionID, requests[i].destination,
@@ -1039,7 +1032,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
 
       auto res = wait("", coordinatorTransactionID, 0, "", actionNeeded - now);
       // wait could have taken some time, so we need to update now now
-      now = TRI_microtime();  
+      now = TRI_microtime();
       // note that this is needed further below from here, so it is *not*
       // good enough to only update at the top of the loop!
 
@@ -1156,7 +1149,7 @@ size_t ClusterComm::performSingleRequest(
     nrDone = 0;
     return 0;
   }
-  
+
   // Add correct recognition of content type later.
   req.result.status = CL_COMM_RECEIVED;  // a fake, but a good one
   req.done = true;
@@ -1215,7 +1208,7 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(std::str
     return std::make_pair(result, request);
   }
   result->status = CL_COMM_SUBMITTED;
-  
+
   std::unordered_map<std::string, std::string> headersCopy(headerFields);
   if (destination.substr(0, 6) == "shard:") {
     if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
@@ -1233,7 +1226,7 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(std::str
   TRI_voc_tick_t timeStamp = TRI_HybridLogicalClock();
   headersCopy[StaticStrings::HLCHeader] =
     arangodb::basics::HybridLogicalClock::encodeTimeStamp(timeStamp);
-  
+
 #ifdef DEBUG_CLUSTER_COMM
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #if ARANGODB_ENABLE_BACKTRACE
@@ -1244,7 +1237,7 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(std::str
 #endif
 #endif
 #endif
-  
+
   if (body == nullptr) {
     request = HttpRequest::createHttpRequest(ContentType::JSON, "", 0, headersCopy);
   } else {
@@ -1264,7 +1257,7 @@ void ClusterCommThread::abortRequestsToFailedServers() {
   auto failedServers = ci->getFailedServers();
   std::vector<std::string> failedServerEndpoints;
   failedServerEndpoints.reserve(failedServers.size());
-  
+
   for (auto const& failedServer: failedServers) {
     failedServerEndpoints.push_back(_cc->createCommunicatorDestination(ci->getServerEndpoint(failedServer), "/").url());
   }

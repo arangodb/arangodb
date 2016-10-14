@@ -26,7 +26,6 @@
 #include "Basics/MutexLocker.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/HeartbeatThread.h"
-#include "Dispatcher/DispatcherQueue.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "V8/v8-conv.h"
@@ -40,54 +39,17 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::rest;
 
-static arangodb::Mutex ExecutorLock;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new db server job
-////////////////////////////////////////////////////////////////////////////////
-
 DBServerAgencySync::DBServerAgencySync(HeartbeatThread* heartbeat)
-    : Job("DBServerAgencySync"),
-      _heartbeat(heartbeat),
-      _shutdown(0),
-      _abandon(false) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructs a db server job
-////////////////////////////////////////////////////////////////////////////////
-
-DBServerAgencySync::~DBServerAgencySync() {}
+    : _heartbeat(heartbeat) {}
 
 void DBServerAgencySync::work() {
   LOG_TOPIC(TRACE, Logger::CLUSTER) << "starting plan update handler";
 
-  if (_shutdown != 0) {
-    return;
-  }
-
   _heartbeat->setReady();
 
-  DBServerAgencySyncResult result;
-  {
-    // only one plan change at a time
-    MUTEX_LOCKER(mutexLocker, ExecutorLock);
-
-    result = execute();
-  }
-
-  _heartbeat->removeDispatchedJob(result);
+  DBServerAgencySyncResult result = execute();
+  _heartbeat->dispatchedJobResult(result);
 }
-
-bool DBServerAgencySync::cancel() { return false; }
-
-void DBServerAgencySync::cleanup(DispatcherQueue* queue) {
-  queue->removeJob(this);
-  delete this;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute job
-////////////////////////////////////////////////////////////////////////////////
 
 DBServerAgencySyncResult DBServerAgencySync::execute() {
   // default to system database

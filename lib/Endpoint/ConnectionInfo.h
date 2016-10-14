@@ -41,6 +41,7 @@ struct ConnectionInfo {
         clientAddress(),
         endpoint(),
         endpointType(Endpoint::DomainType::UNKNOWN),
+        encryptionType(Endpoint::EncryptionType::NONE),
         sslContext(nullptr) {}
 
  public:
@@ -67,6 +68,7 @@ struct ConnectionInfo {
   std::string clientAddress;
   std::string endpoint;
   Endpoint::DomainType endpointType;
+  Endpoint::EncryptionType encryptionType;
 
   void* sslContext;
 };

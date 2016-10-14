@@ -24,6 +24,8 @@
 
 #include <thread>
 
+#include "3rdParty/valgrind/valgrind.h"
+
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/ConditionLocker.h"
@@ -31,12 +33,12 @@
 #include "Basics/StringUtils.h"
 #include "Basics/WorkMonitor.h"
 #include "Cluster/ServerState.h"
-#include "Dispatcher/DispatcherFeature.h"
-#include "Dispatcher/DispatcherThread.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Scheduler/JobGuard.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
@@ -47,8 +49,6 @@
 #include "V8Server/v8-actions.h"
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/vocbase.h"
-
-#include "3rdParty/valgrind/valgrind.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -101,7 +101,6 @@ V8DealerFeature::V8DealerFeature(
   requiresElevatedPrivileges(false);
   startsAfter("Action");
   startsAfter("Database");
-  startsAfter("Dispatcher");
   startsAfter("QueryRegistry");
   startsAfter("Random");
   startsAfter("Recovery");
@@ -202,10 +201,10 @@ void V8DealerFeature::start() {
 
   // try to guess a suitable number of contexts
   if (0 == _nrContexts && 0 == _forceNrContexts) {
-    DispatcherFeature* dispatcher =
-        ApplicationServer::getFeature<DispatcherFeature>("Dispatcher");
+    SchedulerFeature* scheduler =
+        ApplicationServer::getFeature<SchedulerFeature>("Scheduler");
 
-    _nrContexts = dispatcher->concurrency();
+    _nrContexts = scheduler->concurrency();
   }
 
   // set a minimum of V8 contexts
@@ -510,16 +509,11 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
         break;
       }
 
-      auto currentThread = arangodb::rest::DispatcherThread::current();
-
-      if (currentThread != nullptr) {
-        currentThread->block();
-      }
-
-      guard.wait();
-
-      if (currentThread != nullptr) {
-        currentThread->unblock();
+      {
+        JobGuard jobGuard(SchedulerFeature::SCHEDULER);
+        jobGuard.block();
+        
+        guard.wait();
       }
     }
 

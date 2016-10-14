@@ -65,7 +65,7 @@ PathHandler::PathHandler(GeneralRequest* request, GeneralResponse* response,
 // Handler methods
 // -----------------------------------------------------------------------------
 
-RestHandler::status PathHandler::execute() {
+RestStatus PathHandler::execute() {
   // TODO needs to handle VPP
   auto response = dynamic_cast<HttpResponse*>(_response.get());
 
@@ -98,7 +98,7 @@ RestHandler::status PathHandler::execute() {
     response->body().appendText(url);
     response->body().appendText("</a>.</p></body></html>");
 
-    return status::DONE;
+    return RestStatus::DONE;
   }
 
   for (std::vector<std::string>::const_iterator j = names.begin();
@@ -110,7 +110,7 @@ RestHandler::status PathHandler::execute() {
 
       resetResponse(rest::ResponseCode::FORBIDDEN);
       response->body().appendText("path contains '.'");
-      return status::DONE;
+      return RestStatus::DONE;
     }
 
     if (next == "..") {
@@ -118,7 +118,7 @@ RestHandler::status PathHandler::execute() {
 
       resetResponse(rest::ResponseCode::FORBIDDEN);
       response->body().appendText("path contains '..'");
-      return status::DONE;
+      return RestStatus::DONE;
     }
 
     std::string::size_type sc = next.find_first_not_of(AllowedChars);
@@ -129,7 +129,7 @@ RestHandler::status PathHandler::execute() {
       resetResponse(rest::ResponseCode::FORBIDDEN);
       response->body().appendText("path contains illegal character '" +
                                   std::string(1, next[sc]) + "'");
-      return status::DONE;
+      return RestStatus::DONE;
     }
 
     if (!path.empty()) {
@@ -138,7 +138,7 @@ RestHandler::status PathHandler::execute() {
 
         resetResponse(rest::ResponseCode::NOT_FOUND);
         response->body().appendText("file not found");
-        return status::DONE;
+        return RestStatus::DONE;
       }
     }
 
@@ -150,7 +150,7 @@ RestHandler::status PathHandler::execute() {
 
       resetResponse(rest::ResponseCode::FORBIDDEN);
       response->body().appendText("symbolic links are not allowed");
-      return status::DONE;
+      return RestStatus::DONE;
     }
   }
 
@@ -159,7 +159,7 @@ RestHandler::status PathHandler::execute() {
 
     resetResponse(rest::ResponseCode::NOT_FOUND);
     response->body().appendText("file not found");
-    return status::DONE;
+    return RestStatus::DONE;
   }
 
   resetResponse(rest::ResponseCode::OK);
@@ -171,7 +171,7 @@ RestHandler::status PathHandler::execute() {
 
     resetResponse(rest::ResponseCode::NOT_FOUND);
     response->body().appendText("file not readable");
-    return status::DONE;
+    return RestStatus::DONE;
   }
 
   // check if we should use caching and this is an HTTP GET request
@@ -193,7 +193,7 @@ RestHandler::status PathHandler::execute() {
       if (mimetype != nullptr) {
         response->setContentType(mimetype);
 
-        return status::DONE;
+        return RestStatus::DONE;
       }
     } else {
       // note: changed the log level to debug. an unknown content-type does not
@@ -204,7 +204,7 @@ RestHandler::status PathHandler::execute() {
 
   response->setContentType(contentType);
 
-  return status::DONE;
+  return RestStatus::DONE;
 }
 
 void PathHandler::handleError(Exception const&) {

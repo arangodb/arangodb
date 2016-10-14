@@ -34,7 +34,7 @@ class RestPleaseUpgradeHandler : public rest::RestHandler {
  public:
   char const* name() const override final { return "RestPleaseUpgradeHandler"; }
   bool isDirect() const override;
-  status execute() override;
+  RestStatus execute() override;
   void handleError(const basics::Exception&) override;
 };
 }

@@ -233,7 +233,8 @@ void Thread::shutdown() {
 
     if (!isSilent()) {
       LOG_TOPIC(WARN, Logger::THREADS) << "forcefully shutting down thread '"
-                                       << _name << "'";
+                                       << _name << "' in state "
+                                       << stringify(_state.load());
     }
   }
 

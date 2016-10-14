@@ -199,6 +199,10 @@ $navbar-size: 150px;
 
     .up-to-date {
       color: $c-positive;
+
+      .fa-exclamation-circle {
+        padding-left: 3px;
+      }
     }
   }
 }

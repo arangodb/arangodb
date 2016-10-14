@@ -1373,8 +1373,17 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
     _httpResult.reset(_client->request(method, location, body.c_str(),
                                        body.size(), headerFields));
   }
+
+  if (_httpResult == nullptr) {
+    // create a fake response to prevent crashes when accessing the response
+    _httpResult.reset(new SimpleHttpResult());
+    _httpResult->setHttpReturnCode(500);
+    _httpResult->setResultType(SimpleHttpResult::COULD_NOT_CONNECT);
+  }
     
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
+
+  TRI_ASSERT(_httpResult != nullptr);
 
   if (!_httpResult->isComplete()) {
     // not complete
@@ -1411,6 +1420,8 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
         break;
     }
 
+    result->ForceSet(TRI_V8_ASCII_STRING("error"),
+                      v8::Boolean::New(isolate, true));
     result->ForceSet(TRI_V8_ASCII_STRING("errorNum"),
                      v8::Integer::New(isolate, errorNumber));
     result->ForceSet(TRI_V8_ASCII_STRING("errorMessage"),
@@ -1431,14 +1442,14 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
     std::string returnMessage(_httpResult->getHttpReturnMessage());
 
     result->ForceSet(TRI_V8_ASCII_STRING("error"),
-                     v8::Boolean::New(isolate, true));
+                      v8::Boolean::New(isolate, true));
     result->ForceSet(TRI_V8_ASCII_STRING("errorNum"),
-                     v8::Integer::New(isolate, _lastHttpReturnCode));
+                      v8::Integer::New(isolate, _lastHttpReturnCode));
     result->ForceSet(TRI_V8_ASCII_STRING("errorMessage"),
-                     TRI_V8_STD_STRING(returnMessage));
+                      TRI_V8_STD_STRING(returnMessage));
   } else {
     result->ForceSet(TRI_V8_ASCII_STRING("error"),
-                     v8::Boolean::New(isolate, false));
+                      v8::Boolean::New(isolate, false));
   }
 
   // got a body, copy it into the result

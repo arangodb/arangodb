@@ -1,6 +1,35 @@
 devel
 -----
 
+* ui: added new graph viewer
+
+* ui: aql-editor added tabular & graph display
+
+* ui: aql-editor improved usability
+
+* ui: aql-editor: query profiling support
+
+* fixed issue #2109
+
+* fixed issue #2111
+
+* fixed issue #2075
+
+* rewrote scheduler and dispatcher based on boost::asio
+
+  parameter changed:
+    --scheduler.threads and --server.threads are now merged into a single one: --server.threads
+
+    hidden --server.extra-threads has been removed
+
+    hidden --server.aql-threads has been removed
+
+    hidden --server.backend has been removed
+
+    hidden --server.show-backends has been removed
+
+    hidden --server.thread-affinity has been removed
+
 * fixed issue #2086
 
 * fixed issue #2079
@@ -9,27 +38,27 @@ devel
 
   make the AQL query optimizer inject filter condition expressions referred to by variables during filter condition aggregation.
   for example, in the following query
-  
+
       FOR doc IN collection
 	LET cond1 = (doc.value == 1)
 	LET cond2 = (doc.value == 2)
 	FILTER cond1 || cond2
 	RETURN { doc, cond1, cond2 }
-  
+
   the optimizer will now inject the conditions for `cond1` and `cond2` into the filter condition `cond1 || cond2`, expanding it to 
   `(doc.value == 1) || (doc.value == 2)` and making these conditions available for index searching.
 
   note that the optimizer previously already injected some conditions into other conditions, but only if the variable that defined 
   the condition was not used elsewhere. for example, the filter condition in the query
-  
+
       FOR doc IN collection
 	LET cond = (doc.value == 1)
 	FILTER cond
 	RETURN { doc }
-  
+
   already got optimized before because `cond` was only used once in the query and the optimizer decided to inject it into the 
   place where it was used.
-  
+
   this only worked for variables that were referred to once in the query. when a variable was used multiple times, the condition 
   was not injected as in the following query
 
@@ -137,8 +166,11 @@ devel
 
 * Agency bug fix for handling of empty json objects as values.
 
+
 v3.0.11 (2016-XX-XX)
 --------------------
+
+* fixed issue #2110
 
 * fixed issue #2081
 
@@ -427,7 +459,7 @@ v3.0.0-rc1 (2015-06-10)
     - `[ ]` is now converted to `[]`
     - `[ 1, 2, 3 ]` is now converted to `[1,2,3]`
     - `[ "test", 1, 2 ] is now converted to `["test",1,2]`
-    
+
     Previous versions of ArangoDB converted arrays with no members into the
     empty string, and non-empty arrays into a comma-separated list of member
     values, without the surrounding angular brackets. Additionally, string
@@ -436,13 +468,13 @@ v3.0.0-rc1 (2015-06-10)
     - `[ ]` was converted to ``
     - `[ 1, 2, 3 ]` was converted to `1,2,3`
     - `[ "test", 1, 2 ] was converted to `test,1,2`
-  
+
   - objects are now converted to their JSON-stringify equivalents, e.g.
 
     - `{ }` is converted to `{}`
     - `{ a: 1, b: 2 }` is converted to `{"a":1,"b":2}`
     - `{ "test" : "foobar" }` is converted to `{"test":"foobar"}`
-    
+
     Previous versions of ArangoDB always converted objects into the string
     `[object Object]`  
 
@@ -547,19 +579,19 @@ v3.0.0-rc1 (2015-06-10)
   loop one level higher, eliminating the subquery completely. For example, the query
 
       FOR i IN (FOR j IN [1,2,3] RETURN j) RETURN i
-      
+
   will be transformed by the rule to:
-   
+
       FOR i IN [1,2,3] RETURN i
-      
+
   The query
 
       FOR name IN (FOR doc IN _users FILTER doc.status == 1 RETURN doc.name) LIMIT 2 RETURN name
-      
+
   will be transformed into
-  
+
       FOR tmp IN _users FILTER tmp.status == 1 LIMIT 2 RETURN tmp.name
-       
+
   The rule will only fire when the subquery is used as an operand to a `FOR` loop, and
   if the subquery does not contain a `COLLECT` with an `INTO` variable.
 
@@ -780,7 +812,7 @@ v2.8.8 (2016-04-19)
   To avoid specifying complete document ids (consisting of collection names and document
   keys) for *_from* and *_to* values when importing edges with arangoimp, there are now
   the options *--from-collection-prefix* and *--to-collection-prefix*. 
-  
+
   If specified, these values will be automatically prepended to each value in *_from* 
   (or *_to* resp.). This allows specifying only document keys inside *_from* and/or *_to*.
 
@@ -842,15 +874,15 @@ v2.8.6 (2016-03-23)
       > chmod a+x /path/to/script.js
 
   it can be invoked on the shell directly and use arangosh for its execution:
-      
+
       > /path/to/script.js
       hello from script.js
-  
+
   This did not work in previous versions of ArangoDB, as the whole script contents
   (including the shebang) were treated as JavaScript code. 
   Now shebangs in script files will now be ignored for all files passed to arangosh's 
   `--javascript.execute` parameter.
-  
+
   The alternative way of executing a JavaScript file with arangosh still works:
 
       > arangosh --javascript.execute /path/to/script.js
