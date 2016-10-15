@@ -26,8 +26,6 @@
 
 #include "Basics/Common.h"
 
-#include <boost/asio.hpp>
-
 #ifdef TRI_HAVE_WINSOCK2_H
 #include <WinSock2.h>
 #include <WS2tcpip.h>
@@ -35,6 +33,7 @@
 
 #include <ostream>
 
+#include "Basics/asio-helper.h"
 #include "Basics/socket-utils.h"
 
 namespace arangodb {

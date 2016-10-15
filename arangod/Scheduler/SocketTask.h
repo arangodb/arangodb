@@ -29,6 +29,7 @@
 
 #include <boost/asio/ssl.hpp>
 
+#include "Basics/asio-helper.h"
 #include "Basics/StringBuffer.h"
 #include "Scheduler/Socket.h"
 #include "Statistics/StatisticsAgent.h"

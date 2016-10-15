@@ -28,6 +28,7 @@
 #include <openssl/ssl.h>
 #include <boost/asio/ssl.hpp>
 
+#include "Basics/asio-helper.h"
 #include "Actions/RestActionHandler.h"
 #include "VocBase/AuthInfo.h"
 

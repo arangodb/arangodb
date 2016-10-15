@@ -25,9 +25,9 @@
 
 #include "Basics/Common.h"
 
-#include <boost/asio.hpp>
 #include <boost/lockfree/queue.hpp>
 
+#include "Basics/asio-helper.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 #include "Scheduler/Job.h"
