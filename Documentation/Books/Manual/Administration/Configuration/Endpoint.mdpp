@@ -38,11 +38,11 @@ Given a hostname:
 
 `--server.endpoint tcp://hostname:port`
 
-Given a IPv4 address:
+Given an IPv4 address:
 
 `--server.endpoint tcp://ipv4-address:port`
 
-Given a IPv6 address:
+Given an IPv6 address:
 
 `--server.endpoint tcp://[ipv6-address]:port`
 
@@ -101,11 +101,11 @@ Given a hostname:
 
 `--server.endpoint tcp://hostname:port`
 
-Given a IPv4 address:
+Given an IPv4 address:
 
 `--server.endpoint tcp://ipv4-address:port`
 
-Given a IPv6 address:
+Given an IPv6 address:
 
 `--server.endpoint tcp://[ipv6-address]:port`
 
@@ -163,7 +163,7 @@ following commands should create a valid keyfile:
 For further information please check the manuals of the tools you use to create
 the certificate.
 
-!SUBSECTION Cafile
+!SUBSECTION CA File
 
 `--ssl.cafile filename`
 
@@ -177,7 +177,7 @@ The certificates in *filename* must be PEM formatted.
 
 !SUBSECTION SSL protocol
 
-SSL protocol type to use `--ssl.protocol value`
+`--ssl.protocol value`
 
 Use this option to specify the default encryption protocol to be used.  The
 following variants are available:
@@ -252,5 +252,3 @@ Mac=SHA1
 ```
 
 The default value for *cipher-list* is "ALL".
-
-
