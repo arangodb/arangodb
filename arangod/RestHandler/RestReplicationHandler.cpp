@@ -3149,6 +3149,8 @@ void RestReplicationHandler::handleCommandMakeSlave() {
       VelocyPackHelper::getStringValue(body, "username", "");
   std::string const password =
       VelocyPackHelper::getStringValue(body, "password", "");
+  std::string const jwt =
+      VelocyPackHelper::getStringValue(body, "jwt", "");
   std::string const restrictType =
       VelocyPackHelper::getStringValue(body, "restrictType", "");
 
@@ -3162,6 +3164,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   config._database = database;
   config._username = username;
   config._password = password;
+  config._jwt = jwt;
   config._includeSystem =
       VelocyPackHelper::getBooleanValue(body, "includeSystem", true);
   config._requestTimeout = VelocyPackHelper::getNumericValue<double>(
@@ -3325,6 +3328,8 @@ void RestReplicationHandler::handleCommandSync() {
       VelocyPackHelper::getStringValue(body, "username", "");
   std::string const password =
       VelocyPackHelper::getStringValue(body, "password", "");
+  std::string const jwt =
+      VelocyPackHelper::getStringValue(body, "jwt", "");
   bool const verbose =
       VelocyPackHelper::getBooleanValue(body, "verbose", false);
   bool const includeSystem =
@@ -3365,6 +3370,7 @@ void RestReplicationHandler::handleCommandSync() {
   config._database = database;
   config._username = username;
   config._password = password;
+  config._jwt = jwt;
   config._includeSystem = includeSystem;
   config._verbose = verbose;
   config._useCollectionId = useCollectionId;
@@ -3479,6 +3485,11 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
   VPackSlice const password = body.get("password");
   if (password.isString()) {
     config._password = password.copyString();
+  }
+  
+  VPackSlice const jwt = body.get("jwt");
+  if (jwt.isString()) {
+    config._jwt = jwt.copyString();
   }
 
   config._requestTimeout = VelocyPackHelper::getNumericValue<double>(

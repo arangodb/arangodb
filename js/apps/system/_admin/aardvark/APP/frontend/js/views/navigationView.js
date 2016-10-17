@@ -107,6 +107,13 @@
 
       self.resize();
 
+      console.log(window.frontendConfig);
+      if (window.frontendConfig.isEnterprise === true) {
+        $('#ArangoDBLogo').attr('src', 'img/arangodb_logo_alt.svg');
+      } else {
+        $('.enterprise-menu').show();
+      }
+
       return this;
     },
 

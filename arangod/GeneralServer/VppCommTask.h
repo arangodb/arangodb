@@ -34,6 +34,9 @@
 #include "lib/Rest/VppResponse.h"
 
 namespace arangodb {
+
+class AuthenticationFeature;
+
 namespace rest {
 
 class VppCommTask : public GeneralCommTask {
@@ -62,7 +65,8 @@ class VppCommTask : public GeneralCommTask {
 
   std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) override final;
-
+  
+  void handleAuthentication(VPackSlice const& header, uint64_t messageId);
   void handleSimpleError(rest::ResponseCode code, uint64_t id) override {
     VppResponse response(code, id);
     addResponse(&response);
@@ -132,6 +136,10 @@ class VppCommTask : public GeneralCommTask {
       char const* vpackBegin, char const* chunkEnd);
 
   std::string _authenticatedUser;
+  AuthenticationFeature* _authentication;
+  // user
+  // authenticated or not
+  // database aus url
   bool _authenticationEnabled;
 };
 }

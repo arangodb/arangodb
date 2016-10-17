@@ -48,10 +48,12 @@ module.exports = router;
 router.get('/config.js', function (req, res) {
   const scriptName = req.get('x-script-name');
   const basePath = req.trustProxy && scriptName || '';
+  const isEnterprise = internal.isEnterprise();
   res.send(
     `var frontendConfig = ${JSON.stringify({
       basePath: basePath,
       db: req.database,
+      isEnterprise: isEnterprise,
       authenticationEnabled: internal.authenticationEnabled(),
       isCluster: cluster.isCluster()
     })}`
