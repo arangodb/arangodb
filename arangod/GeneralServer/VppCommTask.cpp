@@ -35,6 +35,7 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
@@ -62,10 +63,11 @@ VppCommTask::VppCommTask(EventLoop loop, GeneralServer* server,
       GeneralCommTask(loop, server, std::move(socket), std::move(info),
                       timeout),
       _authenticatedUser(),
-      _authenticationEnabled(
-          application_features::ApplicationServer::getFeature<
-              GeneralServerFeature>("GeneralServer")
-              ->authenticationEnabled()) {
+      _authentication(nullptr) {
+  _authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>(
+    "Authentication");
+  TRI_ASSERT(_authentication != nullptr);
+
   _protocol = "vpp";
   _readBuffer.reserve(
       _bufferLength);  // ATTENTION <- this is required so we do not
@@ -180,6 +182,35 @@ bool VppCommTask::isChunkComplete(char* start) {
   return true;
 }
 
+void VppCommTask::handleAuthentication(VPackSlice const& header, uint64_t messageId) {
+  // std::string encryption = header.at(2).copyString();
+  std::string user = header.at(3).copyString();
+  std::string pass = header.at(4).copyString();
+
+  bool authOk = false;
+  if (!_authentication->isEnabled()) {
+    authOk = true;
+  } else {
+    auto auth = basics::StringUtils::encodeBase64(user + ":" + pass);
+    AuthResult result = _authentication->authInfo()->checkAuthentication(
+        AuthInfo::AuthType::BASIC, auth);
+    
+    authOk = result._authorized;
+  }
+
+  if (authOk) {
+    // mop: hmmm...user should be completely ignored if there is no auth IMHO
+    _authenticatedUser = std::move(user);
+    handleSimpleError(rest::ResponseCode::OK, TRI_ERROR_NO_ERROR,
+        "authentication successful", messageId);
+  } else {
+    _authenticatedUser.clear();
+    handleSimpleError(rest::ResponseCode::UNAUTHORIZED,
+        TRI_ERROR_HTTP_UNAUTHORIZED, "authentication failed",
+        messageId);
+  }
+}
+
 // reads data from the socket
 bool VppCommTask::processRead() {
   RequestStatisticsAgent agent(true);
@@ -248,24 +279,7 @@ bool VppCommTask::processRead() {
 
     // handle request types
     if (type == 1000) {
-      // do authentication
-      // std::string encryption = header.at(2).copyString();
-      std::string user = header.at(3).copyString();
-      std::string pass = header.at(4).copyString();
-      auto auth = basics::StringUtils::encodeBase64(user + ":" + pass);
-      AuthResult result = GeneralServerFeature::AUTH_INFO.checkAuthentication(
-          AuthInfo::AuthType::BASIC, auth);
-
-      if (!_authenticationEnabled || result._authorized) {
-        _authenticatedUser = std::move(user);
-        handleSimpleError(rest::ResponseCode::OK, TRI_ERROR_NO_ERROR,
-                          "authentication successful", chunkHeader._messageID);
-      } else {
-        _authenticatedUser.clear();
-        handleSimpleError(rest::ResponseCode::UNAUTHORIZED,
-                          TRI_ERROR_HTTP_UNAUTHORIZED, "authentication failed",
-                          chunkHeader._messageID);
-      }
+      handleAuthentication(header, chunkHeader._messageID);
     } else {
       // the handler will take ownersip of this pointer
       std::unique_ptr<VppRequest> request(new VppRequest(
@@ -276,9 +290,9 @@ bool VppCommTask::processRead() {
       // check authentication
       std::string const& dbname = request->databaseName();
       AuthLevel level = AuthLevel::RW;
-      if (_authenticationEnabled &&
+      if (_authentication->isEnabled() &&
           (!_authenticatedUser.empty() || !dbname.empty())) {
-        level = GeneralServerFeature::AUTH_INFO.canUseDatabase(
+        level = _authentication->authInfo()->canUseDatabase(
             _authenticatedUser, dbname);
       }
 

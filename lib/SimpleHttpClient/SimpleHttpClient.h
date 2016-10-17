@@ -163,6 +163,8 @@ class SimpleHttpClient {
   /// @param password                       password
   //////////////////////////////////////////////////////////////////////////////
 
+  void setJwt(std::string const& jwt);
+  
   void setUserNamePassword(std::string const& prefix,
                            std::string const& username,
                            std::string const& password);
@@ -415,6 +417,7 @@ class SimpleHttpClient {
   SimpleHttpResult* _result;
 
   std::vector<std::pair<std::string, std::string>> _pathToBasicAuth;
+  std::string _jwt;
 
   size_t _maxPacketSize;
 

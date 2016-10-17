@@ -32,6 +32,7 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/RequestContext.h"
+#include "GeneralServer/AuthenticationFeature.h"
 
 #include "Rest/GeneralRequest.h"
 #include "Rest/GeneralResponse.h"
@@ -44,7 +45,7 @@ class VocbaseContext : public arangodb::RequestContext {
   static double ServerSessionTtl;
 
  public:
-  VocbaseContext(GeneralRequest*, TRI_vocbase_t*, std::string const&);
+  VocbaseContext(GeneralRequest*, TRI_vocbase_t*);
   ~VocbaseContext();
 
  public:
@@ -52,9 +53,6 @@ class VocbaseContext : public arangodb::RequestContext {
 
  public:
   rest::ResponseCode authenticate() override final;
-
- private:
-  bool useClusterAuthentication() const;
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -78,7 +76,8 @@ class VocbaseContext : public arangodb::RequestContext {
 
  private:
   TRI_vocbase_t* _vocbase;
-  std::string const _jwtSecret;
+  AuthenticationFeature* _authentication;
+
 };
 }
 

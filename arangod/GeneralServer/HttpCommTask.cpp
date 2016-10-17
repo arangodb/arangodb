@@ -152,6 +152,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
   if (!buffer->empty()) {
     LOG_TOPIC(TRACE, Logger::REQUESTS)
         << "\"http-request-response\",\"" << (void*)this << "\",\""
+        << _fullUrl << "\",\""
         << StringUtils::escapeUnicode(
                std::string(buffer->c_str(), buffer->length()))
         << "\"";

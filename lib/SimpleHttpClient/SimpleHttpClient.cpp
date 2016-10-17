@@ -58,6 +58,7 @@ SimpleHttpClient::SimpleHttpClient(GeneralClientConnection* connection,
       _locationRewriter({nullptr, nullptr}),
       _nextChunkedSize(0),
       _result(nullptr),
+      _jwt(""),
       _maxPacketSize(MaxPacketSize),
       _maxRetries(3),
       _retryWaitTime(1 * 1000 * 1000),
@@ -443,12 +444,16 @@ void SimpleHttpClient::clearReadBuffer() {
 /// @brief sets username and password
 ////////////////////////////////////////////////////////////////////////////////
 
+void SimpleHttpClient::setJwt(std::string const& jwt) {
+  _jwt = jwt;
+}
+
 void SimpleHttpClient::setUserNamePassword(std::string const& prefix,
                                            std::string const& username,
                                            std::string const& password) {
   std::string value =
       arangodb::basics::StringUtils::encodeBase64(username + ":" + password);
-
+  
   _pathToBasicAuth.push_back(std::make_pair(prefix, value));
 }
 
@@ -571,6 +576,11 @@ void SimpleHttpClient::setRequest(
       _writeBuffer.appendText(foundValue);
       _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
     }
+  }
+  if (!_jwt.empty()) {
+    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Authorization: bearer "));
+    _writeBuffer.appendText(_jwt);
+    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
   }
 
   for (auto const& header : headers) {
