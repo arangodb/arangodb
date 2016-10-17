@@ -124,30 +124,11 @@ ArangoCollection.prototype.toArray = function () {
 
 ArangoCollection.prototype.truncate = function () {
   var cluster = require('@arangodb/cluster');
-
   if (cluster.isCoordinator()) {
     if (this.status() === ArangoCollection.STATUS_UNLOADED) {
       this.load();
     }
-    var dbName = require('internal').db._name();
-    var shards = cluster.shardList(dbName, this.name());
-    var coord = { coordTransactionID: ArangoClusterComm.getId() };
-    var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
-
-    shards.forEach(function (shard) {
-      ArangoClusterComm.asyncRequest('put',
-        'shard:' + shard,
-        dbName,
-        '/_api/collection/' + encodeURIComponent(shard) + '/truncate',
-        '',
-        { },
-        options);
-    });
-
-    cluster.wait(coord, shards.length);
-    return;
   }
-
   return this.TRUNCATE();
 };
 
