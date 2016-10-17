@@ -31,7 +31,7 @@ class RestDemoHandler : public arangodb::RestBaseHandler {
   RestDemoHandler(GeneralRequest*, GeneralResponse*);
 
  public:
-  virtual char const* name() const { return "RestDemoHandler"; }
+  virtual char const* name() const override { return "RestDemoHandler"; }
   bool isDirect() const override { return true; }
   RestStatus execute() override;
 
