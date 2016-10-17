@@ -42,6 +42,7 @@
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Cluster/ClusterFeature.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LoggerBufferFeature.h"
 #include "Logger/LoggerFeature.h"
@@ -106,16 +107,17 @@ static int runServer(int argc, char** argv) {
   application_features::ApplicationServer server(options, SBIN_DIRECTORY);
 
   std::vector<std::string> nonServerFeatures = {
-      "Action",     "Affinity",      "Agency",
-      "Cluster",    "Daemon",        "Dispatcher",
-      "FoxxQueues", "GeneralServer", "LoggerBufferFeature",
-      "Server",     "Scheduler",     "SslServer",
-      "Statistics", "Supervisor"};
+      "Action",                 "Affinity",     "Agency",
+      "Authentication",         "Cluster",      "Daemon",
+      "Dispatcher",             "FoxxQueues",   "GeneralServer",
+      "LoggerBufferFeature",    "Server",       "Scheduler",
+      "SslServer",              "Statistics",   "Supervisor"};
 
   int ret = EXIT_FAILURE;
 
   server.addFeature(new ActionFeature(&server));
   server.addFeature(new AgencyFeature(&server));
+  server.addFeature(new AuthenticationFeature(&server));
   server.addFeature(new BootstrapFeature(&server));
   server.addFeature(new CheckVersionFeature(&server, &ret, nonServerFeatures));
   server.addFeature(new ClusterFeature(&server));

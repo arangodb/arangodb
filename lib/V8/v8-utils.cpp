@@ -539,7 +539,7 @@ static std::string GetEndpointFromUrl(std::string const& url) {
 /// @LIT{body} attribute of the result object.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
+void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 

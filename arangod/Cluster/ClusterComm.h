@@ -524,17 +524,14 @@ class ClusterComm {
                          ClusterCommTimeout timeout, size_t& nrDone,
                          arangodb::LogTopic const& logTopic);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief this is the fast path method for performRequests for the case
-  /// of only a single request in the vector. In this case we can use a single
-  /// syncRequest, which saves a network roundtrip. This is an important
-  /// optimization for the single document operation case.
-  /// Exact same semantics as performRequests.
-  //////////////////////////////////////////////////////////////////////////////
   std::shared_ptr<communicator::Communicator> communicator() {
     return _communicator;
   }
 
+  void addAuthorization(std::unordered_map<std::string, std::string>* headers);
+
+  std::string jwt() { return _jwt; };
+  
  private:
   size_t performSingleRequest(std::vector<ClusterCommRequest>& requests,
                               ClusterCommTimeout timeout, size_t& nrDone,
@@ -635,6 +632,9 @@ class ClusterComm {
   bool _logConnectionErrors;
 
   std::shared_ptr<communicator::Communicator> _communicator;
+  bool _authenticationEnabled;
+  std::string _jwt;
+  std::string _jwtAuthorization;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

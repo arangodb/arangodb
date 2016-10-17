@@ -36,7 +36,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/DBServerAgencySync.h"
 #include "Cluster/ServerState.h"
-#include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
@@ -306,6 +306,10 @@ void HeartbeatThread::runDBServer() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::runCoordinator() {
+  AuthenticationFeature* authentication =
+    application_features::ApplicationServer::getFeature<AuthenticationFeature>(
+        "Authentication");
+  TRI_ASSERT(authentication != nullptr);
   LOG_TOPIC(TRACE, Logger::HEARTBEAT)
       << "starting heartbeat thread (coordinator version)";
 
@@ -424,7 +428,9 @@ void HeartbeatThread::runCoordinator() {
 
           if (userVersion > 0 && userVersion != oldUserVersion) {
             oldUserVersion = userVersion;
-            GeneralServerFeature::AUTH_INFO.outdate();
+            if (authentication->isEnabled()) {
+              authentication->authInfo()->outdate();
+            }
           }
         }
 

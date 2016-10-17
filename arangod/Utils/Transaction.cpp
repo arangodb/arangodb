@@ -2635,12 +2635,14 @@ OperationResult Transaction::truncate(std::string const& collectionName,
 /// @brief remove all documents in a collection, coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_ENTERPRISE
 OperationResult Transaction::truncateCoordinator(std::string const& collectionName,
                                                  OperationOptions& options) {
   return OperationResult(
       arangodb::truncateCollectionOnCoordinator(_vocbase->name(),
                                                 collectionName));
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove all documents in a collection, local
