@@ -262,6 +262,9 @@ class DistributeNode : public ExecutionNode {
   /// @brief set createKeys
   void setCreateKeys(bool b) { _createKeys = b; }
 
+  /// @brief set allowKeyConversionToObject
+  void setAllowKeyConversionToObject(bool b) { _allowKeyConversionToObject = b; }
+
  private:
   /// @brief the underlying database
   TRI_vocbase_t* _vocbase;
@@ -280,7 +283,7 @@ class DistributeNode : public ExecutionNode {
   bool _createKeys;
 
   /// @brief allow conversion of key to object
-  bool const _allowKeyConversionToObject;
+  bool _allowKeyConversionToObject;
 };
 
 /// @brief class GatherNode

@@ -128,15 +128,24 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
 
   // read username / password
   value = slice.get("username");
-
+  bool hasUsernamePassword = false;
   if (value.isString()) {
+    hasUsernamePassword = true;
     config->_username = value.copyString();
   }
 
   value = slice.get("password");
 
   if (value.isString()) {
+    hasUsernamePassword = true;
     config->_password = value.copyString();
+  }
+
+  if (!hasUsernamePassword) {
+    value = slice.get("jwt");
+    if (value.isString()) {
+      config->_jwt = value.copyString();
+    }
   }
 
   value = slice.get("requestTimeout");
@@ -445,6 +454,7 @@ TRI_replication_applier_configuration_t::
       _database(),
       _username(),
       _password(),
+      _jwt(),
       _requestTimeout(600.0),
       _connectTimeout(10.0),
       _ignoreErrors(0),
@@ -489,11 +499,18 @@ void TRI_replication_applier_configuration_t::toVelocyPack(
   if (!_database.empty()) {
     builder.add("database", VPackValue(_database));
   }
+  
+  bool hasUsernamePassword = false;
   if (!_username.empty()) {
+    hasUsernamePassword = true;
     builder.add("username", VPackValue(_username));
   }
   if (includePassword) {
+    hasUsernamePassword = true;
     builder.add("password", VPackValue(_password));
+  }
+  if (!hasUsernamePassword && !_jwt.empty()) {
+    builder.add("jwt", VPackValue(_jwt));
   }
 
   builder.add("requestTimeout", VPackValue(_requestTimeout));
@@ -789,6 +806,7 @@ void TRI_replication_applier_configuration_t::update(
   _database = src->_database;
   _username = src->_username;
   _password = src->_password;
+  _jwt = src->_jwt;
   _requestTimeout = src->_requestTimeout;
   _connectTimeout = src->_connectTimeout;
   _ignoreErrors = src->_ignoreErrors;

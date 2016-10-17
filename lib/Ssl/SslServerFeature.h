@@ -26,6 +26,9 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 #include <openssl/ssl.h>
+#include <boost/asio/ssl.hpp>
+
+#include "Basics/asio-helper.h"
 
 namespace arangodb {
 class SslServerFeature final : public application_features::ApplicationFeature {
@@ -38,7 +41,7 @@ class SslServerFeature final : public application_features::ApplicationFeature {
   void unprepare() override final;
 
  public:
-  SSL_CTX* sslContext() const { return _sslContext; }
+  boost::asio::ssl::context sslContext() const { return createSslContext(); }
 
  public:
   std::string _cafile;
@@ -50,11 +53,10 @@ class SslServerFeature final : public application_features::ApplicationFeature {
   std::string _ecdhCurve;
 
  private:
-  void createSslContext();
+  boost::asio::ssl::context createSslContext() const;
   std::string stringifySslOptions(uint64_t opts) const;
 
  private:
-  SSL_CTX* _sslContext;
   std::string _rctx;
 };
 }

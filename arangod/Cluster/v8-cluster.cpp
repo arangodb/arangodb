@@ -26,6 +26,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterComm.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -2015,6 +2016,34 @@ static void JS_GetId(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_ClusterDownload(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  AuthenticationFeature* authentication =
+      application_features::ApplicationServer::getFeature<AuthenticationFeature>("Authentication");
+  
+  if (authentication->isEnabled()) {
+    // mop: really quick and dirty
+    v8::Handle<v8::Object> options = v8::Object::New(isolate);
+    v8::Handle<v8::Object> headers = v8::Object::New(isolate);
+    if (args.Length() > 2) {
+      if (args[2]->IsObject()) {
+        options = v8::Handle<v8::Object>::Cast(args[2]);
+        if (options->Has(TRI_V8_ASCII_STRING("headers"))) {
+          headers = v8::Handle<v8::Object>::Cast(options->Get(TRI_V8_ASCII_STRING("headers")));
+        }
+      }
+    }
+    options->Set(TRI_V8_ASCII_STRING("headers"), headers);
+    
+    std::string const authorization = "bearer " + ClusterComm::instance()->jwt();
+    v8::Handle<v8::String> v8Authorization = TRI_V8_STD_STRING(authorization);
+    headers->Set(TRI_V8_ASCII_STRING("Authorization"), v8Authorization);
+    args[2] = options;
+  }
+  TRI_V8_TRY_CATCH_END
+  return JS_Download(args);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a global cluster context
 ////////////////////////////////////////////////////////////////////////////////
@@ -2227,4 +2256,7 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
     TRI_AddGlobalVariableVocbase(isolate, context,
                                  TRI_V8_ASCII_STRING("ArangoClusterComm"), ss);
   }
+  TRI_AddGlobalFunctionVocbase(
+      isolate, context, TRI_V8_ASCII_STRING("SYS_CLUSTER_DOWNLOAD"),
+      JS_ClusterDownload);
 }

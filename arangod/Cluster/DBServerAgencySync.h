@@ -21,13 +21,10 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_SERVER_JOB_H
-#define ARANGOD_CLUSTER_SERVER_JOB_H 1
+#ifndef ARANGOD_CLUSTER_DB_SERVER_AGENCY_SYNC_H
+#define ARANGOD_CLUSTER_DB_SERVER_AGENCY_SYNC_H 1
 
-#include "Dispatcher/Job.h"
-
-#include "Basics/Exceptions.h"
-#include "Basics/Mutex.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 class HeartbeatThread;
@@ -37,82 +34,30 @@ struct DBServerAgencySyncResult {
   uint64_t planVersion;
   uint64_t currentVersion;
 
-  DBServerAgencySyncResult() : success(false), planVersion(0), currentVersion(0) {
-  }
+  DBServerAgencySyncResult()
+      : success(false), planVersion(0), currentVersion(0) {}
 
   DBServerAgencySyncResult(const DBServerAgencySyncResult& other)
-    : success(other.success),
-    planVersion(other.planVersion),
-    currentVersion(other.currentVersion) {
-    }
+      : success(other.success),
+        planVersion(other.planVersion),
+        currentVersion(other.currentVersion) {}
 };
 
-class DBServerAgencySync : public arangodb::rest::Job {
+class DBServerAgencySync {
   DBServerAgencySync(DBServerAgencySync const&) = delete;
   DBServerAgencySync& operator=(DBServerAgencySync const&) = delete;
 
  public:
   explicit DBServerAgencySync(HeartbeatThread* heartbeat);
-  ~DBServerAgencySync();
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief abandon job
-  //////////////////////////////////////////////////////////////////////////////
+  void work();
 
-  void abandon();
-
- public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief whether or not the job is detached
-  //////////////////////////////////////////////////////////////////////////////
-
-  inline bool isDetached() const { return true; }
-
-  void work() override;
-
-  bool cancel() override;
-
-  void cleanup(rest::DispatcherQueue* queue) override;
-
-  bool beginShutdown() {
-    _shutdown = 1;
-    return true;
-  }
-
-  void handleError(basics::Exception const& ex) override {}
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief execute job
-  //////////////////////////////////////////////////////////////////////////////
-
+ private:
   DBServerAgencySyncResult execute();
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the heartbeat thread
-  //////////////////////////////////////////////////////////////////////////////
-
   HeartbeatThread* _heartbeat;
-
- protected:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief shutdown in progress
-  //////////////////////////////////////////////////////////////////////////////
-
-  volatile sig_atomic_t _shutdown;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief server is dead lock
-  //////////////////////////////////////////////////////////////////////////////
-
-  Mutex _abandonLock;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief server is dead
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool _abandon;
 };
 }
 

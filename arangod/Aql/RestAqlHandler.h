@@ -44,7 +44,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   char const* name() const override final { return "RestAqlHandler"; }
   bool isDirect() const override;
   size_t queue() const override;
-  status execute() override;
+  RestStatus execute() override;
 
  public:
   // POST method for /_api/aql/instantiate

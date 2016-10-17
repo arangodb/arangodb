@@ -30,14 +30,17 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/WorkMonitor.h"
 #include "Logger/LogAppender.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/ServerFeature.h"
-#include "Scheduler/SchedulerLibev.h"
-#include "Scheduler/SignalTask.h"
+#include "Scheduler/Scheduler.h"
+#include "V8Server/V8DealerFeature.h"
+#include "V8Server/v8-dispatcher.h"
 
 using namespace arangodb;
+using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 using namespace arangodb::rest;
@@ -46,11 +49,7 @@ Scheduler* SchedulerFeature::SCHEDULER = nullptr;
 
 SchedulerFeature::SchedulerFeature(
     application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "Scheduler"),
-      _nrSchedulerThreads(0),
-      _backend(0),
-      _showBackends(false),
-      _scheduler(nullptr) {
+    : ApplicationFeature(server, "Scheduler"), _scheduler(nullptr) {
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Database");
@@ -59,55 +58,38 @@ SchedulerFeature::SchedulerFeature(
   startsAfter("WorkMonitor");
 }
 
-SchedulerFeature::~SchedulerFeature() {
-  if (_scheduler != nullptr) {
-    delete _scheduler;
-  }
-}
+SchedulerFeature::~SchedulerFeature() {}
 
 void SchedulerFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("scheduler", "Configure the I/O scheduler");
 
-  options->addOption("--scheduler.threads",
-                     "number of threads for I/O scheduler",
+  options->addOption("--server.threads", "number of threads scheduling",
                      new UInt64Parameter(&_nrSchedulerThreads));
 
-#ifndef _WIN32
-  std::unordered_set<uint64_t> backends = {0, 1, 2, 3, 4};
-  options->addHiddenOption(
-      "--scheduler.backend", "1: select, 2: poll, 4: epoll",
-      new DiscreteValuesParameter<UInt64Parameter>(&_backend, backends));
-#endif
+  options->addHiddenOption("--server.maximal-queue-size",
+                           "maximum queue length for asynchronous operations",
+                           new UInt64Parameter(&_queueSize));
 
-  options->addHiddenOption("--scheduler.show-backends",
-                           "show available backends",
-                           new BooleanParameter(&_showBackends));
+  options->addOldOption("scheduler.threads", "server.threads");
 }
 
 void SchedulerFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions>) {
-  if (_showBackends) {
-    std::cout << "available io backends are: "
-              << SchedulerLibev::availableBackends() << std::endl;
-    exit(EXIT_SUCCESS);
+  if (_nrSchedulerThreads == 0) {
+    _nrSchedulerThreads = TRI_numberProcessors();
   }
 
-  if (_nrSchedulerThreads == 0) {
-    size_t n = TRI_numberProcessors();
-
-    if (n <= 4) {
-      _nrSchedulerThreads = 1;
-    } else {
-      _nrSchedulerThreads = 2;
-    }
+  if (_queueSize < 128) {
+    LOG(FATAL)
+        << "invalid value for `--server.maximal-queue-size', need at least 128";
+    FATAL_ERROR_EXIT();
   }
 }
 
 void SchedulerFeature::start() {
   ArangoGlobalContext::CONTEXT->maskAllSignals();
   buildScheduler();
-  buildHangupHandler();
 
   bool ok = _scheduler->start(nullptr);
 
@@ -116,42 +98,57 @@ void SchedulerFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  while (!_scheduler->isStarted()) {
-    LOG_TOPIC(DEBUG, Logger::STARTUP) << "waiting for scheduler to start";
-    usleep(500 * 1000);
-  }
+  buildHangupHandler();
 
   LOG_TOPIC(DEBUG, Logger::STARTUP) << "scheduler has started";
+
+  V8DealerFeature* dealer =
+      ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+
+  dealer->defineContextUpdate(
+      [](v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t) {
+        TRI_InitV8Dispatcher(isolate, context);
+      },
+      nullptr);
 }
 
 void SchedulerFeature::stop() {
   static size_t const MAX_TRIES = 10;
 
-  if (_scheduler != nullptr) {
-    // unregister all tasks
-    _scheduler->unregisterUserTasks();
+  // shutdown user jobs (needs the scheduler)
+  TRI_ShutdownV8Dispatcher();
 
-    // remove all helper tasks
-    for (auto& task : _tasks) {
-      _scheduler->destroyTask(task);
-    }
-
-    _tasks.clear();
-
-    // shutdown the scheduler
-    _scheduler->beginShutdown();
-
-    for (size_t count = 0; count < MAX_TRIES && _scheduler->isRunning();
-         ++count) {
-      LOG_TOPIC(TRACE, Logger::STARTUP) << "waiting for scheduler to stop";
-      usleep(100000);
-    }
-
-    _scheduler->shutdown();
+  // cancel signals
+  if (_exitSignals != nullptr) {
+    _exitSignals->cancel();
+    _exitSignals.reset();
   }
+
+#ifndef WIN32
+  if (_hangupSignals != nullptr) {
+    _hangupSignals->cancel();
+    _hangupSignals.reset();
+  }
+#endif
+
+  // clear the handlers stuck in the WorkMonitor
+  WorkMonitor::clearHandlers();
+
+  // shut-down scheduler
+  _scheduler->beginShutdown();
+
+  for (size_t count = 0; count < MAX_TRIES && _scheduler->isRunning();
+       ++count) {
+    LOG_TOPIC(TRACE, Logger::STARTUP) << "waiting for scheduler to stop";
+    usleep(100000);
+  }
+
 }
 
-void SchedulerFeature::unprepare() { SCHEDULER = nullptr; }
+void SchedulerFeature::unprepare() {
+  _scheduler->shutdown();
+  SCHEDULER = nullptr;
+}
 
 #ifdef _WIN32
 bool CtrlHandler(DWORD eventType) {
@@ -222,58 +219,13 @@ bool CtrlHandler(DWORD eventType) {
   return true;
 }
 
-#else
-
-class ControlCTask : public SignalTask {
- public:
-  explicit ControlCTask(application_features::ApplicationServer* server)
-      : Task("Control-C"), SignalTask(), _server(server), _seen(0) {
-    addSignal(SIGINT);
-    addSignal(SIGTERM);
-    addSignal(SIGQUIT);
-  }
-
- public:
-  bool handleSignal() override {
-    if (_seen == 0) {
-      LOG(INFO) << "control-c received, beginning shut down sequence";
-      _server->beginShutdown();
-    } else {
-      LOG(FATAL) << "control-c received (again!), terminating";
-      FATAL_ERROR_EXIT();
-    }
-
-    ++_seen;
-
-    return true;
-  }
-
- private:
-  application_features::ApplicationServer* _server;
-  uint32_t _seen;
-};
-
-class HangupTask : public SignalTask {
- public:
-  HangupTask() : Task("Hangup"), SignalTask() { addSignal(SIGHUP); }
-
- public:
-  bool handleSignal() override {
-    LOG(INFO) << "hangup received, about to reopen logfile";
-    LogAppender::reopen();
-    LOG(INFO) << "hangup received, reopened logfile";
-    return true;
-  }
-};
-
 #endif
 
 void SchedulerFeature::buildScheduler() {
-  _scheduler = new SchedulerLibev(static_cast<size_t>(_nrSchedulerThreads),
-                                  static_cast<int>(_backend));
-  _scheduler->setProcessorAffinity(_affinityCores);
-
-  SCHEDULER = _scheduler;
+  _scheduler =
+      std::make_unique<Scheduler>(static_cast<size_t>(_nrSchedulerThreads),
+                                  static_cast<size_t>(_queueSize));
+  SCHEDULER = _scheduler.get();
 }
 
 void SchedulerFeature::buildControlCHandler() {
@@ -286,32 +238,51 @@ void SchedulerFeature::buildControlCHandler() {
     }
   }
 #else
-  if (_scheduler != nullptr) {
-    Task* controlC = new ControlCTask(server());
 
-    int res = _scheduler->registerTask(controlC);
+  auto ioService = _scheduler->managerService();
+  _exitSignals = std::make_shared<boost::asio::signal_set>(*ioService, SIGINT, SIGTERM, SIGQUIT);
 
-    if (res == TRI_ERROR_NO_ERROR) {
-      _tasks.emplace_back(controlC);
+  _signalHandler = [this](const boost::system::error_code& error, int number) {
+    if (error) {
+      return;
     }
-  }
+
+    LOG(INFO) << "control-c received, beginning shut down sequence";
+    server()->beginShutdown();
+    _exitSignals->async_wait(_exitHandler);
+  };
+
+  _exitHandler = [](const boost::system::error_code& error, int number) {
+    if (error) {
+      return;
+    }
+
+    LOG(FATAL) << "control-c received (again!), terminating";
+    FATAL_ERROR_EXIT();
+  };
+
+  _exitSignals->async_wait(_signalHandler);
 #endif
 }
 
 void SchedulerFeature::buildHangupHandler() {
 #ifndef WIN32
-  {
-    Task* hangup = new HangupTask();
+  auto ioService = _scheduler->managerService();
 
-    int res = _scheduler->registerTask(hangup);
+  _hangupSignals = std::make_shared<boost::asio::signal_set>(*ioService, SIGHUP);
 
-    if (res == TRI_ERROR_NO_ERROR) {
-      _tasks.emplace_back(hangup);
+  _hangupHandler = [this](const boost::system::error_code& error, int number) {
+    if (error) {
+      return;
     }
-  }
-#endif
-}
 
-void SchedulerFeature::setProcessorAffinity(std::vector<size_t> const& cores) {
-  _affinityCores = cores;
+    LOG(INFO) << "hangup received, about to reopen logfile";
+    LogAppender::reopen();
+    LOG(INFO) << "hangup received, reopened logfile";
+
+    _hangupSignals->async_wait(_hangupHandler);
+  };
+
+  _hangupSignals->async_wait(_hangupHandler);
+#endif
 }

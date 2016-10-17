@@ -40,7 +40,7 @@ RestEdgesHandler::RestEdgesHandler(GeneralRequest* request,
                                    GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
-RestHandler::status RestEdgesHandler::execute() {
+RestStatus RestEdgesHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
 
@@ -63,7 +63,7 @@ RestHandler::status RestEdgesHandler::execute() {
   }
 
   // this handler is done
-  return status::DONE;
+  return RestStatus::DONE;
 }
 
 bool RestEdgesHandler::getEdgesForVertexList(

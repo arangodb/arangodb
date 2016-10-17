@@ -36,7 +36,7 @@ using namespace arangodb::rest;
 RestEchoHandler::RestEchoHandler(GeneralRequest* request, GeneralResponse* response)
   : RestVocbaseBaseHandler(request, response) {}
 
-RestHandler::status RestEchoHandler::execute() {
+RestStatus RestEchoHandler::execute() {
   bool parseSuccess = true;
   std::shared_ptr<VPackBuilder> parsedBody =
       parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
@@ -46,5 +46,5 @@ RestHandler::status RestEchoHandler::execute() {
     generateResult(rest::ResponseCode::OK, parsedBody->slice());
   }
 
-  return status::DONE;
+  return RestStatus::DONE;
 }

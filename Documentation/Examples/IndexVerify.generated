@@ -1,7 +1,7 @@
 arangosh&gt; <span class="hljs-keyword">var</span> explain = <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/aql/explainer"</span>).explain;
 arangosh&gt; db.example.ensureIndex({ type: <span class="hljs-string">"skiplist"</span>, fields: [ <span class="hljs-string">"a"</span>, <span class="hljs-string">"b"</span> ] });
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/9314"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/8755"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"a"</span>, 
@@ -30,5 +30,6 @@ Optimization rules applied:
  Id   RuleName
   <span class="hljs-number">1</span>   use-indexes
   <span class="hljs-number">2</span>   remove-filter-covered-by-index
+  <span class="hljs-number">3</span>   remove-unnecessary-calculations<span class="hljs-number">-2</span>
 
 

@@ -1,8 +1,5 @@
-
-
-@brief number of dispatcher threads
+@brief number of threads
 `--server.threads number`
 
-Specifies the *number* of threads that are spawned to handle HTTP REST
-requests.
+Specifies the desired *number* of threads that are spawned to handle requests.
 

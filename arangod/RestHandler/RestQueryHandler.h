@@ -40,7 +40,7 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
  public:
   char const* name() const override final { return "RestQueryHandler"; }
   bool isDirect() const override;
-  status execute() override;
+  RestStatus execute() override;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////

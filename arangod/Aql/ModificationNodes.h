@@ -456,6 +456,10 @@ class UpsertNode : public ModificationNode {
     _updateVariable = var;
   }
 
+  void setIsReplace(bool var) {
+    _isReplace = var;
+  }
+
  private:
   /// @brief input variable for the search document
   Variable const* _inDocVariable;
@@ -467,7 +471,7 @@ class UpsertNode : public ModificationNode {
   Variable const* _updateVariable;
 
   /// @brief whether to perform a REPLACE (or an UPDATE alternatively)
-  bool const _isReplace;
+  bool _isReplace;
 };
 
 }  // namespace arangodb::aql

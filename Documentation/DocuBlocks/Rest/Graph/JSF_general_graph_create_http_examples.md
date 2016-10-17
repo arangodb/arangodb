@@ -17,6 +17,23 @@ An array of definitions for the edge
 @RESTBODYPARAM{orphanCollections,string,optional,string}
 An array of additional vertex collections.
 
+@RESTBODYPARAM{isSmart,boolean,optional,boolean}
+Define if the created graph should be smart.
+This only has effect in Enterprise version.
+
+@RESTBODYPARAM{options,object,optional,post_api_gharial_create_opts}
+a json object which is only useful in Enterprise version and with isSmart set to true.
+It can contain the following attributes:
+
+@RESTSTRUCT{smartGraphAttribute,post_api_gharial_create_opts,string,required,}
+The attribute name that is used to smartly shard the vertices of a graph.
+Every vertex in this Graph has to have this attribute.
+Cannot be modified later.
+
+@RESTSTRUCT{numberOfShards,post_api_gharial_create_opts,integer,required,}
+The number of shards that is used for every collection within this graph.
+Cannot be modified later.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{201}
@@ -61,4 +78,34 @@ different signature used in any other graph.
 
   graph._drop("myGraph", true);
 @END_EXAMPLE_ARANGOSH_RUN
+
+@EXAMPLE_ARANGOSH_RUN{HttpGharialCreate2}
+  var graph = require("@arangodb/general-graph");
+| if (graph._exists("myGraph")) {
+|    graph._drop("myGraph", true);
+  }
+  var url = "/_api/gharial";
+  body = {
+    name: "myGraph",
+    edgeDefinitions: [{
+      collection: "edges",
+      from: [ "startVertices" ],
+      to: [ "endVertices" ]
+    }],
+    isSmart: true,
+    options: {
+      numberOfShards: 9,
+      smartGraphAttribute: "region"
+    }
+  };
+
+  var response = logCurlRequest('POST', url, body);
+
+  assert(response.code === 202);
+
+  logJsonResponse(response);
+
+  graph._drop("myGraph", true);
+@END_EXAMPLE_ARANGOSH_RUN
+
 @endDocuBlock

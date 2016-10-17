@@ -24,262 +24,118 @@
 
 #include "ListenTask.h"
 
-#include <errno.h>
-
-#ifdef TRI_HAVE_WINSOCK2_H
-#include "Basics/win-utils.h"
-#include <WinSock2.h>
-#include <WS2tcpip.h>
-#endif
-
+#include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
-#include "Basics/MutexLocker.h"
-#include "Basics/socket-utils.h"
-#include "Basics/StringUtils.h"
-#include "Scheduler/Scheduler.h"
+#include "Ssl/SslServerFeature.h"
 
 using namespace arangodb;
-using namespace arangodb::basics;
 using namespace arangodb::rest;
 
+namespace {
+boost::asio::ssl::context createSslContextFreestanding() {
+  boost::asio::ssl::context context(
+      boost::asio::ssl::context::sslv23);  // generic ssl/tls context
+
+  SslServerFeature* ssl =
+      application_features::ApplicationServer::getFeature<SslServerFeature>(
+          "SslServer");
+  if (ssl) {
+    context = ssl->sslContext();
+    context.set_verify_mode(GeneralServerFeature::verificationMode());
+    context.set_verify_callback(
+        GeneralServerFeature::verificationCallbackAsio());
+  }
+
+  return context;
+}
+}
+
 // -----------------------------------------------------------------------------
-// constructors and destructors
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-ListenTask::ListenTask(Endpoint* endpoint)
-    : Task("ListenTask"),
-      _readWatcher(nullptr),
+ListenTask::ListenTask(EventLoop loop, Endpoint* endpoint)
+    : Task(loop, "ListenTask"),
       _endpoint(endpoint),
-      _acceptFailures(0) {
-  TRI_invalidatesocket(&_listenSocket);
-  bindSocket();
-}
-
-ListenTask::~ListenTask() {
-  if (_readWatcher != nullptr) {
-    _scheduler->uninstallEvent(_readWatcher);
-  }
-}
+      _bound(false),
+      _ioService(loop._ioService),
+      _acceptor(*loop._ioService),
+      _peer(nullptr) {}
 
 // -----------------------------------------------------------------------------
-// public methods
+// --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-bool ListenTask::isBound() const {
-  MUTEX_LOCKER(mutexLocker, _changeLock);  // FIX_MUTEX ?
-
-  return _endpoint != nullptr && _endpoint->isConnected();
-}
-
-// -----------------------------------------------------------------------------
-// Task methods
-// -----------------------------------------------------------------------------
-
-bool ListenTask::setup(Scheduler* scheduler, EventLoop loop) {
-  if (!isBound()) {
-    return true;
+void ListenTask::start() {
+  try {
+    _endpoint->openAcceptor(_ioService, &_acceptor);
+    _bound = true;
+  } catch (boost::system::system_error const& err) {
+    LOG(WARN) << "failed to open endpoint '" << _endpoint->specification()
+              << "' with error: " << err.what();
+    return;
   }
 
-#ifdef _WIN32
+  _handler = [this](boost::system::error_code const& ec) {
+    if (ec) {
+      if (ec == boost::asio::error::operation_aborted) {
+        return;
+      }
 
-  // ..........................................................................
-  // The problem we have here is that this opening of the fs handle may fail.
-  // There is no mechanism to the calling function to report failure.
-  // ..........................................................................
-
-  LOG(TRACE) << "attempting to convert socket handle to socket descriptor";
-
-  if (!TRI_isvalidsocket(_listenSocket)) {
-    LOG(ERR) << "In ListenTask::setup could not convert socket handle to socket descriptor -- invalid socket handle";
-    return false;
-  }
-
-  // For the official version of libev we would do this:
-  // int res = _open_osfhandle (_listenSocket.fileHandle, 0);
-  // However, this opens a whole lot of problems and in general one should
-  // never use _open_osfhandle for sockets.
-  // Therefore, we do the following, although it has the potential to
-  // lose the higher bits of the socket handle:
-  int res = (int)_listenSocket.fileHandle;
-
-  if (res == -1) {
-    LOG(ERR) << "In ListenTask::setup could not convert socket handle to socket descriptor -- _open_osfhandle(...) failed";
-
-    res = TRI_CLOSE_SOCKET(_listenSocket);
-
-    if (res != 0) {
-      res = WSAGetLastError();
-      LOG(ERR) << "In ListenTask::setup closesocket(...) failed with error code: " << res;
-    }
-
-    TRI_invalidatesocket(&_listenSocket);
-    return false;
-  }
-
-  _listenSocket.fileDescriptor = res;
-
-#endif
-
-  this->_scheduler = scheduler;
-  this->_loop = loop;
-  _readWatcher = scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this,
-                                               _listenSocket);
-
-  return true;
-}
-
-void ListenTask::cleanup() {
-  if (_scheduler != nullptr && _readWatcher != nullptr) {
-    _scheduler->uninstallEvent(_readWatcher);
-  }
-
-  _readWatcher = nullptr;
-}
-
-bool ListenTask::handleEvent(EventToken token, EventType revents) {
-  if (token == _readWatcher) {
-    if ((revents & EVENT_SOCKET_READ) == 0) {
-      return true;
-    }
-
-    static_assert(sizeof(sockaddr_in) <= sizeof(sockaddr_in6),
-                  "expect sockaddr size to be less or equal to the v6 version");
-
-    sockaddr_in6 addrmem;
-    sockaddr_in* addr = (sockaddr_in*)&addrmem;
-    socklen_t len = sizeof(sockaddr_in6);
-
-    memset(addr, 0, sizeof(sockaddr_in6));
-
-    // accept connection
-    TRI_socket_t connectionSocket;
-    connectionSocket = TRI_accept(_listenSocket, (sockaddr*)addr, &len);
-
-    if (!TRI_isvalidsocket(connectionSocket)) {
       ++_acceptFailures;
 
       if (_acceptFailures < MAX_ACCEPT_ERRORS) {
-        LOG(WARN) << "accept failed with " << errno << " (" << strerror(errno) << ")";
+        LOG(WARN) << "accept failed: " << ec.message();
       } else if (_acceptFailures == MAX_ACCEPT_ERRORS) {
-        LOG(ERR) << "too many accept failures, stopping logging";
+        LOG(WARN) << "accept failed: " << ec.message();
+        LOG(WARN) << "too many accept failures, stopping to report";
       }
-
-      return true;
-    }
-
-    _acceptFailures = 0;
-
-    struct sockaddr_in6 addr_out_mem;
-    struct sockaddr_in* addr_out = (sockaddr_in*)&addr_out_mem;
-    socklen_t len_out = sizeof(addr_out_mem);
-
-    int res = TRI_getsockname(connectionSocket, (sockaddr*)addr_out, &len_out);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_CLOSE_SOCKET(connectionSocket);
-
-      LOG(WARN) << "getsockname failed with " << errno << " (" << strerror(errno) << ")";
-
-      return true;
-    }
-
-    // disable nagle's algorithm, set to non-blocking and close-on-exec
-    bool result = _endpoint->initIncoming(connectionSocket);
-
-    if (!result) {
-      TRI_CLOSE_SOCKET(connectionSocket);
-
-      return true;
-    }
-
-    // set client address and port
-    ConnectionInfo info;
-
-    Endpoint::DomainType type = _endpoint->domainType();
-    char host[NI_MAXHOST], serv[NI_MAXSERV];
-
-    if (getnameinfo((sockaddr*)addr, len, host, sizeof(host), serv,
-                    sizeof(serv), NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
-      info.clientAddress = std::string(host);
-      info.clientPort = ntohs(addr->sin_port);
     } else {
-      if (type == Endpoint::DomainType::IPV4) {
-        char buf[INET_ADDRSTRLEN + 1];
-        char const* p =
-            inet_ntop(AF_INET, &addr->sin_addr, buf, sizeof(buf) - 1);
+      ConnectionInfo info;
+      // TODO _endpoint->initIncoming(_peer);
 
-        if (p != nullptr) {
-          // cppcheck-suppress *
-          buf[INET_ADDRSTRLEN] = '\0';
-          info.clientAddress = p;
-        }
-
-        info.clientPort = ntohs(addr->sin_port);
-      } else if (type == Endpoint::DomainType::IPV6) {
-        char buf[INET6_ADDRSTRLEN + 1];
-        char const* p =
-            inet_ntop(AF_INET6, &addrmem.sin6_addr, buf, sizeof(buf) - 1);
-
-        if (p != nullptr) {
-          // cppcheck-suppress *
-          buf[INET6_ADDRSTRLEN] = '\0';
-          info.clientAddress = p;
-        }
-
-        info.clientPort = ntohs(addrmem.sin6_port);
-      }
-    }
-
-    // set server address and port
-    if (type == Endpoint::DomainType::IPV4) {
-      char buf[INET_ADDRSTRLEN + 1];
-      char const* p =
-          inet_ntop(AF_INET, &addr_out->sin_addr, buf, sizeof(buf) - 1);
-
-      if (p != nullptr) {
-        // cppcheck-suppress *
-        buf[INET_ADDRSTRLEN] = '\0';
-        info.serverAddress = p;
-      }
-
-      info.serverPort = ntohs(addr_out->sin_port);
-    } else if (type == Endpoint::DomainType::IPV6) {
-      char buf[INET6_ADDRSTRLEN + 1];
-      char const* p =
-          inet_ntop(AF_INET6, &addr_out_mem.sin6_addr, buf, sizeof(buf) - 1);
-
-      if (p != nullptr) {
-        // cppcheck-suppress *
-        buf[INET6_ADDRSTRLEN] = '\0';
-        info.serverAddress = p;
-      }
-
-      info.serverPort = ntohs(addr_out_mem.sin6_port);
-    } else {
+      // set the endpoint
+      info.endpoint = _endpoint->specification();
+      info.endpointType = _endpoint->domainType();
+      info.encryptionType = _endpoint->encryption();
+      info.clientAddress = _peer->_peerEndpoint.address().to_string();
+      info.clientPort = _peer->_peerEndpoint.port();
       info.serverAddress = _endpoint->host();
       info.serverPort = _endpoint->port();
+
+      handleConnected(std::move(_peer), std::move(info));
     }
 
-    // set the endpoint
-    info.endpoint = _endpoint->specification();
-    info.endpointType = _endpoint->domainType();
+    if (_bound) {
+      createPeer();
+      _acceptor.async_accept(_peer->_socket, _peer->_peerEndpoint, _handler);
+    }
+  };
 
-    return handleConnected(connectionSocket, std::move(info));
+  createPeer();
+  _acceptor.async_accept(_peer->_socket, _peer->_peerEndpoint, _handler);
+}
+
+void ListenTask::stop() {
+  if (!_bound) {
+    return;
   }
 
-  return true;
+  _bound = false;
+  _acceptor.close();
 }
 
 // -----------------------------------------------------------------------------
-// private methods
+// --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-bool ListenTask::bindSocket() {
-  _listenSocket = _endpoint->connect(30, 300);  // connect timeout in seconds
-
-  if (!TRI_isvalidsocket(_listenSocket)) {
-    return false;
+void ListenTask::createPeer() {
+  if (_endpoint->encryption() == Endpoint::EncryptionType::SSL) {
+    _peer.reset(new Socket(*_ioService, createSslContextFreestanding(), true));
+  } else {
+    _peer.reset(new Socket(
+        *_ioService,
+        boost::asio::ssl::context(boost::asio::ssl::context::method::sslv23),
+        false));
   }
-
-  return true;
 }

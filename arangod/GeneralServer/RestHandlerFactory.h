@@ -26,10 +26,6 @@
 
 #include "Basics/Common.h"
 
-#include "Basics/Mutex.h"
-#include "Basics/ReadWriteLock.h"
-#include "Rest/HttpResponse.h"
-
 namespace arangodb {
 class GeneralRequest;
 class GeneralResponse;
@@ -67,7 +63,7 @@ class RestHandlerFactory {
 
   // creates a new handler
   RestHandler* createHandler(std::unique_ptr<GeneralRequest>,
-                             std::unique_ptr<GeneralResponse>);
+                             std::unique_ptr<GeneralResponse>) const;
 
   // adds a path and constructor to the factory
   void addHandler(std::string const& path, create_fptr, void* data = nullptr);

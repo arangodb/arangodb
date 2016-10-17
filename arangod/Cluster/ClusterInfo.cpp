@@ -2171,14 +2171,14 @@ void ClusterInfo::loadCurrentDBServers() {
     velocypack::Slice currentDBServers;
     velocypack::Slice failedDBServers;
     velocypack::Slice cleanedDBServers;
-    
+
     if (result.slice().length() > 0) {
       currentDBServers =
         result.slice()[0].get(std::vector<std::string>(
             {AgencyComm::prefix(), "Current", "DBServers"}));
     }
     if (!failed.slice().isNone()) {
-      failedDBServers = 
+      failedDBServers =
         failed.slice()[0].get(std::vector<std::string>(
               {AgencyComm::prefix(), "Target", "FailedServers"}));
     }

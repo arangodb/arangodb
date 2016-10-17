@@ -42,13 +42,12 @@
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Cluster/ClusterFeature.h"
-#include "Dispatcher/DispatcherFeature.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LoggerBufferFeature.h"
 #include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
-#include "RestServer/AffinityFeature.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/CheckVersionFeature.h"
 #include "RestServer/ConsoleFeature.h"
@@ -108,20 +107,17 @@ static int runServer(int argc, char** argv) {
   application_features::ApplicationServer server(options, SBIN_DIRECTORY);
 
   std::vector<std::string> nonServerFeatures = {
-      "Action",        "Affinity",
-      "Agency",        "Cluster",
-      "Daemon",        "Dispatcher",
-      "Endpoint",      "FoxxQueues",
-      "GeneralServer", "LoggerBufferFeature",
-      "Server",        "Scheduler",
-      "SslServer",     "Statistics",
-      "Supervisor"};
+      "Action",                 "Affinity",     "Agency",
+      "Authentication",         "Cluster",      "Daemon",
+      "Dispatcher",             "FoxxQueues",   "GeneralServer",
+      "LoggerBufferFeature",    "Server",       "Scheduler",
+      "SslServer",              "Statistics",   "Supervisor"};
 
   int ret = EXIT_FAILURE;
 
   server.addFeature(new ActionFeature(&server));
-  server.addFeature(new AffinityFeature(&server));
   server.addFeature(new AgencyFeature(&server));
+  server.addFeature(new AuthenticationFeature(&server));
   server.addFeature(new BootstrapFeature(&server));
   server.addFeature(new CheckVersionFeature(&server, &ret, nonServerFeatures));
   server.addFeature(new ClusterFeature(&server));
@@ -129,7 +125,6 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new ConsoleFeature(&server));
   server.addFeature(new DatabaseFeature(&server));
   server.addFeature(new DatabasePathFeature(&server));
-  server.addFeature(new DispatcherFeature(&server));
   server.addFeature(new EndpointFeature(&server));
   server.addFeature(new EngineSelectorFeature(&server));
   server.addFeature(new FileDescriptorsFeature(&server));

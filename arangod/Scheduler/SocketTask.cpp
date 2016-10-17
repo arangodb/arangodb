@@ -19,219 +19,114 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SocketTask.h"
 
-#include <errno.h>
-
 #include "Basics/StringBuffer.h"
 #include "Basics/socket-utils.h"
+#include "Endpoint/ConnectionInfo.h"
 #include "Logger/Logger.h"
+#include "Scheduler/EventLoop.h"
+#include "Scheduler/JobGuard.h"
 #include "Scheduler/Scheduler.h"
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-SocketTask::SocketTask(TRI_socket_t socket, ConnectionInfo&& info,
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+SocketTask::SocketTask(arangodb::EventLoop loop,
+                       std::unique_ptr<arangodb::Socket> socket,
+                       arangodb::ConnectionInfo&& connectionInfo,
                        double keepAliveTimeout)
-    : Task("SocketTask"),
-      _keepAliveTimeout(keepAliveTimeout),
-      _commSocket(socket),
-      _connectionInfo(std::move(info)),
-      _readBuffer(TRI_UNKNOWN_MEM_ZONE, READ_BLOCK_SIZE + 1, false) {
-  LOG(TRACE) << "connection established, client "
-             << TRI_get_fd_or_handle_of_socket(socket) << ", server ip "
-             << _connectionInfo.serverAddress << ", server port "
-             << _connectionInfo.serverPort << ", client ip "
-             << _connectionInfo.clientAddress << ", client port "
-             << _connectionInfo.clientPort;
+    : Task(loop, "SocketTask"),
+      _connectionInfo(connectionInfo),
+      _readBuffer(TRI_UNKNOWN_MEM_ZONE, READ_BLOCK_SIZE + 1, false),
+      _peer(std::move(socket)),
+      _useKeepAliveTimeout(keepAliveTimeout > 0),
+      _keepAliveTimeout(static_cast<long>(keepAliveTimeout * 1000)),
+      _keepAliveTimer(_peer->_socket.get_io_service(), _keepAliveTimeout) {
+  ConnectionStatisticsAgent::acquire();
+  connectionStatisticsAgentSetStart();
+
+  _peer->_socket.non_blocking(true);
+
+  boost::system::error_code ec;
+
+  if (ec) {
+    LOG_TOPIC(ERR, Logger::COMMUNICATION)
+        << "SocketTask:SocketTask - cannot create stream from socket: "
+        << ec.message();
+    _closedSend = true;
+    _closedReceive = true;
+  }
+
+  if (_peer->_encrypted) {
+    do {
+      ec.assign(boost::system::errc::success,
+                boost::system::generic_category());
+      _peer->_sslSocket.handshake(
+          boost::asio::ssl::stream_base::handshake_type::server, ec);
+    } while (ec.value() == boost::asio::error::would_block);
+
+    if (ec) {
+      LOG_TOPIC(ERR, Logger::COMMUNICATION)
+          << "SocketTask::SocketTask - unable to perform ssl handshake: "
+          << ec.message() << " : " << ec.value();
+      _closedSend = true;
+      _closedReceive = true;
+    }
+  }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
 
 SocketTask::~SocketTask() {
-  cleanup();
+  boost::system::error_code err;
+  _keepAliveTimer.cancel(err);
 
-  if (TRI_isvalidsocket(_commSocket)) {
-    TRI_CLOSE_SOCKET(_commSocket);
-    TRI_invalidatesocket(&_commSocket);
-  }
-
-  delete _writeBuffer;
-
-  if (_writeBufferStatistics != nullptr) {
-    TRI_ReleaseRequestStatistics(_writeBufferStatistics);
-  }
-
-  for (auto& it : _writeBuffers) {
-    delete it.first;
-    TRI_ReleaseRequestStatistics(it.second);
-  }
-
-  LOG(TRACE) << "connection closed, client "
-             << TRI_get_fd_or_handle_of_socket(_commSocket);
-}
-
-void SocketTask::armKeepAliveTimeout() {
-  if (_keepAliveWatcher != nullptr && _keepAliveTimeout > 0.0) {
-    _scheduler->rearmTimer(_keepAliveWatcher, _keepAliveTimeout);
+  if (err) {
+    LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to cancel _keepAliveTimer";
   }
 }
 
-bool SocketTask::handleRead() {
-  bool res = true;
+void SocketTask::start() {
+  boost::system::error_code err;
+  resetKeepAlive(err);
 
-  if (_closed) {
-    return false;
+  if (_closedSend || _closedReceive) {
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "cannot start, channel closed";
+    return;
   }
 
-  if (!_closeRequested) {
-    res = fillReadBuffer();
-
-    // process as much data as we got; there might be more than one
-    // request in the buffer
-    while (processRead()) {
-      if (_closeRequested) {
-        break;
-      }
-    }
-  } else {
-    // if we don't close here, the scheduler thread may fall into a
-    // busy wait state, consuming 100% CPU!
-    _clientClosed = true;
+  if (_closeRequested) {
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+        << "cannot start, close alread in progress";
+    return;
   }
 
-  if (_clientClosed) {
-    res = false;
-  } else if (!res) {
-    _clientClosed = true;
-  }
+  LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+      << "starting communication between server <-> client on socket: "
+      << _peer->_socket.native_handle();
+  LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+      << _connectionInfo.serverAddress << ":" << _connectionInfo.serverPort
+      << " <-> " << _connectionInfo.clientAddress << ":"
+      << _connectionInfo.clientPort;
 
-  return res;
+  auto self = shared_from_this();
+  _loop._ioService->post([self, this]() { asyncReadSome(); });
 }
 
-bool SocketTask::fillReadBuffer() {
-  // reserve some memory for reading
-  if (_readBuffer.reserve(READ_BLOCK_SIZE + 1) == TRI_ERROR_OUT_OF_MEMORY) {
-    _clientClosed = true;
-    LOG(TRACE) << "out of memory";
-    return false;
-  }
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
 
-  int nr = TRI_READ_SOCKET(_commSocket, _readBuffer.end(), READ_BLOCK_SIZE, 0);
-
-  if (nr > 0) {
-    _readBuffer.increaseLength(nr);
-    _readBuffer.ensureNullTerminated();
-    return true;
-  }
-
-  if (nr == 0) {
-    LOG(TRACE) << "read returned 0";
-    _clientClosed = true;
-    return false;
-  }
-
-  int myerrno = errno;
-
-  if (myerrno == EINTR) {
-    // read interrupted by signal
-    return fillReadBuffer();
-  }
-
-  // condition is required like this because g++ 6 will complain about
-  //   if (myerrno != EWOULDBLOCK && myerrno != EAGAIN)
-  // having two identical branches (because EWOULDBLOCK == EAGAIN on Linux).
-  // however, posix states that there may be systems where EWOULDBLOCK !=
-  // EAGAIN...
-  if (myerrno != EWOULDBLOCK && (EWOULDBLOCK == EAGAIN || myerrno != EAGAIN)) {
-    LOG(DEBUG) << "read from socket failed with " << myerrno << ": "
-               << strerror(myerrno);
-    _clientClosed = true;
-    return false;
-  }
-
-  TRI_ASSERT(myerrno == EWOULDBLOCK ||
-             (EWOULDBLOCK != EAGAIN && myerrno == EAGAIN));
-
-  // from man(2) read:
-  // The  file  descriptor  fd  refers  to  a socket and has been marked
-  // nonblocking (O_NONBLOCK),
-  // and the read would block.  POSIX.1-2001 allows
-  // either error to be returned for this case, and does not require these
-  // constants to have the same value,
-  // so a  portable  application  should check for both possibilities.
-  LOG(TRACE) << "read would block with " << myerrno << ": "
-             << strerror(myerrno);
-
-  return true;
-}
-
-bool SocketTask::handleWrite() {
-  size_t len = 0;
-
-  if (nullptr != _writeBuffer) {
-    TRI_ASSERT(_writeBuffer->length() >= _writeLength);
-    len = _writeBuffer->length() - _writeLength;
-  }
-
-  int nr = 0;
-
-  if (0 < len) {
-    nr = TRI_WRITE_SOCKET(_commSocket, _writeBuffer->begin() + _writeLength,
-                          (int)len, 0);
-
-    if (nr < 0) {
-      int myerrno = errno;
-
-      if (myerrno == EINTR) {
-        // write interrupted by signal
-        return handleWrite();
-      }
-
-      if (myerrno != EWOULDBLOCK &&
-          (EAGAIN == EWOULDBLOCK || myerrno != EAGAIN)) {
-        LOG(DEBUG) << "writing to socket failed with " << myerrno << ": "
-                   << strerror(myerrno);
-
-        return false;
-      }
-
-      TRI_ASSERT(myerrno == EWOULDBLOCK ||
-                 (EWOULDBLOCK != EAGAIN && myerrno == EAGAIN));
-      nr = 0;
-    }
-
-    TRI_ASSERT(nr >= 0);
-
-    len -= nr;
-  }
-
-  if (len == 0) {
-    completedWriteBuffer();
-
-    // rearm timer for keep-alive timeout
-    armKeepAliveTimeout();
-  } else {
-    _writeLength += nr;
-  }
-
-  if (_clientClosed) {
-    return false;
-  }
-
-  // we might have a new write buffer or none at all
-  if (_writeBuffer == nullptr) {
-    _scheduler->stopSocketEvents(_writeWatcher);
-  } else {
-    _scheduler->startSocketEvents(_writeWatcher);
-  }
-
-  return true;
-}
-
-void SocketTask::addWriteBuffer(std::unique_ptr<basics::StringBuffer> buffer,
+void SocketTask::addWriteBuffer(std::unique_ptr<StringBuffer> buffer,
                                 RequestStatisticsAgent* statistics) {
   TRI_request_statistics_t* stat =
       statistics == nullptr ? nullptr : statistics->steal();
@@ -239,191 +134,381 @@ void SocketTask::addWriteBuffer(std::unique_ptr<basics::StringBuffer> buffer,
   addWriteBuffer(buffer.release(), stat);
 }
 
-void SocketTask::addWriteBuffer(basics::StringBuffer* buffer,
+void SocketTask::addWriteBuffer(StringBuffer* buffer,
                                 TRI_request_statistics_t* stat) {
-  if (_closed) {
-    delete buffer;
+  if (_closedSend) {
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "SocketTask::addWriteBuffer - "
+                                               "dropping output, send stream "
+                                               "already closed";
 
+    delete buffer;
     if (stat) {
+      LOG_TOPIC(TRACE, Logger::REQUESTS)
+          << "SocketTask::addWriteBuffer - Statistics release: "
+          << stat->to_string();
       TRI_ReleaseRequestStatistics(stat);
+    } else {
+      LOG_TOPIC(TRACE, Logger::REQUESTS) << "SocketTask::addWriteBuffer - "
+                                            "Statistics release: nullptr - "
+                                            "nothing to realease";
     }
 
     return;
   }
 
   if (_writeBuffer != nullptr) {
-    try {
-      _writeBuffers.emplace_back(std::make_pair(buffer, stat));
-      return;
-    } catch (...) {
-      delete buffer;
-      if (stat) {
-        TRI_ReleaseRequestStatistics(stat);
-      }
-      throw;
-    }
+    _writeBuffers.push_back(buffer);
+    _writeBuffersStats.push_back(stat);
+    return;
   }
 
   _writeBuffer = buffer;
-  _writeBufferStatistics = stat;
+  _writeBufferStatistics = stat;  // threadsafe? why not pass to
+                                  // completedWriteBuffer does this work with
+                                  // async?
 
-  _scheduler->startSocketEvents(_writeWatcher);
+  if (_writeBuffer != nullptr) {
+    boost::system::error_code ec;
+    size_t total = _writeBuffer->length();
+    size_t written = 0;
+
+    boost::system::error_code err;
+    do {
+      ec.assign(boost::system::errc::success,
+                boost::system::generic_category());
+      if (!_peer->_encrypted) {
+        written = _peer->_socket.write_some(
+            boost::asio::buffer(_writeBuffer->begin(), _writeBuffer->length()),
+            err);
+      } else {
+        written = _peer->_sslSocket.write_some(
+            boost::asio::buffer(_writeBuffer->begin(), _writeBuffer->length()),
+            err);
+      }
+      if (written == total) {
+        completedWriteBuffer();
+        return;
+      }
+    } while (err == boost::asio::error::would_block);
+
+    if (err != boost::system::errc::success) {
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+          << "SocketTask::addWriteBuffer (write_some) - write on stream "
+          << _peer->_socket.native_handle()
+          << " failed with: " << err.message();
+      closeStream();
+      return;
+    }
+
+    auto self = shared_from_this();
+    auto handler = [self, this](const boost::system::error_code& ec,
+                                std::size_t transferred) {
+      if (ec) {
+        LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+            << "SocketTask::addWriterBuffer(async_write) - write on stream "
+            << _peer->_socket.native_handle()
+            << " failed with: " << ec.message();
+        closeStream();
+      } else {
+        completedWriteBuffer();
+      }
+    };
+
+    if (!_peer->_encrypted) {
+      boost::asio::async_write(
+          _peer->_socket,
+          boost::asio::buffer(_writeBuffer->begin() + written, total - written),
+          handler);
+    } else {
+      boost::asio::async_write(
+          _peer->_sslSocket,
+          boost::asio::buffer(_writeBuffer->begin() + written, total - written),
+          handler);
+    }
+  }
 }
 
 void SocketTask::completedWriteBuffer() {
+  boost::system::error_code ec;
+  resetKeepAlive(ec);
+  if (ec) {
+    closeStream();
+  }
   delete _writeBuffer;
-
   _writeBuffer = nullptr;
-  _writeLength = 0;
 
   if (_writeBufferStatistics != nullptr) {
+    LOG_TOPIC(TRACE, Logger::REQUESTS)
+        << "SocketTask::addWriteBuffer - Statistics release: "
+        << _writeBufferStatistics->to_string();
     _writeBufferStatistics->_writeEnd = TRI_StatisticsTime();
     TRI_ReleaseRequestStatistics(_writeBufferStatistics);
     _writeBufferStatistics = nullptr;
+  } else {
+    LOG_TOPIC(TRACE, Logger::REQUESTS) << "SocketTask::addWriteBuffer - "
+                                          "Statistics release: nullptr - "
+                                          "nothing to realease";
   }
 
   if (_writeBuffers.empty()) {
     if (_closeRequested) {
-      _clientClosed = true;
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "SocketTask::"
+                                                 "completedWriteBuffer - close "
+                                                 "requested, closing stream";
+
+      closeStream();
     }
 
     return;
   }
 
-  StringBuffer* buffer = _writeBuffers.front().first;
-  TRI_request_statistics_t* statistics = _writeBuffers.front().second;
+  StringBuffer* buffer = _writeBuffers.front();
   _writeBuffers.pop_front();
+
+  TRI_request_statistics_t* statistics = _writeBuffersStats.front();
+  _writeBuffersStats.pop_front();
 
   addWriteBuffer(buffer, statistics);
 }
 
-bool SocketTask::setup(Scheduler* scheduler, EventLoop loop) {
-#ifdef _WIN32
-  // ..........................................................................
-  // The problem we have here is that this opening of the fs handle may fail.
-  // There is no mechanism to the calling function to report failure.
-  // ..........................................................................
-  LOG(TRACE) << "attempting to convert socket handle to socket descriptor";
+void SocketTask::closeStream() {
+  boost::system::error_code err;
 
-  if (!TRI_isvalidsocket(_commSocket)) {
-    LOG(ERR) << "In SocketTask::setup could not convert socket handle to "
-                "socket descriptor -- invalid socket handle";
-    return false;
-  }
+  if (!_closedSend) {
+    _peer->_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_send, err);
 
-  // For the official version of libev we would do this:
-  // int res = _open_osfhandle(_commSocket.fileHandle, 0);
-  // However, this opens a whole lot of problems and in general one should
-  // never use _open_osfhandle for sockets.
-  // Therefore, we do the following, although it has the potential to
-  // lose the higher bits of the socket handle:
-  int res = (int)_commSocket.fileHandle;
-
-  if (res == -1) {
-    LOG(ERR) << "In SocketTask::setup could not convert socket handle to "
-                "socket descriptor -- _open_osfhandle(...) failed";
-    res = TRI_CLOSE_SOCKET(_commSocket);
-
-    if (res != 0) {
-      res = WSAGetLastError();
-      LOG(ERR)
-          << "In SocketTask::setup closesocket(...) failed with error code: "
-          << res;
+    if (err && err != boost::asio::error::not_connected) {
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+          << "SocketTask::closeStream - shutdown send stream "
+          << _peer->_socket.native_handle()
+          << " failed with: " << err.message();
     }
 
-    TRI_invalidatesocket(&_commSocket);
+    _closedSend = true;
+  }
+
+  if (!_closedReceive) {
+    _peer->_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_receive,
+                            err);
+    if (err && err != boost::asio::error::not_connected) {
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+          << "SocketTask::CloseStream - shutdown send stream "
+          << _peer->_socket.native_handle()
+          << " failed with: " << err.message();
+    }
+
+    _closedReceive = true;
+  }
+
+  _peer->_socket.close(err);
+
+  if (err && err != boost::asio::error::not_connected) {
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+        << "SocketTask::CloseStream - shutdown send stream "
+        << _peer->_socket.native_handle() << " failed with: " << err.message();
+  }
+
+  _closeRequested = false;
+  _keepAliveTimer.cancel();
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+void SocketTask::resetKeepAlive(boost::system::error_code& err) {
+  if (_useKeepAliveTimeout) {
+    _keepAliveTimer.expires_from_now(_keepAliveTimeout, err);
+
+    auto self = shared_from_this();
+    _keepAliveTimer.async_wait(
+        [this, self](const boost::system::error_code& error) {
+          LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+              << "keepAliveTimerCallback - called with: " << error.message();
+          if (!error) {
+            LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+                << "keep alive timout - closing stream!";
+            closeStream();
+          }
+        });
+  }
+}
+
+void SocketTask::cancelKeepAlive(boost::system::error_code& err) {
+  if (_useKeepAliveTimeout) {
+    _keepAliveTimer.cancel(err);
+  }
+}
+
+bool SocketTask::reserveMemory() {
+  if (_readBuffer.reserve(READ_BLOCK_SIZE + 1) == TRI_ERROR_OUT_OF_MEMORY) {
+    LOG(WARN) << "out of memory while reading from client";
+    closeStream();
     return false;
   }
 
-  _commSocket.fileDescriptor = res;
-
-#endif
-
-  _scheduler = scheduler;
-  _loop = loop;
-
-  // install timer for keep-alive timeout with some high default value
-  _keepAliveWatcher = _scheduler->installTimerEvent(loop, this, 60.0);
-
-  // and stop it immediately so it's not active at the start
-  _scheduler->clearTimer(_keepAliveWatcher);
-
-  _tid = Thread::currentThreadId();
-
-  TRI_ASSERT(_writeWatcher == nullptr);
-  _writeWatcher = _scheduler->installSocketEvent(loop, EVENT_SOCKET_WRITE, this,
-                                                 _commSocket);
-
-  TRI_ASSERT(_readWatcher == nullptr);
-  _readWatcher = _scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this,
-                                                _commSocket);
   return true;
 }
 
-void SocketTask::cleanup() {
-  if (_scheduler != nullptr) {
-    if (_keepAliveWatcher != nullptr) {
-      _scheduler->uninstallEvent(_keepAliveWatcher);
-    }
-
-    if (_readWatcher != nullptr) {
-      _scheduler->uninstallEvent(_readWatcher);
-    }
-
-    if (_writeWatcher != nullptr) {
-      _scheduler->uninstallEvent(_writeWatcher);
-    }
+bool SocketTask::trySyncRead() {
+  boost::system::error_code err;
+  if (0 == _peer->_socket.available(err)) {
+    return false;
   }
-
-  _keepAliveWatcher = nullptr;
-  _readWatcher = nullptr;
-  _writeWatcher = nullptr;
-
-  _closed = true;
-  _clientClosed = false;
-  _closeRequested = false;
-}
-
-bool SocketTask::handleEvent(EventToken token, EventType revents) {
-  bool result = true;
-
-  if (token == _keepAliveWatcher && (revents & EVENT_TIMER)) {
-    // got a keep-alive timeout
-    LOG(TRACE) << "got keep-alive timeout signal, closing connection";
-
-    _scheduler->clearTimer(token);
-    handleTimeout();
-    _scheduler->destroyTask(this);
-
+  if (err) {
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "SocketTask::trySyncRead "
+                                            << "- failed with "
+                                            << err.message();
     return false;
   }
 
-  if (token == _readWatcher && (revents & EVENT_SOCKET_READ)) {
-    if (_keepAliveWatcher != nullptr) {
-      // disable timer for keep-alive timeout
-      _scheduler->clearTimer(_keepAliveWatcher);
-    }
-
-    result = handleRead();
+  size_t bytesRead = 0;
+  if (!_peer->_encrypted) {
+    bytesRead = _peer->_socket.read_some(
+        boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE), err);
+  } else {
+    bytesRead = _peer->_sslSocket.read_some(
+        boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE), err);
   }
 
-  if (result && !_clientClosed && token == _writeWatcher) {
-    if (revents & EVENT_SOCKET_WRITE) {
-      result = handleWrite();
-    }
+  if (0 == bytesRead) {
+    return false;  // should not happen
   }
 
-  if (result) {
-    if (_writeBuffer == nullptr) {
-      _scheduler->stopSocketEvents(_writeWatcher);
+  resetKeepAlive(err);
+  _readBuffer.increaseLength(bytesRead);
+  if (err) {
+    if (err == boost::asio::error::would_block) {
+      return false;
     } else {
-      _scheduler->startSocketEvents(_writeWatcher);
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+          << "SocketTask::trySyncRead "
+          << "- failed with: " << err.message();
+      return false;
     }
   }
+  return true;
+}
 
-  if (_clientClosed) {
-    _scheduler->destroyTask(this);
+void SocketTask::asyncReadSome() {
+  auto info = _peer->_socket.native_handle();
+
+  try {
+    JobGuard guard(_loop);
+    guard.enterLoop();
+
+    size_t const MAX_DIRECT_TRIES = 2;
+    size_t n = 0;
+
+    while (++n <= MAX_DIRECT_TRIES) {
+      if (!reserveMemory()) {
+        LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+            << "failed to reserve memory for " << info;
+        return;
+      }
+
+      if (!trySyncRead()) {
+        if (n < MAX_DIRECT_TRIES) {
+#ifdef TRI_HAVE_SCHED_H
+          sched_yield();
+#endif
+        }
+
+        continue;
+      }
+
+      while (processRead()) {
+        if (_closeRequested) {
+          break;
+        }
+      }
+
+      if (_closeRequested) {
+        LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+            << "close requested, closing receive stream " << info;
+
+        closeReceiveStream();
+        return;
+      }
+    }
+  } catch (boost::system::system_error& err) {
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+        << "SocketTask::asyncReadSome - i/o stream " << info
+        << " failed with: " << err.what();
+
+    closeStream();
+    return;
+  } catch (...) {
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "general error on stream "
+                                            << info;
+
+    closeStream();
+    return;
   }
 
-  return result;
+  // try to read more bytes
+  if (!reserveMemory()) {
+    LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "failed to reserve memory for "
+                                            << info;
+    return;
+  }
+
+  auto self = shared_from_this();
+  auto handler = [self, this, info](const boost::system::error_code& ec,
+                                    std::size_t transferred) {
+    if (ec) {
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+          << "SocketTask::asyncReadSome (async_read_some) - read on stream "
+          << info << " failed with: " << ec.message();
+      closeStream();
+    } else {
+      JobGuard guard(_loop);
+      guard.enterLoop();
+
+      _readBuffer.increaseLength(transferred);
+
+      while (processRead()) {
+        if (_closeRequested) {
+          break;
+        }
+      }
+
+      if (_closeRequested) {
+        LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+            << "close requested, closing receive stream";
+
+        closeReceiveStream();
+      } else {
+        boost::system::error_code err;
+        resetKeepAlive(err);
+        if (err) {
+          closeReceiveStream();
+        }
+        asyncReadSome();
+      }
+    }
+  };
+
+  if (!_peer->_encrypted) {
+    _peer->_socket.async_read_some(
+        boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE), handler);
+  } else {
+    _peer->_sslSocket.async_read_some(
+        boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE), handler);
+  }
+}
+
+void SocketTask::closeReceiveStream() {
+  auto info = _peer->_socket.native_handle();
+
+  if (!_closedReceive) {
+    try {
+      _peer->_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_receive);
+    } catch (boost::system::system_error& err) {
+      LOG(WARN) << "shutdown receive stream " << info
+                << " failed with: " << err.what();
+    }
+
+    _closedReceive = true;
+  }
 }

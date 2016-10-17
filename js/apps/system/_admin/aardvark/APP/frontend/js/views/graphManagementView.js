@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, $, _, window, templateEngine, arangoHelper, GraphViewerUI, require */
+/* global Backbone, $, _, window, templateEngine, arangoHelper, GraphViewerUI, require, Joi */
 
 (function () {
   'use strict';
@@ -201,6 +201,82 @@
       });
     },
 
+    toggleSmartGraph: function () {
+      var i;
+      var self = this;
+
+      if ($('#new-is_smart').is(':checked') === true) {
+        for (i = 0; i < this.counter; i++) {
+          $('#newEdgeDefinitions' + i).select2({
+            tags: []
+          });
+          self.cachedNewEdgeDefinitions = $('#newEdgeDefinitions' + i).select2('data');
+          self.cachedNewEdgeDefinitionsState = $('#newEdgeDefinitions' + i).attr('disabled');
+          $('#newEdgeDefinitions' + i).select2('data', '');
+          $('#newEdgeDefinitions' + i).attr('disabled', false);
+
+          $('#fromCollections' + i).select2({
+            tags: []
+          });
+          self.cachedFromCollections = $('#fromCollections' + i).select2('data');
+          self.cachedFromCollectionsState = $('#fromCollections' + i).attr('disabled');
+          $('#fromCollections' + i).select2('data', '');
+          $('#fromCollections' + i).attr('disabled', false);
+
+          $('#toCollections' + i).select2({
+            tags: []
+          });
+          self.cachedToCollections = $('#toCollections' + i).select2('data');
+          self.cachedToCollectionsState = $('#toCollections' + i).attr('disabled');
+          $('#toCollections' + i).select2('data', '');
+          $('#toCollections' + i).attr('disabled', false);
+
+          $('#newVertexCollections' + i).select2({
+            tags: []
+          });
+          self.cachedNewVertexCollections = $('#newVertexCollections' + i).select2('data');
+          self.cachedNewVertexCollectionsState = $('#newVertexCollections' + i).attr('disabled');
+          $('#newVertexCollections' + i).select2('data', '');
+          $('#newVertexCollections' + i).attr('disabled', false);
+        }
+      } else {
+        var collList = []; var collections = this.options.collectionCollection.models;
+
+        collections.forEach(function (c) {
+          if (c.get('isSystem')) {
+            return;
+          }
+          collList.push(c.id);
+        });
+
+        for (i = 0; i < this.counter; i++) {
+          $('#newEdgeDefinitions' + i).select2({
+            tags: this.eCollList
+          });
+          $('#newEdgeDefinitions' + i).select2('data', self.cachedNewEdgeDefinitions);
+          $('#newEdgeDefinitions' + i).attr('disabled', self.cachedNewEdgeDefinitionsState);
+
+          $('#fromCollections' + i).select2({
+            tags: collList
+          });
+          $('#fromCollections' + i).select2('data', self.cachedFromCollections);
+          $('#fromCollections' + i).attr('disabled', self.cachedFromCollectionsState);
+
+          $('#toCollections' + i).select2({
+            tags: collList
+          });
+          $('#toCollections' + i).select2('data', self.cachedToCollections);
+          $('#toCollections' + i).attr('disabled', self.cachedToCollectionsState);
+
+          $('#newVertexCollections' + i).select2({
+            tags: collList
+          });
+          $('#newVertexCollections' + i).select2('data', self.cachedNewVertexCollections);
+          $('#newVertexCollections' + i).attr('disabled', self.cachedNewVertexCollectionsState);
+        }
+      }
+    },
+
     render: function (name, refetch) {
       var self = this;
       this.collection.fetch({
@@ -226,6 +302,7 @@
           self.events['click .graphViewer-icon-button'] = self.addRemoveDefinition.bind(self);
           self.events['click #graphTab a'] = self.toggleTab.bind(self);
           self.events['click .createExampleGraphs'] = self.createExampleGraphs.bind(self);
+          self.events['click #new-is_smart'] = self.toggleSmartGraph.bind(self);
           self.events['focusout .select2-search-field input'] = function (e) {
             if ($('.select2-drop').is(':visible')) {
               if (!$('#select2-search-field input').is(':focus')) {
@@ -529,11 +606,26 @@
         return;
       }
 
-      this.collection.create({
+      var newCollectionObject = {
         name: name,
         edgeDefinitions: edgeDefinitions,
         orphanCollections: vertexCollections
-      }, {
+      };
+
+      // if smart graph
+      if ($('#new-is_smart').is(':checked')) {
+        if ($('#new-numberOfShards').val() === '' || $('#new-smartGraphAttribute').val() === '') {
+          return;
+        } else {
+          newCollectionObject.isSmart = true;
+          newCollectionObject.options = {
+            numberOfShards: $('#new-numberOfShards').val(),
+            smartGraphAttribute: $('#new-smartGraphAttribute').val()
+          };
+        }
+      }
+
+      this.collection.create(newCollectionObject, {
         success: function () {
           self.updateGraphManagementView();
           window.modalView.hide();
@@ -718,9 +810,67 @@
         )
       );
 
-      window.modalView.show(
-        'modalGraphTable.ejs', title, buttons, tableContent, undefined, undefined, this.events
-      );
+      if (window.frontendConfig.isEnterprise) {
+        var advanced = {};
+        var advancedTableContent = [];
+
+        advancedTableContent.push(
+          window.modalView.createCheckboxEntry(
+            'new-is_smart',
+            'Smart Graph',
+            true,
+            'Create a Smart Graph? Edge and vertex collections will be automatically generated. They are not allowed to be present before graph creation.',
+            false
+          )
+        );
+
+        advancedTableContent.push(
+          window.modalView.createTextEntry(
+            'new-numberOfShards',
+            'Shards',
+            '',
+            'Number of shards the smart graph is using.',
+            '',
+            false,
+            [
+              {
+                rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                msg: 'Must be a number.'
+              }
+            ]
+          )
+        );
+
+        advancedTableContent.push(
+          window.modalView.createTextEntry(
+            'new-smartGraphAttribute',
+            'SmartGraph Attribute',
+            '',
+            'The attribute name that is used to smartly shard the vertices of a graph. \n' +
+            'Every vertex in this Graph has to have this attribute. \n' +
+            'Cannot be modified later.',
+            '',
+            false,
+            [
+              {
+                rule: Joi.string(),
+                msg: 'Must be a string.'
+              }
+            ]
+          )
+        );
+
+        advanced.header = 'Smart Graph';
+        advanced.content = advancedTableContent;
+
+        window.modalView.show(
+          'modalGraphTable.ejs', title, buttons, tableContent, advanced, undefined, this.events
+        );
+      } else {
+        window.modalView.show(
+          'modalGraphTable.ejs', title, buttons, tableContent, undefined, undefined, this.events
+        );
+      }
 
       if (graph) {
         $('.modal-body table').css('border-collapse', 'separate');

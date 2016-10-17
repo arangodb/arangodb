@@ -43,10 +43,10 @@ bool RestShutdownHandler::isDirect() const { return true; }
 /// @brief was docuBlock JSF_get_api_initiate
 ////////////////////////////////////////////////////////////////////////////////
 
-RestHandler::status RestShutdownHandler::execute() {
+RestStatus RestShutdownHandler::execute() {
   if (_request->requestType() != rest::RequestType::DELETE_REQ) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
-    return status::DONE;
+    return RestStatus::DONE;
   }
   bool removeFromCluster;
   std::string const& remove = _request->value("remove_from_cluster", removeFromCluster);
@@ -62,7 +62,7 @@ RestHandler::status RestShutdownHandler::execute() {
     AgencyCommResult result = agency.setValue("Shutdown", builder.slice(), 0.0);
     if (!result.successful()) {
       generateError(rest::ResponseCode::SERVER_ERROR, 500);
-      return status::DONE;
+      return RestStatus::DONE;
     }
     removeFromCluster = true;
   }
@@ -81,5 +81,5 @@ RestHandler::status RestShutdownHandler::execute() {
     // Ignore the error
   }
 
-  return status::DONE;
+  return RestStatus::DONE;
 }

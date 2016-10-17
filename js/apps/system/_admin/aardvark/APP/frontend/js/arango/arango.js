@@ -402,7 +402,7 @@
         Content: {
           route: defaultRoute + '/documents/1'
         },
-        Indices: {
+        Indexes: {
           route: '#cIndices/' + encodeURIComponent(collectionName)
         },
         Info: {
