@@ -54,6 +54,16 @@
 # (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
+if (APPLE AND BREW AND NOT OPENSSL_ROOT_DIR)
+  message("searching openssl with brew (${BREW})")
+  # if we have a brew openssl, prefer it over the elderly system one.
+  execute_process(OUTPUT_VARIABLE BREW_ROOT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    COMMAND ${BREW} --prefix)
+  set(OPENSSL_ROOT_DIR "${BREW_ROOT}/opt/openssl")
+  message("auto-set OPENSSL_ROOT_DIR to: ${OPENSSL_ROOT_DIR}")
+endif ()
+
 if (UNIX)
   find_package(PkgConfig QUIET)
   pkg_check_modules(_OPENSSL openssl)

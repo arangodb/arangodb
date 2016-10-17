@@ -35,7 +35,8 @@ class RestExportHandler : public RestVocbaseBaseHandler {
   explicit RestExportHandler(GeneralRequest*, GeneralResponse*);
 
  public:
-  status execute() override;
+  RestStatus execute() override;
+  char const* name() const override final { return "RestExportHandler"; }
 
  private:
   //////////////////////////////////////////////////////////////////////////////

@@ -196,11 +196,6 @@ add_executable(${BIN_ARANGOD}
   Cluster/TraverserEngineRegistry.cpp
   Cluster/ServerState.cpp
   Cluster/v8-cluster.cpp
-  Dispatcher/Dispatcher.cpp
-  Dispatcher/DispatcherFeature.cpp
-  Dispatcher/DispatcherQueue.cpp
-  Dispatcher/DispatcherThread.cpp
-  Dispatcher/Job.cpp
   FulltextIndex/fulltext-handles.cpp
   FulltextIndex/fulltext-index.cpp
   FulltextIndex/fulltext-list.cpp
@@ -213,11 +208,11 @@ add_executable(${BIN_ARANGOD}
   GeneralServer/GeneralServer.cpp
   GeneralServer/GeneralServerFeature.cpp
   GeneralServer/HttpCommTask.cpp
-  GeneralServer/GeneralServerJob.cpp
-  GeneralServer/HttpsCommTask.cpp
   GeneralServer/PathHandler.cpp
+  GeneralServer/RestEngine.cpp
   GeneralServer/RestHandler.cpp
   GeneralServer/RestHandlerFactory.cpp
+  GeneralServer/RestStatus.cpp
   GeneralServer/VppCommTask.cpp
   GeoIndex/GeoIndex.cpp
   Indexes/EdgeIndex.cpp
@@ -245,6 +240,7 @@ add_executable(${BIN_ARANGOD}
   RestHandler/RestBatchHandler.cpp
   RestHandler/RestCursorHandler.cpp
   RestHandler/RestDebugHandler.cpp
+  RestHandler/RestDemoHandler.cpp
   RestHandler/RestDocumentHandler.cpp
   RestHandler/RestEchoHandler.cpp
   RestHandler/RestEdgesHandler.cpp
@@ -263,7 +259,6 @@ add_executable(${BIN_ARANGOD}
   RestHandler/RestVocbaseBaseHandler.cpp
   RestHandler/RestWalHandler.cpp
   RestHandler/WorkMonitorHandler.cpp
-  RestServer/AffinityFeature.cpp
   RestServer/BootstrapFeature.cpp
   RestServer/CheckVersionFeature.cpp
   RestServer/ConsoleFeature.cpp
@@ -285,17 +280,14 @@ add_executable(${BIN_ARANGOD}
   RestServer/VocbaseContext.cpp
   RestServer/WorkMonitorFeature.cpp
   RestServer/arangod.cpp
+  Scheduler/Job.cpp
+  Scheduler/JobGuard.cpp
+  Scheduler/JobQueue.cpp
   Scheduler/ListenTask.cpp
-  Scheduler/PeriodicTask.cpp
   Scheduler/Scheduler.cpp
   Scheduler/SchedulerFeature.cpp
-  Scheduler/SchedulerLibev.cpp
-  Scheduler/SchedulerThread.cpp
-  Scheduler/SignalTask.cpp
   Scheduler/SocketTask.cpp
   Scheduler/Task.cpp
-  Scheduler/TaskManager.cpp
-  Scheduler/TimerTask.cpp
   Statistics/StatisticsFeature.cpp
   Statistics/statistics.cpp
   StorageEngine/EngineSelectorFeature.cpp
@@ -322,10 +314,6 @@ add_executable(${BIN_ARANGOD}
   V8Server/FoxxQueuesFeature.cpp
   V8Server/V8Context.cpp
   V8Server/V8DealerFeature.cpp
-  V8Server/V8Job.cpp
-  V8Server/V8PeriodicTask.cpp
-  V8Server/V8QueueJob.cpp
-  V8Server/V8TimerTask.cpp
   V8Server/V8Traverser.cpp
   V8Server/v8-actions.cpp
   V8Server/v8-collection-util.cpp
@@ -373,16 +361,21 @@ add_executable(${BIN_ARANGOD}
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}
 )
 
+if(USE_SSL)
+    target_compile_definitions(${BIN_ARANGOD} PUBLIC "ARANGODB_SSL_ENABLED=1")
+endif()
+
 target_link_libraries(${BIN_ARANGOD}
   ${LIB_ARANGO_FE}
   ${LIB_ARANGO_V8}
   ${LIB_ARANGO}
-  ${LIBEV_LIBS}
   ${LINENOISE_LIBS}
   ${MSVC_LIBS}
   ${V8_LIBS}
   ${ROCKSDB_LIBS}
   ${SYSTEM_LIBRARIES}
+  boost_boost
+  boost_system
 )
 
 install(
@@ -392,9 +385,9 @@ install(
 install_config(arangod)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangod ev zlibstatic v8_build)
+  add_dependencies(arangod zlibstatic v8_build)
 else ()
-  add_dependencies(arangod ev zlibstatic)
+  add_dependencies(arangod zlibstatic)
 endif ()
 
 ################################################################################

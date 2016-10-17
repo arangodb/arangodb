@@ -30,11 +30,6 @@
 #include <chrono>
 
 namespace arangodb {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief auth handler
-////////////////////////////////////////////////////////////////////////////////
-
 class RestAuthHandler : public RestVocbaseBaseHandler {
  public:
   RestAuthHandler(GeneralRequest*, GeneralResponse*);
@@ -42,15 +37,16 @@ class RestAuthHandler : public RestVocbaseBaseHandler {
   std::string generateJwt(std::string const&, std::string const&);
 
  public:
+  char const* name() const override final { return "RestAuthHandler"; }
   bool isDirect() const override;
-  status execute() override;
+  RestStatus execute() override;
 
 #ifdef USE_ENTERPRISE
   void finalizeExecute() override;
 #endif
 
  private:
-  status badRequest();
+  RestStatus badRequest();
 
  private:
   std::string _jwtSecret;

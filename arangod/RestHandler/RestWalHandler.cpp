@@ -34,13 +34,13 @@ RestWalHandler::RestWalHandler(
     GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
-RestHandler::status RestWalHandler::execute() {
+RestStatus RestWalHandler::execute() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting /_admin/wal/<operation>");
-    return status::DONE;
+    return RestStatus::DONE;
   }
   
   std::string const& operation = suffix[0];
@@ -51,27 +51,27 @@ RestHandler::status RestWalHandler::execute() {
   if (operation == "transactions") {
     if (type == rest::RequestType::GET) {
       transactions();
-      return status::DONE;
+      return RestStatus::DONE;
     }
   } else if (operation == "flush") {
     if (type == rest::RequestType::PUT) {
       flush();
-      return status::DONE;
+      return RestStatus::DONE;
     }
   } else if (operation == "properties") {
     if (type == rest::RequestType::GET || type == rest::RequestType::PUT) {
       properties();
-      return status::DONE;
+      return RestStatus::DONE;
     }
   } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting /_admin/wal/<operation>");
-    return status::DONE;
+    return RestStatus::DONE;
   }
 
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-  return status::DONE;
+  return RestStatus::DONE;
 }
 
 void RestWalHandler::properties() {

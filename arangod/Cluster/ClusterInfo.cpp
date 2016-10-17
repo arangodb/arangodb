@@ -1166,6 +1166,13 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
       }
 
       if (TRI_microtime() > endTime) {
+        LOG_TOPIC(ERR, Logger::CLUSTER) << "Timeout in _create collection"
+          << ": database: " << databaseName << ", collId:" << collectionID
+          << "\njson: " << json.toString()
+          << "\ntransaction sent to agency: " << transaction.toJson();
+        AgencyCommResult ag = ac.getValues("");
+        LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
+          << ag.slice().toJson();
         events::CreateCollection(name, TRI_ERROR_CLUSTER_TIMEOUT);
         return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
       }
@@ -1270,6 +1277,12 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
       }
 
       if (TRI_microtime() > endTime) {
+        LOG_TOPIC(ERR, Logger::CLUSTER) << "Timeout in _drop collection"
+          << ": database: " << databaseName << ", collId:" << collectionID
+          << "\ntransaction sent to agency: " << trans.toJson();
+        AgencyCommResult ag = ac.getValues("");
+        LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
+          << ag.slice().toJson();
         events::DropCollection(collectionID, TRI_ERROR_CLUSTER_TIMEOUT);
         return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
       }
@@ -2158,14 +2171,14 @@ void ClusterInfo::loadCurrentDBServers() {
     velocypack::Slice currentDBServers;
     velocypack::Slice failedDBServers;
     velocypack::Slice cleanedDBServers;
-    
+
     if (result.slice().length() > 0) {
       currentDBServers =
         result.slice()[0].get(std::vector<std::string>(
             {AgencyComm::prefix(), "Current", "DBServers"}));
     }
     if (!failed.slice().isNone()) {
-      failedDBServers = 
+      failedDBServers =
         failed.slice()[0].get(std::vector<std::string>(
               {AgencyComm::prefix(), "Target", "FailedServers"}));
     }

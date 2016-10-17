@@ -43,8 +43,9 @@ class RestAgencyCallbacksHandler : public RestVocbaseBaseHandler {
                              AgencyCallbackRegistry* agencyCallbackRegistry);
 
  public:
+  char const* name() const override final { return "RestAgencyCallbacksHandler"; }
   bool isDirect() const override;
-  status execute() override;
+  RestStatus execute() override;
 
  private:
   AgencyCallbackRegistry* _agencyCallbackRegistry;

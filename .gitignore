@@ -45,20 +45,14 @@ WindowsLibraries/
 core
 TAGS
 
-CMakeCache.txt
-CMakeFiles/
 CPackConfig.cmake
 CPackSourceConfig.cmake
 CTestTestfile.cmake
-UnitTests/CMakeFiles/
 UnitTests/CTestTestfile.cmake
 UnitTests/cmake_install.cmake
-arangod/CMakeFiles/
 arangod/cmake_install.cmake
-arangosh/CMakeFiles/
 arangosh/cmake_install.cmake
 cmake_install.cmake
-lib/CMakeFiles/
 lib/cmake_install.cmake
 
 Documentation/Examples/*.generated

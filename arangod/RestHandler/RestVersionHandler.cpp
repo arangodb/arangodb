@@ -44,7 +44,7 @@ RestVersionHandler::RestVersionHandler(GeneralRequest* request,
 
 bool RestVersionHandler::isDirect() const { return true; }
 
-RestHandler::status RestVersionHandler::execute() {
+RestStatus RestVersionHandler::execute() {
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
   result.add("server", VPackValue("arango"));
@@ -74,5 +74,5 @@ RestHandler::status RestVersionHandler::execute() {
   }
   result.close();
   generateResult(rest::ResponseCode::OK, result.slice());
-  return status::DONE;
+  return RestStatus::DONE;
 }

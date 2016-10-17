@@ -74,7 +74,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
  private:
   bool _unregisterOnShutdown;
   bool _enableCluster;
-  HeartbeatThread* _heartbeatThread;
+  std::shared_ptr<HeartbeatThread> _heartbeatThread;
   uint64_t _heartbeatInterval;
   bool _disableHeartbeat;
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;

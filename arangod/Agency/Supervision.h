@@ -27,6 +27,7 @@
 #include "Agency/Node.h"
 #include "AgencyCommon.h"
 #include "Basics/ConditionVariable.h"
+#include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 
 namespace arangodb {
@@ -156,6 +157,7 @@ class Supervision : public arangodb::Thread {
   bool handleJobs();
   void handleShutdown();
 
+  Mutex _lock;
   Agent* _agent; /**< @brief My agent */
   Node _snapshot;
 

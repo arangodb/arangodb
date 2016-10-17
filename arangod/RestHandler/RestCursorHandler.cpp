@@ -50,31 +50,34 @@ RestCursorHandler::RestCursorHandler(
       _hasStarted(false),
       _queryKilled(false) {}
 
-RestHandler::status RestCursorHandler::execute() {
+RestStatus RestCursorHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
 
   if (type == rest::RequestType::POST) {
     createCursor();
-    return status::DONE;
+    return RestStatus::DONE;
   }
 
   if (type == rest::RequestType::PUT) {
     modifyCursor();
-    return status::DONE;
+    return RestStatus::DONE;
   }
 
   if (type == rest::RequestType::DELETE_REQ) {
     deleteCursor();
-    return status::DONE;
+    return RestStatus::DONE;
   }
 
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-  return status::DONE;
+  return RestStatus::DONE;
 }
 
-bool RestCursorHandler::cancel() { return cancelQuery(); }
+bool RestCursorHandler::cancel() {
+  RestHandler::cancel();
+  return cancelQuery();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief processes the query and returns the results/cursor
@@ -461,7 +464,8 @@ void RestCursorHandler::modifyCursor() {
     builder.close();
 
     _response->setContentType(rest::ContentType::JSON);
-    generateResult(rest::ResponseCode::OK, builder.slice());
+    generateResult(rest::ResponseCode::OK, builder.slice(),
+                     static_cast<VelocyPackCursor*>(cursor)->result()->context);
 
     cursors->release(cursor);
   } catch (...) {

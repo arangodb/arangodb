@@ -313,17 +313,22 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
             return nullptr;
           }
           this->close();  // this sets the state to IN_CONNECT for a retry
-          usleep(5000);
+          _state = DEAD;
+          setErrorMessage("Request timeout reached");
           break;
         }
+
+        // no error
 
         if (connectionClosed) {
           // write might have succeeded even if the server has closed
           // the connection, this will then show up here with us being
           // in state IN_READ_HEADER but nothing read.
           if (_state == IN_READ_HEADER && 0 == _readBuffer.length()) {
-            this->close();  // sets _state to IN_CONNECT again for a retry
-            continue;
+            this->close();
+            _state = DEAD;
+            setErrorMessage("Connection closed by remote");
+            break;
           }
 
           else if (_state == IN_READ_BODY && !_result->hasContentLength()) {
@@ -337,7 +342,9 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
 
             if (_state != FINISHED) {
               // If the body was not fully found we give up:
-              this->close();  // this sets the state IN_CONNECT to retry
+              this->close();
+              _state = DEAD;
+              setErrorMessage("Got unexpected response from remote");
             }
 
             break;
@@ -345,7 +352,9 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
 
           else {
             // In all other cases of closed connection, we are doomed:
-            this->close();  // this sets the state to IN_CONNECT retry
+            this->close(); 
+            _state = DEAD;
+            setErrorMessage("Got unexpected response from remote");
             break;
           }
         }

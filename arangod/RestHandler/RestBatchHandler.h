@@ -61,11 +61,12 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
   ~RestBatchHandler();
 
  public:
-  RestHandler::status execute() override;
+  RestStatus execute() override;
+  char const* name() const override final { return "RestBatchHandler"; }
 
  private:
-  RestHandler::status executeHttp();
-  RestHandler::status executeVpp();
+  RestStatus executeHttp();
+  RestStatus executeVpp();
   // extract the boundary from the body of a multipart message
   bool getBoundaryBody(std::string*);
 

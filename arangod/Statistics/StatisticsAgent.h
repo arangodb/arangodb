@@ -42,11 +42,7 @@ class StatisticsAgent {
       : _statistics(standalone ? FUNC::acquire() : nullptr),
         _lastReadStart(0.0) {}
 
-  virtual ~StatisticsAgent() {
-    if (_statistics != nullptr) {
-      FUNC::release(_statistics);
-    }
-  }
+  virtual ~StatisticsAgent() { release(); }
 
  public:
   STAT* acquire() {
@@ -73,7 +69,7 @@ class StatisticsAgent {
   STAT* steal() {
     STAT* statistics = _statistics;
     _statistics = nullptr;
-
+    // readtime for agent?!
     return statistics;
   }
 
@@ -83,6 +79,14 @@ class StatisticsAgent {
     }
 
     return 0.0;
+  }
+
+  std::string to_string() {
+    if (_statistics) {
+      return _statistics->to_string();
+    } else {
+      return std::string();
+    }
   }
 
  public:
@@ -125,7 +129,7 @@ class RequestStatisticsAgent
     _lastReadStart = other._lastReadStart;
     other._lastReadStart = 0.0;
   }
-  
+
   void requestStatisticsAgentSetRequestType(rest::RequestType b) {
     if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {

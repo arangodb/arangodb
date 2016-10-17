@@ -35,6 +35,7 @@
 #include "Agency/UnassumedLeadership.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/MutexLocker.h"
 
 #include <thread>
 
@@ -58,8 +59,13 @@ Supervision::Supervision()
 Supervision::~Supervision() { shutdown(); };
 
 void Supervision::wakeUp() {
-  updateSnapshot();
-  upgradeAgency();
+  {
+    MUTEX_LOCKER(locker, _lock);
+    updateSnapshot();
+    upgradeAgency();
+  }
+    
+  CONDITION_LOCKER(guard, _cv);
   _cv.signal();
 }
 
@@ -408,21 +414,25 @@ void Supervision::run() {
     }
 
     while (!this->isStopping()) {
-      updateSnapshot();
-      // mop: always do health checks so shutdown is able to detect if a server
-      // failed otherwise
-      if (_agent->leading()) {
-        doChecks();
-      }
+      {
+        MUTEX_LOCKER(locker, _lock);
 
-      if (isShuttingDown()) {
-        handleShutdown();
-      } else if (_selfShutdown) {
-        shutdown = true;
-        break;
-      } else if (_agent->leading()) {
-        if (!handleJobs()) {
+        updateSnapshot();
+        // mop: always do health checks so shutdown is able to detect if a server
+        // failed otherwise
+        if (_agent->leading()) {
+          doChecks();
+        }
+
+        if (isShuttingDown()) {
+          handleShutdown();
+        } else if (_selfShutdown) {
+          shutdown = true;
           break;
+        } else if (_agent->leading()) {
+          if (!handleJobs()) {
+            break;
+          }
         }
       }
       _cv.wait(_frequency * 1000000);
@@ -753,6 +763,7 @@ bool Supervision::start(Agent* agent) {
 bool Supervision::updateAgencyPrefix(size_t nTries, int intervalSec) {
   // Try nTries to get agency's prefix in intervals
   while (!this->isStopping()) {
+    MUTEX_LOCKER(locker, _lock);
     _snapshot = _agent->readDB().get("/");
     if (_snapshot.children().size() > 0) {
       _agencyPrefix =

@@ -238,7 +238,8 @@ class LogicalCollection {
   
   /// @brief a method to skip certain documents in AQL write operations,
   /// this is only used in the enterprise edition for smart graphs
-  virtual bool skipForAqlWrite(arangodb::velocypack::Slice document) const;
+  virtual bool skipForAqlWrite(arangodb::velocypack::Slice document,
+                               std::string const& key) const;
 
   // SECTION: Modification Functions
   int rename(std::string const&);

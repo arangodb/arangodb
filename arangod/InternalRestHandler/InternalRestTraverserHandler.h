@@ -37,7 +37,8 @@ class InternalRestTraverserHandler : public RestVocbaseBaseHandler {
                                         traverser::TraverserEngineRegistry*);
 
  public:
-  status execute() override final;
+  RestStatus execute() override final;
+  char const* name() const override final { return "InternalRestTraverserHandler"; }
 
  private:
 

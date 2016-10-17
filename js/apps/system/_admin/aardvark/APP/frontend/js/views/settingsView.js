@@ -261,7 +261,7 @@
               )
             );
 
-            var tabBar = ['General', 'Indices'];
+            var tabBar = ['General', 'Indexes'];
             var templates = ['modalTable.ejs', 'indicesView.ejs'];
 
             window.modalView.show(

@@ -43,8 +43,8 @@ SslServerFeature::SslServerFeature(application_features::ApplicationServer* serv
       _sslProtocol(TLS_V1),
       _sslOptions(
           (long)(SSL_OP_TLS_ROLLBACK_BUG | SSL_OP_CIPHER_SERVER_PREFERENCE)),
-      _ecdhCurve("prime256v1"),
-      _sslContext(nullptr) {
+      _ecdhCurve("prime256v1")
+{
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Ssl");
@@ -94,20 +94,20 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void SslServerFeature::prepare() {
-  createSslContext();
-
   LOG(INFO) << "using SSL options: " << stringifySslOptions(_sslOptions);
 
   if (!_cipherList.empty()) {
       LOG(INFO) << "using SSL cipher-list '" << _cipherList << "'";
   }
+
+  UniformCharacter r(
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
+  _rctx = r.random(SSL_MAX_SSL_SESSION_ID_LENGTH);
+
 }
 
 void SslServerFeature::unprepare() {
-  if (_sslContext != nullptr) {
-    SSL_CTX_free(_sslContext);
-    _sslContext = nullptr;
-  }
+  LOG(INFO) << "unpreparing ssl: " << stringifySslOptions(_sslOptions);
 }
 
 namespace {
@@ -122,10 +122,12 @@ class BIOGuard {
 };
 }
 
-void SslServerFeature::createSslContext() {
+boost::asio::ssl::context SslServerFeature::createSslContext() const {
   // check keyfile
   if (_keyfile.empty()) {
-    return;
+    //review (fc)
+    LOG(FATAL) << "keyfile empty'" << _keyfile << "'";
+    FATAL_ERROR_EXIT();
   }
 
   // validate protocol
@@ -144,12 +146,15 @@ void SslServerFeature::createSslContext() {
   }
 
   // create context
-  _sslContext = ::sslContext(protocol_e(_sslProtocol), _keyfile);
-
-  if (_sslContext == nullptr) {
+  auto sslContextOpt = ::sslContext(protocol_e(_sslProtocol), _keyfile);
+  if (!sslContextOpt) {
     LOG(FATAL) << "failed to create SSL context, cannot create HTTPS server";
     FATAL_ERROR_EXIT();
   }
+  boost::asio::ssl::context sslContext(boost::asio::ssl::context::method::sslv23);
+  std::swap(sslContextOpt.get(),sslContext); //swap context out of optional
+
+  boost::asio::ssl::context::native_handle_type _sslContext = sslContext.native_handle();
 
   // set cache mode
   SSL_CTX_set_session_cache_mode(
@@ -195,10 +200,6 @@ void SslServerFeature::createSslContext() {
 #endif
 
   // set ssl context
-  UniformCharacter r(
-      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
-  _rctx = r.random(SSL_MAX_SSL_SESSION_ID_LENGTH);
-
   int res = SSL_CTX_set_session_id_context(
       _sslContext, (unsigned char const*)_rctx.c_str(), (int)_rctx.size());
 
@@ -252,6 +253,7 @@ void SslServerFeature::createSslContext() {
 
     SSL_CTX_set_client_CA_list(_sslContext, certNames);
   }
+  return sslContext;
 }
 
 std::string SslServerFeature::stringifySslOptions(

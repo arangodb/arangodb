@@ -8,7 +8,7 @@ For a full example of sessions with authentication and registration see the exam
 
 !SECTION Creating an authenticator
 
-`auth([options]): Authenticator`
+`createAuth([options]): Authenticator`
 
 Creates an authenticator.
 

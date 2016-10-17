@@ -357,7 +357,7 @@ bool ClientConnection::readClientConnection(StringBuffer& stringBuffer,
     connectionClosed = true;
     return false;
   }
-
+  
   TRI_ASSERT(TRI_isvalidsocket(_socket));
 
   connectionClosed = false;

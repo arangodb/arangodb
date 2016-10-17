@@ -44,7 +44,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ~RestReplicationHandler();
 
  public:
-  RestHandler::status execute();
+  RestStatus execute() override;
+  char const* name() const override final { return "RestReplicationHandler"; }
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -374,7 +375,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief global set of ids of holdReadLockCollection jobs, if
   /// an id is removed here (under the protection of the mutex of
-  /// condVar) and a broadcast is sent, the job with that id is 
+  /// condVar) and a broadcast is sent, the job with that id is
   /// terminated.
   //////////////////////////////////////////////////////////////////////////////
 

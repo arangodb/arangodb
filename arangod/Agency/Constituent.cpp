@@ -60,6 +60,7 @@ void Constituent::configure(Agent* agent) {
 
   if (size() == 1) {
     _role = LEADER;
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Set _role to LEADER in term "  << _term;
   } else {
     _id = _agent->config().id();
   }
@@ -73,6 +74,7 @@ Constituent::Constituent()
       _term(0),
       _cast(false),
       _leaderID(NO_LEADER),
+      _lastHeartbeatSeen(0.0),
       _role(FOLLOWER),
       _agent(nullptr),
       _votedFor(NO_LEADER) {}
@@ -98,17 +100,21 @@ term_t Constituent::term() const {
 
 /// Update my term
 void Constituent::term(term_t t) {
-  term_t tmp;
-  {
-    MUTEX_LOCKER(guard, _castLock);
-    tmp = _term;
-    _term = t;
-  }
+  MUTEX_LOCKER(guard, _castLock);
+  termNoLock(t);
+}
+
+void Constituent::termNoLock(term_t t) {
+  // Only call this when you have the _castLock
+  term_t tmp = _term;
+  _term = t;
 
   if (tmp != t) {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << _id << ": " << roleStr[_role]
                                      << " term " << t;
 
+    _cast = false;
+    _votedFor = "";
     Builder body;
     body.add(VPackValue(VPackValueType::Object));
     std::ostringstream i_str;
@@ -148,7 +154,10 @@ role_t Constituent::role() const {
 /// Become follower in term
 void Constituent::follow(term_t t) {
   MUTEX_LOCKER(guard, _castLock);
+  followNoLock(t);
+}
 
+void Constituent::followNoLock(term_t t) {
   if (_role != FOLLOWER) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
         << _id << ": Converting to follower in term " << t;
@@ -156,19 +165,34 @@ void Constituent::follow(term_t t) {
 
   _term = t;
   _role = FOLLOWER;
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Set _role to FOLLOWER in term " << _term;
+  {
+    CONDITION_LOCKER(guard, _cv);
+    _cv.signal();
+  }
 }
 
 /// Become leader
-void Constituent::lead(std::map<std::string, bool> const& votes) {
+void Constituent::lead(term_t term,
+                       std::map<std::string, bool> const& votes) {
   {
     MUTEX_LOCKER(guard, _castLock);
+
+    if (term < _term) {
+      followNoLock(_term);
+      return;
+    }
 
     if (_role == LEADER) {
       return;
     }
 
     _role = LEADER;
-    _leaderID = _id;
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Set _role to LEADER in term " << _term;
+    if (_leaderID != _id) {
+      LOG_TOPIC(INFO, Logger::AGENCY) << "Set _leaderID to " << _id;
+      _leaderID = _id;
+    }
   }
 
   if (!votes.empty()) {
@@ -184,17 +208,20 @@ void Constituent::lead(std::map<std::string, bool> const& votes) {
   _agent->lead();  // We need to rebuild spear_head and read_db;
 }
 
-/// Become follower
+/// Become candidate
 void Constituent::candidate() {
   MUTEX_LOCKER(guard, _castLock);
 
-  _leaderID = NO_LEADER;
+  if (_leaderID != NO_LEADER) {
+    _leaderID = NO_LEADER;
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Set _leaderID to NO_LEADER";
+  }
 
-  if (_role != CANDIDATE)
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
-        << _id << ": Converted to candidate in term " << _term;
-
-  _role = CANDIDATE;
+  if (_role != CANDIDATE) {
+    _role = CANDIDATE;
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Set _role to CANDIDATE in term "
+      << _term;
+  }
 }
 
 /// Leading?
@@ -209,7 +236,7 @@ bool Constituent::following() const {
   return _role == FOLLOWER;
 }
 
-/// Runnig as candidate?
+/// Running as candidate?
 bool Constituent::running() const {
   MUTEX_LOCKER(guard, _castLock);
   return _role == CANDIDATE;
@@ -226,42 +253,62 @@ std::string Constituent::endpoint(std::string id) const {
   return _agent->config().poolAt(id);
 }
 
+/// @brief Check leader
+bool Constituent::checkLeader(term_t term, std::string id, index_t prevLogIndex,
+                              term_t prevLogTerm) {
+  TRI_ASSERT(_vocbase);
+  {
+    MUTEX_LOCKER(guard, _castLock);
+    if (term >= _term) {
+      _lastHeartbeatSeen = TRI_microtime();
+      if (_leaderID != id) {
+        LOG_TOPIC(INFO, Logger::AGENCY) << "Set _leaderID to " << id
+          << " in term " << _term;
+        _leaderID = id;
+        TRI_ASSERT(_leaderID != _id);
+      }
+      return true;
+    }
+    return false;
+  }
+}
+
 /// @brief Vote
 bool Constituent::vote(term_t term, std::string id, index_t prevLogIndex,
-                       term_t prevLogTerm, bool appendEntries) {
+                       term_t prevLogTerm) {
 
   TRI_ASSERT(_vocbase);
   
   term_t t = 0;
   std::string lid;
 
-  {
-    MUTEX_LOCKER(guard, _castLock);
-    t = _term;
-    lid = _leaderID;
+  MUTEX_LOCKER(guard, _castLock);
+
+  if (term > t) {
+    this->termNoLock(term);
     _cast = true;
-    if (appendEntries && t <= term) {
-      _leaderID = id;
-      return true;
+    _votedFor = id;
+    if (_role != FOLLOWER) {
+      followNoLock(_term);
     }
+    return true;
   }
 
-  if (term > t || (t == term && lid == id)) {
-    {
-      MUTEX_LOCKER(guard, _castLock);
-      _votedFor = id;  // The guy I voted for I assume leader.
-      _leaderID = id;
+  if (t == term) {
+    if (!_cast) {
+      _votedFor = id;
+      _cast = true;
+      if (_role != FOLLOWER) {
+        followNoLock(_term);
+      }
+      return true;
     }
-    this->term(term);
-    if (_role > FOLLOWER) {
-      follow(_term);
+    if (_votedFor == id) {
+      if (_role != FOLLOWER) {
+        followNoLock(_term);
+      }
+      return true;
     }
-    {
-      CONDITION_LOCKER(guard, _cv);
-      _cv.signal();
-    }
-
-    return true;
   }
 
   return false;
@@ -274,16 +321,24 @@ void Constituent::callElection() {
       _agent->config().active();  // Get copy of active
 
   votes[_id] = true;  // vote for myself
-  _cast = true;
-  _votedFor = _id;
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Set _leaderID to NO_LEADER"
+    << " in term " << _term;
   _leaderID = NO_LEADER;
-  this->term(_term + 1);  // raise my term
+  
+  term_t savedTerm;
+  {
+    MUTEX_LOCKER(locker, _castLock);
+    this->termNoLock(_term + 1);  // raise my term
+    _cast = true;
+    _votedFor = _id;
+    savedTerm = _term;
+  }
 
   std::string body;
   std::map<std::string, OperationID> operationIDs;
   std::stringstream path;
 
-  path << "/_api/agency_priv/requestVote?term=" << _term
+  path << "/_api/agency_priv/requestVote?term=" << savedTerm
        << "&candidateId=" << _id << "&prevLogIndex=" << _agent->lastLog().index
        << "&prevLogTerm=" << _agent->lastLog().term;
 
@@ -345,9 +400,17 @@ void Constituent::callElection() {
     }
   }
 
+  {
+    MUTEX_LOCKER(locker, _castLock);
+    if (savedTerm != _term) {
+      followNoLock(_term);
+      return;
+    }
+  }
+
   // Evaluate election results
   if (yea > size() / 2) {
-    lead(votes);
+    lead(savedTerm, votes);
   } else {
     follow(_term);
   }
@@ -355,8 +418,13 @@ void Constituent::callElection() {
 
 void Constituent::update(std::string const& leaderID, term_t t) {
   MUTEX_LOCKER(guard, _castLock);
-  _leaderID = leaderID;
   _term = t;
+  if (_leaderID != leaderID) {
+    LOG_TOPIC(INFO, Logger::AGENCY)
+      << "Constituent::update: setting _leaderID to " << leaderID
+      << " in term " << _term;
+    _leaderID = leaderID;
+  }
 }
 
 /// Start clean shutdown
@@ -401,6 +469,7 @@ void Constituent::run() {
   if (result.isArray()) {
     for (auto const& i : VPackArrayIterator(result)) {
       try {
+        MUTEX_LOCKER(locker, _castLock);
         _term = i.get("term").getUInt();
         _votedFor = i.get("voted_for").copyString();
       } catch (std::exception const&) {
@@ -422,15 +491,11 @@ void Constituent::run() {
 
   if (size() == 1) {
     _leaderID = _agent->config().id();
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Set _leaderID to " << _leaderID
+      << " in term " << _term;
   } else {
     while (!this->isStopping()) {
       if (_role == FOLLOWER) {
-        bool cast = false;
-
-        {
-          MUTEX_LOCKER(guard, _castLock);
-          _cast = false;  // New round set not cast vote
-        }
         
         int32_t left = static_cast<int32_t>(1000000.0 *
                                             _agent->config().minPing()),
@@ -439,20 +504,21 @@ void Constituent::run() {
         long rand_wait =
           static_cast<long>(RandomGenerator::interval(left, right));
         
-        {
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Random timeout: " << rand_wait;
+
+        double now = TRI_microtime();
+        if (_lastHeartbeatSeen != 0) {   // in the beginning, pure random
+          rand_wait -= (now - _lastHeartbeatSeen);
+        }
+        if (rand_wait > 0.0) {
           CONDITION_LOCKER(guardv, _cv);
           _cv.wait(rand_wait);
         }
-        
-        {
-          MUTEX_LOCKER(guard, _castLock);
-          cast = _cast;
+
+        now = TRI_microtime();
+        if (now - _lastHeartbeatSeen > rand_wait) {
+          candidate();
         }
-        
-        if (!cast) {
-          candidate();  // Next round, we are running
-        }
-        
       } else if (_role == CANDIDATE) {
         callElection();  // Run for office
       } else {

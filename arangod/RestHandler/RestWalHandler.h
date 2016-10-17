@@ -34,7 +34,8 @@ class RestWalHandler : public RestVocbaseBaseHandler {
   RestWalHandler(GeneralRequest*, GeneralResponse*);
 
  public:
-  status execute() override final;
+  RestStatus execute() override final;
+  char const* name() const override final { return "RestWalHandler"; }
 
  private:
   void flush();

@@ -23,6 +23,15 @@
 
 #include "VppCommTask.h"
 
+#include <iostream>
+#include <limits>
+#include <stdexcept>
+
+#include <velocypack/Validator.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include <boost/optional.hpp>
+
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
@@ -34,6 +43,7 @@
 #include "GeneralServer/VppNetwork.h"
 #include "Logger/LoggerFeature.h"
 #include "Meta/conversion.h"
+#include "RestServer/ServerFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Utils/Events.h"
@@ -42,19 +52,16 @@
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <boost/optional.hpp>
-#include <iostream>
-#include <limits>
-#include <stdexcept>
-
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-VppCommTask::VppCommTask(GeneralServer* server, TRI_socket_t sock,
-                         ConnectionInfo&& info, double timeout)
-    : Task("VppCommTask"),
-      GeneralCommTask(server, sock, std::move(info), timeout),
+VppCommTask::VppCommTask(EventLoop loop, GeneralServer* server,
+                         std::unique_ptr<Socket> socket, ConnectionInfo&& info,
+                         double timeout)
+    : Task(loop, "VppCommTask"),
+      GeneralCommTask(loop, server, std::move(socket), std::move(info),
+                      timeout),
       _authenticatedUser(),
       _authentication(nullptr) {
   _authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>(
@@ -94,12 +101,13 @@ void VppCommTask::addResponse(VppResponse* response) {
   }
   LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "response -- end";
 
-  // adds chunk header infromation and creates SingBuffer* that can be
-  // used with _writeBuffers
-  auto buffers = createChunkForNetwork(
-      slices, id, (std::numeric_limits<std::size_t>::max)(),
-      false);  // set some sensible maxchunk
-               // size and compression
+  static uint32_t const chunkSize =
+      arangodb::application_features::ApplicationServer::getFeature<
+          ServerFeature>("Server")
+          ->vppMaxSize();
+  auto buffers = createChunkForNetwork(slices, id, chunkSize,
+                                       false);  // set some sensible maxchunk
+                                                // size and compression
 
   double const totalTime = getAgent(id)->elapsedSinceReadStart();
 
@@ -338,7 +346,7 @@ void VppCommTask::closeTask(rest::ResponseCode code) {
   //}
 
   _incompleteMessages.clear();
-  _clientClosed = true;
+  closeStream();
 }
 
 rest::ResponseCode VppCommTask::authenticateRequest(GeneralRequest* request) {
@@ -384,7 +392,7 @@ void VppCommTask::handleSimpleError(rest::ResponseCode responseCode,
     response.setPayload(builder.slice(), true, VPackOptions::Defaults);
     processResponse(&response);
   } catch (...) {
-    _clientClosed = true;
+    closeStream();
   }
 }
 

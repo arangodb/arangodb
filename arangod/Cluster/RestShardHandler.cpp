@@ -25,7 +25,6 @@
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterComm.h"
-#include "Dispatcher/Dispatcher.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 
@@ -38,7 +37,7 @@ RestShardHandler::RestShardHandler(GeneralRequest* request,
 
 bool RestShardHandler::isDirect() const { return true; }
 
-RestHandler::status RestShardHandler::execute() {
+RestStatus RestShardHandler::execute() {
   bool found;
   std::string const& _coordinator =
       _request->header(StaticStrings::Coordinator, found);
@@ -47,7 +46,7 @@ RestHandler::status RestShardHandler::execute() {
     generateError(arangodb::rest::ResponseCode::BAD,
                   (int)arangodb::rest::ResponseCode::BAD,
                   "header 'X-Arango-Coordinator' is missing");
-    return status::DONE;
+    return RestStatus::DONE;
   }
 
   std::string coordinatorHeader = _coordinator;
@@ -62,5 +61,5 @@ RestHandler::status RestShardHandler::execute() {
                   result.c_str());
   }
 
-  return status::DONE;
+  return RestStatus::DONE;
 }

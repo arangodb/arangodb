@@ -7,7 +7,7 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
   <span class="hljs-string">"result"</span> : { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"_system"</span>, 
     <span class="hljs-string">"id"</span> : <span class="hljs-string">"1"</span>, 
-    <span class="hljs-string">"path"</span> : <span class="hljs-string">"/tmp/arangosh_rV9k4w/tmp-22204-1345220625/data/databases/database-1"</span>, 
+    <span class="hljs-string">"path"</span> : <span class="hljs-string">"/var/folders/m2/fh9k4qsj7737dqgcjvw6lkq40000gn/T/arangosh_hJLNN8/tmp-44424-2682147671/data/databases/database-1"</span>, 
     <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span> 
   }, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 

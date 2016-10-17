@@ -94,17 +94,17 @@ The [What's new in ArangoDB 3.0](https://docs.arangodb.com/3.0/Manual/ReleaseNot
 
 Key features of the 3.0 release are:
 
-- use of VelocyPack as internal storage format
+- Use of VelocyPack as internal storage format
 - AQL improvements
-- much better cluster state management
+- Much better cluster state management
 - Synchronous replication (master/master)
-- unified APIs for CRUD operations
-- persistent indexes
-- upgraded version of V8
-- new web admin interface
+- Unified APIs for CRUD operations
+- Persistent indexes
+- Upgraded version of V8
+- New web admin interface
 - Foxx improvements
 - Logging improvements
-- improved documentation
+- Improved documentation
 
 More Information
 ----------------

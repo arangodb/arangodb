@@ -38,52 +38,39 @@ using namespace arangodb::rest;
 /// @brief listen to given port
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralListenTask::GeneralListenTask(GeneralServer* server, Endpoint* endpoint,
+GeneralListenTask::GeneralListenTask(EventLoop loop, GeneralServer* server,
+                                     Endpoint* endpoint,
                                      ProtocolType connectionType)
-    : Task("GeneralListenTask"),
-      ListenTask(endpoint),
+    : Task(loop, "GeneralListenTask"),
+      ListenTask(loop, endpoint),
       _server(server),
       _connectionType(connectionType) {
   _keepAliveTimeout = GeneralServerFeature::keepAliveTimeout();
-
-  SslServerFeature* ssl =
-      application_features::ApplicationServer::getFeature<SslServerFeature>(
-          "SslServer");
-
-  if (ssl != nullptr) {
-    _sslContext = ssl->sslContext();
-  }
-
-  _verificationMode = GeneralServerFeature::verificationMode();
-  _verificationCallback = GeneralServerFeature::verificationCallback();
 }
 
-bool GeneralListenTask::handleConnected(TRI_socket_t socket,
+void GeneralListenTask::handleConnected(std::unique_ptr<Socket> socket,
                                         ConnectionInfo&& info) {
-  GeneralCommTask* commTask = nullptr;
+  std::shared_ptr<GeneralCommTask> commTask;
 
   switch (_connectionType) {
     case ProtocolType::VPPS:
-      commTask =
-          new VppCommTask(_server, socket, std::move(info), _keepAliveTimeout);
-      break;
     case ProtocolType::VPP:
       commTask =
-          new VppCommTask(_server, socket, std::move(info), _keepAliveTimeout);
+          std::make_shared<VppCommTask>(_loop, _server, std::move(socket),
+                                        std::move(info), _keepAliveTimeout);
       break;
+
     case ProtocolType::HTTPS:
-      commTask = new HttpsCommTask(_server, socket, std::move(info),
-                                   _keepAliveTimeout, _sslContext,
-                                   _verificationMode, _verificationCallback);
-      break;
     case ProtocolType::HTTP:
       commTask =
-          new HttpCommTask(_server, socket, std::move(info), _keepAliveTimeout);
+          std::make_shared<HttpCommTask>(_loop, _server, std::move(socket),
+                                         std::move(info), _keepAliveTimeout);
       break;
+
     default:
-      return false;
+      socket->_socket.close();
+      return;
   }
 
-  SchedulerFeature::SCHEDULER->registerTask(commTask);
-  return true;
+  commTask->start();
 }

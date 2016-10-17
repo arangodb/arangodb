@@ -2059,6 +2059,7 @@ GeoCursor* GeoIndex_NewCursor(GeoIdx* gi, GeoCoordinate* c) {
   gcr->slotsnmd = 20.0;
   gcr->potheap.push_back(hp);
   std::push_heap(gcr->potheap.begin(), gcr->potheap.end(), hpotcompare);
+  // cppcheck-suppress *
   return (GeoCursor*)gcr;
 }
 

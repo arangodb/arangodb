@@ -22,9 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ssl-helper.h"
-#include "Logger/Logger.h"
 
 #include <openssl/err.h>
+#include <boost/asio/ssl.hpp>
+
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 
@@ -36,65 +38,69 @@ extern "C" const SSL_METHOD* SSLv3_method(void);
 /// @brief creates an SSL context
 ////////////////////////////////////////////////////////////////////////////////
 
-SSL_CTX* arangodb::sslContext(protocol_e protocol, std::string const& keyfile) {
+boost::optional<boost::asio::ssl::context> arangodb::sslContext(
+    protocol_e protocol, std::string const& keyfile) {
   // create our context
-  SSL_METHOD SSL_CONST* meth = nullptr;
+
+  using boost::asio::ssl::context;
+  context::method meth = context::method::sslv23;
 
   switch (protocol) {
 #ifndef OPENSSL_NO_SSL2
     case SSL_V2:
-      meth = SSLv2_method();
+      meth = context::method::sslv2;
       break;
 #endif
 #ifndef OPENSSL_NO_SSL3_METHOD
     case SSL_V3:
-      meth = SSLv3_method();
+      meth = context::method::sslv3;
       break;
 #endif
     case SSL_V23:
-      meth = SSLv23_method();
+      meth = context::method::sslv23;
       break;
 
     case TLS_V1:
-      meth = TLSv1_method();
+      meth = context::method::tlsv1_server;
       break;
 
     case TLS_V12:
-      meth = TLSv1_2_method();
+      meth = context::method::tlsv12_server;
       break;
 
     default:
       LOG(ERR) << "unknown SSL protocol method";
-      return nullptr;
+      return boost::none;
   }
 
-  SSL_CTX* sslctx = SSL_CTX_new(meth);
+  boost::asio::ssl::context sslctx(meth);
 
-  if (sslctx == nullptr) {
-    // could not create SSL context - this is mostly due to the OpenSSL 
+  if (sslctx.native_handle() == nullptr) {
+    // could not create SSL context - this is mostly due to the OpenSSL
     // library not having been initialized
     LOG(FATAL) << "unable to create SSL context";
     FATAL_ERROR_EXIT();
   }
 
   // load our keys and certificates
-  if (!SSL_CTX_use_certificate_chain_file(sslctx, keyfile.c_str())) {
+  if (!SSL_CTX_use_certificate_chain_file(sslctx.native_handle(),
+                                          keyfile.c_str())) {
     LOG(ERR) << "cannot read certificate from '" << keyfile
              << "': " << lastSSLError();
-    return nullptr;
+    return boost::none;
   }
 
-  if (!SSL_CTX_use_PrivateKey_file(sslctx, keyfile.c_str(), SSL_FILETYPE_PEM)) {
-    LOG(ERR) << "cannot read key from '" << keyfile
-             << "': " << lastSSLError();
-    return nullptr;
+  if (!SSL_CTX_use_PrivateKey_file(sslctx.native_handle(), keyfile.c_str(),
+                                   SSL_FILETYPE_PEM)) {
+    LOG(ERR) << "cannot read key from '" << keyfile << "': " << lastSSLError();
+    return boost::none;
   }
 
 #if (OPENSSL_VERSION_NUMBER < 0x00905100L)
-  SSL_CTX_set_verify_depth(sslctx, 1);
+  SSL_CTX_set_verify_depth(sslctx.native_handle(), 1);
 #endif
 
-  return sslctx;
+  return std::move(sslctx);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

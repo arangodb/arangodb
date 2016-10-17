@@ -41,6 +41,7 @@
 
     bindParamRegExp: /@(@?\w+\d*)/,
     bindParamTableObj: {},
+    bindParamMode: 'table',
 
     bindParamTableDesc: {
       id: 'arangoBindParamTable',
@@ -104,7 +105,7 @@
 
       _.each($('.queryProfile'), function (elem) {
         if ($(elem).attr('counter') === count) {
-          $(elem).fadeOut('fast');
+          $(elem).fadeOut('fast').remove();
         }
       });
     },
@@ -115,11 +116,13 @@
         $('#bindParamAceEditor').toggle();
 
         if ($('#switchTypes').text() === 'JSON') {
+          this.bindParamMode = 'json';
           $('#switchTypes').text('Table');
           this.updateQueryTable();
           this.bindParamAceEditor.setValue(JSON.stringify(this.bindParamTableObj, null, '\t'), 1);
           this.deselect(this.bindParamAceEditor);
         } else {
+          this.bindParamMode = 'table';
           $('#switchTypes').text('JSON');
           this.renderBindParamTable();
         }
@@ -628,13 +631,15 @@
     },
 
     setCachedQuery: function (query, vars) {
-      if (Storage !== 'undefined') {
-        var myObject = {
-          query: query,
-          parameter: vars
-        };
-        this.currentQuery = myObject;
-        localStorage.setItem('cachedQuery', JSON.stringify(myObject));
+      if (query !== '') {
+        if (Storage !== 'undefined') {
+          var myObject = {
+            query: query,
+            parameter: vars
+          };
+          this.currentQuery = myObject;
+          localStorage.setItem('cachedQuery', JSON.stringify(myObject));
+        }
       }
     },
 
@@ -678,6 +683,10 @@
       if (!this.initDone) {
         // init aql editor width
         this.settings.aqlWidth = $('.aqlEditorWrapper').width();
+      }
+
+      if (this.bindParamMode === 'json') {
+        this.toggleBindParams();
       }
 
       this.initDone = true;
@@ -1105,62 +1114,65 @@
         self.resize();
       });
 
-      this.aqlEditor.commands.addCommand({
-        name: 'togglecomment',
-        bindKey: {win: 'Ctrl-Shift-C', linux: 'Ctrl-Shift-C', mac: 'Command-Shift-C'},
-        exec: function (editor) {
-          editor.toggleCommentLines();
-        },
-        multiSelectAction: 'forEach'
-      });
+      var editors = [this.aqlEditor, this.bindParamAceEditor];
+      _.each(editors, function (editor) {
+        editor.commands.addCommand({
+          name: 'togglecomment',
+          bindKey: {win: 'Ctrl-Shift-C', linux: 'Ctrl-Shift-C', mac: 'Command-Shift-C'},
+          exec: function (editor) {
+            editor.toggleCommentLines();
+          },
+          multiSelectAction: 'forEach'
+        });
 
-      this.aqlEditor.commands.addCommand({
-        name: 'executeQuery',
-        bindKey: {win: 'Ctrl-Return', mac: 'Command-Return', linux: 'Ctrl-Return'},
-        exec: function () {
-          self.executeQuery();
-        }
-      });
+        editor.commands.addCommand({
+          name: 'executeQuery',
+          bindKey: {win: 'Ctrl-Return', mac: 'Command-Return', linux: 'Ctrl-Return'},
+          exec: function () {
+            self.executeQuery();
+          }
+        });
 
-      this.aqlEditor.commands.addCommand({
-        name: 'executeSelectedQuery',
-        bindKey: {win: 'Ctrl-Alt-Return', mac: 'Command-Alt-Return', linux: 'Ctrl-Alt-Return'},
-        exec: function () {
-          self.executeQuery(undefined, true);
-        }
-      });
+        editor.commands.addCommand({
+          name: 'executeSelectedQuery',
+          bindKey: {win: 'Ctrl-Alt-Return', mac: 'Command-Alt-Return', linux: 'Ctrl-Alt-Return'},
+          exec: function () {
+            self.executeQuery(undefined, true);
+          }
+        });
 
-      this.aqlEditor.commands.addCommand({
-        name: 'saveQuery',
-        bindKey: {win: 'Ctrl-Shift-S', mac: 'Command-Shift-S', linux: 'Ctrl-Shift-S'},
-        exec: function () {
-          self.addAQL();
-        }
-      });
+        editor.commands.addCommand({
+          name: 'saveQuery',
+          bindKey: {win: 'Ctrl-Shift-S', mac: 'Command-Shift-S', linux: 'Ctrl-Shift-S'},
+          exec: function () {
+            self.addAQL();
+          }
+        });
 
-      this.aqlEditor.commands.addCommand({
-        name: 'explainQuery',
-        bindKey: {win: 'Ctrl-Shift-Return', mac: 'Command-Shift-Return', linux: 'Ctrl-Shift-Return'},
-        exec: function () {
-          self.explainQuery();
-        }
-      });
+        editor.commands.addCommand({
+          name: 'explainQuery',
+          bindKey: {win: 'Ctrl-Shift-Return', mac: 'Command-Shift-Return', linux: 'Ctrl-Shift-Return'},
+          exec: function () {
+            self.explainQuery();
+          }
+        });
 
-      this.aqlEditor.commands.addCommand({
-        name: 'togglecomment',
-        bindKey: {win: 'Ctrl-Shift-C', linux: 'Ctrl-Shift-C', mac: 'Command-Shift-C'},
-        exec: function (editor) {
-          editor.toggleCommentLines();
-        },
-        multiSelectAction: 'forEach'
-      });
+        editor.commands.addCommand({
+          name: 'togglecomment',
+          bindKey: {win: 'Ctrl-Shift-C', linux: 'Ctrl-Shift-C', mac: 'Command-Shift-C'},
+          exec: function (editor) {
+            editor.toggleCommentLines();
+          },
+          multiSelectAction: 'forEach'
+        });
 
-      this.aqlEditor.commands.addCommand({
-        name: 'showSpotlight',
-        bindKey: {win: 'Ctrl-Space', mac: 'Ctrl-Space', linux: 'Ctrl-Space'},
-        exec: function () {
-          self.showSpotlight();
-        }
+        editor.commands.addCommand({
+          name: 'showSpotlight',
+          bindKey: {win: 'Ctrl-Space', mac: 'Ctrl-Space', linux: 'Ctrl-Space'},
+          exec: function () {
+            self.showSpotlight();
+          }
+        });
       });
 
       this.queryPreview = ace.edit('queryPreview');
@@ -1827,15 +1839,14 @@
             // query finished, now fetch results
             if (xhr.status === 201) {
               self.renderQueryResult(data, counter);
+              // SCROLL TO RESULT BOX
+              $('.centralRow').animate({ scrollTop: $('#queryContent').height() }, 'fast');
             } else if (xhr.status === 204) {
             // query not ready yet, retry
               self.checkQueryTimer = window.setTimeout(function () {
                 checkQueryStatus();
               }, 500);
             }
-
-            // SCROLL TO RESULT BOX
-            $('.centralRow').animate({ scrollTop: $('#queryContent').height() }, 'fast');
           },
           error: function (resp) {
             var error;
@@ -1899,7 +1910,7 @@
           var profileWidth = 590;
 
           var legend = [
-            'A', 'B', 'C', 'D', 'E', 'F'
+            'A', 'B', 'C', 'D', 'E', 'F', 'G'
           ];
 
           var colors = [
@@ -1908,6 +1919,7 @@
             'rgb(137, 110, 37)',
             'rgb(93, 165, 218)',
             'rgb(250, 164, 58)',
+            'rgb(64, 74, 83)',
             'rgb(96, 189, 104)'
           ];
 
@@ -1915,6 +1927,7 @@
             'startup time for query engine',
             'query parsing',
             'abstract syntax tree optimizations',
+            'loading collections',
             'instanciation of initial execution plan',
             'execution plan optimization and permutation',
             'query execution'
@@ -1922,11 +1935,11 @@
 
           queryProfile.append(
             '<i class="fa fa-close closeProfile"></i>' +
-              '<span class="profileHeader">Profiling information</span>' +
-                '<div class="pure-g pure-table pure-table-body"></div>' +
-                  '<div class="prof-progress"></div>' +
-                    '<div class="prof-progress-label"></div>' +
-                      '<div class="clear"></div>'
+            '<span class="profileHeader">Profiling information</span>' +
+            '<div class="pure-g pure-table pure-table-body"></div>' +
+            '<div class="prof-progress"></div>' +
+            '<div class="prof-progress-label"></div>' +
+            '<div class="clear"></div>'
           );
 
           var total = 0;
@@ -1944,34 +1957,48 @@
 
             queryProfile.find('.pure-g').append(
               '<div class="pure-table-row noHover">' +
-                '<div class="pure-u-1-24 left"><p class="bold" style="background:' + colors[pos] + '">' + legend[pos] + '</p></div>' +
-                  '<div class="pure-u-4-24 left">' + ms + '</div>' +
-                    '<div class="pure-u-6-24 left">' + key + '</div>' +
-                      '<div class="pure-u-13-24 left">' + descs[pos] + '</div>' +
-                        '</div>'
+              '<div class="pure-u-1-24 left"><p class="bold" style="background:' + colors[pos] + '">' + legend[pos] + '</p></div>' +
+              '<div class="pure-u-4-24 left">' + ms + '</div>' +
+              '<div class="pure-u-6-24 left">' + key + '</div>' +
+              '<div class="pure-u-13-24 left">' + descs[pos] + '</div>' +
+              '</div>'
             );
 
-            width = (value * 1000) / total * 100;
-            if (width < 5) {
-              width = 5;
-              adjustWidth += 5;
+            width = Math.floor((value * 1000) / total * 100);
+            if (width === 0) {
+              width = 1;
+              adjustWidth++;
             }
 
-            if (pos === 5 && adjustWidth !== 0) {
-              width = width - adjustWidth;
+            if (pos !== 6) {
               queryProfile.find('.prof-progress').append(
                 '<div style="width: ' + width + '%; background-color: ' + colors[pos] + '"></div>'
               );
-              queryProfile.find('.prof-progress-label').append(
-                '<div style="width: ' + width + '%;">' + legend[pos] + '</div>'
-              );
+              if (width > 1) {
+                queryProfile.find('.prof-progress-label').append(
+                  '<div style="width: ' + width + '%;">' + legend[pos] + '</div>'
+                );
+              } else {
+                queryProfile.find('.prof-progress-label').append(
+                  '<div style="width: ' + width + '%; font-size: 9px">' + legend[pos] + '</div>'
+                );
+              }
             } else {
+              if (adjustWidth > 0) {
+                width = width - adjustWidth;
+              }
               queryProfile.find('.prof-progress').append(
                 '<div style="width: ' + width + '%; background-color: ' + colors[pos] + '"></div>'
               );
-              queryProfile.find('.prof-progress-label').append(
-                '<div style="width: ' + width + '%;">' + legend[pos] + '</div>'
-              );
+              if (width > 1) {
+                queryProfile.find('.prof-progress-label').append(
+                  '<div style="width: ' + width + '%;">' + legend[pos] + '</div>'
+                );
+              } else {
+                queryProfile.find('.prof-progress-label').append(
+                  '<div style="width: ' + width + '%; font-size: 9px">' + legend[pos] + '</div>'
+                );
+              }
             }
             pos++;
           });
@@ -2014,7 +2041,10 @@
             }
           });
 
-          var percentagea = hitsa / totala * 100;
+          var percentagea = 0;
+          if (totala > 0) {
+            percentagea = hitsa / totala * 100;
+          }
 
           if (percentagea >= 95) {
             found = true;
@@ -2032,7 +2062,10 @@
             }
           });
 
-          var percentageb = hitsb / totalb * 100;
+          var percentageb = 0;
+          if (totalb > 0) {
+            percentageb = hitsb / totalb * 100;
+          }
 
           if (percentageb >= 95) {
             found = true;
@@ -2045,9 +2078,7 @@
 
       // check if result could be displayed as table
       if (!found) {
-        var maxAttributeCount = 0;
         var check = true;
-        var length;
         var attributes = {};
 
         if (result.length <= 1) {
@@ -2056,32 +2087,34 @@
 
         if (check) {
           _.each(result, function (obj) {
-            length = _.keys(obj).length;
-
-            if (length > maxAttributeCount) {
-              maxAttributeCount = length;
+            if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) {
+              // not a document and not suitable for tabluar display
+              return;
             }
 
             _.each(obj, function (value, key) {
-              if (attributes[key]) {
-                attributes[key] = attributes[key] + 1;
+              if (attributes.hasOwnProperty(key)) {
+                ++attributes[key];
               } else {
                 attributes[key] = 1;
               }
             });
           });
 
-          var rate;
+          var rate = 0;
 
           _.each(attributes, function (val, key) {
-            rate = (val / result.length) * 100;
-
             if (check !== false) {
+              rate = (val / result.length) * 100;
               if (rate <= 95) {
                 check = false;
               }
             }
           });
+
+          if (rate <= 95) {
+            check = false;
+          }
         }
 
         if (check) {

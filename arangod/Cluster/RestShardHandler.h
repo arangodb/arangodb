@@ -41,8 +41,9 @@ class RestShardHandler : public RestBaseHandler {
   explicit RestShardHandler(GeneralRequest*, GeneralResponse*);
 
  public:
+  char const* name() const override final { return "RestShardHandler"; }
   bool isDirect() const override;
-  status execute() override;
+  RestStatus execute() override;
 };
 }
 

@@ -2565,7 +2565,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt, ExecutionPlan* plan,
       TRI_ASSERT(v.size() >= 2);
 
       distNode = new DistributeNode(plan, plan->nextId(), vocbase, collection,
-                                    v[0]->id, v[2]->id, false, true);
+                                    v[0]->id, v[1]->id, true, true);
     } else {
       TRI_ASSERT(false);
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error");
