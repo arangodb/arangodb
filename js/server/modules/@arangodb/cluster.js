@@ -33,7 +33,7 @@ var arangodb = require('@arangodb');
 var ArangoCollection = arangodb.ArangoCollection;
 var ArangoError = arangodb.ArangoError;
 var errors = require("internal").errors;
-var request = require('@arangodb/request').requestCluster;
+var request = require('@arangodb/request').clusterRequest;
 var wait = require('internal').wait;
 var _ = require('lodash');
 
