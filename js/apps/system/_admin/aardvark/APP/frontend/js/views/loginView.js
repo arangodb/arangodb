@@ -73,7 +73,7 @@
           svgItem = svgDoc.getElementById('logo-community');
         }
         svgItem.setAttribute('visibility', 'visible');
-      }, 100);
+      }, 300);
 
       return this;
     },
