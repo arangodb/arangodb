@@ -27,9 +27,9 @@
 
 #include "Basics/Common.h"
 
-#include <boost/asio.hpp>
 #include <boost/asio/steady_timer.hpp>
 
+#include "Basics/asio-helper.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/socket-utils.h"
