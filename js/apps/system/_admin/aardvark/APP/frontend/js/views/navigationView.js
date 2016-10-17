@@ -107,10 +107,12 @@
 
       self.resize();
 
-      console.log(window.frontendConfig);
       if (window.frontendConfig.isEnterprise === true) {
-        $('#ArangoDBLogo').attr('src', 'img/arangodb_logo_alt.svg');
+        $('#ArangoDBLogo').after('<span id="enterpriseLabel" style="display: none">Enterprise Edition</span>');
+        $('#enterpriseLabel').fadeIn('slow');
       } else {
+        $('#ArangoDBLogo').after('<span id="communityLabel" style="display: none">Community Edition</span>');
+        $('#communityLabel').fadeIn('slow');
         $('.enterprise-menu').show();
       }
 
