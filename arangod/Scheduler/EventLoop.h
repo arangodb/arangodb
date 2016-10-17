@@ -27,7 +27,7 @@
 
 #include "Basics/Common.h"
 
-#include <boost/asio.hpp>
+#include "Basics/asio-helper.h"
 
 namespace arangodb {
 namespace rest {
