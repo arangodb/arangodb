@@ -2769,6 +2769,7 @@ OperationResult Transaction::count(std::string const& collectionName) {
 /// @brief count the number of documents in a collection
 //////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_ENTERPRISE
 OperationResult Transaction::countCoordinator(std::string const& collectionName) {
   uint64_t count = 0;
   int res = arangodb::countOnCoordinator(_vocbase->name(), collectionName, count);
@@ -2782,6 +2783,7 @@ OperationResult Transaction::countCoordinator(std::string const& collectionName)
 
   return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR, false);
 }
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief count the number of documents in a collection
