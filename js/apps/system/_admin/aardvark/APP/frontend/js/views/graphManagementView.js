@@ -810,7 +810,7 @@
         )
       );
 
-      if (window.frontendConfig.isEnterprise === false) {
+      if (window.frontendConfig.isEnterprise) {
         var advanced = {};
         var advancedTableContent = [];
 
