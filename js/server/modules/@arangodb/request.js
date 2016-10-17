@@ -57,7 +57,7 @@ function querystringify (query, useQuerystring) {
     });
 }
 
-function requestCluster(req) {
+function clusterRequest(req) {
   if (typeof req === 'string') {
     req = {url: req, method: 'GET'};
   }
@@ -151,5 +151,5 @@ function requestCluster(req) {
   let result = internal.clusterDownload(path, body, options);
   return new Response(result, req.encoding, req.json);
 }
-exports.requestCluster = requestCluster;
+exports.clusterRequest = clusterRequest;
 module.exports = exports;
