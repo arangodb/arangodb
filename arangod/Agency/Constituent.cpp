@@ -60,7 +60,8 @@ void Constituent::configure(Agent* agent) {
 
   if (size() == 1) {
     _role = LEADER;
-    LOG_TOPIC(INFO, Logger::AGENCY) << "Set _role to LEADER in term "  << _term;
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _role to LEADER in term "
+        << _term;
   } else {
     _id = _agent->config().id();
   }
@@ -165,7 +166,7 @@ void Constituent::followNoLock(term_t t) {
 
   _term = t;
   _role = FOLLOWER;
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Set _role to FOLLOWER in term " << _term;
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _role to FOLLOWER in term " << _term;
   {
     CONDITION_LOCKER(guard, _cv);
     _cv.signal();
@@ -188,9 +189,9 @@ void Constituent::lead(term_t term,
     }
 
     _role = LEADER;
-    LOG_TOPIC(INFO, Logger::AGENCY) << "Set _role to LEADER in term " << _term;
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _role to LEADER in term " << _term;
     if (_leaderID != _id) {
-      LOG_TOPIC(INFO, Logger::AGENCY) << "Set _leaderID to " << _id;
+      LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to " << _id;
       _leaderID = _id;
     }
   }
@@ -214,12 +215,12 @@ void Constituent::candidate() {
 
   if (_leaderID != NO_LEADER) {
     _leaderID = NO_LEADER;
-    LOG_TOPIC(INFO, Logger::AGENCY) << "Set _leaderID to NO_LEADER";
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to NO_LEADER";
   }
 
   if (_role != CANDIDATE) {
     _role = CANDIDATE;
-    LOG_TOPIC(INFO, Logger::AGENCY) << "Set _role to CANDIDATE in term "
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _role to CANDIDATE in term "
       << _term;
   }
 }
@@ -262,7 +263,7 @@ bool Constituent::checkLeader(term_t term, std::string id, index_t prevLogIndex,
     if (term >= _term) {
       _lastHeartbeatSeen = TRI_microtime();
       if (_leaderID != id) {
-        LOG_TOPIC(INFO, Logger::AGENCY) << "Set _leaderID to " << id
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to " << id
           << " in term " << _term;
         _leaderID = id;
         TRI_ASSERT(_leaderID != _id);
@@ -320,7 +321,7 @@ void Constituent::callElection() {
       _agent->config().active();  // Get copy of active
 
   votes[_id] = true;  // vote for myself
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Set _leaderID to NO_LEADER"
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to NO_LEADER"
     << " in term " << _term;
   _leaderID = NO_LEADER;
   
@@ -419,7 +420,7 @@ void Constituent::update(std::string const& leaderID, term_t t) {
   MUTEX_LOCKER(guard, _castLock);
   _term = t;
   if (_leaderID != leaderID) {
-    LOG_TOPIC(INFO, Logger::AGENCY)
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Constituent::update: setting _leaderID to " << leaderID
       << " in term " << _term;
     _leaderID = leaderID;
@@ -490,7 +491,7 @@ void Constituent::run() {
 
   if (size() == 1) {
     _leaderID = _agent->config().id();
-    LOG_TOPIC(INFO, Logger::AGENCY) << "Set _leaderID to " << _leaderID
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to " << _leaderID
       << " in term " << _term;
   } else {
     while (!this->isStopping()) {
