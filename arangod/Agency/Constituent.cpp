@@ -280,7 +280,6 @@ bool Constituent::vote(term_t term, std::string id, index_t prevLogIndex,
   TRI_ASSERT(_vocbase);
   
   term_t t = 0;
-  std::string lid;
 
   MUTEX_LOCKER(guard, _castLock);
 
