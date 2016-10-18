@@ -58,8 +58,7 @@ SocketTask::SocketTask(arangodb::EventLoop loop,
 
   if (ec) {
     LOG_TOPIC(ERR, Logger::COMMUNICATION)
-        << "SocketTask:SocketTask - cannot create stream from socket: "
-        << ec.message();
+        << "cannot create stream from socket: " << ec.message();
     _closedSend = true;
     _closedReceive = true;
   }
@@ -74,8 +73,8 @@ SocketTask::SocketTask(arangodb::EventLoop loop,
 
     if (ec) {
       LOG_TOPIC(ERR, Logger::COMMUNICATION)
-          << "SocketTask::SocketTask - unable to perform ssl handshake: "
-          << ec.message() << " : " << ec.value();
+          << "unable to perform ssl handshake: " << ec.message() << " : "
+          << ec.value();
       _closedSend = true;
       _closedReceive = true;
     }
@@ -321,7 +320,7 @@ void SocketTask::resetKeepAlive() {
     auto self = shared_from_this();
 
     _keepAliveTimer.async_wait(
-       [self, this](const boost::system::error_code& error) {
+        [self, this](const boost::system::error_code& error) {
           LOG_TOPIC(TRACE, Logger::COMMUNICATION)
               << "keepAliveTimerCallback - called with: " << error.message();
           if (!error) {

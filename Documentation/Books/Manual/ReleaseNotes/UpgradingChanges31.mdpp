@@ -3,3 +3,11 @@
 It is recommended to check the following list of incompatible changes **before**
 upgrading to ArangoDB 3.1, and adjust any client programs if necessary.
 
+!SECTION Communication Layer
+
+The internal commication layer is now based on Boost ASIO. A few options
+regarding threads and communication have been changed.
+
+There are now longer two different threads pools (`--scheduler.threads` and
+`--server.threads`). The option `--scheduler.threads` has been removed. By
+default `--server.threads` is set to the number of hyper-cores.

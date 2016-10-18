@@ -1,4 +1,4 @@
-!CHAPTER Command-Line Options for arangod
+!CHAPTER General Options
 
 !SUBSECTION Database Upgrade 
 
@@ -304,7 +304,6 @@ directory as argument.
 ```
 
 
-
 !SUBSECTION Journal size
 @startDocuBlock databaseMaximalJournalSize
 
@@ -319,8 +318,6 @@ directory as argument.
 
 !SUBSECTION Enable/disable AQL query tracking
 
-
-disable the query tracking feature
 `--query.tracking flag`
 
 If *true*, the server's AQL slow query tracking feature will be enabled by
@@ -331,8 +328,6 @@ The default is *true*.
 
 !SUBSECTION Threshold for slow AQL queries
 
-
-adjust the threshold for slow AQL queries
 `--query.slow-threshold value`
 
 By setting *value* it can be controlled after what execution time an AQL query
@@ -344,40 +339,33 @@ setting the option `--query.tracking` to *false*.
 The default value is *10.0*.
 
 
-
 !SUBSECTION Throw collection not loaded error
 
-
-throw collection not loaded error
 `--database.throw-collection-not-loaded-error flag`
 
-Accessing a not-yet loaded collection will automatically load a collection
-on first access. This flag controls what happens in case an operation
-would need to wait for another thread to finalize loading a collection. If
-set to *true*, then the first operation that accesses an unloaded collection
-will load it. Further threads that try to access the same collection while
-it is still loading will get an error (1238, *collection not loaded*). When
-the initial operation has completed loading the collection, all operations
-on the collection can be carried out normally, and error 1238 will not be
-thrown.
+Accessing a not-yet loaded collection will automatically load a collection on
+first access. This flag controls what happens in case an operation would need to
+wait for another thread to finalize loading a collection. If set to *true*, then
+the first operation that accesses an unloaded collection will load it. Further
+threads that try to access the same collection while it is still loading will
+get an error (1238, *collection not loaded*). When the initial operation has
+completed loading the collection, all operations on the collection can be
+carried out normally, and error 1238 will not be thrown.
 
 If set to *false*, the first thread that accesses a not-yet loaded collection
 will still load it. Other threads that try to access the collection while
-loading will not fail with error 1238 but instead block until the collection
-is fully loaded. This configuration might lead to all server threads being
-blocked because they are all waiting for the same collection to complete
+loading will not fail with error 1238 but instead block until the collection is
+fully loaded. This configuration might lead to all server threads being blocked
+because they are all waiting for the same collection to complete
 loading. Setting the option to *true* will prevent this from happening, but
-requires clients to catch error 1238 and react on it (maybe by scheduling
-a retry for later).
+requires clients to catch error 1238 and react on it (maybe by scheduling a
+retry for later).
 
 The default value is *false*.
 
 
-
 !SUBSECTION AQL Query caching mode
 
-
-whether or not to enable the AQL query result cache
 `--query.cache-mode`
 
 Toggles the AQL query cache behavior. Possible values are:
@@ -387,97 +375,78 @@ Toggles the AQL query cache behavior. Possible values are:
   attribute set to *false*
 * *demand*: use query cache only for queries that have their *cache*
   attribute set to *true*
-  set
-
 
 
 !SUBSECTION AQL Query cache size 
 
-
-maximum number of elements in the query cache per database
 `--query.cache-entries`
 
-Maximum number of query results that can be stored per database-specific
-query cache. If a query is eligible for caching and the number of items in
-the database's query cache is equal to this threshold value, another cached
-query result will be removed from the cache.
+Maximum number of query results that can be stored per database-specific query
+cache. If a query is eligible for caching and the number of items in the
+database's query cache is equal to this threshold value, another cached query
+result will be removed from the cache.
 
-This option only has an effect if the query cache mode is set to either
-*on* or *demand*.
-
+This option only has an effect if the query cache mode is set to either *on* or
+*demand*.
 
 
 !SUBSECTION Index threads
 
-
-number of background threads for parallel index creation
 `--database.index-threads`
 
 Specifies the *number* of background threads for index creation. When a
 collection contains extra indexes other than the primary index, these other
-indexes can be built by multiple threads in parallel. The index threads
-are shared among multiple collections and databases. Specifying a value of
-*0* will turn off parallel building, meaning that indexes for each collection
-are built sequentially by the thread that opened the collection.
-If the number of index threads is greater than 1, it will also be used to
-built the edge index of a collection in parallel (this also requires the
-edge index in the collection to be split into multiple buckets).
-
+indexes can be built by multiple threads in parallel. The index threads are
+shared among multiple collections and databases. Specifying a value of *0* will
+turn off parallel building, meaning that indexes for each collection are built
+sequentially by the thread that opened the collection.  If the number of index
+threads is greater than 1, it will also be used to built the edge index of a
+collection in parallel (this also requires the edge index in the collection to
+be split into multiple buckets).
 
 
 !SUBSECTION V8 contexts
 
-
-number of V8 contexts for executing JavaScript actions
 `--javascript.v8-contexts number`
 
-Specifies the *number* of V8 contexts that are created for executing
-JavaScript code. More contexts allow execute more JavaScript actions in
-parallel, provided that there are also enough threads available. Please
-note that each V8 context will use a substantial amount of memory and
-requires periodic CPU processing time for garbage collection.
-
+Specifies the *number* of V8 contexts that are created for executing JavaScript
+code. More contexts allow execute more JavaScript actions in parallel, provided
+that there are also enough threads available. Please note that each V8 context
+will use a substantial amount of memory and requires periodic CPU processing
+time for garbage collection.
 
 
 !SUBSECTION Garbage collection frequency (time-based)
 
-
-JavaScript garbage collection frequency (each x seconds)
 `--javascript.gc-frequency frequency`
 
 Specifies the frequency (in seconds) for the automatic garbage collection of
-JavaScript objects. This setting is useful to have the garbage collection
-still work in periods with no or little numbers of requests.
-
+JavaScript objects. This setting is useful to have the garbage collection still
+work in periods with no or little numbers of requests.
 
 
 !SUBSECTION Garbage collection interval (request-based)
 
-
-JavaScript garbage collection interval (each x requests)
 `--javascript.gc-interval interval`
 
-Specifies the interval (approximately in number of requests) that the
-garbage collection for JavaScript objects will be run in each thread.
-
+Specifies the interval (approximately in number of requests) that the garbage
+collection for JavaScript objects will be run in each thread.
 
 
 !SUBSECTION V8 options
 
-
-optional arguments to pass to v8
 `--javascript.v8-options options`
 
-Optional arguments to pass to the V8 Javascript engine. The V8 engine will
-run with default settings unless explicit options are specified using this
-option. The options passed will be forwarded to the V8 engine which will
-parse them on its own. Passing invalid options may result in an error being
-printed on stderr and the option being ignored.
+Optional arguments to pass to the V8 Javascript engine. The V8 engine will run
+with default settings unless explicit options are specified using this
+option. The options passed will be forwarded to the V8 engine which will parse
+them on its own. Passing invalid options may result in an error being printed on
+stderr and the option being ignored.
 
 Options need to be passed in one string, with V8 option names being prefixed
-with double dashes. Multiple options need to be separated by whitespace.
-To get a list of all available V8 options, you can use
-the value *"--help"* as follows:
+with double dashes. Multiple options need to be separated by whitespace.  To get
+a list of all available V8 options, you can use the value *"--help"* as follows:
+
 ```
 --javascript.v8-options "--help"
 ```
@@ -488,9 +457,9 @@ Another example of specific V8 options being set at startup:
 --javascript.v8-options "--log"
 ```
 
-Names and features or usable options depend on the version of V8 being used,
-and might change in the future if a different version of V8 is being used
-in ArangoDB. Not all options offered by V8 might be sensible to use in the
-context of ArangoDB. Use the specific options only if you are sure that
-they are not harmful for the regular database operation.
+Names and features or usable options depend on the version of V8 being used, and
+might change in the future if a different version of V8 is being used in
+ArangoDB. Not all options offered by V8 might be sensible to use in the context
+of ArangoDB. Use the specific options only if you are sure that they are not
+harmful for the regular database operation.
 

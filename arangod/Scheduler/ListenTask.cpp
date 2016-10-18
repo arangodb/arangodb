@@ -71,21 +71,22 @@ void ListenTask::start() {
         LOG(WARN) << "accept failed: " << ec.message();
         LOG(WARN) << "too many accept failures, stopping to report";
       }
-    } else {
-      ConnectionInfo info;
-      // TODO _endpoint->initIncoming(_peer);
 
-      // set the endpoint
-      info.endpoint = _endpoint->specification();
-      info.endpointType = _endpoint->domainType();
-      info.encryptionType = _endpoint->encryption();
-      info.clientAddress = _peer->_peerEndpoint.address().to_string();
-      info.clientPort = _peer->_peerEndpoint.port();
-      info.serverAddress = _endpoint->host();
-      info.serverPort = _endpoint->port();
-
-      handleConnected(std::move(_peer), std::move(info));
+      return;
     }
+
+    ConnectionInfo info;
+
+    // set the endpoint
+    info.endpoint = _endpoint->specification();
+    info.endpointType = _endpoint->domainType();
+    info.encryptionType = _endpoint->encryption();
+    info.clientAddress = _peer->_peerEndpoint.address().to_string();
+    info.clientPort = _peer->_peerEndpoint.port();
+    info.serverAddress = _endpoint->host();
+    info.serverPort = _endpoint->port();
+
+    handleConnected(std::move(_peer), std::move(info));
 
     if (_bound) {
       createPeer();

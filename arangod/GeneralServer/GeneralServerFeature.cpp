@@ -298,18 +298,7 @@ void GeneralServerFeature::buildServers() {
       FATAL_ERROR_EXIT();
     }
 
-    try {
-      ssl->SSL->createSslContext();
-    } catch (std::exception& e) {
-      LOG(ERR) << e.what();
-      LOG(FATAL) << "no ssl context is known, cannot create https server, "
-                    "please use the '--ssl.keyfile' option";
-      FATAL_ERROR_EXIT();
-    } catch (...) {
-      LOG(FATAL) << "no ssl context is known, cannot create https server, "
-                    "please use the '--ssl.keyfile' option";
-      FATAL_ERROR_EXIT();
-    }
+    ssl->SSL->verifySslOptions();
   }
 
   GeneralServer* server = new GeneralServer();

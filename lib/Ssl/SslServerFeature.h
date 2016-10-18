@@ -40,14 +40,17 @@ class SslServerFeature : public application_features::ApplicationFeature {
   explicit SslServerFeature(application_features::ApplicationServer* server);
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void prepare() override final;
   void unprepare() override final;
 
  public:
-  boost::asio::ssl::context createSslContext() const;
+  virtual void verifySslOptions();
 
  public:
+  virtual boost::asio::ssl::context createSslContext() const;
+
+ protected:
   std::string _cafile;
   std::string _keyfile;
   bool _sessionCache = false;

@@ -4,3 +4,15 @@ The following list shows in detail which features have been added or improved in
 ArangoDB 3.1. ArangoDB 3.1 also contains several bugfixes that are not listed
 here.
 
+!SECTION Communication Layer
+
+ArangoDB up to 3.0 used [libev](http://software.schmorp.de/pkg/libev.html) for
+the communication layer. ArangoDB starting from 3.1 uses
+[Boost ASIO](www.boost.org).
+
+A few options have changed concerning communication, please checkout
+[Incompatible changes in 3.1](ReleaseNotes/UpgradingChanges31.html).
+
+!SECTION Audit Log
+
+Audit logging has been added, see [Auditing](Auditing/index.html).

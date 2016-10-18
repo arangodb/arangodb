@@ -109,19 +109,7 @@ void SslServerFeature::unprepare() {
   SSL = nullptr;
 }
 
-namespace {
-class BIOGuard {
- public:
-  explicit BIOGuard(BIO* bio) : _bio(bio) {}
-
-  ~BIOGuard() { BIO_free(_bio); }
-
- public:
-  BIO* _bio;
-};
-}
-
-boost::asio::ssl::context SslServerFeature::createSslContext() const {
+void SslServerFeature::verifySslOptions() {
   // check keyfile
   if (_keyfile.empty()) {
     LOG(FATAL) << "keyfile empty'" << _keyfile << "'";
@@ -143,12 +131,33 @@ boost::asio::ssl::context SslServerFeature::createSslContext() const {
     FATAL_ERROR_EXIT();
   }
 
+  try {
+    createSslContext();
+  } catch (...) {
+    LOG(FATAL) << "cannot create SSL context";
+    FATAL_ERROR_EXIT();
+  }
+}
+
+namespace {
+class BIOGuard {
+ public:
+  explicit BIOGuard(BIO* bio) : _bio(bio) {}
+
+  ~BIOGuard() { BIO_free(_bio); }
+
+ public:
+  BIO* _bio;
+};
+}
+
+boost::asio::ssl::context SslServerFeature::createSslContext() const {
   // create context
   auto sslContextOpt = ::sslContext(protocol_e(_sslProtocol), _keyfile);
 
   if (!sslContextOpt) {
-    LOG(FATAL) << "failed to create SSL context, cannot create HTTPS server";
-    FATAL_ERROR_EXIT();
+    LOG(ERR) << "failed to create SSL context, cannot create HTTPS server";
+    throw std::runtime_error("cannot create SSL context");
   }
 
   boost::asio::ssl::context sslContext(
@@ -162,8 +171,9 @@ boost::asio::ssl::context SslServerFeature::createSslContext() const {
       sslContext.native_handle();
 
   // set cache mode
-  SSL_CTX_set_session_cache_mode(
-      nativeContext, _sessionCache ? SSL_SESS_CACHE_SERVER : SSL_SESS_CACHE_OFF);
+  SSL_CTX_set_session_cache_mode(nativeContext, _sessionCache
+                                                    ? SSL_SESS_CACHE_SERVER
+                                                    : SSL_SESS_CACHE_OFF);
 
   if (_sessionCache) {
     LOG(TRACE) << "using SSL session caching";
@@ -174,9 +184,9 @@ boost::asio::ssl::context SslServerFeature::createSslContext() const {
 
   if (!_cipherList.empty()) {
     if (SSL_CTX_set_cipher_list(nativeContext, _cipherList.c_str()) != 1) {
-      LOG(FATAL) << "cannot set SSL cipher list '" << _cipherList
-                 << "': " << lastSSLError();
-      FATAL_ERROR_EXIT();
+      LOG(ERR) << "cannot set SSL cipher list '" << _cipherList
+               << "': " << lastSSLError();
+      throw std::runtime_error("cannot create SSL context");
     }
   }
 
@@ -186,17 +196,17 @@ boost::asio::ssl::context SslServerFeature::createSslContext() const {
   sslEcdhNid = OBJ_sn2nid(_ecdhCurve.c_str());
 
   if (sslEcdhNid == 0) {
-    LOG(FATAL) << "SSL error: " << lastSSLError()
-               << " Unknown curve name: " << _ecdhCurve;
-    FATAL_ERROR_EXIT();
+    LOG(ERR) << "SSL error: " << lastSSLError()
+             << " Unknown curve name: " << _ecdhCurve;
+    throw std::runtime_error("cannot create SSL context");
   }
 
   // https://www.openssl.org/docs/manmaster/apps/ecparam.html
   ecdhKey = EC_KEY_new_by_curve_name(sslEcdhNid);
   if (ecdhKey == nullptr) {
-    LOG(FATAL) << "SSL error: " << lastSSLError()
-               << " Unable to create curve by name: " << _ecdhCurve;
-    FATAL_ERROR_EXIT();
+    LOG(ERR) << "SSL error: " << lastSSLError()
+             << " Unable to create curve by name: " << _ecdhCurve;
+    throw std::runtime_error("cannot create SSL context");
   }
 
   SSL_CTX_set_tmp_ecdh(nativeContext, ecdhKey);
@@ -209,9 +219,9 @@ boost::asio::ssl::context SslServerFeature::createSslContext() const {
       nativeContext, (unsigned char const*)_rctx.c_str(), (int)_rctx.size());
 
   if (res != 1) {
-    LOG(FATAL) << "cannot set SSL session id context '" << _rctx
-               << "': " << lastSSLError();
-    FATAL_ERROR_EXIT();
+    LOG(ERR) << "cannot set SSL session id context '" << _rctx
+             << "': " << lastSSLError();
+    throw std::runtime_error("cannot create SSL context");
   }
 
   // check CA
@@ -221,9 +231,9 @@ boost::asio::ssl::context SslServerFeature::createSslContext() const {
     int res = SSL_CTX_load_verify_locations(nativeContext, _cafile.c_str(), 0);
 
     if (res == 0) {
-      LOG(FATAL) << "cannot load CA certificates from '" << _cafile
-                 << "': " << lastSSLError();
-      FATAL_ERROR_EXIT();
+      LOG(ERR) << "cannot load CA certificates from '" << _cafile
+               << "': " << lastSSLError();
+      throw std::runtime_error("cannot create SSL context");
     }
 
     STACK_OF(X509_NAME) * certNames;
@@ -231,9 +241,9 @@ boost::asio::ssl::context SslServerFeature::createSslContext() const {
     certNames = SSL_load_client_CA_file(_cafile.c_str());
 
     if (certNames == nullptr) {
-      LOG(FATAL) << "cannot load CA certificates from '" << _cafile
-                 << "': " << lastSSLError();
-      FATAL_ERROR_EXIT();
+      LOG(ERR) << "cannot load CA certificates from '" << _cafile
+               << "': " << lastSSLError();
+      throw std::runtime_error("cannot create SSL context");
     }
 
     if (Logger::logLevel() == arangodb::LogLevel::TRACE) {
