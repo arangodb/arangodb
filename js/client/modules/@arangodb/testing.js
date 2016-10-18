@@ -1407,13 +1407,6 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   args['database.directory'] = dataDir;
   args['log.file'] = fs.join(rootDir, 'log');
 
-  if (options.verbose) {
-    args['log.level'] = 'info';
-  } else {
-    args['log.level'] = 'error';
-  }
-  //args['log.level=requests=trace'] = null;
-
   // flush log messages directly and not asynchronously
   // (helps debugging)
   args['log.force-direct'] = 'true';
@@ -1427,6 +1420,13 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   if (addArgs !== undefined) {
     args = Object.assign(args, addArgs);
   }
+
+  if (options.verbose) {
+    args['log.level'] = 'debug';
+  } else {
+    args['log.level'] = 'error';
+  }
+  //args['log.level=requests=trace'] = null;
 
   instanceInfo.url = endpointToURL(instanceInfo.endpoint);
   instanceInfo.pid = executeArangod(ARANGOD_BIN, toArgv(args), options).pid;
