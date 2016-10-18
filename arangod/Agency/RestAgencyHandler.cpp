@@ -77,7 +77,7 @@ void RestAgencyHandler::redirectRequest(std::string const& leaderId) {
                       _request->requestPath();
     _response->setResponseCode(rest::ResponseCode::TEMPORARY_REDIRECT);
     _response->setHeaderNC(StaticStrings::Location, url);
-    LOG_TOPIC(WARN, Logger::AGENCY) << "Sending 307 redirect to " << url;
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Sending 307 redirect to " << url;
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << ":"
                                     << __LINE__;
@@ -126,7 +126,7 @@ RestStatus RestAgencyHandler::handleWrite() {
       Builder body;
       body.openObject();
       body.add("message",
-               VPackValue("Excpecting array of arrays as body for writes"));
+               VPackValue("Expecting array of arrays as body for writes"));
       body.close();
       generateResult(rest::ResponseCode::BAD, body.slice());
       return RestStatus::DONE;
