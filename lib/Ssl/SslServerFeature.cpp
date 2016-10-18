@@ -107,7 +107,7 @@ void SslServerFeature::prepare() {
 }
 
 void SslServerFeature::unprepare() {
-  LOG(INFO) << "unpreparing ssl: " << stringifySslOptions(_sslOptions);
+  LOG(TRACE) << "unpreparing ssl: " << stringifySslOptions(_sslOptions);
 }
 
 namespace {
