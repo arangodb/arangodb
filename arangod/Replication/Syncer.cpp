@@ -97,7 +97,6 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
 
       std::string username = _configuration._username;
       std::string password = _configuration._password;
-      std::string jwt = _configuration._jwt;
       
       if (!username.empty()) {
         _client->setUserNamePassword("/", username, password);
