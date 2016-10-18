@@ -81,12 +81,12 @@
 
 #include "Indexes/RocksDBFeature.h"
 
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Audit/AuditFeature.h"
-#endif
-
 #ifdef _WIN32
 #include "ApplicationFeatures/WindowsServiceFeature.h"
+#endif
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/RestServer/arangodEE.h"
 #endif
 
 using namespace arangodb;
@@ -100,16 +100,20 @@ static int runServer(int argc, char** argv) {
   std::string name = context.binaryName();
 
   auto options = std::make_shared<options::ProgramOptions>(
-      argv[0], "Usage: " + name + " [<options>]", "For more information use:", SBIN_DIRECTORY);
+      argv[0], "Usage: " + name + " [<options>]", "For more information use:",
+      SBIN_DIRECTORY);
 
   application_features::ApplicationServer server(options, SBIN_DIRECTORY);
 
   std::vector<std::string> nonServerFeatures = {
-      "Action",                 "Affinity",     "Agency",
-      "Authentication",         "Cluster",      "Daemon",
-      "Dispatcher",             "FoxxQueues",   "GeneralServer",
-      "LoggerBufferFeature",    "Server",       "Scheduler",
-      "SslServer",              "Statistics",   "Supervisor"};
+      "Action",        "Affinity",
+      "Agency",        "Authentication",
+      "Cluster",       "Daemon",
+      "Dispatcher",    "FoxxQueues",
+      "GeneralServer", "LoggerBufferFeature",
+      "Server",        "Scheduler",
+      "SslServer",     "Statistics",
+      "Supervisor"};
 
   int ret = EXIT_FAILURE;
 
@@ -151,7 +155,6 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new ServerIdFeature(&server));
   server.addFeature(new ShutdownFeature(&server, {"UnitTests", "Script"}));
   server.addFeature(new SslFeature(&server));
-  server.addFeature(new SslServerFeature(&server));
   server.addFeature(new StatisticsFeature(&server));
   server.addFeature(new TempFeature(&server, name));
   server.addFeature(new UnitTestsFeature(&server, &ret));
@@ -170,12 +173,14 @@ static int runServer(int argc, char** argv) {
   server.addFeature(supervisor.release());
 #endif
 
-#ifdef USE_ENTERPRISE
-  server.addFeature(new AuditFeature(&server));
-#endif
-
 #ifdef _WIN32
   server.addFeature(new WindowsServiceFeature(&server));
+#endif
+
+#ifdef USE_ENTERPRISE
+  setupServerEE(&server);
+#else
+  server.addFeature(new SslServerFeature(&server));
 #endif
 
   // storage engines

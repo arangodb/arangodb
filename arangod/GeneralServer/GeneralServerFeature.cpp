@@ -91,8 +91,6 @@ GeneralServerFeature::GeneralServerFeature(
     : ApplicationFeature(server, "GeneralServer"),
       _allowMethodOverride(false),
       _proxyCheck(true),
-      _verificationMode(SSL_VERIFY_NONE),
-      _verificationCallback(nullptr),
       _handlerFactory(nullptr),
       _jobManager(nullptr) {
   setOptional(true);
@@ -210,7 +208,8 @@ static TRI_vocbase_t* LookupDatabaseFromRequest(GeneralRequest* request) {
 }
 
 static bool SetRequestContext(GeneralRequest* request, void* data) {
-  auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>("Authentication");
+  auto authentication = application_features::ApplicationServer::getFeature<
+      AuthenticationFeature>("Authentication");
   TRI_ASSERT(authentication != nullptr);
   TRI_vocbase_t* vocbase = LookupDatabaseFromRequest(request);
 
@@ -225,8 +224,7 @@ static bool SetRequestContext(GeneralRequest* request, void* data) {
     return false;
   }
 
-  VocbaseContext* ctx = new arangodb::VocbaseContext(
-      request, vocbase);
+  VocbaseContext* ctx = new arangodb::VocbaseContext(request, vocbase);
   request->setRequestContext(ctx, true);
 
   // the "true" means the request is the owner of the context
@@ -256,7 +254,8 @@ void GeneralServerFeature::start() {
 
   // populate the authentication cache. otherwise no one can access the new
   // database
-  auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>("Authentication");
+  auto authentication = application_features::ApplicationServer::getFeature<
+      AuthenticationFeature>("Authentication");
   TRI_ASSERT(authentication != nullptr);
   if (authentication->isEnabled()) {
     authentication->authInfo()->outdate();
@@ -293,8 +292,14 @@ void GeneralServerFeature::buildServers() {
         application_features::ApplicationServer::getFeature<SslServerFeature>(
             "SslServer");
 
+    if (ssl == nullptr) {
+      LOG(FATAL) << "no ssl context is known, cannot create https server, "
+                    "please enable SSL";
+      FATAL_ERROR_EXIT();
+    }
+
     try {
-      ssl->sslContext();
+      ssl->SSL->createSslContext();
     } catch (std::exception& e) {
       LOG(ERR) << e.what();
       LOG(FATAL) << "no ssl context is known, cannot create https server, "
@@ -325,10 +330,10 @@ void GeneralServerFeature::defineHandlers() {
       application_features::ApplicationServer::getFeature<ClusterFeature>(
           "Cluster");
   TRI_ASSERT(cluster != nullptr);
-  
+
   AuthenticationFeature* authentication =
-      application_features::ApplicationServer::getFeature<AuthenticationFeature>(
-          "Authentication");
+      application_features::ApplicationServer::getFeature<
+          AuthenticationFeature>("Authentication");
   TRI_ASSERT(authentication != nullptr);
 
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
@@ -499,7 +504,7 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       "/_admin/shutdown",
       RestHandlerCreator<arangodb::RestShutdownHandler>::createNoData);
-  
+
   if (authentication->isEnabled()) {
     _handlerFactory->addPrefixHandler(
         "/_open/auth",

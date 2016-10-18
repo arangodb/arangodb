@@ -28,8 +28,8 @@
 #include <openssl/ssl.h>
 #include <boost/asio/ssl.hpp>
 
-#include "Basics/asio-helper.h"
 #include "Actions/RestActionHandler.h"
+#include "Basics/asio-helper.h"
 
 namespace arangodb {
 namespace rest {
@@ -43,11 +43,6 @@ class RestServerThread;
 class GeneralServerFeature final
     : public application_features::ApplicationFeature {
  public:
-  typedef int (*verification_callback_fptr)(int, X509_STORE_CTX*);
-  using verification_callback_asio = std::function< int(int, boost::asio::ssl::verify_context&)> ;
-
-
- public:
   static rest::RestHandlerFactory* HANDLER_FACTORY;
   static rest::AsyncJobManager* JOB_MANAGER;
 
@@ -57,20 +52,6 @@ class GeneralServerFeature final
                                      : 300.0;
   };
 
-  static int verificationMode() {
-    return GENERAL_SERVER != nullptr ? GENERAL_SERVER->_verificationMode
-                                     : SSL_VERIFY_NONE;
-  };
-
-  static verification_callback_fptr verificationCallback() {
-    return GENERAL_SERVER != nullptr ? GENERAL_SERVER->_verificationCallback
-                                     : nullptr;
-  };
-
-  static verification_callback_asio verificationCallbackAsio() {
-    return  GENERAL_SERVER->_verificationCallbackAsio;
-  };
-  
   static bool hasProxyCheck() {
     return GENERAL_SERVER != nullptr && GENERAL_SERVER->proxyCheck();
   }
@@ -115,13 +96,6 @@ class GeneralServerFeature final
   void stop() override final;
   void unprepare() override final;
 
- public:
-  void setVerificationMode(int mode) { _verificationMode = mode; }
-  void setVerificationCallback(int (*func)(int, X509_STORE_CTX*)) {
-    _verificationCallback = func;
-    _verificationCallbackAsio = [this](int x, boost::asio::ssl::verify_context& v) -> int { return _verificationCallback(x, v.native_handle()); };
-  }
-
  private:
   double _keepAliveTimeout = 300.0;
   bool _allowMethodOverride;
@@ -129,10 +103,6 @@ class GeneralServerFeature final
   bool _proxyCheck;
   std::vector<std::string> _trustedProxies;
   std::vector<std::string> _accessControlAllowOrigins;
-
-  int _verificationMode;
-  verification_callback_fptr _verificationCallback;
-  verification_callback_asio _verificationCallbackAsio;
 
  public:
   bool proxyCheck() const { return _proxyCheck; }
