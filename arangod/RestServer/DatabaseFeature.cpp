@@ -54,9 +54,7 @@
 #include "VocBase/vocbase.h"
 #include "Wal/LogfileManager.h"
 
-#ifdef ARANGODB_ENABLE_ROCKSDB
 #include "Indexes/RocksDBIndex.h"
-#endif
 
 #include <velocypack/velocypack-aliases.h>
 
@@ -138,10 +136,8 @@ void DatabaseManagerThread::run() {
 // regular database
 // ---------------------------
 
-#ifdef ARANGODB_ENABLE_ROCKSDB
         // delete persistent indexes for this database
         RocksDBFeature::dropDatabase(database->id());
-#endif
 
         LOG(TRACE) << "physically removing database directory '"
                    << engine->databasePath(database) << "' of database '"

@@ -79,9 +79,7 @@
 #include "Wal/LogfileManager.h"
 #include "Wal/RecoveryFeature.h"
 
-#ifdef ARANGODB_ENABLE_ROCKSDB
 #include "Indexes/RocksDBFeature.h"
-#endif
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Audit/AuditFeature.h"
@@ -146,6 +144,7 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new TraverserEngineRegistryFeature(&server));
   server.addFeature(new RandomFeature(&server));
   server.addFeature(new RecoveryFeature(&server));
+  server.addFeature(new RocksDBFeature(&server));
   server.addFeature(new SchedulerFeature(&server));
   server.addFeature(new ScriptFeature(&server, &ret));
   server.addFeature(new ServerFeature(&server, &ret));
@@ -161,10 +160,6 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new V8PlatformFeature(&server));
   server.addFeature(new VersionFeature(&server));
   server.addFeature(new WorkMonitorFeature(&server));
-
-#ifdef ARANGODB_ENABLE_ROCKSDB
-  server.addFeature(new RocksDBFeature(&server));
-#endif
 
 #ifdef ARANGODB_HAVE_FORK
   server.addFeature(new DaemonFeature(&server));

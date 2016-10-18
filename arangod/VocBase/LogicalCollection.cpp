@@ -270,13 +270,8 @@ static std::shared_ptr<Index> PrepareIndexFromSlice(VPackSlice info,
       break;
     }
     case arangodb::Index::TRI_IDX_TYPE_ROCKSDB_INDEX: {
-#ifdef ARANGODB_ENABLE_ROCKSDB
       newIdx.reset(new arangodb::RocksDBIndex(iid, col, info));
       break;
-#else
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                     "index type 'persistent' not supported in this build");
-#endif
     }
     case arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX: {
       newIdx.reset(new arangodb::FulltextIndex(iid, col, info));
