@@ -102,6 +102,8 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code, int errorNum,
 }
 
 void HttpCommTask::addResponse(HttpResponse* response) {
+  resetKeepAlive();
+
   _requestPending = false;
 
   // CORS response handling
@@ -151,10 +153,9 @@ void HttpCommTask::addResponse(HttpResponse* response) {
 
   if (!buffer->empty()) {
     LOG_TOPIC(TRACE, Logger::REQUESTS)
-        << "\"http-request-response\",\"" << (void*)this << "\",\""
-        << _fullUrl << "\",\""
-        << StringUtils::escapeUnicode(
-               std::string(buffer->c_str(), buffer->length()))
+        << "\"http-request-response\",\"" << (void*)this << "\",\"" << _fullUrl
+        << "\",\"" << StringUtils::escapeUnicode(
+                          std::string(buffer->c_str(), buffer->length()))
         << "\"";
   }
 
@@ -180,6 +181,8 @@ void HttpCommTask::addResponse(HttpResponse* response) {
 
 // reads data from the socket
 bool HttpCommTask::processRead() {
+  cancelKeepAlive();
+
   TRI_ASSERT(_readBuffer.c_str() != nullptr);
 
   if (_requestPending) {
@@ -187,7 +190,6 @@ bool HttpCommTask::processRead() {
   }
 
   auto agent = getAgent(1UL);
-
   bool handleRequest = false;
 
   // still trying to read the header fields
@@ -385,10 +387,6 @@ bool HttpCommTask::processRead() {
                     << std::string(_readBuffer.c_str() + _startPosition, l)
                     << "'";
 
-          // force a socket close, response will be ignored!
-          // TRI_CLOSE_SOCKET(_commSocket);
-          // TRI_invalidatesocket(&_commSocket);
-
           // bad request, method not allowed
           handleSimpleError(rest::ResponseCode::METHOD_NOT_ALLOWED, 1);
           return false;
@@ -467,14 +465,6 @@ bool HttpCommTask::processRead() {
     _readRequestBody = false;
     handleRequest = true;
   }
-
-  // .............................................................................
-  // request complete
-  //
-  // we have to delete request in here or pass it to a handler, which will
-  // delete
-  // it
-  // .............................................................................
 
   if (!handleRequest) {
     return false;
@@ -591,9 +581,10 @@ void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
   // create a handler and execute
   std::unique_ptr<GeneralResponse> response(
       new HttpResponse(rest::ResponseCode::SERVER_ERROR));
+
   response->setContentType(request->contentTypeResponse());
   response->setContentTypeRequested(request->contentTypeResponse());
-  cancelKeepAlive();
+
   executeRequest(std::move(request), std::move(response));
 }
 

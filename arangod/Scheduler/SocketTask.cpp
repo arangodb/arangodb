@@ -46,8 +46,8 @@ SocketTask::SocketTask(arangodb::EventLoop loop,
       _connectionInfo(connectionInfo),
       _readBuffer(TRI_UNKNOWN_MEM_ZONE, READ_BLOCK_SIZE + 1, false),
       _peer(std::move(socket)),
-      _useKeepAliveTimeout(keepAliveTimeout > 0),
       _keepAliveTimeout(static_cast<long>(keepAliveTimeout * 1000)),
+      _useKeepAliveTimeout(static_cast<long>(keepAliveTimeout * 1000) > 0),
       _keepAliveTimer(_peer->_socket.get_io_service(), _keepAliveTimeout) {
   ConnectionStatisticsAgent::acquire();
   connectionStatisticsAgentSetStart();
@@ -96,9 +96,6 @@ SocketTask::~SocketTask() {
 }
 
 void SocketTask::start() {
-  boost::system::error_code err;
-  resetKeepAlive(err);
-
   if (_closedSend || _closedReceive) {
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "cannot start, channel closed";
     return;
@@ -229,11 +226,6 @@ void SocketTask::addWriteBuffer(StringBuffer* buffer,
 }
 
 void SocketTask::completedWriteBuffer() {
-  boost::system::error_code ec;
-  resetKeepAlive(ec);
-  if (ec) {
-    closeStream();
-  }
   delete _writeBuffer;
   _writeBuffer = nullptr;
 
@@ -316,13 +308,20 @@ void SocketTask::closeStream() {
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-void SocketTask::resetKeepAlive(boost::system::error_code& err) {
+void SocketTask::resetKeepAlive() {
   if (_useKeepAliveTimeout) {
+    boost::system::error_code err;
     _keepAliveTimer.expires_from_now(_keepAliveTimeout, err);
 
+    if (err) {
+      closeStream();
+      return;
+    }
+
     auto self = shared_from_this();
+
     _keepAliveTimer.async_wait(
-        [this, self](const boost::system::error_code& error) {
+       [self, this](const boost::system::error_code& error) {
           LOG_TOPIC(TRACE, Logger::COMMUNICATION)
               << "keepAliveTimerCallback - called with: " << error.message();
           if (!error) {
@@ -334,8 +333,9 @@ void SocketTask::resetKeepAlive(boost::system::error_code& err) {
   }
 }
 
-void SocketTask::cancelKeepAlive(boost::system::error_code& err) {
+void SocketTask::cancelKeepAlive() {
   if (_useKeepAliveTimeout) {
+    boost::system::error_code err;
     _keepAliveTimer.cancel(err);
   }
 }
@@ -352,9 +352,11 @@ bool SocketTask::reserveMemory() {
 
 bool SocketTask::trySyncRead() {
   boost::system::error_code err;
+
   if (0 == _peer->_socket.available(err)) {
     return false;
   }
+
   if (err) {
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "SocketTask::trySyncRead "
                                             << "- failed with "
@@ -363,6 +365,7 @@ bool SocketTask::trySyncRead() {
   }
 
   size_t bytesRead = 0;
+
   if (!_peer->_encrypted) {
     bytesRead = _peer->_socket.read_some(
         boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE), err);
@@ -375,8 +378,8 @@ bool SocketTask::trySyncRead() {
     return false;  // should not happen
   }
 
-  resetKeepAlive(err);
   _readBuffer.increaseLength(bytesRead);
+
   if (err) {
     if (err == boost::asio::error::would_block) {
       return false;
@@ -387,6 +390,7 @@ bool SocketTask::trySyncRead() {
       return false;
     }
   }
+
   return true;
 }
 
@@ -479,11 +483,6 @@ void SocketTask::asyncReadSome() {
 
         closeReceiveStream();
       } else {
-        boost::system::error_code err;
-        resetKeepAlive(err);
-        if (err) {
-          closeReceiveStream();
-        }
         asyncReadSome();
       }
     }

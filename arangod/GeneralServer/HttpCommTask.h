@@ -20,18 +20,19 @@ class HttpCommTask : public GeneralCommTask {
   HttpCommTask(EventLoop, GeneralServer*, std::unique_ptr<Socket> socket,
                ConnectionInfo&&, double timeout);
 
-  // convert from GeneralResponse to httpResponse ad dispatch request to class
-  // internal addResponse
+  arangodb::Endpoint::TransportType transportType() override {
+    return arangodb::Endpoint::TransportType::HTTP;
+  };
+
+  // convert from GeneralResponse to httpResponse
   void addResponse(GeneralResponse* response) override {
     HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
+
     if (httpResponse == nullptr) {
       throw std::logic_error("invalid response or response Type");
     }
-    addResponse(httpResponse);
-  };
 
-  arangodb::Endpoint::TransportType transportType() override {
-    return arangodb::Endpoint::TransportType::HTTP;
+    addResponse(httpResponse);
   };
 
  protected:
@@ -58,9 +59,7 @@ class HttpCommTask : public GeneralCommTask {
   // check the content-length header of a request and fail it is broken
   bool checkContentLength(HttpRequest*, bool expectContentLength);
 
-  // returns the authentication realm
   std::string authenticationRealm() const;
-
   rest::ResponseCode authenticateRequest(HttpRequest*);
 
  private:
@@ -73,7 +72,6 @@ class HttpCommTask : public GeneralCommTask {
   bool _denyCredentials;  // whether or not to allow credentialed requests (only
                           // CORS)
   bool _newRequest;       // new request started
-  // TODO(fc) remove
   rest::RequestType _requestType;  // type of request (GET, POST, ...)
   std::string _fullUrl;            // value of requested URL
   std::string _origin;  // value of the HTTP origin header the client sent (if
@@ -82,7 +80,6 @@ class HttpCommTask : public GeneralCommTask {
       _sinceCompactification;  // number of requests since last compactification
   size_t _originalBodyLength;
 
-  // authentication real
   std::string const _authenticationRealm;
 
   // true if request is complete but not handled
