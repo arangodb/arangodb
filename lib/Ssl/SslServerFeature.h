@@ -32,7 +32,7 @@
 #include "Basics/asio-helper.h"
 
 namespace arangodb {
-class SslServerFeature final : public application_features::ApplicationFeature {
+class SslServerFeature : public application_features::ApplicationFeature {
  public:
   static SslServerFeature* SSL;
 
