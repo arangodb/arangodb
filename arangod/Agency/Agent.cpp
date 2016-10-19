@@ -271,8 +271,8 @@ bool Agent::recvAppendEntriesRPC(
 
     if (nqs > ndups) {
       LOG_TOPIC(TRACE, Logger::AGENCY)
-        << "Appending " << nqs - ndups << " entries to state machine."
-        << nqs << " " << ndups;
+        << "Appending " << nqs - ndups << " entries to state machine. ("
+        << nqs << ", " << ndups << ")";
 
       try {
         _state.log(queries, ndups);

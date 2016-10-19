@@ -4,10 +4,12 @@ function help() {
   echo "USAGE: scripts/startStandAloneAgency.sh [options]"
   echo ""
   echo "OPTIONS:"
-  echo "  -a/--agency-size Agency size (odd integer      default: 3))"
-  echo "  -p/--pool-size   Pool size   (>= agency size   default: [agency size])"
-  echo "  -t/--transport   Protocol    (ssl|tcp          default: tcp)"
-  echo "  -l/--log-level   Log level   (INFO|DEBUG|TRACE default: INFO)"
+  echo "  -a/--agency-size   Agency size (odd integer      default: 3))"
+  echo "  -p/--pool-size     Pool size   (>= agency size   default: [agency size])"
+  echo "  -t/--transport     Protocol    (ssl|tcp          default: tcp)"
+  echo "  -l/--log-level     Log level   (INFO|DEBUG|TRACE default: INFO)"
+  echo "  -w/--wait-for-sync Boolean     (true|false       default: true)"
+  echo "  -m/--use-microtime Boolean     (true|false       default: false)"
   echo ""
   echo "EXAMPLES:"
   echo "  scripts/startStandaloneAgency.sh"
@@ -20,6 +22,8 @@ NRAGENTS=3
 POOLSZ=""
 TRANSPORT="tcp"
 LOG_LEVEL="INFO"
+WAIT_FOR_SYNC="true"
+USE_MICROTIME="false"
 
 while [[ ${1} ]]; do
   case "${1}" in
@@ -37,6 +41,14 @@ while [[ ${1} ]]; do
       ;;
     -l|--log-level)
       LOG_LEVEL=${2}
+      shift
+      ;;
+    -w|--wait-for-sync)
+      WAIT_FOR_SYNC=${2}
+      shift
+      ;;
+    -m|--use-microtime)
+      USE_MICROTIME=${2}
       shift
       ;;
     -h|--help)
@@ -72,7 +84,9 @@ printf "Starting agency ... \n"
 printf "  agency-size: %s," "$NRAGENTS"
 printf  " pool-size: %s," "$POOLSZ"
 printf  " transport: %s," "$TRANSPORT"
-printf  " log-level: %s\n" "$LOG_LEVEL"
+printf  " log-level: %s," "$LOG_LEVEL"
+printf  " use-microtime: %s," "$USE_MICROTIME"
+printf  " wait-for-sync: %s\n" "$WAIT_FOR_SYNC"
 
 if [ ! -d arangod ] || [ ! -d arangosh ] || [ ! -d UnitTests ] ; then
   echo Must be started in the main ArangoDB source directory.
@@ -107,7 +121,7 @@ for aid in `seq 0 $(( $POOLSZ - 1 ))`; do
     --agency.size $NRAGENTS \
     --agency.supervision true \
     --agency.supervision-frequency $SFRE \
-    --agency.wait-for-sync false \
+    --agency.wait-for-sync $WAIT_FOR_SYNC \
     --database.directory agency/data$port \
     --javascript.app-path ./js/apps \
     --javascript.startup-directory ./js \
@@ -115,6 +129,7 @@ for aid in `seq 0 $(( $POOLSZ - 1 ))`; do
     --log.file agency/$port.log \
     --log.force-direct true \
     --log.level agency=$LOG_LEVEL \
+    --log.use-microtime $USE_MICROTIME \
     --server.authentication false \
     --server.endpoint $TRANSPORT://localhost:$port \
     --server.statistics false \
