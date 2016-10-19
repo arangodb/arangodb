@@ -23,12 +23,15 @@
 #ifndef ARANGOD_SCHEDULER_SOCKET_H
 #define ARANGOD_SCHEDULER_SOCKET_H 1
 
-#include "Basics/StringBuffer.h"
-#include "Logger/Logger.h"
+#include "Basics/Common.h"
 
 #include <boost/asio/basic_stream_socket.hpp>
 #include <boost/asio/serial_port_service.hpp>
 #include <boost/asio/ssl.hpp>
+
+#include "Basics/asio-helper.h"
+#include "Basics/StringBuffer.h"
+#include "Logger/Logger.h"
 
 namespace arangodb {
 
