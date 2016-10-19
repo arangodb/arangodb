@@ -604,7 +604,11 @@
               var key;
               _.each($('#arangoBindParamTable input'), function (element) {
                 key = $(element).attr('name');
-                $(element).val(self.bindParamTableObj[key]);
+                if (typeof self.bindParamTableObj[key] === 'object') {
+                  $(element).val(JSON.parse(self.bindParamTableObj[key]));
+                } else {
+                  $(element).val(self.bindParamTableObj[key]);
+                }
               });
 
               // resave cached query
