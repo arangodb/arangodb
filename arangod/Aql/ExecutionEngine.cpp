@@ -511,6 +511,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     result.add(VPackValue("-all"));
     result.close(); // options.optimizer.rules
     result.close(); // options.optimizer
+    double tracing = query->getNumericOption("tracing", 0);
+    result.add("tracing", VPackValue(tracing));
     result.close(); // options
 
     result.close();
