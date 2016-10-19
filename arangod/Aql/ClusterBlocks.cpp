@@ -842,12 +842,14 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
                                            size_t& skipped,
                                            std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
+  traceGetSomeBegin();
   TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   TRI_ASSERT(result == nullptr && skipped == 0);
 
   size_t clientId = getClientId(shardId);
 
   if (_doneForClient.at(clientId)) {
+    traceGetSomeEnd(result);
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -866,6 +868,7 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
     if (buf.empty()) {
       if (!getBlockForClient(atLeast, atMost, clientId)) {
         _doneForClient.at(clientId) = true;
+        traceGetSomeEnd(result);
         return TRI_ERROR_NO_ERROR;
       }
     }
@@ -877,6 +880,7 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
         buf.pop_front();
       }
       freeCollector();
+      traceGetSomeEnd(result);
       return TRI_ERROR_NO_ERROR;
     }
 
@@ -923,6 +927,7 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
 
   // _buffer is left intact, deleted and cleared at shutdown
 
+  traceGetSomeEnd(result);
   return TRI_ERROR_NO_ERROR;
 
   // cppcheck-suppress style
