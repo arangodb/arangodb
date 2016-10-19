@@ -37,6 +37,7 @@ const functionsDocumentation = {
   'dump': 'dump tests',
   'dump_authentication': 'dump tests with authentication',
   'dfdb': 'start test',
+  'endpoints': 'endpoints tests',
   'foxx_manager': 'foxx manager tests',
   'http_replication': 'http replication tests',
   'http_server': 'http server tests in Ruby',
@@ -1205,9 +1206,13 @@ function shutdownArangod (arangod, options) {
     arangod.exitStatus.status === 'RUNNING') {
     const requestOptions = makeAuthorizationHeaders(options);
     requestOptions.method = 'DELETE';
-
+    
     print(arangod.url + '/_admin/shutdown');
-    download(arangod.url + '/_admin/shutdown', '', requestOptions);
+    if (options.useKillExternal) {
+      killExternal(arangod.pid);
+    } else {
+      download(arangod.url + '/_admin/shutdown', '', requestOptions);
+    }
   } else {
     print('Server already dead, doing nothing.');
   }
@@ -1227,8 +1232,7 @@ function shutdownInstance (instanceInfo, options) {
 
   let nonagencies = instanceInfo.arangods
     .filter(arangod => arangod.role !== 'agent');
-  nonagencies.forEach(arangod => shutdownArangod(arangod, options)
-  );
+  nonagencies.forEach(arangod => shutdownArangod(arangod, options));
 
   let agentsKilled = false;
   let nrAgents = n - nonagencies.length;
@@ -1390,7 +1394,7 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   let args = makeArgsArangod(options, appDir);
   let endpoint;
   let port;
-
+  
   if (!addArgs['server.endpoint']) {
     port = findFreePort(options.maxPort);
     endpoint = protocol + '://127.0.0.1:' + port;
@@ -1541,12 +1545,19 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
       let count = 0;
       instanceInfo.arangods.forEach(arangod => {
         while (true) {
-          const reply = download(arangod.url + '/_api/version', '', makeAuthorizationHeaders(options));
+          if (options.useReconnect) {
+            try {
+              arango.reconnect(instanceInfo.endpoint, '_system', options.username, options.password);
+              break;
+            } catch (e) {
+            }
+          } else {
+            const reply = download(arangod.url + '/_api/version', '', makeAuthorizationHeaders(options));
 
-          if (!reply.error && reply.code === 200) {
-            break;
+            if (!reply.error && reply.code === 200) {
+              break;
+            }
           }
-
           ++count;
 
           if (count % 60 === 0) {
@@ -1563,7 +1574,11 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
     var ports = [];
     var processInfo = [];
     instanceInfo.arangods.forEach(arangod => {
-      var port = matchPort.exec(arangod.endpoint)[1];
+      let res = matchPort.exec(arangod.endpoint);
+      if (!res) {
+        return;
+      }
+      var port = res[1];
       ports.push('port '+ port);
       processInfo.push('  [' + arangod.role + '] up with pid ' + arangod.pid + ' on port ' + port);
     });
@@ -1780,7 +1795,7 @@ function findTests () {
   }
 
   testsCases.common = doOnePath('js/common/tests/shell');
-
+  
   testsCases.server_only = doOnePath('js/server/tests/shell');
 
   testsCases.client_only = doOnePath('js/client/tests/shell');
@@ -1939,6 +1954,7 @@ let allTests = [
   'dump',
   'dump_authentication',
   'dfdb',
+  'endpoints',
   'http_server',
   'importing',
   'server_http',
@@ -3533,6 +3549,59 @@ testFuncs.shell_server_perf = function (options) {
 
   return performTests(options, testsCases.server_aql_performance,
     'shell_server_perf', runThere);
+};
+
+testFuncs.endpoints = function(options) {
+  print(CYAN + 'Endpoints tests...' + RESET);
+
+  let endpoints = {
+    'tcpv4': function() {
+      return 'tcp://127.0.0.1:' + findFreePort(options.maxPort);
+    },
+    'tcpv6': function() {
+      return 'tcp://[::1]:' + findFreePort(options.maxPort);
+    },
+    'unix': function() {
+      if (platform.substr(0, 3) === 'win') {
+        return undefined;
+      }
+      return 'unix:///tmp/arangodb-tmp.sock';
+    }
+  };
+
+  return Object.keys(endpoints).reduce((results, endpointName) => {
+    let testName = 'endpoint-' + endpointName;
+    results[testName] = (function() {
+      let endpoint = endpoints[endpointName]();
+      if (endpoint === undefined || options.cluster) {
+        return {
+          status: true,
+          skipped: true,
+        }
+      } else {
+        let instanceInfo = startInstance('tcp', Object.assign(options, {useReconnect: true}), {
+          'server.endpoint': endpoint,
+        }, testName);
+
+        if (instanceInfo === false) {
+          return {
+            status: false,
+            message: 'failed to start server!'
+          };
+        }
+
+        let result = runInArangosh(options, instanceInfo, 'js/client/tests/endpoint-spec.js');
+  
+        print(CYAN + 'Shutting down...' + RESET);
+        // mop: mehhh...when launched with a socket we can't use download :S
+        shutdownInstance(instanceInfo, Object.assign(options, {useKillExternal: true}));
+        print(CYAN + 'done.' + RESET);
+
+        return result;
+      }
+    }());
+    return results;
+  }, {});
 };
 
 // //////////////////////////////////////////////////////////////////////////////

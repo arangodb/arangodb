@@ -32,11 +32,9 @@ using namespace arangodb::basics;
 namespace arangodb {
 class SocketUnixDomain: public Socket {
   public:
-    SocketUnixDomain(boost::asio::io_service& ioService,
-           boost::asio::ssl::context&& context, bool encrypted)
-        : Socket(ioService, std::move(context), encrypted),
-          _sslSocket(ioService, _context),
-          _socket(_sslSocket.next_layer()),
+    SocketUnixDomain(boost::asio::io_service& ioService, boost::asio::ssl::context&& context)
+        : Socket(ioService, std::move(context), false),
+          _socket(ioService),
           _peerEndpoint() {}
 
     SocketUnixDomain(SocketUnixDomain&& that) = default;
@@ -53,7 +51,7 @@ class SocketUnixDomain: public Socket {
     
     int peerPort() override { return 0; }
     
-    bool sslHandshake() override { return socketcommon::doSslHandshake(_sslSocket); }
+    bool sslHandshake() override { return false; }
     
     size_t write(StringBuffer* buffer, boost::system::error_code& ec) override;
     
@@ -72,8 +70,7 @@ class SocketUnixDomain: public Socket {
     void asyncRead(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) override;
 
   public:
-    boost::asio::ssl::stream<boost::asio::local::stream_protocol::socket> _sslSocket;
-    boost::asio::local::stream_protocol::socket& _socket;
+    boost::asio::local::stream_protocol::socket _socket;
     
     boost::asio::local::stream_protocol::acceptor::endpoint_type _peerEndpoint;
 };
