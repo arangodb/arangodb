@@ -154,7 +154,8 @@ void ExecutionBlock::traceGetSomeBegin() const {
   if (_tracing > 0) {
     auto node = getPlanNode();
     LOG_TOPIC(INFO, Logger::QUERIES) << "getSome type="
-      << node->getTypeString() << " this=" << (uintptr_t) this;
+      << node->getTypeString() << " this=" << (uintptr_t) this
+      << " id=" << node->id();
   }
 }
 
@@ -163,18 +164,21 @@ void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result) const {
   if (_tracing > 0) {
     auto node = getPlanNode();
     LOG_TOPIC(INFO, Logger::QUERIES) << "getSome done type="
-      << node->getTypeString() << " this=" << (uintptr_t) this;
+      << node->getTypeString() << " this=" << (uintptr_t) this
+      << " id=" << node->id();
     if (_tracing > 1) {
       if (result == nullptr) {
-        LOG_TOPIC(INFO, Logger::QUERIES) << "getSome result: nullptr";
+        LOG_TOPIC(INFO, Logger::QUERIES)
+            << "getSome type=" << node->getTypeString() << " result: nullptr";
       } else {
         VPackBuilder builder;
         { 
           VPackObjectBuilder guard(&builder);
           result->toVelocyPack(_trx, builder);
         }
-        LOG_TOPIC(INFO, Logger::QUERIES) << "getSome result: "
-          << builder.slice().toJson();
+        LOG_TOPIC(INFO, Logger::QUERIES)
+            << "getSome type=" << node->getTypeString()
+            << " result: " << builder.toJson();
       }
     }
   }
