@@ -320,8 +320,10 @@ class Query {
   bool canUseQueryCache() const;
 
   /// @brief fetch a numeric value from the options
+ public:
   double getNumericOption(char const*, double) const;
 
+ private:
   /// @brief read the "optimizer.inspectSimplePlans" section from the options
   bool inspectSimplePlans() const;
 

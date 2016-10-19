@@ -190,16 +190,19 @@ void CalculationBlock::doEvaluation(AqlItemBlock* result) {
 
 AqlItemBlock* CalculationBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
+  traceGetSomeBegin();
   std::unique_ptr<AqlItemBlock> res(
       ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost));
 
   if (res.get() == nullptr) {
+    traceGetSomeEnd(nullptr);
     return nullptr;
   }
 
   doEvaluation(res.get());
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
+  traceGetSomeEnd(res.get());
   return res.release();
 
   // cppcheck-suppress *

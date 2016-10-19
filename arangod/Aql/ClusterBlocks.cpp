@@ -223,7 +223,9 @@ bool GatherBlock::hasMore() {
 /// @brief getSome
 AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
+  traceGetSomeBegin();
   if (_done) {
+    traceGetSomeEnd(nullptr);
     return nullptr;
   }
 
@@ -237,6 +239,7 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
     if (res == nullptr) {
       _done = true;
     }
+    traceGetSomeEnd(res);
     return res;
   }
 
@@ -266,6 +269,7 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
 
   if (available == 0) {
     _done = true;
+    traceGetSomeEnd(nullptr);
     return nullptr;
   }
 
@@ -321,6 +325,7 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
     }
   }
 
+  traceGetSomeEnd(res.get());
   return res.release();
 
   // cppcheck-suppress style
@@ -1377,6 +1382,8 @@ int RemoteBlock::shutdown(int errorCode) {
 AqlItemBlock* RemoteBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
+  
+  traceGetSomeBegin();
 
   VPackBuilder builder;
   builder.openObject();
@@ -1402,10 +1409,13 @@ AqlItemBlock* RemoteBlock::getSome(size_t atLeast, size_t atMost) {
   _deltaStats = newStats;
 
   if (VelocyPackHelper::getBooleanValue(responseBody, "exhausted", true)) {
+    traceGetSomeEnd(nullptr);
     return nullptr;
   }
 
-  return new arangodb::aql::AqlItemBlock(responseBody);
+  auto r = new arangodb::aql::AqlItemBlock(responseBody);
+  traceGetSomeEnd(r);
+  return r;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();

@@ -77,6 +77,7 @@ AqlItemBlock* ModificationBlock::getSome(size_t atLeast, size_t atMost) {
   // found, the UPSERTs INSERT operation may create it. after that, the
   // search document is present and we cannot use an already queried result
   // from the initial search batch
+  traceGetSomeBegin();
   if (getPlanNode()->getType() == ExecutionNode::NodeType::UPSERT) {
     atLeast = 1;
     atMost = 1;
@@ -150,6 +151,7 @@ AqlItemBlock* ModificationBlock::getSome(size_t atLeast, size_t atMost) {
 
   freeBlocks(blocks);
 
+  traceGetSomeEnd(replyBlocks.get());
   return replyBlocks.release();
 }
 

@@ -144,12 +144,14 @@ int EnumerateCollectionBlock::initializeCursor(AqlItemBlock* items,
 AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
                                                 size_t atMost) {
   DEBUG_BEGIN_BLOCK();  
+  traceGetSomeBegin();
   // Invariants:
   //   As soon as we notice that _totalCount == 0, we set _done = true.
   //   Otherwise, outside of this method (or skipSome), _documents is
   //   either empty (at the beginning, with _posInDocuments == 0)
   //   or is non-empty and _posInDocuments < _documents.size()
   if (_done) {
+    traceGetSomeEnd(nullptr);
     return nullptr;
   }
   
@@ -224,6 +226,8 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
   
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
+
+  traceGetSomeEnd(res.get());
 
   return res.release();
 
