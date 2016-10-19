@@ -79,6 +79,7 @@ const optionsDocumentation = [
   '   - `skipBoost`: if set to true the boost unittests are skipped',
   '   - `skipConfig`: omit the noisy configuration tests',
   '   - `skipFoxxQueues`: omit the test for the foxx queues',
+  '   - `skipEndpoints`: if set to true endpoints tests are skipped',
   '   - `skipGeo`: if set to true the geo index tests are skipped',
   '   - `skipGraph`: if set to true the graph tests are skipped',
   "   - `skipLogAnalysis`: don't try to crawl the server logs",
@@ -169,6 +170,7 @@ const optionsDefaults = {
   'skipArangoBenchNonConnKeepAlive': true,
   'skipAuthentication': false,
   'skipBoost': false,
+  'skipEndpoints': false,
   'skipGeo': false,
   'skipLogAnalysis': false,
   'skipMemoryIntense': false,
@@ -3573,7 +3575,7 @@ testFuncs.endpoints = function(options) {
     let testName = 'endpoint-' + endpointName;
     results[testName] = (function() {
       let endpoint = endpoints[endpointName]();
-      if (endpoint === undefined || options.cluster) {
+      if (endpoint === undefined || options.cluster || options.skipEndpoints) {
         return {
           status: true,
           skipped: true,
