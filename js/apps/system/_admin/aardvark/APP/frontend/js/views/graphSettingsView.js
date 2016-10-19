@@ -429,7 +429,7 @@
         nodeColorByCollection: 'true',
         edgeColor: '#cccccc',
         edgeColorAttribute: '',
-        edgeColorByCollection: 'true',
+        edgeColorByCollection: 'false',
         nodeLabel: '_key',
         edgeLabel: '',
         edgeType: 'arrow',

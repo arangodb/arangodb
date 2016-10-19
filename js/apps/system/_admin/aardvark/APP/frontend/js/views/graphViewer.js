@@ -823,8 +823,6 @@
 
     addNode: function () {
       var self = this;
-      var x = self.addNodeX / 100;
-      var y = self.addNodeY / 100;
 
       var collectionId = $('.modal-body #new-node-collection-attr').val();
       var key = $('.modal-body #new-node-key-attr').last().val();
@@ -839,13 +837,17 @@
             label: id.split('/')[1] || '',
             size: self.graphConfig.nodeSize || 15,
             color: self.graphConfig.nodeColor || self.ncolor || '#2ecc71',
-            x: x,
-            y: y
+            originalColor: self.graphConfig.nodeColor || self.ncolor || '#2ecc71',
+            x: self.addNodeX + self.currentGraph.camera.x,
+            y: self.addNodeY + self.currentGraph.camera.y
           });
 
           window.modalView.hide();
           // rerender graph
           self.currentGraph.refresh();
+
+          // move camera to added node
+          self.cameraToNode(self.currentGraph.graph.nodes(id));
         }
       };
 
@@ -1533,7 +1535,7 @@
         } else if (self.algorithm === 'fruchtermann') {
           sigma.layouts.fruchtermanReingold.start(self.currentGraph);
           self.currentGraph.refresh();
-          // self.cameraToNode(origin);
+          self.cameraToNode(origin, 1000);
         } else if (self.algorithm === 'noverlap') {
           self.startLayout(true, origin); // TODO: tmp bugfix, rerender with noverlap currently not possible
           // self.currentGraph.startNoverlap();
@@ -1541,27 +1543,30 @@
       }
     },
 
-    /*
-    cameraToNode: function (node) {
+    cameraToNode: function (node, timeout) {
       var self = this;
-      console.log(node);
 
-      self.currentGraph.cameras[0].goTo({
-      x: node['read_cam0:x'],
-      y: node['read_cam0:y']
-      });
-          /*
-          sigma.misc.animation.camera(
-          self.currentGraph.camera,
-          {
-      x: node[self.currentGraph.camera.readPrefix + 'x'],
-      y: node[self.currentGraph.camera.readPrefix + 'y'],
-      ratio: 1
-      },
-      {duration: self.currentGraph.settings('animationsTime') || 300}
-      );
+      if (typeof node === 'string') {
+        node = self.currentGraph.graph.nodes(node);
+      }
+
+      var animateFunc = function (node) {
+        sigma.misc.animation.camera(self.currentGraph.camera, {
+          x: node.x,
+          y: node.y
+        }, {
+          duration: 1000
+        });
+      };
+
+      if (timeout) {
+        window.setTimeout(function () {
+          animateFunc(node);
+        }, timeout);
+      } else {
+        animateFunc(node);
+      }
     },
-    */
 
     drawLine: function (e) {
       var context = window.App.graphViewer.contextState;
@@ -2011,9 +2016,12 @@
             } else {
               // stage menu
               if (!$('#nodeContextMenu').is(':visible')) {
-                var offset = $('#graph-container').offset();
-                self.addNodeX = sigma.utils.getX(e) - offset.left / 2;
-                self.addNodeY = sigma.utils.getY(e) - offset.top / 2;
+                // var offset = $('#graph-container').offset();
+                self.addNodeX = e.data.captor.x;
+                self.addNodeY = e.data.captor.y;
+                // self.calculateAddNodePosition(self.cursorX, self.cursorY);
+                // self.addNodeX = sigma.utils.getX(e) - offset.left / 2;
+                // self.addNodeY = sigma.utils.getY(e) - offset.top / 2;
                 // self.addNodeX = e.data.captor.x;
                 // self.addNodeY = e.data.captor.y;
                 self.createContextMenu(e);
@@ -2138,16 +2146,20 @@
 
         // suggestion rendering time
         var duration = 250;
+        var adjust = 500;
         if (graph.nodes) {
           duration = graph.nodes.length;
           if (aqlMode) {
             if (duration < 250) {
               duration = 250;
+            } else {
+              duration += adjust;
             }
           } else {
             if (duration <= 250) {
               duration = 500;
             }
+            duration += adjust;
           }
         }
 
@@ -2329,7 +2341,7 @@ $('#deleteNodes').remove();
 
           if (origin) {
             self.currentGraph.refresh({ skipIndexation: true });
-            // self.cameraToNode(origin);
+            // self.cameraToNode(origin, 1000);
           }
         }, 500);
       }
