@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,29 +17,28 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ENDPOINT_ENDPOINT_IP_V4_H
-#define ARANGODB_ENDPOINT_ENDPOINT_IP_V4_H 1
+#ifndef ARANGOD_SCHEDULER_ACCEPTORUNIXDOMAIN_H
+#define ARANGOD_SCHEDULER_ACCEPTORUNIXDOMAIN_H 1
 
-#include "Basics/Common.h"
-#include "Basics/StringUtils.h"
-#include "Endpoint/EndpointIp.h"
+#include "Scheduler/Acceptor.h"
 
 namespace arangodb {
+class AcceptorUnixDomain: public Acceptor {
+  public:
+    AcceptorUnixDomain(boost::asio::io_service& ioService, Endpoint* endpoint)
+    : Acceptor(ioService, endpoint),
+      _acceptor(ioService) {
+    }
+    void open() override;
+    void close() override { _acceptor.close(); };
+    void asyncAccept(AcceptHandler const& handler) override;
+    void createPeer() override;
 
-class EndpointIpV4 final : public EndpointIp {
- public:
-  EndpointIpV4(EndpointType, TransportType, EncryptionType, int, bool,
-               std::string const&, uint16_t);
-
- public:
-  int domain() const override { return AF_INET; }
-
-  std::string hostAndPort() const override {
-    return host() + ':' + arangodb::basics::StringUtils::itoa(port());
-  }
+  private:
+    boost::asio::local::stream_protocol::acceptor _acceptor;
 };
 }
 

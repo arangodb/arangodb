@@ -68,7 +68,7 @@ void GeneralListenTask::handleConnected(std::unique_ptr<Socket> socket,
       break;
 
     default:
-      socket->_socket.close();
+      socket->close();
       return;
   }
 

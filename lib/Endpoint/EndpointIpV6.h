@@ -40,9 +40,6 @@ class EndpointIpV6 final : public EndpointIp {
   std::string hostAndPort() const override {
     return '[' + host() + "]:" + arangodb::basics::StringUtils::itoa(port());
   }
-
-  void openAcceptor(boost::asio::io_service*,
-                    boost::asio::ip::tcp::acceptor*) override final;
 };
 }
 

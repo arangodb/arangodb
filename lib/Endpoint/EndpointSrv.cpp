@@ -254,6 +254,3 @@ std::string EndpointSrv::hostAndPort() const {
 
   return "";
 }
-
-void EndpointSrv::openAcceptor(boost::asio::io_service*,
-                               boost::asio::ip::tcp::acceptor*) {}
