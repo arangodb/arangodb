@@ -51,24 +51,6 @@ class Acceptor {
     virtual void createPeer() = 0;
   
   protected:
-    static boost::asio::ssl::context createSslContextFreestanding() {
-      boost::asio::ssl::context context(
-          boost::asio::ssl::context::sslv23);  // generic ssl/tls context
-
-      SslServerFeature* ssl =
-          application_features::ApplicationServer::getFeature<SslServerFeature>(
-              "SslServer");
-      if (ssl) {
-        context = ssl->sslContext();
-        context.set_verify_mode(GeneralServerFeature::verificationMode());
-        context.set_verify_callback(
-            GeneralServerFeature::verificationCallbackAsio());
-      }
-
-      return context;
-    }
-
-  protected:
     boost::asio::io_service& _ioService;
     Endpoint* _endpoint;
     std::unique_ptr<Socket> _peer;

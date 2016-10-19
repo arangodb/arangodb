@@ -42,7 +42,7 @@ void AcceptorUnixDomain::asyncAccept(AcceptHandler const& handler) {
 
 void AcceptorUnixDomain::createPeer() {
   if (_endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-    _peer.reset(new SocketUnixDomain(_ioService, createSslContextFreestanding(), true));
+    _peer.reset(new SocketUnixDomain(_ioService, SslServerFeature::SSL->createSslContext(), true));
   } else {
     _peer.reset(new SocketUnixDomain(
         _ioService,

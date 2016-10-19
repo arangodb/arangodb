@@ -104,20 +104,3 @@ void ListenTask::stop() {
   _bound = false;
   _acceptor->close();
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-void ListenTask::createPeer() {
-  if (_endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-    _peer.reset(new Socket(*_ioService,
-                           SslServerFeature::SSL->createSslContext(), true));
-  } else {
-    _peer.reset(new Socket(
-        *_ioService,
-        boost::asio::ssl::context(boost::asio::ssl::context::method::sslv23),
-        false));
-  }
->>>>>>> 72280a99cc967ac09d556fe04b817e4dd01a1b0d
-}

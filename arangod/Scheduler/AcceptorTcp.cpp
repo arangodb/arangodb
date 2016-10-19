@@ -64,7 +64,7 @@ void AcceptorTcp::asyncAccept(AcceptHandler const& handler) {
 
 void AcceptorTcp::createPeer() {
   if (_endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-    _peer.reset(new SocketTcp(_ioService, createSslContextFreestanding(), true));
+    _peer.reset(new SocketTcp(_ioService, SslServerFeature::SSL->createSslContext(), true));
   } else {
     _peer.reset(new SocketTcp(
         _ioService,
