@@ -108,7 +108,7 @@ import are used and some initial lines should be skipped from the input.
 
 !SECTION Web Admin Interface
 
-The usability of the AQL editor is significantly improved. In addition to the standard JSON
+The usability of the AQL editor significantly improved. In addition to the standard JSON
 output, the AQL Editor is now able to render query results as a graph preview or a table.
 Furthermore the AQL editor displays query profiling information.
 
