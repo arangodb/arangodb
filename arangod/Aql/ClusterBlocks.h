@@ -283,6 +283,9 @@ class DistributeBlock : public BlockWithClients {
 
   /// @brief whether or not the collection uses the default sharding
   bool _usesDefaultSharding;
+
+  /// @brief allow specified keys even in non-default sharding case
+  bool _allowSpecifiedKeys;
 };
 
 class RemoteBlock : public ExecutionBlock {
