@@ -23,29 +23,92 @@
 #ifndef ARANGOD_SCHEDULER_SOCKET_H
 #define ARANGOD_SCHEDULER_SOCKET_H 1
 
-#include "Basics/Common.h"
+#include "Basics/StringBuffer.h"
+#include "Logger/Logger.h"
 
+#include <boost/asio/basic_stream_socket.hpp>
+#include <boost/asio/serial_port_service.hpp>
 #include <boost/asio/ssl.hpp>
 
 namespace arangodb {
-struct Socket {
-  Socket(boost::asio::io_service& ioService,
-         boost::asio::ssl::context&& context, bool encrypted)
-      : _context(std::move(context)),
-        _sslSocket(ioService, _context),
-        _socket(_sslSocket.next_layer()),
-        _peerEndpoint(),
-        _encrypted(encrypted) {}
 
-  Socket(Socket&& that) = default;
+typedef std::function<void(const boost::system::error_code& ec,
+    std::size_t transferred)> AsyncHandler;
 
-  boost::asio::ssl::context _context;
-  boost::asio::ssl::stream<boost::asio::ip::tcp::socket> _sslSocket;
-  boost::asio::ip::tcp::socket& _socket;
+namespace socketcommon {
+  template<typename T>
+  bool doSslHandshake(T &socket) {
+    boost::system::error_code ec;
+    
+    do {
+      ec.assign(boost::system::errc::success,
+          boost::system::generic_category());
+      socket.handshake(
+          boost::asio::ssl::stream_base::handshake_type::server, ec);
+    } while (ec.value() == boost::asio::error::would_block);
+      
+    if (ec) {
+      LOG_TOPIC(ERR, Logger::COMMUNICATION)
+          << "unable to perform ssl handshake: " << ec.message() << " : "
+          << ec.value();
+      return false;
+    }
+    return true;
+  }
+  
+  template<typename T>
+  size_t doWrite(T& socket, basics::StringBuffer* buffer, boost::system::error_code& ec) {
+    return socket.write_some(boost::asio::buffer(buffer->begin(), buffer->length()), ec);
+  }
+  template<typename T>
+  void doAsyncWrite(T& socket, boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) {
+    return boost::asio::async_write(socket, buffer, handler);
+  }
+  template<typename T>
+  size_t doRead(T& socket, boost::asio::mutable_buffers_1 const& buffer, boost::system::error_code& ec) {
+    return socket.read_some(buffer, ec);
+  }
+  template<typename T>
+  void doAsyncRead(T& socket, boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) {
+    return socket.async_read_some(buffer, handler);
+  }
+}
 
-  boost::asio::ip::tcp::acceptor::endpoint_type _peerEndpoint;
+class Socket {
+  public:
+    Socket(boost::asio::io_service& ioService,
+           boost::asio::ssl::context&& context, bool encrypted)
+        : _ioService(ioService),
+          _context(std::move(context)),
+          _encrypted(encrypted) {}
+    Socket(Socket&& that) = default;
+    virtual ~Socket() {}
+    
+    virtual void close() = 0;
+    virtual void close(boost::system::error_code& ec) = 0;
+    virtual void setNonBlocking(bool) = 0;
+    virtual boost::asio::serial_port_service::native_handle_type nativeHandle() = 0;
+    virtual std::string peerAddress() = 0;
+    virtual int peerPort() = 0;
+    bool handshake();
+    virtual size_t write(basics::StringBuffer* buffer, boost::system::error_code& ec) = 0;
+    virtual void asyncWrite(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) = 0;
+    virtual size_t read(boost::asio::mutable_buffers_1 const& buffer, boost::system::error_code& ec) = 0;
+    virtual void shutdownReceive() = 0; 
+    virtual void shutdownReceive(boost::system::error_code& ec) = 0; 
+    virtual void shutdownSend(boost::system::error_code& ec) = 0; 
+    virtual int available(boost::system::error_code& ec) = 0; 
+    virtual void asyncRead(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) = 0;
 
-  bool _encrypted;
+  protected:
+    virtual bool sslHandshake() = 0;
+     
+  public:
+    boost::asio::io_service& _ioService;
+    boost::asio::ssl::context _context;
+
+    bool _encrypted;
+  
 };
 }
 

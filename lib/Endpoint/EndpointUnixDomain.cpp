@@ -160,7 +160,4 @@ bool EndpointUnixDomain::initIncoming(TRI_socket_t incoming) {
   return setSocketFlags(incoming);
 }
 
-void EndpointUnixDomain::openAcceptor(boost::asio::io_service*,
-                                      boost::asio::ip::tcp::acceptor*) {}
-
 #endif

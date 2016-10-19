@@ -70,9 +70,7 @@ class EndpointUnixDomain final : public Endpoint {
   int port() const override { return 0; }
   std::string host() const override { return "localhost"; }
   std::string hostAndPort() const override { return "localhost"; }
-
-  void openAcceptor(boost::asio::io_service*,
-                    boost::asio::ip::tcp::acceptor*) override final;
+  std::string path() { return _path; }
 
  private:
   std::string const _path;

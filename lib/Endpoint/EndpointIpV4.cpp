@@ -35,30 +35,3 @@ EndpointIpV4::EndpointIpV4(EndpointType type, TransportType transport,
                            uint16_t const port)
     : EndpointIp(DomainType::IPV4, type, transport, encryption, listenBacklog,
                  reuseAddress, host, port) {}
-
-void EndpointIpV4::openAcceptor(boost::asio::io_service* ioService,
-                                boost::asio::ip::tcp::acceptor* acceptor) {
-  boost::asio::ip::tcp::resolver resolver(*ioService);
-
-  auto hostname = host();
-  auto portNumber = port();
-
-  boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::tcp::v4(),
-                                          portNumber);
-
-  if (hostname != "0.0.0.0") {
-    boost::asio::ip::tcp::resolver::query query(
-        boost::asio::ip::tcp::v4(), hostname, std::to_string(portNumber));
-    boost::asio::ip::tcp::resolver::iterator iter = resolver.resolve(query);
-
-    endpoint = iter->endpoint();
-  }
-
-  acceptor->open(endpoint.protocol());
-
-  acceptor->set_option(
-      boost::asio::ip::tcp::acceptor::reuse_address(reuseAddress()));
-
-  acceptor->bind(endpoint);
-  acceptor->listen();
-}

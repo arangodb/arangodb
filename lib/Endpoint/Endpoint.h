@@ -83,9 +83,6 @@ class Endpoint {
   virtual std::string host() const = 0;
   virtual std::string hostAndPort() const = 0;
 
-  virtual void openAcceptor(boost::asio::io_service*,
-                            boost::asio::ip::tcp::acceptor*) = 0;
-
  public:
   std::string _errorMessage;
 

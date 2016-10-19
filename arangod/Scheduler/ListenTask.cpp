@@ -26,6 +26,7 @@
 
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
+#include "Scheduler/Acceptor.h"
 #include "Ssl/SslServerFeature.h"
 
 using namespace arangodb;
@@ -40,8 +41,7 @@ ListenTask::ListenTask(EventLoop loop, Endpoint* endpoint)
       _endpoint(endpoint),
       _bound(false),
       _ioService(loop._ioService),
-      _acceptor(*loop._ioService),
-      _peer(nullptr) {}
+      _acceptor(Acceptor::factory(*loop._ioService, endpoint)) {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -49,7 +49,7 @@ ListenTask::ListenTask(EventLoop loop, Endpoint* endpoint)
 
 void ListenTask::start() {
   try {
-    _endpoint->openAcceptor(_ioService, &_acceptor);
+    _acceptor->open();
     _bound = true;
   } catch (boost::system::system_error const& err) {
     LOG(WARN) << "failed to open endpoint '" << _endpoint->specification()
@@ -71,31 +71,29 @@ void ListenTask::start() {
         LOG(WARN) << "accept failed: " << ec.message();
         LOG(WARN) << "too many accept failures, stopping to report";
       }
-
-      return;
     }
 
     ConnectionInfo info;
+
+    auto peer = _acceptor->movePeer();
 
     // set the endpoint
     info.endpoint = _endpoint->specification();
     info.endpointType = _endpoint->domainType();
     info.encryptionType = _endpoint->encryption();
-    info.clientAddress = _peer->_peerEndpoint.address().to_string();
-    info.clientPort = _peer->_peerEndpoint.port();
+    info.clientAddress = peer->peerAddress();
+    info.clientPort = peer->peerPort();
     info.serverAddress = _endpoint->host();
     info.serverPort = _endpoint->port();
 
-    handleConnected(std::move(_peer), std::move(info));
+    handleConnected(std::move(peer), std::move(info));
 
     if (_bound) {
-      createPeer();
-      _acceptor.async_accept(_peer->_socket, _peer->_peerEndpoint, _handler);
+      _acceptor->asyncAccept(_handler);
     }
   };
 
-  createPeer();
-  _acceptor.async_accept(_peer->_socket, _peer->_peerEndpoint, _handler);
+  _acceptor->asyncAccept(_handler);
 }
 
 void ListenTask::stop() {
@@ -104,21 +102,5 @@ void ListenTask::stop() {
   }
 
   _bound = false;
-  _acceptor.close();
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-void ListenTask::createPeer() {
-  if (_endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-    _peer.reset(new Socket(*_ioService,
-                           SslServerFeature::SSL->createSslContext(), true));
-  } else {
-    _peer.reset(new Socket(
-        *_ioService,
-        boost::asio::ssl::context(boost::asio::ssl::context::method::sslv23),
-        false));
-  }
+  _acceptor->close();
 }

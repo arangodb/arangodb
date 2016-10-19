@@ -33,6 +33,3 @@ EndpointIpV6::EndpointIpV6(EndpointType type, TransportType transport,
                            uint16_t const port)
     : EndpointIp(DomainType::IPV6, type, transport, encryption, listenBacklog,
                  reuseAddress, host, port) {}
-
-void EndpointIpV6::openAcceptor(boost::asio::io_service*,
-                                boost::asio::ip::tcp::acceptor*) {}

@@ -40,6 +40,7 @@
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/JobQueue.h"
 #include "Scheduler/Scheduler.h"
+#include "Scheduler/Socket.h"
 #include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb;

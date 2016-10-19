@@ -48,36 +48,15 @@ SocketTask::SocketTask(arangodb::EventLoop loop,
       _peer(std::move(socket)),
       _keepAliveTimeout(static_cast<long>(keepAliveTimeout * 1000)),
       _useKeepAliveTimeout(static_cast<long>(keepAliveTimeout * 1000) > 0),
-      _keepAliveTimer(_peer->_socket.get_io_service(), _keepAliveTimeout) {
+      _keepAliveTimer(_peer->_ioService, _keepAliveTimeout) {
   ConnectionStatisticsAgent::acquire();
   connectionStatisticsAgentSetStart();
 
-  _peer->_socket.non_blocking(true);
+  _peer->setNonBlocking(true);
 
-  boost::system::error_code ec;
-
-  if (ec) {
-    LOG_TOPIC(ERR, Logger::COMMUNICATION)
-        << "cannot create stream from socket: " << ec.message();
+  if (!_peer->handshake()) {
     _closedSend = true;
     _closedReceive = true;
-  }
-
-  if (_peer->_encrypted) {
-    do {
-      ec.assign(boost::system::errc::success,
-                boost::system::generic_category());
-      _peer->_sslSocket.handshake(
-          boost::asio::ssl::stream_base::handshake_type::server, ec);
-    } while (ec.value() == boost::asio::error::would_block);
-
-    if (ec) {
-      LOG_TOPIC(ERR, Logger::COMMUNICATION)
-          << "unable to perform ssl handshake: " << ec.message() << " : "
-          << ec.value();
-      _closedSend = true;
-      _closedReceive = true;
-    }
   }
 }
 
@@ -108,7 +87,7 @@ void SocketTask::start() {
 
   LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
       << "starting communication between server <-> client on socket: "
-      << _peer->_socket.native_handle();
+      << _peer->nativeHandle();
   LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
       << _connectionInfo.serverAddress << ":" << _connectionInfo.serverPort
       << " <-> " << _connectionInfo.clientAddress << ":"
@@ -172,15 +151,7 @@ void SocketTask::addWriteBuffer(StringBuffer* buffer,
     do {
       ec.assign(boost::system::errc::success,
                 boost::system::generic_category());
-      if (!_peer->_encrypted) {
-        written = _peer->_socket.write_some(
-            boost::asio::buffer(_writeBuffer->begin(), _writeBuffer->length()),
-            err);
-      } else {
-        written = _peer->_sslSocket.write_some(
-            boost::asio::buffer(_writeBuffer->begin(), _writeBuffer->length()),
-            err);
-      }
+      written = _peer->write(_writeBuffer, err);
       if (written == total) {
         completedWriteBuffer();
         return;
@@ -190,7 +161,7 @@ void SocketTask::addWriteBuffer(StringBuffer* buffer,
     if (err != boost::system::errc::success) {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
           << "SocketTask::addWriteBuffer (write_some) - write on stream "
-          << _peer->_socket.native_handle()
+          << _peer->nativeHandle()
           << " failed with: " << err.message();
       closeStream();
       return;
@@ -202,7 +173,7 @@ void SocketTask::addWriteBuffer(StringBuffer* buffer,
       if (ec) {
         LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
             << "SocketTask::addWriterBuffer(async_write) - write on stream "
-            << _peer->_socket.native_handle()
+            << _peer->nativeHandle()
             << " failed with: " << ec.message();
         closeStream();
       } else {
@@ -210,17 +181,9 @@ void SocketTask::addWriteBuffer(StringBuffer* buffer,
       }
     };
 
-    if (!_peer->_encrypted) {
-      boost::asio::async_write(
-          _peer->_socket,
-          boost::asio::buffer(_writeBuffer->begin() + written, total - written),
-          handler);
-    } else {
-      boost::asio::async_write(
-          _peer->_sslSocket,
-          boost::asio::buffer(_writeBuffer->begin() + written, total - written),
-          handler);
-    }
+    _peer->asyncWrite(
+        boost::asio::buffer(_writeBuffer->begin() + written, total - written),
+        handler);
   }
 }
 
@@ -266,12 +229,12 @@ void SocketTask::closeStream() {
   boost::system::error_code err;
 
   if (!_closedSend) {
-    _peer->_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_send, err);
+    _peer->shutdownSend(err);
 
     if (err && err != boost::asio::error::not_connected) {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
           << "SocketTask::closeStream - shutdown send stream "
-          << _peer->_socket.native_handle()
+          << _peer->nativeHandle()
           << " failed with: " << err.message();
     }
 
@@ -279,24 +242,23 @@ void SocketTask::closeStream() {
   }
 
   if (!_closedReceive) {
-    _peer->_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_receive,
-                            err);
+    _peer->shutdownReceive(err);
     if (err && err != boost::asio::error::not_connected) {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
           << "SocketTask::CloseStream - shutdown send stream "
-          << _peer->_socket.native_handle()
+          << _peer->nativeHandle()
           << " failed with: " << err.message();
     }
 
     _closedReceive = true;
   }
 
-  _peer->_socket.close(err);
+  _peer->close(err);
 
   if (err && err != boost::asio::error::not_connected) {
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
         << "SocketTask::CloseStream - shutdown send stream "
-        << _peer->_socket.native_handle() << " failed with: " << err.message();
+        << _peer->nativeHandle() << " failed with: " << err.message();
   }
 
   _closeRequested = false;
@@ -351,8 +313,8 @@ bool SocketTask::reserveMemory() {
 
 bool SocketTask::trySyncRead() {
   boost::system::error_code err;
-
-  if (0 == _peer->_socket.available(err)) {
+  
+  if (0 == _peer->available(err)) {
     return false;
   }
 
@@ -364,14 +326,9 @@ bool SocketTask::trySyncRead() {
   }
 
   size_t bytesRead = 0;
-
-  if (!_peer->_encrypted) {
-    bytesRead = _peer->_socket.read_some(
-        boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE), err);
-  } else {
-    bytesRead = _peer->_sslSocket.read_some(
-        boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE), err);
-  }
+  
+  bytesRead = _peer->read(
+      boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE), err);
 
   if (0 == bytesRead) {
     return false;  // should not happen
@@ -394,7 +351,7 @@ bool SocketTask::trySyncRead() {
 }
 
 void SocketTask::asyncReadSome() {
-  auto info = _peer->_socket.native_handle();
+  auto info = _peer->nativeHandle();
 
   try {
     JobGuard guard(_loop);
@@ -487,21 +444,16 @@ void SocketTask::asyncReadSome() {
     }
   };
 
-  if (!_peer->_encrypted) {
-    _peer->_socket.async_read_some(
-        boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE), handler);
-  } else {
-    _peer->_sslSocket.async_read_some(
-        boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE), handler);
-  }
+  _peer->asyncRead(
+      boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE), handler);
 }
 
 void SocketTask::closeReceiveStream() {
-  auto info = _peer->_socket.native_handle();
+  auto info = _peer->nativeHandle();
 
   if (!_closedReceive) {
     try {
-      _peer->_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_receive);
+      _peer->shutdownReceive();
     } catch (boost::system::system_error& err) {
       LOG(WARN) << "shutdown receive stream " << info
                 << " failed with: " << err.what();

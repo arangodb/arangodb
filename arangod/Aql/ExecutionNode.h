@@ -433,6 +433,10 @@ class ExecutionNode {
     return false;
   }
 
+  ExecutionPlan const* plan() const { 
+    return _plan;
+  }
+
   /// @brief static analysis, walker class and information collector
   struct VarInfo {
     unsigned int depth;

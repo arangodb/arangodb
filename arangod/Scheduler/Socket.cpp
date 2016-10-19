@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,30 +17,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ENDPOINT_ENDPOINT_IP_V4_H
-#define ARANGODB_ENDPOINT_ENDPOINT_IP_V4_H 1
+#include "Scheduler/Socket.h"
 
-#include "Basics/Common.h"
-#include "Basics/StringUtils.h"
-#include "Endpoint/EndpointIp.h"
+using namespace arangodb;
 
-namespace arangodb {
-
-class EndpointIpV4 final : public EndpointIp {
- public:
-  EndpointIpV4(EndpointType, TransportType, EncryptionType, int, bool,
-               std::string const&, uint16_t);
-
- public:
-  int domain() const override { return AF_INET; }
-
-  std::string hostAndPort() const override {
-    return host() + ':' + arangodb::basics::StringUtils::itoa(port());
+bool Socket::handshake() {
+  if (!_encrypted) {
+    return true;
   }
-};
+  
+  return sslHandshake();
 }
-
-#endif

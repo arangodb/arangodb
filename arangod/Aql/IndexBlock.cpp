@@ -439,7 +439,9 @@ int IndexBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 /// @brief getSome
 AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
+  traceGetSomeBegin();
   if (_done) {
+    traceGetSomeEnd(nullptr);
     return nullptr;
   }
 
@@ -455,6 +457,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
       if (!ExecutionBlock::getBlock(toFetch, toFetch) || (!initIndexes())) {
         _done = true;
+        traceGetSomeEnd(nullptr);
         return nullptr;
       }
       _pos = 0;  // this is in the first block
@@ -476,6 +479,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
         if (_buffer.empty()) {
           if (!ExecutionBlock::getBlock(DefaultBatchSize(), DefaultBatchSize())) {
             _done = true;
+            traceGetSomeEnd(nullptr);
             return nullptr;
           }
           _pos = 0;  // this is in the first block
@@ -483,6 +487,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
 
         if (!initIndexes()) {
           _done = true;
+          traceGetSomeEnd(nullptr);
           return nullptr;
         }
         readIndex(atMost);
@@ -530,6 +535,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
 
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
+  traceGetSomeEnd(res.get());
   return res.release();
 
   // cppcheck-suppress style
