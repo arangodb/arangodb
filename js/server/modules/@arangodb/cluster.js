@@ -35,6 +35,7 @@ var ArangoError = arangodb.ArangoError;
 var errors = require("internal").errors;
 var request = require('@arangodb/request').clusterRequest;
 var wait = require('internal').wait;
+var isEnterprise = require('internal').isEnterprise();
 var _ = require('lodash');
 
 var endpointToURL = function (endpoint) {
@@ -1477,22 +1478,26 @@ var raiseError = function (code, msg) {
 // //////////////////////////////////////////////////////////////////////////////
 
 var shardList = function (dbName, collectionName) {
-  var ci = global.ArangoClusterInfo.getCollectionInfo(dbName, collectionName);
+  let ci = global.ArangoClusterInfo.getCollectionInfo(dbName, collectionName);
 
   if (ci === undefined || typeof ci !== 'object') {
     throw "unable to determine shard list for '" + dbName + '/' + collectionName + "'";
   }
 
-  var shards = [], shard;
-  for (shard in ci.shards) {
+  let shards = [];
+  for (let shard in ci.shards) {
     if (ci.shards.hasOwnProperty(shard)) {
       shards.push(shard);
     }
   }
 
-  if (shards.length === 0) {
-    raiseError(arangodb.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code,
-      arangodb.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.message);
+  if (shards.length === 0 && isEnterprise) {
+    if (isEnterprise) {
+      return require('@arangodb/clusterEE').getSmartShards(dbName, collectionName, ci);
+    } else {
+      raiseError(arangodb.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code,
+        arangodb.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.message);
+    }
   }
 
   return shards;
