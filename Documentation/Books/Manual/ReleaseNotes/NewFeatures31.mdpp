@@ -103,3 +103,16 @@ Added option `--skip-lines` for arangoimp
 This allows skipping the first few lines from the import file in case the CSV or TSV 
 import are used and some initial lines should be skipped from the input.
 
+- array destructuring
+- numeric and object literals
+
+!SECTION Web Admin Interface
+
+The usability of the AQL editor is significantly improved. In addition to the standard JSON
+output, the AQL Editor is now able to render query results as a graph preview or a table.
+Furthermore the AQL editor displays query profiling information.
+
+Added a new Graph Viewer in order to exchange the technically obsolete version. The new Graph
+Viewer is based on Canvas but does also include a first WebGL implementation (limited
+functionality - will change in the future). The new Graph Viewer offers a smooth way to
+discover and visualize your graphs.  
