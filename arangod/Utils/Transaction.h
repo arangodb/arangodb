@@ -36,11 +36,9 @@
 
 #include <velocypack/Slice.h>
 
-#ifdef ARANGODB_ENABLE_ROCKSDB
 namespace rocksdb {
 class Transaction;
 }
-#endif
 
 namespace arangodb {
 
@@ -189,9 +187,7 @@ class Transaction {
   /// @brief get (or create) a rocksdb WriteTransaction
   //////////////////////////////////////////////////////////////////////////////
 
-#ifdef ARANGODB_ENABLE_ROCKSDB
   rocksdb::Transaction* rocksTransaction();
-#endif
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a transaction hint

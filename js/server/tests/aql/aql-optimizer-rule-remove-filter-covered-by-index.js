@@ -55,7 +55,7 @@ function optimizerRuleTestSuite() {
   var skiplist2;
 
   var hasNoFilterNode = function (plan) {
-    assertEqual(findExecutionNodes(plan, "FilterNode").length, 0, "has no filter node");
+    assertEqual(findExecutionNodes(plan, "FilterNode").length, 0, "has a filter node");
   };
   
   var hasFilterNode = function (plan) {
@@ -80,7 +80,7 @@ function optimizerRuleTestSuite() {
 ///  - join column 'joinme' to intersect both tables.
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       var loopto = 10;
 
       internal.db._drop(colName);
@@ -111,13 +111,14 @@ function optimizerRuleTestSuite() {
       skiplist2.ensureSkiplist("f", "g");
       skiplist2.ensureSkiplist("i");
       skiplist2.ensureIndex({ type: "hash", fields: [ "h" ], unique: false });
+      skiplist2.ensureIndex({ type: "hash", fields: [ "x", "y" ], unique: false });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       internal.db._drop(colName);
       internal.db._drop(colNameOther);
       skiplist = null;
@@ -398,6 +399,24 @@ function optimizerRuleTestSuite() {
           removeAlwaysOnClusterRules(result.plan.rules), query);
         hasIndexNodeWithRanges(result);
       });
+    },
+
+    testOptimizeAwayFilter : function() {
+      var query = "FOR outer IN [ { id: 123 } ] LET id = outer.id RETURN (FOR inner IN "  + colNameOther + " FILTER inner.x == id && inner.y == null RETURN inner)";
+      
+      var result;
+
+      result = AQL_EXPLAIN(query, { }, paramIndexRangeFilter);
+      assertEqual([ FilterRemoveRule, IndexesRule ].sort(), 
+        removeAlwaysOnClusterRules(result.plan.rules).sort(), query);
+      hasIndexNodeWithRanges(result);
+      hasNoFilterNode(result);
+
+      result = AQL_EXPLAIN(query, { }, paramIndexRangeSortFilter);
+      assertEqual([ FilterRemoveRule, IndexesRule ].sort(), 
+        removeAlwaysOnClusterRules(result.plan.rules).sort(), query);
+      hasIndexNodeWithRanges(result);
+      hasNoFilterNode(result);
     }
 
   };

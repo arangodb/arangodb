@@ -604,7 +604,11 @@
               var key;
               _.each($('#arangoBindParamTable input'), function (element) {
                 key = $(element).attr('name');
-                $(element).val(self.bindParamTableObj[key]);
+                if (typeof self.bindParamTableObj[key] === 'object') {
+                  $(element).val(JSON.parse(self.bindParamTableObj[key]));
+                } else {
+                  $(element).val(self.bindParamTableObj[key]);
+                }
               });
 
               // resave cached query
@@ -1103,11 +1107,48 @@
       });
 
       this.aqlEditor.getSession().on('change', function () {
+        // case copy-paste: query completely selected & removed
+        if (self.aqlEditor.getValue().length < 1) {
+          if (Object.keys(self.bindParamTableObj).length > 0) {
+            // query is empty but bindvars are defined
+            self.lastCachedBindParameter = self.bindParamTableObj;
+          }
+        }
+
         self.checkForNewBindParams();
         self.renderBindParamTable();
+
+        if (self.parseQuery(self.aqlEditor.getValue()).bindParams.length > 0) {
+          var restoreAttr = [];
+          _.each(self.parseQuery(self.aqlEditor.getValue()).bindParams, function (name) {
+            if ($('input[name=\'' + name + '\']') !== undefined && $('input[name=\'' + name + '\']').length > 0) {
+              if ($('input[name=\'' + name + '\']').val().length === 0) {
+                if (self.lastCachedBindParameter) {
+                  var value = $('input[name=\'' + name + '\']').val();
+                  if (self.lastCachedBindParameter[name]) {
+                    if (self.lastCachedBindParameter[name] !== value) {
+                      restoreAttr.push(name);
+                    }
+                  }
+                }
+              }
+            }
+          });
+          if (restoreAttr.length > 0) {
+            // self.bindParamTableObj = self.lastCachedBindParameter;
+            var toRestore = {};
+            _.each(restoreAttr, function (name, val) {
+              toRestore[name] = self.lastCachedBindParameter[name];
+            });
+            self.bindParamTableObj = toRestore;
+            self.renderBindParamTable();
+          }
+        }
+
         if (self.initDone) {
           self.setCachedQuery(self.aqlEditor.getValue(), JSON.stringify(self.bindParamTableObj));
         }
+
         self.bindParamAceEditor.setValue(JSON.stringify(self.bindParamTableObj, null, '\t'), 1);
         $('#aqlEditor .ace_text-input').focus();
 

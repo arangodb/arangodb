@@ -60,15 +60,11 @@ if (MSVC)
   )
 endif ()
   
-if (USE_ROCKSDB) 
-  set(ROCKSDB_FILES
-    Indexes/RocksDBFeature.cpp
-    Indexes/RocksDBIndex.cpp
-    Indexes/RocksDBKeyComparator.cpp
-  )
-else ()
-  set(ROCKSDB_FILES "")
-endif ()
+set(ROCKSDB_FILES
+  Indexes/RocksDBFeature.cpp
+  Indexes/RocksDBIndex.cpp
+  Indexes/RocksDBKeyComparator.cpp
+)
 
 if (USE_ENTERPRISE)
   set(ENTERPRISE_FILES "")

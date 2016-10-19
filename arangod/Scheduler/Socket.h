@@ -49,8 +49,8 @@ namespace socketcommon {
       
     if (ec) {
       LOG_TOPIC(ERR, Logger::COMMUNICATION)
-        << "SocketTask::SocketTask - unable to perform ssl handshake: "
-        << ec.message() << " : " << ec.value();
+          << "unable to perform ssl handshake: " << ec.message() << " : "
+          << ec.value();
       return false;
     }
     return true;

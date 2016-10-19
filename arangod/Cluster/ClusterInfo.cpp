@@ -1171,8 +1171,12 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
           << "\njson: " << json.toString()
           << "\ntransaction sent to agency: " << transaction.toJson();
         AgencyCommResult ag = ac.getValues("");
-        LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
-          << ag.slice().toJson();
+        if (ag.successful()) {
+	  LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
+	    << ag.slice().toJson();
+        } else {
+          LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
+        }
         events::CreateCollection(name, TRI_ERROR_CLUSTER_TIMEOUT);
         return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
       }

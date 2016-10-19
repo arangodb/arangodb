@@ -32,7 +32,6 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
@@ -72,23 +71,22 @@ void ListenTask::start() {
         LOG(WARN) << "accept failed: " << ec.message();
         LOG(WARN) << "too many accept failures, stopping to report";
       }
-    } else {
-      ConnectionInfo info;
-
-      auto peer = _acceptor->movePeer();
-      // TODO _endpoint->initIncoming(_peer);
-
-      // set the endpoint
-      info.endpoint = _endpoint->specification();
-      info.endpointType = _endpoint->domainType();
-      info.encryptionType = _endpoint->encryption();
-      info.clientAddress = peer->peerAddress();
-      info.clientPort = peer->peerPort();
-      info.serverAddress = _endpoint->host();
-      info.serverPort = _endpoint->port();
-
-      handleConnected(std::move(peer), std::move(info));
     }
+
+    ConnectionInfo info;
+
+    auto peer = _acceptor->movePeer();
+
+    // set the endpoint
+    info.endpoint = _endpoint->specification();
+    info.endpointType = _endpoint->domainType();
+    info.encryptionType = _endpoint->encryption();
+    info.clientAddress = peer->peerAddress();
+    info.clientPort = peer->peerPort();
+    info.serverAddress = _endpoint->host();
+    info.serverPort = _endpoint->port();
+
+    handleConnected(std::move(peer), std::move(info));
 
     if (_bound) {
       _acceptor->asyncAccept(_handler);
@@ -105,4 +103,21 @@ void ListenTask::stop() {
 
   _bound = false;
   _acceptor->close();
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+void ListenTask::createPeer() {
+  if (_endpoint->encryption() == Endpoint::EncryptionType::SSL) {
+    _peer.reset(new Socket(*_ioService,
+                           SslServerFeature::SSL->createSslContext(), true));
+  } else {
+    _peer.reset(new Socket(
+        *_ioService,
+        boost::asio::ssl::context(boost::asio::ssl::context::method::sslv23),
+        false));
+  }
+>>>>>>> 72280a99cc967ac09d556fe04b817e4dd01a1b0d
 }

@@ -67,9 +67,9 @@ void SchedulerFeature::collectOptions(
   options->addOption("--server.threads", "number of threads scheduling",
                      new UInt64Parameter(&_nrSchedulerThreads));
 
-  options->addHiddenOption("--server.maximal-queue-size",
-                           "maximum queue length for asynchronous operations",
-                           new UInt64Parameter(&_queueSize));
+  options->addOption("--server.maximal-queue-size",
+                     "maximum queue length for asynchronous operations",
+                     new UInt64Parameter(&_queueSize));
 
   options->addOldOption("scheduler.threads", "server.threads");
 }

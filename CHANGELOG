@@ -17,18 +17,18 @@ devel
 
 * rewrote scheduler and dispatcher based on boost::asio
 
-  parameter changed:
-    --scheduler.threads and --server.threads are now merged into a single one: --server.threads
+  parameters changed:
+    `--scheduler.threads` and `--server.threads` are now merged into a single one: `--server.threads`
 
-    hidden --server.extra-threads has been removed
+    hidden `--server.extra-threads` has been removed
 
-    hidden --server.aql-threads has been removed
+    hidden `--server.aql-threads` has been removed
 
-    hidden --server.backend has been removed
+    hidden `--server.backend` has been removed
 
-    hidden --server.show-backends has been removed
+    hidden `--server.show-backends` has been removed
 
-    hidden --server.thread-affinity has been removed
+    hidden `--server.thread-affinity` has been removed
 
 * fixed issue #2086
 
@@ -70,7 +70,7 @@ devel
   the fix for #2070 now will enable this optimization so that the query can use an index on `doc.value` if available.
 
 * changed behavior of AQL array comparison operators for empty arrays:
-  * `ALL` and `ANY` now always returns `false` when the left-hand operand is an
+  * `ALL` and `ANY` now always return `false` when the left-hand operand is an
     empty array. The behavior for non-empty arrays does not change:
     * `[] ALL == 1` will return `false`
     * `[1] ALL == 1` will return `true`
@@ -96,7 +96,11 @@ devel
   - GET `/_admin/log/level` returns the current loglevel settings
   - PUT `/_admin/log/level` modifies the current loglevel settings
 
-* changed default for keepNull of modifyVertex/modifyEdge to true in Gharial
+* PATCH /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}
+  - changed default value for keepNull to true
+  
+* PATCH /_api/gharial/{graph-name}/edge/{collection-name}/{edge-key}
+  - changed default value for keepNull to true
 
 * renamed `maximalSize` attribute in parameter.json files to `journalSize`
 
@@ -104,7 +108,7 @@ devel
   have not been adjusted. Responses from the replication API will now also use
   `journalSize` instead of `maximalSize`.
 
-* added --cluster.system-replication-factor in order to adjust the
+* added `--cluster.system-replication-factor` in order to adjust the
   replication factor for new system collections
 
 * fixed issue #2012

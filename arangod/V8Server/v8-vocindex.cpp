@@ -46,9 +46,7 @@
 #include "VocBase/modes.h"
 #include "VocBase/LogicalCollection.h"
 
-#ifdef ARANGODB_ENABLE_ROCKSDB
 #include "Indexes/RocksDBIndex.h"
-#endif
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>

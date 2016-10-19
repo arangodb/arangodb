@@ -109,7 +109,7 @@ client requests. ArangoDB supports HTTP Basic authentication.
 
 Authentication is turned on by default, but can be turned off. To enforce
 authentication for incoming requested, the server must be started with the option
-[--server.authentication](../../Manual/Administration/Configuration/Arangod.html).
+[--server.authentication](../../Manual/Administration/Configuration/GeneralArangod.html).
 Please note that requests using the HTTP OPTIONS method will be answered by
 ArangoDB in any case, even if no authentication data is sent by the client or if
 the authentication data is wrong. This is required for handling CORS preflight
@@ -119,7 +119,8 @@ The response to an HTTP OPTIONS request will be generic and not expose any priva
 Please note that when authentication is turned on in ArangoDB, it will by
 default affect all incoming requests. 
 
-There is an additional option [--server.authentication-system-only](../../Manual/Administration/Configuration/Arangod.html)
+There is an additional option
+[--server.authentication-system-only](../../Manual/Administration/Configuration/GeneralArangod.html)
 to restrict authentication to requests to the ArangoDB internal APIs and the admin interface. 
 This option can be used to expose a public API built with ArangoDB to the outside
 world without the need for HTTP authentication, but to still protect the usage of the

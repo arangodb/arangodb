@@ -2072,8 +2072,7 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
 
           if (indexesUsed.size() == 1) {
             // single index. this is something that we can handle
-
-            auto newNode = condition->removeIndexCondition(
+            auto newNode = condition->removeIndexCondition(plan,
                 indexNode->outVariable(), indexCondition->root());
 
             if (newNode == nullptr) {

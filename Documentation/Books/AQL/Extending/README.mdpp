@@ -39,9 +39,10 @@ of these resources, your query may abort with a
 [**cluster backend unavailable**](../../Manual/Appendix/ErrorCodes.html) error.
 
 To overcome these mentioned limitations, you may want to
-[increase the number of available V8 contexts](../../Manual/Administration/Configuration/Arangod.html#v8-contexts)
+[increase the number of available V8 contexts](../../Manual/Administration/Configuration/GeneralArangod.html#v8-contexts)
 (at the expense of increased memory usage),
-and [the number of available server threads](../../Manual/Administration/Configuration/Arangod.html#server-threads).
+and
+[the number of available server threads](../../Manual/Administration/Configuration/GeneralArangod.html#server-threads).
 
 !SUBSECTION Deployment Details
 

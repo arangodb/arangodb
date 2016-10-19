@@ -226,18 +226,8 @@ endif ()
 ## ROCKSDB
 ################################################################################
 
-option(USE_ROCKSDB
-  "whether RocksDB is enabled"
-  ON
-)
-
-if (USE_ROCKSDB)
-  add_definitions("-DARANGODB_ENABLE_ROCKSDB=1")
-  add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
-  include_directories(${ROCKSDB_INCLUDE_DIR})
-else ()
-  set(ROCKSDB_LIBS "")
-endif ()
+add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
+include_directories(${ROCKSDB_INCLUDE_DIR})
 
 ################################################################################
 ## EXTERNAL PROGRAMS

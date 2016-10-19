@@ -53,12 +53,10 @@
 #include "VocBase/ticks.h"
 #include "Wal/LogfileManager.h"
 
-#ifdef ARANGODB_ENABLE_ROCKSDB
 #include "Indexes/RocksDBIndex.h"
 
 #include <rocksdb/utilities/optimistic_transaction_db.h>
 #include <rocksdb/utilities/transaction.h>
-#endif
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -674,7 +672,6 @@ bool Transaction::hasDitch(TRI_voc_cid_t cid) const {
 /// @brief get (or create) a rocksdb WriteTransaction
 //////////////////////////////////////////////////////////////////////////////
 
-#ifdef ARANGODB_ENABLE_ROCKSDB
 rocksdb::Transaction* Transaction::rocksTransaction() {
   if (_trx->_rocksTransaction == nullptr) {
     _trx->_rocksTransaction = RocksDBFeature::instance()->db()->BeginTransaction(
@@ -682,7 +679,6 @@ rocksdb::Transaction* Transaction::rocksTransaction() {
   }
   return _trx->_rocksTransaction;
 }
-#endif
   
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the _key attribute from a slice
