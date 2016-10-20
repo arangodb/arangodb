@@ -9,6 +9,9 @@ v3.0.11 (2016-XX-XX)
 
 * fixed issue #2038
 
+* changes to Foxx service configuration or dependencies should now be
+  stored correctly when options are cleared or omitted
+
 v3.0.10 (2016-09-26)
 --------------------
 
