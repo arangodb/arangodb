@@ -230,8 +230,8 @@ while [ $# -gt 0 ];  do
              PAR=""
              PARALLEL_BUILDS=""
              GENERATOR="Visual Studio 14 Win64"
-             MAKE='cmake --build . --config ${BUILD_CONFIG}'
-             PACKAGE_MAKE='cmake --build . --config ${BUILD_CONFIG} --target'
+             MAKE="cmake --build . --config ${BUILD_CONFIG}"
+             PACKAGE_MAKE="cmake --build . --config ${BUILD_CONFIG} --target"
              CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DV8_TARGET_ARCHS=Release"
              ;;
 
