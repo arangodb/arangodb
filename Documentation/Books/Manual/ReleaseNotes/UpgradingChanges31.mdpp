@@ -51,7 +51,22 @@ meta-data files ("parameter.json"). Files containing the `maximalSize` attribute
 will still be picked up correctly for not-yet adjusted collections.
 
 The format of the revision values stored in the `_rev` attribute of documents
-has been changed in 3.1. Revision values are stored as hybrid logical clock values.
+has been changed in 3.1. Up to 3.0 they were strings containing largish decimal numbers. With 3.1, revision values are still strings, but are actually encoded time stamps of the creation date of the revision of the document. The time stamps are acquired using a hybrid logical clock (HLC) on the DBserver that holds the
+revision (for the concept of a hybrid logical clock see 
+[this paper](http://www.cse.buffalo.edu/tech-reports/2014-04.pdf)).
+See [this manual section](../DataModeling/Documents/DocumentAddress.html#document-revision) for details.
+
+ArangoDB >= 3.1 can ArangoDB 3.0 database directories and will simply continue
+to use the old `_rev` attribute values. New revisions will be written with
+the new time stamps.
+
+It is highly recommended to backup all your data before loading a database
+directory that was written by ArangoDB <= 3.0 into an ArangoDB >= 3.1.
+
+To change all your old `_rev` attributes into new style time stamps you
+have to use `arangodump` to dump all data out (using ArangoDB 3.0), and 
+use `arangorestore` into the new ArangoDB 3.1, which is the safest
+way to upgrade.
 
 !SECTION HTTP API changes
 

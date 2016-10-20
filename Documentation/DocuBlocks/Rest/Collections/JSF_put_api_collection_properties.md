@@ -55,9 +55,9 @@ On success an object with the following attributes is returned:
     generating keys and supplying own key values in the *_key* attribute
     of documents is considered an error.
 
-**Note**: some other collection properties, such as *type*, *isVolatile*,
-*numberOfShards* or *shardKeys* cannot be changed once a collection is
-created.
+**Note**: except for *waitForSync*, *journalSize* and *name*, collection
+properties **cannot be changed** once a collection is created. To rename
+a collection, the rename endpoint must be used.
 
 @RESTRETURNCODES
 

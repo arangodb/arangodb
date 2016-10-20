@@ -1,4 +1,4 @@
-/* global describe, it, beforeEach, afterEach*/
+/* global db, describe, it, beforeEach, afterEach*/
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
