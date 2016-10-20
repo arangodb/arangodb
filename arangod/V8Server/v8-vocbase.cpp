@@ -2732,6 +2732,18 @@ void TRI_V8ReloadRouting(v8::Isolate* isolate) {
       TRI_V8_ASCII_STRING("reload routing"), false);
 }
 
+
+static void JS_IsEnterprise(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+#ifndef USE_ENTERPRISE
+  TRI_V8_RETURN(v8::False(isolate));
+#else
+  TRI_V8_RETURN(v8::True(isolate));
+#endif
+  TRI_V8_TRY_CATCH_END
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
@@ -2919,6 +2931,10 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("TRUSTED_PROXIES"),
                                JS_TrustedProxies, true);
+  
+  TRI_AddGlobalFunctionVocbase(isolate, context,
+                               TRI_V8_ASCII_STRING("SYS_IS_ENTERPRISE"),
+                               JS_IsEnterprise);
   // .............................................................................
   // create global variables
   // .............................................................................
