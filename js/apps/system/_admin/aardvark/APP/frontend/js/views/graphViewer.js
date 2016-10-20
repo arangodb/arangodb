@@ -455,24 +455,35 @@
             });
 
             _.each(obj.vertices, function (node) {
-              vertices[node._id] = {
-                id: node._id,
-                label: node._key,
-                // size: 0.3,
-                color: color,
-                x: Math.random(),
-                y: Math.random()
-              };
+              if (node !== null) {
+                vertices[node._id] = {
+                  id: node._id,
+                  label: node._key,
+                  size: 0.3,
+                  color: color,
+                  x: Math.random(),
+                  y: Math.random()
+                };
+              }
             });
           }
         });
 
+        var nodeIds = [];
         _.each(vertices, function (node) {
           returnObj.nodes.push(node);
+          nodeIds.push(node.id);
         });
 
         _.each(edges, function (edge) {
-          returnObj.edges.push(edge);
+          if (nodeIds.includes(edge.source) && nodeIds.includes(edge.target)) {
+            returnObj.edges.push(edge);
+          }
+          /* how to handle not correct data? 
+          else {
+            console.log('target to from is missing');
+          }
+          */
         });
       } else if (type === 'array') {
         _.each(data, function (edge) {

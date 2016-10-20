@@ -135,9 +135,44 @@ string *text*. Positions start at 0.
   is not contained in *text*, -1 is returned.
 
 ```js
-FIND_LAST("foobarbaz", "ba"), // 6
-FIND_LAST("foobarbaz", "ba", 7), // -1
+FIND_LAST("foobarbaz", "ba") // 6
+FIND_LAST("foobarbaz", "ba", 7) // -1
 FIND_LAST("foobarbaz", "ba", 0, 4) // 3
+```
+
+!SUBSECTION JSON_PARSE()
+
+`JSON_PARSE(text) → value`
+
+Return an AQL value described by the JSON-encoded input string.
+
+- **text** (string): the string to parse as JSON
+- returns **value** (mixed): the value corresponding to the given JSON text. 
+  For input values that are no valid JSON strings, the function will return *null*.
+
+```js
+JSON_PARSE("123") // 123
+JSON_PARSE("[ true, false, 2 ]") // [ true, false, 2 ]
+JSON_PARSE("\\\"abc\\\"") // "abc"
+JSON_PARSE("{\\\"a\\\": 1}") // { a : 1 }
+JSON_PARSE("abc") // null
+```
+
+!SUBSECTION JSON_STRINGIFY()
+
+`JSON_STRINGIFY(value) → text`
+
+Return a JSON string representation of the input value.
+
+- **value** (mixed): the value to convert to a JSON string
+- returns **text** (string): the JSON string representing *value*.
+  For input values that cannot be converted to JSON, the function 
+  will return *null*.
+
+```js
+JSON_STRINGIFY("1") // "1"
+JSON_STRINGIFY("abc") // "\"abc\""
+JSON_STRINGIFY("[1, 2, 3]") // "[1,2,3]"
 ```
 
 !SUBSECTION LEFT()
@@ -159,7 +194,6 @@ LEFT("foobar", 10) // "foobar"
 !SUBSECTION LENGTH()
 
 `LENGTH(str) → length`
-
 
 Determine the character length of a string.
 

@@ -47,7 +47,7 @@ function deleteFrom (obj) {
   };
 }
 
-var reporters = {
+exports.reporters = {
   stream: StreamReporter,
   suite: SuiteReporter,
   default: DefaultReporter
@@ -58,10 +58,10 @@ exports.run = function runMochaTests (run, files, reporterName) {
     files = [files];
   }
 
-  if (reporterName && !reporters[reporterName]) {
+  if (reporterName && !exports.reporters[reporterName]) {
     throw new Error(
       'Unknown test reporter: ' + reporterName
-      + ' Known reporters: ' + Object.keys(reporters).join(', ')
+      + ' Known reporters: ' + Object.keys(exports.reporters).join(', ')
     );
   }
 
@@ -93,7 +93,7 @@ exports.run = function runMochaTests (run, files, reporterName) {
   var _stdoutWrite = global.process.stdout.write;
   global.process.stdout.write = function () {};
 
-  var Reporter = reporterName ? reporters[reporterName] : reporters.default;
+  var Reporter = reporterName ? exports.reporters[reporterName] : exports.reporters.default;
   var reporter, runner;
 
   try {

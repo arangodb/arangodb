@@ -24,23 +24,23 @@ describe('Foxx Manager', function () {
       var deps1 = {hello: {name: 'world', required: true, version: '*'}};
       var deps2 = {clobbered: {name: 'completely', required: true, version: '*'}};
 
-      var app = FoxxManager.lookupService(mount);
-      expect(app.manifest.dependencies).to.eql({});
-      var filename = app.main.context.fileName('manifest.json');
+      var service = FoxxManager.lookupService(mount);
+      expect(service.manifest.dependencies).to.eql({});
+      var filename = service.main.context.fileName('manifest.json');
       var rawJson = fs.readFileSync(filename, 'utf-8');
       var json = JSON.parse(rawJson);
 
       json.dependencies = deps1;
       fs.writeFileSync(filename, JSON.stringify(json));
       FoxxManager.scanFoxx(mount, {replace: true});
-      app = FoxxManager.lookupService(mount);
-      expect(app.manifest.dependencies).to.eql(deps1);
+      service = FoxxManager.lookupService(mount);
+      expect(service.manifest.dependencies).to.eql(deps1);
 
       json.dependencies = deps2;
       fs.writeFileSync(filename, JSON.stringify(json));
       FoxxManager.scanFoxx(mount, {replace: true});
-      app = FoxxManager.lookupService(mount);
-      expect(app.manifest.dependencies).to.eql(deps2);
+      service = FoxxManager.lookupService(mount);
+      expect(service.manifest.dependencies).to.eql(deps2);
     });
   });
 });
