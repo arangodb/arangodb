@@ -39,39 +39,44 @@ devel
 
 * fixed issue #2071
 
-  make the AQL query optimizer inject filter condition expressions referred to by variables during filter condition aggregation.
-  for example, in the following query
+  make the AQL query optimizer inject filter condition expressions referred to
+  by variables during filter condition aggregation.
+  For example, in the following query
 
       FOR doc IN collection
-	LET cond1 = (doc.value == 1)
-	LET cond2 = (doc.value == 2)
-	FILTER cond1 || cond2
-	RETURN { doc, cond1, cond2 }
+        LET cond1 = (doc.value == 1)
+        LET cond2 = (doc.value == 2)
+        FILTER cond1 || cond2
+        RETURN { doc, cond1, cond2 }
 
-  the optimizer will now inject the conditions for `cond1` and `cond2` into the filter condition `cond1 || cond2`, expanding it to 
-  `(doc.value == 1) || (doc.value == 2)` and making these conditions available for index searching.
+  the optimizer will now inject the conditions for `cond1` and `cond2` into the filter
+  condition `cond1 || cond2`, expanding it to `(doc.value == 1) || (doc.value == 2)`
+  and making these conditions available for index searching.
 
-  note that the optimizer previously already injected some conditions into other conditions, but only if the variable that defined 
-  the condition was not used elsewhere. for example, the filter condition in the query
-
-      FOR doc IN collection
-	LET cond = (doc.value == 1)
-	FILTER cond
-	RETURN { doc }
-
-  already got optimized before because `cond` was only used once in the query and the optimizer decided to inject it into the 
-  place where it was used.
-
-  this only worked for variables that were referred to once in the query. when a variable was used multiple times, the condition 
-  was not injected as in the following query
+  Note that the optimizer previously already injected some conditions into other
+  conditions, but only if the variable that defined the condition was not used
+  elsewhere. For example, the filter condition in the query
 
       FOR doc IN collection
-	LET cond = (doc.value == 1)
-	FILTER cond
-	RETURN { doc, cond }
+        LET cond = (doc.value == 1)
+        FILTER cond
+        RETURN { doc }
 
-  the fix for #2070 now will enable this optimization so that the query can use an index on `doc.value` if available.
+  already got optimized before because `cond` was only used once in the query and
+  the optimizer decided to inject it into the place where it was used.
 
+  This only worked for variables that were referred to once in the query.
+  When a variable was used multiple times, the condition was not injected as
+  in the following query:
+
+      FOR doc IN collection
+        LET cond = (doc.value == 1)
+        FILTER cond
+        RETURN { doc, cond }
+
+  The fix for #2070 now will enable this optimization so that the query can
+  use an index on `doc.value` if available.
+  
 * changed behavior of AQL array comparison operators for empty arrays:
   * `ALL` and `ANY` now always return `false` when the left-hand operand is an
     empty array. The behavior for non-empty arrays does not change:
