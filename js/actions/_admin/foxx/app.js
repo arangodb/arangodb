@@ -7,7 +7,7 @@
 // /
 // / DISCLAIMER
 // /
-// / Copyright 2014 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
 // /
 // / Licensed under the Apache License, Version 2.0 (the "License")
 // / you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Dr. Frank Celler
-// / @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+// / @author Copyright 2014-2016, ArangoDB GmbH, Cologne, Germany
 // / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -83,7 +83,7 @@ actions.defineHttp({
       var appInfo = body.appInfo;
       var mount = body.mount;
       var options = body.options;
-      return foxxManager.install(appInfo, mount, options);
+      return foxxManager.install(appInfo, mount, options).simpleJSON();
     }
   })
 });
@@ -102,7 +102,7 @@ actions.defineHttp({
       var mount = body.mount;
       var options = body.options || {};
 
-      return foxxManager.uninstall(mount, options);
+      return foxxManager.uninstall(mount, options).simpleJSON();
     }
   })
 });
@@ -122,7 +122,7 @@ actions.defineHttp({
       var mount = body.mount;
       var options = body.options;
 
-      return foxxManager.replace(appInfo, mount, options);
+      return foxxManager.replace(appInfo, mount, options).simpleJSON();
     }
   })
 });
@@ -142,7 +142,7 @@ actions.defineHttp({
       var mount = body.mount;
       var options = body.options;
 
-      return foxxManager.upgrade(appInfo, mount, options);
+      return foxxManager.upgrade(appInfo, mount, options).simpleJSON();
     }
   })
 });
@@ -163,8 +163,8 @@ actions.defineHttp({
       if (options && options.configuration) {
         options = options.configuration;
       }
-
-      return foxxManager.configure(mount, {configuration: options || {}});
+      foxxManager.setConfiguration(mount, {configuration: options || {}});
+      return foxxManager.lookupService(mount).simpleJSON();
     }
   })
 });
@@ -201,7 +201,8 @@ actions.defineHttp({
       var mount = body.mount;
       var options = body.options;
 
-      return foxxManager.updateDeps(mount, {dependencies: options || {}});
+      foxxManager.setDependencies(mount, {dependencies: options || {}});
+      return foxxManager.lookupService(mount).simpleJSON();
     }
   })
 });
@@ -219,7 +220,18 @@ actions.defineHttp({
     callback: function (body) {
       var mount = body.mount;
 
-      return foxxManager.dependencies(mount);
+      const deps = foxxManager.dependencies(mount);
+      for (const key of Object.keys(deps)) {
+        const dep = deps[key];
+        deps[key] = {
+          definition: dep,
+          title: dep.title,
+          current: dep.current
+        };
+        delete dep.title;
+        delete dep.current;
+      }
+      return deps;
     }
   })
 });
@@ -238,9 +250,9 @@ actions.defineHttp({
       var mount = body.mount;
       var activate = body.activate;
       if (activate) {
-        return foxxManager.development(mount);
+        return foxxManager.development(mount).simpleJSON();
       } else {
-        return foxxManager.production(mount);
+        return foxxManager.production(mount).simpleJSON();
       }
     }
   })
