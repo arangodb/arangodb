@@ -2563,8 +2563,10 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt, ExecutionPlan* plan,
       std::vector<Variable const*> v(node->getVariablesUsedHere());
       TRI_ASSERT(v.size() >= 2);
 
-      distNode = new DistributeNode(plan, plan->nextId(), vocbase, collection,
-                                    v[0]->id, v[1]->id, true, true);
+      auto d = new DistributeNode(plan, plan->nextId(), vocbase, collection,
+                                  v[0]->id, v[1]->id, true, true);
+      d->setAllowSpecifiedKeys(true);
+      distNode = static_cast<ExecutionNode*>(d);
     } else {
       TRI_ASSERT(false);
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error");

@@ -33,7 +33,7 @@ class AcceptorUnixDomain: public Acceptor {
       _acceptor(ioService) {
     }
     void open() override;
-    void close() override { _acceptor.close(); };
+    void close() override;
     void asyncAccept(AcceptHandler const& handler) override;
     void createPeer() override;
 

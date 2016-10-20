@@ -25,25 +25,13 @@
 using namespace arangodb;
 
 size_t SocketUnixDomain::write(StringBuffer* buffer, boost::system::error_code& ec) {
-  if (_encrypted) {
-    return socketcommon::doWrite(_sslSocket, buffer, ec);
-  } else {
-    return socketcommon::doWrite(_socket, buffer, ec);
-  }
+  return socketcommon::doWrite(_socket, buffer, ec);
 }
 void SocketUnixDomain::asyncWrite(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) {
-  if (_encrypted) {
-    return socketcommon::doAsyncWrite(_sslSocket, buffer, handler);
-  } else {
-    return socketcommon::doAsyncWrite(_socket, buffer, handler);
-  }
+  return socketcommon::doAsyncWrite(_socket, buffer, handler);
 }
 size_t SocketUnixDomain::read(boost::asio::mutable_buffers_1 const& buffer, boost::system::error_code& ec) {
-  if (_encrypted) {
-    return socketcommon::doRead(_sslSocket, buffer, ec);
-  } else {
-    return socketcommon::doRead(_socket, buffer, ec);
-  }
+  return socketcommon::doRead(_socket, buffer, ec);
 }
 void SocketUnixDomain::shutdownReceive() {
   // mop: was not implemented for SSL. not sure if it should be?
@@ -61,9 +49,5 @@ int SocketUnixDomain::available(boost::system::error_code& ec) {
   return _socket.available(ec);
 } 
 void SocketUnixDomain::asyncRead(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) {
-  if (_encrypted) {
-    return socketcommon::doAsyncRead(_sslSocket, buffer, handler);
-  } else {
-    return socketcommon::doAsyncRead(_socket, buffer, handler);
-  }
+  return socketcommon::doAsyncRead(_socket, buffer, handler);
 }

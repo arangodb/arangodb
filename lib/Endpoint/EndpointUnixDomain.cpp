@@ -54,22 +54,6 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout,
   TRI_ASSERT(!TRI_isvalidsocket(_socket));
   TRI_ASSERT(!_connected);
 
-  if (_type == EndpointType::SERVER && FileUtils::exists(_path)) {
-    // socket file already exists
-    LOG(WARN) << "socket file '" << _path << "' already exists.";
-
-    int error = 0;
-    // delete previously existing socket file
-    if (FileUtils::remove(_path, &error)) {
-      LOG(WARN) << "deleted previously existing socket file '" << _path << "'";
-    } else {
-      LOG(ERR) << "unable to delete previously existing socket file '" << _path
-               << "'";
-
-      return listenSocket;
-    }
-  }
-
   listenSocket = TRI_socket(AF_UNIX, SOCK_STREAM, 0);
   if (!TRI_isvalidsocket(listenSocket)) {
     LOG(ERR) << "socket() failed with " << errno << " (" << strerror(errno)

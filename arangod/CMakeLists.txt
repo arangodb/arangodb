@@ -364,7 +364,6 @@ SET(ARANGOD_SOURCES
 if (NOT MSVC)
   SET(ARANGOD_SOURCES ${ARANGOD_SOURCES} Scheduler/AcceptorUnixDomain.cpp Scheduler/SocketUnixDomain.cpp)
 endif()
-message(${ARANGOD_SOURCES})
 add_executable(${BIN_ARANGOD} ${ARANGOD_SOURCES})
 
 if(USE_SSL)

@@ -749,7 +749,8 @@ DistributeBlock::DistributeBlock(ExecutionEngine* engine,
       _collection(collection),
       _index(0),
       _regId(ExecutionNode::MaxRegisterId),
-      _alternativeRegId(ExecutionNode::MaxRegisterId) {
+      _alternativeRegId(ExecutionNode::MaxRegisterId),
+      _allowSpecifiedKeys(false) {
   // get the variable to inspect . . .
   VariableId varId = ep->_varId;
 
@@ -770,6 +771,7 @@ DistributeBlock::DistributeBlock(ExecutionEngine* engine,
   }
 
   _usesDefaultSharding = collection->usesDefaultSharding();
+  _allowSpecifiedKeys = ep->_allowSpecifiedKeys;
 }
 
 /// @brief initializeCursor
@@ -1067,25 +1069,27 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
 
       if (hasCreatedKeyAttribute || value.hasKey(StaticStrings::KeyString)) {
         // a _key was given, but user is not allowed to specify _key
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
-      }
-
-      VPackBuilder temp;
-      temp.openObject();
-      temp.add(StaticStrings::KeyString, VPackValue(createKey(value)));
-      temp.close();
-
-      builder2 = VPackCollection::merge(input, temp.slice(), true);
-
-      // clear the previous value and overwrite with new value:
-      if (usedAlternativeRegId) {
-        cur->destroyValue(_pos, _alternativeRegId);
-        cur->setValue(_pos, _alternativeRegId, AqlValue(builder2.slice()));
+        if (usedAlternativeRegId || !_allowSpecifiedKeys) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
+        }
       } else {
-        cur->destroyValue(_pos, _regId);
-        cur->setValue(_pos, _regId, AqlValue(builder2.slice()));
+        VPackBuilder temp;
+        temp.openObject();
+        temp.add(StaticStrings::KeyString, VPackValue(createKey(value)));
+        temp.close();
+
+        builder2 = VPackCollection::merge(input, temp.slice(), true);
+
+        // clear the previous value and overwrite with new value:
+        if (usedAlternativeRegId) {
+          cur->destroyValue(_pos, _alternativeRegId);
+          cur->setValue(_pos, _alternativeRegId, AqlValue(builder2.slice()));
+        } else {
+          cur->destroyValue(_pos, _regId);
+          cur->setValue(_pos, _regId, AqlValue(builder2.slice()));
+        }
+        value = builder2.slice();
       }
-      value = builder2.slice();
     }
   }
 

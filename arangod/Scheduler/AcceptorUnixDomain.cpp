@@ -22,13 +22,29 @@
 
 #include "Scheduler/AcceptorUnixDomain.h"
 
+#include "Basics/FileUtils.h"
 #include "Endpoint/EndpointUnixDomain.h"
 #include "Scheduler/SocketUnixDomain.h"
 
 using namespace arangodb;
 
 void AcceptorUnixDomain::open() {
-  boost::asio::local::stream_protocol::stream_protocol::endpoint endpoint(((EndpointUnixDomain*) _endpoint)->path());
+  std::string path(((EndpointUnixDomain*) _endpoint)->path());
+  if (FileUtils::exists(path)) {
+    // socket file already exists
+    LOG(WARN) << "socket file '" << path << "' already exists.";
+
+    int error = 0;
+    // delete previously existing socket file
+    if (FileUtils::remove(path, &error)) {
+      LOG(WARN) << "deleted previously existing socket file '" << path << "'";
+    } else {
+      LOG(ERR) << "unable to delete previously existing socket file '" << path
+               << "'";
+    }
+  }
+
+  boost::asio::local::stream_protocol::stream_protocol::endpoint endpoint(path);
   _acceptor.open(endpoint.protocol());
   _acceptor.bind(endpoint);
   _acceptor.listen();
@@ -41,12 +57,16 @@ void AcceptorUnixDomain::asyncAccept(AcceptHandler const& handler) {
 }
 
 void AcceptorUnixDomain::createPeer() {
-  if (_endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-    _peer.reset(new SocketUnixDomain(_ioService, SslServerFeature::SSL->createSslContext(), true));
-  } else {
-    _peer.reset(new SocketUnixDomain(
+  _peer.reset(new SocketUnixDomain(
         _ioService,
-        boost::asio::ssl::context(boost::asio::ssl::context::method::sslv23),
-        false));
+        boost::asio::ssl::context(boost::asio::ssl::context::method::sslv23)));
+}
+
+void AcceptorUnixDomain::close() {
+  _acceptor.close();
+  int error = 0;
+  std::string path = ((EndpointUnixDomain*) _endpoint)->path();
+  if (!FileUtils::remove(path, &error)) {
+    LOG(TRACE) << "unable to remove socket file '" << path << "'";
   }
 }
