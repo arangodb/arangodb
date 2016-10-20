@@ -13,6 +13,13 @@ the communication layer. ArangoDB starting from 3.1 uses
 A few options have changed concerning communication, please checkout
 [Incompatible changes in 3.1](ReleaseNotes/UpgradingChanges31.html).
 
+!SECTION Cluster
+
+For its internal cluster communication a (bundled version) of curl is now being
+used. This enables asynchronous operation throughout the cluster and should
+improve general performance slightly.
+
+Authentication is now supported within the cluster.
 
 !SECTION AQL
 
