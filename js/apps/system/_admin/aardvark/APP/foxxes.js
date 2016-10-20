@@ -125,7 +125,7 @@ installer.use(function (req, res, next) {
   const configuration = FoxxManager.configuration(mount);
   res.json(Object.assign(
     {error: false, configuration},
-    service
+    service.simpleJSON()
   ));
 });
 
@@ -186,7 +186,7 @@ foxxRouter.delete('/', function (req, res) {
   });
   res.json(Object.assign(
     {error: false},
-    service
+    service.simpleJSON()
   ));
 })
 .queryParam('teardown', joi.boolean().default(true))
@@ -238,7 +238,8 @@ foxxRouter.get('/config', function (req, res) {
 foxxRouter.patch('/config', function (req, res) {
   const mount = decodeURIComponent(req.queryParams.mount);
   const configuration = req.body;
-  res.json(FoxxManager.configure(mount, {configuration}));
+  FoxxManager.setConfiguration(mount, {configuration});
+  res.json(FoxxManager.configuration(mount));
 })
 .body(joi.object().optional(), 'Configuration to apply.')
 .summary('Set the configuration for a service')
@@ -249,7 +250,18 @@ foxxRouter.patch('/config', function (req, res) {
 
 foxxRouter.get('/deps', function (req, res) {
   const mount = decodeURIComponent(req.queryParams.mount);
-  res.json(FoxxManager.dependencies(mount));
+  const deps = FoxxManager.dependencies(mount);
+  for (const key of Object.keys(deps)) {
+    const dep = deps[key];
+    deps[key] = {
+      definition: dep,
+      title: dep.title,
+      current: dep.current
+    };
+    delete dep.title;
+    delete dep.current;
+  }
+  res.json(deps);
 })
 .summary('Get the dependencies for a service')
 .description(dd`
@@ -260,9 +272,10 @@ foxxRouter.get('/deps', function (req, res) {
 foxxRouter.patch('/deps', function (req, res) {
   const mount = decodeURIComponent(req.queryParams.mount);
   const dependencies = req.body;
-  res.json(FoxxManager.updateDeps(mount, {dependencies}));
+  FoxxManager.setDependencies(mount, {dependencies});
+  res.json(FoxxManager.dependencies(mount));
 })
-.body(joi.object().optional(), 'Dependency settings to apply.')
+.body(joi.object().optional(), 'Dependency options to apply.')
 .summary('Set the dependencies for a service')
 .description(dd`
   Used to overwrite the dependencies options for services.
@@ -300,7 +313,7 @@ foxxRouter.post('/scripts/:name', function (req, res) {
 foxxRouter.patch('/devel', function (req, res) {
   const mount = decodeURIComponent(req.queryParams.mount);
   const activate = Boolean(req.body);
-  res.json(FoxxManager[activate ? 'development' : 'production'](mount));
+  res.json(FoxxManager[activate ? 'development' : 'production'](mount).simpleJSON());
 })
 .body(joi.boolean().optional())
 .summary('Activate/Deactivate development mode for a service')

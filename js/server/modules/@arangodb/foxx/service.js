@@ -90,12 +90,11 @@ module.exports =
 
       this.configuration = createConfiguration(this.manifest.configuration);
       this.dependencies = createDependencies(this.manifest.dependencies, this.options.dependencies);
-      const warnings = this.applyConfiguration(this.options.configuration);
-      if (warnings.length) {
-        console.warnLines(dd`
-        Stored configuration for app "${data.mount}" has errors:
-          ${warnings.join('\n  ')}
-      `);
+      const warnings = this.applyConfiguration(this.options.configuration, false);
+      if (warnings) {
+        console.warnLines(`Stored configuration for service "${data.mount}" has errors:\n  ${
+          Object.keys(warnings).map((key) => warnings[key]).join('\n  ')
+        }`);
       }
 
       this.thumbnail = null;
@@ -110,30 +109,40 @@ module.exports =
       this.legacy = range ? semver.gtr('3.0.0', range) : false;
       if (this.legacy) {
         console.debugLines(dd`
-        Service "${this.mount}" is running in legacy compatibility mode.
-        Requested version "${range}" is lower than "3.0.0".
-      `);
+          Service "${this.mount}" is running in legacy compatibility mode.
+          Requested version "${range}" is lower than "3.0.0".
+        `);
       }
 
       this._reset();
     }
 
-    applyConfiguration (config) {
+    applyConfiguration (config, replace) {
+      if (!config) {
+        config = {};
+      }
       const definitions = this.manifest.configuration;
-      const warnings = [];
+      const configNames = Object.keys(config);
+      const knownNames = Object.keys(definitions);
+      const omittedNames = knownNames.filter((name) => !configNames.includes(name));
+      const names = replace ? configNames.concat(omittedNames) : configNames;
+      const warnings = {};
 
-      for (const name of Object.keys(config)) {
-        const rawValue = config[name];
-        const def = definitions[name];
-        if (!def) {
-          warnings.push(`Unexpected option "${name}"`);
-          return warnings;
+      for (const name of names) {
+        if (!knownNames.includes(name)) {
+          warnings[name] = 'is not allowed';
+          continue;
         }
+        const def = definitions[name];
+        const rawValue = config[name];
 
-        if (def.required === false && (rawValue === undefined || rawValue === null || rawValue === '')) {
-          delete this.options.configuration[name];
+        if (rawValue === undefined || rawValue === null || rawValue === '') {
+          this.options.configuration[name] = undefined;
           this.configuration[name] = def.default;
-          return warnings;
+          if (def.required !== false) {
+            warnings[name] = 'is required';
+          }
+          continue;
         }
 
         const validate = parameterTypes[def.type];
@@ -143,7 +152,7 @@ module.exports =
         if (validate.isJoi) {
           const result = validate.required().validate(rawValue);
           if (result.error) {
-            warning = result.error.message.replace(/^"value"/, `"${name}"`);
+            warning = result.error.message.replace(/^"value"\s+/, '');
           } else {
             parsedValue = result.value;
           }
@@ -151,19 +160,56 @@ module.exports =
           try {
             parsedValue = validate(rawValue);
           } catch (e) {
-            warning = `"${name}": ${e.message}`;
+            warning = e.message;
           }
         }
 
         if (warning) {
-          warnings.push(warning);
+          warnings[name] = warning;
         } else {
           this.options.configuration[name] = rawValue;
           this.configuration[name] = parsedValue;
         }
       }
 
-      return warnings;
+      return Object.keys(warnings).length ? warnings : undefined;
+    }
+
+    applyDependencies (deps, replace) {
+      if (!deps) {
+        deps = {};
+      }
+      const definitions = this.manifest.dependencies;
+      const depsNames = Object.keys(deps);
+      const knownNames = Object.keys(definitions);
+      const omittedNames = knownNames.filter((name) => !depsNames.includes(name));
+      const names = replace ? depsNames.concat(omittedNames) : depsNames;
+      const warnings = {};
+
+      for (const name of names) {
+        if (!knownNames.includes(name)) {
+          warnings[name] = 'is not allowed';
+          continue;
+        }
+        const def = definitions[name];
+        const value = deps[name];
+
+        if (value === undefined || value === null || value === '') {
+          this.options.dependencies[name] = undefined;
+          if (def.required !== false) {
+            warnings[name] = 'is required';
+          }
+          continue;
+        }
+
+        if (typeof value !== 'string') {
+          warnings[name] = 'must be a string';
+        } else {
+          this.options.dependencies[name] = value;
+        }
+      }
+
+      return Object.keys(warnings).length ? warnings : undefined;
     }
 
     buildRoutes () {
@@ -180,10 +226,10 @@ module.exports =
           err = err.cause;
         }
         console.warnLines(dd`
-        Failed to build API documentation for "${this.mount}"!
-        This is likely a bug in your Foxx service.
-        Check the route methods you are using to document your API.
-      `);
+          Failed to build API documentation for "${this.mount}"!
+          This is likely a bug in your Foxx service.
+          Check the route methods you are using to document your API.
+        `);
       }
       this.docs = {
         swagger: '2.0',
@@ -220,14 +266,14 @@ module.exports =
               }
               if (logLevel) {
                 console[logLevel](`Service "${
-                service.mount
-              }" encountered error ${
-                e.statusCode || 500
-              } while handling ${
-                req.requestType
-              } ${
-                req.absoluteUrl()
-              }`);
+                  service.mount
+                }" encountered error ${
+                  e.statusCode || 500
+                } while handling ${
+                  req.requestType
+                } ${
+                  req.absoluteUrl()
+                }`);
                 console[`${logLevel}Lines`](e.stack);
                 let err = e.cause;
                 while (err && err.stack) {
@@ -268,22 +314,6 @@ module.exports =
           }
         }
       });
-    }
-
-    applyDependencies (deps) {
-      const definitions = this.manifest.dependencies;
-      const warnings = [];
-
-      for (const name of Object.keys(deps)) {
-        const dfn = definitions[name];
-        if (!dfn) {
-          warnings.push(`Unexpected dependency "${name}"`);
-        } else {
-          this.options.dependencies[name] = deps[name];
-        }
-      }
-
-      return warnings;
     }
 
     _PRINT (context) {
@@ -354,11 +384,11 @@ module.exports =
       const options = this.options.dependencies;
       for (const name of Object.keys(definitions)) {
         const dfn = definitions[name];
-        deps[name] = simple ? options[name] : {
-          definition: dfn,
+        const value = options[name];
+        deps[name] = simple ? value : Object.assign({}, dfn, {
           title: getReadableName(name),
-          current: options[name]
-        };
+          current: value
+        });
       }
       return deps;
     }
@@ -369,7 +399,7 @@ module.exports =
       return _.some(config, function (cfg) {
           return cfg.current === undefined && cfg.required !== false;
         }) || _.some(deps, function (dep) {
-          return dep.current === undefined && dep.definition.required !== false;
+          return dep.current === undefined && dep.required !== false;
         });
     }
 

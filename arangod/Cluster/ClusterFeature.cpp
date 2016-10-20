@@ -63,7 +63,6 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
   startsAfter("Database");
   startsAfter("Scheduler");
   startsAfter("V8Dealer");
-  startsAfter("Database");
 }
 
 ClusterFeature::~ClusterFeature() {
