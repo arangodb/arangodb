@@ -1172,8 +1172,8 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
           << "\ntransaction sent to agency: " << transaction.toJson();
         AgencyCommResult ag = ac.getValues("");
         if (ag.successful()) {
-	  LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
-	    << ag.slice().toJson();
+          LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
+            << ag.slice().toJson();
         } else {
           LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
         }
@@ -1285,8 +1285,12 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
           << ": database: " << databaseName << ", collId:" << collectionID
           << "\ntransaction sent to agency: " << trans.toJson();
         AgencyCommResult ag = ac.getValues("");
-        LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
-          << ag.slice().toJson();
+        if (ag.successful()) {
+          LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
+            << ag.slice().toJson();
+        } else {
+          LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
+        }
         events::DropCollection(collectionID, TRI_ERROR_CLUSTER_TIMEOUT);
         return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
       }
