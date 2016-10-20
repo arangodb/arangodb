@@ -5,7 +5,7 @@
           <div class="navlogo">
             <a class="logo big" href="#"><img id="ArangoDBLogo" class="arangodbLogo" src="img/arangodb-edition-optimized.svg"/></a>
             <a class="logo small" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"/></a>
-            <a class="version"><span>VERSION: </span><span id="currentVersion"></span></a>
+            <a class="version"><span id="currentVersion"></span></a>
           </div>
           <!-- <div id="progressPlaceholderIcon"></div> -->
             <div class="statmenu" id="statisticBar">
