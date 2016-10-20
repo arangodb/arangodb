@@ -89,7 +89,7 @@ ${ARANGOD} \
     --server.authentication false \
     --server.endpoint tcp://127.0.0.1:$(( $BASE + $aid )) \
     --server.statistics false \
-    --server.threads $NATH \
+    --server.threads 4 \
     --log.force-direct true \
     > /tmp/cluster/$(( $BASE + $aid )).stdout 2>&1 &
 

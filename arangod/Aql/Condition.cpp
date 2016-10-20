@@ -29,6 +29,7 @@
 #include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
+#include "Logger/Logger.h"
 #include "Utils/Transaction.h"
 
 #ifdef _WIN32
@@ -473,7 +474,8 @@ void Condition::normalize() {
 }
 
 /// @brief removes condition parts from another
-AstNode* Condition::removeIndexCondition(Variable const* variable,
+AstNode* Condition::removeIndexCondition(ExecutionPlan const* plan,
+                                         Variable const* variable,
                                          AstNode* other) {
   if (_root == nullptr || other == nullptr) {
     return _root;
@@ -514,7 +516,7 @@ AstNode* Condition::removeIndexCondition(Variable const* variable,
           ConditionPart current(variable, result.second, operand,
                                 ATTRIBUTE_LEFT, nullptr);
 
-          if (canRemove(current, other)) {
+          if (canRemove(plan, current, other)) {
             toRemove.emplace(i);
           }
         }
@@ -529,7 +531,7 @@ AstNode* Condition::removeIndexCondition(Variable const* variable,
           ConditionPart current(variable, result.second, operand,
                                 ATTRIBUTE_RIGHT, nullptr);
 
-          if (canRemove(current, other)) {
+          if (canRemove(plan, current, other)) {
             toRemove.emplace(i);
           }
         }
@@ -958,7 +960,7 @@ void Condition::validateAst(AstNode const* node, int level) {
 #endif
 
 /// @brief checks if the current condition is covered by the other
-bool Condition::canRemove(ConditionPart const& me,
+bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
                           arangodb::aql::AstNode const* otherCondition) const {
   TRI_ASSERT(otherCondition != nullptr);
   TRI_ASSERT(otherCondition->type == NODE_TYPE_OPERATOR_NARY_OR);
@@ -967,6 +969,19 @@ bool Condition::canRemove(ConditionPart const& me,
   auto andNode = otherCondition->getMemberUnchecked(0);
   TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
   size_t const n = andNode->numMembers();
+
+  auto normalize = [&plan](AstNode const* node) -> std::string {
+    if (node->type == NODE_TYPE_REFERENCE) {
+      auto setter = plan->getVarSetBy(static_cast<Variable const*>(node->getData())->id);
+      if (setter != nullptr && setter->getType() == ExecutionNode::CALCULATION) {
+        auto cn = static_cast<CalculationNode const*>(setter);
+        // use expression node instead
+        node = cn->expression()->node();
+      }
+    }
+    // return string representation
+    return node->toString();
+  };
 
   for (size_t i = 0; i < n; ++i) {
     auto operand = andNode->getMemberUnchecked(i);
@@ -989,7 +1004,7 @@ bool Condition::canRemove(ConditionPart const& me,
           }
           // non-constant condition
           else if (me.operatorType == operand->type &&
-                   me.valueNode->toString() == rhs->toString()) {
+                   normalize(me.valueNode) == normalize(rhs)) {
             return true;
           }
         }
@@ -1010,7 +1025,7 @@ bool Condition::canRemove(ConditionPart const& me,
           }
           // non-constant condition
           else if (me.operatorType == operand->type &&
-                   me.valueNode->toString() == lhs->toString()) {
+                   normalize(me.valueNode) == normalize(lhs)) {
             return true;
           }
         }

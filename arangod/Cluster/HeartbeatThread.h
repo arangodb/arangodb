@@ -26,10 +26,9 @@
 
 #include "Basics/Thread.h"
 
-#include <boost/asio.hpp>
-
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
+#include "Basics/asio-helper.h"
 #include "Cluster/AgencyComm.h"
 #include "Cluster/DBServerAgencySync.h"
 #include "Logger/Logger.h"

@@ -32,9 +32,10 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
-#include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/HttpRequest.h"
@@ -560,7 +561,7 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
       addEmptyVPackObject("DBServers", builder);
     }
     builder.add("InitDone", VPackValue(true));
-    builder.add("Secret", VPackValue(encodeHex(jwtSecret)));
+    builder.add("Secret", VPackValue(jwtSecret));
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::STARTUP) << "Couldn't create initializing structure "
                                     << e.what();
@@ -621,16 +622,22 @@ bool AgencyComm::shouldInitializeStructure() {
 bool AgencyComm::ensureStructureInitialized() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "Checking if agency is initialized";
 
-  GeneralServerFeature* restServer =
-      application_features::ApplicationServer::getFeature<GeneralServerFeature>(
-          "GeneralServer");
+  AuthenticationFeature* authentication =
+      application_features::ApplicationServer::getFeature<AuthenticationFeature>(
+          "Authentication");
+
+  TRI_ASSERT(authentication != nullptr);
 
   while (true) {
     while (shouldInitializeStructure()) {
       LOG_TOPIC(TRACE, Logger::STARTUP)
           << "Agency is fresh. Needs initial structure.";
       // mop: we initialized it .. great success
-      if (tryInitializeStructure(restServer->jwtSecret())) {
+      std::string secret;
+      if (authentication->isEnabled()) {
+        secret = authentication->jwtSecret();
+      }
+      if (tryInitializeStructure(secret)) {
         LOG_TOPIC(TRACE, Logger::STARTUP) << "Successfully initialized agency";
         break;
       }
@@ -667,8 +674,10 @@ bool AgencyComm::ensureStructureInitialized() {
     LOG(ERR) << "Couldn't find secret in agency!";
     return false;
   }
-
-  restServer->setJwtSecret(decodeHex(secretValue.copyString()));
+  std::string const secret = secretValue.copyString();
+  if (!secret.empty()) {
+    authentication->setJwtSecret(secretValue.copyString());
+  }
   return true;
 }
 
@@ -1729,11 +1738,11 @@ AgencyCommResult AgencyComm::sendWithFailover(
     // otherwise, try next
   }
 
-  if (!result.successful()) {
-    LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Unsuccessful AgencyComm: "
-      << "errorCode   : " << result.errorCode()
-      << "errorMessage: " << result.errorMessage()
-      << "errorDetails: " << result.errorDetails();
+  if (!result.successful() && result.httpCode() != 412) {
+    LOG_TOPIC(DEBUG, Logger::AGENCYCOMM) << "Unsuccessful AgencyComm: "
+      << "errorCode: " << result.errorCode()
+      << " errorMessage: " << result.errorMessage()
+      << " errorDetails: " << result.errorDetails();
   }
 
   return result;
@@ -1768,7 +1777,7 @@ AgencyCommResult AgencyComm::send(
       << "': " << body;
 
   arangodb::httpclient::SimpleHttpClient client(connection, timeout, false);
-
+  client.setJwt(ClusterComm::instance()->jwt());
   client.keepConnectionOnDestruction(true);
 
   // set up headers

@@ -67,7 +67,9 @@ int EnumerateListBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 
 AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
   DEBUG_BEGIN_BLOCK();  
+  traceGetSomeBegin();
   if (_done) {
+    traceGetSomeEnd(nullptr);
     return nullptr;
   }
 
@@ -83,6 +85,7 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
       if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
         _done = true;
+        traceGetSomeEnd(nullptr);
         return nullptr;
       }
       _pos = 0;  // this is in the first block
@@ -160,6 +163,7 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
 
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
+  traceGetSomeEnd(res.get());
   return res.release();
   DEBUG_END_BLOCK();  
 }

@@ -109,7 +109,8 @@ int RestHandler::finalizeEngine() {
   try {
     finalizeExecute();
   } catch (Exception const& ex) {
-    LOG(ERR) << "caught exception in " << name() << ": " << DIAGNOSTIC_INFORMATION(ex);
+    LOG(ERR) << "caught exception in " << name() << ": "
+             << DIAGNOSTIC_INFORMATION(ex);
     requestStatisticsAgentSetExecuteError();
     handleError(ex);
     res = TRI_ERROR_INTERNAL;
@@ -290,8 +291,7 @@ int RestHandler::runEngine(bool synchron) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 protected
-// methods
+// --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
 
 void RestHandler::resetResponse(rest::ResponseCode code) {

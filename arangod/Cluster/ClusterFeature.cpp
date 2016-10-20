@@ -57,6 +57,7 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
       _agencyCallbackRegistry(nullptr) {
   setOptional(true);
   requiresElevatedPrivileges(false);
+  startsAfter("Authentication");
   startsAfter("Logger");
   startsAfter("WorkMonitor");
   startsAfter("Database");
@@ -191,7 +192,6 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void ClusterFeature::prepare() {
-  ServerState::instance()->setAuthentication(_username, _password);
   ServerState::instance()->setDataPath(_dataPath);
   ServerState::instance()->setLogPath(_logPath);
   ServerState::instance()->setArangodPath(_arangodPath);
@@ -488,9 +488,8 @@ void ClusterFeature::unprepare() {
     }
   }
 
-  ClusterComm::cleanup();
-
   if (!_enableCluster) {
+    ClusterComm::cleanup();
     return;
   }
 
@@ -527,8 +526,8 @@ void ClusterFeature::unprepare() {
     usleep(50000);
   }
 
-  // ClusterComm::cleanup();
   AgencyComm::cleanup();
+  ClusterComm::cleanup();
 }
 
 void ClusterFeature::setUnregisterOnShutdown(bool unregisterOnShutdown) {

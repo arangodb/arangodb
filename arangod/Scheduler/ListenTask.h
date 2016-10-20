@@ -29,6 +29,7 @@
 
 #include "Endpoint/ConnectionInfo.h"
 #include "Endpoint/Endpoint.h"
+#include "Scheduler/Acceptor.h"
 #include "Scheduler/Socket.h"
 
 namespace arangodb {
@@ -59,9 +60,7 @@ class ListenTask : virtual public rest::Task {
 
   boost::asio::io_service* _ioService;
 
-  boost::asio::ip::tcp::acceptor _acceptor;
-
-  std::unique_ptr<Socket> _peer;
+  std::unique_ptr<Acceptor> _acceptor;
 
   std::function<void(boost::system::error_code const&)> _handler;
 };

@@ -42,10 +42,8 @@
 #include "VocBase/vocbase.h"
 #include "Wal/LogfileManager.h"
 
-#ifdef ARANGODB_ENABLE_ROCKSDB
 #include "Indexes/RocksDBFeature.h"
 #include "Indexes/RocksDBIndex.h"
-#endif
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -327,12 +325,10 @@ void MMFilesEngine::getDatabases(arangodb::velocypack::Builder& result) {
       LOG(DEBUG) << "found dropped database in directory '" << directory << "'";
       LOG(DEBUG) << "removing superfluous database directory '" << directory << "'";
 
-#ifdef ARANGODB_ENABLE_ROCKSDB
       // delete persistent indexes for this database
       TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(
           basics::StringUtils::uint64(idSlice.copyString()));
       RocksDBFeature::dropDatabase(id);
-#endif
 
       dropDatabaseDirectory(directory);
       continue;
@@ -700,9 +696,7 @@ void MMFilesEngine::dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalColl
   unregisterCollectionPath(vocbase->id(), collection->cid());
   
   // delete persistent indexes    
-#ifdef ARANGODB_ENABLE_ROCKSDB
   RocksDBFeature::dropCollection(vocbase->id(), collection->cid());
-#endif
 
   // rename collection directory
   if (!collection->path().empty()) {

@@ -34,7 +34,7 @@
 #include "Basics/files.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/v8-cluster.h"
-#include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -54,9 +54,7 @@
 #include "VocBase/vocbase.h"
 #include "Wal/LogfileManager.h"
 
-#ifdef ARANGODB_ENABLE_ROCKSDB
 #include "Indexes/RocksDBIndex.h"
-#endif
 
 #include <velocypack/velocypack-aliases.h>
 
@@ -138,10 +136,8 @@ void DatabaseManagerThread::run() {
 // regular database
 // ---------------------------
 
-#ifdef ARANGODB_ENABLE_ROCKSDB
         // delete persistent indexes for this database
         RocksDBFeature::dropDatabase(database->id());
-#endif
 
         LOG(TRACE) << "physically removing database directory '"
                    << engine->databasePath(database) << "' of database '"
@@ -230,6 +226,7 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
       _upgrade(false) {
   setOptional(false);
   requiresElevatedPrivileges(false);
+  startsAfter("Authentication");
   startsAfter("DatabasePath");
   startsAfter("EngineSelector");
   startsAfter("LogfileManager");
@@ -823,7 +820,9 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
       TRI_vocbase_t* vocbase = p.second;
       TRI_ASSERT(vocbase != nullptr);
 
-      auto level = GeneralServerFeature::AUTH_INFO.canUseDatabase(
+      auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>(
+          "Authentication");
+      auto level = authentication->authInfo()->canUseDatabase(
           username, vocbase->name());
 
       if (level == AuthLevel::NONE) {

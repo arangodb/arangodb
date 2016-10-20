@@ -62,6 +62,19 @@
 
       $('.bodyWrapper').show();
 
+      window.setTimeout(function () {
+        var a = document.getElementById('loginSVG');
+        var svgDoc = a.contentDocument;
+        var svgItem;
+
+        if (window.isEnterprise) {
+          svgItem = svgDoc.getElementById('logo-enterprise');
+        } else {
+          svgItem = svgDoc.getElementById('logo-community');
+        }
+        svgItem.setAttribute('visibility', 'visible');
+      }, 300);
+
       return this;
     },
 

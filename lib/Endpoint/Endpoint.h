@@ -26,8 +26,6 @@
 
 #include "Basics/Common.h"
 
-#include <boost/asio.hpp>
-
 #ifdef TRI_HAVE_WINSOCK2_H
 #include <WinSock2.h>
 #include <WS2tcpip.h>
@@ -35,6 +33,7 @@
 
 #include <ostream>
 
+#include "Basics/asio-helper.h"
 #include "Basics/socket-utils.h"
 
 namespace arangodb {
@@ -83,9 +82,6 @@ class Endpoint {
   virtual int port() const = 0;
   virtual std::string host() const = 0;
   virtual std::string hostAndPort() const = 0;
-
-  virtual void openAcceptor(boost::asio::io_service*,
-                            boost::asio::ip::tcp::acceptor*) = 0;
 
  public:
   std::string _errorMessage;

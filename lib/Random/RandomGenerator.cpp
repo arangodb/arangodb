@@ -495,11 +495,16 @@ int64_t RandomGenerator::interval(int64_t left, int64_t right) {
     return static_cast<int64_t>((r1 << 32) | r2);
   }
 
-  uint64_t high = static_cast<uint64_t>(right);
-  uint64_t low = static_cast<uint64_t>(-left);
-
   if (left < 0) {
-    uint64_t d = high + low;
+    if (right < 0) {
+      uint64_t high = static_cast<uint64_t>(-left);
+      uint64_t low = static_cast<uint64_t>(-right);
+      uint64_t d = high - low;
+      return left + static_cast<int64_t>(interval(d));
+    }
+
+    uint64_t low = static_cast<uint64_t>(-left);
+    uint64_t d = low + static_cast<uint64_t>(right);
     uint64_t dRandom = interval(d);
 
     if (dRandom < low) {
@@ -508,8 +513,10 @@ int64_t RandomGenerator::interval(int64_t left, int64_t right) {
       return static_cast<int64_t>(dRandom - low);
     }
   } else {
+    uint64_t high = static_cast<uint64_t>(right);
+    uint64_t low = static_cast<uint64_t>(left);
     uint64_t d = high - low;
-    return static_cast<int64_t>(interval(d)) + low;
+    return left + static_cast<int64_t>(interval(d));
   }
 }
 

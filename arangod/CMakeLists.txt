@@ -60,15 +60,11 @@ if (MSVC)
   )
 endif ()
   
-if (USE_ROCKSDB) 
-  set(ROCKSDB_FILES
-    Indexes/RocksDBFeature.cpp
-    Indexes/RocksDBIndex.cpp
-    Indexes/RocksDBKeyComparator.cpp
-  )
-else ()
-  set(ROCKSDB_FILES "")
-endif ()
+set(ROCKSDB_FILES
+  Indexes/RocksDBFeature.cpp
+  Indexes/RocksDBIndex.cpp
+  Indexes/RocksDBKeyComparator.cpp
+)
 
 if (USE_ENTERPRISE)
   set(ENTERPRISE_FILES "")
@@ -78,7 +74,7 @@ else ()
   )
 endif ()
 
-add_executable(${BIN_ARANGOD}
+SET(ARANGOD_SOURCES
   ${ProductVersionFiles}
   ${ROCKSDB_FILES}
   ${ENTERPRISE_FILES}
@@ -202,6 +198,7 @@ add_executable(${BIN_ARANGOD}
   FulltextIndex/fulltext-query.cpp
   FulltextIndex/fulltext-result.cpp
   GeneralServer/AsyncJobManager.cpp
+  GeneralServer/AuthenticationFeature.cpp
   GeneralServer/GeneralCommTask.cpp
   GeneralServer/GeneralListenTask.cpp
   GeneralServer/GeneralServer.cpp
@@ -279,13 +276,17 @@ add_executable(${BIN_ARANGOD}
   RestServer/VocbaseContext.cpp
   RestServer/WorkMonitorFeature.cpp
   RestServer/arangod.cpp
+  Scheduler/Acceptor.cpp
+  Scheduler/AcceptorTcp.cpp
   Scheduler/Job.cpp
   Scheduler/JobGuard.cpp
   Scheduler/JobQueue.cpp
   Scheduler/ListenTask.cpp
   Scheduler/Scheduler.cpp
   Scheduler/SchedulerFeature.cpp
+  Scheduler/Socket.cpp
   Scheduler/SocketTask.cpp
+  Scheduler/SocketTcp.cpp
   Scheduler/Task.cpp
   Statistics/StatisticsFeature.cpp
   Statistics/statistics.cpp
@@ -359,6 +360,11 @@ add_executable(${BIN_ARANGOD}
   Wal/SynchronizerThread.cpp
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}
 )
+
+if (NOT MSVC)
+  SET(ARANGOD_SOURCES ${ARANGOD_SOURCES} Scheduler/AcceptorUnixDomain.cpp Scheduler/SocketUnixDomain.cpp)
+endif()
+add_executable(${BIN_ARANGOD} ${ARANGOD_SOURCES})
 
 if(USE_SSL)
     target_compile_definitions(${BIN_ARANGOD} PUBLIC "ARANGODB_SSL_ENABLED=1")

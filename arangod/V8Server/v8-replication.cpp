@@ -23,6 +23,8 @@
 
 #include "v8-replication.h"
 #include "Basics/ReadLocker.h"
+#include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerIdFeature.h"
@@ -185,6 +187,33 @@ static void JS_LastLoggerReplication(
   TRI_V8_TRY_CATCH_END
 }
 
+void addReplicationAuthentication(v8::Isolate* isolate,
+    v8::Handle<v8::Object> object,
+    TRI_replication_applier_configuration_t &config) {
+  bool hasUsernamePassword = false;
+  if (object->Has(TRI_V8_ASCII_STRING("username"))) {
+    if (object->Get(TRI_V8_ASCII_STRING("username"))->IsString()) {
+      hasUsernamePassword = true;
+      config._username =
+        TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("username")));
+    }
+  }
+
+  if (object->Has(TRI_V8_ASCII_STRING("password"))) {
+    if (object->Get(TRI_V8_ASCII_STRING("password"))->IsString()) {
+      hasUsernamePassword = true;
+      config._password =
+        TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("password")));
+    }
+  }
+  if (!hasUsernamePassword) {
+    auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
+    if (cluster->isEnabled()) {
+      config._jwt = ClusterComm::instance()->jwt();
+    }
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sync data from a remote master
 ////////////////////////////////////////////////////////////////////////////////
@@ -219,15 +248,6 @@ static void JS_SynchronizeReplication(
     database = vocbase->name();
   }
 
-  std::string username;
-  if (object->Has(TRI_V8_ASCII_STRING("username"))) {
-    username = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("username")));
-  }
-
-  std::string password;
-  if (object->Has(TRI_V8_ASCII_STRING("password"))) {
-    password = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("password")));
-  }
 
   std::unordered_map<std::string, bool> restrictCollections;
   if (object->Has(TRI_V8_ASCII_STRING("restrictCollections")) &&
@@ -273,8 +293,8 @@ static void JS_SynchronizeReplication(
   TRI_replication_applier_configuration_t config;
   config._endpoint = endpoint;
   config._database = database;
-  config._username = username;
-  config._password = password;
+
+  addReplicationAuthentication(isolate, object, config);
 
   if (object->Has(TRI_V8_ASCII_STRING("chunkSize"))) {
     if (object->Get(TRI_V8_ASCII_STRING("chunkSize"))->IsNumber()) {
@@ -457,20 +477,7 @@ static void JS_ConfigureApplierReplication(
         config._database = vocbase->name();
       }
     }
-
-    if (object->Has(TRI_V8_ASCII_STRING("username"))) {
-      if (object->Get(TRI_V8_ASCII_STRING("username"))->IsString()) {
-        config._username =
-            TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("username")));
-      }
-    }
-
-    if (object->Has(TRI_V8_ASCII_STRING("password"))) {
-      if (object->Get(TRI_V8_ASCII_STRING("password"))->IsString()) {
-        config._password =
-            TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("password")));
-      }
-    }
+    addReplicationAuthentication(isolate, object, config);
 
     if (object->Has(TRI_V8_ASCII_STRING("requestTimeout"))) {
       if (object->Get(TRI_V8_ASCII_STRING("requestTimeout"))->IsNumber()) {

@@ -208,7 +208,8 @@ class DistributeNode : public ExecutionNode {
         _varId(varId),
         _alternativeVarId(alternativeVarId),
         _createKeys(createKeys),
-        _allowKeyConversionToObject(allowKeyConversionToObject) {}
+        _allowKeyConversionToObject(allowKeyConversionToObject),
+        _allowSpecifiedKeys(false) {}
 
   DistributeNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                  Collection const* collection, VariableId const varId,
@@ -262,6 +263,12 @@ class DistributeNode : public ExecutionNode {
   /// @brief set createKeys
   void setCreateKeys(bool b) { _createKeys = b; }
 
+  /// @brief set allowKeyConversionToObject
+  void setAllowKeyConversionToObject(bool b) { _allowKeyConversionToObject = b; }
+
+  /// @brief set _allowSpecifiedKeys
+  void setAllowSpecifiedKeys(bool b) { _allowSpecifiedKeys = b; }
+
  private:
   /// @brief the underlying database
   TRI_vocbase_t* _vocbase;
@@ -280,7 +287,10 @@ class DistributeNode : public ExecutionNode {
   bool _createKeys;
 
   /// @brief allow conversion of key to object
-  bool const _allowKeyConversionToObject;
+  bool _allowKeyConversionToObject;
+
+  /// @brief allow specified keys in input even in the non-default sharding case
+  bool _allowSpecifiedKeys;
 };
 
 /// @brief class GatherNode

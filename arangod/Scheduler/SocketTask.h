@@ -29,6 +29,7 @@
 
 #include <boost/asio/ssl.hpp>
 
+#include "Basics/asio-helper.h"
 #include "Basics/StringBuffer.h"
 #include "Scheduler/Socket.h"
 #include "Statistics/StatisticsAgent.h"
@@ -68,6 +69,9 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
 
   void closeStream();
 
+  void resetKeepAlive();
+  void cancelKeepAlive();
+
  protected:
   ConnectionInfo _connectionInfo;
 
@@ -80,21 +84,10 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
   std::deque<TRI_request_statistics_t*> _writeBuffersStats;
 
   std::unique_ptr<Socket> _peer;
-  bool _useKeepAliveTimeout;
   boost::posix_time::milliseconds _keepAliveTimeout;
+  bool _useKeepAliveTimeout;
   boost::asio::deadline_timer _keepAliveTimer;
-  void resetKeepAlive(boost::system::error_code& ec);
-  void cancelKeepAlive(boost::system::error_code& ec);
-  bool cancelKeepAlive() {
-    boost::system::error_code ec;
-    cancelKeepAlive(ec);
-    if (ec) {
-      return false;
-    }
-    return true;
-  }
 
- protected:
   bool _closeRequested = false;
 
  private:

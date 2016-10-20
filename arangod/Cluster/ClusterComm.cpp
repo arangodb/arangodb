@@ -30,6 +30,7 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -205,8 +206,25 @@ char const* ClusterCommResult::stringifyStatus(ClusterCommOpStatus status) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterComm::ClusterComm()
-    : _backgroundThread(nullptr), _logConnectionErrors(false) {
-  _communicator = std::make_shared<communicator::Communicator>();
+    : _backgroundThread(nullptr),
+      _logConnectionErrors(false),
+      _authenticationEnabled(false),
+      _jwt(""),
+      _jwtAuthorization("") {
+  auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>("Authentication");
+  TRI_ASSERT(authentication != nullptr);
+  if (authentication->isEnabled()) {
+    _authenticationEnabled = true;
+    VPackBuilder bodyBuilder;
+    {
+      VPackObjectBuilder p(&bodyBuilder);
+      bodyBuilder.add("server_id", VPackValue(ServerState::instance()->getId()));
+    }
+    _jwt = authentication->authInfo()->generateJwt(bodyBuilder);
+    _jwtAuthorization = "bearer " + _jwt;
+  }
+
+  _communicator = std::make_shared<communicator::Communicator>();    
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -737,7 +755,8 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
   headers["X-Arango-Coordinator"] = coordinatorHeader;
   headers["X-Arango-Response-Code"] =
       responseToSend->responseString(responseToSend->responseCode());
-  headers["Authorization"] = ServerState::instance()->getAuthentication();
+
+  addAuthorization(&headers);
   TRI_voc_tick_t timeStamp = TRI_HybridLogicalClock();
   headers[StaticStrings::HLCHeader] =
       arangodb::basics::HybridLogicalClock::encodeTimeStamp(timeStamp);
@@ -1222,7 +1241,7 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(std::str
       }
     }
   }
-  headersCopy["Authorization"] = ServerState::instance()->getAuthentication();
+  addAuthorization(&headersCopy);
   TRI_voc_tick_t timeStamp = TRI_HybridLogicalClock();
   headersCopy[StaticStrings::HLCHeader] =
     arangodb::basics::HybridLogicalClock::encodeTimeStamp(timeStamp);
@@ -1246,6 +1265,12 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(std::str
   request->setRequestType(reqtype);
 
   return std::make_pair(result, request);
+}
+
+void ClusterComm::addAuthorization(std::unordered_map<std::string, std::string>* headers) {
+  if (_authenticationEnabled) {
+    headers->emplace("Authorization", _jwtAuthorization);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

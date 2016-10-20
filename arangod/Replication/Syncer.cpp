@@ -97,8 +97,12 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
 
       std::string username = _configuration._username;
       std::string password = _configuration._password;
-
-      _client->setUserNamePassword("/", username, password);
+      
+      if (!username.empty()) {
+        _client->setUserNamePassword("/", username, password);
+      } else {
+        _client->setJwt(_configuration._jwt);
+      }
       _client->setLocationRewriter(this, &rewriteLocation);
 
       _client->_maxRetries = 2;

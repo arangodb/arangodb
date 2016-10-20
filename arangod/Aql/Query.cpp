@@ -170,18 +170,36 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
       _isModificationQuery(false) {
   // std::cout << TRI_CurrentThreadId() << ", QUERY " << this << " CTOR: " <<
   // queryString << "\n";
-  LOG_TOPIC(DEBUG, Logger::QUERIES)
+  double tracing = getNumericOption("tracing", 0);
+  if (tracing > 0) {
+    LOG_TOPIC(INFO, Logger::QUERIES)
       << TRI_microtime() - _startTime << " "
       << "Query::Query queryString: " << std::string(queryString, queryLength)
       << " this: " << (uintptr_t) this;
+  } else {
+    LOG_TOPIC(DEBUG, Logger::QUERIES)
+      << TRI_microtime() - _startTime << " "
+      << "Query::Query queryString: " << std::string(queryString, queryLength)
+      << " this: " << (uintptr_t) this;
+  }
   if (bindParameters != nullptr && !bindParameters->isEmpty() &&
       !bindParameters->slice().isNone()) {
-    LOG_TOPIC(DEBUG, Logger::QUERIES)
-        << "bindParameters: " << bindParameters->slice().toJson();
+    if (tracing > 0) {
+      LOG_TOPIC(INFO, Logger::QUERIES)
+          << "bindParameters: " << bindParameters->slice().toJson();
+    } else {
+      LOG_TOPIC(DEBUG, Logger::QUERIES)
+          << "bindParameters: " << bindParameters->slice().toJson();
+    }
   }
   if (options != nullptr && !options->isEmpty() && !options->slice().isNone()) {
-    LOG_TOPIC(DEBUG, Logger::QUERIES)
-        << "options: " << options->slice().toJson();
+    if (tracing > 0) {
+      LOG_TOPIC(INFO, Logger::QUERIES)
+          << "options: " << options->slice().toJson();
+    } else {
+      LOG_TOPIC(DEBUG, Logger::QUERIES)
+          << "options: " << options->slice().toJson();
+    }
   }
   TRI_ASSERT(_vocbase != nullptr);
 }
@@ -229,7 +247,13 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
 
 /// @brief destroys a query
 Query::~Query() {
-  // std::cout << TRI_CurrentThreadId() << ", QUERY " << this << " DTOR\r\n";
+  double tracing = getNumericOption("tracing", 0);
+  if (tracing > 0) {
+    LOG_TOPIC(INFO, Logger::QUERIES)
+      << TRI_microtime() - _startTime << " "
+      << "Query::~Query queryString: "
+      << " this: " << (uintptr_t) this;
+  }
   cleanupPlanAndEngine(TRI_ERROR_INTERNAL);  // abort the transaction
 
   delete _profile;

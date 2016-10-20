@@ -6,21 +6,21 @@ here.
 
 !SECTION Internal data format changes
 
-ArangoDB now uses [VelocyPack](https://github.com/arangodb/velocypack) for storing 
-documents, query results and temporarily computed values. Using a single data format 
-removed the need for some data conversions in the core that slowed operations down
-previously.
+ArangoDB now uses [VelocyPack](https://github.com/arangodb/velocypack) for
+storing documents, query results and temporarily computed values. Using a single
+data format removed the need for some data conversions in the core that slowed
+operations down previously.
 
-The VelocyPack format is also quite compact, and reduces storage space requirements
-for "small" values such as boolean, integers, short strings. This can speed up several
-operations inside AQL queries.
+The VelocyPack format is also quite compact, and reduces storage space
+requirements for "small" values such as boolean, integers, short strings. This
+can speed up several operations inside AQL queries.
 
-VelocyPack document entries stored on disk are also self-contained, in the sense 
-that each stored document will contain all of its data type and attribute name 
-descriptions. While this may require a bit more space for storing the documents, it
-removes the overhead of fetching attribute names and document layout from shared
-structures as in previous versions of ArangoDB. It also simplifies the code paths
-for storing and reading documents.
+VelocyPack document entries stored on disk are also self-contained, in the sense
+that each stored document will contain all of its data type and attribute name
+descriptions. While this may require a bit more space for storing the documents,
+it removes the overhead of fetching attribute names and document layout from
+shared structures as in previous versions of ArangoDB. It also simplifies the
+code paths for storing and reading documents.
 
 !SECTION AQL improvements
 
@@ -193,10 +193,11 @@ The following AQL functions have been added in 3.0:
 
 !SUBSUBSECTION "inline-subqueries" rule
 
-The AQL optimizer rule "inline-subqueries" has been added. This rule can pull out 
-certain subqueries that are used as an operand to a `FOR` loop one level higher, 
-eliminating the subquery completely. This reduces complexity of the query's
-execution plan and will likely enable further optimizations. For example, the query
+The AQL optimizer rule "inline-subqueries" has been added. This rule can pull
+out certain subqueries that are used as an operand to a `FOR` loop one level
+higher, eliminating the subquery completely. This reduces complexity of the
+query's execution plan and will likely enable further optimizations. For
+example, the query
 
 ```
 FOR i IN (
@@ -234,8 +235,8 @@ FOR tmp IN _users
   RETURN tmp.name
 ```
 
-The rule will only fire when the subquery is used as an operand to a `FOR` loop, and
-if the subquery does not contain a `COLLECT` with an `INTO` variable.
+The rule will only fire when the subquery is used as an operand to a `FOR` loop,
+and if the subquery does not contain a `COLLECT` with an `INTO` variable.
 
 !SUBSUBSECTION "remove-unnecessary-calculations" rule
 

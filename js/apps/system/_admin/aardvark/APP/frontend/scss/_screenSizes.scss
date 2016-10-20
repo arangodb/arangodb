@@ -1,10 +1,5 @@
 // HEIGHTS
-
 @media (max-height: 490px) {
-  .social-icons {
-    display: none;
-  }
-
   #navigationBar {
     overflow: scroll;
     overflow-x: hidden !important;
@@ -12,6 +7,12 @@
 }
 
 @media (max-height: 525px) {
+  .social-icons {
+    display: none;
+  }
+}
+
+@media (max-height: 560px) {
   .navlogo {
     .version {
       display: none;

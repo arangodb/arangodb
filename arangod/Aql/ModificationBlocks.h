@@ -123,9 +123,6 @@ class UpsertBlock : public ModificationBlock {
  protected:
   /// @brief the actual work horse for updating data
   AqlItemBlock* work(std::vector<AqlItemBlock*>&) override final;
-
- private:
-  bool isShardKeyError(arangodb::velocypack::Slice const) const;
 };
 
 }  // namespace arangodb::aql

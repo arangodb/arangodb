@@ -31,6 +31,7 @@ ulimit -c unlimited -S # enable core files
   --skipNondeterministic true \
   --skipSsl true \
   --skipBoost true \
+  --skipEndpoints true \
   --skipGeo true
 
 success=`cat out/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json`

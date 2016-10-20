@@ -326,7 +326,7 @@ bool Store::check(VPackSlice const& slice) const {
         } else if (oper == "isArray") {  // isArray
           if (!op.value.isBoolean()) {
             LOG_TOPIC(ERR, Logger::AGENCY)
-                << "Non boolsh expression for 'isArray' precondition";
+                << "Non boolean expression for 'isArray' precondition";
             return false;
           }
           bool isArray = (node.type() == LEAF && node.slice().isArray());

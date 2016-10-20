@@ -29,7 +29,6 @@
 #include "GeneralServer/VppCommTask.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Ssl/SslServerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -68,7 +67,7 @@ void GeneralListenTask::handleConnected(std::unique_ptr<Socket> socket,
       break;
 
     default:
-      socket->_socket.close();
+      socket->close();
       return;
   }
 

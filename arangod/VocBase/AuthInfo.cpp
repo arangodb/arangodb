@@ -23,12 +23,11 @@
 
 #include "AuthInfo.h"
 
-#include <chrono>
-
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Aql/Query.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -142,6 +141,16 @@ AuthLevel AuthEntry::canUseDatabase(std::string const& dbname) const {
   return it->second;
 }
 
+void AuthInfo::setJwtSecret(std::string const& jwtSecret) {
+  WRITE_LOCKER(writeLocker, _authJwtLock);
+  _jwtSecret = jwtSecret;
+  _authJwtCache.clear();
+}
+
+std::string AuthInfo::jwtSecret() {
+  return _jwtSecret;
+}
+
 void AuthInfo::clear() {
   _authInfo.clear();
   _authBasicCache.clear();
@@ -221,31 +230,41 @@ void AuthInfo::reload() {
                << "and authorization information";
     return;
   }
+  
+  MUTEX_LOCKER(locker, _queryLock);
+  if (!_outdated) {
+    return;
+  }
+  std::string queryStr("FOR user IN _users RETURN user");
+  auto nullBuilder = std::make_shared<VPackBuilder>();
+  VPackBuilder options;
+  {
+    VPackObjectBuilder b(&options);
+  }
+  auto objectBuilder = std::make_shared<VPackBuilder>(options);
+  
+  arangodb::aql::Query query(false, vocbase, queryStr.c_str(),
+                             queryStr.length(), nullBuilder, objectBuilder,
+                             arangodb::aql::PART_MAIN);
 
   LOG(DEBUG) << "starting to load authentication and authorization information";
-
-  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(vocbase),
-                                  TRI_COL_NAME_USERS, TRI_TRANSACTION_READ);
-
-  int res = trx.begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot start transaction to load authentication";
+  TRI_ASSERT(_queryRegistry != nullptr); 
+  auto queryResult = query.execute(_queryRegistry);
+  
+  if (queryResult.code != TRI_ERROR_NO_ERROR) {
+    if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
+        (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
+    }
+    _outdated = false;
     return;
   }
+  
+  VPackSlice usersSlice = queryResult.result->slice();
 
-  OperationResult users =
-      trx.all(TRI_COL_NAME_USERS, 0, UINT64_MAX, OperationOptions());
-
-  trx.finish(users.code);
-
-  if (users.failed()) {
-    LOG(ERR) << "cannot read users from _users collection";
-    return;
+  if (usersSlice.isNone()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
-
-  auto usersSlice = users.slice();
-
   if (!usersSlice.isArray()) {
     LOG(ERR) << "cannot read users from _users collection";
     return;
@@ -401,41 +420,63 @@ AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
   return result;
 }
 
-AuthResult AuthInfo::checkAuthenticationJWT(std::string const& secret) {
-  std::vector<std::string> const parts = StringUtils::split(secret, '.');
+AuthResult AuthInfo::checkAuthenticationJWT(std::string const& jwt) {
+  try {
+    READ_LOCKER(readLocker, _authJwtLock);
+    auto result = _authJwtCache.get(jwt);
+    if (result._expires) {
+      std::chrono::system_clock::time_point now =
+        std::chrono::system_clock::now();
 
-  if (parts.size() != 3) {
-    LOG(DEBUG) << "Secret contains " << parts.size() << " parts";
-    return AuthResult();
+      if (now >= result._expireTime) {
+        readLocker.unlock();
+        WRITE_LOCKER(writeLocker, _authJwtLock);
+        result = _authJwtCache.get(jwt);
+        if (result._expires && now >= result._expireTime) {
+          try {
+            _authJwtCache.remove(jwt);
+          } catch (std::range_error const& e) {
+          }
+        }
+        return AuthResult();
+      }
+    }
+    return (AuthResult) result;
+  } catch (std::range_error const& e) {
+    // mop: not found
   }
 
+  std::vector<std::string> const parts = StringUtils::split(jwt, '.');
+
+  if (parts.size() != 3) {
+    LOG(TRACE) << "Secret contains " << parts.size() << " parts";
+    return AuthResult();
+  }
+  
   std::string const& header = parts[0];
   std::string const& body = parts[1];
   std::string const& signature = parts[2];
 
+  if (!validateJwtHeader(header)) {
+    LOG(TRACE) << "Couldn't validate jwt header " << header;
+    return AuthResult();
+  }
+
+  AuthJwtResult result = validateJwtBody(body);
+  if (!result._authorized) {
+    LOG(TRACE) << "Couldn't validate jwt body " << body;
+    return AuthResult();
+  }
+
   std::string const message = header + "." + body;
 
-  if (!validateJwtHeader(header)) {
-    LOG(DEBUG) << "Couldn't validate jwt header " << header;
-    return AuthResult();
-  }
-
-  std::string username;
-  if (!validateJwtBody(body, &username)) {
-    LOG(DEBUG) << "Couldn't validate jwt body " << body;
-    return AuthResult();
-  }
-
   if (!validateJwtHMAC256Signature(message, signature)) {
-    LOG(DEBUG) << "Couldn't validate jwt signature " << signature;
+    LOG(TRACE) << "Couldn't validate jwt signature " << signature << " " << _jwtSecret;
     return AuthResult();
   }
-
-  AuthResult result;
-  result._username = username;
-  result._authorized = true;
-
-  return result;
+  WRITE_LOCKER(writeLocker, _authJwtLock);
+  _authJwtCache.put(jwt, result);
+  return (AuthResult) result;
 }
 
 std::shared_ptr<VPackBuilder> AuthInfo::parseJson(std::string const& str,
@@ -491,40 +532,47 @@ bool AuthInfo::validateJwtHeader(std::string const& header) {
   return true;
 }
 
-bool AuthInfo::validateJwtBody(std::string const& body, std::string* username) {
+AuthJwtResult AuthInfo::validateJwtBody(std::string const& body) {
   std::shared_ptr<VPackBuilder> bodyBuilder =
       parseJson(StringUtils::decodeBase64(body), "jwt body");
+  AuthJwtResult authResult;
   if (bodyBuilder.get() == nullptr) {
-    return false;
+    return authResult;
   }
 
   VPackSlice const bodySlice = bodyBuilder->slice();
   if (!bodySlice.isObject()) {
-    return false;
+    return authResult;
   }
 
   VPackSlice const issSlice = bodySlice.get("iss");
   if (!issSlice.isString()) {
-    return false;
+    return authResult;
   }
 
   if (issSlice.copyString() != "arangodb") {
-    return false;
+    return authResult;
   }
-
-  VPackSlice const usernameSlice = bodySlice.get("preferred_username");
-  if (!usernameSlice.isString()) {
-    return false;
+  
+  if (bodySlice.hasKey("preferred_username")) {
+    VPackSlice const usernameSlice = bodySlice.get("preferred_username");
+    if (!usernameSlice.isString()) {
+      return authResult;
+    }
+    authResult._username = usernameSlice.copyString();
+  } else if (bodySlice.hasKey("server_id")) {
+    // mop: hmm...nothing to do here :D
+    // authResult._username = "root";
+  } else {
+    return authResult;
   }
-
-  *username = usernameSlice.copyString();
 
   // mop: optional exp (cluster currently uses non expiring jwts)
   if (bodySlice.hasKey("exp")) {
     VPackSlice const expSlice = bodySlice.get("exp");
 
     if (!expSlice.isNumber()) {
-      return false;
+      return authResult;
     }
 
     std::chrono::system_clock::time_point expires(
@@ -533,19 +581,67 @@ bool AuthInfo::validateJwtBody(std::string const& body, std::string* username) {
         std::chrono::system_clock::now();
 
     if (now >= expires) {
-      return false;
+      return authResult;
     }
+    authResult._expires = true;
+    authResult._expireTime = expires;
   }
-  return true;
+
+  authResult._authorized = true;
+  return authResult;
 }
 
 bool AuthInfo::validateJwtHMAC256Signature(std::string const& message,
                                            std::string const& signature) {
   std::string decodedSignature = StringUtils::decodeBase64U(signature);
-
-  std::string const& jwtSecret = GeneralServerFeature::getJwtSecret();
-  return verifyHMAC(jwtSecret.c_str(), jwtSecret.length(), message.c_str(),
+  
+  return verifyHMAC(_jwtSecret.c_str(), _jwtSecret.length(), message.c_str(),
                     message.length(), decodedSignature.c_str(),
                     decodedSignature.length(),
                     SslInterface::Algorithm::ALGORITHM_SHA256);
+}
+
+std::string AuthInfo::generateRawJwt(VPackBuilder const& bodyBuilder) {
+  VPackBuilder headerBuilder;
+  {
+    VPackObjectBuilder h(&headerBuilder);
+    headerBuilder.add("alg", VPackValue("HS256"));
+    headerBuilder.add("typ", VPackValue("JWT"));
+  }
+
+  std::string fullMessage(StringUtils::encodeBase64(headerBuilder.toJson()) +
+                          "." +
+                          StringUtils::encodeBase64(bodyBuilder.toJson()));
+
+  std::string signature =
+      sslHMAC(_jwtSecret.c_str(), _jwtSecret.length(), fullMessage.c_str(),
+              fullMessage.length(), SslInterface::Algorithm::ALGORITHM_SHA256);
+
+  return fullMessage + "." + StringUtils::encodeBase64U(signature);
+}
+
+std::string AuthInfo::generateJwt(VPackBuilder const& payload) {
+  if (!payload.slice().isObject()) {
+    std::string error = "Need an object to generate a JWT. Got: ";
+    error += payload.slice().typeName();
+    throw std::runtime_error(error);
+  }
+  bool hasIss = payload.slice().hasKey("iss");
+  bool hasIat = payload.slice().hasKey("iat");
+  VPackBuilder bodyBuilder;
+  if (hasIss && hasIat) {
+    bodyBuilder = payload;
+  } else {
+    VPackObjectBuilder p(&bodyBuilder);
+    if (!hasIss) {
+      bodyBuilder.add("iss", VPackValue("arangodb"));
+    }
+    if (!hasIat) {
+      bodyBuilder.add("iat", VPackValue(TRI_microtime() / 1000));
+    }
+    for (auto const& obj : VPackObjectIterator(payload.slice())) {
+      bodyBuilder.add(obj.key.copyString(), obj.value);
+    }
+  }
+  return generateRawJwt(bodyBuilder);
 }

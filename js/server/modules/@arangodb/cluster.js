@@ -33,8 +33,9 @@ var arangodb = require('@arangodb');
 var ArangoCollection = arangodb.ArangoCollection;
 var ArangoError = arangodb.ArangoError;
 var errors = require("internal").errors;
-var request = require('@arangodb/request').request;
+var request = require('@arangodb/request').clusterRequest;
 var wait = require('internal').wait;
+var isEnterprise = require('internal').isEnterprise();
 var _ = require('lodash');
 
 var endpointToURL = function (endpoint) {
@@ -472,12 +473,12 @@ function createLocalCollections (plannedCollections, planVersion,
       servers: [ ourselves ],
     planVersion: planVersion };
 
-    console.error('creating Current/Collections/' + database + '/' +
+    console.debug('creating Current/Collections/' + database + '/' +
                   collInfo.planId + '/' + shard);
     global.ArangoAgency.set('Current/Collections/' + database + '/' +
     collInfo.planId + '/' + shard,
       payload);
-    console.error('creating Current/Collections/' + database + '/' +
+    console.debug('creating Current/Collections/' + database + '/' +
                   collInfo.planId + '/' + shard + ' done.');
   };
 
@@ -786,10 +787,10 @@ function dropLocalCollections (plannedCollections, currentCollections,
 
   var dropCollectionAgency = function (database, shardID, id) {
     try {
-      console.error('dropping Current/Collections/' + database + '/' +
+      console.debug('dropping Current/Collections/' + database + '/' +
                     id + '/' + shardID);
       global.ArangoAgency.remove('Current/Collections/' + database + '/' + id + '/' + shardID);
-      console.error('dropping Current/Collections/' + database + '/' +
+      console.debug('dropping Current/Collections/' + database + '/' +
                     id + '/' + shardID + ' done.');
     } catch (err) {
       // ignore errors
@@ -896,10 +897,10 @@ function cleanupCurrentCollections (plannedCollections, currentCollections,
   writeLocked) {
   var dropCollectionAgency = function (database, collection, shardID) {
     try {
-      console.error('cleaning Current/Collections/' + database + '/' +
+      console.debug('cleaning Current/Collections/' + database + '/' +
                     collection + '/' + shardID);
       global.ArangoAgency.remove('Current/Collections/' + database + '/' + collection + '/' + shardID);
-      console.error('cleaning Current/Collections/' + database + '/' +
+      console.debug('cleaning Current/Collections/' + database + '/' +
                     collection + '/' + shardID + ' done.');
     } catch (err) {
       // ignore errors
@@ -1119,7 +1120,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
             shard, 300);
           console.debug('lockJobId:', lockJobId);
         } catch (err1) {
-          console.error('synchronizeOneShard: exception in startReadLockOnLeader:', err1);
+          console.error('synchronizeOneShard: exception in startReadLockOnLeader:', err1, err1.stack);
         }
         finally {
           cancelBarrier(ep, database, sy.barrierId);
@@ -1477,22 +1478,26 @@ var raiseError = function (code, msg) {
 // //////////////////////////////////////////////////////////////////////////////
 
 var shardList = function (dbName, collectionName) {
-  var ci = global.ArangoClusterInfo.getCollectionInfo(dbName, collectionName);
+  let ci = global.ArangoClusterInfo.getCollectionInfo(dbName, collectionName);
 
   if (ci === undefined || typeof ci !== 'object') {
     throw "unable to determine shard list for '" + dbName + '/' + collectionName + "'";
   }
 
-  var shards = [], shard;
-  for (shard in ci.shards) {
+  let shards = [];
+  for (let shard in ci.shards) {
     if (ci.shards.hasOwnProperty(shard)) {
       shards.push(shard);
     }
   }
 
-  if (shards.length === 0) {
-    raiseError(arangodb.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code,
-      arangodb.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.message);
+  if (shards.length === 0 && isEnterprise) {
+    if (isEnterprise) {
+      return require('@arangodb/clusterEE').getSmartShards(dbName, collectionName, ci);
+    } else {
+      raiseError(arangodb.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code,
+        arangodb.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.message);
+    }
   }
 
   return shards;

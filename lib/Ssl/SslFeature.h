@@ -28,6 +28,8 @@
 #include <openssl/ssl.h>
 #include <boost/asio/ssl.hpp>
 
+#include "Basics/asio-helper.h"
+
 namespace arangodb {
 class SslFeature final : public application_features::ApplicationFeature {
  public:

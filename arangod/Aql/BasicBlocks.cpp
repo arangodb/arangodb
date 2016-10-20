@@ -441,14 +441,17 @@ int LimitBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
 
 AqlItemBlock* ReturnBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
+  traceGetSomeBegin();
   std::unique_ptr<AqlItemBlock> res(
       ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost));
 
   if (res.get() == nullptr) {
+    traceGetSomeEnd(nullptr);
     return nullptr;
   }
 
   if (_returnInheritedResults) {
+    traceGetSomeEnd(res.get());
     return res.release();
   }
 
@@ -491,6 +494,7 @@ AqlItemBlock* ReturnBlock::getSome(size_t atLeast, size_t atMost) {
   delete res.get();
   res.release();
 
+  traceGetSomeEnd(stripped.get());
   return stripped.release();
 
   // cppcheck-suppress style

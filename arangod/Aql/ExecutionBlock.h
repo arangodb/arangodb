@@ -140,6 +140,9 @@ class ExecutionBlock {
   /// if it returns an actual block, it must contain at least one item.
   virtual AqlItemBlock* getSome(size_t atLeast, size_t atMost);
 
+  void traceGetSomeBegin() const;
+  void traceGetSomeEnd(AqlItemBlock const*) const;
+
  protected:
   /// @brief request an AqlItemBlock from the memory manager
   AqlItemBlock* requestBlock(size_t, RegisterId);
@@ -223,6 +226,9 @@ class ExecutionBlock {
 
   /// @brief if this is set, we are done, this is reset to false by execute()
   bool _done;
+
+  /// A copy of the tracing value in the options:
+  double _tracing;
 };
 
 }  // namespace arangodb::aql

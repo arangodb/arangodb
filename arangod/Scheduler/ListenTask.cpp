@@ -26,29 +26,11 @@
 
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
+#include "Scheduler/Acceptor.h"
 #include "Ssl/SslServerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
-
-namespace {
-boost::asio::ssl::context createSslContextFreestanding() {
-  boost::asio::ssl::context context(
-      boost::asio::ssl::context::sslv23);  // generic ssl/tls context
-
-  SslServerFeature* ssl =
-      application_features::ApplicationServer::getFeature<SslServerFeature>(
-          "SslServer");
-  if (ssl) {
-    context = ssl->sslContext();
-    context.set_verify_mode(GeneralServerFeature::verificationMode());
-    context.set_verify_callback(
-        GeneralServerFeature::verificationCallbackAsio());
-  }
-
-  return context;
-}
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -59,8 +41,7 @@ ListenTask::ListenTask(EventLoop loop, Endpoint* endpoint)
       _endpoint(endpoint),
       _bound(false),
       _ioService(loop._ioService),
-      _acceptor(*loop._ioService),
-      _peer(nullptr) {}
+      _acceptor(Acceptor::factory(*loop._ioService, endpoint)) {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -68,7 +49,7 @@ ListenTask::ListenTask(EventLoop loop, Endpoint* endpoint)
 
 void ListenTask::start() {
   try {
-    _endpoint->openAcceptor(_ioService, &_acceptor);
+    _acceptor->open();
     _bound = true;
   } catch (boost::system::system_error const& err) {
     LOG(WARN) << "failed to open endpoint '" << _endpoint->specification()
@@ -90,30 +71,29 @@ void ListenTask::start() {
         LOG(WARN) << "accept failed: " << ec.message();
         LOG(WARN) << "too many accept failures, stopping to report";
       }
-    } else {
-      ConnectionInfo info;
-      // TODO _endpoint->initIncoming(_peer);
-
-      // set the endpoint
-      info.endpoint = _endpoint->specification();
-      info.endpointType = _endpoint->domainType();
-      info.encryptionType = _endpoint->encryption();
-      info.clientAddress = _peer->_peerEndpoint.address().to_string();
-      info.clientPort = _peer->_peerEndpoint.port();
-      info.serverAddress = _endpoint->host();
-      info.serverPort = _endpoint->port();
-
-      handleConnected(std::move(_peer), std::move(info));
     }
 
+    ConnectionInfo info;
+
+    auto peer = _acceptor->movePeer();
+
+    // set the endpoint
+    info.endpoint = _endpoint->specification();
+    info.endpointType = _endpoint->domainType();
+    info.encryptionType = _endpoint->encryption();
+    info.clientAddress = peer->peerAddress();
+    info.clientPort = peer->peerPort();
+    info.serverAddress = _endpoint->host();
+    info.serverPort = _endpoint->port();
+
+    handleConnected(std::move(peer), std::move(info));
+
     if (_bound) {
-      createPeer();
-      _acceptor.async_accept(_peer->_socket, _peer->_peerEndpoint, _handler);
+      _acceptor->asyncAccept(_handler);
     }
   };
 
-  createPeer();
-  _acceptor.async_accept(_peer->_socket, _peer->_peerEndpoint, _handler);
+  _acceptor->asyncAccept(_handler);
 }
 
 void ListenTask::stop() {
@@ -122,20 +102,5 @@ void ListenTask::stop() {
   }
 
   _bound = false;
-  _acceptor.close();
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-void ListenTask::createPeer() {
-  if (_endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-    _peer.reset(new Socket(*_ioService, createSslContextFreestanding(), true));
-  } else {
-    _peer.reset(new Socket(
-        *_ioService,
-        boost::asio::ssl::context(boost::asio::ssl::context::method::sslv23),
-        false));
-  }
+  _acceptor->close();
 }

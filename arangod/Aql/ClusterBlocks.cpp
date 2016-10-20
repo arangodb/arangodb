@@ -223,7 +223,9 @@ bool GatherBlock::hasMore() {
 /// @brief getSome
 AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
+  traceGetSomeBegin();
   if (_done) {
+    traceGetSomeEnd(nullptr);
     return nullptr;
   }
 
@@ -237,6 +239,7 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
     if (res == nullptr) {
       _done = true;
     }
+    traceGetSomeEnd(res);
     return res;
   }
 
@@ -266,6 +269,7 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
 
   if (available == 0) {
     _done = true;
+    traceGetSomeEnd(nullptr);
     return nullptr;
   }
 
@@ -321,6 +325,7 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
     }
   }
 
+  traceGetSomeEnd(res.get());
   return res.release();
 
   // cppcheck-suppress style
@@ -744,7 +749,8 @@ DistributeBlock::DistributeBlock(ExecutionEngine* engine,
       _collection(collection),
       _index(0),
       _regId(ExecutionNode::MaxRegisterId),
-      _alternativeRegId(ExecutionNode::MaxRegisterId) {
+      _alternativeRegId(ExecutionNode::MaxRegisterId),
+      _allowSpecifiedKeys(false) {
   // get the variable to inspect . . .
   VariableId varId = ep->_varId;
 
@@ -765,6 +771,7 @@ DistributeBlock::DistributeBlock(ExecutionEngine* engine,
   }
 
   _usesDefaultSharding = collection->usesDefaultSharding();
+  _allowSpecifiedKeys = ep->_allowSpecifiedKeys;
 }
 
 /// @brief initializeCursor
@@ -837,12 +844,14 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
                                            size_t& skipped,
                                            std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
+  traceGetSomeBegin();
   TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   TRI_ASSERT(result == nullptr && skipped == 0);
 
   size_t clientId = getClientId(shardId);
 
   if (_doneForClient.at(clientId)) {
+    traceGetSomeEnd(result);
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -861,6 +870,7 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
     if (buf.empty()) {
       if (!getBlockForClient(atLeast, atMost, clientId)) {
         _doneForClient.at(clientId) = true;
+        traceGetSomeEnd(result);
         return TRI_ERROR_NO_ERROR;
       }
     }
@@ -872,6 +882,7 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
         buf.pop_front();
       }
       freeCollector();
+      traceGetSomeEnd(result);
       return TRI_ERROR_NO_ERROR;
     }
 
@@ -918,6 +929,7 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
 
   // _buffer is left intact, deleted and cleared at shutdown
 
+  traceGetSomeEnd(result);
   return TRI_ERROR_NO_ERROR;
 
   // cppcheck-suppress style
@@ -985,6 +997,8 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
 
   VPackSlice input = val.slice();  // will throw when wrong type
 
+  bool usedAlternativeRegId = false;
+
   if (input.isNull() && _alternativeRegId != ExecutionNode::MaxRegisterId) {
     // value is set, but null
     // check if there is a second input register available (UPSERT makes use of
@@ -993,6 +1007,7 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
     val = cur->getValueReference(_pos, _alternativeRegId);
 
     input = val.slice();  // will throw when wrong type
+    usedAlternativeRegId = true;
   }
 
   VPackSlice value = input;
@@ -1039,11 +1054,14 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
 
         builder2 = VPackCollection::merge(input, temp.slice(), true);
 
-        // clear the previous value
-        cur->destroyValue(_pos, _regId);
-
-        // overwrite with new value
-        cur->setValue(_pos, _regId, AqlValue(builder2));
+        // clear the previous value and overwrite with new value:
+        if (usedAlternativeRegId) {
+          cur->destroyValue(_pos, _alternativeRegId);
+          cur->setValue(_pos, _alternativeRegId, AqlValue(builder2));
+        } else {
+          cur->destroyValue(_pos, _regId);
+          cur->setValue(_pos, _regId, AqlValue(builder2));
+        }
         value = builder2.slice();
       }
     } else {
@@ -1051,22 +1069,27 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
 
       if (hasCreatedKeyAttribute || value.hasKey(StaticStrings::KeyString)) {
         // a _key was given, but user is not allowed to specify _key
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
+        if (usedAlternativeRegId || !_allowSpecifiedKeys) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
+        }
+      } else {
+        VPackBuilder temp;
+        temp.openObject();
+        temp.add(StaticStrings::KeyString, VPackValue(createKey(value)));
+        temp.close();
+
+        builder2 = VPackCollection::merge(input, temp.slice(), true);
+
+        // clear the previous value and overwrite with new value:
+        if (usedAlternativeRegId) {
+          cur->destroyValue(_pos, _alternativeRegId);
+          cur->setValue(_pos, _alternativeRegId, AqlValue(builder2.slice()));
+        } else {
+          cur->destroyValue(_pos, _regId);
+          cur->setValue(_pos, _regId, AqlValue(builder2.slice()));
+        }
+        value = builder2.slice();
       }
-
-      VPackBuilder temp;
-      temp.openObject();
-      temp.add(StaticStrings::KeyString, VPackValue(createKey(value)));
-      temp.close();
-
-      builder2 = VPackCollection::merge(input, temp.slice(), true);
-
-      // clear the previous value
-      cur->destroyValue(_pos, _regId);
-
-      // overwrite with new value
-      cur->setValue(_pos, _regId, AqlValue(builder2.slice()));
-      value = builder2.slice();
     }
   }
 
@@ -1368,6 +1391,8 @@ int RemoteBlock::shutdown(int errorCode) {
 AqlItemBlock* RemoteBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
+  
+  traceGetSomeBegin();
 
   VPackBuilder builder;
   builder.openObject();
@@ -1393,10 +1418,13 @@ AqlItemBlock* RemoteBlock::getSome(size_t atLeast, size_t atMost) {
   _deltaStats = newStats;
 
   if (VelocyPackHelper::getBooleanValue(responseBody, "exhausted", true)) {
+    traceGetSomeEnd(nullptr);
     return nullptr;
   }
 
-  return new arangodb::aql::AqlItemBlock(responseBody);
+  auto r = new arangodb::aql::AqlItemBlock(responseBody);
+  traceGetSomeEnd(r);
+  return r;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();

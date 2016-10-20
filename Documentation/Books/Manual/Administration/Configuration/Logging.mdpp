@@ -1,10 +1,10 @@
 !CHAPTER Command-Line Options for Logging 
 
-!SUBSECTION Log levels and topics
+!SECTION Log levels and topics
 
 ArangoDB's log output is grouped into topics. `--log.level` can be specified
-multiple times at startup, for as many topics as needed. The log verbosity
-and output files can be adjusted per log topic. For example
+multiple times at startup, for as many topics as needed. The log verbosity and
+output files can be adjusted per log topic. For example
 
 ```
 --log.level startup=trace --log.level queries=trace --log.level info
@@ -35,8 +35,9 @@ The available log levels are:
 
 Note that levels `debug` and `trace` will be very verbose.
 
-Some relevant log topics available in 3.0 are:
+Some relevant log topics available in ArangoDB 3 are:
 
+- `agency`: information about the agency
 - `collector`: information about the WAL collector's state
 - `compactor`: information about the collection datafile compactor
 - `datafiles`: datafile-related operations
@@ -47,9 +48,6 @@ Some relevant log topics available in 3.0 are:
 - `requests`: HTTP requests
 - `startup`: information about server startup and shutdown
 - `threads`: information about threads
-
-The old option `--log.performance` is still available in 3.0. It is now a shortcut
-for the more general option `--log.level performance=trace`.
 
 !SUBSECTION Log outputs
 

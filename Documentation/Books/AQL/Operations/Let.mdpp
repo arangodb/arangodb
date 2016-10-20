@@ -2,10 +2,21 @@
 
 The *LET* statement can be used to assign an arbitrary value to a variable.
 The variable is then introduced in the scope the *LET* statement is placed in.
+
 The general syntax is:
 
 ```
 LET variableName = expression
+```
+
+Variables are immutable in AQL, which means they can not be re-assigned:
+
+```js
+LET a = [1, 2, 3]  // initial assignment
+
+a = PUSH(a, 4)     // syntax error, unexpected identifier
+LET a = PUSH(a, 4) // parsing error, variable 'a' is assigned multiple times
+LET b = PUSH(a, 4) // allowed, result: [1, 2, 3, 4]
 ```
 
 *LET* statements are mostly used to declare complex computations and to avoid
