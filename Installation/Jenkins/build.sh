@@ -541,6 +541,10 @@ if test -n "${TARGET_DIR}";  then
              arangosh/.keepme
         )
 
+        if test "`uname -o`" == "Cygwin"; then
+            SSLDIR=`grep FIND_PACKAGE_MESSAGE_DETAILS_OpenSSL CMakeCache.txt  |sed -e "s/.*optimized;//"  -e "s/;.*//" -e "s;/lib.*lib;;"`
+            cp ${SSLDIR}/*.dll bin
+        fi
         tar -u -f ${TARFILE_TMP} \
             bin etc tests
 
