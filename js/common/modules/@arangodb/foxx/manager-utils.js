@@ -46,11 +46,13 @@ var pathRegex = /^((\.{0,2}(\/|\\))|(~\/)|[a-zA-Z]:\\)/;
 
 const DEFAULT_REPLICATION_FACTOR_SYSTEM = internal.DEFAULT_REPLICATION_FACTOR_SYSTEM;
 
-var getReadableName = function (name) {
-  return name.split(/([-_]|\s)+/).map(function (token) {
-    return token.slice(0, 1).toUpperCase() + token.slice(1);
-  }).join(' ');
-};
+function getReadableName (name) {
+  return name.charAt(0).toUpperCase() + name.substr(1)
+  .replace(/([-_]|\s)+/g, ' ')
+  .replace(/([a-z])([A-Z])/g, (m) => `${m[0]} ${m[1]}`)
+  .replace(/([A-Z])([A-Z][a-z])/g, (m) => `${m[0]} ${m[1]}`)
+  .replace(/\s([a-z])/g, (m) => ` ${m[0].toUpperCase()}`);
+}
 
 var getStorage = function () {
   var c = db._collection('_apps');
