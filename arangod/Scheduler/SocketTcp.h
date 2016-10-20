@@ -45,8 +45,6 @@ class SocketTcp: public Socket {
     
     void setNonBlocking(bool v) override { _socket.non_blocking(v); }
     
-    boost::asio::serial_port_service::native_handle_type nativeHandle() override { return _socket.native_handle(); }
-    
     std::string peerAddress() override { return _peerEndpoint.address().to_string(); }
     
     int peerPort() override { return _peerEndpoint.port(); }
