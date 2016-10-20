@@ -101,7 +101,6 @@ V8DealerFeature::V8DealerFeature(
   requiresElevatedPrivileges(false);
   startsAfter("Action");
   startsAfter("Database");
-  startsAfter("QueryRegistry");
   startsAfter("Random");
   startsAfter("Recovery");
   startsAfter("Scheduler");
