@@ -178,7 +178,10 @@ std::vector<bool> Store::apply(query_t const& query, bool verbose) {
       }
 
       // Wake up TTL processing
-      _cv.signal();
+      {
+        CONDITION_LOCKER(guard, _cv);
+        _cv.signal();
+      }
 
     } catch (std::exception const& e) {  // Catch any erorrs
       LOG_TOPIC(ERR, Logger::AGENCY) << __FILE__ << ":" << __LINE__ << " "
@@ -503,7 +506,6 @@ bool Store::start() {
 
 /// Work ttls and callbacks
 void Store::run() {
-  CONDITION_LOCKER(guard, _cv);
   while (!this->isStopping()) {  // Check timetable and remove overage entries
 
     std::chrono::microseconds t{0};
@@ -517,10 +519,13 @@ void Store::run() {
       }
     }
 
-    if (t != std::chrono::microseconds{0}) {
-      _cv.wait(t.count());
-    } else {
-      _cv.wait();
+    {
+      CONDITION_LOCKER(guard, _cv);
+      if (t != std::chrono::microseconds{0}) {
+        _cv.wait(t.count());
+      } else {
+        _cv.wait();
+      }
     }
 
     toClear = clearExpired();

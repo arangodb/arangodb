@@ -299,12 +299,13 @@ void Agent::sendAppendEntriesRPC() {
 
       term_t t(0);
 
+      index_t last_confirmed;
       {
         MUTEX_LOCKER(mutexLocker, _ioLock);
         t = this->term();
+        last_confirmed = _confirmed[followerId];
       }
 
-      index_t last_confirmed = _confirmed[followerId];
       std::vector<log_t> unconfirmed = _state.get(last_confirmed);
 
       if (unconfirmed.empty()) {
