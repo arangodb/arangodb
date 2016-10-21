@@ -131,9 +131,10 @@ std::string Agent::endpoint() const {
 
 /// Handle voting
 priv_rpc_ret_t Agent::requestVote(
-  term_t t, std::string const& id, index_t lastLogIndex,
-  index_t lastLogTerm, query_t const& query) {
-  bool doIVote = _constituent.vote(t, id, lastLogIndex, lastLogTerm);
+    term_t termOfPeer, std::string const& id, index_t lastLogIndex,
+    index_t lastLogTerm, query_t const& query) {
+
+  bool doIVote = _constituent.vote(termOfPeer, id, lastLogIndex, lastLogTerm);
   return priv_rpc_ret_t(doIVote, this->term());
 }
 
@@ -240,24 +241,18 @@ bool Agent::recvAppendEntriesRPC(
   term_t term, std::string const& leaderId, index_t prevIndex, term_t prevTerm,
   index_t leaderCommitIndex, query_t const& queries) {
 
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Got AppendEntriesRPC from "
+    << leaderId << " with term " << term;
+
   // Update commit index
   if (queries->slice().type() != VPackValueType::Array) {
     LOG_TOPIC(WARN, Logger::AGENCY)
-      << "Received malformed entries for appending. Discarting!";
+      << "Received malformed entries for appending. Discarding!";
     return false;
   }
 
   MUTEX_LOCKER(mutexLocker, _ioLock);
 
-  if (this->term() > term) {                      // peer at higher term
-    if (leaderCommitIndex >= _lastCommitIndex) {  //
-      _constituent.follow(term);
-    } else {
-      LOG_TOPIC(WARN, Logger::AGENCY)
-        << "I have a higher term than RPC caller.";
-      return false;
-    }
-  }
   if (!_constituent.checkLeader(term, leaderId, prevIndex, prevTerm)) {
     LOG_TOPIC(WARN, Logger::AGENCY) << "Not accepting appendEntries from "
       << leaderId;
@@ -313,6 +308,8 @@ void Agent::sendAppendEntriesRPC() {
       std::vector<log_t> unconfirmed = _state.get(last_confirmed);
 
       if (unconfirmed.empty()) {
+        // this can only happen if the log is totally empty (I think, Max)
+        // and so it is OK, to skip the time check here
         continue;
       }
 
@@ -321,8 +318,8 @@ void Agent::sendAppendEntriesRPC() {
       duration<double> m =
         system_clock::now() - _lastSent[followerId];
 
-      if (highest == _lastHighest[followerId]
-          && 0.5 * _config.minPing() > m.count()) {
+      if (highest == _lastHighest[followerId] &&
+          m.count() < 0.5 * _config.minPing()) {
         continue;
       }
 
@@ -355,6 +352,10 @@ void Agent::sendAppendEntriesRPC() {
       }
 
       // Send request
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
+          << "Sending AppendEntriesRPC with " << unconfirmed.size() - 1
+          << " entries to " << followerId << "...";
+
       auto headerFields =
         std::make_unique<std::unordered_map<std::string, std::string>>();
       arangodb::ClusterComm::instance()->asyncRequest(
@@ -815,35 +816,30 @@ void Agent::notify(query_t const& message) {
 
   if (!slice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        20011,
+        TRI_ERROR_AGENCY_INFORM_MUST_BE_OBJECT,
         std::string("Inform message must be an object. Incoming type is ") +
             slice.typeName());
   }
 
   if (!slice.hasKey("id") || !slice.get("id").isString()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        20013, "Inform message must contain string parameter 'id'");
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_ID);
   }
   if (!slice.hasKey("term")) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        20012, "Inform message must contain uint parameter 'term'");
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_TERM);
   }
   _constituent.update(slice.get("id").copyString(),
                       slice.get("term").getUInt());
 
   if (!slice.hasKey("active") || !slice.get("active").isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        20014, "Inform message must contain array 'active'");
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_ACTIVE);
   }
   if (!slice.hasKey("pool") || !slice.get("pool").isObject()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(20015,
-                                   "Inform message must contain object 'pool'");
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL);
   }
 
   _config.update(message);
   _state.persistActiveAgents(_config.activeToBuilder(),
                              _config.poolToBuilder());
-
 }
 
 // Rebuild key value stores
@@ -868,7 +864,7 @@ void Agent::lastCommitted(arangodb::consensus::index_t lastCommitIndex) {
 }
 
 /// Last log entry
-log_t const& Agent::lastLog() const { return _state.lastLog(); }
+log_t Agent::lastLog() const { return _state.lastLog(); }
 
 /// Get spearhead
 Store const& Agent::spearhead() const { return _spearhead; }

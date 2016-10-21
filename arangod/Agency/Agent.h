@@ -140,7 +140,7 @@ class Agent : public arangodb::Thread {
   bool rebuildDBs();
 
   /// @brief Last log entry
-  log_t const& lastLog() const;
+  log_t lastLog() const;
 
   /// @brief State machine
   State const& state() const;
@@ -157,7 +157,7 @@ class Agent : public arangodb::Thread {
   /// @brief Start constituent
   void startConstituent();
 
-  /// @brief Get notification as inactve pool member
+  /// @brief Get notification as inactive pool member
   void notify(query_t const&);
 
   /// @brief Detect active agent failures
