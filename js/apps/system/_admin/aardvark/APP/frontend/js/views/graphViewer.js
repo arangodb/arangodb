@@ -479,7 +479,7 @@
           if (nodeIds.includes(edge.source) && nodeIds.includes(edge.target)) {
             returnObj.edges.push(edge);
           }
-          /* how to handle not correct data? 
+          /* how to handle not correct data?
           else {
             console.log('target to from is missing');
           }
@@ -2148,10 +2148,10 @@
           style2 = 'color: rgb(64, 74, 83); cursor: pointer; position: absolute; right: 30px; margin-top: 10px; margin-right: -15px';
         }
 
-        $('#graph-container').append(
+        $('#graph-container').after(
           '<div id="toggleForce" style="' + style2 + '">' +
             '<i style="margin-right: 5px;" class="fa fa-pause"></i><span> Stop layout</span>' +
-              '</div>'
+          '</div>'
         );
         self.startLayout();
 
@@ -2180,7 +2180,6 @@
 
         window.setTimeout(function () {
           self.stopLayout();
-          self.reInitDragListener();
         }, duration);
       } else if (self.algorithm === 'fruchtermann') {
         // Start the Fruchterman-Reingold algorithm:
@@ -2273,6 +2272,11 @@
 
     reInitDragListener: function () {
       var self = this;
+
+      if (this.dragListener !== undefined) {
+        sigma.plugins.killDragNodes(this.currentGraph);
+        this.dragListener = {};
+      }
 
       // drag nodes listener
       this.dragListener = sigma.plugins.dragNodes(this.currentGraph, this.currentGraph.renderers[0]);
