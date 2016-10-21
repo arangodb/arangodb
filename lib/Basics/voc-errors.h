@@ -614,6 +614,9 @@
 /// - 4002: @LIT{cannot drop this smart collection}
 ///   This smart collection cannot be dropped, it dictates sharding in the
 ///   graph.
+/// - 4003: @LIT{in smart vertex collections _key must be prefixed with the value of the smart graph attribute}
+///   In a smart vertex collection _key must be prefixed with the value of the
+///   smart graph attribute.
 /// - 20011: @LIT{Inform message must be an object.}
 ///   The inform message in the agency must be an object.
 /// - 20012: @LIT{Inform message must contain uint parameter 'term'}
@@ -3253,6 +3256,18 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CANNOT_DROP_SMART_COLLECTION                            (4002)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 4003: ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE
+///
+/// in smart vertex collections _key must be prefixed with the value of the
+/// smart graph attribute
+///
+/// In a smart vertex collection _key must be prefixed with the value of the
+/// smart graph attribute.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE         (4003)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 20011: ERROR_AGENCY_INFORM_MUST_BE_OBJECT
