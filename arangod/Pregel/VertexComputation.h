@@ -20,12 +20,19 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Message.h"
+#include "Basics/Common.h"
+#include <cstddef>
 
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
+#ifndef ARANGODB_PREGEL_VERTEX_H
+#define ARANGODB_PREGEL_VERTEX_H 1
+namespace arangodb {
+namespace pregel {
+  
+  enum VertexActivationState {
+    ACTIVE,
+    STOPPED
+  };
 
-
-using namespace arangodb;
-using namespace arangodb::pregel;
-
+}
+}
+#endif

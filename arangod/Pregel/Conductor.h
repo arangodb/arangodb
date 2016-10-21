@@ -30,6 +30,8 @@
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/vocbase.h"
 
+#include "Aggregator.h"
+
 
 namespace arangodb {
 namespace pregel {
@@ -45,6 +47,7 @@ namespace pregel {
               std::shared_ptr<LogicalCollection> vertexCollection,
               std::shared_ptr<LogicalCollection> edgeCollection,
               std::string const& algorithm);
+      ~Conductor();
     
     void start();
     void finishedGlobalStep(VPackSlice &data);//

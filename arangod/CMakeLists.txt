@@ -370,7 +370,7 @@ add_executable(${BIN_ARANGOD}
   Wal/Slot.cpp
   Wal/Slots.cpp
   Wal/SynchronizerThread.cpp
-  Pregel/Configuration.h
+  Pregel/Algorithm.cpp
   Pregel/Conductor.cpp
   Pregel/PregelFeature.cpp
   Pregel/InMessageCache.cpp
@@ -380,7 +380,7 @@ add_executable(${BIN_ARANGOD}
   Pregel/Worker.cpp
   Pregel/WorkerContext.cpp
   Pregel/WorkerJob.cpp
-  Pregel/GraphState.cpp
+  Pregel/GraphStore.cpp
   Pregel/Utils.cpp
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}
 )

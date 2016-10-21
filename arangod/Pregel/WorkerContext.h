@@ -29,7 +29,8 @@
 namespace arangodb {
     class SingleCollectionTransaction;
 namespace pregel {
-  
+    
+    typedef unsigned int prglSeq_t;
   class InMessageCache;
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -83,9 +84,9 @@ namespace pregel {
     
   private:
     /// @brief guard to make sure the database is not dropped while used by us
-      const unsigned int _executionNumber;
-      unsigned int _globalSuperstep = 0;
-      unsigned int _expectedGSS = 0;
+      const prglSeq_t _executionNumber;
+      prglSeq_t _globalSuperstep = 0;
+      prglSeq_t _expectedGSS = 0;
       std::string _coordinatorId;
       std::string _database;
       std::string _vertexCollectionName, _vertexCollectionPlanId;

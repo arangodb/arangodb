@@ -20,7 +20,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Vertex.h"
+#include "VertexComputation.h"
 #include "OutMessageCache.h"
 
 #include "Basics/StaticStrings.h"

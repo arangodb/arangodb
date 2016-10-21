@@ -55,6 +55,13 @@ _algorithm(algorithm) {
   LOG(INFO) << "constructed conductor";
 }
 
+Conductor::~Conductor() {
+    /*for (auto const &it : _aggregators) {
+        delete(it.second);
+    }
+    _aggregators.clear();*/
+}
+
 static void printResults(std::vector<ClusterCommRequest> const &requests) {
   for (auto const& req : requests) {
     auto& res = req.result;

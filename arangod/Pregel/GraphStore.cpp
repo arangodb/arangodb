@@ -20,26 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_GRAPH_STATE_H
-#define ARANGODB_PREGEL_GRAPH_STATE_H 1
+#include "GraphStore.h"
 
-#include "Basics/Common.h"
+using namespace arangodb;
+using namespace arangodb::pregel;
 
-namespace arangodb {
-namespace pregel {
-  
-    
-////////////////////////////////////////////////////////////////////////////////
-/// @brief carry graph data for a worker job
-////////////////////////////////////////////////////////////////////////////////
-  class GraphState {
-  public:
-      GraphState() {}
-      
-      
-  private:
-      
-  };
-}
-}
-#endif

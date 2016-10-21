@@ -38,7 +38,7 @@ namespace arangodb {
 namespace pregel {
     class WorkerContext;
     
-    //template <typename T>
+    template<typename M>
     class MessageIterator {
         friend class InMessageCache;
     public:
@@ -106,6 +106,7 @@ namespace pregel {
     
 /* In the longer run, maybe write optimized implementations for certain use cases. For example threaded
  processing */
+template<class M>
 class InMessageCache {
     friend class OutMessageCache;
 public:
