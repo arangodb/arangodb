@@ -66,7 +66,7 @@ VppRequest::VppRequest(ConnectionInfo const& connectionInfo,
       _message(std::move(message)),
       _headers(nullptr),
       _messageId(messageId) {
-  _protocol = "vpp";
+  _protocol = "vst";
   _contentType = ContentType::VPACK;
   _contentTypeResponse = ContentType::VPACK;
   parseHeaderInformation();

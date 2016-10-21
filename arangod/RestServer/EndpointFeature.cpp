@@ -59,7 +59,7 @@ void EndpointFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--server.endpoint",
                      "endpoint for client requests (e.g. "
                      "'http+tcp://127.0.0.1:8529', or "
-                     "'vpp+ssl://192.168.1.1:8529')",
+                     "'vst+ssl://192.168.1.1:8529')",
                      new VectorParameter<StringParameter>(&_endpoints));
 
   options->addSection("tcp", "TCP features");

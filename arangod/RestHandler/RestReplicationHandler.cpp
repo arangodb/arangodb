@@ -793,7 +793,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
                           httpRequest->body(), *headers, 300.0);
   } else {
     // do we need to handle multiple payloads here - TODO
-    // here we switch vorm vpp to http?!
+    // here we switch vorm vst to http?!
     // i am not allowed to change cluster comm!
     res = cc->syncRequest("", TRI_NewTickServer(), "server:" + DBserver,
                           _request->requestType(),

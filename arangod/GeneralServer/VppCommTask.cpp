@@ -8,7 +8,7 @@
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     vpp://www.apache.org/licenses/LICENSE-2.0
+///     http://www.apache.org/licenses/LICENSE-2.0
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -68,7 +68,7 @@ VppCommTask::VppCommTask(EventLoop loop, GeneralServer* server,
     "Authentication");
   TRI_ASSERT(_authentication != nullptr);
 
-  _protocol = "vpp";
+  _protocol = "vst";
   _readBuffer.reserve(
       _bufferLength);  // ATTENTION <- this is required so we do not
                        // loose information during a resize
@@ -118,7 +118,7 @@ void VppCommTask::addResponse(VppResponse* response) {
 
   // and give some request information
   LOG_TOPIC(INFO, Logger::REQUESTS)
-      << "\"vpp-request-end\",\"" << (void*)this << "\",\""
+      << "\"vst-request-end\",\"" << (void*)this << "\",\""
       << _connectionInfo.clientAddress << "\",\""
       << VppRequest::translateVersion(_protocolVersion) << "\","
       << static_cast<int>(response->responseCode()) << ","
@@ -256,11 +256,11 @@ bool VppCommTask::processRead() {
   if (doExecute) {
     VPackSlice header = message.header();
 
-    LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"vpp-request-header\",\""
+    LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"vst-request-header\",\""
                                        << "\"," << message.header().toJson()
                                        << "\"";
 
-    LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"vpp-request-payload\",\""
+    LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"vst-request-payload\",\""
                                        << "\"," << message.payload().toJson()
                                        << "\"";
 

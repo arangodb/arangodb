@@ -258,16 +258,22 @@ bool HttpCommTask::processRead() {
     if (ptr < end) {
       _readPosition = ptr - _readBuffer.c_str() + 4;
 
+      char const* sptr = _readBuffer.c_str() + _startPosition;
+      size_t slen = _readPosition - _startPosition;
+
+      if (slen == 11 && memcmp(sptr, "VST/1.1", 7) == 0) {
+        LOG(WARN) << "got VelocyStream request on HTTP port";
+        return false;
+      }
+
       LOG(TRACE) << "HTTP READ FOR " << (void*)this << ": "
-                 << std::string(_readBuffer.c_str() + _startPosition,
-                                _readPosition - _startPosition);
+                 << std::string(sptr, slen);
 
       // check that we know, how to serve this request and update the connection
       // information, i. e. client and server addresses and ports and create a
       // request context for that request
-      _incompleteRequest.reset(new HttpRequest(
-          _connectionInfo, _readBuffer.c_str() + _startPosition,
-          _readPosition - _startPosition, _allowMethodOverride));
+      _incompleteRequest.reset(
+          new HttpRequest(_connectionInfo, sptr, slen, _allowMethodOverride));
 
       GeneralServerFeature::HANDLER_FACTORY->setRequestContext(
           _incompleteRequest.get());
@@ -383,8 +389,7 @@ bool HttpCommTask::processRead() {
             l = 6;
           }
 
-          LOG(WARN) << "got corrupted HTTP request '"
-                    << std::string(_readBuffer.c_str() + _startPosition, l)
+          LOG(WARN) << "got corrupted HTTP request '" << std::string(sptr, l)
                     << "'";
 
           // bad request, method not allowed

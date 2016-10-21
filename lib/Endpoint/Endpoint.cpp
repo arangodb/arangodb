@@ -93,9 +93,10 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
     copy = copy.substr(5);
   }
 
-  if (StringUtils::isPrefix(copy, "vpp+")) {
+  if (StringUtils::isPrefix(copy, "vpp+") ||
+      StringUtils::isPrefix(copy, "vst+")) {
     protocol = TransportType::VPP;
-    prefix = "vpp+";
+    prefix = "vst+";
     copy = copy.substr(4);
   }
 
@@ -212,7 +213,8 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
   if (StringUtils::isPrefix(copy, "http+")) {
     protocol = TransportType::HTTP;
     copy = copy.substr(5);
-  } else if (StringUtils::isPrefix(copy, "vpp+")) {
+  } else if (StringUtils::isPrefix(copy, "vpp+") ||
+             StringUtils::isPrefix(copy, "vst+")) {
     protocol = TransportType::VPP;
     copy = copy.substr(4);
   } else {
@@ -320,7 +322,7 @@ std::string const Endpoint::defaultEndpoint(TransportType type) {
              StringUtils::itoa(EndpointIp::_defaultPortHttp);
 
     case TransportType::VPP:
-      return "vpp+tcp://" + std::string(EndpointIp::_defaultHost) + ":" +
+      return "vst+tcp://" + std::string(EndpointIp::_defaultHost) + ":" +
              StringUtils::itoa(EndpointIp::_defaultPortVpp);
 
     default: {
