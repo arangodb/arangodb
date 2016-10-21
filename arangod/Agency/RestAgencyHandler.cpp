@@ -227,6 +227,7 @@ RestStatus RestAgencyHandler::handleWrite() {
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
         return RestStatus::DONE;
       } else {
+        TRI_ASSERT(ret.redirect != _agent->leaderID());
         redirectRequest(ret.redirect);
       }
     }

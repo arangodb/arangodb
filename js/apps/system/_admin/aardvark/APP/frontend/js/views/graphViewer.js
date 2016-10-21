@@ -2145,7 +2145,7 @@
         var style2 = 'color: rgb(64, 74, 83); cursor: pointer; position: absolute; right: 30px; bottom: 40px; z-index: 9999;';
 
         if (self.aqlMode) {
-          style2 = 'color: rgb(64, 74, 83); cursor: pointer; position: absolute; right: 30px; margin-top: -30px;';
+          style2 = 'color: rgb(64, 74, 83); cursor: pointer; position: absolute; right: 30px; margin-top: 10px; margin-right: -15px';
         }
 
         $('#graph-container').append(
@@ -2362,8 +2362,7 @@ $('#deleteNodes').remove();
       this.layouting = true;
       if (this.aqlMode) {
         this.currentGraph.startForceAtlas2({
-          worker: true,
-          edgeWeightInfluence: 2
+          worker: true
         });
       } else {
         this.currentGraph.startForceAtlas2({

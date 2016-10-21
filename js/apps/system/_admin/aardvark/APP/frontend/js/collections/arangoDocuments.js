@@ -350,6 +350,9 @@
               console.log(err);
             }
           }
+        },
+        error: function (msg) {
+          callback(true, msg.responseJSON.errorMessage);
         }
       });
     }

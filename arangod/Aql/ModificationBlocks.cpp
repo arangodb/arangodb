@@ -201,15 +201,15 @@ void ModificationBlock::handleResult(int code, bool ignoreErrors,
 /// @brief process the result of a data-modification operation
 void ModificationBlock::handleBabyResult(std::unordered_map<int, size_t> const& errorCounter,
                                          size_t numBabies,
-                                         bool ignoreErrors,
-                                         std::string const* errorMessage) {
+                                         bool ignoreAllErrors,
+                                         bool ignoreDocumentNotFound) {
   if (errorCounter.empty()) {
     // update the success counter
     // All successful.
     _engine->_stats.writesExecuted += numBabies;
     return;
   }
-  if (ignoreErrors) {
+  if (ignoreAllErrors) {
     for (auto const& pair : errorCounter) {
       // update the ignored counter
       _engine->_stats.writesIgnored += pair.second;
@@ -220,11 +220,24 @@ void ModificationBlock::handleBabyResult(std::unordered_map<int, size_t> const& 
     _engine->_stats.writesExecuted += numBabies;
     return;
   }
-  auto const first = errorCounter.begin();
+  auto first = errorCounter.begin();
+  if (ignoreDocumentNotFound && first->first == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
 
-  // bubble up any error
-  if (errorMessage != nullptr && !errorMessage->empty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(first->first, *errorMessage);
+    if (errorCounter.size() == 1) {
+      // We only have Document not found. Fix statistics and ignore
+      // update the ignored counter
+      _engine->_stats.writesIgnored += first->second;
+      numBabies -= first->second;
+      // update the success counter
+      _engine->_stats.writesExecuted += numBabies;
+      return;
+    }
+
+    // Sorry we have other errors as well.
+    // No point in fixing statistics.
+    // Throw other error.
+    ++first;
+    TRI_ASSERT(first != errorCounter.end());
   }
 
   THROW_ARANGO_EXCEPTION(first->first);
@@ -363,7 +376,10 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
             ++dstRow;
           }
         } else {
-          handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toRemove.length()), ep->_options.ignoreErrors);
+          handleBabyResult(opRes.countErrorCodes,
+                           static_cast<size_t>(toRemove.length()),
+                           ep->_options.ignoreErrors,
+                           ignoreDocumentNotFound);
           dstRow += n;
         }
       } else {
@@ -510,7 +526,8 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
           }
         }
 
-        handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toSend.length()),
+        handleBabyResult(opRes.countErrorCodes,
+                         static_cast<size_t>(toSend.length()),
                          ep->_options.ignoreErrors);
       }
     }
@@ -599,7 +616,7 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
         // value is an object
         key.clear();
         if (hasKeyVariable) {
-          // seperate key specification
+          // separate key specification
           AqlValue const& k = res->getValueReference(i, keyRegisterId);
           errorCode = extractKey(k, key);
         } else {
@@ -680,6 +697,9 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
       handleResult(errorCode, ep->_options.ignoreErrors, &errorMessage);
       ++dstRow;
     } else {
+      handleBabyResult(opRes.countErrorCodes,
+                       static_cast<size_t>(toUpdate.length()),
+                       ep->_options.ignoreErrors, ignoreDocumentNotFound);
       if (producesOutput) {
         VPackSlice resultList = opRes.slice();
         TRI_ASSERT(resultList.isArray());
@@ -706,8 +726,6 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
       } else {
         dstRow += n;
       }
-      handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toUpdate.length()),
-                       ep->_options.ignoreErrors);
     }
     // done with a block
 
@@ -891,7 +909,8 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
               ++i;
             }
           }
-          handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toInsert.length()),
+          handleBabyResult(opRes.countErrorCodes,
+                           static_cast<size_t>(toInsert.length()),
                            ep->_options.ignoreErrors);
         }
       } else {
@@ -917,6 +936,9 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
             // update
             opRes = _trx->update(_collection->name, toUpdate, options);
           }
+          handleBabyResult(opRes.countErrorCodes,
+                           static_cast<size_t>(toUpdate.length()),
+                           ep->_options.ignoreErrors);
           if (producesOutput) {
             VPackSlice resultList = opRes.slice();
             TRI_ASSERT(resultList.isArray());
@@ -932,8 +954,6 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
               ++i;
             }
           }
-          handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toUpdate.length()),
-                           ep->_options.ignoreErrors);
         }
       } else {
         OperationResult opRes;
@@ -1118,6 +1138,9 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
       handleResult(errorCode, ep->_options.ignoreErrors, &errorMessage);
       ++dstRow;
     } else {
+      handleBabyResult(opRes.countErrorCodes,
+                       static_cast<size_t>(toUpdate.length()),
+                       ep->_options.ignoreErrors, ignoreDocumentNotFound);
       if (producesOutput) {
         VPackSlice resultList = opRes.slice();
         TRI_ASSERT(resultList.isArray());
@@ -1144,8 +1167,6 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
       } else {
         dstRow += n;
       }
-      handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toUpdate.length()),
-                       ep->_options.ignoreErrors);
     }
 
     // done with a block

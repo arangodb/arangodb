@@ -230,8 +230,8 @@ while [ $# -gt 0 ];  do
              PAR=""
              PARALLEL_BUILDS=""
              GENERATOR="Visual Studio 14 Win64"
-             MAKE='cmake --build . --config RelWithDebInfo'
-             PACKAGE_MAKE='cmake --build . --config RelWithDebInfo --target'
+             MAKE="cmake --build . --config ${BUILD_CONFIG}"
+             PACKAGE_MAKE="cmake --build . --config ${BUILD_CONFIG} --target"
              CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DV8_TARGET_ARCHS=Release"
              ;;
 
@@ -541,6 +541,11 @@ if test -n "${TARGET_DIR}";  then
              arangosh/.keepme
         )
 
+        if test "`uname -o||true`" == "Cygwin"; then
+            SSLDIR=`grep FIND_PACKAGE_MESSAGE_DETAILS_OpenSSL CMakeCache.txt  |sed -e "s/.*optimized;//"  -e "s/;.*//" -e "s;/lib.*lib;;"  -e "s;\([a-zA-Z]*\):;/cygdrive/\1;"`
+            DLLS=`find ${SSLDIR} -name \*.dll |grep -i release`
+            cp ${DLLS} bin
+        fi
         tar -u -f ${TARFILE_TMP} \
             bin etc tests
 

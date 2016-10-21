@@ -130,4 +130,6 @@ Furthermore the AQL editor displays query profiling information.
 Added a new Graph Viewer in order to exchange the technically obsolete version. The new Graph
 Viewer is based on Canvas but does also include a first WebGL implementation (limited
 functionality - will change in the future). The new Graph Viewer offers a smooth way to
-discover and visualize your graphs.  
+discover and visualize your graphs.
+
+The shard view in cluster mode now displays a progress indicator while moving shards. 

@@ -55,8 +55,9 @@ class ModificationBlock : public ExecutionBlock {
   /// @brief process the result of a data-modification operation
   void handleResult(int, bool, std::string const* errorMessage = nullptr);
 
-  void handleBabyResult(std::unordered_map<int, size_t> const&, size_t, bool,
-                        std::string const* errorMessage = nullptr);
+  void handleBabyResult(std::unordered_map<int, size_t> const&, size_t,
+                        bool ignoreAllErrors,
+                        bool ignoreDocumentNotFound = false);
 
  protected:
   /// @brief output register ($OLD)
