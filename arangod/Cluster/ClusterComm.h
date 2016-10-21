@@ -26,10 +26,10 @@
 
 #include "Basics/Common.h"
 
+#include "Agency/AgencyComm.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Thread.h"
-#include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Logger/Logger.h"
 #include "Rest/GeneralRequest.h"

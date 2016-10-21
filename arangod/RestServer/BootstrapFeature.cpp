@@ -22,8 +22,8 @@
 
 #include "RestServer/BootstrapFeature.h"
 
+#include "Agency/AgencyComm.h"
 #include "Aql/QueryList.h"
-#include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/RestHandlerFactory.h"

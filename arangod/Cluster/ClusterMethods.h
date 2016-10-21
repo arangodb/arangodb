@@ -25,14 +25,15 @@
 #define ARANGOD_CLUSTER_CLUSTER_METHODS_H 1
 
 #include "Basics/Common.h"
-#include "Cluster/AgencyComm.h"
+
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Agency/AgencyComm.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Rest/HttpResponse.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
-
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace velocypack {

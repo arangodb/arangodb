@@ -22,15 +22,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ServerState.h"
-#include "Basics/ReadLocker.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Basics/WriteLocker.h"
-#include "Logger/Logger.h"
-#include "Cluster/AgencyComm.h"
-#include "Cluster/ClusterInfo.h"
 
 #include <iomanip>
 #include <sstream>
+
+#include "Agency/AgencyComm.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Basics/WriteLocker.h"
+#include "Cluster/ClusterInfo.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

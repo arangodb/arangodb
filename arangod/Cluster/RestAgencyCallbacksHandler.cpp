@@ -22,9 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAgencyCallbacksHandler.h"
+
+#include "Agency/AgencyCallbackRegistry.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
-#include "Cluster/AgencyCallbackRegistry.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;

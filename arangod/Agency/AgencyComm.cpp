@@ -19,6 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgencyComm.h"
@@ -54,20 +55,12 @@ static void addEmptyVPackObject(std::string const& name,
   VPackObjectBuilder c(&builder);
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief constructs an operation
-//////////////////////////////////////////////////////////////////////////////
-
 AgencyOperation::AgencyOperation(std::string const& key,
                                  AgencySimpleOperationType opType)
     : _key(AgencyComm::prefixPath() + key), _opType() {
   _opType.type = AgencyOperationType::SIMPLE;
   _opType.simple = opType;
 }
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief constructs an operation
-//////////////////////////////////////////////////////////////////////////////
 
 AgencyOperation::AgencyOperation(std::string const& key,
                                  AgencyValueOperationType opType,
@@ -76,10 +69,6 @@ AgencyOperation::AgencyOperation(std::string const& key,
   _opType.type = AgencyOperationType::VALUE;
   _opType.value = opType;
 }
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief adds the operation formatted as an attribute in a vpack object
-//////////////////////////////////////////////////////////////////////////////
 
 void AgencyOperation::toVelocyPack(VPackBuilder& builder) const {
   builder.add(VPackValue(_key));
@@ -100,24 +89,12 @@ void AgencyOperation::toVelocyPack(VPackBuilder& builder) const {
   }
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a precondition
-//////////////////////////////////////////////////////////////////////////////
-
 AgencyPrecondition::AgencyPrecondition(std::string const& key, Type t, bool e)
     : key(AgencyComm::prefixPath() + key), type(t), empty(e) {}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a precondition
-//////////////////////////////////////////////////////////////////////////////
 
 AgencyPrecondition::AgencyPrecondition(std::string const& key, Type t,
                                        VPackSlice s)
     : key(AgencyComm::prefixPath() + key), type(t), empty(false), value(s) {}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief adds the precondition formatted as an attribute in a vpack obj
-//////////////////////////////////////////////////////////////////////////////
 
 void AgencyPrecondition::toVelocyPack(VPackBuilder& builder) const {
   if (type != AgencyPrecondition::NONE) {
@@ -139,19 +116,11 @@ void AgencyPrecondition::toVelocyPack(VPackBuilder& builder) const {
   }
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief converts the transaction to json
-//////////////////////////////////////////////////////////////////////////////
-
 std::string AgencyWriteTransaction::toJson() const {
   VPackBuilder builder;
   toVelocyPack(builder);
   return builder.toJson();
 }
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief converts the transaction to velocypack
-//////////////////////////////////////////////////////////////////////////////
 
 void AgencyWriteTransaction::toVelocyPack(VPackBuilder& builder) const {
   VPackArrayBuilder guard(&builder);
@@ -169,19 +138,11 @@ void AgencyWriteTransaction::toVelocyPack(VPackBuilder& builder) const {
   }
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief converts the read transaction to json
-//////////////////////////////////////////////////////////////////////////////
-
 std::string AgencyReadTransaction::toJson() const {
   VPackBuilder builder;
   toVelocyPack(builder);
   return builder.toJson();
 }
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief converts the read transaction to velocypack
-//////////////////////////////////////////////////////////////////////////////
 
 void AgencyReadTransaction::toVelocyPack(VPackBuilder& builder) const {
   VPackArrayBuilder guard2(&builder);
@@ -190,27 +151,15 @@ void AgencyReadTransaction::toVelocyPack(VPackBuilder& builder) const {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an agency endpoint
-////////////////////////////////////////////////////////////////////////////////
-
 AgencyEndpoint::AgencyEndpoint(
     Endpoint* endpoint,
     arangodb::httpclient::GeneralClientConnection* connection)
     : _endpoint(endpoint), _connection(connection), _busy(false) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an agency endpoint
-////////////////////////////////////////////////////////////////////////////////
-
 AgencyEndpoint::~AgencyEndpoint() {
   delete _connection;
   delete _endpoint;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a communication result
-////////////////////////////////////////////////////////////////////////////////
 
 AgencyCommResult::AgencyCommResult()
     : _location(),
@@ -220,29 +169,13 @@ AgencyCommResult::AgencyCommResult()
       _statusCode(0),
       _connected(false) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a communication result
-////////////////////////////////////////////////////////////////////////////////
-
 AgencyCommResult::~AgencyCommResult() {
   // All elements free themselves
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the connected flag from the result
-////////////////////////////////////////////////////////////////////////////////
-
 bool AgencyCommResult::connected() const { return _connected; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the http code from the result
-////////////////////////////////////////////////////////////////////////////////
-
 int AgencyCommResult::httpCode() const { return _statusCode; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the error code from the result
-////////////////////////////////////////////////////////////////////////////////
 
 int AgencyCommResult::errorCode() const {
   try {
@@ -259,11 +192,6 @@ int AgencyCommResult::errorCode() const {
     return 0;
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the error message from the result
-/// if there is no error, an empty string will be returned
-////////////////////////////////////////////////////////////////////////////////
 
 std::string AgencyCommResult::errorMessage() const {
   if (!_message.empty()) {
@@ -293,11 +221,6 @@ std::string AgencyCommResult::errorMessage() const {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the error details from the result
-/// if there is no error, an empty string will be returned
-////////////////////////////////////////////////////////////////////////////////
-
 std::string AgencyCommResult::errorDetails() const {
   std::string const errorMessage = this->errorMessage();
 
@@ -307,10 +230,6 @@ std::string AgencyCommResult::errorDetails() const {
 
   return _message + " (" + errorMessage + ")";
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief flush the internal result buffer
-////////////////////////////////////////////////////////////////////////////////
 
 void AgencyCommResult::clear() {
   // clear existing values. They free themselves
@@ -322,40 +241,16 @@ void AgencyCommResult::clear() {
   _statusCode = 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// get results of query as slice
-////////////////////////////////////////////////////////////////////////////////
-
 VPackSlice AgencyCommResult::slice() { return _vpack->slice(); }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the static global URL prefix
-////////////////////////////////////////////////////////////////////////////////
-
 std::string const AgencyComm::AGENCY_URL_PREFIX = "_api/agency";
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief global (variable) prefix used for endpoint
-////////////////////////////////////////////////////////////////////////////////
 
 std::string AgencyComm::_globalPrefix = "";
 std::string AgencyComm::_globalPrefixStripped = "";
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lock for the global endpoints
-////////////////////////////////////////////////////////////////////////////////
-
 arangodb::basics::ReadWriteLock AgencyComm::_globalLock;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief list of global endpoints
-////////////////////////////////////////////////////////////////////////////////
-
 std::list<AgencyEndpoint*> AgencyComm::_globalEndpoints;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief global connection options
-////////////////////////////////////////////////////////////////////////////////
 
 AgencyConnectionOptions AgencyComm::_globalConnectionOptions = {
     15.0,   // connectTimeout
@@ -363,10 +258,6 @@ AgencyConnectionOptions AgencyComm::_globalConnectionOptions = {
     120.0,  // lockTimeout
     10      // numRetries
 };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cleans up all connections
-////////////////////////////////////////////////////////////////////////////////
 
 void AgencyComm::cleanup() {
   AgencyComm::disconnect();
@@ -397,10 +288,6 @@ void AgencyComm::cleanup() {
     usleep(100000);
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tries to establish a communication channel
-////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::tryConnect() {
   {
@@ -445,9 +332,6 @@ bool AgencyComm::tryConnect() {
   // unable to connect to any endpoint
   return false;
 }
-//////////////////////////////////////////////////////////////////////////////
-/// @brief will try to initialize a new agency
-//////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::initialize() {
   if (!AgencyComm::tryConnect()) {
@@ -456,10 +340,6 @@ bool AgencyComm::initialize() {
   AgencyComm comm;
   return comm.ensureStructureInitialized();
 }
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief will try to initialize a new agency
-//////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
   VPackBuilder builder;
@@ -593,10 +473,6 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
   }
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief checks if we are responsible for initializing the agency
-//////////////////////////////////////////////////////////////////////////////
-
 bool AgencyComm::shouldInitializeStructure() {
   VPackBuilder builder;
   builder.add(VPackValue(false));
@@ -615,16 +491,12 @@ bool AgencyComm::shouldInitializeStructure() {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief will initialize agency if it is freshly started
-////////////////////////////////////////////////////////////////////////////////
-
 bool AgencyComm::ensureStructureInitialized() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "Checking if agency is initialized";
 
   AuthenticationFeature* authentication =
-      application_features::ApplicationServer::getFeature<AuthenticationFeature>(
-          "Authentication");
+      application_features::ApplicationServer::getFeature<
+          AuthenticationFeature>("Authentication");
 
   TRI_ASSERT(authentication != nullptr);
 
@@ -681,10 +553,6 @@ bool AgencyComm::ensureStructureInitialized() {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief disconnects all communication channels
-////////////////////////////////////////////////////////////////////////////////
-
 void AgencyComm::disconnect() {
   WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
 
@@ -703,10 +571,6 @@ void AgencyComm::disconnect() {
     ++it;
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an endpoint to the endpoints list
-////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::addEndpoint(std::string const& endpointSpecification,
                              bool toFront) {
@@ -753,10 +617,6 @@ bool AgencyComm::addEndpoint(std::string const& endpointSpecification,
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if an endpoint is present
-////////////////////////////////////////////////////////////////////////////////
-
 bool AgencyComm::hasEndpoint(std::string const& endpointSpecification) {
   {
     READ_LOCKER(readLocker, AgencyComm::_globalLock);
@@ -778,10 +638,6 @@ bool AgencyComm::hasEndpoint(std::string const& endpointSpecification) {
   // not found
   return false;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a stringified version of the endpoints
-////////////////////////////////////////////////////////////////////////////////
 
 std::vector<std::string> AgencyComm::getEndpoints() {
   std::vector<std::string> result;
@@ -805,10 +661,6 @@ std::vector<std::string> AgencyComm::getEndpoints() {
 
   return result;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a stringified version of all endpoints (unique)
-////////////////////////////////////////////////////////////////////////////////
 
 std::string AgencyComm::getUniqueEndpointsString() {
   std::string result;
@@ -844,10 +696,6 @@ std::string AgencyComm::getUniqueEndpointsString() {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a stringified version of the endpoints
-////////////////////////////////////////////////////////////////////////////////
-
 std::string AgencyComm::getEndpointsString() {
   std::string result;
 
@@ -875,10 +723,6 @@ std::string AgencyComm::getEndpointsString() {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the global prefix for all operations
-////////////////////////////////////////////////////////////////////////////////
-
 bool AgencyComm::setPrefix(std::string const&) {
   // agency prefix must not be changed
   _globalPrefix = "/arango/";
@@ -886,16 +730,8 @@ bool AgencyComm::setPrefix(std::string const&) {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the global prefix for all operations
-////////////////////////////////////////////////////////////////////////////////
-
 std::string AgencyComm::prefixPath() { return _globalPrefix; }
 std::string AgencyComm::prefix() { return _globalPrefixStripped; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generate a timestamp
-////////////////////////////////////////////////////////////////////////////////
 
 std::string AgencyComm::generateStamp() {
   time_t tt = time(0);
@@ -908,10 +744,6 @@ std::string AgencyComm::generateStamp() {
 
   return std::string(buffer, len);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new agency endpoint
-////////////////////////////////////////////////////////////////////////////////
 
 AgencyEndpoint* AgencyComm::createAgencyEndpoint(
     std::string const& endpointSpecification) {
@@ -940,10 +772,6 @@ AgencyEndpoint* AgencyComm::createAgencyEndpoint(
   return ep;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sends the current server state to the agency
-////////////////////////////////////////////////////////////////////////////////
-
 AgencyCommResult AgencyComm::sendServerState(double ttl) {
   // construct JSON value { "status": "...", "time": "..." }
   VPackBuilder builder;
@@ -966,10 +794,6 @@ AgencyCommResult AgencyComm::sendServerState(double ttl) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the backend version
-////////////////////////////////////////////////////////////////////////////////
-
 std::string AgencyComm::getVersion() {
   AgencyCommResult result = sendWithFailover(
       arangodb::rest::RequestType::GET,
@@ -982,10 +806,6 @@ std::string AgencyComm::getVersion() {
   return "";
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a directory in the backend
-////////////////////////////////////////////////////////////////////////////////
-
 AgencyCommResult AgencyComm::createDirectory(std::string const& key) {
   VPackBuilder builder;
   { VPackObjectBuilder dir(&builder); }
@@ -996,10 +816,6 @@ AgencyCommResult AgencyComm::createDirectory(std::string const& key) {
 
   return sendTransactionWithFailover(transaction);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets a value in the backend
-////////////////////////////////////////////////////////////////////////////////
 
 AgencyCommResult AgencyComm::setValue(std::string const& key,
                                       std::string const& value, double ttl) {
@@ -1014,10 +830,6 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
   return sendTransactionWithFailover(transaction);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets a value in the backend
-////////////////////////////////////////////////////////////////////////////////
-
 AgencyCommResult AgencyComm::setValue(std::string const& key,
                                       arangodb::velocypack::Slice const& slice,
                                       double ttl) {
@@ -1027,10 +839,6 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
 
   return sendTransactionWithFailover(transaction);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a key exists
-////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::exists(std::string const& key) {
   AgencyCommResult result = getValues(key);
@@ -1046,20 +854,12 @@ bool AgencyComm::exists(std::string const& key) {
   return !slice.isNone();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief increment a key
-////////////////////////////////////////////////////////////////////////////////
-
 AgencyCommResult AgencyComm::increment(std::string const& key) {
   AgencyWriteTransaction transaction(
       AgencyOperation(key, AgencySimpleOperationType::INCREMENT_OP));
 
   return sendTransactionWithFailover(transaction);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets one or multiple values from the backend
-////////////////////////////////////////////////////////////////////////////////
 
 AgencyCommResult AgencyComm::getValues(std::string const& key) {
   std::string url(buildUrl());
@@ -1111,10 +911,6 @@ AgencyCommResult AgencyComm::getValues(std::string const& key) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes one or multiple values from the backend
-////////////////////////////////////////////////////////////////////////////////
-
 AgencyCommResult AgencyComm::removeValues(std::string const& key,
                                           bool recursive) {
   AgencyWriteTransaction transaction(
@@ -1123,11 +919,6 @@ AgencyCommResult AgencyComm::removeValues(std::string const& key,
 
   return sendTransactionWithFailover(transaction);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compares and swaps a single value in the backend
-/// the CAS condition is whether or not a previous value existed for the key
-////////////////////////////////////////////////////////////////////////////////
 
 AgencyCommResult AgencyComm::casValue(std::string const& key,
                                       arangodb::velocypack::Slice const& json,
@@ -1149,12 +940,6 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
   AgencyWriteTransaction transaction(operation, precondition);
   return sendTransactionWithFailover(transaction, timeout);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compares and swaps a single value in the backend
-/// the CAS condition is whether or not the previous value for the key was
-/// identical to `oldValue`
-////////////////////////////////////////////////////////////////////////////////
 
 AgencyCommResult AgencyComm::casValue(std::string const& key,
                                       VPackSlice const& oldJson,
@@ -1178,10 +963,6 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
   return sendTransactionWithFailover(transaction, timeout);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief registers a callback on a key
-////////////////////////////////////////////////////////////////////////////////
-
 bool AgencyComm::registerCallback(std::string const& key,
                                   std::string const& endpoint) {
   VPackBuilder builder;
@@ -1194,10 +975,6 @@ bool AgencyComm::registerCallback(std::string const& key,
   auto result = sendTransactionWithFailover(transaction);
   return result.successful();
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unregisters a callback on a key
-////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::unregisterCallback(std::string const& key,
                                     std::string const& endpoint) {
@@ -1212,10 +989,6 @@ bool AgencyComm::unregisterCallback(std::string const& key,
   return result.successful();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief acquire a read lock
-////////////////////////////////////////////////////////////////////////////////
-
 bool AgencyComm::lockRead(std::string const& key, double ttl, double timeout) {
   VPackBuilder builder;
   try {
@@ -1225,10 +998,6 @@ bool AgencyComm::lockRead(std::string const& key, double ttl, double timeout) {
   }
   return lock(key, ttl, timeout, builder.slice());
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief acquire a write lock
-////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::lockWrite(std::string const& key, double ttl, double timeout) {
   VPackBuilder builder;
@@ -1240,10 +1009,6 @@ bool AgencyComm::lockWrite(std::string const& key, double ttl, double timeout) {
   return lock(key, ttl, timeout, builder.slice());
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief release a read lock
-////////////////////////////////////////////////////////////////////////////////
-
 bool AgencyComm::unlockRead(std::string const& key, double timeout) {
   VPackBuilder builder;
   try {
@@ -1254,10 +1019,6 @@ bool AgencyComm::unlockRead(std::string const& key, double timeout) {
   return unlock(key, builder.slice(), timeout);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief release a write lock
-////////////////////////////////////////////////////////////////////////////////
-
 bool AgencyComm::unlockWrite(std::string const& key, double timeout) {
   VPackBuilder builder;
   try {
@@ -1267,10 +1028,6 @@ bool AgencyComm::unlockWrite(std::string const& key, double timeout) {
   }
   return unlock(key, builder.slice(), timeout);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get unique id
-////////////////////////////////////////////////////////////////////////////////
 
 uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
   static int const maxTries = 1000000;
@@ -1337,10 +1094,6 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
   return oldValue;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief acquires a lock
-////////////////////////////////////////////////////////////////////////////////
-
 bool AgencyComm::lock(std::string const& key, double ttl, double timeout,
                       VPackSlice const& slice) {
   if (ttl == 0.0) {
@@ -1391,10 +1144,6 @@ bool AgencyComm::lock(std::string const& key, double ttl, double timeout,
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief releases a lock
-////////////////////////////////////////////////////////////////////////////////
-
 bool AgencyComm::unlock(std::string const& key, VPackSlice const& slice,
                         double timeout) {
   if (timeout == 0.0) {
@@ -1435,10 +1184,6 @@ bool AgencyComm::unlock(std::string const& key, VPackSlice const& slice,
   TRI_ASSERT(false);
   return false;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief pop an endpoint from the queue
-////////////////////////////////////////////////////////////////////////////////
 
 AgencyEndpoint* AgencyComm::popEndpoint(std::string const& endpoint) {
   unsigned long sleepTime = InitialSleepTime;
@@ -1495,10 +1240,6 @@ AgencyEndpoint* AgencyComm::popEndpoint(std::string const& endpoint) {
   return nullptr;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reinsert an endpoint into the queue
-////////////////////////////////////////////////////////////////////////////////
-
 void AgencyComm::requeueEndpoint(AgencyEndpoint* agencyEndpoint,
                                  bool wasWorking) {
   WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
@@ -1523,17 +1264,9 @@ void AgencyComm::requeueEndpoint(AgencyEndpoint* agencyEndpoint,
   TRI_ASSERT(_globalEndpoints.size() == numEndpoints);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief construct a URL, without a key
-////////////////////////////////////////////////////////////////////////////////
-
 std::string AgencyComm::buildUrl() const {
   return AgencyComm::AGENCY_URL_PREFIX;
 }
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief sends a write HTTP request to the agency, handling failover
-//////////////////////////////////////////////////////////////////////////////
 
 AgencyCommResult AgencyComm::sendTransactionWithFailover(
     AgencyTransaction const& transaction, double timeout) {
@@ -1597,10 +1330,6 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sends an HTTP request to the agency, handling failover
-////////////////////////////////////////////////////////////////////////////////
-
 AgencyCommResult AgencyComm::sendWithFailover(
     arangodb::rest::RequestType method, double const timeout,
     std::string const& url, std::string const& body, bool isWatch) {
@@ -1633,8 +1362,9 @@ AgencyCommResult AgencyComm::sendWithFailover(
     TRI_ASSERT(agencyEndpoint != nullptr);
 
     if (tries > 1) {  // not the first try
-      LOG_TOPIC(WARN, Logger::AGENCYCOMM) << "Retrying agency communication at "
-        << agencyEndpoint->_endpoint->specification() << " tries: " << tries;
+      LOG_TOPIC(WARN, Logger::AGENCYCOMM)
+          << "Retrying agency communication at "
+          << agencyEndpoint->_endpoint->specification() << " tries: " << tries;
     }
 
     try {
@@ -1667,7 +1397,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
       std::string endpoint;
 
       // transform location into an endpoint
-      int offset { 11 };
+      int offset{11};
       if (result.location().substr(0, 7) == "http://") {
         endpoint = "http+tcp://" + result.location().substr(7);
       } else if (result.location().substr(0, 8) == "https://") {
@@ -1679,10 +1409,11 @@ AgencyCommResult AgencyComm::sendWithFailover(
 
       size_t const delim = endpoint.find('/', offset);
 
-      LOG_TOPIC(WARN, Logger::AGENCYCOMM) << "Got a redirect 307 from agency "
-        << "endpoint: " << agencyEndpoint->_endpoint->specification() 
-        << " location: " << result.location()
-        << " new forced endpoint: " << endpoint;
+      LOG_TOPIC(WARN, Logger::AGENCYCOMM)
+          << "Got a redirect 307 from agency "
+          << "endpoint: " << agencyEndpoint->_endpoint->specification()
+          << " location: " << result.location()
+          << " new forced endpoint: " << endpoint;
 
       if (delim == std::string::npos) {
         // invalid location header
@@ -1739,23 +1470,20 @@ AgencyCommResult AgencyComm::sendWithFailover(
   }
 
   if (!result.successful() && result.httpCode() != 412) {
-    LOG_TOPIC(DEBUG, Logger::AGENCYCOMM) << "Unsuccessful AgencyComm: "
-      << "errorCode: " << result.errorCode()
-      << " errorMessage: " << result.errorMessage()
-      << " errorDetails: " << result.errorDetails();
+    LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
+        << "Unsuccessful AgencyComm: "
+        << "errorCode: " << result.errorCode()
+        << " errorMessage: " << result.errorMessage()
+        << " errorDetails: " << result.errorDetails();
   }
 
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sends data to the URL
-////////////////////////////////////////////////////////////////////////////////
-
 AgencyCommResult AgencyComm::send(
     arangodb::httpclient::GeneralClientConnection* connection,
-    arangodb::rest::RequestType method, double timeout,
-    std::string const& url, std::string const& body) {
+    arangodb::rest::RequestType method, double timeout, std::string const& url,
+    std::string const& body) {
   TRI_ASSERT(connection != nullptr);
 
   if (method == arangodb::rest::RequestType::GET ||

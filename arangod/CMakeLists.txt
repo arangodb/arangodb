@@ -83,28 +83,31 @@ SET(ARANGOD_SOURCES
   Actions/actions.cpp
   Agency/ActivationCallback.cpp
   Agency/AddFollower.cpp
+  Agency/AgencyCallback.cpp
+  Agency/AgencyCallbackRegistry.cpp
+  Agency/AgencyComm.cpp
   Agency/AgencyFeature.cpp
   Agency/Agent.cpp
   Agency/AgentActivator.cpp
   Agency/AgentCallback.cpp
   Agency/AgentConfiguration.cpp
-  Agency/Constituent.cpp
   Agency/CleanOutServer.cpp
+  Agency/Constituent.cpp
   Agency/FailedLeader.cpp
   Agency/FailedServer.cpp
   Agency/GossipCallback.cpp
   Agency/Inception.cpp
   Agency/Job.cpp
   Agency/MoveShard.cpp
-  Agency/NotifyCallback.cpp
   Agency/Node.cpp
-  Agency/Supervision.cpp
+  Agency/NotifyCallback.cpp
   Agency/RemoveServer.cpp
   Agency/RestAgencyHandler.cpp
   Agency/RestAgencyPrivHandler.cpp
   Agency/State.cpp
   Agency/Store.cpp
   Agency/StoreCallback.cpp
+  Agency/Supervision.cpp
   Agency/UnassumedLeadership.cpp
   Agency/v8-agency.cpp
   Aql/Aggregator.cpp
@@ -114,8 +117,8 @@ SET(ARANGOD_SOURCES
   Aql/Ast.cpp
   Aql/AstNode.cpp
   Aql/AttributeAccessor.cpp
-  Aql/BasicBlocks.cpp
   Aql/BaseExpressionContext.cpp
+  Aql/BasicBlocks.cpp
   Aql/BindParameters.cpp
   Aql/CalculationBlock.cpp
   Aql/ClusterBlocks.cpp
@@ -138,8 +141,8 @@ SET(ARANGOD_SOURCES
   Aql/Executor.cpp
   Aql/Expression.cpp
   Aql/FixedVarExpressionContext.cpp
-  Aql/FunctionDefinitions.cpp
   Aql/Function.cpp
+  Aql/FunctionDefinitions.cpp
   Aql/Functions.cpp
   Aql/Graphs.cpp
   Aql/IndexBlock.cpp
@@ -159,10 +162,10 @@ SET(ARANGOD_SOURCES
   Aql/Range.cpp
   Aql/RestAqlHandler.cpp
   Aql/Scopes.cpp
+  Aql/ShortStringStorage.cpp
   Aql/ShortestPathBlock.cpp
   Aql/ShortestPathNode.cpp
   Aql/ShortestPathOptions.cpp
-  Aql/ShortStringStorage.cpp
   Aql/SortBlock.cpp
   Aql/SortCondition.cpp
   Aql/SortNode.cpp
@@ -175,9 +178,6 @@ SET(ARANGOD_SOURCES
   Aql/VariableGenerator.cpp
   Aql/grammar.cpp
   Aql/tokens.cpp
-  Cluster/AgencyCallback.cpp
-  Cluster/AgencyCallbackRegistry.cpp
-  Cluster/AgencyComm.cpp
   Cluster/ClusterComm.cpp
   Cluster/ClusterEdgeCursor.cpp
   Cluster/ClusterFeature.cpp
@@ -188,9 +188,9 @@ SET(ARANGOD_SOURCES
   Cluster/HeartbeatThread.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestShardHandler.cpp
+  Cluster/ServerState.cpp
   Cluster/TraverserEngine.cpp
   Cluster/TraverserEngineRegistry.cpp
-  Cluster/ServerState.cpp
   Cluster/v8-cluster.cpp
   FulltextIndex/fulltext-handles.cpp
   FulltextIndex/fulltext-index.cpp

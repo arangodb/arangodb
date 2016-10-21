@@ -22,7 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-cluster.h"
-#include "Cluster/AgencyComm.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Agency/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterComm.h"
@@ -35,9 +39,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "V8Server/v8-vocbaseprivate.h"
-
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
