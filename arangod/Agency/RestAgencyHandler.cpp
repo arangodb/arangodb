@@ -77,7 +77,7 @@ void RestAgencyHandler::redirectRequest(std::string const& leaderId) {
                       _request->requestPath();
     _response->setResponseCode(rest::ResponseCode::TEMPORARY_REDIRECT);
     _response->setHeaderNC(StaticStrings::Location, url);
-    LOG_TOPIC(INFO, Logger::AGENCY) << "Sending 307 redirect to " << url;
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending 307 redirect to " << url;
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << ":"
                                     << __LINE__;
