@@ -21,7 +21,7 @@ function help() {
 NRAGENTS=3
 POOLSZ=""
 TRANSPORT="tcp"
-LOG_LEVEL="INFO"
+LOG_LEVEL=""
 WAIT_FOR_SYNC="true"
 USE_MICROTIME="false"
 
@@ -40,7 +40,18 @@ while [[ ${1} ]]; do
       shift
       ;;
     -l|--log-level)
-      LOG_LEVEL=${2}
+      case ${2} in
+        =*)
+          LOG_LEVEL="$LOG_LEVEL --log.level ${2}"
+          ;;
+        *=*)
+          LOG_LEVEL="$LOG_LEVEL --log.level ${2}"
+          ;;
+        *)
+          LOG_LEVEL="$LOG_LEVEL --log.level agency=${2}"
+          ;;
+      esac
+        
       shift
       ;;
     -w|--wait-for-sync)
@@ -68,7 +79,11 @@ while [[ ${1} ]]; do
   fi
 done
 
-if [ "$POOLSZ" == "" ] ; then
+if [ "$LOG_LEVEL" == "" ];  then
+  LOG_LEVEL="--log.level agency=info"
+fi
+
+if [ "$POOLSZ" == "" ]; then
   POOLSZ=$NRAGENTS
 fi
 
@@ -128,7 +143,7 @@ for aid in `seq 0 $(( $POOLSZ - 1 ))`; do
     --javascript.v8-contexts 1 \
     --log.file agency/$port.log \
     --log.force-direct true \
-    --log.level agency=$LOG_LEVEL \
+    $LOG_LEVEL \
     --log.use-microtime $USE_MICROTIME \
     --server.authentication false \
     --server.endpoint $TRANSPORT://localhost:$port \

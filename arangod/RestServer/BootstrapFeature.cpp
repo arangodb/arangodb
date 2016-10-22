@@ -71,8 +71,10 @@ static void raceForClusterBootstrap() {
       sleep(1);
       continue;
     }
+
     VPackSlice value = result.slice()[0].get(
-        std::vector<std::string>({agency.prefix(), "Bootstrap"}));
+        std::vector<std::string>({AgencyCommManager::path(), "Bootstrap"}));
+
     if (value.isString()) {
       // key was found and is a string
       if (value.isEqualString("done")) {
@@ -112,7 +114,8 @@ static void raceForClusterBootstrap() {
     LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "raceForClusterBootstrap: race won, we do the bootstrap";
     auto vocbase = DatabaseFeature::DATABASE->systemDatabase();
-    V8DealerFeature::DEALER->loadJavascriptFiles(vocbase, "server/bootstrap/cluster-bootstrap.js", 0);
+    V8DealerFeature::DEALER->loadJavascriptFiles(
+        vocbase, "server/bootstrap/cluster-bootstrap.js", 0);
 
     LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "raceForClusterBootstrap: bootstrap done";
@@ -133,7 +136,7 @@ static void raceForClusterBootstrap() {
 
 void BootstrapFeature::start() {
   auto vocbase = DatabaseFeature::DATABASE->systemDatabase();
-  
+
   auto ss = ServerState::instance();
   if (!ss->isRunningInCluster()) {
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running server/server.js";
@@ -167,7 +170,9 @@ void BootstrapFeature::start() {
 
 void BootstrapFeature::unprepare() {
   // notify all currently running queries about the shutdown
-  auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+  auto databaseFeature =
+      application_features::ApplicationServer::getFeature<DatabaseFeature>(
+          "Database");
 
   if (ServerState::instance()->isCoordinator()) {
     for (auto& id : databaseFeature->getDatabaseIdsCoordinator(true)) {

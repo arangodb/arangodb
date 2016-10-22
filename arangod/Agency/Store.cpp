@@ -23,14 +23,6 @@
 
 #include "Store.h"
 
-#include "Agency/Agent.h"
-#include "Basics/ConditionLocker.h"
-#include "Basics/ReadLocker.h"
-#include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Basics/WriteLocker.h"
-#include "StoreCallback.h"
-
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -39,6 +31,14 @@
 #include <ctime>
 #include <iomanip>
 #include <regex>
+
+#include "Agency/Agent.h"
+#include "Basics/ConditionLocker.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Basics/WriteLocker.h"
+#include "StoreCallback.h"
 
 using namespace arangodb::consensus;
 using namespace arangodb::basics;

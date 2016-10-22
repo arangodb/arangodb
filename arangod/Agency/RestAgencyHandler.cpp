@@ -23,6 +23,8 @@
 
 #include "RestAgencyHandler.h"
 
+#include <thread>
+
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -31,8 +33,6 @@
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
-
-#include <thread>
 
 using namespace arangodb;
 

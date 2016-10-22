@@ -22,17 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Agent.h"
-#include "GossipCallback.h"
-
-#include "Basics/ConditionLocker.h"
-#include "RestServer/DatabaseFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
-#include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <chrono>
+
+#include "Agency/GossipCallback.h"
+#include "Basics/ConditionLocker.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::velocypack;

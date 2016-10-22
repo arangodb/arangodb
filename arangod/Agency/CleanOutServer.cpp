@@ -23,9 +23,9 @@
 
 #include "CleanOutServer.h"
 
-#include "Agent.h"
-#include "Job.h"
-#include "MoveShard.h"
+#include "Agency/Agent.h"
+#include "Agency/Job.h"
+#include "Agency/MoveShard.h"
 
 using namespace arangodb::consensus;
 

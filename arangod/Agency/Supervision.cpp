@@ -23,6 +23,8 @@
 
 #include "Supervision.h"
 
+#include <thread>
+
 #include "Agency/AddFollower.h"
 #include "Agency/Agent.h"
 #include "Agency/CleanOutServer.h"
@@ -36,8 +38,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
-
-#include <thread>
 
 using namespace arangodb;
 

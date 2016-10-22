@@ -23,10 +23,10 @@
 
 #include "FailedServer.h"
 
-#include "Agent.h"
-#include "FailedLeader.h"
-#include "Job.h"
-#include "UnassumedLeadership.h"
+#include "Agency/Agent.h"
+#include "Agency/FailedLeader.h"
+#include "Agency/Job.h"
+#include "Agency/UnassumedLeadership.h"
 
 using namespace arangodb::consensus;
 

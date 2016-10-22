@@ -168,14 +168,14 @@ Ticket Communicator::addRequest(Destination destination,
   // mop: just send \0 terminated empty string to wake up worker thread
   ssize_t numBytes = send(socks[1], "", 1, 0);
   if (numBytes != 1) {
-    LOG_TOPIC(WARN, Logger::REQUESTS)
+    LOG_TOPIC(WARN, Logger::COMMUNICATION)
         << "Couldn't wake up pipe. numBytes was " + std::to_string(numBytes);
   }
 #else
   // mop: just send \0 terminated empty string to wake up worker thread
   ssize_t numBytes = write(_fds[1], "", 1);
   if (numBytes != 1) {
-    LOG_TOPIC(WARN, Logger::REQUESTS)
+    LOG_TOPIC(WARN, Logger::COMMUNICATION)
         << "Couldn't wake up pipe. numBytes was " + std::to_string(numBytes);
   }
 #endif
@@ -220,7 +220,7 @@ int Communicator::work_once() {
 void Communicator::wait() {
   static int const MAX_WAIT_MSECS = 1000;  // wait max. 1 seconds
 
-  int numFds; // not used here
+  int numFds;  // not used here
   int res = curl_multi_wait(_curl, &_wakeup, 1, MAX_WAIT_MSECS, &numFds);
   if (res != CURLM_OK) {
     throw std::runtime_error(
@@ -377,10 +377,11 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
   }
   std::string prefix("Communicator(" + std::to_string(rip->_ticketId) +
                      ") // ");
-  LOG_TOPIC(TRACE, Logger::REQUESTS)
-      << prefix << "Curl rc is : " << rc << " after " << Logger::FIXED(TRI_microtime() - rip->_startTime) << " s";
+  LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+      << prefix << "Curl rc is : " << rc << " after "
+      << Logger::FIXED(TRI_microtime() - rip->_startTime) << " s";
   if (strlen(rip->_errorBuffer) != 0) {
-    LOG_TOPIC(TRACE, Logger::REQUESTS)
+    LOG_TOPIC(TRACE, Logger::COMMUNICATION)
         << prefix << "Curl error details: " << rip->_errorBuffer;
   }
 
@@ -448,7 +449,8 @@ void Communicator::logHttpBody(std::string const& prefix,
                                std::string const& data) {
   std::string::size_type n = 0;
   while (n < data.length()) {
-    LOG_TOPIC(DEBUG, Logger::REQUESTS) << prefix << " " << data.substr(n, 80);
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << prefix << " "
+                                            << data.substr(n, 80);
     n += 80;
   }
 }
@@ -462,8 +464,8 @@ void Communicator::logHttpHeaders(std::string const& prefix,
     if (n == std::string::npos) {
       break;
     }
-    LOG_TOPIC(DEBUG, Logger::REQUESTS) << prefix << " "
-                                       << headerData.substr(last, n - last);
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+        << prefix << " " << headerData.substr(last, n - last);
     last = n + 2;
   }
 }
@@ -481,7 +483,7 @@ int Communicator::curlDebug(CURL* handle, curl_infotype type, char* data,
 
   switch (type) {
     case CURLINFO_TEXT:
-      LOG_TOPIC(TRACE, Logger::REQUESTS) << prefix << "Text: " << dataStr;
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION) << prefix << "Text: " << dataStr;
       break;
     case CURLINFO_HEADER_OUT:
       logHttpHeaders(prefix + "Header >>", dataStr);

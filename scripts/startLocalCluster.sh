@@ -4,18 +4,18 @@ function help() {
   echo "USAGE: scripts/startLocalCluster.sh [options]"
   echo ""
   echo "OPTIONS:"
-  echo "  -a/--nagents       # agents            (odd integer      default: 1))"
-  echo "  -c/--ncoordinators # coordinators      (odd integer      default: 1))"
-  echo "  -d/--ndbservers    # db servers        (odd integer      default: 2))"
-  echo "  -s/--secondaries   Start secondaries   (0|1              default: 0)"
-  echo "  -t/--transport     Protocol            (ssl|tcp          default: tcp)"
-  echo "  -j/--jwt-secret    JWT-Secret          (string           default: )"
-  echo "     --log-level-a   Log level (agency)  (INFO|DEBUG|TRACE default: INFO)"
-  echo "     --log-level-c   Log level (cluster) (INFO|DEBUG|TRACE default: INFO)"
-  echo "  -i/--interactive   Interactive mode    (C|D|R            default: '')"
+  echo "  -a/--nagents            # agents            (odd integer      default: 1))"
+  echo "  -c/--ncoordinators      # coordinators      (odd integer      default: 1))"
+  echo "  -d/--ndbservers         # db servers        (odd integer      default: 2))"
+  echo "  -s/--secondaries        Start secondaries   (0|1              default: 0)"
+  echo "  -t/--transport          Protocol            (ssl|tcp          default: tcp)"
+  echo "  -j/--jwt-secret         JWT-Secret          (string           default: )"
+  echo "     --log-level-agency   Log level (agency)  (string           default: )"
+  echo "     --log-level-cluster  Log level (cluster) (string           default: )"
+  echo "  -i/--interactive        Interactive mode    (C|D|R            default: '')"
   
-  echo "  -x/--xterm         XTerm command       (default: xterm)"
-  echo "  -o/--xterm-options XTerm options       (default: --geometry=80x43)"
+  echo "  -x/--xterm              XTerm command       (default: xterm)"
+  echo "  -o/--xterm-options      XTerm options       (default: --geometry=80x43)"
   echo ""
   echo "EXAMPLES:"
   echo "  scripts/startLocalCluster.sh"
@@ -31,6 +31,8 @@ NRCOORDINATORS=1
 POOLSZ=""
 TRANSPORT="tcp"
 LOG_LEVEL="INFO"
+LOG_LEVEL_AGENCY=""
+LOG_LEVEL_CLUSTER=""
 XTERM="x-terminal-emulator"
 XTERMOPTIONS="--geometry=80x43"
 SECONDARIES=0
@@ -199,6 +201,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --server.threads 16 \
         --log.file cluster/$port.log \
         --log.force-direct true \
+        $LOG_LEVEL_AGENCY \
         $AUTHENTICATION \
         $SSLKEYFILE \
         > cluster/$port.stdout 2>&1 &
@@ -231,6 +234,7 @@ start() {
        --javascript.module-directory ./enterprise/js \
        --javascript.app-path cluster/apps$PORT \
        --log.force-direct true \
+        $LOG_LEVEL_CLUSTER \
         $AUTHENTICATION \
         $SSLKEYFILE \
        > cluster/$PORT.stdout 2>&1 &

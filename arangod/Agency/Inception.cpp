@@ -23,13 +23,13 @@
 
 #include "Inception.h"
 
+#include <chrono>
+#include <thread>
+
 #include "Agency/Agent.h"
 #include "Agency/GossipCallback.h"
 #include "Basics/ConditionLocker.h"
 #include "Cluster/ClusterComm.h"
-
-#include <chrono>
-#include <thread>
 
 using namespace arangodb::consensus;
 

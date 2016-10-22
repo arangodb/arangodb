@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "State.h"
-#include "Agent.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
@@ -33,6 +32,11 @@
 #include <sstream>
 #include <thread>
 
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
+
+#include "Agency/Agent.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/StaticStrings.h"
@@ -44,10 +48,6 @@
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
-
-#include <boost/uuid/uuid.hpp>             // uuid class
-#include <boost/uuid/uuid_generators.hpp>  // generators
-#include <boost/uuid/uuid_io.hpp>          // streaming operators etc.
 
 using namespace arangodb;
 using namespace arangodb::application_features;

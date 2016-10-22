@@ -22,17 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAgencyPrivHandler.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/Version.h"
 
 #include "Agency/Agent.h"
+
+#include <typeinfo>
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <typeinfo>
-
 #include "Logger/Logger.h"
+#include "Rest/HttpRequest.h"
+#include "Rest/Version.h"
 
 using namespace arangodb;
 

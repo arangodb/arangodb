@@ -117,14 +117,15 @@ void SocketTask::addWriteBuffer(StringBuffer* buffer,
 
     delete buffer;
     if (stat) {
-      LOG_TOPIC(TRACE, Logger::REQUESTS)
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION)
           << "SocketTask::addWriteBuffer - Statistics release: "
           << stat->to_string();
       TRI_ReleaseRequestStatistics(stat);
     } else {
-      LOG_TOPIC(TRACE, Logger::REQUESTS) << "SocketTask::addWriteBuffer - "
-                                            "Statistics release: nullptr - "
-                                            "nothing to realease";
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+          << "SocketTask::addWriteBuffer - "
+             "Statistics release: nullptr - "
+             "nothing to realease";
     }
 
     return;
@@ -189,16 +190,16 @@ void SocketTask::completedWriteBuffer() {
   _writeBuffer = nullptr;
 
   if (_writeBufferStatistics != nullptr) {
-    LOG_TOPIC(TRACE, Logger::REQUESTS)
+    LOG_TOPIC(TRACE, Logger::COMMUNICATION)
         << "SocketTask::addWriteBuffer - Statistics release: "
         << _writeBufferStatistics->to_string();
     _writeBufferStatistics->_writeEnd = TRI_StatisticsTime();
     TRI_ReleaseRequestStatistics(_writeBufferStatistics);
     _writeBufferStatistics = nullptr;
   } else {
-    LOG_TOPIC(TRACE, Logger::REQUESTS) << "SocketTask::addWriteBuffer - "
-                                          "Statistics release: nullptr - "
-                                          "nothing to realease";
+    LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "SocketTask::addWriteBuffer - "
+                                               "Statistics release: nullptr - "
+                                               "nothing to realease";
   }
 
   if (_writeBuffers.empty()) {
@@ -308,7 +309,7 @@ bool SocketTask::reserveMemory() {
 
 bool SocketTask::trySyncRead() {
   boost::system::error_code err;
-  
+
   if (0 == _peer->available(err)) {
     return false;
   }
@@ -321,9 +322,9 @@ bool SocketTask::trySyncRead() {
   }
 
   size_t bytesRead = 0;
-  
-  bytesRead = _peer->read(
-      boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE), err);
+
+  bytesRead =
+      _peer->read(boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE), err);
 
   if (0 == bytesRead) {
     return false;  // should not happen
@@ -355,8 +356,7 @@ void SocketTask::asyncReadSome() {
 
     while (++n <= MAX_DIRECT_TRIES) {
       if (!reserveMemory()) {
-        LOG_TOPIC(TRACE, Logger::COMMUNICATION)
-            << "failed to reserve memory";
+        LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "failed to reserve memory";
         return;
       }
 
@@ -406,7 +406,7 @@ void SocketTask::asyncReadSome() {
 
   auto self = shared_from_this();
   auto handler = [self, this](const boost::system::error_code& ec,
-                                    std::size_t transferred) {
+                              std::size_t transferred) {
     if (ec) {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
           << "SocketTask::asyncReadSome (async_read_some) - read on stream "
@@ -435,8 +435,8 @@ void SocketTask::asyncReadSome() {
     }
   };
 
-  _peer->asyncRead(
-      boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE), handler);
+  _peer->asyncRead(boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE),
+                   handler);
 }
 
 void SocketTask::closeReceiveStream() {

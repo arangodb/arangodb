@@ -1188,7 +1188,8 @@ void RestReplicationHandler::handleCommandClusterInventory() {
                   TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
   } else {
     VPackSlice colls = result.slice()[0].get(std::vector<std::string>(
-        {_agency.prefix(), "Plan", "Collections", dbName}));
+        {AgencyCommManager::path(), "Plan", "Collections", dbName}));
+
     if (!colls.isObject()) {
       generateError(rest::ResponseCode::SERVER_ERROR,
                     TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
@@ -1700,8 +1701,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
   // shards
   std::vector<std::string> dbServers;  // will be filled
   std::unordered_map<std::string, std::vector<std::string>> shardDistribution =
-      arangodb::distributeShards(numberOfShards, replicationFactor,
-                                  dbServers);
+      arangodb::distributeShards(numberOfShards, replicationFactor, dbServers);
   if (shardDistribution.empty()) {
     errorMsg = "no database servers found in cluster";
     return TRI_ERROR_INTERNAL;
@@ -2506,8 +2506,8 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
       if (!doc.isNone() && type != REPLICATION_MARKER_REMOVE) {
         ShardID responsibleShard;
         bool usesDefaultSharding;
-        res = ci->getResponsibleShard(col.get(), doc, true,
-                                      responsibleShard, usesDefaultSharding);
+        res = ci->getResponsibleShard(col.get(), doc, true, responsibleShard,
+                                      usesDefaultSharding);
         if (res != TRI_ERROR_NO_ERROR) {
           errorMsg = "error during determining responsible shard";
           res = TRI_ERROR_INTERNAL;
@@ -3149,8 +3149,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
       VelocyPackHelper::getStringValue(body, "username", "");
   std::string const password =
       VelocyPackHelper::getStringValue(body, "password", "");
-  std::string const jwt =
-      VelocyPackHelper::getStringValue(body, "jwt", "");
+  std::string const jwt = VelocyPackHelper::getStringValue(body, "jwt", "");
   std::string const restrictType =
       VelocyPackHelper::getStringValue(body, "restrictType", "");
 
@@ -3328,8 +3327,7 @@ void RestReplicationHandler::handleCommandSync() {
       VelocyPackHelper::getStringValue(body, "username", "");
   std::string const password =
       VelocyPackHelper::getStringValue(body, "password", "");
-  std::string const jwt =
-      VelocyPackHelper::getStringValue(body, "jwt", "");
+  std::string const jwt = VelocyPackHelper::getStringValue(body, "jwt", "");
   bool const verbose =
       VelocyPackHelper::getBooleanValue(body, "verbose", false);
   bool const includeSystem =
@@ -3486,7 +3484,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
   if (password.isString()) {
     config._password = password.copyString();
   }
-  
+
   VPackSlice const jwt = body.get("jwt");
   if (jwt.isString()) {
     config._jwt = jwt.copyString();
