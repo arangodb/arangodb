@@ -38,6 +38,7 @@ class ConfigFeature final : public application_features::ApplicationFeature {
 
  private:
   std::string _file;
+  std::vector<std::string> _defines;
   bool _checkConfiguration;
 
  private:
