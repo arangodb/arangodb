@@ -21,9 +21,37 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Translator.h"
-#include "Basics/tri-strings.h"
+
+#include "Basics/StringUtils.h"
 #include "Basics/files.h"
-std::string arangodb::options::EnvironmentTranslator(std::string const& value, const char *binaryPath) {
+#include "Basics/tri-strings.h"
+
+namespace {
+std::unordered_map<std::string, std::string> environment;
+}
+
+void arangodb::options::DefineEnvironment(std::string const& keyValues) {
+  std::vector<std::string> kvs = basics::StringUtils::split(keyValues, ',', '\\');
+
+  for (auto keyValue : kvs) {
+    std::string key;
+    std::string value;
+
+    size_t const delim = keyValue.find_first_of('=');
+
+    if (delim == std::string::npos) {
+      key = keyValue;
+    } else {
+      key = keyValue.substr(0, delim);
+      value = keyValue.substr(delim + 1);
+    }
+
+    environment[key] = value;
+  }
+}
+
+std::string arangodb::options::EnvironmentTranslator(std::string const& value,
+                                                     const char* binaryPath) {
   if (value.empty()) {
     return value;
   }
@@ -33,21 +61,21 @@ std::string arangodb::options::EnvironmentTranslator(std::string const& value, c
 
   std::string result;
 
-  for (char const* q = p;  q < e;  q++) {
+  for (char const* q = p; q < e; q++) {
     if (*q == '@') {
       q++;
 
       if (*q == '@') {
         result.push_back('@');
-      }
-      else {
+      } else {
         char const* t = q;
 
-        for (;  q < e && *q != '@';  q++) ;
+        for (; q < e && *q != '@'; q++)
+          ;
 
         if (q < e) {
           std::string k = std::string(t, q);
-          char* v = getenv(k.c_str());
+          char const* v = getenv(k.c_str());
           std::string vv;
 
           if (v != nullptr && *v == '\0') {
@@ -55,11 +83,19 @@ std::string arangodb::options::EnvironmentTranslator(std::string const& value, c
           }
 
           if (v == nullptr) {
+            auto iter = environment.find(k);
+
+            if (iter != environment.end()) {
+              v = iter->second.c_str();
+            }
+          }
+
+          if (v == nullptr) {
 #if _WIN32
             if (TRI_EqualString(k.c_str(), "ROOTDIR")) {
               vv = TRI_LocateInstallDirectory(binaryPath);
 
-              if (! vv.empty()) {
+              if (!vv.empty()) {
                 char c = *(vv.rbegin());
 
                 if (c == TRI_DIR_SEPARATOR_CHAR || c == '/') {
@@ -68,19 +104,16 @@ std::string arangodb::options::EnvironmentTranslator(std::string const& value, c
               }
             }
 #endif
-          }
-          else {
+          } else {
             vv = v;
           }
 
           result += vv;
-        }
-        else {
+        } else {
           result += std::string(t - 1);
         }
       }
-    }
-    else {
+    } else {
       result.push_back(*q);
     }
   }
