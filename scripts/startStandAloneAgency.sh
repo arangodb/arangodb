@@ -75,7 +75,7 @@ while [[ ${1} ]]; do
   
   if ! shift; then
     echo 'Missing parameter argument.' >&2
-    return 1
+    exit 1
   fi
 done
 
