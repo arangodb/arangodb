@@ -404,10 +404,10 @@ void AgencyCommManager::redirect(
 
   if (location.substr(0, 7) == "http://") {
     specification = "http+tcp://" + location.substr(7);
-    delim = endpoint.find('/', 8);
+    delim = specification.find_first_of('/', 12);
   } else if (location.substr(0, 8) == "https://") {
     specification = "http+ssl://" + location.substr(8);
-    delim = endpoint.find('/', 8);
+    delim = specification.find_first_of('/', 13);
   }
 
   // invalid location header
@@ -418,6 +418,10 @@ void AgencyCommManager::redirect(
 
   std::string rest = specification.substr(delim);
   specification = Endpoint::unifiedForm(specification.substr(0, delim));
+
+  LOG_TOPIC(TRACE, Logger::AGENCYCOMM) << "redirect: location = " << location
+                                       << ", specification = " << specification
+                                       << ", url = " << rest;
 
   if (endpoint == specification) {
     LOG_TOPIC(WARN, Logger::AGENCYCOMM)
@@ -1138,6 +1142,9 @@ AgencyCommResult AgencyComm::sendWithFailover(
       AgencyCommManager::MANAGER->release(std::move(connection), endpoint);
       break;
     }
+
+    AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
+    connection = AgencyCommManager::MANAGER->acquire(endpoint);
   }
 
   if (!result.successful() && result.httpCode() != 412) {
@@ -1192,7 +1199,6 @@ AgencyCommResult AgencyComm::send(
       client.request(method, url, body.c_str(), body.size(), headers));
 
   if (response == nullptr) {
-    connection->disconnect();
     result._message = "could not send request to agency";
     LOG_TOPIC(TRACE, Logger::AGENCYCOMM) << "sending request to agency failed";
 
@@ -1200,7 +1206,6 @@ AgencyCommResult AgencyComm::send(
   }
 
   if (!response->isComplete()) {
-    connection->disconnect();
     result._message = "sending request to agency failed";
     LOG_TOPIC(TRACE, Logger::AGENCYCOMM) << "sending request to agency failed";
 
@@ -1221,7 +1226,6 @@ AgencyCommResult AgencyComm::send(
 
     if (!found) {
       // a 307 without a location header does not make any sense
-      connection->disconnect();
       result._message = "invalid agency response (header missing)";
 
       return result;
