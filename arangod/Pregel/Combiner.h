@@ -36,13 +36,13 @@ namespace pregel {
         Combiner(const Combiner&) = delete;
         Combiner& operator=(const Combiner&) = delete;
         
-        virtual M combine(M const& firstValue, M const& secondValue) = 0;
+        virtual M combine(M const& firstValue, M const& secondValue) const = 0;
     };
     
     class MinIntegerCombiner : public Combiner<int64_t> {
         MinIntegerCombiner() {}
         
-        int64_t combine(int64_t const& firstValue, int64_t const& secondValue) override {
+        int64_t combine(int64_t const& firstValue, int64_t const& secondValue) const override {
             return firstValue < secondValue ? firstValue : secondValue;
         };
     };

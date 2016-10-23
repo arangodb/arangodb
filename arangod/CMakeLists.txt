@@ -373,10 +373,10 @@ add_executable(${BIN_ARANGOD}
   Pregel/Algorithm.cpp
   Pregel/Conductor.cpp
   Pregel/PregelFeature.cpp
-  Pregel/InMessageCache.cpp
-  Pregel/OutMessageCache.cpp
+  Pregel/IncomingCache.cpp
+  Pregel/OutgoingCache.cpp
   Pregel/Message.cpp
-  Pregel/Vertex.cpp
+  Pregel/VertexComputation.cpp
   Pregel/Worker.cpp
   Pregel/WorkerContext.cpp
   Pregel/WorkerJob.cpp

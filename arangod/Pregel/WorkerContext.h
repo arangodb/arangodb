@@ -26,16 +26,20 @@
 #include "Basics/Common.h"
 #include "Cluster/CLusterInfo.h"
 
+#include "Algorithm.h"
+
 namespace arangodb {
     class SingleCollectionTransaction;
 namespace pregel {
     
-    typedef unsigned int prglSeq_t;
-  class InMessageCache;
+  typedef unsigned int prglSeq_t;
+  template<typename M>
+  class IncomingCache;
     
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief carry common parameters
 ////////////////////////////////////////////////////////////////////////////////
+template <typename V, typename E, typename M>
   class WorkerContext {
     friend class Worker;
   public:
@@ -74,17 +78,19 @@ namespace pregel {
       //    return _edgeShardID;
       //}
       
-      inline InMessageCache* readableIncomingCache() {
+      inline IncomingCache<M>* readableIncomingCache() {
           return _readCache;
       }
       
-      inline InMessageCache* writeableIncomingCache() {
+      inline IncomingCache<M>* writeableIncomingCache() {
           return _writeCache;
       }
     
   private:
     /// @brief guard to make sure the database is not dropped while used by us
       const prglSeq_t _executionNumber;
+      Algorithm<V, E, M> *_algorithm;
+
       prglSeq_t _globalSuperstep = 0;
       prglSeq_t _expectedGSS = 0;
       std::string _coordinatorId;
@@ -92,8 +98,8 @@ namespace pregel {
       std::string _vertexCollectionName, _vertexCollectionPlanId;
       std::vector<ShardID> _localVertexShardIDs;
       //ShardID _vertexShardID, _edgeShardID;
-      
-      InMessageCache *_readCache, *_writeCache;
+    
+      IncomingCache<M> *_readCache, *_writeCache;
       void swapIncomingCaches();// only call when message receiving is locked
   };
 }

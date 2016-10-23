@@ -20,9 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "InMessageCache.h"
+#include "IncomingCache.h"
 #include "Utils.h"
-#include "Message.h"
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
@@ -34,20 +33,23 @@
 using namespace arangodb;
 using namespace arangodb::pregel;
 
-InMessageCache::~InMessageCache() {
+template<typename M>
+IncomingCache<M>::~IncomingCache() {
   for (auto const &it : _messages) {
     delete(it.second);
   }
   _messages.clear();
 }
 
-void InMessageCache::clear() {
+template<typename M>
+void IncomingCache<M>::clear() {
   for (auto const &it : _messages) {
     it.second->clear();
   }
 }
 
-void InMessageCache::parseMessages(VPackSlice incomingMessages) {
+template<typename M>
+void IncomingCache<M>::parseMessages(VPackSlice incomingMessages) {
   MUTEX_LOCKER(locker, writeMutex);
   LOG(INFO) << "Adding messages to In-Queue " << incomingMessages.toJson();
     
@@ -99,7 +101,8 @@ void InMessageCache::parseMessages(VPackSlice incomingMessages) {
   //VPackSlice messages = data.get(Utils::messagesKey);
 }
 
-void InMessageCache::setDirect(std::string const& vertexId, VPackSlice data) {
+template<typename M>
+void IncomingCache<M>::setDirect(std::string const& vertexId, M const& data) {
     auto vmsg = _messages.find(vertexId);
     if (vmsg != _messages.end()) {
         VPackBuilder *b = vmsg->second;
@@ -112,7 +115,8 @@ void InMessageCache::setDirect(std::string const& vertexId, VPackSlice data) {
     }
 }
 
-MessageIterator InMessageCache::getMessages(std::string const& vertexId) {
+template<typename M>
+MessageIterator<M> IncomingCache<M>::getMessages(std::string const& vertexId) {
   LOG(INFO) << "Querying messages for " << vertexId;
   auto vmsg = _messages.find(vertexId);
   if (vmsg != _messages.end()) {

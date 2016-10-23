@@ -21,12 +21,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Worker.h"
-#include "Vertex.h"
 #include "Utils.h"
 #include "WorkerJob.h"
 #include "WorkerContext.h"
-#include "InMessageCache.h"
-#include "OutMessageCache.h"
+#include "IncomingCache.h"
+#include "OutgoingCache.h"
 
 #include "Basics/MutexLocker.h"
 #include "Cluster/ClusterInfo.h"
@@ -49,13 +48,13 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "OutMessageCache.h"
-
 using namespace arangodb;
 using namespace arangodb::pregel;
 
+
 Worker::Worker(unsigned int executionNumber,
                TRI_vocbase_t *vocbase,
+               Algorithm<V, E, M> const& alg,
                VPackSlice s) : _vocbase(vocbase), _ctx(new WorkerContext(executionNumber)) {
 
   
@@ -64,6 +63,8 @@ Worker::Worker(unsigned int executionNumber,
     VPackSlice vertexCollPlanId = s.get(Utils::vertexCollectionPlanIdKey);
   VPackSlice vertexShardIDs = s.get(Utils::vertexShardsListKey);
   VPackSlice edgeShardIDs = s.get(Utils::edgeShardsListKey);
+  VPackSlice algorithm = s.get(Utils::algorithmKey);
+
   //if (!(coordID.isString() && vertexShardIDs.length() == 1 && edgeShardIDs.length() == 1)) {
   //  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Only one shard per collection supported");
   //}
@@ -71,9 +72,11 @@ Worker::Worker(unsigned int executionNumber,
       || !vertexCollName.isString()
       || !vertexCollPlanId.isString()
       || !vertexShardIDs.isArray()
-      || !edgeShardIDs.isArray()) {
+      || !edgeShardIDs.isArray()
+      || !algorithm.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Supplied bad parameters to worker");
   }
+  
   _ctx->_coordinatorId = coordID.copyString();
   _ctx->_database = vocbase->name();
   _ctx->_vertexCollectionName = vertexCollName.copyString();// readable name of collection

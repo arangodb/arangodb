@@ -29,17 +29,20 @@
 #include "Cluster/ClusterInfo.h"
 #include "Dispatcher/Job.h"
 
+#include "WorkerContext.h"
+#include "Algorithm.h"
+
 namespace arangodb {
     class SingleCollectionTransaction;
 namespace pregel {
   class Vertex;
-  class WorkerContext;
   class WorkerJob;
   
+  template<typename, V, typename E, typename M>
   class Worker {
     friend class WorkerJob;
   public:
-    Worker(unsigned int executionNumber, TRI_vocbase_t *vocbase, VPackSlice s);
+    Worker(unsigned int executionNumber, TRI_vocbase_t *vocbase, Algorithm<V, E, M> const& alg, VPackSlice s);
     ~Worker();
       
     void nextGlobalStep(VPackSlice data);// called by coordinator
@@ -51,7 +54,7 @@ namespace pregel {
     /// @brief guard to make sure the database is not dropped while used by us
     TRI_vocbase_t* _vocbase;
     //Mutex _messagesMutex; TODO figure this out
-      std::shared_ptr<WorkerContext> _ctx;
+      std::shared_ptr<WorkerContext<V,E,M>> _ctx;
     
     std::unordered_map<std::string, Vertex*> _vertices;
     std::map<std::string, bool> _activationMap;

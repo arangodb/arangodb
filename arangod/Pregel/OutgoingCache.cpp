@@ -20,9 +20,10 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OutMessageCache.h"
+#include "OutgoingCache.h"
 #include "WorkerContext.h"
-#include "InMessageCache.h"
+#include "IncomingCache.h"
+#include "Combiner.h"
 #include "Utils.h"
 
 #include "Basics/MutexLocker.h"
@@ -38,17 +39,22 @@
 using namespace arangodb;
 using namespace arangodb::pregel;
 
-OutMessageCache::OutMessageCache(std::shared_ptr<WorkerContext> context) : _ctx(context) {
+template <typename M>
+OutgoingCache<M>::OutgoingCache(std::shared_ptr<WorkerContext> context, Combiner<M> const& combiner) : _ctx(context) {
   _ci = ClusterInfo::instance();
   _collInfo = _ci->getCollection(_ctx->database(), _ctx->vertexCollectionPlanId());
   _baseUrl = Utils::baseUrl(_ctx->database());
+  _combiner = combiner;
 }
 
-OutMessageCache::~OutMessageCache() {
+template <typename M>
+
+OutgoingCache<M>::~OutgoingCache<M>() {
     clear();
 }
 
-void OutMessageCache::clear() {
+template <typename M>
+void OutgoingCache<M>::clear() {
   //TODO better way?
   for (auto const &it : _map) {
     for (auto const &it2 : it.second) {
@@ -56,12 +62,15 @@ void OutMessageCache::clear() {
     }
   }
   _map.clear();
+  _numVertices = 0;
 }
 
-void OutMessageCache::sendMessageTo(std::string const& toValue, VPackSlice mData) {
-  LOG(INFO) << "Adding outgoing messages " << mData.toJson();
-  
-    std::string vertexKey = Utils::vertexKeyFromToValue(toValue);
+template <typename M>
+void OutgoingCache<M>::sendMessageTo(std::string const& toValue, M const& data) {
+  assert(_combiner);
+
+  LOG(INFO) << "Adding outgoing messages for " << toValue;
+  std::string vertexKey = Utils::vertexKeyFromToValue(toValue);
     
   ShardID responsibleShard;
   bool usesDefaultShardingAttributes;
@@ -73,15 +82,19 @@ void OutMessageCache::sendMessageTo(std::string const& toValue, VPackSlice mData
   int res = _ci->getResponsibleShard(_collInfo.get(), partial.slice(), true,
                                      responsibleShard, usesDefaultShardingAttributes);
   if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res, "OutMessageCache could not resolve the responsible shard");
+    THROW_ARANGO_EXCEPTION_MESSAGE(res, "OutgoingCache could not resolve the responsible shard");
   }
   TRI_ASSERT(usesDefaultShardingAttributes);// should be true anyway
   LOG(INFO) << "Responsible shard: " << responsibleShard;
     
   //std::unordered_map<std::string, VPackBuilder*> vertexMap =;
-  auto it = _map[responsibleShard].find(vertexKey);
-  if (it != _map[responsibleShard].end()) {// more than one message
-    VPackBuilder *b = it->second;
+  auto const& vertexMap = _map[responsibleShard];
+  auto it = vertexMap.find(vertexKey);
+  if (it != vertexMap.end()) {// more than one message
+    
+    vertexMap[vertexKey] = _combiner->combine(vertexMap[vertexKey], data);
+    
+    /*VPackBuilder *b = it->second;
     
     // hardcoded combiner
     int64_t oldValue = b->slice().get("value").getInt();
@@ -89,19 +102,19 @@ void OutMessageCache::sendMessageTo(std::string const& toValue, VPackSlice mData
     if (newValue < oldValue) {
       b->clear();
       b->add(mData);
-    }
+    }*/
     
   } else {// first message for this vertex
-     std::unique_ptr<VPackBuilder> b(new VPackBuilder());
-    b->add(mData);
-    _map[responsibleShard][vertexKey] = b.get();
-    b.release();
+    //std::unique_ptr<VPackBuilder> b(new VPackBuilder());
+    //b->add(mData);
+    vertexMap[vertexKey] = data;
+    //b.release();
   }
     
     _numVertices++;
 }
 /*
-void OutMessageCache::getMessages(ShardID const& shardId, VPackBuilder &outBuilder) {
+void OutgoingCache::getMessages(ShardID const& shardId, VPackBuilder &outBuilder) {
   auto shardIt = _map.find(shardId);
   if (shardIt != _map.end()) {
     //auto vertices = *shardIt;
@@ -116,7 +129,8 @@ void OutMessageCache::getMessages(ShardID const& shardId, VPackBuilder &outBuild
   //else return VPackSlice();
 }
 */
-void OutMessageCache::sendMessages() {
+template <typename M>
+void OutgoingCache<M>::sendMessages() {
     LOG(INFO) << "Sending messages to other machines";
     auto localShards = _ctx->localVertexShardIDs();
     
@@ -131,6 +145,9 @@ void OutMessageCache::sendMessages() {
         
         if (std::find(localShards.begin(), localShards.end(), shard) != localShards.end()) {
             for (auto const& pair : vertexMessageMap) {
+              
+              
+              
                 _ctx->writeableIncomingCache()->setDirect(pair.first, pair.second->slice());
                 LOG(INFO) << "Worker: Got messages for myself: " << pair.second->slice().toJson();
             }

@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
-#include "Aggregator.h"
+//#include "Aggregator.h"
 #include "Combiner.h"
 #include "VertexComputation.h"
 
@@ -34,6 +34,9 @@
 #define ARANGODB_PREGEL_ALGORITHM_H 1
 namespace arangodb {
 namespace pregel {
+  
+  template <typename V, typename E, typename M>
+  class VertexComputation;
     
     // specify serialization, whatever
     template <typename V, typename E, typename M>
@@ -53,11 +56,11 @@ namespace pregel {
 
         virtual Combiner<M> * createCombiner() = 0;
         
-        virtual 
-        virtual void compute(int gss, VertexIndexEntry* v, V* vertexData, EdgeIterator<E> const&, MessageIterator<M> const &) = 0;
+        virtual VertexComputation<V, E, M> * createComputation();
+      //virtual void compute(int gss, VertexIndexEntry* v, V* vertexData, EdgeIterator<E> const&, MessageIterator<M> const &) = 0;
         
-        virtual void aggregate(std::string aggregatorName, VPackSlice value) = 0;
-        virtual VPackSlice aggregatedValue(std::string aggregatorName) = 0;
+      //virtual void aggregate(std::string aggregatorName, VPackSlice value) = 0;
+      //virtual VPackSlice aggregatedValue(std::string aggregatorName) = 0;
         
         std::string const& getName() {return _name;}
         
@@ -68,9 +71,9 @@ namespace pregel {
     
     class SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
     public:
-        SSSPAlgorithm() : Algorithm() {}
+        SSSPAlgorithm() : Algorithm("SSSP") {}
     private:
-        MinIntegerAggregator _minAggregator("min", INT64_MAX);
+      //MinIntegerAggregator _minAggregator("min", INT64_MAX);
     };
 }
 }

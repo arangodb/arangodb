@@ -25,13 +25,13 @@
 
 #include "Basics/Common.h"
 #include "Dispatcher/Job.h"
+#include "WorkerContext.h"
 
 namespace arangodb {
     class SingleCollectionTransaction;
 namespace pregel {
     class Worker;
-    class WorkerContext;
-    
+  
   class WorkerJob : public rest::Job {
     WorkerJob(WorkerJob const&) = delete;
     WorkerJob& operator=(WorkerJob const&) = delete;

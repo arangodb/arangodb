@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VertexComputation.h"
-#include "OutMessageCache.h"
+#include "OutgoingCache.h"
 
 #include "Basics/StaticStrings.h"
 #include <velocypack/velocypack-aliases.h>
@@ -31,6 +31,10 @@ using namespace std;
 using namespace arangodb;
 using namespace arangodb::velocypack;
 using namespace arangodb::pregel;
+
+void VertexComputation::sendMessage(std::string const& toValue, M const& data) {
+  outgoing->sendMessageTo(toValue, data);
+}
 /*
 Edge::Edge(VPackSlice data) : _data(data) {
     VPackSlice v = data.get("value");

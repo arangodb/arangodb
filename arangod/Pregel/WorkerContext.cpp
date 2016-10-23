@@ -21,14 +21,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "WorkerContext.h"
-#include "InMessageCache.h"
+#include "IncomingCache.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
 
 WorkerContext::WorkerContext(unsigned int en) : _executionNumber(en) {
-    _readCache = new InMessageCache();
-    _writeCache = new InMessageCache();
+    _readCache = new IncomingCache();
+    _writeCache = new IncomingCache();
 }
 
 WorkerContext::~WorkerContext() {

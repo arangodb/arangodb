@@ -23,14 +23,40 @@
 #include "Basics/Common.h"
 #include <cstddef>
 
-#ifndef ARANGODB_PREGEL_VERTEX_H
-#define ARANGODB_PREGEL_VERTEX_H 1
+#ifndef ARANGODB_PREGEL_COMPUTATION_H
+#define ARANGODB_PREGEL_COMPUTATION_H 1
 namespace arangodb {
 namespace pregel {
-  
+  /*
   enum VertexActivationState {
     ACTIVE,
     STOPPED
+  };*/
+  
+  template <typename V, typename E, typename M>
+  class VertexEntry;
+  
+  template <typename M>
+  class MessageIterator;
+  
+  template <typename M>
+  class OutgoingCache;
+  
+  template <typename V, typename E, typename M>
+  class VertexComputation {
+    friend class Worker;
+  private:
+    unsigned int gss;
+    OutgoingCache<M> *outgoing;
+    
+  public:
+    
+    VertexComputation() {}
+    unsigned int getGlobalSuperstep() {return gss;}
+    
+    
+    virtual void compute(VertexEntry<V> *const entry, MessageIterator<M> const& iterator)
+    void sendMessage(std::string const& toValue, M const& data);
   };
 
 }

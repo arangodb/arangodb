@@ -29,57 +29,54 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
-
-#include "Message.h"
+#include "WorkerContext.h"
 
 namespace arangodb {
   //class Mutex;
   
 namespace pregel {
-    class WorkerContext;
+  
+    template<typename M>
+  struct Message {
+    Message(std::string const& vID, M const& data) : senderId(vID), content(data) {}
+    std::string const& senderId;
+    M const& content;
+  };
     
     template<typename M>
     class MessageIterator {
-        friend class InMessageCache;
     public:
         MessageIterator() : _size(0) {}
         
         typedef MessageIterator iterator;
         typedef const MessageIterator const_iterator;
         
-        explicit MessageIterator(VPackSlice slice) : _slice(slice) {
-            if (_slice.isNull() || _slice.isNone()) _size = 0;
-            else if (_slice.isArray()) _size = _slice.length();
-            else _size = 1;
+        explicit MessageIterator(Message<M> const& data) : _data(data), _size(1) {
         }
         
         iterator begin() {
-            return MessageIterator(_slice);
+            return MessageIterator(_data);
         }
         const_iterator begin() const {
-            return MessageIterator(_slice);
+            return MessageIterator(_data);
         }
         iterator end() {
-            auto it = MessageIterator(_slice);
+            auto it = MessageIterator(_data);
             it._position = it._size;
             return it;
         }
         const_iterator end() const {
-            auto it = MessageIterator(_slice);
+            auto it = MessageIterator(_data);
             it._position = it._size;
             return it;
         }
-        Message operator*() const {
-            if (_slice.isArray()) {
-                return Message(_slice.at(_position));
-            } else {
-                return Message(_slice);
-            }
+        Message<M> operator*() const {
+          return _data;
         }
         
         // prefix ++
         MessageIterator& operator++() {
-            ++_position;
+            _position++;
             return *this;
         }
         
@@ -99,30 +96,31 @@ namespace pregel {
         }
         
     private:
-        VPackSlice _slice;
+        Message<M> const* _data;
+      
         size_t _position = 0;
         size_t _size = 1;
     };
     
 /* In the longer run, maybe write optimized implementations for certain use cases. For example threaded
  processing */
-template<class M>
-class InMessageCache {
-    friend class OutMessageCache;
+template<typename M>
+class IncomingCache {
+    friend class OutgoingCache<M>;
 public:
-    InMessageCache(){}//std::shared_ptr<WorkerContext> context
-  ~InMessageCache();
+    IncomingCache(){}//std::shared_ptr<WorkerContext> context
+  ~IncomingCache();
   
   void parseMessages(VPackSlice messages);
   /// @brief get messages for vertex id. (Don't use keys from _from or _to directly, they contain the collection name)
-  MessageIterator getMessages(std::string const& vertexId);
+  MessageIterator<M> getMessages(std::string const& vertexId);
   void clear();
   
 protected:
     /// @brief internal method to direclty set the messages for a vertex. Only valid with already combined messages
-    void setDirect(std::string const& vertexId, VPackSlice data);
+    void setDirect(std::string const& vertexId, M const& data);
 private:
-  std::unordered_map<std::string, VPackBuilder*> _messages;
+  std::unordered_map<std::string, M> _messages;
   Mutex writeMutex;
   //std::shared_ptr<WorkerContext> _ctx;
 };
