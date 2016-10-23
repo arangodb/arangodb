@@ -47,7 +47,7 @@ RestBatchHandler::~RestBatchHandler() {}
 /// @brief was docuBlock JSF_batch_processing
 ////////////////////////////////////////////////////////////////////////////////
 
-RestHandler::status RestBatchHandler::execute() {
+RestStatus RestBatchHandler::execute() {
   switch (_response->transportType()) {
     case Endpoint::TransportType::HTTP: {
       return executeHttp();
@@ -58,16 +58,16 @@ RestHandler::status RestBatchHandler::execute() {
   }
   // should never get here
   TRI_ASSERT(false);
-  return RestHandler::status::FAILED;
+  return RestStatus::FAIL;
 }
 
-RestHandler::status RestBatchHandler::executeVpp() {
+RestStatus RestBatchHandler::executeVpp() {
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_NO_ERROR,
                 "The RestBatchHandler is not supported for this protocol!");
-  return status::DONE;
+  return RestStatus::DONE;
 }
 
-RestHandler::status RestBatchHandler::executeHttp() {
+RestStatus RestBatchHandler::executeHttp() {
   HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
 
   if (httpResponse == nullptr) {
@@ -89,7 +89,7 @@ RestHandler::status RestBatchHandler::executeHttp() {
   if (type != rest::RequestType::POST && type != rest::RequestType::PUT) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return status::DONE;
+    return RestStatus::DONE;
   }
 
   std::string boundary;
@@ -98,7 +98,7 @@ RestHandler::status RestBatchHandler::executeHttp() {
   if (!getBoundary(&boundary)) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid content-type or boundary received");
-    return status::FAILED;
+    return RestStatus::FAIL;
   }
 
   LOG(TRACE) << "boundary of multipart-message is '" << boundary << "'";
@@ -132,7 +132,7 @@ RestHandler::status RestBatchHandler::executeHttp() {
                     "invalid multipart message received");
       LOG(WARN) << "received a corrupted multipart message";
 
-      return status::FAILED;
+      return RestStatus::FAIL;
     }
 
     // split part into header & body
@@ -193,33 +193,34 @@ RestHandler::status RestBatchHandler::executeHttp() {
                          authorization.c_str(), authorization.size());
     }
 
-    RestHandler* handler = nullptr;
+    std::shared_ptr<RestHandler> handler = nullptr;
 
     {
       std::unique_ptr<HttpResponse> response(
           new HttpResponse(rest::ResponseCode::SERVER_ERROR));
 
-      handler = GeneralServerFeature::HANDLER_FACTORY->createHandler(
-          std::move(request), std::move(response));
+      auto h = GeneralServerFeature::HANDLER_FACTORY->createHandler(
+              std::move(request), std::move(response));
 
-      if (handler == nullptr) {
+      if (h == nullptr) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                       "could not create handler for batch part processing");
 
-        return status::FAILED;
+        return RestStatus::FAIL;
       }
+
+      handler.reset(h);
     }
 
     // start to work for this handler
     {
-      HandlerWorkStack work(handler);
-      RestHandler::status result = work.handler()->executeFull();
+      int result = handler->syncRunEngine();
 
-      if (result == status::FAILED) {
+      if (result != TRI_ERROR_NO_ERROR) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                       "executing a handler for batch part failed");
 
-        return status::FAILED;
+        return RestStatus::FAIL;
       }
 
       HttpResponse* partResponse =
@@ -229,7 +230,7 @@ RestHandler::status RestBatchHandler::executeHttp() {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                       "could not create a response for batch part request");
 
-        return status::FAILED;
+        return RestStatus::FAIL;
       }
 
       rest::ResponseCode const code = partResponse->responseCode();
@@ -278,7 +279,7 @@ RestHandler::status RestBatchHandler::executeHttp() {
   }
 
   // success
-  return status::DONE;
+  return RestStatus::DONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

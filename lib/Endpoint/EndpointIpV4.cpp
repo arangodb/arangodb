@@ -23,6 +23,8 @@
 
 #include "EndpointIpV4.h"
 
+#include "Logger/Logger.h"
+
 #include "Endpoint/Endpoint.h"
 
 using namespace arangodb;

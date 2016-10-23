@@ -303,6 +303,11 @@ global.DEFINE_MODULE('internal', (function () {
     exports.download = global.SYS_DOWNLOAD;
     delete global.SYS_DOWNLOAD;
   }
+  
+  if (global.SYS_CLUSTER_DOWNLOAD) {
+    exports.clusterDownload = global.SYS_CLUSTER_DOWNLOAD;
+    delete global.SYS_CLUSTER_DOWNLOAD;
+  }
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief whether or not Statistics are enabled

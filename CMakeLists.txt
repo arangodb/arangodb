@@ -226,18 +226,8 @@ endif ()
 ## ROCKSDB
 ################################################################################
 
-option(USE_ROCKSDB
-  "whether RocksDB is enabled"
-  ON
-)
-
-if (USE_ROCKSDB)
-  add_definitions("-DARANGODB_ENABLE_ROCKSDB=1")
-  add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
-  include_directories(${ROCKSDB_INCLUDE_DIR})
-else ()
-  set(ROCKSDB_LIBS "")
-endif ()
+add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
+include_directories(${ROCKSDB_INCLUDE_DIR})
 
 ################################################################################
 ## EXTERNAL PROGRAMS
@@ -713,14 +703,10 @@ endif ()
 # ICU_LIBS
 # ICU_INCLUDE_DIR
 #
-# LIBEV_VERSION
-# LIBEV_LIBS
-# LIBEV_INCLUDE_DIR
-#
 # ZLIB_VERSION
 # ZLIB_LIBS
 # ZLIB_INCLUDE_DIR
-
+add_definitions(-DBOOST_ALL_NO_LIB=1) #disable boost autolink on windows
 add_subdirectory(3rdParty)
 
 ################################################################################
@@ -734,36 +720,10 @@ foreach (LINK_DIR ${LINK_DIRECTORIES})
 endforeach()
 
 ################################################################################
-## BOOST
-################################################################################
-
-message(STATUS "using 3rdParty BOOST")
-option(USE_BOOST_UNITTESTS "use boost unit-tests" ON)
-
-set(Boost_VERSION "1.61.0")
-set(Boost_INCLUDE_DIR
-  "${PROJECT_SOURCE_DIR}/3rdParty/boost/${Boost_VERSION}"
-)
-
-if (NOT USE_BOOST_UNITTESTS)
-  message(STATUS "BOOST unit-tests are disabled")
-endif ()
-
-include_directories(SYSTEM ${Boost_INCLUDE_DIR})
-add_definitions(-DARANGODB_BOOST_VERSION=\"${Boost_VERSION}\")
-
-################################################################################
 ## ICU
 ################################################################################
 
 include_directories(${ICU_INCLUDE_DIR})
-
-################################################################################
-## LIBEV
-################################################################################
-
-include_directories(${LIBEV_INCLUDE_DIR})
-add_definitions("-DARANGODB_LIBEV_VERSION=\"${LIBEV_VERSION}\"")
 
 ################################################################################
 ## OPENSSL
@@ -922,7 +882,7 @@ endif()
 add_subdirectory(Documentation)
 
 add_dependencies(arangobench   zlibstatic)
-add_dependencies(arangod       ev zlibstatic)
+add_dependencies(arangod       zlibstatic)
 add_dependencies(arangodump    zlibstatic)
 add_dependencies(arangoimp     zlibstatic)
 add_dependencies(arangorestore zlibstatic)

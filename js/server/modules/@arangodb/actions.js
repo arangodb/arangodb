@@ -984,15 +984,15 @@ function foxxRouting (req, res, options, next) {
   var mount = options.mount;
 
   try {
-    var app = foxxManager.lookupService(mount);
-    var devel = app.isDevelopment;
+    var service = foxxManager.lookupService(mount);
+    var devel = service.isDevelopment;
 
     if (devel || !options.hasOwnProperty('routing')) {
       delete options.error;
 
       if (devel) {
         foxxManager.rescanFoxx(mount); // TODO can move this to somewhere else?
-        app = foxxManager.lookupService(mount);
+        service = foxxManager.lookupService(mount);
       }
 
       options.routing = flattenRoutingTree(buildRoutingTree([foxxManager.routes(mount)]));

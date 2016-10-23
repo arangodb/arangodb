@@ -26,9 +26,10 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 #include <openssl/ssl.h>
+#include <boost/asio/ssl.hpp>
 
 #include "Actions/RestActionHandler.h"
-#include "VocBase/AuthInfo.h"
+#include "Basics/asio-helper.h"
 
 namespace arangodb {
 namespace rest {
@@ -42,32 +43,14 @@ class RestServerThread;
 class GeneralServerFeature final
     : public application_features::ApplicationFeature {
  public:
-  typedef int (*verification_callback_fptr)(int, X509_STORE_CTX*);
-
- public:
   static rest::RestHandlerFactory* HANDLER_FACTORY;
   static rest::AsyncJobManager* JOB_MANAGER;
-  static AuthInfo AUTH_INFO;
 
  public:
   static double keepAliveTimeout() {
     return GENERAL_SERVER != nullptr ? GENERAL_SERVER->_keepAliveTimeout
                                      : 300.0;
   };
-
-  static int verificationMode() {
-    return GENERAL_SERVER != nullptr ? GENERAL_SERVER->_verificationMode
-                                     : SSL_VERIFY_NONE;
-  };
-
-  static verification_callback_fptr verificationCallback() {
-    return GENERAL_SERVER != nullptr ? GENERAL_SERVER->_verificationCallback
-                                     : nullptr;
-  };
-
-  static bool authenticationEnabled() {
-    return GENERAL_SERVER != nullptr && GENERAL_SERVER->_authentication;
-  }
 
   static bool hasProxyCheck() {
     return GENERAL_SERVER != nullptr && GENERAL_SERVER->proxyCheck();
@@ -79,14 +62,6 @@ class GeneralServerFeature final
     }
 
     return GENERAL_SERVER->trustedProxies();
-  }
-
-  static std::string getJwtSecret() {
-    if (GENERAL_SERVER == nullptr) {
-      return std::string();
-    }
-
-    return GENERAL_SERVER->jwtSecret();
   }
 
   static bool allowMethodOverride() {
@@ -109,7 +84,6 @@ class GeneralServerFeature final
 
  private:
   static GeneralServerFeature* GENERAL_SERVER;
-  static const size_t _maxSecretLength = 64;
 
  public:
   explicit GeneralServerFeature(application_features::ApplicationServer*);
@@ -122,36 +96,17 @@ class GeneralServerFeature final
   void stop() override final;
   void unprepare() override final;
 
- public:
-  void setVerificationMode(int mode) { _verificationMode = mode; }
-  void setVerificationCallback(int (*func)(int, X509_STORE_CTX*)) {
-    _verificationCallback = func;
-  }
-
  private:
   double _keepAliveTimeout = 300.0;
   bool _allowMethodOverride;
-  bool _authentication;
-  bool _authenticationUnixSockets;
-  bool _authenticationSystemOnly;
 
   bool _proxyCheck;
   std::vector<std::string> _trustedProxies;
   std::vector<std::string> _accessControlAllowOrigins;
 
-  std::string _jwtSecret;
-  int _verificationMode;
-  verification_callback_fptr _verificationCallback;
-
  public:
-  bool authentication() const { return _authentication; }
-  bool authenticationUnixSockets() const { return _authenticationUnixSockets; }
-  bool authenticationSystemOnly() const { return _authenticationSystemOnly; }
   bool proxyCheck() const { return _proxyCheck; }
   std::vector<std::string> trustedProxies() const { return _trustedProxies; }
-  std::string jwtSecret() const { return _jwtSecret; }
-  void generateNewJwtSecret();
-  void setJwtSecret(std::string const& jwtSecret) { _jwtSecret = jwtSecret; }
 
  private:
   void buildServers();

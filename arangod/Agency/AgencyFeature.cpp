@@ -50,7 +50,6 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Database");
-  startsAfter("Dispatcher");
   startsAfter("Endpoint");
   startsAfter("QueryRegistry");
   startsAfter("Random");

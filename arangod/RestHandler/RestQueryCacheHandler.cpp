@@ -36,7 +36,7 @@ RestQueryCacheHandler::RestQueryCacheHandler(GeneralRequest* request,
 
 bool RestQueryCacheHandler::isDirect() const { return false; }
 
-RestHandler::status RestQueryCacheHandler::execute() {
+RestStatus RestQueryCacheHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
 
@@ -56,7 +56,7 @@ RestHandler::status RestQueryCacheHandler::execute() {
   }
 
   // this handler is done
-  return status::DONE;
+  return RestStatus::DONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

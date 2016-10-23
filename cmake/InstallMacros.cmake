@@ -69,7 +69,7 @@ endmacro ()
 
 # installs a readme file converting EOL ----------------------------------------
 macro (install_readme input output)
-  set(where "${CMAKE_INSTALL_FULL_DOCDIR}")
+  set(where "${CMAKE_INSTALL_DOCDIR}")
   if (MSVC)
     # the windows installer contains the readme in the top level directory:
     set(where ".")

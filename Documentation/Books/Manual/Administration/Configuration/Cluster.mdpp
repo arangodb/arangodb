@@ -1,4 +1,4 @@
-!CHAPTER Command-Line Options for Clusters
+!CHAPTER Clusters Options
 
 !SUBSECTION Node ID
 <!-- arangod/Cluster/ApplicationCluster.h -->

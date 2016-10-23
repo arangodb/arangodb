@@ -35,7 +35,7 @@ RestPleaseUpgradeHandler::RestPleaseUpgradeHandler(GeneralRequest* request,
 
 bool RestPleaseUpgradeHandler::isDirect() const { return true; }
 
-RestHandler::status RestPleaseUpgradeHandler::execute() {
+RestStatus RestPleaseUpgradeHandler::execute() {
   // TODO needs to generalized
   auto response = dynamic_cast<HttpResponse*>(_response.get());
 
@@ -57,7 +57,7 @@ RestHandler::status RestPleaseUpgradeHandler::execute() {
   buffer.appendText("  /etc/init.d/arangodb3 start\r\n\r\n");
   buffer.appendText("Please check the log file for details.\r\n");
 
-  return status::DONE;
+  return RestStatus::DONE;
 }
 
 void RestPleaseUpgradeHandler::handleError(const Exception&) {}

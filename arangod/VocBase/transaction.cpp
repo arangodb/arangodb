@@ -33,14 +33,12 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
 
-#ifdef ARANGODB_ENABLE_ROCKSDB
 #include "Indexes/RocksDBFeature.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/options.h>
 #include <rocksdb/utilities/optimistic_transaction_db.h>
 #include <rocksdb/utilities/transaction.h>
-#endif
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
@@ -657,7 +655,6 @@ static int WriteCommitMarker(TRI_transaction_t* trx) {
     TRI_IF_FAILURE("TransactionWriteCommitMarkerSegfault") { 
       TRI_SegfaultDebugging("crashing on commit");
     }
-#ifdef ARANGODB_ENABLE_ROCKSDB
 
     TRI_IF_FAILURE("TransactionWriteCommitMarkerNoRocksSync") { return TRI_ERROR_NO_ERROR; }
 
@@ -673,7 +670,6 @@ static int WriteCommitMarker(TRI_transaction_t* trx) {
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
-#endif
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
     LOG(WARN) << "could not save transaction commit marker in log: " << ex.what();
@@ -1021,12 +1017,11 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
       // some error occurred
       return slotInfo.errorCode;
     }
-#ifdef ARANGODB_ENABLE_ROCKSDB
     if (localWaitForSync) {
       // also sync RocksDB WAL
       RocksDBFeature::syncWal();
     }
-#endif
+    
     operation.tick = slotInfo.tick;
     fid = slotInfo.logfileId;
     position = slotInfo.mem;
@@ -1055,7 +1050,6 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
 
   if (isSingleOperationTransaction) {
     // operation is directly executed
-#ifdef ARANGODB_ENABLE_ROCKSDB
     if (trx->_rocksTransaction != nullptr) {
       auto status = trx->_rocksTransaction->Commit();
 
@@ -1063,7 +1057,6 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
         // TODO: what to do here?
       }
     }
-#endif
     operation.handle();
 
     arangodb::aql::QueryCache::instance()->invalidate(
@@ -1202,7 +1195,6 @@ int TRI_CommitTransaction(TRI_transaction_t* trx, int nestingLevel) {
   int res = TRI_ERROR_NO_ERROR;
 
   if (nestingLevel == 0) {
-#ifdef ARANGODB_ENABLE_ROCKSDB
     if (trx->_rocksTransaction != nullptr) {
       auto status = trx->_rocksTransaction->Commit();
 
@@ -1212,7 +1204,6 @@ int TRI_CommitTransaction(TRI_transaction_t* trx, int nestingLevel) {
         return res;
       }
     }
-#endif
 
     res = WriteCommitMarker(trx);
 
@@ -1284,9 +1275,7 @@ TRI_transaction_t::TRI_transaction_t(TRI_vocbase_t* vocbase, double timeout, boo
       _status(TRI_TRANSACTION_CREATED),
       _arena(),
       _collections{_arena}, // assign arena to vector 
-#ifdef ARANGODB_ENABLE_ROCKSDB
       _rocksTransaction(nullptr),
-#endif
       _hints(0),
       _nestingLevel(0), 
       _allowImplicit(true),
@@ -1311,9 +1300,7 @@ TRI_transaction_t::~TRI_transaction_t() {
     TRI_AbortTransaction(this, 0);
   }
 
-#ifdef ARANGODB_ENABLE_ROCKSDB
   delete _rocksTransaction;
-#endif
 
   ReleaseCollections(this, 0);
 

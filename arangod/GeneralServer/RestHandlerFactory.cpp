@@ -29,6 +29,9 @@
 #include "Rest/GeneralRequest.h"
 #include "Rest/RequestContext.h"
 
+#include "RestHandler/RestDocumentHandler.h"
+#include "RestHandler/RestVersionHandler.h"
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -47,10 +50,10 @@ class MaintenanceHandler : public RestHandler {
 
   bool isDirect() const override { return true; };
 
-  status execute() override {
+  RestStatus execute() override {
     resetResponse(rest::ResponseCode::SERVICE_UNAVAILABLE);
 
-    return status::DONE;
+    return RestStatus::DONE;
   };
 
   void handleError(const Exception& error) override {
@@ -87,9 +90,9 @@ bool RestHandlerFactory::setRequestContext(GeneralRequest* request) {
 
 RestHandler* RestHandlerFactory::createHandler(
     std::unique_ptr<GeneralRequest> request,
-    std::unique_ptr<GeneralResponse> response) {
+    std::unique_ptr<GeneralResponse> response) const {
   std::string const& path = request->requestPath();
-
+  
   // In the bootstrap phase, we would like that coordinators answer the
   // following to endpoints, but not yet others:
   if (_maintenanceMode.load()) {
@@ -106,6 +109,28 @@ RestHandler* RestHandlerFactory::createHandler(
   auto const& ii = _constructors;
   std::string const* modifiedPath = &path;
   std::string prefix;
+
+#if 0
+  if (strncmp(path.c_str(), "/_api/document/", 15) == 0) {
+    prefix = "/_api/document";
+
+    size_t l = prefix.size() + 1;
+    size_t n = path.find_first_of('/', l);
+
+    while (n != std::string::npos) {
+      request->addSuffix(path.substr(l, n - l));
+      l = n + 1;
+      n = path.find_first_of('/', l);
+    }
+
+    if (l < path.size()) {
+      request->addSuffix(path.substr(l));
+    }
+
+    return new RestDocumentHandler(request.release(),
+                                   response.release());
+  }
+#endif
 
   auto i = ii.find(path);
 

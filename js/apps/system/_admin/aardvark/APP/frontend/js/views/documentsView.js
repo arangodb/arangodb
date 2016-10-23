@@ -111,11 +111,11 @@
     },
 
     showSpinner: function () {
-      $('#uploadIndicator').show();
+      $('.upload-indicator').show();
     },
 
     hideSpinner: function () {
-      $('#uploadIndicator').hide();
+      $('.upload-indicator').hide();
     },
 
     showImportModal: function () {
@@ -202,12 +202,11 @@
       var callback = function (error, msg) {
         if (error) {
           arangoHelper.arangoError('Upload', msg);
-          this.hideSpinner();
         } else {
-          this.hideSpinner();
           this.hideImportModal();
           this.resetView();
         }
+        this.hideSpinner();
       }.bind(this);
 
       if (this.allowUpload === true) {

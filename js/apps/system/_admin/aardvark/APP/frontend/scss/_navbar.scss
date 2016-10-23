@@ -43,7 +43,7 @@ $navbar-size: 150px;
     height: auto;
     margin-left: 6px;
     margin-top: 15px;
-    width: $navbar-size - 12px;
+    width: $navbar-size - 6px;
   }
 
   .arango-collection-select {
@@ -168,6 +168,30 @@ $navbar-size: 150px;
     display: none;
   }
 
+  #communityLabel {
+    color: $c-white;
+    font-family: Roboto,sans-serif;
+    font-size: 7.3pt;
+    font-weight: 100;
+    left: 38px;
+    letter-spacing: 1px;
+    position: fixed;
+    text-transform: uppercase;
+    top: 38px;
+  }
+
+  #enterpriseLabel {
+    color: $c-white;
+    font-family: Roboto,sans-serif;
+    font-size: 7.3pt;
+    font-weight: 100;
+    left: 38px;
+    letter-spacing: 1px;
+    position: fixed;
+    text-transform: uppercase;
+    top: 38px;
+  }
+
   .version {
     bottom: 33px;
     color: rgba(255, 255, 255, .7);
@@ -199,6 +223,10 @@ $navbar-size: 150px;
 
     .up-to-date {
       color: $c-positive;
+
+      .fa-exclamation-circle {
+        padding-left: 3px;
+      }
     }
   }
 }

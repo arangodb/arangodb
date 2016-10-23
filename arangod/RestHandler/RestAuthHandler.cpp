@@ -27,7 +27,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/StringUtils.h"
-#include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 #include "Ssl/SslInterface.h"
@@ -38,22 +38,16 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestAuthHandler::RestAuthHandler(GeneralRequest* request,
-                                 GeneralResponse* response,
-                                 std::string const* jwtSecret)
+                                 GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response),
-      _jwtSecret(*jwtSecret),
       _validFor(60 * 60 * 24 * 30) {}
 
 bool RestAuthHandler::isDirect() const { return false; }
 
 std::string RestAuthHandler::generateJwt(std::string const& username,
                                          std::string const& password) {
-  VPackBuilder headerBuilder;
-  {
-    VPackObjectBuilder h(&headerBuilder);
-    headerBuilder.add("alg", VPackValue("HS256"));
-    headerBuilder.add("typ", VPackValue("JWT"));
-  }
+  auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>("Authentication");
+  TRI_ASSERT(authentication != nullptr);
 
   std::chrono::seconds exp =
       std::chrono::duration_cast<std::chrono::seconds>(
@@ -66,23 +60,15 @@ std::string RestAuthHandler::generateJwt(std::string const& username,
     bodyBuilder.add("iss", VPackValue("arangodb"));
     bodyBuilder.add("exp", VPackValue(exp.count()));
   }
-
-  std::string fullMessage(StringUtils::encodeBase64(headerBuilder.toJson()) +
-                          "." +
-                          StringUtils::encodeBase64(bodyBuilder.toJson()));
-  std::string signature =
-      sslHMAC(_jwtSecret.c_str(), _jwtSecret.length(), fullMessage.c_str(),
-              fullMessage.length(), SslInterface::Algorithm::ALGORITHM_SHA256);
-
-  return fullMessage + "." + StringUtils::encodeBase64U(signature);
+  return authentication->authInfo()->generateJwt(bodyBuilder);
 }
 
-RestHandler::status RestAuthHandler::execute() {
+RestStatus RestAuthHandler::execute() {
   auto const type = _request->requestType();
   if (type != rest::RequestType::POST) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return status::DONE;
+    return RestStatus::DONE;
   }
 
   VPackOptions options = VPackOptions::Defaults;
@@ -109,9 +95,12 @@ RestHandler::status RestAuthHandler::execute() {
 
   _username = usernameSlice.copyString();
   std::string const password = passwordSlice.copyString();
-
+  
+  auto authentication =
+      application_features::ApplicationServer::getFeature<AuthenticationFeature>(
+          "Authentication");
   AuthResult auth =
-      GeneralServerFeature::AUTH_INFO.checkPassword(_username, password);
+    authentication->authInfo()->checkPassword(_username, password);
 
   if (auth._authorized) {
     VPackBuilder resultBuilder;
@@ -124,17 +113,17 @@ RestHandler::status RestAuthHandler::execute() {
 
     _isValid = true;
     generateDocument(resultBuilder.slice(), true, &VPackOptions::Defaults);
-    return status::DONE;
+    return RestStatus::DONE;
   } else {
     // mop: rfc 2616 10.4.2 (if credentials wrong 401)
     generateError(rest::ResponseCode::UNAUTHORIZED,
                   TRI_ERROR_HTTP_UNAUTHORIZED, "Wrong credentials");
-    return status::DONE;
+    return RestStatus::DONE;
   }
 }
 
-RestHandler::status RestAuthHandler::badRequest() {
+RestStatus RestAuthHandler::badRequest() {
   generateError(rest::ResponseCode::BAD,
                 TRI_ERROR_HTTP_BAD_PARAMETER, "invalid JSON");
-  return status::DONE;
+  return RestStatus::DONE;
 }

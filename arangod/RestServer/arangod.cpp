@@ -42,13 +42,12 @@
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Cluster/ClusterFeature.h"
-#include "Dispatcher/DispatcherFeature.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LoggerBufferFeature.h"
 #include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
-#include "RestServer/AffinityFeature.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/CheckVersionFeature.h"
 #include "RestServer/ConsoleFeature.h"
@@ -80,16 +79,14 @@
 #include "Wal/LogfileManager.h"
 #include "Wal/RecoveryFeature.h"
 
-#ifdef ARANGODB_ENABLE_ROCKSDB
 #include "Indexes/RocksDBFeature.h"
-#endif
-
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Audit/AuditFeature.h"
-#endif
 
 #ifdef _WIN32
 #include "ApplicationFeatures/WindowsServiceFeature.h"
+#endif
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/RestServer/arangodEE.h"
 #endif
 
 using namespace arangodb;
@@ -103,15 +100,16 @@ static int runServer(int argc, char** argv) {
   std::string name = context.binaryName();
 
   auto options = std::make_shared<options::ProgramOptions>(
-      argv[0], "Usage: " + name + " [<options>]", "For more information use:", SBIN_DIRECTORY);
+      argv[0], "Usage: " + name + " [<options>]", "For more information use:",
+      SBIN_DIRECTORY);
 
   application_features::ApplicationServer server(options, SBIN_DIRECTORY);
 
   std::vector<std::string> nonServerFeatures = {
       "Action",        "Affinity",
-      "Agency",        "Cluster",
-      "Daemon",        "Dispatcher",
-      "Endpoint",      "FoxxQueues",
+      "Agency",        "Authentication",
+      "Cluster",       "Daemon",
+      "Dispatcher",    "FoxxQueues",
       "GeneralServer", "LoggerBufferFeature",
       "Server",        "Scheduler",
       "SslServer",     "Statistics",
@@ -120,8 +118,8 @@ static int runServer(int argc, char** argv) {
   int ret = EXIT_FAILURE;
 
   server.addFeature(new ActionFeature(&server));
-  server.addFeature(new AffinityFeature(&server));
   server.addFeature(new AgencyFeature(&server));
+  server.addFeature(new AuthenticationFeature(&server));
   server.addFeature(new BootstrapFeature(&server));
   server.addFeature(new CheckVersionFeature(&server, &ret, nonServerFeatures));
   server.addFeature(new ClusterFeature(&server));
@@ -129,7 +127,6 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new ConsoleFeature(&server));
   server.addFeature(new DatabaseFeature(&server));
   server.addFeature(new DatabasePathFeature(&server));
-  server.addFeature(new DispatcherFeature(&server));
   server.addFeature(new EndpointFeature(&server));
   server.addFeature(new EngineSelectorFeature(&server));
   server.addFeature(new FileDescriptorsFeature(&server));
@@ -151,13 +148,13 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new TraverserEngineRegistryFeature(&server));
   server.addFeature(new RandomFeature(&server));
   server.addFeature(new RecoveryFeature(&server));
+  server.addFeature(new RocksDBFeature(&server));
   server.addFeature(new SchedulerFeature(&server));
   server.addFeature(new ScriptFeature(&server, &ret));
   server.addFeature(new ServerFeature(&server, &ret));
   server.addFeature(new ServerIdFeature(&server));
   server.addFeature(new ShutdownFeature(&server, {"UnitTests", "Script"}));
   server.addFeature(new SslFeature(&server));
-  server.addFeature(new SslServerFeature(&server));
   server.addFeature(new StatisticsFeature(&server));
   server.addFeature(new TempFeature(&server, name));
   server.addFeature(new UnitTestsFeature(&server, &ret));
@@ -166,10 +163,6 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new V8PlatformFeature(&server));
   server.addFeature(new VersionFeature(&server));
   server.addFeature(new WorkMonitorFeature(&server));
-
-#ifdef ARANGODB_ENABLE_ROCKSDB
-  server.addFeature(new RocksDBFeature(&server));
-#endif
 
 #ifdef ARANGODB_HAVE_FORK
   server.addFeature(new DaemonFeature(&server));
@@ -180,12 +173,14 @@ static int runServer(int argc, char** argv) {
   server.addFeature(supervisor.release());
 #endif
 
-#ifdef USE_ENTERPRISE
-  server.addFeature(new AuditFeature(&server));
-#endif
-
 #ifdef _WIN32
   server.addFeature(new WindowsServiceFeature(&server));
+#endif
+
+#ifdef USE_ENTERPRISE
+  setupServerEE(&server);
+#else
+  server.addFeature(new SslServerFeature(&server));
 #endif
 
   // storage engines

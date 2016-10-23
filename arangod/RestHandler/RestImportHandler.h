@@ -65,8 +65,8 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   explicit RestImportHandler(GeneralRequest*, GeneralResponse*);
 
  public:
+  RestStatus execute() override final;
   char const* name() const override final { return "RestImportHandler"; }
-  status execute() override final;
 
  private:
   //////////////////////////////////////////////////////////////////////////////

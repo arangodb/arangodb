@@ -58,6 +58,7 @@ SimpleHttpClient::SimpleHttpClient(GeneralClientConnection* connection,
       _locationRewriter({nullptr, nullptr}),
       _nextChunkedSize(0),
       _result(nullptr),
+      _jwt(""),
       _maxPacketSize(MaxPacketSize),
       _maxRetries(3),
       _retryWaitTime(1 * 1000 * 1000),
@@ -312,17 +313,22 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
             return nullptr;
           }
           this->close();  // this sets the state to IN_CONNECT for a retry
-          usleep(5000);
+          _state = DEAD;
+          setErrorMessage("Request timeout reached");
           break;
         }
+
+        // no error
 
         if (connectionClosed) {
           // write might have succeeded even if the server has closed
           // the connection, this will then show up here with us being
           // in state IN_READ_HEADER but nothing read.
           if (_state == IN_READ_HEADER && 0 == _readBuffer.length()) {
-            this->close();  // sets _state to IN_CONNECT again for a retry
-            continue;
+            this->close();
+            _state = DEAD;
+            setErrorMessage("Connection closed by remote");
+            break;
           }
 
           else if (_state == IN_READ_BODY && !_result->hasContentLength()) {
@@ -336,7 +342,9 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
 
             if (_state != FINISHED) {
               // If the body was not fully found we give up:
-              this->close();  // this sets the state IN_CONNECT to retry
+              this->close();
+              _state = DEAD;
+              setErrorMessage("Got unexpected response from remote");
             }
 
             break;
@@ -344,7 +352,9 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
 
           else {
             // In all other cases of closed connection, we are doomed:
-            this->close();  // this sets the state to IN_CONNECT retry
+            this->close(); 
+            _state = DEAD;
+            setErrorMessage("Got unexpected response from remote");
             break;
           }
         }
@@ -434,12 +444,16 @@ void SimpleHttpClient::clearReadBuffer() {
 /// @brief sets username and password
 ////////////////////////////////////////////////////////////////////////////////
 
+void SimpleHttpClient::setJwt(std::string const& jwt) {
+  _jwt = jwt;
+}
+
 void SimpleHttpClient::setUserNamePassword(std::string const& prefix,
                                            std::string const& username,
                                            std::string const& password) {
   std::string value =
       arangodb::basics::StringUtils::encodeBase64(username + ":" + password);
-
+  
   _pathToBasicAuth.push_back(std::make_pair(prefix, value));
 }
 
@@ -562,6 +576,11 @@ void SimpleHttpClient::setRequest(
       _writeBuffer.appendText(foundValue);
       _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
     }
+  }
+  if (!_jwt.empty()) {
+    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Authorization: bearer "));
+    _writeBuffer.appendText(_jwt);
+    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
   }
 
   for (auto const& header : headers) {

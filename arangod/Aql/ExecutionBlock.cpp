@@ -24,6 +24,7 @@
 
 #include "ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/Ast.h"
 
 using namespace arangodb::aql;
 
@@ -32,7 +33,8 @@ ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
       _trx(engine->getQuery()->trx()),
       _exeNode(ep),
       _pos(0),
-      _done(false) {}
+      _done(false),
+      _tracing(engine->getQuery()->getNumericOption("tracing", 0)) {}
 
 ExecutionBlock::~ExecutionBlock() {
   for (auto& it : _buffer) {
@@ -147,6 +149,41 @@ int ExecutionBlock::shutdown(int errorCode) {
   return ret;
 }
 
+// Trace the start of a getSome call
+void ExecutionBlock::traceGetSomeBegin() const {
+  if (_tracing > 0) {
+    auto node = getPlanNode();
+    LOG_TOPIC(INFO, Logger::QUERIES) << "getSome type="
+      << node->getTypeString() << " this=" << (uintptr_t) this
+      << " id=" << node->id();
+  }
+}
+
+// Trace the end of a getSome call, potentially with result
+void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result) const {
+  if (_tracing > 0) {
+    auto node = getPlanNode();
+    LOG_TOPIC(INFO, Logger::QUERIES) << "getSome done type="
+      << node->getTypeString() << " this=" << (uintptr_t) this
+      << " id=" << node->id();
+    if (_tracing > 1) {
+      if (result == nullptr) {
+        LOG_TOPIC(INFO, Logger::QUERIES)
+            << "getSome type=" << node->getTypeString() << " result: nullptr";
+      } else {
+        VPackBuilder builder;
+        { 
+          VPackObjectBuilder guard(&builder);
+          result->toVelocyPack(_trx, builder);
+        }
+        LOG_TOPIC(INFO, Logger::QUERIES)
+            << "getSome type=" << node->getTypeString()
+            << " result: " << builder.toJson();
+      }
+    }
+  }
+}
+
 /// @brief getSome, gets some more items, semantic is as follows: not
 /// more than atMost items may be delivered. The method tries to
 /// return a block of at least atLeast items, however, it may return
@@ -154,9 +191,11 @@ int ExecutionBlock::shutdown(int errorCode) {
 /// if it returns an actual block, it must contain at least one item.
 AqlItemBlock* ExecutionBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
+  traceGetSomeBegin();
   std::unique_ptr<AqlItemBlock> result(
       getSomeWithoutRegisterClearout(atLeast, atMost));
   clearRegisters(result.get());
+  traceGetSomeEnd(result.get());
   return result.release();
   DEBUG_END_BLOCK();
 }

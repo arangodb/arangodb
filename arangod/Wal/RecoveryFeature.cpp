@@ -42,9 +42,7 @@ RecoveryFeature::RecoveryFeature(ApplicationServer* server)
   requiresElevatedPrivileges(false);
   startsAfter("Database"); 
   startsAfter("LogfileManager");
-#ifdef ARANGODB_ENABLE_ROCKSDB
   startsAfter("RocksDB");
-#endif
 }
 
 /// @brief run the recovery procedure

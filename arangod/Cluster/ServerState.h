@@ -88,12 +88,6 @@ class ServerState {
   /// @brief sets the initialized flag
   void setClusterEnabled() { _clusterEnabled = true; }
 
-  /// @brief set the authentication data for cluster-internal communication
-  void setAuthentication(std::string const&, std::string const&);
-
-  /// @brief get the authentication data for cluster-internal communication
-  std::string getAuthentication();
-
   /// @brief flush the server state (used for testing)
   void flush();
 
@@ -311,9 +305,6 @@ class ServerState {
 
   /// @brief the server's own address, can be set just once
   std::string _address;
-
-  /// @brief the authentication data used for cluster-internal communication
-  std::string _authentication;
 
   /// @brief r/w lock for state
   arangodb::basics::ReadWriteLock _lock;

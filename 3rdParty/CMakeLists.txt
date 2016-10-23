@@ -7,10 +7,10 @@
 include(ExternalProject)
 
 ################################################################################
-## EV
+## boost
 ################################################################################
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libev)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/boost)
 
 ################################################################################
 ## V8 and ICU
@@ -103,14 +103,12 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-7.50.3)
 ## ROCKSDB
 ################################################################################
 
-if (USE_ROCKSDB)
-  if (${JEMALLOC_FOUND})
+if (${JEMALLOC_FOUND})
 #   set(USE_JEMALLOC_DEFAULT 1)
-  endif()
-  set(SKIP_INSTALL_ALL ON)
-  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-d53de18)
-  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb/rocksdb)
-endif ()
+endif()
+set(SKIP_INSTALL_ALL ON)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-d53de18)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb/rocksdb)
 
 ################################################################################
 ## LINK_DIRECTORIES

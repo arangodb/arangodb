@@ -27,11 +27,11 @@
 #include "Basics/Common.h"
 
 #include "Basics/ConditionVariable.h"
-#include "Logger/Logger.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Thread.h"
 #include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
+#include "Logger/Logger.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/GeneralResponse.h"
 #include "Rest/HttpRequest.h"
@@ -225,10 +225,10 @@ struct ClusterCommResult {
 
   /// @brief stringify a cluster comm status
   static char const* stringifyStatus(ClusterCommOpStatus status);
-  
+
   void fromError(int errorCode, std::unique_ptr<GeneralResponse> response) {
     errorMessage = TRI_errno_string(errorCode);
-    switch(errorCode) {
+    switch (errorCode) {
       case TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT:
         status = CL_COMM_BACKEND_UNAVAILABLE;
         break;
@@ -253,33 +253,39 @@ struct ClusterCommResult {
     sendWasComplete = true;
     // mop: simulate the old behaviour where the original request
     // was sent to the recipient and was simply accepted. Then the backend would
-    // do its work and send a request to the target containing the result of that
-    // operation in this request. This is mind boggling but this is how it used to
+    // do its work and send a request to the target containing the result of
+    // that
+    // operation in this request. This is mind boggling but this is how it used
+    // to
     // work....now it gets even funnier: as the new system only does
     // request => response we simulate the old behaviour now and fake a request
     // containing the body of our response
     // :snake: OPST_CIRCUS
     answer_code = dynamic_cast<HttpResponse*>(response.get())->responseCode();
-    std::unordered_map<std::string, std::string> unusedHeaders;
-    HttpRequest* request = HttpRequest::createHttpRequest(ContentType::JSON, dynamic_cast<HttpResponse*>(response.get())->body().c_str(), dynamic_cast<HttpResponse*>(response.get())->body().length(), unusedHeaders);
-    
+    HttpRequest* request = HttpRequest::createHttpRequest(
+        ContentType::JSON,
+        dynamic_cast<HttpResponse*>(response.get())->body().c_str(),
+        dynamic_cast<HttpResponse*>(response.get())->body().length(), std::unordered_map<std::string,std::string>());
+
     auto headers = response->headers();
     auto errorCodes = headers.find(StaticStrings::ErrorCodes);
     if (errorCodes != headers.end()) {
       request->setHeader(StaticStrings::ErrorCodes, errorCodes->second);
     }
-    request->setHeader("x-arango-response-code", GeneralResponse::responseString(answer_code));
+    request->setHeader("x-arango-response-code",
+                       GeneralResponse::responseString(answer_code));
     answer.reset(request);
     TRI_ASSERT(response != nullptr);
-    result = std::make_shared<httpclient::SimpleHttpCommunicatorResult>(dynamic_cast<HttpResponse*>(response.release()));
+    result = std::make_shared<httpclient::SimpleHttpCommunicatorResult>(
+        dynamic_cast<HttpResponse*>(response.release()));
     // mop: well single requests were processed differently formerly and got
     // result was available in different status code situations :S
     if (single) {
-      status = result->wasHttpError() ? CL_COMM_ERROR: CL_COMM_SENT;
+      status = result->wasHttpError() ? CL_COMM_ERROR : CL_COMM_SENT;
     } else {
-      // mop: actually it will never be an ERROR here...this is and was a dirty hack :S
+      // mop: actually it will never be an ERROR here...this is and was a dirty
+      // hack :S
       status = CL_COMM_RECEIVED;
-
     }
   }
 };
@@ -518,25 +524,23 @@ class ClusterComm {
                          ClusterCommTimeout timeout, size_t& nrDone,
                          arangodb::LogTopic const& logTopic);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief this is the fast path method for performRequests for the case
-  /// of only a single request in the vector. In this case we can use a single
-  /// syncRequest, which saves a network roundtrip. This is an important
-  /// optimization for the single document operation case.
-  /// Exact same semantics as performRequests.
-  //////////////////////////////////////////////////////////////////////////////
   std::shared_ptr<communicator::Communicator> communicator() {
     return _communicator;
   }
+
+  void addAuthorization(std::unordered_map<std::string, std::string>* headers);
+
+  std::string jwt() { return _jwt; };
   
  private:
   size_t performSingleRequest(std::vector<ClusterCommRequest>& requests,
                               ClusterCommTimeout timeout, size_t& nrDone,
                               arangodb::LogTopic const& logTopic);
 
-  communicator::Destination createCommunicatorDestination(std::string const& destination, std::string const& path);
-  std::pair<ClusterCommResult*, HttpRequest*> prepareRequest(std::string const& destination,
-      arangodb::rest::RequestType reqtype,
+  communicator::Destination createCommunicatorDestination(
+      std::string const& destination, std::string const& path);
+  std::pair<ClusterCommResult*, HttpRequest*> prepareRequest(
+      std::string const& destination, arangodb::rest::RequestType reqtype,
       std::string const* body,
       std::unordered_map<std::string, std::string> const& headerFields);
   //////////////////////////////////////////////////////////////////////////////
@@ -563,7 +567,7 @@ class ClusterComm {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief received queue with lock and index
   //////////////////////////////////////////////////////////////////////////////
-  
+
   struct AsyncResponse {
     double timestamp;
     std::shared_ptr<ClusterCommResult> result;
@@ -628,6 +632,9 @@ class ClusterComm {
   bool _logConnectionErrors;
 
   std::shared_ptr<communicator::Communicator> _communicator;
+  bool _authenticationEnabled;
+  std::string _jwt;
+  std::string _jwtAuthorization;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -646,7 +653,7 @@ class ClusterCommThread : public Thread {
  public:
   void beginShutdown() override;
   bool isSystem() override final { return true; }
- 
+
  private:
   void abortRequestsToFailedServers();
 

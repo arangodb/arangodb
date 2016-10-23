@@ -119,7 +119,7 @@ class Thread {
 
     WorkDescription* desc = thread->workDescription();
 
-    return desc == nullptr ? false : desc->_canceled.load();
+    return desc == nullptr ? false : desc->_data._thread._canceled.load();
   }
 
  public:

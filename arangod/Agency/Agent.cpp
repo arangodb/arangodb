@@ -94,7 +94,7 @@ Agent::~Agent() {
   }
 
   shutdown();
-  
+
 }
 
 /// State machine
@@ -131,11 +131,11 @@ std::string Agent::endpoint() const {
 
 /// Handle voting
 priv_rpc_ret_t Agent::requestVote(
-  term_t t, std::string const& id, index_t lastLogIndex,
-  index_t lastLogTerm, query_t const& query) {
-  
-  return priv_rpc_ret_t(
-    _constituent.vote(t, id, lastLogIndex, lastLogTerm), this->term());
+    term_t termOfPeer, std::string const& id, index_t lastLogIndex,
+    index_t lastLogTerm, query_t const& query) {
+
+  bool doIVote = _constituent.vote(termOfPeer, id, lastLogIndex, lastLogTerm);
+  return priv_rpc_ret_t(doIVote, this->term());
 }
 
 /// Get copy of momentary configuration
@@ -163,7 +163,7 @@ bool Agent::waitFor(index_t index, double timeout) {
   if (size() == 1) {  // single host agency
     return true;
   }
-  
+
   CONDITION_LOCKER(guard, _waitForCV);
 
   // Wait until woken up through AgentCallback
@@ -196,36 +196,36 @@ void Agent::reportIn(std::string const& id, index_t index) {
 
     // Update last acknowledged answer
     _lastAcked[id] = system_clock::now();
-    
+
     if (index > _confirmed[id]) {  // progress this follower?
       _confirmed[id] = index;
     }
-    
+
     if (index > _lastCommitIndex) {  // progress last commit?
-      
+
       size_t n = 0;
-      
+
       for (auto const& i : _config.active()) {
         n += (_confirmed[i] >= index);
       }
-      
+
       // catch up read database and commit index
       if (n > size() / 2) {
-        
+
         LOG_TOPIC(TRACE, Logger::AGENCY)
           << "Critical mass for commiting " << _lastCommitIndex + 1
           << " through " << index << " to read db";
-        
+
         _readDB.apply(_state.slices(_lastCommitIndex + 1, index));
         _lastCommitIndex = index;
-        
+
         if (_lastCommitIndex >= _nextCompationAfter) {
           _state.compact(_lastCommitIndex);
           _nextCompationAfter += _config.compactionStepSize();
         }
-        
+
       }
-      
+
     }
   }
 
@@ -233,7 +233,7 @@ void Agent::reportIn(std::string const& id, index_t index) {
     CONDITION_LOCKER(guard, _waitForCV);
     guard.broadcast();
   }
-  
+
 }
 
 /// Followers' append entries
@@ -241,27 +241,21 @@ bool Agent::recvAppendEntriesRPC(
   term_t term, std::string const& leaderId, index_t prevIndex, term_t prevTerm,
   index_t leaderCommitIndex, query_t const& queries) {
 
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Got AppendEntriesRPC from "
+    << leaderId << " with term " << term;
+
   // Update commit index
   if (queries->slice().type() != VPackValueType::Array) {
     LOG_TOPIC(WARN, Logger::AGENCY)
-      << "Received malformed entries for appending. Discarting!";
+      << "Received malformed entries for appending. Discarding!";
     return false;
   }
 
   MUTEX_LOCKER(mutexLocker, _ioLock);
-  
-  if (this->term() > term) {                      // peer at higher term
-    if (leaderCommitIndex >= _lastCommitIndex) {  //
-      _constituent.follow(term);
-    } else {
-      LOG_TOPIC(WARN, Logger::AGENCY)
-        << "I have a higher term than RPC caller.";
-      return false;
-    }
-  }
-  
-  if (!_constituent.vote(term, leaderId, prevIndex, prevTerm, true)) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << "Not voting for " << leaderId;
+
+  if (!_constituent.checkLeader(term, leaderId, prevIndex, prevTerm)) {
+    LOG_TOPIC(WARN, Logger::AGENCY) << "Not accepting appendEntries from "
+      << leaderId;
     return false;
   }
 
@@ -272,8 +266,8 @@ bool Agent::recvAppendEntriesRPC(
 
     if (nqs > ndups) {
       LOG_TOPIC(TRACE, Logger::AGENCY)
-        << "Appending " << nqs - ndups << " entries to state machine."
-        << nqs << " " << ndups;
+        << "Appending " << nqs - ndups << " entries to state machine. ("
+        << nqs << ", " << ndups << ")";
 
       try {
         _state.log(queries, ndups);
@@ -305,15 +299,18 @@ void Agent::sendAppendEntriesRPC() {
 
       term_t t(0);
 
+      index_t last_confirmed;
       {
         MUTEX_LOCKER(mutexLocker, _ioLock);
         t = this->term();
+        last_confirmed = _confirmed[followerId];
       }
 
-      index_t last_confirmed = _confirmed[followerId];
       std::vector<log_t> unconfirmed = _state.get(last_confirmed);
 
       if (unconfirmed.empty()) {
+        // this can only happen if the log is totally empty (I think, Max)
+        // and so it is OK, to skip the time check here
         continue;
       }
 
@@ -321,12 +318,12 @@ void Agent::sendAppendEntriesRPC() {
 
       duration<double> m =
         system_clock::now() - _lastSent[followerId];
-      
-      if (highest == _lastHighest[followerId]
-          && 0.5 * _config.minPing() > m.count()) {
+
+      if (highest == _lastHighest[followerId] &&
+          m.count() < 0.5 * _config.minPing()) {
         continue;
       }
-      
+
       // RPC path
       std::stringstream path;
       path << "/_api/agency_priv/appendEntries?term=" << t << "&leaderId="
@@ -347,15 +344,19 @@ void Agent::sendAppendEntriesRPC() {
         highest = entry.index;
       }
       builder.close();
-      
+
       // Verbose output
       if (unconfirmed.size() > 1) {
         LOG_TOPIC(TRACE, Logger::AGENCY)
           << "Appending " << unconfirmed.size() - 1 << " entries up to index "
           << highest << " to follower " << followerId;
       }
-      
+
       // Send request
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
+          << "Sending AppendEntriesRPC with " << unconfirmed.size() - 1
+          << " entries to " << followerId << "...";
+
       auto headerFields =
         std::make_unique<std::unordered_map<std::string, std::string>>();
       arangodb::ClusterComm::instance()->asyncRequest(
@@ -364,13 +365,13 @@ void Agent::sendAppendEntriesRPC() {
         std::make_shared<std::string>(builder.toJson()), headerFields,
         std::make_shared<AgentCallback>(this, followerId, highest),
         0.7 * _config.minPing(), true);
-      
+
       {
         MUTEX_LOCKER(mutexLocker, _ioLock);
         _lastSent[followerId] = system_clock::now();
         _lastHighest[followerId] = highest;
       }
-      
+
     }
   }
 }
@@ -391,14 +392,14 @@ query_t Agent::activate(query_t const& everything) {
   Slice slice = everything->slice();
 
   if (slice.isObject()) {
-    
+
     if (active()) {
       ret->add("success", VPackValue(false));
     } else {
-      
+
       MUTEX_LOCKER(mutexLocker, _ioLock);
       Slice compact = slice.get("compact");
-      
+
       Slice  logs = slice.get("logs");
 
       if (!compact.isEmptyArray()) {
@@ -411,10 +412,10 @@ query_t Agent::activate(query_t const& everything) {
       }
       _readDB.apply(batch);
       _spearhead = _readDB;
-      
+
       //_state.persistReadDB(everything->slice().get("compact").get("_key"));
       //_state.log((everything->slice().get("logs"));
-      
+
       ret->add("success", VPackValue(true));
       ret->add("commitId", VPackValue(_lastCommitIndex));
     }
@@ -424,11 +425,11 @@ query_t Agent::activate(query_t const& everything) {
     LOG_TOPIC(ERR, Logger::AGENCY)
       << "Activation failed. \"Everything\" must be an object, is however "
       << slice.typeName();
-    
+
   }
   ret->close();
   return ret;
-  
+
 }
 
 /// @brief
@@ -502,14 +503,14 @@ bool Agent::load() {
   if (size() == 1 || !this->isStopping()) {
     _constituent.start(vocbase, queryRegistry);
   }
-  
+
   if (size() == 1 || (!this->isStopping() && _config.supervision())) {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting cluster sanity facilities";
     _supervision.start(this);
   }
 
   return true;
-  
+
 }
 
 /// Challenge my own leadership
@@ -612,27 +613,27 @@ void Agent::run() {
 
   // Only run in case we are in multi-host mode
   while (!this->isStopping() && size() > 1) {
-    
+
     // Leader working only
     if (leading()) {
       _appendCV.wait(1000);
-      
+
       // Append entries to followers
       sendAppendEntriesRPC();
 
       // Detect faulty agent and replace
       // if possible and only if not already activating
-      if (_activator == nullptr && 
+      if (_activator == nullptr &&
           duration<double>(system_clock::now() - tp).count() > 10.0) {
         detectActiveAgentFailures();
         tp = system_clock::now();
       }
-      
+
     } else {
       _appendCV.wait(1000000);
       updateConfiguration();
     }
-    
+
   }
 }
 
@@ -672,7 +673,7 @@ void Agent::reportActivated(
 
   // Notify inactive pool
   notifyInactive();
-  
+
 }
 
 
@@ -707,7 +708,7 @@ void Agent::detectActiveAgentFailures() {
 void Agent::updateConfiguration() {
 
   // First ask last know leader
-  
+
 }
 
 
@@ -799,15 +800,15 @@ void Agent::notifyInactive() const {
       if (p.first != id()) {
         auto headerFields =
           std::make_unique<std::unordered_map<std::string, std::string>>();
-        
+
         arangodb::ClusterComm::instance()->asyncRequest(
           "1", 1, p.second, arangodb::rest::RequestType::POST,
           path, std::make_shared<std::string>(out.toJson()), headerFields,
           nullptr, 1.0, true);
       }
-      
+
     }
-    
+
   }
 }
 
@@ -816,35 +817,30 @@ void Agent::notify(query_t const& message) {
 
   if (!slice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        20011,
+        TRI_ERROR_AGENCY_INFORM_MUST_BE_OBJECT,
         std::string("Inform message must be an object. Incoming type is ") +
             slice.typeName());
   }
 
   if (!slice.hasKey("id") || !slice.get("id").isString()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        20013, "Inform message must contain string parameter 'id'");
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_ID);
   }
   if (!slice.hasKey("term")) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        20012, "Inform message must contain uint parameter 'term'");
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_TERM);
   }
   _constituent.update(slice.get("id").copyString(),
                       slice.get("term").getUInt());
 
   if (!slice.hasKey("active") || !slice.get("active").isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        20014, "Inform message must contain array 'active'");
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_ACTIVE);
   }
   if (!slice.hasKey("pool") || !slice.get("pool").isObject()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(20015,
-                                   "Inform message must contain object 'pool'");
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL);
   }
 
   _config.update(message);
   _state.persistActiveAgents(_config.activeToBuilder(),
                              _config.poolToBuilder());
-  
 }
 
 // Rebuild key value stores
@@ -869,7 +865,7 @@ void Agent::lastCommitted(arangodb::consensus::index_t lastCommitIndex) {
 }
 
 /// Last log entry
-log_t const& Agent::lastLog() const { return _state.lastLog(); }
+log_t Agent::lastLog() const { return _state.lastLog(); }
 
 /// Get spearhead
 Store const& Agent::spearhead() const { return _spearhead; }

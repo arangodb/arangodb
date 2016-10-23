@@ -70,6 +70,7 @@ class EndpointUnixDomain final : public Endpoint {
   int port() const override { return 0; }
   std::string host() const override { return "localhost"; }
   std::string hostAndPort() const override { return "localhost"; }
+  std::string path() { return _path; }
 
  private:
   std::string const _path;

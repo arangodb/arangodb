@@ -22,16 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestJobHandler.h"
-#include "Basics/conversions.h"
-#include "Basics/StringUtils.h"
-#include "Dispatcher/Dispatcher.h"
-#include "Dispatcher/DispatcherFeature.h"
-#include "GeneralServer/AsyncJobManager.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include "Basics/StringUtils.h"
+#include "Basics/conversions.h"
+#include "GeneralServer/AsyncJobManager.h"
+#include "Rest/HttpRequest.h"
+#include "Rest/HttpResponse.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -46,7 +45,7 @@ RestJobHandler::RestJobHandler(GeneralRequest* request,
 
 bool RestJobHandler::isDirect() const { return true; }
 
-RestHandler::status RestJobHandler::execute() {
+RestStatus RestJobHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
 
@@ -60,8 +59,7 @@ RestHandler::status RestJobHandler::execute() {
     } else if (suffix.size() == 2) {
       putJobMethod();
     } else {
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER);
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     }
   } else if (type == rest::RequestType::DELETE_REQ) {
     deleteJob();
@@ -70,12 +68,8 @@ RestHandler::status RestJobHandler::execute() {
                   (int)rest::ResponseCode::METHOD_NOT_ALLOWED);
   }
 
-  return status::DONE;
+  return RestStatus::DONE;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_job_fetch_result
-////////////////////////////////////////////////////////////////////////////////
 
 void RestJobHandler::putJob() {
   std::vector<std::string> const& suffix = _request->suffix();
@@ -87,8 +81,7 @@ void RestJobHandler::putJob() {
 
   if (status == AsyncJobResult::JOB_UNDEFINED) {
     // unknown or already fetched job
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_HTTP_NOT_FOUND);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
     return;
   }
 
@@ -109,10 +102,6 @@ void RestJobHandler::putJob() {
   _response->setHeaderNC(xArango, value);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_job_cancel
-////////////////////////////////////////////////////////////////////////////////
-
 void RestJobHandler::putJobMethod() {
   std::vector<std::string> const& suffix = _request->suffix();
   std::string const& value = suffix[0];
@@ -120,17 +109,11 @@ void RestJobHandler::putJobMethod() {
   uint64_t jobId = StringUtils::uint64(value);
 
   if (method == "cancel") {
-    if (DispatcherFeature::DISPATCHER == nullptr) {
-      generateError(rest::ResponseCode::SERVER_ERROR,
-                    TRI_ERROR_HTTP_NOT_FOUND);
-    }
-
-    bool status = DispatcherFeature::DISPATCHER->cancelJob(jobId);
+    bool status = _jobManager->cancelJob(jobId);
 
     // unknown or already fetched job
     if (!status) {
-      generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_HTTP_NOT_FOUND);
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
     } else {
       VPackBuilder json;
       json.add(VPackValue(VPackValueType::Object));
@@ -142,21 +125,15 @@ void RestJobHandler::putJobMethod() {
     }
     return;
   } else {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief trampoline function for HTTP GET requests
-////////////////////////////////////////////////////////////////////////////////
 
 void RestJobHandler::getJob() {
   std::vector<std::string> const suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
   }
 
@@ -169,10 +146,6 @@ void RestJobHandler::getJob() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_job_getStatusById
-////////////////////////////////////////////////////////////////////////////////
-
 void RestJobHandler::getJobById(std::string const& value) {
   uint64_t jobId = StringUtils::uint64(value);
 
@@ -183,8 +156,7 @@ void RestJobHandler::getJobById(std::string const& value) {
 
   if (status == AsyncJobResult::JOB_UNDEFINED) {
     // unknown or already fetched job
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_HTTP_NOT_FOUND);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
     return;
   }
 
@@ -196,10 +168,6 @@ void RestJobHandler::getJobById(std::string const& value) {
 
   resetResponse(rest::ResponseCode::OK);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_job_getByType
-////////////////////////////////////////////////////////////////////////////////
 
 void RestJobHandler::getJobByType(std::string const& type) {
   size_t count = 100;
@@ -218,8 +186,7 @@ void RestJobHandler::getJobByType(std::string const& type) {
   } else if (type == "pending") {
     ids = _jobManager->pending(count);
   } else {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
   }
 
@@ -233,16 +200,11 @@ void RestJobHandler::getJobByType(std::string const& type) {
   generateResult(rest::ResponseCode::OK, result.slice());
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_job_delete
-////////////////////////////////////////////////////////////////////////////////
-
 void RestJobHandler::deleteJob() {
   std::vector<std::string> const suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
   }
 
@@ -255,8 +217,7 @@ void RestJobHandler::deleteJob() {
     std::string const& value = _request->value("stamp", found);
 
     if (!found) {
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER);
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
       return;
     }
 
@@ -268,8 +229,7 @@ void RestJobHandler::deleteJob() {
     bool found = _jobManager->deleteJobResult(jobId);
 
     if (!found) {
-      generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_HTTP_NOT_FOUND);
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       return;
     }
   }

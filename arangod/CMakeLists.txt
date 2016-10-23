@@ -60,15 +60,11 @@ if (MSVC)
   )
 endif ()
   
-if (USE_ROCKSDB) 
-  set(ROCKSDB_FILES
-    Indexes/RocksDBFeature.cpp
-    Indexes/RocksDBIndex.cpp
-    Indexes/RocksDBKeyComparator.cpp
-  )
-else ()
-  set(ROCKSDB_FILES "")
-endif ()
+set(ROCKSDB_FILES
+  Indexes/RocksDBFeature.cpp
+  Indexes/RocksDBIndex.cpp
+  Indexes/RocksDBKeyComparator.cpp
+)
 
 if (USE_ENTERPRISE)
   set(ENTERPRISE_FILES "")
@@ -78,7 +74,7 @@ else ()
   )
 endif ()
 
-add_executable(${BIN_ARANGOD}
+SET(ARANGOD_SOURCES
   ${ProductVersionFiles}
   ${ROCKSDB_FILES}
   ${ENTERPRISE_FILES}
@@ -196,27 +192,23 @@ add_executable(${BIN_ARANGOD}
   Cluster/TraverserEngineRegistry.cpp
   Cluster/ServerState.cpp
   Cluster/v8-cluster.cpp
-  Dispatcher/Dispatcher.cpp
-  Dispatcher/DispatcherFeature.cpp
-  Dispatcher/DispatcherQueue.cpp
-  Dispatcher/DispatcherThread.cpp
-  Dispatcher/Job.cpp
   FulltextIndex/fulltext-handles.cpp
   FulltextIndex/fulltext-index.cpp
   FulltextIndex/fulltext-list.cpp
   FulltextIndex/fulltext-query.cpp
   FulltextIndex/fulltext-result.cpp
   GeneralServer/AsyncJobManager.cpp
+  GeneralServer/AuthenticationFeature.cpp
   GeneralServer/GeneralCommTask.cpp
   GeneralServer/GeneralListenTask.cpp
   GeneralServer/GeneralServer.cpp
   GeneralServer/GeneralServerFeature.cpp
   GeneralServer/HttpCommTask.cpp
-  GeneralServer/GeneralServerJob.cpp
-  GeneralServer/HttpsCommTask.cpp
   GeneralServer/PathHandler.cpp
+  GeneralServer/RestEngine.cpp
   GeneralServer/RestHandler.cpp
   GeneralServer/RestHandlerFactory.cpp
+  GeneralServer/RestStatus.cpp
   GeneralServer/VppCommTask.cpp
   GeoIndex/GeoIndex.cpp
   Indexes/EdgeIndex.cpp
@@ -244,6 +236,7 @@ add_executable(${BIN_ARANGOD}
   RestHandler/RestBatchHandler.cpp
   RestHandler/RestCursorHandler.cpp
   RestHandler/RestDebugHandler.cpp
+  RestHandler/RestDemoHandler.cpp
   RestHandler/RestDocumentHandler.cpp
   RestHandler/RestEchoHandler.cpp
   RestHandler/RestEdgesHandler.cpp
@@ -262,7 +255,6 @@ add_executable(${BIN_ARANGOD}
   RestHandler/RestVocbaseBaseHandler.cpp
   RestHandler/RestWalHandler.cpp
   RestHandler/WorkMonitorHandler.cpp
-  RestServer/AffinityFeature.cpp
   RestServer/BootstrapFeature.cpp
   RestServer/CheckVersionFeature.cpp
   RestServer/ConsoleFeature.cpp
@@ -284,17 +276,18 @@ add_executable(${BIN_ARANGOD}
   RestServer/VocbaseContext.cpp
   RestServer/WorkMonitorFeature.cpp
   RestServer/arangod.cpp
+  Scheduler/Acceptor.cpp
+  Scheduler/AcceptorTcp.cpp
+  Scheduler/Job.cpp
+  Scheduler/JobGuard.cpp
+  Scheduler/JobQueue.cpp
   Scheduler/ListenTask.cpp
-  Scheduler/PeriodicTask.cpp
   Scheduler/Scheduler.cpp
   Scheduler/SchedulerFeature.cpp
-  Scheduler/SchedulerLibev.cpp
-  Scheduler/SchedulerThread.cpp
-  Scheduler/SignalTask.cpp
+  Scheduler/Socket.cpp
   Scheduler/SocketTask.cpp
+  Scheduler/SocketTcp.cpp
   Scheduler/Task.cpp
-  Scheduler/TaskManager.cpp
-  Scheduler/TimerTask.cpp
   Statistics/StatisticsFeature.cpp
   Statistics/statistics.cpp
   StorageEngine/EngineSelectorFeature.cpp
@@ -321,10 +314,6 @@ add_executable(${BIN_ARANGOD}
   V8Server/FoxxQueuesFeature.cpp
   V8Server/V8Context.cpp
   V8Server/V8DealerFeature.cpp
-  V8Server/V8Job.cpp
-  V8Server/V8PeriodicTask.cpp
-  V8Server/V8QueueJob.cpp
-  V8Server/V8TimerTask.cpp
   V8Server/V8Traverser.cpp
   V8Server/v8-actions.cpp
   V8Server/v8-collection-util.cpp
@@ -372,16 +361,26 @@ add_executable(${BIN_ARANGOD}
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}
 )
 
+if (NOT MSVC)
+  SET(ARANGOD_SOURCES ${ARANGOD_SOURCES} Scheduler/AcceptorUnixDomain.cpp Scheduler/SocketUnixDomain.cpp)
+endif()
+add_executable(${BIN_ARANGOD} ${ARANGOD_SOURCES})
+
+if(USE_SSL)
+    target_compile_definitions(${BIN_ARANGOD} PUBLIC "ARANGODB_SSL_ENABLED=1")
+endif()
+
 target_link_libraries(${BIN_ARANGOD}
   ${LIB_ARANGO_FE}
   ${LIB_ARANGO_V8}
   ${LIB_ARANGO}
-  ${LIBEV_LIBS}
   ${LINENOISE_LIBS}
   ${MSVC_LIBS}
   ${V8_LIBS}
   ${ROCKSDB_LIBS}
   ${SYSTEM_LIBRARIES}
+  boost_boost
+  boost_system
 )
 
 install(
@@ -391,9 +390,9 @@ install(
 install_config(arangod)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangod ev zlibstatic v8_build)
+  add_dependencies(arangod zlibstatic v8_build)
 else ()
-  add_dependencies(arangod ev zlibstatic)
+  add_dependencies(arangod zlibstatic)
 endif ()
 
 ################################################################################

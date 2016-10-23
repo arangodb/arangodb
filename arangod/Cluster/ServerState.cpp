@@ -50,7 +50,6 @@ ServerState::ServerState()
       _dbserverConfig(),
       _coordinatorConfig(),
       _address(),
-      _authentication(),
       _lock(),
       _role(),
       _idOfPrimary(""),
@@ -159,22 +158,6 @@ std::string ServerState::stateToString(StateEnum state) {
   TRI_ASSERT(false);
   return "";
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the authentication data for cluster-internal communication
-////////////////////////////////////////////////////////////////////////////////
-
-void ServerState::setAuthentication(std::string const& username,
-                                    std::string const& password) {
-  _authentication =
-      "Basic " + basics::StringUtils::encodeBase64(username + ":" + password);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the authentication data for cluster-internal communication
-////////////////////////////////////////////////////////////////////////////////
-
-std::string ServerState::getAuthentication() { return _authentication; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find and set our role

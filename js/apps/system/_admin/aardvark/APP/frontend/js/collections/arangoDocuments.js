@@ -68,27 +68,27 @@
       if (this.filters.length === 0) {
         return '';
       }
-      var query = ' FILTER';
-      var res = '';
+      var query = ' FILTER ';
       var parts = _.map(this.filters, function (f, i) {
+        var res = '';
+        res += 'x.@attr ';
+        res += f.op;
+        res += ' @param';
+        res += i;
+
         if (f.op === 'LIKE') {
-          res = ' ' + f.op + '(x.@attr, @param';
-          res += i;
-          res += ')';
-        } else {
-          res += ' x.@attr ';
-
-          res += f.op;
-
-          if (f.op === 'IN' || f.op === 'NOT IN') {
-            res += ' x.@param';
+          bindVars['param' + i] = '%' + f.val + '%';
+        } else if (f.op === 'IN' || f.op === 'NOT IN ') {
+          if (f.val.indexOf(',') !== -1) {
+            bindVars['param' + i] = f.val.split(',');
           } else {
-            res += ' @param';
+            var arr = [];
+            bindVars['param' + i] = arr.push(f.val);
           }
-          res += i;
+        } else {
+          bindVars['param' + i] = f.val;
         }
 
-        bindVars['param' + i] = f.val;
         if (f.attr.indexOf('.') !== -1) {
           bindVars['attr'] = f.attr.split('.');
         } else {
@@ -97,7 +97,7 @@
 
         return res;
       });
-      return query + parts.join(' &&');
+      return query + parts.join(' && ');
     },
 
     setPagesize: function (size) {
@@ -350,6 +350,9 @@
               console.log(err);
             }
           }
+        },
+        error: function (msg) {
+          callback(true, msg.responseJSON.errorMessage);
         }
       });
     }

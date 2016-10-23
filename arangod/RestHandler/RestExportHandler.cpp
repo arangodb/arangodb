@@ -45,12 +45,12 @@ RestExportHandler::RestExportHandler(GeneralRequest* request,
                                      GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response), _restrictions() {}
 
-RestHandler::status RestExportHandler::execute() {
+RestStatus RestExportHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_CLUSTER_UNSUPPORTED,
                   "'/_api/export' is not yet supported in a cluster");
-    return status::DONE;
+    return RestStatus::DONE;
   }
 
   // extract the sub-request type
@@ -58,22 +58,22 @@ RestHandler::status RestExportHandler::execute() {
 
   if (type == rest::RequestType::POST) {
     createCursor();
-    return status::DONE;
+    return RestStatus::DONE;
   }
 
   if (type == rest::RequestType::PUT) {
     modifyCursor();
-    return status::DONE;
+    return RestStatus::DONE;
   }
 
   if (type == rest::RequestType::DELETE_REQ) {
     deleteCursor();
-    return status::DONE;
+    return RestStatus::DONE;
   }
 
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-  return status::DONE;
+  return RestStatus::DONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

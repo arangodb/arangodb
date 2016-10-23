@@ -28,6 +28,7 @@
 
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
+#include "Basics/asio-helper.h"
 #include "Cluster/AgencyComm.h"
 #include "Cluster/DBServerAgencySync.h"
 #include "Logger/Logger.h"
@@ -37,20 +38,21 @@ namespace arangodb {
 struct AgencyVersions {
   uint64_t plan;
   uint64_t current;
-  
-  AgencyVersions(uint64_t _plan, uint64_t _current) : plan(_plan), current(_plan) {}
+
+  AgencyVersions(uint64_t _plan, uint64_t _current)
+      : plan(_plan), current(_plan) {}
 
   explicit AgencyVersions(const DBServerAgencySyncResult& result)
-    : plan(result.planVersion),
-    current(result.currentVersion) {
-  }
+      : plan(result.planVersion), current(result.currentVersion) {}
 };
 
 class AgencyCallbackRegistry;
 
-class HeartbeatThread : public Thread {
+class HeartbeatThread : public Thread,
+                        public std::enable_shared_from_this<HeartbeatThread> {
  public:
-  HeartbeatThread(AgencyCallbackRegistry*, uint64_t, uint64_t);
+  HeartbeatThread(AgencyCallbackRegistry*, uint64_t interval,
+                  uint64_t maxFailsBeforeWarning, boost::asio::io_service*);
   ~HeartbeatThread();
 
  public:
@@ -72,12 +74,7 @@ class HeartbeatThread : public Thread {
 
   void setReady() { _ready.store(true); }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief decrement the counter for a dispatched job, the argument is true
-  /// if the job was finished successfully and false otherwise
-  //////////////////////////////////////////////////////////////////////////////
-
-  void removeDispatchedJob(DBServerAgencySyncResult);
+  void dispatchedJobResult(DBServerAgencySyncResult);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the thread has run at least once.
@@ -133,11 +130,10 @@ class HeartbeatThread : public Thread {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief bring the db server in sync with the desired state
   //////////////////////////////////////////////////////////////////////////////
-  
+
   bool syncDBServerStatusQuo();
 
  private:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief AgencyCallbackRegistry
   //////////////////////////////////////////////////////////////////////////////
@@ -201,7 +197,7 @@ class HeartbeatThread : public Thread {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief current plan version
   //////////////////////////////////////////////////////////////////////////////
-  
+
   uint64_t _currentPlanVersion;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -221,13 +217,15 @@ class HeartbeatThread : public Thread {
   /// @brief keeps track of the currently installed versions
   //////////////////////////////////////////////////////////////////////////////
   AgencyVersions _currentVersions;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief keeps track of the currently desired versions
   //////////////////////////////////////////////////////////////////////////////
   AgencyVersions _desiredVersions;
 
   bool _wasNotified;
+
+  std::unique_ptr<boost::asio::io_service::strand> _strand;
 };
 }
 

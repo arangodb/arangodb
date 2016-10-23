@@ -46,6 +46,7 @@ class TRI_replication_applier_configuration_t {
   std::string _database;
   std::string _username;
   std::string _password;
+  std::string _jwt;
   double _requestTimeout;
   double _connectTimeout;
   uint64_t _ignoreErrors;

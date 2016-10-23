@@ -40,10 +40,10 @@ InternalRestTraverserHandler::InternalRestTraverserHandler(
       TRI_ASSERT(_registry != nullptr);
     }
 
-RestHandler::status InternalRestTraverserHandler::execute() {
+RestStatus InternalRestTraverserHandler::execute() {
   if (!ServerState::instance()->isDBServer()) {
     generateForbidden();
-    return status::DONE;
+    return RestStatus::DONE;
   }
 
   // extract the sub-request type
@@ -78,7 +78,7 @@ RestHandler::status InternalRestTraverserHandler::execute() {
   }
 
   // this handler is done
-  return status::DONE;
+  return RestStatus::DONE;
 }
 
 void InternalRestTraverserHandler::createEngine() {

@@ -1,3 +1,4 @@
+/* global ArangoServerState */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -29,7 +30,12 @@
 
 var internal = require('internal');
 var endpointToURL = require('@arangodb/cluster').endpointToURL;
-var request = require('@arangodb/request').request;
+var request;
+if (ArangoServerState.role() === 'PRIMARY') {
+  request = require('@arangodb/request').clusterRequest;
+} else {
+  request = require('@arangodb/request').request;
+}
 
 var logger = { };
 var applier = { };

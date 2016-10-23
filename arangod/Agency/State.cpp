@@ -305,15 +305,17 @@ std::vector<VPackSlice> State::slices(arangodb::consensus::index_t start,
   return slices;
 }
 
-/// Get log entry by log index
-log_t const& State::operator[](arangodb::consensus::index_t index) const {
+/// Get log entry by log index, copy entry because we do no longer have the
+/// lock after the return
+log_t State::operator[](arangodb::consensus::index_t index) const {
   MUTEX_LOCKER(mutexLocker, _logLock);
   TRI_ASSERT(index - _cur < _log.size());
   return _log.at(index - _cur);
 }
 
-/// Get last log entry
-log_t const& State::lastLog() const {
+/// Get last log entry, copy entry because we do no longer have the lock
+/// after the return
+log_t State::lastLog() const {
   MUTEX_LOCKER(mutexLocker, _logLock);
   TRI_ASSERT(!_log.empty());
   return _log.back();

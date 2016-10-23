@@ -77,6 +77,7 @@ AqlItemBlock* ModificationBlock::getSome(size_t atLeast, size_t atMost) {
   // found, the UPSERTs INSERT operation may create it. after that, the
   // search document is present and we cannot use an already queried result
   // from the initial search batch
+  traceGetSomeBegin();
   if (getPlanNode()->getType() == ExecutionNode::NodeType::UPSERT) {
     atLeast = 1;
     atMost = 1;
@@ -150,6 +151,7 @@ AqlItemBlock* ModificationBlock::getSome(size_t atLeast, size_t atMost) {
 
   freeBlocks(blocks);
 
+  traceGetSomeEnd(replyBlocks.get());
   return replyBlocks.release();
 }
 
@@ -199,15 +201,15 @@ void ModificationBlock::handleResult(int code, bool ignoreErrors,
 /// @brief process the result of a data-modification operation
 void ModificationBlock::handleBabyResult(std::unordered_map<int, size_t> const& errorCounter,
                                          size_t numBabies,
-                                         bool ignoreErrors,
-                                         std::string const* errorMessage) {
+                                         bool ignoreAllErrors,
+                                         bool ignoreDocumentNotFound) {
   if (errorCounter.empty()) {
     // update the success counter
     // All successful.
     _engine->_stats.writesExecuted += numBabies;
     return;
   }
-  if (ignoreErrors) {
+  if (ignoreAllErrors) {
     for (auto const& pair : errorCounter) {
       // update the ignored counter
       _engine->_stats.writesIgnored += pair.second;
@@ -218,11 +220,24 @@ void ModificationBlock::handleBabyResult(std::unordered_map<int, size_t> const& 
     _engine->_stats.writesExecuted += numBabies;
     return;
   }
-  auto const first = errorCounter.begin();
+  auto first = errorCounter.begin();
+  if (ignoreDocumentNotFound && first->first == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
 
-  // bubble up any error
-  if (errorMessage != nullptr && !errorMessage->empty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(first->first, *errorMessage);
+    if (errorCounter.size() == 1) {
+      // We only have Document not found. Fix statistics and ignore
+      // update the ignored counter
+      _engine->_stats.writesIgnored += first->second;
+      numBabies -= first->second;
+      // update the success counter
+      _engine->_stats.writesExecuted += numBabies;
+      return;
+    }
+
+    // Sorry we have other errors as well.
+    // No point in fixing statistics.
+    // Throw other error.
+    ++first;
+    TRI_ASSERT(first != errorCounter.end());
   }
 
   THROW_ARANGO_EXCEPTION(first->first);
@@ -361,7 +376,10 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
             ++dstRow;
           }
         } else {
-          handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toRemove.length()), ep->_options.ignoreErrors);
+          handleBabyResult(opRes.countErrorCodes,
+                           static_cast<size_t>(toRemove.length()),
+                           ep->_options.ignoreErrors,
+                           ignoreDocumentNotFound);
           dstRow += n;
         }
       } else {
@@ -508,7 +526,8 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
           }
         }
 
-        handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toSend.length()),
+        handleBabyResult(opRes.countErrorCodes,
+                         static_cast<size_t>(toSend.length()),
                          ep->_options.ignoreErrors);
       }
     }
@@ -597,7 +616,7 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
         // value is an object
         key.clear();
         if (hasKeyVariable) {
-          // seperate key specification
+          // separate key specification
           AqlValue const& k = res->getValueReference(i, keyRegisterId);
           errorCode = extractKey(k, key);
         } else {
@@ -678,6 +697,9 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
       handleResult(errorCode, ep->_options.ignoreErrors, &errorMessage);
       ++dstRow;
     } else {
+      handleBabyResult(opRes.countErrorCodes,
+                       static_cast<size_t>(toUpdate.length()),
+                       ep->_options.ignoreErrors, ignoreDocumentNotFound);
       if (producesOutput) {
         VPackSlice resultList = opRes.slice();
         TRI_ASSERT(resultList.isArray());
@@ -704,8 +726,6 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
       } else {
         dstRow += n;
       }
-      handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toUpdate.length()),
-                       ep->_options.ignoreErrors);
     }
     // done with a block
 
@@ -719,16 +739,6 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
 UpsertBlock::UpsertBlock(ExecutionEngine* engine, UpsertNode const* ep)
     : ModificationBlock(engine, ep) {}
-
-bool UpsertBlock::isShardKeyError(VPackSlice const slice) const {
-  TRI_ASSERT(_isDBServer);
-
-  if (_usesDefaultSharding) {
-    return false;
-  }
-
-  return slice.hasKey(StaticStrings::KeyString);
-}
 
 /// @brief the actual work horse for inserting data
 AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
@@ -802,6 +812,8 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
     // loop over the complete block
     // Prepare both builders
+    std::vector<bool> wasTaken;
+    wasTaken.reserve(n);
     for (size_t i = 0; i < n; ++i) {
       AqlValue const& a = res->getValueReference(i, docRegisterId);
 
@@ -810,31 +822,37 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
       errorCode = TRI_ERROR_NO_ERROR;
 
+      bool tookThis = false;
+
       if (a.isObject()) {
-        // old document present => update case
-        key.clear();
-        errorCode = extractKey(a, key);
+        if (!ep->_options.consultAqlWriteFilter ||
+            !_collection->getCollection()->skipForAqlWrite(a.slice(), "")) {
+          // old document present => update case
+          key.clear();
+          errorCode = extractKey(a, key);
 
-        if (errorCode == TRI_ERROR_NO_ERROR) {
-          AqlValue const& updateDoc = res->getValueReference(i, updateRegisterId);
+          if (errorCode == TRI_ERROR_NO_ERROR) {
+            AqlValue const& updateDoc = res->getValueReference(i, updateRegisterId);
 
-          if (updateDoc.isObject()) {
-            VPackSlice toUpdate = updateDoc.slice();
-         
-            keyBuilder.clear();
-            keyBuilder.openObject();
-            keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
-            keyBuilder.close();
-            if (isMultiple) {
-              VPackBuilder tmp = VPackCollection::merge(toUpdate, keyBuilder.slice(), false, false);
-              updateBuilder.add(tmp.slice());
-              upRows.emplace_back(dstRow);
+            if (updateDoc.isObject()) {
+              tookThis = true;
+              VPackSlice toUpdate = updateDoc.slice();
+           
+              keyBuilder.clear();
+              keyBuilder.openObject();
+              keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
+              keyBuilder.close();
+              if (isMultiple) {
+                VPackBuilder tmp = VPackCollection::merge(toUpdate, keyBuilder.slice(), false, false);
+                updateBuilder.add(tmp.slice());
+                upRows.emplace_back(dstRow);
+              } else {
+                updateBuilder = VPackCollection::merge(toUpdate, keyBuilder.slice(), false, false);
+              }
+
             } else {
-              updateBuilder = VPackCollection::merge(toUpdate, keyBuilder.slice(), false, false);
+              errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
             }
-
-          } else {
-            errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
           }
         }
       } else {
@@ -842,9 +860,9 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
         AqlValue const& insertDoc = res->getValueReference(i, insertRegisterId);
         VPackSlice toInsert = insertDoc.slice();
         if (toInsert.isObject()) {
-          if (_isDBServer && isShardKeyError(toInsert)) {
-            errorCode = TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
-          } else {
+          if (!ep->_options.consultAqlWriteFilter ||
+              !_collection->getCollection()->skipForAqlWrite(toInsert, "")) {
+            tookThis = true;
             insertBuilder.add(toInsert);
             insRows.emplace_back(dstRow);
           }
@@ -857,6 +875,8 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
         // Handle the error here, it won't be send to server
         handleResult(errorCode, ep->_options.ignoreErrors, &errorMessage);
       }
+
+      wasTaken.push_back(tookThis);
       ++dstRow;
     }
     // done with collecting a block
@@ -889,7 +909,8 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
               ++i;
             }
           }
-          handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toInsert.length()),
+          handleBabyResult(opRes.countErrorCodes,
+                           static_cast<size_t>(toInsert.length()),
                            ep->_options.ignoreErrors);
         }
       } else {
@@ -915,6 +936,9 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
             // update
             opRes = _trx->update(_collection->name, toUpdate, options);
           }
+          handleBabyResult(opRes.countErrorCodes,
+                           static_cast<size_t>(toUpdate.length()),
+                           ep->_options.ignoreErrors);
           if (producesOutput) {
             VPackSlice resultList = opRes.slice();
             TRI_ASSERT(resultList.isArray());
@@ -930,8 +954,6 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
               ++i;
             }
           }
-          handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toUpdate.length()),
-                           ep->_options.ignoreErrors);
         }
       } else {
         OperationResult opRes;
@@ -1116,6 +1138,9 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
       handleResult(errorCode, ep->_options.ignoreErrors, &errorMessage);
       ++dstRow;
     } else {
+      handleBabyResult(opRes.countErrorCodes,
+                       static_cast<size_t>(toUpdate.length()),
+                       ep->_options.ignoreErrors, ignoreDocumentNotFound);
       if (producesOutput) {
         VPackSlice resultList = opRes.slice();
         TRI_ASSERT(resultList.isArray());
@@ -1142,8 +1167,6 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
       } else {
         dstRow += n;
       }
-      handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toUpdate.length()),
-                       ep->_options.ignoreErrors);
     }
 
     // done with a block
