@@ -215,7 +215,7 @@ FOR user IN users
 ]
 ```
 
-So, for each user we pick the list of her friends and count them. The ones where
+So, for each user we pick the list of their friends and count them. The ones where
 count equals zero are the lonely people. Using *RETURN 1* in the subquery
 saves even more precious CPU cycles and gives the optimizer more alternatives.
 
@@ -245,10 +245,10 @@ RETURN LENGTH(FOR f IN relations FILTER f.friendOf == null RETURN 1)
 ]
 ```
 
-So that the above queries return 10k matches each, the result of i.e. the Join
-tuples query will become 100.000.000 items large and will use much memory plus
-computation time. So it is generally a good idea to revalidate that the criteria
-for your join conditions exist.
+So if the above queries return 10k matches each, the result of the Join tuples
+query will become 100,000,000 items larger and use much memory plus computation
+time. So it is generally a good idea to revalidate that the criteria for your
+join conditions exist.
 
 Using indices on the properties can speed up the operation significantly.
 You can use the explain helper to revalidate your query actually uses them.
