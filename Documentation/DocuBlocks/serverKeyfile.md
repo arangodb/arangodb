@@ -3,7 +3,7 @@
 @brief keyfile containing server certificate
 `--ssl.keyfile filename`
 
-If SSL encryption is used, this option must be used to specify the filename 
+If SSL encryption is used, this option must be used to specify the filename
 of the server private key. The file must be PEM formatted and contain both
 the certificate and the server's private key.
 
@@ -23,7 +23,7 @@ cp server.key server.key.org
 openssl rsa -in server.key.org -out server.key
 
 # sign the csr with the key, creates certificate PEM file "server.crt"
-openssl x509 -req -days 365 -in server.csr -signkey server.key -out
+openssl x509 -req -days 365 -in server.csr -signkey server.key -out \
 server.crt
 
 # combine certificate and key into single PEM file "server.pem"
