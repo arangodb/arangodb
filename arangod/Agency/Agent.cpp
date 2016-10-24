@@ -532,16 +532,15 @@ bool Agent::challengeLeadership() {
 query_t Agent::lastAckedAgo() const {
   
   std::map<std::string, TimePoint> lastAcked;
-  
   {
     MUTEX_LOCKER(mutexLocker, _ioLock);
     lastAcked = _lastAcked;
   }
   
-  query_t ret = std::make_shared<Builder>();
+  auto ret = std::make_shared<Builder>();
   ret->openObject();
   if (leading()) {
-    for (auto const& i : _lastAcked) {
+    for (auto const& i : lastAcked) {
       ret->add(i.first, VPackValue(
                  1.0e-2 * std::floor(
                    (i.first!=id() ?
@@ -646,6 +645,7 @@ void Agent::run() {
     }
 
   }
+  
 }
 
 
@@ -666,7 +666,7 @@ void Agent::reportActivated(
     _activator.reset(nullptr);
   }
 
-    // Agency configuration
+  // Agency configuration
   auto agency = std::make_shared<Builder>();
   agency->openArray();
   agency->openArray();
@@ -696,12 +696,18 @@ void Agent::failedActivation(
 
 void Agent::detectActiveAgentFailures() {
   // Detect faulty agent if pool larger than agency
+  std::map<std::string, TimePoint> lastAcked;
+  {
+    MUTEX_LOCKER(mutexLocker, _ioLock);
+    lastAcked = _lastAcked;
+  }
+
   if (_config.poolSize() > _config.size()) {
     std::vector<std::string> active = _config.active();
     for (auto const& id : active) {
       if (id != this->id()) {
         auto ds = duration<double>(
-          system_clock::now() - _lastAcked.at(id)).count();
+          system_clock::now() - lastAcked.at(id)).count();
         if (ds > 180.0) {
           std::string repl = _config.nextAgentInLine();
           LOG_TOPIC(DEBUG, Logger::AGENCY) << "Active agent " << id << " has failed. << "
