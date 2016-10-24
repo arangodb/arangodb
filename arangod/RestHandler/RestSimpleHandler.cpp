@@ -284,8 +284,7 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
-  // TODO needs to generalized
-  auto response = dynamic_cast<HttpResponse*>(_response.get());
+  auto response = _response.get();
 
   if (response == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -364,7 +363,6 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
       VPackObjectBuilder guard(&result);
       resetResponse(rest::ResponseCode::OK);
 
-      // TODO this should be generalized
       response->setContentType(rest::ContentType::JSON);
 
       if (qResult.isArray()) {
