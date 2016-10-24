@@ -41,8 +41,8 @@ class IndexLookupContext;
 /// by the datafile the element is in. If the last byte in data[] is 1, then 
 /// value.data contains the actual VelocyPack data in place.
 struct IndexElementValue {
-  friend class HashIndexElement;
-  friend class SkiplistIndexElement;
+  friend struct HashIndexElement;
+  friend struct SkiplistIndexElement;
 
  public:
   IndexElementValue() {}
