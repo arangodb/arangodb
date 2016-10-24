@@ -40,6 +40,7 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/datafile.h"
+#include "VocBase/ticks.h"
 #include "Wal/LogfileManager.h"
 
 using namespace arangodb;
@@ -1088,7 +1089,7 @@ int MMFilesCollection::iterateMarkersOnLoad(arangodb::Transaction* trx) {
       _lastRevision >= static_cast<TRI_voc_rid_t>(2016 - 1970) * 1000 * 60 * 60 * 24 * 365 &&
       application_features::ApplicationServer::server->getFeature<DatabaseFeature>("Database")->check30Revisions()) {
     // a collection from 3.0 or earlier with a _rev value that is higher than we can handle safely
-    LOG(FATAL) << "collection '" << _logicalCollection->name() << "' contains _rev values that are higher than expected for an ArangoDB 3.0 database. If this collection was created or used with a pre-release ArangoDB 3.1, please restart the server with option '--database.check-30-revisions false` to suppress this warning.";
+    LOG(FATAL) << "collection '" << _logicalCollection->name() << "' contains _rev values that are higher than expected for an ArangoDB 3.0 database. If this collection was created or used with a pre-release ArangoDB 3.1, please restart the server with option '--database.check-30-revisions false' to suppress this warning.";
     FATAL_ERROR_EXIT();
   }
 

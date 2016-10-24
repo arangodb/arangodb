@@ -55,16 +55,16 @@ const std::vector<std::string> roleStr({"Follower", "Candidate", "Leader"});
 
 /// Configure with agent's configuration
 void Constituent::configure(Agent* agent) {
+  MUTEX_LOCKER(guard, _castLock);
+
   _agent = agent;
   TRI_ASSERT(_agent != nullptr);
 
   if (size() == 1) {
     _role = LEADER;
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _role to LEADER in term "
-        << _term;
-  } else {
-    _id = _agent->config().id();
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _role to LEADER in term " << _term;
   }
+  
 }
 
 // Default ctor
@@ -89,7 +89,7 @@ bool Constituent::waitForSync() const { return _agent->config().waitForSync(); }
 /// Random sleep times in election process
 duration_t Constituent::sleepFor(double min_t, double max_t) {
   int32_t left = static_cast<int32_t>(1000.0 * min_t),
-          right = static_cast<int32_t>(1000.0 * max_t);
+    right = static_cast<int32_t>(1000.0 * max_t);
   return duration_t(static_cast<long>(RandomGenerator::interval(left, right)));
 }
 
@@ -199,7 +199,7 @@ void Constituent::lead(term_t term,
     _leaderID = _id;
   }
 
-  // give some debug output
+  // give some debug output _id never is changed after
   if (!votes.empty()) {
     std::stringstream ss;
     ss << _id << ": Converted to leader in term " << _term << " with votes: ";
@@ -492,6 +492,8 @@ bool Constituent::start(TRI_vocbase_t* vocbase,
 
 /// Get persisted information and run election process
 void Constituent::run() {
+
+  // single instance
   _id = _agent->config().id();
 
   TRI_ASSERT(_vocbase != nullptr);
