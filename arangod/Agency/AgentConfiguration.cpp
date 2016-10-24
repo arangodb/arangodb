@@ -77,6 +77,9 @@ config_t::config_t(config_t&& other)
       _supervisionGracePeriod(std::move(other._supervisionGracePeriod)) {}
 
 config_t& config_t::operator=(config_t const& other) {
+  // must hold the lock of other to copy _pool, _minPing, _maxPing etc.
+  READ_LOCKER(readLocker, other._lock);
+
   _id = other._id;
   _agencySize = other._agencySize;
   _poolSize = other._poolSize;

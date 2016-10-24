@@ -262,6 +262,12 @@
     "ERROR_NO_SMART_COLLECTION"    : { "code" : 4000, "message" : "collection is not smart" },
     "ERROR_NO_SMART_GRAPH_ATTRIBUTE" : { "code" : 4001, "message" : "smart graph attribute not given" },
     "ERROR_CANNOT_DROP_SMART_COLLECTION" : { "code" : 4002, "message" : "cannot drop this smart collection" },
+    "ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE" : { "code" : 4003, "message" : "in smart vertex collections _key must be prefixed with the value of the smart graph attribute" },
+    "ERROR_AGENCY_INFORM_MUST_BE_OBJECT" : { "code" : 20011, "message" : "Inform message must be an object." },
+    "ERROR_AGENCY_INFORM_MUST_CONTAIN_TERM" : { "code" : 20012, "message" : "Inform message must contain uint parameter 'term'" },
+    "ERROR_AGENCY_INFORM_MUST_CONTAIN_ID" : { "code" : 20013, "message" : "Inform message must contain string parameter 'id'" },
+    "ERROR_AGENCY_INFORM_MUST_CONTAIN_ACTIVE" : { "code" : 20014, "message" : "Inform message must contain array 'active'" },
+    "ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL" : { "code" : 20015, "message" : "Inform message must contain object 'pool'" },
     "ERROR_DISPATCHER_IS_STOPPING" : { "code" : 21001, "message" : "dispatcher stopped" },
     "ERROR_QUEUE_UNKNOWN"          : { "code" : 21002, "message" : "named queue does not exist" },
     "ERROR_QUEUE_FULL"             : { "code" : 21003, "message" : "named queue is full" }

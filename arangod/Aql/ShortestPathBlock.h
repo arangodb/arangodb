@@ -29,6 +29,7 @@
 #include "V8Server/V8Traverser.h"
 
 namespace arangodb {
+class ManagedDocumentResult;
 
 namespace traverser {
 class EdgeCollectionInfo;
@@ -89,6 +90,8 @@ class ShortestPathBlock : public ExecutionBlock {
 
   /// @brief Register for the edge output
   RegisterId _edgeReg;
+  
+  std::unique_ptr<ManagedDocumentResult> _mmdr;
 
   /// @brief options to compute the shortest path
   traverser::ShortestPathOptions _opts;

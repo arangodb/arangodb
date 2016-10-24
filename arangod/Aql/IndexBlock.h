@@ -28,8 +28,10 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/IndexNode.h"
+#include "Indexes/IndexElement.h"
 
 namespace arangodb {
+class ManagedDocumentResult;
 struct OperationCursor;
 
 namespace velocypack {
@@ -108,7 +110,7 @@ class IndexBlock : public ExecutionBlock {
   Collection const* _collection;
 
   /// @brief document result
-  std::vector<TRI_doc_mptr_t*> _result;
+  std::vector<IndexLookupResult> _result;
   
   /// @brief document buffer
   std::vector<arangodb::velocypack::Slice> _documents;
@@ -147,10 +149,12 @@ class IndexBlock : public ExecutionBlock {
   AstNode const* _condition;
 
   /// @brief set of already returned documents. Used to make the result distinct
-  std::unordered_set<std::string> _alreadyReturned;
+  std::unordered_set<TRI_voc_rid_t> _alreadyReturned;
 
   /// @brief whether or not at least one expression uses v8
   bool _hasV8Expression;
+  
+  std::unique_ptr<ManagedDocumentResult> _mmdr;
 };
 
 }  // namespace arangodb::aql

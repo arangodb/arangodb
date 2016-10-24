@@ -455,24 +455,35 @@
             });
 
             _.each(obj.vertices, function (node) {
-              vertices[node._id] = {
-                id: node._id,
-                label: node._key,
-                // size: 0.3,
-                color: color,
-                x: Math.random(),
-                y: Math.random()
-              };
+              if (node !== null) {
+                vertices[node._id] = {
+                  id: node._id,
+                  label: node._key,
+                  size: 0.3,
+                  color: color,
+                  x: Math.random(),
+                  y: Math.random()
+                };
+              }
             });
           }
         });
 
+        var nodeIds = [];
         _.each(vertices, function (node) {
           returnObj.nodes.push(node);
+          nodeIds.push(node.id);
         });
 
         _.each(edges, function (edge) {
-          returnObj.edges.push(edge);
+          if (nodeIds.includes(edge.source) && nodeIds.includes(edge.target)) {
+            returnObj.edges.push(edge);
+          }
+          /* how to handle not correct data?
+          else {
+            console.log('target to from is missing');
+          }
+          */
         });
       } else if (type === 'array') {
         _.each(data, function (edge) {
@@ -2134,13 +2145,13 @@
         var style2 = 'color: rgb(64, 74, 83); cursor: pointer; position: absolute; right: 30px; bottom: 40px; z-index: 9999;';
 
         if (self.aqlMode) {
-          style2 = 'color: rgb(64, 74, 83); cursor: pointer; position: absolute; right: 30px; margin-top: -30px;';
+          style2 = 'color: rgb(64, 74, 83); cursor: pointer; position: absolute; right: 30px; margin-top: 10px; margin-right: -15px';
         }
 
-        $('#graph-container').append(
+        $('#graph-container').after(
           '<div id="toggleForce" style="' + style2 + '">' +
             '<i style="margin-right: 5px;" class="fa fa-pause"></i><span> Stop layout</span>' +
-              '</div>'
+          '</div>'
         );
         self.startLayout();
 
@@ -2169,7 +2180,6 @@
 
         window.setTimeout(function () {
           self.stopLayout();
-          self.reInitDragListener();
         }, duration);
       } else if (self.algorithm === 'fruchtermann') {
         // Start the Fruchterman-Reingold algorithm:
@@ -2263,6 +2273,11 @@
     reInitDragListener: function () {
       var self = this;
 
+      if (this.dragListener !== undefined) {
+        sigma.plugins.killDragNodes(this.currentGraph);
+        this.dragListener = {};
+      }
+
       // drag nodes listener
       this.dragListener = sigma.plugins.dragNodes(this.currentGraph, this.currentGraph.renderers[0]);
 
@@ -2351,8 +2366,7 @@ $('#deleteNodes').remove();
       this.layouting = true;
       if (this.aqlMode) {
         this.currentGraph.startForceAtlas2({
-          worker: true,
-          edgeWeightInfluence: 2
+          worker: true
         });
       } else {
         this.currentGraph.startForceAtlas2({

@@ -234,6 +234,7 @@ struct TRI_datafile_t {
   TRI_voc_fid_t fid() const { return _fid; }
   TRI_df_state_e state() const { return _state; }
   int fd() const { return _fd; }
+  char const* data() const { return _data; }
   void* mmHandle() const { return _mmHandle; }
   TRI_voc_size_t initSize() const { return _initSize; }
   TRI_voc_size_t maximalSize() const { return _maximalSize; }

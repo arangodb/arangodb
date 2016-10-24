@@ -199,6 +199,14 @@ inline bool operator!=(arangodb::StringRef const& lhs, char const* rhs) {
   return !(lhs == rhs);
 }
 
+inline bool operator<(arangodb::StringRef const& lhs, arangodb::StringRef const& rhs) {
+  return (lhs.compare(rhs) < 0);
+}
+
+inline bool operator>(arangodb::StringRef const& lhs, arangodb::StringRef const& rhs) {
+  return (lhs.compare(rhs) > 0);
+}
+
 namespace std {
 
 template <>

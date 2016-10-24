@@ -27,6 +27,7 @@
 #include "Aql/CollectionScanner.h"
 #include "Aql/ExecutionEngine.h"
 #include "Basics/Exceptions.h"
+#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::aql;
@@ -35,15 +36,17 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
     ExecutionEngine* engine, EnumerateCollectionNode const* ep)
     : ExecutionBlock(engine, ep),
       _collection(ep->_collection),
-      _scanner(_trx, _collection->getName(), ep->_random),
-      _iterator(arangodb::basics::VelocyPackHelper::EmptyArrayValue()),
-      _mustStoreResult(true) {}
+      _mmdr(new ManagedDocumentResult(transaction())),
+      _scanner(_trx, _mmdr.get(), _collection->getName(), ep->_random),
+      _position(0),
+      _mustStoreResult(true) {
+}
 
 /// @brief initialize fetching of documents
 void EnumerateCollectionBlock::initializeDocuments() {
   _scanner.reset();
-  _documents = VPackSlice();
-  _iterator = VPackArrayIterator(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
+  _documents.clear();
+  _position = 0;
 }
 
 /// @brief skip instead of fetching
@@ -60,8 +63,8 @@ bool EnumerateCollectionBlock::skipDocuments(size_t toSkip, size_t& skipped) {
 
   skipped += skippedHere;
 
-  _documents = VPackSlice();
-  _iterator = VPackArrayIterator(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
+  _documents.clear();
+  _position = 0;
 
   _engine->_stats.scannedFull += static_cast<int64_t>(skippedHere);
 
@@ -89,16 +92,13 @@ bool EnumerateCollectionBlock::moreDocuments(size_t hint) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  _documents = _scanner.scan(hint);
+  _scanner.scan(_documents, hint);
 
-  TRI_ASSERT(_documents.isArray());
-  _iterator = VPackArrayIterator(_documents);
+  _position = 0;
 
-  VPackValueLength count = _iterator.size();
+  size_t count = _documents.size();
 
   if (count == 0) {
-    _documents = VPackSlice();
-    _iterator = VPackArrayIterator(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
     return false;
   }
 
@@ -175,7 +175,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
     cur = _buffer.front();
     
     // Advance read position:
-    if (_iterator.index() >= _iterator.size()) {
+    if (_position >= _documents.size()) {
       // we have exhausted our local documents buffer
       // fetch more documents into our buffer
       if (!moreDocuments(atMost)) {
@@ -195,7 +195,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
   TRI_ASSERT(cur != nullptr);
   size_t curRegs = cur->getNrRegs();
   
-  size_t available = static_cast<size_t>(_iterator.size() - _iterator.index());
+  size_t available = static_cast<size_t>(_documents.size() - _position);
   size_t toSend = (std::min)(atMost, available);
   RegisterId nrRegs =
       getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
@@ -206,13 +206,20 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
 
   // only copy 1st row of registers inherited from previous frame(s)
   inheritRegisters(cur, res.get(), _pos);
+    
+  auto col = _collection->getCollection();
+  LogicalCollection* c = col.get();
 
   for (size_t j = 0; j < toSend; j++) {
     if (_mustStoreResult) {
       // The result is in the first variable of this depth,
       // we do not need to do a lookup in getPlanNode()->_registerPlan->varInfo,
       // but can just take cur->getNrRegs() as registerId:
-      res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs), AqlValue(_iterator.value()));
+      TRI_voc_rid_t revisionId = _documents[_position].revisionId();
+      if (c->readRevision(_trx, *_mmdr, revisionId)) {
+        uint8_t const* vpack = _mmdr->vpack(); 
+        res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs), AqlValue(vpack, AqlValueFromManagedDocument()));
+      }
       // No harm done, if the setValue throws!
     }
     
@@ -221,7 +228,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
       res->copyValuesFromFirstRow(j, static_cast<RegisterId>(curRegs));
     }
 
-    _iterator.next();
+    ++_position;
   }
   
   // Clear out registers no longer needed later:
@@ -243,28 +250,28 @@ size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
     return skipped;
   }
 
-  if (!_documents.isNone()) {
-    if (_iterator.index() < _iterator.size()) {
+  if (!_documents.empty()) {
+    if (_position < _documents.size()) {
       // We still have unread documents in the _documents buffer
       // Just skip them
-      size_t couldSkip = static_cast<size_t>(_iterator.size() - _iterator.index());
+      size_t couldSkip = static_cast<size_t>(_documents.size() - _position);
       if (atMost <= couldSkip) {
         // More in buffer than to skip.
 
         // move forward the iterator
-        _iterator.forward(atMost);
+        _position += atMost;
         return atMost;
       }
       // Skip entire buffer
-      _documents = VPackSlice();
-      _iterator = VPackArrayIterator(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
+      _documents.clear();
+      _position = 0;
       skipped += couldSkip;
     }
   }
 
   // No _documents buffer. But could Skip more
   // Fastforward the _scanner
-  TRI_ASSERT(_documents.isNone());
+  TRI_ASSERT(_documents.empty());
 
   while (skipped < atLeast) {
     if (_buffer.empty()) {

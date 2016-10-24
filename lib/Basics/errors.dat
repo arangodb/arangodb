@@ -373,6 +373,17 @@ ERROR_MODULE_FAILURE,3103,"failed to invoke module","Failed to invoke the module
 ERROR_NO_SMART_COLLECTION,4000,"collection is not smart","The requested collection needs to be smart, but it ain't"
 ERROR_NO_SMART_GRAPH_ATTRIBUTE,4001,"smart graph attribute not given","The given document does not have the smart graph attribute set."
 ERROR_CANNOT_DROP_SMART_COLLECTION,4002,"cannot drop this smart collection","This smart collection cannot be dropped, it dictates sharding in the graph."
+ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE,4003,"in smart vertex collections _key must be prefixed with the value of the smart graph attribute","In a smart vertex collection _key must be prefixed with the value of the smart graph attribute."
+
+################################################################################
+## Agency errors
+################################################################################
+
+ERROR_AGENCY_INFORM_MUST_BE_OBJECT,20011,"Inform message must be an object.","The inform message in the agency must be an object."
+ERROR_AGENCY_INFORM_MUST_CONTAIN_TERM,20012,"Inform message must contain uint parameter 'term'","The inform message in the agency must contain a uint parameter 'term'."
+ERROR_AGENCY_INFORM_MUST_CONTAIN_ID,20013,"Inform message must contain string parameter 'id'","The inform message in the agency must contain a string parameter 'id'."
+ERROR_AGENCY_INFORM_MUST_CONTAIN_ACTIVE,20014,"Inform message must contain array 'active'","The inform message in the agency must contain an array 'active'."
+ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL,20015,"Inform message must contain object 'pool'","The inform message in the agency must contain an object 'pool'."
 
 ################################################################################
 ## Dispatcher errors

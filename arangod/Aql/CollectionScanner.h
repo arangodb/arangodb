@@ -25,19 +25,22 @@
 #define ARANGOD_AQL_COLLECTION_SCANNER_H 1
 
 #include "Basics/Common.h"
-#include "Utils/OperationCursor.h"
-#include "Utils/Transaction.h"
+#include "Indexes/IndexElement.h"
 
 namespace arangodb {
+class ManagedDocumentResult;
+class OperationCursor;
+class Transaction;
+
 namespace aql {
 
 class CollectionScanner {
  public:
-  CollectionScanner(arangodb::Transaction*, std::string const&, bool);
+  CollectionScanner(arangodb::Transaction*, ManagedDocumentResult*, std::string const&, bool);
 
   ~CollectionScanner();
 
-  arangodb::velocypack::Slice scan(size_t);
+  void scan(std::vector<IndexLookupResult>& result, size_t batchSize);
 
   void reset();
 
@@ -49,7 +52,6 @@ class CollectionScanner {
 
  private:
   std::unique_ptr<OperationCursor> _cursor;
-  std::shared_ptr<OperationResult> _currentBatch;
 };
 }
 }

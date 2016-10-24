@@ -371,7 +371,7 @@ uint64_t Slice::getUIntUnchecked() const {
   uint8_t const h = head();
   if (h >= 0x28 && h <= 0x2f) {
     // UInt
-    return readInteger<uint64_t>(_start + 1, h - 0x27);
+    return readIntegerNonEmpty<uint64_t>(_start + 1, h - 0x27);
   }
 
   if (h >= 0x30 && h <= 0x39) {
@@ -464,14 +464,18 @@ Slice Slice::get(std::string const& attribute) const {
   }
 
   ValueLength const offsetSize = indexEntrySize(h);
-  ValueLength end = readInteger<ValueLength>(_start + 1, offsetSize);
+  VELOCYPACK_ASSERT(offsetSize > 0);
+  ValueLength end = readIntegerNonEmpty<ValueLength>(_start + 1, offsetSize);
 
   // read number of items
   ValueLength n;
+  ValueLength ieBase;
   if (offsetSize < 8) {
-    n = readInteger<ValueLength>(_start + 1 + offsetSize, offsetSize);
+    n = readIntegerNonEmpty<ValueLength>(_start + 1 + offsetSize, offsetSize);
+    ieBase = end - n * offsetSize;
   } else {
-    n = readInteger<ValueLength>(_start + end - offsetSize, offsetSize);
+    n = readIntegerNonEmpty<ValueLength>(_start + end - offsetSize, offsetSize);
+    ieBase = end - n * offsetSize - offsetSize;
   }
 
   if (n == 1) {
@@ -497,18 +501,25 @@ Slice Slice::get(std::string const& attribute) const {
     return Slice();
   }
 
-  ValueLength const ieBase =
-      end - n * offsetSize - (offsetSize == 8 ? offsetSize : 0);
-
   // only use binary search for attributes if we have at least this many entries
   // otherwise we'll always use the linear search
   static ValueLength const SortedSearchEntriesThreshold = 4;
 
-  bool const isSorted = (h >= 0x0b && h <= 0x0e);
-  if (isSorted && n >= SortedSearchEntriesThreshold) {
+  // bool const isSorted = (h >= 0x0b && h <= 0x0e);
+  if (n >= SortedSearchEntriesThreshold && (h >= 0x0b && h <= 0x0e)) {
     // This means, we have to handle the special case n == 1 only
     // in the linear search!
-    return searchObjectKeyBinary(attribute, ieBase, offsetSize, n);
+    switch (offsetSize) {
+      case 1:
+        return searchObjectKeyBinary<1>(attribute, ieBase, n);
+      case 2:
+        return searchObjectKeyBinary<2>(attribute, ieBase, n);
+      case 4:
+        return searchObjectKeyBinary<4>(attribute, ieBase, n);
+      case 8:
+        return searchObjectKeyBinary<8>(attribute, ieBase, n);
+      default: {}
+    }
   }
 
   return searchObjectKeyLinear(attribute, ieBase, offsetSize, n);
@@ -517,9 +528,10 @@ Slice Slice::get(std::string const& attribute) const {
 // return the value for an Int object
 int64_t Slice::getInt() const {
   uint8_t const h = head();
+
   if (h >= 0x20 && h <= 0x27) {
     // Int  T
-    uint64_t v = readInteger<uint64_t>(_start + 1, h - 0x1f);
+    uint64_t v = readIntegerNonEmpty<uint64_t>(_start + 1, h - 0x1f);
     if (h == 0x27) {
       return toInt64(v);
     } else {
@@ -549,9 +561,14 @@ int64_t Slice::getInt() const {
 // return the value for a UInt object
 uint64_t Slice::getUInt() const {
   uint8_t const h = head();
-  if (h >= 0x28 && h <= 0x2f) {
+  if (h == 0x28) {
+    // single byte integer
+    return readIntegerFixed<uint64_t, 1>(_start + 1);
+  }
+
+  if (h >= 0x29 && h <= 0x2f) {
     // UInt
-    return readInteger<uint64_t>(_start + 1, h - 0x27);
+    return readIntegerNonEmpty<uint64_t>(_start + 1, h - 0x27);
   }
 
   if (h >= 0x20 && h <= 0x27) {
@@ -655,7 +672,7 @@ ValueLength Slice::getNthOffset(ValueLength index) const {
   }
 
   ValueLength const offsetSize = indexEntrySize(h);
-  ValueLength end = readInteger<ValueLength>(_start + 1, offsetSize);
+  ValueLength end = readIntegerNonEmpty<ValueLength>(_start + 1, offsetSize);
 
   ValueLength dataOffset = 0;
 
@@ -666,9 +683,9 @@ ValueLength Slice::getNthOffset(ValueLength index) const {
     Slice first(_start + dataOffset);
     n = (end - dataOffset) / first.byteSize();
   } else if (offsetSize < 8) {
-    n = readInteger<ValueLength>(_start + 1 + offsetSize, offsetSize);
+    n = readIntegerNonEmpty<ValueLength>(_start + 1 + offsetSize, offsetSize);
   } else {
-    n = readInteger<ValueLength>(_start + end - offsetSize, offsetSize);
+    n = readIntegerNonEmpty<ValueLength>(_start + end - offsetSize, offsetSize);
   }
 
   if (index >= n) {
@@ -689,7 +706,7 @@ ValueLength Slice::getNthOffset(ValueLength index) const {
 
   ValueLength const ieBase =
       end - n * offsetSize + index * offsetSize - (offsetSize == 8 ? 8 : 0);
-  return readInteger<ValueLength>(_start + ieBase, offsetSize);
+  return readIntegerNonEmpty<ValueLength>(_start + ieBase, offsetSize);
 }
 
 // extract the nth member from an Array
@@ -757,7 +774,7 @@ Slice Slice::searchObjectKeyLinear(std::string const& attribute,
 
   for (ValueLength index = 0; index < n; ++index) {
     ValueLength offset = ieBase + index * offsetSize;
-    Slice key(_start + readInteger<ValueLength>(_start + offset, offsetSize));
+    Slice key(_start + readIntegerNonEmpty<ValueLength>(_start + offset, offsetSize));
 
     if (key.isString()) {
       if (!key.isEqualString(attribute)) {
@@ -786,21 +803,20 @@ Slice Slice::searchObjectKeyLinear(std::string const& attribute,
 }
 
 // perform a binary search for the specified attribute inside an Object
+template<ValueLength offsetSize>
 Slice Slice::searchObjectKeyBinary(std::string const& attribute,
-                                   ValueLength ieBase, ValueLength offsetSize,
+                                   ValueLength ieBase,
                                    ValueLength n) const {
   bool const useTranslator = (Options::Defaults.attributeTranslator != nullptr);
   VELOCYPACK_ASSERT(n > 0);
 
   ValueLength l = 0;
   ValueLength r = n - 1;
+  ValueLength index = r / 2;
 
   while (true) {
-    // midpoint
-    ValueLength index = l + ((r - l) / 2);
-
     ValueLength offset = ieBase + index * offsetSize;
-    Slice key(_start + readInteger<ValueLength>(_start + offset, offsetSize));
+    Slice key(_start + readIntegerFixed<ValueLength, offsetSize>(_start + offset));
 
     int res;
     if (key.isString()) {
@@ -818,7 +834,7 @@ Slice Slice::searchObjectKeyBinary(std::string const& attribute,
     }
 
     if (res == 0) {
-      // found
+      // found. now return a Slice pointing at the value
       return Slice(key.start() + key.byteSize());
     }
 
@@ -833,8 +849,17 @@ Slice Slice::searchObjectKeyBinary(std::string const& attribute,
     if (r < l) {
       return Slice();
     }
+    
+    // determine new midpoint
+    index = l + ((r - l) / 2);
   }
 }
+
+// template instanciations for searchObjectKeyBinary
+template Slice Slice::searchObjectKeyBinary<1>(std::string const& attribute, ValueLength ieBase, ValueLength n) const;
+template Slice Slice::searchObjectKeyBinary<2>(std::string const& attribute, ValueLength ieBase, ValueLength n) const;
+template Slice Slice::searchObjectKeyBinary<4>(std::string const& attribute, ValueLength ieBase, ValueLength n) const;
+template Slice Slice::searchObjectKeyBinary<8>(std::string const& attribute, ValueLength ieBase, ValueLength n) const;
 
 SliceScope::SliceScope() : _allocations() {}
 

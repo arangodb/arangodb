@@ -477,111 +477,126 @@ QueryResult Query::prepare(QueryRegistry* registry) {
         _part == PART_MAIN);
     _trx = trx;
 
-    bool planRegisters;
+    try {
+      bool planRegisters;
+      // As soon as we start du instantiate the plan we have to clean it
+      // up before killing the unique_ptr
+      if (_queryString != nullptr) {
+        // we have an AST
+        // optimize the ast
+        enterState(AST_OPTIMIZATION);
 
-    if (_queryString != nullptr) {
-      // we have an AST
-      // optimize the ast
-      enterState(AST_OPTIMIZATION);
-
-      parser->ast()->validateAndOptimize();
+        parser->ast()->validateAndOptimize();
+        
+        enterState(LOADING_COLLECTIONS);
       
-      enterState(LOADING_COLLECTIONS);
-    
-      int res = trx->begin();
+        int res = trx->begin();
 
-      if (res != TRI_ERROR_NO_ERROR) {
-        return transactionError(res);
+        if (res != TRI_ERROR_NO_ERROR) {
+          return transactionError(res);
+        }
+
+        enterState(PLAN_INSTANTIATION);
+        plan.reset(ExecutionPlan::instantiateFromAst(parser->ast()));
+
+        if (plan.get() == nullptr) {
+          // oops
+          return QueryResult(TRI_ERROR_INTERNAL,
+                             "failed to create query execution engine");
+        }
+
+        // Run the query optimizer:
+        enterState(PLAN_OPTIMIZATION);
+        arangodb::aql::Optimizer opt(maxNumberOfPlans());
+        // get enabled/disabled rules
+        opt.createPlans(plan.release(), getRulesFromOptions(),
+                        inspectSimplePlans());
+        // Now plan and all derived plans belong to the optimizer
+        plan.reset(opt.stealBest());  // Now we own the best one again
+        planRegisters = true;
+      } else {  // no queryString, we are instantiating from _queryBuilder
+        enterState(PARSING);
+
+        VPackSlice const querySlice = _queryBuilder->slice();
+        ExecutionPlan::getCollectionsFromVelocyPack(parser->ast(), querySlice);
+
+        parser->ast()->variables()->fromVelocyPack(querySlice);
+        // creating the plan may have produced some collections
+        // we need to add them to the transaction now (otherwise the query will
+        // fail)
+        
+        enterState(LOADING_COLLECTIONS);
+        
+        int res = trx->addCollectionList(_collections.collections());
+
+        if (res == TRI_ERROR_NO_ERROR) {
+          res = trx->begin();
+        }
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          return transactionError(res);
+        }
+        
+        enterState(PLAN_INSTANTIATION);
+
+        // we have an execution plan in VelocyPack format
+        plan.reset(ExecutionPlan::instantiateFromVelocyPack(
+            parser->ast(), _queryBuilder->slice()));
+        if (plan.get() == nullptr) {
+          // oops
+          return QueryResult(TRI_ERROR_INTERNAL);
+        }
+
+        planRegisters = false;
       }
 
-      enterState(PLAN_INSTANTIATION);
-      plan.reset(ExecutionPlan::instantiateFromAst(parser->ast()));
+      TRI_ASSERT(plan.get() != nullptr);
 
-      if (plan.get() == nullptr) {
-        // oops
-        return QueryResult(TRI_ERROR_INTERNAL,
-                           "failed to create query execution engine");
-      }
+      // varsUsedLater and varsValid are unordered_sets and so their orders
+      // are not the same in the serialized and deserialized plans
 
-      // Run the query optimizer:
-      enterState(PLAN_OPTIMIZATION);
-      arangodb::aql::Optimizer opt(maxNumberOfPlans());
-      // get enabled/disabled rules
-      opt.createPlans(plan.release(), getRulesFromOptions(),
-                      inspectSimplePlans());
-      // Now plan and all derived plans belong to the optimizer
-      plan.reset(opt.stealBest());  // Now we own the best one again
-      planRegisters = true;
-    } else {  // no queryString, we are instantiating from _queryBuilder
-      enterState(PARSING);
+      // return the V8 context
+      exitContext();
 
-      VPackSlice const querySlice = _queryBuilder->slice();
-      ExecutionPlan::getCollectionsFromVelocyPack(parser->ast(), querySlice);
+      enterState(EXECUTION);
+      ExecutionEngine* engine(ExecutionEngine::instantiateFromPlan(
+          registry, this, plan.get(), planRegisters));
 
-      parser->ast()->variables()->fromVelocyPack(querySlice);
-      // creating the plan may have produced some collections
-      // we need to add them to the transaction now (otherwise the query will
-      // fail)
-      
-      enterState(LOADING_COLLECTIONS);
-      
-      int res = trx->addCollectionList(_collections.collections());
-
-      if (res == TRI_ERROR_NO_ERROR) {
-        res = trx->begin();
-      }
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        return transactionError(res);
-      }
-      
-      enterState(PLAN_INSTANTIATION);
-
-      // we have an execution plan in VelocyPack format
-      plan.reset(ExecutionPlan::instantiateFromVelocyPack(
-          parser->ast(), _queryBuilder->slice()));
-      if (plan.get() == nullptr) {
-        // oops
-        return QueryResult(TRI_ERROR_INTERNAL);
-      }
-
-      planRegisters = false;
+      // If all went well so far, then we keep _plan, _parser and _trx and
+      // return:
+      _plan = plan.release();
+      _parser = parser.release();
+      _engine = engine;
+      return QueryResult();
+    } catch (arangodb::basics::Exception const& ex) {
+      cleanupPlanAndEngine(ex.code());
+      return QueryResult(ex.code(), ex.message() + getStateString());
+    } catch (std::bad_alloc const&) {
+      cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY);
+      return QueryResult(
+          TRI_ERROR_OUT_OF_MEMORY,
+          TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) + getStateString());
+    } catch (std::exception const& ex) {
+      cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
+      return QueryResult(TRI_ERROR_INTERNAL, ex.what() + getStateString());
+    } catch (...) {
+      cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
+      return QueryResult(TRI_ERROR_INTERNAL,
+                         TRI_errno_string(TRI_ERROR_INTERNAL) + getStateString());
     }
-
-    TRI_ASSERT(plan.get() != nullptr);
-
-    // varsUsedLater and varsValid are unordered_sets and so their orders
-    // are not the same in the serialized and deserialized plans
-
-    // return the V8 context
-    exitContext();
-
-    enterState(EXECUTION);
-    ExecutionEngine* engine(ExecutionEngine::instantiateFromPlan(
-        registry, this, plan.get(), planRegisters));
-
-    // If all went well so far, then we keep _plan, _parser and _trx and
-    // return:
-    _plan = plan.release();
-    _parser = parser.release();
-    _engine = engine;
-    return QueryResult();
   } catch (arangodb::basics::Exception const& ex) {
-    cleanupPlanAndEngine(ex.code());
     return QueryResult(ex.code(), ex.message() + getStateString());
   } catch (std::bad_alloc const&) {
-    cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY);
     return QueryResult(
         TRI_ERROR_OUT_OF_MEMORY,
         TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) + getStateString());
   } catch (std::exception const& ex) {
-    cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
     return QueryResult(TRI_ERROR_INTERNAL, ex.what() + getStateString());
   } catch (...) {
-    cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
     return QueryResult(TRI_ERROR_INTERNAL,
                        TRI_errno_string(TRI_ERROR_INTERNAL) + getStateString());
   }
+
 }
 
 /// @brief execute an AQL query

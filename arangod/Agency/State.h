@@ -80,10 +80,11 @@ class State {
       index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
 
   /// @brief log entry at index i
-  log_t const& operator[](index_t) const;
+  log_t operator[](index_t) const;
 
-  /// @brief last log entry
-  log_t const& lastLog() const;
+  /// @brief last log entry, copy entry because we do no longer have the lock
+  /// after the return
+  log_t lastLog() const;
 
   /// @brief Set endpoint
   bool configure(Agent* agent);

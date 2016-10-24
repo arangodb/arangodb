@@ -22,14 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShortestPathBlock.h"
-
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
+#include "Indexes/IndexElement.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/Transaction.h"
 #include "VocBase/EdgeCollectionInfo.h"
-#include "VocBase/MasterPointer.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -69,7 +70,7 @@ struct ConstDistanceExpanderLocal {
   bool _isReverse;
 
   /// @brief Local cursor vector
-  std::vector<TRI_doc_mptr_t*> _cursor;
+  std::vector<IndexLookupResult> _cursor;
 
  public:
   ConstDistanceExpanderLocal(ShortestPathBlock const* block,
@@ -78,34 +79,40 @@ struct ConstDistanceExpanderLocal {
 
   void operator()(VPackSlice const& v, std::vector<VPackSlice>& resEdges,
                   std::vector<VPackSlice>& neighbors) {
+    ManagedDocumentResult* mmdr = _block->_mmdr.get();
     std::shared_ptr<arangodb::OperationCursor> edgeCursor;
     for (auto const& edgeCollection : _block->_collectionInfos) {
       TRI_ASSERT(edgeCollection != nullptr);
       if (_isReverse) {
-        edgeCursor = edgeCollection->getReverseEdges(v);
+        edgeCursor = edgeCollection->getReverseEdges(v, mmdr);
       } else {
-        edgeCursor = edgeCollection->getEdges(v);
+        edgeCursor = edgeCollection->getEdges(v, mmdr);
       }
+    
       // Clear the local cursor before using the
       // next edge cursor.
       // While iterating over the edge cursor, _cursor
       // has to stay intact.
       _cursor.clear();
+      LogicalCollection* collection = edgeCursor->collection();
       while (edgeCursor->hasMore()) {
         edgeCursor->getMoreMptr(_cursor, UINT64_MAX);
-        for (auto const& mptr : _cursor) {
-          VPackSlice edge(mptr->vpack());
-          VPackSlice from =
-              arangodb::Transaction::extractFromFromDocument(edge);
-          if (from == v) {
-            VPackSlice to = arangodb::Transaction::extractToFromDocument(edge);
-            if (to != v) {
+        for (auto const& element : _cursor) {
+          TRI_voc_rid_t revisionId = element.revisionId();
+          if (collection->readRevision(_block->transaction(), *mmdr, revisionId)) {
+            VPackSlice edge(mmdr->vpack());
+            VPackSlice from =
+                arangodb::Transaction::extractFromFromDocument(edge);
+            if (from == v) {
+              VPackSlice to = arangodb::Transaction::extractToFromDocument(edge);
+              if (to != v) {
+                resEdges.emplace_back(edge);
+                neighbors.emplace_back(to);
+              }
+            } else {
               resEdges.emplace_back(edge);
-              neighbors.emplace_back(to);
+              neighbors.emplace_back(from);
             }
-          } else {
-            resEdges.emplace_back(edge);
-            neighbors.emplace_back(from);
           }
         }
       }
@@ -212,15 +219,16 @@ struct EdgeWeightExpanderLocal {
 
   void operator()(VPackSlice const& source,
                   std::vector<ArangoDBPathFinder::Step*>& result) {
-    std::vector<TRI_doc_mptr_t*> cursor;
+    ManagedDocumentResult* mmdr = _block->_mmdr.get();
+    std::vector<IndexLookupResult> cursor;
     std::unique_ptr<arangodb::OperationCursor> edgeCursor;
     std::unordered_map<VPackSlice, size_t> candidates;
     for (auto const& edgeCollection : _block->_collectionInfos) {
       TRI_ASSERT(edgeCollection != nullptr);
       if (_reverse) {
-        edgeCursor = edgeCollection->getReverseEdges(source);
+        edgeCursor = edgeCollection->getReverseEdges(source, mmdr);
       } else {
-        edgeCursor = edgeCollection->getEdges(source);
+        edgeCursor = edgeCollection->getEdges(source, mmdr);
       }
       
       candidates.clear();
@@ -230,18 +238,22 @@ struct EdgeWeightExpanderLocal {
       // While iterating over the edge cursor, _cursor
       // has to stay intact.
       cursor.clear();
+      LogicalCollection* collection = edgeCursor->collection();
       while (edgeCursor->hasMore()) {
         edgeCursor->getMoreMptr(cursor, UINT64_MAX);
-        for (auto const& mptr : cursor) {
-          VPackSlice edge(mptr->vpack());
-          VPackSlice from =
-              arangodb::Transaction::extractFromFromDocument(edge);
-          VPackSlice to = arangodb::Transaction::extractToFromDocument(edge);
-          double currentWeight = edgeCollection->weightEdge(edge);
-          if (from == source) {
-            inserter(candidates, result, from, to, currentWeight, edge);
-          } else {
-            inserter(candidates, result, to, from, currentWeight, edge);
+        for (auto const& element : cursor) {
+          TRI_voc_rid_t revisionId = element.revisionId();
+          if (collection->readRevision(_block->transaction(), *mmdr, revisionId)) {
+            VPackSlice edge(mmdr->vpack());
+            VPackSlice from =
+                arangodb::Transaction::extractFromFromDocument(edge);
+            VPackSlice to = arangodb::Transaction::extractToFromDocument(edge);
+            double currentWeight = edgeCollection->weightEdge(edge);
+            if (from == source) {
+              inserter(candidates, result, from, to, currentWeight, edge);
+            } else {
+              inserter(candidates, result, to, from, currentWeight, edge);
+            }
           }
         }
       }
@@ -340,6 +352,7 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
       _usedConstant(false) {
 
   ep->fillOptions(_opts);
+  _mmdr.reset(new ManagedDocumentResult(_trx));
 
   size_t count = ep->_edgeColls.size();
   TRI_ASSERT(ep->_directions.size());
@@ -466,7 +479,7 @@ bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
     _usedConstant = true;
   }
   if (!_useStartRegister) {
-    auto pos = _startVertexId.find("/");
+    auto pos = _startVertexId.find('/');
     if (pos == std::string::npos) {
       _engine->getQuery()->registerWarning(TRI_ERROR_BAD_PARAMETER,
                                            "Invalid input for Shortest Path: "
@@ -501,7 +514,7 @@ bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
   }
 
   if (!_useTargetRegister) {
-    auto pos = _targetVertexId.find("/");
+    auto pos = _targetVertexId.find('/');
     if (pos == std::string::npos) {
       _engine->getQuery()->registerWarning(
           TRI_ERROR_BAD_PARAMETER, "Invalid input for Shortest Path: "
@@ -608,13 +621,13 @@ AqlItemBlock* ShortestPathBlock::getSome(size_t, size_t atMost) {
     if (usesVertexOutput()) {
       // TODO this might be optimized in favor of direct mptr.
       resultBuilder.clear();
-      _path->vertexToVelocyPack(_trx, _posInPath, resultBuilder);
+      _path->vertexToVelocyPack(_trx, _mmdr.get(), _posInPath, resultBuilder);
       res->setValue(j, _vertexReg, AqlValue(resultBuilder.slice()));
     }
     if (usesEdgeOutput()) {
       // TODO this might be optimized in favor of direct mptr.
       resultBuilder.clear();
-      _path->edgeToVelocyPack(_trx, _posInPath, resultBuilder);
+      _path->edgeToVelocyPack(_trx, _mmdr.get(), _posInPath, resultBuilder);
       res->setValue(j, _edgeReg, AqlValue(resultBuilder.slice()));
     }
     if (j > 0) {

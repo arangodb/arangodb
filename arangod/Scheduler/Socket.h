@@ -90,7 +90,6 @@ class Socket {
     virtual void close() = 0;
     virtual void close(boost::system::error_code& ec) = 0;
     virtual void setNonBlocking(bool) = 0;
-    virtual boost::asio::serial_port_service::native_handle_type nativeHandle() = 0;
     virtual std::string peerAddress() = 0;
     virtual int peerPort() = 0;
     bool handshake();

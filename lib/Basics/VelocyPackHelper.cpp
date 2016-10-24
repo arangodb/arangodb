@@ -257,8 +257,6 @@ size_t VelocyPackHelper::VPackKeyHash::operator()(
   return static_cast<size_t>(slice.get(StaticStrings::KeyString).hashString());
 };
 
-
-
 bool VelocyPackHelper::VPackEqual::operator()(VPackSlice const& lhs,
                                               VPackSlice const& rhs) const {
   return VelocyPackHelper::compare(lhs, rhs, false, _options) == 0;
@@ -278,10 +276,10 @@ bool VelocyPackHelper::VPackStringEqual::operator()(VPackSlice const& lhs,
   if (lh == 0xbf) {
     // long UTF-8 String
     size = static_cast<VPackValueLength>(
-        velocypack::readInteger<VPackValueLength>(lhs.begin() + 1, 8));
+        velocypack::readIntegerFixed<VPackValueLength, 8>(lhs.begin() + 1));
     if (size !=
         static_cast<VPackValueLength>(
-            velocypack::readInteger<VPackValueLength>(rhs.begin() + 1, 8))) {
+            velocypack::readIntegerFixed<VPackValueLength, 8>(rhs.begin() + 1))) {
       return false;
     }
     return (memcmp(lhs.start() + 1 + 8, rhs.start() + 1 + 8,
@@ -313,10 +311,10 @@ bool VelocyPackHelper::VPackIdEqual::operator()(VPackSlice const& lhs,
   if (lh == 0xbf) {
     // long UTF-8 String
     size = static_cast<VPackValueLength>(
-        velocypack::readInteger<VPackValueLength>(lhsKey.begin() + 1, 8));
+        velocypack::readIntegerFixed<VPackValueLength, 8>(lhsKey.begin() + 1));
     if (size !=
         static_cast<VPackValueLength>(
-            velocypack::readInteger<VPackValueLength>(rhsKey.begin() + 1, 8))) {
+            velocypack::readIntegerFixed<VPackValueLength, 8>(rhsKey.begin() + 1))) {
       return false;
     }
     return (memcmp(lhsKey.start() + 1 + 8, rhsKey.start() + 1 + 8,

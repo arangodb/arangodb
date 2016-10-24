@@ -49,10 +49,10 @@ var endpointToURL = function (endpoint) {
   return 'http' + endpoint.substr(pos);
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief create and post an AQL query that will fetch a READ lock on a
-// / collection and will time out after a number of seconds
-// //////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
+// / @brief fetch a READ lock on a collection and will time out after a
+// / number of seconds
+// /////////////////////////////////////////////////////////////////////////////
 
 function startReadLockOnLeader (endpoint, database, collName, timeout) {
   var url = endpointToURL(endpoint) + '/_db/' + database;
@@ -102,9 +102,9 @@ function startReadLockOnLeader (endpoint, database, collName, timeout) {
   return false;
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief cancel such a query, return whether or not the query was found
-// //////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
+// / @brief cancel read lock
+// /////////////////////////////////////////////////////////////////////////////
 
 function cancelReadLockOnLeader (endpoint, database, lockJobId) {
   var url = endpointToURL(endpoint) + '/_db/' + database +
@@ -1948,26 +1948,30 @@ function supervisionState () {
 
 function waitForSyncReplOneCollection (dbName, collName) {
   console.debug('waitForSyncRepl:', dbName, collName);
-  var count = 60;
-  while (--count > 0) {
-    var cinfo = global.ArangoClusterInfo.getCollectionInfo(dbName, collName);
-    var shards = Object.keys(cinfo.shards);
-    var ccinfo = shards.map(function (s) {
-      return global.ArangoClusterInfo.getCollectionInfoCurrent(dbName,
-        collName, s).servers;
-    });
-    console.debug('waitForSyncRepl', dbName, collName, shards, cinfo.shards, ccinfo);
-    var ok = true;
-    for (var i = 0; i < shards.length; ++i) {
-      if (cinfo.shards[shards[i]].length !== ccinfo[i].length) {
-        ok = false;
+  try {
+    var count = 60;
+    while (--count > 0) {
+      var cinfo = global.ArangoClusterInfo.getCollectionInfo(dbName, collName);
+      var shards = Object.keys(cinfo.shards);
+      var ccinfo = shards.map(function (s) {
+	return global.ArangoClusterInfo.getCollectionInfoCurrent(dbName,
+	  collName, s).servers;
+      });
+      console.debug('waitForSyncRepl', dbName, collName, shards, cinfo.shards, ccinfo);
+      var ok = true;
+      for (var i = 0; i < shards.length; ++i) {
+	if (cinfo.shards[shards[i]].length !== ccinfo[i].length) {
+	  ok = false;
+	}
       }
+      if (ok) {
+	console.debug('waitForSyncRepl: OK:', dbName, collName, shards);
+	return true;
+      }
+      require('internal').wait(1);
     }
-    if (ok) {
-      console.debug('waitForSyncRepl: OK:', dbName, collName, shards);
-      return true;
-    }
-    require('internal').wait(1);
+  } catch (err) {
+    console.warn('waitForSyncRepl:', dbName, collName, ': exception', JSON.stringify(err));
   }
   console.warn('waitForSyncRepl:', dbName, collName, ': BAD');
   return false;

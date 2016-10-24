@@ -63,7 +63,6 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
   startsAfter("Database");
   startsAfter("Scheduler");
   startsAfter("V8Dealer");
-  startsAfter("Database");
 }
 
 ClusterFeature::~ClusterFeature() {
@@ -525,7 +524,7 @@ void ClusterFeature::unprepare() {
   while (_heartbeatThread->isRunning()) {
     usleep(50000);
   }
-
+  
   AgencyComm::cleanup();
   ClusterComm::cleanup();
 }

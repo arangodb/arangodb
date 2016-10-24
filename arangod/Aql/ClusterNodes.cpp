@@ -109,7 +109,8 @@ DistributeNode::DistributeNode(ExecutionPlan* plan,
       _varId(base.get("varId").getNumericValue<VariableId>()),
       _alternativeVarId(base.get("alternativeVarId").getNumericValue<VariableId>()),
       _createKeys(base.get("createKeys").getBoolean()),
-      _allowKeyConversionToObject(base.get("allowKeyConversionToObject").getBoolean()) {}
+      _allowKeyConversionToObject(base.get("allowKeyConversionToObject").getBoolean()),
+      _allowSpecifiedKeys(false) {}
 
 /// @brief toVelocyPack, for DistributedNode
 void DistributeNode::toVelocyPackHelper(VPackBuilder& nodes,

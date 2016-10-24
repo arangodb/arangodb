@@ -26,9 +26,10 @@
 #include "Aql/SortCondition.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/debugging.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Indexes/IndexLookupContext.h"
 #include "Utils/Transaction.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -54,15 +55,6 @@ static size_t sortWeight(arangodb::aql::AstNode const* node) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees an element in the skiplist
-////////////////////////////////////////////////////////////////////////////////
-
-static void FreeElm(void* e) {
-  auto element = static_cast<TRI_index_element_t*>(e);
-  TRI_index_element_t::freeElement(element);
-}
-
 // .............................................................................
 // recall for all of the following comparison functions:
 //
@@ -86,31 +78,32 @@ static void FreeElm(void* e) {
 /// @brief compares a key with an element, version with proper types
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CompareKeyElement(VPackSlice const* left,
-                             TRI_index_element_t const* right,
+static int CompareKeyElement(void* userData, 
+                             VPackSlice const* left,
+                             SkiplistIndexElement const* right,
                              size_t rightPosition) {
+  IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
   TRI_ASSERT(nullptr != left);
   TRI_ASSERT(nullptr != right);
-  auto rightSubobjects = right->subObjects();
   return arangodb::basics::VelocyPackHelper::compare(
-      *left, rightSubobjects[rightPosition].slice(right->document()), true);
+      *left, right->slice(context, rightPosition), true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compares elements, version with proper types
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CompareElementElement(TRI_index_element_t const* left,
+static int CompareElementElement(void* userData, 
+                                 SkiplistIndexElement const* left,
                                  size_t leftPosition,
-                                 TRI_index_element_t const* right,
+                                 SkiplistIndexElement const* right,
                                  size_t rightPosition) {
+  IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
   TRI_ASSERT(nullptr != left);
   TRI_ASSERT(nullptr != right);
 
-  auto leftSubobjects = left->subObjects();
-  auto rightSubobjects = right->subObjects();
-  VPackSlice l = leftSubobjects[leftPosition].slice(left->document());
-  VPackSlice r = rightSubobjects[rightPosition].slice(right->document());
+  VPackSlice l = left->slice(context, leftPosition);
+  VPackSlice r = right->slice(context, rightPosition);
   return arangodb::basics::VelocyPackHelper::compare(l, r, true);
 }
 
@@ -510,6 +503,17 @@ void SkiplistInLookupBuilder::buildSearchValues() {
     _upperSlice = _lowerBuilder->slice();
   }
 }
+  
+SkiplistIterator::SkiplistIterator(LogicalCollection* collection, arangodb::Transaction* trx,
+                                   ManagedDocumentResult* mmdr,
+                                   arangodb::SkiplistIndex const* index,
+                                   bool reverse, Node* left, Node* right)
+    : IndexIterator(collection, trx, mmdr, index),
+      _reverse(reverse),
+      _leftEndPoint(left),
+      _rightEndPoint(right) {
+  reset(); // Initializes the cursor
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Reset the cursor
@@ -527,10 +531,10 @@ void SkiplistIterator::reset() {
 /// @brief Get the next element in the skiplist
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* SkiplistIterator::next() {
+IndexLookupResult SkiplistIterator::next() {
   if (_cursor == nullptr) {
     // We are exhausted already, sorry
-    return nullptr;
+    return IndexLookupResult();
   }
   Node* tmp = _cursor;
   if (_reverse) {
@@ -548,7 +552,28 @@ TRI_doc_mptr_t* SkiplistIterator::next() {
   }
   TRI_ASSERT(tmp != nullptr);
   TRI_ASSERT(tmp->document() != nullptr);
-  return tmp->document()->document();
+  return IndexLookupResult(tmp->document()->revisionId());
+}
+  
+SkiplistIterator2::SkiplistIterator2(LogicalCollection* collection, arangodb::Transaction* trx,
+    ManagedDocumentResult* mmdr,
+    arangodb::SkiplistIndex const* index,
+    TRI_Skiplist const* skiplist, size_t numPaths,
+    std::function<int(void*, SkiplistIndexElement const*, SkiplistIndexElement const*,
+                      arangodb::basics::SkipListCmpType)> const& CmpElmElm,
+    bool reverse, BaseSkiplistLookupBuilder* builder)
+    : IndexIterator(collection, trx, mmdr, index),
+      _skiplistIndex(skiplist),
+      _numPaths(numPaths),
+      _reverse(reverse),
+      _cursor(nullptr),
+      _currentInterval(0),
+      _builder(builder),
+      _CmpElmElm(CmpElmElm) {
+  TRI_ASSERT(_builder != nullptr);
+  initNextInterval(); // Initializes the cursor
+  TRI_ASSERT((_intervals.empty() && _cursor == nullptr) ||
+             (!_intervals.empty() && _cursor != nullptr));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -556,7 +581,7 @@ TRI_doc_mptr_t* SkiplistIterator::next() {
 ///        one border is nullptr or the right is lower than left.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SkiplistIterator2::intervalValid(Node* left, Node* right) const {
+bool SkiplistIterator2::intervalValid(void* userData, Node* left, Node* right) const {
   if (left == nullptr) {
     return false;
   }
@@ -567,7 +592,7 @@ bool SkiplistIterator2::intervalValid(Node* left, Node* right) const {
     // Exactly one result. Improve speed on unique indexes
     return true;
   }
-  if (_CmpElmElm(left->document(), right->document(),
+  if (_CmpElmElm(userData, left->document(), right->document(),
                  arangodb::basics::SKIPLIST_CMP_TOTORDER) > 0) {
     return false;
   }
@@ -597,10 +622,10 @@ void SkiplistIterator2::reset() {
 /// @brief Get the next element in the skiplist
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* SkiplistIterator2::next() {
+IndexLookupResult SkiplistIterator2::next() {
   if (_cursor == nullptr) {
     // We are exhausted already, sorry
-    return nullptr;
+    return IndexLookupResult();
   }
   TRI_ASSERT(_currentInterval < _intervals.size());
   auto const& interval = _intervals[_currentInterval];
@@ -620,7 +645,7 @@ TRI_doc_mptr_t* SkiplistIterator2::next() {
   }
   TRI_ASSERT(tmp != nullptr);
   TRI_ASSERT(tmp->document() != nullptr);
-  return tmp->document()->document();
+  return IndexLookupResult(tmp->document()->revisionId());
 }
 
 void SkiplistIterator2::forwardCursor() {
@@ -645,9 +670,10 @@ void SkiplistIterator2::initNextInterval() {
   // We do not take responsibility for the Nodes!
   Node* rightBorder = nullptr;
   Node* leftBorder = nullptr;
+  
   while (true) {
     if (_builder->isEquality()) {
-      rightBorder = _skiplistIndex->rightKeyLookup(_builder->getLowerLookup());
+      rightBorder = _skiplistIndex->rightKeyLookup(&_context, _builder->getLowerLookup());
       if (rightBorder == _skiplistIndex->startNode()) {
         // No matching elements. Next interval
         if (!_builder->next()) {
@@ -657,16 +683,16 @@ void SkiplistIterator2::initNextInterval() {
         // Builder moved forward. Try again.
         continue;
       }
-      leftBorder = _skiplistIndex->leftKeyLookup(_builder->getLowerLookup());
+      leftBorder = _skiplistIndex->leftKeyLookup(&_context, _builder->getLowerLookup());
       leftBorder = leftBorder->nextNode();
       // NOTE: rightBorder < leftBorder => no Match.
       // Will be checked by interval valid
     } else {
       if (_builder->includeLower()) {
-        leftBorder = _skiplistIndex->leftKeyLookup(_builder->getLowerLookup());
+        leftBorder = _skiplistIndex->leftKeyLookup(&_context, _builder->getLowerLookup());
         // leftKeyLookup guarantees that we find the element before search.
       } else {
-        leftBorder = _skiplistIndex->rightKeyLookup(_builder->getLowerLookup());
+        leftBorder = _skiplistIndex->rightKeyLookup(&_context, _builder->getLowerLookup());
         // leftBorder is identical or smaller than search
       }
       // This is the first element not to be returned, but the next one
@@ -675,9 +701,9 @@ void SkiplistIterator2::initNextInterval() {
 
       if (_builder->includeUpper()) {
         rightBorder =
-            _skiplistIndex->rightKeyLookup(_builder->getUpperLookup());
+            _skiplistIndex->rightKeyLookup(&_context, _builder->getUpperLookup());
       } else {
-        rightBorder = _skiplistIndex->leftKeyLookup(_builder->getUpperLookup());
+        rightBorder = _skiplistIndex->leftKeyLookup(&_context, _builder->getUpperLookup());
       }
       if (rightBorder == _skiplistIndex->startNode()) {
         // No match make interval invalid
@@ -685,7 +711,7 @@ void SkiplistIterator2::initNextInterval() {
       }
       // else rightBorder is correct
     }
-    if (!intervalValid(leftBorder, rightBorder)) {
+    if (!intervalValid(&_context, leftBorder, rightBorder)) {
       // No matching elements. Next interval
       if (!_builder->next()) {
         // No next interval. We are done.
@@ -706,22 +732,6 @@ void SkiplistIterator2::initNextInterval() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the skiplist index
-////////////////////////////////////////////////////////////////////////////////
-
-SkiplistIndex::SkiplistIndex(
-    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
-    std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
-    bool unique, bool sparse)
-    : PathBasedIndex(iid, collection, fields, unique, sparse, true),
-      CmpElmElm(this),
-      CmpKeyElm(this),
-      _skiplistIndex(nullptr) {
-  _skiplistIndex =
-      new TRI_Skiplist(CmpElmElm, CmpKeyElm, FreeElm, unique, _useExpansion);
-}
-
 /// @brief create the skiplist index
 SkiplistIndex::SkiplistIndex(TRI_idx_iid_t iid,
                              arangodb::LogicalCollection* collection,
@@ -731,19 +741,8 @@ SkiplistIndex::SkiplistIndex(TRI_idx_iid_t iid,
       CmpKeyElm(this),
       _skiplistIndex(nullptr) {
   _skiplistIndex =
-      new TRI_Skiplist(CmpElmElm, CmpKeyElm, FreeElm, _unique, _useExpansion);
+      new TRI_Skiplist(CmpElmElm, CmpKeyElm, [this](SkiplistIndexElement* element) { element->free(); }, _unique, _useExpansion);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an index stub with a hard-coded selectivity estimate
-/// this is used in the cluster coordinator case
-////////////////////////////////////////////////////////////////////////////////
-
-SkiplistIndex::SkiplistIndex(VPackSlice const& slice)
-    : PathBasedIndex(slice, true),
-      CmpElmElm(this),
-      CmpKeyElm(this),
-      _skiplistIndex(nullptr) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the skiplist index
@@ -753,7 +752,7 @@ SkiplistIndex::~SkiplistIndex() { delete _skiplistIndex; }
 
 size_t SkiplistIndex::memory() const {
   return _skiplistIndex->memoryUsage() +
-         static_cast<size_t>(_skiplistIndex->getNrUsed()) * elementSize();
+         static_cast<size_t>(_skiplistIndex->getNrUsed()) * SkiplistIndexElement::baseMemoryUsage(_paths.size());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -781,42 +780,42 @@ void SkiplistIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 /// @brief inserts a document into a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-int SkiplistIndex::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
-                          bool) {
-  std::vector<TRI_index_element_t*> elements;
+int SkiplistIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId, 
+                          VPackSlice const& doc, bool isRollback) {
+  std::vector<SkiplistIndexElement*> elements;
 
   int res;
   try {
-    res = fillElement(elements, doc);
+    res = fillElement<SkiplistIndexElement>(elements, revisionId, doc);
   } catch (...) {
     res = TRI_ERROR_OUT_OF_MEMORY;
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    for (auto& it : elements) {
+    for (auto& element : elements) {
       // free all elements to prevent leak
-      TRI_index_element_t::freeElement(it);
+      element->free();
     }
-
     return res;
   }
+  
+  ManagedDocumentResult result(trx); 
+  IndexLookupContext context(trx, _collection, &result, numPaths()); 
 
   // insert into the index. the memory for the element will be owned or freed
   // by the index
-
   size_t const count = elements.size();
 
   for (size_t i = 0; i < count; ++i) {
-    res = _skiplistIndex->insert(elements[i]);
+    res = _skiplistIndex->insert(&context, elements[i]);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      TRI_index_element_t::freeElement(elements[i]);
       // Note: this element is freed already
-      for (size_t j = i + 1; j < count; ++j) {
-        TRI_index_element_t::freeElement(elements[j]);
+      for (size_t j = i; j < count; ++j) {
+        elements[j]->free();
       }
       for (size_t j = 0; j < i; ++j) {
-        _skiplistIndex->remove(elements[j]);
+        _skiplistIndex->remove(&context, elements[j]);
         // No need to free elements[j] skiplist has taken over already
       }
 
@@ -827,6 +826,7 @@ int SkiplistIndex::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
       break;
     }
   }
+
   return res;
 }
 
@@ -834,41 +834,42 @@ int SkiplistIndex::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
 /// @brief removes a document from a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-int SkiplistIndex::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
-                          bool) {
-  std::vector<TRI_index_element_t*> elements;
+int SkiplistIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
+                          VPackSlice const& doc, bool isRollback) {
+  std::vector<SkiplistIndexElement*> elements;
 
   int res;
   try {
-    res = fillElement(elements, doc);
+    res = fillElement<SkiplistIndexElement>(elements, revisionId, doc);
   } catch (...) {
     res = TRI_ERROR_OUT_OF_MEMORY;
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    for (auto& it : elements) {
+    for (auto& element : elements) {
       // free all elements to prevent leak
-      TRI_index_element_t::freeElement(it);
+      element->free();
     }
-
     return res;
   }
+  
+  ManagedDocumentResult result(trx); 
+  IndexLookupContext context(trx, _collection, &result, numPaths()); 
 
   // attempt the removal for skiplist indexes
   // ownership for the index element is transferred to the index
-
   size_t const count = elements.size();
 
   for (size_t i = 0; i < count; ++i) {
-    int result = _skiplistIndex->remove(elements[i]);
+    int result = _skiplistIndex->remove(&context, elements[i]);
 
     // we may be looping through this multiple times, and if an error
     // occurs, we want to keep it
     if (result != TRI_ERROR_NO_ERROR) {
       res = result;
     }
-
-    TRI_index_element_t::freeElement(elements[i]);
+    
+    elements[i]->free();
   }
 
   return res;
@@ -884,7 +885,7 @@ int SkiplistIndex::unload() {
 ///        one border is nullptr or the right is lower than left.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SkiplistIndex::intervalValid(Node* left, Node* right) const {
+bool SkiplistIndex::intervalValid(void* userData, Node* left, Node* right) const {
   if (left == nullptr) {
     return false;
   }
@@ -895,7 +896,7 @@ bool SkiplistIndex::intervalValid(Node* left, Node* right) const {
     // Exactly one result. Improve speed on unique indexes
     return true;
   }
-  if (CmpElmElm(left->document(), right->document(),
+  if (CmpElmElm(userData, left->document(), right->document(),
                 arangodb::basics::SKIPLIST_CMP_TOTORDER) > 0) {
     return false;
   }
@@ -903,146 +904,11 @@ bool SkiplistIndex::intervalValid(Node* left, Node* right) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief attempts to locate an entry in the skip list index
-///
-/// Warning: who ever calls this function is responsible for destroying
-/// the SkiplistIterator* results
-////////////////////////////////////////////////////////////////////////////////
-
-SkiplistIterator* SkiplistIndex::lookup(arangodb::Transaction* trx,
-                                        VPackSlice const searchValues,
-                                        bool reverse) const {
-  TRI_ASSERT(searchValues.isArray());
-  TRI_ASSERT(searchValues.length() <= _fields.size());
-
-  TransactionBuilderLeaser leftSearch(trx);
-
-  VPackSlice lastNonEq;
-  leftSearch->openArray();
-  for (auto const& it : VPackArrayIterator(searchValues)) {
-    TRI_ASSERT(it.isObject());
-    VPackSlice eq = it.get(StaticStrings::IndexEq);
-    if (eq.isNone()) {
-      lastNonEq = it;
-      break;
-    }
-    leftSearch->add(eq);
-  }
-
-  Node* leftBorder = nullptr;
-  Node* rightBorder = nullptr;
-  if (lastNonEq.isNone()) {
-    // We only have equality!
-    leftSearch->close();
-    VPackSlice search = leftSearch->slice();
-    rightBorder = _skiplistIndex->rightKeyLookup(&search);
-    if (rightBorder == _skiplistIndex->startNode()) {
-      // No matching elements
-      rightBorder = nullptr;
-      leftBorder = nullptr;
-    } else {
-      leftBorder = _skiplistIndex->leftKeyLookup(&search);
-      leftBorder = leftBorder->nextNode();
-      // NOTE: rightBorder < leftBorder => no Match.
-      // Will be checked by interval valid
-    }
-  } else {
-    // Copy rightSearch = leftSearch for right border
-    TransactionBuilderLeaser rightSearch(trx);
-    *(rightSearch.builder()) = *leftSearch.builder();
-
-    // Define Lower-Bound
-    VPackSlice lastLeft = lastNonEq.get(StaticStrings::IndexGe);
-    if (!lastLeft.isNone()) {
-      TRI_ASSERT(!lastNonEq.hasKey(StaticStrings::IndexGt));
-      leftSearch->add(lastLeft);
-      leftSearch->close();
-      VPackSlice search = leftSearch->slice();
-      leftBorder = _skiplistIndex->leftKeyLookup(&search);
-      // leftKeyLookup guarantees that we find the element before search. This
-      // should not be in the cursor, but the next one
-      // This is also save for the startNode, it should never be contained in
-      // the index.
-      leftBorder = leftBorder->nextNode();
-    } else {
-      lastLeft = lastNonEq.get(StaticStrings::IndexGt);
-      if (!lastLeft.isNone()) {
-        leftSearch->add(lastLeft);
-        leftSearch->close();
-        VPackSlice search = leftSearch->slice();
-        leftBorder = _skiplistIndex->rightKeyLookup(&search);
-        // leftBorder is identical or smaller than search, skip it.
-        // It is guaranteed that the next element is greater than search
-        leftBorder = leftBorder->nextNode();
-      } else {
-        // No lower bound set default to (null <= x)
-        leftSearch->close();
-        VPackSlice search = leftSearch->slice();
-        leftBorder = _skiplistIndex->leftKeyLookup(&search);
-        leftBorder = leftBorder->nextNode();
-        // Now this is the correct leftBorder.
-        // It is either the first equal one, or the first one greater than.
-      }
-    }
-    // NOTE: leftBorder could be nullptr (no element fulfilling condition.)
-    // This is checked later
-
-    // Define upper-bound
-
-    VPackSlice lastRight = lastNonEq.get(StaticStrings::IndexLe);
-    if (!lastRight.isNone()) {
-      TRI_ASSERT(!lastNonEq.hasKey(StaticStrings::IndexLt));
-      rightSearch->add(lastRight);
-      rightSearch->close();
-      VPackSlice search = rightSearch->slice();
-      rightBorder = _skiplistIndex->rightKeyLookup(&search);
-      if (rightBorder == _skiplistIndex->startNode()) {
-        // No match make interval invalid
-        rightBorder = nullptr;
-      }
-      // else rightBorder is correct
-    } else {
-      lastRight = lastNonEq.get(StaticStrings::IndexLt);
-      if (!lastRight.isNone()) {
-        rightSearch->add(lastRight);
-        rightSearch->close();
-        VPackSlice search = rightSearch->slice();
-
-        rightBorder = _skiplistIndex->leftKeyLookup(&search);
-        if (rightBorder == _skiplistIndex->startNode()) {
-          // No match make interval invalid
-          rightBorder = nullptr;
-        }
-        // else rightBorder is correct
-      } else {
-        // No upper bound set default to (x <= INFINITY)
-        rightSearch->close();
-        VPackSlice search = rightSearch->slice();
-        rightBorder = _skiplistIndex->rightKeyLookup(&search);
-        if (rightBorder == _skiplistIndex->startNode()) {
-          // No match make interval invalid
-          rightBorder = nullptr;
-        }
-        // else rightBorder is correct
-      }
-    }
-  }
-
-  // Check if the interval is valid and not empty
-  if (intervalValid(leftBorder, rightBorder)) {
-    return new SkiplistIterator(reverse, leftBorder, rightBorder);
-  }
-
-  // Creates an empty iterator
-  return new SkiplistIterator(reverse, nullptr, nullptr);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief compares a key with an element in a skip list, generic callback
 ////////////////////////////////////////////////////////////////////////////////
 
-int SkiplistIndex::KeyElementComparator::operator()(
-    VPackSlice const* leftKey, TRI_index_element_t const* rightElement) const {
+int SkiplistIndex::KeyElementComparator::operator()(void* userData,
+    VPackSlice const* leftKey, SkiplistIndexElement const* rightElement) const {
   TRI_ASSERT(nullptr != leftKey);
   TRI_ASSERT(nullptr != rightElement);
 
@@ -1053,7 +919,7 @@ int SkiplistIndex::KeyElementComparator::operator()(
   size_t numFields = leftKey->length();
   for (size_t j = 0; j < numFields; j++) {
     VPackSlice field = leftKey->at(j);
-    int compareResult = CompareKeyElement(&field, rightElement, j);
+    int compareResult = CompareKeyElement(userData, &field, rightElement, j);
     if (compareResult != 0) {
       return compareResult;
     }
@@ -1067,8 +933,9 @@ int SkiplistIndex::KeyElementComparator::operator()(
 ////////////////////////////////////////////////////////////////////////////////
 
 int SkiplistIndex::ElementElementComparator::operator()(
-    TRI_index_element_t const* leftElement,
-    TRI_index_element_t const* rightElement,
+    void* userData,
+    SkiplistIndexElement const* leftElement,
+    SkiplistIndexElement const* rightElement,
     arangodb::basics::SkipListCmpType cmptype) const {
   TRI_ASSERT(nullptr != leftElement);
   TRI_ASSERT(nullptr != rightElement);
@@ -1079,12 +946,12 @@ int SkiplistIndex::ElementElementComparator::operator()(
 
   if (leftElement == rightElement ||
       (!_idx->_skiplistIndex->isArray() &&
-       leftElement->document() == rightElement->document())) {
+       leftElement->revisionId() == rightElement->revisionId())) {
     return 0;
   }
 
   for (size_t j = 0; j < _idx->numPaths(); j++) {
-    int compareResult = CompareElementElement(leftElement, j, rightElement, j);
+    int compareResult = CompareElementElement(userData, leftElement, j, rightElement, j);
 
     if (compareResult != 0) {
       return compareResult;
@@ -1102,18 +969,12 @@ int SkiplistIndex::ElementElementComparator::operator()(
   if (arangodb::basics::SKIPLIST_CMP_PREORDER == cmptype) {
     return 0;
   }
-
+    
   // We break this tie in the key comparison by looking at the key:
-  VPackSlice leftKey = Transaction::extractKeyFromDocument(VPackSlice(leftElement->document()->vpack()));
-  VPackSlice rightKey = Transaction::extractKeyFromDocument(VPackSlice(rightElement->document()->vpack()));
-
-  VPackValueLength l;
-  char const* p = rightKey.getString(l);
-  int compareResult = leftKey.compareString(p, l);
-
-  if (compareResult < 0) {
+  if (leftElement->revisionId() < rightElement->revisionId()) {
     return -1;
-  } else if (compareResult > 0) {
+  }
+  if (leftElement->revisionId() > rightElement->revisionId()) {
     return 1;
   }
   return 0;
@@ -1434,7 +1295,8 @@ bool SkiplistIndex::findMatchingConditions(
 }
 
 IndexIterator* SkiplistIndex::iteratorForCondition(
-    arangodb::Transaction* trx, IndexIteratorContext*,
+    arangodb::Transaction* trx, 
+    ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) const {
   std::vector<std::vector<arangodb::aql::AstNode const*>> mapping;
@@ -1444,7 +1306,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
                                      // will have _fields many entries.
     TRI_ASSERT(mapping.size() == _fields.size());
     if (!findMatchingConditions(node, reference, mapping, usesIn)) {
-      return new EmptyIndexIterator();
+      return new EmptyIndexIterator(_collection, trx, mmdr, this);
     }
   } else {
     TRI_IF_FAILURE("SkiplistIndex::noSortIterator") {
@@ -1459,12 +1321,12 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
   if (usesIn) {
     auto builder = std::make_unique<SkiplistInLookupBuilder>(
         trx, mapping, reference, reverse);
-    return new SkiplistIterator2(_skiplistIndex, CmpElmElm, reverse,
+    return new SkiplistIterator2(_collection, trx, mmdr, this, _skiplistIndex, numPaths(), CmpElmElm, reverse,
                                  builder.release());
   }
   auto builder =
       std::make_unique<SkiplistLookupBuilder>(trx, mapping, reference, reverse);
-  return new SkiplistIterator2(_skiplistIndex, CmpElmElm, reverse,
+  return new SkiplistIterator2(_collection, trx, mmdr, this, _skiplistIndex, numPaths(), CmpElmElm, reverse,
                                builder.release());
 }
 

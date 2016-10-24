@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual */
+/*global AQL_EXECUTE, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, geo queries
@@ -117,7 +117,7 @@ function distanceSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DISTANCE( 0, 0, 0, \"foo\" )");
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DISTANCE( 0, 0, 0, [ 1, 2, 3 ] )");
     }
-  }
+  };
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -159,15 +159,15 @@ void Constituent::follow(term_t t) {
 }
 
 void Constituent::followNoLock(term_t t) {
-  if (_role != FOLLOWER) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
-        << _id << ": Converting to follower in term " << t;
-  }
-
   _term = t;
   _role = FOLLOWER;
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _role to FOLLOWER in term " << _term;
+
+  if (_leaderID == _id) {
+    _leaderID = NO_LEADER;
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Setting _leaderID to NO_LEADER.";
+  }
 
   CONDITION_LOCKER(guard, _cv);
   _cv.signal();
@@ -187,18 +187,16 @@ void Constituent::lead(term_t term,
 
     // if we already lead, ignore this request
     if (_role == LEADER) {
+      TRI_ASSERT(_leaderID == _id);
       return;
     }
 
     // I'm the leader
     _role = LEADER;
 
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _role to LEADER in term " << _term;
-
-    if (_leaderID != _id) {
-      LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to " << _id;
-      _leaderID = _id;
-    }
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _role to LEADER in term " << _term
+      << ", setting _leaderID to " << _id;
+    _leaderID = _id;
   }
 
   // give some debug output
@@ -270,23 +268,27 @@ bool Constituent::checkLeader(term_t term, std::string id, index_t prevLogIndex,
   MUTEX_LOCKER(guard, _castLock);
 
   LOG_TOPIC(TRACE, Logger::AGENCY) << "checkLeader(term: " << term << ", leaderId: "
-				   << id << ", prev-log-index: " << prevLogIndex
-				   << ", prev-log-term: " << prevLogTerm << ") in term "
-				   << _term;
+                                   << id << ", prev-log-index: " << prevLogIndex
+                                   << ", prev-log-term: " << prevLogTerm << ") in term "
+                                   << _term;
 
   if (term >= _term) {
     _lastHeartbeatSeen = TRI_microtime();
-
     LOG_TOPIC(TRACE, Logger::AGENCY) << "setting last heartbeat: " << _lastHeartbeatSeen;
 
+    if (term > _term) {
+      termNoLock(term);
+    }
     if (_leaderID != id) {
       LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to " << id
-				       << " in term " << _term;
-
+                                       << " in term " << _term;
       _leaderID = id;
+      TRI_ASSERT(_leaderID != _id);
+      if (_role != FOLLOWER) {
+        followNoLock(term);
+      }
     }
 
-    TRI_ASSERT(_leaderID != _id);
     return true;
   }
 
@@ -294,49 +296,67 @@ bool Constituent::checkLeader(term_t term, std::string id, index_t prevLogIndex,
 }
 
 /// @brief Vote
-bool Constituent::vote(term_t term, std::string id, index_t prevLogIndex,
+bool Constituent::vote(term_t termOfPeer, std::string id, index_t prevLogIndex,
                        term_t prevLogTerm) {
   TRI_ASSERT(_vocbase != nullptr);
   
-  LOG_TOPIC(TRACE, Logger::AGENCY) << "vote(term: " << term << ", leaderId: "
-				   << id << ", prev-log-index: " << prevLogIndex
-				   << ", prev-log-term: " << prevLogTerm << ") in term "
-				   << _term;
+  LOG_TOPIC(TRACE, Logger::AGENCY) << "vote(termOfPeer: " << termOfPeer
+                                   << ", leaderId: "
+                                   << id << ", prev-log-index: " << prevLogIndex
+                                   << ", prev-log-term: "
+                                   << prevLogTerm << ") in (my) term "
+                                   << _term;
 
   MUTEX_LOCKER(guard, _castLock);
 
-  if (term > _term) {
-    termNoLock(term);
-
-    _cast = true;
-    _votedFor = id;
+  if (termOfPeer > _term) {
+    termNoLock(termOfPeer);
 
     if (_role != FOLLOWER) {
       followNoLock(_term);
     }
 
+    _cast = false;
+    _votedFor = "";
+  } else if (termOfPeer == _term) {
+    if (_role != FOLLOWER) {
+      followNoLock(_term);
+    }
+  } else {  // termOfPeer < _term, simply ignore and do not vote:
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "ignoring RequestVoteRPC with old term "
+      << termOfPeer << ", we are already at term " << _term;
+    return false;
+  }
+
+  if (_cast) {   // already voted in this term
+    if (_votedFor == id) {
+      LOG_TOPIC(DEBUG, Logger::AGENCY) << "repeating vote for " << id;
+      return true;
+    }
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "not voting for " << id
+      << " since we have already voted for " << _votedFor
+      << " in this term";
+    return false;
+  }
+
+  // Now decide whether or not we vote for this server, we have to
+  // take into account paragraph 5.4.1 in the Raft paper, so we need
+  // to check that his log is at least as up to date as ours:
+  log_t myLastLogEntry = _agent->state().lastLog();
+  if (prevLogTerm > myLastLogEntry.term ||
+      (prevLogTerm == myLastLogEntry.term &&
+       prevLogIndex >= myLastLogEntry.index)) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "voting for " << id;
+    _cast = true;
+    _votedFor = id;
     return true;
   }
-
-  if (term == _term) {
-    if (!_cast) {
-      _votedFor = id;
-      _cast = true;
-
-      if (_role != FOLLOWER) {
-        followNoLock(_term);
-      }
-
-      return true;
-    }
-
-    if (_votedFor == id) {
-      TRI_ASSERT(_role != FOLLOWER);
-      return true;
-    }
-  }
-
-  return false;
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "not voting for " << id
+    << " since his log is not up to date: "
+    << "my last log entry: (" << myLastLogEntry.term << ", "
+    << myLastLogEntry.index << "), his last log entry: ("
+    << prevLogTerm << ", " << prevLogIndex << ")";
+  return false;   // do not vote for this uninformed guy!
 }
 
 /// @brief Call to election
@@ -346,10 +366,7 @@ void Constituent::callElection() {
       _agent->config().active();  // Get copy of active
 
   votes[_id] = true;  // vote for myself
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to NO_LEADER"
-    << " in term " << _term;
-  _leaderID = NO_LEADER;
-  
+
   term_t savedTerm;
   {
     MUTEX_LOCKER(locker, _castLock);
@@ -357,6 +374,9 @@ void Constituent::callElection() {
     _cast = true;
     _votedFor = _id;
     savedTerm = _term;
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to NO_LEADER"
+      << " in term " << _term;
+    _leaderID = NO_LEADER;
   }
 
   std::string body;
@@ -521,50 +541,50 @@ void Constituent::run() {
   } else {
     while (!this->isStopping()) {
       if (_role == FOLLOWER) {
-	static double const M = 1000000.0;
-	int64_t a = static_cast<int64_t>(M * _agent->config().minPing());
-	int64_t b = static_cast<int64_t>(M * _agent->config().maxPing());
+        static double const M = 1000000.0;
+        int64_t a = static_cast<int64_t>(M * _agent->config().minPing());
+        int64_t b = static_cast<int64_t>(M * _agent->config().maxPing());
         int64_t randTimeout = RandomGenerator::interval(a, b);
-	int64_t randWait = randTimeout;
+        int64_t randWait = randTimeout;
 
-	{
-	  MUTEX_LOCKER(guard, _castLock);
+        {
+          MUTEX_LOCKER(guard, _castLock);
 
-	  // in the beginning, pure random
-	  if (_lastHeartbeatSeen > 0.0) {
-	    double now = TRI_microtime();
-	    randWait -= static_cast<int64_t>(M * (now - _lastHeartbeatSeen));
-	  }
-	}
+          // in the beginning, pure random
+          if (_lastHeartbeatSeen > 0.0) {
+            double now = TRI_microtime();
+            randWait -= static_cast<int64_t>(M * (now - _lastHeartbeatSeen));
+          }
+        }
        
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "Random timeout: " << randTimeout
-					 << ", wait: " << randWait;
+                                         << ", wait: " << randWait;
 
         if (randWait > 0.0) {
           CONDITION_LOCKER(guardv, _cv);
           _cv.wait(randWait);
         }
 
-	bool isTimeout = false;
+        bool isTimeout = false;
 
-	{
-	  MUTEX_LOCKER(guard, _castLock);
+        {
+          MUTEX_LOCKER(guard, _castLock);
 
-	  if (_lastHeartbeatSeen <= 0.0) {
-	    LOG_TOPIC(TRACE, Logger::AGENCY) << "no heartbeat seen";
-	    isTimeout = true;
-	  } else { 
-	    double diff = TRI_microtime() - _lastHeartbeatSeen;
-	    LOG_TOPIC(TRACE, Logger::AGENCY) << "last heartbeat: " << diff << "sec ago";
-	
-	    isTimeout = (static_cast<int32_t>(M * diff) > randTimeout);
-	  }
-	}
+          if (_lastHeartbeatSeen <= 0.0) {
+            LOG_TOPIC(TRACE, Logger::AGENCY) << "no heartbeat seen";
+            isTimeout = true;
+          } else { 
+            double diff = TRI_microtime() - _lastHeartbeatSeen;
+            LOG_TOPIC(TRACE, Logger::AGENCY) << "last heartbeat: " << diff << "sec ago";
+        
+            isTimeout = (static_cast<int32_t>(M * diff) > randTimeout);
+          }
+        }
 
-	if (isTimeout) {
-	  LOG_TOPIC(TRACE, Logger::AGENCY) << "timeout, calling an election";
-	  candidate();
-	}
+        if (isTimeout) {
+          LOG_TOPIC(TRACE, Logger::AGENCY) << "timeout, calling an election";
+          candidate();
+        }
       } else if (_role == CANDIDATE) {
         callElection();  // Run for office
       } else {

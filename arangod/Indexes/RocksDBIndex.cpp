@@ -25,8 +25,9 @@
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/AttributeNameParser.h"
-#include "Basics/debugging.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Indexes/IndexLookupContext.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Indexes/RocksDBFeature.h"
 #include "Indexes/RocksDBKeyComparator.h"
@@ -79,14 +80,16 @@ static size_t sortWeight(arangodb::aql::AstNode const* node) {
 // lists: lexicographically and within each slot according to these rules.
 // ...........................................................................
   
-RocksDBIterator::RocksDBIterator(arangodb::Transaction* trx, 
+RocksDBIterator::RocksDBIterator(LogicalCollection* collection,
+                                 arangodb::Transaction* trx, 
+                                 ManagedDocumentResult* mmdr,
                                  arangodb::RocksDBIndex const* index,
                                  arangodb::PrimaryIndex* primaryIndex,
                                  rocksdb::OptimisticTransactionDB* db,
                                  bool reverse, 
                                  VPackSlice const& left,
                                  VPackSlice const& right)
-    : _trx(trx),
+    : IndexIterator(collection, trx, mmdr, index),
       _primaryIndex(primaryIndex),
       _db(db),
       _reverse(reverse),
@@ -139,13 +142,13 @@ void RocksDBIterator::reset() {
 /// @brief Get the next element in the index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* RocksDBIterator::next() {
+IndexLookupResult RocksDBIterator::next() {
   auto comparator = RocksDBFeature::instance()->comparator();
     
   while (true) {
     if (!_cursor->Valid()) {
       // We are exhausted already, sorry
-      return nullptr;
+      return IndexLookupResult();
     }
   
     rocksdb::Slice key = _cursor->key();
@@ -156,7 +159,7 @@ TRI_doc_mptr_t* RocksDBIterator::next() {
 
     if (res < 0) {
       if (_reverse) {
-        return nullptr;
+        return IndexLookupResult();
       } else {
         _cursor->Next();
       }
@@ -166,7 +169,7 @@ TRI_doc_mptr_t* RocksDBIterator::next() {
     res = comparator->Compare(key, rocksdb::Slice(_rightEndpoint->data(), _rightEndpoint->size()));
     // LOG(TRACE) << "comparing: " << VPackSlice(key.data() + RocksDBIndex::keyPrefixSize()).toJson() << " with " << VPackSlice((char const*) _rightEndpoint->data() + RocksDBIndex::keyPrefixSize()).toJson() << " - res: " << res;
    
-    TRI_doc_mptr_t* doc = nullptr;
+    IndexLookupResult doc;
      
     if (res <= 0) {
       // get the value for _key, which is the last entry in the key array
@@ -179,7 +182,10 @@ TRI_doc_mptr_t* RocksDBIterator::next() {
       // LOG(TRACE) << "looking up document with primary key: " << keySlice[n - 1].toJson();
 
       // use primary index to lookup the document
-      doc = _primaryIndex->lookupKey(_trx, keySlice[n - 1]);
+      SimpleIndexElement element = _primaryIndex->lookupKey(_trx, keySlice[n - 1]);
+      if (element) {
+        doc = IndexLookupResult(element.revisionId());
+      }
     }
     
     if (_reverse) {
@@ -190,28 +196,16 @@ TRI_doc_mptr_t* RocksDBIterator::next() {
 
     if (res > 0) {
       if (!_probe) {
-        return nullptr;
+        return IndexLookupResult();
       }
       _probe = false;
       continue;
     }
 
-    if (doc != nullptr) {
+    if (doc) {
       return doc;
     }
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the index
-////////////////////////////////////////////////////////////////////////////////
-
-RocksDBIndex::RocksDBIndex(
-    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
-    std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
-    bool unique, bool sparse)
-    : PathBasedIndex(iid, collection, fields, unique, sparse, true),
-      _db(RocksDBFeature::instance()->db()) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -223,15 +217,6 @@ RocksDBIndex::RocksDBIndex(TRI_idx_iid_t iid,
                            arangodb::velocypack::Slice const& info)
     : PathBasedIndex(iid, collection, info, true),
       _db(RocksDBFeature::instance()->db()) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an index stub with a hard-coded selectivity estimate
-/// this is used in the cluster coordinator case
-////////////////////////////////////////////////////////////////////////////////
-
-RocksDBIndex::RocksDBIndex(VPackSlice const& slice)
-    : PathBasedIndex(slice, true),
-      _db(nullptr) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the index
@@ -267,22 +252,22 @@ void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 /// @brief inserts a document into the index
 ////////////////////////////////////////////////////////////////////////////////
 
-int RocksDBIndex::insert(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
-                         bool) {
+int RocksDBIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
+                         VPackSlice const& doc, bool isRollback) {
   auto comparator = RocksDBFeature::instance()->comparator();
-  std::vector<TRI_index_element_t*> elements;
+  std::vector<SkiplistIndexElement*> elements;
 
   int res;
   try {
-    res = fillElement(elements, doc);
+    res = fillElement(elements, revisionId, doc);
   } catch (...) {
     res = TRI_ERROR_OUT_OF_MEMORY;
   }
 
   // make sure we clean up before we leave this method
-  auto cleanup = [&elements] {
+  auto cleanup = [this, &elements] {
     for (auto& it : elements) {
-      TRI_index_element_t::freeElement(it);
+      it->free();
     }
   };
 
@@ -292,7 +277,9 @@ int RocksDBIndex::insert(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
     return res;
   }
   
-  VPackSlice const key = Transaction::extractKeyFromDocument(VPackSlice(doc->vpack()));
+  ManagedDocumentResult result(trx); 
+  IndexLookupContext context(trx, _collection, &result, numPaths()); 
+  VPackSlice const key = Transaction::extractKeyFromDocument(doc);
   std::string const prefix =
       buildPrefix(trx->vocbase()->id(), _collection->cid(), _iid);
 
@@ -306,11 +293,11 @@ int RocksDBIndex::insert(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
     bounds.reserve(elements.size());
   }
 
-  for (auto& it : elements) {
+  for (auto const& it : elements) {
     builder.clear();
     builder.openArray();
     for (size_t i = 0; i < _fields.size(); ++i) {
-      builder.add(it->subObjects()[i].slice(doc));
+      builder.add(it->slice(&context, i));
     }
     builder.add(key); // always append _key value to the end of the array
     builder.close();
@@ -326,7 +313,7 @@ int RocksDBIndex::insert(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
       builder.clear();
       builder.openArray();
       for (size_t i = 0; i < _fields.size(); ++i) {
-        builder.add(it->subObjects()[i].slice(doc));
+        builder.add(it->slice(&context, i));
       }
       builder.add(VPackSlice::minKeySlice());
       builder.close();
@@ -343,7 +330,7 @@ int RocksDBIndex::insert(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
       builder.clear();
       builder.openArray();
       for (size_t i = 0; i < _fields.size(); ++i) {
-        builder.add(it->subObjects()[i].slice(doc));
+        builder.add(it->slice(&context, i));
       }
       builder.add(VPackSlice::maxKeySlice());
       builder.close();
@@ -425,21 +412,21 @@ int RocksDBIndex::insert(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
 /// @brief removes a document from the index
 ////////////////////////////////////////////////////////////////////////////////
 
-int RocksDBIndex::remove(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
-                         bool) {
-  std::vector<TRI_index_element_t*> elements;
+int RocksDBIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
+                         VPackSlice const& doc, bool isRollback) {
+  std::vector<SkiplistIndexElement*> elements;
 
   int res;
   try {
-    res = fillElement(elements, doc);
+    res = fillElement(elements, revisionId, doc);
   } catch (...) {
     res = TRI_ERROR_OUT_OF_MEMORY;
   }
   
   // make sure we clean up before we leave this method
-  auto cleanup = [&elements] {
+  auto cleanup = [this, &elements] {
     for (auto& it : elements) {
-      TRI_index_element_t::freeElement(it);
+      it->free();
     }
   };
 
@@ -449,15 +436,17 @@ int RocksDBIndex::remove(arangodb::Transaction* trx, TRI_doc_mptr_t const* doc,
     return res;
   }
   
-  VPackSlice const key = Transaction::extractKeyFromDocument(VPackSlice(doc->vpack()));
+  ManagedDocumentResult result(trx); 
+  IndexLookupContext context(trx, _collection, &result, numPaths()); 
+  VPackSlice const key = Transaction::extractKeyFromDocument(doc);
   
   VPackBuilder builder;
   std::vector<std::string> values;
-  for (auto& it : elements) {
+  for (auto const& it : elements) {
     builder.clear();
     builder.openArray();
     for (size_t i = 0; i < _fields.size(); ++i) {
-      builder.add(it->subObjects()[i].slice(doc));
+      builder.add(it->slice(&context, i));
     }
     builder.add(key); // always append _key value to the end of the array
     builder.close();
@@ -504,6 +493,7 @@ int RocksDBIndex::drop() {
 /// Warning: who ever calls this function is responsible for destroying
 /// the RocksDBIterator* results
 RocksDBIterator* RocksDBIndex::lookup(arangodb::Transaction* trx,
+                                      ManagedDocumentResult* mmdr,
                                       VPackSlice const searchValues,
                                       bool reverse) const {
   TRI_ASSERT(searchValues.isArray());
@@ -600,11 +590,7 @@ RocksDBIterator* RocksDBIndex::lookup(arangodb::Transaction* trx,
   // _collection at least as long as trx is running.
   // Same for the iterator
   auto idx = _collection->primaryIndex();
-  auto iterator = std::make_unique<RocksDBIterator>(
-      trx, this, idx, _db, reverse,
-      leftBorder, rightBorder);
-
-  return iterator.release();
+  return new RocksDBIterator(_collection, trx, mmdr, this, idx, _db, reverse, leftBorder, rightBorder);
 }
 
 bool RocksDBIndex::accessFitsIndex(
@@ -894,7 +880,8 @@ bool RocksDBIndex::supportsSortCondition(
 }
 
 IndexIterator* RocksDBIndex::iteratorForCondition(
-    arangodb::Transaction* trx, IndexIteratorContext* context,
+    arangodb::Transaction* trx, 
+    ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) const {
   VPackBuilder searchValues;
@@ -1055,7 +1042,7 @@ IndexIterator* RocksDBIndex::iteratorForCondition(
     std::vector<IndexIterator*> iterators;
     try {
       for (auto const& val : VPackArrayIterator(expandedSlice)) {
-        auto iterator = lookup(trx, val, reverse);
+        auto iterator = lookup(trx, mmdr, val, reverse);
         try {
           iterators.push_back(iterator);
         } catch (...) {
@@ -1074,13 +1061,13 @@ IndexIterator* RocksDBIndex::iteratorForCondition(
       }
       throw; 
     }
-    return new MultiIndexIterator(iterators);
+    return new MultiIndexIterator(_collection, trx, mmdr, this, iterators);
   }
 
   VPackSlice searchSlice = searchValues.slice();
   TRI_ASSERT(searchSlice.length() == 1);
   searchSlice = searchSlice.at(0);
-  return lookup(trx, searchSlice, reverse);
+  return lookup(trx, mmdr, searchSlice, reverse);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

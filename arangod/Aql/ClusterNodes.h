@@ -27,8 +27,8 @@
 #include "Basics/Common.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/Query.h"
 #include "Aql/Variable.h"
+#include "Aql/types.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 

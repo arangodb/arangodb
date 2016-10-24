@@ -37,6 +37,7 @@ const examples = require('@arangodb/graph-examples/example-graph');
 const createRouter = require('@arangodb/foxx/router');
 const users = require('@arangodb/users');
 const cluster = require('@arangodb/cluster');
+const isEnterprise = require('internal').isEnterprise();
 
 const ERROR_USER_NOT_FOUND = errors.ERROR_USER_NOT_FOUND.code;
 const API_DOCS = require(module.context.fileName('api-docs.json'));
@@ -289,7 +290,12 @@ authRouter.get('/job', function (req, res) {
 authRouter.get('/graph/:name', function (req, res) {
   var _ = require('lodash');
   var name = req.pathParams.name;
-  var gm = require('@arangodb/general-graph');
+  var gm;
+  if (isEnterprise) {
+    gm = require('@arangodb/smart-graph');
+  } else {
+    gm = require('@arangodb/general-graph');
+  }
   var colors = {
     default: [
       '#68BDF6',

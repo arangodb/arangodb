@@ -22,6 +22,7 @@
 
 #include "QueryRegistryFeature.h"
 
+#include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -45,6 +46,7 @@ QueryRegistryFeature::QueryRegistryFeature(ApplicationServer* server)
   startsAfter("DatabasePath");
   startsAfter("Database");
   startsAfter("LogfileManager");
+  startsAfter("Cluster");
 }
 
 void QueryRegistryFeature::collectOptions(

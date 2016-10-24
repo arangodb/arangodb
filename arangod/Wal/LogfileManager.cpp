@@ -113,6 +113,7 @@ LogfileManager::LogfileManager(ApplicationServer* server)
   requiresElevatedPrivileges(false);
   startsAfter("DatabasePath");
   startsAfter("EngineSelector");
+  startsAfter("RevisionCache");
 
   for (auto const& it : EngineSelectorFeature::availableEngines()) {
     startsAfter(it);

@@ -49,25 +49,13 @@ QueryCacheResultEntry::QueryCacheResultEntry(
     uint64_t hash, char const* queryString, size_t queryStringLength,
     std::shared_ptr<VPackBuilder> queryResult, std::vector<std::string> const& collections)
     : _hash(hash),
-      _queryString(nullptr),
-      _queryStringLength(queryStringLength),
+      _queryString(queryString, queryStringLength),
       _queryResult(queryResult),
       _collections(collections),
       _prev(nullptr),
       _next(nullptr),
       _refCount(0),
       _deletionRequested(0) {
-  _queryString =
-      TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, queryString, queryStringLength);
-
-  if (_queryString == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-}
-
-/// @brief destroy a cache entry
-QueryCacheResultEntry::~QueryCacheResultEntry() {
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, _queryString);
 }
 
 /// @brief check whether the element can be destroyed, and delete it if yes
@@ -127,8 +115,8 @@ QueryCacheResultEntry* QueryCacheDatabaseEntry::lookup(
 
   // found some result in cache
 
-  if (queryStringLength != (*it).second->_queryStringLength ||
-      memcmp(queryString, (*it).second->_queryString, queryStringLength) != 0) {
+  if (queryStringLength != (*it).second->_queryString.size() ||
+      memcmp(queryString, (*it).second->_queryString.c_str(), queryStringLength) != 0) {
     // found something, but obviously the result of a different query with the
     // same hash
     return nullptr;

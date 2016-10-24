@@ -23,31 +23,33 @@
 
 #include "CollectionScanner.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Utils/OperationCursor.h"
+#include "Utils/Transaction.h"
 
 using namespace arangodb::aql;
 
 CollectionScanner::CollectionScanner(arangodb::Transaction* trx,
+                                     ManagedDocumentResult* mmdr,
                                      std::string const& collection,
                                      bool readRandom)
     : _cursor(trx->indexScan(collection,
                              (readRandom ? Transaction::CursorType::ANY
                                          : Transaction::CursorType::ALL),
-                             Transaction::IndexHandle(), VPackSlice(), 0, 
+                             Transaction::IndexHandle(), VPackSlice(), mmdr, 0, 
                              UINT64_MAX, 1000, false)) {
   TRI_ASSERT(_cursor->successful());
 }
 
 CollectionScanner::~CollectionScanner() {}
 
-VPackSlice CollectionScanner::scan(size_t batchSize) {
+void CollectionScanner::scan(std::vector<IndexLookupResult>& result, size_t batchSize) {
+  result.clear();
+
   if (!_cursor->hasMore()) {
-    return arangodb::basics::VelocyPackHelper::EmptyArrayValue();
+    return;
   }
-  _cursor->getMore(_currentBatch, batchSize, true);
-  if (_currentBatch->failed()) {
-    return arangodb::basics::VelocyPackHelper::EmptyArrayValue();
-  }
-  return _currentBatch->slice();
+
+  _cursor->getMoreMptr(result, batchSize); 
 }
 
 int CollectionScanner::forward(size_t batchSize, uint64_t& skipped) {

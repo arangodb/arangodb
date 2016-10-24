@@ -77,7 +77,7 @@ void RestAgencyHandler::redirectRequest(std::string const& leaderId) {
                       _request->requestPath();
     _response->setResponseCode(rest::ResponseCode::TEMPORARY_REDIRECT);
     _response->setHeaderNC(StaticStrings::Location, url);
-    LOG_TOPIC(INFO, Logger::AGENCY) << "Sending 307 redirect to " << url;
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending 307 redirect to " << url;
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << ":"
                                     << __LINE__;
@@ -227,6 +227,7 @@ RestStatus RestAgencyHandler::handleWrite() {
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
         return RestStatus::DONE;
       } else {
+        TRI_ASSERT(ret.redirect != _agent->id());
         redirectRequest(ret.redirect);
       }
     }

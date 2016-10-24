@@ -82,8 +82,6 @@ int SortBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
 
 void SortBlock::doSorting() {
   DEBUG_BEGIN_BLOCK();  
-  // coords[i][j] is the <j>th row of the <i>th block
-  std::vector<std::pair<size_t, size_t>> coords;
 
   size_t sum = 0;
   for (auto const& block : _buffer) {
@@ -93,6 +91,9 @@ void SortBlock::doSorting() {
   TRI_IF_FAILURE("SortBlock::doSorting") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
+  
+  // coords[i][j] is the <j>th row of the <i>th block
+  std::vector<std::pair<size_t, size_t>> coords;
   coords.reserve(sum);
 
   // install the coords

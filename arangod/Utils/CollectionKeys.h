@@ -26,13 +26,13 @@
 
 #include "Basics/Common.h"
 #include "Utils/CollectionNameResolver.h"
+#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-struct TRI_df_marker_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -82,8 +82,7 @@ class CollectionKeys {
   }
 
   size_t count() const {
-    TRI_ASSERT(_markers != nullptr);
-    return _markers->size();
+    return _vpack.size();
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -113,20 +112,20 @@ class CollectionKeys {
                 arangodb::velocypack::Slice const&) const;
 
  private:
-  struct TRI_vocbase_t* _vocbase;
-  arangodb::CollectionGuard* _guard;
+  TRI_vocbase_t* _vocbase;
+  std::unique_ptr<arangodb::CollectionGuard> _guard;
   arangodb::LogicalCollection* _collection;
   arangodb::DocumentDitch* _ditch;
   std::string const _name;
   arangodb::CollectionNameResolver _resolver;
   TRI_voc_tick_t _blockerId;
-  std::vector<void const*>* _markers;
-
   CollectionKeysId _id;
   double _ttl;
   double _expires;
   bool _isDeleted;
   bool _isUsed;
+  std::vector<uint8_t const*> _vpack;
+  std::unordered_set<RevisionCacheChunk*> _chunks;
 };
 }
 

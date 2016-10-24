@@ -3579,7 +3579,7 @@ testFuncs.endpoints = function(options) {
         return {
           status: true,
           skipped: true,
-        }
+        };
       } else {
         let instanceInfo = startInstance('tcp', Object.assign(options, {useReconnect: true}), {
           'server.endpoint': endpoint,
