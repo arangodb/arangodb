@@ -33,6 +33,9 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+// GeoCoordinate.data must be capable of storing revision ids
+static_assert(sizeof(GeoCoordinate::data) >= sizeof(TRI_voc_rid_t), "invalid size of GeoCoordinate.data");
+
 namespace arangodb {
 
 class GeoIndex final : public Index {
@@ -41,14 +44,6 @@ class GeoIndex final : public Index {
 
   GeoIndex(TRI_idx_iid_t, LogicalCollection*,
             arangodb::velocypack::Slice const&);
-
-  GeoIndex(TRI_idx_iid_t, arangodb::LogicalCollection*,
-            std::vector<std::vector<arangodb::basics::AttributeName>> const&,
-            std::vector<std::string> const&, bool);
-
-  GeoIndex(TRI_idx_iid_t, arangodb::LogicalCollection*,
-            std::vector<std::vector<arangodb::basics::AttributeName>> const&,
-            std::vector<std::vector<std::string>> const&);
 
   ~GeoIndex();
 
@@ -65,7 +60,7 @@ class GeoIndex final : public Index {
   };
 
  public:
-  IndexType type() const override final {
+  IndexType type() const override {
     if (_variant == INDEX_GEO_COMBINED_LAT_LON ||
         _variant == INDEX_GEO_COMBINED_LON_LAT) {
       return TRI_IDX_TYPE_GEO1_INDEX;
@@ -74,28 +69,26 @@ class GeoIndex final : public Index {
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
   
-  bool allowExpansion() const override final { return false; }
+  bool allowExpansion() const override { return false; }
   
-  bool canBeDropped() const override final { return true; }
+  bool canBeDropped() const override { return true; }
 
-  bool isSorted() const override final { return false; }
+  bool isSorted() const override { return false; }
 
-  bool hasSelectivityEstimate() const override final { return false; }
+  bool hasSelectivityEstimate() const override { return false; }
 
-  size_t memory() const override final;
+  size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool) const override final;
+  void toVelocyPack(VPackBuilder&, bool) const override;
   // Uses default toVelocyPackFigures
 
-  bool matchesDefinition(VPackSlice const& info) const override final;
+  bool matchesDefinition(VPackSlice const& info) const override;
 
-  int insert(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
-             bool) override final;
+  int insert(arangodb::Transaction*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int remove(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
-             bool) override final;
+  int remove(arangodb::Transaction*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int unload() override final;
+  int unload() override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief looks up all points within a given radius
@@ -119,6 +112,14 @@ class GeoIndex final : public Index {
               std::vector<std::string> const& longitude) const {
     return (!_latitude.empty() && !_longitude.empty() &&
             _latitude == latitude && _longitude == longitude);
+  }
+  
+  static uint64_t fromRevision(TRI_voc_rid_t revisionId) {
+    return static_cast<uint64_t>(revisionId);
+  }
+
+  static TRI_voc_rid_t toRevision(uint64_t internal) {
+    return static_cast<TRI_voc_rid_t>(internal);
   }
 
  private:

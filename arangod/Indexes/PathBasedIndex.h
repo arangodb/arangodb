@@ -60,15 +60,8 @@ class PathBasedIndex : public Index {
  public:
   PathBasedIndex() = delete;
 
-  PathBasedIndex(
-      TRI_idx_iid_t, arangodb::LogicalCollection*,
-      std::vector<std::vector<arangodb::basics::AttributeName>> const&,
-      bool unique, bool sparse, bool allowPartialIndex);
-
   PathBasedIndex(TRI_idx_iid_t, arangodb::LogicalCollection*,
-                 arangodb::velocypack::Slice const&, bool);
-
-  PathBasedIndex(VPackSlice const&, bool);
+                 arangodb::velocypack::Slice const&, bool allowPartialIndex);
 
   ~PathBasedIndex();
 
@@ -89,34 +82,18 @@ class PathBasedIndex : public Index {
     return _expanding;
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the memory needed for an index key entry
-  //////////////////////////////////////////////////////////////////////////////
-
-  inline size_t elementSize() const {
-    return TRI_index_element_t::memoryUsage(_paths.size());
-  }
-
  protected:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief helper function to insert a document into any index type
-  //////////////////////////////////////////////////////////////////////////////
+  template<typename T>
+  int fillElement(std::vector<T*>& elements, 
+          TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&);
 
-  int fillElement(std::vector<TRI_index_element_t*>& elements,
-                  TRI_doc_mptr_t const* document);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief return the number of paths
-  //////////////////////////////////////////////////////////////////////////////
-
   inline size_t numPaths() const { return _paths.size(); }
 
  private:
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief helper function to transform AttributeNames into string lists
-  //////////////////////////////////////////////////////////////////////////////
-
   void fillPaths(std::vector<std::vector<std::string>>& paths,
                  std::vector<int>& expanding);
 
@@ -124,15 +101,15 @@ class PathBasedIndex : public Index {
   /// @brief helper function to create a set of index combinations to insert
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<VPackSlice> buildIndexValue(VPackSlice const documentSlice);
+  std::vector<std::pair<VPackSlice, uint32_t>> buildIndexValue(VPackSlice const documentSlice);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief helper function to create a set of index combinations to insert
   //////////////////////////////////////////////////////////////////////////////
 
   void buildIndexValues(VPackSlice const document, size_t level,
-                        std::vector<std::vector<VPackSlice>>& toInsert,
-                        std::vector<VPackSlice>& sliceStack);
+                        std::vector<std::vector<std::pair<VPackSlice, uint32_t>>>& toInsert,
+                        std::vector<std::pair<VPackSlice, uint32_t>>& sliceStack);
 
  protected:
   //////////////////////////////////////////////////////////////////////////////

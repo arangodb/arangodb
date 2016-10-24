@@ -115,9 +115,9 @@ class SkipList {
   /// to the key and the third is a pointer to an element.
   //////////////////////////////////////////////////////////////////////////////
 
-  typedef std::function<int(Element const*, Element const*, SkipListCmpType)>
+  typedef std::function<int(void*, Element const*, Element const*, SkipListCmpType)>
       CmpElmElmFuncType;
-  typedef std::function<int(Key const*, Element const*)> CmpKeyElmFuncType;
+  typedef std::function<int(void*, Key const*, Element const*)> CmpKeyElmFuncType;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Type of a pointer to a function that is called whenever a
@@ -248,14 +248,14 @@ class SkipList {
   /// total order. In the latter two cases nothing is inserted.
   //////////////////////////////////////////////////////////////////////////////
 
-  int insert(Element* doc) {
+  int insert(void* userData, Element* doc) {
     int lev;
     Node* pos[TRI_SKIPLIST_MAX_HEIGHT];
     Node* next = nullptr;  // to please the compiler
     Node* newNode;
     int cmp;
 
-    cmp = lookupLess(doc, &pos, &next, SKIPLIST_CMP_TOTORDER);
+    cmp = lookupLess(userData, doc, &pos, &next, SKIPLIST_CMP_TOTORDER);
     // Now pos[0] points to the largest node whose document is less than
     // doc. next is the next node and can be nullptr if there is none. doc is
     // in the skiplist iff next != nullptr and cmp == 0 and in this case it
@@ -268,9 +268,9 @@ class SkipList {
     // Uniqueness test if wanted:
     if (_unique) {
       if ((pos[0] != _start &&
-           0 == _cmp_elm_elm(doc, pos[0]->_doc, SKIPLIST_CMP_PREORDER)) ||
+           0 == _cmp_elm_elm(userData, doc, pos[0]->_doc, SKIPLIST_CMP_PREORDER)) ||
           (nullptr != next &&
-           0 == _cmp_elm_elm(doc, next->_doc, SKIPLIST_CMP_PREORDER))) {
+           0 == _cmp_elm_elm(userData, doc, next->_doc, SKIPLIST_CMP_PREORDER))) {
         return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
       }
     }
@@ -325,13 +325,13 @@ class SkipList {
   /// In the latter two cases nothing is removed.
   //////////////////////////////////////////////////////////////////////////////
 
-  int remove(Element* doc) {
+  int remove(void* userData, Element* doc) {
     int lev;
     Node* pos[TRI_SKIPLIST_MAX_HEIGHT];
     Node* next = nullptr;  // to please the compiler
     int cmp;
 
-    cmp = lookupLess(doc, &pos, &next, SKIPLIST_CMP_TOTORDER);
+    cmp = lookupLess(userData, doc, &pos, &next, SKIPLIST_CMP_TOTORDER);
     // Now pos[0] points to the largest node whose document is less than
     // doc. next points to the next node and can be nullptr if there is none.
     // doc is in the skiplist iff next != nullptr and cmp == 0 and in this
@@ -401,12 +401,12 @@ class SkipList {
   /// Returns nullptr if doc is not in the skiplist.
   //////////////////////////////////////////////////////////////////////////////
 
-  Node* lookup(Element const* doc) const {
+  Node* lookup(void* userData, Element const* doc) const {
     Node* pos[TRI_SKIPLIST_MAX_HEIGHT];
     Node* next = nullptr;  // to please the compiler
     int cmp;
 
-    cmp = lookupLess(doc, &pos, &next, SKIPLIST_CMP_TOTORDER);
+    cmp = lookupLess(userData, doc, &pos, &next, SKIPLIST_CMP_TOTORDER);
     // Now pos[0] points to the largest node whose document is less than
     // doc. next points to the next node and can be nullptr if there is none.
     // doc is in the skiplist iff next != nullptr and cmp == 0 and in this
@@ -424,12 +424,12 @@ class SkipList {
   /// Only comparisons using the preorder are done using cmp_elm_elm.
   //////////////////////////////////////////////////////////////////////////////
 
-  Node* leftLookup(Element const* doc) const {
+  Node* leftLookup(void* userData, Element const* doc) const {
     Node* pos[TRI_SKIPLIST_MAX_HEIGHT];
     Node* next;
 
     pos[0] = nullptr;  // initialize to satisfy scan-build
-    lookupLess(doc, &pos, &next, SKIPLIST_CMP_PREORDER);
+    lookupLess(userData, doc, &pos, &next, SKIPLIST_CMP_PREORDER);
     // Now pos[0] points to the largest node whose document is less than
     // doc in the preorder. next points to the next node and can be nullptr
     // if there is none. doc is in the skiplist iff next != nullptr and cmp
@@ -444,12 +444,12 @@ class SkipList {
   /// Only comparisons using the preorder are done using cmp_elm_elm.
   //////////////////////////////////////////////////////////////////////////////
 
-  Node* rightLookup(Element const* doc) const {
+  Node* rightLookup(void* userData, Element const* doc) const {
     Node* pos[TRI_SKIPLIST_MAX_HEIGHT];
     Node* next;
 
     pos[0] = nullptr;  // initialize to satisfy scan-build
-    lookupLessOrEq(doc, &pos, &next, SKIPLIST_CMP_PREORDER);
+    lookupLessOrEq(userData, doc, &pos, &next, SKIPLIST_CMP_PREORDER);
     // Now pos[0] points to the largest node whose document is less than
     // or equal to doc in the preorder. next points to the next node and
     // can be nullptr if there is none. doc is in the skiplist iff next !=
@@ -464,12 +464,12 @@ class SkipList {
   /// Only comparisons using the preorder are done using cmp_key_elm.
   //////////////////////////////////////////////////////////////////////////////
 
-  Node* leftKeyLookup(Key const* key) const {
+  Node* leftKeyLookup(void* userData, Key const* key) const {
     Node* pos[TRI_SKIPLIST_MAX_HEIGHT];
     Node* next;
 
     pos[0] = nullptr;  // initialize to satisfy scan-build
-    lookupKeyLess(key, &pos, &next);
+    lookupKeyLess(userData, key, &pos, &next);
     // Now pos[0] points to the largest node whose document is less than
     // key in the preorder. next points to the next node and can be nullptr
     // if there is none. doc is in the skiplist iff next != nullptr and cmp
@@ -484,12 +484,12 @@ class SkipList {
   /// Only comparisons using the preorder are done using cmp_key_elm.
   //////////////////////////////////////////////////////////////////////////////
 
-  Node* rightKeyLookup(Key const* key) const {
+  Node* rightKeyLookup(void* userData, Key const* key) const {
     Node* pos[TRI_SKIPLIST_MAX_HEIGHT];
     Node* next;
 
     pos[0] = nullptr;  // initialize to satisfy scan-build
-    lookupKeyLessOrEq(key, &pos, &next);
+    lookupKeyLessOrEq(userData, key, &pos, &next);
     // Now pos[0] points to the largest node whose document is less than
     // or equal to key in the preorder. next points to the next node and
     // can be nullptr if there is none. doc is in the skiplist iff next !=
@@ -563,7 +563,8 @@ class SkipList {
   /// lev.
   //////////////////////////////////////////////////////////////////////////////
 
-  int lookupLess(Element const* doc, Node* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
+  int lookupLess(void* userData,
+                 Element const* doc, Node* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
                  Node** next, SkipListCmpType cmptype) const {
     int lev;
     int cmp = 0;  // just in case to avoid undefined values
@@ -575,7 +576,7 @@ class SkipList {
         if (nullptr == *next) {
           break;
         }
-        cmp = _cmp_elm_elm((*next)->_doc, doc, cmptype);
+        cmp = _cmp_elm_elm(userData, (*next)->_doc, doc, cmptype);
         if (cmp >= 0) {
           break;
         }
@@ -603,7 +604,8 @@ class SkipList {
   /// that have height > lev.
   //////////////////////////////////////////////////////////////////////////////
 
-  int lookupLessOrEq(Element const* doc, Node* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
+  int lookupLessOrEq(void* userData,
+                     Element const* doc, Node* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
                      Node** next, SkipListCmpType cmptype) const {
     int lev;
     int cmp = 0;  // just in case to avoid undefined values
@@ -615,7 +617,7 @@ class SkipList {
         if (nullptr == *next) {
           break;
         }
-        cmp = _cmp_elm_elm((*next)->_doc, doc, cmptype);
+        cmp = _cmp_elm_elm(userData, (*next)->_doc, doc, cmptype);
         if (cmp > 0) {
           break;
         }
@@ -637,7 +639,8 @@ class SkipList {
   /// as the two previous ones.
   //////////////////////////////////////////////////////////////////////////////
 
-  int lookupKeyLess(Key const* key, Node* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
+  int lookupKeyLess(void* userData,
+                    Key const* key, Node* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
                     Node** next) const {
     int lev;
     int cmp = 0;  // just in case to avoid undefined values
@@ -649,7 +652,7 @@ class SkipList {
         if (nullptr == *next) {
           break;
         }
-        cmp = _cmp_key_elm(key, (*next)->_doc);
+        cmp = _cmp_key_elm(userData, key, (*next)->_doc);
         if (cmp <= 0) {
           break;
         }
@@ -667,7 +670,8 @@ class SkipList {
   /// @brief lookupKeyLessOrEq
   //////////////////////////////////////////////////////////////////////////////
 
-  int lookupKeyLessOrEq(Key const* key, Node* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
+  int lookupKeyLessOrEq(void* userData,
+                        Key const* key, Node* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
                         Node** next) const {
     int lev;
     int cmp = 0;  // just in case to avoid undefined values
@@ -679,7 +683,7 @@ class SkipList {
         if (nullptr == *next) {
           break;
         }
-        cmp = _cmp_key_elm(key, (*next)->_doc);
+        cmp = _cmp_key_elm(userData, key, (*next)->_doc);
         if (cmp < 0) {
           break;
         }

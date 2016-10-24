@@ -115,6 +115,10 @@ class Scheduler {
 
   uint64_t decRunning() { return --_nrRunning; }
 
+  void setMinimal(int64_t minimal) { _nrMinimal = minimal; }
+  void setMaximal(int64_t maximal) { _nrMaximal = maximal; }
+  void setRealMaximum(int64_t maximum) { _nrRealMaximum = maximum; }
+
   std::string infoStatus() {
     return "busy: " + std::to_string(_nrBusy) + ", working: " +
            std::to_string(_nrWorking) + ", blocked: " +
@@ -145,6 +149,7 @@ class Scheduler {
   std::atomic<int64_t> _nrWorking;
   std::atomic<int64_t> _nrBlocked;
   std::atomic<int64_t> _nrRunning;
+  std::atomic<int64_t> _nrMinimal;
   std::atomic<int64_t> _nrMaximal;
   std::atomic<int64_t> _nrRealMaximum;
 

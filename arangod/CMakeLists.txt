@@ -216,16 +216,13 @@ SET(ARANGOD_SOURCES
   Indexes/GeoIndex.cpp
   Indexes/HashIndex.cpp
   Indexes/Index.cpp
+  Indexes/IndexElement.cpp
   Indexes/IndexIterator.cpp
   Indexes/PathBasedIndex.cpp
   Indexes/PrimaryIndex.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp
   Indexes/SkiplistIndex.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
-  ReadCache/CollectionRevisionCache.cpp
-  ReadCache/GlobalRevisionCache.cpp
-  ReadCache/GlobalRevisionCacheChunk.cpp
-  ReadCache/RevisionReader.cpp
   Replication/ContinuousSyncer.cpp
   Replication/InitialSyncer.cpp
   Replication/Syncer.cpp
@@ -267,6 +264,7 @@ SET(ARANGOD_SOURCES
   RestServer/InitDatabaseFeature.cpp
   RestServer/LockfileFeature.cpp
   RestServer/QueryRegistryFeature.cpp
+  RestServer/RevisionCacheFeature.cpp
   RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
@@ -296,7 +294,7 @@ SET(ARANGOD_SOURCES
   StorageEngine/MMFilesCompactorThread.cpp
   StorageEngine/MMFilesDatafileStatistics.cpp
   StorageEngine/MMFilesEngine.cpp
-  StorageEngine/OtherEngine.cpp
+  StorageEngine/MMFilesRevisionsCache.cpp
   Utils/AqlTransaction.cpp
   Utils/CollectionExport.cpp
   Utils/CollectionKeys.cpp
@@ -328,6 +326,7 @@ SET(ARANGOD_SOURCES
   V8Server/v8-voccursor.cpp
   V8Server/v8-vocindex.cpp
   VocBase/AuthInfo.cpp
+  VocBase/CollectionRevisionsCache.cpp
   VocBase/DatafileStatisticsContainer.cpp
   VocBase/Ditch.cpp
   VocBase/EdgeCollectionInfo.cpp
@@ -335,8 +334,11 @@ SET(ARANGOD_SOURCES
   VocBase/IndexPoolFeature.cpp
   VocBase/KeyGenerator.cpp
   VocBase/LogicalCollection.cpp
-  VocBase/MasterPointers.cpp
+  VocBase/ManagedDocumentResult.cpp
   VocBase/PathEnumerator.cpp
+  VocBase/ReadCache.cpp
+  VocBase/RevisionCacheChunk.cpp
+  VocBase/RevisionCacheChunkAllocator.cpp
   VocBase/SingleServerTraverser.cpp
   VocBase/Traverser.cpp
   VocBase/TraverserOptions.cpp
@@ -350,6 +352,7 @@ SET(ARANGOD_SOURCES
   VocBase/vocbase.cpp
   Wal/AllocatorThread.cpp
   Wal/CollectorThread.cpp
+  Wal/DocumentOperation.cpp
   Wal/Logfile.cpp
   Wal/LogfileManager.cpp
   Wal/RecoverState.cpp

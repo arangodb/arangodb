@@ -266,9 +266,8 @@ static inline void InitMarker(TRI_df_marker_t* marker,
   TRI_ASSERT(size > 0);
 
   marker->setSize(size);
-  marker->setType(type);
+  marker->setTypeAndTick(type, tick);
   marker->setCrc(0);
-  marker->setTick(tick);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

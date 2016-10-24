@@ -49,23 +49,20 @@ size_t SocketTcp::read(boost::asio::mutable_buffers_1 const& buffer, boost::syst
 }
 
 void SocketTcp::shutdownReceive() {
-  // mop: was not implemented for SSL. not sure if it should be?
   _socket.shutdown(boost::asio::ip::tcp::socket::shutdown_receive);
-} 
+}
 
 void SocketTcp::shutdownReceive(boost::system::error_code& ec) {
-  // mop: was not implemented for SSL. not sure if it should be?
   _socket.shutdown(boost::asio::ip::tcp::socket::shutdown_receive, ec);
-} 
+}
 
 void SocketTcp::shutdownSend(boost::system::error_code& ec) {
-  // mop: was not implemented for SSL. not sure if it should be?
   _socket.shutdown(boost::asio::ip::tcp::socket::shutdown_send, ec);
-} 
+}
 
 int SocketTcp::available(boost::system::error_code& ec) {
   return _socket.available(ec);
-} 
+}
 
 void SocketTcp::asyncRead(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) {
   if (_encrypted) {

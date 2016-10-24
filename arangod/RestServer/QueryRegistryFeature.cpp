@@ -22,6 +22,7 @@
 
 #include "QueryRegistryFeature.h"
 
+#include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
 #include "ProgramOptions/ProgramOptions.h"

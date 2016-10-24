@@ -33,6 +33,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Utils/Transaction.h"
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include <iostream>
@@ -889,6 +890,22 @@ VPackSlice AstNode::computeValue() const {
   return VPackSlice(computedValue);
 }
 
+/// @brief compute the value for a constant value node
+/// the value is owned by the node and must not be freed by the caller
+VPackSlice AstNode::computeValue(arangodb::Transaction* trx) const {
+  TRI_ASSERT(isConstant());
+
+  if (computedValue == nullptr) {
+    TransactionBuilderLeaser builder(trx);
+    toVelocyPackValue(*builder.get());
+
+    computedValue = new uint8_t[builder->size()];
+    memcpy(computedValue, builder->data(), builder->size());
+  }
+
+  return VPackSlice(computedValue);
+}
+
 /// @brief sort the members of an (array) node
 /// this will also set the VALUE_SORTED flag for the node
 void AstNode::sort() {
@@ -983,13 +1000,13 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
         builder.add(VPackValue(value.value._bool));
         break;
       case VALUE_TYPE_INT:
-        builder.add(VPackValue(static_cast<double>(value.value._int)));
+        builder.add(VPackValue(value.value._int));
         break;
       case VALUE_TYPE_DOUBLE:
         builder.add(VPackValue(value.value._double));
         break;
       case VALUE_TYPE_STRING:
-        builder.add(VPackValue(std::string(value.value._string, value.length)));
+        builder.add(VPackValuePair(value.value._string, value.length, VPackValueType::String));
         break;
     }
     return;

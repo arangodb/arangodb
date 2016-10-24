@@ -32,6 +32,7 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterInfo.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/Transaction.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
@@ -890,7 +891,8 @@ AstNode* Ast::createNodeArray(size_t size) {
 }
 
 /// @brief create an AST unique array node, AND-merged from two other arrays
-AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs,
+AstNode* Ast::createNodeIntersectedArray(arangodb::Transaction* trx,
+                                         AstNode const* lhs,
                                          AstNode const* rhs) {
   TRI_ASSERT(lhs->isArray() && lhs->isConstant());
   TRI_ASSERT(rhs->isArray() && rhs->isConstant());
@@ -906,7 +908,7 @@ AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs,
 
   for (size_t i = 0; i < nl; ++i) {
     auto member = lhs->getMemberUnchecked(i);
-    VPackSlice slice = member->computeValue();
+    VPackSlice slice = member->computeValue(trx);
 
     cache.emplace(slice, member);
   }
@@ -928,7 +930,8 @@ AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs,
 }
 
 /// @brief create an AST unique array node, OR-merged from two other arrays
-AstNode* Ast::createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs) {
+AstNode* Ast::createNodeUnionizedArray(arangodb::Transaction* trx,
+                                       AstNode const* lhs, AstNode const* rhs) {
   TRI_ASSERT(lhs->isArray() && lhs->isConstant());
   TRI_ASSERT(rhs->isArray() && rhs->isConstant());
 
@@ -948,7 +951,7 @@ AstNode* Ast::createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs) {
     } else {
       member = rhs->getMemberUnchecked(i - nl);
     }
-    VPackSlice slice = member->computeValue();
+    VPackSlice slice = member->computeValue(trx);
 
     cache.emplace(slice, member);
   }
@@ -3074,14 +3077,9 @@ void Ast::traverseReadOnly(AstNode const* node,
 std::pair<std::string, bool> Ast::normalizeFunctionName(char const* name) {
   TRI_ASSERT(name != nullptr);
 
-  char* upperName = TRI_UpperAsciiString(TRI_UNKNOWN_MEM_ZONE, name);
-
-  if (upperName == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  std::string functionName(upperName);
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, upperName);
+  std::string functionName(name);
+  // convert name to upper case
+  std::transform(functionName.begin(), functionName.end(), functionName.begin(), ::toupper);
 
   if (functionName.find(':') == std::string::npos) {
     // prepend default namespace for internal functions

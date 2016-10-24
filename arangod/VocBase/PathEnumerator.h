@@ -186,7 +186,7 @@ class BreadthFirstEnumerator final : public PathEnumerator {
   /// @brief schreier vector to store the visited vertices
   //////////////////////////////////////////////////////////////////////////////
   
-   std::vector<PathStep*> _schreier;
+   std::vector<PathStep> _schreier;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Next free index in schreier vector.
@@ -236,11 +236,7 @@ class BreadthFirstEnumerator final : public PathEnumerator {
                          arangodb::velocypack::Slice startVertex,
                          TraverserOptions const* opts);
 
-  ~BreadthFirstEnumerator() {
-    for (auto& it : _schreier) {
-      delete it;
-    }
-  }
+  ~BreadthFirstEnumerator() {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Get the next Path element from the traversal.
@@ -260,7 +256,7 @@ class BreadthFirstEnumerator final : public PathEnumerator {
     size_t depth = 0;
     while (index != 0) {
       ++depth;
-      index = _schreier[index]->sourceIdx;
+      index = _schreier[index].sourceIdx;
     }
     return depth;
   }

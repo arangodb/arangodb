@@ -251,7 +251,7 @@ class Agent : public arangodb::Thread {
 
   std::map<std::string, TimePoint> _lastAcked;
   std::map<std::string, TimePoint> _lastSent;
-  arangodb::Mutex _ioLock; /**< @brief Read/Write lock */
+  mutable arangodb::Mutex _ioLock; /**< @brief Read/Write lock */
 
   /// @brief Server active agents rest handler
   bool _serveActiveAgent;

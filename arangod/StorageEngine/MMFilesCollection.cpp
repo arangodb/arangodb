@@ -22,63 +22,34 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesCollection.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Logger/Logger.h"
+#include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/MMFilesDocumentPosition.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/Transaction.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngine.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/MasterPointer.h"
 #include "VocBase/datafile.h"
+#include "VocBase/ticks.h"
 #include "Wal/LogfileManager.h"
 
 using namespace arangodb;
 
 namespace {
 
-/// @brief state during opening of a collection
-struct OpenIteratorState {
-  LogicalCollection* _collection;
-  TRI_voc_tid_t _tid;
-  TRI_voc_fid_t _fid;
-  std::unordered_map<TRI_voc_fid_t, DatafileStatisticsContainer*> _stats;
-  DatafileStatisticsContainer* _dfi;
-  arangodb::Transaction* _trx;
-  uint64_t _deletions;
-  uint64_t _documents;
-  int64_t _initialCount;
-
-  explicit OpenIteratorState(LogicalCollection* collection) 
-      : _collection(collection),
-        _tid(0),
-        _fid(0),
-        _stats(),
-        _dfi(nullptr),
-        _trx(nullptr),
-        _deletions(0),
-        _documents(0),
-        _initialCount(-1) {
-    TRI_ASSERT(collection != nullptr);
-  }
-
-  ~OpenIteratorState() {
-    for (auto& it : _stats) {
-      delete it.second;
-    }
-  }
-};
-
 /// @brief find a statistics container for a given file id
 static DatafileStatisticsContainer* FindDatafileStats(
-    OpenIteratorState* state, TRI_voc_fid_t fid) {
+    MMFilesCollection::OpenIteratorState* state, TRI_voc_fid_t fid) {
   auto it = state->_stats.find(fid);
 
   if (it != state->_stats.end()) {
@@ -90,20 +61,24 @@ static DatafileStatisticsContainer* FindDatafileStats(
   return stats.release();
 }
 
+} // namespace
+
 /// @brief process a document (or edge) marker when opening a collection
-static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
-                                            TRI_datafile_t* datafile,
-                                            OpenIteratorState* state) {
-  auto const fid = datafile->fid();
+int MMFilesCollection::OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
+                                                        TRI_datafile_t* datafile,
+                                                        MMFilesCollection::OpenIteratorState* state) {
   LogicalCollection* collection = state->_collection;
+  MMFilesCollection* c = static_cast<MMFilesCollection*>(collection->getPhysical());
   arangodb::Transaction* trx = state->_trx;
+  TRI_ASSERT(trx != nullptr);
 
   VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+
   VPackSlice keySlice;
   TRI_voc_rid_t revisionId;
 
   Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
- 
+
   collection->setRevision(revisionId, false);
   VPackValueLength length;
   char const* p = keySlice.getString(length);
@@ -111,6 +86,7 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
 
   ++state->_documents;
  
+  TRI_voc_fid_t const fid = datafile->fid();
   if (state->_fid != fid) {
     // update the state
     state->_fid = fid; // when we're here, we're looking at a datafile
@@ -121,57 +97,54 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
 
   // no primary index lock required here because we are the only ones reading
   // from the index ATM
-  auto found = primaryIndex->lookupKey(trx, keySlice);
+  SimpleIndexElement* found = primaryIndex->lookupKeyRef(trx, keySlice, state->_mmdr);
 
   // it is a new entry
-  if (found == nullptr) {
-    TRI_doc_mptr_t* header = collection->requestMasterpointer();
-
-    if (header == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    header->setFid(fid, false);
-    header->setHash(primaryIndex->calculateHash(trx, keySlice));
-    header->setVPackFromMarker(marker);  
+  if (found == nullptr || found->revisionId() == 0) {
+    uint8_t const* vpack = reinterpret_cast<uint8_t const*>(marker) + arangodb::DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
+    c->insertRevision(revisionId, vpack, fid, false); 
 
     // insert into primary index
-    void const* result = nullptr;
-    int res = primaryIndex->insertKey(trx, header, &result);
+    int res = primaryIndex->insertKey(trx, revisionId, VPackSlice(vpack), state->_mmdr);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      collection->releaseMasterpointer(header);
+      c->removeRevision(revisionId, false);
       LOG(ERR) << "inserting document into primary index failed with error: " << TRI_errno_string(res);
 
       return res;
     }
-
-    collection->incNumberDocuments();
 
     // update the datafile info
     state->_dfi->numberAlive++;
     state->_dfi->sizeAlive += DatafileHelper::AlignedMarkerSize<int64_t>(marker);
   }
 
-  // it is an update, but only if found has a smaller revision identifier
+  // it is an update
   else {
-    // save the old data
-    TRI_doc_mptr_t oldData = *found;
+    uint8_t const* vpack = reinterpret_cast<uint8_t const*>(marker) + arangodb::DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
+    TRI_voc_rid_t const oldRevisionId = found->revisionId();
+    // update the revision id in primary index
+    found->updateRevisionId(revisionId, static_cast<uint32_t>(keySlice.begin() - slice.begin()));
 
-    // update the header info
-    found->setFid(fid, false); // when we're here, we're looking at a datafile
-    found->setVPackFromMarker(marker);
+    MMFilesDocumentPosition const old = c->lookupRevision(oldRevisionId);
+
+    // remove old revision
+    c->removeRevision(oldRevisionId, false);
+
+    // insert new revision
+    c->insertRevision(revisionId, vpack, fid, false);
 
     // update the datafile info
     DatafileStatisticsContainer* dfi;
-    if (oldData.getFid() == state->_fid) {
+    if (old.fid() == state->_fid) {
       dfi = state->_dfi;
     } else {
-      dfi = FindDatafileStats(state, oldData.getFid());
+      dfi = FindDatafileStats(state, old.fid());
     }
 
-    if (oldData.vpack() != nullptr) { 
-      int64_t size = static_cast<int64_t>(oldData.markerSize());
+    if (old.dataptr() != nullptr) { 
+      uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
+      int64_t size = static_cast<int64_t>(arangodb::DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) + VPackSlice(vpack).byteSize());
 
       dfi->numberAlive--;
       dfi->sizeAlive -= DatafileHelper::AlignedSize<int64_t>(size);
@@ -187,10 +160,11 @@ static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
 }
 
 /// @brief process a deletion marker when opening a collection
-static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
-                                            TRI_datafile_t* datafile,
-                                            OpenIteratorState* state) {
+int MMFilesCollection::OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
+                                                        TRI_datafile_t* datafile,
+                                                        MMFilesCollection::OpenIteratorState* state) {
   LogicalCollection* collection = state->_collection;
+  MMFilesCollection* c = static_cast<MMFilesCollection*>(collection->getPhysical());
   arangodb::Transaction* trx = state->_trx;
 
   VPackSlice const slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_REMOVE));
@@ -199,7 +173,7 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
   TRI_voc_rid_t revisionId;
 
   Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
- 
+  
   collection->setRevision(revisionId, false);
   VPackValueLength length;
   char const* p = keySlice.getString(length);
@@ -216,28 +190,33 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
   // no primary index lock required here because we are the only ones reading
   // from the index ATM
   auto primaryIndex = collection->primaryIndex();
-  TRI_doc_mptr_t* found = primaryIndex->lookupKey(trx, keySlice);
+  SimpleIndexElement found = primaryIndex->lookupKey(trx, keySlice, state->_mmdr);
 
   // it is a new entry, so we missed the create
-  if (found == nullptr) {
+  if (!found) {
     // update the datafile info
     state->_dfi->numberDeletions++;
   }
 
   // it is a real delete
   else {
+    TRI_voc_rid_t oldRevisionId = found.revisionId();
+
+    MMFilesDocumentPosition const old = c->lookupRevision(oldRevisionId);
+    
     // update the datafile info
     DatafileStatisticsContainer* dfi;
 
-    if (found->getFid() == state->_fid) {
+    if (old.fid() == state->_fid) {
       dfi = state->_dfi;
     } else {
-      dfi = FindDatafileStats(state, found->getFid());
+      dfi = FindDatafileStats(state, old.fid());
     }
 
-    TRI_ASSERT(found->vpack() != nullptr);
+    TRI_ASSERT(old.dataptr() != nullptr);
 
-    int64_t size = DatafileHelper::AlignedSize<int64_t>(found->markerSize());
+    uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
+    int64_t size = DatafileHelper::AlignedSize<int64_t>(arangodb::DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) + VPackSlice(vpack).byteSize());
 
     dfi->numberAlive--;
     dfi->sizeAlive -= DatafileHelper::AlignedSize<int64_t>(size);
@@ -245,19 +224,17 @@ static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
     dfi->sizeDead += DatafileHelper::AlignedSize<int64_t>(size);
     state->_dfi->numberDeletions++;
 
-    collection->deletePrimaryIndex(trx, found);
-    collection->decNumberDocuments();
+    primaryIndex->removeKey(trx, oldRevisionId, VPackSlice(vpack), state->_mmdr);
 
-    // free the header
-    collection->releaseMasterpointer(found);
+    c->removeRevision(oldRevisionId, true);
   }
 
   return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief iterator for open
-static bool OpenIterator(TRI_df_marker_t const* marker, OpenIteratorState* data,
-                         TRI_datafile_t* datafile) {
+bool MMFilesCollection::OpenIterator(TRI_df_marker_t const* marker, MMFilesCollection::OpenIteratorState* data,
+                                     TRI_datafile_t* datafile) {
   TRI_voc_tick_t const tick = marker->getTick();
   TRI_df_marker_type_t const type = marker->getType();
 
@@ -306,10 +283,8 @@ static bool OpenIterator(TRI_df_marker_t const* marker, OpenIteratorState* data,
   return (res == TRI_ERROR_NO_ERROR);
 }
 
-} // namespace
-
 MMFilesCollection::MMFilesCollection(LogicalCollection* collection)
-    : PhysicalCollection(collection), _ditches(collection), _initialCount(0), _revision(0) {}
+    : PhysicalCollection(collection), _ditches(collection), _initialCount(0), _lastRevision(0) {}
 
 MMFilesCollection::~MMFilesCollection() { 
   try {
@@ -320,12 +295,12 @@ MMFilesCollection::~MMFilesCollection() {
 }
 
 TRI_voc_rid_t MMFilesCollection::revision() const { 
-  return _revision; 
+  return _lastRevision; 
 }
 
 void MMFilesCollection::setRevision(TRI_voc_rid_t revision, bool force) {
-  if (force || revision > _revision) {
-    _revision = revision;
+  if (force || revision > _lastRevision) {
+    _lastRevision = revision;
   }
 }
 
@@ -335,34 +310,40 @@ int64_t MMFilesCollection::initialCount() const {
 
 void MMFilesCollection::updateCount(int64_t count) {
   _initialCount = count;
+  _revisionsCache.sizeHint(count);
 }
-
+  
 /// @brief closes an open collection
 int MMFilesCollection::close() {
-  WRITE_LOCKER(writeLocker, _filesLock);
+  {
+    WRITE_LOCKER(writeLocker, _filesLock);
 
-  // close compactor files
-  closeDatafiles(_compactors);
-  for (auto& it : _compactors) {
-    delete it;
+    // close compactor files
+    closeDatafiles(_compactors);
+    for (auto& it : _compactors) {
+      delete it;
+    }
+    _compactors.clear();
+
+    // close journal files
+    closeDatafiles(_journals);
+    for (auto& it : _journals) {
+      delete it;
+    }
+    _journals.clear();
+
+    // close datafiles
+    closeDatafiles(_datafiles);
+    for (auto& it : _datafiles) {
+      delete it;
+    }
+    _datafiles.clear();
   }
-  _compactors.clear();
 
-  // close journal files
-  closeDatafiles(_journals);
-  for (auto& it : _journals) {
-    delete it;
-  }
-  _journals.clear();
+  _lastRevision = 0;
 
-  // close datafiles
-  closeDatafiles(_datafiles);
-  for (auto& it : _datafiles) {
-    delete it;
-  }
-  _datafiles.clear();
-
-  _revision = 0;
+  // clear revisions lookup table
+  _revisionsCache.clear();
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1049,20 +1030,9 @@ int MMFilesCollection::applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t 
   return false; // hasMore = false
 }
   
-/// @brief order a new master pointer
-TRI_doc_mptr_t* MMFilesCollection::requestMasterpointer() {
-  return _masterPointers.request();
-}
-        
-/// @brief release an existing master pointer
-void MMFilesCollection::releaseMasterpointer(TRI_doc_mptr_t* mptr) {
-  TRI_ASSERT(mptr != nullptr);
-  _masterPointers.release(mptr);
-}
- 
 /// @brief report extra memory used by indexes etc.
 size_t MMFilesCollection::memory() const {
-  return _masterPointers.memory();
+  return 0; // TODO
 }
 
 /// @brief disallow compaction of the collection 
@@ -1098,18 +1068,10 @@ void MMFilesCollection::finishCompaction() {
 /// @brief iterate all markers of the collection
 int MMFilesCollection::iterateMarkersOnLoad(arangodb::Transaction* trx) {
   // initialize state for iteration
-  OpenIteratorState openState(_logicalCollection);
+  OpenIteratorState openState(_logicalCollection, trx);
 
   if (_initialCount != -1) {
-    auto primaryIndex = _logicalCollection->primaryIndex();
-
-    int res = primaryIndex->resize(
-        trx, static_cast<size_t>(_initialCount * 1.1));
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
+    _logicalCollection->sizeHint(trx, _initialCount);
     openState._initialCount = _initialCount;
   }
 
@@ -1123,6 +1085,15 @@ int MMFilesCollection::iterateMarkersOnLoad(arangodb::Transaction* trx) {
   LOG(TRACE) << "found " << openState._documents << " document markers, " 
              << openState._deletions << " deletion markers for collection '" << _logicalCollection->name() << "'";
   
+  if (_logicalCollection->version() <= LogicalCollection::VERSION_30 && 
+      _lastRevision >= static_cast<TRI_voc_rid_t>(2016 - 1970) * 1000 * 60 * 60 * 24 * 365 &&
+      application_features::ApplicationServer::server->getFeature<DatabaseFeature>("Database")->check30Revisions()) {
+    // a collection from 3.0 or earlier with a _rev value that is higher than we can handle safely
+    LOG(FATAL) << "collection '" << _logicalCollection->name() << "' contains _rev values that are higher than expected for an ArangoDB 3.0 database. If this collection was created or used with a pre-release ArangoDB 3.1, please restart the server with option '--database.check-30-revisions false' to suppress this warning.";
+    FATAL_ERROR_EXIT();
+  }
+
+  
   // update the real statistics for the collection
   try {
     for (auto& it : openState._stats) {
@@ -1135,4 +1106,81 @@ int MMFilesCollection::iterateMarkersOnLoad(arangodb::Transaction* trx) {
   }
 
   return TRI_ERROR_NO_ERROR;
+}
+
+MMFilesDocumentPosition MMFilesCollection::lookupRevision(TRI_voc_rid_t revisionId) const {
+  TRI_ASSERT(revisionId != 0);
+  MMFilesDocumentPosition const old = _revisionsCache.lookup(revisionId);
+  if (old) {
+    return old;
+  }
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "got invalid revision value on lookup");
+}
+
+uint8_t const* MMFilesCollection::lookupRevisionVPack(TRI_voc_rid_t revisionId) const {
+  TRI_ASSERT(revisionId != 0);
+
+  MMFilesDocumentPosition const old = _revisionsCache.lookup(revisionId);
+  if (old) {
+    uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
+    TRI_ASSERT(VPackSlice(vpack).isObject());
+    return vpack;
+  }
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "got invalid vpack value on lookup");
+}
+  
+uint8_t const* MMFilesCollection::lookupRevisionVPackConditional(TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal) const {
+  TRI_ASSERT(revisionId != 0);
+
+  MMFilesDocumentPosition const old = _revisionsCache.lookup(revisionId);
+  if (!old) {
+    return nullptr;
+  }
+  if (excludeWal && old.pointsToWal()) {
+    return nullptr;
+  }
+
+  uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
+
+  if (maxTick > 0) {
+    TRI_df_marker_t const* marker = reinterpret_cast<TRI_df_marker_t const*>(vpack - arangodb::DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+    if (marker->getTick() > maxTick) {
+      return nullptr;
+    }
+  }
+
+  return vpack; 
+}
+
+void MMFilesCollection::insertRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal) {
+  TRI_ASSERT(revisionId != 0);
+  TRI_ASSERT(dataptr != nullptr);
+  _revisionsCache.insert(revisionId, dataptr, fid, isInWal);
+}
+
+void MMFilesCollection::updateRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal) {
+  TRI_ASSERT(revisionId != 0);
+  TRI_ASSERT(dataptr != nullptr);
+  _revisionsCache.update(revisionId, dataptr, fid, isInWal);
+}
+  
+bool MMFilesCollection::updateRevisionConditional(TRI_voc_rid_t revisionId, TRI_df_marker_t const* oldPosition, TRI_df_marker_t const* newPosition, TRI_voc_fid_t newFid, bool isInWal) {
+  TRI_ASSERT(revisionId != 0);
+  TRI_ASSERT(newPosition != nullptr);
+  return _revisionsCache.updateConditional(revisionId, oldPosition, newPosition, newFid, isInWal);
+}
+
+void MMFilesCollection::removeRevision(TRI_voc_rid_t revisionId, bool updateStats) {
+  TRI_ASSERT(revisionId != 0);
+  if (updateStats) {
+    MMFilesDocumentPosition const old = _revisionsCache.fetchAndRemove(revisionId);
+    if (old && !old.pointsToWal()) {
+      TRI_ASSERT(old.dataptr() != nullptr);
+      uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
+      int64_t size = DatafileHelper::AlignedSize<int64_t>(arangodb::DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) + VPackSlice(vpack).byteSize());
+      _datafileStatistics.increaseDead(old.fid(), 1, size);
+    }
+  } else {
+    _revisionsCache.remove(revisionId);
+  }
 }

@@ -34,20 +34,17 @@ size_t SocketUnixDomain::read(boost::asio::mutable_buffers_1 const& buffer, boos
   return socketcommon::doRead(_socket, buffer, ec);
 }
 void SocketUnixDomain::shutdownReceive() {
-  // mop: was not implemented for SSL. not sure if it should be?
   _socket.shutdown(boost::asio::local::stream_protocol::socket::shutdown_receive);
-} 
+}
 void SocketUnixDomain::shutdownReceive(boost::system::error_code& ec) {
-  // mop: was not implemented for SSL. not sure if it should be?
   _socket.shutdown(boost::asio::local::stream_protocol::socket::shutdown_receive, ec);
-} 
+}
 void SocketUnixDomain::shutdownSend(boost::system::error_code& ec) {
-  // mop: was not implemented for SSL. not sure if it should be?
   _socket.shutdown(boost::asio::local::stream_protocol::socket::shutdown_send, ec);
-} 
+}
 int SocketUnixDomain::available(boost::system::error_code& ec) {
   return _socket.available(ec);
-} 
+}
 void SocketUnixDomain::asyncRead(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) {
   return socketcommon::doAsyncRead(_socket, buffer, handler);
 }

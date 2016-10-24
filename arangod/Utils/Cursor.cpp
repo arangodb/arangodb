@@ -169,7 +169,7 @@ ExportCursor::ExportCursor(TRI_vocbase_t* vocbase, CursorId id,
     : Cursor(id, batchSize, nullptr, ttl, hasCount),
       _vocbaseGuard(vocbase),
       _ex(ex),
-      _size(ex->_documents->size()) {}
+      _size(ex->_vpack.size()) {}
 
 ExportCursor::~ExportCursor() { delete _ex; }
 
@@ -191,8 +191,7 @@ bool ExportCursor::hasNext() {
 
 VPackSlice ExportCursor::next() {
   // should not be called directly
-  VPackSlice slice;
-  return slice;
+  return VPackSlice();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,7 +247,7 @@ void ExportCursor::dump(VPackBuilder& builder) {
       }
 
       VPackSlice const slice(
-          reinterpret_cast<char const*>(_ex->_documents->at(_position++)));
+          reinterpret_cast<char const*>(_ex->_vpack.at(_position++)));
       builder.openObject();
       // Copy over shaped values
       for (auto const& entry : VPackObjectIterator(slice)) {

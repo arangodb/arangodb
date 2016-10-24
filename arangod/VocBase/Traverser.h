@@ -27,14 +27,16 @@
 #include "Basics/Common.h"
 #include "Basics/hashes.h"
 #include "Basics/ShortestPathFinder.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Aql/AqlValue.h"
 #include "Aql/AstNode.h"
-#include "Utils/CollectionNameResolver.h"
-#include "Utils/Transaction.h"
 #include "VocBase/PathEnumerator.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
+
+class ManagedDocumentResult;
+class Transaction;
 
 namespace velocypack {
 class Builder;
@@ -126,13 +128,13 @@ class ShortestPath {
   /// @brief Builds only the last edge pointing to the vertex at position as
   /// VelocyPack
 
-  void edgeToVelocyPack(Transaction*, size_t, arangodb::velocypack::Builder&);
+  void edgeToVelocyPack(Transaction*, ManagedDocumentResult*, size_t, arangodb::velocypack::Builder&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds only the vertex at position as VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void vertexToVelocyPack(Transaction*, size_t, arangodb::velocypack::Builder&);
+  void vertexToVelocyPack(Transaction*, ManagedDocumentResult*, size_t, arangodb::velocypack::Builder&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Gets the amount of read documents
@@ -269,7 +271,7 @@ class Traverser {
   /// @brief Constructor. This is an abstract only class.
   //////////////////////////////////////////////////////////////////////////////
 
-  Traverser(TraverserOptions* opts, Transaction* trx);
+  Traverser(TraverserOptions* opts, Transaction* trx, ManagedDocumentResult*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Destructor
@@ -363,6 +365,8 @@ class Traverser {
   }
   
   TraverserOptions const* options() { return _opts; }
+  
+  ManagedDocumentResult* mmdr() const { return _mmdr; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Simple check if there are potentially more paths.
@@ -383,6 +387,8 @@ class Traverser {
 
   /// @brief Outer top level transaction
   Transaction* _trx;
+
+  ManagedDocumentResult* _mmdr;
 
   /// @brief internal cursor to enumerate the paths of a graph
   std::unique_ptr<arangodb::traverser::PathEnumerator> _enumerator;

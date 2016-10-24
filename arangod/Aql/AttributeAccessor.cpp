@@ -68,8 +68,8 @@ void AttributeAccessor::replaceVariable(std::unordered_map<VariableId, Variable 
 }
 
 /// @brief execute the accessor
-AqlValue AttributeAccessor::get(arangodb::Transaction* trx,
-                                ExpressionContext* context, bool& mustDestroy) {
+AqlValue AttributeAccessor::getSystem(arangodb::Transaction* trx,
+                                      ExpressionContext* context, bool& mustDestroy) {
   AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
   // get the AQL value
   switch (_type) {
@@ -81,16 +81,29 @@ AqlValue AttributeAccessor::get(arangodb::Transaction* trx,
       return value.getFromAttribute(trx, mustDestroy, true);
     case EXTRACT_TO:
       return value.getToAttribute(trx, mustDestroy, true);
+    default: {
+      mustDestroy = false;
+      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    }
+  }
+}
+
+/// @brief execute the accessor
+AqlValue AttributeAccessor::getDynamic(arangodb::Transaction* trx,
+                                       ExpressionContext* context, bool& mustDestroy) {
+  AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
+  // get the AQL value
+  switch (_type) {
     case EXTRACT_SINGLE:
       // use optimized version for single attribute (e.g. variable.attr)
       return value.get(trx, _attributeParts[0], mustDestroy, true);
     case EXTRACT_MULTI:
       // use general version for multiple attributes (e.g. variable.attr.subattr)
       return value.get(trx, _attributeParts, mustDestroy, true);
-      // fall-through intentional
+    default: {
+      mustDestroy = false;
+      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    }
   }
-
-  mustDestroy = false;
-  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
 }
 

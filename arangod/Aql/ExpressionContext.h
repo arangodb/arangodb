@@ -25,7 +25,7 @@
 #define ARANGOD_AQL_EXPRESSION_CONTEXT_H 1
 
 #include "Basics/Common.h"
-#include "arangod/Aql/types.h"
+#include "Aql/types.h"
 
 namespace arangodb {
 namespace aql {

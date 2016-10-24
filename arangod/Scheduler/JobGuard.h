@@ -44,7 +44,7 @@ class JobGuard {
     return _scheduler->isIdle();
   }
 
-  void enterLoop() {
+  void busy() {
     if (0 == _isBusy) {
       _scheduler->enterThread();
     }

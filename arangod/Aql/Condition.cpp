@@ -622,6 +622,8 @@ void Condition::optimize(ExecutionPlan* plan) {
     return;
   }
 
+  Transaction* trx = plan->getAst()->query()->trx(); 
+
   TRI_ASSERT(_root != nullptr);
   TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
   
@@ -783,7 +785,7 @@ void Condition::optimize(ExecutionPlan* plan) {
 
               auto merged = _ast->createNodeBinaryOperator(
                   NODE_TYPE_OPERATOR_BINARY_IN, leftNode->getMemberUnchecked(0),
-                  mergeInOperations(leftNode, rightNode));
+                  mergeInOperations(trx, leftNode, rightNode));
               andNode->removeMemberUnchecked(positions[j].first);
               andNode->changeMember(positions[0].first, merged);
               goto restartThisOrItem;
@@ -1061,7 +1063,7 @@ void Condition::deduplicateInOperation(AstNode* operation) {
 }
 
 /// @brief merge the values from two IN operations
-AstNode* Condition::mergeInOperations(AstNode const* lhs, AstNode const* rhs) {
+AstNode* Condition::mergeInOperations(arangodb::Transaction* trx, AstNode const* lhs, AstNode const* rhs) {
   TRI_ASSERT(lhs->type == NODE_TYPE_OPERATOR_BINARY_IN);
   TRI_ASSERT(rhs->type == NODE_TYPE_OPERATOR_BINARY_IN);
 
@@ -1071,7 +1073,7 @@ AstNode* Condition::mergeInOperations(AstNode const* lhs, AstNode const* rhs) {
   TRI_ASSERT(lValue->isArray() && lValue->isConstant());
   TRI_ASSERT(rValue->isArray() && rValue->isConstant());
 
-  return _ast->createNodeIntersectedArray(lValue, rValue);
+  return _ast->createNodeIntersectedArray(trx, lValue, rValue);
 }
 
 /// @brief merges the current node with the sub nodes of same type

@@ -234,6 +234,7 @@ struct TRI_datafile_t {
   TRI_voc_fid_t fid() const { return _fid; }
   TRI_df_state_e state() const { return _state; }
   int fd() const { return _fd; }
+  char const* data() const { return _data; }
   void* mmHandle() const { return _mmHandle; }
   TRI_voc_size_t initSize() const { return _initSize; }
   TRI_voc_size_t maximalSize() const { return _maximalSize; }
@@ -369,7 +370,7 @@ struct TRI_df_marker_t {
   }
   inline void setTick(TRI_voc_tick_t tick) noexcept { 
     _typeAndTick &= 0xff00000000000000ULL; 
-    _typeAndTick |= tick;
+    _typeAndTick |= tick & 0x00ffffffffffffffULL;
   }
   inline TRI_df_marker_type_t getType() const noexcept { 
     return static_cast<TRI_df_marker_type_t>((_typeAndTick & 0xff00000000000000ULL) >> 56); 
@@ -451,7 +452,11 @@ struct TRI_col_header_marker_t {
 /// @brief returns the name for a marker
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* TRI_NameMarkerDatafile(TRI_df_marker_t const*);
+char const* TRI_NameMarkerDatafile(TRI_df_marker_type_t);
+
+static inline char const* TRI_NameMarkerDatafile(TRI_df_marker_t const* marker) {
+  return TRI_NameMarkerDatafile(marker->getType());
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether a marker is valid

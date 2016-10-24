@@ -140,48 +140,56 @@ bool TRI_TryReadLockReadWriteLock(TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read locks read-write lock
 ////////////////////////////////////////////////////////////////////////////////
-
-void TRI_ReadLockReadWriteLock(TRI_read_write_lock_t* lock) {
+    
+static void ReadContinue(int rc, TRI_read_write_lock_t* lock) { 
   bool complained = false;
 
+again:
+  if (rc == EAGAIN) {
+    // use busy waiting if we cannot acquire the read-lock in case of too many
+    // concurrent read locks ("resource temporarily unavailable").
+    // in this case we'll wait in a busy loop until we can acquire the lock
+    if (!complained) {
+      LOG(WARN) << "too many read-locks on read-write lock";
+      complained = true;
+    }
+    usleep(BUSY_LOCK_DELAY);
+#ifdef TRI_HAVE_SCHED_H
+    // let other threads do things
+    sched_yield();
+#endif
+
+    rc = pthread_rwlock_rdlock(lock);
+    if (rc == 0) {
+      return; // done
+    }
+    // ideal use case for goto :-)
+    goto again;
+  }
+
+  if (rc == EDEADLK) {
+    LOG(ERR) << "rw-lock deadlock detected";
+  }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  LOG(ERR) << "could not read-lock the read-write lock: " << strerror(rc);
+  TRI_ASSERT(false);
+#endif
+  LOG(FATAL) << "could not read-lock the read-write lock: " << strerror(rc); 
+  FATAL_ERROR_EXIT();
+}
+
+void TRI_ReadLockReadWriteLock(TRI_read_write_lock_t* lock) {
 #ifdef TRI_TRACE_LOCKS
   if (_threadLocks.find(lock) != _threadLocks.end()) {
     LockError(lock, 1);
   }
 #endif
 
-again:
   int rc = pthread_rwlock_rdlock(lock);
 
   if (rc != 0) {
-    if (rc == EAGAIN) {
-      // use busy waiting if we cannot acquire the read-lock in case of too many
-      // concurrent read locks ("resource temporarily unavailable").
-      // in this case we'll wait in a busy loop until we can acquire the lock
-      if (!complained) {
-        LOG(WARN) << "too many read-locks on read-write lock";
-        complained = true;
-      }
-      usleep(BUSY_LOCK_DELAY);
-#ifdef TRI_HAVE_SCHED_H
-      // let other threads do things
-      sched_yield();
-#endif
-
-      // ideal use case for goto :-)
-      goto again;
-    }
-
-    if (rc == EDEADLK) {
-      LOG(ERR) << "rw-lock deadlock detected";
-    }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG(ERR) << "could not read-lock the read-write lock: " << strerror(rc);
-    TRI_ASSERT(false);
-#endif
-    LOG(FATAL) << "could not read-lock the read-write lock: " << strerror(rc); 
-    FATAL_ERROR_EXIT();
+    ReadContinue(rc, lock);
   }
 
 #ifdef TRI_TRACE_LOCKS

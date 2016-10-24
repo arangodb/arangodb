@@ -32,9 +32,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::traverser;
 
-using VPackStringHash = arangodb::basics::VelocyPackHelper::VPackStringHash;
-using VPackStringEqual = arangodb::basics::VelocyPackHelper::VPackStringEqual;
-
 ShortestPathOptions::ShortestPathOptions(arangodb::Transaction* trx)
     : BasicOptions(trx),
       direction("outbound"),
