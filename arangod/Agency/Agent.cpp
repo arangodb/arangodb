@@ -768,8 +768,12 @@ bool Agent::lead() {
     guard.broadcast();
   }
 
-  for (auto const& i : _config.active()) {
-    _lastAcked[i] = system_clock::now();
+  // Reset last acknowledged
+  {
+    MUTEX_LOCKER(mutexLocker, _ioLock);
+    for (auto const& i : _config.active()) {
+      _lastAcked[i] = system_clock::now();
+    }
   }
 
   // Agency configuration
@@ -1010,6 +1014,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback) {
 
 
 void Agent::ready(bool b) {
+  // From main thread of Inception
   _ready = b;
 }
 
