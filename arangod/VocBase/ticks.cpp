@@ -34,7 +34,7 @@ static std::atomic<uint64_t> CurrentTick(0);
 static HybridLogicalClock hybridLogicalClock;
 
 /// @brief create a new tick, using a hybrid logical clock
-TRI_voc_tick_t TRI_HybridLogicalClock(void) {
+TRI_voc_tick_t TRI_HybridLogicalClock() {
   return hybridLogicalClock.getTimeStamp();
 }
 
