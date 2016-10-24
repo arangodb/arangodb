@@ -26,36 +26,15 @@
 
 #include "Basics/Common.h"
 #include "Cluster/ServerState.h"
+#include "Indexes/IndexElement.h"
+#include "Indexes/IndexLookupContext.h"
+#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
-class CollectionNameResolver;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief context for an index iterator
-////////////////////////////////////////////////////////////////////////////////
-
-struct IndexIteratorContext {
-  IndexIteratorContext(IndexIteratorContext const&) = delete;
-  IndexIteratorContext& operator=(IndexIteratorContext const&) = delete;
-  
-  IndexIteratorContext() = delete;
-  IndexIteratorContext(TRI_vocbase_t*, CollectionNameResolver const*, ServerState::RoleEnum);
-  //explicit IndexIteratorContext(TRI_vocbase_t*);
-
-  ~IndexIteratorContext();
-
-  CollectionNameResolver const* getResolver() const;
-
-  bool isCluster() const;
-
-  int resolveId(char const*, size_t, TRI_voc_cid_t&, char const*&, size_t&) const;
-
-  TRI_vocbase_t* vocbase;
-  mutable CollectionNameResolver const* resolver;
-  ServerState::RoleEnum serverRole;
-  bool ownsResolver;
-};
+class Index;
+class LogicalCollection;
+class Transaction;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a base class to iterate over the index. An iterator is requested
@@ -66,33 +45,49 @@ class IndexIterator {
  public:
   IndexIterator(IndexIterator const&) = delete;
   IndexIterator& operator=(IndexIterator const&) = delete;
+  IndexIterator() = delete;
 
-  IndexIterator() {}
+  IndexIterator(LogicalCollection*, arangodb::Transaction*, ManagedDocumentResult*, arangodb::Index const*);
+
   virtual ~IndexIterator();
 
-  virtual TRI_doc_mptr_t* next();
+  virtual char const* typeName() const = 0;
 
-  virtual void nextBabies(std::vector<TRI_doc_mptr_t*>&, size_t);
+  LogicalCollection* collection() const { return _collection; }
+  arangodb::Transaction* transaction() const { return _trx; }
+
+  virtual IndexLookupResult next();
+
+  virtual void nextBabies(std::vector<IndexLookupResult>&, size_t);
 
   virtual void reset();
 
   virtual void skip(uint64_t count, uint64_t& skipped);
+
+ protected:
+  LogicalCollection* _collection;
+  arangodb::Transaction* _trx;
+  ManagedDocumentResult* _mmdr;
+  IndexLookupContext _context;
+  bool _responsible;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Special iterator if the condition cannot have any result
 ////////////////////////////////////////////////////////////////////////////////
 
-class EmptyIndexIterator : public IndexIterator {
+class EmptyIndexIterator final : public IndexIterator {
   public:
-    EmptyIndexIterator() {}
+    EmptyIndexIterator(LogicalCollection* collection, arangodb::Transaction* trx, ManagedDocumentResult* mmdr, arangodb::Index const* index) 
+        : IndexIterator(collection, trx, mmdr, index) {}
+
     ~EmptyIndexIterator() {}
 
-    TRI_doc_mptr_t* next() override {
-      return nullptr;
-    }
+    char const* typeName() const override { return "empty-index-iterator"; }
 
-    void nextBabies(std::vector<TRI_doc_mptr_t*>&, size_t) override {}
+    IndexLookupResult next() override { return IndexLookupResult(); }
+
+    void nextBabies(std::vector<IndexLookupResult>&, size_t) override {}
 
     void reset() override {}
 
@@ -109,22 +104,27 @@ class EmptyIndexIterator : public IndexIterator {
 ///        Outside if necessary.
 ////////////////////////////////////////////////////////////////////////////////
 
-class MultiIndexIterator : public IndexIterator {
+class MultiIndexIterator final : public IndexIterator {
 
   public:
-   explicit MultiIndexIterator(std::vector<IndexIterator*> const& iterators)
-     : _iterators(iterators), _currentIdx(0), _current(nullptr) {
+   MultiIndexIterator(LogicalCollection* collection, arangodb::Transaction* trx,
+                      ManagedDocumentResult* mmdr,
+                      arangodb::Index const* index,
+                      std::vector<IndexIterator*> const& iterators)
+     : IndexIterator(collection, trx, mmdr, index), _iterators(iterators), _currentIdx(0), _current(nullptr) {
        if (!_iterators.empty()) {
          _current = _iterators.at(0);
        }
-     };
+     }
 
     ~MultiIndexIterator () {
       // Free all iterators
       for (auto& it : _iterators) {
         delete it;
       }
-    };
+    }
+    
+    char const* typeName() const override { return "multi-index-iterator"; }
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief Get the next element
@@ -132,7 +132,7 @@ class MultiIndexIterator : public IndexIterator {
     ///        A nullptr indicates that all iterators are exhausted
     ////////////////////////////////////////////////////////////////////////////////
 
-    TRI_doc_mptr_t* next() override;
+    IndexLookupResult next() override;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief Get at most the next limit many elements
@@ -140,7 +140,7 @@ class MultiIndexIterator : public IndexIterator {
     ///        An empty result vector indicates that all iterators are exhausted
     ////////////////////////////////////////////////////////////////////////////////
     
-    void nextBabies(std::vector<TRI_doc_mptr_t*>&, size_t) override;
+    void nextBabies(std::vector<IndexLookupResult>&, size_t) override;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief Reset the cursor

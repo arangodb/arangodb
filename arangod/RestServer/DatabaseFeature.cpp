@@ -217,6 +217,7 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
       _defaultWaitForSync(false),
       _forceSyncProperties(true),
       _ignoreDatafileErrors(false),
+      _check30Revisions(true),
       _throwCollectionNotLoadedError(false),
       _vocbase(nullptr),
       _databasesLists(new DatabasesLists()),
@@ -232,6 +233,7 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   startsAfter("LogfileManager");
   startsAfter("InitDatabase");
   startsAfter("IndexPool");
+  startsAfter("RevisionCache");
 }
 
 DatabaseFeature::~DatabaseFeature() {
@@ -276,6 +278,10 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--database.replication-applier",
       "switch to enable or disable the replication applier",
       new BooleanParameter(&_replicationApplier));
+  
+  options->addHiddenOption("--database.check-30-revisions",
+                           "check _rev values in collections created before 3.1",
+                           new BooleanParameter(&_check30Revisions));
 }
 
 void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

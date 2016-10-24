@@ -28,6 +28,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringRef.h"
 #include "Cluster/ServerState.h"
+#include "Indexes/IndexElement.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/transaction.h"
@@ -52,6 +53,8 @@ class Builder;
 }
 
 class Index;
+class ManagedDocumentResult;
+class RevisionCacheChunk;
 
 namespace aql {
 class Ast;
@@ -168,8 +171,12 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return role of server in cluster
   //////////////////////////////////////////////////////////////////////////////
-  
+
   inline ServerState::RoleEnum serverRole() const { return _serverRole; }
+  
+  bool isCluster();
+
+  int resolveId(char const* handle, size_t length, TRI_voc_cid_t& cid, char const*& key, size_t& outLength); 
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a pointer to the transaction context
@@ -182,7 +189,7 @@ class Transaction {
   inline TransactionContext* transactionContextPtr() const {
     return _transactionContextPtr;
   }
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get (or create) a rocksdb WriteTransaction
   //////////////////////////////////////////////////////////////////////////////
@@ -365,6 +372,7 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
   
   static TRI_voc_rid_t extractRevFromDocument(VPackSlice slice);
+  static VPackSlice extractRevSliceFromDocument(VPackSlice slice);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read any (random) document
@@ -443,7 +451,7 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   void invokeOnAllElements(std::string const& collectionName,
-                           std::function<bool(TRI_doc_mptr_t const*)>);
+                           std::function<bool(SimpleIndexElement const&)>);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return one  document from a collection, fast path
@@ -457,6 +465,7 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   int documentFastPath(std::string const& collectionName,
+                       ManagedDocumentResult* mmdr,
                        arangodb::velocypack::Slice const value,
                        arangodb::velocypack::Builder& result,
                        bool shouldLock);
@@ -472,7 +481,7 @@ class Transaction {
   
   int documentFastPathLocal(std::string const& collectionName,
                             std::string const& key,
-                            TRI_doc_mptr_t* result);
+                            ManagedDocumentResult& result);
  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return one or multiple documents from a collection
@@ -606,6 +615,7 @@ class Transaction {
   OperationCursor* indexScanForCondition(IndexHandle const&,
                                          arangodb::aql::AstNode const*,
                                          arangodb::aql::Variable const*,
+                                         ManagedDocumentResult*,
                                          uint64_t, uint64_t, bool);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -618,6 +628,7 @@ class Transaction {
                                              CursorType cursorType,
                                              IndexHandle const& indexId,
                                              VPackSlice const search,
+                                             ManagedDocumentResult*,
                                              uint64_t skip, uint64_t limit,
                                              uint64_t batchSize, bool reverse);
 
@@ -650,13 +661,13 @@ class Transaction {
   std::vector<std::shared_ptr<arangodb::Index>> indexesForCollection(
       std::string const&);
 
-/// @brief Lock all collections. Only works for selected sub-classes
+  /// @brief Lock all collections. Only works for selected sub-classes
+  virtual int lockCollections();
 
-   virtual int lockCollections();
-
-/// @brief Clone this transaction. Only works for selected sub-classes
-
-   virtual Transaction* clone() const;
+  /// @brief Clone this transaction. Only works for selected sub-classes
+  virtual Transaction* clone() const;
+  
+  void addChunk(RevisionCacheChunk* chunk);
 
  private:
   
@@ -676,10 +687,10 @@ class Transaction {
 
   void buildDocumentIdentity(arangodb::LogicalCollection* collection,
                              VPackBuilder& builder, TRI_voc_cid_t cid,
-                             StringRef const& key, VPackSlice const rid,
-                             VPackSlice const oldRid,
-                             TRI_doc_mptr_t const* oldMptr,
-                             TRI_doc_mptr_t const* newMptr);
+                             StringRef const& key, TRI_voc_rid_t rid,
+                             TRI_voc_rid_t oldRid,
+                             uint8_t const* oldVPack,
+                             uint8_t const* newVPack);
 
   OperationResult documentCoordinator(std::string const& collectionName,
                                       VPackSlice const value,
@@ -850,7 +861,7 @@ class Transaction {
   bool sortOrs(arangodb::aql::Ast* ast,
                arangodb::aql::AstNode* root,
                arangodb::aql::Variable const* variable,
-               std::vector<arangodb::Transaction::IndexHandle>& usedIndexes) const;
+               std::vector<arangodb::Transaction::IndexHandle>& usedIndexes);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief findIndexHandleForAndNode
@@ -1043,7 +1054,7 @@ class Transaction {
   /// @brief pointer to transaction context (faster than shared ptr)
   //////////////////////////////////////////////////////////////////////////////
   
-  TransactionContext* _transactionContextPtr;
+  TransactionContext* const _transactionContextPtr;
 
  public:
   //////////////////////////////////////////////////////////////////////////////

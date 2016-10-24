@@ -26,11 +26,13 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
-#include "Aql/Query.h"
 #include "Aql/types.h"
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace aql {
+class Query;
 
 class QueryRegistry {
  public:

@@ -348,7 +348,7 @@ bool SocketTask::trySyncRead() {
 void SocketTask::asyncReadSome() {
   try {
     JobGuard guard(_loop);
-    guard.enterLoop();
+    guard.busy();
 
     size_t const MAX_DIRECT_TRIES = 2;
     size_t n = 0;
@@ -414,7 +414,7 @@ void SocketTask::asyncReadSome() {
       closeStream();
     } else {
       JobGuard guard(_loop);
-      guard.enterLoop();
+      guard.busy();
 
       _readBuffer.increaseLength(transferred);
 

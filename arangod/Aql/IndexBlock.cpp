@@ -32,7 +32,8 @@
 #include "Basics/StaticStrings.h"
 #include "Utils/OperationCursor.h"
 #include "V8/v8-globals.h"
-#include "VocBase/MasterPointer.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
@@ -49,7 +50,10 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       _cursor(nullptr),
       _cursors(_indexes.size()),
       _condition(en->_condition->root()),
-      _hasV8Expression(false) {}
+      _hasV8Expression(false) {
+    
+  _mmdr.reset(new ManagedDocumentResult(transaction()));
+}
 
 IndexBlock::~IndexBlock() {
   cleanupNonConstExpressions();
@@ -65,7 +69,7 @@ arangodb::aql::AstNode* IndexBlock::makeUnique(
     auto ast = en->_plan->getAst();
     auto array = ast->createNodeArray();
     array->addMember(node);
-    auto trx = ast->query()->trx();
+    auto trx = transaction();
     bool isSorted = false;
     bool isSparse = false;
     auto unused = trx->getIndexFeatures(_indexes[_currentIndex], isSorted, isSparse);
@@ -376,6 +380,7 @@ bool IndexBlock::readIndex(size_t atMost) {
       continue;
     }
 
+    LogicalCollection* collection = _cursor->collection();
     _cursor->getMoreMptr(_result, atMost);
 
     size_t length = _result.size();
@@ -390,19 +395,33 @@ bool IndexBlock::readIndex(size_t atMost) {
     TRI_IF_FAILURE("IndexBlock::readIndex") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-    
-    for (auto const& mptr : _result) {
-      if (!hasMultipleIndexes) {
-        _documents.emplace_back(mptr->vpack());
-      } else {
-        VPackSlice doc(mptr->vpack());
-        VPackSlice keySlice = Transaction::extractKeyFromDocument(doc);
-        std::string key = keySlice.copyString();
-        if (_alreadyReturned.find(key) == _alreadyReturned.end()) {
+     
+
+    if (hasMultipleIndexes) {
+      for (auto const& element : _result) {
+        TRI_voc_rid_t revisionId = element.revisionId();
+        if (collection->readRevision(_trx, *_mmdr, revisionId)) {
+          uint8_t const* vpack = _mmdr->vpack(); //back();
+          // uniqueness checks
           if (!isLastIndex) {
-            _alreadyReturned.emplace(std::move(key));
+            // insert & check for duplicates in one go
+            if (_alreadyReturned.emplace(revisionId).second) {
+              _documents.emplace_back(vpack);
+            }
+          } else {
+            // only check for duplicates
+            if (_alreadyReturned.find(revisionId) == _alreadyReturned.end()) {
+              _documents.emplace_back(vpack);
+            }
           }
-          _documents.emplace_back(mptr->vpack());
+        }
+      }
+    } else {
+      for (auto const& element : _result) {
+        TRI_voc_rid_t revisionId = element.revisionId();
+        if (collection->readRevision(_trx, *_mmdr, revisionId)) {
+          uint8_t const* vpack = _mmdr->vpack(); //back();
+          _documents.emplace_back(vpack);
         }
       } 
     }
@@ -521,7 +540,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
         TRI_ASSERT(!doc.isExternal());
         // doc points directly into the data files
         res->setValue(j, static_cast<arangodb::aql::RegisterId>(curRegs), 
-                      AqlValue(doc.begin(), AqlValueFromMasterPointer()));
+                      AqlValue(doc.begin(), AqlValueFromManagedDocument()));
         // No harm done, if the setValue throws!
         
         if (j > 0) {
@@ -634,6 +653,7 @@ arangodb::OperationCursor* IndexBlock::orderCursor(size_t currentIndex) {
       _indexes[currentIndex], 
       conditionNode,
       node->outVariable(), 
+      _mmdr.get(),
       UINT64_MAX, 
       Transaction::defaultBatchSize(),
       node->_reverse

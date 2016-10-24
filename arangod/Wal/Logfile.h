@@ -81,6 +81,12 @@ class Logfile {
 
   /// @brief return the datafile pointer
   inline TRI_datafile_t* df() const { return _df; }
+  
+  /// @brief return the pointer to the logfile contents
+  inline char const* data() const { 
+    TRI_ASSERT(_df != nullptr);
+    return _df->data(); 
+  }
 
   /// @brief return the file descriptor
   inline int fd() const { return _df->fd(); }

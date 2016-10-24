@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PathEnumerator.h"
+#include "Basics/VelocyPackHelper.h"
 #include "VocBase/Traverser.h"
 
 using DepthFirstEnumerator = arangodb::traverser::DepthFirstEnumerator;
@@ -47,7 +48,7 @@ bool DepthFirstEnumerator::next() {
     if (_enumeratedPath.edges.size() < _opts->maxDepth) {
       // We are not done with this path, so
       // we reserve the cursor for next depth
-      auto cursor = _opts->nextCursor(_enumeratedPath.vertices.back(),
+      auto cursor = _opts->nextCursor(_traverser->mmdr(), _enumeratedPath.vertices.back(),
                                       _enumeratedPath.edges.size());
       if (cursor != nullptr) {
         _edgeCursors.emplace(cursor);
@@ -202,9 +203,7 @@ BreadthFirstEnumerator::BreadthFirstEnumerator(Traverser* traverser,
       _currentDepth(0),
       _toSearchPos(0) {
   _schreier.reserve(32);
-  auto step = std::make_unique<PathStep>(startVertex);
-  _schreier.emplace_back(step.get());
-  step.release();
+  _schreier.emplace_back(startVertex);
 
   _toSearch.emplace_back(NextStep(0));
 }
@@ -264,9 +263,9 @@ bool BreadthFirstEnumerator::next() {
 
     _tmpEdges.clear();
     auto const nextIdx = _toSearch[_toSearchPos++].sourceIdx;
-    auto const& nextVertex = _schreier[nextIdx]->vertex;
+    auto const nextVertex = _schreier[nextIdx].vertex;
 
-    std::unique_ptr<arangodb::traverser::EdgeCursor> cursor(_opts->nextCursor(nextVertex, _currentDepth));
+    std::unique_ptr<arangodb::traverser::EdgeCursor> cursor(_opts->nextCursor(_traverser->mmdr(), nextVertex, _currentDepth));
     if (cursor != nullptr) {
       size_t cursorIdx;
       bool shouldReturnPath = _currentDepth + 1 >= _opts->minDepth;
@@ -293,9 +292,7 @@ bool BreadthFirstEnumerator::next() {
               continue;
             }
             if (_traverser->getSingleVertex(e, nextVertex, _currentDepth, v)) {
-              auto step = std::make_unique<PathStep>(nextIdx, e, v);
-              _schreier.emplace_back(step.get());
-              step.release();
+              _schreier.emplace_back(nextIdx, e, v);
               if (_currentDepth < _opts->maxDepth - 1) {
                 _nextDepth.emplace_back(NextStep(_schreierIndex));
               }
@@ -373,18 +370,16 @@ void BreadthFirstEnumerator::computeEnumeratedPath(size_t index) {
   _enumeratedPath.vertices.resize(depth + 1);
 
   // Computed path. Insert it into the path enumerator.
-  PathStep* current = nullptr;
   while (index != 0) {
     TRI_ASSERT(depth > 0);
-    current = _schreier[index];
-    _enumeratedPath.vertices[depth] = current->vertex;
-    _enumeratedPath.edges[depth - 1] = current->edge;
+    PathStep const& current = _schreier[index];
+    _enumeratedPath.vertices[depth] = current.vertex;
+    _enumeratedPath.edges[depth - 1] = current.edge;
 
-    index = current->sourceIdx;
+    index = current.sourceIdx;
     --depth;
   }
 
-  current = _schreier[0];
-  _enumeratedPath.vertices[0] = current->vertex;
+  _enumeratedPath.vertices[0] = _schreier[0].vertex;
 }
 

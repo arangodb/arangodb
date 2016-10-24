@@ -32,8 +32,9 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Aql/QueryRegistry.h"
-#include "Basics/ReadWriteLock.h"
+#include "Basics/Mutex.h"
 #include "Basics/LruCache.h"
+#include "Basics/ReadWriteLock.h"
 
 namespace arangodb {
 namespace velocypack {

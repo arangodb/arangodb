@@ -70,8 +70,6 @@ namespace {
   }
 }
 
-struct TRI_doc_mptr_t;
-
 namespace arangodb {
 class Transaction;
 
@@ -79,8 +77,8 @@ namespace aql {
 class AqlItemBlock;
 
 // no-op struct used only in an internal API to signal we want
-// to construct from a master pointer!
-struct AqlValueFromMasterPointer {};
+// to construct from an externally managed document
+struct AqlValueFromManagedDocument {};
 
 struct AqlValue final {
  friend struct std::hash<arangodb::aql::AqlValue>;
@@ -132,7 +130,7 @@ struct AqlValue final {
   }
   
   // construct from mptr, not copying!
-  AqlValue(uint8_t const* pointer, AqlValueFromMasterPointer const&) {
+  AqlValue(uint8_t const* pointer, AqlValueFromManagedDocument const&) {
     setPointer<true>(pointer);
     TRI_ASSERT(!VPackSlice(_data.pointer).isExternal());
   }
@@ -351,8 +349,8 @@ struct AqlValue final {
     return type() == VPACK_SLICE_POINTER;
   }
 
-  /// @brief whether or not the value is a master pointer
-  inline bool isMasterPointer() const noexcept {
+  /// @brief whether or not the value is an external manager document
+  inline bool isManagedDocument() const noexcept {
     return isPointer() && (_data.internal[sizeof(_data.internal) - 2] == 1);
   }
   
@@ -524,12 +522,12 @@ struct AqlValue final {
     _data.internal[sizeof(_data.internal) - 1] = type;
   }
 
-  template<bool isMasterPointer>
+  template<bool isManagedDocument>
   inline void setPointer(uint8_t const* pointer) {
     _data.pointer = pointer;
     // we use the byte at (size - 2) to distinguish between data pointing to database
     // documents (size[-2] == 1) and other data(size[-2] == 0)
-    _data.internal[sizeof(_data.internal) - 2] = isMasterPointer ? 1 : 0;
+    _data.internal[sizeof(_data.internal) - 2] = isManagedDocument ? 1 : 0;
     _data.internal[sizeof(_data.internal) - 1] = AqlValueType::VPACK_SLICE_POINTER;
   }
 };

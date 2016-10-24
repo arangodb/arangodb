@@ -196,7 +196,7 @@ bool GeneralCommTask::handleRequest(std::shared_ptr<RestHandler> handler) {
 void GeneralCommTask::handleRequestDirectly(
     std::shared_ptr<RestHandler> handler) {
   JobGuard guard(_loop);
-  guard.block();
+  guard.work();
 
   RequestStatisticsAgent* agent = getAgent(handler->messageId());
 
@@ -245,7 +245,7 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
       new Job(_server, std::move(handler),
               [self, this](std::shared_ptr<RestHandler> h) {
                 JobGuard guard(_loop);
-                guard.block();
+                guard.work();
 
                 h->asyncRunEngine();
               }));

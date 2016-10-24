@@ -106,7 +106,6 @@ void SslServerFeature::prepare() {
 
 void SslServerFeature::unprepare() {
   LOG(TRACE) << "unpreparing ssl: " << stringifySslOptions(_sslOptions);
-  SSL = nullptr;
 }
 
 void SslServerFeature::verifySslOptions() {

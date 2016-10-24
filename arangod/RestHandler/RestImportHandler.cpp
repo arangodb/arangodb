@@ -31,7 +31,6 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "VocBase/MasterPointer.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Collection.h>
@@ -194,7 +193,6 @@ int RestImportHandler::handleSingleDocument(SingleCollectionTransaction& trx,
   }
 
   // document ok, now import it
-  TRI_doc_mptr_t document;
   VPackBuilder newBuilder;
 
   if (isEdgeCollection) {
