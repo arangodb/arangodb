@@ -340,7 +340,8 @@ Traverser::Traverser(arangodb::traverser::TraverserOptions* opts, arangodb::Tran
       _readDocuments(0),
       _filteredPaths(0),
       _done(true),
-      _opts(opts) {
+      _opts(opts),
+      _canUseOptimizedNeighbors(false) {
   if (opts->uniqueVertices == TraverserOptions::UniquenessLevel::GLOBAL) {
     _vertexGetter = std::make_unique<UniqueVertexGetter>(this);
   } else {
@@ -391,4 +392,8 @@ arangodb::aql::AqlValue arangodb::traverser::Traverser::lastEdgeToAqlValue() {
 arangodb::aql::AqlValue arangodb::traverser::Traverser::pathToAqlValue(
     VPackBuilder& builder) {
   return _enumerator->pathToAqlValue(builder);
+}
+
+void arangodb::traverser::Traverser::allowOptimizedNeighbors() {
+  _canUseOptimizedNeighbors = true;
 }

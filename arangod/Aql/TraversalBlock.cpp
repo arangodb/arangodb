@@ -92,6 +92,12 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
     _traverser.reset(
         new arangodb::traverser::SingleServerTraverser(_opts, _trx));
   }
+  if (!ep->usesEdgeOutVariable() && !ep->usesPathOutVariable() &&
+      _opts->useBreadthFirst &&
+      _opts->uniqueVertices ==
+          traverser::TraverserOptions::UniquenessLevel::GLOBAL) {
+    _traverser->allowOptimizedNeighbors();
+  }
   if (!ep->usesInVariable()) {
     _vertexId = ep->getStartVertex();
   } else {

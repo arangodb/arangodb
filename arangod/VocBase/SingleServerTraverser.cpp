@@ -225,7 +225,11 @@ void SingleServerTraverser::setStartVertex(std::string const& v) {
   _vertexGetter->reset(idSlice);
 
   if (_opts->useBreadthFirst) {
-    _enumerator.reset(new BreadthFirstEnumerator(this, idSlice, _opts));
+    if (_canUseOptimizedNeighbors) {
+      _enumerator.reset(new NeighborsEnumerator(this, idSlice, _opts));
+    } else {
+      _enumerator.reset(new BreadthFirstEnumerator(this, idSlice, _opts));
+    }
   } else {
     _enumerator.reset(new DepthFirstEnumerator(this, idSlice, _opts));
   }

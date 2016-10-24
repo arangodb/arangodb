@@ -26,6 +26,7 @@
 
 using DepthFirstEnumerator = arangodb::traverser::DepthFirstEnumerator;
 using BreadthFirstEnumerator = arangodb::traverser::BreadthFirstEnumerator;
+using NeighborsEnumerator = arangodb::traverser::NeighborsEnumerator;
 using Traverser = arangodb::traverser::Traverser;
 using TraverserOptions = arangodb::traverser::TraverserOptions;
 
@@ -388,3 +389,77 @@ void BreadthFirstEnumerator::computeEnumeratedPath(size_t index) {
   _enumeratedPath.vertices[0] = current->vertex;
 }
 
+NeighborsEnumerator::NeighborsEnumerator(Traverser* traverser,
+                                         VPackSlice startVertex,
+                                         TraverserOptions const* opts)
+    : PathEnumerator(traverser, startVertex, opts),
+      _searchDepth(0) {
+  _allFound.insert(startVertex);
+  _currentDepth.insert(startVertex);
+  _iterator = _currentDepth.begin();
+}
+
+bool NeighborsEnumerator::next() {
+  if (_isFirst) {
+    _isFirst = false;
+    if (_opts->minDepth == 0) {
+      return true;
+    }
+  }
+
+  if (_iterator == _currentDepth.end() || ++_iterator == _currentDepth.end()) {
+    do {
+      // This depth is done. Get next
+      if (_opts->maxDepth == _searchDepth) {
+        // We are finished.
+        return false;
+      }
+
+      _lastDepth.swap(_currentDepth);
+      _currentDepth.clear();
+      size_t cursorIdx;
+      for (auto const& nextVertex : _lastDepth) {
+        cursorIdx = 0;
+        std::unique_ptr<arangodb::traverser::EdgeCursor> cursor(_opts->nextCursor(nextVertex, _searchDepth));
+        while (cursor->readAll(_tmpEdges, cursorIdx)) {
+          if (!_tmpEdges.empty()) {
+            _traverser->_readDocuments += _tmpEdges.size();
+            VPackSlice v;
+            for (auto const& e : _tmpEdges) {
+              if (_traverser->getSingleVertex(e, nextVertex, _searchDepth, v)) {
+                if (_allFound.find(v) == _allFound.end()) {
+                  _currentDepth.emplace(v);
+                  _allFound.emplace(v);
+                }
+              }
+            }
+            _tmpEdges.clear();
+          }
+        }
+      }
+      if (_currentDepth.empty()) {
+        // Nothing found. Cannot do anything more.
+        return false;
+      }
+      ++_searchDepth;
+    } while (_searchDepth < _opts->minDepth);
+    _iterator = _currentDepth.begin();
+  }
+  TRI_ASSERT(_iterator != _currentDepth.end());
+  return true;
+}
+
+arangodb::aql::AqlValue NeighborsEnumerator::lastVertexToAqlValue() {
+  TRI_ASSERT(_iterator != _currentDepth.end());
+  return _traverser->fetchVertexData(*_iterator);
+}
+
+arangodb::aql::AqlValue NeighborsEnumerator::lastEdgeToAqlValue() {
+  // TODO should return Optimizer failed
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+arangodb::aql::AqlValue NeighborsEnumerator::pathToAqlValue(arangodb::velocypack::Builder& result) {
+  // TODO should return Optimizer failed
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
