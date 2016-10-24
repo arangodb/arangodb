@@ -332,7 +332,7 @@ void Traverser::UniqueVertexGetter::reset(VPackSlice startVertex) {
 }
 
 Traverser::Traverser(arangodb::traverser::TraverserOptions* opts, arangodb::Transaction* trx,
-                     ManagedDocumentResult* mmdr)
+                     arangodb::ManagedDocumentResult* mmdr)
     : _trx(trx),
       _mmdr(mmdr),
       _startIdBuilder(trx),

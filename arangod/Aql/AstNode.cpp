@@ -892,7 +892,7 @@ VPackSlice AstNode::computeValue() const {
 
 /// @brief compute the value for a constant value node
 /// the value is owned by the node and must not be freed by the caller
-VPackSlice AstNode::computeValue(Transaction* trx) const {
+VPackSlice AstNode::computeValue(arangodb::Transaction* trx) const {
   TRI_ASSERT(isConstant());
 
   if (computedValue == nullptr) {
