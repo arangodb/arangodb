@@ -80,8 +80,22 @@ the server:
 
 !SUBSECTION APIs changed
 
-The replication API will now use the attribute name `journalSize` instead of
-`maximalSize` when returning information about collections.
+* the replication REST APIs will now use the attribute name `journalSize` instead of
+  `maximalSize` when returning information about collections.
 
-The default value for `keepNull` has been changed to `true` for edge and vertex
-modification operations in /_api/gharial.
+* the default value for `keepNull` has been changed from `false` to `true` for 
+  the following partial update operations for vertices and edges in /_api/gharial:
+
+  - PATCH /_api/gharial/{graph}/vertex/{collection}/{key}
+  - PATCH /_api/gharial/{graph}/edge/{collection}/{key}
+
+  The value for `keepNull` can still be set explicitly to `false` by setting the
+  URL parameter `keepNull` to a value of `false`.
+
+* the REST API for dropping collections (DELETE /_api/collection) now accepts an
+  optional query string parameter `isSystem`, which can set to `true` in order to
+  drop system collections. If the parameter is not set or not set to true, the REST
+  API will refuse to drop system collections. In previous versions of ArangoDB, the
+  `isSystem` parameter did not exist, and there was no distinction between system 
+  and non-system collections when dropping collections.
+
