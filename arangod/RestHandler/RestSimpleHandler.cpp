@@ -231,10 +231,12 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
       if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
           (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCanceled())) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
+        generateError(GeneralResponse::responseCode(TRI_ERROR_REQUEST_CANCELED), TRI_ERROR_REQUEST_CANCELED);
+        return;
       }
 
-      THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+      generateError(GeneralResponse::responseCode(queryResult.code), queryResult.code, queryResult.details);
+      return;
     }
 
     {
@@ -341,10 +343,12 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
       if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
           (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCanceled())) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
+        generateError(GeneralResponse::responseCode(TRI_ERROR_REQUEST_CANCELED), TRI_ERROR_REQUEST_CANCELED);
+        return;
       }
 
-      THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+      generateError(GeneralResponse::responseCode(queryResult.code), queryResult.code, queryResult.details);
+      return;
     }
 
     size_t resultSize = 10;

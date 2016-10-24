@@ -50,7 +50,7 @@ typedef std::string ShardID;       // ID of a shard
 typedef std::unordered_map<ShardID, std::vector<ServerID>> ShardMap;
 
 class CollectionRevisionsCache;
-class DatafileStatisticsContainer;
+struct DatafileStatisticsContainer;
 class Ditches;
 class FollowerInfo;
 class Index;
@@ -59,7 +59,6 @@ class ManagedDocumentResult;
 struct OperationOptions;
 class PhysicalCollection;
 class PrimaryIndex;
-class SimpleIndexElement;
 class StringRef;
 class Transaction;
 

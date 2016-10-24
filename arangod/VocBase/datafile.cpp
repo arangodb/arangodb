@@ -420,8 +420,8 @@ TRI_datafile_t* TRI_datafile_t::create(std::string const& filename, TRI_voc_fid_
 /// @brief returns the name for a marker
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* TRI_NameMarkerDatafile(TRI_df_marker_t const* marker) {
-  switch (marker->getType()) {
+char const* TRI_NameMarkerDatafile(TRI_df_marker_type_t type) {
+  switch (type) {
     // general markers
     case TRI_DF_MARKER_HEADER:
       return "datafile header";
@@ -682,11 +682,20 @@ bool TRI_IterateDatafile(TRI_datafile_t* datafile,
     return false;
   }
 
+  TRI_voc_tick_t maxTick = 0;
+  TRI_DEFER(TRI_UpdateTickServer(maxTick));
+
   while (ptr < end) {
     auto const* marker = reinterpret_cast<TRI_df_marker_t const*>(ptr);
 
     if (marker->getSize() == 0) {
       return true;
+    }
+
+    TRI_voc_tick_t tick = marker->getTick();
+
+    if (tick > maxTick) {
+      maxTick = tick;
     }
 
     // update the tick statistics
@@ -717,11 +726,19 @@ bool TRI_IterateDatafile(TRI_datafile_t* datafile,
     return false;
   }
 
+  TRI_voc_tick_t maxTick = 0;
+  TRI_DEFER(TRI_UpdateTickServer(maxTick));
+
   while (ptr < end) {
     auto const* marker = reinterpret_cast<TRI_df_marker_t const*>(ptr);
 
     if (marker->getSize() == 0) {
       return true;
+    }
+    
+    TRI_voc_tick_t tick = marker->getTick();
+    if (tick > maxTick) {
+      maxTick = tick;
     }
 
     // update the tick statistics
@@ -1212,9 +1229,7 @@ bool TRI_datafile_t::check(bool ignoreFailures) {
   }
 
   TRI_voc_tick_t maxTick = 0;
-
-  auto updateTick =
-      [](TRI_voc_tick_t maxTick) -> void { TRI_UpdateTickServer(maxTick); };
+  TRI_DEFER(TRI_UpdateTickServer(maxTick));
 
   while (ptr < end) {
     TRI_df_marker_t const* marker = reinterpret_cast<TRI_df_marker_t const*>(ptr);
@@ -1232,8 +1247,6 @@ bool TRI_datafile_t::check(bool ignoreFailures) {
       _currentSize = currentSize;
       _next = _data + _currentSize;
 
-      updateTick(maxTick);
-
       return true;
     }
 
@@ -1248,8 +1261,6 @@ bool TRI_datafile_t::check(bool ignoreFailures) {
       _state = TRI_DF_STATE_OPEN_ERROR;
 
       LOG(WARN) << "marker in datafile '" << getName() << "' too small, size " << size << ", should be at least " << sizeof(TRI_df_marker_t);
-
-      updateTick(maxTick);
 
       return false;
     }
@@ -1270,8 +1281,6 @@ bool TRI_datafile_t::check(bool ignoreFailures) {
         LOG(INFO) << "last good marker found at: " << hexValue(static_cast<uint64_t>(static_cast<uintptr_t>(lastGood - _data)));
       }
       printMarker(marker, end - ptr, _data, end);
-
-      updateTick(maxTick);
 
       return false;
     }
@@ -1297,8 +1306,6 @@ bool TRI_datafile_t::check(bool ignoreFailures) {
           LOG(INFO) << "last good marker found at: " << hexValue(static_cast<uint64_t>(static_cast<uintptr_t>(lastGood - _data)));
         }
         printMarker(marker, size, _data, end); 
-
-        updateTick(maxTick);
 
         return false;
       }
@@ -1384,8 +1391,6 @@ bool TRI_datafile_t::check(bool ignoreFailures) {
           LOG(WARN) << "data directly following this marker cannot be analyzed";
         }
 
-        updateTick(maxTick);
-
         return false;
       }
     }
@@ -1404,7 +1409,6 @@ bool TRI_datafile_t::check(bool ignoreFailures) {
       _currentSize = currentSize;
       _next = _data + _currentSize;
 
-      updateTick(maxTick);
       return true;
     }
 
@@ -1412,7 +1416,6 @@ bool TRI_datafile_t::check(bool ignoreFailures) {
     ptr += alignedSize;
   }
 
-  updateTick(maxTick);
   return true;
 }
 
