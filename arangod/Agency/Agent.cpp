@@ -75,7 +75,7 @@ bool Agent::id(std::string const& id) {
 
 /// Merge command line and persisted comfigurations
 bool Agent::mergeConfiguration(VPackSlice const& persisted) {
-  return _config.merge(persisted);
+  return _config.merge(persisted); // Concurrency managed in merge
 }
 
 /// Dtor shuts down thread
@@ -164,6 +164,7 @@ bool Agent::waitFor(index_t index, double timeout) {
     return true;
   }
 
+  // Get condition variable to notice commits
   CONDITION_LOCKER(guard, _waitForCV);
 
   // Wait until woken up through AgentCallback
@@ -192,6 +193,7 @@ bool Agent::waitFor(index_t index, double timeout) {
 void Agent::reportIn(std::string const& id, index_t index) {
 
   {
+    // Enforce _lastCommitIndex, _readDB and compaction to progress atomically
     MUTEX_LOCKER(mutexLocker, _ioLock);
 
     // Update last acknowledged answer
@@ -227,9 +229,9 @@ void Agent::reportIn(std::string const& id, index_t index) {
       }
 
     }
-  }
+  } // MUTEX_LOCKER
 
-  {
+  { // Wake up rest handler
     CONDITION_LOCKER(guard, _waitForCV);
     guard.broadcast();
   }
@@ -251,6 +253,7 @@ bool Agent::recvAppendEntriesRPC(
     return false;
   }
 
+  // State machine, _lastCommitIndex to advance atomically
   MUTEX_LOCKER(mutexLocker, _ioLock);
 
   if (!_constituent.checkLeader(term, leaderId, prevIndex, prevTerm)) {
@@ -293,6 +296,8 @@ bool Agent::recvAppendEntriesRPC(
 /// Leader's append entries
 void Agent::sendAppendEntriesRPC() {
 
+  // _lastSent, _lastHighest and _confirmed only accessed in main thread
+  
   for (auto const& followerId : _config.active()) {
 
     if (followerId != id()) {
@@ -316,8 +321,7 @@ void Agent::sendAppendEntriesRPC() {
 
       index_t highest = unconfirmed.back().index;
 
-      duration<double> m =
-        system_clock::now() - _lastSent[followerId];
+      duration<double> m = system_clock::now() - _lastSent[followerId];
 
       if (highest == _lastHighest[followerId] &&
           m.count() < 0.5 * _config.minPing()) {
@@ -353,10 +357,6 @@ void Agent::sendAppendEntriesRPC() {
       }
 
       // Send request
-      LOG_TOPIC(DEBUG, Logger::AGENCY)
-          << "Sending AppendEntriesRPC with " << unconfirmed.size() - 1
-          << " entries to " << followerId << "...";
-
       auto headerFields =
         std::make_unique<std::unordered_map<std::string, std::string>>();
       arangodb::ClusterComm::instance()->asyncRequest(
@@ -367,7 +367,7 @@ void Agent::sendAppendEntriesRPC() {
         0.7 * _config.minPing(), true);
 
       {
-        MUTEX_LOCKER(mutexLocker, _ioLock);
+        MUTEX_LOCKER(mutexLocker, _ioLock); // KV: Not sure if needed?
         _lastSent[followerId] = system_clock::now();
         _lastHighest[followerId] = highest;
       }
@@ -392,15 +392,14 @@ query_t Agent::activate(query_t const& everything) {
   Slice slice = everything->slice();
 
   if (slice.isObject()) {
-
+    
     if (active()) {
       ret->add("success", VPackValue(false));
     } else {
-
-      MUTEX_LOCKER(mutexLocker, _ioLock);
+      
+      MUTEX_LOCKER(mutexLocker, _ioLock); // Atomicity 
       Slice compact = slice.get("compact");
-
-      Slice  logs = slice.get("logs");
+      Slice    logs = slice.get("logs");
 
       if (!compact.isEmptyArray()) {
         _readDB = compact.get("readDB");
@@ -432,7 +431,7 @@ query_t Agent::activate(query_t const& everything) {
 
 }
 
-/// @brief
+/// @brief Activate agency (Inception thread for multi-host, main thread else)
 bool Agent::activateAgency() {
   if (_config.activeEmpty()) {
     size_t count = 0;
@@ -442,20 +441,20 @@ bool Agent::activateAgency() {
         break;
       }
     }
-    bool persisted = false;
+    bool persisted = false; 
     try {
       persisted = _state.persistActiveAgents(_config.activeToBuilder(),
                                              _config.poolToBuilder());
     } catch (std::exception const& e) {
-      LOG_TOPIC(FATAL, Logger::AGENCY) << "Failed to persist active agency: "
-                                       << e.what();
+      LOG_TOPIC(FATAL, Logger::AGENCY)
+        << "Failed to persist active agency: " << e.what();
     }
     return persisted;
   }
   return true;
 }
 
-/// Load persistent state
+/// Load persistent state called once
 bool Agent::load() {
 
   DatabaseFeature* database =
@@ -513,22 +512,32 @@ bool Agent::load() {
 
 }
 
-/// Challenge my own leadership
+/// Still leading? Under MUTEX from ::read or ::write
 bool Agent::challengeLeadership() {
-  // Still leading?
+
   size_t good = 0;
+  
   for (auto const& i : _lastAcked) {
     duration<double> m = system_clock::now() - i.second;
     if (0.9 * _config.minPing() > m.count()) {
       ++good;
     }
   }
+  
   return (good < size() / 2);  // not counting myself
 }
 
 
-/// Get last acknowlwdged responses on leader
+/// Get last acknowledged responses on leader
 query_t Agent::lastAckedAgo() const {
+  
+  std::map<std::string, TimePoint> lastAcked;
+  
+  {
+    MUTEX_LOCKER(mutexLocker, _ioLock);
+    lastAcked = _lastAcked;
+  }
+  
   query_t ret = std::make_shared<Builder>();
   ret->openObject();
   if (leading()) {
@@ -541,7 +550,9 @@ query_t Agent::lastAckedAgo() const {
     }
   }
   ret->close();
+  
   return ret;
+  
 }
 
 
