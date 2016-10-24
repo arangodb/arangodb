@@ -47,6 +47,7 @@ while [ "$#" -gt 1 ];  do
         *)
             if test -n "${VERSION}"; then
                 echo "we already have a version ${VERSION} aborting because of $1"
+                exit 1
             fi
             VERSION="$1"
             shift
