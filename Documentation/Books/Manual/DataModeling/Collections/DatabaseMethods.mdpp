@@ -284,17 +284,24 @@ default properties.
 drops a collection
 `db._drop(collection)`
 
-Drops a *collection* and all its indexes.
+Drops a *collection* and all its indexes and data.
 
 `db._drop(collection-identifier)`
 
-Drops a collection identified by *collection-identifier* and all its
-indexes. No error is thrown if there is no such collection.
+Drops a collection identified by *collection-identifier* with all its
+indexes and data. No error is thrown if there is no such collection.
 
 `db._drop(collection-name)`
 
 Drops a collection named *collection-name* and all its indexes. No error
 is thrown if there is no such collection.
+
+`db._drop(collection-name, options)`
+
+In order to drop a system collection, one must specify an *options* object
+with attribute *isSystem* set to *true*. Otherwise it is not possible to
+drop system collections.
+
 
 *Examples*
 
@@ -321,7 +328,16 @@ Drops a collection identified by name:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock collectionDatabaseDropName
 
+Drops a system collection
 
+    @startDocuBlockInline collectionDatabaseDropSystem
+    @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseDropSystem}
+    ~ db._create("_example", { isSystem: true });
+      col = db._example;
+      db._drop("_example", { isSystem: true });
+      col;
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock collectionDatabaseDropSystem
 
 !SUBSECTION Truncate
 <!-- js/server/modules/@arangodb/arango-database.js -->
