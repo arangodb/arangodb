@@ -510,6 +510,7 @@ authRouter.get('/graph/:name', function (req, res) {
             }
           }
         }
+        edgeObj.sortColor = edgeObj.color;
         edgesObj[edge._id] = edgeObj;
       });
 
@@ -548,6 +549,7 @@ authRouter.get('/graph/:name', function (req, res) {
             label: nodeLabel,
             size: nodeSize || 3,
             color: config.nodeColor || '#2ecc71',
+            sortColor: undefined,
             x: Math.random(),
             y: Math.random()
           };
@@ -572,6 +574,7 @@ authRouter.get('/graph/:name', function (req, res) {
             }
           }
 
+          nodeObj.sortColor = nodeObj.color;
           nodesObj[node._id] = nodeObj;
         }
       });

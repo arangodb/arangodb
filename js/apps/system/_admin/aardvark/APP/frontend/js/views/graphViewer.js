@@ -259,24 +259,31 @@
       this.killCurrentGraph();
       // TODO add WebGL features
       this.renderGraph(this.graphData.modified, null, false, layout, 'canvas');
-
       if ($('#g_nodeColorByCollection').val() === 'true') {
         this.switchNodeColorByCollection(true);
       } else {
-        if (this.ncolor) {
-          this.updateColors(true, true, this.ncolor, this.ecolor);
+        if ($('#g_nodeColor').is(':disabled')) {
+          this.updateColors(true, true, null, null, true);
         } else {
-          this.updateColors(true, true, '#2ecc71', '#2ecc71');
+          if (this.ncolor) {
+            this.updateColors(true, true, this.ncolor, this.ecolor);
+          } else {
+            this.updateColors(true, true, '#2ecc71', '#2ecc71');
+          }
         }
       }
 
       if ($('#g_edgeColorByCollection').val() === 'true') {
         this.switchEdgeColorByCollection(true);
       } else {
-        if (this.ecolor) {
-          this.updateColors(true, true, this.ncolor, this.ecolor);
+        if ($('#g_edgeColor').is(':disabled')) {
+          this.updateColors(true, true, null, null, true);
         } else {
-          this.updateColors(true, true, '#2ecc71', '#2ecc71');
+          if (this.ecolor) {
+            this.updateColors(true, true, this.ncolor, this.ecolor);
+          } else {
+            this.updateColors(true, true, '#2ecc71', '#2ecc71');
+          }
         }
       }
     },
@@ -315,7 +322,7 @@
       }
     },
 
-    switchNodeColorByCollection: function (boolean) {
+    switchNodeColorByCollection: function (boolean, origin) {
       var self = this;
       self.buildCollectionColors();
       if (boolean) {
@@ -325,15 +332,19 @@
 
         self.currentGraph.refresh();
       } else {
-        if (this.ncolor) {
-          this.updateColors(true, null, this.ncolor, this.ecolor);
+        if (origin) {
+          this.updateColors(true, null, null, null, origin);
         } else {
-          this.updateColors(true, null, '#2ecc71', '#2ecc71');
+          if (this.ncolor) {
+            this.updateColors(true, null, this.ncolor, this.ecolor);
+          } else {
+            this.updateColors(true, null, '#2ecc71', '#2ecc71');
+          }
         }
       }
     },
 
-    switchEdgeColorByCollection: function (boolean) {
+    switchEdgeColorByCollection: function (boolean, origin) {
       var self = this;
       self.buildCollectionColors();
 
@@ -344,10 +355,14 @@
 
         self.currentGraph.refresh();
       } else {
-        if (this.ecolor) {
-          this.updateColors(null, true, this.ncolor, this.ecolor);
+        if (origin) {
+          this.updateColors(true, null, null, null, origin);
         } else {
-          this.updateColors(null, true, '#2ecc71', '#2ecc71');
+          if (this.ecolor) {
+            this.updateColors(null, true, this.ncolor, this.ecolor);
+          } else {
+            this.updateColors(null, true, '#2ecc71', '#2ecc71');
+          }
         }
       }
     },
@@ -1084,7 +1099,7 @@
       }
     },
 
-    updateColors: function (nodes, edges, ncolor, ecolor) {
+    updateColors: function (nodes, edges, ncolor, ecolor, origin) {
       var combinedName = frontendConfig.db + '_' + this.name;
       var self = this;
 
@@ -1101,7 +1116,11 @@
             self.graphConfig = data.toJSON().graphs[combinedName];
             try {
               self.currentGraph.graph.nodes().forEach(function (n) {
-                n.color = ncolor;
+                if (origin) {
+                  n.color = n.sortColor;
+                } else {
+                  n.color = ncolor;
+                }
               });
             } catch (e) {
               self.graphNotInitialized = true;
@@ -1112,7 +1131,11 @@
           if (edges === true) {
             try {
               self.currentGraph.graph.edges().forEach(function (e) {
-                e.color = ecolor;
+                if (origin) {
+                  e.color = e.sortColor;
+                } else {
+                  e.color = ecolor;
+                }
               });
             } catch (ignore) {
               self.graphNotInitialized = true;
