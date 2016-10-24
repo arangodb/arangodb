@@ -261,12 +261,14 @@ bool Ditches::contains(Ditch::DitchType type) {
 void Ditches::freeDitch(Ditch* ditch) {
   TRI_ASSERT(ditch != nullptr);
 
+  bool const isDocumentDitch = (ditch->type() == Ditch::TRI_DITCH_DOCUMENT);
+
   {
     MUTEX_LOCKER(mutexLocker, _lock);
 
     unlink(ditch);
 
-    if (ditch->type() == Ditch::TRI_DITCH_DOCUMENT) {
+    if (isDocumentDitch) {
       // decrease counter
       --_numDocumentDitches;
     }
@@ -415,16 +417,15 @@ void Ditches::link(Ditch* ditch) {
   // empty list
   if (_end == nullptr) {
     _begin = ditch;
-    _end = ditch;
   }
 
   // add to the end
   else {
     ditch->_prev = _end;
-
     _end->_next = ditch;
-    _end = ditch;
   }
+    
+  _end = ditch;
 
   if (isDocumentDitch) {
     // increase counter

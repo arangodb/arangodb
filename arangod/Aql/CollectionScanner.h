@@ -29,7 +29,7 @@
 
 namespace arangodb {
 class ManagedDocumentResult;
-class OperationCursor;
+struct OperationCursor;
 class Transaction;
 
 namespace aql {

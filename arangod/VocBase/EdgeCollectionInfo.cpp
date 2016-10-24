@@ -62,7 +62,7 @@ EdgeCollectionInfo::EdgeCollectionInfo(arangodb::Transaction* trx,
 
 std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
     std::string const& vertexId,
-    ManagedDocumentResult* mmdr) {
+    arangodb::ManagedDocumentResult* mmdr) {
   _searchBuilder.clear();
   EdgeIndex::buildSearchValue(_forwardDir, vertexId, _searchBuilder);
   return _trx->indexScan(_collectionName,
@@ -72,7 +72,7 @@ std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
 
 std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
     VPackSlice const& vertexId,
-    ManagedDocumentResult* mmdr) {
+    arangodb::ManagedDocumentResult* mmdr) {
   _searchBuilder.clear();
   EdgeIndex::buildSearchValue(_forwardDir, vertexId, _searchBuilder);
   return _trx->indexScan(_collectionName,
@@ -102,7 +102,7 @@ int EdgeCollectionInfo::getEdgesCoordinator(VPackSlice const& vertexId,
 
 std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getReverseEdges(
     std::string const& vertexId,
-    ManagedDocumentResult* mmdr) {
+    arangodb::ManagedDocumentResult* mmdr) {
   _searchBuilder.clear();
   EdgeIndex::buildSearchValue(_backwardDir, vertexId, _searchBuilder);
   return _trx->indexScan(_collectionName,
@@ -112,7 +112,7 @@ std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getReverseEdges(
 
 std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getReverseEdges(
     VPackSlice const& vertexId,
-    ManagedDocumentResult* mmdr) {
+    arangodb::ManagedDocumentResult* mmdr) {
   _searchBuilder.clear();
   EdgeIndex::buildSearchValue(_backwardDir, vertexId, _searchBuilder);
   return _trx->indexScan(_collectionName,
