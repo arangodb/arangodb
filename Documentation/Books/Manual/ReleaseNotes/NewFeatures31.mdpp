@@ -163,4 +163,13 @@ Viewer is based on Canvas but does also include a first WebGL implementation (li
 functionality - will change in the future). The new Graph Viewer offers a smooth way to
 discover and visualize your graphs.
 
-The shard view in cluster mode now displays a progress indicator while moving shards. 
+The shard view in cluster mode now displays a progress indicator while moving shards.
+
+!SECTION Authentication
+
+Up to arangodb 3.0 authentication was only possible using basic authentication.
+
+Alternatively it is now possible to use a JWT for authenticating a request.
+
+For details check the HTTP authentication chapter. Both authentication methods are
+valid and will be supported in the near future. Use whatever suits you best.
