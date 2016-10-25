@@ -1161,8 +1161,18 @@ actions.defineHttp({
 
     var leaderOP, followerOP, leaderR, followerR, leaderBody, followerBody;
     var options = { timeout: 10 };
+    console.log(dbsToCheck);
 
     _.each(dbsToCheck, function (shard) {
+      if (shard.leader.charAt(0) === '_') {
+        shard.leader = shard.leader.substr(1, shard.leader.length - 1);
+      }
+      if (typeof shard.toCheck === 'object') {
+        if (shard.toCheck.length === 0) {
+          return;
+        }
+      }
+
       // get counts of leader and follower shard
       leaderOP = ArangoClusterComm.asyncRequest('GET', 'server:' + shard.leader, '_system',
         '/_api/collection/' + shard.shard + '/count', '', {}, options);
