@@ -168,8 +168,8 @@
 
       var data = {
         database: dbName,
-        collections: [collectionName],
-        shards: [shardName],
+        collection: collectionName,
+        shard: shardName,
         fromServer: fromServer,
         toServer: toServer
       };
@@ -191,7 +191,7 @@
           }
         },
         error: function () {
-          arangoHelper.arangoNotification('Shard ' + shardName + ' could not be moved to ' + toServer + '.');
+          arangoHelper.arangoError('Shard ' + shardName + ' could not be moved to ' + toServer + '.');
         }
       });
 
@@ -218,7 +218,7 @@
           }
         },
         error: function () {
-          arangoHelper.arangoNotification('Could not start rebalance process.');
+          arangoHelper.arangoError('Could not start rebalance process.');
         }
       });
 
