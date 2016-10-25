@@ -415,7 +415,8 @@ bool NeighborsEnumerator::next() {
       size_t cursorIdx;
       for (auto const& nextVertex : _lastDepth) {
         cursorIdx = 0;
-        std::unique_ptr<arangodb::traverser::EdgeCursor> cursor(_opts->nextCursor(nextVertex, _searchDepth));
+        std::unique_ptr<arangodb::traverser::EdgeCursor> cursor(
+            _opts->nextCursor(_traverser->mmdr(), nextVertex, _searchDepth));
         while (cursor->readAll(_tmpEdges, cursorIdx)) {
           if (!_tmpEdges.empty()) {
             _traverser->_readDocuments += _tmpEdges.size();
