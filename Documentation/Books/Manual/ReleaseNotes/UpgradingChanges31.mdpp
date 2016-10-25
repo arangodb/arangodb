@@ -68,7 +68,8 @@ have to use `arangodump` to dump all data out (using ArangoDB 3.0), and
 use `arangorestore` into the new ArangoDB 3.1, which is the safest
 way to upgrade.
 
-The change also affects the return format of `_rev` values in HTTP APIs (see below).
+The change also affects the return format of `_rev` values and other revision
+values in HTTP APIs (see below).
 
 !SECTION HTTP API changes
 

@@ -36,6 +36,33 @@ improve general performance slightly.
 
 Authentication is now supported within the cluster.
 
+
+!SECTION Document revisions cache
+
+The ArangoDB server now provides an in-memory cache for frequently accessed 
+document revisions. Documents that are accessed during read/write operations 
+are loaded into the revisions cache automatically, and subsequently served from 
+there.
+
+The cache has a total target size, which can be controlled with the startup
+option `--database.revision-cache-target-size`. Once the cache reaches the
+target size, older entries may be evicted from the cache to free memory. Note that
+the target size currently is a high water mark that will trigger cache memory
+garbage collection if exceeded. However, if all cache chunks are still in use
+when the high water mark is reached, the cache may still grow and allocate more
+chunks until cache entries become unused and are allowed to be garbage-collected.
+
+The cache is maintained on a per-collection basis, that is, memory for the cache 
+is allocated on a per-collection basis in chunks. The size for the cache memory
+chunks can be controlled via the startup option `--database.revision-cache-chunk-size`.
+The default value is 4 MB per chunk.
+Bigger chunk sizes allow saving more documents per chunk, which can lead to more 
+efficient chunk allocation and lookups, but will also lead to memory waste if many 
+chunks are allocated and not fully used. The latter will be the case if there exist 
+many small collections which all allocate their own chunks but not fully utilize them 
+because of the low number of documents.
+
+
 !SECTION AQL
 
 !SUBSECTION Functions added
