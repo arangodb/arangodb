@@ -45,7 +45,7 @@ struct Empty {
 };
 
 /// @brief Split strings by separator
-inline std::vector<std::string> split(const std::string& value,
+inline static std::vector<std::string> split(const std::string& value,
                                       char separator) {
   std::vector<std::string> result;
   std::string::size_type p = (value.find(separator) == 0) ? 1 : 0;

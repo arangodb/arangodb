@@ -615,6 +615,10 @@ function agencyTestSuite () {
     }
 
     /*
+      // Test babies
+     */
+
+    /*
     testHiddenAgencyWrite: function() {
       var res = writeAgency([[{".agency": {"op":"set","new":"fallera"}}]]);
       assertEqual(res.statusCode, 400);
