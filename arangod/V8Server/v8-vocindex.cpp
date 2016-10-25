@@ -503,6 +503,7 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
       TRI_V8_RETURN_NULL();
     }
   }
+
   TransactionBuilderLeaser builder(&trx);
   builder->openObject();
   try {
@@ -514,6 +515,12 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
 
   v8::Handle<v8::Value> ret =
       IndexRep(isolate, collection->name(), builder->slice());
+
+  res = trx.commit();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(res, TRI_errno_string(res));
+  }
 
   if (ret->IsObject()) {
     ret->ToObject()->Set(TRI_V8_ASCII_STRING("isNewlyCreated"),
