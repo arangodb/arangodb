@@ -140,6 +140,11 @@ was used multiple times, the condition was not injected as in the following quer
 The performance of the `[*]` operator was improved for cases in which this operator
 did not use any filters, projections and/or offset/limits.
 
+The AQL query executor can now report the time required for loading and locking the
+collections used in an AQL query. When profiling is enabled, it will report the total 
+loading and locking time for the query in the `loading collections` sub-attribute of the 
+`extra.profile` value of the result. The loading and locking time can also be view in the
+AQL query editor in the web interface.
 
 !SECTION Audit Log
 

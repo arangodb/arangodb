@@ -113,3 +113,11 @@ the server:
   API will refuse to drop system collections. In previous versions of ArangoDB, the
   `isSystem` parameter did not exist, and there was no distinction between system 
   and non-system collections when dropping collections.
+
+* the REST API for retrieving AQL query results (POST /_api/cursor) will now return an
+  additional sub-attribute `loading collections` that will contain the total time
+  required for loading and locking collections during the AQL query when profiling is
+  enabled. The attribute can be found in the `extra` result attribute in sub-attribute
+  `loading collections`. The attribute will only be set if profiling was enabled for
+  the query.
+
