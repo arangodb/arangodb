@@ -82,9 +82,10 @@ struct TRI_request_statistics_t {
 
   std::string to_string() {
     std::stringstream ss;
-    ss << std::boolalpha << std::setprecision(10) << "statistics      "
+    ss << std::boolalpha << std::setprecision(20) << "statistics      "
        << std::endl
        << "_readStart      " << _readStart << std::endl
+       << "_readEnd        " << _readEnd << std::endl
        << "_queueStart     " << _queueStart << std::endl
        << "_queueEnd       " << _queueEnd << std::endl
        << "_requestStart   " << _requestStart << std::endl

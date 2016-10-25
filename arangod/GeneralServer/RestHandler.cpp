@@ -64,7 +64,8 @@ RestHandler::RestHandler(GeneralRequest* request, GeneralResponse* response)
 
 int RestHandler::prepareEngine() {
   requestStatisticsAgentSetRequestStart();
-
+  requestStatisticsAgentSetRequestEnd();  // set end immeadiately so we
+                                          // do not get netative statistics
 #ifdef USE_DEV_TIMERS
   TRI_request_statistics_t::STATS = _statistics;
 #endif
