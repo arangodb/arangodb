@@ -232,7 +232,7 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   startsAfter("EngineSelector");
   startsAfter("LogfileManager");
   startsAfter("InitDatabase");
-  startsAfter("IndexPool");
+  startsAfter("IndexThread");
   startsAfter("RevisionCache");
 }
 
