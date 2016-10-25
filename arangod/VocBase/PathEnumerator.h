@@ -287,7 +287,7 @@ class NeighborsEnumerator final : public PathEnumerator {
                      arangodb::basics::VelocyPackHelper::VPackStringEqual>
       _lastDepth;
 
-  std::unordered_set<VPackSlice>::iterator _iterator;
+  std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackStringHash, arangodb::basics::VelocyPackHelper::VPackStringEqual>::iterator _iterator;
   size_t _searchDepth;
  
   //////////////////////////////////////////////////////////////////////////////
