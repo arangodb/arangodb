@@ -52,7 +52,8 @@ RevisionCacheFeature::RevisionCacheFeature(ApplicationServer* server)
 
 
   if (TRI_PhysicalMemory != 0) {
-    _targetSize = static_cast<decltype(_targetSize)>(TRI_PhysicalMemory * 0.5);
+    // reset target size to a fraction of the available memory
+    _targetSize = static_cast<decltype(_targetSize)>(TRI_PhysicalMemory * 0.75);
   }
 }
 
