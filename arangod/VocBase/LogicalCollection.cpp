@@ -1326,6 +1326,8 @@ void LogicalCollection::open(bool ignoreErrors) {
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     engine->changeCollection(_vocbase, _cid, this, doSync);
   }
+  
+  TRI_UpdateTickServer(_cid);
 }
 
 /// @brief opens an existing collection
@@ -1468,7 +1470,6 @@ int LogicalCollection::restoreIndex(Transaction* trx, VPackSlice const& info,
   }
   TRI_ASSERT(newIdx != nullptr);
 
-  // FIXME New style. Update tick after successful creation of index.
   TRI_UpdateTickServer(newIdx->id());
 
   TRI_ASSERT(newIdx.get()->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX); 

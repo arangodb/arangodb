@@ -53,17 +53,6 @@ v8::Handle<v8::Value> V8TickId(v8::Isolate* isolate, TRI_voc_tick_t tick) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a v8 revision id value from the internal revision id
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Value> V8RevisionId(v8::Isolate* isolate, TRI_voc_rid_t rid) {
-  char buffer[21];
-  size_t len = TRI_StringUInt64InPlace(static_cast<uint64_t>(rid), &buffer[0]);
-
-  return TRI_V8_PAIR_STRING(&buffer[0], static_cast<int>(len));
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if argument is a document identifier
 ////////////////////////////////////////////////////////////////////////////////
 

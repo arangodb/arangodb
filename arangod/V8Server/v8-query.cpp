@@ -377,7 +377,7 @@ static void JS_ChecksumCollection(
   LogicalCollection* collection = trx.documentCollection();
   auto physical = collection->getPhysical();
   TRI_ASSERT(physical != nullptr);
-  std::string const revisionId = std::to_string(physical->revision());
+  std::string const revisionId = TRI_RidToString(physical->revision());
   uint64_t hash = 0;
         
   ManagedDocumentResult mmdr(&trx);

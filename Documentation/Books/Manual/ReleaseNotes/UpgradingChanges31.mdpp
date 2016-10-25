@@ -68,6 +68,8 @@ have to use `arangodump` to dump all data out (using ArangoDB 3.0), and
 use `arangorestore` into the new ArangoDB 3.1, which is the safest
 way to upgrade.
 
+The change also affects the return format of `_rev` values in HTTP APIs (see below).
+
 !SECTION HTTP API changes
 
 !SUBSECTION APIs added
@@ -80,8 +82,33 @@ the server:
 
 !SUBSECTION APIs changed
 
-The replication API will now use the attribute name `journalSize` instead of
-`maximalSize` when returning information about collections.
+* the following REST APIs that return revision ids now make use of the new revision
+  id format introduced in 3.1. All revision ids returned will be strings as in 3.0, but
+  have a different internal format.
+  
+  The following APIs are affected:
+  - GET /_api/collection/{collection}/checksum: `revision` attribute
+  - GET /_api/collection/{collection}/revision: `revision` attribute
+  - all other APIs that return documents, which may include the documents' `_rev` attribute
 
-The default value for `keepNull` has been changed to `true` for edge and vertex
-modification operations in /_api/gharial.
+  Client applications should not try to interpret the internals of revision values, but only 
+  use revision values for checking whether two revision strings are identical.
+
+* the replication REST APIs will now use the attribute name `journalSize` instead of
+  `maximalSize` when returning information about collections.
+
+* the default value for `keepNull` has been changed from `false` to `true` for 
+  the following partial update operations for vertices and edges in /_api/gharial:
+
+  - PATCH /_api/gharial/{graph}/vertex/{collection}/{key}
+  - PATCH /_api/gharial/{graph}/edge/{collection}/{key}
+
+  The value for `keepNull` can still be set explicitly to `false` by setting the
+  URL parameter `keepNull` to a value of `false`.
+
+* the REST API for dropping collections (DELETE /_api/collection) now accepts an
+  optional query string parameter `isSystem`, which can set to `true` in order to
+  drop system collections. If the parameter is not set or not set to true, the REST
+  API will refuse to drop system collections. In previous versions of ArangoDB, the
+  `isSystem` parameter did not exist, and there was no distinction between system 
+  and non-system collections when dropping collections.
