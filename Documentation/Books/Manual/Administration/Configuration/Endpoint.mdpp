@@ -11,10 +11,6 @@ types of endpoints:
 - ssl://ipv4-address:port - TCP/IP endpoint, using IPv4, SSL encryption
 - ssl://[ipv6-address]:port - TCP/IP endpoint, using IPv6, SSL encryption
 - unix:///path/to/socket - Unix domain socket endpoint
-- vpp+tcp://ipv4-address:port - TCP/IP endpoint, using IPv4, VelocyStream protocol
-- vpp+tcp://[ipv6-address]:port - TCP/IP endpoint, using IPv6, VelocyStream protocol
-- vpp+ssl://ipv4-address:port - TCP/IP endpoint, using IPv4, VelocyStream protocol, SSL encryption
-- vpp+ssl://[ipv6-address]:port - TCP/IP endpoint, using IPv6, VelocyStream protocol, SSL encryption
 
 If a TCP/IP endpoint is specified without a port number, then the default port
 (8529) will be used.  If multiple endpoints need to be used, the option can be
@@ -73,11 +69,6 @@ ArangoDB can also do a so called *broadcast bind* using
 host. This may be useful on development systems that frequently change their
 network setup like laptops.
 
-Use VelocyStream protocol:
-
-`--server.endpoint vpp+tcp://hostname:port`
-
-VelocyStream is the new symmetric binary protocol of ArangoDB. It supports sending messages back and forth, pipelined, multiplexed, uni-directional or bi-directional. The messages themselves are VelocyPack objects. Its specification will be released with ArangoDB 3.2, until that we keep us open to change it.
 
 !SUBSECTION Reuse address
 
