@@ -23,8 +23,13 @@ the recommended way is to specify the collection in the URL path.
 Wait until document has been synced to disk.
 
 @RESTQUERYPARAM{returnNew,boolean,optional}
-Return additionally the complete new document under the attribute *new*
+Additionally return the complete new document under the attribute *new*
 in the result.
+
+@RESTQUERYPARAM{silent,boolean,optional}
+If set to *true*, an empty object will be returned as response. No meta-data 
+will be returned for the created document. This option can be used to
+save some network traffic.
 
 @RESTDESCRIPTION
 Creates a new document from the document given in the body, unless there
@@ -47,8 +52,8 @@ contains the path to the newly created document. The *ETag* header field
 contains the revision of the document. Both are only set in the single
 document case.
 
-The body of the response contains a JSON object (single document case)
-with the following attributes:
+If *silent* is not set to *true*, the body of the response contains a 
+JSON object (single document case) with the following attributes:
 
   - *_id* contains the document handle of the newly created document
   - *_key* contains the document key
