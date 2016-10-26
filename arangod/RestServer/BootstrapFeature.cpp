@@ -61,7 +61,7 @@ void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 static void raceForClusterBootstrap() {
   AgencyComm agency;
   auto ci = ClusterInfo::instance();
-
+  
   while (true) {
     AgencyCommResult result = agency.getValues("Bootstrap");
     if (!result.successful()) {
@@ -75,7 +75,7 @@ static void raceForClusterBootstrap() {
         std::vector<std::string>({agency.prefix(), "Bootstrap"}));
     if (value.isString()) {
       // key was found and is a string
-      if (value.isEqualString("done")) {
+      if (value.copyString().find("done") != std::string::npos) {
         // all done, let's get out of here:
         LOG_TOPIC(TRACE, Logger::STARTUP)
             << "raceForClusterBootstrap: bootstrap already done";
@@ -118,7 +118,7 @@ static void raceForClusterBootstrap() {
         << "raceForClusterBootstrap: bootstrap done";
 
     b.clear();
-    b.add(VPackValue("done"));
+    b.add(VPackValue(arangodb::ServerState::instance()->getId() + ": done"));
     result = agency.setValue("Bootstrap", b.slice(), 0);
     if (result.successful()) {
       return;
@@ -137,17 +137,17 @@ void BootstrapFeature::start() {
   auto ss = ServerState::instance();
 
   if (!ss->isRunningInCluster()) {
-    LOG_TOPIC(INFO, Logger::STARTUP) << "Running server/server.js";
+    LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running server/server.js";
     V8DealerFeature::DEALER->loadJavascript(vocbase, "server/server.js");
   } else if (ss->isCoordinator()) {
-    LOG_TOPIC(INFO, Logger::STARTUP) << "Racing for cluster bootstrap...";
+    LOG_TOPIC(DEBUG, Logger::STARTUP) << "Racing for cluster bootstrap...";
     raceForClusterBootstrap();
-    LOG_TOPIC(INFO, Logger::STARTUP)
+    LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "Running server/bootstrap/coordinator.js";
     V8DealerFeature::DEALER->loadJavascript(vocbase,
                                             "server/bootstrap/coordinator.js");
   } else if (ss->isDBServer()) {
-    LOG_TOPIC(INFO, Logger::STARTUP)
+    LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "Running server/bootstrap/db-server.js";
     V8DealerFeature::DEALER->loadJavascript(vocbase,
                                             "server/bootstrap/db-server.js");
