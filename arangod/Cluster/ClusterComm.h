@@ -446,7 +446,7 @@ class ClusterComm {
   //////////////////////////////////////////////////////////////////////////////
 
   OperationID asyncRequest(
-      ClientTransactionID const clientTransactionID,
+      ClientTransactionID const& clientTransactionID,
       CoordTransactionID const coordTransactionID,
       std::string const& destination, rest::RequestType reqtype,
       std::string const& path, std::shared_ptr<std::string const> body,

@@ -158,6 +158,8 @@ Scheduler::Scheduler(size_t nrThreads, size_t maxQueueSize)
       _nrWorking(0),
       _nrBlocked(0),
       _nrRunning(0),
+      _nrMinimal(0),
+      _nrMaximal(0),
       _nrRealMaximum(0),
       _lastThreadWarning(0) {
   // setup signal handlers
@@ -175,8 +177,13 @@ bool Scheduler::start(ConditionVariable* cv) {
   startIoService();
 
   // initialize thread handling
-  _nrMaximal = _nrThreads;
-  _nrRealMaximum = 4 * _nrMaximal;
+  if (_nrMaximal <= 0) {
+    _nrMaximal = _nrThreads;
+  }
+
+  if (_nrRealMaximum <= 0) {
+    _nrRealMaximum = 4 * _nrMaximal;
+  }
 
   for (size_t i = 0; i < 2; ++i) {
     startNewThread();
@@ -242,6 +249,10 @@ void Scheduler::startNewThread() {
 }
 
 bool Scheduler::stopThread() {
+  if (_nrRunning <= _nrMinimal) {
+    return false;
+  }
+  
   if (_nrRunning >= 3) {
     int64_t low = ((_nrRunning <= 4) ? 0 : (_nrRunning * 1 / 4)) - _nrBlocked;
 
@@ -301,7 +312,7 @@ void Scheduler::rebalanceThreads() {
     }
   }
 
-  if (working >= _nrMaximal + _nrBlocked) {
+  if (working >= _nrMaximal + _nrBlocked || _nrRunning < _nrMinimal) {
     double ltw = _lastThreadWarning.load();
     double now = TRI_microtime();
 

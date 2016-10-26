@@ -43,7 +43,7 @@ class Store : public arangodb::Thread {
   virtual ~Store();
 
   /// @brief Copy constructor
-  Store(Store const& other);
+  Store(Store const& other) = delete;
 
   /// @brief Move constructor
   Store(Store&& other);
@@ -58,7 +58,9 @@ class Store : public arangodb::Thread {
   std::vector<bool> apply(query_t const& query, bool verbose = false);
 
   /// @brief Apply entry in query
-  std::vector<bool> apply(std::vector<Slice> const& query, bool inform = true);
+  std::vector<bool> apply(std::vector<Slice> const& query,
+                          index_t lastCommitIndex, term_t term,
+                          bool inform = true);
 
   /// @brief Read specified query from store
   std::vector<bool> read(query_t const& query, query_t& result) const;
@@ -69,12 +71,6 @@ class Store : public arangodb::Thread {
   /// @brief Start thread
   bool start();
 
-  /// @brief Set name
-  void name(std::string const& name);
-
-  /// @brief Get name
-  std::string const& name() const;
-
   /// @brief Dump everything to builder
   void dumpToBuilder(Builder&) const;
 
@@ -84,34 +80,23 @@ class Store : public arangodb::Thread {
   /// @brief See how far the path matches anything in store
   size_t matchPath(std::vector<std::string> const& pv) const;
 
-  /// @brief Get node specified by path vector
-  Node operator()(std::vector<std::string> const& pv);
-  /// @brief Get node specified by path vector
-  Node const operator()(std::vector<std::string> const& pv) const;
-
-  /// @brief Get node specified by path string
-  Node operator()(std::string const& path);
-  /// @brief Get node specified by path string
-  Node const operator()(std::string const& path) const;
-
   Store& operator=(VPackSlice const& slice);
-
-  /// @brief Apply single slice
-  bool applies(arangodb::velocypack::Slice const&);
 
   /// @brief Create Builder representing this store
   void toBuilder(Builder&, bool showHidden = false) const;
 
   /// @brief Copy out a node
-  Node const get(std::string const& path) const;
+  Node get(std::string const& path) const;
 
   std::string toJson() const;
 
   friend class Node;
 
-  std::vector<std::string> exists(std::string const&) const;
-
  private:
+
+  /// @brief Apply single slice
+  bool applies(arangodb::velocypack::Slice const&);
+
   /// @brief Remove time to live entries for uri
   void removeTTL(std::string const&);
 
@@ -139,6 +124,7 @@ class Store : public arangodb::Thread {
   mutable arangodb::basics::ConditionVariable _cv;
 
   /// @brief Read/Write mutex on database
+  /// guard _node, _timeTable, _observerTable, _observedTable
   mutable arangodb::Mutex _storeLock;
 
   /// @brief My own agent

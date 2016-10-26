@@ -316,6 +316,54 @@ function RocksDBIndexSuite() {
 
       var doc2 = collection.save({ a : "test3", b : 1});
       assertTrue(doc2._key !== "");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: documents
+////////////////////////////////////////////////////////////////////////////////
+
+    testRecreateIndex : function () {
+      var idx, i, result, query;
+     
+      idx = collection.ensureIndex({ type: "persistent", fields: ["a"] });
+
+      assertEqual("persistent", idx.type);
+      assertEqual(false, idx.unique);
+      assertEqual(["a"], idx.fields);
+      assertEqual(true, idx.isNewlyCreated);
+
+      for (i = 0; i < 100; ++i) {
+        collection.save({ a : i });
+      }
+      assertEqual(100, collection.count());
+
+      query = "FOR doc IN " + collection.name() + " FILTER doc.a == @value RETURN doc.a";
+      for (i = 0; i < 100; ++i) {
+        result = internal.db._query(query, { value : i }).toArray();
+        assertEqual(1, result.length);
+        assertEqual(i, result[0]);
+      }
+
+      // remove index
+      collection.dropIndex(idx.id);
+      assertEqual(1, collection.getIndexes().length);
+      
+      // re-create index
+      idx = collection.ensureIndex({ type: "persistent", fields: ["a"] });
+      
+      assertEqual("persistent", idx.type);
+      assertEqual(false, idx.unique);
+      assertEqual(["a"], idx.fields);
+      assertEqual(true, idx.isNewlyCreated);
+      
+      assertEqual(100, collection.count());
+
+      query = "FOR doc IN " + collection.name() + " FILTER doc.a == @value RETURN doc.a";
+      for (i = 0; i < 100; ++i) {
+        result = internal.db._query(query, { value : i }).toArray();
+        assertEqual(1, result.length);
+        assertEqual(i, result[0]);
+      }
     }
 
   };

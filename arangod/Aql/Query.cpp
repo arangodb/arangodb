@@ -477,9 +477,8 @@ QueryResult Query::prepare(QueryRegistry* registry) {
         _part == PART_MAIN);
     _trx = trx;
 
-    bool planRegisters;
-
     try {
+      bool planRegisters;
       // As soon as we start du instantiate the plan we have to clean it
       // up before killing the unique_ptr
       if (_queryString != nullptr) {

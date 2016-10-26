@@ -24,6 +24,7 @@
 #include "RocksDBFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Basics/tri-strings.h"
 #include "Indexes/RocksDBKeyComparator.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -309,6 +310,7 @@ int RocksDBFeature::dropDatabase(TRI_voc_tick_t databaseId) {
   if (Instance == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
+  // LOG(TRACE) << "dropping RocksDB database: " << databaseId;
   return Instance->dropPrefix(RocksDBIndex::buildPrefix(databaseId));
 }
 
@@ -316,6 +318,7 @@ int RocksDBFeature::dropCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t coll
   if (Instance == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
+  // LOG(TRACE) << "dropping RocksDB database: " << databaseId << ", collection: " << collectionId;
   return Instance->dropPrefix(RocksDBIndex::buildPrefix(databaseId, collectionId));
 }
 
@@ -323,6 +326,7 @@ int RocksDBFeature::dropIndex(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectio
   if (Instance == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
+  // LOG(TRACE) << "dropping RocksDB database: " << databaseId << ", collection: " << collectionId << ", index: " << indexId;
   return Instance->dropPrefix(RocksDBIndex::buildPrefix(databaseId, collectionId, indexId));
 }
 
@@ -365,17 +369,22 @@ int RocksDBFeature::dropPrefix(std::string const& prefix) {
       u.append(reinterpret_cast<char const*>(&value), sizeof(uint64_t));
     }
     u.append(builder.slice().startAs<char const>(), builder.slice().byteSize());
- 
+  
 #if 0 
     for (size_t i = 0; i < prefix.size(); i += sizeof(TRI_idx_iid_t)) {
       char const* x = prefix.c_str() + i;
-      LOG(TRACE) << "prefix part: " << std::to_string(*reinterpret_cast<uint64_t const*>(x));
+      size_t o;
+      char* q = TRI_EncodeHexString(x, 8, &o);
+      if (q != nullptr) {
+        LOG(TRACE) << "RocksDB prefix part: " << q;
+        TRI_FreeString(TRI_CORE_MEM_ZONE, q);
+      }
     }
+    
+    LOG(TRACE) << "dropping RocksDB range: " << VPackSlice(l.c_str() + RocksDBIndex::keyPrefixSize()).toJson() << " - " << VPackSlice(u.c_str() + RocksDBIndex::keyPrefixSize()).toJson();
 #endif
 
     // delete files in range lower..upper
-    LOG(TRACE) << "dropping range: " << VPackSlice(l.c_str() + prefix.size()).toJson() << " - " << VPackSlice(u.c_str() + prefix.size()).toJson();
-
     rocksdb::Slice lower(l.c_str(), l.size());
     rocksdb::Slice upper(u.c_str(), u.size());
 
@@ -406,7 +415,7 @@ int RocksDBFeature::dropPrefix(std::string const& prefix) {
       if (res >= 0) {
         break;
       }
-      
+     
       batch.Delete(it->key());
 
       it->Next();

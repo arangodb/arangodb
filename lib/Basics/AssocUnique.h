@@ -69,21 +69,21 @@ class AssocUnique {
 
  public:
   typedef std::function<uint64_t(UserData*, Key const*)> HashKeyFuncType;
-  typedef std::function<uint64_t(UserData*, Element const*)>
+  typedef std::function<uint64_t(UserData*, Element const&)>
       HashElementFuncType;
   typedef std::function<bool(UserData*, Key const*, uint64_t hash,
-                             Element const*)> IsEqualKeyElementFuncType;
-  typedef std::function<bool(UserData*, Element const*, Element const*)>
+                             Element const&)> IsEqualKeyElementFuncType;
+  typedef std::function<bool(UserData*, Element const&, Element const&)>
       IsEqualElementElementFuncType;
 
-  typedef std::function<bool(Element*)> CallbackElementFuncType;
+  typedef std::function<bool(Element&)> CallbackElementFuncType;
 
  private:
   struct Bucket {
     uint64_t _nrAlloc;  // the size of the table
     uint64_t _nrUsed;   // the number of used entries
 
-    Element** _table;  // the table itself, aligned to a cache line boundary
+    Element* _table;  // the table itself, aligned to a cache line boundary
   };
 
   std::vector<Bucket> _buckets;
@@ -131,11 +131,7 @@ class AssocUnique {
         b._table = nullptr;
 
         // may fail...
-        b._table = new Element*[static_cast<size_t>(b._nrAlloc)];
-
-        for (uint64_t i = 0; i < b._nrAlloc; i++) {
-          b._table[i] = nullptr;
-        }
+        b._table = new Element[static_cast<size_t>(b._nrAlloc)]();
       }
     } catch (...) {
       for (auto& b : _buckets) {
@@ -150,8 +146,6 @@ class AssocUnique {
   ~AssocUnique() {
     for (auto& b : _buckets) {
       delete[] b._table;
-      b._table = nullptr;
-      b._nrAlloc = 0;
     }
   }
 
@@ -190,15 +184,15 @@ class AssocUnique {
     // entries
     static uint64_t const NotificationSizeThreshold = 131072;
 
-    LOG(TRACE) << "resizing index " << cb << ", target size: " << targetSize;
+    LOG(TRACE) << "resizing hash " << cb << ", target size: " << targetSize;
 
     double start = TRI_microtime();
     if (targetSize > NotificationSizeThreshold) {
       LOG_TOPIC(TRACE, Logger::PERFORMANCE) <<
-          "index-resize " << cb << ", target size: " << targetSize;
+          "hash-resize " << cb << ", target size: " << targetSize;
     }
 
-    Element** oldTable = b._table;
+    Element* oldTable = b._table;
     uint64_t oldAlloc = b._nrAlloc;
 
     TRI_ASSERT(targetSize > 0);
@@ -206,7 +200,7 @@ class AssocUnique {
     targetSize = TRI_NearPrime(targetSize);
 
     // This might throw, is catched outside
-    b._table = new Element*[static_cast<size_t>(targetSize)];
+    b._table = new Element[static_cast<size_t>(targetSize)]();
 
     b._nrAlloc = targetSize;
 
@@ -220,25 +214,22 @@ class AssocUnique {
                        TRI_MADVISE_RANDOM);
     }
 #endif
-    for (uint64_t i = 0; i < targetSize; i++) {
-      b._table[i] = nullptr;
-    }
 
     if (b._nrUsed > 0) {
       uint64_t const n = b._nrAlloc;
       TRI_ASSERT(n > 0);
 
       for (uint64_t j = 0; j < oldAlloc; j++) {
-        Element* element = oldTable[j];
+        Element const& element = oldTable[j];
 
-        if (element != nullptr) {
+        if (element) {
           uint64_t i, k;
           i = k = _hashElement(userData, element) % n;
 
-          for (; i < n && b._table[i] != nullptr; ++i)
+          for (; i < n && b._table[i]; ++i)
             ;
           if (i == n) {
-            for (i = 0; i < k && b._table[i] != nullptr; ++i)
+            for (i = 0; i < k && b._table[i]; ++i)
               ;
           }
 
@@ -249,9 +240,9 @@ class AssocUnique {
 
     delete[] oldTable;
 
-    LOG(TRACE) << "resizing index " << cb << " done";
+    LOG(TRACE) << "resizing hash " << cb << " done";
 
-    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::FIXED(TRI_microtime() - start) << " s, index-resize, " << cb << ", target size: " << targetSize;
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::FIXED(TRI_microtime() - start) << " s, hash-resize, " << cb << ", target size: " << targetSize;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -274,10 +265,10 @@ class AssocUnique {
   ///        Iterates using the given step size
   //////////////////////////////////////////////////////////////////////////////
 
-  Element* findElementSequentialBucketsRandom(
+  Element findElementSequentialBucketsRandom(
       UserData* userData, BucketPosition& position, uint64_t const step,
       BucketPosition const& initial) const {
-    Element* found;
+    Element found;
     Bucket b = _buckets[position.bucketId];
     do {
       found = b._table[position.position];
@@ -291,7 +282,7 @@ class AssocUnique {
         // We are done. Return the last element we have in hand
         return found;
       }
-    } while (found == nullptr);
+    } while (!found);
     return found;
   }
 
@@ -300,26 +291,26 @@ class AssocUnique {
   ///        This does not resize and expects to have enough space
   //////////////////////////////////////////////////////////////////////////////
 
-  int doInsert(UserData* userData, Element* element, Bucket& b, uint64_t hash) {
+  int doInsert(UserData* userData, Element const& element, Bucket& b, uint64_t hash) {
     uint64_t const n = b._nrAlloc;
     uint64_t i = hash % n;
     uint64_t k = i;
 
-    for (; i < n && b._table[i] != nullptr &&
+    for (; i < n && b._table[i] &&
                !_isEqualElementElementByKey(userData, element, b._table[i]);
          ++i)
       ;
     if (i == n) {
       for (i = 0;
-           i < k && b._table[i] != nullptr &&
+           i < k && b._table[i] &&
                !_isEqualElementElementByKey(userData, element, b._table[i]);
            ++i)
         ;
     }
 
-    Element* arrayElement = b._table[i];
+    Element const& arrayElement = b._table[i];
 
-    if (arrayElement != nullptr) {
+    if (arrayElement) {
       return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
     }
 
@@ -331,19 +322,14 @@ class AssocUnique {
 
  public:
   void truncate(CallbackElementFuncType callback) {
-    std::vector<Element**> empty;
+    std::vector<Element*> empty;
     empty.reserve(_buckets.size());
    
     try {
       uint64_t const nrAlloc = initialSize(); 
 
       for (size_t i = 0; i < _buckets.size(); ++i) {
-        auto newBucket = new Element*[static_cast<size_t>(nrAlloc)];
-
-        for (uint64_t j = 0; j < nrAlloc; ++j) {
-          newBucket[j] = nullptr;
-        }
-
+        auto newBucket = new Element[static_cast<size_t>(nrAlloc)]();
         empty.emplace_back(newBucket);
       }
 
@@ -393,7 +379,7 @@ class AssocUnique {
   size_t memoryUsage() const {
     size_t sum = 0;
     for (auto& b : _buckets) {
-      sum += static_cast<size_t>(b._nrAlloc * sizeof(Element*));
+      sum += static_cast<size_t>(b._nrAlloc * sizeof(Element));
     }
     return sum;
   }
@@ -451,7 +437,7 @@ class AssocUnique {
   /// @brief finds an element equal to the given element.
   //////////////////////////////////////////////////////////////////////////////
 
-  Element* find(UserData* userData, Element const* element) const {
+  Element find(UserData* userData, Element const& element) const {
     uint64_t i = _hashElement(userData, element);
     Bucket const& b = _buckets[i & _bucketsMask];
 
@@ -459,13 +445,13 @@ class AssocUnique {
     i = i % n;
     uint64_t k = i;
 
-    for (; i < n && b._table[i] != nullptr &&
+    for (; i < n && b._table[i] &&
                !_isEqualElementElementByKey(userData, element, b._table[i]);
          ++i)
       ;
     if (i == n) {
       for (i = 0;
-           i < k && b._table[i] != nullptr &&
+           i < k && b._table[i] &&
                !_isEqualElementElementByKey(userData, element, b._table[i]);
            ++i)
         ;
@@ -480,10 +466,11 @@ class AssocUnique {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief finds an element given a key, returns NULL if not found
+  /// @brief finds an element given a key, returns a default-constructed Element
+  /// if not found
   //////////////////////////////////////////////////////////////////////////////
 
-  Element* findByKey(UserData* userData, Key const* key) const {
+  Element findByKey(UserData* userData, Key const* key) const {
     uint64_t hash = _hashKey(userData, key);
     uint64_t i = hash;
     uint64_t bucketId = i & _bucketsMask;
@@ -493,12 +480,12 @@ class AssocUnique {
     i = i % n;
     uint64_t k = i;
 
-    for (; i < n && b._table[i] != nullptr &&
+    for (; i < n && b._table[i] &&
                !_isEqualKeyElement(userData, key, hash, b._table[i]);
          ++i)
       ;
     if (i == n) {
-      for (i = 0; i < k && b._table[i] != nullptr &&
+      for (i = 0; i < k && b._table[i] &&
                       !_isEqualKeyElement(userData, key, hash, b._table[i]);
            ++i)
         ;
@@ -511,15 +498,45 @@ class AssocUnique {
 
     return b._table[i];
   }
+  
+  Element* findByKeyRef(UserData* userData, Key const* key) const {
+    uint64_t hash = _hashKey(userData, key);
+    uint64_t i = hash;
+    uint64_t bucketId = i & _bucketsMask;
+    Bucket const& b = _buckets[static_cast<size_t>(bucketId)];
+
+    uint64_t const n = b._nrAlloc;
+    i = i % n;
+    uint64_t k = i;
+
+    for (; i < n && b._table[i] &&
+               !_isEqualKeyElement(userData, key, hash, b._table[i]);
+         ++i)
+      ;
+    if (i == n) {
+      for (i = 0; i < k && b._table[i] &&
+                      !_isEqualKeyElement(userData, key, hash, b._table[i]);
+           ++i)
+        ;
+    }
+
+    // ...........................................................................
+    // return whatever we found, this is nullptr if the thing was not found
+    // and otherwise a valid pointer
+    // ...........................................................................
+
+    return &b._table[i];
+  }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief finds an element given a key, returns NULL if not found
+  /// @brief finds an element given a key, returns a default-constructed Element
+  /// if not found
   /// also returns the internal hash value and the bucket position the element
   /// was found at (or would be placed into)
   //////////////////////////////////////////////////////////////////////////////
 
-  Element* findByKey(UserData* userData, Key const* key,
-                     BucketPosition& position, uint64_t& hash) const {
+  Element findByKey(UserData* userData, Key const* key,
+                    BucketPosition& position, uint64_t& hash) const {
     hash = _hashKey(userData, key);
     uint64_t i = hash;
     uint64_t bucketId = i & _bucketsMask;
@@ -529,12 +546,12 @@ class AssocUnique {
     i = i % n;
     uint64_t k = i;
 
-    for (; i < n && b._table[i] != nullptr &&
+    for (; i < n && b._table[i] &&
                !_isEqualKeyElement(userData, key, hash, b._table[i]);
          ++i)
       ;
     if (i == n) {
-      for (i = 0; i < k && b._table[i] != nullptr &&
+      for (i = 0; i < k && b._table[i] &&
                       !_isEqualKeyElement(userData, key, hash, b._table[i]);
            ++i)
         ;
@@ -557,7 +574,7 @@ class AssocUnique {
   /// @brief adds an element to the array
   //////////////////////////////////////////////////////////////////////////////
 
-  int insert(UserData* userData, Element* element) {
+  int insert(UserData* userData, Element const& element) {
     uint64_t hash = _hashElement(userData, element);
     Bucket& b = _buckets[hash & _bucketsMask];
 
@@ -578,12 +595,12 @@ class AssocUnique {
   /// inserted, but resizing afterwards failed!
   //////////////////////////////////////////////////////////////////////////////
 
-  int insertAtPosition(UserData* userData, Element* element,
+  int insertAtPosition(UserData* userData, Element const& element,
                        BucketPosition const& position) {
     Bucket& b = _buckets[position.bucketId];
-    Element* arrayElement = b._table[position.position];
+    Element const& arrayElement = b._table[position.position];
 
-    if (arrayElement != nullptr) {
+    if (arrayElement) {
       return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
     }
 
@@ -601,7 +618,9 @@ class AssocUnique {
   /// @brief adds multiple elements to the array
   //////////////////////////////////////////////////////////////////////////////
 
-  int batchInsert(UserData* userData, std::vector<Element*> const* data,
+  int batchInsert(std::function<void*()> const& contextCreator, 
+                  std::function<void(void*)> const& contextDestroyer,
+                  std::vector<Element> const* data,
                   size_t numThreads) {
     if (data->empty()) {
       // nothing to do
@@ -609,7 +628,7 @@ class AssocUnique {
     }
 
     std::atomic<int> res(TRI_ERROR_NO_ERROR);
-    std::vector<Element*> const& elements = *(data);
+    std::vector<Element> const& elements = *(data);
 
     if (elements.size() < numThreads) {
       numThreads = elements.size();
@@ -622,14 +641,14 @@ class AssocUnique {
 
     size_t const chunkSize = elements.size() / numThreads;
 
-    typedef std::vector<std::pair<Element*, uint64_t>> DocumentsPerBucket;
+    typedef std::vector<std::pair<Element, uint64_t>> DocumentsPerBucket;
     arangodb::Mutex bucketMapLocker;
 
     std::unordered_map<uint64_t, std::vector<DocumentsPerBucket>> allBuckets;
 
     // partition the work into some buckets
     {
-      auto partitioner = [&](size_t lower, size_t upper) -> void {
+      auto partitioner = [&](size_t lower, size_t upper, void* userData) -> void {
         try {
           std::unordered_map<uint64_t, DocumentsPerBucket> partitions;
 
@@ -660,8 +679,10 @@ class AssocUnique {
             (*it2).second.emplace_back(std::move(it.second));
           }
         } catch (...) {
-          res = TRI_ERROR_INTERNAL;
+          res = TRI_ERROR_OUT_OF_MEMORY;
         }
+
+        contextDestroyer(userData);
       };
 
       std::vector<std::thread> threads;
@@ -679,10 +700,10 @@ class AssocUnique {
             upper = elements.size();
           }
 
-          threads.emplace_back(std::thread(partitioner, lower, upper));
+          threads.emplace_back(std::thread(partitioner, lower, upper, contextCreator()));
         }
       } catch (...) {
-        res = TRI_ERROR_INTERNAL;
+        res = TRI_ERROR_OUT_OF_MEMORY;
       }
 
       for (size_t i = 0; i < threads.size(); ++i) {
@@ -699,7 +720,7 @@ class AssocUnique {
 
     // now insert the bucket data in parallel
     {
-      auto inserter = [&](size_t chunk) -> void {
+      auto inserter = [&](size_t chunk, void* userData) -> void {
         try {
           for (auto const& it : allBuckets) {
             uint64_t bucketId = it.first;
@@ -729,8 +750,10 @@ class AssocUnique {
             }
           }
         } catch (...) {
-          res = TRI_ERROR_INTERNAL;
+          res = TRI_ERROR_OUT_OF_MEMORY;
         }
+
+        contextDestroyer(userData);
       };
 
       std::vector<std::thread> threads;
@@ -738,10 +761,10 @@ class AssocUnique {
 
       try {
         for (size_t i = 0; i < numThreads; ++i) {
-          threads.emplace_back(std::thread(inserter, i));
+          threads.emplace_back(std::thread(inserter, i, contextCreator()));
         }
       } catch (...) {
-        res = TRI_ERROR_INTERNAL;
+        res = TRI_ERROR_OUT_OF_MEMORY;
       }
 
       for (size_t i = 0; i < threads.size(); ++i) {
@@ -752,12 +775,14 @@ class AssocUnique {
 
     if (res.load() != TRI_ERROR_NO_ERROR) {
       // Rollback such that the data can be deleted outside
+      void* userData = contextCreator();
       try {
         for (auto const& d : *data) {
           remove(userData, d);
         }
       } catch (...) {
       }
+      contextDestroyer(userData);
     }
     return res.load();
   }
@@ -772,7 +797,7 @@ class AssocUnique {
     // element structure
     // ...........................................................................
 
-    b._table[i] = nullptr;
+    b._table[i] = Element();
     b._nrUsed--;
 
     uint64_t const n = b._nrAlloc;
@@ -784,12 +809,12 @@ class AssocUnique {
 
     uint64_t k = TRI_IncModU64(i, n);
 
-    while (b._table[k] != nullptr) {
+    while (b._table[k]) {
       uint64_t j = _hashElement(userData, b._table[k]) % n;
 
       if ((i < k && !(i < j && j <= k)) || (k < i && !(i < j || j <= k))) {
         b._table[i] = b._table[k];
-        b._table[k] = nullptr;
+        b._table[k] = Element();
         i = k;
       }
 
@@ -807,7 +832,7 @@ class AssocUnique {
   /// was not found and the old value, if it was successfully removed
   //////////////////////////////////////////////////////////////////////////////
 
-  Element* removeByKey(UserData* userData, Key const* key) {
+  Element removeByKey(UserData* userData, Key const* key) {
     uint64_t hash = _hashKey(userData, key);
     uint64_t i = hash;
     Bucket& b = _buckets[i & _bucketsMask];
@@ -816,20 +841,20 @@ class AssocUnique {
     i = i % n;
     uint64_t k = i;
 
-    for (; i < n && b._table[i] != nullptr &&
+    for (; i < n && b._table[i] &&
                !_isEqualKeyElement(userData, key, hash, b._table[i]);
          ++i)
       ;
     if (i == n) {
-      for (i = 0; i < k && b._table[i] != nullptr &&
+      for (i = 0; i < k && b._table[i] &&
                       !_isEqualKeyElement(userData, key, hash, b._table[i]);
            ++i)
         ;
     }
 
-    Element* old = b._table[i];
+    Element old = b._table[i];
 
-    if (old != nullptr) {
+    if (old) {
       healHole(userData, b, i);
     }
     return old;
@@ -840,7 +865,7 @@ class AssocUnique {
   /// was not found and the old value, if it was successfully removed
   //////////////////////////////////////////////////////////////////////////////
 
-  Element* remove(UserData* userData, Element const* element) {
+  Element remove(UserData* userData, Element const& element) {
     uint64_t i = _hashElement(userData, element);
     Bucket& b = _buckets[i & _bucketsMask];
 
@@ -848,20 +873,20 @@ class AssocUnique {
     i = i % n;
     uint64_t k = i;
 
-    for (; i < n && b._table[i] != nullptr &&
+    for (; i < n && b._table[i] &&
                !_isEqualElementElement(userData, element, b._table[i]);
          ++i)
       ;
     if (i == n) {
-      for (i = 0; i < k && b._table[i] != nullptr &&
+      for (i = 0; i < k && b._table[i] &&
                       !_isEqualElementElement(userData, element, b._table[i]);
            ++i)
         ;
     }
 
-    Element* old = b._table[i];
+    Element old = b._table[i];
 
-    if (old != nullptr) {
+    if (old) {
       healHole(userData, b, i);
     }
 
@@ -885,7 +910,10 @@ class AssocUnique {
   /// can NOT be used for deleting elements
   bool invokeOnAllElements(CallbackElementFuncType const& callback, Bucket& b) {
     for (size_t i = 0; i < b._nrAlloc; ++i) {
-      if (b._table[i] == nullptr) {
+      if (!b._table[i] || b._nrUsed == 0) {
+        continue;
+      }
+      if (!b._table[i]) {
         continue;
       }
       if (!callback(b._table[i])) {
@@ -902,16 +930,15 @@ class AssocUnique {
 
   void invokeOnAllElementsForRemoval(CallbackElementFuncType callback) {
     for (auto& b : _buckets) {
-      if (b._table == nullptr) {
+      if (b._table == nullptr || b._nrUsed == 0) {
         continue;
       }
       for (size_t i = 0; i < b._nrAlloc; /* no hoisting */) {
-        if (b._table[i] == nullptr) {
+        if (!b._table[i]) {
           ++i;
           continue;
         }
-        // intentionally don't increment i
-        auto old = b._table[i];
+        Element old = b._table[i];
         if (!callback(b._table[i])) {
           return;
         }
@@ -934,12 +961,12 @@ class AssocUnique {
   ///        During a continue the total will not be modified.
   //////////////////////////////////////////////////////////////////////////////
 
-  Element* findSequential(UserData* userData, BucketPosition& position,
-                          uint64_t& total) const {
+  Element findSequential(UserData* userData, BucketPosition& position,
+                         uint64_t& total) const {
     if (position.bucketId >= _buckets.size()) {
       // bucket id is out of bounds. now handle edge cases
       if (position.bucketId < SIZE_MAX - 1) {
-        return nullptr;
+        return Element();
       }
 
       if (position.bucketId == SIZE_MAX) {
@@ -950,7 +977,7 @@ class AssocUnique {
         }
 
         if (total == 0) {
-          return nullptr;
+          return Element();
         }
 
         TRI_ASSERT(total > 0);
@@ -964,14 +991,13 @@ class AssocUnique {
       Bucket const& b = _buckets[position.bucketId];
       uint64_t const n = b._nrAlloc;
 
-      for (; position.position < n && b._table[position.position] == nullptr;
+      for (; position.position < n && !b._table[position.position];
            ++position.position)
         ;
 
       if (position.position != n) {
         // found an element
-        auto found = b._table[position.position];
-        TRI_ASSERT(found != nullptr);
+        Element found = b._table[position.position];
 
         // move forward the position indicator one more time
         if (++position.position == n) {
@@ -986,7 +1012,7 @@ class AssocUnique {
       position.position = 0;
       if (++position.bucketId >= _buckets.size()) {
         // Indicate we are done
-        return nullptr;
+        return Element();
       }
       // continue iteration with next bucket
     }
@@ -999,16 +1025,16 @@ class AssocUnique {
   ///        Convention: position === UINT64_MAX indicates a new start.
   //////////////////////////////////////////////////////////////////////////////
 
-  Element* findSequentialReverse(UserData* userData,
-                                 BucketPosition& position) const {
+  Element findSequentialReverse(UserData* userData,
+                                BucketPosition& position) const {
     if (position.bucketId >= _buckets.size()) {
       // bucket id is out of bounds. now handle edge cases
       if (position.bucketId < SIZE_MAX - 1) {
-        return nullptr;
+        return Element();
       }
 
       if (position.bucketId == SIZE_MAX && isEmpty()) {
-        return nullptr;
+        return Element();
       }
 
       position.bucketId = _buckets.size() - 1;
@@ -1016,7 +1042,7 @@ class AssocUnique {
     }
 
     Bucket b = _buckets[position.bucketId];
-    Element* found;
+    Element found;
     do {
       found = b._table[position.position];
 
@@ -1024,7 +1050,7 @@ class AssocUnique {
         if (position.bucketId == 0) {
           // Indicate we are done
           position.bucketId = _buckets.size();
-          return nullptr;
+          return Element();
         }
 
         --position.bucketId;
@@ -1033,7 +1059,7 @@ class AssocUnique {
       } else {
         --position.position;
       }
-    } while (found == nullptr);
+    } while (!found);
 
     return found;
   }
@@ -1045,12 +1071,12 @@ class AssocUnique {
   ///        Convention: *step === 0 indicates a new start.
   //////////////////////////////////////////////////////////////////////////////
 
-  Element* findRandom(UserData* userData, BucketPosition& initialPosition,
-                      BucketPosition& position, uint64_t& step,
-                      uint64_t& total) const {
+  Element findRandom(UserData* userData, BucketPosition& initialPosition,
+                     BucketPosition& position, uint64_t& step,
+                     uint64_t& total) const {
     if (step != 0 && position == initialPosition) {
       // already read all documents
-      return nullptr;
+      return Element();
     }
     if (step == 0) {
       // Initialize
@@ -1061,7 +1087,7 @@ class AssocUnique {
         used += b._nrUsed;
       }
       if (used == 0) {
-        return nullptr;
+        return Element();
       }
       TRI_ASSERT(total > 0);
 

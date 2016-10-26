@@ -105,7 +105,7 @@ rest::ResponseCode VocbaseContext::authenticate() {
       
       if (!username.empty() || !dbname.empty()) {
         AuthLevel level =
-            _authentication->authInfo()->canUseDatabase(username, dbname);
+            _authentication->canUseDatabase(username, dbname);
 
         if (level != AuthLevel::RW) {
           events::NotAuthorized(_request);

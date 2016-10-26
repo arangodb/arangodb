@@ -28,6 +28,7 @@
 #include "Aql/Query.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/CollectionNameResolver.h"
+#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/TraverserOptions.h"
 
 #include <velocypack/Iterator.h>
@@ -65,7 +66,7 @@ BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t* vocbase,
   if (vertexSlice.isNone() || !vertexSlice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "The " + SHARDS + " object requires an " + VERTICES + " attribute.");
+        "The " + SHARDS + " object requires a " + VERTICES + " attribute.");
   }
 
   // Add all Edge shards to the transaction
@@ -88,12 +89,13 @@ BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t* vocbase,
     }
     _vertexShards.emplace(collection.key.copyString(), shards);
   }
+  
+  auto params = std::make_shared<VPackBuilder>();
+  auto opts = std::make_shared<VPackBuilder>();
 
   _trx = new arangodb::AqlTransaction(
       arangodb::StandaloneTransactionContext::Create(vocbase),
       _collections.collections(), false);
-  auto params = std::make_shared<VPackBuilder>();
-  auto opts = std::make_shared<VPackBuilder>();
   _query = new aql::Query(true, vocbase, "", 0, params, opts, aql::PART_DEPENDENT);
   _query->injectTransaction(_trx);
 
@@ -134,9 +136,7 @@ BaseTraverserEngine::~BaseTraverserEngine() {
   if (_trx) {
     _trx->commit();
   }
-  if (_query != nullptr) {
-    delete _query;
-  }
+  delete _query;
 }
 
 void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder& builder) {
@@ -146,6 +146,7 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder
   size_t cursorId = 0;
   size_t read = 0;
   size_t filtered = 0;
+  ManagedDocumentResult mmdr(_trx);
   std::vector<VPackSlice> result;
   builder.openObject();
   builder.add(VPackValue("edges"));
@@ -154,8 +155,8 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder
     for (VPackSlice v : VPackArrayIterator(vertex)) {
       TRI_ASSERT(v.isString());
       result.clear();
-      auto edgeCursor = _opts->nextCursor(v, depth);
-      while(edgeCursor->next(result, cursorId)) {
+      auto edgeCursor = _opts->nextCursor(&mmdr, v, depth);
+      while (edgeCursor->next(result, cursorId)) {
         if (!_opts->evaluateEdgeExpression(result.back(), v, depth, cursorId)) {
           filtered++;
           result.pop_back();
@@ -167,9 +168,9 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder
       // Result now contains all valid edges, probably multiples.
     }
   } else if (vertex.isString()) {
-    std::unique_ptr<arangodb::traverser::EdgeCursor> edgeCursor(_opts->nextCursor(vertex, depth));
+    std::unique_ptr<arangodb::traverser::EdgeCursor> edgeCursor(_opts->nextCursor(&mmdr, vertex, depth));
 
-    while(edgeCursor->next(result, cursorId)) {
+    while (edgeCursor->next(result, cursorId)) {
       if (!_opts->evaluateEdgeExpression(result.back(), vertex, depth, cursorId)) {
         filtered++;
         result.pop_back();
@@ -209,7 +210,7 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder
     }
     builder.add(v);
     for (std::string const& shard : shards->second) {
-      int res = _trx->documentFastPath(shard, v, builder, false);
+      int res = _trx->documentFastPath(shard, nullptr, v, builder, false);
       if (res == TRI_ERROR_NO_ERROR) {
         found = true;
         // FOUND short circuit.
@@ -260,7 +261,7 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
     }
     builder.add(v);
     for (std::string const& shard : shards->second) {
-      int res = _trx->documentFastPath(shard, v, builder, false);
+      int res = _trx->documentFastPath(shard, nullptr, v, builder, false);
       if (res == TRI_ERROR_NO_ERROR) {
         read++;
         found = true;
@@ -323,7 +324,7 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t* vocbase,
   if (optsSlice.isNone() || !optsSlice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "The body requires a " + OPTIONS + " attribute.");
+        "The body requires an " + OPTIONS + " attribute.");
   }
   VPackSlice shardsSlice = info.get(SHARDS);
   VPackSlice edgesSlice = shardsSlice.get(EDGES);

@@ -59,6 +59,7 @@
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/LockfileFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/RevisionCacheFeature.h"
 #include "RestServer/ScriptFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/ServerIdFeature.h"
@@ -72,10 +73,9 @@
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/MMFilesEngine.h"
-#include "StorageEngine/OtherEngine.h"
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
-#include "VocBase/IndexPoolFeature.h"
+#include "VocBase/IndexThreadFeature.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/RecoveryFeature.h"
 
@@ -134,7 +134,7 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new FrontendFeature(&server));
   server.addFeature(new GeneralServerFeature(&server));
   server.addFeature(new GreetingsFeature(&server, "arangod"));
-  server.addFeature(new IndexPoolFeature(&server));
+  server.addFeature(new IndexThreadFeature(&server));
   server.addFeature(new InitDatabaseFeature(&server, nonServerFeatures));
   server.addFeature(new LanguageFeature(&server));
   server.addFeature(new LockfileFeature(&server));
@@ -148,6 +148,7 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new TraverserEngineRegistryFeature(&server));
   server.addFeature(new RandomFeature(&server));
   server.addFeature(new RecoveryFeature(&server));
+  server.addFeature(new RevisionCacheFeature(&server));
   server.addFeature(new RocksDBFeature(&server));
   server.addFeature(new SchedulerFeature(&server));
   server.addFeature(new ScriptFeature(&server, &ret));
@@ -185,8 +186,6 @@ static int runServer(int argc, char** argv) {
 
   // storage engines
   server.addFeature(new MMFilesEngine(&server));
-  server.addFeature(
-      new OtherEngine(&server));  // TODO: just for testing - remove this!
 
   try {
     server.run(argc, argv);

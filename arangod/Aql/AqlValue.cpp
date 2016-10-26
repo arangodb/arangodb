@@ -780,7 +780,7 @@ void AqlValue::toVelocyPack(Transaction* trx,
                             bool resolveExternals) const {
   switch (type()) {
     case VPACK_SLICE_POINTER:
-      if (!resolveExternals && isMasterPointer()) {
+      if (!resolveExternals && isManagedDocument()) {
         builder.addExternal(_data.pointer);
         break;
       }  // fallthrough intentional
@@ -849,9 +849,9 @@ AqlValue AqlValue::materialize(Transaction* trx, bool& hasCopied,
 AqlValue AqlValue::clone() const {
   switch (type()) {
     case VPACK_SLICE_POINTER: {
-      if (isMasterPointer()) {
-        // copy from master pointer. this will not copy the data
-        return AqlValue(_data.pointer, AqlValueFromMasterPointer());
+      if (isManagedDocument()) {
+        // copy from externally managed document. this will not copy the data
+        return AqlValue(_data.pointer, AqlValueFromManagedDocument());
       }
       // copy from regular pointer. this may copy the data
       return AqlValue(_data.pointer);

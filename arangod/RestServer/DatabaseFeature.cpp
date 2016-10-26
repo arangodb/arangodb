@@ -217,6 +217,7 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
       _defaultWaitForSync(false),
       _forceSyncProperties(true),
       _ignoreDatafileErrors(false),
+      _check30Revisions(true),
       _throwCollectionNotLoadedError(false),
       _vocbase(nullptr),
       _databasesLists(new DatabasesLists()),
@@ -231,7 +232,8 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   startsAfter("EngineSelector");
   startsAfter("LogfileManager");
   startsAfter("InitDatabase");
-  startsAfter("IndexPool");
+  startsAfter("IndexThread");
+  startsAfter("RevisionCache");
 }
 
 DatabaseFeature::~DatabaseFeature() {
@@ -276,6 +278,10 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--database.replication-applier",
       "switch to enable or disable the replication applier",
       new BooleanParameter(&_replicationApplier));
+  
+  options->addHiddenOption("--database.check-30-revisions",
+                           "check _rev values in collections created before 3.1",
+                           new BooleanParameter(&_check30Revisions));
 }
 
 void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -343,6 +349,24 @@ void DatabaseFeature::start() {
 
   // update all v8 contexts
   updateContexts();
+}
+
+// signal to all databases that active cursors can be wiped
+// this speeds up the actual shutdown because no waiting is necessary
+// until the cursors happen to free their underlying transactions
+void DatabaseFeature::beginShutdown() {
+  auto unuser(_databasesProtector.use());
+  auto theLists = _databasesLists.load();
+
+  for (auto& p : theLists->_databases) {
+    TRI_vocbase_t* vocbase = p.second;
+    // iterate over all databases
+    TRI_ASSERT(vocbase != nullptr);
+    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
+
+    // throw away all open cursors in order to speed up shutdown
+    vocbase->cursorRepository()->garbageCollect(true);
+  }
 }
 
 void DatabaseFeature::stop() {
@@ -822,7 +846,7 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
 
       auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>(
           "Authentication");
-      auto level = authentication->authInfo()->canUseDatabase(
+      auto level = authentication->canUseDatabase(
           username, vocbase->name());
 
       if (level == AuthLevel::NONE) {

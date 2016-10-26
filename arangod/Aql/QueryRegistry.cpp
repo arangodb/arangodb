@@ -21,11 +21,12 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/QueryRegistry.h"
+#include "QueryRegistry.h"
 #include "Logger/Logger.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/Query.h"
 
 using namespace arangodb::aql;
 

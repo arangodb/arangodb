@@ -26,9 +26,6 @@
 
 #include "AgencyCommon.h"
 
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
-
 #include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>
 

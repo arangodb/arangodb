@@ -429,6 +429,14 @@ module.exports =
       return module.exports;
     }
 
+    getScripts () {
+      const scripts = [];
+      for (const name of Object.keys(this.manifest.scripts)) {
+        scripts.push({name, title: getReadableName(name)});
+      }
+      return scripts;
+    }
+
     executeScript (name, argv) {
       var scripts = this.manifest.scripts;
       // Only run setup/teardown scripts if they exist

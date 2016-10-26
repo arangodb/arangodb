@@ -290,9 +290,8 @@ bool VppCommTask::processRead() {
       // check authentication
       std::string const& dbname = request->databaseName();
       AuthLevel level = AuthLevel::RW;
-      if (_authentication->isEnabled() &&
-          (!_authenticatedUser.empty() || !dbname.empty())) {
-        level = _authentication->authInfo()->canUseDatabase(
+      if (!_authenticatedUser.empty() || !dbname.empty()) {
+        level = _authentication->canUseDatabase(
             _authenticatedUser, dbname);
       }
 

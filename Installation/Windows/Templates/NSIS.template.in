@@ -600,6 +600,27 @@ Function WaitForServiceDown
     Goto try_again
 FunctionEnd
 
+Function un.WaitForServiceDown
+  Push 0
+  Pop $retryCount
+  try_again:
+    SimpleSC::ServiceIsRunning '${TRI_SVC_NAME}'
+    Pop $0 ; returns an errorcode (<>0) otherwise success (0)
+    Pop $1 ; returns 1 (service is running) - returns 0 (service is not running)
+    ${If} $1 == 0
+      ;MessageBox MB_OK "Service running : $retryCount "
+      ; ok, running now.
+      Return
+    ${EndIf}
+    Sleep 1000
+    ${If} $retryCount == 40
+      MessageBox MB_OK "Service shutdown waiting retry count reached; you may need to remove files by hand"
+      Return
+    ${EndIf}
+    IntOp $retryCount $retryCount + 1
+    Goto try_again
+FunctionEnd
+
 ;--------------------------------
 
 !ifdef CPACK_USES_DOWNLOAD
@@ -1211,7 +1232,7 @@ Section "Uninstall"
   StrCmp $1 '"$INSTDIR/${SBIN_DIR}/arangod.exe" --start-service' '' Done
   DetailPrint 'Shutting down Service'
   SimpleSC::StopService  '${TRI_SVC_NAME}' 0 30
-  Call WaitForServiceDown
+  Call un.WaitForServiceDown
   SimpleSC::RemoveService  '${TRI_SVC_NAME}'
   Pop $0 ; returns an errorcode (<>0) otherwise success (0)
   IntCmp $0 0 Done +1 +1

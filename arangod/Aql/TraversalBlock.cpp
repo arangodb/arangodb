@@ -36,7 +36,6 @@
 #include "Utils/OperationCursor.h"
 #include "Utils/Transaction.h"
 #include "V8/v8-globals.h"
-#include "VocBase/MasterPointer.h"
 #include "VocBase/SingleServerTraverser.h"
 #include "VocBase/ticks.h"
 
@@ -68,6 +67,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
   }
 
   _opts = ep->options();
+  _mmdr.reset(new ManagedDocumentResult(_trx));
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
 #ifdef USE_ENTERPRISE
@@ -75,6 +75,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
     if (node->isSmart()) {
       _traverser.reset(new arangodb::traverser::SmartGraphTraverser(
           _opts,
+          _mmdr.get(),
           ep->engines(),
           _trx->vocbase()->name(),
           _trx));
@@ -82,6 +83,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
 #endif
       _traverser.reset(new arangodb::traverser::ClusterTraverser(
           _opts,
+          _mmdr.get(),
           ep->engines(),
           _trx->vocbase()->name(),
           _trx));
@@ -90,7 +92,13 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
 #endif
   } else {
     _traverser.reset(
-        new arangodb::traverser::SingleServerTraverser(_opts, _trx));
+        new arangodb::traverser::SingleServerTraverser(_opts, _trx, _mmdr.get()));
+  }
+  if (!ep->usesEdgeOutVariable() && !ep->usesPathOutVariable() &&
+      _opts->useBreadthFirst &&
+      _opts->uniqueVertices ==
+          traverser::TraverserOptions::UniquenessLevel::GLOBAL) {
+    _traverser->allowOptimizedNeighbors();
   }
   if (!ep->usesInVariable()) {
     _vertexId = ep->getStartVertex();
@@ -115,7 +123,6 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
   if (arangodb::ServerState::instance()->isCoordinator()) {
     _engines = ep->engines();
   }
-
 }
 
 TraversalBlock::~TraversalBlock() {

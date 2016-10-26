@@ -69,7 +69,7 @@ State::State(std::string const& endpoint)
 /// Default dtor
 State::~State() {}
 
-inline std::string stringify(arangodb::consensus::index_t index) {
+inline static std::string stringify(arangodb::consensus::index_t index) {
   std::ostringstream i_str;
   i_str << std::setw(20) << std::setfill('0') << index;
   return i_str.str();
@@ -77,20 +77,20 @@ inline std::string stringify(arangodb::consensus::index_t index) {
 
 /// Persist one entry
 bool State::persist(arangodb::consensus::index_t index, term_t term,
-                    arangodb::velocypack::Slice const& entry) {
+                    arangodb::velocypack::Slice const& entry) const {
   Builder body;
   body.add(VPackValue(VPackValueType::Object));
   body.add("_key", Value(stringify(index)));
   body.add("term", Value(term));
   body.add("request", entry);
   body.close();
-
+  
   TRI_ASSERT(_vocbase != nullptr);
   auto transactionContext =
-      std::make_shared<StandaloneTransactionContext>(_vocbase);
+    std::make_shared<StandaloneTransactionContext>(_vocbase);
   SingleCollectionTransaction trx(transactionContext, "log",
                                   TRI_TRANSACTION_WRITE);
-
+  
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -132,6 +132,7 @@ std::vector<arangodb::consensus::index_t> State::log(
       std::shared_ptr<Buffer<uint8_t>> buf =
           std::make_shared<Buffer<uint8_t>>();
       buf->append((char const*)i[0].begin(), i[0].byteSize());
+      TRI_ASSERT(!_log.empty()); // log must not ever be empty
       idx[j] = _log.back().index + 1;
       _log.push_back(log_t(idx[j], term, buf));  // log to RAM
       persist(idx[j], term, i[0]);               // log to disk
@@ -178,7 +179,7 @@ arangodb::consensus::index_t State::log(query_t const& transactions,
   return _log.back().index;
 }
 
-size_t State::removeConflicts(query_t const& transactions) {
+size_t State::removeConflicts(query_t const& transactions) { // Under MUTEX in Agent
   VPackSlice slices = transactions->slice();
   TRI_ASSERT(slices.isArray());
   size_t ndups = 0;
@@ -189,6 +190,7 @@ size_t State::removeConflicts(query_t const& transactions) {
     bindVars->close();
 
     try {
+      MUTEX_LOCKER(logLock, _logLock);
       auto idx = slices[0].get("index").getUInt();
       auto pos = idx - _cur;
 
@@ -224,11 +226,8 @@ size_t State::removeConflicts(query_t const& transactions) {
               queryResult.result->slice();
 
               // volatile logs
-              {
-                MUTEX_LOCKER(mutexLocker, _logLock);
-                _log.erase(_log.begin() + pos, _log.end());
-              }
-
+              _log.erase(_log.begin() + pos, _log.end());
+              
               break;
 
             } else {
@@ -250,7 +249,7 @@ size_t State::removeConflicts(query_t const& transactions) {
 std::vector<log_t> State::get(arangodb::consensus::index_t start,
                               arangodb::consensus::index_t end) const {
   std::vector<log_t> entries;
-  MUTEX_LOCKER(mutexLocker, _logLock);
+  MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
 
   if (_log.empty()) {
     return entries;
@@ -275,7 +274,7 @@ std::vector<log_t> State::get(arangodb::consensus::index_t start,
 std::vector<VPackSlice> State::slices(arangodb::consensus::index_t start,
                                       arangodb::consensus::index_t end) const {
   std::vector<VPackSlice> slices;
-  MUTEX_LOCKER(mutexLocker, _logLock);
+  MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
 
   if (_log.empty()) {
     return slices;
@@ -308,7 +307,7 @@ std::vector<VPackSlice> State::slices(arangodb::consensus::index_t start,
 /// Get log entry by log index, copy entry because we do no longer have the
 /// lock after the return
 log_t State::operator[](arangodb::consensus::index_t index) const {
-  MUTEX_LOCKER(mutexLocker, _logLock);
+  MUTEX_LOCKER(mutexLocker, _logLock);  // Cannot be read lock (Compaction)
   TRI_ASSERT(index - _cur < _log.size());
   return _log.at(index - _cur);
 }
@@ -316,7 +315,7 @@ log_t State::operator[](arangodb::consensus::index_t index) const {
 /// Get last log entry, copy entry because we do no longer have the lock
 /// after the return
 log_t State::lastLog() const {
-  MUTEX_LOCKER(mutexLocker, _logLock);
+  MUTEX_LOCKER(mutexLocker, _logLock);  // Cannot be read lock (Compaction)
   TRI_ASSERT(!_log.empty());
   return _log.back();
 }
@@ -385,6 +384,7 @@ std::ostream& operator<<(std::ostream& o, std::deque<T> const& d) {
 /// Load collections
 bool State::loadCollections(TRI_vocbase_t* vocbase,
                             QueryRegistry* queryRegistry, bool waitForSync) {
+
   _vocbase = vocbase;
   _queryRegistry = queryRegistry;
 
@@ -394,6 +394,7 @@ bool State::loadCollections(TRI_vocbase_t* vocbase,
   _options.silent = true;
 
   if (loadPersisted()) {
+    MUTEX_LOCKER(logLock, _logLock);
     if (_log.empty()) {
       std::shared_ptr<Buffer<uint8_t>> buf =
           std::make_shared<Buffer<uint8_t>>();
@@ -436,7 +437,6 @@ bool State::loadCompacted() {
 
   std::string const aql(
       std::string("FOR c IN compact SORT c._key DESC LIMIT 1 RETURN c"));
-
   arangodb::aql::Query query(false, _vocbase, aql.c_str(), aql.size(), bindVars,
                              nullptr, arangodb::aql::PART_MAIN);
 
@@ -449,6 +449,7 @@ bool State::loadCompacted() {
   VPackSlice result = queryResult.result->slice();
 
   if (result.isArray() && result.length()) {
+    MUTEX_LOCKER(logLock, _logLock);
     for (auto const& i : VPackArrayIterator(result)) {
       buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
       (*_agent) = i;
@@ -557,6 +558,7 @@ bool State::loadRemaining() {
 
   auto result = queryResult.result->slice();
 
+  MUTEX_LOCKER(logLock, _logLock);
   if (result.isArray()) {
     _log.clear();
     for (auto const& i : VPackArrayIterator(result)) {
@@ -578,6 +580,7 @@ bool State::loadRemaining() {
   }
 
   _agent->rebuildDBs();
+  TRI_ASSERT(!_log.empty());
   _agent->lastCommitted(_log.back().index);
 
   return true;
@@ -614,8 +617,8 @@ bool State::compact(arangodb::consensus::index_t cind) {
 
 /// Compact volatile state
 bool State::compactVolatile(arangodb::consensus::index_t cind) {
+  MUTEX_LOCKER(mutexLocker, _logLock);
   if (!_log.empty() && cind > _cur && cind - _cur < _log.size()) {
-    MUTEX_LOCKER(mutexLocker, _logLock);
     _log.erase(_log.begin(), _log.begin() + (cind - _cur));
     _cur = _log.begin()->index;
   }

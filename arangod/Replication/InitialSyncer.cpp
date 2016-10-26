@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/Index.h"
@@ -37,6 +38,7 @@
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -54,7 +56,7 @@ using namespace arangodb::rest;
 /// @brief performs a binary search for the given key in the markers vector
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool BinarySearch(std::vector<void const*> const& markers,
+static bool BinarySearch(std::vector<uint8_t const*> const& markers,
                          std::string const& key, size_t& position) {
   TRI_ASSERT(!markers.empty());
 
@@ -66,7 +68,7 @@ static bool BinarySearch(std::vector<void const*> const& markers,
     position = l + ((r - l) / 2);
 
     TRI_ASSERT(position < markers.size());
-    VPackSlice const otherSlice(reinterpret_cast<char const*>(markers.at(position)));
+    VPackSlice const otherSlice(markers.at(position));
     VPackSlice const otherKey = otherSlice.get(StaticStrings::KeyString);
 
     int res = key.compare(otherKey.copyString());
@@ -94,7 +96,7 @@ static bool BinarySearch(std::vector<void const*> const& markers,
 /// @brief finds a key range in the markers vector
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool FindRange(std::vector<void const*> const& markers,
+static bool FindRange(std::vector<uint8_t const*> const& markers,
                       std::string const& lower, std::string const& upper,
                       size_t& lowerPos, size_t& upperPos) {
   bool found = false;
@@ -827,7 +829,7 @@ int InitialSyncer::handleCollectionSync(
   std::string const baseUrl = BaseUrl + "/keys";
   std::string url =
       baseUrl + "?collection=" + cid + "&to=" + std::to_string(maxTick);
-
+  
   std::string progress = "fetching collection keys for collection '" +
                          collectionName + "' from " + url;
   setProgress(progress);
@@ -1027,7 +1029,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
   setProgress(progress);
 
   // fetch all local keys from primary index
-  std::vector<void const*> markers;
+  std::vector<uint8_t const*> markers;
     
   DocumentDitch* ditch = nullptr;
 
@@ -1071,12 +1073,15 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
     markers.reserve(idx->size());
 
     uint64_t iterations = 0;
-    trx.invokeOnAllElements(trx.name(), [this, &markers, &iterations](TRI_doc_mptr_t const* mptr) {
-      markers.emplace_back(mptr->vpack());
-      
-      if (++iterations % 10000 == 0) {
-        if (checkAborted()) {
-          return false;
+    ManagedDocumentResult mmdr(&trx);
+    trx.invokeOnAllElements(trx.name(), [this, &trx, &mmdr, &markers, &iterations, &idx](SimpleIndexElement const& element) {
+      if (idx->collection()->readRevision(&trx, mmdr, element.revisionId())) {
+        markers.emplace_back(mmdr.vpack());
+        
+        if (++iterations % 10000 == 0) {
+          if (checkAborted()) {
+            return false;
+          }
         }
       }
       return true;
@@ -1097,9 +1102,9 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
     // sort all our local keys
     std::sort(
         markers.begin(), markers.end(),
-        [](void const* lhs, void const* rhs) -> bool {
-          VPackSlice const l(reinterpret_cast<char const*>(lhs));
-          VPackSlice const r(reinterpret_cast<char const*>(rhs));
+        [](uint8_t const* lhs, uint8_t const* rhs) -> bool {
+          VPackSlice const l(lhs);
+          VPackSlice const r(rhs);
 
           VPackValueLength lLength, rLength;
           char const* lKey = l.get(StaticStrings::KeyString).getString(lLength);
@@ -1210,7 +1215,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
     std::string const lowKey(lowSlice.copyString());
       
     for (size_t i = 0; i < markers.size(); ++i) {
-      VPackSlice const k(reinterpret_cast<char const*>(markers[i]));
+      VPackSlice const k(markers[i]);
      
       std::string const key(k.get(StaticStrings::KeyString).copyString());
 
@@ -1236,7 +1241,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
     std::string const highKey(highSlice.copyString());
 
     for (size_t i = markers.size(); i >= 1; --i) {
-      VPackSlice const k(reinterpret_cast<char const*>(markers[i - 1]));
+      VPackSlice const k(markers[i - 1]);
 
       std::string const key(k.get(StaticStrings::KeyString).copyString());
 
@@ -1324,8 +1329,8 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
 
       for (size_t i = localFrom; i <= localTo; ++i) {
         TRI_ASSERT(i < markers.size());
-        VPackSlice const current(reinterpret_cast<char const*>(markers.at(i)));
-        hash ^= current.get(StaticStrings::KeyString).hash();
+        VPackSlice const current(markers.at(i));
+        hash ^= current.get(StaticStrings::KeyString).hashString();
         hash ^= current.get(StaticStrings::RevString).hash();
       }
 
@@ -1392,7 +1397,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
 
       // delete all keys at start of the range
       while (nextStart < markers.size()) {
-        VPackSlice const keySlice(reinterpret_cast<char const*>(markers[nextStart]));
+        VPackSlice const keySlice(markers[nextStart]);
         std::string const localKey(keySlice.get(StaticStrings::KeyString).copyString());
 
         if (localKey.compare(lowString) < 0) {
@@ -1446,7 +1451,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
         std::string const keyString = keySlice.copyString();
 
         while (nextStart < markers.size()) {
-          VPackSlice const localKeySlice(reinterpret_cast<char const*>(markers[nextStart]));
+          VPackSlice const localKeySlice(markers[nextStart]);
           std::string const localKey(localKeySlice.get(StaticStrings::KeyString).copyString());
 
           int res = localKey.compare(keyString);
@@ -1466,12 +1471,12 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
           }
         }
 
-        auto mptr = idx->lookupKey(&trx, keySlice);
+        SimpleIndexElement element = idx->lookupKey(&trx, keySlice);
 
-        if (mptr == nullptr) {
+        if (!element) {
           // key not found locally
           toFetch.emplace_back(i);
-        } else if (std::to_string(mptr->revisionId()) != pair.at(1).copyString()) {
+        } else if (TRI_RidToString(element.revisionId()) != pair.at(1).copyString()) {
           // key found, but revision id differs
           toFetch.emplace_back(i);
           ++nextStart;
@@ -1486,7 +1491,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
         BinarySearch(markers, highString, nextStart);
 
         while (nextStart < markers.size()) {
-          VPackSlice const localKeySlice(reinterpret_cast<char const*>(markers[nextStart]));
+          VPackSlice const localKeySlice(markers[nextStart]);
           std::string const localKey(localKeySlice.get(StaticStrings::KeyString).copyString());
           
           int res = localKey.compare(highString);
@@ -1589,9 +1594,9 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
             return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
           }
 
-          auto mptr = idx->lookupKey(&trx, keySlice);
+          SimpleIndexElement element = idx->lookupKey(&trx, keySlice);
 
-          if (mptr == nullptr) {
+          if (!element) {
             // INSERT
             OperationResult opRes = trx.insert(collectionName, it, options);
             res = opRes.code;

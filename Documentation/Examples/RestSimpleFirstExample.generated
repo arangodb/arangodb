@@ -12,9 +12,13 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 { 
   <span class="hljs-string">"document"</span> : { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10550"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10550"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_T52D_hq---"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10571"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10571"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_U-_qVRy---"</span>, 
+    <span class="hljs-string">"a"</span> : { 
+      <span class="hljs-string">"k"</span> : <span class="hljs-number">1</span>, 
+      <span class="hljs-string">"j"</span> : <span class="hljs-number">1</span> 
+    }, 
     <span class="hljs-string">"i"</span> : <span class="hljs-number">1</span> 
   }, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 

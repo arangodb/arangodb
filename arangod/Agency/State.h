@@ -117,7 +117,7 @@ class State {
  private:
   /// @brief Save currentTerm, votedFor, log entries
   bool persist(index_t index, term_t term,
-               arangodb::velocypack::Slice const& entry);
+               arangodb::velocypack::Slice const& entry) const;
 
   bool saveCompacted();
 
@@ -157,7 +157,10 @@ class State {
   /// @brief Our vocbase
   TRI_vocbase_t* _vocbase;
 
-  mutable arangodb::Mutex _logLock; /**< @brief Mutex for modifying _log */
+  /**< @brief Mutex for modifying
+     _log & _cur
+  */
+  mutable arangodb::Mutex _logLock; 
   std::deque<log_t> _log;           /**< @brief  State entries */
   std::string _endpoint;            /**< @brief persistence end point */
   bool _collectionsChecked;         /**< @brief Collections checked */
@@ -165,9 +168,6 @@ class State {
 
   /// @brief Our query registry
   aql::QueryRegistry* _queryRegistry;
-
-  /// @brief Compaction step
-  size_t _compaction_step;
 
   /// @brief Current log offset
   size_t _cur;

@@ -2,12 +2,18 @@
 @startDocuBlock JSF_delete_api_collection
 @brief drops a collection
 
-@RESTHEADER{DELETE /_api/collection/{collection-name}, Drops collection}
+@RESTHEADER{DELETE /_api/collection/{collection-name}, Drops a collection}
 
 @RESTURLPARAMETERS
 
 @RESTURLPARAM{collection-name,string,required}
 The name of the collection to drop.
+
+@RESTQUERYPARAMETERS
+
+@RESTQUERYPARAM{isSystem,bool,optional}
+Whether or not the collection to drop is a system collection. This parameter
+must be set to *true* in order to drop a system collection.
 
 @RESTDESCRIPTION
 Drops the collection identified by *collection-name*.
@@ -60,5 +66,22 @@ Using a name:
 
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
+
+Dropping a system collection
+
+@EXAMPLE_ARANGOSH_RUN{RestCollectionDeleteCollectionSystem}
+    var cn = "_example";
+    db._drop(cn, { isSystem: true });
+    db._create(cn, { isSystem: true });
+    var url = "/_api/collection/_example?isSystem=true";
+
+    var response = logCurlRequest('DELETE', url);
+    db[cn] = undefined;
+
+    assert(response.code === 200);
+
+    logJsonResponse(response);
+@END_EXAMPLE_ARANGOSH_RUN
+
 @endDocuBlock
 

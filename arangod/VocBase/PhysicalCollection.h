@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H
@@ -32,7 +32,6 @@
 
 struct TRI_datafile_t;
 struct TRI_df_marker_t;
-struct TRI_doc_mptr_t;
 
 namespace arangodb {
 class Ditches;
@@ -68,20 +67,11 @@ class PhysicalCollection {
                                 std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) = 0;
 
   /// @brief increase dead stats for a datafile, if it exists
-  virtual void increaseDeadStats(TRI_voc_fid_t fid, int64_t number, int64_t size) = 0;
-  
-  /// @brief increase dead stats for a datafile, if it exists
   virtual void updateStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) = 0;
-  
+      
   /// @brief report extra memory used by indexes etc.
   virtual size_t memory() const = 0;
     
-  /// @brief order a new master pointer
-  virtual TRI_doc_mptr_t* requestMasterpointer() = 0; 
-  
-  /// @brief release an existing master pointer
-  virtual void releaseMasterpointer(TRI_doc_mptr_t* mptr) = 0;
-
   /// @brief disallow compaction of the collection 
   /// after this call it is guaranteed that no compaction will be started until allowCompaction() is called
   virtual void preventCompaction() = 0;
@@ -105,6 +95,13 @@ class PhysicalCollection {
 
   /// @brief iterate all markers of a collection on load
   virtual int iterateMarkersOnLoad(arangodb::Transaction* trx) = 0;
+  
+  virtual uint8_t const* lookupRevisionVPack(TRI_voc_rid_t revisionId) const = 0;
+  virtual uint8_t const* lookupRevisionVPackConditional(TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal) const = 0;
+  virtual void insertRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal) = 0;
+  virtual void updateRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal) = 0;
+  virtual bool updateRevisionConditional(TRI_voc_rid_t revisionId, TRI_df_marker_t const* oldPosition, TRI_df_marker_t const* newPosition, TRI_voc_fid_t newFid, bool isInWal) = 0;
+  virtual void removeRevision(TRI_voc_rid_t revisionId, bool updateStats) = 0;
   
  protected:
   LogicalCollection* _logicalCollection;

@@ -787,7 +787,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
   // .........................................................................
   // cookies
   // .........................................................................
-  HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
+  
   TRI_GET_GLOBAL_STRING(CookiesKey);
   if (res->Has(CookiesKey)) {
     v8::Handle<v8::Value> val = res->Get(CookiesKey);
@@ -795,6 +795,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
 
     switch (response->transportType()) {
       case Endpoint::TransportType::HTTP: {
+        HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
         if (v8Cookies->IsArray()) {
           v8::Handle<v8::Array> v8Array = v8Cookies.As<v8::Array>();
 

@@ -28,6 +28,40 @@ the communication layer. ArangoDB starting from 3.1 uses
 A few options have changed concerning communication, please checkout
 [Incompatible changes in 3.1](ReleaseNotes/UpgradingChanges31.html).
 
+!SECTION Cluster
+
+For its internal cluster communication a (bundled version) of curl is now being
+used. This enables asynchronous operation throughout the cluster and should
+improve general performance slightly.
+
+Authentication is now supported within the cluster.
+
+
+!SECTION Document revisions cache
+
+The ArangoDB server now provides an in-memory cache for frequently accessed 
+document revisions. Documents that are accessed during read/write operations 
+are loaded into the revisions cache automatically, and subsequently served from 
+there.
+
+The cache has a total target size, which can be controlled with the startup
+option `--database.revision-cache-target-size`. Once the cache reaches the
+target size, older entries may be evicted from the cache to free memory. Note that
+the target size currently is a high water mark that will trigger cache memory
+garbage collection if exceeded. However, if all cache chunks are still in use
+when the high water mark is reached, the cache may still grow and allocate more
+chunks until cache entries become unused and are allowed to be garbage-collected.
+
+The cache is maintained on a per-collection basis, that is, memory for the cache 
+is allocated on a per-collection basis in chunks. The size for the cache memory
+chunks can be controlled via the startup option `--database.revision-cache-chunk-size`.
+The default value is 4 MB per chunk.
+Bigger chunk sizes allow saving more documents per chunk, which can lead to more 
+efficient chunk allocation and lookups, but will also lead to memory waste if many 
+chunks are allocated and not fully used. The latter will be the case if there exist 
+many small collections which all allocate their own chunks but not fully utilize them 
+because of the low number of documents.
+
 
 !SECTION AQL
 
@@ -106,6 +140,11 @@ was used multiple times, the condition was not injected as in the following quer
 The performance of the `[*]` operator was improved for cases in which this operator
 did not use any filters, projections and/or offset/limits.
 
+The AQL query executor can now report the time required for loading and locking the
+collections used in an AQL query. When profiling is enabled, it will report the total 
+loading and locking time for the query in the `loading collections` sub-attribute of the 
+`extra.profile` value of the result. The loading and locking time can also be view in the
+AQL query editor in the web interface.
 
 !SECTION Audit Log
 
@@ -118,9 +157,6 @@ Added option `--skip-lines` for arangoimp
 This allows skipping the first few lines from the import file in case the CSV or TSV 
 import are used and some initial lines should be skipped from the input.
 
-- array destructuring
-- numeric and object literals
-
 !SECTION Web Admin Interface
 
 The usability of the AQL editor significantly improved. In addition to the standard JSON
@@ -132,4 +168,13 @@ Viewer is based on Canvas but does also include a first WebGL implementation (li
 functionality - will change in the future). The new Graph Viewer offers a smooth way to
 discover and visualize your graphs.
 
-The shard view in cluster mode now displays a progress indicator while moving shards. 
+The shard view in cluster mode now displays a progress indicator while moving shards.
+
+!SECTION Authentication
+
+Up to arangodb 3.0 authentication was only possible using basic authentication.
+
+Alternatively it is now possible to use a JWT for authenticating a request.
+
+For details check the HTTP authentication chapter. Both authentication methods are
+valid and will be supported in the near future. Use whatever suits you best.

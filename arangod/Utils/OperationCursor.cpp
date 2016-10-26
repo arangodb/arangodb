@@ -25,7 +25,8 @@
 #include "OperationResult.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
-#include "VocBase/MasterPointer.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 using namespace arangodb;
 
@@ -71,20 +72,26 @@ void OperationCursor::getMore(std::shared_ptr<OperationResult>& opRes,
   if (batchSize == UINT64_MAX) {
     batchSize = _batchSize;
   }
-  
+ 
+  LogicalCollection* collection = _indexIterator->collection(); 
+  Transaction* trx = _indexIterator->transaction();
+  ManagedDocumentResult mmdr(trx); // TODO 
   VPackBuilder builder(opRes->buffer);
   builder.clear();
   try {
     VPackArrayBuilder guard(&builder);
-    TRI_doc_mptr_t* mptr = nullptr;
+    IndexLookupResult element;
     // TODO: Improve this for baby awareness
-    while (batchSize > 0 && _limit > 0 && (mptr = _indexIterator->next()) != nullptr) {
+    while (batchSize > 0 && _limit > 0 && (element = _indexIterator->next())) {
       --batchSize;
       --_limit;
-      if (useExternals) {
-        builder.addExternal(mptr->vpack());
-      } else {
-        builder.add(VPackSlice(mptr->vpack()));
+      TRI_voc_rid_t revisionId = element.revisionId();
+      if (collection->readRevision(trx, mmdr, revisionId)) {
+        if (useExternals) {
+          builder.addExternal(mmdr.vpack());
+        } else {
+          builder.add(VPackSlice(mmdr.vpack()));
+        }
       }
     }
     if (batchSize > 0 || _limit == 0) {
@@ -104,8 +111,8 @@ void OperationCursor::getMore(std::shared_ptr<OperationResult>& opRes,
 ///        NOTE: This will throw on OUT_OF_MEMORY
 //////////////////////////////////////////////////////////////////////////////
 
-std::vector<TRI_doc_mptr_t*> OperationCursor::getMoreMptr(uint64_t batchSize) {
-  std::vector<TRI_doc_mptr_t*> res;
+std::vector<IndexLookupResult> OperationCursor::getMoreMptr(uint64_t batchSize) {
+  std::vector<IndexLookupResult> res;
   getMoreMptr(res, batchSize);
   return res;
 }
@@ -119,7 +126,7 @@ std::vector<TRI_doc_mptr_t*> OperationCursor::getMoreMptr(uint64_t batchSize) {
 ///              The caller shall NOT modify it.
 //////////////////////////////////////////////////////////////////////////////
 
-void OperationCursor::getMoreMptr(std::vector<TRI_doc_mptr_t*>& result,
+void OperationCursor::getMoreMptr(std::vector<IndexLookupResult>& result,
                                   uint64_t batchSize) {
   if (!hasMore()) {
     TRI_ASSERT(false);

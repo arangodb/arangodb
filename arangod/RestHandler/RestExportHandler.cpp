@@ -217,6 +217,7 @@ void RestExportHandler::createCursor() {
   } else {
     // create an empty options object
     optionsBuilder.openObject();
+    optionsBuilder.close();
   }
 
   VPackSlice options = optionsBuilder.slice();

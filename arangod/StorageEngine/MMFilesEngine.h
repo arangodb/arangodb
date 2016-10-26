@@ -339,7 +339,6 @@ class MMFilesEngine final : public StorageEngine {
  private:
   std::string _basePath;
   std::string _databasePath;
-  bool _iterateMarkersOnOpen;
   bool _isUpgrade;
   TRI_voc_tick_t _maxTick;
   std::vector<std::pair<std::string, std::string>> _deleted;

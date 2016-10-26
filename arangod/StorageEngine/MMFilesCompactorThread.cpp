@@ -33,6 +33,7 @@
 #include "Indexes/PrimaryIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/MMFilesCollection.h"
+#include "StorageEngine/MMFilesDocumentPosition.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
@@ -275,8 +276,14 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
 
         // check if the document is still active
         auto primaryIndex = collection->primaryIndex();
-        auto found = primaryIndex->lookupKey(context._trx, keySlice);
-        bool deleted = (found == nullptr || marker != found->getMarkerPtr());
+        TRI_df_marker_t const* markerPtr = nullptr;
+        SimpleIndexElement element = primaryIndex->lookupKey(context._trx, keySlice);
+        if (element) {
+          MMFilesDocumentPosition const old = static_cast<MMFilesCollection*>(collection->getPhysical())->lookupRevision(element.revisionId());
+          markerPtr = reinterpret_cast<TRI_df_marker_t const*>(static_cast<uint8_t const*>(old.dataptr()) - arangodb::DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+        }
+
+        bool deleted = (markerPtr == nullptr || marker != markerPtr);
 
         if (deleted) {
           return true;
@@ -358,8 +365,14 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
       // check if the document is still active
       auto primaryIndex = collection->primaryIndex();
-      auto found = primaryIndex->lookupKey(context->_trx, keySlice);
-      bool deleted = (found == nullptr || marker != found->getMarkerPtr());
+      TRI_df_marker_t const* markerPtr = nullptr;
+      SimpleIndexElement element = primaryIndex->lookupKey(context->_trx, keySlice);
+      if (element) {
+        MMFilesDocumentPosition const old = static_cast<MMFilesCollection*>(collection->getPhysical())->lookupRevision(element.revisionId());
+        markerPtr = reinterpret_cast<TRI_df_marker_t const*>(static_cast<uint8_t const*>(old.dataptr()) - arangodb::DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+      }
+        
+      bool deleted = (markerPtr == nullptr || marker != markerPtr);
 
       if (deleted) {
         // found a dead document
@@ -380,16 +393,9 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
         FATAL_ERROR_EXIT();
       }
 
-      TRI_doc_mptr_t* found2 = const_cast<TRI_doc_mptr_t*>(found);
-      TRI_ASSERT(found2->vpack() != nullptr);
-      TRI_ASSERT(found2->vpackSize() > 0);
-
       // let marker point to the new position
-      found2->setVPackFromMarker(result);
-      // update fid in case it changes
-      if (found2->getFid() != targetFid) {
-        found2->setFid(targetFid, false);
-      }
+      uint8_t const* dataptr = reinterpret_cast<uint8_t const*>(result) + arangodb::DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
+      collection->updateRevision(element.revisionId(), dataptr, targetFid, false);
 
       context->_dfi.numberAlive++;
       context->_dfi.sizeAlive += DatafileHelper::AlignedMarkerSize<int64_t>(marker);

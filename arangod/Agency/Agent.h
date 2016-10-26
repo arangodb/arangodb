@@ -241,25 +241,28 @@ class Agent : public arangodb::Thread {
   /// @brief Condition variable for waitFor
   arangodb::basics::ConditionVariable _waitForCV;
 
-  /// @brief Condition variable for waitFor
-  arangodb::basics::ConditionVariable _configCV;
-
   /// @brief Confirmed indices of all members of agency
-  // std::vector<index_t> _confirmed;
   std::map<std::string, index_t> _confirmed;
   std::map<std::string, index_t> _lastHighest;
 
   std::map<std::string, TimePoint> _lastAcked;
   std::map<std::string, TimePoint> _lastSent;
-  arangodb::Mutex _ioLock; /**< @brief Read/Write lock */
 
-  /// @brief Server active agents rest handler
-  bool _serveActiveAgent;
+  /**< @brief RAFT consistency lock:
+     _spearhead
+     _read_db
+     _lastCommitedIndex (log index)
+     _lastAcked
+     _confirmed
+     _nextCompactionAfter
+   */
+  mutable arangodb::Mutex _ioLock;
+
+  // @brief guard _activator 
+  mutable arangodb::Mutex _activatorLock;
 
   /// @brief Next compaction after
   arangodb::consensus::index_t _nextCompationAfter;
-
-  std::map<std::string, bool> _gossipTmp;
 
   std::unique_ptr<Inception> _inception;
   std::unique_ptr<AgentActivator> _activator;
