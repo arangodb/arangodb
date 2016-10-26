@@ -176,13 +176,14 @@ module.exports = exports =
         [['status', check.validateStatus], ['mimes', check.validateMimes], ['description', 'string']],
         [['status', check.validateStatus], ['model', check.validateModel], ['mimes', check.validateMimes]],
         [['model', check.validateModel], ['mimes', check.validateMimes], ['description', 'string']],
+        [['status', check.validateStatus], ['model', check.validateModel]],
+        [['status', check.validateStatus], ['mimes', check.validateMimes]],
+        [['status', check.validateStatus], ['description', 'string']],
         [['model', check.validateModel], ['mimes', check.validateMimes]],
         [['model', check.validateModel], ['description', 'string']],
         [['mimes', check.validateMimes], ['description', 'string']],
-        [['status', check.validateStatus], ['model', check.validateModel]],
-        [['status', check.validateStatus], ['description', 'string']],
-        [['mimes', check.validateMimes]],
         [['model', check.validateModel]],
+        [['mimes', check.validateMimes]],
         [['description', 'string']]
       );
       let status = argv.status;
