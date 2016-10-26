@@ -90,6 +90,10 @@ void VppCommTask::addResponse(VppResponse* response) {
     }
   }
 
+#if 0
+  // don't print by default because at this place the toJson() may
+  // invoke the custom type handler, which is not present here
+
   LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
                                           << "created response:";
   for (auto const& slice : slices) {
@@ -100,6 +104,7 @@ void VppCommTask::addResponse(VppResponse* response) {
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "--";
   }
   LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "response -- end";
+#endif
 
   static uint32_t const chunkSize =
       arangodb::application_features::ApplicationServer::getFeature<
