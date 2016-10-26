@@ -272,22 +272,22 @@ class BreadthFirstEnumerator final : public PathEnumerator {
 // @brief Enumerator optimized for neighbors. Does not allow edge access
 
 class NeighborsEnumerator final : public PathEnumerator {
-  std::unordered_set<arangodb::velocypack::Slice,
-                     arangodb::basics::VelocyPackHelper::VPackStringHash,
-                     arangodb::basics::VelocyPackHelper::VPackStringEqual>
+  std::unordered_set<arangodb::basics::VPackHashedSlice,
+                     arangodb::basics::VelocyPackHelper::VPackHashedStringHash,
+                     arangodb::basics::VelocyPackHelper::VPackHashedStringEqual>
       _allFound;
 
-  std::unordered_set<arangodb::velocypack::Slice,
-                     arangodb::basics::VelocyPackHelper::VPackStringHash,
-                     arangodb::basics::VelocyPackHelper::VPackStringEqual>
+  std::unordered_set<arangodb::basics::VPackHashedSlice,
+                     arangodb::basics::VelocyPackHelper::VPackHashedStringHash,
+                     arangodb::basics::VelocyPackHelper::VPackHashedStringEqual>
       _currentDepth;
 
-  std::unordered_set<arangodb::velocypack::Slice,
-                     arangodb::basics::VelocyPackHelper::VPackStringHash,
-                     arangodb::basics::VelocyPackHelper::VPackStringEqual>
+  std::unordered_set<arangodb::basics::VPackHashedSlice,
+                     arangodb::basics::VelocyPackHelper::VPackHashedStringHash,
+                     arangodb::basics::VelocyPackHelper::VPackHashedStringEqual>
       _lastDepth;
 
-  std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackStringHash, arangodb::basics::VelocyPackHelper::VPackStringEqual>::iterator _iterator;
+  std::unordered_set<arangodb::basics::VPackHashedSlice, arangodb::basics::VelocyPackHelper::VPackHashedStringHash, arangodb::basics::VelocyPackHelper::VPackHashedStringEqual>::iterator _iterator;
   size_t _searchDepth;
  
   //////////////////////////////////////////////////////////////////////////////

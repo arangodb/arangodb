@@ -42,6 +42,22 @@ class AttributeTranslator;
 
 namespace basics {
 
+struct VPackHashedSlice {
+  arangodb::velocypack::Slice slice;
+  uint64_t hash;
+
+  constexpr VPackHashedSlice() noexcept : slice(), hash(0) {}
+  VPackHashedSlice(arangodb::velocypack::Slice slice, uint64_t hash) noexcept : slice(slice), hash(hash) {}
+  explicit VPackHashedSlice(arangodb::velocypack::Slice slice) : slice(slice), hash(slice.hash()) {}
+  
+  VPackHashedSlice(VPackHashedSlice const& other) noexcept : slice(other.slice), hash(other.hash) {}
+  VPackHashedSlice(VPackHashedSlice&& other) noexcept : slice(other.slice), hash(other.hash) {}
+  VPackHashedSlice& operator=(VPackHashedSlice const& other) noexcept { slice = other.slice; hash = other.hash; return *this; }
+  VPackHashedSlice& operator=(VPackHashedSlice&& other) noexcept { slice = other.slice; hash = other.hash; return *this; }
+
+  ~VPackHashedSlice() {}
+};
+
 class VelocyPackHelper {
  private:
   VelocyPackHelper() = delete;
@@ -68,6 +84,10 @@ class VelocyPackHelper {
   
   struct VPackKeyHash {
     size_t operator()(arangodb::velocypack::Slice const&) const;
+  };
+  
+  struct VPackHashedStringHash {
+    size_t operator()(VPackHashedSlice const& slice) const noexcept { return static_cast<size_t>(slice.hash); }
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -96,6 +116,11 @@ class VelocyPackHelper {
   struct VPackIdEqual {
     bool operator()(arangodb::velocypack::Slice const&,
                     arangodb::velocypack::Slice const&) const;
+  };
+  
+  struct VPackHashedStringEqual {
+    bool operator()(VPackHashedSlice const&,
+                    VPackHashedSlice const&) const noexcept;
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -393,6 +418,25 @@ class VelocyPackHelper {
 };
 }
 }
+
+namespace std {
+template <>
+struct hash<arangodb::basics::VPackHashedSlice> {
+  inline size_t operator()(arangodb::basics::VPackHashedSlice const& slice) const noexcept {
+    return slice.hash;
+  }
+};
+
+template <>
+struct equal_to<arangodb::basics::VPackHashedSlice> {
+  bool operator()(arangodb::basics::VPackHashedSlice const& lhs,
+                  arangodb::basics::VPackHashedSlice const& rhs) const noexcept {
+    return lhs.slice.equals(rhs.slice);
+  }
+};
+
+}
+
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Simple and limited logging of VelocyPack slices
