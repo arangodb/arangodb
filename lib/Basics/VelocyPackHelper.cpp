@@ -326,8 +326,8 @@ bool VelocyPackHelper::VPackIdEqual::operator()(VPackSlice const& lhs,
           0);
 };
 
-bool VelocyPackHelper::VPackHashedStringEqual::operator()(VPackHashedSlice const& lhs,
-                                                          VPackHashedSlice const& rhs) const noexcept {
+bool VelocyPackHelper::VPackHashedStringEqual::operator()(basics::VPackHashedSlice const& lhs,
+                                                          basics::VPackHashedSlice const& rhs) const noexcept {
   auto const lh = lhs.slice.head();
   auto const rh = rhs.slice.head();
 
