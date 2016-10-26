@@ -351,6 +351,24 @@ void DatabaseFeature::start() {
   updateContexts();
 }
 
+// signal to all databases that active cursors can be wiped
+// this speeds up the actual shutdown because no waiting is necessary
+// until the cursors happen to free their underlying transactions
+void DatabaseFeature::beginShutdown() {
+  auto unuser(_databasesProtector.use());
+  auto theLists = _databasesLists.load();
+
+  for (auto& p : theLists->_databases) {
+    TRI_vocbase_t* vocbase = p.second;
+    // iterate over all databases
+    TRI_ASSERT(vocbase != nullptr);
+    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
+
+    // throw away all open cursors in order to speed up shutdown
+    vocbase->cursorRepository()->garbageCollect(true);
+  }
+}
+
 void DatabaseFeature::stop() {
   auto logfileManager = arangodb::wal::LogfileManager::instance();
   logfileManager->flush(true, true, false);

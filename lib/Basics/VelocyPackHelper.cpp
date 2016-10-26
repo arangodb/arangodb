@@ -326,6 +326,34 @@ bool VelocyPackHelper::VPackIdEqual::operator()(VPackSlice const& lhs,
           0);
 };
 
+bool VelocyPackHelper::VPackHashedStringEqual::operator()(VPackHashedSlice const& lhs,
+                                                          VPackHashedSlice const& rhs) const noexcept {
+  auto const lh = lhs.slice.head();
+  auto const rh = rhs.slice.head();
+
+  if (lh != rh) {
+    return false;
+  }
+
+  VPackValueLength size;
+  if (lh == 0xbf) {
+    // long UTF-8 String
+    size = static_cast<VPackValueLength>(
+        velocypack::readIntegerFixed<VPackValueLength, 8>(lhs.slice.begin() + 1));
+    if (size !=
+        static_cast<VPackValueLength>(
+            velocypack::readIntegerFixed<VPackValueLength, 8>(rhs.slice.begin() + 1))) {
+      return false;
+    }
+    return (memcmp(lhs.slice.start() + 1 + 8, rhs.slice.start() + 1 + 8,
+                   static_cast<size_t>(size)) == 0);
+  }
+
+  size = static_cast<VPackValueLength>(lh - 0x40);
+  return (memcmp(lhs.slice.start() + 1, rhs.slice.start() + 1, static_cast<size_t>(size)) ==
+          0);
+};
+
 static inline int8_t TypeWeight(VPackSlice& slice) {
 again:
   int8_t w = TypeWeights[slice.head()];

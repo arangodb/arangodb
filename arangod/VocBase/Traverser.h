@@ -262,7 +262,7 @@ class Traverser {
     void reset(arangodb::velocypack::Slice) override;
 
    private:
-    std::unordered_set<arangodb::velocypack::Slice> _returnedVertices;
+    std::unordered_set<arangodb::basics::VPackHashedSlice> _returnedVertices;
   };
 
 
