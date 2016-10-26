@@ -6,10 +6,11 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 { 
   <span class="hljs-string">"id"</span> : <span class="hljs-string">"statistics-average-collector"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"statistics-average-collector"</span>, 
+  <span class="hljs-string">"created"</span> : <span class="hljs-number">1477475813.409605</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
   <span class="hljs-string">"period"</span> : <span class="hljs-number">900</span>, 
-  <span class="hljs-string">"created"</span> : <span class="hljs-number">1476361742.965457</span>, 
-  <span class="hljs-string">"command"</span> : <span class="hljs-string">"require('@arangodb/statistics').historianAverage();"</span>, 
+  <span class="hljs-string">"offset"</span> : <span class="hljs-number">20</span>, 
+  <span class="hljs-string">"command"</span> : <span class="hljs-string">"(function (params) { require('@arangodb/statistics').historianAverage(); } )(params);"</span>, 
   <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span>, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
