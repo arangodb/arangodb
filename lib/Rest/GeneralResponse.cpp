@@ -63,7 +63,7 @@ void GeneralResponse::addPayload(VPackSlice const& slice,
   }
   // we pass the original slice here the new one can be accessed
   addPayloadPostHook(slice, options, resolveExternals, skipBody);
-};
+}
 
 void GeneralResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
                                  arangodb::velocypack::Options const* options,
@@ -85,7 +85,7 @@ void GeneralResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
   }
   addPayloadPostHook(VPackSlice(buffer.data()), options, resolveExternals,
                      skipBody);
-};
+}
 
 std::string GeneralResponse::responseString(ResponseCode code) {
   switch (code) {
