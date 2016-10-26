@@ -58,6 +58,7 @@ class AuthenticationFeature final
   std::string generateNewJwtSecret();
   void setJwtSecret(std::string const& jwtSecret) { authInfo()->setJwtSecret(jwtSecret); }
   AuthInfo* authInfo();
+  AuthLevel canUseDatabase(std::string const& username, std::string const& dbname);
 };
 };
 

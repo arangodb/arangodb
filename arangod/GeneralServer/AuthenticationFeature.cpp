@@ -125,6 +125,15 @@ void AuthenticationFeature::start() {
 #endif
 }
 
+AuthLevel AuthenticationFeature::canUseDatabase(std::string const& username,
+                                                std::string const& dbname) {
+  if (!isEnabled()) {
+    return AuthLevel::RW;
+  }
+
+  return authInfo()->canUseDatabase(username, dbname);
+}
+
 AuthInfo* AuthenticationFeature::authInfo() {
   // mop: catch misused stuff..authentication is disabled...why would you
   // need any authentication info?

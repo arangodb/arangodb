@@ -846,7 +846,7 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
 
       auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>(
           "Authentication");
-      auto level = authentication->authInfo()->canUseDatabase(
+      auto level = authentication->canUseDatabase(
           username, vocbase->name());
 
       if (level == AuthLevel::NONE) {
