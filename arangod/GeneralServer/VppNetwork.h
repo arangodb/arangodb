@@ -103,7 +103,7 @@ inline std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
 
   // append data in slices
   for (auto const& slice : slices) {
-    buffer->appendText(std::string(slice.startAs<char>(), slice.byteSize()));
+    buffer->appendText(slice.startAs<char>(), slice.byteSize());
   }
 
   return buffer;
@@ -171,7 +171,7 @@ inline std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
     appendToBuffer(buffer.get(), totalMessageLength);
   }
 
-  buffer->appendText(std::string(data + begin, dataLength));
+  buffer->appendText(data + begin, dataLength);
 
   return buffer;
 }
@@ -295,7 +295,7 @@ inline std::vector<std::unique_ptr<basics::StringBuffer>> createChunkForNetwork(
     // fill buffer
     for (auto const& slice : slices) {
       vppPayload->appendText(
-          std::string(slice.startAs<char>(), slice.byteSize()));
+          slice.startAs<char>(), slice.byteSize());
     }
 
     if (compress) {
