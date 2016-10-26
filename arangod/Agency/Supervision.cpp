@@ -77,6 +77,7 @@ static std::string const currentServersRegisteredPrefix =
     "/Current/ServersRegistered";
 static std::string const foxxmaster = "/Current/Foxxmaster";
 
+// Upgrade agency, guarded by wakeUp
 void Supervision::upgradeAgency() {
   try {
     if (_snapshot(failedServersPrefix).slice().isArray()) {
@@ -108,6 +109,7 @@ void Supervision::upgradeAgency() {
   }
 }
 
+// Check all DB servers, guarded above doChecks
 std::vector<check_t> Supervision::checkDBServers() {
   std::vector<check_t> ret;
   Node::Children const& machinesPlanned =
@@ -240,6 +242,7 @@ std::vector<check_t> Supervision::checkDBServers() {
   return ret;
 }
 
+// Check all coordinators, guarded above doChecks
 std::vector<check_t> Supervision::checkCoordinators() {
   std::vector<check_t> ret;
   Node::Children const& machinesPlanned =
@@ -374,6 +377,7 @@ std::vector<check_t> Supervision::checkCoordinators() {
   return ret;
 }
 
+// Update local agency snapshot, guarded by callers
 bool Supervision::updateSnapshot() {
 
   if (_agent == nullptr || this->isStopping()) {
@@ -388,11 +392,13 @@ bool Supervision::updateSnapshot() {
   
 }
 
+// All checks, guarded by main thread
 bool Supervision::doChecks() {
   checkDBServers();
   checkCoordinators();
   return true;
 }
+
 
 void Supervision::run() {
   bool shutdown = false;
@@ -401,7 +407,13 @@ void Supervision::run() {
     TRI_ASSERT(_agent != nullptr);
 
     // Get agency prefix after cluster init
-    if (_jobId == 0) {
+    uint64_t jobId = 0;
+    {
+      MUTEX_LOCKER(locker, _lock);
+      jobId = _jobId;
+    }
+    
+    if (jobId == 0) {
       // We need the agency prefix to work, but it is only initialized by
       // some other server in the cluster. Since the supervision does not
       // make sense at all without other ArangoDB servers, we wait pretty
@@ -443,6 +455,7 @@ void Supervision::run() {
   }
 }
 
+// Guarded by caller
 bool Supervision::isShuttingDown() {
   try {
     return _snapshot("/Shutdown").getBool();
@@ -451,7 +464,8 @@ bool Supervision::isShuttingDown() {
   }
 }
 
-std::string const Supervision::serverHealth(const std::string& serverName) {
+// Guarded by caller
+std::string Supervision::serverHealth(std::string const& serverName) {
   try {
     const std::string serverStatus(healthPrefix + serverName + "/Status");
     const std::string status = _snapshot(serverStatus).getString();
@@ -463,6 +477,7 @@ std::string const Supervision::serverHealth(const std::string& serverName) {
   }
 }
 
+// Guarded by caller
 void Supervision::handleShutdown() {
   _selfShutdown = true;
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Waiting for clients to shut down";
@@ -510,6 +525,7 @@ void Supervision::handleShutdown() {
   }
 }
 
+// Guarded by caller 
 bool Supervision::handleJobs() {
   // Get bunch of job IDs from agency for future jobs
   if (_jobId == 0 || _jobId == _jobIdMax) {
@@ -523,6 +539,7 @@ bool Supervision::handleJobs() {
   return true;
 }
 
+// Guarded by caller
 void Supervision::workJobs() {
   Node::Children const& todos = _snapshot(toDoPrefix).children();
   Node::Children const& pends = _snapshot(pendingPrefix).children();
@@ -574,7 +591,7 @@ void Supervision::workJobs() {
   }
 }
 
-// Shrink cluster if applicable
+// Shrink cluster if applicable, guarded by caller
 void Supervision::shrinkCluster() {
   // Get servers from plan
   std::vector<std::string> availServers;
@@ -779,7 +796,7 @@ bool Supervision::updateAgencyPrefix(size_t nTries, int intervalSec) {
 }
 
 static std::string const syncLatest = "/Sync/LatestID";
-// Get bunch of cluster's unique ids from agency
+// Get bunch of cluster's unique ids from agency, guarded above
 void Supervision::getUniqueIds() {
   uint64_t latestId;
   // Run forever, supervision does not make sense before the agency data
@@ -820,17 +837,6 @@ void Supervision::getUniqueIds() {
       _jobIdMax = latestId + 100000;
       return;
     }
-  }
-}
-
-void Supervision::updateFromAgency() {
-  auto const& jobsPending = _snapshot("/Supervision/Jobs/Pending").children();
-
-  for (auto const& jobent : jobsPending) {
-    auto const& job = *(jobent.second);
-
-    LOG_TOPIC(WARN, Logger::AGENCY) << job.name() << " "
-                                    << job("failed").toJson() << job("");
   }
 }
 

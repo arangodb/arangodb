@@ -55,16 +55,16 @@ const std::vector<std::string> roleStr({"Follower", "Candidate", "Leader"});
 
 /// Configure with agent's configuration
 void Constituent::configure(Agent* agent) {
+  MUTEX_LOCKER(guard, _castLock);
+
   _agent = agent;
   TRI_ASSERT(_agent != nullptr);
 
   if (size() == 1) {
     _role = LEADER;
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _role to LEADER in term "
-        << _term;
-  } else {
-    _id = _agent->config().id();
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _role to LEADER in term " << _term;
   }
+  
 }
 
 // Default ctor
@@ -89,7 +89,7 @@ bool Constituent::waitForSync() const { return _agent->config().waitForSync(); }
 /// Random sleep times in election process
 duration_t Constituent::sleepFor(double min_t, double max_t) {
   int32_t left = static_cast<int32_t>(1000.0 * min_t),
-          right = static_cast<int32_t>(1000.0 * max_t);
+    right = static_cast<int32_t>(1000.0 * max_t);
   return duration_t(static_cast<long>(RandomGenerator::interval(left, right)));
 }
 
@@ -199,7 +199,7 @@ void Constituent::lead(term_t term,
     _leaderID = _id;
   }
 
-  // give some debug output
+  // give some debug output _id never is changed after
   if (!votes.empty()) {
     std::stringstream ss;
     ss << _id << ": Converted to leader in term " << _term << " with votes: ";
@@ -250,7 +250,10 @@ bool Constituent::running() const {
 }
 
 /// Get current leader's id
-std::string Constituent::leaderID() const { return _leaderID; }
+std::string Constituent::leaderID() const {
+  MUTEX_LOCKER(guard, _castLock);
+  return _leaderID;
+}
 
 /// Agency size
 size_t Constituent::size() const { return _agent->config().size(); }
@@ -263,35 +266,37 @@ std::string Constituent::endpoint(std::string id) const {
 /// @brief Check leader
 bool Constituent::checkLeader(term_t term, std::string id, index_t prevLogIndex,
                               term_t prevLogTerm) {
+
   TRI_ASSERT(_vocbase != nullptr);
 
   MUTEX_LOCKER(guard, _castLock);
 
-  LOG_TOPIC(TRACE, Logger::AGENCY) << "checkLeader(term: " << term << ", leaderId: "
-                                   << id << ", prev-log-index: " << prevLogIndex
-                                   << ", prev-log-term: " << prevLogTerm << ") in term "
-                                   << _term;
+  LOG_TOPIC(TRACE, Logger::AGENCY)
+    << "checkLeader(term: " << term << ", leaderId: "<< id
+    << ", prev-log-index: " << prevLogIndex << ", prev-log-term: "
+    << prevLogTerm << ") in term " << _term;
 
   if (term >= _term) {
     _lastHeartbeatSeen = TRI_microtime();
-    LOG_TOPIC(TRACE, Logger::AGENCY) << "setting last heartbeat: " << _lastHeartbeatSeen;
-
+    LOG_TOPIC(TRACE, Logger::AGENCY)
+      << "setting last heartbeat: " << _lastHeartbeatSeen;
+    
     if (term > _term) {
       termNoLock(term);
     }
     if (_leaderID != id) {
-      LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to " << id
-                                       << " in term " << _term;
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
+        << "Set _leaderID to " << id << " in term " << _term;
       _leaderID = id;
       TRI_ASSERT(_leaderID != _id);
       if (_role != FOLLOWER) {
         followNoLock(term);
       }
     }
-
+    
     return true;
   }
-
+  
   return false;
 }
 
@@ -300,12 +305,10 @@ bool Constituent::vote(term_t termOfPeer, std::string id, index_t prevLogIndex,
                        term_t prevLogTerm) {
   TRI_ASSERT(_vocbase != nullptr);
   
-  LOG_TOPIC(TRACE, Logger::AGENCY) << "vote(termOfPeer: " << termOfPeer
-                                   << ", leaderId: "
-                                   << id << ", prev-log-index: " << prevLogIndex
-                                   << ", prev-log-term: "
-                                   << prevLogTerm << ") in (my) term "
-                                   << _term;
+  LOG_TOPIC(TRACE, Logger::AGENCY)
+    << "vote(termOfPeer: " << termOfPeer << ", leaderId: " << id
+    << ", prev-log-index: " << prevLogIndex << ", prev-log-term: " << prevLogTerm
+    << ") in (my) term " << _term;
 
   MUTEX_LOCKER(guard, _castLock);
 
@@ -323,8 +326,9 @@ bool Constituent::vote(term_t termOfPeer, std::string id, index_t prevLogIndex,
       followNoLock(_term);
     }
   } else {  // termOfPeer < _term, simply ignore and do not vote:
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "ignoring RequestVoteRPC with old term "
-      << termOfPeer << ", we are already at term " << _term;
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "ignoring RequestVoteRPC with old term " << termOfPeer
+      << ", we are already at term " << _term;
     return false;
   }
 
@@ -492,6 +496,8 @@ bool Constituent::start(TRI_vocbase_t* vocbase,
 
 /// Get persisted information and run election process
 void Constituent::run() {
+
+  // single instance
   _id = _agent->config().id();
 
   TRI_ASSERT(_vocbase != nullptr);
@@ -541,7 +547,7 @@ void Constituent::run() {
   } else {
     while (!this->isStopping()) {
       if (_role == FOLLOWER) {
-        static double const M = 1000000.0;
+        static double const M = 1.0e6;
         int64_t a = static_cast<int64_t>(M * _agent->config().minPing());
         int64_t b = static_cast<int64_t>(M * _agent->config().maxPing());
         int64_t randTimeout = RandomGenerator::interval(a, b);

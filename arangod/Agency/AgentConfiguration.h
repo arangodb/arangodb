@@ -44,7 +44,7 @@ static const std::string maxPingStr = "max ping";
 static const std::string endpointStr = "endpoint";
 static const std::string uuidStr = "uuid";
 static const std::string poolStr = "pool";
-static const std::string gossipPeersStr = "gissipPeers";
+static const std::string gossipPeersStr = "gossipPeers";
 static const std::string activeStr = "active";
 static const std::string supervisionStr = "supervision";
 static const std::string waitForSyncStr = "wait for sync";
@@ -69,7 +69,7 @@ struct config_t {
   uint64_t _compactionStepSize;
   double _supervisionGracePeriod;
 
-  mutable arangodb::basics::ReadWriteLock _lock;
+  mutable arangodb::basics::ReadWriteLock _lock; // guard member variables
 
   /// @brief default ctor
   config_t();
