@@ -82,7 +82,7 @@
       * [Cookie transport](Foxx/Sessions/Transports/Cookie.md)
       * [Header transport](Foxx/Sessions/Transports/Header.md)
   * [Serving files](Foxx/Assets.md)
-#  * [Writing tests](Foxx/Testing.md)
+  * [Writing tests](Foxx/Testing.md)
   * [Scripts and queued jobs](Foxx/Scripts.md)
   * [Migrating 2.x services](Foxx/Migrating2x/README.md)
     * [Migrating from pre-2.8](Foxx/Migrating2x/Wayback.md)
