@@ -69,9 +69,9 @@ exports.run = function runMochaTests (run, files, reporterName) {
   suite.timeout(0);
   suite.bail(false);
 
-  Object.keys(interfaces).forEach(function (key) {
-    interfaces[key](suite);
-  });
+  interfaces.bdd(suite);
+  interfaces.tdd(suite);
+  interfaces.exports(suite);
 
   var options = {};
   var mocha = {
