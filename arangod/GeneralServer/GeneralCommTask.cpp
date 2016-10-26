@@ -53,9 +53,10 @@ using namespace arangodb::rest;
 
 GeneralCommTask::GeneralCommTask(EventLoop loop, GeneralServer* server,
                                  std::unique_ptr<Socket> socket,
-                                 ConnectionInfo&& info, double keepAliveTimeout)
+                                 ConnectionInfo&& info, double keepAliveTimeout,
+                                 bool skipSocketInit)
     : Task(loop, "GeneralCommTask"),
-      SocketTask(loop, std::move(socket), std::move(info), keepAliveTimeout),
+      SocketTask(loop, std::move(socket), std::move(info), keepAliveTimeout, skipSocketInit),
       _server(server) {}
 
 // -----------------------------------------------------------------------------

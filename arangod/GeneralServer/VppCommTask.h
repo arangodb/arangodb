@@ -42,7 +42,7 @@ namespace rest {
 class VppCommTask : public GeneralCommTask {
  public:
   VppCommTask(EventLoop, GeneralServer*, std::unique_ptr<Socket> socket,
-              ConnectionInfo&&, double timeout);
+              ConnectionInfo&&, double timeout, bool skipSocketInit = false);
 
   // convert from GeneralResponse to vppResponse ad dispatch request to class
   // internal addResponse
@@ -65,7 +65,7 @@ class VppCommTask : public GeneralCommTask {
 
   std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) override final;
-  
+
   void handleAuthentication(VPackSlice const& header, uint64_t messageId);
   void handleSimpleError(rest::ResponseCode code, uint64_t id) override {
     VppResponse response(code, id);

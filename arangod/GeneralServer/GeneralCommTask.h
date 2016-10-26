@@ -83,7 +83,7 @@ class GeneralCommTask : public SocketTask {
 
  public:
   GeneralCommTask(EventLoop, GeneralServer*, std::unique_ptr<Socket>,
-                  ConnectionInfo&&, double keepAliveTimeout);
+                  ConnectionInfo&&, double keepAliveTimeout, bool skipSocketInit = false);
 
   virtual void addResponse(GeneralResponse*) = 0;
   virtual arangodb::Endpoint::TransportType transportType() = 0;
