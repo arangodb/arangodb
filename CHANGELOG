@@ -213,6 +213,10 @@ v3.0.11 (2016-XX-XX)
 
 * fixed issue #2038
 
+* Foxx tests no longer support the Mocha QUnit interface as this resulted in weird
+  inconsistencies in the BDD and TDD interfaces. This fixes the TDD interface
+  as well as out-of-sequence problems when using the BDD before/after functions.
+
 
 v3.0.10 (XXXX-XX-XX)
 --------------------
