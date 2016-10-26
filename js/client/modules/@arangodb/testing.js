@@ -3208,6 +3208,7 @@ const recoveryTests = [
   'indexes-hash',
   'indexes-rocksdb',
   'indexes-rocksdb-nosync',
+  'indexes-rocksdb-restore',
   'indexes-sparse-hash',
   'indexes-skiplist',
   'indexes-sparse-skiplist',

@@ -75,7 +75,7 @@
 #include "StorageEngine/MMFilesEngine.h"
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
-#include "VocBase/IndexPoolFeature.h"
+#include "VocBase/IndexThreadFeature.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/RecoveryFeature.h"
 
@@ -134,7 +134,7 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new FrontendFeature(&server));
   server.addFeature(new GeneralServerFeature(&server));
   server.addFeature(new GreetingsFeature(&server, "arangod"));
-  server.addFeature(new IndexPoolFeature(&server));
+  server.addFeature(new IndexThreadFeature(&server));
   server.addFeature(new InitDatabaseFeature(&server, nonServerFeatures));
   server.addFeature(new LanguageFeature(&server));
   server.addFeature(new LockfileFeature(&server));

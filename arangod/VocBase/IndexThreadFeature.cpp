@@ -20,7 +20,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IndexPoolFeature.h"
+#include "IndexThreadFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ThreadPool.h"
@@ -31,8 +31,8 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-IndexPoolFeature::IndexPoolFeature(ApplicationServer* server)
-    : ApplicationFeature(server, "IndexPool"),
+IndexThreadFeature::IndexThreadFeature(ApplicationServer* server)
+    : ApplicationFeature(server, "IndexThread"),
       _indexThreads(2) {
   setOptional(false);
   requiresElevatedPrivileges(false);
@@ -40,7 +40,7 @@ IndexPoolFeature::IndexPoolFeature(ApplicationServer* server)
   startsAfter("EngineSelector");
 }
 
-void IndexPoolFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void IndexThreadFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("database", "Configure the database");
   
   options->addHiddenOption(
@@ -49,14 +49,14 @@ void IndexPoolFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new UInt64Parameter(&_indexThreads));
 }
 
-void IndexPoolFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+void IndexThreadFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // some arbitrary limit
   if (_indexThreads > 128) {
     _indexThreads = 128;
   }
 }
 
-void IndexPoolFeature::start() {
+void IndexThreadFeature::start() {
   // create the index thread pool
   if (_indexThreads > 0) {
     _indexPool.reset(new ThreadPool(static_cast<size_t>(_indexThreads), "IndexBuilder"));
@@ -64,7 +64,7 @@ void IndexPoolFeature::start() {
   LOG(TRACE) << "starting " << _indexThreads << " index thread(s)";
 }
 
-void IndexPoolFeature::unprepare() {
+void IndexThreadFeature::unprepare() {
   LOG(TRACE) << "stopping index thread(s)";
   // turn off index threads
   _indexPool.reset();

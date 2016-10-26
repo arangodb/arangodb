@@ -331,7 +331,7 @@ SET(ARANGOD_SOURCES
   VocBase/Ditch.cpp
   VocBase/EdgeCollectionInfo.cpp
   VocBase/Graphs.cpp
-  VocBase/IndexPoolFeature.cpp
+  VocBase/IndexThreadFeature.cpp
   VocBase/KeyGenerator.cpp
   VocBase/LogicalCollection.cpp
   VocBase/ManagedDocumentResult.cpp
