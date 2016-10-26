@@ -298,7 +298,22 @@ devRouter.delete((req, res) => {
 `);
 
 
-instanceRouter.post('/run/:name', (req, res) => {
+const scriptsRouter = createRouter();
+instanceRouter.use('/scripts', scriptsRouter);
+
+scriptsRouter.get((req, res) => {
+  res.json(req.service.getScripts());
+})
+.response(200, joi.array().items(joi.object({
+  name: joi.string().required().description(`Script name`),
+  title: joi.string().required().description(`Human-readable script name`)
+}).required()).required(), `List of scripts available on the service.`)
+.summary(`List service scripts`)
+.description(dd`
+  Fetches a list of the scripts defined by the service.
+`);
+
+scriptsRouter.post('/:name', (req, res) => {
   const service = req.service;
   const scriptName = req.pathParams.name;
   res.json(fm.runScript(scriptName, service.mount, req.body) || null);
