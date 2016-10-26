@@ -135,18 +135,19 @@ void BootstrapFeature::start() {
   auto vocbase = DatabaseFeature::DATABASE->systemDatabase();
   
   auto ss = ServerState::instance();
+
   if (!ss->isRunningInCluster()) {
-    LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running server/server.js";
+    LOG_TOPIC(INFO, Logger::STARTUP) << "Running server/server.js";
     V8DealerFeature::DEALER->loadJavascript(vocbase, "server/server.js");
   } else if (ss->isCoordinator()) {
-    LOG_TOPIC(DEBUG, Logger::STARTUP) << "Racing for cluster bootstrap...";
+    LOG_TOPIC(INFO, Logger::STARTUP) << "Racing for cluster bootstrap...";
     raceForClusterBootstrap();
-    LOG_TOPIC(DEBUG, Logger::STARTUP)
+    LOG_TOPIC(INFO, Logger::STARTUP)
         << "Running server/bootstrap/coordinator.js";
     V8DealerFeature::DEALER->loadJavascript(vocbase,
                                             "server/bootstrap/coordinator.js");
   } else if (ss->isDBServer()) {
-    LOG_TOPIC(DEBUG, Logger::STARTUP)
+    LOG_TOPIC(INFO, Logger::STARTUP)
         << "Running server/bootstrap/db-server.js";
     V8DealerFeature::DEALER->loadJavascript(vocbase,
                                             "server/bootstrap/db-server.js");
