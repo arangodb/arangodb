@@ -24,6 +24,8 @@ The response object specifies the following properties:
 
 Sets the `content-disposition` header to indicate the response is a downloadable file with the given name.
 
+**Note:** This does not actually modify the response body or access the file system. To send a file from the file system see the `download` or `sendFile` methods.
+
 **Arguments**
 
 * **filename**: `string` (optional)

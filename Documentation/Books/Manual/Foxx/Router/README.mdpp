@@ -16,17 +16,17 @@ This returns a new, clean router object that has not yet been mounted in the ser
 
 !SECTION Request handlers
 
-`router.get([path], handler, [name]): Endpoint`
+`router.get([path], [...middleware], handler, [name]): Endpoint`
 
-`router.post([path], handler, [name]): Endpoint`
+`router.post([path], [...middleware], handler, [name]): Endpoint`
 
-`router.put([path], handler, [name]): Endpoint`
+`router.put([path], [...middleware], handler, [name]): Endpoint`
 
-`router.patch([path], handler, [name]): Endpoint`
+`router.patch([path], [...middleware], handler, [name]): Endpoint`
 
-`router.delete([path], handler, [name]): Endpoint`
+`router.delete([path], [...middleware], handler, [name]): Endpoint`
 
-`router.all([path], handler, [name]): Endpoint`
+`router.all([path], [...middleware], handler, [name]): Endpoint`
 
 These methods let you specify routes on the router. The `all` method defines a route that will match any supported HTTP verb, the other methods define routes that only match the HTTP verb with the same name.
 
@@ -35,6 +35,27 @@ These methods let you specify routes on the router. The `all` method defines a r
 * **path**: `string` (Default: `"/"`)
 
   The path of the request handler relative to the base path the Router is mounted at. If omitted, the request handler will handle requests to the base path of the Router. For information on defining dynamic routes see the section on [path parameters in the chapter on router endpoints](Endpoints.md#pathparam).
+
+* **middleware**: `Function` (optional)
+
+  Zero or more middleware functions that take the following arguments:
+
+  * **req**: `Request`
+
+    An incoming server request object.
+
+  * **res**: `Response`
+
+    An outgoing server response object.
+
+  * **next**: `Function`
+
+    A callback that passes control over to the next middleware function
+    and returns when that function has completed.
+
+    If a truthy argument is passed, that argument will be thrown as an error.
+
+    If there is no next middleware function, the `handler` will be invoked instead (see below).
 
 * **handler**: `Function`
 
@@ -54,9 +75,48 @@ These methods let you specify routes on the router. The `all` method defines a r
 
 Returns an [Endpoint](Endpoints.md) for the route.
 
+**Examples**
+
+Simple index route:
+
+```js
+router.get(function (req, res) {
+  res.set('content-type', 'text/plain');
+  res.write('Hello World!');
+});
+```
+
+Restricting access to authenticated ArangoDB users:
+
+```js
+router.get('/secrets', function (req, res, next) {
+  if (req.arangoUser) {
+    next();
+  } else {
+    res.throw(404, 'Secrets? What secrets?');
+  }
+}, function (req, res) {
+  res.download('allOurSecrets.zip');
+});
+```
+
+Multiple middleware functions:
+
+```js
+function counting (req, res, next) {
+  if (!req.counter) req.counter = 0;
+  req.counter++;
+  next();
+  req.counter--;
+}
+router.get(counting, counting, counting, function (req, res) {
+  res.json({counter: req.counter}); // {"counter": 3}
+});
+```
+
 !SECTION Mounting child routers and middleware
 
-`router.use([path], handler, [name]): Endpoint`
+`router.use([path], middleware, [name]): Endpoint`
 
 The `use` method lets you mount a child router or middleware at a given path.
 
@@ -64,9 +124,9 @@ The `use` method lets you mount a child router or middleware at a given path.
 
 * **path**: `string` (optional)
 
-  The path of the request handler relative to the base path the Router is mounted at. If omitted, the request handler will handle requests to the base path of the Router. For information on defining dynamic routes see the section on [path parameters in the chapter on router endpoints](Endpoints.md#pathparam).
+  The path of the middleware relative to the base path the Router is mounted at. If omitted, the middleware will handle requests to the base path of the Router. For information on defining dynamic routes see the section on [path parameters in the chapter on router endpoints](Endpoints.md#pathparam).
 
-* **handler**: `Router | Middleware`
+* **middleware**: `Router | Middleware`
 
   An unmounted router object or a [middleware](Middleware.md).
 

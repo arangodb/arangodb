@@ -46,31 +46,19 @@ function normalizeMimeType (mime) {
   ]));
 }
 
-function findVariations (options) {
-  const variants = [[]];
-  for (let i = options.length - 1; i >= 0; i--) {
-    const isOptional = options[i];
-    const len = variants.length;
-    if (isOptional) {
-      for (let k = 0; k < len; k++) {
-        variants.push([...variants[k]]);
-      }
-    }
-    for (let k = 0; k < len; k++) {
-      variants[k].unshift(i);
-    }
-  }
-  return variants;
-}
-
 function runValidation (methodName, paramName, type, value) {
   const warnings = [];
   if (typeof type === 'string') {
-    if (typeof value !== type) {
+    let isa = typeof value;
+    if (Array.isArray(value) && type !== 'object') {
+      isa = 'array';
+    }
+    if (isa !== type) {
       return {
         value,
-        error: new Error(`${paramName} must be a ${type}, not ${typeof value}`),
-      warnings};
+        error: new Error(`${paramName} must be a ${type}, not ${isa}`),
+        warnings
+      };
     }
     return {value, error: null, warnings};
   } else if (typeof type === 'function') {
@@ -82,7 +70,7 @@ function runValidation (methodName, paramName, type, value) {
     }
     if (result.error) {
       result.error.message = result.error.message
-        .replace(/^"value"/, paramName);
+      .replace(/^"value"/, paramName);
       return {value: result.value, error: result.error, warnings};
     }
     return {value: result.value, error: null, warnings};
@@ -94,59 +82,82 @@ function runValidation (methodName, paramName, type, value) {
   }
 }
 
-module.exports = exports = function (methodName, paramNames, types, values) {
-  const optionals = paramNames
-    .map((paramName) => paramName.charAt(paramName.length - 1) === '?');
-  paramNames = optionals.map((isOptional, i) => (
-  isOptional ? paramNames[i].slice(0, -1) : paramNames[i]
-  ));
+module.exports = exports = function (methodName, values, ...variations) {
   for (let i = values.length - 1; i >= 0; i--) {
     if (values[i] !== undefined) {
       break;
     }
     values.pop();
   }
-  const validations = types.map(() => []);
   const warnings = [];
+  const validations = new Map();
   let output;
   let error = null;
-  for (const variation of findVariations(optionals)) {
-    if (variation.length < values.length) {
+  for (const variation of variations) {
+    if (variation.length > values.length) {
+      if (!error) {
+        const [name] = variation[values.length];
+        error = new Error(`${name} is required`);
+        error.default = true;
+        error.variation = variation;
+      }
       continue;
     }
-    output = [];    let err = null;
+    output = [];
+    let err = null;
+    const multis = new Set();
     for (let i = 0; i < variation.length; i++) {
-      const index = variation[i];
-      const result = validations[i][index] || runValidation(
-        methodName,
-        paramNames[index],
-        types[index],
-        values[i]
-      );
+      const [name, type] = variation[i];
+      const value = values[i];
+      if (!validations.has(value)) {
+        validations.set(value, new Map());
+      }
+      const results = validations.get(value);
+      if (!results.has(type)) {
+        results.set(type, runValidation(
+          methodName,
+          name,
+          type,
+          value
+        ));
+      }
+      const result = results.get(type);
       for (const warning of result.warnings) {
+        warning.variation = variation;
         warnings.push(warning);
       }
       if (result.error) {
         err = result.error;
         break;
       }
-      output[index] = result.value;
+      output[i] = result.value;
+      if (multis.has(name)) {
+        output[name].push(result.value);
+      } else if (hasOwnProperty.call(output, name)) {
+        multis.add(name);
+        output[name] = [output[name], result.value];
+      } else {
+        output[name] = result.value;
+      }
     }
     if (err) {
+      if (error && !error.default) {
+        continue;
+      }
       error = err;
+      error.variation = variation;
     } else {
       error = null;
       break;
     }
   }
   if (warnings.length || error) {
-    const signature = optionals.map((isOptional, i) => (
-    isOptional ? `[${paramNames[i]}]` : paramNames[i]
-    )).join(', ');
     for (const warning of warnings) {
+      const signature = warning.variation.map(([name]) => name).join(', ');
       console.warnLines(`${methodName}(${signature}): ${warning}`);
     }
     if (error) {
+      const signature = error.variation.map(([name]) => name).join(', ');
       throw Object.assign(
         new ArangoError({
           errorNum: ERROR_BAD_PARAMETER.code,

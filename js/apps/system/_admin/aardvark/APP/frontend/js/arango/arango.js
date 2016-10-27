@@ -790,10 +790,16 @@
       localStorage.setItem('authenticationNotification', false);
     },
 
-    renderEmpty: function (string) {
-      $('#content').html(
-        '<div class="noContent"><p>' + string + '</p></div>'
-      );
+    renderEmpty: function (string, iconClass) {
+      if (!iconClass) {
+        $('#content').html(
+          '<div class="noContent"><p>' + string + '</p></div>'
+        );
+      } else {
+        $('#content').html(
+          '<div class="noContent"><p>' + string + '<i class="' + iconClass + '"></i></p></div>'
+        );
+      }
     },
 
     download: function (url, callback) {

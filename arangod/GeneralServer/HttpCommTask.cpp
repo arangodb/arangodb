@@ -33,6 +33,8 @@
 #include "Rest/HttpRequest.h"
 #include "VocBase/ticks.h"
 
+#include "VppCommTask.h"
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -254,6 +256,21 @@ bool HttpCommTask::processRead() {
       return false;
     }
 
+    if (std::strncmp(_readBuffer.c_str(), "VST/1.0\r\n\r\n", 11) == 0) {
+      LOG_TOPIC(INFO, Logger::COMMUNICATION) << "Switching from Http to Vst";
+      std::shared_ptr<GeneralCommTask> commTask;
+      _abandoned = true;
+      cancelKeepAlive();
+      commTask = std::make_shared<VppCommTask>(
+          _loop, _server, std::move(_peer), std::move(_connectionInfo),
+          GeneralServerFeature::keepAliveTimeout(), /*skipSocketInit*/ true);
+      commTask->addToReadBuffer(_readBuffer.c_str() + 11,
+                                _readBuffer.length() - 11);
+      commTask->processRead();
+      commTask->start();
+      // statistics?!
+      return false;
+    }
     // header is complete
     if (ptr < end) {
       _readPosition = ptr - _readBuffer.c_str() + 4;
@@ -531,9 +548,7 @@ bool HttpCommTask::processRead() {
   else if (authResult == rest::ResponseCode::FORBIDDEN) {
     handleSimpleError(authResult, TRI_ERROR_USER_CHANGE_PASSWORD,
                       "change password", 1);
-  }
-  // not authenticated
-  else {
+  } else {  // not authenticated
     HttpResponse response(rest::ResponseCode::UNAUTHORIZED);
     std::string realm = "Bearer token_type=\"JWT\", realm=\"ArangoDB\"";
 

@@ -90,6 +90,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.8)
 ################################################################################
 
 set(ENABLE_MANUAL OFF CACHE type BOOL)
+set(BUILD_CURL_EXE OFF CACHE type BOOL)
 set(BUILD_TESTING OFF CACHE type BOOL)
 set(CURL_STATICLIB ON CACHE type BOOL)
 set(HTTP_ONLY ON CACHE type BOOL)

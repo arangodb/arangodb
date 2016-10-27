@@ -88,7 +88,8 @@ inline std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
   }
 
   // calculate length of current chunk
-  uint32_t chunkLength = dataLength + chunkHeaderLength(firstOfMany);
+  uint32_t chunkLength =
+      dataLength + static_cast<uint32_t>(chunkHeaderLength(firstOfMany));
 
   auto buffer =
       std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE, chunkLength, false);
@@ -103,7 +104,7 @@ inline std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
 
   // append data in slices
   for (auto const& slice : slices) {
-    buffer->appendText(std::string(slice.startAs<char>(), slice.byteSize()));
+    buffer->appendText(slice.startAs<char>(), slice.byteSize());
   }
 
   return buffer;
@@ -155,10 +156,11 @@ inline std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
   chunk |= isFirstChunk ? 0x1 : 0x0;
 
   // get the lenght of VPack data
-  uint32_t dataLength = end - begin;
+  uint32_t dataLength = static_cast<uint32_t>(end - begin);
 
   // calculate length of current chunk
-  uint32_t chunkLength = dataLength + chunkHeaderLength(firstOfMany);
+  uint32_t chunkLength =
+      dataLength + static_cast<uint32_t>(chunkHeaderLength(firstOfMany));
 
   auto buffer =
       std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE, chunkLength, false);
@@ -171,7 +173,7 @@ inline std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
     appendToBuffer(buffer.get(), totalMessageLength);
   }
 
-  buffer->appendText(std::string(data + begin, dataLength));
+  buffer->appendText(data + begin, dataLength);
 
   return buffer;
 }
@@ -197,13 +199,13 @@ inline void send_many(
     uint64_t id, std::size_t maxChunkBytes,
     std::unique_ptr<basics::StringBuffer> completeMessage,
     std::size_t uncompressedCompleteMessageLength) {
-  std::size_t totalLen = completeMessage->length();
+  uint64_t totalLen = completeMessage->length();
   std::size_t offsetBegin = 0;
   std::size_t offsetEnd = maxChunkBytes - chunkHeaderLength(true);
   // maximum number of bytes for follow up chunks
   std::size_t maxBytes = maxChunkBytes - chunkHeaderLength(false);
 
-  std::size_t numberOfChunks = 1;
+  uint32_t numberOfChunks = 1;
   {  // calcuate the number of chunks taht will be send
     std::size_t bytesToSend = totalLen - maxChunkBytes +
                               chunkHeaderLength(true);  // data for first chunk
@@ -221,7 +223,7 @@ inline void send_many(
       createChunkForNetworkMultiFirst(completeMessage->c_str(), offsetBegin,
                                       offsetEnd, id, numberOfChunks, totalLen));
 
-  std::size_t chunkNumber = 0;
+  std::uint32_t chunkNumber = 0;
   while (offsetEnd + maxBytes <= totalLen) {
     // send middle
     offsetBegin = offsetEnd;
@@ -294,8 +296,7 @@ inline std::vector<std::unique_ptr<basics::StringBuffer>> createChunkForNetwork(
 
     // fill buffer
     for (auto const& slice : slices) {
-      vppPayload->appendText(
-          std::string(slice.startAs<char>(), slice.byteSize()));
+      vppPayload->appendText(slice.startAs<char>(), slice.byteSize());
     }
 
     if (compress) {

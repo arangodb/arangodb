@@ -326,8 +326,8 @@ bool VelocyPackHelper::VPackIdEqual::operator()(VPackSlice const& lhs,
           0);
 };
 
-bool VelocyPackHelper::VPackHashedStringEqual::operator()(VPackHashedSlice const& lhs,
-                                                          VPackHashedSlice const& rhs) const noexcept {
+bool VelocyPackHelper::VPackHashedStringEqual::operator()(basics::VPackHashedSlice const& lhs,
+                                                          basics::VPackHashedSlice const& rhs) const noexcept {
   auto const lh = lhs.slice.head();
   auto const rh = rhs.slice.head();
 
@@ -946,7 +946,8 @@ uint64_t VelocyPackHelper::hashByAttributes(
 void VelocyPackHelper::SanitizeExternals(VPackSlice const input,
                                          VPackBuilder& output) {
   if (input.isExternal()) {
-    output.add(input.resolveExternal());
+    // recursively resolve externals
+    SanitizeExternals(input.resolveExternal(), output);
   } else if (input.isObject()) {
     output.openObject();
     for (auto const& it : VPackObjectIterator(input)) {
@@ -970,13 +971,13 @@ bool VelocyPackHelper::hasExternals(VPackSlice input) {
     return true;
   } else if (input.isObject()) {
     for (auto const& it : VPackObjectIterator(input)) {
-      if (hasExternals(it.value) == true) {
+      if (hasExternals(it.value)) {
         return true;
-      };
+      }
     }
   } else if (input.isArray()) {
     for (auto const& it : VPackArrayIterator(input)) {
-      if (hasExternals(it) == true) {
+      if (hasExternals(it)) {
         return true;
       }
     }

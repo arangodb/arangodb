@@ -220,7 +220,7 @@ int Communicator::work_once() {
 void Communicator::wait() {
   static int const MAX_WAIT_MSECS = 1000;  // wait max. 1 seconds
 
-  int numFds; // not used here
+  int numFds;  // not used here
   int res = curl_multi_wait(_curl, &_wakeup, 1, MAX_WAIT_MSECS, &numFds);
   if (res != CURLM_OK) {
     throw std::runtime_error(
@@ -378,7 +378,8 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
   std::string prefix("Communicator(" + std::to_string(rip->_ticketId) +
                      ") // ");
   LOG_TOPIC(TRACE, Logger::REQUESTS)
-      << prefix << "Curl rc is : " << rc << " after " << Logger::FIXED(TRI_microtime() - rip->_startTime) << " s";
+      << prefix << "Curl rc is : " << rc << " after "
+      << Logger::FIXED(TRI_microtime() - rip->_startTime) << " s";
   if (strlen(rip->_errorBuffer) != 0) {
     LOG_TOPIC(TRACE, Logger::REQUESTS)
         << prefix << "Curl error details: " << rip->_errorBuffer;

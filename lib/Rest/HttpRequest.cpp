@@ -751,7 +751,7 @@ VPackSlice HttpRequest::payload(VPackOptions const* options) {
       } else {
         return VPackSlice(_vpackBuilder->slice());
       }
-    } 
+    }
     return VPackSlice::noneSlice();  // no body
   } else /*VPACK*/ {
     VPackValidator validator;
