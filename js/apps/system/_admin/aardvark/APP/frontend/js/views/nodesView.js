@@ -106,13 +106,25 @@
       if (window.location.hash === '#nodes') {
         var self = this;
 
+        if ($('#content').is(':empty')) {
+          arangoHelper.renderEmpty('Please wait. Requesting cluster information...', 'fa fa-spin fa-circle-o-notch');
+        } else {
+          console.log('not empty');
+        }
+
+        if (navi !== false) {
+          arangoHelper.buildNodesSubNav('Overview');
+        }
+
         var scalingFunc = function (nodes) {
           $.ajax({
             type: 'GET',
             url: arangoHelper.databaseUrl('/_admin/cluster/numberOfServers'),
             contentType: 'application/json',
             success: function (data) {
-              self.continueRender(nodes, data);
+              if (window.location.hash === '#nodes') {
+                self.continueRender(nodes, data);
+              }
             }
           });
         };
@@ -125,16 +137,16 @@
           processData: false,
           async: true,
           success: function (data) {
-            scalingFunc(data.Health);
+            if (window.location.hash === '#nodes') {
+              scalingFunc(data.Health);
+            }
           },
           error: function () {
-            arangoHelper.arangoError('Cluster', 'Could not fetch cluster information');
+            if (window.location.hash === '#nodes') {
+              arangoHelper.arangoError('Cluster', 'Could not fetch cluster information');
+            }
           }
         });
-
-        if (navi !== false) {
-          arangoHelper.buildNodesSubNav('Overview');
-        }
       }
     },
 
