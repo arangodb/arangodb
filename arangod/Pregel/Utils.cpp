@@ -28,7 +28,6 @@ using namespace arangodb::pregel;
 
 std::string const Utils::apiPrefix = "/_api/pregel/";
 
-
 std::string const Utils::nextGSSPath = "nextGSS";
 std::string const Utils::finishedGSSPath = "finishedGSS";
 std::string const Utils::messagesPath = "messages";
@@ -50,10 +49,12 @@ std::string const Utils::doneKey = "done";
 std::string const Utils::edgeShardingKey = "_vertex";
 
 std::string Utils::baseUrl(std::string dbName) {
-  return  "/_db/" + basics::StringUtils::urlEncode(dbName) + Utils::apiPrefix;
+  return "/_db/" + basics::StringUtils::urlEncode(dbName) + Utils::apiPrefix;
 }
 
 std::string Utils::vertexKeyFromToValue(std::string const& graphKey) {
-    std::size_t pos = graphKey.find('/');
-    return graphKey.substr(pos+1, graphKey.length() - pos - 1);// if pos == -1 (npos) the entire string is returned
+  std::size_t pos = graphKey.find('/');
+  return graphKey.substr(
+      pos + 1, graphKey.length() - pos -
+                   1);  // if pos == -1 (npos) the entire string is returned
 }

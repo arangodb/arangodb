@@ -21,17 +21,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "WorkerJob.h"
-#include "WorkerContext.h"
-#include "Worker.h"
-#include "Vertex.h"
-#include "Message.h"
 #include "Utils.h"
+#include "Worker.h"
+#include "WorkerContext.h"
+#include "IncomingCache.h"
+#include "OutgoingCache.h"
+#include "GraphStore.h"
+#include "VertexComputation.h"
 
-#include "InMessageCache.h"
-#include "OutMessageCache.h"
-
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterInfo.h"
 #include "Dispatcher/DispatcherQueue.h"
 
 #include <velocypack/Iterator.h>
@@ -40,76 +39,83 @@
 using namespace arangodb;
 using namespace arangodb::pregel;
 
-WorkerJob::WorkerJob(Worker *worker,
-                     std::shared_ptr<WorkerContext> ctx) : Job("Pregel Job"), _canceled(false), _worker(worker), _ctx(ctx) {
-}
+template <typename V, typename E, typename M>
+WorkerJob<V, E, M>::WorkerJob(Worker<V, E, M>* worker,
+                              std::shared_ptr<WorkerContext<V, E, M>> ctx,
+                              std::shared_ptr<GraphStore<V, E>> graphStore)
+    : Job("Pregel Job"),
+      _worker(worker),
+      _canceled(false),
+      _ctx(ctx),
+      _graphStore(graphStore) {}
 
-void WorkerJob::work() {
+template <typename V, typename E, typename M>
+void WorkerJob<V, E, M>::work() {
   LOG(INFO) << "Worker job started";
   if (_canceled) {
-      LOG(INFO) << "Job was canceled before work started";
+    LOG(INFO) << "Job was canceled before work started";
     return;
   }
   // TODO cache this
-  OutMessageCache outCache(_ctx);
+  OutgoingCache<V, E, M> outCache(_ctx);
 
   unsigned int gss = _ctx->globalSuperstep();
   bool isDone = true;
+  auto vertexIterator = _graphStore->vertexIterator();
+  auto vertexComputation = _ctx->algorithm()->createComputation();
+  vertexComputation->_gss = gss;
+  vertexComputation->_outgoing = &outCache;
+  vertexComputation->_graphStore = _graphStore;
 
-  if (gss == 0) {
-    isDone = false;
-    
-    for (auto const &it : _worker->_vertices) {
-      Vertex *v = it.second;
-      //std::string key = v->_data.get(StaticStrings::KeyString).copyString();
-      //VPackSlice messages = _ctx->readableIncomingCache()->getMessages(key);
-      v->compute(gss, MessageIterator(), &outCache);
-      bool active = v->state() == VertexActivationState::ACTIVE;
-      if (!active) LOG(INFO) << "vertex has halted";
-      _worker->_activationMap[it.first] = active;
-    }
-  } else {
-    for (auto &it : _worker->_activationMap) {
-        
-      //std::string key = _ctx->vertexCollectionName() + "/" + it.first;
-      MessageIterator messages = _ctx->readableIncomingCache()->getMessages(it.first);
-        
-      if (messages.size() > 0 || it.second) {
+
+    for (auto& vertexEntry : vertexIterator) {
+      std::string vertexID = vertexEntry.vertexID();
+      MessageIterator<M> messages =
+          _ctx->readableIncomingCache()->getMessages(vertexID);
+      if (gss == 0 || messages.size() > 0 || vertexEntry.active()) {
         isDone = false;
-        
-        Vertex *v = _worker->_vertices[it.first];
-        v->compute(gss, messages, &outCache);
-        bool active = v->state() == VertexActivationState::ACTIVE;
-        it.second = active;
-        if (!active) LOG(INFO) << "vertex has halted";
+
+        vertexComputation->_vertexEntry = &vertexEntry;
+        vertexComputation->compute(vertexID, messages);
+
+        if (!vertexEntry.active()) {
+          LOG(INFO) << "vertex has halted";
+        }
       }
     }
-  }
   LOG(INFO) << "Finished executing vertex programs.";
 
   if (_canceled) {
     return;
   }
-  
+
   // ==================== send messages to other shards ====================
-  
+
   if (!isDone) {
-      outCache.sendMessages();
+    outCache.sendMessages();
   } else {
     LOG(INFO) << "Worker job has nothing more to process";
   }
-  _worker->workerJobIsDone(this, isDone);
+  _worker->workerJobIsDone(isDone);
 }
 
-bool WorkerJob::cancel() {
-    LOG(INFO) << "Canceling worker job";
+template <typename V, typename E, typename M>
+bool WorkerJob<V, E, M>::cancel() {
+  LOG(INFO) << "Canceling worker job";
   _canceled = true;
   return true;
 }
 
-void WorkerJob::cleanup(rest::DispatcherQueue* queue) {
+template <typename V, typename E, typename M>
+void WorkerJob<V, E, M>::cleanup(rest::DispatcherQueue* queue) {
   queue->removeJob(this);
   delete this;
 }
 
-void WorkerJob::handleError(basics::Exception const& ex) {}
+template <typename V, typename E, typename M>
+void WorkerJob<V, E, M>::handleError(basics::Exception const& ex) {}
+
+
+// template types to create
+template class arangodb::pregel::WorkerJob<int64_t,int64_t,int64_t>;
+

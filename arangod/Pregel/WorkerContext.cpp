@@ -21,23 +21,66 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "WorkerContext.h"
+#include "Algorithm.h"
 #include "IncomingCache.h"
+#include "Utils.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
 
-WorkerContext::WorkerContext(unsigned int en) : _executionNumber(en) {
-    _readCache = new IncomingCache();
-    _writeCache = new IncomingCache();
+template <typename V, typename E, typename M>
+WorkerContext<V, E, M>::WorkerContext(const Algorithm<V, E, M>* algo,
+                                      DatabaseID dbname, VPackSlice params)
+    : _algorithm(algo), _database(dbname)  {
+  VPackSlice coordID = params.get(Utils::coordinatorIdKey);
+  VPackSlice vertexCollName = params.get(Utils::vertexCollectionNameKey);
+  VPackSlice vertexCollPlanId = params.get(Utils::vertexCollectionPlanIdKey);
+  VPackSlice vertexShardIDs = params.get(Utils::vertexShardsListKey);
+  VPackSlice edgeShardIDs = params.get(Utils::edgeShardsListKey);
+  VPackSlice execNum = params.get(Utils::executionNumberKey);
+  if (!coordID.isString() || !vertexCollName.isString() ||
+      !vertexCollPlanId.isString() || !vertexShardIDs.isArray() ||
+      !edgeShardIDs.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "Supplied bad parameters to worker");
+  }
+  _executionNumber = execNum.getUInt();
+  _coordinatorId = coordID.copyString();
+  _vertexCollectionName = vertexCollName.copyString();
+  _vertexCollectionPlanId = vertexCollPlanId.copyString();
+
+  LOG(INFO) << "Local Shards:";
+  VPackArrayIterator vertices(vertexShardIDs);
+  for (VPackSlice shardSlice : vertices) {
+    ShardID name = shardSlice.copyString();
+    _localVertexShardIDs.push_back(name);
+    LOG(INFO) << name;
+  }
+  VPackArrayIterator edges(edgeShardIDs);
+  for (VPackSlice shardSlice : edges) {
+    ShardID name = shardSlice.copyString();
+    LOG(INFO) << name;
+  }
+        
+  auto format = algo->messageFormat();
+  auto combiner = algo->messageCombiner();
+  _readCache = std::make_shared<IncomingCache<M>>(format, combiner);
+  _writeCache =  std::make_shared<IncomingCache<M>>(format, combiner);
+  format.release();
+  combiner.release();
 }
 
-WorkerContext::~WorkerContext() {
-    delete _readCache;
-    delete _writeCache;
+template <typename V, typename E, typename M>
+WorkerContext<V, E, M>::~WorkerContext() {
+  delete _algorithm;
 }
 
-void WorkerContext::swapIncomingCaches() {
-    InMessageCache *t = _readCache;
-    _readCache = _writeCache;
-    _writeCache = t;
+template <typename V, typename E, typename M>
+void WorkerContext<V, E, M>::swapIncomingCaches() {
+  auto t = _readCache;
+  _readCache = _writeCache;
+  _writeCache = t;
 }
+
+// template types to create
+template class arangodb::pregel::WorkerContext<int64_t,int64_t,int64_t>;

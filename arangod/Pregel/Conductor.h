@@ -32,50 +32,47 @@
 
 #include "Aggregator.h"
 
-
 namespace arangodb {
 namespace pregel {
-  
-  class WorkerThread;
-  enum ExecutionState {RUNNING, FINISHED, ERROR};
-  
-  class Conductor {
-  public:
-    
-    Conductor(unsigned int executionNumber,
-              TRI_vocbase_t *vocbase,
-              std::shared_ptr<LogicalCollection> vertexCollection,
-              std::shared_ptr<LogicalCollection> edgeCollection,
-              std::string const& algorithm);
-      ~Conductor();
-    
-    void start();
-    void finishedGlobalStep(VPackSlice &data);//
-    void cancel();
-    
-    ExecutionState getState() {return _state;}
-    
-  private:
-    Mutex _finishedGSSMutex;// prevents concurrent calls to finishedGlobalStep
-    VocbaseGuard _vocbaseGuard;
-    const unsigned int _executionNumber;
-      
-    unsigned int _globalSuperstep;
-    int32_t _dbServerCount = 0;
-    int32_t _responseCount = 0;
-    int32_t _doneCount = 0;
-      
-    std::shared_ptr<LogicalCollection> _vertexCollection, _edgeCollection;
-    CollectionID _vertexCollectionID;
-    std::string _algorithm;
-    
-    ExecutionState _state = ExecutionState::RUNNING;
-      
-    // convenience
-      void resolveWorkerServers(std::unordered_map<ServerID, std::vector<ShardID>> &vertexServerMap,
-                                std::unordered_map<ServerID, std::vector<ShardID>> &edgeServerMap);
-    int sendToAllDBServers(std::string url, VPackSlice const& body);
-  };
+
+class Conductor {
+ public:
+  enum ExecutionState { RUNNING, FINISHED, ERROR };
+
+  Conductor(unsigned int executionNumber, TRI_vocbase_t* vocbase,
+            std::shared_ptr<LogicalCollection> vertexCollection,
+            std::shared_ptr<LogicalCollection> edgeCollection,
+            std::string const& algorithm);
+  ~Conductor();
+
+  void start();
+  void finishedGlobalStep(VPackSlice& data);  //
+  void cancel();
+
+  ExecutionState getState() { return _state; }
+
+ private:
+  Mutex _finishedGSSMutex;  // prevents concurrent calls to finishedGlobalStep
+  VocbaseGuard _vocbaseGuard;
+  const unsigned int _executionNumber;
+
+  unsigned int _globalSuperstep;
+  int32_t _dbServerCount = 0;
+  int32_t _responseCount = 0;
+  int32_t _doneCount = 0;
+
+  std::shared_ptr<LogicalCollection> _vertexCollection, _edgeCollection;
+  CollectionID _vertexCollectionID;
+  std::string _algorithm;
+
+  ExecutionState _state = ExecutionState::RUNNING;
+
+  // convenience
+  void resolveWorkerServers(
+      std::unordered_map<ServerID, std::vector<ShardID>>& vertexServerMap,
+      std::unordered_map<ServerID, std::vector<ShardID>>& edgeServerMap);
+  int sendToAllDBServers(std::string url, VPackSlice const& body);
+};
 }
 }
 #endif

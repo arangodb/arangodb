@@ -20,32 +20,9 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cstdint>
+#include "GraphFormat.h"
 
-#ifndef ARANGODB_PREGEL_COMBINER_H
-#define ARANGODB_PREGEL_COMBINER_H 1
-namespace arangodb {
-namespace pregel {
-    
-    // specify serialization, whatever
-    template<class M>
-    class Combiner {
-    public:
-        Combiner() {}
-        
-        Combiner(const Combiner&) = delete;
-        Combiner& operator=(const Combiner&) = delete;
-        
-        virtual M combine(M const& firstValue, M const& secondValue) const = 0;
-    };
-    
-    class MinIntegerCombiner : public Combiner<int64_t> {
-        MinIntegerCombiner() {}
-        
-        int64_t combine(int64_t const& firstValue, int64_t const& secondValue) const override {
-            return firstValue < secondValue ? firstValue : secondValue;
-        };
-    };
-}
-}
-#endif
+#include <velocypack/velocypack-aliases.h>
+
+using namespace arangodb;
+using namespace arangodb::pregel;

@@ -63,7 +63,6 @@ RestHandler::status RestPregelHandler::execute() {
       }
       
       unsigned int executionNumber = sExecutionNum.getUInt();
-
       if (suffix.size() != 1) {
         LOG(ERR) << "Invalid suffix";
         generateError(rest::ResponseCode::NOT_FOUND,
@@ -77,21 +76,21 @@ RestHandler::status RestPregelHandler::execute() {
           LOG(ERR) << "Conductor not found: " << executionNumber;
         }
       } else if (suffix[0] == Utils::nextGSSPath) {
-        Worker *w = PregelFeature::instance()->worker(executionNumber);
+        IWorker *w = PregelFeature::instance()->worker(executionNumber);
         if (!w) {// can happen if gss == 0
           LOG(INFO) << "creating worker";
-          w = new Worker(executionNumber, _vocbase, body);
+          w = IWorker::createWorker(_vocbase, body);
           PregelFeature::instance()->addWorker(w, executionNumber);
         }
         w->nextGlobalStep(body);
       } else if (suffix[0] == "messages") {
         LOG(INFO) << "messages";
-        Worker *exe = PregelFeature::instance()->worker(executionNumber);
+        IWorker *exe = PregelFeature::instance()->worker(executionNumber);
         if (exe) {
           exe->receivedMessages(body);
         }
       } else if (suffix[0] == "writeResults") {
-        Worker *exe = PregelFeature::instance()->worker(executionNumber);
+        IWorker *exe = PregelFeature::instance()->worker(executionNumber);
         if (exe) {
           exe->writeResults();
             PregelFeature::instance()->cleanup(executionNumber);

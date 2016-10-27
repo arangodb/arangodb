@@ -25,43 +25,41 @@
 
 #include "Basics/Common.h"
 
-
 struct TRI_vocbase_t;
 namespace arangodb {
-    
-namespace pregel {
-    
-  class Utils {
-    Utils() = delete;
-    
-  public:
-    // constants
-    static std::string const apiPrefix;
-      
-    static std::string const nextGSSPath;
-    static std::string const finishedGSSPath;
-    static std::string const messagesPath;
-    static std::string const writeResultsPath;
-    
-    static std::string const executionNumberKey;
-    static std::string const vertexCollectionNameKey;
-    static std::string const vertexCollectionPlanIdKey;
-    static std::string const vertexShardsListKey;
-    static std::string const edgeShardsListKey;
-    static std::string const resultShardKey;
-    static std::string const algorithmKey;
-    static std::string const coordinatorIdKey;
-    
-    static std::string const globalSuperstepKey;
-    static std::string const messagesKey;
-    static std::string const senderKey;
-    static std::string const doneKey;
-      
-    static std::string const edgeShardingKey;
-    static std::string baseUrl(std::string dbName);
-    static std::string vertexKeyFromToValue(std::string const& graphKey);
 
-  };
+namespace pregel {
+
+class Utils {
+  Utils() = delete;
+
+ public:
+  // constants
+  static std::string const apiPrefix;
+
+  static std::string const nextGSSPath;
+  static std::string const finishedGSSPath;
+  static std::string const messagesPath;
+  static std::string const writeResultsPath;
+
+  static std::string const executionNumberKey;
+  static std::string const vertexCollectionNameKey;
+  static std::string const vertexCollectionPlanIdKey;
+  static std::string const vertexShardsListKey;
+  static std::string const edgeShardsListKey;
+  static std::string const resultShardKey;
+  static std::string const algorithmKey;
+  static std::string const coordinatorIdKey;
+
+  static std::string const globalSuperstepKey;
+  static std::string const messagesKey;
+  static std::string const senderKey;
+  static std::string const doneKey;
+
+  static std::string const edgeShardingKey;
+  static std::string baseUrl(std::string dbName);
+  static std::string vertexKeyFromToValue(std::string const& graphKey);
+};
 }
 }
 #endif

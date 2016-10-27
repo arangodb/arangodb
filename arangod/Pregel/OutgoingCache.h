@@ -23,51 +23,49 @@
 #ifndef ARANGODB_OUT_MESSAGE_CACHE_H
 #define ARANGODB_OUT_MESSAGE_CACHE_H 1
 
-#include <string>
-
-#include <velocypack/vpack.h>
 #include <velocypack/velocypack-aliases.h>
-
+#include <velocypack/vpack.h>
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Cluster/ClusterInfo.h"
 
+#include "MessageFormat.h"
+#include "MessageCombiner.h"
 
 namespace arangodb {
 namespace pregel {
 
-  class WorkerContext;
-  template<typename M>
-  class Combiner;
-  
-    
-/* In the longer run, maybe write optimized implementations for certain use cases. For example threaded
+template <typename V, typename E, typename M>
+class WorkerContext;
+
+/* In the longer run, maybe write optimized implementations for certain use
+ cases. For example threaded
  processing */
-  template<typename M>
+template <typename V, typename E, typename M>
 class OutgoingCache {
-    friend class WorkerJob;
-public:
-  OutgoingCache(std::shared_ptr<WorkerContext> context, Combiner<M> const& combiner);
+ public:
+  OutgoingCache(std::shared_ptr<WorkerContext<V, E, M>> context);
   ~OutgoingCache();
-  
+
   void sendMessageTo(std::string const& toValue, M const& data);
   void clear();
-  size_t count() const {return _numVertices;}
-    
-protected:
+  size_t count() const { return _numVertices; }
+
   void sendMessages();
-  
-private:
-  const Combiner<M> *_combiner;
+
+ private:
+    std::unique_ptr<MessageFormat<M>> _format;
+    std::unique_ptr<MessageCombiner<M>> _combiner;
+    
   /// @brief two stage map: shard -> vertice -> message
   std::unordered_map<ShardID, std::unordered_map<std::string, M>> _map;
-  ClusterInfo *_ci;
-  std::shared_ptr<WorkerContext> _ctx;
+  std::shared_ptr<WorkerContext<V, E, M>> _ctx;
   std::shared_ptr<LogicalCollection> _collInfo;
+  ClusterInfo* _ci;
   std::string _baseUrl;
   /// @brief current number of vertices stored
   size_t _numVertices;
 };
-
-}}
+}
+}
 #endif

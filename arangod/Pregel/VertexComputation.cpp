@@ -22,60 +22,38 @@
 
 #include "VertexComputation.h"
 #include "OutgoingCache.h"
-
-#include "Basics/StaticStrings.h"
-#include <velocypack/velocypack-aliases.h>
-
+#include "GraphStore.h"
 
 using namespace std;
 using namespace arangodb;
 using namespace arangodb::velocypack;
 using namespace arangodb::pregel;
 
-void VertexComputation::sendMessage(std::string const& toValue, M const& data) {
-  outgoing->sendMessageTo(toValue, data);
-}
-/*
-Edge::Edge(VPackSlice data) : _data(data) {
-    VPackSlice v = data.get("value");
-    _value = v.isInteger() ? v.getInt() : 1;
+template <typename V, typename E, typename M>
+void VertexComputation<V, E, M>::sendMessage(std::string const& toValue,
+                                             M const& data) {
+  _outgoing->sendMessageTo(toValue, data);
 }
 
-Vertex::Vertex(VPackSlice document) : _data(document)  {
-  //documentId = document.get(StaticStrings::IdString).copyString();
-  VPackSlice s = document.get("value");
-  _vertexState = s.isInteger() ? s.getInt() : -1;
+template <typename V, typename E, typename M>
+EdgeIterator<E> VertexComputation<V, E, M>::VertexComputation::getEdges() {
+  return _graphStore->edgeIterator(_vertexEntry);
 }
 
-Vertex::~Vertex() {
-  /*for (auto const &it : _edges) {
-    delete(it);
-  }*
-  _edges.clear();
+template <typename V, typename E, typename M>
+V* VertexComputation<V, E, M>::getVertexData() {
+  return _graphStore->vertexData(_vertexEntry);
 }
 
-void Vertex::compute(int gss, MessageIterator const &messages, OutMessageCache* const cache) {
-  int64_t current = _vertexState;
-  for (auto const &msg : messages) {
-      if (current < 0 || msg._value < current) {
-          current = msg._value;
-      };
-  }
-  if (current >= 0 && (gss == 0 || current != _vertexState))  {
-    LOG(INFO) << "Recomputing value for vertex " << _data.toJson();
-      
-    _vertexState = current;
-    for (auto const &edge : _edges) {
-      int64_t val = edge._value + current;
-      VPackBuilder b;
-      b.openObject();
-      b.add("value", VPackValue(val));
-      b.close();
-        
-        std::string toID = edge._data.get(StaticStrings::ToString).copyString();
-      cache->sendMessageTo(toID, b.slice());
-    }
-  }
-  voteHalt();
+template <typename V, typename E, typename M>
+void VertexComputation<V, E, M>::setVertexData(const V*, size_t size) {
+  _graphStore->vertexData(_vertexEntry);
 }
-*/
+
+template <typename V, typename E, typename M>
+void VertexComputation<V, E, M>::voteHalt() {
+  _vertexEntry->setActive(false);
+}
+
+// template types to create
+template class arangodb::pregel::VertexComputation<int64_t,int64_t,int64_t>;

@@ -25,45 +25,50 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
-#include "VocBase/vocbase.h"
 #include "Cluster/ClusterInfo.h"
-#include "Dispatcher/Job.h"
 
-#include "WorkerContext.h"
 #include "Algorithm.h"
+#include "WorkerContext.h"
 
+struct TRI_vocbase_t;
 namespace arangodb {
-    class SingleCollectionTransaction;
 namespace pregel {
-  class Vertex;
-  class WorkerJob;
-  
-  template<typename, V, typename E, typename M>
-  class Worker {
-    friend class WorkerJob;
-  public:
-    Worker(unsigned int executionNumber, TRI_vocbase_t *vocbase, Algorithm<V, E, M> const& alg, VPackSlice s);
-    ~Worker();
-      
-    void nextGlobalStep(VPackSlice data);// called by coordinator
-    void receivedMessages(VPackSlice data);
-    void writeResults();
-    void cleanupReadTransactions();
-    
-  private:
-    /// @brief guard to make sure the database is not dropped while used by us
-    TRI_vocbase_t* _vocbase;
-    //Mutex _messagesMutex; TODO figure this out
-      std::shared_ptr<WorkerContext<V,E,M>> _ctx;
-    
-    std::unordered_map<std::string, Vertex*> _vertices;
-    std::map<std::string, bool> _activationMap;
-    std::vector<SingleCollectionTransaction*> _readTrxList;
-      
-      void lookupVertices(ShardID const& vertexShard);
-      void lookupEdges(ShardID const& edgeShardID);
-      void workerJobIsDone(WorkerJob *job, bool allVerticesHalted);
-  };
+
+class IWorker {
+ public:
+  virtual ~IWorker(){};
+  virtual void nextGlobalStep(VPackSlice data) = 0;  // called by coordinator
+  virtual void receivedMessages(VPackSlice data) = 0;
+  virtual void writeResults() = 0;
+
+  static IWorker* createWorker(TRI_vocbase_t* vocbase, VPackSlice parameters);
+};
+
+template <typename V, typename E, typename M>
+class WorkerJob;
+template <typename V, typename E>
+class GraphStore;
+
+template <typename V, typename E, typename M>
+class Worker : public IWorker {
+  friend class WorkerJob<V, E, M>;
+
+ public:
+  Worker(std::shared_ptr<GraphStore<V, E>> graphStore,
+         std::shared_ptr<WorkerContext<V, E, M>> context);
+  ~Worker();
+
+  void nextGlobalStep(VPackSlice data) override;  // called by coordinator
+  void receivedMessages(VPackSlice data) override;
+  void writeResults() override;
+
+ private:
+  // Mutex _messagesMutex; TODO figure this out
+  std::shared_ptr<WorkerContext<V, E, M>> _ctx;
+  std::shared_ptr<GraphStore<V, E>> _graphStore;
+
+  void workerJobIsDone(bool allVerticesHalted);
+};
 }
 }
 #endif

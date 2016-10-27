@@ -20,43 +20,27 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_FEATURE_H
-#define ARANGODB_PREGEL_FEATURE_H 1
+#include <cstdint>
 
-#include <unordered_map>
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/Common.h"
-
+#ifndef ARANGODB_PREGEL_COMBINER_H
+#define ARANGODB_PREGEL_COMBINER_H 1
 namespace arangodb {
 namespace pregel {
 
-class Conductor;
-class IWorker;
+// specify serialization, whatever
+template <class M>
+    struct MessageCombiner {
+  virtual ~MessageCombiner(){}
+  virtual M combine(M const& firstValue, M const& secondValue) const = 0;
+};
 
-class PregelFeature final : public application_features::ApplicationFeature {
- public:
-  explicit PregelFeature(application_features::ApplicationServer* server);
-  ~PregelFeature();
-
-  static PregelFeature* instance();
-
-  void beginShutdown() override final;
-
-  unsigned int createExecutionNumber();
-  void addExecution(Conductor* const exec, unsigned int executionNumber);
-  Conductor* conductor(int32_t executionNumber);
-
-  void addWorker(IWorker* const worker, unsigned int executionNumber);
-  IWorker* worker(unsigned int executionNumber);
-
-  void cleanup(unsigned int executionNumber);
-  void cleanupAll();
-
- private:
-  std::unordered_map<unsigned int, Conductor*> _conductors;
-  std::unordered_map<unsigned int, IWorker*> _workers;
+struct MinIntegerCombiner : public MessageCombiner<int64_t> {
+  MinIntegerCombiner() {}
+  int64_t combine(int64_t const& firstValue,
+                  int64_t const& secondValue) const override {
+    return firstValue < secondValue ? firstValue : secondValue;
+  };
 };
 }
 }
-
 #endif

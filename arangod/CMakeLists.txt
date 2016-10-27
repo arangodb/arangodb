@@ -375,13 +375,14 @@ add_executable(${BIN_ARANGOD}
   Pregel/PregelFeature.cpp
   Pregel/IncomingCache.cpp
   Pregel/OutgoingCache.cpp
-  Pregel/Message.cpp
   Pregel/VertexComputation.cpp
   Pregel/Worker.cpp
   Pregel/WorkerContext.cpp
   Pregel/WorkerJob.cpp
   Pregel/GraphStore.cpp
   Pregel/Utils.cpp
+  Pregel/GraphFormat.cpp
+  Pregel/MessageFormat.cpp
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}
 )
 

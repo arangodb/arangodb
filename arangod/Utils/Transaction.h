@@ -71,6 +71,7 @@ class BaseTraverserEngine;
 }
   
 namespace pregel {
+  template <typename V, typename E, typename M>
   class Worker;
 }
 
@@ -91,6 +92,7 @@ class Transaction {
 
   class IndexHandle {
     friend class Transaction;
+    template <typename V, typename E, typename M>
     friend class pregel::Worker;
 
     std::shared_ptr<arangodb::Index> _index;

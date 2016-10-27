@@ -20,43 +20,31 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_JOB_H
-#define ARANGODB_PREGEL_JOB_H 1
-
+#include <cstddef>
 #include "Basics/Common.h"
-#include "Dispatcher/Job.h"
 
-#include "WorkerContext.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
+#ifndef ARANGODB_PREGEL_MFORMAT_H
+#define ARANGODB_PREGEL_MFORMAT_H 1
 namespace arangodb {
-class SingleCollectionTransaction;
 namespace pregel {
 
-template <typename V, typename E>
-class GraphStore;
-template <typename V, typename E, typename M>
-class Worker;
+template <typename M>
+struct MessageFormat {
+  virtual ~MessageFormat() {}
+  virtual void unwrapValue(VPackSlice body, M &value) const = 0;
+  virtual void addValue(VPackBuilder& arrayBuilder, M const& val) const = 0;
+};
 
-template <typename V, typename E, typename M>
-class WorkerJob : public rest::Job {
-  WorkerJob(WorkerJob const&) = delete;
-  WorkerJob& operator=(WorkerJob const&) = delete;
-
- public:
-  WorkerJob(Worker<V, E, M>* worker,
-            std::shared_ptr<WorkerContext<V, E, M>> ctx,
-            std::shared_ptr<GraphStore<V, E>> graphStore);
-
-  void work() override;
-  bool cancel() override;
-  void cleanup(rest::DispatcherQueue*) override;
-  void handleError(basics::Exception const& ex) override;
-
- private:
-  Worker<V, E, M>* _worker;
-  std::atomic<bool> _canceled;
-  std::shared_ptr<WorkerContext<V, E, M>> _ctx;
-  std::shared_ptr<GraphStore<V, E>> _graphStore;
+struct IntegerMessageFormat : public MessageFormat<int64_t> {
+  IntegerMessageFormat() {}
+  void unwrapValue(VPackSlice s, int64_t &value) const override { value = s.getInt(); }
+  void addValue(VPackBuilder& arrayBuilder, int64_t const& val) const override {
+    arrayBuilder.add(VPackValue(val));
+  }
 };
 }
 }

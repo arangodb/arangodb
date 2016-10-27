@@ -20,45 +20,49 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
 #include <cstddef>
+#include "Basics/Common.h"
+#include "GraphStore.h"
+#include "IncomingCache.h"
 
 #ifndef ARANGODB_PREGEL_COMPUTATION_H
 #define ARANGODB_PREGEL_COMPUTATION_H 1
+
 namespace arangodb {
 namespace pregel {
-  /*
-  enum VertexActivationState {
-    ACTIVE,
-    STOPPED
-  };*/
-  
-  template <typename V, typename E, typename M>
-  class VertexEntry;
-  
-  template <typename M>
-  class MessageIterator;
-  
-  template <typename M>
-  class OutgoingCache;
-  
-  template <typename V, typename E, typename M>
-  class VertexComputation {
-    friend class Worker;
-  private:
-    unsigned int gss;
-    OutgoingCache<M> *outgoing;
-    
-  public:
-    
-    VertexComputation() {}
-    unsigned int getGlobalSuperstep() {return gss;}
-    
-    
-    virtual void compute(VertexEntry<V> *const entry, MessageIterator<M> const& iterator)
-    void sendMessage(std::string const& toValue, M const& data);
-  };
+/*
+enum VertexActivationState {
+  ACTIVE,
+  STOPPED
+};*/
 
+template <typename V, typename E, typename M>
+class OutgoingCache;
+    template <typename V, typename E, typename M> class WorkerJob;
+    
+template <typename V, typename E, typename M>
+class VertexComputation {
+  friend class WorkerJob<V,E,M>;
+
+ private:
+  unsigned int _gss;
+  OutgoingCache<V, E, M>* _outgoing;
+  std::shared_ptr<GraphStore<V, E>> _graphStore;
+  VertexEntry* _vertexEntry;
+
+ protected:
+  unsigned int getGlobalSuperstep() const { return _gss; }
+  void sendMessage(std::string const& toValue, M const& data);
+  EdgeIterator<E> getEdges();
+  V* getVertexData();
+  /// store data, will potentially move the data around
+  void setVertexData(const V*, size_t size);
+  void voteHalt();
+
+ public:
+  virtual void compute(std::string const& vertexID,
+                       MessageIterator<M> const& messages) = 0;
+};
 }
 }
 #endif
