@@ -344,8 +344,10 @@
         this.navigate('#dashboard', {trigger: true});
         return;
       }
-      this.nodesView = new window.NodesView({
-      });
+      if (!this.nodesView) {
+        this.nodesView = new window.NodesView({
+        });
+      }
       this.nodesView.render();
     },
 
