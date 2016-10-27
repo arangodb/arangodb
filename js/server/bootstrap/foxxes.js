@@ -34,8 +34,10 @@
 (function () {
   const internal = require('internal');
   const db = internal.db;
+
   return {
     foxx: function () {
+      
       require('@arangodb/foxx/manager').initializeFoxx();
     },
     foxxes: function () {
@@ -44,10 +46,20 @@
 
       try {
         db._useDatabase('_system');
-        const databases = db._databases();
 
+        // wait for databases to appear
+        var databases = db._databases();
+        while(true) {
+          if (databases.length != 0) {
+            break;
+          }
+          internal.wait(0.25);
+          databases = db._databases();
+        }
+        
         // loop over all databases
         for (const database of databases) {
+          console.log(database);
           db._useDatabase(database);
           // and initialize Foxx applications
           try {
