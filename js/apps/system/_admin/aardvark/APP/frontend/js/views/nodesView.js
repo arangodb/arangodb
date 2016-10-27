@@ -108,8 +108,6 @@
 
         if ($('#content').is(':empty')) {
           arangoHelper.renderEmpty('Please wait. Requesting cluster information...', 'fa fa-spin fa-circle-o-notch');
-        } else {
-          console.log('not empty');
         }
 
         if (navi !== false) {
