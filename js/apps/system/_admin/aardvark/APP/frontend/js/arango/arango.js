@@ -454,7 +454,9 @@
     },
 
     arangoError: function (title, content, info) {
-      window.App.notificationList.add({title: title, content: content, info: info, type: 'error'});
+      if (!$('#offlinePlaceholder').is(':visible')) {
+        window.App.notificationList.add({title: title, content: content, info: info, type: 'error'});
+      }
     },
 
     arangoWarning: function (title, content, info) {
