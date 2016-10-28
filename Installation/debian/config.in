@@ -31,37 +31,37 @@ if test "$DO_CONFIGURE" = "yes"; then
 
 	case "$STATE" in
 	    1)
-		db_input high arangodb3/password || true
+		db_input high @CPACK_PACKAGE_NAME@/password || true
                 db_go
-                db_get arangodb3/password
+                db_get @CPACK_PACKAGE_NAME@/password
                 #if [ -z "$RET" ]; then
                 #fi
                 ROOT_PW="${RET}"
                 ;;
             2)
-		db_input high arangodb3/password_again || true
+		db_input high @CPACK_PACKAGE_NAME@/password_again || true
                 db_go
-                db_get arangodb3/password_again
+                db_get @CPACK_PACKAGE_NAME@/password_again
                 if [ "${ROOT_PW}" = "${RET}" ]; then
                     ROOT_PW=""
                     break
                 else
-                    db_input critical arangodb3/password_mismatch
+                    db_input critical @CPACK_PACKAGE_NAME@/password_mismatch
 	            STATE=$(($STATE - 1))
                 fi
-                db_set arangodb3/password_again ""
+                db_set @CPACK_PACKAGE_NAME@/password_again ""
 		;;
 	    3)
-                db_input high arangodb3/upgrade || true
+                db_input high @CPACK_PACKAGE_NAME@/upgrade || true
 		;;
 	    4)
-                db_get arangodb3/upgrade
+                db_get @CPACK_PACKAGE_NAME@/upgrade
 
                 if [ "$RET" = "true" ]; then
-                    db_input high arangodb3/backup || true
+                    db_input high @CPACK_PACKAGE_NAME@/backup || true
                     db_go
                 else
-                    db_set arangodb3/backup "false"
+                    db_set @CPACK_PACKAGE_NAME@/backup "false"
                 fi
 		;;
 

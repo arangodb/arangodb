@@ -7,7 +7,7 @@ ARANGODB="/usr/sbin/arangod"
 . /usr/share/debconf/confmodule
 
 if [ "$1" = "configure" -a -z "$2" ]; then
-    db_get arangodb3/password
+    db_get @CPACK_PACKAGE_NAME@/password
 
     # Escape backslashes and quotes 
     if [ -n "$RET" ]; then
@@ -15,8 +15,8 @@ if [ "$1" = "configure" -a -z "$2" ]; then
          /usr/sbin/arango-init-database \
          --uid arangodb --gid arangodb || true
     fi
-    db_set arangodb3/password_again ""
-    db_set arangodb3/password ""
+    db_set @CPACK_PACKAGE_NAME@/password_again ""
+    db_set @CPACK_PACKAGE_NAME@/password ""
     db_go
 fi
 
@@ -26,10 +26,10 @@ UPGRADE=false
 $ARANGODB --uid arangodb --gid arangodb --server.rest-server false --log.foreground-tty false --database.check-version \
   || UPGRADE=true
 
-db_get arangodb3/upgrade
+db_get @CPACK_PACKAGE_NAME@/upgrade
 if [ "$RET" = "true" ];  then
   if [ "$UPGRADE" = "true" ];  then
-    db_get arangodb3/backup
+    db_get @CPACK_PACKAGE_NAME@/backup
 
     if [ "$RET" = "true" ];  then
       BACKUP="/var/lib/arangodb3-`date +%F-%H-%M-%S`"
