@@ -25,10 +25,12 @@
 
 #include "Agency/Agent.h"
 #include "Agency/GossipCallback.h"
+#include "Agency/MeasureCallback.h"
 #include "Basics/ConditionLocker.h"
 #include "Cluster/ClusterComm.h"
 
 #include <chrono>
+#include <numeric>
 #include <thread>
 
 using namespace arangodb::consensus;
@@ -105,7 +107,7 @@ void Inception::gossip() {
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "Stopping active gossipping!";
       } else {
         LOG_TOPIC(ERR, Logger::AGENCY)
-            << "Failed to find complete pool of agents. Giving up!";
+          << "Failed to find complete pool of agents. Giving up!";
       }
       break;
     }
@@ -225,7 +227,7 @@ bool Inception::restartingActiveAgent() {
       if (active.empty()) {
         return true;
       }
-
+      
       for (auto& i : active) {
         
         if (i != myConfig.id() && i != "") {
@@ -236,9 +238,9 @@ bool Inception::restartingActiveAgent() {
             std::unordered_map<std::string, std::string>(), 2.0);
           
           if (comres->status == CL_COMM_SENT) {
-
+            
             try {
-
+              
               auto theirActive = comres->result->getBodyVelocyPack()->
                 slice().get("configuration").get("active").toJson();
               auto myActive = myConfig.activeToBuilder()->toJson();
@@ -252,23 +254,15 @@ bool Inception::restartingActiveAgent() {
               } else {
                 i = "";
               }
-
+              
             } catch (std::exception const& e) {
               LOG_TOPIC(FATAL, Logger::AGENCY)
                 << "Assumed active RAFT peer has no active agency list: " << e.what()
                 << "Administrative intervention needed.";
-                FATAL_ERROR_EXIT();
-                return false;
-            }
-            
-          } else {
-            /*
-              LOG_TOPIC(FATAL, Logger::AGENCY)
-              << "Assumed active RAFT peer and I disagree on active membership."
-              << "Administrative intervention needed.";
               FATAL_ERROR_EXIT();
-              return false;*/
-          }
+              return false;
+            }
+          } 
         }
         
       }
@@ -290,8 +284,81 @@ bool Inception::restartingActiveAgent() {
   }
 
   return false;
-    
+  
+}
 
+inline static int64_t timeStamp() {
+  using namespace std::chrono;
+  return duration_cast<milliseconds>(
+    steady_clock::now().time_since_epoch()).count();
+}
+
+void Inception::reportIn(std::string const& peerId, uint64_t start) {
+  MUTEX_LOCKER(lock, _pLock);
+  _pings.push_back((double)(timeStamp()-start));
+}
+
+bool Inception::estimateRAFTInterval() {
+
+  using namespace std::chrono;
+  
+  auto pool = _agent->config().pool();
+  std::string path("/_api/agency/config");
+  for (size_t i = 0; i < 25; ++i) {
+    for (auto const& peer : pool) {
+      std::string clientid = peer.first + std::to_string(i);
+      auto hf =
+        std::make_unique<std::unordered_map<std::string, std::string>>();
+      arangodb::ClusterComm::instance()->asyncRequest(
+        clientid, 1, peer.second, rest::RequestType::GET, path,
+        std::make_shared<std::string>(), hf,
+        std::make_shared<MeasureCallback>(this, peer.second, timeStamp()),
+        2.0, true);
+    } 
+  }
+
+  auto s = system_clock::now();
+  seconds timeout(3);
+  while (true) {
+    
+    _cv.wait(50000);
+    
+    {
+      MUTEX_LOCKER(lock, _pLock);
+      if (_pings.size() == 25*pool.size()) {
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "All pings are in";
+        break;
+      }
+    }
+    
+    if ((system_clock::now() - s) > timeout) {
+      LOG_TOPIC(DEBUG, Logger::AGENCY) << "Timed out waiting for pings";
+    }
+    
+  }
+  
+  {
+
+    MUTEX_LOCKER(lock, _pLock);
+    size_t num = _pings.size();
+    
+    if (num > 0) {
+      
+      double sum, mean, sq_sum, stdev;
+      sum    = std::accumulate(_pings.begin(), _pings.end(), 0.0);
+      mean   = sum / num;
+      std::transform(_pings.begin(), _pings.end(), _pings.begin(),
+                     std::bind2nd(std::minus<double>(), mean));
+      sq_sum =
+        std::inner_product(_pings.begin(), _pings.end(), _pings.begin(), 0.0);
+      stdev = std::sqrt(sq_sum / num);
+      
+      LOG(DEBUG) << "mean(" << mean << ") stdev(" << stdev<< ")";
+      
+    }
+  }
+  return true;
+  
 }
   
 
@@ -306,24 +373,22 @@ void Inception::run() {
   // 1. If active agency, do as you're told
   if (activeAgencyFromPersistence()) {
     _agent->ready(true);  
-    return;
   }
-
+  
   // 2. If we think that we used to be active agent
-  if (restartingActiveAgent()) {
-  _agent->ready(true);  
-    return;
+  if (!_agent->ready() && restartingActiveAgent()) {
+    _agent->ready(true);  
   }
-
+  
   // 3. Else gossip
   config_t config = _agent->config();
-  if (!config.poolComplete()) {
+  if (!_agent->ready() && !config.poolComplete()) {
     gossip();
   }
 
   // 4. If still incomplete bail out :(
   config = _agent->config();
-  if (!config.poolComplete()) {
+  if (!_agent->ready() && !config.poolComplete()) {
     LOG_TOPIC(FATAL, Logger::AGENCY)
       << "Failed to build environment for RAFT algorithm. Bailing out!";
     FATAL_ERROR_EXIT();
@@ -331,6 +396,10 @@ void Inception::run() {
 
   _agent->ready(true);
 
+  if (_agent->ready()) {
+    estimateRAFTInterval();
+  }
+  
 }
 
 // @brief Graceful shutdown

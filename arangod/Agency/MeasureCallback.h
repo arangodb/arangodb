@@ -21,24 +21,27 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_GOSSIP_CALLBACK_H
-#define ARANGOD_CONSENSUS_GOSSIP_CALLBACK_H 1
+#ifndef ARANGOD_CONSENSUS_MEASURE_CALLBACK_H
+#define ARANGOD_CONSENSUS_MEASURE_CALLBACK_H 1
 
 #include "Cluster/ClusterComm.h"
 
 namespace arangodb {
 namespace consensus {
 
-class Agent;
+class Inception;
 
-class GossipCallback : public arangodb::ClusterCommCallback {
- public:
-  explicit GossipCallback(Agent*);
+class MeasureCallback : public arangodb::ClusterCommCallback {
 
+public:
+  explicit MeasureCallback(Inception*, std::string const&, uint64_t);
+  
   virtual bool operator()(arangodb::ClusterCommResult*) override final;
-
+  
  private:
-  Agent* _agent;
+  Inception* _inc;
+  std::string const _peerId;
+  uint64_t const _sent;
 };
 }
 }  // namespace
