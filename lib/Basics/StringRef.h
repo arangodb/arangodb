@@ -30,6 +30,8 @@
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 
+#include <iosfwd>
+
 namespace arangodb {
 
 /// @brief a struct describing a C character array
@@ -174,6 +176,8 @@ class StringRef {
 
 }
 
+std::ostream& operator<<(std::ostream&, arangodb::StringRef const&);
+
 inline bool operator==(arangodb::StringRef const& lhs, arangodb::StringRef const& rhs) {
   return (lhs.size() == rhs.size() && memcmp(lhs.data(), rhs.data(), lhs.size()) == 0);
 }
@@ -226,5 +230,6 @@ struct equal_to<arangodb::StringRef> {
 };
 
 }
+
 
 #endif
