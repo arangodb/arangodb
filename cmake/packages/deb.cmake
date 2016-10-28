@@ -85,8 +85,10 @@ add_custom_target(package-arongodb-client
 list(APPEND PACKAGES_LIST package-arongodb-client)
 
 
-add_custom_target(copy_packages
+add_custom_target(copy_deb_packages
   COMMAND cp *.deb ${PACKAGE_TARGET_DIR})
+
+list(APPEND COPY_PACKAGES_LIST copy_deb_packages)
 
 add_custom_target(remove_packages
   COMMAND rm -f *.deb

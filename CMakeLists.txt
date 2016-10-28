@@ -108,6 +108,7 @@ set(BIN_ARANGOVPACK   arangovpack)
 set(TEST_BASICS_SUITE basics_suite)
 set(TEST_GEO_SUITE    geo_suite)
 set(PACKAGES_LIST)
+set(COPY_PACKAGES_LIST)
 set(CLEAN_PACKAGES_LIST)
 
 ################################################################################
@@ -929,6 +930,10 @@ endif ()
 
 add_custom_target(packages
   DEPENDS ${PACKAGES_LIST}
+  )
+
+add_custom_target(copy_packages
+  DEPENDS ${COPY_PACKAGES_LIST}
   )
 
 add_custom_target(clean_packages
