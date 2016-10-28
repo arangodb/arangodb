@@ -242,6 +242,11 @@ endif ()
 find_package(PythonInterp 2 EXACT REQUIRED)
 get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
 
+if (NOT WINDOWS)
+  find_program(CHMOD_EXECUTABLE chmod)
+  find_program(CHOWN_EXECUTABLE chown)
+endif()
+
 ################################################################################
 ## ARCHITECTURE
 ################################################################################
