@@ -519,10 +519,11 @@ void Constituent::run() {
 
   if (result.isArray()) {
     for (auto const& i : VPackArrayIterator(result)) {
+      auto ii = i.resolveExternals();
       try {
         MUTEX_LOCKER(locker, _castLock);
-        _term = i.get("term").getUInt();
-        _votedFor = i.get("voted_for").copyString();
+        _term = ii.get("term").getUInt();
+        _votedFor = ii.get("voted_for").copyString();
       } catch (std::exception const&) {
         LOG_TOPIC(ERR, Logger::AGENCY)
             << "Persisted election entries corrupt! Defaulting term,vote (0,0)";

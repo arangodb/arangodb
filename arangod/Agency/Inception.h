@@ -28,6 +28,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
+#include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 
 #include <velocypack/Builder.h>
@@ -53,6 +54,9 @@ public:
   /// @brief Defualt dtor
   virtual ~Inception();
 
+  /// @brief Report in from callbacks
+  void reportIn(std::string const&, uint64_t);
+
   void beginShutdown() override;
   void run() override;
 
@@ -60,18 +64,24 @@ public:
 
   /// @brief Find active agency from persisted 
   bool activeAgencyFromPersistence();
+
+  /// @brief We are a restarting active RAFT agent
   bool restartingActiveAgent();
   
   /// @brief Find active agency from command line
   bool activeAgencyFromCommandLine();
 
+  /// @brief Try to estimate good RAFT min/max timeouts
+  bool estimateRAFTInterval();
+
   /// @brief Gossip your way into the agency
   void gossip();
 
-  
   Agent* _agent;                           //< @brief The agent
   arangodb::basics::ConditionVariable _cv; //< @brief For proper shutdown
-
+  std::vector<double> _pings;              //< @brief pings
+  mutable arangodb::Mutex _pLock;                            //< @brief Guard pings
+  
 };
 
 }}
