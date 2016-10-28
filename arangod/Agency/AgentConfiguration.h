@@ -168,6 +168,10 @@ struct config_t {
   /// @brief Get maximum RAFT timeout
   double maxPing() const;
 
+  /// @brief Reset RAFT timing
+  void pingTimes(double, double);
+
+  /// @brief Supervision grace period
   double supervisionGracePeriod() const;
 
   /// @brief Get replacement for deceased active agent

@@ -130,6 +130,12 @@ double config_t::maxPing() const {
   return _maxPing;
 }
 
+void config_t::pingTimes(double minPing, double maxPing) {
+  WRITE_LOCKER(writeLocker, _lock);
+  _minPing = minPing;
+  _maxPing = maxPing;
+}
+
 std::map<std::string, std::string> config_t::pool() const {
   READ_LOCKER(readLocker, _lock);
   return _pool;

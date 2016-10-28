@@ -165,6 +165,17 @@ RestStatus RestAgencyPrivHandler::execute() {
         } catch (std::exception const& e) {
           return reportBadQuery(e.what());
         }
+      } else if (_request->suffix()[0] == "measure") {
+        if (_request->requestType() != rest::RequestType::POST) {
+          return reportMethodNotAllowed();
+        }
+        arangodb::velocypack::Options options;
+        auto query = _request->toVelocyPackBuilderPtr(&options);
+        try {
+          _agent->reportMeasurement(query);
+        } catch (std::exception const& e) {
+          return reportBadQuery(e.what());
+        }
       } else if (_request->suffix()[0] == "activeAgents") {
         if (_request->requestType() != rest::RequestType::GET) {
           return reportMethodNotAllowed();

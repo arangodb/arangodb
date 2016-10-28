@@ -1061,6 +1061,16 @@ query_t Agent::gossip(query_t const& in, bool isCallback) {
 }
 
 
+void Agent::reportMeasurement(query_t const& query) {
+  if (_inception != nullptr) {
+    _inception->reportIn(query);
+  }
+}
+
+void Agent::resetRAFTTimes(double min_timeout, double max_timeout) {
+  _config.pingTimes(min_timeout,max_timeout);
+}
+
 void Agent::ready(bool b) {
   // From main thread of Inception
   _ready = b;
