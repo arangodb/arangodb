@@ -425,7 +425,7 @@ build-dist-books:
 	fi; \
 	make build-books DISPLAY="$${DISP}"; \
 	mkdir -p ${OUTPUT_DIR}; \
-	( cd books; tar -czf ${OUTPUT_DIR}/ArangoDB-${newVersionNumber}.tar.gz ${ALLBOOKS}; ); \
+	( cd books; tar -czf ${OUTPUT_DIR}/ArangoDB-${newVersionNumber}.tar.gz ${ALLBOOKS} index.html; ); \
 	for book in $(ALLBOOKS); do \
 		make build-book-dist NAME=$${book} DISPLAY="$${DISP}" ; \
 	done
