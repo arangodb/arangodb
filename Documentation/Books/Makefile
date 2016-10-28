@@ -18,8 +18,8 @@ start_X11_display:
 	/usr/bin/daemon --pidfile=${PIDFILE} --name=xvfb --inherit --output=/tmp/xvfb.log --  Xvfb ${DISP} -screen 0 800x600x16  -ac -pn -noreset
 
 stop_X11_display:
-	kill `cat ${PIDFILE}`
-	rm -f ${PIDFILE}
+	kill `cat $${PIDFILE}`
+	rm -f $${PIDFILE}
 
 ################################################################################
 # per book targets
