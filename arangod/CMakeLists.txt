@@ -95,6 +95,7 @@ SET(ARANGOD_SOURCES
   Agency/GossipCallback.cpp
   Agency/Inception.cpp
   Agency/Job.cpp
+  Agency/MeasureCallback.cpp
   Agency/MoveShard.cpp
   Agency/NotifyCallback.cpp
   Agency/Node.cpp
