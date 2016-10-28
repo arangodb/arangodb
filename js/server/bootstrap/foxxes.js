@@ -59,7 +59,6 @@
         
         // loop over all databases
         for (const database of databases) {
-          console.log(database);
           db._useDatabase(database);
           // and initialize Foxx applications
           try {
