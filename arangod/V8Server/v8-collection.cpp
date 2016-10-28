@@ -1859,9 +1859,7 @@ static int GetRevisionCoordinator(arangodb::LogicalCollection* collection,
   std::string const databaseName(collection->dbName());
   std::string const cid = collection->cid_as_string();
 
-  int res = revisionOnCoordinator(databaseName, cid, rid);
-
-  return res;
+  return revisionOnCoordinator(databaseName, cid, rid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -599,7 +599,9 @@ int revisionOnCoordinator(std::string const& dbname,
           VPackSlice r = answer.get("revision");
 
           if (r.isString()) {
-            TRI_voc_rid_t cmp = StringUtils::uint64(r.copyString());
+            VPackValueLength len;
+            char const* p = r.getString(len);
+            TRI_voc_rid_t cmp = TRI_StringToRid(p, len);
 
             if (cmp > rid) {
               // get the maximum value
