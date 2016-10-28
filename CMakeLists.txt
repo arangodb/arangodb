@@ -108,6 +108,7 @@ set(BIN_ARANGOVPACK   arangovpack)
 set(TEST_BASICS_SUITE basics_suite)
 set(TEST_GEO_SUITE    geo_suite)
 set(PACKAGES_LIST)
+set(COPY_PACKAGES_LIST)
 set(CLEAN_PACKAGES_LIST)
 
 ################################################################################
@@ -241,6 +242,11 @@ endif ()
 
 find_package(PythonInterp 2 EXACT REQUIRED)
 get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
+
+if (NOT WINDOWS)
+  find_program(CHMOD_EXECUTABLE chmod)
+  find_program(CHOWN_EXECUTABLE chown)
+endif()
 
 ################################################################################
 ## ARCHITECTURE
@@ -924,6 +930,10 @@ endif ()
 
 add_custom_target(packages
   DEPENDS ${PACKAGES_LIST}
+  )
+
+add_custom_target(copy_packages
+  DEPENDS ${COPY_PACKAGES_LIST}
   )
 
 add_custom_target(clean_packages

@@ -15,11 +15,14 @@ newVersionNumber = $(shell cat ../../VERSION)
 
 
 start_X11_display:
+	if test -f "${PIDFILE}"; then \
+		make stop_X11_display; \
+	fi
 	/usr/bin/daemon --pidfile=${PIDFILE} --name=xvfb --inherit --output=/tmp/xvfb.log --  Xvfb ${DISP} -screen 0 800x600x16  -ac -pn -noreset
 
 stop_X11_display:
-	kill `cat ${PIDFILE}`
-	rm -f ${PIDFILE}
+	kill `cat $${PIDFILE}`; \
+	rm -f $${PIDFILE}
 
 ################################################################################
 # per book targets
@@ -416,7 +419,7 @@ build-dist-books:
 	PIDFILE=/tmp/xvfb_20_0.pid; \
 	if test -z "$${DISPLAY}"; then \
 		make start_X11_display PIDFILE=$${PIDFILE} DISP=':20.0'; \
-	fi
+	fi; \
 	set -x ; \
 	if test -z "$${DISPLAY}"; then \
 		DISP=:20.0; \
@@ -425,11 +428,10 @@ build-dist-books:
 	fi; \
 	make build-books DISPLAY="$${DISP}"; \
 	mkdir -p ${OUTPUT_DIR}; \
-	( cd books; tar -czf ${OUTPUT_DIR}/ArangoDB-${newVersionNumber}.tar.gz ${ALLBOOKS}; ); \
+	( cd books; tar -czf ${OUTPUT_DIR}/ArangoDB-${newVersionNumber}.tar.gz ${ALLBOOKS} index.html; ); \
 	for book in $(ALLBOOKS); do \
 		make build-book-dist NAME=$${book} DISPLAY="$${DISP}" ; \
-	done
-
+	done; \
 	if test -z "$${DISPLAY}"; then \
 		make stop_X11_display PIDFILE="$${PIDFILE}"; \
 	fi

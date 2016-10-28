@@ -295,6 +295,11 @@ while [ $# -gt 0 ];  do
             shift
             ;;
 
+        --snap)
+            CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DUSE_SNAPCRAFT=ON -DSNAP_PORT=8533"
+            shift
+            ;;
+
         --parallel)
             shift
             PARALLEL_BUILDS=$1

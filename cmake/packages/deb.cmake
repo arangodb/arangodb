@@ -13,10 +13,26 @@ set(CPACK_DEBIAN_PACKAGE_HOMEPAGE ${ARANGODB_URL_INFO_ABOUT})
 set(CPACK_COMPONENTS_ALL debian-extras)
 set(CPACK_GENERATOR "DEB")
 
+# substitute the package name so debconf works:
+configure_file (
+  "${PROJECT_SOURCE_DIR}/Installation/debian/templates.in"
+  "${PROJECT_BINARY_DIR}/Installation/debian/templates"
+  NEWLINE_STYLE UNIX)
+configure_file (
+  "${PROJECT_SOURCE_DIR}/Installation/debian/config.in"
+  "${PROJECT_BINARY_DIR}/Installation/debian/config"
+  NEWLINE_STYLE UNIX)
+configure_file (
+  "${PROJECT_SOURCE_DIR}/Installation/debian/postinst.in"
+  "${PROJECT_BINARY_DIR}/Installation/debian/postinst"
+  NEWLINE_STYLE UNIX)
+
+
 list(APPEND CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA
-  "${PROJECT_SOURCE_DIR}/Installation/debian/templates"
-  "${PROJECT_SOURCE_DIR}/Installation/debian/config"
-  "${PROJECT_SOURCE_DIR}/Installation/debian/postinst"
+  "${PROJECT_BINARY_DIR}/Installation/debian/templates"
+  "${PROJECT_BINARY_DIR}/Installation/debian/config"
+  "${PROJECT_BINARY_DIR}/Installation/debian/postinst"
+  
   "${PROJECT_SOURCE_DIR}/Installation/debian/preinst"
   "${PROJECT_SOURCE_DIR}/Installation/debian/postrm"
   "${PROJECT_SOURCE_DIR}/Installation/debian/prerm;")
@@ -69,8 +85,10 @@ add_custom_target(package-arongodb-client
 list(APPEND PACKAGES_LIST package-arongodb-client)
 
 
-add_custom_target(copy_packages
+add_custom_target(copy_deb_packages
   COMMAND cp *.deb ${PACKAGE_TARGET_DIR})
+
+list(APPEND COPY_PACKAGES_LIST copy_deb_packages)
 
 add_custom_target(remove_packages
   COMMAND rm -f *.deb

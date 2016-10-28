@@ -142,10 +142,11 @@ if (UNIX)
         NEWLINE_STYLE UNIX)
       if (${USE_ENTERPRISE})
         install(FILES ${PROJECT_BINARY_DIR}${SYSTEMD_UNIT_DIR}/arangodb3.service
-          DESTINATION ${SYSTEMD_UNIT_DIR}/arangodb3e.service)
+          DESTINATION ${SYSTEMD_UNIT_DIR}/
+          RENAME arangodb3e.service)
       else()
         install(FILES ${PROJECT_BINARY_DIR}${SYSTEMD_UNIT_DIR}/arangodb3.service
-          DESTINATION ${SYSTEMD_UNIT_DIR}/arangodb3.service)
+          DESTINATION ${SYSTEMD_UNIT_DIR}/)
       endif()
   endif()
 endif()

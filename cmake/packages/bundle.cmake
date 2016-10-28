@@ -26,5 +26,7 @@ add_custom_target(package-arongodb-server-bundle
 
 list(APPEND PACKAGES_LIST package-arongodb-server-bundle)
 
-add_custom_target(copy_packages
+add_custom_target(copy_bundle_packages
   COMMAND cp *.dmg ${PACKAGE_TARGET_DIR})
+
+list(APPEND COPY_PACKAGES_LIST copy_bundle_packages)
