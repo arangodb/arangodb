@@ -4,5 +4,5 @@ arangosh&gt; graph.male.save({name: <span class="hljs-string">"Floyd"</span>, _k
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/floyd"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"floyd"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_T9Xd7oW---"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_U-_q6D6--A"</span> 
 }

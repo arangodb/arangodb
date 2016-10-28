@@ -37,22 +37,75 @@ var ArangoCollection = arangodb.ArangoCollection;
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
 
-var compareStringIds = function (l, r) {
-  var i;
-  if (l.length !== r.length) {
-    return l.length - r.length < 0 ? -1 : 1;
-  }
+// copied from lib/Basics/HybridLogicalClock.cpp
+var decodeTable = [
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1,  //   0 - 15
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1,  //  16 - 31
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, 0,  -1, -1,  //  32 - 47
+    54, 55, 56, 57, 58, 59, 60, 61,
+    62, 63, -1, -1, -1, -1, -1, -1,  //  48 - 63
+    -1, 2,  3,  4,  5,  6,  7,  8,
+    9,  10, 11, 12, 13, 14, 15, 16,  //  64 - 79
+    17, 18, 19, 20, 21, 22, 23, 24,
+    25, 26, 27, -1, -1, -1, -1, 1,  //  80 - 95
+    -1, 28, 29, 30, 31, 32, 33, 34,
+    35, 36, 37, 38, 39, 40, 41, 42,  //  96 - 111
+    43, 44, 45, 46, 47, 48, 49, 50,
+    51, 52, 53, -1, -1, -1, -1, -1,  // 112 - 127
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1,  // 128 - 143
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1,  // 144 - 159
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1,  // 160 - 175
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1,  // 176 - 191
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1,  // 192 - 207
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1,  // 208 - 223
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1,  // 224 - 239
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1   // 240 - 255
+];
 
-  // length is equal
-  for (i = 0; i < l.length; ++i) {
-    if (l[i] !== r[i]) {
-      return l[i] < r[i] ? -1 : 1;
+var decode = function(value) {
+  var result = 0;
+  if (value !== '0') {
+    for (var i = 0, n = value.length; i < n; ++i) {
+      result = (result * 2 * 2 * 2 * 2 * 2 * 2) + decodeTable[value.charCodeAt(i)];
+    }
+  }
+  return result; 
+};
+
+var compareStringIds = function (l, r) {
+  if (l.length === r.length) {
+    // strip common prefix because the accuracy of JS numbers is limited
+    var prefixLength = 0;
+    for (var i = 0; i < l.length; ++i) {
+      if (l[i] !== r[i]) {
+        break;
+      }
+      ++prefixLength;
+    }
+    if (prefixLength > 0) {
+      l = l.substr(prefixLength);
+      r = r.substr(prefixLength);
     }
   }
 
+  l = decode(l);
+  r = decode(r);
+  if (l !== r) {
+    return l < r ? -1 : 1;
+  }
   return 0;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: error handling
@@ -782,18 +835,15 @@ function CollectionSuite () {
 
       var r1 = c1.revision();
       assertTypeOf("string", r1);
-      assertTrue(r1.match(/^[0-9]+$/));
 
       c1.save({ a : 1 });
       var r2 = c1.revision();
       assertTypeOf("string", r2);
-      assertTrue(r2.match(/^[0-9]+$/));
       assertEqual(1, compareStringIds(r2, r1));
 
       c1.save({ a : 2 });
       var r3 = c1.revision();
       assertTypeOf("string", r3);
-      assertTrue(r3.match(/^[0-9]+$/));
       assertEqual(1, compareStringIds(r3, r2));
 
       // unload
@@ -820,11 +870,8 @@ function CollectionSuite () {
       var c1 = db._create(cn);
 
       var r1 = c1.revision();
-      assertTrue(r1.match(/^[0-9]+$/));
-
       c1.save({ _key: "abc" });
       var r2 = c1.revision();
-      assertTrue(r2.match(/^[0-9]+$/));
       assertEqual(1, compareStringIds(r2, r1));
 
       c1.save({ _key: "123" });
@@ -832,17 +879,14 @@ function CollectionSuite () {
       c1.save({ _key: "789" });
 
       var r3 = c1.revision();
-      assertTrue(r3.match(/^[0-9]+$/));
       assertEqual(1, compareStringIds(r3, r2));
 
       c1.remove("123");
       var r4 = c1.revision();
-      assertTrue(r4.match(/^[0-9]+$/));
       assertEqual(1, compareStringIds(r4, r3));
 
       c1.truncate();
       var r5 = c1.revision();
-      assertTrue(r5.match(/^[0-9]+$/));
       assertEqual(1, compareStringIds(r5, r4));
 
       // unload
@@ -853,12 +897,10 @@ function CollectionSuite () {
       // compare rev
       c1 = db._collection(cn);
       var r6 = c1.revision();
-      assertTrue(r6.match(/^[0-9]+$/));
       assertEqual(0, compareStringIds(r6, r5));
 
       for (var i = 0; i < 10; ++i) {
         c1.save({ _key: "test" + i });
-        assertTrue(c1.revision().match(/^[0-9]+$/));
         assertEqual(1, compareStringIds(c1.revision(), r6));
         r6 = c1.revision();
       }
@@ -871,7 +913,6 @@ function CollectionSuite () {
       // compare rev
       c1 = db._collection(cn);
       var r7 = c1.revision();
-      assertTrue(r7.match(/^[0-9]+$/));
       assertEqual(0, compareStringIds(r7, r6));
 
       c1.truncate();
@@ -885,7 +926,6 @@ function CollectionSuite () {
       // compare rev
       c1 = db._collection(cn);
       var r9 = c1.revision();
-      assertTrue(r9.match(/^[0-9]+$/));
       assertEqual(0, compareStringIds(r9, r8));
 
       db._drop(cn);

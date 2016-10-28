@@ -26,6 +26,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -514,8 +515,7 @@ double Index::selectivityEstimate() const {
 }
 
 /// @brief default implementation for selectivityEstimate
-int Index::batchInsert(arangodb::Transaction*,
-                       std::vector<TRI_doc_mptr_t const*> const*, size_t) {
+int Index::batchInsert(arangodb::Transaction*, std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const&, size_t) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -572,7 +572,7 @@ bool Index::supportsSortCondition(arangodb::aql::SortCondition const*,
 ////////////////////////////////////////////////////////////////////////////////
 
 IndexIterator* Index::iteratorForCondition(arangodb::Transaction*,
-                                           IndexIteratorContext*,
+                                           ManagedDocumentResult*,
                                            arangodb::aql::AstNode const*,
                                            arangodb::aql::Variable const*,
                                            bool) const {

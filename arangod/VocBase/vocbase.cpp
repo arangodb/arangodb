@@ -56,7 +56,6 @@
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/MasterPointer.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/ticks.h"
 #include "VocBase/transaction.h"
@@ -444,7 +443,16 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
 
     try {
       collection->open(ignoreDatafileErrors);
+    } catch (arangodb::basics::Exception const& ex) {
+      LOG(ERR) << "caught exception while opening collection '" << collection->name() << "': " << ex.what();
+      collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
+      return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
+    } catch (std::exception const& ex) {
+      LOG(ERR) << "caught exception while opening collection '" << collection->name() << "': " << ex.what();
+      collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
+      return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
     } catch (...) {
+      LOG(ERR) << "caught unknown exception while opening collection '" << collection->name() << "'";
       collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
       return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
     }
@@ -760,6 +768,8 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
 
   // note: cid may be modified by this function call
   arangodb::LogicalCollection* collection = createCollectionWorker(parameters, cid, writeMarker, builder);
+  
+  collection->ensureRevisionsCache();
 
   if (!writeMarker) {
     return collection;
@@ -863,6 +873,8 @@ int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection, boo
         collection, UnloadCollectionCallback, __FILE__,
         __LINE__);
   } // release locks
+
+  collection->unload();
 
   // wake up the cleanup thread
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -1223,29 +1235,6 @@ std::vector<arangodb::LogicalCollection*> TRI_vocbase_t::collections(bool includ
     }
   }
   return collections;
-}
-
-/// @brief velocypack sub-object (for indexes, as part of TRI_index_element_t, 
-/// if offset is non-zero, then it is an offset into the VelocyPack data in
-/// the data or WAL file. If offset is 0, then data contains the actual data
-/// in place.
-VPackSlice TRI_vpack_sub_t::slice(TRI_doc_mptr_t const* mptr) const {
-  if (isValue()) {
-    return VPackSlice(&value.data[0]);
-  } 
-  return VPackSlice(mptr->vpack() + value.offset);
-}
-
-/// @brief fill a TRI_vpack_sub_t structure with a subvalue
-void TRI_FillVPackSub(TRI_vpack_sub_t* sub,
-                      VPackSlice const base, VPackSlice const value) noexcept {
-  if (value.byteSize() <= TRI_vpack_sub_t::maxValueLength()) {
-    sub->setValue(value.start(), static_cast<size_t>(value.byteSize()));
-  } else {
-    size_t off = value.start() - base.start();
-    TRI_ASSERT(off <= UINT32_MAX);
-    sub->setOffset(static_cast<uint32_t>(off));
-  }
 }
 
 /// @brief extract the _rev attribute from a slice

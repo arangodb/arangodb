@@ -25,6 +25,7 @@
 #define ARANGOD_UTILS_TRANSACTION_CONTEXT_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Mutex.h"
 #include "Basics/SmallVector.h"
 #include "VocBase/voc-types.h"
 
@@ -46,6 +47,8 @@ struct CustomTypeHandler;
 class CollectionNameResolver;
 class DocumentDitch;
 class LogicalCollection;
+class RevisionCacheChunk;
+class Transaction;
 
 class TransactionContext {
  public:
@@ -96,6 +99,10 @@ class TransactionContext {
   //////////////////////////////////////////////////////////////////////////////
   
   DocumentDitch* ditch(TRI_voc_cid_t) const;
+
+  void addChunk(RevisionCacheChunk*);
+
+  void stealChunks(std::unordered_set<RevisionCacheChunk*>&); 
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief temporarily lease a StringBuffer object
@@ -193,6 +200,9 @@ class TransactionContext {
   std::shared_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
   
   std::unordered_map<TRI_voc_cid_t, DocumentDitch*> _ditches;
+
+  Mutex _chunksLock;  
+  std::unordered_set<RevisionCacheChunk*> _chunks;
   
   SmallVector<arangodb::velocypack::Builder*, 32>::allocator_type::arena_type _arena;
   SmallVector<arangodb::velocypack::Builder*, 32> _builders;

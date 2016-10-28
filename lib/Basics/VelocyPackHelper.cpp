@@ -257,8 +257,6 @@ size_t VelocyPackHelper::VPackKeyHash::operator()(
   return static_cast<size_t>(slice.get(StaticStrings::KeyString).hashString());
 };
 
-
-
 bool VelocyPackHelper::VPackEqual::operator()(VPackSlice const& lhs,
                                               VPackSlice const& rhs) const {
   return VelocyPackHelper::compare(lhs, rhs, false, _options) == 0;
@@ -278,10 +276,10 @@ bool VelocyPackHelper::VPackStringEqual::operator()(VPackSlice const& lhs,
   if (lh == 0xbf) {
     // long UTF-8 String
     size = static_cast<VPackValueLength>(
-        velocypack::readInteger<VPackValueLength>(lhs.begin() + 1, 8));
+        velocypack::readIntegerFixed<VPackValueLength, 8>(lhs.begin() + 1));
     if (size !=
         static_cast<VPackValueLength>(
-            velocypack::readInteger<VPackValueLength>(rhs.begin() + 1, 8))) {
+            velocypack::readIntegerFixed<VPackValueLength, 8>(rhs.begin() + 1))) {
       return false;
     }
     return (memcmp(lhs.start() + 1 + 8, rhs.start() + 1 + 8,
@@ -313,10 +311,10 @@ bool VelocyPackHelper::VPackIdEqual::operator()(VPackSlice const& lhs,
   if (lh == 0xbf) {
     // long UTF-8 String
     size = static_cast<VPackValueLength>(
-        velocypack::readInteger<VPackValueLength>(lhsKey.begin() + 1, 8));
+        velocypack::readIntegerFixed<VPackValueLength, 8>(lhsKey.begin() + 1));
     if (size !=
         static_cast<VPackValueLength>(
-            velocypack::readInteger<VPackValueLength>(rhsKey.begin() + 1, 8))) {
+            velocypack::readIntegerFixed<VPackValueLength, 8>(rhsKey.begin() + 1))) {
       return false;
     }
     return (memcmp(lhsKey.start() + 1 + 8, rhsKey.start() + 1 + 8,
@@ -325,6 +323,34 @@ bool VelocyPackHelper::VPackIdEqual::operator()(VPackSlice const& lhs,
 
   size = static_cast<VPackValueLength>(lh - 0x40);
   return (memcmp(lhsKey.start() + 1, rhsKey.start() + 1, static_cast<size_t>(size)) ==
+          0);
+};
+
+bool VelocyPackHelper::VPackHashedStringEqual::operator()(basics::VPackHashedSlice const& lhs,
+                                                          basics::VPackHashedSlice const& rhs) const noexcept {
+  auto const lh = lhs.slice.head();
+  auto const rh = rhs.slice.head();
+
+  if (lh != rh) {
+    return false;
+  }
+
+  VPackValueLength size;
+  if (lh == 0xbf) {
+    // long UTF-8 String
+    size = static_cast<VPackValueLength>(
+        velocypack::readIntegerFixed<VPackValueLength, 8>(lhs.slice.begin() + 1));
+    if (size !=
+        static_cast<VPackValueLength>(
+            velocypack::readIntegerFixed<VPackValueLength, 8>(rhs.slice.begin() + 1))) {
+      return false;
+    }
+    return (memcmp(lhs.slice.start() + 1 + 8, rhs.slice.start() + 1 + 8,
+                   static_cast<size_t>(size)) == 0);
+  }
+
+  size = static_cast<VPackValueLength>(lh - 0x40);
+  return (memcmp(lhs.slice.start() + 1, rhs.slice.start() + 1, static_cast<size_t>(size)) ==
           0);
 };
 
@@ -920,7 +946,8 @@ uint64_t VelocyPackHelper::hashByAttributes(
 void VelocyPackHelper::SanitizeExternals(VPackSlice const input,
                                          VPackBuilder& output) {
   if (input.isExternal()) {
-    output.add(input.resolveExternal());
+    // recursively resolve externals
+    SanitizeExternals(input.resolveExternal(), output);
   } else if (input.isObject()) {
     output.openObject();
     for (auto const& it : VPackObjectIterator(input)) {
@@ -944,13 +971,13 @@ bool VelocyPackHelper::hasExternals(VPackSlice input) {
     return true;
   } else if (input.isObject()) {
     for (auto const& it : VPackObjectIterator(input)) {
-      if (hasExternals(it.value) == true) {
+      if (hasExternals(it.value)) {
         return true;
-      };
+      }
     }
   } else if (input.isArray()) {
     for (auto const& it : VPackArrayIterator(input)) {
-      if (hasExternals(it) == true) {
+      if (hasExternals(it)) {
         return true;
       }
     }

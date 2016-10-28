@@ -1,5 +1,5 @@
 ALLBOOKS=HTTP AQL Manual
-
+OTHER_MIME=pdf epub mobi
 all: build-books
 
 .PHONY:
@@ -12,6 +12,17 @@ ERR_COLOR = $(strip $(call make_std_color,1))
 STD_COLOR = $(strip $(call make_color,8))
 
 newVersionNumber = $(shell cat ../../VERSION)
+
+
+start_X11_display:
+	if test -f "${PIDFILE}"; then \
+		make stop_X11_display; \
+	fi
+	/usr/bin/daemon --pidfile=${PIDFILE} --name=xvfb --inherit --output=/tmp/xvfb.log --  Xvfb ${DISP} -screen 0 800x600x16  -ac -pn -noreset
+
+stop_X11_display:
+	kill `cat $${PIDFILE}`; \
+	rm -f $${PIDFILE}
 
 ################################################################################
 # per book targets
@@ -283,6 +294,16 @@ build-book:
 
 	make book-check-markdown-leftovers
 
+build-book-dist:
+	cd ppbooks/${NAME}; for ext in ${OTHER_MIME}; do \
+		OUTPUT="${OUTPUT_DIR}/ArangoDB_${NAME}_${newVersionNumber}.$${ext}"; \
+		if gitbook $${ext} ./ $${OUTPUT}; then \
+			echo "success building $${OUTPUT}"; \
+		else \
+			exit 1; \
+		fi; \
+	done
+
 clean-book:
 	@rm -rvf books/$(NAME)
 	@if test -z "$(FILTER)"; then rm -rvf ppbooks/$(NAME); fi
@@ -392,3 +413,25 @@ build-books:
 	make book-check-dangling-anchors
 	echo "${STD_COLOR}Generating redirect index.html${RESET}"; \
 	echo '<html><head><meta http-equiv="refresh" content="0; url=Manual/"></head><body></body></html>' > books/index.html
+
+
+build-dist-books:
+	PIDFILE=/tmp/xvfb_20_0.pid; \
+	if test -z "$${DISPLAY}"; then \
+		make start_X11_display PIDFILE=$${PIDFILE} DISP=':20.0'; \
+	fi; \
+	set -x ; \
+	if test -z "$${DISPLAY}"; then \
+		DISP=:20.0; \
+	else \
+		DISPL="$${DISPLAY}"; \
+	fi; \
+	make build-books DISPLAY="$${DISP}"; \
+	mkdir -p ${OUTPUT_DIR}; \
+	( cd books; tar -czf ${OUTPUT_DIR}/ArangoDB-${newVersionNumber}.tar.gz ${ALLBOOKS} index.html; ); \
+	for book in $(ALLBOOKS); do \
+		make build-book-dist NAME=$${book} DISPLAY="$${DISP}" ; \
+	done; \
+	if test -z "$${DISPLAY}"; then \
+		make stop_X11_display PIDFILE="$${PIDFILE}"; \
+	fi

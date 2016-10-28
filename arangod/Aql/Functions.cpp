@@ -47,8 +47,10 @@
 #include "Random/UniformCharacter.h"
 #include "Ssl/SslInterface.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/Transaction.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -96,11 +98,6 @@ static void ValidateParameters(std::vector<AqlValue> const& parameters,
 static void ValidateParameters(std::vector<AqlValue> const& parameters,
                                char const* function, int minParams) {
   return ValidateParameters(parameters, function, minParams, static_cast<int>(Function::MaxArguments));
-}
-
-/// @brief Insert a mptr into the result
-static void InsertMasterPointer(TRI_doc_mptr_t const* mptr, VPackBuilder& builder) {
-  builder.addExternal(mptr->vpack());
 }
 
 /// @brief clear the regex cache in a thread
@@ -591,7 +588,7 @@ static void GetDocumentByIdentifier(arangodb::Transaction* trx,
   
   int res = TRI_ERROR_NO_ERROR;
   try {
-    res = trx->documentFastPath(collectionName, searchBuilder->slice(), result,
+    res = trx->documentFastPath(collectionName, nullptr, searchBuilder->slice(), result,
                                 true);
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
@@ -730,6 +727,7 @@ static arangodb::GeoIndex* getGeoIndex(
 }
 
 static AqlValue buildGeoResult(arangodb::Transaction* trx,
+                               LogicalCollection* collection,
                                arangodb::aql::Query* query,
                                GeoCoordinates* cors,
                                TRI_voc_cid_t const& cid,
@@ -745,11 +743,11 @@ static AqlValue buildGeoResult(arangodb::Transaction* trx,
   }
 
   struct geo_coordinate_distance_t {
-    geo_coordinate_distance_t(double distance, TRI_doc_mptr_t const* mptr)
-        : _distance(distance), _mptr(mptr) {}
+    geo_coordinate_distance_t(double distance, TRI_voc_rid_t revisionId)
+        : _distance(distance), _revisionId(revisionId) {}
 
     double _distance;
-    TRI_doc_mptr_t const* _mptr;
+    TRI_voc_rid_t _revisionId;
   };
 
   std::vector<geo_coordinate_distance_t> distances;
@@ -760,7 +758,7 @@ static AqlValue buildGeoResult(arangodb::Transaction* trx,
     for (size_t i = 0; i < nCoords; ++i) {
       distances.emplace_back(geo_coordinate_distance_t(
           cors->distances[i],
-          static_cast<TRI_doc_mptr_t const*>(cors->coordinates[i].data)));
+          arangodb::GeoIndex::toRevision(cors->coordinates[i].data)));
     }
   } catch (...) {
     GeoIndex_CoordinatesFree(cors);
@@ -777,6 +775,7 @@ static AqlValue buildGeoResult(arangodb::Transaction* trx,
             });
 
   try {
+    ManagedDocumentResult mmdr(trx);
     TransactionBuilderLeaser builder(trx);
     builder->openArray();
     if (!attributeName.empty()) {
@@ -784,18 +783,23 @@ static AqlValue buildGeoResult(arangodb::Transaction* trx,
       for (auto& it : distances) {
         VPackObjectBuilder docGuard(builder.get());
         builder->add(attributeName, VPackValue(it._distance));
-        VPackSlice doc(it._mptr->vpack()); // TODO
-        for (auto const& entry : VPackObjectIterator(doc)) {
-          std::string key = entry.key.copyString();
-          if (key != attributeName) {
-            builder->add(key, entry.value);
+        TRI_voc_rid_t revisionId = it._revisionId;
+        if (collection->readRevision(trx, mmdr, revisionId)) {
+          VPackSlice doc(mmdr.vpack());
+          for (auto const& entry : VPackObjectIterator(doc)) {
+            std::string key = entry.key.copyString();
+            if (key != attributeName) {
+              builder->add(key, entry.value);
+            }
           }
         }
       }
 
     } else {
       for (auto& it : distances) {
-        InsertMasterPointer(it._mptr, *builder.get());
+        if (collection->readRevision(trx, mmdr, it._revisionId)) {
+          builder->addExternal(mmdr.vpack());
+        }
       }
     }
     builder->close();
@@ -2240,7 +2244,7 @@ AqlValue Functions::Near(arangodb::aql::Query* query,
   GeoCoordinates* cors = index->nearQuery(
       trx, latitude.toDouble(trx), longitude.toDouble(trx), static_cast<size_t>(limitValue));
 
-  return buildGeoResult(trx, query, cors, cid, attributeName);
+  return buildGeoResult(trx, index->collection(), query, cors, cid, attributeName);
 }
 
 /// @brief function WITHIN
@@ -2291,7 +2295,7 @@ AqlValue Functions::Within(arangodb::aql::Query* query,
   GeoCoordinates* cors = index->withinQuery(
       trx, latitudeValue.toDouble(trx), longitudeValue.toDouble(trx), radiusValue.toDouble(trx));
 
-  return buildGeoResult(trx, query, cors, cid, attributeName);
+  return buildGeoResult(trx, index->collection(), query, cors, cid, attributeName);
 }
 
 /// @brief function DISTANCE
@@ -3815,14 +3819,14 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
                              VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "FULLTEXT", 3, 4);
 
-  AqlValue collection = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue collectionValue = ExtractFunctionParameterValue(trx, parameters, 0);
 
-  if (!collection.isString()) {
+  if (!collectionValue.isString()) {
     THROW_ARANGO_EXCEPTION_PARAMS(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
   }
 
-  std::string const collectionName(collection.slice().copyString());
+  std::string const collectionName(collectionValue.slice().copyString());
 
   AqlValue attribute = ExtractFunctionParameterValue(trx, parameters, 1);
 
@@ -3861,9 +3865,9 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
   TRI_voc_cid_t cid = resolver->getCollectionIdLocal(collectionName);
   trx->addCollectionAtRuntime(cid, collectionName);
 
-  auto document = trx->documentCollection(cid);
+  LogicalCollection* collection = trx->documentCollection(cid);
 
-  if (document == nullptr) {
+  if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                                   "", collectionName.c_str());
   }
@@ -3876,7 +3880,7 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
   std::vector<std::vector<arangodb::basics::AttributeName>> const search(
       {{arangodb::basics::AttributeName(attributeName, false)}});
 
-  for (auto const& idx : document->getIndexes()) {
+  for (auto const& idx : collection->getIndexes()) {
     if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
       // test if index is on the correct field
       if (arangodb::basics::AttributeName::isIdentical(idx->fields(), search,
@@ -3926,10 +3930,13 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
   try {
     builder->openArray();
 
+    ManagedDocumentResult mmdr(trx);
     size_t const numResults = queryResult->_numDocuments;
     for (size_t i = 0; i < numResults; ++i) {
-      InsertMasterPointer((TRI_doc_mptr_t const*)queryResult->_documents[i],
-                          *builder.get());
+      TRI_voc_rid_t revisionId = FulltextIndex::toRevision(queryResult->_documents[i]);
+      if (collection->readRevision(trx, mmdr, revisionId)) {
+        builder->addExternal(mmdr.vpack());
+      }
     }
     builder->close();
     TRI_FreeResultFulltextIndex(queryResult);

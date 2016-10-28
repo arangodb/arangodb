@@ -33,6 +33,8 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
+class ManagedDocumentResult;
+
 namespace aql {
 
 class TraversalBlock : public ExecutionBlock {
@@ -63,6 +65,28 @@ class TraversalBlock : public ExecutionBlock {
   /// @brief cleanup, here we clean up all internally generated values
   void freeCaches();
 
+  /// @brief continue fetching of paths
+  bool morePaths(size_t hint);
+
+  /// @brief skip the next paths
+  size_t skipPaths(size_t hint);
+
+  /// @brief Initialize the filter expressions
+  void initializeExpressions(AqlItemBlock const*, size_t pos);
+
+  /// @brief Initialize the path enumerator
+  void initializePaths(AqlItemBlock const*, size_t pos);
+
+  /// @brief Checks if we output the vertex
+  bool usesVertexOutput() { return _vertexVar != nullptr; }
+
+  /// @brief Checks if we output the edge
+  bool usesEdgeOutput() { return _edgeVar != nullptr; }
+
+  /// @brief Checks if we output the path
+  bool usesPathOutput() { return _pathVar != nullptr; }
+
+ private:
   /// @brief vertices buffer
   std::vector<arangodb::aql::AqlValue> _vertices;
 
@@ -74,6 +98,8 @@ class TraversalBlock : public ExecutionBlock {
 
   /// @brief current position in _paths, _edges, _vertices
   size_t _posInPaths;
+
+  std::unique_ptr<ManagedDocumentResult> _mmdr;
 
   /// @brief Options for the travereser
   arangodb::traverser::TraverserOptions* _opts;
@@ -125,28 +151,6 @@ class TraversalBlock : public ExecutionBlock {
   std::vector<RegisterId> _inRegs;
 
   std::unordered_map<ServerID, traverser::TraverserEngineID> const* _engines;
-
-  /// @brief continue fetching of paths
-  bool morePaths(size_t hint);
-
-  /// @brief skip the next paths
-  size_t skipPaths(size_t hint);
-
-  /// @brief Initialize the filter expressions
-  void initializeExpressions(AqlItemBlock const*, size_t pos);
-
-  /// @brief Initialize the path enumerator
-  void initializePaths(AqlItemBlock const*, size_t pos);
-
-  /// @brief Checks if we output the vertex
-  bool usesVertexOutput() { return _vertexVar != nullptr; }
-
-  /// @brief Checks if we output the edge
-  bool usesEdgeOutput() { return _edgeVar != nullptr; }
-
-  /// @brief Checks if we output the path
-  bool usesPathOutput() { return _pathVar != nullptr; }
-
 };
 }  // namespace arangodb::aql
 }  // namespace arangodb

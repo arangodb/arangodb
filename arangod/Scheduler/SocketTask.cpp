@@ -41,22 +41,24 @@ using namespace arangodb::rest;
 SocketTask::SocketTask(arangodb::EventLoop loop,
                        std::unique_ptr<arangodb::Socket> socket,
                        arangodb::ConnectionInfo&& connectionInfo,
-                       double keepAliveTimeout)
+                       double keepAliveTimeout, bool skipInit = false)
     : Task(loop, "SocketTask"),
       _connectionInfo(connectionInfo),
       _readBuffer(TRI_UNKNOWN_MEM_ZONE, READ_BLOCK_SIZE + 1, false),
       _peer(std::move(socket)),
       _keepAliveTimeout(static_cast<long>(keepAliveTimeout * 1000)),
       _useKeepAliveTimeout(static_cast<long>(keepAliveTimeout * 1000) > 0),
-      _keepAliveTimer(_peer->_ioService, _keepAliveTimeout) {
+      _keepAliveTimer(_peer->_ioService, _keepAliveTimeout),
+      _abandoned(false) {
   ConnectionStatisticsAgent::acquire();
   connectionStatisticsAgentSetStart();
 
-  _peer->setNonBlocking(true);
-
-  if (!_peer->handshake()) {
-    _closedSend = true;
-    _closedReceive = true;
+  if (!skipInit) {
+    _peer->setNonBlocking(true);
+    if (!_peer->handshake()) {
+      _closedSend = true;
+      _closedReceive = true;
+    }
   }
 }
 
@@ -189,16 +191,20 @@ void SocketTask::completedWriteBuffer() {
   _writeBuffer = nullptr;
 
   if (_writeBufferStatistics != nullptr) {
+#ifdef DEBUG_STATISTICS
     LOG_TOPIC(TRACE, Logger::REQUESTS)
         << "SocketTask::addWriteBuffer - Statistics release: "
         << _writeBufferStatistics->to_string();
+#endif
     _writeBufferStatistics->_writeEnd = TRI_StatisticsTime();
     TRI_ReleaseRequestStatistics(_writeBufferStatistics);
     _writeBufferStatistics = nullptr;
   } else {
+#ifdef DEBUG_STATISTICS
     LOG_TOPIC(TRACE, Logger::REQUESTS) << "SocketTask::addWriteBuffer - "
                                           "Statistics release: nullptr - "
                                           "nothing to realease";
+#endif
   }
 
   if (_writeBuffers.empty()) {
@@ -263,6 +269,10 @@ void SocketTask::closeStream() {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
+void SocketTask::addToReadBuffer(char const* data, std::size_t len) {
+  LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << std::string(data, len);
+  _readBuffer.appendText(data, len);
+}
 
 void SocketTask::resetKeepAlive() {
   if (_useKeepAliveTimeout) {
@@ -308,7 +318,15 @@ bool SocketTask::reserveMemory() {
 
 bool SocketTask::trySyncRead() {
   boost::system::error_code err;
-  
+  if (_abandoned) {
+    return false;
+  }
+
+  if (!_peer) {
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "SocketTask::trySyncRead "
+                                            << "- peer disappeared ";
+  }
+
   if (0 == _peer->available(err)) {
     return false;
   }
@@ -321,9 +339,9 @@ bool SocketTask::trySyncRead() {
   }
 
   size_t bytesRead = 0;
-  
-  bytesRead = _peer->read(
-      boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE), err);
+
+  bytesRead =
+      _peer->read(boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE), err);
 
   if (0 == bytesRead) {
     return false;  // should not happen
@@ -347,16 +365,19 @@ bool SocketTask::trySyncRead() {
 
 void SocketTask::asyncReadSome() {
   try {
+    if (_abandoned) {
+      return;
+    }
+
     JobGuard guard(_loop);
-    guard.enterLoop();
+    guard.busy();
 
     size_t const MAX_DIRECT_TRIES = 2;
     size_t n = 0;
 
     while (++n <= MAX_DIRECT_TRIES) {
       if (!reserveMemory()) {
-        LOG_TOPIC(TRACE, Logger::COMMUNICATION)
-            << "failed to reserve memory";
+        LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "failed to reserve memory";
         return;
       }
 
@@ -371,6 +392,9 @@ void SocketTask::asyncReadSome() {
       }
 
       while (processRead()) {
+        if (_abandoned) {
+          return;
+        }
         if (_closeRequested) {
           break;
         }
@@ -406,7 +430,7 @@ void SocketTask::asyncReadSome() {
 
   auto self = shared_from_this();
   auto handler = [self, this](const boost::system::error_code& ec,
-                                    std::size_t transferred) {
+                              std::size_t transferred) {
     if (ec) {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
           << "SocketTask::asyncReadSome (async_read_some) - read on stream "
@@ -414,7 +438,7 @@ void SocketTask::asyncReadSome() {
       closeStream();
     } else {
       JobGuard guard(_loop);
-      guard.enterLoop();
+      guard.busy();
 
       _readBuffer.increaseLength(transferred);
 
@@ -429,14 +453,18 @@ void SocketTask::asyncReadSome() {
             << "close requested, closing receive stream";
 
         closeReceiveStream();
+      } else if (_abandoned) {
+        return;
       } else {
         asyncReadSome();
       }
     }
   };
 
-  _peer->asyncRead(
-      boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE), handler);
+  if (!_abandoned && _peer) {
+    _peer->asyncRead(boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE),
+                     handler);
+  }
 }
 
 void SocketTask::closeReceiveStream() {

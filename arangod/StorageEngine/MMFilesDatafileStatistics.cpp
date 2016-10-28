@@ -165,8 +165,7 @@ void MMFilesDatafileStatistics::replace(TRI_voc_fid_t fid,
 }
 
 /// @brief increase dead stats for a datafile, if it exists
-void MMFilesDatafileStatistics::increaseDead(TRI_voc_fid_t fid, int64_t number,
-                                      int64_t size) {
+void MMFilesDatafileStatistics::increaseDead(TRI_voc_fid_t fid, int64_t number, int64_t size) {
   WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _stats.find(fid);

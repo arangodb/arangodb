@@ -40,7 +40,7 @@ static bool Initialized = false;
 
 using namespace std;
 
-static int CmpElmElm (void const* left,
+static int CmpElmElm (void*, void const* left,
                       void const* right,
                       arangodb::basics::SkipListCmpType cmptype) {
   auto l = *(static_cast<int const*>(left));
@@ -52,7 +52,7 @@ static int CmpElmElm (void const* left,
   return 0;
 }
 
-static int CmpKeyElm (void const* left,
+static int CmpKeyElm (void*, void const* left,
                       void const* right) {
   auto l = *(static_cast<int const*>(left));
   auto r = *(static_cast<int const*>(right));
@@ -118,7 +118,7 @@ BOOST_AUTO_TEST_CASE (tst_unique_forward) {
   }
   
   for (int i = 0; i < 100; ++i) {
-    skiplist.insert(values[i]);
+    skiplist.insert(nullptr, values[i]);
   }
 
   // now check consistency
@@ -150,7 +150,7 @@ BOOST_AUTO_TEST_CASE (tst_unique_forward) {
   }
   
   // do a backward iteration
-  current = skiplist.lookup(values[99]);
+  current = skiplist.lookup(nullptr, values[99]);
   for (int i = 99; i >= 0; --i) {
     // compare value
     BOOST_CHECK_EQUAL(values[i], current->document());
@@ -166,7 +166,7 @@ BOOST_AUTO_TEST_CASE (tst_unique_forward) {
   }
 
   for (int i = 0; i < 100; ++i) {
-    BOOST_CHECK_EQUAL(values[i], skiplist.lookup(values[i])->document());
+    BOOST_CHECK_EQUAL(values[i], skiplist.lookup(nullptr, values[i])->document());
   }
     
   // clean up
@@ -198,7 +198,7 @@ BOOST_AUTO_TEST_CASE (tst_unique_reverse) {
   
   // insert 100 values in reverse order
   for (int i = 99; i >= 0; --i) {
-    skiplist.insert(values[i]);
+    skiplist.insert(nullptr, values[i]);
   }
 
   // now check consistency
@@ -230,7 +230,7 @@ BOOST_AUTO_TEST_CASE (tst_unique_reverse) {
   }
 
   // do a backward iteration
-  current = skiplist.lookup(values[99]);
+  current = skiplist.lookup(nullptr, values[99]);
   for (int i = 99; i >= 0; --i) {
     // compare value
     BOOST_CHECK_EQUAL(values[i], current->document());
@@ -246,7 +246,7 @@ BOOST_AUTO_TEST_CASE (tst_unique_reverse) {
   }
 
   for (int i = 0; i < 100; ++i) {
-    BOOST_CHECK_EQUAL(values[i], skiplist.lookup(values[i])->document());
+    BOOST_CHECK_EQUAL(values[i], skiplist.lookup(nullptr, values[i])->document());
   }
  
   // clean up
@@ -268,29 +268,29 @@ BOOST_AUTO_TEST_CASE (tst_unique_lookup) {
   }
   
   for (int i = 0; i < 100; ++i) {
-    skiplist.insert(values[i]);
+    skiplist.insert(nullptr, values[i]);
   }
 
   // lookup existing values
-  BOOST_CHECK_EQUAL(values[0], skiplist.lookup(values[0])->document());
-  BOOST_CHECK_EQUAL(values[3], skiplist.lookup(values[3])->document());
-  BOOST_CHECK_EQUAL(values[17], skiplist.lookup(values[17])->document());
-  BOOST_CHECK_EQUAL(values[99], skiplist.lookup(values[99])->document());
+  BOOST_CHECK_EQUAL(values[0], skiplist.lookup(nullptr, values[0])->document());
+  BOOST_CHECK_EQUAL(values[3], skiplist.lookup(nullptr, values[3])->document());
+  BOOST_CHECK_EQUAL(values[17], skiplist.lookup(nullptr, values[17])->document());
+  BOOST_CHECK_EQUAL(values[99], skiplist.lookup(nullptr, values[99])->document());
   
   // lookup non-existing values
   int value;
 
   value = -1;
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(&value));
+  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, &value));
 
   value = 100;
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(&value));
+  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, &value));
   
   value = 101;
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(&value));
+  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, &value));
 
   value = 1000;
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(&value));
+  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, &value));
 
   // clean up
   for (auto i : values) {
@@ -311,33 +311,33 @@ BOOST_AUTO_TEST_CASE (tst_unique_remove) {
   }
   
   for (int i = 0; i < 100; ++i) {
-    skiplist.insert(values[i]);
+    skiplist.insert(nullptr, values[i]);
   }
 
   // remove some values, including start and end nodes
-  BOOST_CHECK_EQUAL(0, skiplist.remove(values[7]));
-  BOOST_CHECK_EQUAL(0, skiplist.remove(values[12]));
-  BOOST_CHECK_EQUAL(0, skiplist.remove(values[23]));
-  BOOST_CHECK_EQUAL(0, skiplist.remove(values[99]));
-  BOOST_CHECK_EQUAL(0, skiplist.remove(values[98]));
-  BOOST_CHECK_EQUAL(0, skiplist.remove(values[0]));
-  BOOST_CHECK_EQUAL(0, skiplist.remove(values[1]));
+  BOOST_CHECK_EQUAL(0, skiplist.remove(nullptr, values[7]));
+  BOOST_CHECK_EQUAL(0, skiplist.remove(nullptr, values[12]));
+  BOOST_CHECK_EQUAL(0, skiplist.remove(nullptr, values[23]));
+  BOOST_CHECK_EQUAL(0, skiplist.remove(nullptr, values[99]));
+  BOOST_CHECK_EQUAL(0, skiplist.remove(nullptr, values[98]));
+  BOOST_CHECK_EQUAL(0, skiplist.remove(nullptr, values[0]));
+  BOOST_CHECK_EQUAL(0, skiplist.remove(nullptr, values[1]));
 
   // remove non-existing and already removed values
   int value;
   
   value = -1;
-  BOOST_CHECK_EQUAL(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, skiplist.remove(&value));
+  BOOST_CHECK_EQUAL(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, skiplist.remove(nullptr, &value));
   value = 0;
-  BOOST_CHECK_EQUAL(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, skiplist.remove(&value));
+  BOOST_CHECK_EQUAL(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, skiplist.remove(nullptr, &value));
   value = 12;
-  BOOST_CHECK_EQUAL(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, skiplist.remove(&value));
+  BOOST_CHECK_EQUAL(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, skiplist.remove(nullptr, &value));
   value = 99;
-  BOOST_CHECK_EQUAL(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, skiplist.remove(&value));
+  BOOST_CHECK_EQUAL(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, skiplist.remove(nullptr, &value));
   value = 101;
-  BOOST_CHECK_EQUAL(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, skiplist.remove(&value));
+  BOOST_CHECK_EQUAL(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, skiplist.remove(nullptr, &value));
   value = 1000;
-  BOOST_CHECK_EQUAL(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, skiplist.remove(&value));
+  BOOST_CHECK_EQUAL(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, skiplist.remove(nullptr, &value));
 
   // check start node
   BOOST_CHECK_EQUAL(values[2], skiplist.startNode()->nextNode()->document());
@@ -350,52 +350,52 @@ BOOST_AUTO_TEST_CASE (tst_unique_remove) {
 
 
   // lookup existing values
-  BOOST_CHECK_EQUAL(values[2], skiplist.lookup(values[2])->document());
-  BOOST_CHECK_EQUAL(skiplist.startNode(), skiplist.lookup(values[2])->prevNode());
-  BOOST_CHECK_EQUAL(values[3], skiplist.lookup(values[2])->nextNode()->document());
+  BOOST_CHECK_EQUAL(values[2], skiplist.lookup(nullptr, values[2])->document());
+  BOOST_CHECK_EQUAL(skiplist.startNode(), skiplist.lookup(nullptr, values[2])->prevNode());
+  BOOST_CHECK_EQUAL(values[3], skiplist.lookup(nullptr, values[2])->nextNode()->document());
 
-  BOOST_CHECK_EQUAL(values[3], skiplist.lookup(values[3])->document());
-  BOOST_CHECK_EQUAL(values[2], skiplist.lookup(values[3])->prevNode()->document());
-  BOOST_CHECK_EQUAL(values[4], skiplist.lookup(values[3])->nextNode()->document());
+  BOOST_CHECK_EQUAL(values[3], skiplist.lookup(nullptr, values[3])->document());
+  BOOST_CHECK_EQUAL(values[2], skiplist.lookup(nullptr, values[3])->prevNode()->document());
+  BOOST_CHECK_EQUAL(values[4], skiplist.lookup(nullptr, values[3])->nextNode()->document());
 
-  BOOST_CHECK_EQUAL(values[6], skiplist.lookup(values[6])->document());
-  BOOST_CHECK_EQUAL(values[5], skiplist.lookup(values[6])->prevNode()->document());
-  BOOST_CHECK_EQUAL(values[8], skiplist.lookup(values[6])->nextNode()->document());
+  BOOST_CHECK_EQUAL(values[6], skiplist.lookup(nullptr, values[6])->document());
+  BOOST_CHECK_EQUAL(values[5], skiplist.lookup(nullptr, values[6])->prevNode()->document());
+  BOOST_CHECK_EQUAL(values[8], skiplist.lookup(nullptr, values[6])->nextNode()->document());
 
-  BOOST_CHECK_EQUAL(values[8], skiplist.lookup(values[8])->document());
-  BOOST_CHECK_EQUAL(values[6], skiplist.lookup(values[8])->prevNode()->document());
-  BOOST_CHECK_EQUAL(values[9], skiplist.lookup(values[8])->nextNode()->document());
+  BOOST_CHECK_EQUAL(values[8], skiplist.lookup(nullptr, values[8])->document());
+  BOOST_CHECK_EQUAL(values[6], skiplist.lookup(nullptr, values[8])->prevNode()->document());
+  BOOST_CHECK_EQUAL(values[9], skiplist.lookup(nullptr, values[8])->nextNode()->document());
 
-  BOOST_CHECK_EQUAL(values[11], skiplist.lookup(values[11])->document());
-  BOOST_CHECK_EQUAL(values[10], skiplist.lookup(values[11])->prevNode()->document());
-  BOOST_CHECK_EQUAL(values[13], skiplist.lookup(values[11])->nextNode()->document());
+  BOOST_CHECK_EQUAL(values[11], skiplist.lookup(nullptr, values[11])->document());
+  BOOST_CHECK_EQUAL(values[10], skiplist.lookup(nullptr, values[11])->prevNode()->document());
+  BOOST_CHECK_EQUAL(values[13], skiplist.lookup(nullptr, values[11])->nextNode()->document());
 
-  BOOST_CHECK_EQUAL(values[13], skiplist.lookup(values[13])->document());
-  BOOST_CHECK_EQUAL(values[11], skiplist.lookup(values[13])->prevNode()->document());
-  BOOST_CHECK_EQUAL(values[14], skiplist.lookup(values[13])->nextNode()->document());
+  BOOST_CHECK_EQUAL(values[13], skiplist.lookup(nullptr, values[13])->document());
+  BOOST_CHECK_EQUAL(values[11], skiplist.lookup(nullptr, values[13])->prevNode()->document());
+  BOOST_CHECK_EQUAL(values[14], skiplist.lookup(nullptr, values[13])->nextNode()->document());
 
-  BOOST_CHECK_EQUAL(values[22], skiplist.lookup(values[22])->document());
-  BOOST_CHECK_EQUAL(values[24], skiplist.lookup(values[24])->document());
+  BOOST_CHECK_EQUAL(values[22], skiplist.lookup(nullptr, values[22])->document());
+  BOOST_CHECK_EQUAL(values[24], skiplist.lookup(nullptr, values[24])->document());
 
-  BOOST_CHECK_EQUAL(values[97], skiplist.lookup(values[97])->document());
-  BOOST_CHECK_EQUAL(values[96], skiplist.lookup(values[97])->prevNode()->document());
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(values[97])->nextNode());
+  BOOST_CHECK_EQUAL(values[97], skiplist.lookup(nullptr, values[97])->document());
+  BOOST_CHECK_EQUAL(values[96], skiplist.lookup(nullptr, values[97])->prevNode()->document());
+  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, values[97])->nextNode());
   
   // lookup non-existing values
   value = 0;
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(&value));
+  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, &value));
   value = 1;
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(&value));
+  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, &value));
   value = 7;
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(&value));
+  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, &value));
   value = 12;
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(&value));
+  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, &value));
   value = 23;
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(&value));
+  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, &value));
   value = 98;
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(&value));
+  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, &value));
   value = 99;
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(&value));
+  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, &value));
   
   // clean up
   for (auto i : values) {
@@ -416,16 +416,16 @@ BOOST_AUTO_TEST_CASE (tst_unique_remove_all) {
   }
   
   for (int i = 0; i < 100; ++i) {
-    skiplist.insert(values[i]);
+    skiplist.insert(nullptr, values[i]);
   }
   
   for (int i = 0; i < 100; ++i) {
-    BOOST_CHECK_EQUAL(0, skiplist.remove(values[i]));
+    BOOST_CHECK_EQUAL(0, skiplist.remove(nullptr, values[i]));
   }
   
   // try removing again
   for (int i = 0; i < 100; ++i) {
-    BOOST_CHECK_EQUAL(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, skiplist.remove(values[i]));
+    BOOST_CHECK_EQUAL(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, skiplist.remove(nullptr, values[i]));
   }
   
   // check start node
@@ -438,9 +438,9 @@ BOOST_AUTO_TEST_CASE (tst_unique_remove_all) {
   BOOST_CHECK_EQUAL(0, (int) skiplist.getNrUsed());
 
   // lookup non-existing values
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(values[0]));
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(values[12]));
-  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(values[99]));
+  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, values[0]));
+  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, values[12]));
+  BOOST_CHECK_EQUAL((void*) 0, skiplist.lookup(nullptr, values[99]));
   
   // clean up
   for (auto i : values) {

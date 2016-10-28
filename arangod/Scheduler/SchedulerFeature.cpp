@@ -64,8 +64,14 @@ void SchedulerFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("scheduler", "Configure the I/O scheduler");
 
-  options->addOption("--server.threads", "number of threads scheduling",
-                     new UInt64Parameter(&_nrSchedulerThreads));
+  options->addOption("--server.threads", "number of threads",
+                     new UInt64Parameter(&_nrServerThreads));
+
+  options->addHiddenOption("--server.minimal-threads", "minimal number of threads",
+                     new Int64Parameter(&_nrMinimalThreads));
+
+  options->addHiddenOption("--server.maximal-threads", "maximal number of threads",
+                     new Int64Parameter(&_nrMaximalThreads));
 
   options->addOption("--server.maximal-queue-size",
                      "maximum queue length for asynchronous operations",
@@ -76,14 +82,18 @@ void SchedulerFeature::collectOptions(
 
 void SchedulerFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions>) {
-  if (_nrSchedulerThreads == 0) {
-    _nrSchedulerThreads = TRI_numberProcessors();
+  if (_nrServerThreads == 0) {
+    _nrServerThreads = TRI_numberProcessors();
   }
 
   if (_queueSize < 128) {
     LOG(FATAL)
         << "invalid value for `--server.maximal-queue-size', need at least 128";
     FATAL_ERROR_EXIT();
+  }
+
+  if (_nrMinimalThreads != 0 && _nrMaximalThreads != 0 && _nrMinimalThreads > _nrMaximalThreads) {
+    _nrMaximalThreads = _nrMinimalThreads;
   }
 }
 
@@ -223,8 +233,12 @@ bool CtrlHandler(DWORD eventType) {
 
 void SchedulerFeature::buildScheduler() {
   _scheduler =
-      std::make_unique<Scheduler>(static_cast<size_t>(_nrSchedulerThreads),
+      std::make_unique<Scheduler>(static_cast<size_t>(_nrServerThreads),
                                   static_cast<size_t>(_queueSize));
+
+  _scheduler->setMinimal(_nrMinimalThreads);
+  _scheduler->setRealMaximum(_nrMaximalThreads);
+  
   SCHEDULER = _scheduler.get();
 }
 

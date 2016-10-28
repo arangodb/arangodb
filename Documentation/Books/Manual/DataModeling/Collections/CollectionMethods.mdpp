@@ -5,13 +5,13 @@
 
 
 drops a collection
-`collection.drop()`
+`collection.drop(options)`
 
-Drops a *collection* and all its indexes.
-
+Drops a *collection* and all its indexes and data.
+In order to drop a system collection, an *options* object
+with attribute *isSystem* set to *true* must be specified.
 
 **Examples**
-
 
     @startDocuBlockInline collectionDrop
     @EXAMPLE_ARANGOSH_OUTPUT{collectionDrop}
@@ -23,6 +23,15 @@ Drops a *collection* and all its indexes.
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock collectionDrop
 
+    @startDocuBlockInline collectionDropSystem
+    @EXAMPLE_ARANGOSH_OUTPUT{collectionDropSystem}
+    ~ db._create("_example", { isSystem: true });
+      col = db._example;
+      col.drop({ isSystem: true });
+      col;
+    ~ db._drop("example", { isSystem: true });
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock collectionDropSystem
 
 
 !SUBSECTION Truncate

@@ -42,6 +42,22 @@ class AttributeTranslator;
 
 namespace basics {
 
+struct VPackHashedSlice {
+  arangodb::velocypack::Slice slice;
+  uint64_t hash;
+
+  constexpr VPackHashedSlice() noexcept : slice(), hash(0) {}
+  VPackHashedSlice(arangodb::velocypack::Slice slice, uint64_t hash) noexcept : slice(slice), hash(hash) {}
+  explicit VPackHashedSlice(arangodb::velocypack::Slice slice) : slice(slice), hash(slice.hash()) {}
+  
+  VPackHashedSlice(VPackHashedSlice const& other) noexcept : slice(other.slice), hash(other.hash) {}
+  VPackHashedSlice(VPackHashedSlice&& other) noexcept : slice(other.slice), hash(other.hash) {}
+  VPackHashedSlice& operator=(VPackHashedSlice const& other) noexcept { slice = other.slice; hash = other.hash; return *this; }
+  VPackHashedSlice& operator=(VPackHashedSlice&& other) noexcept { slice = other.slice; hash = other.hash; return *this; }
+
+  ~VPackHashedSlice() {}
+};
+
 class VelocyPackHelper {
  private:
   VelocyPackHelper() = delete;
@@ -65,13 +81,14 @@ class VelocyPackHelper {
   struct VPackStringHash {
     size_t operator()(arangodb::velocypack::Slice const&) const noexcept;
   };
-
   
-  /// @brief hash computation based on key only comparator for VelocyPack values
   struct VPackKeyHash {
     size_t operator()(arangodb::velocypack::Slice const&) const;
   };
-
+  
+  struct VPackHashedStringHash {
+    size_t operator()(VPackHashedSlice const& slice) const noexcept { return static_cast<size_t>(slice.hash); }
+  };
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief equality comparator for VelocyPack values
@@ -94,11 +111,16 @@ class VelocyPackHelper {
     bool operator()(arangodb::velocypack::Slice const&,
                     arangodb::velocypack::Slice const&) const noexcept;
   };
-
+  
   /// @brief Comparator that only takes _id/_key into account.
   struct VPackIdEqual {
     bool operator()(arangodb::velocypack::Slice const&,
                     arangodb::velocypack::Slice const&) const;
+  };
+  
+  struct VPackHashedStringEqual {
+    bool operator()(VPackHashedSlice const&,
+                    VPackHashedSlice const&) const noexcept;
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -330,34 +352,31 @@ class VelocyPackHelper {
   static uint64_t hashByAttributes(VPackSlice, std::vector<std::string> const&,
                                    bool, int&, std::string const& key = "");
 
-  static inline arangodb::velocypack::Slice NullValue() {
+  static constexpr arangodb::velocypack::Slice NullValue() {
     return arangodb::velocypack::Slice::nullSlice();
   }
 
-  static inline arangodb::velocypack::Slice TrueValue() {
+  static constexpr arangodb::velocypack::Slice TrueValue() {
     return arangodb::velocypack::Slice::trueSlice();
   }
 
-  static inline arangodb::velocypack::Slice FalseValue() {
+  static constexpr arangodb::velocypack::Slice FalseValue() {
     return arangodb::velocypack::Slice::falseSlice();
   }
 
-  static inline arangodb::velocypack::Slice BooleanValue(bool value) {
-    if (value) {
-      return arangodb::velocypack::Slice::trueSlice();
-    }
-    return arangodb::velocypack::Slice::falseSlice();
+  static constexpr arangodb::velocypack::Slice BooleanValue(bool value) {
+    return value ? arangodb::velocypack::Slice::trueSlice() : arangodb::velocypack::Slice::falseSlice();
   }
 
-  static inline arangodb::velocypack::Slice ZeroValue() {
+  static constexpr arangodb::velocypack::Slice ZeroValue() {
     return arangodb::velocypack::Slice::zeroSlice();
   }
 
-  static inline arangodb::velocypack::Slice EmptyArrayValue() {
+  static constexpr arangodb::velocypack::Slice EmptyArrayValue() {
     return arangodb::velocypack::Slice::emptyArraySlice();
   }
 
-  static inline arangodb::velocypack::Slice EmptyObjectValue() {
+  static constexpr arangodb::velocypack::Slice EmptyObjectValue() {
     return arangodb::velocypack::Slice::emptyObjectSlice();
   }
 
@@ -366,7 +385,7 @@ class VelocyPackHelper {
   ///        Are used in Array Indexes to distinguish NULL and not existent.
   //////////////////////////////////////////////////////////////////////////////
 
-  static inline arangodb::velocypack::Slice IllegalValue() {
+  static constexpr arangodb::velocypack::Slice IllegalValue() {
     return arangodb::velocypack::Slice::illegalSlice();
   }
 
@@ -399,6 +418,25 @@ class VelocyPackHelper {
 };
 }
 }
+
+namespace std {
+template <>
+struct hash<arangodb::basics::VPackHashedSlice> {
+  inline size_t operator()(arangodb::basics::VPackHashedSlice const& slice) const noexcept {
+    return slice.hash;
+  }
+};
+
+template <>
+struct equal_to<arangodb::basics::VPackHashedSlice> {
+  bool operator()(arangodb::basics::VPackHashedSlice const& lhs,
+                  arangodb::basics::VPackHashedSlice const& rhs) const noexcept {
+    return lhs.slice.equals(rhs.slice);
+  }
+};
+
+}
+
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Simple and limited logging of VelocyPack slices

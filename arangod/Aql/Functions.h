@@ -26,9 +26,10 @@
 
 #include "Basics/Common.h"
 #include "Aql/AqlValue.h"
-#include "Utils/Transaction.h"
 
 namespace arangodb {
+class Transaction;
+
 namespace basics {
 class VPackStringBufferAdapter;
 }

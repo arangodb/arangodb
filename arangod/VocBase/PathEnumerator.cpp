@@ -22,10 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PathEnumerator.h"
+#include "Basics/VelocyPackHelper.h"
 #include "VocBase/Traverser.h"
 
 using DepthFirstEnumerator = arangodb::traverser::DepthFirstEnumerator;
 using BreadthFirstEnumerator = arangodb::traverser::BreadthFirstEnumerator;
+using NeighborsEnumerator = arangodb::traverser::NeighborsEnumerator;
 using Traverser = arangodb::traverser::Traverser;
 using TraverserOptions = arangodb::traverser::TraverserOptions;
 
@@ -47,7 +49,7 @@ bool DepthFirstEnumerator::next() {
     if (_enumeratedPath.edges.size() < _opts->maxDepth) {
       // We are not done with this path, so
       // we reserve the cursor for next depth
-      auto cursor = _opts->nextCursor(_enumeratedPath.vertices.back(),
+      auto cursor = _opts->nextCursor(_traverser->mmdr(), _enumeratedPath.vertices.back(),
                                       _enumeratedPath.edges.size());
       if (cursor != nullptr) {
         _edgeCursors.emplace(cursor);
@@ -202,9 +204,7 @@ BreadthFirstEnumerator::BreadthFirstEnumerator(Traverser* traverser,
       _currentDepth(0),
       _toSearchPos(0) {
   _schreier.reserve(32);
-  auto step = std::make_unique<PathStep>(startVertex);
-  _schreier.emplace_back(step.get());
-  step.release();
+  _schreier.emplace_back(startVertex);
 
   _toSearch.emplace_back(NextStep(0));
 }
@@ -264,9 +264,9 @@ bool BreadthFirstEnumerator::next() {
 
     _tmpEdges.clear();
     auto const nextIdx = _toSearch[_toSearchPos++].sourceIdx;
-    auto const& nextVertex = _schreier[nextIdx]->vertex;
+    auto const nextVertex = _schreier[nextIdx].vertex;
 
-    std::unique_ptr<arangodb::traverser::EdgeCursor> cursor(_opts->nextCursor(nextVertex, _currentDepth));
+    std::unique_ptr<arangodb::traverser::EdgeCursor> cursor(_opts->nextCursor(_traverser->mmdr(), nextVertex, _currentDepth));
     if (cursor != nullptr) {
       size_t cursorIdx;
       bool shouldReturnPath = _currentDepth + 1 >= _opts->minDepth;
@@ -293,9 +293,7 @@ bool BreadthFirstEnumerator::next() {
               continue;
             }
             if (_traverser->getSingleVertex(e, nextVertex, _currentDepth, v)) {
-              auto step = std::make_unique<PathStep>(nextIdx, e, v);
-              _schreier.emplace_back(step.get());
-              step.release();
+              _schreier.emplace_back(nextIdx, e, v);
               if (_currentDepth < _opts->maxDepth - 1) {
                 _nextDepth.emplace_back(NextStep(_schreierIndex));
               }
@@ -373,18 +371,91 @@ void BreadthFirstEnumerator::computeEnumeratedPath(size_t index) {
   _enumeratedPath.vertices.resize(depth + 1);
 
   // Computed path. Insert it into the path enumerator.
-  PathStep* current = nullptr;
   while (index != 0) {
     TRI_ASSERT(depth > 0);
-    current = _schreier[index];
-    _enumeratedPath.vertices[depth] = current->vertex;
-    _enumeratedPath.edges[depth - 1] = current->edge;
+    PathStep const& current = _schreier[index];
+    _enumeratedPath.vertices[depth] = current.vertex;
+    _enumeratedPath.edges[depth - 1] = current.edge;
 
-    index = current->sourceIdx;
+    index = current.sourceIdx;
     --depth;
   }
 
-  current = _schreier[0];
-  _enumeratedPath.vertices[0] = current->vertex;
+  _enumeratedPath.vertices[0] = _schreier[0].vertex;
 }
 
+NeighborsEnumerator::NeighborsEnumerator(Traverser* traverser,
+                                         VPackSlice startVertex,
+                                         TraverserOptions const* opts)
+    : PathEnumerator(traverser, startVertex, opts),
+      _searchDepth(0) {
+  _allFound.insert(arangodb::basics::VPackHashedSlice(startVertex));
+  _currentDepth.insert(arangodb::basics::VPackHashedSlice(startVertex));
+  _iterator = _currentDepth.begin();
+}
+
+bool NeighborsEnumerator::next() {
+  if (_isFirst) {
+    _isFirst = false;
+    if (_opts->minDepth == 0) {
+      return true;
+    }
+  }
+
+  if (_iterator == _currentDepth.end() || ++_iterator == _currentDepth.end()) {
+    do {
+      // This depth is done. Get next
+      if (_opts->maxDepth == _searchDepth) {
+        // We are finished.
+        return false;
+      }
+
+      _lastDepth.swap(_currentDepth);
+      _currentDepth.clear();
+      for (auto const& nextVertex : _lastDepth) {
+        size_t cursorIdx = 0;
+        std::unique_ptr<arangodb::traverser::EdgeCursor> cursor(
+            _opts->nextCursor(_traverser->mmdr(), nextVertex.slice, _searchDepth));
+        while (cursor->readAll(_tmpEdges, cursorIdx)) {
+          if (!_tmpEdges.empty()) {
+            _traverser->_readDocuments += _tmpEdges.size();
+            VPackSlice v;
+            for (auto const& e : _tmpEdges) {
+              if (_traverser->getSingleVertex(e, nextVertex.slice, _searchDepth, v)) {
+                arangodb::basics::VPackHashedSlice hashed(v);
+                if (_allFound.find(hashed) == _allFound.end()) {
+                  _currentDepth.emplace(hashed);
+                  _allFound.emplace(hashed);
+                }
+              }
+            }
+            _tmpEdges.clear();
+          }
+        }
+      }
+      if (_currentDepth.empty()) {
+        // Nothing found. Cannot do anything more.
+        return false;
+      }
+      ++_searchDepth;
+    } while (_searchDepth < _opts->minDepth);
+    _iterator = _currentDepth.begin();
+  }
+  TRI_ASSERT(_iterator != _currentDepth.end());
+  return true;
+}
+
+arangodb::aql::AqlValue NeighborsEnumerator::lastVertexToAqlValue() {
+  TRI_ASSERT(_iterator != _currentDepth.end());
+  return _traverser->fetchVertexData((*_iterator).slice);
+}
+
+arangodb::aql::AqlValue NeighborsEnumerator::lastEdgeToAqlValue() {
+  // TODO should return Optimizer failed
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+arangodb::aql::AqlValue NeighborsEnumerator::pathToAqlValue(arangodb::velocypack::Builder& result) {
+  // TODO should return Optimizer failed
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}

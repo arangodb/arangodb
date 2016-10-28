@@ -172,6 +172,34 @@ static inline T readInteger(uint8_t const* start, ValueLength length) noexcept {
   return value;
 }
 
+// read an unsigned little endian integer value of the
+// specified length, starting at the specified byte offset
+template <typename T, ValueLength length>
+static inline T readIntegerFixed(uint8_t const* start) noexcept {
+  uint64_t x = 8;
+  uint8_t const* end = start + length;
+  uint64_t value = static_cast<T>(*start++);
+  while (start < end) {
+    value += static_cast<T>(*start++) << x;
+    x += 8;
+  }
+  return value;
+}
+
+// read an unsigned little endian integer value of the
+// specified length, starting at the specified byte offset
+template <typename T>
+static inline T readIntegerNonEmpty(uint8_t const* start, ValueLength length) noexcept {
+  uint64_t x = 8;
+  uint8_t const* end = start + length;
+  uint64_t value = static_cast<T>(*start++);
+  while (start < end) {
+    value += static_cast<T>(*start++) << x;
+    x += 8;
+  }
+  return value;
+}
+
 static inline uint64_t readUInt64(uint8_t const* start) noexcept {
   return readInteger<uint64_t>(start, 8);
 }

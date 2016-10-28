@@ -53,9 +53,10 @@ using namespace arangodb::rest;
 
 GeneralCommTask::GeneralCommTask(EventLoop loop, GeneralServer* server,
                                  std::unique_ptr<Socket> socket,
-                                 ConnectionInfo&& info, double keepAliveTimeout)
+                                 ConnectionInfo&& info, double keepAliveTimeout,
+                                 bool skipSocketInit)
     : Task(loop, "GeneralCommTask"),
-      SocketTask(loop, std::move(socket), std::move(info), keepAliveTimeout),
+      SocketTask(loop, std::move(socket), std::move(info), keepAliveTimeout, skipSocketInit),
       _server(server) {}
 
 // -----------------------------------------------------------------------------
@@ -196,7 +197,7 @@ bool GeneralCommTask::handleRequest(std::shared_ptr<RestHandler> handler) {
 void GeneralCommTask::handleRequestDirectly(
     std::shared_ptr<RestHandler> handler) {
   JobGuard guard(_loop);
-  guard.block();
+  guard.work();
 
   RequestStatisticsAgent* agent = getAgent(handler->messageId());
 
@@ -245,7 +246,7 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
       new Job(_server, std::move(handler),
               [self, this](std::shared_ptr<RestHandler> h) {
                 JobGuard guard(_loop);
-                guard.block();
+                guard.work();
 
                 h->asyncRunEngine();
               }));

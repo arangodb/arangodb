@@ -20,8 +20,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_INDEX_POOL_FEATURE_H
-#define APPLICATION_FEATURES_INDEX_POOL_FEATURE_H 1
+#ifndef APPLICATION_FEATURES_INDEX_THREAD_FEATURE_H
+#define APPLICATION_FEATURES_INDEX_THREAD_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -30,9 +30,9 @@ namespace basics {
 class ThreadPool;
 }
 
-class IndexPoolFeature final : public application_features::ApplicationFeature {
+class IndexThreadFeature final : public application_features::ApplicationFeature {
  public:
-  explicit IndexPoolFeature(application_features::ApplicationServer* server);
+  explicit IndexThreadFeature(application_features::ApplicationServer* server);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

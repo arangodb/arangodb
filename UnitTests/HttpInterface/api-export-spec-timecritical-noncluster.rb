@@ -126,7 +126,7 @@ describe ArangoDB do
       after do
         ArangoDB.drop_collection(@cn)
       end
-
+      
       it "creates a cursor, single run" do
         cmd = api + "?collection=#{@cid}"
         body = "{ \"count\" : true, \"flush\" : true }"
@@ -139,6 +139,22 @@ describe ArangoDB do
         doc.parsed_response['id'].should be_nil
         doc.parsed_response['hasMore'].should eq(false)
         doc.parsed_response['count'].should eq(10)
+        doc.parsed_response['result'].length.should eq(10)
+      end
+
+      it "creates a cursor, single run, no body" do
+        doc = ArangoDB.log_put("#{prefix}-return-single", "/_admin/wal/flush", :body => "{\"waitForSync\":true,\"waitForCollector\":true}")
+
+        cmd = api + "?collection=#{@cid}"
+        doc = ArangoDB.log_post("#{prefix}-return-single", cmd, :body => "")
+        
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['id'].should be_nil
+        doc.parsed_response['hasMore'].should eq(false)
+        doc.parsed_response['count'].should be_nil
         doc.parsed_response['result'].length.should eq(10)
       end
       

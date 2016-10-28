@@ -1,14 +1,34 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Jan Steemann
+////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_WAL_DOCUMENT_OPERATION_H
 #define ARANGOD_WAL_DOCUMENT_OPERATION_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/MasterPointer.h"
-#include "VocBase/MasterPointers.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
+class LogicalCollection;
 class Transaction;
 
 namespace wal {
@@ -22,91 +42,50 @@ struct DocumentOperation {
     REVERTED
   };
   
-  DocumentOperation(arangodb::Transaction* trx, 
-                    LogicalCollection* collection,
-                    TRI_voc_document_operation_e type)
-      : trx(trx),
-        collection(collection),
-        header(nullptr),
-        tick(0),
-        type(type),
-        status(StatusType::CREATED) {
+  DocumentOperation(LogicalCollection* collection,
+                    TRI_voc_document_operation_e type);
+
+  ~DocumentOperation();
+
+  DocumentOperation* swap();
+
+  void setRevisions(DocumentDescriptor const& oldRevision,
+                    DocumentDescriptor const& newRevision);
+  
+  void setVPack(uint8_t const* vpack);
+
+  void setTick(TRI_voc_tick_t tick) { _tick = tick; }
+  TRI_voc_tick_t tick() const { return _tick; }
+                    
+  TRI_voc_document_operation_e type() const { return _type; }
+
+  LogicalCollection* collection() const { return _collection; }
+ 
+  void indexed() noexcept {
+    TRI_ASSERT(_status == StatusType::CREATED);
+    _status = StatusType::INDEXED;
   }
 
-  ~DocumentOperation() {
-    if (status == StatusType::HANDLED) {
-      if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-        collection->releaseMasterpointer(header);
-      }
-    } else if (status != StatusType::REVERTED) {
-      revert();
-    }
+  void handled() noexcept {
+    TRI_ASSERT(!_oldRevision.empty() || !_newRevision.empty());
+    TRI_ASSERT(_status == StatusType::INDEXED);
+
+    _status = StatusType::HANDLED;
+  }
+  
+  void done() noexcept {
+    _status = StatusType::SWAPPED;
   }
 
-  DocumentOperation* swap() {
-    DocumentOperation* copy =
-        new DocumentOperation(trx, collection, type);
-    copy->tick = tick;
-    copy->header = header;
-    copy->oldHeader = oldHeader;
-    copy->status = status;
+  void revert(arangodb::Transaction*);
 
-    type = TRI_VOC_DOCUMENT_OPERATION_UNKNOWN;
-    header = nullptr;
-    status = StatusType::SWAPPED;
-
-    return copy;
-  }
-
-  void init() {
-    if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
-        type == TRI_VOC_DOCUMENT_OPERATION_REPLACE ||
-        type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-      // copy the old header into a safe area
-      TRI_ASSERT(header != nullptr);
-      oldHeader = *header;
-    }
-  }
-
-  void indexed() {
-    TRI_ASSERT(status == StatusType::CREATED);
-    status = StatusType::INDEXED;
-  }
-
-  void handle() {
-    TRI_ASSERT(header != nullptr);
-    TRI_ASSERT(status == StatusType::INDEXED);
-
-    status = StatusType::HANDLED;
-  }
-
-  void revert() {
-    if (header == nullptr || status == StatusType::SWAPPED ||
-        status == StatusType::REVERTED) {
-      return;
-    }
-
-    if (status == StatusType::INDEXED || status == StatusType::HANDLED) {
-      collection->rollbackOperation(trx, type, header, &oldHeader);
-    }
-
-    if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
-      collection->releaseMasterpointer(header);
-    } else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
-               type == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
-      header->copy(oldHeader);
-    }
-
-    status = StatusType::REVERTED;
-  }
-
-  arangodb::Transaction* trx;
-  LogicalCollection* collection;
-  TRI_doc_mptr_t* header;
-  TRI_doc_mptr_t oldHeader;
-  TRI_voc_tick_t tick;
-  TRI_voc_document_operation_e type;
-  StatusType status;
+ private:
+  LogicalCollection* _collection;
+  DocumentDescriptor _oldRevision;
+  DocumentDescriptor _newRevision;
+  TRI_voc_tick_t _tick;
+  TRI_voc_document_operation_e _type;
+  StatusType _status;
 };
 }
 }

@@ -30,7 +30,7 @@ namespace arangodb {
 namespace aql {
 class AqlItemBlock;
 
-class BaseExpressionContext : public ExpressionContext {
+class BaseExpressionContext final : public ExpressionContext {
  public:
   BaseExpressionContext(size_t startPos, AqlItemBlock const* argv,
                         std::vector<Variable const*> const& vars,

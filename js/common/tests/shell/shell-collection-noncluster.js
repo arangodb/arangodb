@@ -208,7 +208,6 @@ function CollectionSuite () {
       var r1 = c1.checksum(true);
       assertTypeOf("string", r1.revision);
       assertTrue(r1.revision !== "");
-      assertTrue(r1.revision.match(/^[0-9]+$/));
       assertTypeOf("string", r1.checksum);
       assertEqual("0", r1.checksum);
 
@@ -218,7 +217,6 @@ function CollectionSuite () {
       assertNotEqual(r1.revision, r2.revision);
       assertTypeOf("string", r2.revision);
       assertTrue(r2.revision !== "");
-      assertTrue(r2.revision.match(/^[0-9]+$/));
       assertTypeOf("string", r2.checksum);
       assertNotEqual("0", r2.checksum);
 
@@ -229,7 +227,6 @@ function CollectionSuite () {
       assertNotEqual(r2.revision, r3.revision);
       assertTypeOf("string", r3.revision);
       assertTrue(r3.revision !== "");
-      assertTrue(r3.revision.match(/^[0-9]+$/));
       assertTypeOf("string", r3.checksum);
       assertNotEqual("0", r3.checksum);
       assertNotEqual(r2.checksum, r3.checksum);
@@ -279,7 +276,6 @@ function CollectionSuite () {
       var r1 = c1.checksum(true);
       assertTypeOf("string", r1.revision);
       assertTrue(r1.revision !== "");
-      assertTrue(r1.revision.match(/^[0-9]+$/));
       assertTypeOf("string", r1.checksum);
       assertEqual("0", r1.checksum);
 
@@ -288,7 +284,6 @@ function CollectionSuite () {
       assertNotEqual(r1.revision, r2.revision);
       assertTypeOf("string", r2.revision);
       assertTrue(r2.revision !== "");
-      assertTrue(r2.revision.match(/^[0-9]+$/));
       assertTypeOf("string", r2.checksum);
       assertNotEqual("0", r2.checksum);
 
@@ -298,7 +293,6 @@ function CollectionSuite () {
       assertNotEqual(r2.revision, r3.revision);
       assertTypeOf("string", r3.revision);
       assertTrue(r3.revision !== "");
-      assertTrue(r3.revision.match(/^[0-9]+$/));
       assertTypeOf("string", r3.checksum);
       assertNotEqual("0", r3.checksum);
       assertNotEqual(r2.checksum, r3.checksum);

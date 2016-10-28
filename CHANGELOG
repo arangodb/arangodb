@@ -203,6 +203,10 @@ v3.1.alpha2 (2016-09-01)
 
 * Agency bug fix for handling of empty json objects as values.
 
+* Foxx tests no longer support the Mocha QUnit interface as this resulted in weird
+  inconsistencies in the BDD and TDD interfaces. This fixes the TDD interface
+  as well as out-of-sequence problems when using the BDD before/after functions.
+
 
 v3.0.11 (2016-XX-XX)
 --------------------

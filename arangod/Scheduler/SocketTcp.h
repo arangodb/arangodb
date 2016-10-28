@@ -38,34 +38,35 @@ class SocketTcp: public Socket {
           _peerEndpoint() {}
 
     SocketTcp(SocketTcp&& that) = default;
-    
+
     void close() override { _socket.close(); }
-    
+
     void close(boost::system::error_code& ec) override { _socket.close(ec); }
-    
+
     void setNonBlocking(bool v) override { _socket.non_blocking(v); }
-    
+
     std::string peerAddress() override { return _peerEndpoint.address().to_string(); }
-    
+
     int peerPort() override { return _peerEndpoint.port(); }
-    
+
     bool sslHandshake() override { return socketcommon::doSslHandshake(_sslSocket); }
-    
+
     size_t write(basics::StringBuffer* buffer, boost::system::error_code& ec) override;
-    
+
     void asyncWrite(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) override;
-    
+
     size_t read(boost::asio::mutable_buffers_1 const& buffer, boost::system::error_code& ec) override;
-    
-    void shutdownReceive() override;
-    
-    void shutdownReceive(boost::system::error_code& ec) override;
-    
-    void shutdownSend(boost::system::error_code& ec) override;
-    
-    int available(boost::system::error_code& ec) override;
-    
+
     void asyncRead(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) override;
+
+    // mop: these functions actually only access the underlying socket. The _sslSocket is
+    // actually just an additional layer around the socket. These low level functions
+    // aceess the _socket only and it is ok that they are not implemented for _sslSocket in
+    // the children
+    void shutdownReceive() override;
+    void shutdownReceive(boost::system::error_code& ec) override;
+    void shutdownSend(boost::system::error_code& ec) override;
+    int available(boost::system::error_code& ec) override;
 
   public:
     boost::asio::ssl::stream<boost::asio::ip::tcp::socket> _sslSocket;

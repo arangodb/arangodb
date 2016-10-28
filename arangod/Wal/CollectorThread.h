@@ -28,7 +28,6 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
-#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/datafile.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/voc-types.h"
@@ -37,6 +36,7 @@
 
 namespace arangodb {
 class LogicalCollection;
+class SingleCollectionTransaction;
 
 namespace wal {
 

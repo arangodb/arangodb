@@ -524,7 +524,7 @@ void ClusterFeature::unprepare() {
   while (_heartbeatThread->isRunning()) {
     usleep(50000);
   }
-
+  
   AgencyComm::cleanup();
   ClusterComm::cleanup();
 }
