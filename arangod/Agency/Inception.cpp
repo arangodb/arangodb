@@ -347,7 +347,6 @@ bool Inception::estimateRAFTInterval() {
       double sum, mean, sq_sum, stdev;
       sum    = std::accumulate(_pings.begin(), _pings.end(), 0.0);
       mean   = sum / num;
-      std::vector<double> diff(num);
       std::transform(_pings.begin(), _pings.end(), _pings.begin(),
                      std::bind2nd(std::minus<double>(), mean));
       sq_sum =
