@@ -47,9 +47,7 @@ class WorkerContext {
   friend class Worker<V, E, M>;
 
  public:
-  WorkerContext(const Algorithm<V, E, M>* algo, DatabaseID dbname,
-                VPackSlice params);
-  ~WorkerContext();
+  WorkerContext(Algorithm<V, E, M>* algo, DatabaseID dbname, VPackSlice params);
 
   inline prglSeq_t executionNumber() { return _executionNumber; }
 
@@ -79,16 +77,20 @@ class WorkerContext {
   //    return _edgeShardID;
   //}
 
-  inline std::shared_ptr<IncomingCache<M>> readableIncomingCache() { return _readCache; }
+  inline std::shared_ptr<IncomingCache<M>> readableIncomingCache() {
+    return _readCache;
+  }
 
-  inline std::shared_ptr<IncomingCache<M>> writeableIncomingCache() { return _writeCache; }
+  inline std::shared_ptr<IncomingCache<M>> writeableIncomingCache() {
+    return _writeCache;
+  }
 
-  Algorithm<V, E, M> const* algorithm() { return _algorithm; }
+  std::unique_ptr<Algorithm<V, E, M>> const& algorithm() { return _algorithm; }
 
  private:
   /// @brief guard to make sure the database is not dropped while used by us
-   prglSeq_t _executionNumber;
-  const Algorithm<V, E, M>* const _algorithm;
+  prglSeq_t _executionNumber;
+  const std::unique_ptr<Algorithm<V, E, M>> _algorithm;
 
   prglSeq_t _globalSuperstep = 0;
   prglSeq_t _expectedGSS = 0;

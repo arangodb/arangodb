@@ -21,13 +21,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "WorkerJob.h"
-#include "Utils.h"
-#include "Worker.h"
-#include "WorkerContext.h"
+#include "GraphStore.h"
 #include "IncomingCache.h"
 #include "OutgoingCache.h"
-#include "GraphStore.h"
+#include "Utils.h"
 #include "VertexComputation.h"
+#include "Worker.h"
+#include "WorkerContext.h"
 
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
@@ -60,29 +60,29 @@ void WorkerJob<V, E, M>::work() {
   OutgoingCache<V, E, M> outCache(_ctx);
 
   unsigned int gss = _ctx->globalSuperstep();
-  bool isDone = true;
-  auto vertexIterator = _graphStore->vertexIterator();
+  std::vector<VertexEntry>& vertexIterator = _graphStore->vertexIterator();
   auto vertexComputation = _ctx->algorithm()->createComputation();
   vertexComputation->_gss = gss;
   vertexComputation->_outgoing = &outCache;
   vertexComputation->_graphStore = _graphStore;
 
+  size_t activeCount = 0;
+  auto incoming = _ctx->readableIncomingCache();
 
-    for (auto& vertexEntry : vertexIterator) {
-      std::string vertexID = vertexEntry.vertexID();
-      MessageIterator<M> messages =
-          _ctx->readableIncomingCache()->getMessages(vertexID);
-      if (gss == 0 || messages.size() > 0 || vertexEntry.active()) {
-        isDone = false;
+  for (auto& vertexEntry : vertexIterator) {
+    std::string vertexID = vertexEntry.vertexID();
+    MessageIterator<M> messages = incoming->getMessages(vertexID);
 
-        vertexComputation->_vertexEntry = &vertexEntry;
-        vertexComputation->compute(vertexID, messages);
-
-        if (!vertexEntry.active()) {
-          LOG(INFO) << "vertex has halted";
-        }
+    if (gss == 0 || messages.size() > 0 || vertexEntry.active()) {
+      vertexComputation->_vertexEntry = &vertexEntry;
+      vertexComputation->compute(vertexID, messages);
+      if (vertexEntry.active()) {
+        activeCount++;
+      } else {
+        LOG(INFO) << vertexEntry.vertexID() << " vertex has halted";
       }
     }
+  }
   LOG(INFO) << "Finished executing vertex programs.";
 
   if (_canceled) {
@@ -90,13 +90,16 @@ void WorkerJob<V, E, M>::work() {
   }
 
   // ==================== send messages to other shards ====================
-
-  if (!isDone) {
-    outCache.sendMessages();
+  outCache.sendMessages();
+  size_t sendCount = outCache.sendMessageCount();
+  size_t receivedCount = _ctx->writeableIncomingCache()->receivedMessageCount();
+  if (activeCount == 0 && sendCount == 0 && receivedCount == 0) {
+    LOG(INFO) << "Worker seems to be done";
+    _worker->workerJobIsDone(true);
   } else {
-    LOG(INFO) << "Worker job has nothing more to process";
+    LOG(INFO) << "Worker send " << sendCount << " messages";
+    _worker->workerJobIsDone(false);
   }
-  _worker->workerJobIsDone(isDone);
 }
 
 template <typename V, typename E, typename M>
@@ -115,7 +118,5 @@ void WorkerJob<V, E, M>::cleanup(rest::DispatcherQueue* queue) {
 template <typename V, typename E, typename M>
 void WorkerJob<V, E, M>::handleError(basics::Exception const& ex) {}
 
-
 // template types to create
-template class arangodb::pregel::WorkerJob<int64_t,int64_t,int64_t>;
-
+template class arangodb::pregel::WorkerJob<int64_t, int64_t, int64_t>;

@@ -38,12 +38,12 @@ namespace pregel {
 template <typename M>
 class MessageIterator {
  public:
-  MessageIterator() : _data(nullptr), _size(0) {}
+  MessageIterator() : _data(nullptr), _current(0), _size(0) {}
 
   typedef MessageIterator<M> iterator;
   typedef const MessageIterator<M> const_iterator;
 
-  explicit MessageIterator(M const* data) : _data(data), _size(1) {}
+  explicit MessageIterator(M const* data) : _data(data), _size(data ? 1 : 0) {}
 
   iterator begin() { return MessageIterator(_data); }
   const_iterator begin() const { return MessageIterator(_data); }
@@ -67,7 +67,7 @@ class MessageIterator {
 
   // postfix ++
   MessageIterator operator++(int) {
-    MessageIterator result(*this);
+    MessageIterator result(_data);
     ++(*this);
     return result;
   }
@@ -81,7 +81,7 @@ class MessageIterator {
  private:
   M const* _data;
   size_t _current = 0;
-  size_t _size = 1;
+  const size_t _size = 1;
 };
 
 template <typename M>
@@ -92,12 +92,13 @@ struct MessageCombiner;
  cases. For example threaded
  processing */
 template <typename M>
-class IncomingCache {;
+class IncomingCache {
+  ;
 
  public:
-    IncomingCache(std::unique_ptr<MessageFormat<M>> const& format,
-                std::unique_ptr<MessageCombiner<M>> const& combiner)
-      : _format(format.get()), _combiner(combiner.get()) {}
+  IncomingCache(std::shared_ptr<MessageFormat<M>>& format,
+                std::shared_ptr<MessageCombiner<M>>& combiner)
+      : _format(format), _combiner(combiner) {}
   ~IncomingCache();
 
   void parseMessages(VPackSlice messages);
@@ -110,12 +111,15 @@ class IncomingCache {;
   /// valid with already combined messages
   void setDirect(std::string const& vertexId, M const& data);
 
+  size_t receivedMessageCount() { return _receivedMessageCount; }
+
  private:
   std::unordered_map<std::string, M> _messages;
+  size_t _receivedMessageCount;
   Mutex writeMutex;
 
-  MessageFormat<M>* _format;
-  MessageCombiner<M>* _combiner;
+  std::shared_ptr<MessageFormat<M>> _format;
+  std::shared_ptr<MessageCombiner<M>> _combiner;
 };
 }
 }

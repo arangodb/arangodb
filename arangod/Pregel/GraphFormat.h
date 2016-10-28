@@ -26,8 +26,8 @@
 #include <cstddef>
 #include "Basics/Common.h"
 
-#include <velocypack/vpack.h>
 #include <velocypack/velocypack-aliases.h>
+#include <velocypack/vpack.h>
 
 namespace arangodb {
 namespace pregel {
@@ -36,7 +36,7 @@ template <typename V, typename M>
 struct GraphFormat {
   virtual size_t copyVertexData(VPackSlice document, void* targetPtr,
                                 size_t maxSize) const = 0;
-  virtual size_t copyEdgeData(VPackSlice document, void* targetPtr,
+  virtual size_t copyEdgeData(VPackSlice edgeDocument, void* targetPtr,
                               size_t maxSize) const = 0;
   virtual V readVertexData(void* ptr) const = 0;
   virtual M readEdgeData(void* ptr) const = 0;
@@ -44,25 +44,25 @@ struct GraphFormat {
 
 class IntegerGraphFormat : public GraphFormat<int64_t, int64_t> {
   const std::string _field;
-  const int64_t _default;
+  const int64_t _vDefault, _eDefault;
 
  public:
-  IntegerGraphFormat(std::string const& field, int64_t nullValue = -1)
-      : _field(field), _default(nullValue) {}
+  IntegerGraphFormat(std::string const& field, int64_t vertexNull,
+                     int64_t edgeNull)
+      : _field(field), _vDefault(vertexNull), _eDefault(edgeNull) {}
 
   size_t copyVertexData(VPackSlice document, void* targetPtr,
                         size_t maxSize) const override {
-    if (sizeof(int64_t) < maxSize) {
-      VPackSlice val = document.get(_field);
-      *((int64_t*)targetPtr) = val.isInteger() ? document.getInt() : _default;
-      return sizeof(int64_t);
-    }
-    return 0;
+    VPackSlice val = document.get(_field);
+    *((int64_t*)targetPtr) = val.isInteger() ? val.getInt() : _vDefault;
+    return sizeof(int64_t);
   }
 
   size_t copyEdgeData(VPackSlice document, void* targetPtr,
                       size_t maxSize) const override {
-    return this->copyVertexData(document, targetPtr, maxSize);
+    VPackSlice val = document.get(_field);
+    *((int64_t*)targetPtr) = val.isInteger() ? val.getInt() : _eDefault;
+    return sizeof(int64_t);
   }
 
   int64_t readVertexData(void* ptr) const override { return *((int64_t*)ptr); }

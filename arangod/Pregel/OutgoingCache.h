@@ -29,8 +29,8 @@
 #include "Basics/Mutex.h"
 #include "Cluster/ClusterInfo.h"
 
-#include "MessageFormat.h"
 #include "MessageCombiner.h"
+#include "MessageFormat.h"
 
 namespace arangodb {
 namespace pregel {
@@ -49,14 +49,14 @@ class OutgoingCache {
 
   void sendMessageTo(std::string const& toValue, M const& data);
   void clear();
-  size_t count() const { return _numVertices; }
+  size_t sendMessageCount() const { return _sendMessages; }
 
   void sendMessages();
 
  private:
-    std::unique_ptr<MessageFormat<M>> _format;
-    std::unique_ptr<MessageCombiner<M>> _combiner;
-    
+  std::shared_ptr<MessageFormat<M>> _format;
+  std::shared_ptr<MessageCombiner<M>> _combiner;
+
   /// @brief two stage map: shard -> vertice -> message
   std::unordered_map<ShardID, std::unordered_map<std::string, M>> _map;
   std::shared_ptr<WorkerContext<V, E, M>> _ctx;
@@ -64,7 +64,9 @@ class OutgoingCache {
   ClusterInfo* _ci;
   std::string _baseUrl;
   /// @brief current number of vertices stored
-  size_t _numVertices;
+
+  size_t _containedMessages;
+  size_t _sendMessages;
 };
 }
 }

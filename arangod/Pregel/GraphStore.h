@@ -35,7 +35,8 @@ namespace pregel {
 
 /// @brief header entry for the edge file
 template <typename E>
-struct EdgeEntry {;
+struct EdgeEntry {
+  ;
 
  private:
   // size_t _nextEntryOffset;
@@ -47,11 +48,12 @@ struct EdgeEntry {;
 
  public:
   // EdgeEntry() : _nextEntryOffset(0), _dataSize(0), _vertexIDSize(0) {}
-    EdgeEntry(std::string const& vid, E const& data) : _toVertexID(vid), _data(data) {}
+  EdgeEntry(std::string const& vid, E const& data)
+      : _toVertexID(vid), _data(data) {}
   ~EdgeEntry() {}
 
   // size_t getSize() { return sizeof(EdgeEntry) + _vertexIDSize + _dataSize; }
-  std::string toVertexID() { return _toVertexID; }
+  std::string const& toVertexID() { return _toVertexID; }
   // size_t getDataSize() { return _dataSize; }
   E* getData() {
     return &_data;  // static_cast<E>(this + sizeof(EdgeEntry) + _vertexIDSize);
@@ -99,9 +101,11 @@ class EdgeIterator {
   }
 
   EdgeEntry<E>* operator*() const {
-      EdgeEntry<E>* el = _edges.data();
-      if (_current != _end) return el + _current;
-      else return nullptr;
+    EdgeEntry<E>* el = _edges.data();
+    if (_current != _end)
+      return el + _current;
+    else
+      return nullptr;
   }
 
   bool operator!=(EdgeIterator const& other) const {
@@ -140,35 +144,39 @@ struct VertexEntry {
   friend class GraphStore;
 
  private:
-  size_t _vertexDataOffset;
+  const std::string _vertexID;
+  size_t _vertexDataOffset;  // size_t vertexID length
   size_t _edgeDataOffset;
   size_t _edgeCount;
   bool _active;
-  std::string _vertexID;
-  // size_t _vertexIDSize;
-  // char _vertexID[1];
 
  public:
-  VertexEntry()
-      : _vertexDataOffset(0),
+  VertexEntry(std::string const& vid)
+      : _vertexID(vid),
+        _vertexDataOffset(0),
         _edgeDataOffset(0),
+        _edgeCount(0),
         _active(true) {}  //_vertexIDSize(0)
 
-  inline size_t getVertexDataOffset() { return _vertexDataOffset; }
-  inline size_t getEdgeDataOffset() { return _edgeDataOffset; }
+  inline size_t getVertexDataOffset() const { return _vertexDataOffset; }
+  inline size_t getEdgeDataOffset() const { return _edgeDataOffset; }
   // inline size_t getSize() { return sizeof(VertexEntry) + _vertexIDSize; }
   inline size_t getSize() { return sizeof(VertexEntry); }
-  inline bool active() { return _active; }
+  inline bool active() const { return _active; }
   inline void setActive(bool bb) { _active = bb; }
-  std::string const& vertexID() {
-    return _vertexID /* std::string(_vertexID, _vertexIDSize)*/;
-  };
+  inline std::string const& vertexID() const { return _vertexID; };
+  /*std::string const& vertexID() const {
+    return std::string(_vertexID, _vertexIDSize);
+  };*/
 };
 
 // unused right now
 class VertexIterator {
  private:
   intptr_t _begin, _end, _current;
+
+  /*VertexIterator(const VertexIterator&) = delete;
+  VertexIterator& operator=(const FileInfo&) = delete;*/
 
  public:
   typedef VertexIterator iterator;
@@ -225,33 +233,30 @@ class GraphStore {
 
   std::vector<SingleCollectionTransaction*> _readTrxList;
   void lookupVertices(ShardID const& vertexShard, TRI_vocbase_t* vocbase,
-                      std::unique_ptr<GraphFormat<V, E>> const& graphFormat);
+                      std::shared_ptr<GraphFormat<V, E>> const& graphFormat);
   void lookupEdges(std::string vertexCollectionName, ShardID const& edgeShardID,
                    TRI_vocbase_t* vocbase,
-                   std::unique_ptr<GraphFormat<V, E>> const& graphFormat);
+                   std::shared_ptr<GraphFormat<V, E>> const& graphFormat);
   void cleanupReadTransactions();
 
   // only for demo, move to memory
   std::vector<VertexEntry> _index;
-  std::vector<V> _vertices;
+  std::vector<V> _vertexData;
   std::vector<EdgeEntry<E>> _edges;
 
  public:
-    
   GraphStore(std::string const& vertexCollectionName,
              std::vector<ShardID> const& vertexShards,
-             std::vector<ShardID> const& edgeShards,
-             TRI_vocbase_t* vocbase,
-             std::unique_ptr<GraphFormat<V, E>> const& graphFormat);
+             std::vector<ShardID> const& edgeShards, TRI_vocbase_t* vocbase,
+             std::shared_ptr<GraphFormat<V, E>> const& graphFormat);
   ~GraphStore();
 
-  typedef std::vector<VertexEntry> VertexIterator;
+  std::vector<VertexEntry>& vertexIterator();
+  EdgeIterator<E> edgeIterator(VertexEntry const* entry);
 
-  VertexIterator vertexIterator();
   V* vertexData(VertexEntry const* entry);
   V vertexDataCopy(VertexEntry const* entry);
   void replaceVertexData(VertexEntry const* entry, V* data);
-  EdgeIterator<E> edgeIterator(VertexEntry const* entry);
 };
 }
 }

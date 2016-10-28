@@ -35,8 +35,7 @@ using namespace arangodb::pregel;
 
 template <typename M>
 IncomingCache<M>::~IncomingCache() {
-    delete _combiner;
-    delete _format;
+  LOG(INFO) << "~IncomingCache";
   _messages.clear();
 }
 
@@ -45,13 +44,13 @@ void IncomingCache<M>::clear() {
   /*for (auto const& it : _messages) {
     it.second->clear();
   }*/
-    _messages.clear();
+  _receivedMessageCount = 0;
+  _messages.clear();
 }
 
 template <typename M>
 void IncomingCache<M>::parseMessages(VPackSlice incomingMessages) {
   MUTEX_LOCKER(locker, writeMutex);
-  LOG(INFO) << "Adding messages to In-Queue " << incomingMessages.toJson();
 
   VPackValueLength length = incomingMessages.length();
   if (length % 2) {
@@ -67,14 +66,19 @@ void IncomingCache<M>::parseMessages(VPackSlice incomingMessages) {
     if (i % 2 == 0) {  // TODO support multiple recipients
       vertexId = current.copyString();
     } else {
-      
       M newValue;
-      _format->unwrapValue(current, newValue);
+      bool sucess = _format->unwrapValue(current, newValue);
+      if (!sucess) {
+        LOG(WARN) << "Invalid message format supplied";
+        continue;
+      }
+
+      _receivedMessageCount++;
       auto vmsg = _messages.find(vertexId);
-      if (vmsg != _messages.end()) {
+      if (vmsg != _messages.end()) {  // got a message for the same vertex
         vmsg->second = _combiner->combine(vmsg->second, newValue);
       } else {
-          _messages[vertexId] = newValue;
+        _messages[vertexId] = newValue;
       }
     }
   }
@@ -82,11 +86,14 @@ void IncomingCache<M>::parseMessages(VPackSlice incomingMessages) {
 
 template <typename M>
 void IncomingCache<M>::setDirect(std::string const& vertexId, M const& data) {
+  MUTEX_LOCKER(locker, writeMutex);
+  _receivedMessageCount++;
+
   auto vmsg = _messages.find(vertexId);
   if (vmsg != _messages.end()) {
-      vmsg->second = data;// TODO combine1!!!
+    vmsg->second = data;  // TODO combine1!!!
   } else {
-      _messages[vertexId] = data;
+    _messages[vertexId] = data;
   }
 }
 
@@ -96,8 +103,9 @@ MessageIterator<M> IncomingCache<M>::getMessages(std::string const& vertexId) {
   auto vmsg = _messages.find(vertexId);
   if (vmsg != _messages.end()) {
     return MessageIterator<M>(&vmsg->second);
-  } else
+  } else {
     return MessageIterator<M>();
+  }
 }
 
 // template types to create

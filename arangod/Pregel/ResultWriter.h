@@ -20,38 +20,29 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cstddef>
-#include "Basics/Common.h"
+#ifndef ARANGODB_PREGEL_ALGO_SSSP_H
+#define ARANGODB_PREGEL_ALGO_SSSP_H 1
+#include "Algorithm.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-
-#ifndef ARANGODB_PREGEL_MFORMAT_H
-#define ARANGODB_PREGEL_MFORMAT_H 1
 namespace arangodb {
 namespace pregel {
+namespace algos {
 
-template <typename M>
-struct MessageFormat {
-  virtual ~MessageFormat() {}
-  virtual bool unwrapValue(VPackSlice body, M& value) const = 0;
-  virtual void addValue(VPackBuilder& arrayBuilder, M const& val) const = 0;
-};
+/// Single Source Shortest Path. Uses integer attribute 'value', the source
+/// should have
+/// the value == 0, all others -1 or an undefined value
+struct SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
+ public:
+  SSSPAlgorithm() : Algorithm("SSSP") {}
 
-struct IntegerMessageFormat : public MessageFormat<int64_t> {
-  IntegerMessageFormat() {}
-  bool unwrapValue(VPackSlice s, int64_t& value) const override {
-    if (s.isInteger()) {
-      value = s.getInt();
-      return true;
-    }
-    return false;
-  }
-  void addValue(VPackBuilder& arrayBuilder, int64_t const& val) const override {
-    arrayBuilder.add(VPackValue(val));
-  }
+  size_t estimatedVertexSize() const override;
+  std::shared_ptr<GraphFormat<int64_t, int64_t>> inputFormat() const override;
+  std::shared_ptr<MessageFormat<int64_t>> messageFormat() const override;
+  std::shared_ptr<MessageCombiner<int64_t>> messageCombiner() const override;
+  std::shared_ptr<VertexComputation<int64_t, int64_t, int64_t>>
+  createComputation() const override;
 };
+}
 }
 }
 #endif

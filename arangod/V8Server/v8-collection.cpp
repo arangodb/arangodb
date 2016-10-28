@@ -1834,15 +1834,17 @@ static void JS_Pregel(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   // check the arguments
   uint32_t const argLength = args.Length();
-  if (argLength < 2) {
+  if (argLength < 3) {
     // TODO extend this for named graphs, use the Graph class
       TRI_V8_THROW_EXCEPTION_USAGE("_pregel(<vertexCollection>, <edgeCollection>)");
   }
-  if (!args[0]->IsString() || !args[1]->IsString()) {
+  if (!args[0]->IsString() || !args[1]->IsString() || !args[2]->IsString()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   std::string vName = TRI_ObjectToString(args[0]);
   std::string eName = TRI_ObjectToString(args[1]);
+  std::string algor = TRI_ObjectToString(args[2]);
+    
   LOG(INFO) << "Called _pregel(" << vName << "," << eName << ")";
   
   int result = 0;
@@ -1870,7 +1872,7 @@ static void JS_Pregel(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
 
     result = pregel::PregelFeature::instance()->createExecutionNumber();
-    pregel::Conductor* e = new pregel::Conductor(result, vocbase, vertexColl, edgeColl, "todo");
+    pregel::Conductor* e = new pregel::Conductor(result, vocbase, vertexColl, edgeColl, algor);
     pregel::PregelFeature::instance()->addExecution(e, result);
     
     LOG(INFO) << "Starting...";

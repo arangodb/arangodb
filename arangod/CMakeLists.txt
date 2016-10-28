@@ -383,6 +383,9 @@ add_executable(${BIN_ARANGOD}
   Pregel/Utils.cpp
   Pregel/GraphFormat.cpp
   Pregel/MessageFormat.cpp
+  Pregel/ResultWriter.cpp
+  Pregel/Algos/SSSP.cpp
+  Pregel/Algos/SCC.cpp
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}
 )
 

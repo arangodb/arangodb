@@ -47,10 +47,10 @@ struct Algorithm {
   virtual bool preserveTransactions() const { return false; }
 
   virtual size_t estimatedVertexSize() const = 0;
-  virtual std::unique_ptr<GraphFormat<V, E>> inputFormat() const = 0;
-  virtual std::unique_ptr<MessageFormat<M>> messageFormat() const = 0;
-  virtual std::unique_ptr<MessageCombiner<M>> messageCombiner() const = 0;
-  virtual std::unique_ptr<VertexComputation<V, E, M>> createComputation()
+  virtual std::shared_ptr<GraphFormat<V, E>> inputFormat() const = 0;
+  virtual std::shared_ptr<MessageFormat<M>> messageFormat() const = 0;
+  virtual std::shared_ptr<MessageCombiner<M>> messageCombiner() const = 0;
+  virtual std::shared_ptr<VertexComputation<V, E, M>> createComputation()
       const = 0;
 
   std::string const& getName() const { return _name; }
@@ -60,18 +60,6 @@ struct Algorithm {
 
  private:
   std::string _name;
-};
-
-struct SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
- public:
-  SSSPAlgorithm() : Algorithm("SSSP") {}
-
-  size_t estimatedVertexSize() const override;
-  std::unique_ptr<GraphFormat<int64_t, int64_t>> inputFormat() const override;
-  std::unique_ptr<MessageFormat<int64_t>> messageFormat() const override;
-  std::unique_ptr<MessageCombiner<int64_t>> messageCombiner() const override;
-  std::unique_ptr<VertexComputation<int64_t, int64_t, int64_t>>
-  createComputation() const override;
 };
 }
 }

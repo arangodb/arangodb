@@ -20,38 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cstddef>
-#include "Basics/Common.h"
+#include "ResultWriter.h"
+#include "GraphStore.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-
-#ifndef ARANGODB_PREGEL_MFORMAT_H
-#define ARANGODB_PREGEL_MFORMAT_H 1
-namespace arangodb {
-namespace pregel {
-
-template <typename M>
-struct MessageFormat {
-  virtual ~MessageFormat() {}
-  virtual bool unwrapValue(VPackSlice body, M& value) const = 0;
-  virtual void addValue(VPackBuilder& arrayBuilder, M const& val) const = 0;
-};
-
-struct IntegerMessageFormat : public MessageFormat<int64_t> {
-  IntegerMessageFormat() {}
-  bool unwrapValue(VPackSlice s, int64_t& value) const override {
-    if (s.isInteger()) {
-      value = s.getInt();
-      return true;
-    }
-    return false;
-  }
-  void addValue(VPackBuilder& arrayBuilder, int64_t const& val) const override {
-    arrayBuilder.add(VPackValue(val));
-  }
-};
-}
-}
-#endif
+using namespace arangodb::pregel;
+using namespace arangodb::pregel::algos;

@@ -38,6 +38,9 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Algos/SCC.h"
+#include "Algos/SSSP.h"
+
 using namespace arangodb;
 using namespace arangodb::pregel;
 
@@ -53,7 +56,7 @@ IWorker* IWorker::createWorker(TRI_vocbase_t* vocbase, VPackSlice params) {
   IWorker* worker = nullptr;
   if (algorithm.compareString("sssp") == 0) {
     // TODO transform to shared_ptr all the way
-    auto algo = new SSSPAlgorithm();
+    auto algo = new algos::SSSPAlgorithm();
     auto ptr = algo->inputFormat();
     auto ctx = std::make_shared<WorkerContext<int64_t, int64_t, int64_t>>(
         algo, vocbase->name(), params);
@@ -61,7 +64,17 @@ IWorker* IWorker::createWorker(TRI_vocbase_t* vocbase, VPackSlice params) {
         ctx->vertexCollectionName(), ctx->localVertexShardIDs(),
         ctx->localEdgeShardIDs(), vocbase, ptr);
     worker = new Worker<int64_t, int64_t, int64_t>(graph, ctx);
-  } else {
+  } /*if (algorithm.compareString("scc") == 0) {
+      // TODO transform to shared_ptr all the way
+      auto algo = new SCCAlgorithm();
+      auto ptr = algo->inputFormat();
+      auto ctx = std::make_shared<WorkerContext<int64_t, int64_t, int64_t>>(
+                                                                            algo, vocbase->name(), params);
+      auto graph = std::make_shared<GraphStore<int64_t, int64_t>>(
+                                                                  ctx->vertexCollectionName(), ctx->localVertexShardIDs(),
+                                                                  ctx->localEdgeShardIDs(), vocbase, ptr);
+      worker = new Worker<int64_t, int64_t, int64_t>(graph, ctx);
+  }*/ else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Unsupported Algorithm");
   }
@@ -118,7 +131,7 @@ void Worker<V, E, M>::nextGlobalStep(VPackSlice data) {
 
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::receivedMessages(VPackSlice data) {
-  LOG(INFO) << "Worker received messages";
+  LOG(INFO) << "Worker received some messages: " << data.toJson();
 
   VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
   VPackSlice messageSlice = data.get(Utils::messagesKey);
@@ -139,6 +152,32 @@ void Worker<V, E, M>::receivedMessages(VPackSlice data) {
   }
 
   LOG(INFO) << "Worker combined / stored incoming messages";
+}
+
+template <typename V, typename E, typename M>
+void Worker<V, E, M>::workerJobIsDone(bool allDone) {
+  // notify the conductor that we are done.
+  VPackBuilder package;
+  package.openObject();
+  package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
+  package.add(Utils::executionNumberKey, VPackValue(_ctx->executionNumber()));
+  package.add(Utils::globalSuperstepKey, VPackValue(_ctx->globalSuperstep()));
+  package.add(Utils::doneKey, VPackValue(allDone));
+  package.close();
+
+  ClusterComm* cc = ClusterComm::instance();
+  std::string baseUrl = Utils::baseUrl(_ctx->database());
+  CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
+  auto headers =
+      std::make_unique<std::unordered_map<std::string, std::string>>();
+  auto body = std::make_shared<std::string const>(package.toJson());
+  cc->asyncRequest("", coordinatorTransactionID,
+                   "server:" + _ctx->coordinatorId(), rest::RequestType::POST,
+                   baseUrl + Utils::finishedGSSPath, body, headers, nullptr,
+                   90.0);
+  LOG(INFO) << "Sending finishedGSS to coordinator: " << _ctx->coordinatorId();
+  if (allDone)
+    LOG(INFO) << "WE have no active vertices, and did not send messages";
 }
 
 template <typename V, typename E, typename M>
@@ -180,35 +219,21 @@ void Worker<V, E, M>::writeResults() {
     THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up graph '%s'",
                                   _vertexCollection.c_str());
   }*/
-}
-
-template <typename V, typename E, typename M>
-void Worker<V, E, M>::workerJobIsDone(bool allVerticesHalted) {
-  // notify the conductor that we are done.
-  VPackBuilder package;
-  package.openObject();
-  package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-  package.add(Utils::executionNumberKey, VPackValue(_ctx->executionNumber()));
-  package.add(Utils::globalSuperstepKey, VPackValue(_ctx->globalSuperstep()));
-  package.add(Utils::doneKey, VPackValue(allVerticesHalted));
-  package.close();
-
-  LOG(INFO) << "Sending finishedGSS to coordinator: " << _ctx->coordinatorId();
-  // TODO handle communication failures?
-
-  ClusterComm* cc = ClusterComm::instance();
-  std::string baseUrl = Utils::baseUrl(_ctx->database());
-  CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
-  auto headers =
-      std::make_unique<std::unordered_map<std::string, std::string>>();
-  auto body = std::make_shared<std::string const>(package.toJson());
-  cc->asyncRequest("", coordinatorTransactionID,
-                   "server:" + _ctx->coordinatorId(), rest::RequestType::POST,
-                   baseUrl + Utils::finishedGSSPath, body, headers, nullptr,
-                   90.0);
-
-  LOG(INFO) << "Worker job finished sending stuff";
+  VPackBuilder b;
+  b.openArray();
+  auto it = _graphStore->vertexIterator();
+  for (const VertexEntry& vertexEntry : it) {
+    V data = _graphStore->vertexDataCopy(&vertexEntry);
+    VPackBuilder v;
+    v.openObject();
+    v.add("key", VPackValue(vertexEntry.vertexID()));
+    v.add("result", VPackValue((int64_t)data));
+    v.close();
+    b.add(v.slice());
+  }
+  b.close();
+  LOG(INFO) << "Results. " << b.toJson();
 }
 
 // template types to create
-template class arangodb::pregel::Worker<int64_t,int64_t,int64_t>;
+template class arangodb::pregel::Worker<int64_t, int64_t, int64_t>;

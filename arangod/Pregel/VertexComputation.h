@@ -38,11 +38,12 @@ enum VertexActivationState {
 
 template <typename V, typename E, typename M>
 class OutgoingCache;
-    template <typename V, typename E, typename M> class WorkerJob;
-    
+template <typename V, typename E, typename M>
+class WorkerJob;
+
 template <typename V, typename E, typename M>
 class VertexComputation {
-  friend class WorkerJob<V,E,M>;
+  friend class WorkerJob<V, E, M>;
 
  private:
   unsigned int _gss;
@@ -54,7 +55,8 @@ class VertexComputation {
   unsigned int getGlobalSuperstep() const { return _gss; }
   void sendMessage(std::string const& toValue, M const& data);
   EdgeIterator<E> getEdges();
-  V* getVertexData();
+  V* mutableVertexData();
+  V vertexData();
   /// store data, will potentially move the data around
   void setVertexData(const V*, size_t size);
   void voteHalt();
