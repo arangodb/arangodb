@@ -37,7 +37,6 @@
 
   return {
     foxx: function () {
-      
       require('@arangodb/foxx/manager').initializeFoxx();
     },
     foxxes: function () {
@@ -50,7 +49,7 @@
         // wait for databases to appear
         var databases = db._databases();
         while(true) {
-          if (databases.length != 0) {
+          if (databases.length !== 0) {
             break;
           }
           internal.wait(0.25);
