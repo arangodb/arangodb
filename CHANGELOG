@@ -1,4 +1,4 @@
-v3.1.rc3 (2016-XX-XX)
+v3.1.0 (2016-10-29)
 -------------------
 
 * added AQL function `DISTANCE` to calculate the distance between two arbitrary

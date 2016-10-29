@@ -1,2 +1,2 @@
-shell> curl --header 'If-None-Match: "_U-_pySu---"' --dump - http://localhost:8529/_api/document/products/9874
+shell> curl --header 'If-None-Match: "_U_D0B-u---"' --dump - http://localhost:8529/_api/document/products/9901
 
