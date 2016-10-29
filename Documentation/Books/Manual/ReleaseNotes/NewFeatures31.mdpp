@@ -175,9 +175,11 @@ The shard view in cluster mode now displays a progress indicator while moving sh
 
 !SECTION Authentication
 
-Up to arangodb 3.0 authentication was only possible using basic authentication.
+Up to ArangoDB 3.0 authentication of client requests was only possible with HTTP basic 
+authentication.
 
-Alternatively it is now possible to use a JWT for authenticating a request.
+Starting with 3.1 it is now possible to also use a [JSON Web Tokens](https://jwt.io/)
+(JWT) for authenticating incoming requests.
 
 For details check the HTTP authentication chapter. Both authentication methods are
 valid and will be supported in the near future. Use whatever suits you best.

@@ -42,5 +42,10 @@ if(SNAPCRAFT_FOUND)
     WORKING_DIRECTORY ${SNAPCRAFT_SOURCE_DIR}
   )
 
+  add_custom_target(copy_snap_packages
+    COMMAND cp *.snap ${PACKAGE_TARGET_DIR})
+
+  list(APPEND COPY_PACKAGES_LIST copy_snap_packages)
+
   list(APPEND PACKAGES_LIST snap)
 endif()

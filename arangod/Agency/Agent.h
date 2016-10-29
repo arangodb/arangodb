@@ -175,9 +175,14 @@ class Agent : public arangodb::Thread {
   /// @brief Am I active agent
   query_t activate(query_t const&);
 
+  /// @brief Report measured round trips to inception
+  void reportMeasurement(query_t const&);
+
   /// @brief Inception thread still done?
   bool ready() const;
   void ready(bool b);
+
+  void resetRAFTTimes(double, double);
 
   /// @brief State reads persisted state and prepares the agent
   friend class State;

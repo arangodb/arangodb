@@ -26,6 +26,7 @@
 
 #include <memory>
 
+#include "Agency/AgencyCommon.h"
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
@@ -57,6 +58,9 @@ public:
   /// @brief Report in from callbacks
   void reportIn(std::string const&, uint64_t);
 
+  /// @brief Report in from other agents measurements
+  void reportIn(query_t const&);
+
   void beginShutdown() override;
   void run() override;
 
@@ -80,7 +84,9 @@ public:
   Agent* _agent;                           //< @brief The agent
   arangodb::basics::ConditionVariable _cv; //< @brief For proper shutdown
   std::vector<double> _pings;              //< @brief pings
-  mutable arangodb::Mutex _pLock;                            //< @brief Guard pings
+  mutable arangodb::Mutex _pLock;          //< @brief Guard pings
+  std::vector<std::vector<double>> _measurements; //< @brief measurements
+  mutable arangodb::Mutex _mLock;          //< @brief Guard measurements
   
 };
 
