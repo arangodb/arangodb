@@ -425,7 +425,7 @@ bool Inception::estimateRAFTInterval() {
     
     if ((system_clock::now() - s) > timeout) {
       LOG_TOPIC(WARN, Logger::AGENCY)
-        << "Timed out waiting for other measurements. Auto-adaptation failed!";
+        << "Timed out waiting for other measurements. Auto-adaptation failed! Will stick to command line arguments";
       return false;
     }
     
