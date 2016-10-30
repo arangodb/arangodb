@@ -445,7 +445,7 @@ bool Inception::estimateRAFTInterval() {
   LOG_TOPIC(INFO, Logger::AGENCY)
     << "Auto-adapting RAFT timing to: " << 5.*maxmean << " " << 25.*maxmean;
 
-  _agent->resetRAFTTimes(5.*maxmean, 25.*maxmean);
+  //_agent->resetRAFTTimes(5.*maxmean, 25.*maxmean);
   
   return true;
   
