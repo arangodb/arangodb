@@ -947,7 +947,7 @@ uint64_t VelocyPackHelper::hashByAttributes(
       // We have an _id. Split it.
       subKey = subKey.substr(pos + 1);
       VPackBuilder temporaryBuilder;
-      temporaryBuilder.add(VPackValue(subKey.toString()));
+      temporaryBuilder.add(VPackValuePair(subKey.data(), subKey.length(), VPackValueType::String));
       VPackSlice tmp = temporaryBuilder.slice();
       hash = tmp.normalizedHash(hash);
     } else {
