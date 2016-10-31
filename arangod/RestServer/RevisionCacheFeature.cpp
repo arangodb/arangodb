@@ -83,10 +83,10 @@ void RevisionCacheFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
   } else if (_targetSize < 32 * 1024 * 1024 || _targetSize / _chunkSize < 16) {
     LOG(WARN) << "value for '--database.revision-cache-target-size' is very low";
   }
-
+  
   if (_chunkSize >= _targetSize) {
     LOG(WARN) << "value for '--database.revision-cache-target-size' should be higher than value of '--database.revision-cache-chunk-size'";
-    _chunkSize = _targetSize;
+    _chunkSize = static_cast<uint32_t>(_targetSize);
   }
 }
 

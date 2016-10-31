@@ -1298,7 +1298,7 @@ static void JS_PropertiesVocbaseCol(
   result->Set(IsVolatileKey,
               v8::Boolean::New(isolate, collection->isVolatile()));
   result->Set(JournalSizeKey,
-              v8::Number::New(isolate, collection->journalSize()));
+              v8::Number::New(isolate, (double) collection->journalSize()));
   result->Set(TRI_V8_ASCII_STRING("indexBuckets"),
               v8::Number::New(isolate, collection->indexBuckets()));
 

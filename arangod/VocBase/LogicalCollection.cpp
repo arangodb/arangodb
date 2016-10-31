@@ -311,7 +311,7 @@ LogicalCollection::LogicalCollection(
       _isSystem(other.isSystem()),
       _isVolatile(other.isVolatile()),
       _waitForSync(other.waitForSync()),
-      _journalSize(other.journalSize()),
+      _journalSize(static_cast<TRI_voc_size_t>(other.journalSize())),
       _keyOptions(other._keyOptions),
       _version(other._version),
       _indexBuckets(other.indexBuckets()),
@@ -878,7 +878,7 @@ int LogicalCollection::replicationFactor() const {
 
 // SECTION: Sharding
 int LogicalCollection::numberOfShards() const {
-  return _numberOfShards;
+  return static_cast<int>(_numberOfShards);
 }
 
 bool LogicalCollection::allowUserKeys() const {

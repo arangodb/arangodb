@@ -63,8 +63,8 @@ class PhysicalCollection {
   /// @brief rotate the active journal - will do nothing if there is no journal
   virtual int rotateActiveJournal() = 0;
   
-  virtual int applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
-                                std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) = 0;
+  virtual bool applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
+                                 std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) = 0;
 
   /// @brief increase dead stats for a datafile, if it exists
   virtual void updateStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) = 0;

@@ -938,7 +938,7 @@ std::vector<MMFilesCollection::DatafileDescription> MMFilesCollection::datafiles
   return result;
 }
 
-int MMFilesCollection::applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
+bool MMFilesCollection::applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
                         std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) {
   LOG(TRACE) << "getting datafiles in data range " << dataMin << " - " << dataMax;
 
