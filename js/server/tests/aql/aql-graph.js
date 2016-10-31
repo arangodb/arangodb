@@ -56,8 +56,8 @@ function ahuacatlQueryEdgesTestSuite () {
       db._drop(vn);
       db._drop("UnitTestsAhuacatlEdge");
 
-      vertex = db._create(vn);
-      edge = db._createEdgeCollection("UnitTestsAhuacatlEdge");
+      vertex = db._create(vn, {numberOfShards: 4});
+      edge = db._createEdgeCollection("UnitTestsAhuacatlEdge", {numberOfShards: 4});
 
       vertex.save({ _key: "v1", name: "v1" });
       vertex.save({ _key: "v2", name: "v2" });
@@ -414,8 +414,8 @@ function ahuacatlQueryNeighborsTestSuite () {
       db._drop(vn);
       db._drop("UnitTestsAhuacatlEdge");
 
-      vertex = db._create(vn);
-      edge = db._createEdgeCollection("UnitTestsAhuacatlEdge");
+      vertex = db._create(vn, {numberOfShards: 4});
+      edge = db._createEdgeCollection("UnitTestsAhuacatlEdge", {numberOfShards: 4});
 
       vertex.save({ _key: "v1", name: "v1" });
       vertex.save({ _key: "v2", name: "v2" });
@@ -676,8 +676,8 @@ function ahuacatlQueryBreadthFirstTestSuite () {
     setUpAll : function () {
       cleanUp();
 
-      vertex = db._create(vn);
-      edge = db._createEdgeCollection(en);
+      vertex = db._create(vn, {numberOfShards: 4});
+      edge = db._createEdgeCollection(en, {numberOfShards: 4});
       
       vertex.save({_key: "A"});
       vertex.save({_key: "B"});
@@ -847,8 +847,8 @@ function ahuacatlQueryShortestPathTestSuite () {
       db._drop(vn);
       db._drop(en);
 
-      vertexCollection = db._create(vn);
-      edgeCollection = db._createEdgeCollection(en);
+      vertexCollection = db._create(vn, {numberOfShards: 4});
+      edgeCollection = db._createEdgeCollection(en, {numberOfShards: 4});
 
       [ "A", "B", "C", "D", "E", "F", "G", "H" ].forEach(function (item) {
         vertexCollection.save({ _key: item, name: item });
@@ -1010,8 +1010,8 @@ function ahuacatlQueryNeighborsErrorsSuite () {
       db._drop(en);
       internal.debugClearFailAt();
 
-      vertexCollection = db._create(vn);
-      edgeCollection = db._createEdgeCollection(en);
+      vertexCollection = db._create(vn, {numberOfShards: 4});
+      edgeCollection = db._createEdgeCollection(en, {numberOfShards: 4});
 
       [ "A", "B", "C", "D" ].forEach(function (item) {
         vertexCollection.save({ _key: item, name: item });
@@ -1099,8 +1099,8 @@ function ahuacatlQueryShortestpathErrorsSuite () {
       db._drop(en);
       internal.debugClearFailAt();
 
-      vertexCollection = db._create(vn);
-      edgeCollection = db._createEdgeCollection(en);
+      vertexCollection = db._create(vn, {numberOfShards: 4});
+      edgeCollection = db._createEdgeCollection(en, {numberOfShards: 4});
 
       [ "A", "B", "C", "D" ].forEach(function (item) {
         vertexCollection.save({ _key: item, name: item });
@@ -1182,4 +1182,3 @@ if (internal.debugCanUseFailAt() && ! cluster.isCluster()) {
   jsunity.run(ahuacatlQueryShortestpathErrorsSuite);
 }
 return jsunity.done();
-
