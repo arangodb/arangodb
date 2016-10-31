@@ -938,6 +938,8 @@ uint64_t VelocyPackHelper::hashByAttributes(
       }
       hash = sub.normalizedHash(hash);
     }
+  } else if (slice.isString() && attributes.size() == 1 && attributes[0] == StaticStrings::KeyString) {
+    hash = slice.normalizedHash(hash);
   }
   return hash;
 }
