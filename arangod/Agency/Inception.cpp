@@ -365,7 +365,7 @@ bool Inception::estimateRAFTInterval() {
     
   }
 
-  if (! _ping.empty()) {
+  if (! _pings.empty()) {
 
     double sum, mean = 0., sq_sum, stdev = 0., mx = 0., mn = 0.;
   
