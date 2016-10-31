@@ -12,7 +12,7 @@ grade: stable
 #grade: devel
 
 parts:
-  arangodb3:
+  @CPACK_PACKAGE_NAME@:
     source: @CPACK_PACKAGE_TGZ@
     plugin: dump
     snap:
