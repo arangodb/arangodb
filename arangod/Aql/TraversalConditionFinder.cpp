@@ -341,7 +341,7 @@ static void transformCondition(AstNode const* node, Variable const* pvar,
       if (matchesArrayAccessPattern(testee, pvar, isEdge, toReplace)) {
         auto quantifier = baseCondition->getMemberUnchecked(2);
         TRI_ASSERT(quantifier->type == NODE_TYPE_QUANTIFIER);
-        int val = quantifier->getIntValue(true);
+        int64_t val = quantifier->getIntValue(true);
         if (val == Quantifier::ANY) {
           // Nono optimize for ANY
           continue;
