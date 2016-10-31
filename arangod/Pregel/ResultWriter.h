@@ -24,25 +24,24 @@
 #define ARANGODB_PREGEL_ALGO_SSSP_H 1
 #include "Algorithm.h"
 
+
+struct TRI_vocbase_t;
 namespace arangodb {
 namespace pregel {
-namespace algos {
 
-/// Single Source Shortest Path. Uses integer attribute 'value', the source
-/// should have
-/// the value == 0, all others -1 or an undefined value
-struct SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
+template<typename V, typename E> class GraphStore;
+    
+template<typename V, typename E>
+class ResultWriter {
+ std::string _resultVertexCollection;
+ std::string _resultEdgeCollection;
+ bool _writeInSameCollections = true;
+ bool resultField;
+    
  public:
-  SSSPAlgorithm() : Algorithm("SSSP") {}
-
-  size_t estimatedVertexSize() const override;
-  std::shared_ptr<GraphFormat<int64_t, int64_t>> inputFormat() const override;
-  std::shared_ptr<MessageFormat<int64_t>> messageFormat() const override;
-  std::shared_ptr<MessageCombiner<int64_t>> messageCombiner() const override;
-  std::shared_ptr<VertexComputation<int64_t, int64_t, int64_t>>
-  createComputation() const override;
+  ResultWriter(VPackSlice params) {}
+  void writeResults(TRI_vocbase_t *vocbase, GraphStore<V,E> *store);
 };
-}
 }
 }
 #endif

@@ -182,43 +182,7 @@ void Worker<V, E, M>::workerJobIsDone(bool allDone) {
 
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::writeResults() {
-  /*SingleCollectionTransaction
-  trx(StandaloneTransactionContext::Create(_vocbaseGuard.vocbase()),
-                                  _vertexCollection, TRI_TRANSACTION_WRITE);
-  int res = trx.begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "cannot start transaction to load authentication";
-    return;
-  }*/
-  /*
-    OperationResult result;
-    OperationOptions options;
-    options.waitForSync = false;
-    options.mergeObjects = true;
-    for (auto const &pair : _vertices) {
-      //TransactionBuilderLeaser b(&trx);
-      VPackBuilder b;
-      b.openObject();
-      b.add(StaticStrings::KeyString,
-    pair.second->_data.get(StaticStrings::KeyString));
-      b.add("value", VPackValue(pair.second->_vertexState));
-      b.close();
-      LOG(INFO) << b.toJson();
-      result = trx.update(_vertexCollection, b->slice(), options);
-      if (!result.successful()) {
-        THROW_ARANGO_EXCEPTION_FORMAT(result.code, "while looking up graph
-    '%s'",
-                                      _vertexCollection.c_str());
-      }
-    }*/
-  // Commit or abort.
-  /*res = trx.finish(result.code);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up graph '%s'",
-                                  _vertexCollection.c_str());
-  }*/
+  /**/
   VPackBuilder b;
   b.openArray();
   auto it = _graphStore->vertexIterator();
