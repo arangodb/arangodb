@@ -367,7 +367,7 @@ bool Inception::estimateRAFTInterval() {
 
   if (! _pings.empty()) {
 
-    double mean = 0., stdev = 0., mx = 0., mn = 0.;
+    double mean, stdev, mx, mn;
   
     MUTEX_LOCKER(lock, _pLock);
     size_t num = _pings.size();
