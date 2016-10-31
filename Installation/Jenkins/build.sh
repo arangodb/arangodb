@@ -483,6 +483,9 @@ if test -n "${ENTERPRISE_GIT_URL}" ; then
         echo "I'm on tag: ${GITARGS}"
     else
         GITARGS=`git branch --no-color -q| grep '^\*' | sed "s;\* *;;"`
+        if echo $GITARGS |grep -q ' '; then
+            GITARGS=devel
+        fi
         echo "I'm on Branch: ${GITARGS}"
     fi
     # clean up if we're commanded to:
