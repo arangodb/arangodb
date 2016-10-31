@@ -914,20 +914,6 @@ if( EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
     )
 endif()
 
-
-################################################################################
-## SNAPCRAFT PACKAGE
-################################################################################
-
-#set(USE_SNAPCRAFT "ON")
-if (USE_SNAPCRAFT)
-  if(NOT DEFINED SNAP_PORT)
-    set(SNAP_PORT 8529)
-  endif()
-  include(packages/snap)
-endif ()
-
-
 add_custom_target(packages
   DEPENDS ${PACKAGES_LIST}
   )
