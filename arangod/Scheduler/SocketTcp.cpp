@@ -61,7 +61,7 @@ void SocketTcp::shutdownSend(boost::system::error_code& ec) {
 }
 
 int SocketTcp::available(boost::system::error_code& ec) {
-  return _socket.available(ec);
+  return static_cast<int>(_socket.available(ec));
 }
 
 void SocketTcp::asyncRead(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) {

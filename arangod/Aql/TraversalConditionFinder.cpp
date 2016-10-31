@@ -64,7 +64,7 @@ static AstNode* createGlobalCondition(Ast* ast, AstNode const* condition) {
   }
   auto quantifier = condition->getMemberUnchecked(2);
   TRI_ASSERT(quantifier->type == NODE_TYPE_QUANTIFIER);
-  int val = quantifier->getIntValue(true);
+  int64_t val = quantifier->getIntValue(true);
   TRI_ASSERT(val != Quantifier::ANY);
   if (val == Quantifier::NONE) {
     auto it = Ast::NegatedOperators.find(type);
