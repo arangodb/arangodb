@@ -6,6 +6,8 @@ v3.1.0 (2016-10-29)
 
 * fixed issue #2110
 
+* added Auto-aptation of RAFT timings as calculations only
+
 
 v3.1.rc2 (2016-10-10)
 ---------------------
