@@ -365,7 +365,7 @@ bool Inception::estimateRAFTInterval() {
     
   }
   
-  double sum, mean, sq_sum, stdev = 0., mx = 0., mn = 0.;
+  double sum, mean = 0., sq_sum, stdev = 0., mx = 0., mn = 0.;
   
   try {
     
