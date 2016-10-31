@@ -112,8 +112,6 @@ for aid in `seq 0 $(( $POOLSZ - 1 ))`; do
   build/bin/arangod \
     -c none \
     --agency.activate true \
-    --agency.election-timeout-min $MINP \
-    --agency.election-timeout-max $MAXP \
     --agency.endpoint $TRANSPORT://localhost:$BASE \
     --agency.my-address $TRANSPORT://localhost:$port \
     --agency.compaction-step-size $COMP \

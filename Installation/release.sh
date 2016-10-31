@@ -8,7 +8,13 @@ SWAGGER=1
 EXAMPLES=1
 LINT=1
 
-while [ "$#" -gt 1 ];  do
+if [ "$#" -lt 1 ];  then
+  echo "usage: $0 <major>.<minor>.<revision>"
+  exit 1
+fi
+
+while [ "$#" -gt 0 ];  do
+    echo "$1"
     case "$1" in
         --no-lint)
             LINT=0
@@ -54,12 +60,6 @@ while [ "$#" -gt 1 ];  do
             ;;
     esac
 done
-
-if [ "$#" -ne 1 ];  then
-  echo "usage: $0 <major>.<minor>.<revision>"
-  exit 1
-fi
-
 
 if echo ${VERSION} | grep -q -- '-'; then
     echo "${VERSION} mustn't contain minuses! "

@@ -76,7 +76,7 @@ bool Job::finish(std::string const& type, bool success,
   std::string jobType;
   try {
     jobType = pending.slice()[0].get("type").copyString();
-  } catch (std::exception const& e) {
+  } catch (std::exception const&) {
     LOG_TOPIC(WARN, Logger::AGENCY)
       << "Failed to obtain type of job " << _jobId;
   }
