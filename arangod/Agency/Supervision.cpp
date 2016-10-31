@@ -96,7 +96,7 @@ void Supervision::upgradeAgency() {
       builder.close();
       transact(_agent, builder);
     }
-  } catch (std::exception const& e) {
+  } catch (std::exception const&) {
     Builder builder;
     builder.openArray();
     builder.openObject();

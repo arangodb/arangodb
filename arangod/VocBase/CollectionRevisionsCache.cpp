@@ -100,7 +100,7 @@ bool CollectionRevisionsCache::lookupRevision(Transaction* trx, ManagedDocumentR
   TRI_ASSERT(revisionId != 0);
   
   if (result.lastRevisionId() == revisionId) {
-    return result.lastVPack();
+    return true;
   }
 
   READ_LOCKER(locker, _lock);

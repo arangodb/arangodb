@@ -434,14 +434,14 @@ AuthResult AuthInfo::checkAuthenticationJWT(std::string const& jwt) {
         if (result._expires && now >= result._expireTime) {
           try {
             _authJwtCache.remove(jwt);
-          } catch (std::range_error const& e) {
+          } catch (std::range_error const&) {
           }
         }
         return AuthResult();
       }
     }
     return (AuthResult) result;
-  } catch (std::range_error const& e) {
+  } catch (std::range_error const&) {
     // mop: not found
   }
 

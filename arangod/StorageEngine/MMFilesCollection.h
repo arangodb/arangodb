@@ -104,8 +104,8 @@ class MMFilesCollection final : public PhysicalCollection {
   void figures(std::shared_ptr<arangodb::velocypack::Builder>&) override;
   
   // datafile management
-  int applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
-                        std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) override;
+  bool applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
+                         std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) override;
 
   /// @brief closes an open collection
   int close() override;
