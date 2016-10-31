@@ -325,7 +325,7 @@ bool Inception::estimateRAFTInterval() {
   auto pool = _agent->config().pool();
   auto myid = _agent->id();
 
-  for (size_t i = 0; i < 25; ++i) {
+  for (size_t i = 0; i < 10; ++i) {
     for (auto const& peer : pool) {
       if (peer.first != myid) {
         std::string clientid = peer.first + std::to_string(i);
@@ -337,7 +337,8 @@ bool Inception::estimateRAFTInterval() {
           std::make_shared<MeasureCallback>(this, peer.second, timeStamp()),
           2.0, true);
       }
-    } 
+    }
+    //std::this_thread::sleep_for(std::chrono::duration<double,std::milli>(100));
   }
 
   auto s = system_clock::now();
@@ -425,7 +426,7 @@ bool Inception::estimateRAFTInterval() {
     
     if ((system_clock::now() - s) > timeout) {
       LOG_TOPIC(WARN, Logger::AGENCY)
-        << "Timed out waiting for other measurements. Auto-adaptation failed!";
+        << "Timed out waiting for other measurements. Auto-adaptation failed! Will stick to command line arguments";
       return false;
     }
     
@@ -443,9 +444,10 @@ bool Inception::estimateRAFTInterval() {
   }
 
   LOG_TOPIC(INFO, Logger::AGENCY)
-    << "Auto-adapting RAFT timing to: " << 5.*maxmean << " " << 25.*maxmean;
+    << "Auto-adapting RAFT timing to: {" << 5.*maxmean
+    << ", " << 25.*maxmean << "}ms";
 
-  _agent->resetRAFTTimes(5.*maxmean, 25.*maxmean);
+  _agent->resetRAFTTimes(5.e-3*maxmean, 25.e-3*maxmean);
   
   return true;
   
