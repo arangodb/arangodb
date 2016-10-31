@@ -28,7 +28,7 @@
 using namespace arangodb;
 
 HashIndexElement::HashIndexElement(TRI_voc_rid_t revisionId, std::vector<std::pair<VPackSlice, uint32_t>> const& values) 
-    : _revisionId(revisionId), _hash(hash(values)) {
+    : _revisionId(revisionId), _hash(static_cast<uint32_t>(hash(values))) {
    
   for (size_t i = 0; i < values.size(); ++i) {
     subObject(i)->fill(values[i].first, values[i].second);

@@ -276,7 +276,7 @@ bool VppCommTask::processRead() {
     // get type of request
     int type = meta::underlyingValue(rest::RequestType::ILLEGAL);
     try {
-      type = header.at(1).getInt();
+      type = header.at(1).getNumber<int>();
     } catch (std::exception const& e) {
       handleSimpleError(rest::ResponseCode::BAD, chunkHeader._messageID);
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION)

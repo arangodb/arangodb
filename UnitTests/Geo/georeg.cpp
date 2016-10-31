@@ -867,7 +867,7 @@ BOOST_AUTO_TEST_CASE (tst_geo200) {
   {
       for(i=0;i<5;i++)
       {
-          j=( (char *) list1->coordinates[i].data) - ix;
+          j=(int) (( (char *) list1->coordinates[i].data) - ix);
           if(j==1)
           {
               dcheck(230, 89.97989055,list1->coordinates[i].latitude,0.0);
@@ -907,7 +907,7 @@ BOOST_AUTO_TEST_CASE (tst_geo200) {
   {
       for(i=0;i<5;i++)
       {
-          j=( (char *) list1->coordinates[i].data) - ix;
+          j=(int) (( (char *) list1->coordinates[i].data) - ix);
           if(j==1)
           {
               dcheck(250, 89.97989055,list1->coordinates[i].latitude,0.0);

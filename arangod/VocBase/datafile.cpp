@@ -1280,7 +1280,7 @@ bool TRI_datafile_t::check(bool ignoreFailures) {
       if (lastGood != nullptr) {
         LOG(INFO) << "last good marker found at: " << hexValue(static_cast<uint64_t>(static_cast<uintptr_t>(lastGood - _data)));
       }
-      printMarker(marker, end - ptr, _data, end);
+      printMarker(marker, static_cast<TRI_voc_size_t>(end - ptr), _data, end);
 
       return false;
     }

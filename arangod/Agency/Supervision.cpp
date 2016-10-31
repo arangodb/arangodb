@@ -50,7 +50,7 @@ Supervision::Supervision()
     : arangodb::Thread("Supervision"),
       _agent(nullptr),
       _snapshot("Supervision"),
-      _frequency(5),
+      _frequency(5.0),
       _gracePeriod(15),
       _jobId(0),
       _jobIdMax(0),
@@ -96,7 +96,7 @@ void Supervision::upgradeAgency() {
       builder.close();
       transact(_agent, builder);
     }
-  } catch (std::exception const& e) {
+  } catch (std::exception const&) {
     Builder builder;
     builder.openArray();
     builder.openObject();
@@ -447,7 +447,7 @@ void Supervision::run() {
           }
         }
       }
-      _cv.wait(_frequency * 1000000);
+      _cv.wait(1000000 * _frequency);
     }
   }
   if (shutdown) {
@@ -771,7 +771,7 @@ bool Supervision::start() {
 // Start thread with agent
 bool Supervision::start(Agent* agent) {
   _agent = agent;
-  _frequency = static_cast<long>(_agent->config().supervisionFrequency());
+  _frequency = _agent->config().supervisionFrequency();
   _gracePeriod = _agent->config().supervisionGracePeriod();
   return start();
 }

@@ -288,8 +288,8 @@ class LogicalCollection {
     return getPhysical()->updateStats(fid, values);
   }
   
-  int applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
-                        std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) {
+  bool applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
+                         std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) {
     return getPhysical()->applyForTickRange(dataMin, dataMax, callback);
   }
   
