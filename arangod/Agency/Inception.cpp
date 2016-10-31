@@ -337,7 +337,8 @@ bool Inception::estimateRAFTInterval() {
           std::make_shared<MeasureCallback>(this, peer.second, timeStamp()),
           2.0, true);
       }
-    } 
+    }
+    std::this_thread::sleep_for(std::chrono::duration<double,std::milli>(5));
   }
 
   auto s = system_clock::now();
@@ -364,7 +365,7 @@ bool Inception::estimateRAFTInterval() {
     
   }
   
-  double sum, mean, sq_sum, stdev, mx, mn;
+  double sum, mean = 0., sq_sum, stdev = 0., mx = 0., mn = 0.;
   
   try {
     
@@ -424,8 +425,8 @@ bool Inception::estimateRAFTInterval() {
     }
     
     if ((system_clock::now() - s) > timeout) {
-      LOG_TOPIC(WARN, Logger::AGENCY)
-        << "Timed out waiting for other measurements. Auto-adaptation failed!";
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
+        << "Timed out waiting for other measurements. Auto-adaptation failed! Will stick to command line arguments";
       return false;
     }
     
@@ -442,10 +443,12 @@ bool Inception::estimateRAFTInterval() {
     }
   }
 
+  maxmean = 1.0e-2*std::ceil(100*(.15 + 1.0e-3*maxmean));
+  
   LOG_TOPIC(INFO, Logger::AGENCY)
-    << "Auto-adapting RAFT timing to: " << 5.*maxmean << " " << 25.*maxmean;
+    << "Suggesting RAFT timings: {" << maxmean << ", " << 5.0*maxmean << "}s";
 
-  _agent->resetRAFTTimes(5.*maxmean, 25.*maxmean);
+  //_agent->resetRAFTTimes(maxmean, 5.0*maxmean);
   
   return true;
   
