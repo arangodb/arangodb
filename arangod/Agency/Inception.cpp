@@ -435,8 +435,8 @@ bool Inception::estimateRAFTInterval() {
   double maxmean  = .0;
   double maxstdev = .0;
   for (auto const& meas : _measurements) {
-    if (maxmean < meas[3]) {
-      maxmean = meas[3];
+    if (maxmean < meas[0]) {
+      maxmean = meas[0];
     }
     if (maxstdev < meas[1]) {
       maxstdev = meas[1];
