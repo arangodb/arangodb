@@ -364,93 +364,91 @@ bool Inception::estimateRAFTInterval() {
     }
     
   }
+
+  if (! _pings.empty()) {
+
+    double mean, stdev, mx, mn;
   
-  double sum, mean = 0., sq_sum, stdev = 0., mx = 0., mn = 0.;
-  
-  try {
-    
     MUTEX_LOCKER(lock, _pLock);
     size_t num = _pings.size();
-    sum    = std::accumulate(_pings.begin(), _pings.end(), 0.0);
-    mean   = sum / num;
+    mean   = std::accumulate(_pings.begin(), _pings.end(), 0.0) / num;
     mx     = *std::max_element(_pings.begin(), _pings.end());
     mn     = *std::min_element(_pings.begin(), _pings.end());
     std::transform(_pings.begin(), _pings.end(), _pings.begin(),
                    std::bind2nd(std::minus<double>(), mean));
-    sq_sum =
-      std::inner_product(_pings.begin(), _pings.end(), _pings.begin(), 0.0);
-    stdev = std::sqrt(sq_sum / num);
+    stdev =
+      std::sqrt(
+        std::inner_product(
+          _pings.begin(), _pings.end(), _pings.begin(), 0.0) / num);
     
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "mean(" << mean << ") stdev(" << stdev<< ")";
+      
+    Builder measurement;
+    measurement.openObject();
+    measurement.add("mean", VPackValue(mean));
+    measurement.add("stdev", VPackValue(stdev));
+    measurement.add("min", VPackValue(mn));
+    measurement.add("max", VPackValue(mx));
+    measurement.close();
+    std::string measjson = measurement.toJson();
     
-  } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << e.what();
-  }
-  
-  Builder measurement;
-  measurement.openObject();
-  measurement.add("mean", VPackValue(mean));
-  measurement.add("stdev", VPackValue(stdev));
-  measurement.add("min", VPackValue(mn));
-  measurement.add("max", VPackValue(mx));
-  measurement.close();
-  std::string measjson = measurement.toJson();
-
-  path = privApiPrefix + "measure";
-  for (auto const& peer : pool) {
-    if (peer.first != myid) {
-      auto clientId = "1";
-      auto comres   = arangodb::ClusterComm::instance()->syncRequest(
-        clientId, 1, peer.second, rest::RequestType::POST, path,
-        measjson, std::unordered_map<std::string, std::string>(), 2.0);
-    }
-  }
-
-  {
-    MUTEX_LOCKER(lock, _mLock);
-    _measurements.push_back(std::vector<double>({mean, stdev, mx, mn}));
-  }
-  s = system_clock::now();
-  while (true) {
-    
-    _cv.wait(50000);
-    
-    {
-      MUTEX_LOCKER(lock, _mLock);
-      if (_measurements.size() == pool.size()) {
-        LOG_TOPIC(DEBUG, Logger::AGENCY) << "All measurements are in";
-        break;
+    path = privApiPrefix + "measure";
+    for (auto const& peer : pool) {
+      if (peer.first != myid) {
+        auto clientId = "1";
+        auto comres   = arangodb::ClusterComm::instance()->syncRequest(
+          clientId, 1, peer.second, rest::RequestType::POST, path,
+          measjson, std::unordered_map<std::string, std::string>(), 2.0);
       }
     }
     
-    if ((system_clock::now() - s) > timeout) {
-      LOG_TOPIC(WARN, Logger::AGENCY)
-        << "Timed out waiting for other measurements. Auto-adaptation failed! Will stick to command line arguments";
-      return false;
+    {
+      MUTEX_LOCKER(lock, _mLock);
+      _measurements.push_back(std::vector<double>({mean, stdev, mx, mn}));
     }
+    s = system_clock::now();
+    while (true) {
+      
+      _cv.wait(50000);
+      
+      {
+        MUTEX_LOCKER(lock, _mLock);
+        if (_measurements.size() == pool.size()) {
+          LOG_TOPIC(DEBUG, Logger::AGENCY) << "All measurements are in";
+          break;
+        }
+      }
+      
+      if ((system_clock::now() - s) > timeout) {
+        LOG_TOPIC(WARN, Logger::AGENCY)
+          << "Timed out waiting for other measurements. Auto-adaptation failed! Will stick to command line arguments";
+        return false;
+      }
+      
+    }
+
+    double maxmean  = .0;
+    double maxstdev = .0;
+    for (auto const& meas : _measurements) {
+      if (maxmean < meas[0]) {
+        maxmean = meas[0];
+      }
+      if (maxstdev < meas[1]) {
+        maxstdev = meas[1];
+      }
+    }
+    
+    maxmean = 1.0e-2*std::ceil(100*(.15 + 1.0e-3*maxmean));
+    
+    LOG_TOPIC(INFO, Logger::AGENCY)
+      << "Auto-adapting RAFT timing to: {" << maxmean
+      << ", " << 5.0*maxmean << "}s";
+    
+    _agent->resetRAFTTimes(maxmean, 5.0*maxmean);
     
   }
 
-  double maxmean  = .0;
-  double maxstdev = .0;
-  for (auto const& meas : _measurements) {
-    if (maxmean < meas[3]) {
-      maxmean = meas[3];
-    }
-    if (maxstdev < meas[1]) {
-      maxstdev = meas[1];
-    }
-  }
-
-  maxmean = 1.0e-2*std::ceil(100*(.15 + 1.0e-3*maxmean));
-  
-  LOG_TOPIC(INFO, Logger::AGENCY)
-    << "Auto-adapting RAFT timing to: {" << maxmean
-    << ", " << 5.0*maxmean << "}s";
-
-  _agent->resetRAFTTimes(maxmean, 5.0*maxmean);
-  
   return true;
   
 }
