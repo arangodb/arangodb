@@ -838,15 +838,15 @@ static TRI_action_result_t ExecuteActionVocbase(
   // copy suffix, which comes from the action:
   std::string path = request->prefix();
   v8::Handle<v8::Array> suffixArray = v8::Array::New(isolate);
-  std::vector<std::string> const& suffix = request->suffix();
+  std::vector<std::string> const& suffixes = request->decodedSuffixes();
 
   uint32_t index = 0;
   char const* sep = "";
 
-  for (size_t s = action->_urlParts; s < suffix.size(); ++s) {
-    suffixArray->Set(index++, TRI_V8_STD_STRING(suffix[s]));
+  for (size_t s = action->_urlParts; s < suffixes.size(); ++s) {
+    suffixArray->Set(index++, TRI_V8_STD_STRING(suffixes[s]));
 
-    path += sep + suffix[s];
+    path += sep + suffixes[s];
     sep = "/";
   }
 

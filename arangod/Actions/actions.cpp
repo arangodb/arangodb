@@ -113,10 +113,10 @@ TRI_action_t* TRI_DefineActionVocBase(std::string const& name,
 
 TRI_action_t* TRI_LookupActionVocBase(arangodb::GeneralRequest* request) {
   // check if we know a callback
-  std::vector<std::string> suffix = request->suffix();
+  std::vector<std::string> suffixes = request->decodedSuffixes();
 
   // find a direct match
-  std::string name = StringUtils::join(suffix, '/');
+  std::string name = StringUtils::join(suffixes, '/');
 
   READ_LOCKER(readLocker, ActionsLock);
   std::map<std::string, TRI_action_t*>::iterator i = Actions.find(name);
@@ -127,18 +127,18 @@ TRI_action_t* TRI_LookupActionVocBase(arangodb::GeneralRequest* request) {
 
   // find longest prefix match
   while (true) {
-    name = StringUtils::join(suffix, '/');
     i = PrefixActions.find(name);
 
     if (i != PrefixActions.end()) {
       return i->second;
     }
 
-    if (suffix.empty()) {
+    if (suffixes.empty()) {
       break;
     }
 
-    suffix.pop_back();
+    suffixes.pop_back();
+    name = StringUtils::join(suffixes, '/');
   }
 
   return nullptr;

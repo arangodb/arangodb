@@ -131,16 +131,16 @@ bool RestQueryHandler::readQuery(bool slow) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestQueryHandler::readQuery() {
-  const auto& suffix = _request->suffix();
+  auto const& suffixes = _request->suffixes();
 
-  if (suffix.size() != 1) {
+  if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting GET /_api/query/<type>");
     return true;
   }
 
-  auto const& name = suffix[0];
+  auto const& name = suffixes[0];
 
   if (name == "slow") {
     return readQuery(true);
@@ -200,16 +200,16 @@ bool RestQueryHandler::deleteQuery(std::string const& name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestQueryHandler::deleteQuery() {
-  const auto& suffix = _request->suffix();
+  auto const& suffixes = _request->suffixes();
 
-  if (suffix.size() != 1) {
+  if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/query/<id> or /_api/query/slow");
     return true;
   }
 
-  auto const& name = suffix[0];
+  auto const& name = suffixes[0];
 
   if (name == "slow") {
     return deleteQuerySlow();
@@ -218,9 +218,9 @@ bool RestQueryHandler::deleteQuery() {
 }
 
 bool RestQueryHandler::replaceProperties() {
-  const auto& suffix = _request->suffix();
+  auto const& suffixes = _request->suffixes();
 
-  if (suffix.size() != 1 || suffix[0] != "properties") {
+  if (suffixes.size() != 1 || suffixes[0] != "properties") {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/query/properties");
@@ -286,9 +286,9 @@ bool RestQueryHandler::replaceProperties() {
 }
 
 bool RestQueryHandler::parseQuery() {
-  const auto& suffix = _request->suffix();
+  auto const& suffixes = _request->suffixes();
 
-  if (!suffix.empty()) {
+  if (!suffixes.empty()) {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER, "expecting POST /_api/query");
     return true;
