@@ -325,7 +325,7 @@ bool Inception::estimateRAFTInterval() {
   auto pool = _agent->config().pool();
   auto myid = _agent->id();
 
-  for (size_t i = 0; i < 10; ++i) {
+  for (size_t i = 0; i < 25; ++i) {
     for (auto const& peer : pool) {
       if (peer.first != myid) {
         std::string clientid = peer.first + std::to_string(i);
@@ -338,7 +338,7 @@ bool Inception::estimateRAFTInterval() {
           2.0, true);
       }
     }
-    //std::this_thread::sleep_for(std::chrono::duration<double,std::milli>(100));
+    std::this_thread::sleep_for(std::chrono::duration<double,std::milli>(5));
   }
 
   auto s = system_clock::now();
@@ -365,7 +365,7 @@ bool Inception::estimateRAFTInterval() {
     
   }
   
-  double sum, mean, sq_sum, stdev, mx, mn;
+  double sum, mean, sq_sum, stdev = 0., mx = 0., mn = 0.;
   
   try {
     
@@ -435,19 +435,21 @@ bool Inception::estimateRAFTInterval() {
   double maxmean  = .0;
   double maxstdev = .0;
   for (auto const& meas : _measurements) {
-    if (maxmean < meas[0]) {
-      maxmean = meas[0];
+    if (maxmean < meas[3]) {
+      maxmean = meas[3];
     }
     if (maxstdev < meas[1]) {
       maxstdev = meas[1];
     }
   }
 
+  maxmean = 1.0e-2*std::ceil(100*(.15 + 1.0e-3*maxmean));
+  
   LOG_TOPIC(INFO, Logger::AGENCY)
-    << "Auto-adapting RAFT timing to: {" << 5.*maxmean
-    << ", " << 25.*maxmean << "}ms";
+    << "Auto-adapting RAFT timing to: {" << maxmean
+    << ", " << 5.0*maxmean << "}s";
 
-  _agent->resetRAFTTimes(5.e-3*maxmean, 25.e-3*maxmean);
+  _agent->resetRAFTTimes(maxmean, 5.0*maxmean);
   
   return true;
   
