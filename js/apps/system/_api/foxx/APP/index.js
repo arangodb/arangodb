@@ -67,11 +67,17 @@ router.post((req, res) => {
   if (source instanceof Buffer) {
     source = writeUploadToTempFile(source);
   }
-  const service = fm.install(
-    source,
-    req.queryParams.mount,
-    _.omit(req.queryParams, ['mount'])
-  );
+  const dependencies = req.body.dependencies && JSON.parse(req.body.dependencies);
+  const configuration = req.body.configuration && JSON.parse(req.body.configuration);
+  const mount = req.queryParams.mount;
+  fm.install(source, mount, _.omit(req.queryParams, ['mount']));
+  if (configuration) {
+    fm.setConfiguration(mount, {configuration, replace: true});
+  }
+  if (dependencies) {
+    fm.setDependencies(mount, {dependencies, replace: true});
+  }
+  const service = fm.lookupService(mount);
   res.json(serviceToJson(service));
 })
 .body(schemas.service, ['multipart/form-data', 'application/json'], `Service to be installed.`)
@@ -121,11 +127,17 @@ serviceRouter.patch((req, res) => {
   if (source instanceof Buffer) {
     source = writeUploadToTempFile(source);
   }
-  const service = fm.upgrade(
-    source,
-    req.queryParams.mount,
-    _.omit(req.queryParams, ['mount'])
-  );
+  const dependencies = req.body.dependencies && JSON.parse(req.body.dependencies);
+  const configuration = req.body.configuration && JSON.parse(req.body.configuration);
+  const mount = req.queryParams.mount;
+  fm.upgrade(source, mount, _.omit(req.queryParams, ['mount']));
+  if (configuration) {
+    fm.setConfiguration(mount, {configuration, replace: false});
+  }
+  if (dependencies) {
+    fm.setDependencies(mount, {dependencies, replace: false});
+  }
+  const service = fm.lookupService(mount);
   res.json(serviceToJson(service));
 })
 .body(schemas.service, ['multipart/form-data', 'application/json'], `Service to be installed.`)
@@ -149,11 +161,17 @@ serviceRouter.put((req, res) => {
   if (source instanceof Buffer) {
     source = writeUploadToTempFile(source);
   }
-  const service = fm.replace(
-    source,
-    req.queryParams.mount,
-    _.omit(req.queryParams, ['mount'])
-  );
+  const dependencies = req.body.dependencies && JSON.parse(req.body.dependencies);
+  const configuration = req.body.configuration && JSON.parse(req.body.configuration);
+  const mount = req.queryParams.mount;
+  fm.replace(source, mount, _.omit(req.queryParams, ['mount']));
+  if (configuration) {
+    fm.setConfiguration(mount, {configuration, replace: true});
+  }
+  if (dependencies) {
+    fm.setDependencies(mount, {dependencies, replace: true});
+  }
+  const service = fm.lookupService(mount);
   res.json(serviceToJson(service));
 })
 .body(schemas.service, ['multipart/form-data', 'application/json'], `Service to be installed.`)
