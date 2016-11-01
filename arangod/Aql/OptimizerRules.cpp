@@ -120,7 +120,6 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, ExecutionPlan* plan,
       continue;
     }
 
-    static size_t const Threshold = 8;
     auto ast = plan->getAst();
     AstNode const* originalArg = nullptr;
 
@@ -150,7 +149,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, ExecutionPlan* plan,
       }
 
       if (testNode->type == NODE_TYPE_ARRAY &&
-          testNode->numMembers() < Threshold) {
+          testNode->numMembers() < AstNode::SortNumberThreshold) {
         // number of values is below threshold
         continue;
       }
@@ -169,7 +168,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, ExecutionPlan* plan,
       size_t nrItems = 0;
       sub->getSubquery()->getCost(nrItems);
 
-      if (nrItems < Threshold) {
+      if (nrItems < AstNode::SortNumberThreshold) {
         continue;
       }
 
