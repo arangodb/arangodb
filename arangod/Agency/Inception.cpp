@@ -439,7 +439,7 @@ bool Inception::estimateRAFTInterval() {
       }
     }
     
-    maxmean = 1.0e-2*std::ceil(100*(.15 + 1.0e-3*maxmean));
+    maxmean = 1.e-3*std::ceil(1.e3*(.1 + 1.0e-3*(maxmean+3*maxstdev)));
     
     LOG_TOPIC(INFO, Logger::AGENCY)
       << "Auto-adapting RAFT timing to: {" << maxmean
