@@ -165,7 +165,6 @@ typedef long suseconds_t;
 #include "Basics/debugging.h"
 #include "Basics/make_unique.h"
 #include "Basics/memory.h"
-#include "Basics/structures.h"
 #include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
 #undef TRI_WITHIN_COMMON

@@ -165,7 +165,6 @@ add_library(${LIB_ARANGO} STATIC
   Basics/prime-numbers.cpp
   Basics/process-utils.cpp
   Basics/socket-utils.cpp
-  Basics/structures.cpp
   Basics/system-functions.cpp
   Basics/terminal-utils.cpp
   Basics/tri-strings.cpp
