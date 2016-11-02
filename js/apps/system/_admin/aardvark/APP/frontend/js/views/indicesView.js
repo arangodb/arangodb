@@ -36,11 +36,11 @@
     },
 
     getIndex: function () {
-      var callback = function (error, data) {
+      var callback = function (error, data, id) {
         if (error) {
           window.arangoHelper.arangoError('Index', data.errorMessage);
         } else {
-          this.renderIndex(data);
+          this.renderIndex(data, id);
         }
       }.bind(this);
 
@@ -237,8 +237,53 @@
         '<i class="fa fa-circle-o-notch fa-spin"></i>'
       );
     },
-    renderIndex: function (data) {
+    renderIndex: function (data, id) {
       this.index = data;
+
+      // get pending jobs
+      var checkState = function (error, data) {
+        if (error) {
+          arangoHelper.arangoError('Jobs', 'Could not read pending jobs.');
+        } else {
+          var readJob = function (error, data, job) {
+            if (error) {
+              if (data.responseJSON.code === 404) {
+                // delete non existing aardvark job
+                arangoHelper.deleteAardvarkJob(job);
+              } else if (data.responseJSON.code === 400) {
+                // index job failed -> print error
+                arangoHelper.arangoError('Index creation failed', data.responseJSON.errorMessage);
+                // delete non existing aardvark job
+                arangoHelper.deleteAardvarkJob(job);
+              } else if (data.responseJSON.code === 204) {
+                // job is still in quere or pending
+                arangoHelper.arangoMessage('Index', 'There is at least one new index in the queue or in the process of beeing created.');
+              }
+            } else {
+              arangoHelper.deleteAardvarkJob(job);
+            }
+          };
+
+          _.each(data, function (job) {
+            if (job.collection === id) {
+              $.ajax({
+                type: 'PUT',
+                cache: false,
+                url: arangoHelper.databaseUrl('/_api/job/' + job.id),
+                contentType: 'application/json',
+                success: function (data, a, b) {
+                  readJob(false, data, job.id);
+                },
+                error: function (data) {
+                  readJob(true, data, job.id);
+                }
+              });
+            }
+          });
+        }
+      };
+
+      arangoHelper.getAardvarkJobs(checkState);
 
       var cssClass = 'collectionInfoTh modal-text';
       if (this.index) {
