@@ -1361,10 +1361,9 @@ bool SkiplistIndex::supportsFilterCondition(
       // reduce costs due to uniqueness
       estimatedItems = values;
       estimatedCost = static_cast<double>(estimatedItems);
-    } else {
-      // cost is already low... now slightly prioritize the unique index
-      estimatedCost *= 0.995;
-    }
+    } 
+    // cost is already low... now slightly prioritize the unique index
+    estimatedCost *= 0.995 - 0.05 * (_fields.size() - 1);
     return true;
   }
 
