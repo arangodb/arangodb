@@ -116,6 +116,11 @@ add_custom_target(copy_nsis_packages
 
 list(APPEND COPY_PACKAGES_LIST copy_nsis_packages)
 
+add_custom_target(copy_zip_packages
+  COMMAND cp *.zip ${PACKAGE_TARGET_DIR})
+
+list(APPEND COPY_PACKAGES_LIST copy_zip_packages)
+
 add_custom_target(remove_packages
   COMMAND rm -f *.zip
   COMMAND rm -f *.exe
