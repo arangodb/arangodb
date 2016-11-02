@@ -328,6 +328,13 @@ while [ $# -gt 0 ];  do
             shift
             ;;
 
+        --rpmDistro)
+            shift
+            CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DRPM_DISTRO=$1"
+            shift
+            ;;
+
+
         --enterprise)
             shift
             ENTERPRISE_GIT_URL=$1
