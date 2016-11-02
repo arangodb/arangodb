@@ -82,6 +82,15 @@ void FunctionDefinitions::toVelocyPack(VPackBuilder& builder) {
     builder.openObject();
     builder.add("name", VPackValue(it.second.externalName));
     builder.add("arguments", VPackValue(it.second.arguments));
+    builder.add("implementations", VPackValue(VPackValueType::Array));
+    builder.add(VPackValue("js"));
+    if (it.second.implementation != nullptr) {
+      builder.add(VPackValue("cxx"));
+    }
+    builder.close(); // implementations
+    builder.add("deterministic", VPackValue(it.second.isDeterministic));
+    builder.add("cacheable", VPackValue(it.second.isCacheable));
+    builder.add("canThrow", VPackValue(it.second.canThrow));
     builder.close();
   }
   builder.close();
