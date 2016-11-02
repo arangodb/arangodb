@@ -50,7 +50,8 @@ void Inception::gossip() {
   
   auto s = std::chrono::system_clock::now();
   std::chrono::seconds timeout(120);
-  size_t n = 0, j = 0;
+  size_t j = 0;
+  bool complete = false;
 
   CONDITION_LOCKER(guard, _cv);
   
@@ -114,11 +115,11 @@ void Inception::gossip() {
 
     // We're done
     if (config.poolComplete()) {
-      if (n > 5) {
+      if (complete) {
         _agent->startConstituent();
         break;
       }
-      ++n;
+      complete = true;
     }
     
   }
