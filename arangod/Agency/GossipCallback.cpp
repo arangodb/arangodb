@@ -31,7 +31,13 @@ GossipCallback::GossipCallback(Agent*) : _agent(nullptr) {}
 
 bool GossipCallback::operator()(arangodb::ClusterCommResult* res) {
   if (res->status == CL_COMM_SENT && res->result->getHttpReturnCode() == 200) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Got result of gossip message, code: "
+      << res->result->getHttpReturnCode() << " body: "
+      << res->result->getBodyVelocyPack()->slice().toJson();
     _agent->gossip(res->result->getBodyVelocyPack(), true);
+  } else {
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Got error from gossip message, status:"
+      << res->status;
   }
   return true;
 }

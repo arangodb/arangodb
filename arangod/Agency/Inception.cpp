@@ -79,6 +79,8 @@ void Inception::gossip() {
         std::string clientid = config.id() + std::to_string(j++);
         auto hf =
             std::make_unique<std::unordered_map<std::string, std::string>>();
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending gossip message: "
+            << out->toJson() << " to peer " << clientid;
         arangodb::ClusterComm::instance()->asyncRequest(
           clientid, 1, p, rest::RequestType::POST, path,
           std::make_shared<std::string>(out->toJson()), hf,
@@ -92,6 +94,8 @@ void Inception::gossip() {
         std::string clientid = config.id() + std::to_string(j++);
         auto hf =
             std::make_unique<std::unordered_map<std::string, std::string>>();
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending gossip message: "
+            << out->toJson() << " to pool member " << clientid;
         arangodb::ClusterComm::instance()->asyncRequest(
           clientid, 1, pair.second, rest::RequestType::POST, path,
           std::make_shared<std::string>(out->toJson()), hf,
@@ -490,7 +494,11 @@ void Inception::run() {
     FATAL_ERROR_EXIT();
   }
 
-  estimateRAFTInterval();
+  // 5. If command line RAFT timings have not been set explicitly
+  //    Try good estimate of RAFT time limits
+  if (!config.cmdLineTimings()) {
+    estimateRAFTInterval();
+  }
   
   _agent->ready(true);
 
