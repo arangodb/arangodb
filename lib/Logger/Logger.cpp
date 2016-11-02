@@ -328,7 +328,7 @@ void Logger::initialize(bool threaded) {
 /// @brief shuts down the logging components
 ////////////////////////////////////////////////////////////////////////////////
 
-void Logger::shutdown(bool clearBuffers) {
+void Logger::shutdown() {
   MUTEX_LOCKER(locker, _initializeMutex);
 
   if (!_active) {
