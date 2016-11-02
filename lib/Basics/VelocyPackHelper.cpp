@@ -25,6 +25,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VPackStringBufferAdapter.h"
@@ -937,6 +938,20 @@ uint64_t VelocyPackHelper::hashByAttributes(
         }
       }
       hash = sub.normalizedHash(hash);
+    }
+  } else if (slice.isString() && attributes.size() == 1 &&
+             attributes[0] == StaticStrings::KeyString) {
+    arangodb::StringRef subKey(slice);
+    size_t pos = subKey.find('/');
+    if (pos != std::string::npos) {
+      // We have an _id. Split it.
+      subKey = subKey.substr(pos + 1);
+      VPackBuilder temporaryBuilder;
+      temporaryBuilder.add(VPackValue(subKey.toString()));
+      VPackSlice tmp = temporaryBuilder.slice();
+      hash = tmp.normalizedHash(hash);
+    } else {
+      hash = slice.normalizedHash(hash);
     }
   }
   return hash;

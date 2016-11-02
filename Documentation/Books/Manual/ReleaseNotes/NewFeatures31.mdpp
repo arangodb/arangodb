@@ -4,6 +4,21 @@ The following list shows in detail which features have been added or improved in
 ArangoDB 3.1. ArangoDB 3.1 also contains several bugfixes that are not listed
 here.
 
+!SECTION SmartGraphs
+
+ArangoDB 3.1 adds a first major enterprise only feature called SmartGraphs.
+SmartGraphs form an addition to the already existing graph features and allow to
+scale graphs beyond a single machine while keeping almost the same query performance.
+The SmartGraph feature is suggested for all graph database use cases that require
+a cluster of database servers for what ever reason.
+You can either have a graph that is too large to be stored on a single machine only.
+Or you can have a small graph, but at the same time need additional data with has to be
+sharded and you want to keep all of them in the same envirenment.
+Or you simply use the cluster for high-availability.
+In all the above cases SmartGraphs will significantly increase the performance of
+graph operations.
+For more detailed information read [this manual section](../Graphs/SmartGraphs/index.html).
+
 !SECTION Data format
 
 The format of the revision values stored in the `_rev` attribute of documents
@@ -152,7 +167,6 @@ AQL query editor in the web interface.
 !SECTION Audit Log
 
 Audit logging has been added, see [Auditing](../Auditing/index.html).
-
 
 !SECTION Client tools
 
