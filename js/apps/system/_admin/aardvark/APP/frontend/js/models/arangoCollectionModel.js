@@ -64,17 +64,19 @@
     },
 
     getIndex: function (callback) {
+      var self = this;
+
       $.ajax({
         type: "GET",
         cache: false,
         url: arangoHelper.databaseUrl("/_api/index/?collection=" + this.get("id")),
         contentType: "application/json",
         processData: false,
-        success: function(data) {
-          callback(false, data);
+        success: function (data) {
+          callback(false, data, self.get('id'));
         },
-        error: function(data) {
-          callback(true, data);
+        error: function (data) {
+          callback(true, data, self.get('id'));
         }
       });
     },
