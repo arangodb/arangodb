@@ -430,8 +430,11 @@
         '    <option value="!=">!=</option>' +
         '    <option value="&lt;">&lt;</option>' +
         '    <option value="&lt;=">&lt;=</option>' +
-        '    <option value="&gt;=">&gt;=</option>' +
         '    <option value="&gt;">&gt;</option>' +
+        '    <option value="&gt;=">&gt;=</option>' +
+        '    <option value="LIKE">LIKE</option>' +
+        '    <option value="IN">IN</option>' +
+        '    <option value="NOT IN">NOT IN</option>' +
         '</select>' +
         '<input id="attribute_value' + num +
         '" type="text" placeholder="Attribute value" ' +
