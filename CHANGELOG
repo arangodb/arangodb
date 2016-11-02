@@ -223,12 +223,15 @@ v3.0.11 (2016-XX-XX)
 
 * fixed issue #2038
 
+* changes to Foxx service configuration or dependencies should now be
+  stored correctly when options are cleared or omitted
+
 * Foxx tests no longer support the Mocha QUnit interface as this resulted in weird
   inconsistencies in the BDD and TDD interfaces. This fixes the TDD interface
   as well as out-of-sequence problems when using the BDD before/after functions.
 
 
-v3.0.10 (XXXX-XX-XX)
+v3.0.10 (2016-09-26)
 --------------------
 
 * fixed issue #2072
