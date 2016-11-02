@@ -34,11 +34,8 @@
 
 using namespace arangodb;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief walk over the attribute. Also Extract sub-attributes and elements in
 ///        list.
-////////////////////////////////////////////////////////////////////////////////
-
 static void ExtractWords(std::vector<std::string>& words,
                          VPackSlice const value,
                          size_t minWordLength,
@@ -116,10 +113,7 @@ size_t FulltextIndex::memory() const {
   return TRI_MemoryFulltextIndex(_fulltextIndex);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a VelocyPack representation of the index
-////////////////////////////////////////////////////////////////////////////////
-
 void FulltextIndex::toVelocyPack(VPackBuilder& builder,
                                  bool withFigures) const {
   Index::toVelocyPack(builder, withFigures);
@@ -250,11 +244,8 @@ int FulltextIndex::cleanup() {
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief callback function called by the fulltext index to determine the
 /// words to index for a specific document
-////////////////////////////////////////////////////////////////////////////////
-
 std::vector<std::string> FulltextIndex::wordlist(VPackSlice const& doc) {
   std::vector<std::string> words;
   try {

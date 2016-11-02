@@ -156,41 +156,29 @@ class PrimaryIndex final : public Index {
   SimpleIndexElement* lookupKeyRef(arangodb::Transaction*, VPackSlice const&) const;
   SimpleIndexElement* lookupKeyRef(arangodb::Transaction*, VPackSlice const&, ManagedDocumentResult&) const;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief a method to iterate over all elements in the index in
   ///        a sequential order.
   ///        Returns nullptr if all documents have been returned.
   ///        Convention: position === 0 indicates a new start.
   ///        DEPRECATED
-  //////////////////////////////////////////////////////////////////////////////
-
   SimpleIndexElement lookupSequential(arangodb::Transaction*,
                                       arangodb::basics::BucketPosition& position,
                                       uint64_t& total);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief request an iterator over all elements in the index in
   ///        a sequential order.
-  //////////////////////////////////////////////////////////////////////////////
-
   IndexIterator* allIterator(arangodb::Transaction*, ManagedDocumentResult*, bool reverse) const;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief request an iterator over all elements in the index in
   ///        a random order. It is guaranteed that each element is found
   ///        exactly once unless the collection is modified.
-  //////////////////////////////////////////////////////////////////////////////
-
   IndexIterator* anyIterator(arangodb::Transaction*, ManagedDocumentResult*) const;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief a method to iterate over all elements in the index in
   ///        reversed sequential order.
   ///        Returns nullptr if all documents have been returned.
   ///        Convention: position === UINT64_MAX indicates a new start.
   ///        DEPRECATED
-  //////////////////////////////////////////////////////////////////////////////
-
   SimpleIndexElement lookupSequentialReverse(
       arangodb::Transaction*, arangodb::basics::BucketPosition& position);
 
@@ -225,30 +213,21 @@ class PrimaryIndex final : public Index {
 
  private:
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief create the iterator, for a single attribute, IN operator
-  //////////////////////////////////////////////////////////////////////////////
-
   IndexIterator* createInIterator(
       arangodb::Transaction*, 
       ManagedDocumentResult*,
       arangodb::aql::AstNode const*,
       arangodb::aql::AstNode const*) const;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief create the iterator, for a single attribute, EQ operator
-  //////////////////////////////////////////////////////////////////////////////
-  
   IndexIterator* createEqIterator(
       arangodb::Transaction*, 
       ManagedDocumentResult*,
       arangodb::aql::AstNode const*,
       arangodb::aql::AstNode const*) const;
 
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief add a single value node to the iterator's keys
-  ////////////////////////////////////////////////////////////////////////////////
-   
   void handleValNode(arangodb::Transaction* trx,
                      VPackBuilder* keys,
                      arangodb::aql::AstNode const* valNode,

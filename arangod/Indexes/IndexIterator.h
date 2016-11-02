@@ -36,11 +36,8 @@ class Index;
 class LogicalCollection;
 class Transaction;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief a base class to iterate over the index. An iterator is requested
 /// at the index itself
-////////////////////////////////////////////////////////////////////////////////
-
 class IndexIterator {
  public:
   IndexIterator(IndexIterator const&) = delete;
@@ -72,10 +69,7 @@ class IndexIterator {
   bool _responsible;
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Special iterator if the condition cannot have any result
-////////////////////////////////////////////////////////////////////////////////
-
 class EmptyIndexIterator final : public IndexIterator {
   public:
     EmptyIndexIterator(LogicalCollection* collection, arangodb::Transaction* trx, ManagedDocumentResult* mmdr, arangodb::Index const* index) 
@@ -96,14 +90,11 @@ class EmptyIndexIterator final : public IndexIterator {
     }
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief a wrapper class to iterate over several IndexIterators.
 ///        Each iterator is requested at the index itself.
 ///        This iterator does NOT check for uniqueness.
 ///        Will always start with the first iterator in the vector. Reverse them
 ///        Outside if necessary.
-////////////////////////////////////////////////////////////////////////////////
-
 class MultiIndexIterator final : public IndexIterator {
 
   public:
@@ -126,27 +117,18 @@ class MultiIndexIterator final : public IndexIterator {
     
     char const* typeName() const override { return "multi-index-iterator"; }
 
-    ////////////////////////////////////////////////////////////////////////////////
     /// @brief Get the next element
     ///        If one iterator is exhausted, the next one is used.
     ///        A nullptr indicates that all iterators are exhausted
-    ////////////////////////////////////////////////////////////////////////////////
-
     IndexLookupResult next() override;
 
-    ////////////////////////////////////////////////////////////////////////////////
     /// @brief Get at most the next limit many elements
     ///        If one iterator is exhausted, the next one will be used.
     ///        An empty result vector indicates that all iterators are exhausted
-    ////////////////////////////////////////////////////////////////////////////////
-    
     void nextBabies(std::vector<IndexLookupResult>&, size_t) override;
 
-    ////////////////////////////////////////////////////////////////////////////////
     /// @brief Reset the cursor
     ///        This will reset ALL internal iterators and start all over again
-    ////////////////////////////////////////////////////////////////////////////////
-
     void reset() override;
 
   private:

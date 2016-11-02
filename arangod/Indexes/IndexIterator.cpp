@@ -43,26 +43,17 @@ IndexIterator::IndexIterator(LogicalCollection* collection,
   TRI_ASSERT(_mmdr != nullptr);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief default destructor. Does not free anything
-////////////////////////////////////////////////////////////////////////////////
-
 IndexIterator::~IndexIterator() {
   if (_responsible) {
     delete _mmdr;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief default implementation for next
-////////////////////////////////////////////////////////////////////////////////
-
 IndexLookupResult IndexIterator::next() { return IndexLookupResult(); }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief default implementation for nextBabies
-////////////////////////////////////////////////////////////////////////////////
-
 void IndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t batchSize) {
   result.clear();
 
@@ -81,16 +72,10 @@ void IndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t ba
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief default implementation for reset
-////////////////////////////////////////////////////////////////////////////////
-
 void IndexIterator::reset() {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief default implementation for skip
-////////////////////////////////////////////////////////////////////////////////
-
 void IndexIterator::skip(uint64_t count, uint64_t& skipped) {
   // Skip the first count-many entries
   // TODO: Can be improved
@@ -100,12 +85,9 @@ void IndexIterator::skip(uint64_t count, uint64_t& skipped) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Get the next element
 ///        If one iterator is exhausted, the next one is used.
 ///        A nullptr indicates that all iterators are exhausted
-////////////////////////////////////////////////////////////////////////////////
-
 IndexLookupResult MultiIndexIterator::next() {
   if (_current == nullptr) {
     return IndexLookupResult();
@@ -123,12 +105,9 @@ IndexLookupResult MultiIndexIterator::next() {
   return next;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Get the next limit many elements
 ///        If one iterator is exhausted, the next one will be used.
 ///        An empty result vector indicates that all iterators are exhausted
-////////////////////////////////////////////////////////////////////////////////
-
 void MultiIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t limit) {
   result.clear();
 
@@ -147,11 +126,8 @@ void MultiIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Reset the cursor
 ///        This will reset ALL internal iterators and start all over again
-////////////////////////////////////////////////////////////////////////////////
-
 void MultiIndexIterator::reset() {
   _current = _iterators.at(0);
   _currentIdx = 0;
