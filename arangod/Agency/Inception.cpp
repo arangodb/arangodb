@@ -99,7 +99,7 @@ void Inception::gossip() {
     }
 
     // don't panic
-    _cv.wait(100000);
+    _cv.wait(500000);
 
     // Timed out? :(
     if ((std::chrono::system_clock::now() - s) > timeout) {
