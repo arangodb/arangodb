@@ -161,8 +161,8 @@ class Supervision : public arangodb::Thread {
   arangodb::basics::ConditionVariable _cv; /**< @brief Control if thread
                                               should run */
 
-  long _frequency;
-  long _gracePeriod;
+  double _frequency;
+  double _gracePeriod;
   uint64_t _jobId;
   uint64_t _jobIdMax;
 

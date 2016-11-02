@@ -57,6 +57,7 @@ class AgencyFeature : virtual public application_features::ApplicationFeature {
   double _supervisionGracePeriod;
   std::string _agencyMyAddress;
   std::vector<std::string> _agencyEndpoints;
+  bool _cmdLineTimings;
 
  public:
   consensus::Agent* agent() const { return _agent.get(); }
