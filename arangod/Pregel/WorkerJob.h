@@ -26,7 +26,7 @@
 #include "Basics/Common.h"
 #include "Dispatcher/Job.h"
 
-#include "WorkerContext.h"
+#include "WorkerState.h"
 
 namespace arangodb {
 class SingleCollectionTransaction;
@@ -43,8 +43,7 @@ class WorkerJob : public rest::Job {
   WorkerJob& operator=(WorkerJob const&) = delete;
 
  public:
-  WorkerJob(Worker<V, E, M>* worker,
-            std::shared_ptr<WorkerContext<V, E, M>> ctx,
+  WorkerJob(Worker<V, E, M>* worker, std::shared_ptr<WorkerState<V, E, M>> ctx,
             std::shared_ptr<GraphStore<V, E>> graphStore);
 
   void work() override;
@@ -55,7 +54,7 @@ class WorkerJob : public rest::Job {
  private:
   Worker<V, E, M>* _worker;
   std::atomic<bool> _canceled;
-  std::shared_ptr<WorkerContext<V, E, M>> _ctx;
+  std::shared_ptr<WorkerState<V, E, M>> _ctx;
   std::shared_ptr<GraphStore<V, E>> _graphStore;
 };
 }

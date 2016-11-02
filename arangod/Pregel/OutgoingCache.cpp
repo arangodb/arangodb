@@ -23,7 +23,7 @@
 #include "OutgoingCache.h"
 #include "IncomingCache.h"
 #include "Utils.h"
-#include "WorkerContext.h"
+#include "WorkerState.h"
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
@@ -39,15 +39,12 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 
 template <typename V, typename E, typename M>
-OutgoingCache<V, E, M>::OutgoingCache(
-    std::shared_ptr<WorkerContext<V, E, M>> context)
-    : _ctx(context), _containedMessages(0), _sendMessages(0) {
+OutgoingCache<V, E, M>::OutgoingCache(std::shared_ptr<WorkerState<V, E, M>> state)
+    : _state(state) {
   _ci = ClusterInfo::instance();
-  _collInfo =
-      _ci->getCollection(_ctx->database(), _ctx->vertexCollectionPlanId());
-  _baseUrl = Utils::baseUrl(_ctx->database());
-  _format = context->algorithm()->messageFormat();
-  _combiner = context->algorithm()->messageCombiner();
+  _baseUrl = Utils::baseUrl(_state->database());
+  _format = _state->algorithm()->messageFormat();
+  _combiner = _state->algorithm()->messageCombiner();
 }
 
 template <typename V, typename E, typename M>
@@ -90,29 +87,32 @@ template <typename V, typename E, typename M>
 void OutgoingCache<V, E, M>::sendMessageTo(std::string const& toValue,
                                            M const& data) {
   assert(_combiner);
-
-  LOG(INFO) << "Adding outgoing messages for " << toValue;
-  std::string vertexKey = Utils::vertexKeyFromToValue(toValue);
+  std::string _key = Utils::vertexKeyFromToValue(toValue);
+  std::string collectionName = Utils::collectionFromToValue(toValue);
+  
+  LOG(INFO) << "Adding outgoing messages for " << collectionName << "/" << _key;
+  std::shared_ptr<LogicalCollection> collectionInfo(_ci->getCollection(_state->database(),
+                                                                       collectionName));
   ShardID responsibleShard;
-  resolveResponsibleShard(_ci, _collInfo.get(), vertexKey, responsibleShard);
+  resolveResponsibleShard(_ci, _collInfo.get(), _key, responsibleShard);
   LOG(INFO) << "Responsible shard: " << responsibleShard;
 
-  std::vector<ShardID> const& localShards = _ctx->localVertexShardIDs();
+  std::vector<ShardID> const& localShards = _state->localVertexShardIDs();
   if (std::find(localShards.begin(), localShards.end(), responsibleShard) !=
       localShards.end()) {
-    auto incoming = _ctx->writeableIncomingCache();
-    incoming->setDirect(vertexKey, data);
-    LOG(INFO) << "Worker: Got messages for myself " << vertexKey << " <- "
+    auto incoming = _state->writeableIncomingCache();
+    incoming->setDirect(toValue, data);
+    LOG(INFO) << "Worker: Got messages for myself " << toValue << " <- "
               << data;
 
   } else {
     // std::unordered_map<std::string, VPackBuilder*> vertexMap =;
     std::unordered_map<std::string, M>& vertexMap = _map[responsibleShard];
-    auto it = vertexMap.find(vertexKey);
+    auto it = vertexMap.find(toValue);
     if (it != vertexMap.end()) {  // more than one message
-      vertexMap[vertexKey] = _combiner->combine(vertexMap[vertexKey], data);
+      vertexMap[toValue] = _combiner->combine(vertexMap[toValue], data);
     } else {  // first message for this vertex
-      vertexMap[vertexKey] = data;
+      vertexMap[toValue] = data;
     }
     _containedMessages++;
   }
@@ -122,7 +122,7 @@ void OutgoingCache<V, E, M>::sendMessageTo(std::string const& toValue,
 
 template <typename V, typename E, typename M>
 void OutgoingCache<V, E, M>::sendMessages() {
-  LOG(INFO) << "Sending messages to other machines";
+  LOG(INFO) << "Beggining to send messages to other machines";
 
   std::vector<ClusterCommRequest> requests;
   for (auto const& it : _map) {
@@ -142,8 +142,8 @@ void OutgoingCache<V, E, M>::sendMessages() {
     }
     package.close();
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    package.add(Utils::executionNumberKey, VPackValue(_ctx->executionNumber()));
-    package.add(Utils::globalSuperstepKey, VPackValue(_ctx->globalSuperstep()));
+    package.add(Utils::executionNumberKey, VPackValue(_state->executionNumber()));
+    package.add(Utils::globalSuperstepKey, VPackValue(_state->globalSuperstep()));
     package.close();
     // add a request
     auto body = std::make_shared<std::string>(package.toJson());

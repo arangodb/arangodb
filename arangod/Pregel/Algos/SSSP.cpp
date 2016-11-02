@@ -39,7 +39,7 @@ struct SSSPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
                 tmp = *msg;
             };
         }
-        int64_t* state = mutableVertexData();
+        int64_t* state = (int64_t*)mutableVertexData();
         if (tmp >= 0 && (getGlobalSuperstep() == 0 || tmp != *state)) {
             LOG(INFO) << "Recomputing value for vertex " << vertexID;
             *state = tmp;  // update state

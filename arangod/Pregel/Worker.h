@@ -28,7 +28,7 @@
 #include "Cluster/ClusterInfo.h"
 
 #include "Algorithm.h"
-#include "WorkerContext.h"
+#include "WorkerState.h"
 
 struct TRI_vocbase_t;
 namespace arangodb {
@@ -55,7 +55,7 @@ class Worker : public IWorker {
 
  public:
   Worker(std::shared_ptr<GraphStore<V, E>> graphStore,
-         std::shared_ptr<WorkerContext<V, E, M>> context);
+         std::shared_ptr<WorkerState<V, E, M>> context);
   ~Worker();
 
   void nextGlobalStep(VPackSlice data) override;  // called by coordinator
@@ -64,7 +64,7 @@ class Worker : public IWorker {
 
  private:
   // Mutex _messagesMutex; TODO figure this out
-  std::shared_ptr<WorkerContext<V, E, M>> _ctx;
+  std::shared_ptr<WorkerState<V, E, M>> _ctx;
   std::shared_ptr<GraphStore<V, E>> _graphStore;
 
   void workerJobIsDone(bool allVerticesHalted);

@@ -30,7 +30,6 @@
 
 struct TRI_vocbase_t;
 namespace arangodb {
-class SingleCollectionTransaction;
 namespace pregel {
 
 /// @brief header entry for the edge file
@@ -50,6 +49,7 @@ struct EdgeEntry {
   // EdgeEntry() : _nextEntryOffset(0), _dataSize(0), _vertexIDSize(0) {}
   EdgeEntry(std::string const& vid, E const& data)
       : _toVertexID(vid), _data(data) {}
+  EdgeEntry(std::string const& vid) : _toVertexID(vid) {}
   ~EdgeEntry() {}
 
   // size_t getSize() { return sizeof(EdgeEntry) + _vertexIDSize + _dataSize; }
@@ -228,35 +228,44 @@ template <typename V, typename E>
 class GraphStore {
  private:
   // int _indexFd, _vertexFd, _edgeFd;
-  void *_indexMapping, *_vertexMapping, *_edgeMapping;
-  size_t _indexSize, _vertexSize, _edgeSize;
+  // void *_indexMapping, *_vertexMapping, *_edgeMapping;
+  // size_t _indexSize, _vertexSize, _edgeSize;
+  std::map<std::string, std::string> _shardsPlanIdMap;
 
-  std::vector<SingleCollectionTransaction*> _readTrxList;
-  void lookupVertices(ShardID const& vertexShard, TRI_vocbase_t* vocbase,
-                      std::shared_ptr<GraphFormat<V, E>> const& graphFormat);
-  void lookupEdges(std::string vertexCollectionName, ShardID const& edgeShardID,
-                   TRI_vocbase_t* vocbase,
-                   std::shared_ptr<GraphFormat<V, E>> const& graphFormat);
+  void lookupVertices(ShardID const& vertexShard, TRI_vocbase_t* vocbase);
+  void lookupEdges(ShardID const& edgeShardID, TRI_vocbase_t* vocbase);
   void cleanupReadTransactions();
 
   // only for demo, move to memory
   std::vector<VertexEntry> _index;
   std::vector<V> _vertexData;
   std::vector<EdgeEntry<E>> _edges;
+  const std::shared_ptr<GraphFormat<V, E>> _graphFormat;
+
+  size_t _localVerticeCount;
+  size_t _localEdgeCount;
+  size_t _globalVertexCount;
+  size_t _globalEdgeCount;
 
  public:
-  GraphStore(std::string const& vertexCollectionName,
-             std::vector<ShardID> const& vertexShards,
+  GraphStore(std::vector<ShardID> const& vertexShards,
              std::vector<ShardID> const& edgeShards, TRI_vocbase_t* vocbase,
-             std::shared_ptr<GraphFormat<V, E>> const& graphFormat);
+             std::shared_ptr<GraphFormat<V, E>> const graphFormat);
   ~GraphStore();
 
   std::vector<VertexEntry>& vertexIterator();
   EdgeIterator<E> edgeIterator(VertexEntry const* entry);
 
-  V* vertexData(VertexEntry const* entry);
-  V vertexDataCopy(VertexEntry const* entry);
-  void replaceVertexData(VertexEntry const* entry, V* data);
+  void* mutableVertexData(VertexEntry const* entry);
+  V copyVertexData(VertexEntry const* entry);
+  void replaceVertexData(VertexEntry const* entry, void* data, size_t size);
+
+  size_t globalVertexCount() const { return _globalVertexCount; }
+  size_t globalEdgeCount() const { return _globalEdgeCount; }
+  void setCounts(size_t vertices, size_t edges) {
+      _globalVertexCount = vertices;
+      _globalEdgeCount = edges;
+  }
 };
 }
 }

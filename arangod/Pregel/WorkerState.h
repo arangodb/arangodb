@@ -20,8 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_WORKER_CONTEXT_H
-#define ARANGODB_PREGEL_WORKER_CONTEXT_H 1
+#ifndef ARANGODB_PREGEL_WORKER_STATE_H
+#define ARANGODB_PREGEL_WORKER_STATE_H 1
 
 #include <velocypack/velocypack-aliases.h>
 #include "Basics/Common.h"
@@ -43,11 +43,11 @@ class Worker;
 /// @brief carry common parameters
 ////////////////////////////////////////////////////////////////////////////////
 template <typename V, typename E, typename M>
-class WorkerContext {
+class WorkerState {
   friend class Worker<V, E, M>;
 
  public:
-  WorkerContext(Algorithm<V, E, M>* algo, DatabaseID dbname, VPackSlice params);
+  WorkerState(Algorithm<V, E, M>* algo, DatabaseID dbname, VPackSlice params);
 
   inline prglSeq_t executionNumber() { return _executionNumber; }
 
@@ -56,14 +56,6 @@ class WorkerContext {
   inline std::string const& coordinatorId() const { return _coordinatorId; }
 
   inline std::string const& database() const { return _database; }
-
-  inline std::string const& vertexCollectionName() const {
-    return _vertexCollectionName;
-  }
-
-  inline std::string const& vertexCollectionPlanId() const {
-    return _vertexCollectionPlanId;
-  }
 
   inline std::vector<ShardID> const& localVertexShardIDs() const {
     return _localVertexShardIDs;
@@ -85,18 +77,17 @@ class WorkerContext {
     return _writeCache;
   }
 
-  std::unique_ptr<Algorithm<V, E, M>> const& algorithm() { return _algorithm; }
+  std::shared_ptr<Algorithm<V, E, M>> algorithm() { return _algorithm; }
 
  private:
   /// @brief guard to make sure the database is not dropped while used by us
   prglSeq_t _executionNumber;
-  const std::unique_ptr<Algorithm<V, E, M>> _algorithm;
+  const std::shared_ptr<Algorithm<V, E, M>> _algorithm;
 
   prglSeq_t _globalSuperstep = 0;
   prglSeq_t _expectedGSS = 0;
   std::string _coordinatorId;
   const std::string _database;
-  std::string _vertexCollectionName, _vertexCollectionPlanId;
   std::vector<ShardID> _localVertexShardIDs, _localEdgeShardIDs;
 
   std::shared_ptr<IncomingCache<M>> _readCache, _writeCache;

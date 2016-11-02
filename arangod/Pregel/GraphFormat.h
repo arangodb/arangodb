@@ -23,11 +23,11 @@
 #ifndef ARANGODB_PREGEL_GRAPH_FORMAT_H
 #define ARANGODB_PREGEL_GRAPH_FORMAT_H 1
 
-#include <cstddef>
-#include "Basics/Common.h"
-
-#include <velocypack/velocypack-aliases.h>
 #include <velocypack/vpack.h>
+#include <velocypack/velocypack-aliases.h>
+#include <cstddef>
+
+#include "Basics/Common.h"
 
 struct TRI_vocbase_t;
 namespace arangodb {
@@ -35,19 +35,23 @@ namespace pregel {
 
 template <typename V, typename M>
 struct GraphFormat {
-  virtual void willUseCollection(TRI_vocbase_t *vocbase, std::string const& shard, bool isEdgeCollection) {}
+  virtual void willUseCollection(TRI_vocbase_t* vocbase,
+                                 std::string const& shard,
+                                 bool isEdgeCollection) {}
   virtual size_t copyVertexData(VPackSlice document, void* targetPtr,
-                                size_t maxSize) const = 0;
+                                size_t maxSize) = 0;
   virtual size_t copyEdgeData(VPackSlice edgeDocument, void* targetPtr,
-                              size_t maxSize) const = 0;
-  virtual V readVertexData(void* ptr) const = 0;
-  virtual M readEdgeData(void* ptr) const = 0;
+                              size_t maxSize) = 0;
+  virtual V readVertexData(void* ptr) = 0;
+  virtual M readEdgeData(void* ptr) = 0;
+
+  virtual bool storesVertexData() { return true; }
+  virtual bool storesEdgeData() { return true; }
 };
 
 class IntegerGraphFormat : public GraphFormat<int64_t, int64_t> {
   const std::string _field;
   const int64_t _vDefault, _eDefault;
-
 
  public:
   IntegerGraphFormat(std::string const& field, int64_t vertexNull,
@@ -55,21 +59,21 @@ class IntegerGraphFormat : public GraphFormat<int64_t, int64_t> {
       : _field(field), _vDefault(vertexNull), _eDefault(edgeNull) {}
 
   size_t copyVertexData(VPackSlice document, void* targetPtr,
-                        size_t maxSize) const override {
+                        size_t maxSize) override {
     VPackSlice val = document.get(_field);
     *((int64_t*)targetPtr) = val.isInteger() ? val.getInt() : _vDefault;
     return sizeof(int64_t);
   }
 
   size_t copyEdgeData(VPackSlice document, void* targetPtr,
-                      size_t maxSize) const override {
+                      size_t maxSize) override {
     VPackSlice val = document.get(_field);
     *((int64_t*)targetPtr) = val.isInteger() ? val.getInt() : _eDefault;
     return sizeof(int64_t);
   }
 
-  int64_t readVertexData(void* ptr) const override { return *((int64_t*)ptr); }
-  int64_t readEdgeData(void* ptr) const override { return *((int64_t*)ptr); }
+  int64_t readVertexData(void* ptr) override { return *((int64_t*)ptr); }
+  int64_t readEdgeData(void* ptr) override { return *((int64_t*)ptr); }
 };
 }
 }

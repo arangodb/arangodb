@@ -30,7 +30,8 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 
-#include "WorkerContext.h"
+#include "MessageCombiner.h"
+#include "MessageFormat.h"
 
 namespace arangodb {
 namespace pregel {
@@ -84,10 +85,6 @@ class MessageIterator {
   const size_t _size = 1;
 };
 
-template <typename M>
-struct MessageFormat;
-template <typename M>
-struct MessageCombiner;
 /* In the longer run, maybe write optimized implementations for certain use
  cases. For example threaded
  processing */

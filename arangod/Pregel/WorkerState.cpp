@@ -20,7 +20,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "WorkerContext.h"
+#include "WorkerState.h"
 #include "Algorithm.h"
 #include "IncomingCache.h"
 #include "Utils.h"
@@ -29,25 +29,25 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 
 template <typename V, typename E, typename M>
-WorkerContext<V, E, M>::WorkerContext(Algorithm<V, E, M>* algo,
-                                      DatabaseID dbname, VPackSlice params)
+WorkerState<V, E, M>::WorkerState(Algorithm<V, E, M>* algo, DatabaseID dbname,
+                                  VPackSlice params)
     : _algorithm(algo), _database(dbname) {
   VPackSlice coordID = params.get(Utils::coordinatorIdKey);
-  VPackSlice vertexCollName = params.get(Utils::vertexCollectionNameKey);
-  VPackSlice vertexCollPlanId = params.get(Utils::vertexCollectionPlanIdKey);
+  // VPackSlice vertexCollName = params.get(Utils::vertexCollectionNameKey);
+  // VPackSlice vertexCollPlanId = params.get(Utils::vertexCollectionPlanIdKey);
   VPackSlice vertexShardIDs = params.get(Utils::vertexShardsListKey);
   VPackSlice edgeShardIDs = params.get(Utils::edgeShardsListKey);
   VPackSlice execNum = params.get(Utils::executionNumberKey);
-  if (!coordID.isString() || !vertexCollName.isString() ||
-      !vertexCollPlanId.isString() || !vertexShardIDs.isArray() ||
+  VPackSlice planIDs = params.get(Utils::shardPlanMapKey);
+  if (!coordID.isString() || !vertexShardIDs.isArray() ||
       !edgeShardIDs.isArray() || !execNum.isInteger()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Supplied bad parameters to worker");
   }
   _executionNumber = execNum.getUInt();
   _coordinatorId = coordID.copyString();
-  _vertexCollectionName = vertexCollName.copyString();
-  _vertexCollectionPlanId = vertexCollPlanId.copyString();
+  //_vertexCollectionName = vertexCollName.copyString();
+  //_vertexCollectionPlanId = vertexCollPlanId.copyString();
 
   LOG(INFO) << "Local Shards:";
   VPackArrayIterator vertices(vertexShardIDs);
@@ -62,6 +62,10 @@ WorkerContext<V, E, M>::WorkerContext(Algorithm<V, E, M>* algo,
     _localEdgeShardIDs.push_back(name);
     LOG(INFO) << name;
   }
+  
+      for (auto const& it :  VPackObjectIterator(planIDs)) {
+      
+      }
 
   auto format = algo->messageFormat();
   auto combiner = algo->messageCombiner();
@@ -70,11 +74,11 @@ WorkerContext<V, E, M>::WorkerContext(Algorithm<V, E, M>* algo,
 }
 
 template <typename V, typename E, typename M>
-void WorkerContext<V, E, M>::swapIncomingCaches() {
+void WorkerState<V, E, M>::swapIncomingCaches() {
   auto t = _readCache;
   _readCache = _writeCache;
   _writeCache = t;
 }
 
 // template types to create
-template class arangodb::pregel::WorkerContext<int64_t, int64_t, int64_t>;
+template class arangodb::pregel::WorkerState<int64_t, int64_t, int64_t>;

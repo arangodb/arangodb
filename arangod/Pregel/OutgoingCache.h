@@ -23,28 +23,23 @@
 #ifndef ARANGODB_OUT_MESSAGE_CACHE_H
 #define ARANGODB_OUT_MESSAGE_CACHE_H 1
 
-#include <velocypack/velocypack-aliases.h>
-#include <velocypack/vpack.h>
+
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Cluster/ClusterInfo.h"
 
+#include "WorkerState.h"
 #include "MessageCombiner.h"
 #include "MessageFormat.h"
 
 namespace arangodb {
 namespace pregel {
-
-template <typename V, typename E, typename M>
-class WorkerContext;
-
 /* In the longer run, maybe write optimized implementations for certain use
  cases. For example threaded
  processing */
 template <typename V, typename E, typename M>
 class OutgoingCache {
  public:
-  OutgoingCache(std::shared_ptr<WorkerContext<V, E, M>> context);
+  OutgoingCache(std::shared_ptr<WorkerState<V, E, M>> state);
   ~OutgoingCache();
 
   void sendMessageTo(std::string const& toValue, M const& data);
@@ -59,14 +54,15 @@ class OutgoingCache {
 
   /// @brief two stage map: shard -> vertice -> message
   std::unordered_map<ShardID, std::unordered_map<std::string, M>> _map;
-  std::shared_ptr<WorkerContext<V, E, M>> _ctx;
+  std::shared_ptr<WorkerState<V, E, M>> _state;
   std::shared_ptr<LogicalCollection> _collInfo;
   ClusterInfo* _ci;
   std::string _baseUrl;
   /// @brief current number of vertices stored
 
-  size_t _containedMessages;
-  size_t _sendMessages;
+  std::map<std::string, std::string> _collectionPlanIdMap;
+  size_t _containedMessages = 0;
+  size_t _sendMessages = 0;
 };
 }
 }

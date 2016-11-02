@@ -34,7 +34,6 @@ namespace algos {
  public:
   SCCAlgorithm() : Algorithm("SCC") {}
 
-  size_t estimatedVertexSize() const override;
   std::shared_ptr<GraphFormat<int64_t, int64_t>> inputFormat() const override;
   std::shared_ptr<MessageFormat<int64_t>> messageFormat() const override;
   std::shared_ptr<MessageCombiner<int64_t>> messageCombiner() const override;

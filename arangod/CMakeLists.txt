@@ -377,7 +377,7 @@ add_executable(${BIN_ARANGOD}
   Pregel/OutgoingCache.cpp
   Pregel/VertexComputation.cpp
   Pregel/Worker.cpp
-  Pregel/WorkerContext.cpp
+  Pregel/WorkerState.cpp
   Pregel/WorkerJob.cpp
   Pregel/GraphStore.cpp
   Pregel/Utils.cpp

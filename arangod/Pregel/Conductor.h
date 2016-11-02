@@ -40,8 +40,8 @@ class Conductor {
   enum ExecutionState { RUNNING, FINISHED, ERROR };
 
   Conductor(unsigned int executionNumber, TRI_vocbase_t* vocbase,
-            std::shared_ptr<LogicalCollection> vertexCollection,
-            std::shared_ptr<LogicalCollection> edgeCollection,
+            std::vector<std::shared_ptr<LogicalCollection>> vertexCollections,
+            std::vector<std::shared_ptr<LogicalCollection>> edgeCollections,
             std::string const& algorithm);
   ~Conductor();
 
@@ -55,22 +55,18 @@ class Conductor {
   Mutex _finishedGSSMutex;  // prevents concurrent calls to finishedGlobalStep
   VocbaseGuard _vocbaseGuard;
   const unsigned int _executionNumber;
+  
+  ExecutionState _state = ExecutionState::RUNNING;
+  std::vector<std::shared_ptr<LogicalCollection>> _vertexCollections, _edgeCollections;
+  std::map<ServerID, std::vector<ShardID>> _vertexServerMap;
+  std::string _algorithm;
 
   unsigned int _globalSuperstep;
   int32_t _dbServerCount = 0;
   int32_t _responseCount = 0;
   int32_t _doneCount = 0;
 
-  std::shared_ptr<LogicalCollection> _vertexCollection, _edgeCollection;
-  CollectionID _vertexCollectionID;
-  std::string _algorithm;
-
-  ExecutionState _state = ExecutionState::RUNNING;
-
-  // convenience
-  void resolveWorkerServers(
-      std::unordered_map<ServerID, std::vector<ShardID>>& vertexServerMap,
-      std::unordered_map<ServerID, std::vector<ShardID>>& edgeServerMap);
+  // convenience method
   int sendToAllDBServers(std::string url, VPackSlice const& body);
 };
 }

@@ -24,8 +24,8 @@
 #include "GraphStore.h"
 #include "IncomingCache.h"
 #include "Utils.h"
-#include "WorkerContext.h"
 #include "WorkerJob.h"
+#include "WorkerState.h"
 
 #include "Basics/MutexLocker.h"
 #include "Cluster/ClusterComm.h"
@@ -38,7 +38,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Algos/SCC.h"
 #include "Algos/SSSP.h"
 
 using namespace arangodb;
@@ -58,17 +57,16 @@ IWorker* IWorker::createWorker(TRI_vocbase_t* vocbase, VPackSlice params) {
     // TODO transform to shared_ptr all the way
     auto algo = new algos::SSSPAlgorithm();
     auto ptr = algo->inputFormat();
-    auto ctx = std::make_shared<WorkerContext<int64_t, int64_t, int64_t>>(
+    auto ctx = std::make_shared<WorkerState<int64_t, int64_t, int64_t>>(
         algo, vocbase->name(), params);
-    auto graph = std::make_shared<GraphStore<int64_t, int64_t>>(
-        ctx->vertexCollectionName(), ctx->localVertexShardIDs(),
+    auto graph = std::make_shared<GraphStore<int64_t, int64_t>>(ctx->localVertexShardIDs(),
         ctx->localEdgeShardIDs(), vocbase, ptr);
     worker = new Worker<int64_t, int64_t, int64_t>(graph, ctx);
   } /*if (algorithm.compareString("scc") == 0) {
       // TODO transform to shared_ptr all the way
       auto algo = new SCCAlgorithm();
       auto ptr = algo->inputFormat();
-      auto ctx = std::make_shared<WorkerContext<int64_t, int64_t, int64_t>>(
+      auto ctx = std::make_shared<WorkerState<int64_t, int64_t, int64_t>>(
                                                                             algo, vocbase->name(), params);
       auto graph = std::make_shared<GraphStore<int64_t, int64_t>>(
                                                                   ctx->vertexCollectionName(), ctx->localVertexShardIDs(),
@@ -83,7 +81,7 @@ IWorker* IWorker::createWorker(TRI_vocbase_t* vocbase, VPackSlice params) {
 
 template <typename V, typename E, typename M>
 Worker<V, E, M>::Worker(std::shared_ptr<GraphStore<V, E>> graphStore,
-                        std::shared_ptr<WorkerContext<V, E, M>> context)
+                        std::shared_ptr<WorkerState<V, E, M>> context)
     : _ctx(context), _graphStore(graphStore) {}
 
 template <typename V, typename E, typename M>
@@ -187,7 +185,7 @@ void Worker<V, E, M>::writeResults() {
   b.openArray();
   auto it = _graphStore->vertexIterator();
   for (const VertexEntry& vertexEntry : it) {
-    V data = _graphStore->vertexDataCopy(&vertexEntry);
+    V data = _graphStore->copyVertexData(&vertexEntry);
     VPackBuilder v;
     v.openObject();
     v.add("key", VPackValue(vertexEntry.vertexID()));

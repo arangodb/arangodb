@@ -1836,11 +1836,12 @@ static void JS_Pregel(v8::FunctionCallbackInfo<v8::Value> const& args) {
   uint32_t const argLength = args.Length();
   if (argLength < 3) {
     // TODO extend this for named graphs, use the Graph class
-      TRI_V8_THROW_EXCEPTION_USAGE("_pregel(<vertexCollection>, <edgeCollection>)");
+      TRI_V8_THROW_EXCEPTION_USAGE("_pregel({<vertexCollection>, <edgeCollection>)");
   }
   if (!args[0]->IsString() || !args[1]->IsString() || !args[2]->IsString()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
+    
   std::string vName = TRI_ObjectToString(args[0]);
   std::string eName = TRI_ObjectToString(args[1]);
   std::string algor = TRI_ObjectToString(args[2]);
@@ -1871,8 +1872,12 @@ static void JS_Pregel(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_EXCEPTION_USAGE("Collections do not exist");
     }
 
+    std::vector<std::shared_ptr<LogicalCollection>> vertices, edges;
+    vertices.push_back(vertexColl);
+    edges.push_back(edgeColl);
+      
     result = pregel::PregelFeature::instance()->createExecutionNumber();
-    pregel::Conductor* e = new pregel::Conductor(result, vocbase, vertexColl, edgeColl, algor);
+    pregel::Conductor* e = new pregel::Conductor(result, vocbase, vertices, edges, algor);
     pregel::PregelFeature::instance()->addExecution(e, result);
     
     LOG(INFO) << "Starting...";

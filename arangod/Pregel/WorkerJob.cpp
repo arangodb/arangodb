@@ -27,7 +27,7 @@
 #include "Utils.h"
 #include "VertexComputation.h"
 #include "Worker.h"
-#include "WorkerContext.h"
+#include "WorkerState.h"
 
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
@@ -41,7 +41,7 @@ using namespace arangodb::pregel;
 
 template <typename V, typename E, typename M>
 WorkerJob<V, E, M>::WorkerJob(Worker<V, E, M>* worker,
-                              std::shared_ptr<WorkerContext<V, E, M>> ctx,
+                              std::shared_ptr<WorkerState<V, E, M>> ctx,
                               std::shared_ptr<GraphStore<V, E>> graphStore)
     : Job("Pregel Job"),
       _worker(worker),

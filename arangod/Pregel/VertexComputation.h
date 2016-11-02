@@ -55,7 +55,7 @@ class VertexComputation {
   unsigned int getGlobalSuperstep() const { return _gss; }
   void sendMessage(std::string const& toValue, M const& data);
   EdgeIterator<E> getEdges();
-  V* mutableVertexData();
+  void * mutableVertexData();
   V vertexData();
   /// store data, will potentially move the data around
   void setVertexData(const V*, size_t size);

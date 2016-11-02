@@ -41,18 +41,18 @@ EdgeIterator<E> VertexComputation<V, E, M>::VertexComputation::getEdges() {
 }
 
 template <typename V, typename E, typename M>
-V* VertexComputation<V, E, M>::mutableVertexData() {
-  return _graphStore->vertexData(_vertexEntry);
+void* VertexComputation<V, E, M>::mutableVertexData() {
+    return _graphStore->mutableVertexData(_vertexEntry);
 }
 
 template <typename V, typename E, typename M>
 V VertexComputation<V, E, M>::vertexData() {
-  return _graphStore->vertexDataCopy(_vertexEntry);
+  return _graphStore->copyVertexData(_vertexEntry);
 }
 
 template <typename V, typename E, typename M>
-void VertexComputation<V, E, M>::setVertexData(const V*, size_t size) {
-  _graphStore->vertexData(_vertexEntry);
+void VertexComputation<V, E, M>::setVertexData(const V* ptr, size_t size) {
+  _graphStore->replaceVertexData(_vertexEntry, (void*)ptr, size);
 }
 
 template <typename V, typename E, typename M>

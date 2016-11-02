@@ -20,28 +20,9 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGO_SSSP_H
-#define ARANGODB_PREGEL_ALGO_SSSP_H 1
 #include "Algorithm.h"
+#include "GraphStore.h"
+#include "IncomingCache.h"
 
-struct TRI_vocbase_t;
-namespace arangodb {
-namespace pregel {
-
-template <typename V, typename E>
-class GraphStore;
-
-template <typename V, typename E>
-class ResultWriter {
-  bool _writeVertices = true;
-  bool _writeEdges = true;
-  bool _writeInSameCollections = true;
-  bool resultField;
-
- public:
-  ResultWriter(VPackSlice params) {}
-  void writeResults(TRI_vocbase_t* vocbase, GraphStore<V, E>* store);
-};
-}
-}
-#endif
+using namespace arangodb;
+using namespace arangodb::pregel;

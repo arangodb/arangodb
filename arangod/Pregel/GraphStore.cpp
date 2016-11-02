@@ -41,15 +41,15 @@ using namespace arangodb::pregel;
 
 template <typename V, typename E>
 GraphStore<V, E>::GraphStore(
-    std::string const& vertexCollectionName,
     std::vector<ShardID> const& vertexShards,
     std::vector<ShardID> const& edgeShards, TRI_vocbase_t* vocbase,
-    std::shared_ptr<GraphFormat<V, E>> const& graphFormat) {
+    std::shared_ptr<GraphFormat<V, E>> const graphFormat)
+    : _graphFormat(graphFormat) {
   for (auto& shard : vertexShards) {
-    lookupVertices(shard, vocbase, graphFormat);
+    lookupVertices(shard, vocbase);
   }
   for (auto& shard : edgeShards) {
-    lookupEdges(vertexCollectionName, shard, vocbase, graphFormat);
+    lookupEdges(shard, vocbase);
   }
 }
 
@@ -62,13 +62,20 @@ std::vector<VertexEntry>& GraphStore<V, E>::vertexIterator() {
 }
 
 template <typename V, typename E>
-V* GraphStore<V, E>::vertexData(VertexEntry const* entry) {
+void* GraphStore<V, E>::mutableVertexData(VertexEntry const* entry) {
   return _vertexData.data() + entry->_vertexDataOffset;
 }
 
 template <typename V, typename E>
-V GraphStore<V, E>::vertexDataCopy(VertexEntry const* entry) {
-  return _vertexData[entry->_vertexDataOffset];
+V GraphStore<V, E>::copyVertexData(VertexEntry const* entry) {
+  return _graphFormat->readVertexData(
+      mutableVertexData(entry));  //  _vertexData[entry->_vertexDataOffset];
+}
+
+template <typename V, typename E>
+void GraphStore<V, E>::replaceVertexData(VertexEntry const* entry, void* data, size_t size) {
+    void* ptr = _vertexData.data() + entry->_vertexDataOffset;;
+    memcpy(ptr, data, size);
 }
 
 template <typename V, typename E>
@@ -78,13 +85,8 @@ EdgeIterator<E> GraphStore<V, E>::edgeIterator(VertexEntry const* entry) {
 }
 
 template <typename V, typename E>
-void GraphStore<V, E>::replaceVertexData(VertexEntry const* entry, V* data) {
-  _vertexData[entry->_vertexDataOffset] = *data;
-}
-
-template <typename V, typename E>
 void GraphStore<V, E>::cleanupReadTransactions() {
-  for (auto const& it : _readTrxList) {  // clean transactions
+  /*for (auto const& it : _readTrxList) {  // clean transactions
     if (it->getStatus() == TRI_TRANSACTION_RUNNING) {
       if (it->commit() != TRI_ERROR_NO_ERROR) {
         LOG(WARN) << "Pregel worker: Failed to commit on a read transaction";
@@ -92,21 +94,13 @@ void GraphStore<V, E>::cleanupReadTransactions() {
     }
     delete (it);
   }
-  _readTrxList.clear();
+  _readTrxList.clear();*/
 }
 
-/**/
-
 template <typename V, typename E>
-void GraphStore<V, E>::lookupVertices(
-    ShardID const& vertexShard, TRI_vocbase_t* vocbase,
-    std::shared_ptr<GraphFormat<V, E>> const& graphFormat) {
-  //    int64_t docCount = _shardCount(vertexShard, vocbase);
-  //    if (docCount < 1) {
-  //        return;// don't bother
-  //   }
-  //    uint64_t pregelId = ClusterInfo::instance()->uniqid(docCount);
-  graphFormat->willUseCollection(vocbase, vertexShard, false);
+void GraphStore<V, E>::lookupVertices(ShardID const& vertexShard,
+                                      TRI_vocbase_t* vocbase) {
+  _graphFormat->willUseCollection(vocbase, vertexShard, false);
 
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(vocbase),
                                   vertexShard, TRI_TRANSACTION_READ);
@@ -116,74 +110,95 @@ void GraphStore<V, E>::lookupVertices(
     THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up vertices '%s'",
                                   vertexShard.c_str());
   }
-  // TODO don't fetch all like this, use curso to load progressively
-  OperationResult result =
-      trx.all(vertexShard, 0, UINT64_MAX, OperationOptions());
-  // Commit or abort.
-  res = trx.finish(result.code);
-  if (!result.successful()) {
-    THROW_ARANGO_EXCEPTION_FORMAT(result.code, "while looking up shard '%s'",
+
+  TRI_voc_cid_t cid = trx.addCollectionAtRuntime(vertexShard);
+  trx.orderDitch(cid);  // will throw when it fails
+
+  res = trx.lockRead();
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up vertices '%s'",
                                   vertexShard.c_str());
   }
-  /*if (res != TRI_ERROR_NO_ERROR) {
-   THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up shard '%s'",
-   vertexShard.c_str());
-   }*/
-  VPackSlice vertices = result.slice();
-  if (vertices.isExternal()) {
-    vertices = vertices.resolveExternal();
+
+  VPackBuilder resultBuilder;
+  resultBuilder.openArray();
+
+  std::unique_ptr<OperationCursor> cursor =
+      trx.indexScan(vertexShard, Transaction::CursorType::ALL,
+                    Transaction::IndexHandle(), {}, 0, INT64_MAX, 1000, false);
+
+  if (cursor->failed()) {
+    THROW_ARANGO_EXCEPTION_FORMAT(cursor->code, "while looking up shard '%s'",
+                                  vertexShard.c_str());
   }
-  //_readTrxList.push_back(trx);// store transactions, otherwise VPackSlices
-  // become invalid
+  bool storeData = _graphFormat->storesVertexData();
 
-  VPackArrayIterator arr = VPackArrayIterator(vertices);
-  LOG(INFO) << "Found vertices: " << arr.size();
-  for (auto it : arr) {
-    if (it.isExternal()) {
-      it = it.resolveExternal();
-    }
+  std::vector<TRI_doc_mptr_t*> result;
+  result.reserve(1000);
+  while (cursor->hasMore()) {
+    cursor->getMoreMptr(result, 1000);
+    for (auto const& mptr : result) {
+      VPackSlice document(mptr->vpack());
+      if (document.isExternal()) {
+        document = document.resolveExternal();
+      }
+      LOG(INFO) << "Loaded Vertex: " << document.toJson();
 
-    V vertexData;
-    size_t size = graphFormat->copyVertexData(it, &vertexData, sizeof(V));
-    if (size > 0) {
-      VertexEntry entry(StaticStrings::KeyString);
-      entry._vertexDataOffset = _index.size();
+      std::string vertexId = trx.extractIdString(document);
+      LOG(WARN) << "Loaded " << vertexId;
+      VertexEntry entry(vertexId);
+      if (storeData) {
+        V vertexData;
+        size_t size =
+            _graphFormat->copyVertexData(document, &vertexData, sizeof(V));
+        if (size > 0) {
+          entry._vertexDataOffset = _vertexData.size();
+          _vertexData.push_back(vertexData);
+        } else {
+          LOG(ERR) << "Could not load vertex " << document.toJson();
+        }
+      }
       _index.push_back(entry);
-      _vertexData.push_back(vertexData);
-      LOG(INFO) << "Loaded vertex " << it.toJson();
-    } else {
-      LOG(ERR) << "Could not load vertex " << it.toJson();
     }
   }
 
-  /*TRI_ASSERT(trx.>documentCollection()->planId_as_string() ==
+  res = trx.unlockRead();
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up shard '%s'",
+                                  vertexShard.c_str());
+  }
+
+  _shardsPlanIdMap[vertexShard] = trx.documentCollection()->planId_as_string();
+  res = trx.finish(res);
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up vertices '%s'",
+                                  vertexShard.c_str());
+  }
+  /*TRI_ASSERT( ==
              _ctx->_vertexCollectionPlanId);*/
 }
 
 template <typename V, typename E>
-void GraphStore<V, E>::lookupEdges(
-    std::string vertexCollectionName, ShardID const& edgeShard,
-    TRI_vocbase_t* vocbase,
-    std::shared_ptr<GraphFormat<V, E>> const& graphFormat) {
+void GraphStore<V, E>::lookupEdges(ShardID const& edgeShard,
+                                   TRI_vocbase_t* vocbase) {
+  _graphFormat->willUseCollection(vocbase, edgeShard, true);
 
- graphFormat->willUseCollection(vocbase, edgeShard, true);
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(vocbase),
+                                  edgeShard, TRI_TRANSACTION_READ);
 
-  std::unique_ptr<SingleCollectionTransaction> trx(
-      new SingleCollectionTransaction(
-          StandaloneTransactionContext::Create(vocbase), edgeShard,
-          TRI_TRANSACTION_READ));
-  int res = trx->begin();
+  int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up edges '%s'",
                                   edgeShard.c_str());
   }
 
   auto info = std::make_unique<arangodb::traverser::EdgeCollectionInfo>(
-      trx.get(), edgeShard, TRI_EDGE_OUT, StaticStrings::FromString, 0);
+      &trx, edgeShard, TRI_EDGE_OUT, StaticStrings::FromString, 0);
 
   for (auto& vertexEntry : _index) {
     // kann man strings besser verketten?
-    std::string _from = vertexCollectionName + "/" + vertexEntry.vertexID();
+    // std::string _from = vertexCollectionName + "/" + vertexEntry.vertexID();
+    std::string const& _from = vertexEntry.vertexID();
 
     auto cursor = info->getEdges(_from);
     if (cursor->failed()) {
@@ -194,6 +209,7 @@ void GraphStore<V, E>::lookupEdges(
 
     vertexEntry._edgeDataOffset = _edges.size();
     vertexEntry._edgeCount = 0;
+    bool storeData = _graphFormat->storesEdgeData();
 
     std::vector<TRI_doc_mptr_t*> result;
     result.reserve(1000);
@@ -205,19 +221,30 @@ void GraphStore<V, E>::lookupEdges(
           document = document.resolveExternal();
         }
         LOG(INFO) << "Loaded Edge: " << document.toJson();
-
-        E edgeData;
-        size_t size = graphFormat->copyEdgeData(document, &edgeData, sizeof(E));
         std::string toVertexID =
             document.get(StaticStrings::ToString).copyString();
-        if (size > 0) {
-          _edges.emplace_back(toVertexID, edgeData);
-          vertexEntry._edgeCount += 1;
+
+        if (storeData) {
+          E edgeData;
+          size_t size =
+              _graphFormat->copyEdgeData(document, &edgeData, sizeof(E));
+          if (size > 0) {
+            _edges.emplace_back(toVertexID, edgeData);
+            vertexEntry._edgeCount += 1;
+          } else {
+            LOG(ERR) << "Trouble when reading data for edge "
+                     << document.toJson();
+          }
         } else {
-          LOG(ERR) << "Could not load edge " << document.toJson();
+          _edges.emplace_back(toVertexID);
         }
       }
     }
+  }
+
+  res = trx.finish(res);
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up edges from '%s'", edgeShard.c_str());
   }
 
   //_readTrxList.push_back(trx.get());

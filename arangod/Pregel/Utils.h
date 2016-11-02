@@ -23,6 +23,7 @@
 #ifndef ARANGODB_PREGEL_UTILS_H
 #define ARANGODB_PREGEL_UTILS_H 1
 
+#include <cstdint>
 #include "Basics/Common.h"
 
 struct TRI_vocbase_t;
@@ -43,13 +44,14 @@ class Utils {
   static std::string const writeResultsPath;
 
   static std::string const executionNumberKey;
-  static std::string const vertexCollectionNameKey;
-  static std::string const vertexCollectionPlanIdKey;
-  static std::string const vertexShardsListKey;
-  static std::string const edgeShardsListKey;
-  static std::string const resultShardKey;
   static std::string const algorithmKey;
   static std::string const coordinatorIdKey;
+    
+  static std::string const totalVertexCount;
+  static std::string const totalEdgeCount;
+  static std::string const shardPlanMapKey;
+  static std::string const vertexShardsListKey;
+  static std::string const edgeShardsListKey;
 
   static std::string const globalSuperstepKey;
   static std::string const messagesKey;
@@ -58,7 +60,10 @@ class Utils {
 
   static std::string const edgeShardingKey;
   static std::string baseUrl(std::string dbName);
+  static std::string collectionFromToValue(std::string const& graphKey);
   static std::string vertexKeyFromToValue(std::string const& graphKey);
+    
+  static int64_t countDocuments(TRI_vocbase_t* vocbase, std::string const& collection);
 };
 }
 }
