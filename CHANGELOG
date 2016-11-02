@@ -1,6 +1,8 @@
 v3.0.11 (2016-XX-XX)
 --------------------
 
+* fixed issue #2140: supervisor dies instead of respawning child
+
 * fixed issue #2131: use shard key value entered by user in web interface
 
 * fixed issue #2110
