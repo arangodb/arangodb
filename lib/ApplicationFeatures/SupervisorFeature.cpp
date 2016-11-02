@@ -89,20 +89,30 @@ void SupervisorFeature::daemonize() {
   bool done = false;
   int result = EXIT_SUCCESS;
 
-  std::vector<ApplicationFeature*> supervisorFeatures(_supervisorStart.size());
+  // will be reseted in SchedulerFeature
+  ArangoGlobalContext::CONTEXT->unmaskStandardSignals();
 
-  std::transform(_supervisorStart.begin(), _supervisorStart.end(),
-                 supervisorFeatures.begin(), [](std::string const& name) {
-                  try {
-                    return ApplicationServer::getFeature<ApplicationFeature>(name);
-                  } catch (...) { 
-                    LOG_TOPIC(FATAL, Logger::STARTUP)
-                        << "unknown feature '" << name << "', giving up";
-                    FATAL_ERROR_EXIT();
-                  }
-                 });
+  LoggerFeature* logger = nullptr;
+      
+  try {
+    logger = ApplicationServer::getFeature<LoggerFeature>("Logger");
+  } catch (...) { 
+    LOG_TOPIC(FATAL, Logger::STARTUP)
+      << "unknown feature 'Logger', giving up";
+    FATAL_ERROR_EXIT();
+  }
+
+  logger->setSupervisor(true);
+  logger->prepare();
+
+  LOG_TOPIC(DEBUG, Logger::STARTUP) << "starting supervisor loop";
 
   while (!done) {
+    logger->setSupervisor(false);
+
+    signal(SIGINT, SIG_DFL);
+    signal(SIGTERM, SIG_DFL);
+
     // fork of the server
     _clientPid = fork();
 
@@ -113,30 +123,12 @@ void SupervisorFeature::daemonize() {
 
     // parent (supervisor)
     if (0 < _clientPid) {
-      TRI_SetProcessTitle("arangodb [supervisor]");
-
-      std::for_each(supervisorFeatures.begin(), supervisorFeatures.end(),
-                    [](ApplicationFeature* feature) {
-                      LoggerFeature* logger =
-                          dynamic_cast<LoggerFeature*>(feature);
-
-                      if (logger != nullptr) {
-                        logger->setSupervisor(true);
-                        logger->disableThreaded();
-                      }
-                    });
-
-      std::for_each(supervisorFeatures.begin(), supervisorFeatures.end(),
-                    [](ApplicationFeature* feature) { feature->prepare(); });
-
-      std::for_each(supervisorFeatures.begin(), supervisorFeatures.end(),
-                    [](ApplicationFeature* feature) { feature->start(); });
-
-      LOG_TOPIC(DEBUG, Logger::STARTUP) << "supervisor mode: within parent";
-
-      ArangoGlobalContext::CONTEXT->unmaskStandardSignals();
       signal(SIGINT, StopHandler);
       signal(SIGTERM, StopHandler);
+
+      TRI_SetProcessTitle("arangodb [supervisor]");
+
+      LOG_TOPIC(DEBUG, Logger::STARTUP) << "supervisor mode: within parent";
 
       CLIENT_PID = _clientPid;
       DONE = false;
@@ -145,14 +137,15 @@ void SupervisorFeature::daemonize() {
       int res = waitpid(_clientPid, &status, 0);
       bool horrible = true;
 
-      if (!DONE) {
+      LOG_TOPIC(DEBUG, Logger::STARTUP) << "waitpid woke up with return value "
+					<< res << " and status " << status
+					<< " and DONE = " << (DONE ? "true" : "false");
+
+      if (DONE) {
         done = true;
         horrible = false;
       }
       else {
-        LOG_TOPIC(DEBUG, Logger::STARTUP) << "waitpid woke up with return value "
-                                          << res << " and status " << status;
-
         if (WIFEXITED(status)) {
           // give information about cause of death
           if (WEXITSTATUS(status) == 0) {
@@ -231,6 +224,8 @@ void SupervisorFeature::daemonize() {
 
     // child - run the normal boot sequence
     else {
+      Logger::shutdown();
+
       LOG_TOPIC(DEBUG, Logger::STARTUP) << "supervisor mode: within child";
       TRI_SetProcessTitle("arangodb [server]");
 
@@ -251,11 +246,10 @@ void SupervisorFeature::daemonize() {
     }
   }
 
-  std::for_each(supervisorFeatures.rbegin(), supervisorFeatures.rend(),
-                [](ApplicationFeature* feature) { feature->stop(); });
+  LOG_TOPIC(DEBUG, Logger::STARTUP) << "supervisor mode: finished";
 
-  std::for_each(supervisorFeatures.rbegin(), supervisorFeatures.rend(),
-                [](ApplicationFeature* feature) { feature->unprepare(); });
+  Logger::flush();
+  Logger::shutdown();
 
   exit(result);
 }

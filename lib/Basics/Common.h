@@ -244,7 +244,7 @@ static inline uint32_t TRI_64To32(uint64_t x) {
       LOG(WARN) << bt;                        \
     }                                         \
     arangodb::Logger::flush();                \
-    arangodb::Logger::shutdown(true);         \
+    arangodb::Logger::shutdown();             \
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr); \
     exit(EXIT_FAILURE);                       \
   } while (0)
