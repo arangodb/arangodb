@@ -490,7 +490,11 @@ void Inception::run() {
     FATAL_ERROR_EXIT();
   }
 
-  estimateRAFTInterval();
+  // 5. If command line RAFT timings have not been set explicitly
+  //    Try good estimate of RAFT time limits
+  if (!config.cmdLineTimings()) {
+    estimateRAFTInterval();
+  }
   
   _agent->ready(true);
 
