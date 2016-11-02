@@ -112,6 +112,8 @@ void SupervisorFeature::daemonize() {
 
     signal(SIGINT, SIG_DFL);
     signal(SIGTERM, SIG_DFL);
+    
+    LOG_TOPIC(DEBUG, Logger::STARTUP) << "supervisor will now try to fork a new child process";
 
     // fork of the server
     _clientPid = fork();
@@ -125,6 +127,8 @@ void SupervisorFeature::daemonize() {
     if (0 < _clientPid) {
       signal(SIGINT, StopHandler);
       signal(SIGTERM, StopHandler);
+
+      LOG_TOPIC(DEBUG, Logger::STARTUP) << "supervisor has forked a child process with pid " << _clientPid;
 
       TRI_SetProcessTitle("arangodb [supervisor]");
 
@@ -142,10 +146,13 @@ void SupervisorFeature::daemonize() {
 					<< " and DONE = " << (DONE ? "true" : "false");
 
       if (DONE) {
+        // signal handler for SIGINT or SIGTERM was invoked
         done = true;
         horrible = false;
       }
       else {
+        TRI_ASSERT(horrible);
+
         if (WIFEXITED(status)) {
           // give information about cause of death
           if (WEXITSTATUS(status) == 0) {
@@ -172,9 +179,9 @@ void SupervisorFeature::daemonize() {
           }
         } else if (WIFSIGNALED(status)) {
           switch (WTERMSIG(status)) {
-            case 2:
-            case 9:
-            case 15:
+            case 2: // SIGINT
+            case 9: // SIGKILL
+            case 15: // SIGTERM
               LOG_TOPIC(INFO, Logger::STARTUP)
                   << "child " << _clientPid
                   << " died of natural causes, exit status " << WTERMSIG(status);
@@ -183,6 +190,7 @@ void SupervisorFeature::daemonize() {
               break;
 
             default:
+              TRI_ASSERT(horrible);
               t = time(0) - startTime;
 
               LOG_TOPIC(ERR, Logger::STARTUP) << "child " << _clientPid
@@ -219,6 +227,8 @@ void SupervisorFeature::daemonize() {
 
       if (horrible) {
         result = EXIT_FAILURE;
+      } else {
+        result = EXIT_SUCCESS;
       }
     }
 
