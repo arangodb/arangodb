@@ -50,7 +50,8 @@ void Inception::gossip() {
   
   auto s = std::chrono::system_clock::now();
   std::chrono::seconds timeout(120);
-  size_t i = 0;
+  size_t j = 0;
+  bool complete = false;
 
   CONDITION_LOCKER(guard, _cv);
   
@@ -75,7 +76,7 @@ void Inception::gossip() {
     // gossip peers
     for (auto const& p : config.gossipPeers()) {
       if (p != config.endpoint()) {
-        std::string clientid = config.id() + std::to_string(i++);
+        std::string clientid = config.id() + std::to_string(j++);
         auto hf =
             std::make_unique<std::unordered_map<std::string, std::string>>();
         arangodb::ClusterComm::instance()->asyncRequest(
@@ -88,7 +89,7 @@ void Inception::gossip() {
     // pool entries
     for (auto const& pair : config.pool()) {
       if (pair.second != config.endpoint()) {
-        std::string clientid = config.id() + std::to_string(i++);
+        std::string clientid = config.id() + std::to_string(j++);
         auto hf =
             std::make_unique<std::unordered_map<std::string, std::string>>();
         arangodb::ClusterComm::instance()->asyncRequest(
@@ -99,7 +100,7 @@ void Inception::gossip() {
     }
 
     // don't panic
-    _cv.wait(100000);
+    _cv.wait(500000);
 
     // Timed out? :(
     if ((std::chrono::system_clock::now() - s) > timeout) {
@@ -114,8 +115,11 @@ void Inception::gossip() {
 
     // We're done
     if (config.poolComplete()) {
-      _agent->startConstituent();
-      break;
+      if (complete) {
+        _agent->startConstituent();
+        break;
+      }
+      complete = true;
     }
     
   }
