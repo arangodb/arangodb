@@ -22,18 +22,63 @@
 
 #include "SCC.h"
 #include "Pregel/VertexComputation.h"
+#include "Vocbase/vocbase.h"
+#include "Cluster/ClusterInfo.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
+static int64_t _shardCount(TRI_vocbase_t* vocbase, ShardID const& shard) {
+    SingleCollectionTransaction
+trx(StandaloneTransactionContext::Create(vocbase),
+                                    shard,
+                                    TRI_TRANSACTION_READ);
+
+    int res = trx.begin();
+    if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(res);
+    }
+    OperationResult opResult = trx.count(shard);
+    res = trx.finish(opResult.code);
+    if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION (res);
+    }
+    VPackSlice s = opResult.slice();
+    TRI_ASSERT(s.isNumber());
+    return s.getInt();
+}
+
 size_t SCCAlgorithm::estimatedVertexSize() const { return sizeof(int64_t); }
-/*
-struct GraphFormat : public GraphFormat<int64_t, int64_t> {
-    GraphFormat() {}
-    
+
+struct SCCGraphFormat : public GraphFormat<int64_t, int64_t> {
+  uint64_t currentId = 0;
+  public:
+     void willUseCollection(TRI_vocbase_t *vocbase, std::string const& shard, bool isEdgeCollection) override {
+       int64_t count = _shardCount(vocbase, shard);
+       currentId = ClusterInfo::instance()->uniqid(count);
+     }
+  IntegerGraphFormat(std::string const& field, int64_t vertexNull,
+                     int64_t edgeNull)
+      : _field(field), _vDefault(vertexNull), _eDefault(edgeNull) {}
+
+  size_t copyVertexData(VPackSlice document, void* targetPtr,
+                        size_t maxSize) const override {
+    VPackSlice val = document.get(_field);
+    *((int64_t*)targetPtr) = val.isInteger() ? val.getInt() : _vDefault;
+    return sizeof(int64_t);
+  }
+
+  size_t copyEdgeData(VPackSlice document, void* targetPtr,
+                      size_t maxSize) const override {
+    VPackSlice val = document.get(_field);
+    *((int64_t*)targetPtr) = val.isInteger() ? val.getInt() : _eDefault;
+    return sizeof(int64_t);
+  }
+
+  int64_t readVertexData(void* ptr) const override { return *((int64_t*)ptr); }
+  int64_t readEdgeData(void* ptr) const override { return *((int64_t*)ptr); }
 };
-*/
 
 std::shared_ptr<GraphFormat<int64_t, int64_t>> SCCAlgorithm::inputFormat()
     const {

@@ -95,25 +95,7 @@ void GraphStore<V, E>::cleanupReadTransactions() {
   _readTrxList.clear();
 }
 
-/*static int64_t _shardCount(ShardID const& shard, TRI_vocbase_t* vocbase) {
-    SingleCollectionTransaction
-trx(StandaloneTransactionContext::Create(vocbase),
-                                    shard,
-                                    TRI_TRANSACTION_READ);
-
-    int res = trx.begin();
-    if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(res);
-    }
-    OperationResult opResult = trx.count(shard);
-    res = trx.finish(opResult.code);
-    if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION (res);
-    }
-    VPackSlice s = opResult.slice();
-    TRI_ASSERT(s.isNumber());
-    return s.getInt();
-}*/
+/**/
 
 template <typename V, typename E>
 void GraphStore<V, E>::lookupVertices(
@@ -124,6 +106,7 @@ void GraphStore<V, E>::lookupVertices(
   //        return;// don't bother
   //   }
   //    uint64_t pregelId = ClusterInfo::instance()->uniqid(docCount);
+  graphFormat->willUseCollection(vocbase, vertexShard, false);
 
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(vocbase),
                                   vertexShard, TRI_TRANSACTION_READ);
@@ -179,21 +162,24 @@ void GraphStore<V, E>::lookupVertices(
 
 template <typename V, typename E>
 void GraphStore<V, E>::lookupEdges(
-    std::string vertexCollectionName, ShardID const& edgeShardID,
+    std::string vertexCollectionName, ShardID const& edgeShard,
     TRI_vocbase_t* vocbase,
     std::shared_ptr<GraphFormat<V, E>> const& graphFormat) {
+
+ graphFormat->willUseCollection(vocbase, edgeShard, true);
+
   std::unique_ptr<SingleCollectionTransaction> trx(
       new SingleCollectionTransaction(
-          StandaloneTransactionContext::Create(vocbase), edgeShardID,
+          StandaloneTransactionContext::Create(vocbase), edgeShard,
           TRI_TRANSACTION_READ));
   int res = trx->begin();
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up edges '%s'",
-                                  edgeShardID.c_str());
+                                  edgeShard.c_str());
   }
 
   auto info = std::make_unique<arangodb::traverser::EdgeCollectionInfo>(
-      trx.get(), edgeShardID, TRI_EDGE_OUT, StaticStrings::FromString, 0);
+      trx.get(), edgeShard, TRI_EDGE_OUT, StaticStrings::FromString, 0);
 
   for (auto& vertexEntry : _index) {
     // kann man strings besser verketten?
@@ -203,7 +189,7 @@ void GraphStore<V, E>::lookupEdges(
     if (cursor->failed()) {
       THROW_ARANGO_EXCEPTION_FORMAT(cursor->code,
                                     "while looking up edges '%s' from %s",
-                                    _from.c_str(), edgeShardID.c_str());
+                                    _from.c_str(), edgeShard.c_str());
     }
 
     vertexEntry._edgeDataOffset = _edges.size();

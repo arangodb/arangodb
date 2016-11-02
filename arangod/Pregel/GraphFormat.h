@@ -29,11 +29,13 @@
 #include <velocypack/velocypack-aliases.h>
 #include <velocypack/vpack.h>
 
+struct TRI_vocbase_t;
 namespace arangodb {
 namespace pregel {
 
 template <typename V, typename M>
 struct GraphFormat {
+  virtual void willUseCollection(TRI_vocbase_t *vocbase, std::string const& shard, bool isEdgeCollection) {}
   virtual size_t copyVertexData(VPackSlice document, void* targetPtr,
                                 size_t maxSize) const = 0;
   virtual size_t copyEdgeData(VPackSlice edgeDocument, void* targetPtr,
@@ -45,6 +47,7 @@ struct GraphFormat {
 class IntegerGraphFormat : public GraphFormat<int64_t, int64_t> {
   const std::string _field;
   const int64_t _vDefault, _eDefault;
+
 
  public:
   IntegerGraphFormat(std::string const& field, int64_t vertexNull,

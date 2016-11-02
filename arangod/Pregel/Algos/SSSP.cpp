@@ -55,8 +55,6 @@ struct SSSPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
     }
 };
 
-size_t SSSPAlgorithm::estimatedVertexSize() const { return sizeof(int64_t); }
-
 std::shared_ptr<GraphFormat<int64_t, int64_t>> SSSPAlgorithm::inputFormat()
     const {
   return std::make_shared<IntegerGraphFormat>("value", -1, 1);

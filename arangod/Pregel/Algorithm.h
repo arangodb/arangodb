@@ -46,7 +46,13 @@ struct Algorithm {
   // virtual bool isFixpointAlgorithm() const {return false;}
   virtual bool preserveTransactions() const { return false; }
 
-  virtual size_t estimatedVertexSize() const = 0;
+  virtual size_t estimatedVertexSize() const {
+    return sizeof(V);
+  };
+  virtual size_t estimatedEdgeSize() const {
+    return sizeof(E);
+  };
+
   virtual std::shared_ptr<GraphFormat<V, E>> inputFormat() const = 0;
   virtual std::shared_ptr<MessageFormat<M>> messageFormat() const = 0;
   virtual std::shared_ptr<MessageCombiner<M>> messageCombiner() const = 0;
