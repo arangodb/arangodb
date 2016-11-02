@@ -74,7 +74,7 @@ RestReplicationHandler::RestReplicationHandler(GeneralRequest* request,
 
 RestReplicationHandler::~RestReplicationHandler() {}
 
-RestHandler::status RestReplicationHandler::execute() {
+RestStatus RestReplicationHandler::execute() {
   // extract the request type
   auto const type = _request->requestType();
   auto const& suffix = _request->suffix();
@@ -94,7 +94,7 @@ RestHandler::status RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       if (isCoordinatorError()) {
-        return status::DONE;
+        return RestStatus::DONE;
       }
       handleCommandLoggerTickRanges();
     } else if (command == "logger-first-tick") {
@@ -102,7 +102,7 @@ RestHandler::status RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       if (isCoordinatorError()) {
-        return status::DONE;
+        return RestStatus::DONE;
       }
       handleCommandLoggerFirstTick();
     } else if (command == "logger-follow") {
@@ -110,7 +110,7 @@ RestHandler::status RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       if (isCoordinatorError()) {
-        return status::DONE;
+        return RestStatus::DONE;
       }
       handleCommandLoggerFollow();
     } else if (command == "determine-open-transactions") {
@@ -126,7 +126,7 @@ RestHandler::status RestReplicationHandler::execute() {
       }
     } else if (command == "barrier") {
       if (isCoordinatorError()) {
-        return status::DONE;
+        return RestStatus::DONE;
       }
       handleCommandBarrier();
     } else if (command == "inventory") {
@@ -146,7 +146,7 @@ RestHandler::status RestReplicationHandler::execute() {
       }
 
       if (isCoordinatorError()) {
-        return status::DONE;
+        return RestStatus::DONE;
       }
 
       if (type == rest::RequestType::POST) {
@@ -196,7 +196,7 @@ RestHandler::status RestReplicationHandler::execute() {
       }
 
       if (isCoordinatorError()) {
-        return status::DONE;
+        return RestStatus::DONE;
       }
 
       handleCommandSync();
@@ -206,7 +206,7 @@ RestHandler::status RestReplicationHandler::execute() {
       }
 
       if (isCoordinatorError()) {
-        return status::DONE;
+        return RestStatus::DONE;
       }
 
       handleCommandMakeSlave();
@@ -230,7 +230,7 @@ RestHandler::status RestReplicationHandler::execute() {
       }
 
       if (isCoordinatorError()) {
-        return status::DONE;
+        return RestStatus::DONE;
       }
 
       handleCommandApplierStart();
@@ -240,7 +240,7 @@ RestHandler::status RestReplicationHandler::execute() {
       }
 
       if (isCoordinatorError()) {
-        return status::DONE;
+        return RestStatus::DONE;
       }
 
       handleCommandApplierStop();
@@ -305,7 +305,7 @@ RestHandler::status RestReplicationHandler::execute() {
                     "invalid command");
     }
 
-    return status::DONE;
+    return RestStatus::DONE;
   }
 
 BAD_CALL:
@@ -317,7 +317,7 @@ BAD_CALL:
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
 
-  return status::DONE;
+  return RestStatus::DONE;
 }
 
 /// @brief comparator to sort collections
@@ -437,8 +437,7 @@ void RestReplicationHandler::handleCommandLoggerState() {
   // "server" part
   builder.add("server", VPackValue(VPackValueType::Object));
   builder.add("version", VPackValue(ARANGODB_VERSION));
-  builder.add("serverId",
-              VPackValue(std::to_string(ServerIdFeature::getId())));
+  builder.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId())));
   builder.close();
 
   // "clients" part
@@ -453,8 +452,7 @@ void RestReplicationHandler::handleCommandLoggerState() {
     TRI_GetTimeStampReplication(std::get<1>(it), &buffer[0], sizeof(buffer));
     builder.add("time", VPackValue(buffer));
 
-    builder.add("lastServedTick",
-                VPackValue(std::to_string(std::get<2>(it))));
+    builder.add("lastServedTick", VPackValue(std::to_string(std::get<2>(it))));
 
     builder.close();
   }
@@ -971,7 +969,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
 
   // and dump
   int res = TRI_DumpLogReplication(&dump, transactionIds, firstRegularTick,
-                                tickStart, tickEnd, false);
+                                   tickStart, tickEnd, false);
 
   if (res == TRI_ERROR_NO_ERROR) {
     bool const checkMore = (dump._lastFoundTick > 0 &&
@@ -996,18 +994,14 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
 
     // set headers
     _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
-                            checkMore ? "true" : "false");
-
+                           checkMore ? "true" : "false");
     _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
-                            StringUtils::itoa(dump._lastFoundTick));
-
+                           StringUtils::itoa(dump._lastFoundTick));
     _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
-                            StringUtils::itoa(state.lastCommittedTick));
-
+                           StringUtils::itoa(state.lastCommittedTick));
     _response->setHeaderNC(TRI_REPLICATION_HEADER_ACTIVE, "true");
-
     _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
-                            dump._fromTickIncluded ? "true" : "false");
+                           dump._fromTickIncluded ? "true" : "false");
 
     if (length > 0) {
       if (useVpp) {
@@ -1030,12 +1024,11 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
           TRI_StealStringBuffer(dump._buffer);
         }
       }
-    }
 
-    insertClient(dump._lastFoundTick);
+      insertClient(dump._lastFoundTick);
+    }
   }
 }
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run the command that determines which transactions were open at
 /// a given tick value
@@ -1074,9 +1067,8 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
       std::make_shared<StandaloneTransactionContext>(_vocbase);
 
   // initialize the dump container
-  TRI_replication_dump_t dump(transactionContext,
-                              static_cast<size_t>(determineChunkSize()),
-                              false, 0);
+  TRI_replication_dump_t dump(
+      transactionContext, static_cast<size_t>(determineChunkSize()), false, 0);
 
   // and dump
   int res = TRI_DetermineOpenTransactionsReplication(&dump, tickStart, tickEnd);
@@ -1099,10 +1091,10 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
     _response->setContentType(rest::ContentType::DUMP);
 
     _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
-                            dump._fromTickIncluded ? "true" : "false");
+                           dump._fromTickIncluded ? "true" : "false");
 
     _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
-                            StringUtils::itoa(dump._lastFoundTick));
+                           StringUtils::itoa(dump._lastFoundTick));
 
     if (length > 0) {
       // transfer ownership of the buffer contents
@@ -1133,8 +1125,8 @@ void RestReplicationHandler::handleCommandInventory() {
   // collections and indexes
   std::shared_ptr<VPackBuilder> collectionsBuilder;
   collectionsBuilder =
-      _vocbase->inventory(tick, &filterCollection, (void*)&includeSystem,
-                          true, RestReplicationHandler::sortCollections);
+      _vocbase->inventory(tick, &filterCollection, (void*)&includeSystem, true,
+                          RestReplicationHandler::sortCollections);
   VPackSlice const collections = collectionsBuilder->slice();
 
   TRI_ASSERT(collections.isArray());
@@ -1406,8 +1398,8 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
-  } 
-  
+  }
+
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
   result.add("result", VPackValue(true));
@@ -1454,7 +1446,7 @@ void RestReplicationHandler::handleCommandRestoreIndexes() {
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-    
+
   VPackBuilder result;
   result.openObject();
   result.add("result", VPackValue(true));
@@ -1735,9 +1727,9 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
 
   // create a dummy primary index
   {
-    arangodb::LogicalCollection* doc = nullptr;
+    arangodb::LogicalCollection* collection = nullptr;
     std::unique_ptr<arangodb::PrimaryIndex> primaryIndex(
-        new arangodb::PrimaryIndex(doc));
+        new arangodb::PrimaryIndex(collection));
     toMerge.openObject();
     primaryIndex->toVelocyPack(toMerge, false);
     toMerge.close();
@@ -1775,7 +1767,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
     errorMsg =
         "unable to create collection: " + std::string(TRI_errno_string(res));
   }
-    
+
   return res;
 }
 
@@ -2910,7 +2902,7 @@ void RestReplicationHandler::handleCommandFetchKeys() {
 
     if (keys) {
       collectionKeys->dumpKeys(resultBuilder, chunk,
-                                static_cast<size_t>(chunkSize));
+                               static_cast<size_t>(chunkSize));
     } else {
       bool success;
       std::shared_ptr<VPackBuilder> parsedIds =
@@ -2921,8 +2913,8 @@ void RestReplicationHandler::handleCommandFetchKeys() {
         return;
       }
       collectionKeys->dumpDocs(resultBuilder, chunk,
-                                static_cast<size_t>(chunkSize),
-                                parsedIds->slice());
+                               static_cast<size_t>(chunkSize),
+                               parsedIds->slice());
     }
 
     resultBuilder.close();
@@ -2930,7 +2922,7 @@ void RestReplicationHandler::handleCommandFetchKeys() {
     collectionKeys->release();
 
     generateResult(rest::ResponseCode::OK, resultBuilder.slice(),
-                    transactionContext);
+                   transactionContext);
     return;
   } catch (...) {
     collectionKeys->release();
@@ -3089,8 +3081,8 @@ void RestReplicationHandler::handleCommandDump() {
     dump._compat28 = true;
   }
 
-  int res = TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd,
-                                      withTicks);
+  int res =
+      TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, withTicks);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -3116,10 +3108,10 @@ void RestReplicationHandler::handleCommandDump() {
 
   // set headers
   _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
-                          (dump._hasMore ? "true" : "false"));
+                         (dump._hasMore ? "true" : "false"));
 
   _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
-                          StringUtils::itoa(dump._lastFoundTick));
+                         StringUtils::itoa(dump._lastFoundTick));
 
   // transfer ownership of the buffer contents
   response->body().set(dump._buffer);
@@ -3157,6 +3149,8 @@ void RestReplicationHandler::handleCommandMakeSlave() {
       VelocyPackHelper::getStringValue(body, "username", "");
   std::string const password =
       VelocyPackHelper::getStringValue(body, "password", "");
+  std::string const jwt =
+      VelocyPackHelper::getStringValue(body, "jwt", "");
   std::string const restrictType =
       VelocyPackHelper::getStringValue(body, "restrictType", "");
 
@@ -3170,6 +3164,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   config._database = database;
   config._username = username;
   config._password = password;
+  config._jwt = jwt;
   config._includeSystem =
       VelocyPackHelper::getBooleanValue(body, "includeSystem", true);
   config._requestTimeout = VelocyPackHelper::getNumericValue<double>(
@@ -3333,6 +3328,8 @@ void RestReplicationHandler::handleCommandSync() {
       VelocyPackHelper::getStringValue(body, "username", "");
   std::string const password =
       VelocyPackHelper::getStringValue(body, "password", "");
+  std::string const jwt =
+      VelocyPackHelper::getStringValue(body, "jwt", "");
   bool const verbose =
       VelocyPackHelper::getBooleanValue(body, "verbose", false);
   bool const includeSystem =
@@ -3373,6 +3370,7 @@ void RestReplicationHandler::handleCommandSync() {
   config._database = database;
   config._username = username;
   config._password = password;
+  config._jwt = jwt;
   config._includeSystem = includeSystem;
   config._verbose = verbose;
   config._useCollectionId = useCollectionId;
@@ -3385,7 +3383,7 @@ void RestReplicationHandler::handleCommandSync() {
 
   std::string errorMsg = "";
 
-  /*int res = */syncer.run(errorMsg, incremental);
+  /*int res = */ syncer.run(errorMsg, incremental);
 
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
@@ -3487,6 +3485,11 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
   VPackSlice const password = body.get("password");
   if (password.isString()) {
     config._password = password.copyString();
+  }
+  
+  VPackSlice const jwt = body.get("jwt");
+  if (jwt.isString()) {
+    config._jwt = jwt.copyString();
   }
 
   config._requestTimeout = VelocyPackHelper::getNumericValue<double>(
@@ -3658,9 +3661,9 @@ void RestReplicationHandler::handleCommandAddFollower() {
   }
   VPackSlice const body = parsedBody->slice();
   if (!body.isObject()) {
-    generateError(
-        rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "body needs to be an object with attributes 'followerId' and 'shard'");
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "body needs to be an object with attributes 'followerId' "
+                  "and 'shard'");
     return;
   }
   VPackSlice const followerId = body.get("followerId");
@@ -3705,9 +3708,9 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
   }
   VPackSlice const body = parsedBody->slice();
   if (!body.isObject()) {
-    generateError(
-        rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "body needs to be an object with attributes 'followerId' and 'shard'");
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "body needs to be an object with attributes 'followerId' "
+                  "and 'shard'");
     return;
   }
   VPackSlice const followerId = body.get("followerId");

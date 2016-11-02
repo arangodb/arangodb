@@ -140,6 +140,7 @@ add_library(${LIB_ARANGO} STATIC
   Basics/StaticStrings.cpp
   Basics/StringBuffer.cpp
   Basics/StringHeap.cpp
+  Basics/StringRef.cpp
   Basics/StringUtils.cpp
   Basics/Thread.cpp
   Basics/ThreadPool.cpp
@@ -164,7 +165,6 @@ add_library(${LIB_ARANGO} STATIC
   Basics/prime-numbers.cpp
   Basics/process-utils.cpp
   Basics/socket-utils.cpp
-  Basics/structures.cpp
   Basics/system-functions.cpp
   Basics/terminal-utils.cpp
   Basics/tri-strings.cpp
@@ -221,6 +221,11 @@ add_library(${LIB_ARANGO} STATIC
   Zip/zip.cpp
 )
 
+target_link_libraries(${LIB_ARANGO}
+    boost_system
+    boost_boost
+)
+
 ################################################################################
 ## LIB_ARANGO_V8
 ################################################################################
@@ -236,4 +241,9 @@ add_library(${LIB_ARANGO_V8} STATIC
   V8/v8-utils.cpp
   V8/v8-vpack.cpp
   V8/v8-environment.cpp
+)
+
+target_link_libraries(${LIB_ARANGO_V8}
+    boost_system
+    boost_boost
 )

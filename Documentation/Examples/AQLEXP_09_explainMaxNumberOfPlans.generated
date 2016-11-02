@@ -10,77 +10,70 @@ arangosh&gt; stmt.explain({ maxNumberOfPlans: <span class="hljs-number">1</span>
         <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span> 
       }, 
       { 
-        <span class="hljs-string">"type"</span> : <span class="hljs-string">"EnumerateCollectionNode"</span>, 
+        <span class="hljs-string">"type"</span> : <span class="hljs-string">"IndexNode"</span>, 
         <span class="hljs-string">"dependencies"</span> : [ 
           <span class="hljs-number">1</span> 
         ], 
-        <span class="hljs-string">"id"</span> : <span class="hljs-number">2</span>, 
-        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">101</span>, 
-        <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">100</span>, 
+        <span class="hljs-string">"id"</span> : <span class="hljs-number">9</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">51</span>, 
+        <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">50</span>, 
         <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span>, 
         <span class="hljs-string">"collection"</span> : <span class="hljs-string">"test"</span>, 
         <span class="hljs-string">"outVariable"</span> : { 
           <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"i"</span> 
         }, 
-        <span class="hljs-string">"random"</span> : <span class="hljs-literal">false</span> 
-      }, 
-      { 
-        <span class="hljs-string">"type"</span> : <span class="hljs-string">"CalculationNode"</span>, 
-        <span class="hljs-string">"dependencies"</span> : [ 
-          <span class="hljs-number">2</span> 
+        <span class="hljs-string">"indexes"</span> : [ 
+          { 
+            <span class="hljs-string">"id"</span> : <span class="hljs-string">"7251"</span>, 
+            <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
+            <span class="hljs-string">"fields"</span> : [ 
+              <span class="hljs-string">"value"</span> 
+            ], 
+            <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
+            <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span> 
+          } 
         ], 
-        <span class="hljs-string">"id"</span> : <span class="hljs-number">3</span>, 
-        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">201</span>, 
-        <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">100</span>, 
-        <span class="hljs-string">"expression"</span> : { 
-          <span class="hljs-string">"type"</span> : <span class="hljs-string">"compare &gt;"</span>, 
+        <span class="hljs-string">"condition"</span> : { 
+          <span class="hljs-string">"type"</span> : <span class="hljs-string">"n-ary or"</span>, 
           <span class="hljs-string">"subNodes"</span> : [ 
             { 
-              <span class="hljs-string">"type"</span> : <span class="hljs-string">"attribute access"</span>, 
-              <span class="hljs-string">"name"</span> : <span class="hljs-string">"value"</span>, 
+              <span class="hljs-string">"type"</span> : <span class="hljs-string">"n-ary and"</span>, 
               <span class="hljs-string">"subNodes"</span> : [ 
                 { 
-                  <span class="hljs-string">"type"</span> : <span class="hljs-string">"reference"</span>, 
-                  <span class="hljs-string">"name"</span> : <span class="hljs-string">"i"</span>, 
-                  <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span> 
+                  <span class="hljs-string">"type"</span> : <span class="hljs-string">"compare &gt;"</span>, 
+                  <span class="hljs-string">"subNodes"</span> : [ 
+                    { 
+                      <span class="hljs-string">"type"</span> : <span class="hljs-string">"attribute access"</span>, 
+                      <span class="hljs-string">"name"</span> : <span class="hljs-string">"value"</span>, 
+                      <span class="hljs-string">"subNodes"</span> : [ 
+                        { 
+                          <span class="hljs-string">"type"</span> : <span class="hljs-string">"reference"</span>, 
+                          <span class="hljs-string">"name"</span> : <span class="hljs-string">"i"</span>, 
+                          <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span> 
+                        } 
+                      ] 
+                    }, 
+                    { 
+                      <span class="hljs-string">"type"</span> : <span class="hljs-string">"value"</span>, 
+                      <span class="hljs-string">"value"</span> : <span class="hljs-number">97</span> 
+                    } 
+                  ] 
                 } 
               ] 
-            }, 
-            { 
-              <span class="hljs-string">"type"</span> : <span class="hljs-string">"value"</span>, 
-              <span class="hljs-string">"value"</span> : <span class="hljs-number">97</span> 
             } 
           ] 
         }, 
-        <span class="hljs-string">"outVariable"</span> : { 
-          <span class="hljs-string">"id"</span> : <span class="hljs-number">2</span>, 
-          <span class="hljs-string">"name"</span> : <span class="hljs-string">"1"</span> 
-        }, 
-        <span class="hljs-string">"canThrow"</span> : <span class="hljs-literal">false</span>, 
-        <span class="hljs-string">"expressionType"</span> : <span class="hljs-string">"simple"</span> 
-      }, 
-      { 
-        <span class="hljs-string">"type"</span> : <span class="hljs-string">"FilterNode"</span>, 
-        <span class="hljs-string">"dependencies"</span> : [ 
-          <span class="hljs-number">3</span> 
-        ], 
-        <span class="hljs-string">"id"</span> : <span class="hljs-number">4</span>, 
-        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">301</span>, 
-        <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">100</span>, 
-        <span class="hljs-string">"inVariable"</span> : { 
-          <span class="hljs-string">"id"</span> : <span class="hljs-number">2</span>, 
-          <span class="hljs-string">"name"</span> : <span class="hljs-string">"1"</span> 
-        } 
+        <span class="hljs-string">"reverse"</span> : <span class="hljs-literal">false</span> 
       }, 
       { 
         <span class="hljs-string">"type"</span> : <span class="hljs-string">"CalculationNode"</span>, 
         <span class="hljs-string">"dependencies"</span> : [ 
-          <span class="hljs-number">4</span> 
+          <span class="hljs-number">9</span> 
         ], 
         <span class="hljs-string">"id"</span> : <span class="hljs-number">5</span>, 
-        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">401</span>, 
-        <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">100</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">101</span>, 
+        <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">50</span>, 
         <span class="hljs-string">"expression"</span> : { 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"attribute access"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"value"</span>, 
@@ -100,65 +93,31 @@ arangosh&gt; stmt.explain({ maxNumberOfPlans: <span class="hljs-number">1</span>
         <span class="hljs-string">"expressionType"</span> : <span class="hljs-string">"attribute"</span> 
       }, 
       { 
-        <span class="hljs-string">"type"</span> : <span class="hljs-string">"SortNode"</span>, 
+        <span class="hljs-string">"type"</span> : <span class="hljs-string">"ReturnNode"</span>, 
         <span class="hljs-string">"dependencies"</span> : [ 
           <span class="hljs-number">5</span> 
         ], 
-        <span class="hljs-string">"id"</span> : <span class="hljs-number">6</span>, 
-        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">861.5170185988092</span>, 
-        <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">100</span>, 
-        <span class="hljs-string">"elements"</span> : [ 
-          { 
-            <span class="hljs-string">"inVariable"</span> : { 
-              <span class="hljs-string">"id"</span> : <span class="hljs-number">4</span>, 
-              <span class="hljs-string">"name"</span> : <span class="hljs-string">"3"</span> 
-            }, 
-            <span class="hljs-string">"ascending"</span> : <span class="hljs-literal">true</span> 
-          } 
-        ], 
-        <span class="hljs-string">"stable"</span> : <span class="hljs-literal">false</span> 
-      }, 
-      { 
-        <span class="hljs-string">"type"</span> : <span class="hljs-string">"CalculationNode"</span>, 
-        <span class="hljs-string">"dependencies"</span> : [ 
-          <span class="hljs-number">6</span> 
-        ], 
-        <span class="hljs-string">"id"</span> : <span class="hljs-number">7</span>, 
-        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">961.5170185988092</span>, 
-        <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">100</span>, 
-        <span class="hljs-string">"expression"</span> : { 
-          <span class="hljs-string">"type"</span> : <span class="hljs-string">"attribute access"</span>, 
-          <span class="hljs-string">"name"</span> : <span class="hljs-string">"value"</span>, 
-          <span class="hljs-string">"subNodes"</span> : [ 
-            { 
-              <span class="hljs-string">"type"</span> : <span class="hljs-string">"reference"</span>, 
-              <span class="hljs-string">"name"</span> : <span class="hljs-string">"i"</span>, 
-              <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span> 
-            } 
-          ] 
-        }, 
-        <span class="hljs-string">"outVariable"</span> : { 
-          <span class="hljs-string">"id"</span> : <span class="hljs-number">6</span>, 
-          <span class="hljs-string">"name"</span> : <span class="hljs-string">"5"</span> 
-        }, 
-        <span class="hljs-string">"canThrow"</span> : <span class="hljs-literal">false</span>, 
-        <span class="hljs-string">"expressionType"</span> : <span class="hljs-string">"attribute"</span> 
-      }, 
-      { 
-        <span class="hljs-string">"type"</span> : <span class="hljs-string">"ReturnNode"</span>, 
-        <span class="hljs-string">"dependencies"</span> : [ 
-          <span class="hljs-number">7</span> 
-        ], 
         <span class="hljs-string">"id"</span> : <span class="hljs-number">8</span>, 
-        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">1061.517018598809</span>, 
-        <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">100</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">151</span>, 
+        <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">50</span>, 
         <span class="hljs-string">"inVariable"</span> : { 
-          <span class="hljs-string">"id"</span> : <span class="hljs-number">6</span>, 
-          <span class="hljs-string">"name"</span> : <span class="hljs-string">"5"</span> 
+          <span class="hljs-string">"id"</span> : <span class="hljs-number">4</span>, 
+          <span class="hljs-string">"name"</span> : <span class="hljs-string">"3"</span> 
         } 
       } 
     ], 
-    <span class="hljs-string">"rules"</span> : [ ], 
+    <span class="hljs-string">"rules"</span> : [ 
+      <span class="hljs-string">"move-calculations-up"</span>, 
+      <span class="hljs-string">"move-filters-up"</span>, 
+      <span class="hljs-string">"remove-redundant-calculations"</span>, 
+      <span class="hljs-string">"remove-unnecessary-calculations"</span>, 
+      <span class="hljs-string">"move-calculations-up-2"</span>, 
+      <span class="hljs-string">"move-filters-up-2"</span>, 
+      <span class="hljs-string">"use-indexes"</span>, 
+      <span class="hljs-string">"remove-filter-covered-by-index"</span>, 
+      <span class="hljs-string">"use-index-for-sort"</span>, 
+      <span class="hljs-string">"remove-unnecessary-calculations-2"</span> 
+    ], 
     <span class="hljs-string">"collections"</span> : [ 
       { 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"test"</span>, 
@@ -183,13 +142,13 @@ arangosh&gt; stmt.explain({ maxNumberOfPlans: <span class="hljs-number">1</span>
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"i"</span> 
       } 
     ], 
-    <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">1061.517018598809</span>, 
-    <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">100</span> 
+    <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">151</span>, 
+    <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">50</span> 
   }, 
   <span class="hljs-string">"warnings"</span> : [ ], 
   <span class="hljs-string">"stats"</span> : { 
-    <span class="hljs-string">"rulesExecuted"</span> : <span class="hljs-number">0</span>, 
-    <span class="hljs-string">"rulesSkipped"</span> : <span class="hljs-number">26</span>, 
+    <span class="hljs-string">"rulesExecuted"</span> : <span class="hljs-number">25</span>, 
+    <span class="hljs-string">"rulesSkipped"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"plansCreated"</span> : <span class="hljs-number">1</span> 
   }, 
   <span class="hljs-string">"cacheable"</span> : <span class="hljs-literal">true</span> 

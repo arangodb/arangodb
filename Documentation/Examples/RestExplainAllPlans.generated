@@ -37,7 +37,7 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
           }, 
           <span class="hljs-string">"indexes"</span> : [ 
             { 
-              <span class="hljs-string">"id"</span> : <span class="hljs-string">"10620"</span>, 
+              <span class="hljs-string">"id"</span> : <span class="hljs-string">"9981"</span>, 
               <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
               <span class="hljs-string">"fields"</span> : [ 
                 <span class="hljs-string">"id"</span> 
@@ -95,7 +95,8 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
       ], 
       <span class="hljs-string">"rules"</span> : [ 
         <span class="hljs-string">"use-indexes"</span>, 
-        <span class="hljs-string">"remove-filter-covered-by-index"</span> 
+        <span class="hljs-string">"remove-filter-covered-by-index"</span>, 
+        <span class="hljs-string">"remove-unnecessary-calculations-2"</span> 
       ], 
       <span class="hljs-string">"collections"</span> : [ 
         { 

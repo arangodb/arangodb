@@ -76,7 +76,7 @@ typedef unsigned int GeoFix;
 typedef struct {
   double latitude;
   double longitude;
-  void* data;
+  uint64_t data;
 } GeoCoordinate;
 
 typedef struct {

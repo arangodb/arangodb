@@ -33,14 +33,14 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+// TRI_fulltext_doc_t must be capable of storing revision ids
+static_assert(sizeof(TRI_fulltext_doc_t) >= sizeof(TRI_voc_rid_t), "invalid size of TRI_fulltext_doc_t");
+
 namespace arangodb {
 
 class FulltextIndex final : public Index {
  public:
   FulltextIndex() = delete;
-
-  FulltextIndex(TRI_idx_iid_t, arangodb::LogicalCollection*, std::string const&,
-                int);
 
   FulltextIndex(TRI_idx_iid_t, LogicalCollection*,
                 arangodb::velocypack::Slice const&);
@@ -48,34 +48,32 @@ class FulltextIndex final : public Index {
   ~FulltextIndex();
 
  public:
-  IndexType type() const override final {
+  IndexType type() const override {
     return Index::TRI_IDX_TYPE_FULLTEXT_INDEX;
   }
   
-  bool allowExpansion() const override final { return false; }
+  bool allowExpansion() const override { return false; }
   
-  bool canBeDropped() const override final { return true; }
+  bool canBeDropped() const override { return true; }
 
-  bool isSorted() const override final { return false; }
+  bool isSorted() const override { return false; }
 
-  bool hasSelectivityEstimate() const override final { return false; }
+  bool hasSelectivityEstimate() const override { return false; }
 
-  size_t memory() const override final;
+  size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool) const override final;
+  void toVelocyPack(VPackBuilder&, bool) const override;
   // Uses default toVelocyPackFigures
 
-  bool matchesDefinition(VPackSlice const&) const override final;
+  bool matchesDefinition(VPackSlice const&) const override;
 
-  int insert(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
-             bool) override final;
+  int insert(arangodb::Transaction*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int remove(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
-             bool) override final;
+  int remove(arangodb::Transaction*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int unload() override final;
+  int unload() override;
 
-  int cleanup() override final;
+  int cleanup() override;
 
   bool isSame(std::string const& field, int minWordLength) const {
     std::string fieldString;
@@ -85,26 +83,25 @@ class FulltextIndex final : public Index {
 
   TRI_fts_index_t* internals() { return _fulltextIndex; }
 
- private:
-  std::vector<std::string> wordlist(struct TRI_doc_mptr_t const*);
+  static TRI_fulltext_doc_t fromRevision(TRI_voc_rid_t revisionId) {
+    return static_cast<TRI_fulltext_doc_t>(revisionId);
+  }
+
+  static TRI_voc_rid_t toRevision(TRI_fulltext_doc_t internal) {
+    return static_cast<TRI_voc_rid_t>(internal);
+  }
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
+  std::vector<std::string> wordlist(arangodb::velocypack::Slice const&);
+
+ private:
   /// @brief the indexed attribute (path)
-  //////////////////////////////////////////////////////////////////////////////
-
   std::vector<std::string> _attr;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief the fulltext index
-  //////////////////////////////////////////////////////////////////////////////
-
   TRI_fts_index_t* _fulltextIndex;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief minimum word length
-  //////////////////////////////////////////////////////////////////////////////
-
   int _minWordLength;
 };
 }

@@ -105,11 +105,11 @@ For details on the subsequent processing
 !SECTION Authentication
 
 Client authentication can be achieved by using the *Authorization* HTTP header in
-client requests. ArangoDB supports HTTP Basic authentication.
+client requests. ArangoDB supports authentication via HTTP Basic or JWT.
 
 Authentication is turned on by default, but can be turned off. To enforce
 authentication for incoming requested, the server must be started with the option
-[--server.authentication](../../Manual/Administration/Configuration/Arangod.html).
+[--server.authentication](../../Manual/Administration/Configuration/GeneralArangod.html).
 Please note that requests using the HTTP OPTIONS method will be answered by
 ArangoDB in any case, even if no authentication data is sent by the client or if
 the authentication data is wrong. This is required for handling CORS preflight
@@ -119,7 +119,8 @@ The response to an HTTP OPTIONS request will be generic and not expose any priva
 Please note that when authentication is turned on in ArangoDB, it will by
 default affect all incoming requests. 
 
-There is an additional option [--server.authentication-system-only](../../Manual/Administration/Configuration/Arangod.html)
+There is an additional option
+[--server.authentication-system-only](../../Manual/Administration/Configuration/GeneralArangod.html)
 to restrict authentication to requests to the ArangoDB internal APIs and the admin interface. 
 This option can be used to expose a public API built with ArangoDB to the outside
 world without the need for HTTP authentication, but to still protect the usage of the
@@ -144,7 +145,37 @@ to ArangoDB, ArangoDB will only send status code 401, but no *WWW-Authenticate* 
 This allows clients to implement credentials handling and bypassing the browser's
 built-in dialog.
 
-!SECTION Error Handling 
+!SUBSECTION Authentication via JWT
+
+To authenticate via JWT you must first obtain a JWT. To do so send a POST request to
+
+*/_open/auth*
+
+containing *username* and *password* JSON-encoded like so:
+
+{"username":"root","password":"rootPassword"}
+
+Upon success the endpoint will return a 200 OK and an answer containing the JWT in a JSON-
+encoded object like so:
+
+```
+{"jwt":"eyJhbGciOiJIUzI1NiI..x6EfI","must_change_password":false}
+```
+
+This JWT should then be used within the Authorization HTTP header in subsequent requests:
+
+```
+Authorization: bearer eyJhbGciOiJIUzI1NiI..x6EfI
+```
+
+Please note that the JWT will expire after 1 month and needs to be updated.
+
+ArangoDB uses a standard JWT authentication. The secret may either be set using
+`--server.jwt-secret` or will be randomly generated upon server startup.
+
+For more information on JWT please consult RFC7519 and https://jwt.io
+
+!SECTION Error Handling
 
 The following should be noted about how ArangoDB handles client errors in its
 HTTP layer:

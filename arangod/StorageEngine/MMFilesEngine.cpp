@@ -42,10 +42,8 @@
 #include "VocBase/vocbase.h"
 #include "Wal/LogfileManager.h"
 
-#ifdef ARANGODB_ENABLE_ROCKSDB
 #include "Indexes/RocksDBFeature.h"
 #include "Indexes/RocksDBIndex.h"
-#endif
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -122,7 +120,6 @@ std::string const MMFilesEngine::EngineName("MMFiles");
 // create the storage engine
 MMFilesEngine::MMFilesEngine(application_features::ApplicationServer* server)
     : StorageEngine(server, EngineName),
-      _iterateMarkersOnOpen(true),
       _isUpgrade(false),
       _maxTick(0) {
 }
@@ -159,28 +156,19 @@ void MMFilesEngine::start() {
   // test if the "databases" directory is present and writable
   verifyDirectories();
   
-  int res = TRI_ERROR_NO_ERROR;
-  
   // get names of all databases
   std::vector<std::string> names(getDatabaseNames());
 
   if (names.empty()) {
     // no databases found, i.e. there is no system database!
     // create a database for the system database
-    res = createDatabaseDirectory(TRI_NewTickServer(), TRI_VOC_SYSTEM_DATABASE);
-    _iterateMarkersOnOpen = false;
-  } else {
-    _iterateMarkersOnOpen = !application_features::ApplicationServer::getFeature<wal::LogfileManager>("LogfileManager")->hasFoundLastTick();
-  }
+    int res = createDatabaseDirectory(TRI_NewTickServer(), TRI_VOC_SYSTEM_DATABASE);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "unable to initialize databases: " << TRI_errno_string(res);
-    THROW_ARANGO_EXCEPTION(res);
-  }
-  
-  if (_iterateMarkersOnOpen) {
-    LOG(WARN) << "no shutdown info found. scanning datafiles for last tick...";
-  }
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG(ERR) << "unable to initialize databases: " << TRI_errno_string(res);
+      THROW_ARANGO_EXCEPTION(res);
+    }
+  } 
 }
 
 // stop the storage engine. this can be used to flush all data to disk,
@@ -327,12 +315,10 @@ void MMFilesEngine::getDatabases(arangodb::velocypack::Builder& result) {
       LOG(DEBUG) << "found dropped database in directory '" << directory << "'";
       LOG(DEBUG) << "removing superfluous database directory '" << directory << "'";
 
-#ifdef ARANGODB_ENABLE_ROCKSDB
       // delete persistent indexes for this database
       TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(
           basics::StringUtils::uint64(idSlice.copyString()));
       RocksDBFeature::dropDatabase(id);
-#endif
 
       dropDatabaseDirectory(directory);
       continue;
@@ -417,10 +403,6 @@ int MMFilesEngine::getCollectionsAndIndexes(TRI_vocbase_t* vocbase,
                                             arangodb::velocypack::Builder& result,
                                             bool wasCleanShutdown,
                                             bool isUpgrade) {
-  if (!wasCleanShutdown) {
-    LOG(TRACE) << "scanning all collection markers in database '" << vocbase->name() << "'";
-  }
-
   result.openArray();
 
   std::string const path = databaseDirectory(vocbase->id());
@@ -700,9 +682,7 @@ void MMFilesEngine::dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalColl
   unregisterCollectionPath(vocbase->id(), collection->cid());
   
   // delete persistent indexes    
-#ifdef ARANGODB_ENABLE_ROCKSDB
   RocksDBFeature::dropCollection(vocbase->id(), collection->cid());
-#endif
 
   // rename collection directory
   if (!collection->path().empty()) {
@@ -1224,6 +1204,7 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
       if (!wasCleanShutdown) {
         // iterating markers may be time-consuming. we'll only do it if
         // we have to
+        LOG(WARN) << "no shutdown info found. scanning all collection markers in collection '" << collection->name() << "', database '" << vocbase->name() << "'";
         findMaxTickInJournals(collection->path());
       }
 

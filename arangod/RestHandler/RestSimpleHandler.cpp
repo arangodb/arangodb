@@ -30,6 +30,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/TransactionContext.h"
@@ -54,7 +55,7 @@ RestSimpleHandler::RestSimpleHandler(
       _query(nullptr),
       _queryKilled(false) {}
 
-RestHandler::status RestSimpleHandler::execute() {
+RestStatus RestSimpleHandler::execute() {
   // extract the request type
   auto const type = _request->requestType();
 
@@ -64,7 +65,7 @@ RestHandler::status RestSimpleHandler::execute() {
         parseVelocyPackBody(&VPackOptions::Defaults, parsingSuccess);
 
     if (!parsingSuccess) {
-      return status::DONE;
+      return RestStatus::DONE;
     }
 
     VPackSlice body = parsedBody.get()->slice();
@@ -72,7 +73,7 @@ RestHandler::status RestSimpleHandler::execute() {
     if (!body.isObject()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting JSON object body");
-      return status::DONE;
+      return RestStatus::DONE;
     }
 
     std::string const& prefix = _request->requestPath();
@@ -86,15 +87,18 @@ RestHandler::status RestSimpleHandler::execute() {
                     "unsupported value for <operation>");
     }
 
-    return status::DONE;
+    return RestStatus::DONE;
   }
 
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-  return status::DONE;
+  return RestStatus::DONE;
 }
 
-bool RestSimpleHandler::cancel() { return cancelQuery(); }
+bool RestSimpleHandler::cancel() {
+  RestHandler::cancel();
+  return cancelQuery();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register the currently running query
@@ -227,10 +231,12 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
       if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
           (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCanceled())) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
+        generateError(GeneralResponse::responseCode(TRI_ERROR_REQUEST_CANCELED), TRI_ERROR_REQUEST_CANCELED);
+        return;
       }
 
-      THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+      generateError(GeneralResponse::responseCode(queryResult.code), queryResult.code, queryResult.details);
+      return;
     }
 
     {
@@ -278,8 +284,7 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
-  // TODO needs to generalized
-  auto response = dynamic_cast<HttpResponse*>(_response.get());
+  auto response = _response.get();
 
   if (response == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -338,10 +343,12 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
       if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
           (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCanceled())) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
+        generateError(GeneralResponse::responseCode(TRI_ERROR_REQUEST_CANCELED), TRI_ERROR_REQUEST_CANCELED);
+        return;
       }
 
-      THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+      generateError(GeneralResponse::responseCode(queryResult.code), queryResult.code, queryResult.details);
+      return;
     }
 
     size_t resultSize = 10;
@@ -356,7 +363,6 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
       VPackObjectBuilder guard(&result);
       resetResponse(rest::ResponseCode::OK);
 
-      // TODO this should be generalized
       response->setContentType(rest::ContentType::JSON);
 
       if (qResult.isArray()) {

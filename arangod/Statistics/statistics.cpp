@@ -127,8 +127,17 @@ static void ProcessRequestStatistics(TRI_request_statistics_t* statistics) {
   statistics->reset();
 
 // put statistics item back onto the freelist
-  bool ok = RequestFreeList.push(statistics);
-  TRI_ASSERT(ok);
+  int tries = 0;
+  while (++tries < 1000) {
+    if (RequestFreeList.push(statistics)) {
+      break;
+    }
+    usleep(10000);
+  }
+  if (tries > 1) {
+    LOG_TOPIC(WARN, Logger::REQUESTS) << "RequestFreeList.push failed "
+      << tries-1 << " times.";
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

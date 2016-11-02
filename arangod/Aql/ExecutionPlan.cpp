@@ -172,9 +172,6 @@ static ShortestPathOptions CreateShortestPathOptions(AstNode const* node) {
   return options;
 }
 
-
-
-
 /// @brief create the plan
 ExecutionPlan::ExecutionPlan(Ast* ast)
     : _ids(),

@@ -28,15 +28,14 @@
 #include "Basics/SmallVector.h"
 #include "VocBase/voc-types.h"
 
-#ifdef ARANGODB_ENABLE_ROCKSDB
 namespace rocksdb {
 class Transaction;
 }
-#endif
 
 namespace arangodb {
 class DocumentDitch;
 class LogicalCollection;
+class Transaction;
 
 namespace wal {
 struct DocumentOperation;
@@ -122,9 +121,7 @@ struct TRI_transaction_t {
   TRI_transaction_status_e _status;   // current status
   arangodb::SmallVector<TRI_transaction_collection_t*>::allocator_type::arena_type _arena; // memory for collections
   arangodb::SmallVector<TRI_transaction_collection_t*> _collections; // list of participating collections
-#ifdef ARANGODB_ENABLE_ROCKSDB
   rocksdb::Transaction* _rocksTransaction;
-#endif
   TRI_transaction_hint_t _hints;      // hints;
   int _nestingLevel;
   bool _allowImplicit;
@@ -255,13 +252,13 @@ int TRI_BeginTransaction(TRI_transaction_t*, TRI_transaction_hint_t, int);
 /// @brief commit a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CommitTransaction(TRI_transaction_t*, int);
+int TRI_CommitTransaction(arangodb::Transaction*, TRI_transaction_t*, int);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief abort a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AbortTransaction(TRI_transaction_t*, int);
+int TRI_AbortTransaction(arangodb::Transaction*, TRI_transaction_t*, int);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a transaction consists of a single operation

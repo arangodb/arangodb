@@ -43,9 +43,7 @@
 #include "Wal/Logfile.h"
 #include "Wal/LogfileManager.h"
 
-#ifdef ARANGODB_ENABLE_ROCKSDB
 #include "Indexes/RocksDBIndex.h"
-#endif
 
 using namespace arangodb;
 using namespace arangodb::wal;
@@ -388,9 +386,7 @@ int CollectorThread::collectLogfiles(bool& worked) {
         _collectorResultCondition.broadcast();
       }
 
-#ifdef ARANGODB_ENABLE_ROCKSDB
       RocksDBFeature::syncWal();
-#endif
 
       _logfileManager->setCollectionDone(logfile);
     } else {
@@ -556,14 +552,13 @@ size_t CollectorThread::numQueuedOperations() {
 /// @brief process a single marker in collector step 2
 void CollectorThread::processCollectionMarker(
     arangodb::SingleCollectionTransaction& trx,
-    LogicalCollection* colection, CollectorCache* cache,
+    LogicalCollection* collection, CollectorCache* cache,
     CollectorOperation const& operation) {
   auto const* walMarker = reinterpret_cast<TRI_df_marker_t const*>(operation.walPosition);
   TRI_ASSERT(walMarker != nullptr);
   TRI_ASSERT(reinterpret_cast<TRI_df_marker_t const*>(operation.datafilePosition));
   TRI_voc_size_t const datafileMarkerSize = operation.datafileMarkerSize;
   TRI_voc_fid_t const fid = operation.datafileId;
-
 
   TRI_df_marker_type_t const type = walMarker->getType();
 
@@ -578,21 +573,25 @@ void CollectorThread::processCollectionMarker(
     TRI_voc_rid_t revisionId = 0;
     Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
   
-    auto found = colection->primaryIndex()->lookupKey(&trx, keySlice);
+    bool wasAdjusted = false;
+    SimpleIndexElement element = collection->primaryIndex()->lookupKey(&trx, keySlice);
 
-    if (found == nullptr || found->revisionId() != revisionId ||
-        found->getMarkerPtr() != walMarker) {
+    if (element &&
+        element.revisionId() == revisionId) { 
+      // make it point to datafile now
+      TRI_df_marker_t const* newPosition = reinterpret_cast<TRI_df_marker_t const*>(operation.datafilePosition);
+      wasAdjusted = collection->updateRevisionConditional(element.revisionId(), walMarker, newPosition, fid, false); 
+    }
+      
+    if (wasAdjusted) {
+      // revision is still active
+      dfi.numberAlive++;
+      dfi.sizeAlive += DatafileHelper::AlignedSize<int64_t>(datafileMarkerSize);
+    } else {
       // somebody inserted a new revision of the document or the revision
       // was already moved by the compactor
       dfi.numberDead++;
       dfi.sizeDead += DatafileHelper::AlignedSize<int64_t>(datafileMarkerSize);
-    } else {
-      // we can safely update the master pointer's dataptr value
-      found->setVPackFromMarker(reinterpret_cast<TRI_df_marker_t const*>(operation.datafilePosition));
-      found->setFid(fid, false); // points to datafile now
-
-      dfi.numberAlive++;
-      dfi.sizeAlive += DatafileHelper::AlignedSize<int64_t>(datafileMarkerSize);
     }
   } else if (type == TRI_DF_MARKER_VPACK_REMOVE) {
     auto& dfi = cache->createDfi(fid);
@@ -606,9 +605,10 @@ void CollectorThread::processCollectionMarker(
     TRI_voc_rid_t revisionId = 0;
     Transaction::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
 
-    auto found = colection->primaryIndex()->lookupKey(&trx, keySlice);
+    SimpleIndexElement found = collection->primaryIndex()->lookupKey(&trx, keySlice);
 
-    if (found != nullptr && found->revisionId() > revisionId) {
+    if (found && 
+        found.revisionId() > revisionId) {
       // somebody re-created the document with a newer revision
       dfi.numberDead++;
       dfi.sizeDead += DatafileHelper::AlignedSize<int64_t>(datafileMarkerSize);

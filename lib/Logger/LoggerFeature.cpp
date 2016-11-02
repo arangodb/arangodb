@@ -35,24 +35,12 @@ using namespace arangodb::options;
 LoggerFeature::LoggerFeature(application_features::ApplicationServer* server,
                              bool threaded)
     : ApplicationFeature(server, "Logger"),
-      _output(),
-      _levels(),
-      _useLocalTime(false),
-      _prefix(""),
-      _file(),
-      _lineNumber(false),
-      _thread(false),
-      _performance(false),
-      _keepLogRotate(false),
-      _foregroundTty(true),
-      _forceDirect(false),
-      _supervisor(false),
-      _backgrounded(false),
       _threaded(threaded) {
   setOptional(false);
   requiresElevatedPrivileges(false);
 
   startsAfter("Version");
+
   if (threaded) {
     startsAfter("WorkMonitor");
   }
@@ -64,7 +52,7 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer* server,
 }
 
 LoggerFeature::~LoggerFeature() {
-  Logger::shutdown(true);
+  Logger::shutdown();
 }
 
 void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -88,6 +76,10 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--log.use-local-time",
                      "use local timezone instead of UTC",
                      new BooleanParameter(&_useLocalTime));
+
+  options->addOption("--log.use-microtime",
+                     "use microtime instead",
+                     new BooleanParameter(&_useMicrotime));
 
   options->addHiddenOption("--log.prefix",
                            "prefix log message with this string",
@@ -158,6 +150,7 @@ void LoggerFeature::prepare() {
 
   Logger::setLogLevel(_levels);
   Logger::setUseLocalTime(_useLocalTime);
+  Logger::setUseMicrotime(_useMicrotime);
   Logger::setShowLineNumber(_lineNumber);
   Logger::setShowThreadIdentifier(_thread);
   Logger::setOutputPrefix(_prefix);
@@ -175,7 +168,7 @@ void LoggerFeature::prepare() {
     LogAppender::addTtyAppender();
   }
 
-  if (_forceDirect) {
+  if (_forceDirect || _supervisor) {
     Logger::initialize(false);
   } else {
     Logger::initialize(_threaded);

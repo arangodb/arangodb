@@ -25,15 +25,12 @@
 #define ARANGOD_VOCBASE_LOGICAL_COLLECTION_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/DatafileStatisticsContainer.h"
-#include "VocBase/MasterPointers.h"
 #include "VocBase/PhysicalCollection.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Buffer.h>
 
-struct TRI_datafile_t;
 struct TRI_df_marker_t;
 
 namespace arangodb {
@@ -52,10 +49,13 @@ typedef std::string CollectionID;  // ID of a collection
 typedef std::string ShardID;       // ID of a shard
 typedef std::unordered_map<ShardID, std::vector<ServerID>> ShardMap;
 
+class CollectionRevisionsCache;
+struct DatafileStatisticsContainer;
 class Ditches;
 class FollowerInfo;
 class Index;
 class KeyGenerator;
+class ManagedDocumentResult;
 struct OperationOptions;
 class PhysicalCollection;
 class PrimaryIndex;
@@ -69,6 +69,11 @@ class LogicalCollection {
   LogicalCollection(TRI_vocbase_t*, arangodb::velocypack::Slice const&, bool isPhysical);
 
   virtual ~LogicalCollection();
+  
+  enum CollectionVersions {
+    VERSION_30 = 5,
+    VERSION_31 = 6
+  };
 
  protected:  // If you need a copy outside the class, use clone below.
   explicit LogicalCollection(LogicalCollection const&);
@@ -84,7 +89,9 @@ class LogicalCollection {
   }
 
   /// @brief hard-coded minimum version number for collections
-  static constexpr uint32_t minimumVersion() { return 5; } 
+  static constexpr uint32_t minimumVersion() { return VERSION_30; } 
+  /// @brief current version for collections
+  static constexpr uint32_t currentVersion() { return VERSION_31; } 
 
   /// @brief determine whether a collection name is a system collection name
   static inline bool IsSystemName(std::string const& name) {
@@ -96,6 +103,8 @@ class LogicalCollection {
 
   static bool IsAllowedName(arangodb::velocypack::Slice parameters);
   static bool IsAllowedName(bool isSystem, std::string const& name);
+
+  void ensureRevisionsCache();
 
   // TODO: MOVE TO PHYSICAL?  
   bool isFullyCollected();
@@ -172,15 +181,7 @@ class LogicalCollection {
   TRI_voc_tick_t maxTick() const { return _maxTick; }
   void maxTick(TRI_voc_tick_t value) { _maxTick = value; }
 
-  uint64_t numberDocuments() const { return _numberDocuments; }
-
-  // TODO: REMOVE THESE OR MAKE PRIVATE
-  void incNumberDocuments() { ++_numberDocuments; }
-
-  void decNumberDocuments() { 
-    TRI_ASSERT(_numberDocuments > 0); 
-    --_numberDocuments; 
-  }
+  uint64_t numberDocuments() const;
 
   // TODO this should be part of physical collection!
   size_t journalSize() const;
@@ -213,6 +214,8 @@ class LogicalCollection {
   // Get a reference to this KeyGenerator.
   // Caller is not allowed to free it.
   arangodb::KeyGenerator* keyGenerator() const;
+  
+  PhysicalCollection* getPhysical() const { return _physical.get(); }
 
   // SECTION: Indexes
   uint32_t indexBuckets() const;
@@ -239,10 +242,12 @@ class LogicalCollection {
   
   /// @brief a method to skip certain documents in AQL write operations,
   /// this is only used in the enterprise edition for smart graphs
-  virtual bool skipForAqlWrite(arangodb::velocypack::Slice document) const;
+  virtual bool skipForAqlWrite(arangodb::velocypack::Slice document,
+                               std::string const& key) const;
 
   // SECTION: Modification Functions
   int rename(std::string const&);
+  void unload();
   virtual void drop();
 
   virtual void setStatus(TRI_vocbase_col_status_e);
@@ -280,28 +285,13 @@ class LogicalCollection {
   }
   
   /// @brief increase dead stats for a datafile, if it exists
-  void increaseDeadStats(TRI_voc_fid_t fid, int64_t number, int64_t size) {
-    return getPhysical()->increaseDeadStats(fid, number, size);
-  }
-  
-  /// @brief increase dead stats for a datafile, if it exists
   void updateStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) {
     return getPhysical()->updateStats(fid, values);
   }
   
-  int applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
-                        std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) {
+  bool applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
+                         std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) {
     return getPhysical()->applyForTickRange(dataMin, dataMax, callback);
-  }
-  
-  /// @brief order a new master pointer
-  TRI_doc_mptr_t* requestMasterpointer() {
-    return getPhysical()->requestMasterpointer();
-  } 
-  
-  /// @brief release an existing master pointer
-  void releaseMasterpointer(TRI_doc_mptr_t* mptr) {
-    getPhysical()->releaseMasterpointer(mptr);
   }
   
   /// @brief disallow starting the compaction of the collection
@@ -315,11 +305,7 @@ class LogicalCollection {
   bool tryLockForCompaction() { return getPhysical()->tryLockForCompaction(); }
   void finishCompaction() { getPhysical()->finishCompaction(); }
 
-
-  PhysicalCollection* getPhysical() const {
-    TRI_ASSERT(_physical != nullptr);
-    return _physical;
-  }
+  void sizeHint(arangodb::Transaction* trx, int64_t hint);
 
   // SECTION: Indexes
 
@@ -354,23 +340,30 @@ class LogicalCollection {
 
   // SECTION: Index access (local only)
   
-  int read(arangodb::Transaction*, std::string const&, TRI_doc_mptr_t*, bool);
-  int read(arangodb::Transaction*, arangodb::StringRef const&, TRI_doc_mptr_t*, bool);
+  int read(arangodb::Transaction*, std::string const&, ManagedDocumentResult& result, bool);
+  int read(arangodb::Transaction*, arangodb::StringRef const&, ManagedDocumentResult& result, bool);
 
+  /// @brief processes a truncate operation (note: currently this only clears
+  /// the read-cache
+  int truncate(Transaction* trx);
   int insert(arangodb::Transaction*, arangodb::velocypack::Slice const,
-             TRI_doc_mptr_t*, arangodb::OperationOptions&, TRI_voc_tick_t&, bool);
+             ManagedDocumentResult& result, arangodb::OperationOptions&, TRI_voc_tick_t&, bool);
   int update(arangodb::Transaction*, arangodb::velocypack::Slice const,
-             TRI_doc_mptr_t*, arangodb::OperationOptions&, TRI_voc_tick_t&, bool,
-             VPackSlice&, TRI_doc_mptr_t&);
+             ManagedDocumentResult& result, arangodb::OperationOptions&, TRI_voc_tick_t&, bool,
+             TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
   int replace(arangodb::Transaction*, arangodb::velocypack::Slice const,
-             TRI_doc_mptr_t*, arangodb::OperationOptions&, TRI_voc_tick_t&, bool,
-             VPackSlice&, TRI_doc_mptr_t&);
+             ManagedDocumentResult& result, arangodb::OperationOptions&, TRI_voc_tick_t&, bool,
+             TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
   int remove(arangodb::Transaction*, arangodb::velocypack::Slice const,
              arangodb::OperationOptions&, TRI_voc_tick_t&, bool, 
-             VPackSlice&, TRI_doc_mptr_t&);
+             TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
+  /// @brief removes a document or edge, fast path function for database documents
+  int remove(arangodb::Transaction*, TRI_voc_rid_t oldRevisionId, arangodb::velocypack::Slice const,
+             arangodb::OperationOptions&, TRI_voc_tick_t&, bool);
 
   int rollbackOperation(arangodb::Transaction*, TRI_voc_document_operation_e, 
-                        TRI_doc_mptr_t*, TRI_doc_mptr_t const*);
+                        TRI_voc_rid_t oldRevisionId, arangodb::velocypack::Slice const& oldDoc,
+                        TRI_voc_rid_t newRevisionId, arangodb::velocypack::Slice const& newDoc);
 
   // TODO Make Private and IndexFiller as friend
   /// @brief initializes an index with all existing documents
@@ -381,12 +374,16 @@ class LogicalCollection {
   int beginWriteTimed(bool useDeadlockDetector, uint64_t, uint64_t);
   int endRead(bool useDeadlockDetector);
   int endWrite(bool useDeadlockDetector);
+  
+  bool readRevision(arangodb::Transaction*, ManagedDocumentResult& result, TRI_voc_rid_t revisionId);
+  bool readRevisionConditional(arangodb::Transaction*, ManagedDocumentResult& result, TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal);
 
- protected:
-  // SECTION: Private functions
+  void insertRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal);
+  void updateRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal);
+  bool updateRevisionConditional(TRI_voc_rid_t revisionId, TRI_df_marker_t const* oldPosition, TRI_df_marker_t const* newPosition, TRI_voc_fid_t newFid, bool isInWal);
+  void removeRevision(TRI_voc_rid_t revisionId, bool updateStats);
 
-  PhysicalCollection* createPhysical();
-
+ private:
   // SECTION: Index creation
 
   /// @brief creates the initial indexes for the collection
@@ -412,29 +409,28 @@ class LogicalCollection {
 
   // SECTION: Index access (local only)
   int lookupDocument(arangodb::Transaction*, VPackSlice const,
-                     TRI_doc_mptr_t*&);
+                     ManagedDocumentResult& result);
 
-  int checkRevision(arangodb::Transaction*, arangodb::velocypack::Slice const,
-                    arangodb::velocypack::Slice const);
+  int checkRevision(arangodb::Transaction*, TRI_voc_rid_t expected, TRI_voc_rid_t found);
 
-  int updateDocument(arangodb::Transaction*, TRI_voc_rid_t, TRI_doc_mptr_t*,
+  int updateDocument(arangodb::Transaction*, 
+                     TRI_voc_rid_t oldRevisionId, arangodb::velocypack::Slice const& oldDoc,
+                     TRI_voc_rid_t newRevisionId, arangodb::velocypack::Slice const& newDoc,
                      arangodb::wal::DocumentOperation&, arangodb::wal::Marker const*,
-                     TRI_doc_mptr_t*, bool&);
-  int insertDocument(arangodb::Transaction*, TRI_doc_mptr_t*,
+                     bool& waitForSync);
+  int insertDocument(arangodb::Transaction*, TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&,
                      arangodb::wal::DocumentOperation&, arangodb::wal::Marker const*,
-                     TRI_doc_mptr_t*, bool&);
+                     bool& waitForSync);
 
-  int insertPrimaryIndex(arangodb::Transaction*, TRI_doc_mptr_t*);
- public:
-  // FIXME needs to be private
-  int deletePrimaryIndex(arangodb::Transaction*, TRI_doc_mptr_t const*);
- protected:
+  int insertPrimaryIndex(arangodb::Transaction*, TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&);
+  
+  int deletePrimaryIndex(arangodb::Transaction*, TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&);
 
-  int insertSecondaryIndexes(arangodb::Transaction*, TRI_doc_mptr_t const*,
-                             bool);
+  int insertSecondaryIndexes(arangodb::Transaction*, TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&,
+                             bool isRollback);
 
-  int deleteSecondaryIndexes(arangodb::Transaction*, TRI_doc_mptr_t const*,
-                             bool);
+  int deleteSecondaryIndexes(arangodb::Transaction*, TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&,
+                             bool isRollback);
 
   // SECTION: Document pre commit preperation (only local)
 
@@ -445,7 +441,6 @@ class LogicalCollection {
       arangodb::velocypack::Slice const& fromSlice,
       arangodb::velocypack::Slice const& toSlice,
       bool isEdgeCollection,
-      uint64_t& hash,
       arangodb::velocypack::Builder& builder,
       bool isRestore);
 
@@ -479,10 +474,8 @@ class LogicalCollection {
 
   void increaseInternalVersion();
 
-  void toVelocyPackInObject(arangodb::velocypack::Builder& result) const;
-
  protected:
-  // SECTION: Private variables
+  void toVelocyPackInObject(arangodb::velocypack::Builder& result) const;
 
   // SECTION: Meta Information
   //
@@ -555,13 +548,12 @@ class LogicalCollection {
   size_t _cleanupIndexes;
   size_t _persistentIndexes;
   std::string _path;
-  PhysicalCollection* _physical;
 
- private:
+  std::unique_ptr<PhysicalCollection> _physical;
+  std::unique_ptr<CollectionRevisionsCache> _revisionsCache;
+
   // whether or not secondary indexes should be filled
   bool _useSecondaryIndexes;
-
-  uint64_t _numberDocuments;
 
   TRI_voc_tick_t _maxTick;
 

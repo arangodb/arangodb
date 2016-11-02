@@ -26,9 +26,11 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "Indexes/IndexLookupContext.h"
 #include "StorageEngine/MMFilesDatafileStatistics.h"
+#include "StorageEngine/MMFilesRevisionsCache.h"
 #include "VocBase/Ditch.h"
-#include "VocBase/MasterPointers.h"
+#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/PhysicalCollection.h"
 
 struct TRI_datafile_t;
@@ -40,6 +42,44 @@ class LogicalCollection;
 class MMFilesCollection final : public PhysicalCollection {
  friend class MMFilesCompactorThread;
  friend class MMFilesEngine;
+
+ public:
+  /// @brief state during opening of a collection
+  struct OpenIteratorState {
+    LogicalCollection* _collection;
+    TRI_voc_tid_t _tid;
+    TRI_voc_fid_t _fid;
+    std::unordered_map<TRI_voc_fid_t, DatafileStatisticsContainer*> _stats;
+    DatafileStatisticsContainer* _dfi;
+    arangodb::Transaction* _trx;
+    ManagedDocumentResult _mmdr;
+    IndexLookupContext _context;
+    uint64_t _deletions;
+    uint64_t _documents;
+    int64_t _initialCount;
+
+    OpenIteratorState(LogicalCollection* collection, arangodb::Transaction* trx) 
+        : _collection(collection),
+          _tid(0),
+          _fid(0),
+          _stats(),
+          _dfi(nullptr),
+          _trx(trx),
+          _mmdr(trx),
+          _context(trx, collection, &_mmdr, 1),
+          _deletions(0),
+          _documents(0),
+          _initialCount(-1) {
+      TRI_ASSERT(collection != nullptr);
+      TRI_ASSERT(trx != nullptr);
+    }
+
+    ~OpenIteratorState() {
+      for (auto& it : _stats) {
+        delete it.second;
+      }
+    }
+  };
 
   struct DatafileDescription {
     TRI_datafile_t const* _data;
@@ -64,8 +104,8 @@ class MMFilesCollection final : public PhysicalCollection {
   void figures(std::shared_ptr<arangodb::velocypack::Builder>&) override;
   
   // datafile management
-  int applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
-                        std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) override;
+  bool applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
+                         std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) override;
 
   /// @brief closes an open collection
   int close() override;
@@ -96,21 +136,10 @@ class MMFilesCollection final : public PhysicalCollection {
   int sealDatafile(TRI_datafile_t* datafile, bool isCompactor);
 
   /// @brief increase dead stats for a datafile, if it exists
-  void increaseDeadStats(TRI_voc_fid_t fid, int64_t number, int64_t size) override {
-    _datafileStatistics.increaseDead(fid, number, size);
-  }
-  
-  /// @brief increase dead stats for a datafile, if it exists
   void updateStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) override {
     _datafileStatistics.update(fid, values);
   }
-
-  /// @brief order a new master pointer
-  TRI_doc_mptr_t* requestMasterpointer() override;
-
-  /// @brief release an existing master pointer
-  void releaseMasterpointer(TRI_doc_mptr_t* mptr) override;
-  
+   
   /// @brief report extra memory used by indexes etc.
   size_t memory() const override;
 
@@ -127,11 +156,19 @@ class MMFilesCollection final : public PhysicalCollection {
   int iterateMarkersOnLoad(arangodb::Transaction* trx) override;
 
  private:
+  static int OpenIteratorHandleDocumentMarker(TRI_df_marker_t const* marker,
+                                              TRI_datafile_t* datafile,
+                                              OpenIteratorState* state);
+  static int OpenIteratorHandleDeletionMarker(TRI_df_marker_t const* marker,
+                                              TRI_datafile_t* datafile,
+                                              OpenIteratorState* state);
+  static bool OpenIterator(TRI_df_marker_t const* marker, OpenIteratorState* data, TRI_datafile_t* datafile);
+
   /// @brief create statistics for a datafile, using the stats provided
   void createStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) {
     _datafileStatistics.create(fid, values);
   }
-    
+  
   /// @brief iterates over a collection
   bool iterateDatafiles(std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb);
   
@@ -150,9 +187,16 @@ class MMFilesCollection final : public PhysicalCollection {
   bool iterateDatafilesVector(std::vector<TRI_datafile_t*> const& files,
                               std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb);
 
- private:
-  arangodb::MasterPointers _masterPointers;
+  MMFilesDocumentPosition lookupRevision(TRI_voc_rid_t revisionId) const;
 
+  uint8_t const* lookupRevisionVPack(TRI_voc_rid_t revisionId) const override;
+  uint8_t const* lookupRevisionVPackConditional(TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal) const override;
+  void insertRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal) override;
+  void updateRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal) override;
+  bool updateRevisionConditional(TRI_voc_rid_t revisionId, TRI_df_marker_t const* oldPosition, TRI_df_marker_t const* newPosition, TRI_voc_fid_t newFid, bool isInWal) override;
+  void removeRevision(TRI_voc_rid_t revisionId, bool updateStats) override;
+  
+ private:
   mutable arangodb::Ditches _ditches;
 
   arangodb::basics::ReadWriteLock _filesLock;
@@ -166,7 +210,9 @@ class MMFilesCollection final : public PhysicalCollection {
   
   MMFilesDatafileStatistics _datafileStatistics;
 
-  TRI_voc_rid_t _revision;
+  TRI_voc_rid_t _lastRevision;
+  
+  MMFilesRevisionsCache _revisionsCache;
 };
 
 }

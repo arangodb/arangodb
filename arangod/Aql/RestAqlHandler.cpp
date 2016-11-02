@@ -22,23 +22,25 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAqlHandler.h"
-#include "Aql/ClusterBlocks.h"
-#include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutionBlock.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
-#include "Basics/tri-strings.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Basics/VPackStringBufferAdapter.h"
-#include "Dispatcher/Dispatcher.h"
-#include "Dispatcher/DispatcherThread.h"
-#include "Logger/Logger.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
-#include "VocBase/ticks.h"
 
 #include <velocypack/Dumper.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include "Aql/ClusterBlocks.h"
+#include "Aql/ExecutionBlock.h"
+#include "Aql/ExecutionEngine.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
+#include "Basics/VPackStringBufferAdapter.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Basics/tri-strings.h"
+#include "Logger/Logger.h"
+#include "Rest/HttpRequest.h"
+#include "Rest/HttpResponse.h"
+#include "Scheduler/JobGuard.h"
+#include "Scheduler/JobQueue.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "VocBase/ticks.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -59,7 +61,7 @@ RestAqlHandler::RestAqlHandler(GeneralRequest* request,
 }
 
 // returns the queue name
-size_t RestAqlHandler::queue() const { return Dispatcher::AQL_QUEUE; }
+size_t RestAqlHandler::queue() const { return JobQueue::AQL_QUEUE; }
 
 bool RestAqlHandler::isDirect() const { return false; }
 
@@ -557,7 +559,7 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
 }
 
 // executes the handler
-RestHandler::status RestAqlHandler::execute() {
+RestStatus RestAqlHandler::execute() {
   // std::cout << "GOT INCOMING REQUEST: " <<
   // GeneralRequest::translateMethod(_request->requestType()) << ",
   // " << arangodb::ServerState::instance()->getId() << ": " <<
@@ -601,7 +603,6 @@ RestHandler::status RestAqlHandler::execute() {
     }
     case rest::RequestType::GET: {
       if (suffix.size() != 2) {
-        LOG(ERR) << "Unknown GET API";
         generateError(rest::ResponseCode::NOT_FOUND,
                       TRI_ERROR_HTTP_NOT_FOUND);
       } else {
@@ -628,7 +629,7 @@ RestHandler::status RestAqlHandler::execute() {
   // _request->fullUrl() << ": " << _response->responseCode() << ",
   // CONTENT-LENGTH: " << _response->contentLength() << "\n";
 
-  return status::DONE;
+  return RestStatus::DONE;
 }
 
 // dig out the query from ID, handle errors
@@ -687,27 +688,23 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
       VPackObjectBuilder guard(&answerBuilder);
       if (operation == "lock") {
         // Mark current thread as potentially blocking:
-        auto currentThread = DispatcherThread::current();
-
-        if (currentThread != nullptr) {
-          currentThread->block();
-        }
         int res = TRI_ERROR_INTERNAL;
-        try {
-          res = query->trx()->lockCollections();
-        } catch (...) {
-          LOG(ERR) << "lock lead to an exception";
-          if (currentThread != nullptr) {
-            currentThread->unblock();
+
+        {
+          JobGuard guard(SchedulerFeature::SCHEDULER);
+          guard.block();
+
+          try {
+            res = query->trx()->lockCollections();
+          } catch (...) {
+            LOG(ERR) << "lock lead to an exception";
+            generateError(rest::ResponseCode::SERVER_ERROR,
+                          TRI_ERROR_HTTP_SERVER_ERROR,
+                          "lock lead to an exception");
+            return;
           }
-          generateError(rest::ResponseCode::SERVER_ERROR,
-                        TRI_ERROR_HTTP_SERVER_ERROR,
-                        "lock lead to an exception");
-          return;
         }
-        if (currentThread != nullptr) {
-          currentThread->unblock();
-        }
+
         answerBuilder.add("error", VPackValue(res != TRI_ERROR_NO_ERROR));
         answerBuilder.add("code", VPackValue(res));
       } else if (operation == "getSome") {

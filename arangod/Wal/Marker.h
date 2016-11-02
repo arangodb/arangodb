@@ -62,7 +62,7 @@ class Marker {
   virtual void store(char* mem) const = 0;
 
   /// @brief a pointer to the beginning of the VPack payload
-  virtual void* vpack() const {
+  virtual uint8_t* vpack() const {
     // not implemented for base marker type
     TRI_ASSERT(false);
     return nullptr;
@@ -94,8 +94,8 @@ class MarkerEnvelope : public Marker {
   TRI_voc_fid_t fid() const override final { return _fid; }
  
   /// @brief a pointer the beginning of the VPack payload
-  void* vpack() const override final { 
-    return const_cast<void*>(reinterpret_cast<void const*>(reinterpret_cast<uint8_t const*>(_other) + DatafileHelper::VPackOffset(type()))); 
+  uint8_t* vpack() const override final { 
+    return const_cast<uint8_t*>(reinterpret_cast<uint8_t const*>(_other) + DatafileHelper::VPackOffset(type())); 
   }
 
   /// @brief a pointer to the beginning of the wrapped marker
@@ -155,7 +155,7 @@ class CrudMarker : public Marker {
   }
   
   /// @brief a pointer the beginning of the VPack payload
-  void* vpack() const override final { return const_cast<void*>(_data.startAs<void>()); }
+  uint8_t* vpack() const override final { return const_cast<uint8_t*>(_data.begin()); }
 
  private:
   TRI_voc_tid_t _transactionId;

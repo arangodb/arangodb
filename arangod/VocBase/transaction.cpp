@@ -25,6 +25,7 @@
 #include "Aql/QueryCache.h"
 #include "Logger/Logger.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/ticks.h"
 #include "Wal/DocumentOperation.h"
@@ -33,14 +34,12 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
 
-#ifdef ARANGODB_ENABLE_ROCKSDB
 #include "Indexes/RocksDBFeature.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/options.h>
 #include <rocksdb/utilities/optimistic_transaction_db.h>
 #include <rocksdb/utilities/transaction.h>
-#endif
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
@@ -172,12 +171,12 @@ static char const* StatusTransaction(const TRI_transaction_status_e status) {
 /// @brief free all operations for a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-static void FreeOperations(TRI_transaction_t* trx) {
+static void FreeOperations(arangodb::Transaction* activeTrx, TRI_transaction_t* trx) {
   bool const mustRollback = (trx->_status == TRI_TRANSACTION_ABORTED);
   bool const isSingleOperation = IsSingleOperationTransaction(trx);
-      
-  std::unordered_map<TRI_voc_fid_t, std::pair<int64_t, int64_t>> stats;
-
+     
+  TRI_ASSERT(activeTrx != nullptr);
+   
   for (auto& trxCollection : trx->_collections) {
     if (trxCollection->_operations == nullptr) {
       continue;
@@ -191,43 +190,22 @@ static void FreeOperations(TRI_transaction_t* trx) {
            it != trxCollection->_operations->rend(); ++it) {
         arangodb::wal::DocumentOperation* op = (*it);
 
-        op->revert();
+        try {
+          op->revert(activeTrx);
+        } catch (...) {
+          // TODO: decide whether we should rethrow here
+        }
+        delete op;
       }
     } else {
-      // update datafile statistics for all operations
-      // pair (number of dead markers, size of dead markers)
-      stats.clear();
-
+      // no rollback. simply delete all operations
       for (auto it = trxCollection->_operations->rbegin();
            it != trxCollection->_operations->rend(); ++it) {
         arangodb::wal::DocumentOperation* op = (*it);
 
-        if (op->type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
-            op->type == TRI_VOC_DOCUMENT_OPERATION_REPLACE ||
-            op->type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-          TRI_voc_fid_t fid = op->oldHeader.getFid();
-          auto it2 = stats.find(fid);
-
-          if (it2 == stats.end()) {
-            stats.emplace(fid, std::make_pair(1, static_cast<int64_t>(op->oldHeader.alignedMarkerSize())));
-          } else {
-            (*it2).second.first++;
-            (*it2).second.second += static_cast<int64_t>(op->oldHeader.alignedMarkerSize());
-          }
-        }
+        //op->done(); // set to done so dtor of DocumentOperation won't fail 
+        delete op;
       }
-
-      // now update the stats for all datafiles of the collection in one go
-      for (auto const& it : stats) {
-        trxCollection->_collection->increaseDeadStats(it.first, it.second.first, it.second.second);
-      }
-    }
-
-    for (auto it = trxCollection->_operations->rbegin();
-         it != trxCollection->_operations->rend(); ++it) {
-      arangodb::wal::DocumentOperation* op = (*it);
-
-      delete op;
     }
 
     if (mustRollback) {
@@ -657,7 +635,6 @@ static int WriteCommitMarker(TRI_transaction_t* trx) {
     TRI_IF_FAILURE("TransactionWriteCommitMarkerSegfault") { 
       TRI_SegfaultDebugging("crashing on commit");
     }
-#ifdef ARANGODB_ENABLE_ROCKSDB
 
     TRI_IF_FAILURE("TransactionWriteCommitMarkerNoRocksSync") { return TRI_ERROR_NO_ERROR; }
 
@@ -673,7 +650,6 @@ static int WriteCommitMarker(TRI_transaction_t* trx) {
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
-#endif
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
     LOG(WARN) << "could not save transaction commit marker in log: " << ex.what();
@@ -954,12 +930,11 @@ bool TRI_IsContainedCollectionTransaction(TRI_transaction_t* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AddOperationTransaction(TRI_transaction_t* trx,
+                                TRI_voc_rid_t revisionId,
                                 arangodb::wal::DocumentOperation& operation,
                                 arangodb::wal::Marker const* marker,
                                 bool& waitForSync) {
-  TRI_ASSERT(operation.header != nullptr);
-
-  LogicalCollection* collection = operation.collection;
+  LogicalCollection* collection = operation.collection();
   bool const isSingleOperationTransaction = IsSingleOperationTransaction(trx);
 
   if (HasHint(trx, TRI_TRANSACTION_HINT_RECOVERY)) {
@@ -1021,13 +996,11 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
       // some error occurred
       return slotInfo.errorCode;
     }
-#ifdef ARANGODB_ENABLE_ROCKSDB
     if (localWaitForSync) {
       // also sync RocksDB WAL
       RocksDBFeature::syncWal();
     }
-#endif
-    operation.tick = slotInfo.tick;
+    operation.setTick(slotInfo.tick);
     fid = slotInfo.logfileId;
     position = slotInfo.mem;
   } else {
@@ -1040,22 +1013,20 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
   TRI_ASSERT(fid > 0);
   TRI_ASSERT(position != nullptr);
 
-  if (operation.type == TRI_VOC_DOCUMENT_OPERATION_INSERT ||
-      operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
-      operation.type == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
+  if (operation.type() == TRI_VOC_DOCUMENT_OPERATION_INSERT ||
+      operation.type() == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
+      operation.type() == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
     // adjust the data position in the header
-    operation.header->setVPackFromMarker(reinterpret_cast<TRI_df_marker_t const*>(position)); 
+    uint8_t const* vpack = reinterpret_cast<uint8_t const*>(position) + arangodb::DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
+    TRI_ASSERT(fid > 0);
+    operation.setVPack(vpack);
+    collection->updateRevision(revisionId, vpack, fid, true); // always in WAL
   }
 
   TRI_IF_FAILURE("TransactionOperationAfterAdjust") { return TRI_ERROR_DEBUG; }
 
-  // set header file id
-  TRI_ASSERT(fid > 0);
-  operation.header->setFid(fid, true); // always in WAL
-
   if (isSingleOperationTransaction) {
     // operation is directly executed
-#ifdef ARANGODB_ENABLE_ROCKSDB
     if (trx->_rocksTransaction != nullptr) {
       auto status = trx->_rocksTransaction->Commit();
 
@@ -1063,21 +1034,12 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
         // TODO: what to do here?
       }
     }
-#endif
-    operation.handle();
+    operation.handled();
 
     arangodb::aql::QueryCache::instance()->invalidate(
         trx->_vocbase, collection->name());
 
     collection->increaseUncollectedLogfileEntries(1);
-
-    if (operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
-        operation.type == TRI_VOC_DOCUMENT_OPERATION_REPLACE ||
-        operation.type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-      // update datafile statistics for the old header
-      
-      collection->increaseDeadStats(operation.oldHeader.getFid(), 1, static_cast<int64_t>(operation.oldHeader.alignedMarkerSize()));
-    }
   } else {
     // operation is buffered and might be rolled back
     TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(
@@ -1100,11 +1062,12 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); 
     }
 
-    arangodb::wal::DocumentOperation* copy = operation.swap();
+    std::unique_ptr<arangodb::wal::DocumentOperation> copy(operation.swap());
     
     // should not fail because we reserved enough room above 
-    trxCollection->_operations->push_back(copy);
-    copy->handle();
+    trxCollection->_operations->push_back(copy.get());
+    copy->handled();
+    copy.release();
   }
    
   { 
@@ -1194,7 +1157,7 @@ int TRI_BeginTransaction(TRI_transaction_t* trx, TRI_transaction_hint_t hints,
 /// @brief commit a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CommitTransaction(TRI_transaction_t* trx, int nestingLevel) {
+int TRI_CommitTransaction(arangodb::Transaction* activeTrx, TRI_transaction_t* trx, int nestingLevel) {
   LOG_TRX(trx, nestingLevel) << "committing " << (trx->_type == TRI_TRANSACTION_READ ? "read" : "write") << " transaction";
 
   TRI_ASSERT(trx->_status == TRI_TRANSACTION_RUNNING);
@@ -1202,23 +1165,21 @@ int TRI_CommitTransaction(TRI_transaction_t* trx, int nestingLevel) {
   int res = TRI_ERROR_NO_ERROR;
 
   if (nestingLevel == 0) {
-#ifdef ARANGODB_ENABLE_ROCKSDB
     if (trx->_rocksTransaction != nullptr) {
       auto status = trx->_rocksTransaction->Commit();
 
       if (!status.ok()) {
         res = TRI_ERROR_INTERNAL;
-        TRI_AbortTransaction(trx, nestingLevel);
+        TRI_AbortTransaction(activeTrx, trx, nestingLevel);
         return res;
       }
     }
-#endif
 
     res = WriteCommitMarker(trx);
 
     if (res != TRI_ERROR_NO_ERROR) {
       // TODO: revert rocks transaction somehow
-      TRI_AbortTransaction(trx, nestingLevel);
+      TRI_AbortTransaction(activeTrx, trx, nestingLevel);
 
       // return original error
       return res;
@@ -1233,7 +1194,7 @@ int TRI_CommitTransaction(TRI_transaction_t* trx, int nestingLevel) {
       ClearQueryCache(trx);
     }
 
-    FreeOperations(trx);
+    FreeOperations(activeTrx, trx);
   }
 
   UnuseCollections(trx, nestingLevel);
@@ -1245,7 +1206,7 @@ int TRI_CommitTransaction(TRI_transaction_t* trx, int nestingLevel) {
 /// @brief abort and rollback a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AbortTransaction(TRI_transaction_t* trx, int nestingLevel) {
+int TRI_AbortTransaction(arangodb::Transaction* activeTrx, TRI_transaction_t* trx, int nestingLevel) {
   LOG_TRX(trx, nestingLevel) << "aborting " << (trx->_type == TRI_TRANSACTION_READ ? "read" : "write") << " transaction";
 
   TRI_ASSERT(trx->_status == TRI_TRANSACTION_RUNNING);
@@ -1257,7 +1218,7 @@ int TRI_AbortTransaction(TRI_transaction_t* trx, int nestingLevel) {
 
     UpdateTransactionStatus(trx, TRI_TRANSACTION_ABORTED);
 
-    FreeOperations(trx);
+    FreeOperations(activeTrx, trx);
   }
 
   UnuseCollections(trx, nestingLevel);
@@ -1284,9 +1245,7 @@ TRI_transaction_t::TRI_transaction_t(TRI_vocbase_t* vocbase, double timeout, boo
       _status(TRI_TRANSACTION_CREATED),
       _arena(),
       _collections{_arena}, // assign arena to vector 
-#ifdef ARANGODB_ENABLE_ROCKSDB
       _rocksTransaction(nullptr),
-#endif
       _hints(0),
       _nestingLevel(0), 
       _allowImplicit(true),
@@ -1307,13 +1266,9 @@ TRI_transaction_t::TRI_transaction_t(TRI_vocbase_t* vocbase, double timeout, boo
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_transaction_t::~TRI_transaction_t() {
-  if (_status == TRI_TRANSACTION_RUNNING) {
-    TRI_AbortTransaction(this, 0);
-  }
+  TRI_ASSERT(_status != TRI_TRANSACTION_RUNNING);
 
-#ifdef ARANGODB_ENABLE_ROCKSDB
   delete _rocksTransaction;
-#endif
 
   ReleaseCollections(this, 0);
 

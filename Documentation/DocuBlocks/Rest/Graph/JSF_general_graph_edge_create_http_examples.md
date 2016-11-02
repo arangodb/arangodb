@@ -45,6 +45,10 @@ Returned if no graph with this name, no edge collection or no edge with this id 
 
 @EXAMPLE_ARANGOSH_RUN{HttpGharialAddEdge}
   var examples = require("@arangodb/graph-examples/example-graph.js");
+~ examples.dropGraph("social");
+~ require("internal").db._drop("relation");
+~ require("internal").db._drop("female");
+~ require("internal").db._drop("male");
   examples.loadGraph("social");
   var url = "/_api/gharial/social/edge/relation";
   body = {

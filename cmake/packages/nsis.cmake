@@ -18,11 +18,12 @@ set(CPACK_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Installation/Windows/Template
 set(CPACK_PLUGIN_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Installation/Windows/Plugins")
 set(BITS 64)
 if (CMAKE_CL_64)
-  SET(CPACK_NSIS_INSTALL_ROOT "${PROGRAMFILES64}")
+  # this needs to remain a $string for the template:
+  SET(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES64")
   SET(ARANGODB_PACKAGE_ARCHITECTURE "win64")
   SET(BITS 64)
 else ()
-  SET(CPACK_NSIS_INSTALL_ROOT "${PROGRAMFILES}")
+  SET(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES")
   SET(ARANGODB_PACKAGE_ARCHITECTURE "win32")
   SET(BITS 32)
 endif ()
@@ -110,8 +111,15 @@ add_custom_target(package-arongodb-client-nsis
 
 list(APPEND PACKAGES_LIST package-arongodb-client-nsis)
 
-add_custom_target(copy_packages
+add_custom_target(copy_nsis_packages
   COMMAND cp *.exe ${PACKAGE_TARGET_DIR})
+
+list(APPEND COPY_PACKAGES_LIST copy_nsis_packages)
+
+add_custom_target(copy_zip_packages
+  COMMAND cp *.zip ${PACKAGE_TARGET_DIR})
+
+list(APPEND COPY_PACKAGES_LIST copy_zip_packages)
 
 add_custom_target(remove_packages
   COMMAND rm -f *.zip

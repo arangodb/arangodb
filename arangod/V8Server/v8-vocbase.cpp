@@ -52,8 +52,8 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
-#include "ReadCache/GlobalRevisionCache.h"
 #include "Rest/Version.h"
 #include "RestServer/ConsoleThread.h"
 #include "RestServer/DatabaseFeature.h"
@@ -939,8 +939,12 @@ static void JS_ReloadAuth(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("RELOAD_AUTH()");
   }
-
-  GeneralServerFeature::AUTH_INFO.outdate();
+  
+  auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>(
+    "Authentication");
+  if (authentication->isEnabled()) {
+    authentication->authInfo()->outdate();
+  }
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
@@ -2547,49 +2551,7 @@ static void JS_Endpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_ClearTimers(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
-  auto cb = [](uint64_t, VPackSlice const& slice) {
-    // LOG(ERR) << "GCING OBJECT " << slice.toJson();
-  };
-
-  GlobalRevisionCache cache(2 * 1024 * 1024, 32 * 1024 * 1024, cb);
-
-  auto f = [&cache]() {
-    VPackBuilder builder;
-    for (size_t i = 0; i < 10 * 1000 * 1000; ++i) {
-      builder.clear();
-      builder.add(VPackValue("der hans, der geht ins Klavier"));
-      VPackSlice slice = builder.slice();
-
-      RevisionReader reader =
-          cache.storeAndLease(0, slice.begin(), slice.byteSize());
-
-      if (i % 1000 == 0) {
-        LOG(ERR) << "CACHE STATS: " << cache.totalAllocated();
-      }
-      reader.revision();
-    }
-  };
-
-  auto gc = [&cache, &cb]() {
-    for (size_t i = 0; i < 10 * 1000 * 1000; ++i) {
-      // LOG(ERR) << "GC TRY " << i;
-      cache.garbageCollect();
-    }
-  };
-
-  std::vector<std::thread> threads;
-  threads.emplace_back(f);
-  threads.emplace_back(f);
-  threads.emplace_back(gc);
-  threads.emplace_back(f);
-  threads.emplace_back(gc);
-  threads.emplace_back(f);
-
-  for (auto& it : threads) {
-    it.join();
-  }
-
+  
   arangodb::basics::Timers::clear();
 
   TRI_V8_RETURN(v8::Undefined(isolate));
@@ -2639,6 +2601,11 @@ static void JS_TrustedProxies(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 static void JS_AuthenticationEnabled(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
+  auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>(
+    "Authentication");
+
+  TRI_ASSERT(authentication != nullptr);
+
   // mop: one could argue that this is a function because this might be
   // changable on the fly at some time but the sad truth is server startup
   // order
@@ -2647,7 +2614,7 @@ static void JS_AuthenticationEnabled(
   v8::HandleScope scope(isolate);
 
   v8::Handle<v8::Boolean> result =
-      v8::Boolean::New(isolate, GeneralServerFeature::authenticationEnabled());
+      v8::Boolean::New(isolate, authentication->isEnabled());
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -2720,6 +2687,18 @@ void TRI_V8ReloadRouting(v8::Isolate* isolate) {
       TRI_V8_ASCII_STRING(
           "require('internal').executeGlobalContextFunction('reloadRouting')"),
       TRI_V8_ASCII_STRING("reload routing"), false);
+}
+
+
+static void JS_IsEnterprise(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+#ifndef USE_ENTERPRISE
+  TRI_V8_RETURN(v8::False(isolate));
+#else
+  TRI_V8_RETURN(v8::True(isolate));
+#endif
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2909,6 +2888,10 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("TRUSTED_PROXIES"),
                                JS_TrustedProxies, true);
+  
+  TRI_AddGlobalFunctionVocbase(isolate, context,
+                               TRI_V8_ASCII_STRING("SYS_IS_ENTERPRISE"),
+                               JS_IsEnterprise);
   // .............................................................................
   // create global variables
   // .............................................................................

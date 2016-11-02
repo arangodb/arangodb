@@ -50,7 +50,7 @@
     colors: {
       hotaru: ['#364C4A', '#497C7F', '#92C5C0', '#858168', '#CCBCA5'],
       random1: ['#292F36', '#4ECDC4', '#F7FFF7', '#DD6363', '#FFE66D'],
-      jans: ['rgba(0,117,220,1)', 'rgba(153,63,0,1)', 'rgba(76,0,92,1)', 'rgba(25,25,25,1)', 'rgba(0,92,49,1)', 'rgba(43,206,72,1)', 'rgba(255,204,153,1)', 'rgba(128,128,128,1)', 'rgba(148,255,181,1)', 'rgba(143,124,0,1)', 'rgba(157,204,0,1)', 'rgba(194,0,136,1)', 'rgba(0,51,128,1)', 'rgba(255,164,5,1)', 'rgba(255,168,187,1)', 'rgba(66,102,0,1)', 'rgba(255,0,16,1)', 'rgba(94,241,242,1)', 'rgba(0,153,143,1)', 'rgba(224,255,102,1)', 'rgba(116,10,255,1)', 'rgba(153,0,0,1)', 'rgba(255,255,128,1)', 'rgba(255,255,0,1)', 'rgba(255,80,5,1)'],
+      jans: ['rgba(166, 109, 161, 1)', 'rgba(64, 74, 83, 1)', 'rgba(90, 147, 189, 1)', 'rgba(153,63,0,1)', 'rgba(76,0,92,1)', 'rgba(25,25,25,1)', 'rgba(0,92,49,1)', 'rgba(43,206,72,1)', 'rgba(255,204,153,1)', 'rgba(128,128,128,1)', 'rgba(148,255,181,1)', 'rgba(143,124,0,1)', 'rgba(157,204,0,1)', 'rgba(194,0,136,1)', 'rgba(0,51,128,1)', 'rgba(255,164,5,1)', 'rgba(255,168,187,1)', 'rgba(66,102,0,1)', 'rgba(255,0,16,1)', 'rgba(94,241,242,1)', 'rgba(0,153,143,1)', 'rgba(224,255,102,1)', 'rgba(116,10,255,1)', 'rgba(153,0,0,1)', 'rgba(255,255,128,1)', 'rgba(255,255,0,1)', 'rgba(255,80,5,1)'],
       gv: [
         '#68BDF6',
         '#6DCE9E',
@@ -259,24 +259,31 @@
       this.killCurrentGraph();
       // TODO add WebGL features
       this.renderGraph(this.graphData.modified, null, false, layout, 'canvas');
-
       if ($('#g_nodeColorByCollection').val() === 'true') {
         this.switchNodeColorByCollection(true);
       } else {
-        if (this.ncolor) {
-          this.updateColors(true, true, this.ncolor, this.ecolor);
+        if ($('#g_nodeColor').is(':disabled')) {
+          this.updateColors(true, true, null, null, true);
         } else {
-          this.updateColors(true, true, '#2ecc71', '#2ecc71');
+          if (this.ncolor) {
+            this.updateColors(true, true, this.ncolor, this.ecolor);
+          } else {
+            this.updateColors(true, true, '#2ecc71', '#2ecc71');
+          }
         }
       }
 
       if ($('#g_edgeColorByCollection').val() === 'true') {
         this.switchEdgeColorByCollection(true);
       } else {
-        if (this.ecolor) {
-          this.updateColors(true, true, this.ncolor, this.ecolor);
+        if ($('#g_edgeColor').is(':disabled')) {
+          this.updateColors(true, true, null, null, true);
         } else {
-          this.updateColors(true, true, '#2ecc71', '#2ecc71');
+          if (this.ecolor) {
+            this.updateColors(true, true, this.ncolor, this.ecolor);
+          } else {
+            this.updateColors(true, true, '#2ecc71', '#2ecc71');
+          }
         }
       }
     },
@@ -315,7 +322,7 @@
       }
     },
 
-    switchNodeColorByCollection: function (boolean) {
+    switchNodeColorByCollection: function (boolean, origin) {
       var self = this;
       self.buildCollectionColors();
       if (boolean) {
@@ -325,15 +332,19 @@
 
         self.currentGraph.refresh();
       } else {
-        if (this.ncolor) {
-          this.updateColors(true, null, this.ncolor, this.ecolor);
+        if (origin) {
+          this.updateColors(true, null, null, null, origin);
         } else {
-          this.updateColors(true, null, '#2ecc71', '#2ecc71');
+          if (this.ncolor) {
+            this.updateColors(true, null, this.ncolor, this.ecolor);
+          } else {
+            this.updateColors(true, null, '#2ecc71', '#2ecc71');
+          }
         }
       }
     },
 
-    switchEdgeColorByCollection: function (boolean) {
+    switchEdgeColorByCollection: function (boolean, origin) {
       var self = this;
       self.buildCollectionColors();
 
@@ -344,10 +355,14 @@
 
         self.currentGraph.refresh();
       } else {
-        if (this.ecolor) {
-          this.updateColors(null, true, this.ncolor, this.ecolor);
+        if (origin) {
+          this.updateColors(true, null, null, null, origin);
         } else {
-          this.updateColors(null, true, '#2ecc71', '#2ecc71');
+          if (this.ecolor) {
+            this.updateColors(null, true, this.ncolor, this.ecolor);
+          } else {
+            this.updateColors(null, true, '#2ecc71', '#2ecc71');
+          }
         }
       }
     },
@@ -455,24 +470,35 @@
             });
 
             _.each(obj.vertices, function (node) {
-              vertices[node._id] = {
-                id: node._id,
-                label: node._key,
-                // size: 0.3,
-                color: color,
-                x: Math.random(),
-                y: Math.random()
-              };
+              if (node !== null) {
+                vertices[node._id] = {
+                  id: node._id,
+                  label: node._key,
+                  size: 0.3,
+                  color: color,
+                  x: Math.random(),
+                  y: Math.random()
+                };
+              }
             });
           }
         });
 
+        var nodeIds = [];
         _.each(vertices, function (node) {
           returnObj.nodes.push(node);
+          nodeIds.push(node.id);
         });
 
         _.each(edges, function (edge) {
-          returnObj.edges.push(edge);
+          if (nodeIds.includes(edge.source) && nodeIds.includes(edge.target)) {
+            returnObj.edges.push(edge);
+          }
+          /* how to handle not correct data?
+          else {
+            console.log('target to from is missing');
+          }
+          */
         });
       } else if (type === 'array') {
         _.each(data, function (edge) {
@@ -823,8 +849,6 @@
 
     addNode: function () {
       var self = this;
-      var x = self.addNodeX / 100;
-      var y = self.addNodeY / 100;
 
       var collectionId = $('.modal-body #new-node-collection-attr').val();
       var key = $('.modal-body #new-node-key-attr').last().val();
@@ -839,13 +863,17 @@
             label: id.split('/')[1] || '',
             size: self.graphConfig.nodeSize || 15,
             color: self.graphConfig.nodeColor || self.ncolor || '#2ecc71',
-            x: x,
-            y: y
+            originalColor: self.graphConfig.nodeColor || self.ncolor || '#2ecc71',
+            x: self.addNodeX + self.currentGraph.camera.x,
+            y: self.addNodeY + self.currentGraph.camera.y
           });
 
           window.modalView.hide();
           // rerender graph
           self.currentGraph.refresh();
+
+          // move camera to added node
+          self.cameraToNode(self.currentGraph.graph.nodes(id));
         }
       };
 
@@ -1071,7 +1099,7 @@
       }
     },
 
-    updateColors: function (nodes, edges, ncolor, ecolor) {
+    updateColors: function (nodes, edges, ncolor, ecolor, origin) {
       var combinedName = frontendConfig.db + '_' + this.name;
       var self = this;
 
@@ -1088,7 +1116,11 @@
             self.graphConfig = data.toJSON().graphs[combinedName];
             try {
               self.currentGraph.graph.nodes().forEach(function (n) {
-                n.color = ncolor;
+                if (origin) {
+                  n.color = n.sortColor;
+                } else {
+                  n.color = ncolor;
+                }
               });
             } catch (e) {
               self.graphNotInitialized = true;
@@ -1099,7 +1131,11 @@
           if (edges === true) {
             try {
               self.currentGraph.graph.edges().forEach(function (e) {
-                e.color = ecolor;
+                if (origin) {
+                  e.color = e.sortColor;
+                } else {
+                  e.color = ecolor;
+                }
               });
             } catch (ignore) {
               self.graphNotInitialized = true;
@@ -1533,7 +1569,7 @@
         } else if (self.algorithm === 'fruchtermann') {
           sigma.layouts.fruchtermanReingold.start(self.currentGraph);
           self.currentGraph.refresh();
-          // self.cameraToNode(origin);
+          self.cameraToNode(origin, 1000);
         } else if (self.algorithm === 'noverlap') {
           self.startLayout(true, origin); // TODO: tmp bugfix, rerender with noverlap currently not possible
           // self.currentGraph.startNoverlap();
@@ -1541,27 +1577,30 @@
       }
     },
 
-    /*
-    cameraToNode: function (node) {
+    cameraToNode: function (node, timeout) {
       var self = this;
-      console.log(node);
 
-      self.currentGraph.cameras[0].goTo({
-      x: node['read_cam0:x'],
-      y: node['read_cam0:y']
-      });
-          /*
-          sigma.misc.animation.camera(
-          self.currentGraph.camera,
-          {
-      x: node[self.currentGraph.camera.readPrefix + 'x'],
-      y: node[self.currentGraph.camera.readPrefix + 'y'],
-      ratio: 1
-      },
-      {duration: self.currentGraph.settings('animationsTime') || 300}
-      );
+      if (typeof node === 'string') {
+        node = self.currentGraph.graph.nodes(node);
+      }
+
+      var animateFunc = function (node) {
+        sigma.misc.animation.camera(self.currentGraph.camera, {
+          x: node.x,
+          y: node.y
+        }, {
+          duration: 1000
+        });
+      };
+
+      if (timeout) {
+        window.setTimeout(function () {
+          animateFunc(node);
+        }, timeout);
+      } else {
+        animateFunc(node);
+      }
     },
-    */
 
     drawLine: function (e) {
       var context = window.App.graphViewer.contextState;
@@ -1782,7 +1821,7 @@
         defaultNodeBorderColor: '#8c8c8c',
         doubleClickEnabled: false,
         minNodeSize: 5,
-        labelThreshold: 10,
+        labelThreshold: 9,
         maxNodeSize: 15,
         batchEdgesDrawing: true,
         minEdgeSize: 1,
@@ -2011,9 +2050,12 @@
             } else {
               // stage menu
               if (!$('#nodeContextMenu').is(':visible')) {
-                var offset = $('#graph-container').offset();
-                self.addNodeX = sigma.utils.getX(e) - offset.left / 2;
-                self.addNodeY = sigma.utils.getY(e) - offset.top / 2;
+                // var offset = $('#graph-container').offset();
+                self.addNodeX = e.data.captor.x;
+                self.addNodeY = e.data.captor.y;
+                // self.calculateAddNodePosition(self.cursorX, self.cursorY);
+                // self.addNodeX = sigma.utils.getX(e) - offset.left / 2;
+                // self.addNodeY = sigma.utils.getY(e) - offset.top / 2;
                 // self.addNodeX = e.data.captor.x;
                 // self.addNodeY = e.data.captor.y;
                 self.createContextMenu(e);
@@ -2126,32 +2168,41 @@
         var style2 = 'color: rgb(64, 74, 83); cursor: pointer; position: absolute; right: 30px; bottom: 40px; z-index: 9999;';
 
         if (self.aqlMode) {
-          style2 = 'color: rgb(64, 74, 83); cursor: pointer; position: absolute; right: 30px; margin-top: -30px;';
+          style2 = 'color: rgb(64, 74, 83); cursor: pointer; position: absolute; right: 30px; margin-top: 10px; margin-right: -15px';
         }
 
-        $('#graph-container').append(
+        $('#graph-container').after(
           '<div id="toggleForce" style="' + style2 + '">' +
             '<i style="margin-right: 5px;" class="fa fa-pause"></i><span> Stop layout</span>' +
-              '</div>'
+          '</div>'
         );
         self.startLayout();
 
         // suggestion rendering time
-        var duration = graph.nodes.length;
+        var duration = 250;
+        var adjust = 500;
+        if (graph.nodes) {
+          duration = graph.nodes.length;
+          if (aqlMode) {
+            if (duration < 250) {
+              duration = 250;
+            } else {
+              duration += adjust;
+            }
+          } else {
+            if (duration <= 250) {
+              duration = 500;
+            }
+            duration += adjust;
+          }
+        }
 
-        if (aqlMode) {
-          if (duration < 250) {
-            duration = 250;
-          }
-        } else {
-          if (duration <= 250) {
-            duration = 500;
-          }
+        if (graph.empty) {
+          arangoHelper.arangoNotification('Graph', 'Your graph is empty. Click inside the white window to create your first node.');
         }
 
         window.setTimeout(function () {
           self.stopLayout();
-          self.reInitDragListener();
         }, duration);
       } else if (self.algorithm === 'fruchtermann') {
         // Start the Fruchterman-Reingold algorithm:
@@ -2245,6 +2296,11 @@
     reInitDragListener: function () {
       var self = this;
 
+      if (this.dragListener !== undefined) {
+        sigma.plugins.killDragNodes(this.currentGraph);
+        this.dragListener = {};
+      }
+
       // drag nodes listener
       this.dragListener = sigma.plugins.dragNodes(this.currentGraph, this.currentGraph.renderers[0]);
 
@@ -2323,7 +2379,7 @@ $('#deleteNodes').remove();
 
           if (origin) {
             self.currentGraph.refresh({ skipIndexation: true });
-            // self.cameraToNode(origin);
+            // self.cameraToNode(origin, 1000);
           }
         }, 500);
       }
@@ -2333,8 +2389,7 @@ $('#deleteNodes').remove();
       this.layouting = true;
       if (this.aqlMode) {
         this.currentGraph.startForceAtlas2({
-          worker: true,
-          edgeWeightInfluence: 2
+          worker: true
         });
       } else {
         this.currentGraph.startForceAtlas2({

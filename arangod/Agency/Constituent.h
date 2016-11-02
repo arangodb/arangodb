@@ -25,8 +25,8 @@
 #define ARANGOD_CONSENSUS_CONSTITUENT_H 1
 
 #include "AgencyCommon.h"
-#include "AgentConfiguration.h"
 
+#include "AgentConfiguration.h"
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
@@ -42,52 +42,55 @@ namespace consensus {
 
 class Agent;
 
-/// @brief RAFT leader election
-class Constituent : public arangodb::Thread {
+// RAFT leader election
+class Constituent : public Thread {
  public:
-  /// @brief Default ctor
   Constituent();
 
-  /// @brief Clean up and exit election
+  // clean up and exit election
   virtual ~Constituent();
 
-  /// @brief Configure with agent's configuration
+  // Configure with agent's configuration
   void configure(Agent*);
 
-  /// @brief Current term
+  // Current term
   term_t term() const;
 
-  /// @brief Get current role
+  // Get current role
   role_t role() const;
 
-  /// @brief Are we leading?
+  // Are we leading?
   bool leading() const;
 
-  /// @brief Are we following?
+  // Are we following?
   bool following() const;
 
-  /// @brief Are we running for leadership?
+  // Are we running for leadership?
   bool running() const;
 
-  /// @brief Called by REST handler
-  bool vote(term_t, std::string, index_t, term_t, bool appendEntries = false);
+  // Called by REST handler
+  bool vote(term_t, std::string, index_t, term_t);
 
-  /// @brief My daily business
+  // Check leader
+  bool checkLeader(term_t, std::string, index_t, term_t);
+
+  // My daily business
   void run() override final;
 
-  /// @brief Who is leading
+  // Who is leading
   std::string leaderID() const;
 
-  /// @brief Configuration
+  // Configuration
   config_t const& config() const;
 
-  /// @brief Become follower
+  // Become follower
   void follow(term_t);
+  void followNoLock(term_t);
 
-  /// @brief Agency size
+  // Agency size
   size_t size() const;
 
-  /// @brief Orderly shutdown of thread
+  // Orderly shutdown of thread
   void beginShutdown() override;
 
   bool start(TRI_vocbase_t* vocbase, aql::QueryRegistry*);
@@ -95,47 +98,51 @@ class Constituent : public arangodb::Thread {
   friend class Agent;
 
  private:
-  /// @brief update leaderId and term if inactive
+  // update leaderId and term if inactive
   void update(std::string const&, term_t);
 
-  /// @brief set term to new term
+  // set term to new term
   void term(term_t);
+  void termNoLock(term_t);
 
-  /// @brief Agency endpoints
+  // Agency endpoints
   std::vector<std::string> const& endpoints() const;
 
-  /// @brief Endpoint of agent with id
+  // Endpoint of agent with id
   std::string endpoint(std::string) const;
 
-  /// @brief Run for leadership
+  // Run for leadership
   void candidate();
 
-  /// @brief Become leader
-  void lead(std::map<std::string, bool> const& = std::map<std::string, bool>());
+  // Become leader
+  void lead(term_t,
+            std::map<std::string, bool> const& = std::map<std::string, bool>());
 
-  /// @brief Call for vote (by leader or candidates after timeout)
+  // Call for vote (by leader or candidates after timeout)
   void callElection();
 
-  /// @brief Count my votes
+  // Count my votes
   void countVotes();
 
-  /// @brief Wait for sync
+  // Wait for sync
   bool waitForSync() const;
 
-  /// @brief Sleep for how long
+  // Sleep for how long
   duration_t sleepFor(double, double);
 
   TRI_vocbase_t* _vocbase;
   aql::QueryRegistry* _queryRegistry;
 
-  term_t _term;            /**< @brief term number */
-  std::atomic<bool> _cast; /**< @brief cast a vote this term */
+  term_t _term;            // term number
+  bool _cast;              // cast a vote this term
 
-  std::string _leaderID; /**< @brief Current leader */
-  std::string _id;       /**< @brief My own id */
+  std::string _leaderID; // Current leader
+  std::string _id;       // My own id
 
-  role_t _role;  /**< @brief My role */
-  Agent* _agent; /**< @brief My boss */
+  double _lastHeartbeatSeen;
+
+  role_t _role;  // My role
+  Agent* _agent; // My boss
   std::string _votedFor;
 
   arangodb::basics::ConditionVariable _cv;  // agency callbacks

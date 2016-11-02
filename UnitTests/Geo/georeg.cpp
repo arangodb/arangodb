@@ -198,7 +198,7 @@ void coonum(GeoCoordinate * gc, int num)
     j=num;
     gc->latitude=-42.23994323;
     gc->longitude=-53.40029372;
-    gc->data=&ix[num%997];
+    gc->data=(uint64_t) &ix[num%997];
     for(i=1;i<30;i++)
     {
         lat=0.0;  
@@ -244,7 +244,7 @@ void coonum(GeoCoordinate * gc, int num)
 void litnum(GeoCoordinate * gc, int num)
 {
     coonum(gc,num);
-    gc->data=&ix[num%97];
+    gc->data=(uint64_t) &ix[num%97];
     return;
 }
 
@@ -288,7 +288,7 @@ BOOST_AUTO_TEST_CASE (tst_geo1000) {
   {
       gcp.latitude = la;
       gcp.longitude= lo;
-      gcp.data     = &ix[j];
+      gcp.data     = (uint64_t) &ix[j];
       r = GeoIndex_insert(gi,&gcp);
       icheck(1000,0,r);
       la+=19.5396157761;
@@ -360,7 +360,7 @@ for(i=0;i<50;i++)
 {
     gcp.latitude  = 90.0;
     gcp.longitude = 180.0;
-    gcp.data = ix + i;
+    gcp.data = (uint64_t) (ix + i);
     r = GeoIndex_insert(gi,&gcp);
     icheck(10,0,r);
 }
@@ -373,7 +373,7 @@ GeoIndex_CoordinatesFree(list1);
 GeoIndex_CursorFree(gcr);
 gcp.latitude  = 89.9;
 gcp.longitude = -180.0;
-gcp.data = ix + 64;
+gcp.data = (uint64_t) (ix + 64);
 GeoIndex_insert(gi,&gcp);
 list1 = GeoIndex_NearestCountPoints(gi,&gcp,1);
 gccheck(13,list1,  1,"AAAAAAAAAAAAAAAABAAAAAAAA"); 
@@ -388,7 +388,7 @@ for(i=0;i<50;i++)
 {
     gcp.latitude  = 90.0;
     gcp.longitude = 180.0;
-    gcp.data = ix + i;
+    gcp.data = (uint64_t) (ix + i);
     r = GeoIndex_insert(gi,&gcp);
     icheck(10,0,r);
 }
@@ -398,7 +398,7 @@ list1 = GeoIndex_NearestCountPoints(gi,&gcp,1);
 icheck(11,1,list1->length);
 gcp.latitude  = 89.9;
 gcp.longitude = -180.0;
-gcp.data = ix + 64;
+gcp.data = (uint64_t) (ix + 64);
 GeoIndex_insert(gi,&gcp);
 GeoIndex_CoordinatesFree(list1);
 list1 = GeoIndex_NearestCountPoints(gi,&gcp,1);
@@ -425,7 +425,7 @@ list1 = GeoIndex_PointsWithinRadius(gi,&gcp1,100000.0);
 BOOST_CHECK_EQUAL(nullp, list1); // no results, check against null pointer
 
 /* stick in Jo'burg  */
-gcp4.data=ix + 4;
+gcp4.data=(uint64_t) (ix + 4);
 r = GeoIndex_insert(gi,&gcp4);
 icheck(22,0,r);
 list1 = GeoIndex_NearestCountPoints(gi,&gcp1,3);
@@ -449,7 +449,7 @@ r = GeoIndex_remove(gi,&gcp2);
 icheck(28,-1,r);
 
 /* stick in Auckland into emptied index  */
-gcp3.data=ix + 3;
+gcp3.data=(uint64_t) ix + 3;
 r = GeoIndex_insert(gi,&gcp3);
 icheck(29,0,r);
 
@@ -468,7 +468,7 @@ gi=GeoIndex_new();
 
 gcp.latitude  = 91.2;
 gcp.longitude = 40.0;
-gcp.data = NULL;
+gcp.data = (uint64_t) NULL;
 i = GeoIndex_insert(gi,&gcp);
 icheck(50,-3,i);
 
@@ -552,16 +552,16 @@ BOOST_AUTO_TEST_CASE (tst_geo70) {
 
   gcp.latitude  = 0.0;
   gcp.longitude = 40.0;
-  gcp.data = &ix[4];
+  gcp.data = (uint64_t) &ix[4];
   i = GeoIndex_insert(gi,&gcp);
   icheck(70,0,i);
 
-  gcp.data = &ix[5];
+  gcp.data = (uint64_t) &ix[5];
   i = GeoIndex_remove(gi,&gcp);
   icheck(71,-1,i);
 
   gcp.longitude = 40.000001;
-  gcp.data = &ix[4];
+  gcp.data = (uint64_t) &ix[4];
   i = GeoIndex_remove(gi,&gcp);
   icheck(72,-1,i);
 
@@ -583,7 +583,7 @@ BOOST_AUTO_TEST_CASE (tst_geo70) {
     lo=j;
     lo=lo*10;
     gcp.longitude = lo;
-    gcp.data = &ix[j];
+    gcp.data = (uint64_t) &ix[j];
     i = GeoIndex_insert(gi,&gcp);
     icheck(76,0,i);
   }
@@ -606,7 +606,7 @@ BOOST_AUTO_TEST_CASE (tst_geo70) {
 
   gcp.latitude  = 1.0;
   gcp.longitude = 40.0;
-  gcp.data = &ix[14];
+  gcp.data = (uint64_t) &ix[14];
   i = GeoIndex_insert(gi,&gcp);
   icheck(85,0,i);
 
@@ -626,7 +626,7 @@ BOOST_AUTO_TEST_CASE (tst_geo70) {
 
   gcp.latitude  = 1.0;
   gcp.longitude = 40.0;
-  gcp.data = &ix[14];
+  gcp.data = (uint64_t) &ix[14];
   i = GeoIndex_remove(gi,&gcp);
   icheck(88,0,i);
 
@@ -634,7 +634,7 @@ BOOST_AUTO_TEST_CASE (tst_geo70) {
   {
     gcp.latitude  = 0.0;
     gcp.longitude = 40.0;
-    gcp.data = &ix[20+j];
+    gcp.data = (uint64_t) &ix[20+j];
     i = GeoIndex_insert(gi,&gcp);
     icheck(89,0,i);
   }
@@ -643,7 +643,7 @@ BOOST_AUTO_TEST_CASE (tst_geo70) {
   {
     gcp.latitude  = 0.0;
     gcp.longitude = 40.0;
-    gcp.data = &ix[20+j];
+    gcp.data = (uint64_t) &ix[20+j];
     i = GeoIndex_remove(gi,&gcp);
     icheck(90,0,i);
   }
@@ -662,7 +662,7 @@ BOOST_AUTO_TEST_CASE (tst_geo70) {
 
   gcp.latitude  = 0.0;
   gcp.longitude = 20.0;
-  gcp.data = &ix[2];
+  gcp.data = (uint64_t) &ix[2];
   i = GeoIndex_remove(gi,&gcp);
   icheck(96,0,i);
 
@@ -693,7 +693,7 @@ BOOST_AUTO_TEST_CASE (tst_geo100) {
       for(j=0;j<10;j++)
       {
           gcp.longitude = lo;
-          gcp.data = ix+(10*i+j);
+          gcp.data = (uint64_t) ix+(10*i+j);
           r=GeoIndex_insert(gi,&gcp);
           icheck(100,0,r);
           lo+=1.0;
@@ -812,7 +812,7 @@ BOOST_AUTO_TEST_CASE (tst_geo200) {
           gcp.latitude = 89.73367322;
           gcp.longitude=168.310630;
       }
-      gcp.data=&ix[i];
+      gcp.data=(uint64_t) &ix[i];
       r = GeoIndex_insert(gi,&gcp);
       icheck(201,0,r);
   }
@@ -867,7 +867,7 @@ BOOST_AUTO_TEST_CASE (tst_geo200) {
   {
       for(i=0;i<5;i++)
       {
-          j=( (char *) list1->coordinates[i].data) - ix;
+          j=(int) (( (char *) list1->coordinates[i].data) - ix);
           if(j==1)
           {
               dcheck(230, 89.97989055,list1->coordinates[i].latitude,0.0);
@@ -907,7 +907,7 @@ BOOST_AUTO_TEST_CASE (tst_geo200) {
   {
       for(i=0;i<5;i++)
       {
-          j=( (char *) list1->coordinates[i].data) - ix;
+          j=(int) (( (char *) list1->coordinates[i].data) - ix);
           if(j==1)
           {
               dcheck(250, 89.97989055,list1->coordinates[i].latitude,0.0);
@@ -963,12 +963,12 @@ BOOST_AUTO_TEST_CASE (tst_geo300) {
   {
       gcp.latitude = la;
       gcp.longitude= lo;
-      gcp.data     = &ix[i%1000];
+      gcp.data     = (uint64_t) &ix[i%1000];
       r = GeoIndex_insert(gi,&gcp);
       icheck(300,0,r);
       if(i==1322)
       {
-          gcp.data=&ix[323];
+          gcp.data=(uint64_t) &ix[323];
           r = GeoIndex_insert(gi,&gcp);
           icheck(299,0,r);
       }
@@ -1193,7 +1193,7 @@ BOOST_AUTO_TEST_CASE (tst_geo400) {
       {
           gcp.latitude = la;
           gcp.longitude= lo;
-          gcp.data     = &ix[(7*i+j)%1000];
+          gcp.data     = (uint64_t) &ix[(7*i+j)%1000];
           r = GeoIndex_insert(gi,&gcp);
           icheck(400,0,r);
           la+=19.5396157761;
@@ -1339,7 +1339,7 @@ BOOST_AUTO_TEST_CASE (tst_geo900) {
   {
       gcp.latitude = la;
       gcp.longitude= lo;
-      gcp.data     = &ix[j];
+      gcp.data     = (uint64_t) &ix[j];
       r = GeoIndex_insert(gi,&gcp);
       icheck(900,0,r);
       la+=19.5396157761;

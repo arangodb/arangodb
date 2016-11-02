@@ -189,6 +189,8 @@ class Logger {
   static void setShowThreadIdentifier(bool);
   static void setUseLocalTime(bool);
   static bool getUseLocalTime() {return _useLocalTime;};
+  static void setUseMicrotime(bool);
+  static bool getUseMicrotime() {return _useMicrotime;};
   static void setKeepLogrotate(bool);
 
   static std::string const& translateLogLevel(LogLevel);
@@ -208,7 +210,7 @@ class Logger {
 
  public:
   static void initialize(bool);
-  static void shutdown(bool);
+  static void shutdown();
   static void flush();
 
  private:
@@ -224,6 +226,7 @@ class Logger {
   static bool _threaded;
   static bool _useLocalTime;
   static bool _keepLogRotate;
+  static bool _useMicrotime;
   static std::string _outputPrefix;
 
   static std::unique_ptr<LogThread> _loggingThread;

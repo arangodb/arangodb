@@ -80,10 +80,11 @@ class State {
       index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
 
   /// @brief log entry at index i
-  log_t const& operator[](index_t) const;
+  log_t operator[](index_t) const;
 
-  /// @brief last log entry
-  log_t const& lastLog() const;
+  /// @brief last log entry, copy entry because we do no longer have the lock
+  /// after the return
+  log_t lastLog() const;
 
   /// @brief Set endpoint
   bool configure(Agent* agent);
@@ -116,7 +117,7 @@ class State {
  private:
   /// @brief Save currentTerm, votedFor, log entries
   bool persist(index_t index, term_t term,
-               arangodb::velocypack::Slice const& entry);
+               arangodb::velocypack::Slice const& entry) const;
 
   bool saveCompacted();
 
@@ -156,7 +157,10 @@ class State {
   /// @brief Our vocbase
   TRI_vocbase_t* _vocbase;
 
-  mutable arangodb::Mutex _logLock; /**< @brief Mutex for modifying _log */
+  /**< @brief Mutex for modifying
+     _log & _cur
+  */
+  mutable arangodb::Mutex _logLock; 
   std::deque<log_t> _log;           /**< @brief  State entries */
   std::string _endpoint;            /**< @brief persistence end point */
   bool _collectionsChecked;         /**< @brief Collections checked */
@@ -164,9 +168,6 @@ class State {
 
   /// @brief Our query registry
   aql::QueryRegistry* _queryRegistry;
-
-  /// @brief Compaction step
-  size_t _compaction_step;
 
   /// @brief Current log offset
   size_t _cur;

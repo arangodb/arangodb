@@ -25,7 +25,6 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "StorageEngine/MMFilesEngine.h"
-#include "StorageEngine/OtherEngine.h"
 #include "StorageEngine/StorageEngine.h"
 
 using namespace arangodb;
@@ -44,9 +43,9 @@ EngineSelectorFeature::EngineSelectorFeature(
 void EngineSelectorFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
 
-  options->addOption("--server.storage-engine", 
-                     "storage engine type",
-                     new DiscreteValuesParameter<StringParameter>(&_engine, availableEngines()));
+  options->addHiddenOption("--server.storage-engine", 
+                           "storage engine type",
+                           new DiscreteValuesParameter<StringParameter>(&_engine, availableEngines()));
 }
 
 void EngineSelectorFeature::prepare() {
@@ -79,7 +78,6 @@ void EngineSelectorFeature::unprepare() {
 // return all available storage engines
 std::unordered_set<std::string> EngineSelectorFeature::availableEngines() { 
   return std::unordered_set<std::string>{
-    MMFilesEngine::EngineName, 
-    OtherEngine::EngineName 
+    MMFilesEngine::EngineName 
   };
 }

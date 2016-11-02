@@ -35,67 +35,66 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb {
+class EdgeIndex;
+  
+typedef arangodb::basics::AssocMulti<arangodb::velocypack::Slice, SimpleIndexElement,
+                                     uint32_t, false> TRI_EdgeIndexHash_t;
+
 
 class EdgeIndexIterator final : public IndexIterator {
  public:
-  typedef arangodb::basics::AssocMulti<arangodb::velocypack::Slice,
-                                       TRI_doc_mptr_t, uint32_t,
-                                       true> TRI_EdgeIndexHash_t;
+  EdgeIndexIterator(LogicalCollection* collection, arangodb::Transaction* trx,
+                    ManagedDocumentResult* mmdr,
+                    arangodb::EdgeIndex const* index,
+                    TRI_EdgeIndexHash_t const* indexImpl,
+                    std::unique_ptr<VPackBuilder>& keys);
 
-  TRI_doc_mptr_t* next() override;
+  ~EdgeIndexIterator();
+  
+  char const* typeName() const override { return "edge-index-iterator"; }
 
-  void nextBabies(std::vector<TRI_doc_mptr_t*>&, size_t) override;
+  IndexLookupResult next() override;
+
+  void nextBabies(std::vector<IndexLookupResult>&, size_t) override;
 
   void reset() override;
 
-  EdgeIndexIterator(arangodb::Transaction* trx,
-                    TRI_EdgeIndexHash_t const* index,
-                    std::unique_ptr<VPackBuilder>& keys)
-      : _trx(trx),
-        _index(index),
-        _keys(keys.get()),
-        _iterator(_keys->slice()),
-        _posInBuffer(0),
-        _batchSize(1000) {
-        
-    keys.release(); // now we have ownership for _keys
-  }
-
-  ~EdgeIndexIterator();
-
  private:
-  arangodb::Transaction* _trx;
   TRI_EdgeIndexHash_t const* _index;
   std::unique_ptr<arangodb::velocypack::Builder> _keys;
   arangodb::velocypack::ArrayIterator _iterator;
-  std::vector<TRI_doc_mptr_t*> _buffer;
+  std::vector<SimpleIndexElement> _buffer;
   size_t _posInBuffer;
   size_t _batchSize;
+  SimpleIndexElement _lastElement;
 };
 
 class AnyDirectionEdgeIndexIterator final : public IndexIterator {
  public:
-  TRI_doc_mptr_t* next() override;
-
-  void nextBabies(std::vector<TRI_doc_mptr_t*>&, size_t) override;
-
-  void reset() override;
-
-  AnyDirectionEdgeIndexIterator(EdgeIndexIterator* outboundIterator,
-                                EdgeIndexIterator* inboundIterator)
-      : _outbound(outboundIterator),
-        _inbound(inboundIterator),
-        _useInbound(false) {}
+  AnyDirectionEdgeIndexIterator(LogicalCollection* collection,
+                                arangodb::Transaction* trx,
+                                ManagedDocumentResult* mmdr,
+                                arangodb::EdgeIndex const* index,
+                                EdgeIndexIterator* outboundIterator,
+                                EdgeIndexIterator* inboundIterator);
 
   ~AnyDirectionEdgeIndexIterator() {
     delete _outbound;
     delete _inbound;
   }
+  
+  char const* typeName() const override { return "any-edge-index-iterator"; }
+
+  IndexLookupResult next() override;
+
+  void nextBabies(std::vector<IndexLookupResult>&, size_t) override;
+
+  void reset() override;
 
  private:
   EdgeIndexIterator* _outbound;
   EdgeIndexIterator* _inbound;
-  std::unordered_set<TRI_doc_mptr_t*> _seen;
+  std::unordered_set<TRI_voc_rid_t> _seen;
   bool _useInbound;
 };
 
@@ -104,8 +103,6 @@ class EdgeIndex final : public Index {
   EdgeIndex() = delete;
 
   EdgeIndex(TRI_idx_iid_t, arangodb::LogicalCollection*);
-
-  explicit EdgeIndex(VPackSlice const&);
 
   ~EdgeIndex();
 
@@ -121,49 +118,39 @@ class EdgeIndex final : public Index {
                                         arangodb::velocypack::Builder&);
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief typedef for hash tables
-  //////////////////////////////////////////////////////////////////////////////
-
-  typedef arangodb::basics::AssocMulti<arangodb::velocypack::Slice, TRI_doc_mptr_t,
-                                       uint32_t, true> TRI_EdgeIndexHash_t;
-
  public:
-  IndexType type() const override final {
+  IndexType type() const override {
     return Index::TRI_IDX_TYPE_EDGE_INDEX;
   }
+
+  bool allowExpansion() const override { return false; }
   
-  bool allowExpansion() const override final { return false; }
+  bool canBeDropped() const override { return false; }
+
+  bool isSorted() const override { return false; }
+
+  bool hasSelectivityEstimate() const override { return true; }
+
+  double selectivityEstimate() const override;
+
+  size_t memory() const override;
+
+  void toVelocyPack(VPackBuilder&, bool) const override;
+
+  void toVelocyPackFigures(VPackBuilder&) const override;
+
+  int insert(arangodb::Transaction*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
+
+  int remove(arangodb::Transaction*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
+
+  int batchInsert(arangodb::Transaction*, std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const&, size_t) override;
   
-  bool canBeDropped() const override final { return false; }
+  int unload() override;
 
-  bool isSorted() const override final { return false; }
+  int sizeHint(arangodb::Transaction*, size_t) override;
 
-  bool hasSelectivityEstimate() const override final { return true; }
-
-  double selectivityEstimate() const override final;
-
-  size_t memory() const override final;
-
-  void toVelocyPack(VPackBuilder&, bool) const override final;
-
-  void toVelocyPackFigures(VPackBuilder&) const override final;
-
-  int insert(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
-             bool) override final;
-
-  int remove(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
-             bool) override final;
-
-  int batchInsert(arangodb::Transaction*,
-                  std::vector<TRI_doc_mptr_t const*> const*,
-                  size_t) override final;
-  
-  int unload() override final;
-
-  int sizeHint(arangodb::Transaction*, size_t) override final;
-
-  bool hasBatchInsert() const override final { return true; }
+  bool hasBatchInsert() const override { return true; }
 
   TRI_EdgeIndexHash_t* from() { return _edgesFrom; }
 
@@ -174,7 +161,7 @@ class EdgeIndex final : public Index {
                                double&) const override;
 
   IndexIterator* iteratorForCondition(arangodb::Transaction*,
-                                      IndexIteratorContext*,
+                                      ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       bool) const override;
@@ -182,16 +169,12 @@ class EdgeIndex final : public Index {
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Transform the list of search slices to search values.
   ///        This will multiply all IN entries and simply return all other
   ///        entries.
-  //////////////////////////////////////////////////////////////////////////////
-
   void expandInSearchValues(arangodb::velocypack::Slice const,
                             arangodb::velocypack::Builder&) const override;
 
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief creates an IndexIterator for the given VelocyPackSlices.
   ///        The searchValue is a an Array with exactly two Entries, one of them
   ///        has to be NONE.
@@ -205,50 +188,39 @@ class EdgeIndex final : public Index {
   ///        Reverse is not supported, hence ignored
   ///        NOTE: The iterator is only valid as long as the slice points to
   ///        a valid memory region.
-  ////////////////////////////////////////////////////////////////////////////////
-
-  IndexIterator* iteratorForSlice(arangodb::Transaction*, IndexIteratorContext*,
+  IndexIterator* iteratorForSlice(arangodb::Transaction*, 
+                                  ManagedDocumentResult*,
                                   arangodb::velocypack::Slice const,
                                   bool) const override;
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief create the iterator
-  //////////////////////////////////////////////////////////////////////////////
-
   IndexIterator* createEqIterator(
-      arangodb::Transaction*, IndexIteratorContext*,
+      arangodb::Transaction*, 
+      ManagedDocumentResult*,
       arangodb::aql::AstNode const*,
       arangodb::aql::AstNode const*) const;
   
   IndexIterator* createInIterator(
-      arangodb::Transaction*, IndexIteratorContext*,
+      arangodb::Transaction*, 
+      ManagedDocumentResult*,
       arangodb::aql::AstNode const*,
       arangodb::aql::AstNode const*) const;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a single value node to the iterator's keys
-////////////////////////////////////////////////////////////////////////////////
-    
+  /// @brief add a single value node to the iterator's keys
   void handleValNode(VPackBuilder* keys, arangodb::aql::AstNode const* valNode) const;
 
- private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the hash table for _from
-  //////////////////////////////////////////////////////////////////////////////
+  SimpleIndexElement buildFromElement(TRI_voc_rid_t, arangodb::velocypack::Slice const& doc) const;
+  SimpleIndexElement buildToElement(TRI_voc_rid_t, arangodb::velocypack::Slice const& doc) const;
 
+ private:
+  /// @brief the hash table for _from
   TRI_EdgeIndexHash_t* _edgesFrom;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief the hash table for _to
-  //////////////////////////////////////////////////////////////////////////////
-
   TRI_EdgeIndexHash_t* _edgesTo;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief number of buckets effectively used by the index
-  //////////////////////////////////////////////////////////////////////////////
-
   size_t _numBuckets;
 };
 }

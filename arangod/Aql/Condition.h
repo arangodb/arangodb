@@ -218,7 +218,7 @@ class Condition {
   void normalize();
 
   /// @brief removes condition parts from another
-  AstNode* removeIndexCondition(Variable const*, AstNode*);
+  AstNode* removeIndexCondition(ExecutionPlan const*, Variable const*, AstNode*);
 
   /// @brief remove (now) invalid variables from the condition
   bool removeInvalidVariables(std::unordered_set<Variable const*> const&);
@@ -254,14 +254,14 @@ class Condition {
 #endif
 
   /// @brief checks if the current condition covers the other
-  bool canRemove(ConditionPart const&, AstNode const*) const;
+  bool canRemove(ExecutionPlan const*, ConditionPart const&, AstNode const*) const;
 
   /// @brief deduplicate IN condition values
   /// this may modify the node in place
   void deduplicateInOperation(AstNode*);
 
   /// @brief merge the values from two IN operations
-  AstNode* mergeInOperations(AstNode const*, AstNode const*);
+  AstNode* mergeInOperations(arangodb::Transaction* trx, AstNode const*, AstNode const*);
 
   /// @brief merges the current node with the sub nodes of same type
   AstNode* collapse(AstNode const*);

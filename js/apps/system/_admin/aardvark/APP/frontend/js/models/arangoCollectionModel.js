@@ -63,6 +63,8 @@
     },
 
     getIndex: function (callback) {
+      var self = this;
+
       $.ajax({
         type: 'GET',
         cache: false,
@@ -70,10 +72,10 @@
         contentType: 'application/json',
         processData: false,
         success: function (data) {
-          callback(false, data);
+          callback(false, data, self.get('id'));
         },
         error: function (data) {
-          callback(true, data);
+          callback(true, data, self.get('id'));
         }
       });
     },

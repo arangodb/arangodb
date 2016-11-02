@@ -34,7 +34,7 @@ RestAqlFunctionsHandler::RestAqlFunctionsHandler(GeneralRequest* request,
                                                  GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
-RestHandler::status RestAqlFunctionsHandler::execute() {
+RestStatus RestAqlFunctionsHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
 
@@ -47,10 +47,10 @@ RestHandler::status RestAqlFunctionsHandler::execute() {
     builder.close();
 
     generateResult(rest::ResponseCode::OK, builder.slice());
-    return status::DONE;
+    return RestStatus::DONE;
   }
 
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-  return status::DONE;
+  return RestStatus::DONE;
 }

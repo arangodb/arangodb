@@ -111,11 +111,11 @@
     },
 
     showSpinner: function () {
-      $('#uploadIndicator').show();
+      $('.upload-indicator').show();
     },
 
     hideSpinner: function () {
-      $('#uploadIndicator').hide();
+      $('.upload-indicator').hide();
     },
 
     showImportModal: function () {
@@ -202,12 +202,11 @@
       var callback = function (error, msg) {
         if (error) {
           arangoHelper.arangoError('Upload', msg);
-          this.hideSpinner();
         } else {
-          this.hideSpinner();
           this.hideImportModal();
           this.resetView();
         }
+        this.hideSpinner();
       }.bind(this);
 
       if (this.allowUpload === true) {
@@ -431,8 +430,11 @@
         '    <option value="!=">!=</option>' +
         '    <option value="&lt;">&lt;</option>' +
         '    <option value="&lt;=">&lt;=</option>' +
-        '    <option value="&gt;=">&gt;=</option>' +
         '    <option value="&gt;">&gt;</option>' +
+        '    <option value="&gt;=">&gt;=</option>' +
+        '    <option value="LIKE">LIKE</option>' +
+        '    <option value="IN">IN</option>' +
+        '    <option value="NOT IN">NOT IN</option>' +
         '</select>' +
         '<input id="attribute_value' + num +
         '" type="text" placeholder="Attribute value" ' +

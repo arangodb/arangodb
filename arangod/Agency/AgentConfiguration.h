@@ -44,7 +44,7 @@ static const std::string maxPingStr = "max ping";
 static const std::string endpointStr = "endpoint";
 static const std::string uuidStr = "uuid";
 static const std::string poolStr = "pool";
-static const std::string gossipPeersStr = "gissipPeers";
+static const std::string gossipPeersStr = "gossipPeers";
 static const std::string activeStr = "active";
 static const std::string supervisionStr = "supervision";
 static const std::string waitForSyncStr = "wait for sync";
@@ -68,8 +68,9 @@ struct config_t {
   double _supervisionFrequency;
   uint64_t _compactionStepSize;
   double _supervisionGracePeriod;
+  bool _cmdLineTimings;
 
-  mutable arangodb::basics::ReadWriteLock _lock;
+  mutable arangodb::basics::ReadWriteLock _lock; // guard member variables
 
   /// @brief default ctor
   config_t();
@@ -77,7 +78,7 @@ struct config_t {
   /// @brief ctor
   config_t(size_t as, size_t ps, double minp, double maxp, std::string const& e,
            std::vector<std::string> const& g, bool s, bool w, double f,
-           uint64_t c, double p);
+           uint64_t c, double p, bool t);
 
   /// @brief copy constructor
   config_t(config_t const&);
@@ -168,6 +169,13 @@ struct config_t {
   /// @brief Get maximum RAFT timeout
   double maxPing() const;
 
+  /// @brief Reset RAFT timing
+  void pingTimes(double, double);
+
+  /// @brief Supervision grace period
+  bool cmdLineTimings() const;
+
+  /// @brief Supervision grace period
   double supervisionGracePeriod() const;
 
   /// @brief Get replacement for deceased active agent

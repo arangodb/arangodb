@@ -25,36 +25,45 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-#include <openssl/ssl.h>
+// needs to come first
+#include "Ssl/ssl-helper.h"
+
+// needs to come second in order to recognize ssl
+#include "Basics/asio-helper.h"
 
 namespace arangodb {
-class SslServerFeature final : public application_features::ApplicationFeature {
+class SslServerFeature : public application_features::ApplicationFeature {
+ public:
+  static SslServerFeature* SSL;
+
  public:
   explicit SslServerFeature(application_features::ApplicationServer* server);
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void prepare() override final;
   void unprepare() override final;
 
  public:
-  SSL_CTX* sslContext() const { return _sslContext; }
+  virtual void verifySslOptions();
 
  public:
+  virtual boost::asio::ssl::context createSslContext() const;
+
+ protected:
   std::string _cafile;
   std::string _keyfile;
-  bool _sessionCache;
+  bool _sessionCache = false;
   std::string _cipherList;
-  uint64_t _sslProtocol;
-  uint64_t _sslOptions;
+  uint64_t _sslProtocol = TLS_V1;
+  uint64_t _sslOptions =
+      (long)(SSL_OP_TLS_ROLLBACK_BUG | SSL_OP_CIPHER_SERVER_PREFERENCE);
   std::string _ecdhCurve;
 
  private:
-  void createSslContext();
   std::string stringifySslOptions(uint64_t opts) const;
 
  private:
-  SSL_CTX* _sslContext;
   std::string _rctx;
 };
 }

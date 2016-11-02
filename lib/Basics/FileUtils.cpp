@@ -363,25 +363,21 @@ bool copyDirectoryRecursive(std::string const& source,
 
   do {
 #else
-  struct dirent* d = (struct dirent*)TRI_Allocate(
-      TRI_UNKNOWN_MEM_ZONE, (offsetof(struct dirent, d_name) + PATH_MAX + 1),
-      false);
-
-  if (d == nullptr) {
-    error = "directory " + source + " OOM";
-    return false;
-  }
-
   DIR* filedir = opendir(source.c_str());
 
   if (filedir == nullptr) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, d);
     error = "directory " + source + "not found";
     return false;
   }
 
-  struct dirent* oneItem;
-  while ((readdir_r(filedir, d, &oneItem) == 0) && (oneItem != nullptr)) {
+  struct dirent* oneItem = nullptr;
+
+  // do not use readdir_r() here anymore as it is not safe and deprecated
+  // in newer versions of libc: http://man7.org/linux/man-pages/man3/readdir_r.3.html
+  // the man page recommends to use plain readdir() because it can be expected
+  // to be thread-safe in reality, and newer versions of POSIX may require its
+  // thread-safety formally, and in addition obsolete readdir_r() altogether
+  while ((oneItem = (readdir(filedir))) != nullptr) {
 #endif
     // Now iterate over the items.
     // check its not the pointer to the upper directory:
@@ -424,7 +420,6 @@ bool copyDirectoryRecursive(std::string const& source,
 
 #else
   }
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, d);
   closedir(filedir);
 
 #endif

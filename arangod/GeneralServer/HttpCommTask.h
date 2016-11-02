@@ -2,9 +2,13 @@
 #define ARANGOD_GENERAL_SERVER_HTTP_COMM_TASK_H 1
 
 #include "GeneralServer/GeneralCommTask.h"
-namespace arangodb {
-namespace rest {
 
+#include "Rest/HttpResponse.h"
+
+namespace arangodb {
+class HttpRequest;
+
+namespace rest {
 class HttpCommTask : public GeneralCommTask {
  public:
   static size_t const MaximalHeaderSize;
@@ -13,26 +17,26 @@ class HttpCommTask : public GeneralCommTask {
   static size_t const RunCompactEvery;
 
  public:
-  HttpCommTask(GeneralServer*, TRI_socket_t, ConnectionInfo&&, double timeout);
-
-  // convert from GeneralResponse to httpResponse ad dispatch request to class
-  // internal addResponse
-  void addResponse(GeneralResponse* response) override {
-    HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
-    if (httpResponse == nullptr) {
-      throw std::logic_error("invalid response or response Type");
-    }
-    addResponse(httpResponse);
-  };
+  HttpCommTask(EventLoop, GeneralServer*, std::unique_ptr<Socket> socket,
+               ConnectionInfo&&, double timeout);
 
   arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::HTTP;
   };
 
+  // convert from GeneralResponse to httpResponse
+  void addResponse(GeneralResponse* response) override {
+    HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
+
+    if (httpResponse == nullptr) {
+      throw std::logic_error("invalid response or response Type");
+    }
+
+    addResponse(httpResponse);
+  };
+
  protected:
   bool processRead() override;
-
-  void handleChunk(char const*, size_t) override final;
 
   std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) override final;
@@ -52,10 +56,10 @@ class HttpCommTask : public GeneralCommTask {
 
   void addResponse(HttpResponse*);
 
-  void finishedChunked();
   // check the content-length header of a request and fail it is broken
   bool checkContentLength(HttpRequest*, bool expectContentLength);
-  std::string authenticationRealm() const;  // returns the authentication realm
+
+  std::string authenticationRealm() const;
   rest::ResponseCode authenticateRequest(HttpRequest*);
 
  private:
@@ -68,20 +72,15 @@ class HttpCommTask : public GeneralCommTask {
   bool _denyCredentials;  // whether or not to allow credentialed requests (only
                           // CORS)
   bool _newRequest;       // new request started
-  // TODO(fc) remove
   rest::RequestType _requestType;  // type of request (GET, POST, ...)
-  std::string _fullUrl;                      // value of requested URL
+  std::string _fullUrl;            // value of requested URL
   std::string _origin;  // value of the HTTP origin header the client sent (if
                         // any, CORS only)
   size_t
       _sinceCompactification;  // number of requests since last compactification
   size_t _originalBodyLength;
 
-  // authentication real
   std::string const _authenticationRealm;
-
-  // true if within a chunked response
-  bool _isChunked = false;
 
   // true if request is complete but not handled
   bool _requestPending = false;

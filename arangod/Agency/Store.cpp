@@ -54,8 +54,8 @@ struct Empty {
 };
 
 /// @brief Split strings by separator
-inline std::vector<std::string> split(const std::string& value,
-                                      char separator) {
+inline static std::vector<std::string> split(const std::string& value,
+                                             char separator) {
   std::vector<std::string> res;
   std::string::size_type q, p = (value.find(separator) == 0) ? 1 : 0;
 
@@ -107,15 +107,6 @@ inline static bool endpointPathFromUrl(std::string const& url,
 Store::Store(Agent* agent, std::string const& name)
     : Thread(name), _agent(agent), _node(name, this) {}
 
-/// Copy ctor
-Store::Store(Store const& other)
-    : Thread(other._node.name()),
-      _agent(other._agent),
-      _timeTable(other._timeTable),
-      _observerTable(other._observerTable),
-      _observedTable(other._observedTable),
-      _node(other._node) {}
-
 /// Move constructor
 Store::Store(Store&& other)
     : Thread(other._node.name()),
@@ -127,21 +118,26 @@ Store::Store(Store&& other)
 
 /// Copy assignment operator
 Store& Store::operator=(Store const& rhs) {
-  _agent = rhs._agent;
-  _timeTable = rhs._timeTable;
-  _observerTable = rhs._observerTable;
-  _observedTable = rhs._observedTable;
-  _node = rhs._node;
+  if (&rhs != this) {
+    MUTEX_LOCKER(otherLock, rhs._storeLock); 
+    _agent = rhs._agent;
+    _timeTable = rhs._timeTable;
+    _observerTable = rhs._observerTable;
+    _observedTable = rhs._observedTable;
+    _node = rhs._node;
+  }
   return *this;
 }
 
 /// Move assignment operator
 Store& Store::operator=(Store&& rhs) {
-  _agent = std::move(rhs._agent);
-  _timeTable = std::move(rhs._timeTable);
-  _observerTable = std::move(rhs._observerTable);
-  _observedTable = std::move(rhs._observedTable);
-  _node = std::move(rhs._node);
+  if (&rhs != this) {
+    _agent = std::move(rhs._agent);
+    _timeTable = std::move(rhs._timeTable);
+    _observerTable = std::move(rhs._observerTable);
+    _observedTable = std::move(rhs._observedTable);
+    _node = std::move(rhs._node);
+  }
   return *this;
 }
 
@@ -152,11 +148,11 @@ Store::~Store() { shutdown(); }
 /// Return vector of according success
 std::vector<bool> Store::apply(query_t const& query, bool verbose) {
   std::vector<bool> success;
-  MUTEX_LOCKER(storeLocker, _storeLock);
 
   if (query->slice().isArray()) {
     try {
       for (auto const& i : VPackArrayIterator(query->slice())) {
+        MUTEX_LOCKER(storeLocker, _storeLock);
         switch (i.length()) {
           case 1:  // No precondition
             success.push_back(applies(i[0]));
@@ -178,7 +174,10 @@ std::vector<bool> Store::apply(query_t const& query, bool verbose) {
       }
 
       // Wake up TTL processing
-      _cv.signal();
+      {
+        CONDITION_LOCKER(guard, _cv);
+        _cv.signal();
+      }
 
     } catch (std::exception const& e) {  // Catch any erorrs
       LOG_TOPIC(ERR, Logger::AGENCY) << __FILE__ << ":" << __LINE__ << " "
@@ -191,9 +190,6 @@ std::vector<bool> Store::apply(query_t const& query, bool verbose) {
   }
   return success;
 }
-
-/// Get name
-std::string const& Store::name() const { return _node.name(); }
 
 /// template<class T, class U> std::multimap<std::string, std::string>
 std::ostream& operator<<(std::ostream& os,
@@ -215,8 +211,9 @@ struct notify_t {
 };
 
 /// Apply (from logs)
-std::vector<bool> Store::apply(std::vector<VPackSlice> const& queries,
-                               bool inform) {
+std::vector<bool> Store::apply(
+  std::vector<VPackSlice> const& queries, index_t lastCommitIndex,
+  term_t term, bool inform) {
   std::vector<bool> applied;
 
   // Apply log entries
@@ -237,10 +234,14 @@ std::vector<bool> Store::apply(std::vector<VPackSlice> const& queries,
           if (!(oper == "observe" || oper == "unobserve")) {
             std::string uri = j.key.copyString();
             while (true) {
-              auto ret = _observedTable.equal_range(uri);
-              for (auto it = ret.first; it != ret.second; ++it) {
-                in.emplace(it->second, std::make_shared<notify_t>(
-                             it->first, j.key.copyString(), oper));
+              // TODO: Check if not a special lock will help
+              {
+                MUTEX_LOCKER(storeLocker, _storeLock) ;
+                auto ret = _observedTable.equal_range(uri);
+                for (auto it = ret.first; it != ret.second; ++it) {
+                  in.emplace(it->second, std::make_shared<notify_t>(
+                               it->first, j.key.copyString(), oper));
+                }
               }
               size_t pos = uri.find_last_of('/');
               if (pos == std::string::npos || pos == 0) {
@@ -266,8 +267,8 @@ std::vector<bool> Store::apply(std::vector<VPackSlice> const& queries,
     for (auto const& url : urls) {
       Builder body;  // host
       body.openObject();
-      body.add("term", VPackValue(_agent->term()));
-      body.add("index", VPackValue(_agent->lastCommitted()));
+      body.add("term", VPackValue(term));
+      body.add("index", VPackValue(lastCommitIndex));
       auto ret = in.equal_range(url);
       
       for (auto it = ret.first; it != ret.second; ++it) {
@@ -310,8 +311,11 @@ bool Store::check(VPackSlice const& slice) const {
   for (auto const& precond : VPackObjectIterator(slice)) {  // Preconditions
 
     std::vector<std::string> pv = split(precond.key.copyString(), '/');
-    bool found = (_node.exists(pv).size() == pv.size());
+    
     Node node("precond");
+
+    // Check is guarded in ::apply
+    bool found = (_node.exists(pv).size() == pv.size());
     if (found) {
       node = _node(pv);
     }
@@ -326,7 +330,7 @@ bool Store::check(VPackSlice const& slice) const {
         } else if (oper == "isArray") {  // isArray
           if (!op.value.isBoolean()) {
             LOG_TOPIC(ERR, Logger::AGENCY)
-                << "Non boolsh expression for 'isArray' precondition";
+                << "Non boolean expression for 'isArray' precondition";
             return false;
           }
           bool isArray = (node.type() == LEAF && node.slice().isArray());
@@ -373,7 +377,6 @@ bool Store::check(VPackSlice const& slice) const {
 /// Read queries into result
 std::vector<bool> Store::read(query_t const& queries, query_t& result) const {
   std::vector<bool> success;
-  MUTEX_LOCKER(storeLocker, _storeLock);
   if (queries->slice().isArray()) {
     result->add(VPackValue(VPackValueType::Array));  // top node array
     for (auto const& query : VPackArrayIterator(queries->slice())) {
@@ -414,6 +417,7 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
 
   // Create response tree
   Node copy("copy");
+  MUTEX_LOCKER(storeLocker, _storeLock); // Freeze KV-Store for read
   for (auto const path : query_strs) {
     std::vector<std::string> pv = split(path, '/');
     size_t e = _node.exists(pv).size();
@@ -503,7 +507,6 @@ bool Store::start() {
 
 /// Work ttls and callbacks
 void Store::run() {
-  CONDITION_LOCKER(guard, _cv);
   while (!this->isStopping()) {  // Check timetable and remove overage entries
 
     std::chrono::microseconds t{0};
@@ -517,10 +520,13 @@ void Store::run() {
       }
     }
 
-    if (t != std::chrono::microseconds{0}) {
-      _cv.wait(t.count());
-    } else {
-      _cv.wait();
+    {
+      CONDITION_LOCKER(guard, _cv);
+      if (t != std::chrono::microseconds{0}) {
+        _cv.wait(t.count());
+      } else {
+        _cv.wait();
+      }
     }
 
     toClear = clearExpired();
@@ -530,7 +536,7 @@ void Store::run() {
   }
 }
 
-/// Apply transaction to key value store
+/// Apply transaction to key value store. Guarded by caller 
 bool Store::applies(arangodb::velocypack::Slice const& transaction) {
   std::vector<std::string> keys;
   std::vector<std::string> abskeys;
@@ -595,23 +601,9 @@ Store& Store::operator=(VPackSlice const& slice) {
   return *this;
 }
 
-/// Put key value store in velocypack
+/// Put key value store in velocypack, guarded by caller
 void Store::toBuilder(Builder& b, bool showHidden) const {
   _node.toBuilder(b, showHidden); }
-
-/// Get kv-store at path vector
-Node Store::operator()(std::vector<std::string> const& pv) { return _node(pv); }
-/// Get kv-store at path vector
-Node const Store::operator()(std::vector<std::string> const& pv) const {
-  return _node(pv);
-}
-
-/// Get kv-store at path vector
-Node Store::operator()(std::string const& path) { return _node(path); }
-/// Get kv-store at path vector
-Node const Store::operator()(std::string const& path) const {
-  return _node(path);
-}
 
 /// Time table
 std::multimap<TimePoint, std::string>& Store::timeTable() { return _timeTable; }
@@ -639,12 +631,12 @@ std::multimap<std::string, std::string> const& Store::observedTable() const {
 }
 
 /// Get node at path under mutex
-Node const Store::get(std::string const& path) const {
+Node Store::get(std::string const& path) const {
   MUTEX_LOCKER(storeLocker, _storeLock);
   return _node(path);
 }
 
-/// Remove ttl entry for path
+/// Remove ttl entry for path, guarded by caller
 void Store::removeTTL(std::string const& uri) {
   if (!_timeTable.empty()) {
     for (auto it = _timeTable.cbegin(); it != _timeTable.cend();) {
@@ -657,7 +649,3 @@ void Store::removeTTL(std::string const& uri) {
   }
 }
 
-/// Absolute path exists in key value store?
-std::vector<std::string> Store::exists(std::string const& abs) const {
-  return _node.exists(abs);
-}

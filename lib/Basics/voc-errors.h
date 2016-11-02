@@ -614,6 +614,19 @@
 /// - 4002: @LIT{cannot drop this smart collection}
 ///   This smart collection cannot be dropped, it dictates sharding in the
 ///   graph.
+/// - 4003: @LIT{in smart vertex collections _key must be prefixed with the value of the smart graph attribute}
+///   In a smart vertex collection _key must be prefixed with the value of the
+///   smart graph attribute.
+/// - 20011: @LIT{Inform message must be an object.}
+///   The inform message in the agency must be an object.
+/// - 20012: @LIT{Inform message must contain uint parameter 'term'}
+///   The inform message in the agency must contain a uint parameter 'term'.
+/// - 20013: @LIT{Inform message must contain string parameter 'id'}
+///   The inform message in the agency must contain a string parameter 'id'.
+/// - 20014: @LIT{Inform message must contain array 'active'}
+///   The inform message in the agency must contain an array 'active'.
+/// - 20015: @LIT{Inform message must contain object 'pool'}
+///   The inform message in the agency must contain an object 'pool'.
 /// - 21001: @LIT{dispatcher stopped}
 ///   Will be returned if a shutdown is in progress.
 /// - 21002: @LIT{named queue does not exist}
@@ -3243,6 +3256,68 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CANNOT_DROP_SMART_COLLECTION                            (4002)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 4003: ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE
+///
+/// in smart vertex collections _key must be prefixed with the value of the
+/// smart graph attribute
+///
+/// In a smart vertex collection _key must be prefixed with the value of the
+/// smart graph attribute.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE         (4003)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 20011: ERROR_AGENCY_INFORM_MUST_BE_OBJECT
+///
+/// Inform message must be an object.
+///
+/// The inform message in the agency must be an object.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AGENCY_INFORM_MUST_BE_OBJECT                            (20011)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 20012: ERROR_AGENCY_INFORM_MUST_CONTAIN_TERM
+///
+/// Inform message must contain uint parameter 'term'
+///
+/// The inform message in the agency must contain a uint parameter 'term'.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_TERM                         (20012)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 20013: ERROR_AGENCY_INFORM_MUST_CONTAIN_ID
+///
+/// Inform message must contain string parameter 'id'
+///
+/// The inform message in the agency must contain a string parameter 'id'.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_ID                           (20013)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 20014: ERROR_AGENCY_INFORM_MUST_CONTAIN_ACTIVE
+///
+/// Inform message must contain array 'active'
+///
+/// The inform message in the agency must contain an array 'active'.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_ACTIVE                       (20014)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 20015: ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL
+///
+/// Inform message must contain object 'pool'
+///
+/// The inform message in the agency must contain an object 'pool'.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL                         (20015)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 21001: ERROR_DISPATCHER_IS_STOPPING

@@ -9,6 +9,7 @@ function help() {
   echo "  -d/--ndbservers    # db servers        (odd integer      default: 2))"
   echo "  -s/--secondaries   Start secondaries   (0|1              default: 0)"
   echo "  -t/--transport     Protocol            (ssl|tcp          default: tcp)"
+  echo "  -j/--jwt-secret    JWT-Secret          (string           default: )"
   echo "     --log-level-a   Log level (agency)  (INFO|DEBUG|TRACE default: INFO)"
   echo "     --log-level-c   Log level (cluster) (INFO|DEBUG|TRACE default: INFO)"
   echo "  -i/--interactive   Interactive mode    (C|D|R            default: '')"
@@ -34,6 +35,7 @@ XTERM="x-terminal-emulator"
 XTERMOPTIONS="--geometry=80x43"
 SECONDARIES=0
 BUILD="build"
+JWT_SECRET=""
 
 while [[ ${1} ]]; do
     case "${1}" in
@@ -69,6 +71,10 @@ while [[ ${1} ]]; do
       INTERACTIVE_MODE=${2}
       shift
       ;;
+    -j|--jwt-secret)
+      JWT_SECRET=${2}
+      shift
+      ;;
     -x|--xterm)
       XTERM=${2}
       shift
@@ -102,14 +108,6 @@ if [ "$POOLSZ" == "" ] ; then
   POOLSZ=$NRAGENTS
 fi
 
-
-if [ "$TRANSPORT" == "ssl" ]; then
-  SSLKEYFILE="--ssl.keyfile UnitTests/server.pem"
-  CURL="curl --insecure -s -f -X GET https:"
-else
-  SSLKEYFILE=""
-  CURL="curl -s -f -X GET http:"
-fi
 
 printf "Starting agency ... \n"
 printf "  # agents: %s," "$NRAGENTS"
@@ -158,6 +156,22 @@ if [ -d cluster-init ];then
 fi
 mkdir -p cluster
 
+if [ -z "$JWT_SECRET" ];then
+  AUTHENTICATION="--server.authentication false"
+  AUTHORIZATION_HEADER=""
+else
+  AUTHENTICATION="--server.jwt-secret $JWT_SECRET"
+  AUTHORIZATION_HEADER="Authorization: bearer $(jwtgen -a HS256 -s $JWT_SECRET -c 'iss=arangodb' -c 'preferred_username=root')"
+fi
+
+if [ "$TRANSPORT" == "ssl" ]; then
+  SSLKEYFILE="--ssl.keyfile UnitTests/server.pem"
+  CURL="curl --insecure $CURL_AUTHENTICATION -s -f -X GET https:"
+else
+  SSLKEYFILE=""
+  CURL="curl -s -f $CURL_AUTHENTICATION -X GET http:"
+fi
+
 echo Starting agency ... 
 for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
     port=$(( $BASE + $aid ))
@@ -180,12 +194,12 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --javascript.startup-directory ./js \
         --javascript.module-directory ./enterprise/js \
         --javascript.v8-contexts 1 \
-        --server.authentication false \
         --server.endpoint $TRANSPORT://0.0.0.0:$port \
         --server.statistics false \
         --server.threads 16 \
         --log.file cluster/$port.log \
         --log.force-direct true \
+        $AUTHENTICATION \
         $SSLKEYFILE \
         > cluster/$port.stdout 2>&1 &
 done
@@ -213,11 +227,11 @@ start() {
        --log.level info \
        --server.statistics true \
        --server.threads 5 \
-       --server.authentication false \
        --javascript.startup-directory ./js \
        --javascript.module-directory ./enterprise/js \
        --javascript.app-path cluster/apps$PORT \
        --log.force-direct true \
+        $AUTHENTICATION \
         $SSLKEYFILE \
        > cluster/$PORT.stdout 2>&1 &
 }
@@ -247,7 +261,7 @@ startTerminal() {
         --javascript.startup-directory ./js \
         --javascript.module-directory ./enterprise/js \
         --javascript.app-path ./js/apps \
-        --server.authentication false \
+        $AUTHENTICATION \
         $SSLKEYFILE \
         --console &
 }
@@ -278,7 +292,7 @@ startDebugger() {
       --javascript.module-directory ./enterprise/js \
       --javascript.app-path ./js/apps \
       $SSLKEYFILE \
-      --server.authentication false &
+      $AUTHENTICATION &
       $XTERM $XTERMOPTIONS -e gdb ${BUILD}/bin/arangod -p $! &
 }
 
@@ -307,7 +321,7 @@ startRR() {
         --javascript.startup-directory ./js \
         --javascript.module-directory ./enterprise/js \
         --javascript.app-path ./js/apps \
-        --server.authentication false \
+        $AUTHENTICATION \
         $SSLKEYFILE \
         --console &
 }
@@ -348,7 +362,11 @@ echo Waiting for cluster to come up...
 testServer() {
     PORT=$1
     while true ; do
-        ${CURL}//127.0.0.1:$PORT/_api/version > /dev/null 2>&1
+        if [ -z "$AUTHORIZATION_HEADER" ]; then
+          ${CURL}//127.0.0.1:$PORT/_api/version > /dev/null 2>&1
+        else
+          ${CURL}//127.0.0.1:$PORT/_api/version -H "$AUTHORIZATION_HEADER" > /dev/null 2>&1
+        fi
         if [ "$?" != "0" ] ; then
             echo Server on port $PORT does not answer yet.
         else
@@ -391,7 +409,7 @@ if [ "$SECONDARIES" == "1" ] ; then
             --server.statistics true \
             --javascript.startup-directory ./js \
             --javascript.module-directory ./enterprise/js \
-            --server.authentication false \
+            $AUTHENTICATION \
             $SSLKEYFILE \
             --javascript.app-path ./js/apps \
             > cluster/$PORT.stdout 2>&1 &

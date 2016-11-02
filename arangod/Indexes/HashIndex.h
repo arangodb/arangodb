@@ -39,18 +39,12 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief hash index query parameter
-////////////////////////////////////////////////////////////////////////////////
-
 namespace arangodb {
 
 class HashIndex;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Class to build Slice lookups out of AST Conditions
-////////////////////////////////////////////////////////////////////////////////
-
 class LookupBuilder {
   private:
     TransactionBuilderLeaser _builder;
@@ -79,69 +73,58 @@ class LookupBuilder {
 
    bool incrementInPosition();
    void buildNextSearchValue();
-
 };
 
 class HashIndexIterator final : public IndexIterator {
  public:
   
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Construct an HashIndexIterator based on Ast Conditions
-////////////////////////////////////////////////////////////////////////////////
-
-  HashIndexIterator(arangodb::Transaction* trx, HashIndex const* index,
+  HashIndexIterator(LogicalCollection* collection, arangodb::Transaction* trx, 
+                    ManagedDocumentResult* mmdr,
+                    HashIndex const* index,
                     arangodb::aql::AstNode const*,
                     arangodb::aql::Variable const*);
 
   ~HashIndexIterator() = default;
+  
+  char const* typeName() const override { return "hash-index-iterator"; }
 
-  TRI_doc_mptr_t* next() override;
+  IndexLookupResult next() override;
 
-  void nextBabies(std::vector<TRI_doc_mptr_t*>&, size_t) override;
+  void nextBabies(std::vector<IndexLookupResult>&, size_t) override;
 
   void reset() override;
 
  private:
-  arangodb::Transaction* _trx;
   HashIndex const* _index;
   LookupBuilder _lookups;
-  std::vector<TRI_doc_mptr_t*> _buffer;
+  std::vector<HashIndexElement*> _buffer;
   size_t _posInBuffer;
 };
-
-
 
 class HashIndexIteratorVPack final : public IndexIterator {
  public:
   
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Construct an HashIndexIterator based on VelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
-  HashIndexIteratorVPack(
-      arangodb::Transaction* trx, HashIndex const* index,
-      std::unique_ptr<arangodb::velocypack::Builder>& searchValues)
-      : _trx(trx),
-        _index(index),
-        _searchValues(searchValues.get()),
-        _iterator(_searchValues->slice()),
-        _buffer(),
-        _posInBuffer(0) {
-    searchValues.release(); // now we have ownership for searchValues
-  }
+  HashIndexIteratorVPack(LogicalCollection* collection,
+      arangodb::Transaction* trx, 
+      ManagedDocumentResult* mmdr,
+      HashIndex const* index,
+      std::unique_ptr<arangodb::velocypack::Builder>& searchValues);
 
   ~HashIndexIteratorVPack();
+  
+  char const* typeName() const override { return "hash-index-iterator-vpack"; }
 
-  TRI_doc_mptr_t* next() override;
+  IndexLookupResult next() override;
 
   void reset() override;
 
  private:
-  arangodb::Transaction* _trx;
   HashIndex const* _index;
   std::unique_ptr<arangodb::velocypack::Builder> _searchValues;
   arangodb::velocypack::ArrayIterator _iterator;
-  std::vector<TRI_doc_mptr_t*> _buffer;
+  std::vector<HashIndexElement*> _buffer;
   size_t _posInBuffer;
 };
 
@@ -152,75 +135,62 @@ class HashIndex final : public PathBasedIndex {
  public:
   HashIndex() = delete;
 
-  HashIndex(TRI_idx_iid_t, arangodb::LogicalCollection*,
-            std::vector<std::vector<arangodb::basics::AttributeName>> const&,
-            bool, bool);
-
   HashIndex(TRI_idx_iid_t, LogicalCollection*,
             arangodb::velocypack::Slice const&);
-
-  explicit HashIndex(VPackSlice const&);
 
   ~HashIndex();
 
  public:
-  IndexType type() const override final {
+  IndexType type() const override {
     return Index::TRI_IDX_TYPE_HASH_INDEX;
   }
   
-  bool allowExpansion() const override final { return true; }
+  bool allowExpansion() const override { return true; }
   
-  bool canBeDropped() const override final { return true; }
+  bool canBeDropped() const override { return true; }
 
-  bool isSorted() const override final { return false; }
+  bool isSorted() const override { return false; }
 
-  bool hasSelectivityEstimate() const override final { return true; }
+  bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate() const override final;
+  double selectivityEstimate() const override;
 
-  size_t memory() const override final;
+  size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool) const override final;
-  void toVelocyPackFigures(VPackBuilder&) const override final;
+  void toVelocyPack(VPackBuilder&, bool) const override;
+  void toVelocyPackFigures(VPackBuilder&) const override;
 
-  bool matchesDefinition(VPackSlice const& info) const override final;
+  bool matchesDefinition(VPackSlice const& info) const override;
 
-  int insert(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
-             bool) override final;
+  int insert(arangodb::Transaction*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int remove(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
-             bool) override final;
+  int remove(arangodb::Transaction*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int batchInsert(arangodb::Transaction*,
-                  std::vector<TRI_doc_mptr_t const*> const*,
-                  size_t) override final;
+  int batchInsert(arangodb::Transaction*, std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&, size_t) override;
   
-  int unload() override final;
+  int unload() override;
 
-  int sizeHint(arangodb::Transaction*, size_t) override final;
+  int sizeHint(arangodb::Transaction*, size_t) override;
 
-  bool hasBatchInsert() const override final { return true; }
-
+  bool hasBatchInsert() const override { return true; }
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 
   IndexIterator* iteratorForCondition(arangodb::Transaction*,
-                                      IndexIteratorContext*,
+                                      ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       bool) const override;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an IndexIterator for the given VelocyPackSlices
 ///        Each slice represents the field at the same position. (order matters)
 ///        And each slice has to be an object of one of the following types:
 ///        1) {"eq": <compareValue>} // The value in index is exactly this
 ///        2) {"in": <compareValues>} // The value in index os one of them
-////////////////////////////////////////////////////////////////////////////////
-
-  IndexIterator* iteratorForSlice(arangodb::Transaction*, IndexIteratorContext*,
+  IndexIterator* iteratorForSlice(arangodb::Transaction*, 
+                                  ManagedDocumentResult*,
                                   arangodb::velocypack::Slice const,
                                   bool) const override;
 
@@ -229,90 +199,69 @@ class HashIndex final : public PathBasedIndex {
 
  private:
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief locates entries in the hash index given a velocypack slice
-  //////////////////////////////////////////////////////////////////////////////
   int lookup(arangodb::Transaction*, arangodb::velocypack::Slice,
-             std::vector<TRI_doc_mptr_t*>&) const;
+             std::vector<HashIndexElement*>&) const;
 
-  int insertUnique(arangodb::Transaction*, struct TRI_doc_mptr_t const*, bool);
+  int insertUnique(arangodb::Transaction*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback);
 
   int batchInsertUnique(arangodb::Transaction*,
-                        std::vector<TRI_doc_mptr_t const*> const*, size_t);
+                        std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&, size_t);
 
-  int insertMulti(arangodb::Transaction*, struct TRI_doc_mptr_t const*, bool);
+  int insertMulti(arangodb::Transaction*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback);
 
   int batchInsertMulti(arangodb::Transaction*,
-                       std::vector<TRI_doc_mptr_t const*> const*, size_t);
+                       std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&, size_t);
 
-  int removeUniqueElement(arangodb::Transaction*, TRI_index_element_t*, bool);
+  int removeUniqueElement(arangodb::Transaction*, HashIndexElement*, bool);
 
-  int removeUnique(arangodb::Transaction*, struct TRI_doc_mptr_t const*, bool);
-
-  int removeMultiElement(arangodb::Transaction*, TRI_index_element_t*, bool);
-
-  int removeMulti(arangodb::Transaction*, struct TRI_doc_mptr_t const*, bool);
+  int removeMultiElement(arangodb::Transaction*, HashIndexElement*, bool);
 
   bool accessFitsIndex(arangodb::aql::AstNode const* access,
                        arangodb::aql::AstNode const* other,
                        arangodb::aql::Variable const* reference,
                        std::unordered_set<size_t>& found) const;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief given an element generates a hash integer
-  //////////////////////////////////////////////////////////////////////////////
-
  private:
   class HashElementFunc {
-    size_t _numFields;
-
    public:
-    explicit HashElementFunc(size_t n) : _numFields(n) {}
+    HashElementFunc() {}
 
-    uint64_t operator()(void*, TRI_index_element_t const* element,
+    uint64_t operator()(void* userData, HashIndexElement const* element,
                         bool byKey = true) {
-      uint64_t hash = 0x0123456789abcdef;
-
-      for (size_t j = 0; j < _numFields; j++) {
-        VPackSlice data = element->subObjects()[j].slice(element->document());
-        // must use normalized hash here, to normalize different representations 
-        // of arrays/objects/numbers
-        hash = data.normalizedHash(hash);
-      }
-
+      uint64_t hash = element->hash();
+      
       if (byKey) {
         return hash;
       }
 
-      TRI_doc_mptr_t* ptr = element->document();
-      return fasthash64(&ptr, sizeof(TRI_doc_mptr_t*), hash);
+      TRI_voc_rid_t revisionId = element->revisionId();
+      return fasthash64(&revisionId, sizeof(revisionId), hash);
     }
   };
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief determines if a key corresponds to an element
-  //////////////////////////////////////////////////////////////////////////////
-
   class IsEqualElementElementByKey {
     size_t _numFields;
 
    public:
     explicit IsEqualElementElementByKey(size_t n) : _numFields(n) {}
 
-    bool operator()(void*, TRI_index_element_t const* left,
-                    TRI_index_element_t const* right) {
-      TRI_ASSERT(left->document() != nullptr);
-      TRI_ASSERT(right->document() != nullptr);
+    bool operator()(void* userData, HashIndexElement const* left,
+                    HashIndexElement const* right) {
+      TRI_ASSERT(left->revisionId() != 0);
+      TRI_ASSERT(right->revisionId() != 0);
 
-      if (left->document() == right->document()) {
+      if (left->revisionId() == right->revisionId()) {
         return true;
       }
 
-      for (size_t j = 0; j < _numFields; ++j) {
-        TRI_vpack_sub_t* leftSub = left->subObjects() + j;
-        TRI_vpack_sub_t* rightSub = right->subObjects() + j;
-        VPackSlice leftData = leftSub->slice(left->document());
-        VPackSlice rightData = rightSub->slice(right->document());
+      IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
+  
+      for (size_t i = 0; i < _numFields; ++i) {
+        VPackSlice leftData = left->slice(context, i);
+        VPackSlice rightData = right->slice(context, i);
 
         int res = arangodb::basics::VelocyPackHelper::compare(leftData, rightData, false);
         if (res != 0) {
@@ -326,16 +275,13 @@ class HashIndex final : public PathBasedIndex {
 
  private:
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief the actual hash index (unique type)
-  //////////////////////////////////////////////////////////////////////////////
-
   typedef arangodb::basics::AssocUnique<arangodb::velocypack::Slice,
-                                        TRI_index_element_t> TRI_HashArray_t;
+                                        HashIndexElement*> TRI_HashArray_t;
 
   struct UniqueArray {
     UniqueArray() = delete;
-    UniqueArray(TRI_HashArray_t*, HashElementFunc*,
+    UniqueArray(size_t numPaths, TRI_HashArray_t*, HashElementFunc*,
                 IsEqualElementElementByKey*);
 
     ~UniqueArray();
@@ -343,19 +289,18 @@ class HashIndex final : public PathBasedIndex {
     TRI_HashArray_t* _hashArray;    // the hash array itself, unique values
     HashElementFunc* _hashElement;  // hash function for elements
     IsEqualElementElementByKey* _isEqualElElByKey;  // comparison func
+    size_t _numPaths;
   };
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief the actual hash index (multi type)
-  //////////////////////////////////////////////////////////////////////////////
-
   typedef arangodb::basics::AssocMulti<arangodb::velocypack::Slice,
-                                       TRI_index_element_t, uint32_t,
-                                       true> TRI_HashArrayMulti_t;
+                                       HashIndexElement*, uint32_t,
+                                       false> TRI_HashArrayMulti_t;
 
   struct MultiArray {
     MultiArray() = delete;
-    MultiArray(TRI_HashArrayMulti_t*, HashElementFunc*,
+    MultiArray(size_t numPaths,
+               TRI_HashArrayMulti_t*, HashElementFunc*,
                IsEqualElementElementByKey*);
     ~MultiArray();
 
@@ -363,6 +308,7 @@ class HashIndex final : public PathBasedIndex {
         _hashArray;                 // the hash array itself, non-unique values
     HashElementFunc* _hashElement;  // hash function for elements
     IsEqualElementElementByKey* _isEqualElElByKey;  // comparison func
+    size_t _numPaths;
   };
 
   union {

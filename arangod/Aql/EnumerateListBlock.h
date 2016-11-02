@@ -26,7 +26,6 @@
 
 #include "ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
-#include "Utils/AqlTransaction.h"
 
 namespace arangodb {
 namespace aql {
@@ -40,7 +39,7 @@ class EnumerateListBlock : public ExecutionBlock {
   EnumerateListBlock(ExecutionEngine*, EnumerateListNode const*);
   ~EnumerateListBlock();
 
-  /// @brief initializeCursor, here we release our docs from this collection
+  // here we release our docs from this collection
   int initializeCursor(AqlItemBlock* items, size_t pos) override;
 
   AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final;
@@ -51,33 +50,31 @@ class EnumerateListBlock : public ExecutionBlock {
   size_t skipSome(size_t atLeast, size_t atMost) override final;
 
  private:
-
-  /// @brief create a value from the inVariable using the current _index
+  // cppcheck-suppress *
   AqlValue getAqlValue(AqlValue const&, bool& mustDestroy);
 
-  /// @brief throws an "array expected" exception
+  // cppcheck-suppress *
   void throwArrayExpectedException();
 
  private:
-
-  /// @brief current position in the _inVariable
+  // current position in the _inVariable
   size_t _index;
 
-  /// @brief current block in DOCVEC
+  // current block in DOCVEC
   size_t _thisBlock;
   
-  /// @brief number of elements in DOCVEC before the current block
+  // number of elements in DOCVEC before the current block
   size_t _seen;
 
-  /// @brief total number of elements in DOCVEC
+  // total number of elements in DOCVEC
   size_t _docVecSize;
 
-  /// @brief the register index containing the inVariable of the
-  /// EnumerateListNode
+  // the register index containing the inVariable of the
+  // EnumerateListNode
   RegisterId _inVarRegId;
 };
 
-}  // namespace arangodb::aql
-}  // namespace arangodb
+}
+}
 
 #endif

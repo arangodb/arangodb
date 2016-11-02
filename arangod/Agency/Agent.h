@@ -140,7 +140,7 @@ class Agent : public arangodb::Thread {
   bool rebuildDBs();
 
   /// @brief Last log entry
-  log_t const& lastLog() const;
+  log_t lastLog() const;
 
   /// @brief State machine
   State const& state() const;
@@ -157,7 +157,7 @@ class Agent : public arangodb::Thread {
   /// @brief Start constituent
   void startConstituent();
 
-  /// @brief Get notification as inactve pool member
+  /// @brief Get notification as inactive pool member
   void notify(query_t const&);
 
   /// @brief Detect active agent failures
@@ -175,9 +175,14 @@ class Agent : public arangodb::Thread {
   /// @brief Am I active agent
   query_t activate(query_t const&);
 
+  /// @brief Report measured round trips to inception
+  void reportMeasurement(query_t const&);
+
   /// @brief Inception thread still done?
   bool ready() const;
   void ready(bool b);
+
+  void resetRAFTTimes(double, double);
 
   /// @brief State reads persisted state and prepares the agent
   friend class State;
@@ -241,25 +246,28 @@ class Agent : public arangodb::Thread {
   /// @brief Condition variable for waitFor
   arangodb::basics::ConditionVariable _waitForCV;
 
-  /// @brief Condition variable for waitFor
-  arangodb::basics::ConditionVariable _configCV;
-
   /// @brief Confirmed indices of all members of agency
-  // std::vector<index_t> _confirmed;
   std::map<std::string, index_t> _confirmed;
   std::map<std::string, index_t> _lastHighest;
 
   std::map<std::string, TimePoint> _lastAcked;
   std::map<std::string, TimePoint> _lastSent;
-  arangodb::Mutex _ioLock; /**< @brief Read/Write lock */
 
-  /// @brief Server active agents rest handler
-  bool _serveActiveAgent;
+  /**< @brief RAFT consistency lock:
+     _spearhead
+     _read_db
+     _lastCommitedIndex (log index)
+     _lastAcked
+     _confirmed
+     _nextCompactionAfter
+   */
+  mutable arangodb::Mutex _ioLock;
+
+  // @brief guard _activator 
+  mutable arangodb::Mutex _activatorLock;
 
   /// @brief Next compaction after
   arangodb::consensus::index_t _nextCompationAfter;
-
-  std::map<std::string, bool> _gossipTmp;
 
   std::unique_ptr<Inception> _inception;
   std::unique_ptr<AgentActivator> _activator;

@@ -1171,8 +1171,12 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
           << "\njson: " << json.toString()
           << "\ntransaction sent to agency: " << transaction.toJson();
         AgencyCommResult ag = ac.getValues("");
-        LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
-          << ag.slice().toJson();
+        if (ag.successful()) {
+          LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
+            << ag.slice().toJson();
+        } else {
+          LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
+        }
         events::CreateCollection(name, TRI_ERROR_CLUSTER_TIMEOUT);
         return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
       }
@@ -1281,8 +1285,12 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
           << ": database: " << databaseName << ", collId:" << collectionID
           << "\ntransaction sent to agency: " << trans.toJson();
         AgencyCommResult ag = ac.getValues("");
-        LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
-          << ag.slice().toJson();
+        if (ag.successful()) {
+          LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
+            << ag.slice().toJson();
+        } else {
+          LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
+        }
         events::DropCollection(collectionID, TRI_ERROR_CLUSTER_TIMEOUT);
         return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
       }
@@ -2171,14 +2179,14 @@ void ClusterInfo::loadCurrentDBServers() {
     velocypack::Slice currentDBServers;
     velocypack::Slice failedDBServers;
     velocypack::Slice cleanedDBServers;
-    
+
     if (result.slice().length() > 0) {
       currentDBServers =
         result.slice()[0].get(std::vector<std::string>(
             {AgencyComm::prefix(), "Current", "DBServers"}));
     }
     if (!failed.slice().isNone()) {
-      failedDBServers = 
+      failedDBServers =
         failed.slice()[0].get(std::vector<std::string>(
               {AgencyComm::prefix(), "Target", "FailedServers"}));
     }

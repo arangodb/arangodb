@@ -29,6 +29,7 @@
 #include "Utils/Transaction.h"
 
 namespace arangodb {
+class ManagedDocumentResult;
 
 namespace velocypack {
 class Builder;
@@ -103,6 +104,7 @@ struct TraverserOptions {
   aql::Variable const* _tmpVar;
   aql::FixedVarExpressionContext* _ctx;
   arangodb::traverser::ClusterTraverser* _traverser;
+  bool const _isCoordinator;
 
  public:
   uint64_t minDepth;
@@ -121,6 +123,7 @@ struct TraverserOptions {
         _tmpVar(nullptr),
         _ctx(new aql::FixedVarExpressionContext()),
         _traverser(nullptr),
+        _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
         minDepth(1),
         maxDepth(1),
         useBreadthFirst(false),
@@ -153,7 +156,7 @@ struct TraverserOptions {
 
   bool evaluateVertexExpression(arangodb::velocypack::Slice, size_t) const;
 
-  EdgeCursor* nextCursor(arangodb::velocypack::Slice, size_t) const;
+  EdgeCursor* nextCursor(ManagedDocumentResult*, arangodb::velocypack::Slice, size_t) const;
 
   void clearVariableValues();
 
@@ -164,7 +167,8 @@ struct TraverserOptions {
   void serializeVariables(arangodb::velocypack::Builder&) const;
 
  private:
-  EdgeCursor* nextCursorLocal(arangodb::velocypack::Slice, size_t,
+  EdgeCursor* nextCursorLocal(ManagedDocumentResult*,
+                              arangodb::velocypack::Slice, size_t,
                               std::vector<LookupInfo>&) const;
 
   EdgeCursor* nextCursorCoordinator(arangodb::velocypack::Slice, size_t) const;

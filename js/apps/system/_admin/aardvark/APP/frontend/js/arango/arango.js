@@ -402,7 +402,7 @@
         Content: {
           route: defaultRoute + '/documents/1'
         },
-        Indices: {
+        Indexes: {
           route: '#cIndices/' + encodeURIComponent(collectionName)
         },
         Info: {
@@ -454,7 +454,9 @@
     },
 
     arangoError: function (title, content, info) {
-      window.App.notificationList.add({title: title, content: content, info: info, type: 'error'});
+      if (!$('#offlinePlaceholder').is(':visible')) {
+        window.App.notificationList.add({title: title, content: content, info: info, type: 'error'});
+      }
     },
 
     arangoWarning: function (title, content, info) {
@@ -790,10 +792,16 @@
       localStorage.setItem('authenticationNotification', false);
     },
 
-    renderEmpty: function (string) {
-      $('#content').html(
-        '<div class="noContent"><p>' + string + '</p></div>'
-      );
+    renderEmpty: function (string, iconClass) {
+      if (!iconClass) {
+        $('#content').html(
+          '<div class="noContent"><p>' + string + '</p></div>'
+        );
+      } else {
+        $('#content').html(
+          '<div class="noContent"><p>' + string + '<i class="' + iconClass + '"></i></p></div>'
+        );
+      }
     },
 
     download: function (url, callback) {

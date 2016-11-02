@@ -74,8 +74,10 @@ int getpagesize(void) {
 void TRI_sleep(unsigned long waitTime) { Sleep(waitTime * 1000); }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Calls a timer which waits for a signal after the elapsed time.
-// The timer is accurate to 100nanoseconds
+// Calls a timer which waits for a signal after the elapsed time in 
+// microseconds. The timer is accurate to 100nanoseconds.
+// This is only a Windows workaround, use usleep, which is mapped to 
+// TRI_usleep on Windows!
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_usleep(unsigned long waitTime) {

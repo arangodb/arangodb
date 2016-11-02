@@ -27,6 +27,7 @@
 #include "VocBase/Traverser.h"
 
 namespace arangodb {
+class ManagedDocumentResult;
 class Transaction;
 
 namespace traverser {
@@ -87,9 +88,9 @@ class EdgeCollectionInfo {
 /// @brief Get edges for the given direction and start vertex.
 ////////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<arangodb::OperationCursor> getEdges(std::string const&);
+  std::unique_ptr<arangodb::OperationCursor> getEdges(std::string const&, ManagedDocumentResult*);
 
-  std::unique_ptr<arangodb::OperationCursor> getEdges(arangodb::velocypack::Slice const&);
+  std::unique_ptr<arangodb::OperationCursor> getEdges(arangodb::velocypack::Slice const&, ManagedDocumentResult*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Get edges for the given direction and start vertex. On Coordinator.
@@ -102,9 +103,9 @@ class EdgeCollectionInfo {
 /// @brief Get edges for the given direction and start vertex. Reverse version
 ////////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<arangodb::OperationCursor> getReverseEdges(std::string const&);
+  std::unique_ptr<arangodb::OperationCursor> getReverseEdges(std::string const&, ManagedDocumentResult*);
 
-  std::unique_ptr<arangodb::OperationCursor> getReverseEdges(arangodb::velocypack::Slice const&);
+  std::unique_ptr<arangodb::OperationCursor> getReverseEdges(arangodb::velocypack::Slice const&, ManagedDocumentResult*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Get edges for the given direction and start vertex. Reverse version on Coordinator.

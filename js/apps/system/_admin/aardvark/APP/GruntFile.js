@@ -19,11 +19,7 @@
             "frontend/js/lib/bootstrap-min.js",
             "frontend/js/lib/d3.min.js",
             "frontend/js/lib/nv.d3.min.js",
-            "frontend/js/lib/dygraph-combined.min.js",
-            "frontend/js/lib/jquery-2.1.0.min.js",
-            "frontend/js/lib/underscore-min.js",
-            "frontend/js/lib/backbone-min.js",
-            "frontend/js/lib/bootstrap-min.js"
+            "frontend/js/lib/dygraph-combined.min.js"
           ],
           css: [
             "frontend/css/swagger/hightlight.default.css",

@@ -41,6 +41,7 @@
 
     bindParamRegExp: /@(@?\w+\d*)/,
     bindParamTableObj: {},
+    bindParamMode: 'table',
 
     bindParamTableDesc: {
       id: 'arangoBindParamTable',
@@ -104,7 +105,7 @@
 
       _.each($('.queryProfile'), function (elem) {
         if ($(elem).attr('counter') === count) {
-          $(elem).fadeOut('fast');
+          $(elem).fadeOut('fast').remove();
         }
       });
     },
@@ -115,11 +116,13 @@
         $('#bindParamAceEditor').toggle();
 
         if ($('#switchTypes').text() === 'JSON') {
+          this.bindParamMode = 'json';
           $('#switchTypes').text('Table');
           this.updateQueryTable();
           this.bindParamAceEditor.setValue(JSON.stringify(this.bindParamTableObj, null, '\t'), 1);
           this.deselect(this.bindParamAceEditor);
         } else {
+          this.bindParamMode = 'table';
           $('#switchTypes').text('JSON');
           this.renderBindParamTable();
         }
@@ -601,7 +604,11 @@
               var key;
               _.each($('#arangoBindParamTable input'), function (element) {
                 key = $(element).attr('name');
-                $(element).val(self.bindParamTableObj[key]);
+                if (typeof self.bindParamTableObj[key] === 'object') {
+                  $(element).val(JSON.parse(self.bindParamTableObj[key]));
+                } else {
+                  $(element).val(self.bindParamTableObj[key]);
+                }
               });
 
               // resave cached query
@@ -628,13 +635,15 @@
     },
 
     setCachedQuery: function (query, vars) {
-      if (Storage !== 'undefined') {
-        var myObject = {
-          query: query,
-          parameter: vars
-        };
-        this.currentQuery = myObject;
-        localStorage.setItem('cachedQuery', JSON.stringify(myObject));
+      if (query !== '') {
+        if (Storage !== 'undefined') {
+          var myObject = {
+            query: query,
+            parameter: vars
+          };
+          this.currentQuery = myObject;
+          localStorage.setItem('cachedQuery', JSON.stringify(myObject));
+        }
       }
     },
 
@@ -657,7 +666,7 @@
 
     fillSelectBoxes: function () {
       // fill select box with # of results
-      var querySize = 100;
+      var querySize = 1000;
       var sizeBox = $('#querySize');
       sizeBox.empty();
 
@@ -678,6 +687,10 @@
       if (!this.initDone) {
         // init aql editor width
         this.settings.aqlWidth = $('.aqlEditorWrapper').width();
+      }
+
+      if (this.bindParamMode === 'json') {
+        this.toggleBindParams();
       }
 
       this.initDone = true;
@@ -1094,73 +1107,113 @@
       });
 
       this.aqlEditor.getSession().on('change', function () {
+        // case copy-paste: query completely selected & removed
+        if (self.aqlEditor.getValue().length < 1) {
+          if (Object.keys(self.bindParamTableObj).length > 0) {
+            // query is empty but bindvars are defined
+            self.lastCachedBindParameter = self.bindParamTableObj;
+          }
+        }
+
         self.checkForNewBindParams();
         self.renderBindParamTable();
+
+        if (self.parseQuery(self.aqlEditor.getValue()).bindParams.length > 0) {
+          var restoreAttr = [];
+          _.each(self.parseQuery(self.aqlEditor.getValue()).bindParams, function (name) {
+            if ($('input[name=\'' + name + '\']') !== undefined && $('input[name=\'' + name + '\']').length > 0) {
+              if ($('input[name=\'' + name + '\']').val().length === 0) {
+                if (self.lastCachedBindParameter) {
+                  var value = $('input[name=\'' + name + '\']').val();
+                  if (self.lastCachedBindParameter[name]) {
+                    if (self.lastCachedBindParameter[name] !== value) {
+                      restoreAttr.push(name);
+                    }
+                  }
+                }
+              }
+            }
+          });
+          if (restoreAttr.length > 0) {
+            // self.bindParamTableObj = self.lastCachedBindParameter;
+            var toRestore = {};
+            _.each(restoreAttr, function (name, val) {
+              toRestore[name] = self.lastCachedBindParameter[name];
+            });
+            self.bindParamTableObj = toRestore;
+            self.renderBindParamTable();
+          }
+        }
+
         if (self.initDone) {
           self.setCachedQuery(self.aqlEditor.getValue(), JSON.stringify(self.bindParamTableObj));
         }
+
         self.bindParamAceEditor.setValue(JSON.stringify(self.bindParamTableObj, null, '\t'), 1);
         $('#aqlEditor .ace_text-input').focus();
 
         self.resize();
       });
 
-      this.aqlEditor.commands.addCommand({
-        name: 'togglecomment',
-        bindKey: {win: 'Ctrl-Shift-C', linux: 'Ctrl-Shift-C', mac: 'Command-Shift-C'},
-        exec: function (editor) {
-          editor.toggleCommentLines();
-        },
-        multiSelectAction: 'forEach'
-      });
+      var editors = [this.aqlEditor, this.bindParamAceEditor];
+      _.each(editors, function (editor) {
+        editor.commands.addCommand({
+          name: 'togglecomment',
+          bindKey: {win: 'Ctrl-Shift-C', linux: 'Ctrl-Shift-C', mac: 'Command-Shift-C'},
+          exec: function (editor) {
+            editor.toggleCommentLines();
+          },
+          multiSelectAction: 'forEach'
+        });
 
-      this.aqlEditor.commands.addCommand({
-        name: 'executeQuery',
-        bindKey: {win: 'Ctrl-Return', mac: 'Command-Return', linux: 'Ctrl-Return'},
-        exec: function () {
-          self.executeQuery();
-        }
-      });
+        editor.commands.addCommand({
+          name: 'executeQuery',
+          bindKey: {win: 'Ctrl-Return', mac: 'Command-Return', linux: 'Ctrl-Return'},
+          exec: function () {
+            self.executeQuery();
+          }
+        });
 
-      this.aqlEditor.commands.addCommand({
-        name: 'executeSelectedQuery',
-        bindKey: {win: 'Ctrl-Alt-Return', mac: 'Command-Alt-Return', linux: 'Ctrl-Alt-Return'},
-        exec: function () {
-          self.executeQuery(undefined, true);
-        }
-      });
+        editor.commands.addCommand({
+          name: 'executeSelectedQuery',
+          bindKey: {win: 'Ctrl-Alt-Return', mac: 'Command-Alt-Return', linux: 'Ctrl-Alt-Return'},
+          exec: function () {
+            self.executeQuery(undefined, true);
+          }
+        });
 
-      this.aqlEditor.commands.addCommand({
-        name: 'saveQuery',
-        bindKey: {win: 'Ctrl-Shift-S', mac: 'Command-Shift-S', linux: 'Ctrl-Shift-S'},
-        exec: function () {
-          self.addAQL();
-        }
-      });
+        editor.commands.addCommand({
+          name: 'saveQuery',
+          bindKey: {win: 'Ctrl-Shift-S', mac: 'Command-Shift-S', linux: 'Ctrl-Shift-S'},
+          exec: function () {
+            self.addAQL();
+          }
+        });
 
-      this.aqlEditor.commands.addCommand({
-        name: 'explainQuery',
-        bindKey: {win: 'Ctrl-Shift-Return', mac: 'Command-Shift-Return', linux: 'Ctrl-Shift-Return'},
-        exec: function () {
-          self.explainQuery();
-        }
-      });
+        editor.commands.addCommand({
+          name: 'explainQuery',
+          bindKey: {win: 'Ctrl-Shift-Return', mac: 'Command-Shift-Return', linux: 'Ctrl-Shift-Return'},
+          exec: function () {
+            self.explainQuery();
+          }
+        });
 
-      this.aqlEditor.commands.addCommand({
-        name: 'togglecomment',
-        bindKey: {win: 'Ctrl-Shift-C', linux: 'Ctrl-Shift-C', mac: 'Command-Shift-C'},
-        exec: function (editor) {
-          editor.toggleCommentLines();
-        },
-        multiSelectAction: 'forEach'
-      });
+        editor.commands.addCommand({
+          name: 'togglecomment',
+          bindKey: {win: 'Ctrl-Shift-C', linux: 'Ctrl-Shift-C', mac: 'Command-Shift-C'},
+          exec: function (editor) {
+            editor.toggleCommentLines();
+          },
+          multiSelectAction: 'forEach'
+        });
 
-      this.aqlEditor.commands.addCommand({
-        name: 'showSpotlight',
-        bindKey: {win: 'Ctrl-Space', mac: 'Ctrl-Space', linux: 'Ctrl-Space'},
-        exec: function () {
-          self.showSpotlight();
-        }
+        editor.commands.addCommand({
+          name: 'showSpotlight',
+          bindKey: {win: 'Ctrl-Space', mac: 'Ctrl-Space', linux: 'Ctrl-Space'},
+          exec: function () {
+            self.showSpotlight();
+          }
+        });
       });
 
       this.queryPreview = ace.edit('queryPreview');
@@ -1827,15 +1880,14 @@
             // query finished, now fetch results
             if (xhr.status === 201) {
               self.renderQueryResult(data, counter);
+              // SCROLL TO RESULT BOX
+              $('.centralRow').animate({ scrollTop: $('#queryContent').height() }, 'fast');
             } else if (xhr.status === 204) {
             // query not ready yet, retry
               self.checkQueryTimer = window.setTimeout(function () {
                 checkQueryStatus();
               }, 500);
             }
-
-            // SCROLL TO RESULT BOX
-            $('.centralRow').animate({ scrollTop: $('#queryContent').height() }, 'fast');
           },
           error: function (resp) {
             var error;
@@ -1899,7 +1951,7 @@
           var profileWidth = 590;
 
           var legend = [
-            'A', 'B', 'C', 'D', 'E', 'F'
+            'A', 'B', 'C', 'D', 'E', 'F', 'G'
           ];
 
           var colors = [
@@ -1908,6 +1960,7 @@
             'rgb(137, 110, 37)',
             'rgb(93, 165, 218)',
             'rgb(250, 164, 58)',
+            'rgb(64, 74, 83)',
             'rgb(96, 189, 104)'
           ];
 
@@ -1923,11 +1976,11 @@
 
           queryProfile.append(
             '<i class="fa fa-close closeProfile"></i>' +
-              '<span class="profileHeader">Profiling information</span>' +
-                '<div class="pure-g pure-table pure-table-body"></div>' +
-                  '<div class="prof-progress"></div>' +
-                    '<div class="prof-progress-label"></div>' +
-                      '<div class="clear"></div>'
+            '<span class="profileHeader">Profiling information</span>' +
+            '<div class="pure-g pure-table pure-table-body"></div>' +
+            '<div class="prof-progress"></div>' +
+            '<div class="prof-progress-label"></div>' +
+            '<div class="clear"></div>'
           );
 
           var total = 0;
@@ -1945,34 +1998,48 @@
 
             queryProfile.find('.pure-g').append(
               '<div class="pure-table-row noHover">' +
-                '<div class="pure-u-1-24 left"><p class="bold" style="background:' + colors[pos] + '">' + legend[pos] + '</p></div>' +
-                  '<div class="pure-u-4-24 left">' + ms + '</div>' +
-                    '<div class="pure-u-6-24 left">' + key + '</div>' +
-                      '<div class="pure-u-13-24 left">' + descs[pos] + '</div>' +
-                        '</div>'
+              '<div class="pure-u-1-24 left"><p class="bold" style="background:' + colors[pos] + '">' + legend[pos] + '</p></div>' +
+              '<div class="pure-u-4-24 left">' + ms + '</div>' +
+              '<div class="pure-u-6-24 left">' + key + '</div>' +
+              '<div class="pure-u-13-24 left">' + descs[pos] + '</div>' +
+              '</div>'
             );
 
-            width = (value * 1000) / total * 100;
-            if (width < 5) {
-              width = 5;
-              adjustWidth += 5;
+            width = Math.floor((value * 1000) / total * 100);
+            if (width === 0) {
+              width = 1;
+              adjustWidth++;
             }
 
-            if (pos === 5 && adjustWidth !== 0) {
-              width = width - adjustWidth;
+            if (pos !== 6) {
               queryProfile.find('.prof-progress').append(
                 '<div style="width: ' + width + '%; background-color: ' + colors[pos] + '"></div>'
               );
-              queryProfile.find('.prof-progress-label').append(
-                '<div style="width: ' + width + '%;">' + legend[pos] + '</div>'
-              );
+              if (width > 1) {
+                queryProfile.find('.prof-progress-label').append(
+                  '<div style="width: ' + width + '%;">' + legend[pos] + '</div>'
+                );
+              } else {
+                queryProfile.find('.prof-progress-label').append(
+                  '<div style="width: ' + width + '%; font-size: 9px">' + legend[pos] + '</div>'
+                );
+              }
             } else {
+              if (adjustWidth > 0) {
+                width = width - adjustWidth;
+              }
               queryProfile.find('.prof-progress').append(
                 '<div style="width: ' + width + '%; background-color: ' + colors[pos] + '"></div>'
               );
-              queryProfile.find('.prof-progress-label').append(
-                '<div style="width: ' + width + '%;">' + legend[pos] + '</div>'
-              );
+              if (width > 1) {
+                queryProfile.find('.prof-progress-label').append(
+                  '<div style="width: ' + width + '%;">' + legend[pos] + '</div>'
+                );
+              } else {
+                queryProfile.find('.prof-progress-label').append(
+                  '<div style="width: ' + width + '%; font-size: 9px">' + legend[pos] + '</div>'
+                );
+              }
             }
             pos++;
           });
@@ -2053,7 +2120,6 @@
       // check if result could be displayed as table
       if (!found) {
         var check = true;
-        var length;
         var attributes = {};
 
         if (result.length <= 1) {
@@ -2066,8 +2132,6 @@
               // not a document and not suitable for tabluar display
               return;
             }
-
-            length = _.keys(obj).length;
 
             _.each(obj, function (value, key) {
               if (attributes.hasOwnProperty(key)) {

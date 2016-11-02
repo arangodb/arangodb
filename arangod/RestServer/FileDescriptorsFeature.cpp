@@ -144,24 +144,6 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
                 << StringifyLimitValue(rlim.rlim_max) << ", new soft limit is "
                 << StringifyLimitValue(rlim.rlim_cur);
     }
-
-    // the select backend has more restrictions
-    try {
-      SchedulerFeature* scheduler = 
-          ApplicationServer::getFeature<SchedulerFeature>("Scheduler");
-
-      if (scheduler->backend() == 1) {
-        if (FD_SETSIZE < _descriptorsMinimum) {
-          LOG(FATAL)
-              << "i/o backend 'select' has been selected, which supports only "
-              << FD_SETSIZE << " descriptors, but " << _descriptorsMinimum
-              << " are required";
-          FATAL_ERROR_EXIT();
-        }
-      }
-    } catch (...) {
-      // Scheduler feature not present... simply ignore this
-    }
   }
 #endif
 }

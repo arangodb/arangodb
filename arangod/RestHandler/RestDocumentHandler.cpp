@@ -39,7 +39,7 @@ RestDocumentHandler::RestDocumentHandler(GeneralRequest* request,
                                          GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
-RestHandler::status RestDocumentHandler::execute() {
+RestStatus RestDocumentHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
 
@@ -67,7 +67,7 @@ RestHandler::status RestDocumentHandler::execute() {
   }
 
   // this handler is done
-  return status::DONE;
+  return RestStatus::DONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -165,7 +165,6 @@ typedef long suseconds_t;
 #include "Basics/debugging.h"
 #include "Basics/make_unique.h"
 #include "Basics/memory.h"
-#include "Basics/structures.h"
 #include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
 #undef TRI_WITHIN_COMMON
@@ -244,7 +243,7 @@ static inline uint32_t TRI_64To32(uint64_t x) {
       LOG(WARN) << bt;                        \
     }                                         \
     arangodb::Logger::flush();                \
-    arangodb::Logger::shutdown(true);         \
+    arangodb::Logger::shutdown();             \
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr); \
     exit(EXIT_FAILURE);                       \
   } while (0)

@@ -46,11 +46,12 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _waitForSync(true),
       _supervisionFrequency(5.0),
       _compactionStepSize(1000),
-      _supervisionGracePeriod(120.0) {
+      _supervisionGracePeriod(120.0),
+      _cmdLineTimings(false)
+{
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Database");
-  startsAfter("Dispatcher");
   startsAfter("Endpoint");
   startsAfter("QueryRegistry");
   startsAfter("Random");
@@ -118,6 +119,10 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (!result.touched("agency.activate") || !_activated) {
     disable();
     return;
+  }
+
+  if (result.touched("agency.election-timeout-min")) {
+    _cmdLineTimings = true;
   }
 
   ServerState::instance()->setRole(ServerState::ROLE_AGENT);
@@ -222,7 +227,7 @@ void AgencyFeature::start() {
   _agent.reset(new consensus::Agent(consensus::config_t(
       _size, _poolSize, _minElectionTimeout, _maxElectionTimeout, endpoint,
       _agencyEndpoints, _supervision, _waitForSync, _supervisionFrequency,
-      _compactionStepSize, _supervisionGracePeriod)));
+      _compactionStepSize, _supervisionGracePeriod, _cmdLineTimings)));
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting agency personality";
   _agent->start();

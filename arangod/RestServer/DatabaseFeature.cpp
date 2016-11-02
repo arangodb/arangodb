@@ -34,7 +34,7 @@
 #include "Basics/files.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/v8-cluster.h"
-#include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -54,9 +54,7 @@
 #include "VocBase/vocbase.h"
 #include "Wal/LogfileManager.h"
 
-#ifdef ARANGODB_ENABLE_ROCKSDB
 #include "Indexes/RocksDBIndex.h"
-#endif
 
 #include <velocypack/velocypack-aliases.h>
 
@@ -138,10 +136,8 @@ void DatabaseManagerThread::run() {
 // regular database
 // ---------------------------
 
-#ifdef ARANGODB_ENABLE_ROCKSDB
         // delete persistent indexes for this database
         RocksDBFeature::dropDatabase(database->id());
-#endif
 
         LOG(TRACE) << "physically removing database directory '"
                    << engine->databasePath(database) << "' of database '"
@@ -221,6 +217,7 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
       _defaultWaitForSync(false),
       _forceSyncProperties(true),
       _ignoreDatafileErrors(false),
+      _check30Revisions(true),
       _throwCollectionNotLoadedError(false),
       _vocbase(nullptr),
       _databasesLists(new DatabasesLists()),
@@ -230,11 +227,13 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
       _upgrade(false) {
   setOptional(false);
   requiresElevatedPrivileges(false);
+  startsAfter("Authentication");
   startsAfter("DatabasePath");
   startsAfter("EngineSelector");
   startsAfter("LogfileManager");
   startsAfter("InitDatabase");
-  startsAfter("IndexPool");
+  startsAfter("IndexThread");
+  startsAfter("RevisionCache");
 }
 
 DatabaseFeature::~DatabaseFeature() {
@@ -279,6 +278,10 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--database.replication-applier",
       "switch to enable or disable the replication applier",
       new BooleanParameter(&_replicationApplier));
+  
+  options->addHiddenOption("--database.check-30-revisions",
+                           "check _rev values in collections created before 3.1",
+                           new BooleanParameter(&_check30Revisions));
 }
 
 void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -346,6 +349,24 @@ void DatabaseFeature::start() {
 
   // update all v8 contexts
   updateContexts();
+}
+
+// signal to all databases that active cursors can be wiped
+// this speeds up the actual shutdown because no waiting is necessary
+// until the cursors happen to free their underlying transactions
+void DatabaseFeature::beginShutdown() {
+  auto unuser(_databasesProtector.use());
+  auto theLists = _databasesLists.load();
+
+  for (auto& p : theLists->_databases) {
+    TRI_vocbase_t* vocbase = p.second;
+    // iterate over all databases
+    TRI_ASSERT(vocbase != nullptr);
+    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
+
+    // throw away all open cursors in order to speed up shutdown
+    vocbase->cursorRepository()->garbageCollect(true);
+  }
 }
 
 void DatabaseFeature::stop() {
@@ -823,7 +844,9 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
       TRI_vocbase_t* vocbase = p.second;
       TRI_ASSERT(vocbase != nullptr);
 
-      auto level = GeneralServerFeature::AUTH_INFO.canUseDatabase(
+      auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>(
+          "Authentication");
+      auto level = authentication->canUseDatabase(
           username, vocbase->name());
 
       if (level == AuthLevel::NONE) {

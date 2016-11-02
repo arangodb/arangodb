@@ -1300,7 +1300,7 @@ static void JS_PropertiesVocbaseCol(
   result->Set(IsVolatileKey,
               v8::Boolean::New(isolate, collection->isVolatile()));
   result->Set(JournalSizeKey,
-              v8::Number::New(isolate, collection->journalSize()));
+              v8::Number::New(isolate, (double) collection->journalSize()));
   result->Set(TRI_V8_ASCII_STRING("indexBuckets"),
               v8::Number::New(isolate, collection->indexBuckets()));
 
@@ -1929,9 +1929,7 @@ static int GetRevisionCoordinator(arangodb::LogicalCollection* collection,
   std::string const databaseName(collection->dbName());
   std::string const cid = collection->cid_as_string();
 
-  int res = revisionOnCoordinator(databaseName, cid, rid);
-
-  return res;
+  return revisionOnCoordinator(databaseName, cid, rid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1950,20 +1948,21 @@ static void JS_RevisionVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  TRI_voc_rid_t rid;
+  TRI_voc_rid_t revisionId;
   int res;
 
   if (ServerState::instance()->isCoordinator()) {
-    res = GetRevisionCoordinator(collection, rid);
+    res = GetRevisionCoordinator(collection, revisionId);
   } else {
-    res = GetRevision(collection, rid);
+    res = GetRevision(collection, revisionId);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  TRI_V8_RETURN(V8RevisionId(isolate, rid));
+  std::string ridString = TRI_RidToString(revisionId);
+  TRI_V8_RETURN(TRI_V8_STD_STRING(ridString));
   TRI_V8_TRY_CATCH_END
 }
 

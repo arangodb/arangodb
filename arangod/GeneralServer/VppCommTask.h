@@ -25,19 +25,24 @@
 #define ARANGOD_GENERAL_SERVER_VPP_COMM_TASK_H 1
 
 #include "GeneralServer/GeneralCommTask.h"
-#include "lib/Rest/VppMessage.h"
-#include "lib/Rest/VppRequest.h"
-#include "lib/Rest/VppResponse.h"
 
 #include <boost/optional.hpp>
 #include <stdexcept>
 
+#include "lib/Rest/VppMessage.h"
+#include "lib/Rest/VppRequest.h"
+#include "lib/Rest/VppResponse.h"
+
 namespace arangodb {
+
+class AuthenticationFeature;
+
 namespace rest {
 
 class VppCommTask : public GeneralCommTask {
  public:
-  VppCommTask(GeneralServer*, TRI_socket_t, ConnectionInfo&&, double timeout);
+  VppCommTask(EventLoop, GeneralServer*, std::unique_ptr<Socket> socket,
+              ConnectionInfo&&, double timeout, bool skipSocketInit = false);
 
   // convert from GeneralResponse to vppResponse ad dispatch request to class
   // internal addResponse
@@ -58,11 +63,10 @@ class VppCommTask : public GeneralCommTask {
   // if message is complete execute a request
   bool processRead() override;
 
-  void handleChunk(char const*, size_t) override final {}
-
   std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) override final;
 
+  void handleAuthentication(VPackSlice const& header, uint64_t messageId);
   void handleSimpleError(rest::ResponseCode code, uint64_t id) override {
     VppResponse response(code, id);
     addResponse(&response);
@@ -132,11 +136,11 @@ class VppCommTask : public GeneralCommTask {
       char const* vpackBegin, char const* chunkEnd);
 
   std::string _authenticatedUser;
-  bool _authenticationEnabled;
-
+  AuthenticationFeature* _authentication;
   // user
   // authenticated or not
   // database aus url
+  bool _authenticationEnabled;
 };
 }
 }

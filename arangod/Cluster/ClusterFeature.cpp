@@ -31,12 +31,13 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
-#include "Dispatcher/DispatcherFeature.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "SimpleHttpClient/ConnectionManager.h"
 #include "V8Server/V8DealerFeature.h"
 
@@ -56,18 +57,15 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
       _agencyCallbackRegistry(nullptr) {
   setOptional(true);
   requiresElevatedPrivileges(false);
+  startsAfter("Authentication");
   startsAfter("Logger");
   startsAfter("WorkMonitor");
   startsAfter("Database");
-  startsAfter("Dispatcher");
   startsAfter("Scheduler");
   startsAfter("V8Dealer");
-  startsAfter("Database");
 }
 
 ClusterFeature::~ClusterFeature() {
-  delete _heartbeatThread;
-
   if (_enableCluster) {
     AgencyComm::cleanup();
   }
@@ -193,7 +191,6 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void ClusterFeature::prepare() {
-  ServerState::instance()->setAuthentication(_username, _password);
   ServerState::instance()->setDataPath(_dataPath);
   ServerState::instance()->setLogPath(_logPath);
   ServerState::instance()->setArangodPath(_arangodPath);
@@ -411,8 +408,9 @@ void ClusterFeature::start() {
     }
 
     // start heartbeat thread
-    _heartbeatThread = new HeartbeatThread(_agencyCallbackRegistry.get(),
-                                           _heartbeatInterval * 1000, 5);
+    _heartbeatThread = std::make_shared<HeartbeatThread>(
+        _agencyCallbackRegistry.get(), _heartbeatInterval * 1000, 5,
+        SchedulerFeature::SCHEDULER->ioService());
 
     if (!_heartbeatThread->init() || !_heartbeatThread->start()) {
       LOG(FATAL) << "heartbeat could not connect to agency endpoints ("
@@ -459,11 +457,6 @@ void ClusterFeature::start() {
   } else if (role == ServerState::ROLE_SECONDARY) {
     ServerState::instance()->setState(ServerState::STATE_SYNCING);
   }
-
-  DispatcherFeature* dispatcher =
-      ApplicationServer::getFeature<DispatcherFeature>("Dispatcher");
-
-  dispatcher->buildAqlQueue();
 }
 
 void ClusterFeature::unprepare() {
@@ -488,14 +481,14 @@ void ClusterFeature::unprepare() {
         }
       }
     }
+
     if (_unregisterOnShutdown) {
       ServerState::instance()->unregister();
     }
   }
 
-  ClusterComm::cleanup();
-
   if (!_enableCluster) {
+    ClusterComm::cleanup();
     return;
   }
 
@@ -531,9 +524,9 @@ void ClusterFeature::unprepare() {
   while (_heartbeatThread->isRunning()) {
     usleep(50000);
   }
-
-  // ClusterComm::cleanup();
+  
   AgencyComm::cleanup();
+  ClusterComm::cleanup();
 }
 
 void ClusterFeature::setUnregisterOnShutdown(bool unregisterOnShutdown) {

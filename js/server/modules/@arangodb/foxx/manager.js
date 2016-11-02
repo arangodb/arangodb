@@ -190,6 +190,7 @@ const manifestSchema = {
 var serviceCache = {};
 var usedSystemMountPoints = [
   '/_admin/aardvark', // Admin interface.
+  '/_api/foxx', // Foxx management API.
   '/_api/gharial' // General_Graph API.
 ];
 
@@ -807,6 +808,10 @@ function patchManifestFile (servicePath, patchData) {
   fs.write(filename, JSON.stringify(manifest, null, 2));
 }
 
+function isLocalFile (path) {
+  return utils.pathRegex.test(path) && !fs.isDirectory(path);
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Copies a service from local, either zip file or folder, to mount path
 // //////////////////////////////////////////////////////////////////////////////
@@ -960,7 +965,7 @@ function scanFoxx (mount, options) {
   initCache();
   var service = _scanFoxx(mount, options);
   reloadRouting();
-  return service.simpleJSON();
+  return service;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -999,9 +1004,6 @@ function _buildServiceInPath (serviceInfo, path, options) {
     } else if (/^https?:/i.test(serviceInfo)) {
       installServiceFromRemote(serviceInfo, path);
     } else if (utils.pathRegex.test(serviceInfo)) {
-      installServiceFromLocal(serviceInfo, path);
-    } else if (/^uploads[\/\\]tmp-/.test(serviceInfo)) {
-      serviceInfo = joinPath(fs.getTempPath(), serviceInfo);
       installServiceFromLocal(serviceInfo, path);
     } else {
       if (!options || options.refresh !== false) {
@@ -1121,8 +1123,11 @@ function install (serviceInfo, mount, options) {
     [ [ 'Install information', 'string' ],
       [ 'Mount path', 'string' ] ],
     [ serviceInfo, mount ]);
+  if (/^uploads[\/\\]tmp-/.test(serviceInfo)) {
+    serviceInfo = joinPath(fs.getTempPath(), serviceInfo);
+  }
   utils.validateMount(mount);
-  let hasToBeDistributed = /^uploads[\/\\]tmp-/.test(serviceInfo);
+  let hasToBeDistributed = isLocalFile(serviceInfo);
   var service = _install(serviceInfo, mount, options, true);
   options = options || {};
   if (ArangoServerState.isCoordinator() && !options.__clusterDistribution) {
@@ -1169,7 +1174,7 @@ function install (serviceInfo, mount, options) {
     }
   }
   reloadRouting();
-  return service.simpleJSON();
+  return service;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1277,7 +1282,7 @@ function uninstall (mount, options) {
   }
   var service = _uninstall(mount, options);
   reloadRouting();
-  return service.simpleJSON();
+  return service;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1292,10 +1297,13 @@ function replace (serviceInfo, mount, options) {
     [ [ 'Install information', 'string' ],
       [ 'Mount path', 'string' ] ],
     [ serviceInfo, mount ]);
+  if (/^uploads[\/\\]tmp-/.test(serviceInfo)) {
+    serviceInfo = joinPath(fs.getTempPath(), serviceInfo);
+  }
   utils.validateMount(mount);
   _validateService(serviceInfo, mount);
   options = options || {};
-  let hasToBeDistributed = /^uploads[\/\\]tmp-/.test(serviceInfo);
+  let hasToBeDistributed = isLocalFile(serviceInfo);
   if (ArangoServerState.isCoordinator() && !options.__clusterDistribution) {
     let name = ArangoServerState.id();
     let coordinators = ArangoClusterInfo.getCoordinators().filter(function (c) {
@@ -1345,7 +1353,7 @@ function replace (serviceInfo, mount, options) {
   });
   var service = _install(serviceInfo, mount, options, true);
   reloadRouting();
-  return service.simpleJSON();
+  return service;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1360,10 +1368,13 @@ function upgrade (serviceInfo, mount, options) {
     [ [ 'Install information', 'string' ],
       [ 'Mount path', 'string' ] ],
     [ serviceInfo, mount ]);
+  if (/^uploads[\/\\]tmp-/.test(serviceInfo)) {
+    serviceInfo = joinPath(fs.getTempPath(), serviceInfo);
+  }
   utils.validateMount(mount);
   _validateService(serviceInfo, mount);
   options = options || {};
-  let hasToBeDistributed = /^uploads[\/\\]tmp-/.test(serviceInfo);
+  let hasToBeDistributed = isLocalFile(serviceInfo);
   if (ArangoServerState.isCoordinator() && !options.__clusterDistribution) {
     let name = ArangoServerState.id();
     let coordinators = ArangoClusterInfo.getCoordinators().filter(function (c) {
@@ -1428,7 +1439,7 @@ function upgrade (serviceInfo, mount, options) {
   });
   var service = _install(serviceInfo, mount, options, true);
   reloadRouting();
-  return service.simpleJSON();
+  return service;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1480,7 +1491,7 @@ function setDevelopment (mount) {
     [ [ 'Mount path', 'string' ] ],
     [ mount ]);
   var service = _toggleDevelopment(mount, true);
-  return service.simpleJSON();
+  return service;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1493,77 +1504,69 @@ function setProduction (mount) {
     [ [ 'Mount path', 'string' ] ],
     [ mount ]);
   var service = _toggleDevelopment(mount, false);
-  return service.simpleJSON();
+  return service;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Configure the service at the mountpoint
 // //////////////////////////////////////////////////////////////////////////////
 
-function configure (mount, options) {
+function setConfiguration (mount, options) {
   checkParameter(
-    'configure(<mount>)',
+    'setConfiguration(<mount>)',
     [ [ 'Mount path', 'string' ] ],
     [ mount ]);
   utils.validateMount(mount, true);
   var service = lookupService(mount);
-  var invalid = service.applyConfiguration(options.configuration || {});
-  if (invalid.length > 0) {
-    // TODO Error handling
-    console.log(invalid);
-  }
+  var warnings = service.applyConfiguration(options.configuration, options.replace);
   utils.updateService(mount, service.toJSON());
   reloadRouting();
-  return service.simpleJSON();
+  return warnings;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Set up dependencies of the service at the mountpoint
 // //////////////////////////////////////////////////////////////////////////////
 
-function updateDeps (mount, options) {
+function setDependencies (mount, options) {
   checkParameter(
-    'updateDeps(<mount>)',
+    'setDependencies(<mount>)',
     [ [ 'Mount path', 'string' ] ],
     [ mount ]);
   utils.validateMount(mount, true);
   var service = lookupService(mount);
-  var invalid = service.applyDependencies(options.dependencies || {});
-  if (invalid.length > 0) {
-    // TODO Error handling
-    console.log(invalid);
-  }
+  var warnings = service.applyDependencies(options.dependencies, options.replace);
   utils.updateService(mount, service.toJSON());
   reloadRouting();
-  return service.simpleJSON();
+  return warnings;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Get the configuration for the service at the given mountpoint
 // //////////////////////////////////////////////////////////////////////////////
 
-function configuration (mount) {
+function configuration (mount, options) {
   checkParameter(
     'configuration(<mount>)',
     [ [ 'Mount path', 'string' ] ],
     [ mount ]);
   utils.validateMount(mount, true);
   var service = lookupService(mount);
-  return service.getConfiguration();
+  return service.getConfiguration(options && options.simple);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Get the dependencies for the service at the given mountpoint
 // //////////////////////////////////////////////////////////////////////////////
 
-function dependencies (mount) {
+function dependencies (mount, options) {
   checkParameter(
     'dependencies(<mount>)',
     [ [ 'Mount path', 'string' ] ],
     [ mount ]);
   utils.validateMount(mount, true);
   var service = lookupService(mount);
-  return service.getDependencies();
+  return service.getDependencies(options && options.simple);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1621,8 +1624,8 @@ exports.replace = replace;
 exports.upgrade = upgrade;
 exports.development = setDevelopment;
 exports.production = setProduction;
-exports.configure = configure;
-exports.updateDeps = updateDeps;
+exports.setConfiguration = setConfiguration;
+exports.setDependencies = setDependencies;
 exports.configuration = configuration;
 exports.dependencies = dependencies;
 exports.requireService = requireService;

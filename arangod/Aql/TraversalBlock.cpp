@@ -36,7 +36,6 @@
 #include "Utils/OperationCursor.h"
 #include "Utils/Transaction.h"
 #include "V8/v8-globals.h"
-#include "VocBase/MasterPointer.h"
 #include "VocBase/SingleServerTraverser.h"
 #include "VocBase/ticks.h"
 
@@ -68,6 +67,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
   }
 
   _opts = ep->options();
+  _mmdr.reset(new ManagedDocumentResult(_trx));
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
 #ifdef USE_ENTERPRISE
@@ -75,6 +75,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
     if (node->isSmart()) {
       _traverser.reset(new arangodb::traverser::SmartGraphTraverser(
           _opts,
+          _mmdr.get(),
           ep->engines(),
           _trx->vocbase()->name(),
           _trx));
@@ -82,6 +83,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
 #endif
       _traverser.reset(new arangodb::traverser::ClusterTraverser(
           _opts,
+          _mmdr.get(),
           ep->engines(),
           _trx->vocbase()->name(),
           _trx));
@@ -90,7 +92,13 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
 #endif
   } else {
     _traverser.reset(
-        new arangodb::traverser::SingleServerTraverser(_opts, _trx));
+        new arangodb::traverser::SingleServerTraverser(_opts, _trx, _mmdr.get()));
+  }
+  if (!ep->usesEdgeOutVariable() && !ep->usesPathOutVariable() &&
+      _opts->useBreadthFirst &&
+      _opts->uniqueVertices ==
+          traverser::TraverserOptions::UniquenessLevel::GLOBAL) {
+    _traverser->allowOptimizedNeighbors();
   }
   if (!ep->usesInVariable()) {
     _vertexId = ep->getStartVertex();
@@ -115,7 +123,6 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
   if (arangodb::ServerState::instance()->isCoordinator()) {
     _engines = ep->engines();
   }
-
 }
 
 TraversalBlock::~TraversalBlock() {
@@ -337,7 +344,9 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items, size_t pos) {
 AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
                                       size_t atMost) {
   DEBUG_BEGIN_BLOCK();
+  traceGetSomeBegin();
   if (_done) {
+    traceGetSomeEnd(nullptr);
     return nullptr;
   }
 
@@ -345,6 +354,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
     size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
     if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
       _done = true;
+      traceGetSomeEnd(nullptr);
       return nullptr;
     }
     _pos = 0;  // this is in the first block
@@ -372,7 +382,9 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
       } else {
         initializePaths(cur, _pos);
       }
-      return getSome(atMost, atMost);
+      auto r = getSome(atMost, atMost);
+      traceGetSomeEnd(r);
+      return r;
     }
   }
 
@@ -424,6 +436,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
 
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
+  traceGetSomeEnd(res.get());
   return res.release();
 
   // cppcheck-suppress style

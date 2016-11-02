@@ -1655,7 +1655,8 @@ class Graph {
     );
 
     updateBindCollections(this);
-    db._graphs.update(
+    let gdb = getGraphCollection();
+    gdb.update(
       this.__name,
       {
         orphanCollections: this.__orphanCollections,

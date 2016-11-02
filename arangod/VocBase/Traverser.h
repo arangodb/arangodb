@@ -27,14 +27,16 @@
 #include "Basics/Common.h"
 #include "Basics/hashes.h"
 #include "Basics/ShortestPathFinder.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Aql/AqlValue.h"
 #include "Aql/AstNode.h"
-#include "Utils/CollectionNameResolver.h"
-#include "Utils/Transaction.h"
 #include "VocBase/PathEnumerator.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
+
+class ManagedDocumentResult;
+class Transaction;
 
 namespace velocypack {
 class Builder;
@@ -126,13 +128,13 @@ class ShortestPath {
   /// @brief Builds only the last edge pointing to the vertex at position as
   /// VelocyPack
 
-  void edgeToVelocyPack(Transaction*, size_t, arangodb::velocypack::Builder&);
+  void edgeToVelocyPack(Transaction*, ManagedDocumentResult*, size_t, arangodb::velocypack::Builder&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds only the vertex at position as VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void vertexToVelocyPack(Transaction*, size_t, arangodb::velocypack::Builder&);
+  void vertexToVelocyPack(Transaction*, ManagedDocumentResult*, size_t, arangodb::velocypack::Builder&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Gets the amount of read documents
@@ -211,6 +213,7 @@ class TraversalPath {
 class Traverser {
   friend class BreadthFirstEnumerator;
   friend class DepthFirstEnumerator;
+  friend class NeighborsEnumerator;
 
  protected:
 
@@ -259,7 +262,7 @@ class Traverser {
     void reset(arangodb::velocypack::Slice) override;
 
    private:
-    std::unordered_set<arangodb::velocypack::Slice> _returnedVertices;
+    std::unordered_set<arangodb::basics::VPackHashedSlice> _returnedVertices;
   };
 
 
@@ -268,7 +271,7 @@ class Traverser {
   /// @brief Constructor. This is an abstract only class.
   //////////////////////////////////////////////////////////////////////////////
 
-  Traverser(TraverserOptions* opts, Transaction* trx);
+  Traverser(TraverserOptions* opts, Transaction* trx, ManagedDocumentResult*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Destructor
@@ -362,6 +365,8 @@ class Traverser {
   }
   
   TraverserOptions const* options() { return _opts; }
+  
+  ManagedDocumentResult* mmdr() const { return _mmdr; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Simple check if there are potentially more paths.
@@ -376,10 +381,14 @@ class Traverser {
 
   bool vertexMatchesConditions(arangodb::velocypack::Slice, size_t);
 
+  void allowOptimizedNeighbors();
+
  protected:
 
   /// @brief Outer top level transaction
   Transaction* _trx;
+
+  ManagedDocumentResult* _mmdr;
 
   /// @brief internal cursor to enumerate the paths of a graph
   std::unique_ptr<arangodb::traverser::PathEnumerator> _enumerator;
@@ -405,6 +414,8 @@ class Traverser {
   /// @brief options for traversal
   TraverserOptions* _opts;
 
+  bool _canUseOptimizedNeighbors;
+
   /// @brief Function to fetch the real data of a vertex into an AQLValue
   virtual aql::AqlValue fetchVertexData(arangodb::velocypack::Slice) = 0;
 
@@ -418,6 +429,7 @@ class Traverser {
   /// @brief Function to add the real data of an edge into a velocypack builder
   virtual void addEdgeToVelocyPack(arangodb::velocypack::Slice,
                                    arangodb::velocypack::Builder&) = 0;
+ 
 };
 }  // traverser
 }  // arangodb

@@ -48,30 +48,19 @@ class SortCondition;
 struct Variable;
 }
 
+class LogicalCollection;
 class PrimaryIndex;
 class RocksDBIndex;
 class Transaction;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Iterator structure for RocksDB. We require a start and stop node
-////////////////////////////////////////////////////////////////////////////////
-
 class RocksDBIterator final : public IndexIterator {
  private:
   friend class RocksDBIndex;
 
- private:
-  arangodb::Transaction* _trx;
-  arangodb::PrimaryIndex* _primaryIndex;
-  rocksdb::OptimisticTransactionDB* _db;
-  std::unique_ptr<rocksdb::Iterator> _cursor;
-  std::unique_ptr<arangodb::velocypack::Buffer<char>> _leftEndpoint;   // Interval left border
-  std::unique_ptr<arangodb::velocypack::Buffer<char>> _rightEndpoint;  // Interval right border
-  bool const _reverse;
-  bool _probe;
-
  public:
-  RocksDBIterator(arangodb::Transaction* trx, 
+  RocksDBIterator(LogicalCollection* collection, Transaction* trx, 
+                  ManagedDocumentResult* mmdr,
                   arangodb::RocksDBIndex const* index,
                   arangodb::PrimaryIndex* primaryIndex,
                   rocksdb::OptimisticTransactionDB* db,
@@ -82,18 +71,23 @@ class RocksDBIterator final : public IndexIterator {
   ~RocksDBIterator() = default;
 
  public:
+  
+  char const* typeName() const override { return "rocksdb-index-iterator"; }
 
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief Get the next element in the index
-  ////////////////////////////////////////////////////////////////////////////////
+  IndexLookupResult next() override;
 
-  TRI_doc_mptr_t* next() override;
-
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief Reset the cursor
-  ////////////////////////////////////////////////////////////////////////////////
-
   void reset() override;
+ 
+ private:
+  arangodb::PrimaryIndex* _primaryIndex;
+  rocksdb::OptimisticTransactionDB* _db;
+  std::unique_ptr<rocksdb::Iterator> _cursor;
+  std::unique_ptr<arangodb::velocypack::Buffer<char>> _leftEndpoint;   // Interval left border
+  std::unique_ptr<arangodb::velocypack::Buffer<char>> _rightEndpoint;  // Interval right border
+  bool const _reverse;
+  bool _probe;
 };
 
 class RocksDBIndex final : public PathBasedIndex {
@@ -102,36 +96,29 @@ class RocksDBIndex final : public PathBasedIndex {
  public:
   RocksDBIndex() = delete;
 
-  RocksDBIndex(
-      TRI_idx_iid_t, arangodb::LogicalCollection*,
-      std::vector<std::vector<arangodb::basics::AttributeName>> const&, bool,
-      bool);
-
   RocksDBIndex(TRI_idx_iid_t, LogicalCollection*,
                arangodb::velocypack::Slice const&);
-
-  explicit RocksDBIndex(VPackSlice const&);
 
   ~RocksDBIndex();
 
  public:
-  IndexType type() const override final {
+  IndexType type() const override {
     return Index::TRI_IDX_TYPE_ROCKSDB_INDEX;
   }
   
-  bool allowExpansion() const override final { return true; }
+  bool allowExpansion() const override { return true; }
   
-  bool isPersistent() const override final { return true; }
-  bool canBeDropped() const override final { return true; }
+  bool isPersistent() const override { return true; }
+  bool canBeDropped() const override { return true; }
 
-  bool isSorted() const override final { return true; }
+  bool isSorted() const override { return true; }
 
-  bool hasSelectivityEstimate() const override final { return false; }
+  bool hasSelectivityEstimate() const override { return false; }
 
-  size_t memory() const override final;
+  size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool) const override final;
-  void toVelocyPackFigures(VPackBuilder&) const override final;
+  void toVelocyPack(VPackBuilder&, bool) const override;
+  void toVelocyPackFigures(VPackBuilder&) const override;
   
   static constexpr size_t minimalPrefixSize() {
     return sizeof(TRI_voc_tick_t);
@@ -163,25 +150,22 @@ class RocksDBIndex final : public PathBasedIndex {
     return value;
   }
 
-  int insert(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
-             bool) override final;
+  int insert(arangodb::Transaction*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int remove(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
-             bool) override final;
+  int remove(arangodb::Transaction*, TRI_voc_rid_t, arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int unload() override final;
+  int unload() override;
 
-  int drop() override final;
+  int drop() override;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief attempts to locate an entry in the index
   ///
   /// Warning: who ever calls this function is responsible for destroying
   /// the velocypack::Slice and the RocksDBIterator* results
-  //////////////////////////////////////////////////////////////////////////////
-
-  RocksDBIterator* lookup(arangodb::Transaction*, arangodb::velocypack::Slice const,
-                          bool) const;
+  RocksDBIterator* lookup(arangodb::Transaction*, 
+                          ManagedDocumentResult* mmdr,
+                          arangodb::velocypack::Slice const,
+                          bool reverse) const;
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
@@ -192,7 +176,7 @@ class RocksDBIndex final : public PathBasedIndex {
                              double&, size_t&) const override;
 
   IndexIterator* iteratorForCondition(arangodb::Transaction*,
-                                      IndexIteratorContext*,
+                                      ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       bool) const override;
@@ -220,10 +204,7 @@ class RocksDBIndex final : public PathBasedIndex {
 
  private:
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief the RocksDB instance
-  //////////////////////////////////////////////////////////////////////////////
-
   rocksdb::OptimisticTransactionDB* _db;
 
 };

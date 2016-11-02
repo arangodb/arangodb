@@ -108,6 +108,7 @@ set(BIN_ARANGOVPACK   arangovpack)
 set(TEST_BASICS_SUITE basics_suite)
 set(TEST_GEO_SUITE    geo_suite)
 set(PACKAGES_LIST)
+set(COPY_PACKAGES_LIST)
 set(CLEAN_PACKAGES_LIST)
 
 ################################################################################
@@ -219,24 +220,15 @@ elseif (APPLE)
   elseif (CMAKE_SYSTEM_NAME MATCHES ".*MacOS.*")
     set(MACOSX TRUE)
   endif ()
+  find_program(BREW brew)
 endif ()
 
 ################################################################################
 ## ROCKSDB
 ################################################################################
 
-option(USE_ROCKSDB
-  "whether RocksDB is enabled"
-  ON
-)
-
-if (USE_ROCKSDB)
-  add_definitions("-DARANGODB_ENABLE_ROCKSDB=1")
-  add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
-  include_directories(${ROCKSDB_INCLUDE_DIR})
-else ()
-  set(ROCKSDB_LIBS "")
-endif ()
+add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
+include_directories(${ROCKSDB_INCLUDE_DIR})
 
 ################################################################################
 ## EXTERNAL PROGRAMS
@@ -250,6 +242,11 @@ endif ()
 
 find_package(PythonInterp 2 EXACT REQUIRED)
 get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
+
+if (NOT WINDOWS)
+  find_program(CHMOD_EXECUTABLE chmod)
+  find_program(CHOWN_EXECUTABLE chown)
+endif()
 
 ################################################################################
 ## ARCHITECTURE
@@ -712,14 +709,10 @@ endif ()
 # ICU_LIBS
 # ICU_INCLUDE_DIR
 #
-# LIBEV_VERSION
-# LIBEV_LIBS
-# LIBEV_INCLUDE_DIR
-#
 # ZLIB_VERSION
 # ZLIB_LIBS
 # ZLIB_INCLUDE_DIR
-
+add_definitions(-DBOOST_ALL_NO_LIB=1) #disable boost autolink on windows
 add_subdirectory(3rdParty)
 
 ################################################################################
@@ -733,36 +726,10 @@ foreach (LINK_DIR ${LINK_DIRECTORIES})
 endforeach()
 
 ################################################################################
-## BOOST
-################################################################################
-
-message(STATUS "using 3rdParty BOOST")
-option(USE_BOOST_UNITTESTS "use boost unit-tests" ON)
-
-set(Boost_VERSION "1.61.0")
-set(Boost_INCLUDE_DIR
-  "${PROJECT_SOURCE_DIR}/3rdParty/boost/${Boost_VERSION}"
-)
-
-if (NOT USE_BOOST_UNITTESTS)
-  message(STATUS "BOOST unit-tests are disabled")
-endif ()
-
-include_directories(SYSTEM ${Boost_INCLUDE_DIR})
-add_definitions(-DARANGODB_BOOST_VERSION=\"${Boost_VERSION}\")
-
-################################################################################
 ## ICU
 ################################################################################
 
 include_directories(${ICU_INCLUDE_DIR})
-
-################################################################################
-## LIBEV
-################################################################################
-
-include_directories(${LIBEV_INCLUDE_DIR})
-add_definitions("-DARANGODB_LIBEV_VERSION=\"${LIBEV_VERSION}\"")
 
 ################################################################################
 ## OPENSSL
@@ -921,7 +888,7 @@ endif()
 add_subdirectory(Documentation)
 
 add_dependencies(arangobench   zlibstatic)
-add_dependencies(arangod       ev zlibstatic)
+add_dependencies(arangod       zlibstatic)
 add_dependencies(arangodump    zlibstatic)
 add_dependencies(arangoimp     zlibstatic)
 add_dependencies(arangorestore zlibstatic)
@@ -947,22 +914,12 @@ if( EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
     )
 endif()
 
-
-################################################################################
-## SNAPCRAFT PACKAGE
-################################################################################
-
-#set(USE_SNAPCRAFT "ON")
-if (USE_SNAPCRAFT)
-  if(NOT DEFINED SNAP_PORT)
-    set(SNAP_PORT 8529)
-  endif()
-  include(packages/snap)
-endif ()
-
-
 add_custom_target(packages
   DEPENDS ${PACKAGES_LIST}
+  )
+
+add_custom_target(copy_packages
+  DEPENDS ${COPY_PACKAGES_LIST}
   )
 
 add_custom_target(clean_packages

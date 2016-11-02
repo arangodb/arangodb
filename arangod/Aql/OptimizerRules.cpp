@@ -120,7 +120,6 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, ExecutionPlan* plan,
       continue;
     }
 
-    static size_t const Threshold = 8;
     auto ast = plan->getAst();
     AstNode const* originalArg = nullptr;
 
@@ -150,7 +149,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, ExecutionPlan* plan,
       }
 
       if (testNode->type == NODE_TYPE_ARRAY &&
-          testNode->numMembers() < Threshold) {
+          testNode->numMembers() < AstNode::SortNumberThreshold) {
         // number of values is below threshold
         continue;
       }
@@ -169,7 +168,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, ExecutionPlan* plan,
       size_t nrItems = 0;
       sub->getSubquery()->getCost(nrItems);
 
-      if (nrItems < Threshold) {
+      if (nrItems < AstNode::SortNumberThreshold) {
         continue;
       }
 
@@ -2072,8 +2071,7 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
 
           if (indexesUsed.size() == 1) {
             // single index. this is something that we can handle
-
-            auto newNode = condition->removeIndexCondition(
+            auto newNode = condition->removeIndexCondition(plan,
                 indexNode->outVariable(), indexCondition->root());
 
             if (newNode == nullptr) {
@@ -2564,8 +2562,10 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt, ExecutionPlan* plan,
       std::vector<Variable const*> v(node->getVariablesUsedHere());
       TRI_ASSERT(v.size() >= 2);
 
-      distNode = new DistributeNode(plan, plan->nextId(), vocbase, collection,
-                                    v[0]->id, v[2]->id, false, true);
+      auto d = new DistributeNode(plan, plan->nextId(), vocbase, collection,
+                                  v[0]->id, v[1]->id, true, true);
+      d->setAllowSpecifiedKeys(true);
+      distNode = static_cast<ExecutionNode*>(d);
     } else {
       TRI_ASSERT(false);
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error");

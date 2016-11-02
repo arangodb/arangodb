@@ -41,8 +41,8 @@ RestUploadHandler::RestUploadHandler(GeneralRequest* request,
 
 RestUploadHandler::~RestUploadHandler() {}
 
-RestHandler::status RestUploadHandler::execute() {
-  // cast is ok because http requst is required
+RestStatus RestUploadHandler::execute() {
+  // cast is ok because http request is required
   HttpRequest* request = dynamic_cast<HttpRequest*>(_request.get());
 
   if (request == nullptr) {
@@ -56,29 +56,49 @@ RestHandler::status RestUploadHandler::execute() {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 
-    return status::DONE;
+    return RestStatus::DONE;
   }
 
-  char* filename = nullptr;
-  std::string errorMessage;
-  long systemError;
+  std::string filenameString;
+  {
+    char* filename = nullptr;
+    std::string errorMessage;
+    long systemError;
 
-  if (TRI_GetTempName("uploads", &filename, false, systemError, errorMessage) !=
-      TRI_ERROR_NO_ERROR) {
-    errorMessage = "could not generate temp file: " + errorMessage;
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_INTERNAL, errorMessage);
-    return status::FAILED;
+    if (TRI_GetTempName("uploads", &filename, false, systemError, errorMessage) !=
+        TRI_ERROR_NO_ERROR) {
+      errorMessage = "could not generate temp file: " + errorMessage;
+      generateError(rest::ResponseCode::SERVER_ERROR,
+                    TRI_ERROR_INTERNAL, errorMessage);
+      return RestStatus::FAIL;
+    }
+
+    if (filename == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+
+    filenameString.append(filename);
+    TRI_Free(TRI_CORE_MEM_ZONE, filename);
   }
 
-  char* relative = TRI_GetFilename(filename);
+  std::string relativeString;
+  {
+    char* relative = TRI_GetFilename(filenameString.c_str());
+
+    if (relative == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+
+    relativeString.append(relative);
+    TRI_Free(TRI_CORE_MEM_ZONE, relative);
+  }
 
   std::string const& bodyStr = request->body();
   char const* body = bodyStr.c_str();
   size_t bodySize = bodyStr.size();
 
   LOG(TRACE) << "saving uploaded file of length " << bodySize << " in file '"
-             << filename << "', relative '" << relative << "'";
+             << filenameString << "', relative '" << relativeString << "'";
 
   bool found;
   std::string const& value = request->value("multipart", found);
@@ -88,28 +108,22 @@ RestHandler::status RestUploadHandler::execute() {
 
     if (multiPart) {
       if (!parseMultiPart(body, bodySize)) {
-        TRI_Free(TRI_CORE_MEM_ZONE, relative);
-        TRI_Free(TRI_CORE_MEM_ZONE, filename);
         generateError(rest::ResponseCode::SERVER_ERROR,
                       TRI_ERROR_INTERNAL, "invalid multipart request");
-        return status::FAILED;
+        return RestStatus::FAIL;
       }
     }
   }
 
   try {
-    FileUtils::spit(std::string(filename), body, bodySize);
-    TRI_Free(TRI_CORE_MEM_ZONE, filename);
+    FileUtils::spit(filenameString, body, bodySize);
   } catch (...) {
-    TRI_Free(TRI_CORE_MEM_ZONE, relative);
-    TRI_Free(TRI_CORE_MEM_ZONE, filename);
     generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL, "could not save file");
-    return status::FAILED;
+    return RestStatus::FAIL;
   }
 
-  char* fullName = TRI_Concatenate2File("uploads", relative);
-  TRI_Free(TRI_CORE_MEM_ZONE, relative);
+  std::string fullName = basics::FileUtils::buildFilename("uploads", relativeString);
 
   // create the response
   resetResponse(rest::ResponseCode::CREATED);
@@ -118,7 +132,6 @@ RestHandler::status RestUploadHandler::execute() {
 
   b.add(VPackValue(VPackValueType::Object));
   b.add("filename", VPackValue(fullName));
-  TRI_Free(TRI_CORE_MEM_ZONE, fullName);
   b.close();
 
   VPackSlice s = b.slice();
@@ -126,7 +139,7 @@ RestHandler::status RestUploadHandler::execute() {
   generateResult(rest::ResponseCode::CREATED, s);
 
   // success
-  return status::DONE;
+  return RestStatus::DONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

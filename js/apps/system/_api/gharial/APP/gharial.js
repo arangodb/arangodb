@@ -172,6 +172,9 @@ function graphForClient (g) {
     name: g.__name,
     edgeDefinitions: g.__edgeDefinitions,
     orphanCollections: g._orphanCollections(),
+    isSmart: g.__isSmart || false,
+    numberOfShards: g.__numberOfShards || 0,
+    smartGraphAttribute: g.__smartGraphAttribute || '',
     _id: g.__id,
     _rev: g.__rev
   };
@@ -247,6 +250,8 @@ router.post('/', function (req, res) {
         case errors.ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX.code:
         case errors.ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF.code:
         case errors.ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS.code:
+        case errors.ERROR_ARANGO_DUPLICATE_NAME.code:
+          require('console').error("Message:", e.errorMessage);
           throw Object.assign(
             new httperr.BadRequest(e.errorMessage),
             {errorNum: e.errorNum, cause: e}

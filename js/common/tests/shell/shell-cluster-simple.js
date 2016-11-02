@@ -427,7 +427,9 @@ function ClusterCrudSimpleSuite () {
       fail();
     }
     catch (err1) {
-      assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err1.errorNum);
+      if (ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code !== err1.errorNum) {
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err1.errorNum);
+      }
     }
 
     try {
@@ -435,7 +437,9 @@ function ClusterCrudSimpleSuite () {
       fail();
     }
     catch (err2) {
-      assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err2.errorNum);
+      if (ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code !== err2.errorNum) {
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err2.errorNum);
+      }
     }
 
     try {
@@ -443,7 +447,9 @@ function ClusterCrudSimpleSuite () {
       fail();
     }
     catch (err3) {
-      assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err3.errorNum);
+      if (ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code !== err3.errorNum) {
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err3.errorNum);
+      }
     }
 
     assertEqual(n / 100, c.replaceByExample({ a : 7, b : 17 }, { a : 7, b : 17, c : 12 }));

@@ -41,6 +41,8 @@ namespace basics {
 class StringBuffer;
 }
 
+class Transaction;
+
 namespace aql {
 class Ast;
 struct Variable;
@@ -230,6 +232,8 @@ struct AstNode {
 
  public:
 
+  static constexpr size_t SortNumberThreshold = 8;
+
   /// @brief return the string value of a node, as an std::string
   std::string getString() const;
 
@@ -246,8 +250,8 @@ struct AstNode {
 
   /// @brief compute the value for a constant value node
   /// the value is owned by the node and must not be freed by the caller
-  /// note that the return value might be NULL in case of OOM
   arangodb::velocypack::Slice computeValue() const;
+  arangodb::velocypack::Slice computeValue(arangodb::Transaction*) const;
 
   /// @brief sort the members of an (array) node
   /// this will also set the FLAG_SORTED flag for the node

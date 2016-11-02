@@ -29,55 +29,6 @@
 
 using namespace arangodb;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new geo index, type "geo1"
-///        Lat and Lon are stored in the same Array
-////////////////////////////////////////////////////////////////////////////////
-
-GeoIndex::GeoIndex(
-    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
-    std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
-    std::vector<std::string> const& path, bool geoJson)
-    : Index(iid, collection, fields, false, true),
-      _location(path),
-      _variant(geoJson ? INDEX_GEO_COMBINED_LAT_LON
-                       : INDEX_GEO_COMBINED_LON_LAT),
-      _geoJson(geoJson),
-      _geoIndex(nullptr) {
-  TRI_ASSERT(iid != 0);
-
-  _geoIndex = GeoIndex_new();
-
-  if (_geoIndex == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new geo index, type "geo2"
-////////////////////////////////////////////////////////////////////////////////
-
-GeoIndex::GeoIndex(
-    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
-    std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
-    std::vector<std::vector<std::string>> const& paths)
-    : Index(iid, collection, fields, false, true),
-      _latitude(paths[0]),
-      _longitude(paths[1]),
-      _variant(INDEX_GEO_INDIVIDUAL_LAT_LON),
-      _geoJson(false),
-      _geoIndex(nullptr) {
-  TRI_ASSERT(iid != 0);
-
-  _geoIndex = GeoIndex_new();
-
-  if (_geoIndex == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-}
-
-/// @brief create a new geo index, type "geo2"
-
 GeoIndex::GeoIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
                      VPackSlice const& info)
     : Index(iid, collection, info),
@@ -131,10 +82,7 @@ GeoIndex::~GeoIndex() {
 
 size_t GeoIndex::memory() const { return GeoIndex_MemoryUsage(_geoIndex); }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a JSON representation of the index
-////////////////////////////////////////////////////////////////////////////////
-
 void GeoIndex::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
   // Basic index
   Index::toVelocyPack(builder, withFigures);
@@ -220,25 +168,19 @@ bool GeoIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-
-
-int GeoIndex::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
-  TRI_ASSERT(doc != nullptr);
-  TRI_ASSERT(doc->vpack() != nullptr);
-
-  VPackSlice const slice(doc->vpack());
-
+int GeoIndex::insert(arangodb::Transaction*, TRI_voc_rid_t revisionId,
+                     VPackSlice const& doc, bool isRollback) {
   double latitude;
   double longitude;
 
   if (_variant == INDEX_GEO_INDIVIDUAL_LAT_LON) {
-    VPackSlice lat = slice.get(_latitude);
+    VPackSlice lat = doc.get(_latitude);
     if (!lat.isNumber()) {
       // Invalid, no insert. Index is sparse
       return TRI_ERROR_NO_ERROR;
     }
 
-    VPackSlice lon = slice.get(_longitude);
+    VPackSlice lon = doc.get(_longitude);
     if (!lon.isNumber()) {
       // Invalid, no insert. Index is sparse
       return TRI_ERROR_NO_ERROR;
@@ -246,7 +188,7 @@ int GeoIndex::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
     latitude = lat.getNumericValue<double>();
     longitude = lon.getNumericValue<double>();
   } else {
-    VPackSlice loc = slice.get(_location);
+    VPackSlice loc = doc.get(_location);
     if (!loc.isArray() || loc.length() < 2) {
       // Invalid, no insert. Index is sparse
       return TRI_ERROR_NO_ERROR;
@@ -274,7 +216,7 @@ int GeoIndex::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
   GeoCoordinate gc;
   gc.latitude = latitude;
   gc.longitude = longitude;
-  gc.data = const_cast<void*>(static_cast<void const*>(doc));
+  gc.data = fromRevision(revisionId);
 
   int res = GeoIndex_insert(_geoIndex, &gc);
 
@@ -293,19 +235,15 @@ int GeoIndex::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
   return TRI_ERROR_NO_ERROR;
 }
 
-int GeoIndex::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
-  TRI_ASSERT(doc != nullptr);
-  TRI_ASSERT(doc->vpack() != nullptr);
-
-  VPackSlice const slice(doc->vpack());
-
+int GeoIndex::remove(arangodb::Transaction*, TRI_voc_rid_t revisionId, 
+                     VPackSlice const& doc, bool isRollback) {
   double latitude = 0.0;
   double longitude = 0.0;
   bool ok = true;
 
   if (_variant == INDEX_GEO_INDIVIDUAL_LAT_LON) {
-    VPackSlice lat = slice.get(_latitude);
-    VPackSlice lon = slice.get(_longitude);
+    VPackSlice lat = doc.get(_latitude);
+    VPackSlice lon = doc.get(_longitude);
     if (!lat.isNumber()) {
       ok = false;
     } else {
@@ -317,7 +255,7 @@ int GeoIndex::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
       longitude = lon.getNumericValue<double>();
     }
   } else {
-    VPackSlice loc = slice.get(_location);
+    VPackSlice loc = doc.get(_location);
     if (!loc.isArray() || loc.length() < 2) {
       ok = false;
     } else {
@@ -348,7 +286,7 @@ int GeoIndex::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
   GeoCoordinate gc;
   gc.latitude = latitude;
   gc.longitude = longitude;
-  gc.data = const_cast<void*>(static_cast<void const*>(doc));
+  gc.data = fromRevision(revisionId);
 
   // ignore non-existing elements in geo-index
   GeoIndex_remove(_geoIndex, &gc);
@@ -385,10 +323,7 @@ GeoCoordinates* GeoIndex::withinQuery(arangodb::Transaction* trx, double lat,
   return GeoIndex_PointsWithinRadius(_geoIndex, &gc, radius);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up the nearest points
-////////////////////////////////////////////////////////////////////////////////
-
 GeoCoordinates* GeoIndex::nearQuery(arangodb::Transaction* trx, double lat,
                                      double lon, size_t count) const {
   GeoCoordinate gc;

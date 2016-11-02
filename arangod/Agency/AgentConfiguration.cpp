@@ -39,12 +39,13 @@ config_t::config_t()
       _supervisionFrequency(5.0),
       _compactionStepSize(1000),
       _supervisionGracePeriod(120),
+      _cmdLineTimings(false),
       _lock()
       {}
 
 config_t::config_t(size_t as, size_t ps, double minp, double maxp,
                    std::string const& e, std::vector<std::string> const& g,
-                   bool s, bool w, double f, uint64_t c, double p)
+                   bool s, bool w, double f, uint64_t c, double p, bool t)
     : _agencySize(as),
       _poolSize(ps),
       _minPing(minp),
@@ -56,6 +57,7 @@ config_t::config_t(size_t as, size_t ps, double minp, double maxp,
       _supervisionFrequency(f),
       _compactionStepSize(c),
       _supervisionGracePeriod(p),
+      _cmdLineTimings(t),
       _lock() {}
 
 config_t::config_t(config_t const& other) { *this = other; }
@@ -74,9 +76,13 @@ config_t::config_t(config_t&& other)
       _waitForSync(std::move(other._waitForSync)),
       _supervisionFrequency(std::move(other._supervisionFrequency)),
       _compactionStepSize(std::move(other._compactionStepSize)),
-      _supervisionGracePeriod(std::move(other._supervisionGracePeriod)) {}
+      _supervisionGracePeriod(std::move(other._supervisionGracePeriod)),
+      _cmdLineTimings(std::move(other._cmdLineTimings)){}
 
 config_t& config_t::operator=(config_t const& other) {
+  // must hold the lock of other to copy _pool, _minPing, _maxPing etc.
+  READ_LOCKER(readLocker, other._lock);
+
   _id = other._id;
   _agencySize = other._agencySize;
   _poolSize = other._poolSize;
@@ -91,6 +97,7 @@ config_t& config_t::operator=(config_t const& other) {
   _supervisionFrequency = other._supervisionFrequency;
   _compactionStepSize = other._compactionStepSize;
   _supervisionGracePeriod = other._supervisionGracePeriod;
+  _cmdLineTimings = other._cmdLineTimings;
   return *this;
 }
 
@@ -109,7 +116,13 @@ config_t& config_t::operator=(config_t&& other) {
   _supervisionFrequency = std::move(other._supervisionFrequency);
   _compactionStepSize = std::move(other._compactionStepSize);
   _supervisionGracePeriod = std::move(other._supervisionGracePeriod);
+  _cmdLineTimings = std::move(other._cmdLineTimings);
   return *this;
+}
+
+bool config_t::cmdLineTimings() const {
+  READ_LOCKER(readLocker, _lock);
+  return _cmdLineTimings;
 }
 
 double config_t::supervisionGracePeriod() const {
@@ -125,6 +138,12 @@ double config_t::minPing() const {
 double config_t::maxPing() const {
   READ_LOCKER(readLocker, _lock);
   return _maxPing;
+}
+
+void config_t::pingTimes(double minPing, double maxPing) {
+  WRITE_LOCKER(writeLocker, _lock);
+  _minPing = minPing;
+  _maxPing = maxPing;
 }
 
 std::map<std::string, std::string> config_t::pool() const {

@@ -25,6 +25,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/EdgeIndex.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
@@ -40,7 +41,7 @@ RestEdgesHandler::RestEdgesHandler(GeneralRequest* request,
                                    GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
-RestHandler::status RestEdgesHandler::execute() {
+RestStatus RestEdgesHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
 
@@ -63,7 +64,7 @@ RestHandler::status RestEdgesHandler::execute() {
   }
 
   // this handler is done
-  return status::DONE;
+  return RestStatus::DONE;
 }
 
 bool RestEdgesHandler::getEdgesForVertexList(
@@ -84,7 +85,7 @@ bool RestEdgesHandler::getEdgesForVertexList(
 
   std::unique_ptr<OperationCursor> cursor =
       trx.indexScan(collectionName, arangodb::Transaction::CursorType::INDEX,
-                    indexId, search, 0, UINT64_MAX, 1000, false);
+                    indexId, search, nullptr, 0, UINT64_MAX, 1000, false);
   if (cursor->failed()) {
     THROW_ARANGO_EXCEPTION(cursor->code);
   }
@@ -137,7 +138,7 @@ bool RestEdgesHandler::getEdgesForVertex(
 
   std::unique_ptr<OperationCursor> cursor =
       trx.indexScan(collectionName, arangodb::Transaction::CursorType::INDEX,
-                    indexId, search, 0, UINT64_MAX, 1000, false);
+                    indexId, search, nullptr, 0, UINT64_MAX, 1000, false);
   if (cursor->failed()) {
     THROW_ARANGO_EXCEPTION(cursor->code);
   }

@@ -37,8 +37,6 @@ class GossipCallback : public arangodb::ClusterCommCallback {
 
   virtual bool operator()(arangodb::ClusterCommResult*) override final;
 
-  void shutdown();
-
  private:
   Agent* _agent;
 };

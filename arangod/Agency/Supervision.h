@@ -138,9 +138,6 @@ class Supervision : public arangodb::Thread {
   /// @brief Get unique ids from agency
   void getUniqueIds();
 
-  /// @brief Update local cache from agency
-  void updateFromAgency();
-
   /// @brief Read db
   Store const& store() const;
 
@@ -157,19 +154,15 @@ class Supervision : public arangodb::Thread {
   bool handleJobs();
   void handleShutdown();
 
-  Mutex _lock;
+  Mutex _lock; // guards snapshot, _jobId, jobIdMax, _selfShutdown
   Agent* _agent; /**< @brief My agent */
   Node _snapshot;
 
   arangodb::basics::ConditionVariable _cv; /**< @brief Control if thread
                                               should run */
 
-  ///@brief last vital signs as reported through heartbeats to agency
-  ///
-  //  std::map<ServerID, std::shared_ptr<VitalSign>> _vitalSigns;
-
-  long _frequency;
-  long _gracePeriod;
+  double _frequency;
+  double _gracePeriod;
   uint64_t _jobId;
   uint64_t _jobIdMax;
 
@@ -183,7 +176,7 @@ class Supervision : public arangodb::Thread {
   // at least once so this flag got set at some point
   bool _selfShutdown;
 
-  std::string const serverHealth(const std::string&);
+  std::string serverHealth(std::string const&);
 
   static std::string _agencyPrefix;
 };

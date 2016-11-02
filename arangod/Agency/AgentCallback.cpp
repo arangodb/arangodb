@@ -28,11 +28,12 @@
 using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 
-AgentCallback::AgentCallback() : _agent(0), _last(0) {}
+AgentCallback::AgentCallback() : _agent(0), _last(0), _startTime(0.0) {}
 
 AgentCallback::AgentCallback(Agent* agent, std::string const& slaveID,
                              index_t last)
-    : _agent(agent), _last(last), _slaveID(slaveID) {}
+    : _agent(agent), _last(last), _slaveID(slaveID),
+      _startTime(TRI_microtime())  {}
 
 void AgentCallback::shutdown() { _agent = 0; }
 
@@ -41,10 +42,15 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
     if (_agent) {
       _agent->reportIn(_slaveID, _last);
     }
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "comm_status(" << res->status
+                                     << "), last(" << _last << "), follower("
+                                     << _slaveID << "), time("
+                                     << TRI_microtime() - _startTime << ")";
   } else {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "comm_status(" << res->status
                                      << "), last(" << _last << "), follower("
-                                     << _slaveID << ")";
+                                     << _slaveID << "), time("
+                                     << TRI_microtime() - _startTime << ")";
   }
   return true;
 }

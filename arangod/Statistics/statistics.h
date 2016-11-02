@@ -28,6 +28,10 @@
 #include "Rest/HttpRequest.h"
 #include "Statistics/figures.h"
 
+#include <iomanip>
+#include <sstream>
+#include <string>
+
 struct TRI_request_statistics_t {
 #ifdef USE_DEV_TIMERS
   static thread_local TRI_request_statistics_t* STATS;
@@ -74,6 +78,28 @@ struct TRI_request_statistics_t {
     _sections.clear();
     _timings.clear();
 #endif
+  }
+
+  std::string to_string() {
+    std::stringstream ss;
+    ss << std::boolalpha << std::setprecision(20) << "statistics      "
+       << std::endl
+       << "_readStart      " << _readStart << std::endl
+       << "_readEnd        " << _readEnd << std::endl
+       << "_queueStart     " << _queueStart << std::endl
+       << "_queueEnd       " << _queueEnd << std::endl
+       << "_requestStart   " << _requestStart << std::endl
+       << "_requestEnd     " << _requestEnd << std::endl
+       << "_writeStart     " << _writeStart << std::endl
+       << "_writeEnd       " << _writeEnd << std::endl
+       << "_receivedBytes  " << _receivedBytes << std::endl
+       << "_sentBytes      " << _sentBytes << std::endl
+       << "_async          " << _async << std::endl
+       << "_tooLarge       " << _tooLarge << std::endl
+       << "_executeError   " << _executeError << std::endl
+       << "_ignore         " << _ignore << std::endl;
+
+    return ss.str();
   }
 
   double _readStart;     // CommTask::processRead - read first byte of message

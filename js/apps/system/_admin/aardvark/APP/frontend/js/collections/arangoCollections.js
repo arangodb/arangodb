@@ -164,7 +164,7 @@
       data.type = parseInt(object.collType, 10);
       if (object.shards) {
         data.numberOfShards = object.shards;
-        data.shardKeys = object.keys;
+        data.shardKeys = object.shardBy;
       }
       if (object.replicationFactor) {
         data.replicationFactor = JSON.parse(object.replicationFactor);

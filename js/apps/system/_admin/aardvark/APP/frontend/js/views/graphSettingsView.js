@@ -350,7 +350,11 @@
                 if (value === 'true') {
                   window.App.graphViewer.switchNodeColorByCollection(true);
                 } else {
-                  window.App.graphViewer.switchNodeColorByCollection(false);
+                  if ($('#g_nodeColorAttribute').is(':disabled')) {
+                    window.App.graphViewer.switchNodeColorByCollection(false);
+                  } else {
+                    window.App.graphViewer.switchNodeColorByCollection(false, true);
+                  }
                 }
                 return;
                 // EDGES COLORING
@@ -359,7 +363,11 @@
                 if (value === 'true') {
                   window.App.graphViewer.switchEdgeColorByCollection(true);
                 } else {
-                  window.App.graphViewer.switchEdgeColorByCollection(false);
+                  if ($('#g_nodeColorAttribute').is(':disabled')) {
+                    window.App.graphViewer.switchEdgeColorByCollection(false);
+                  } else {
+                    window.App.graphViewer.switchEdgeColorByCollection(false, true);
+                  }
                 }
                 return;
               }
@@ -429,7 +437,7 @@
         nodeColorByCollection: 'true',
         edgeColor: '#cccccc',
         edgeColorAttribute: '',
-        edgeColorByCollection: 'true',
+        edgeColorByCollection: 'false',
         nodeLabel: '_key',
         edgeLabel: '',
         edgeType: 'arrow',

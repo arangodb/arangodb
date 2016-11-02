@@ -31,9 +31,10 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
-struct TRI_doc_mptr_t;
-
 namespace arangodb {
+
+class ManagedDocumentResult;
+
 namespace aql {
 class AqlItemBlock;
 struct Collection;
@@ -73,15 +74,17 @@ class EnumerateCollectionBlock : public ExecutionBlock {
  private:
   /// @brief collection
   Collection* _collection;
+  
+  std::unique_ptr<ManagedDocumentResult> _mmdr;
 
   /// @brief collection scanner
   CollectionScanner _scanner;
   
-  /// @brief iterator over documents
-  arangodb::velocypack::ArrayIterator _iterator;
-
   /// @brief document buffer
-  arangodb::velocypack::Slice _documents;
+  std::vector<IndexLookupResult> _documents;
+  
+  /// @brief iterator over documents
+  size_t _position;
 
   /// @brief whether or not the enumerated documents need to be stored
   bool _mustStoreResult;

@@ -31,6 +31,10 @@
 
 using namespace arangodb;
 
+/// @brief the _key attribute, which, when used in an index, will implictly make it unique
+static std::vector<arangodb::basics::AttributeName> const KeyAttribute
+     {arangodb::basics::AttributeName("_key", false)};
+
 arangodb::aql::AstNode const* PathBasedIndex::PermutationState::getValue()
     const {
   if (type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
@@ -46,35 +50,7 @@ arangodb::aql::AstNode const* PathBasedIndex::PermutationState::getValue()
   return nullptr;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the index
-////////////////////////////////////////////////////////////////////////////////
-
-PathBasedIndex::PathBasedIndex(
-    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
-    std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
-    bool unique, bool sparse, bool allowPartialIndex)
-    : Index(iid, collection, fields, unique, sparse),
-      _useExpansion(false),
-      _allowPartialIndex(allowPartialIndex) {
-  TRI_ASSERT(!fields.empty());
-
-  TRI_ASSERT(iid != 0);
-
-  fillPaths(_paths, _expanding);
-
-  for (auto const& it : fields) {
-    if (TRI_AttributeNamesHaveExpansion(it)) {
-      _useExpansion = true;
-      break;
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the index
-////////////////////////////////////////////////////////////////////////////////
-
 PathBasedIndex::PathBasedIndex(TRI_idx_iid_t iid,
                                arangodb::LogicalCollection* collection,
                                VPackSlice const& info, bool allowPartialIndex)
@@ -95,48 +71,42 @@ PathBasedIndex::PathBasedIndex(TRI_idx_iid_t iid,
   }
 }
 
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an index stub with a hard-coded selectivity estimate
-/// this is used in the cluster coordinator case
-////////////////////////////////////////////////////////////////////////////////
-
-PathBasedIndex::PathBasedIndex(VPackSlice const& slice, bool allowPartialIndex)
-    : Index(slice),
-      _paths(),
-      _useExpansion(false),
-      _allowPartialIndex(allowPartialIndex) {
-  TRI_ASSERT(!_fields.empty());
-
-  for (auto const& it : _fields) {
-    if (TRI_AttributeNamesHaveExpansion(it)) {
-      _useExpansion = true;
-      break;
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the index
-////////////////////////////////////////////////////////////////////////////////
-
 PathBasedIndex::~PathBasedIndex() {}
 
-////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the index is implicitly unique
+/// this can be the case if the index is not declared as unique, but contains a 
+/// unique attribute such as _key
+bool PathBasedIndex::implicitlyUnique() const {
+  if (_unique) {
+    // a unique index is always unique
+    return true;
+  }
+  if (_useExpansion) {
+    // when an expansion such as a[*] is used, the index may not be unique, even
+    // if it contains attributes that are guaranteed to be unique
+    return false;
+  }
+
+  for (auto const& it : _fields) {
+    // if _key is contained in the index fields definition, then the index is
+    // implicitly unique
+    if (it == KeyAttribute) {
+      return true;
+    }
+  }
+
+  // _key not contained
+  return false;
+}
+
 /// @brief helper function to insert a document into any index type
-////////////////////////////////////////////////////////////////////////////////
-
-int PathBasedIndex::fillElement(std::vector<TRI_index_element_t*>& elements,
-                                TRI_doc_mptr_t const* document) {
-  TRI_ASSERT(document != nullptr);
-  TRI_ASSERT(document->vpack() != nullptr);
-
-  VPackSlice const slice(document->vpack());
-
-  if (slice.isNone()) {
-    LOG(WARN) << "encountered invalid marker with slice of type None";
-
+template<typename T>
+int PathBasedIndex::fillElement(std::vector<T*>& elements,
+                                TRI_voc_rid_t revisionId,
+                                VPackSlice const& doc) {
+  if (doc.isNone()) {
+    LOG(ERR) << "encountered invalid marker with slice of type None";
     return TRI_ERROR_INTERNAL;
   }
 
@@ -146,26 +116,20 @@ int PathBasedIndex::fillElement(std::vector<TRI_index_element_t*>& elements,
 
   if (!_useExpansion) {
     // fast path for inserts... no array elements used
-    auto slices = buildIndexValue(slice);
+    auto slices = buildIndexValue(doc);
 
     if (slices.size() == n) {
       // if shapes.size() != n, then the value is not inserted into the index
       // because of index sparsity!
-      TRI_index_element_t* element = TRI_index_element_t::allocate(n);
+      T* element = T::create(revisionId, slices);
+
       if (element == nullptr) {
         return TRI_ERROR_OUT_OF_MEMORY;
       }
       TRI_IF_FAILURE("FillElementOOM") {
         // clean up manually
-        TRI_index_element_t::freeElement(element);
+        element->free();
         return TRI_ERROR_OUT_OF_MEMORY;
-      }
-
-      element->document(const_cast<TRI_doc_mptr_t*>(document));
-      TRI_vpack_sub_t* subObjects = element->subObjects();
-
-      for (size_t i = 0; i < n; ++i) {
-        TRI_FillVPackSub(&subObjects[i], slice, slices[i]);
       }
 
       try {
@@ -175,38 +139,31 @@ int PathBasedIndex::fillElement(std::vector<TRI_index_element_t*>& elements,
 
         elements.emplace_back(element);
       } catch (...) {
-        TRI_index_element_t::freeElement(element);
+        element->free();
         return TRI_ERROR_OUT_OF_MEMORY;
       }
     }
   } else {
     // other path for handling array elements, too
-    std::vector<std::vector<VPackSlice>> toInsert;
-    std::vector<VPackSlice> sliceStack;
+    std::vector<std::vector<std::pair<VPackSlice, uint32_t>>> toInsert;
+    std::vector<std::pair<VPackSlice, uint32_t>> sliceStack;
 
-    buildIndexValues(slice, 0, toInsert, sliceStack);
+    buildIndexValues(doc, 0, toInsert, sliceStack);
 
     if (!toInsert.empty()) {
       elements.reserve(toInsert.size());
 
       for (auto& info : toInsert) {
         TRI_ASSERT(info.size() == n);
-        TRI_index_element_t* element = TRI_index_element_t::allocate(n);
+        T* element = T::create(revisionId, info);
 
         if (element == nullptr) {
           return TRI_ERROR_OUT_OF_MEMORY;
         }
         TRI_IF_FAILURE("FillElementOOM") {
           // clean up manually
-          TRI_index_element_t::freeElement(element);
+          element->free();
           return TRI_ERROR_OUT_OF_MEMORY;
-        }
-
-        element->document(const_cast<TRI_doc_mptr_t*>(document));
-        TRI_vpack_sub_t* subObjects = element->subObjects();
-
-        for (size_t j = 0; j < n; ++j) {
-          TRI_FillVPackSub(&subObjects[j], slice, info[j]);
         }
 
         try {
@@ -216,7 +173,7 @@ int PathBasedIndex::fillElement(std::vector<TRI_index_element_t*>& elements,
 
           elements.emplace_back(element);
         } catch (...) {
-          TRI_index_element_t::freeElement(element);
+          element->free();
           return TRI_ERROR_OUT_OF_MEMORY;
         }
       }
@@ -226,15 +183,12 @@ int PathBasedIndex::fillElement(std::vector<TRI_index_element_t*>& elements,
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to create the sole index value insert
-////////////////////////////////////////////////////////////////////////////////
-
-std::vector<VPackSlice> PathBasedIndex::buildIndexValue(
+std::vector<std::pair<VPackSlice, uint32_t>> PathBasedIndex::buildIndexValue(
     VPackSlice const documentSlice) {
   size_t const n = _paths.size();
 
-  std::vector<VPackSlice> result;
+  std::vector<std::pair<VPackSlice, uint32_t>> result;
   for (size_t i = 0; i < n; ++i) {
     TRI_ASSERT(!_paths[i].empty());
 
@@ -248,22 +202,19 @@ std::vector<VPackSlice> PathBasedIndex::buildIndexValue(
         break;
       }
       // null, note that this will be copied later!
-      result.emplace_back(arangodb::basics::VelocyPackHelper::NullValue());
+      result.emplace_back(arangodb::basics::VelocyPackHelper::NullValue(), 0); // fake offset 0
     } else {
-      result.emplace_back(slice);
+      result.emplace_back(slice, static_cast<uint32_t>(slice.start() - documentSlice.start()));
     }
   }
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to create a set of index combinations to insert
-////////////////////////////////////////////////////////////////////////////////
-
 void PathBasedIndex::buildIndexValues(
     VPackSlice const document, size_t level,
-    std::vector<std::vector<VPackSlice>>& toInsert,
-    std::vector<VPackSlice>& sliceStack) {
+    std::vector<std::vector<std::pair<VPackSlice, uint32_t>>>& toInsert,
+    std::vector<std::pair<VPackSlice, uint32_t>>& sliceStack) {
   // Invariant: level == sliceStack.size()
 
   // Stop the recursion:
@@ -278,10 +229,11 @@ void PathBasedIndex::buildIndexValues(
       if (_sparse) {
         return;
       }
-      slice = arangodb::basics::VelocyPackHelper::NullValue();
+      sliceStack.emplace_back(arangodb::basics::VelocyPackHelper::NullValue(), 0);
+    } else {
+      sliceStack.emplace_back(slice, static_cast<uint32_t>(slice.start() - document.start()));
     }
-    sliceStack.push_back(slice);
-    buildIndexValues(document, level+1, toInsert, sliceStack);
+    buildIndexValues(document, level + 1, toInsert, sliceStack);
     sliceStack.pop_back();
     return;
   }
@@ -300,7 +252,7 @@ void PathBasedIndex::buildIndexValues(
       return;
     }
     for (size_t i = level; i < _paths.size(); i++) {
-      sliceStack.push_back(illegalSlice);
+      sliceStack.emplace_back(illegalSlice, 0);
     }
     toInsert.push_back(sliceStack);
     for (size_t i = level; i < _paths.size(); i++) {
@@ -337,7 +289,7 @@ void PathBasedIndex::buildIndexValues(
     auto it = seen.find(something);
     if (it == seen.end()) {
       seen.insert(something);
-      sliceStack.push_back(something);
+      sliceStack.emplace_back(something, static_cast<uint32_t>(something.start() - document.start()));
       buildIndexValues(document, level + 1, toInsert, sliceStack);
       sliceStack.pop_back();
     }
@@ -374,10 +326,7 @@ void PathBasedIndex::buildIndexValues(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to transform AttributeNames into strings.
-////////////////////////////////////////////////////////////////////////////////
-
 void PathBasedIndex::fillPaths(std::vector<std::vector<std::string>>& paths,
                                std::vector<int>& expanding) {
   paths.clear();
@@ -397,3 +346,10 @@ void PathBasedIndex::fillPaths(std::vector<std::vector<std::string>>& paths,
     expanding.emplace_back(expands);
   }
 }
+
+// template instanciations for fillElement
+template
+int PathBasedIndex::fillElement(std::vector<HashIndexElement*>& elements, TRI_voc_rid_t revisionId, VPackSlice const& doc);
+
+template
+int PathBasedIndex::fillElement(std::vector<SkiplistIndexElement*>& elements, TRI_voc_rid_t revisionId, VPackSlice const& doc);

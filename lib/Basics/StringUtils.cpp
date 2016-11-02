@@ -2257,7 +2257,7 @@ bool gzipUncompress(char const* compressed, size_t compressedLength, std::string
   z_stream strm;  
   memset(&strm, 0, sizeof(strm));
   strm.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(compressed));
-  strm.avail_in = compressedLength; 
+  strm.avail_in = (uInt) compressedLength; 
 
   if (inflateInit2(&strm, (16 + MAX_WBITS)) != Z_OK) {  
     return false;  
@@ -2292,7 +2292,7 @@ bool gzipDeflate(char const* compressed, size_t compressedLength, std::string& u
   z_stream strm;
   memset(&strm, 0, sizeof(strm));
   strm.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(compressed));
-  strm.avail_in = compressedLength;
+  strm.avail_in = (uInt) compressedLength;
   
   if (inflateInit(&strm) != Z_OK) {
     return false;

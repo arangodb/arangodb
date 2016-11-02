@@ -38,6 +38,7 @@
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -224,7 +225,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // We directly read the entire cursor. so batchsize == limit
   std::unique_ptr<OperationCursor> opCursor =
       trx.indexScan(collectionName, Transaction::CursorType::ALL,
-                    Transaction::IndexHandle(), {}, skip, limit, limit, false);
+                    Transaction::IndexHandle(), {}, nullptr, skip, limit, limit, false);
 
   if (opCursor->failed()) {
     TRI_V8_THROW_EXCEPTION(opCursor->code);
@@ -376,16 +377,18 @@ static void JS_ChecksumCollection(
   LogicalCollection* collection = trx.documentCollection();
   auto physical = collection->getPhysical();
   TRI_ASSERT(physical != nullptr);
-  std::string const revisionId = std::to_string(physical->revision());
+  std::string const revisionId = TRI_RidToString(physical->revision());
   uint64_t hash = 0;
         
-  trx.invokeOnAllElements(col->name(), [&hash, &withData, &withRevisions](TRI_doc_mptr_t const* mptr) {
-    VPackSlice const slice(mptr->vpack());
+  ManagedDocumentResult mmdr(&trx);
+  trx.invokeOnAllElements(col->name(), [&hash, &withData, &withRevisions, &trx, &collection, &mmdr](SimpleIndexElement const& element) {
+    collection->readRevision(&trx, mmdr, element.revisionId());
+    VPackSlice const slice(mmdr.vpack());
 
-    uint64_t localHash = slice.get(StaticStrings::KeyString).hash();
+    uint64_t localHash = Transaction::extractKeyFromDocument(slice).hashString(); 
 
     if (withRevisions) {
-      localHash += slice.get(StaticStrings::RevString).hash();
+      localHash += Transaction::extractRevSliceFromDocument(slice).hash();
     }
 
     if (withData) {

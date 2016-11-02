@@ -39,6 +39,9 @@
 # (From Daniel Stenberg) The cmake build selected to run gcc with -fPIC on my box while the plain configure script did not.
 # (From Daniel Stenberg) The gcc command line use neither -g nor any -O options. As a developer, I also treasure our configure scripts's --enable-debug option that sets a long range of "picky" compiler options.
 cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
+if (POLICY CMP0017)
+    cmake_policy(SET CMP0017 NEW)
+endif ()
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake;${CMAKE_MODULE_PATH}")
 include(Utilities)
 include(Macros)
@@ -46,7 +49,7 @@ include(CMakeDependentOption)
 
 project( CURL C )
 
-message(WARNING "the curl cmake build system is poorly maintained. Be aware")
+# message(WARNING "the curl cmake build system is poorly maintained. Be aware")
 
 file (READ ${CURL_SOURCE_DIR}/include/curl/curlver.h CURL_VERSION_H_CONTENTS)
 string (REGEX MATCH "#define LIBCURL_VERSION \"[^\"]*"
@@ -448,18 +451,25 @@ check_library_exists_concat("idn" idna_to_ascii_lz HAVE_LIBIDN)
 check_library_exists("${CURL_LIBS}" dlopen "" HAVE_DLOPEN)
 
 option(CURL_ZLIB "Set to ON to enable building cURL with zlib support." ON)
-set(HAVE_LIBZ OFF)
-set(HAVE_ZLIB_H OFF)
-set(HAVE_ZLIB OFF)
-if(CURL_ZLIB)
-  find_package(ZLIB QUIET)
-  if(ZLIB_FOUND)
-    set(HAVE_ZLIB_H ON)
-    set(HAVE_ZLIB ON)
-    set(HAVE_LIBZ ON)
-    list(APPEND CURL_LIBS ${ZLIB_LIBRARIES})
-    include_directories(${ZLIB_INCLUDE_DIRS})
-    list(APPEND CMAKE_REQUIRED_INCLUDES ${ZLIB_INCLUDE_DIRS})
+
+if(TRUE)
+  set(HAVE_LIBZ OFF)
+  set(HAVE_ZLIB_H OFF)
+  set(HAVE_ZLIB OFF)
+else()
+  set(HAVE_LIBZ OFF)
+  set(HAVE_ZLIB_H OFF)
+  set(HAVE_ZLIB OFF)
+  if(CURL_ZLIB)
+    find_package(ZLIB QUIET)
+    if(ZLIB_FOUND)
+      set(HAVE_ZLIB_H ON)
+      set(HAVE_ZLIB ON)
+      set(HAVE_LIBZ ON)
+      list(APPEND CURL_LIBS ${ZLIB_LIBRARIES})
+      include_directories(${ZLIB_INCLUDE_DIRS})
+      list(APPEND CMAKE_REQUIRED_INCLUDES ${ZLIB_INCLUDE_DIRS})
+    endif()
   endif()
 endif()
 
@@ -1031,9 +1041,9 @@ function(TRANSFORM_MAKEFILE_INC INPUT_FILE OUTPUT_FILE)
   string(REPLACE "$(top_srcdir)"   "\${CURL_SOURCE_DIR}" MAKEFILE_INC_TEXT ${MAKEFILE_INC_TEXT})
   string(REPLACE "$(top_builddir)" "\${CURL_BINARY_DIR}" MAKEFILE_INC_TEXT ${MAKEFILE_INC_TEXT})
 
-  string(REGEX REPLACE "\\\\\n" "§!§" MAKEFILE_INC_TEXT ${MAKEFILE_INC_TEXT})
+  string(REGEX REPLACE "\\\\\n" "?!?" MAKEFILE_INC_TEXT ${MAKEFILE_INC_TEXT})
   string(REGEX REPLACE "([a-zA-Z_][a-zA-Z0-9_]*)[\t ]*=[\t ]*([^\n]*)" "SET(\\1 \\2)" MAKEFILE_INC_TEXT ${MAKEFILE_INC_TEXT})
-  string(REPLACE "§!§" "\n" MAKEFILE_INC_TEXT ${MAKEFILE_INC_TEXT})
+  string(REPLACE "?!?" "\n" MAKEFILE_INC_TEXT ${MAKEFILE_INC_TEXT})
 
   string(REGEX REPLACE "\\$\\(([a-zA-Z_][a-zA-Z0-9_]*)\\)" "\${\\1}" MAKEFILE_INC_TEXT ${MAKEFILE_INC_TEXT})    # Replace $() with ${}
   string(REGEX REPLACE "@([a-zA-Z_][a-zA-Z0-9_]*)@" "\${\\1}" MAKEFILE_INC_TEXT ${MAKEFILE_INC_TEXT})    # Replace @@ with ${}, even if that may not be read by CMake scripts.
@@ -1167,20 +1177,20 @@ set(REQUIRE_LIB_DEPS        "no")
 set(VERSIONNUM              "${CURL_VERSION_NUM}")
 
 # Finally generate a "curl-config" matching this config
-configure_file("${CURL_SOURCE_DIR}/curl-config.in"
-               "${CURL_BINARY_DIR}/curl-config" @ONLY)
-install(FILES "${CURL_BINARY_DIR}/curl-config"
-        DESTINATION bin
-        PERMISSIONS
-          OWNER_READ OWNER_WRITE OWNER_EXECUTE
-          GROUP_READ GROUP_EXECUTE
-          WORLD_READ WORLD_EXECUTE)
-
-# Finally generate a pkg-config file matching this config
-configure_file("${CURL_SOURCE_DIR}/libcurl.pc.in"
-               "${CURL_BINARY_DIR}/libcurl.pc" @ONLY)
-install(FILES "${CURL_BINARY_DIR}/libcurl.pc"
-        DESTINATION lib/pkgconfig)
+#configure_file("${CURL_SOURCE_DIR}/curl-config.in"
+#               "${CURL_BINARY_DIR}/curl-config" @ONLY)
+#install(FILES "${CURL_BINARY_DIR}/curl-config"
+#        DESTINATION bin
+#        PERMISSIONS
+#          OWNER_READ OWNER_WRITE OWNER_EXECUTE
+#          GROUP_READ GROUP_EXECUTE
+#          WORLD_READ WORLD_EXECUTE)
+#
+## Finally generate a pkg-config file matching this config
+#configure_file("${CURL_SOURCE_DIR}/libcurl.pc.in"
+#               "${CURL_BINARY_DIR}/libcurl.pc" @ONLY)
+#install(FILES "${CURL_BINARY_DIR}/libcurl.pc"
+#        DESTINATION lib/pkgconfig)
 
 # This needs to be run very last so other parts of the scripts can take advantage of this.
 if(NOT CURL_CONFIG_HAS_BEEN_RUN_BEFORE)
@@ -1189,13 +1199,13 @@ endif()
 
 # Installation.
 # First, install generated curlbuild.h
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/include/curl/curlbuild.h"
-    DESTINATION include/curl )
-# Next, install other headers excluding curlbuild.h
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/curl"
-    DESTINATION include
-    FILES_MATCHING PATTERN "*.h"
-    PATTERN "curlbuild.h" EXCLUDE)
+#install(FILES "${CMAKE_CURRENT_BINARY_DIR}/include/curl/curlbuild.h"
+#    DESTINATION include/curl )
+## Next, install other headers excluding curlbuild.h
+#install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/curl"
+#    DESTINATION include
+#    FILES_MATCHING PATTERN "*.h"
+#    PATTERN "curlbuild.h" EXCLUDE)
 
 
 # Workaround for MSVS10 to avoid the Dialog Hell

@@ -25,7 +25,6 @@
 #define ARANGOD_WAL_RECOVER_STATE_H 1
 
 #include "Basics/Common.h"
-#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/datafile.h"
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
@@ -35,6 +34,7 @@
 
 namespace arangodb {
 class DatabaseFeature;
+class SingleCollectionTransaction;
 
 namespace wal {
 

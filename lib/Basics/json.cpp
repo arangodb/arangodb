@@ -28,6 +28,61 @@
 #include "Basics/tri-strings.h"
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys the data of blob, but does not free the pointer
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_DestroyBlob(TRI_memory_zone_t* zone, TRI_blob_t* blob) {
+  if (blob != nullptr) {
+    if (blob->data != nullptr) {
+      TRI_Free(zone, blob->data);
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copies a blob into given destination
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_CopyToBlob(TRI_memory_zone_t* zone, TRI_blob_t* dst,
+                   TRI_blob_t const* src) {
+  dst->length = src->length;
+
+  if (src->length == 0 || src->data == nullptr) {
+    dst->length = 0;
+    dst->data = nullptr;
+  } else {
+    dst->data = static_cast<char*>(TRI_Allocate(zone, dst->length, false));
+
+    if (dst->data == nullptr) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+
+    memcpy(dst->data, src->data, src->length);
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief assigns a blob value by reference into given destination
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_AssignToBlob(TRI_memory_zone_t* zone, TRI_blob_t* dst,
+                     TRI_blob_t const* src) {
+  dst->length = src->length;
+
+  if (src->length == 0 || src->data == nullptr) {
+    dst->length = 0;
+    dst->data = nullptr;
+  } else {
+    dst->length = src->length;
+    dst->data = src->data;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a json object
 ////////////////////////////////////////////////////////////////////////////////
 

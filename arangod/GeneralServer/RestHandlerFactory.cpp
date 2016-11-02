@@ -29,6 +29,9 @@
 #include "Rest/GeneralRequest.h"
 #include "Rest/RequestContext.h"
 
+#include "RestHandler/RestDocumentHandler.h"
+#include "RestHandler/RestVersionHandler.h"
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -47,10 +50,10 @@ class MaintenanceHandler : public RestHandler {
 
   bool isDirect() const override { return true; };
 
-  status execute() override {
+  RestStatus execute() override {
     resetResponse(rest::ResponseCode::SERVICE_UNAVAILABLE);
 
-    return status::DONE;
+    return RestStatus::DONE;
   };
 
   void handleError(const Exception& error) override {
@@ -87,9 +90,9 @@ bool RestHandlerFactory::setRequestContext(GeneralRequest* request) {
 
 RestHandler* RestHandlerFactory::createHandler(
     std::unique_ptr<GeneralRequest> request,
-    std::unique_ptr<GeneralResponse> response) {
+    std::unique_ptr<GeneralResponse> response) const {
   std::string const& path = request->requestPath();
-
+  
   // In the bootstrap phase, we would like that coordinators answer the
   // following to endpoints, but not yet others:
   if (_maintenanceMode.load()) {

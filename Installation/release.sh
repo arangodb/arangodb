@@ -8,49 +8,58 @@ SWAGGER=1
 EXAMPLES=1
 LINT=1
 
-while [ "$#" -gt 1 ];  do
-  if [ "$1" == "--no-lint" ];  then
-    LINT=0
-    shift
-  fi
-
-  if [ "$1" == "--no-build" ];  then
-    BUILD=0
-    shift
-  fi
-
-  if [ "$1" == "--recycle-build" ];  then
-    BUILD=2
-    shift
-  fi
-
-  if [ "$1" == "--no-swagger" ];  then
-    SWAGGER=0
-    shift
-  fi
-
-  if [ "$1" == "--no-examples" ];  then
-    EXAMPLES=0
-    shift
-  fi
-
-  if [ "$1" == "--no-commit" ];  then
-    TAG=0
-    shift
-  fi
-
-  if [ "$1" == "--no-book" ];  then
-    BOOK=0
-    shift
-  fi
-done
-
-if [ "$#" -ne 1 ];  then
+if [ "$#" -lt 1 ];  then
   echo "usage: $0 <major>.<minor>.<revision>"
   exit 1
 fi
 
-VERSION="$1"
+while [ "$#" -gt 0 ];  do
+    echo "$1"
+    case "$1" in
+        --no-lint)
+            LINT=0
+            shift
+            ;;
+
+        --no-build)
+            BUILD=0
+            shift
+            ;;
+
+        --recycle-build)
+            BUILD=2
+            shift
+            ;;
+
+        --no-swagger)
+            SWAGGER=0
+            shift
+            ;;
+
+        --no-examples)
+            EXAMPLES=0
+            shift
+            ;;
+
+        --no-commit)
+            TAG=0
+            shift
+            ;;
+
+        --no-book)
+            BOOK=0
+            shift
+            ;;
+        *)
+            if test -n "${VERSION}"; then
+                echo "we already have a version ${VERSION} aborting because of $1"
+                exit 1
+            fi
+            VERSION="$1"
+            shift
+            ;;
+    esac
+done
 
 if echo ${VERSION} | grep -q -- '-'; then
     echo "${VERSION} mustn't contain minuses! "

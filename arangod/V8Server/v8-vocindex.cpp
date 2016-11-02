@@ -46,9 +46,7 @@
 #include "VocBase/modes.h"
 #include "VocBase/LogicalCollection.h"
 
-#ifdef ARANGODB_ENABLE_ROCKSDB
 #include "Indexes/RocksDBIndex.h"
-#endif
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -505,6 +503,7 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
       TRI_V8_RETURN_NULL();
     }
   }
+
   TransactionBuilderLeaser builder(&trx);
   builder->openObject();
   try {
@@ -516,6 +515,12 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
 
   v8::Handle<v8::Value> ret =
       IndexRep(isolate, collection->name(), builder->slice());
+
+  res = trx.commit();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(res, TRI_errno_string(res));
+  }
 
   if (ret->IsObject()) {
     ret->ToObject()->Set(TRI_V8_ASCII_STRING("isNewlyCreated"),
@@ -549,6 +554,11 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
 
   VPackBuilder builder;
   int res = EnhanceIndexJson(args, builder, create);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
   VPackSlice slice = builder.slice();
   if (res == TRI_ERROR_NO_ERROR && ServerState::instance()->isCoordinator()) {
     TRI_ASSERT(slice.isObject());
@@ -563,36 +573,46 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
 
       VPackSlice v = slice.get("unique");
 
+      /* the following combinations of shardKeys and indexKeys are allowed/not allowed:
+
+      shardKeys     indexKeys
+              a             a        ok
+              a             b    not ok
+              a           a b        ok
+            a b             a    not ok
+            a b             b    not ok
+            a b           a b        ok
+            a b         a b c        ok
+          a b c           a b    not ok
+          a b c         a b c        ok
+      */
+
       if (v.isBoolean() && v.getBoolean()) {
         // unique index, now check if fields and shard keys match
         VPackSlice flds = slice.get("fields");
         if (flds.isArray() && c->numberOfShards() > 1) {
           std::vector<std::string> const& shardKeys = c->shardKeys();
+          std::unordered_set<std::string> indexKeys;
           size_t n = static_cast<size_t>(flds.length());
-
-          if (shardKeys.size() != n) {
-            res = TRI_ERROR_CLUSTER_UNSUPPORTED;
-          } else {
-            for (size_t i = 0; i < n; ++i) {
-              VPackSlice f = flds.at(i);
-              if (!f.isString()) {
-                res = TRI_ERROR_INTERNAL;
-                continue;
-              } else {
-                std::string tmp = f.copyString();
-                if (tmp != shardKeys[i]) {
-                  res = TRI_ERROR_CLUSTER_UNSUPPORTED;
-                }
-              }
+          
+          for (size_t i = 0; i < n; ++i) {
+            VPackSlice f = flds.at(i);
+            if (!f.isString()) {
+              // index attributes must be strings
+              TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+            }
+            indexKeys.emplace(f.copyString());
+          }
+           
+          // all shard-keys must be covered by the index
+          for (auto& it : shardKeys) {
+            if (indexKeys.find(it) == indexKeys.end()) {
+              TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNSUPPORTED, "shard key '" + it + "' must be present in unique index");
             }
           }
         }
       }
     }
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
   }
 
   TRI_ASSERT(!slice.isNone());
@@ -688,6 +708,9 @@ std::unique_ptr<LogicalCollection> CreateCollectionCoordinator(LogicalCollection
       parameters->numberOfShards(), velocy.slice(), errorMsg, 240.0);
 
   if (myerrno != TRI_ERROR_NO_ERROR) {
+    if (errorMsg.empty()) {
+      errorMsg = TRI_errno_string(myerrno);
+    }
     THROW_ARANGO_EXCEPTION_MESSAGE(myerrno, errorMsg);
   }
   ci->loadPlan();

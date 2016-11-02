@@ -30,7 +30,10 @@
 #include "GeneralServer/RestHandler.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Meta/conversion.h"
+#include "Rest/HttpRequest.h"
 #include "VocBase/ticks.h"
+
+#include "VppCommTask.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -41,10 +44,12 @@ size_t const HttpCommTask::MaximalBodySize = 1024 * 1024 * 1024;      // 1024 MB
 size_t const HttpCommTask::MaximalPipelineSize = 1024 * 1024 * 1024;  // 1024 MB
 size_t const HttpCommTask::RunCompactEvery = 500;
 
-HttpCommTask::HttpCommTask(GeneralServer* server, TRI_socket_t sock,
+HttpCommTask::HttpCommTask(EventLoop loop, GeneralServer* server,
+                           std::unique_ptr<Socket> socket,
                            ConnectionInfo&& info, double timeout)
-    : Task("HttpCommTask"),
-      GeneralCommTask(server, sock, std::move(info), timeout),
+    : Task(loop, "HttpCommTask"),
+      GeneralCommTask(loop, server, std::move(socket), std::move(info),
+                      timeout),
       _readPosition(0),
       _startPosition(0),
       _bodyPosition(0),
@@ -90,17 +95,18 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code, int errorNum,
     LOG_TOPIC(WARN, Logger::COMMUNICATION)
         << "handleSimpleError received an exception, closing connection:"
         << ex.what();
-    _clientClosed = true;
+    // _clientClosed = true;
   } catch (...) {
     LOG_TOPIC(WARN, Logger::COMMUNICATION)
         << "handleSimpleError received an exception, closing connection";
-    _clientClosed = true;
+    // _clientClosed = true;
   }
 }
 
 void HttpCommTask::addResponse(HttpResponse* response) {
+  resetKeepAlive();
+
   _requestPending = false;
-  _isChunked = false;
 
   // CORS response handling
   if (!_origin.empty()) {
@@ -120,9 +126,9 @@ void HttpCommTask::addResponse(HttpResponse* response) {
   }
 
   // set "connection" header, keep-alive is the default
-  response->setConnectionType(
-      _closeRequested ? rest::ConnectionType::C_CLOSE
-                      : rest::ConnectionType::C_KEEP_ALIVE);
+  response->setConnectionType(_closeRequested
+                                  ? rest::ConnectionType::C_CLOSE
+                                  : rest::ConnectionType::C_KEEP_ALIVE);
 
   size_t const responseBodyLength = response->bodySize();
 
@@ -137,38 +143,27 @@ void HttpCommTask::addResponse(HttpResponse* response) {
   auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE,
                                                responseBodyLength + 128, false);
 
-  // TODO: move this to HttpResponse
-
   // write header
   response->writeHeader(buffer.get());
 
   // write body
   if (_requestType != rest::RequestType::HEAD) {
-    if (_isChunked) {
-      if (0 != responseBodyLength) {
-        buffer->appendHex(response->body().length());
-        buffer->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
-        buffer->appendText(response->body());
-        buffer->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
-      }
-    } else {
-      buffer->appendText(response->body());
-    }
+    buffer->appendText(response->body());
   }
 
   buffer->ensureNullTerminated();
 
   if (!buffer->empty()) {
     LOG_TOPIC(TRACE, Logger::REQUESTS)
-        << "\"http-request-response\",\"" << (void*)this << "\",\""
-        << StringUtils::escapeUnicode(
-               std::string(buffer->c_str(), buffer->length()))
+        << "\"http-request-response\",\"" << (void*)this << "\",\"" << _fullUrl
+        << "\",\"" << StringUtils::escapeUnicode(
+                          std::string(buffer->c_str(), buffer->length()))
         << "\"";
   }
 
   auto agent = getAgent(1);
   double const totalTime = agent->elapsedSinceReadStart();
-               
+
   // append write buffer and statistics
   addWriteBuffer(std::move(buffer), agent);
 
@@ -188,6 +183,8 @@ void HttpCommTask::addResponse(HttpResponse* response) {
 
 // reads data from the socket
 bool HttpCommTask::processRead() {
+  cancelKeepAlive();
+
   TRI_ASSERT(_readBuffer.c_str() != nullptr);
 
   if (_requestPending) {
@@ -195,7 +192,6 @@ bool HttpCommTask::processRead() {
   }
 
   auto agent = getAgent(1UL);
-
   bool handleRequest = false;
 
   // still trying to read the header fields
@@ -260,6 +256,21 @@ bool HttpCommTask::processRead() {
       return false;
     }
 
+    if (std::strncmp(_readBuffer.c_str(), "VST/1.0\r\n\r\n", 11) == 0) {
+      LOG_TOPIC(INFO, Logger::COMMUNICATION) << "Switching from Http to Vst";
+      std::shared_ptr<GeneralCommTask> commTask;
+      _abandoned = true;
+      cancelKeepAlive();
+      commTask = std::make_shared<VppCommTask>(
+          _loop, _server, std::move(_peer), std::move(_connectionInfo),
+          GeneralServerFeature::keepAliveTimeout(), /*skipSocketInit*/ true);
+      commTask->addToReadBuffer(_readBuffer.c_str() + 11,
+                                _readBuffer.length() - 11);
+      commTask->processRead();
+      commTask->start();
+      // statistics?!
+      return false;
+    }
     // header is complete
     if (ptr < end) {
       _readPosition = ptr - _readBuffer.c_str() + 4;
@@ -383,6 +394,16 @@ bool HttpCommTask::processRead() {
         }
 
         default: {
+          size_t l = _readPosition - _startPosition;
+
+          if (6 < l) {
+            l = 6;
+          }
+
+          LOG(WARN) << "got corrupted HTTP request '"
+                    << std::string(_readBuffer.c_str() + _startPosition, l)
+                    << "'";
+
           // bad request, method not allowed
           handleSimpleError(rest::ResponseCode::METHOD_NOT_ALLOWED, 1);
           return false;
@@ -418,27 +439,30 @@ bool HttpCommTask::processRead() {
   // readRequestBody might have changed, so cannot use else
   if (_readRequestBody) {
     if (_readBuffer.length() - _bodyPosition < _bodyLength) {
-      armKeepAliveTimeout();
-
       // let client send more
       return false;
     }
-      
-    bool handled = false; 
-    std::string const& encoding = _incompleteRequest->header(StaticStrings::ContentEncoding);
+
+    bool handled = false;
+    std::string const& encoding =
+        _incompleteRequest->header(StaticStrings::ContentEncoding);
     if (!encoding.empty()) {
       if (encoding == "gzip") {
         std::string uncompressed;
-        if (!StringUtils::gzipUncompress(_readBuffer.c_str() + _bodyPosition, _bodyLength, uncompressed)) {
-          handleSimpleError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER, "gzip decoding error", 1);
+        if (!StringUtils::gzipUncompress(_readBuffer.c_str() + _bodyPosition,
+                                         _bodyLength, uncompressed)) {
+          handleSimpleError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                            "gzip decoding error", 1);
           return false;
         }
         _incompleteRequest->setBody(uncompressed.c_str(), uncompressed.size());
         handled = true;
       } else if (encoding == "deflate") {
         std::string uncompressed;
-        if (!StringUtils::gzipDeflate(_readBuffer.c_str() + _bodyPosition, _bodyLength, uncompressed)) {
-          handleSimpleError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER, "gzip deflate error", 1);
+        if (!StringUtils::gzipDeflate(_readBuffer.c_str() + _bodyPosition,
+                                      _bodyLength, uncompressed)) {
+          handleSimpleError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                            "gzip deflate error", 1);
           return false;
         }
         _incompleteRequest->setBody(uncompressed.c_str(), uncompressed.size());
@@ -458,14 +482,6 @@ bool HttpCommTask::processRead() {
     _readRequestBody = false;
     handleRequest = true;
   }
-
-  // .............................................................................
-  // request complete
-  //
-  // we have to delete request in here or pass it to a handler, which will
-  // delete
-  // it
-  // .............................................................................
 
   if (!handleRequest) {
     return false;
@@ -496,7 +512,8 @@ bool HttpCommTask::processRead() {
     // we should close the connection
     LOG(DEBUG) << "no keep-alive, connection close requested by client";
     _closeRequested = true;
-  } else if (_keepAliveTimeout <= 0.0) {
+
+  } else if (!_useKeepAliveTimeout) {
     // if keepAliveTimeout was set to 0.0, we'll close even keep-alive
     // connections immediately
     LOG(DEBUG) << "keep-alive disabled by admin";
@@ -531,9 +548,7 @@ bool HttpCommTask::processRead() {
   else if (authResult == rest::ResponseCode::FORBIDDEN) {
     handleSimpleError(authResult, TRI_ERROR_USER_CHANGE_PASSWORD,
                       "change password", 1);
-  }
-  // not authenticated
-  else {
+  } else {  // not authenticated
     HttpResponse response(rest::ResponseCode::UNAUTHORIZED);
     std::string realm = "Bearer token_type=\"JWT\", realm=\"ArangoDB\"";
 
@@ -581,21 +596,11 @@ void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
   // create a handler and execute
   std::unique_ptr<GeneralResponse> response(
       new HttpResponse(rest::ResponseCode::SERVER_ERROR));
+
   response->setContentType(request->contentTypeResponse());
   response->setContentTypeRequested(request->contentTypeResponse());
 
   executeRequest(std::move(request), std::move(response));
-}
-
-void HttpCommTask::finishedChunked() {
-  auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE, 6, true);
-  buffer->appendText(TRI_CHAR_LENGTH_PAIR("0\r\n\r\n"));
-  buffer->ensureNullTerminated();
-
-  _isChunked = false;
-  _requestPending = false;
-
-  addWriteBuffer(std::move(buffer));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -660,8 +665,10 @@ void HttpCommTask::processCorsOptions(std::unique_ptr<HttpRequest> request) {
 
     if (!allowHeaders.empty()) {
       // allow all extra headers the client requested
-      // we don't verify them here. the worst that can happen is that the client
-      // sends some broken headers and then later cannot access the data on the
+      // we don't verify them here. the worst that can happen is that the
+      // client
+      // sends some broken headers and then later cannot access the data on
+      // the
       // server. that's a client problem.
       response.setHeaderNC(StaticStrings::AccessControlAllowHeaders,
                            allowHeaders);
@@ -676,26 +683,6 @@ void HttpCommTask::processCorsOptions(std::unique_ptr<HttpRequest> request) {
   }
 
   processResponse(&response);
-}
-
-void HttpCommTask::handleChunk(char const* data, size_t len) {
-  if (!_isChunked) {
-    return;
-  }
-
-  if (0 == len) {
-    finishedChunked();
-  } else {
-    std::unique_ptr<StringBuffer> buffer(
-        new StringBuffer(TRI_UNKNOWN_MEM_ZONE, len));
-
-    buffer->appendHex(len);
-    buffer->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
-    buffer->appendText(data, len);
-    buffer->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
-
-    addWriteBuffer(std::move(buffer));
-  }
 }
 
 std::unique_ptr<GeneralResponse> HttpCommTask::createResponse(

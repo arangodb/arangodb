@@ -22,20 +22,22 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SCHEDULER_SOCKET_TASK_H
-#define ARANGOD_SCHEDULER_SOCKET_TASK_H 1
+#ifndef ARANGOD_SCHEDULER_SOCKET_TASK2_H
+#define ARANGOD_SCHEDULER_SOCKET_TASK2_H 1
 
 #include "Scheduler/Task.h"
 
+#include <boost/asio/ssl.hpp>
+
 #include "Basics/StringBuffer.h"
-#include "Basics/Thread.h"
-#include "Basics/socket-utils.h"
+#include "Basics/asio-helper.h"
+#include "Scheduler/Socket.h"
 #include "Statistics/StatisticsAgent.h"
 
 namespace arangodb {
 namespace rest {
-
 class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
+  friend class HttpCommTask;
   explicit SocketTask(SocketTask const&) = delete;
   SocketTask& operator=(SocketTask const&) = delete;
 
@@ -43,27 +45,31 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
   static size_t const READ_BLOCK_SIZE = 10000;
 
  public:
-  SocketTask(TRI_socket_t, ConnectionInfo&&, double);
+  SocketTask(EventLoop, std::unique_ptr<Socket>, ConnectionInfo&&,
+             double keepAliveTimeout, bool skipInit);
 
- protected:
-  ~SocketTask();
+  virtual ~SocketTask();
+
+  std::unique_ptr<Socket> releasePeer() {
+    _abandoned = true;
+    return std::move(_peer);
+  }
+
+  ConnectionInfo&& releaseConnectionInfo() {
+    _abandoned = true;
+    return std::move(_connectionInfo);
+  }
 
  public:
-  void armKeepAliveTimeout();
+  void start();
 
  protected:
-  virtual bool fillReadBuffer();
-
-  virtual bool handleRead();   // called by handleEvent
-  virtual bool handleWrite();  // called by handleEvent
-
-  virtual void handleTimeout() = 0;
-
-  // is called in a loop as long as it returns true.
-  // Return false if there is not enough data to do
-  // any more processing and all available data has
-  // been evaluated.
   virtual bool processRead() = 0;
+
+  // This function is used during the protocol switch from http
+  // to VelocyStream. This way we no not require additional
+  // constructor arguments. It should not be used otherwise.
+  void addToReadBuffer(char const* data, std::size_t len);
 
  protected:
   void addWriteBuffer(std::unique_ptr<basics::StringBuffer> buffer) {
@@ -77,26 +83,12 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
 
   void completedWriteBuffer();
 
- protected:
-  bool setup(Scheduler*, EventLoop) override;
-  void cleanup() override;
-  bool handleEvent(EventToken token, EventType) override;
+  void closeStream();
+
+  void resetKeepAlive();
+  void cancelKeepAlive();
 
  protected:
-  double const _keepAliveTimeout;
-
- protected:
-  // connection closed
-  bool _closed = false;
-
-  // client has closed the connection, immediately close the underlying socket
-  bool _clientClosed = false;
-
-  // the client has requested, close the connection after all data is written
-  bool _closeRequested = false;
-
- protected:
-  TRI_socket_t _commSocket;
   ConnectionInfo _connectionInfo;
 
   basics::StringBuffer _readBuffer;
@@ -104,15 +96,26 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
   basics::StringBuffer* _writeBuffer = nullptr;
   TRI_request_statistics_t* _writeBufferStatistics = nullptr;
 
-  std::deque<std::pair<basics::StringBuffer*, TRI_request_statistics_t*>> _writeBuffers;
+  std::deque<basics::StringBuffer*> _writeBuffers;
+  std::deque<TRI_request_statistics_t*> _writeBuffersStats;
 
-  EventToken _keepAliveWatcher = nullptr;
-  EventToken _readWatcher = nullptr;
-  EventToken _writeWatcher = nullptr;
+  std::unique_ptr<Socket> _peer;
+  boost::posix_time::milliseconds _keepAliveTimeout;
+  bool _useKeepAliveTimeout;
+  boost::asio::deadline_timer _keepAliveTimer;
 
-  size_t _writeLength = 0;
+  bool _closeRequested = false;
+  std::atomic_bool _abandoned;
 
-  TRI_tid_t _tid = 0;
+ private:
+  bool reserveMemory();
+  bool trySyncRead();
+  void asyncReadSome();
+  void closeReceiveStream();
+
+ private:
+  bool _closedSend = false;
+  bool _closedReceive = false;
 };
 }
 }

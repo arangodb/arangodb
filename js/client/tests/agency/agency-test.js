@@ -285,12 +285,12 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["a/z"]]), [{"a":{"z":12}}]);
       writeAndCheck([[{"a/y":{"op":"set","new":12, "ttl": 1}}]]);
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
-      wait(1.25);
+      wait(3);
       assertEqual(readAndCheck([["a/y"]]), [{a:{}}]);
       writeAndCheck([[{"a/y":{"op":"set","new":12, "ttl": 1}}]]);
       writeAndCheck([[{"a/y":{"op":"set","new":12}}]]);
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
-      wait(1.25);
+      wait(3);
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
       writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12}}}]]);
       assertEqual(readAndCheck([["/foo/bar/baz"]]),
@@ -298,7 +298,7 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/foo/bar"]]), [{"foo":{"bar":{"baz":12}}}]);
       assertEqual(readAndCheck([["/foo"]]), [{"foo":{"bar":{"baz":12}}}]);
       writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12},"ttl":1}}]]);
-      wait(1.25);
+      wait(3);
       assertEqual(readAndCheck([["/foo"]]), [{"foo":{}}]);
       assertEqual(readAndCheck([["/foo/bar"]]), [{"foo":{}}]);
       assertEqual(readAndCheck([["/foo/bar/baz"]]), [{"foo":{}}]);
@@ -613,6 +613,10 @@ function agencyTestSuite () {
       assertEqual(res.statusCode, 200);
       assertEqual(readAndCheck([["/bumms", "/bummsfallera"]]), [{bumms:"fallera", bummsfallera: "lalalala"}]);
     }
+
+    /*
+      // Test babies
+     */
 
     /*
     testHiddenAgencyWrite: function() {

@@ -44,10 +44,19 @@ class AttributeAccessor {
   ~AttributeAccessor() = default;
 
   /// @brief execute the accessor
-  AqlValue get(arangodb::Transaction* trx, ExpressionContext* context, bool& mustDestroy);
+  AqlValue getSystem(arangodb::Transaction* trx, ExpressionContext* context, bool& mustDestroy);
+  AqlValue getDynamic(arangodb::Transaction* trx, ExpressionContext* context, bool& mustDestroy);
     
  public:
   void replaceVariable(std::unordered_map<VariableId, Variable const*> const& replacements);
+ 
+  bool isSystem() const {
+    return (_type == EXTRACT_KEY || _type == EXTRACT_ID || _type == EXTRACT_FROM || _type == EXTRACT_TO);
+  }
+
+  bool isDynamic() const {
+    return !isSystem();
+  }
 
  private:
   enum AccessorType {

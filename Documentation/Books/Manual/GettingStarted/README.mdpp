@@ -569,7 +569,7 @@ If you want to write more AQL queries right now, have a look here:
 
 The ArangoDB package comes with the following programs:
 
-- `arangod`: The [ArangoDB database daemon](../Administration/Configuration/Arangod.md).
+- `arangod`: The [ArangoDB database daemon](../Administration/Configuration/GeneralArangod.md).
   This server program is intended to run as a daemon process and to serve the
   various clients connection to the server via TCP / HTTP.
   
