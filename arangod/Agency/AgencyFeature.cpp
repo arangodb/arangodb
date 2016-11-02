@@ -121,7 +121,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     return;
   }
 
-  if (result.touched("agency.election-timout-min")) {
+  if (result.touched("agency.election-timeout-min")) {
     _cmdLineTimings = true;
   }
 

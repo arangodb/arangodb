@@ -1476,6 +1476,8 @@ function startInstanceAgency (instanceInfo, protocol, options,
     instanceArgs['agency.pool-size'] = String(N);
     instanceArgs['agency.wait-for-sync'] = String(wfs);
     instanceArgs['agency.supervision'] = String(S);
+    instanceArgs['agency.election-timeout-min'] = String(2);
+    instanceArgs['agency.election-timeout-max'] = String(10);
     instanceArgs['database.directory'] = dataDir + String(i);
     const port = findFreePort(options.maxPort);
     instanceArgs['server.endpoint'] = protocol + '://127.0.0.1:' + port;
