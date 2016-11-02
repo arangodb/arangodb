@@ -10,6 +10,10 @@ function help() {
   echo "  -l/--log-level     Log level   (INFO|DEBUG|TRACE default: INFO)"
   echo "  -w/--wait-for-sync Boolean     (true|false       default: true)"
   echo "  -m/--use-microtime Boolean     (true|false       default: false)"
+  echo "  -s/--start-delays  Integer     (                 default: 0)"
+  echo "  -g/--gossip-mode   Integer     (0: Announce first endpoint to all"
+  echo "                                  1: Grow list of known endpoints for each"
+  echo "                                  2: Cyclic        default: 0)"
   echo ""
   echo "EXAMPLES:"
   echo "  scripts/startStandaloneAgency.sh"
@@ -24,6 +28,8 @@ TRANSPORT="tcp"
 LOG_LEVEL="INFO"
 WAIT_FOR_SYNC="true"
 USE_MICROTIME="false"
+GOSSIP_MODE=0
+START_DELAYS=0
 
 while [[ ${1} ]]; do
   case "${1}" in
@@ -49,6 +55,14 @@ while [[ ${1} ]]; do
       ;;
     -m|--use-microtime)
       USE_MICROTIME=${2}
+      shift
+      ;;
+    -g|--gossip-mode)
+      GOSSIP_MODE=${2}
+      shift
+      ;;
+    -s|--start-delays)
+      START_DELAYS=${2}
       shift
       ;;
     -h|--help)
@@ -81,12 +95,15 @@ else
 fi
 
 printf "Starting agency ... \n"
-printf "  agency-size: %s," "$NRAGENTS"
-printf  " pool-size: %s," "$POOLSZ"
-printf  " transport: %s," "$TRANSPORT"
-printf  " log-level: %s," "$LOG_LEVEL"
-printf  " use-microtime: %s," "$USE_MICROTIME"
-printf  " wait-for-sync: %s\n" "$WAIT_FOR_SYNC"
+printf "    agency-size: %s," "$NRAGENTS"
+printf " pool-size: %s," "$POOLSZ"
+printf " transport: %s," "$TRANSPORT"
+printf " log-level: %s," "$LOG_LEVEL"
+printf "\n"
+printf "    use-microtime: %s," "$USE_MICROTIME"
+printf " wait-for-sync: %s," "$WAIT_FOR_SYNC"
+printf " start-delays: %s," "$START_DELAYS"
+printf " gossip-mode: %s\n" "$GOSSIP_MODE"
 
 if [ ! -d arangod ] || [ ! -d arangosh ] || [ ! -d UnitTests ] ; then
   echo Must be started in the main ArangoDB source directory.
@@ -104,15 +121,23 @@ SFRE=2.5
 COMP=1000
 BASE=5000
 
+if [ "$GOSSIP_MODE" = "0" ]; then
+   GOSSIP_PEERS=" --agency.endpoint $TRANSPORT://localhost:$BASE"
+fi
+
 rm -rf agency
 mkdir -p agency
 PIDS=""
 for aid in `seq 0 $(( $POOLSZ - 1 ))`; do
   port=$(( $BASE + $aid ))
+  if [ "$GOSSIP_MODE" = 2 ]; then
+    nport=$(( $BASE + $(( $(( $aid + 1 )) % 3 ))))
+    GOSSIP_PEERS=" --agency.endpoint $TRANSPORT://localhost:$nport"
+  fi
   build/bin/arangod \
     -c none \
     --agency.activate true \
-    --agency.endpoint $TRANSPORT://localhost:$BASE \
+    $GOSSIP_PEERS \
     --agency.my-address $TRANSPORT://localhost:$port \
     --agency.compaction-step-size $COMP \
     --agency.pool-size $POOLSZ \
@@ -136,6 +161,10 @@ for aid in `seq 0 $(( $POOLSZ - 1 ))`; do
     > agency/$port.stdout 2>&1 &
   PIDS+=$!
   PIDS+=" "
+  if [ "$GOSSIP_MODE" == "1" ]; then
+    GOSSIP_PEERS+=" --agency.endpoint $TRANSPORT://localhost:$port"
+  fi
+  sleep $START_DELAYS
 done
 
 echo "  done. Your agents are ready at port $BASE onward."
