@@ -971,9 +971,11 @@ bool Agent::booting() { return (!_config.poolComplete()); }
 /// Add whatever is missing in our list.
 /// Compare whatever is in our list already. (ASSERT identity)
 /// If I know more immediately contact peer with my list.
-query_t Agent::gossip(query_t const& in, bool isCallback) {
+query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
+
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Incoming gossip: "
       << in->slice().toJson();
+
   VPackSlice slice = in->slice();
   if (!slice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -986,13 +988,15 @@ query_t Agent::gossip(query_t const& in, bool isCallback) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         20002, "Gossip message must contain string parameter 'id'");
   }
-  // std::string id = slice.get("id").copyString();
 
   if (!slice.hasKey("endpoint") || !slice.get("endpoint").isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         20003, "Gossip message must contain string parameter 'endpoint'");
   }
   std::string endpoint = slice.get("endpoint").copyString();
+  if (isCallback) {
+    _inception->reportVersionForEp(endpoint, version);
+  }
 
   LOG_TOPIC(TRACE, Logger::AGENCY)
       << "Gossip " << ((isCallback) ? "callback" : "call") << " from "

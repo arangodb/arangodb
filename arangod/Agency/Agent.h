@@ -110,7 +110,7 @@ class Agent : public arangodb::Thread {
   bool booting();
 
   /// @brief Gossip in
-  query_t gossip(query_t const&, bool callback = false);
+  query_t gossip(query_t const&, bool callback = false, size_t version = 0);
 
   /// @brief Persisted agents
   bool persistedAgents();

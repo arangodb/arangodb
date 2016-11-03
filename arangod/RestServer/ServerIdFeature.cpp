@@ -51,9 +51,18 @@ void ServerIdFeature::start() {
   auto database = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
   
   // read the server id or create a new one
-  int res = determineId(database->checkVersion());
+  bool const checkVersion = database->checkVersion();
+  int res = determineId(checkVersion);
 
   if (res == TRI_ERROR_ARANGO_EMPTY_DATADIR) {
+    if (checkVersion) {
+      // when we are version checking, we will not fail here
+      // additionally notify the database feature that we had no VERSION file
+      database->isInitiallyEmpty(true);
+      return;
+    }
+
+    // otherwise fail
     THROW_ARANGO_EXCEPTION(res);
   }
 

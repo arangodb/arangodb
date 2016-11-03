@@ -341,7 +341,7 @@ void DatabaseFeature::start() {
   }
 
   // TODO: handle _upgrade and _checkVersion here
-
+  
   // activate deadlock detection in case we're not running in cluster mode
   if (!arangodb::ServerState::instance()->isRunningInCluster()) {
     enableDeadlockDetection();

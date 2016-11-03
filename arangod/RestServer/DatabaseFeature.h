@@ -119,6 +119,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   bool throwCollectionNotLoadedError() const { return _throwCollectionNotLoadedError.load(std::memory_order_relaxed); }
   void throwCollectionNotLoadedError(bool value) { _throwCollectionNotLoadedError.store(value); }
   bool check30Revisions() const { return _check30Revisions; }
+  void isInitiallyEmpty(bool value) { _isInitiallyEmpty = value; }
 
  private:
   void closeDatabases();
