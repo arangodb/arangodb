@@ -12,6 +12,8 @@ v3.1.0 (2016-10-29)
   (see [joi 9.0.0 release notes](https://github.com/hapijs/joi/issues/920) for information on
   breaking changes and new features)
 
+* fixed issue #2139
+
 
 v3.1.rc2 (2016-10-10)
 ---------------------

@@ -435,6 +435,10 @@ function checkManifest (filename, inputManifest, mount, isDevelopment) {
     });
   }
 
+  if (typeof manifest.tests === 'string') {
+    manifest.tests = [manifest.tests];
+  }
+
   if (legacy) {
     if (manifest.defaultDocument === undefined) {
       manifest.defaultDocument = 'index.html';
@@ -443,10 +447,18 @@ function checkManifest (filename, inputManifest, mount, isDevelopment) {
     if (typeof manifest.controllers === 'string') {
       manifest.controllers = {'/': manifest.controllers};
     }
-  }
-
-  if (typeof manifest.tests === 'string') {
-    manifest.tests = [manifest.tests];
+  } else if (manifest.lib) {
+    const base = manifest.lib;
+    delete manifest.lib;
+    if (manifest.main) {
+      manifest.main = joinPath(base, manifest.main);
+    }
+    if (manifest.tests) {
+      manifest.tests = manifest.tests.map((path) => joinPath(base, path));
+    }
+    for (const key of Object.keys(manifest.scripts)) {
+      manifest.scripts[key] = joinPath(base, manifest.scripts[key]);
+    }
   }
 
   return manifest;
