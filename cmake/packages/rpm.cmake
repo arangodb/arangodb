@@ -10,7 +10,14 @@ set(CPACK_RPM_USER_BINARY_SPECFILE "${CMAKE_CURRENT_BINARY_DIR}/arangodb.spec")
 ################################################################################
 
 # deploy the Init script:
-set(RPM_INIT_SCRIPT "${PROJECT_SOURCE_DIR}/Installation/rpm/rc.arangod.Centos")
+if (${RPM_DISTRO} STREQUAL "SUSE13")
+  set(RPM_INIT_SCRIPT "${PROJECT_SOURCE_DIR}/Installation/rpm/rc.arangod.OpenSuSE_13")
+elseif (${RPM_DISTRO} STREQUAL "SUSE")
+  set(RPM_INIT_SCRIPT "${PROJECT_SOURCE_DIR}/Installation/rpm/rc.arangod.OpenSuSE")
+else () # fall back to centos:
+  set(RPM_INIT_SCRIPT "${PROJECT_SOURCE_DIR}/Installation/rpm/rc.arangod.Centos")
+endif()
+
 set(RPM_INIT_SCRIPT_TARGET "${CMAKE_INSTALL_FULL_SYSCONFDIR}/init.d")
 set(RPM_INIT_SCRIPT_TARGET_NAME arangodb3)
 set(CPACK_COMPONENTS_GROUPING IGNORE)

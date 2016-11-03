@@ -666,7 +666,7 @@
 
     fillSelectBoxes: function () {
       // fill select box with # of results
-      var querySize = 100;
+      var querySize = 1000;
       var sizeBox = $('#querySize');
       sizeBox.empty();
 

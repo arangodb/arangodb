@@ -35,44 +35,34 @@ while [[ ${1} ]]; do
   case "${1}" in
     -a|--agency-size)
       NRAGENTS=${2}
-      shift
-      ;;
+      shift;;
     -p|--pool-size)
       POOLSZ=${2}
-      shift
-      ;;
+      shift;;
     -t|--transport)
       TRANSPORT=${2}
-      shift
-      ;;
+      shift;;
     -l|--log-level)
       LOG_LEVEL=${2}
-      shift
-      ;;
+      shift;;
     -w|--wait-for-sync)
       WAIT_FOR_SYNC=${2}
-      shift
-      ;;
+      shift;;
     -m|--use-microtime)
       USE_MICROTIME=${2}
-      shift
-      ;;
+      shift;;
     -g|--gossip-mode)
       GOSSIP_MODE=${2}
-      shift
-      ;;
+      shift;;
     -s|--start-delays)
       START_DELAYS=${2}
-      shift
-      ;;
+      shift;;
     -h|--help)
-      help
-      exit 1  
+      help; exit 1  
       ;;
     *)
       echo "Unknown parameter: ${1}" >&2
-      help
-      exit 1
+      help; exit 1
       ;;
   esac
   

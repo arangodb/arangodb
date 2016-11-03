@@ -53,10 +53,7 @@ class PrimaryIndex;
 class RocksDBIndex;
 class Transaction;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Iterator structure for RocksDB. We require a start and stop node
-////////////////////////////////////////////////////////////////////////////////
-
 class RocksDBIterator final : public IndexIterator {
  private:
   friend class RocksDBIndex;
@@ -77,16 +74,10 @@ class RocksDBIterator final : public IndexIterator {
   
   char const* typeName() const override { return "rocksdb-index-iterator"; }
 
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief Get the next element in the index
-  ////////////////////////////////////////////////////////////////////////////////
-
   IndexLookupResult next() override;
 
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief Reset the cursor
-  ////////////////////////////////////////////////////////////////////////////////
-
   void reset() override;
  
  private:
@@ -167,13 +158,10 @@ class RocksDBIndex final : public PathBasedIndex {
 
   int drop() override;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief attempts to locate an entry in the index
   ///
   /// Warning: who ever calls this function is responsible for destroying
   /// the velocypack::Slice and the RocksDBIterator* results
-  //////////////////////////////////////////////////////////////////////////////
-
   RocksDBIterator* lookup(arangodb::Transaction*, 
                           ManagedDocumentResult* mmdr,
                           arangodb::velocypack::Slice const,
@@ -216,10 +204,7 @@ class RocksDBIndex final : public PathBasedIndex {
 
  private:
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief the RocksDB instance
-  //////////////////////////////////////////////////////////////////////////////
-
   rocksdb::OptimisticTransactionDB* _db;
 
 };
