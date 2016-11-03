@@ -1155,6 +1155,15 @@
         self.resize();
       });
 
+      var setOutputEditorFontSize = function (size) {
+        _.each($('.outputEditors'), function (value) {
+          var id = $(value).children().first().attr('id');
+          id = id.replace('Wrapper', '');
+          var outputEditor = ace.edit(id);
+          outputEditor.setFontSize(size);
+        });
+      };
+
       var editors = [this.aqlEditor, this.bindParamAceEditor];
       _.each(editors, function (editor) {
         editor.commands.addCommand({
@@ -1162,6 +1171,30 @@
           bindKey: {win: 'Ctrl-Shift-C', linux: 'Ctrl-Shift-C', mac: 'Command-Shift-C'},
           exec: function (editor) {
             editor.toggleCommentLines();
+          },
+          multiSelectAction: 'forEach'
+        });
+
+        editor.commands.addCommand({
+          name: 'increaseFontSize',
+          bindKey: {win: 'Shift-Alt-Up', linux: 'Shift-Alt-Up', mac: 'Shift-Alt-Up'},
+          exec: function (editor) {
+            var newSize = parseInt(self.aqlEditor.getFontSize().match(/\d+/)[0]) + 1;
+            newSize += 'pt';
+            self.aqlEditor.setFontSize(newSize);
+            setOutputEditorFontSize(newSize);
+          },
+          multiSelectAction: 'forEach'
+        });
+
+        editor.commands.addCommand({
+          name: 'decreaseFontSize',
+          bindKey: {win: 'Shift-Alt-Down', linux: 'Shift-Alt-Down', mac: 'Shift-Alt-Down'},
+          exec: function (editor) {
+            var newSize = parseInt(self.aqlEditor.getFontSize().match(/\d+/)[0]) - 1;
+            newSize += 'pt';
+            self.aqlEditor.setFontSize(newSize);
+            setOutputEditorFontSize(newSize);
           },
           multiSelectAction: 'forEach'
         });
@@ -2061,6 +2094,11 @@
       };
 
       var found = false;
+        
+      if (!Array.isArray(result)) {
+        toReturn.defaultType = 'json';
+        return toReturn;
+      }
 
       // check if result could be displayed as graph
       // case a) result has keys named vertices and edges
