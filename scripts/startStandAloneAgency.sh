@@ -179,14 +179,15 @@ for aid in "${aaid[@]}"; do
   if [ "$GOSSIP_MODE" == "1" ]; then
     GOSSIP_PEERS+=" --agency.endpoint $TRANSPORT://localhost:$port"
   fi
-  sleep $START_DELAYS
-  if [ "$RANDOM_DELAYS" == "true" ] && [ $count -lt $POOLSZ ]; then
-      
-    delay=$(( RANDOM % 16 ))
-    printf " delaying %s seconds" "$delay"
-    sleep $delay
+  if [ $count -lt $POOLSZ ]; then
+    sleep $START_DELAYS
+    if [ "$RANDOM_DELAYS" == "true" ] ; then
+      delay=$(( RANDOM % 16 ))
+      printf " delaying %s seconds" "$delay"
+      sleep $delay
+    fi
+    ((count+=1))
   fi
-  ((count+=1))
   echo
 done
 
