@@ -1668,7 +1668,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
 
       if (system_clock::now() - start > ltimeout) {
         LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Timed out waiting for leader "
-          << agencyEndpoint->_endpoint->specification() << " tries: " << ltries;
+          << agencyEndpoint->_endpoint->specification() << " tries: " << ltries++;
         break;
       }
 
