@@ -74,10 +74,7 @@ static size_t sortWeight(arangodb::aql::AstNode const* node) {
 // lists: lexicographically and within each slot according to these rules.
 // ...........................................................................
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief compares a key with an element, version with proper types
-////////////////////////////////////////////////////////////////////////////////
-
 static int CompareKeyElement(void* userData, 
                              VPackSlice const* left,
                              SkiplistIndexElement const* right,
@@ -89,10 +86,7 @@ static int CompareKeyElement(void* userData,
       *left, right->slice(context, rightPosition), true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief compares elements, version with proper types
-////////////////////////////////////////////////////////////////////////////////
-
 static int CompareElementElement(void* userData, 
                                  SkiplistIndexElement const* left,
                                  size_t leftPosition,
@@ -515,10 +509,7 @@ SkiplistIterator::SkiplistIterator(LogicalCollection* collection, arangodb::Tran
   reset(); // Initializes the cursor
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Reset the cursor
-////////////////////////////////////////////////////////////////////////////////
-
 void SkiplistIterator::reset() {
   if (_reverse) {
     _cursor = _rightEndPoint;
@@ -527,10 +518,7 @@ void SkiplistIterator::reset() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Get the next element in the skiplist
-////////////////////////////////////////////////////////////////////////////////
-
 IndexLookupResult SkiplistIterator::next() {
   if (_cursor == nullptr) {
     // We are exhausted already, sorry
@@ -576,11 +564,8 @@ SkiplistIterator2::SkiplistIterator2(LogicalCollection* collection, arangodb::Tr
              (!_intervals.empty() && _cursor != nullptr));
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Checks if the interval is valid. It is declared invalid if
 ///        one border is nullptr or the right is lower than left.
-////////////////////////////////////////////////////////////////////////////////
-
 bool SkiplistIterator2::intervalValid(void* userData, Node* left, Node* right) const {
   if (left == nullptr) {
     return false;
@@ -599,10 +584,7 @@ bool SkiplistIterator2::intervalValid(void* userData, Node* left, Node* right) c
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Reset the cursor
-////////////////////////////////////////////////////////////////////////////////
-
 void SkiplistIterator2::reset() {
   // If _intervals is empty at this point
   // the cursor does not contain any
@@ -618,10 +600,7 @@ void SkiplistIterator2::reset() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Get the next element in the skiplist
-////////////////////////////////////////////////////////////////////////////////
-
 IndexLookupResult SkiplistIterator2::next() {
   if (_cursor == nullptr) {
     // We are exhausted already, sorry
@@ -744,10 +723,7 @@ SkiplistIndex::SkiplistIndex(TRI_idx_iid_t iid,
       new TRI_Skiplist(CmpElmElm, CmpKeyElm, [this](SkiplistIndexElement* element) { element->free(); }, _unique, _useExpansion);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the skiplist index
-////////////////////////////////////////////////////////////////////////////////
-
 SkiplistIndex::~SkiplistIndex() { delete _skiplistIndex; }
 
 size_t SkiplistIndex::memory() const {
@@ -755,10 +731,7 @@ size_t SkiplistIndex::memory() const {
          static_cast<size_t>(_skiplistIndex->getNrUsed()) * SkiplistIndexElement::baseMemoryUsage(_paths.size());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a VelocyPack representation of the index
-////////////////////////////////////////////////////////////////////////////////
-
 void SkiplistIndex::toVelocyPack(VPackBuilder& builder,
                                  bool withFigures) const {
   Index::toVelocyPack(builder, withFigures);
@@ -766,20 +739,14 @@ void SkiplistIndex::toVelocyPack(VPackBuilder& builder,
   builder.add("sparse", VPackValue(_sparse));
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a VelocyPack representation of the index figures
-////////////////////////////////////////////////////////////////////////////////
-
 void SkiplistIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add("memory", VPackValue(memory()));
   _skiplistIndex->appendToVelocyPack(builder);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts a document into a skiplist index
-////////////////////////////////////////////////////////////////////////////////
-
 int SkiplistIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId, 
                           VPackSlice const& doc, bool isRollback) {
   std::vector<SkiplistIndexElement*> elements;
@@ -830,10 +797,7 @@ int SkiplistIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a document from a skiplist index
-////////////////////////////////////////////////////////////////////////////////
-
 int SkiplistIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
                           VPackSlice const& doc, bool isRollback) {
   std::vector<SkiplistIndexElement*> elements;
@@ -880,11 +844,8 @@ int SkiplistIndex::unload() {
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Checks if the interval is valid. It is declared invalid if
 ///        one border is nullptr or the right is lower than left.
-////////////////////////////////////////////////////////////////////////////////
-
 bool SkiplistIndex::intervalValid(void* userData, Node* left, Node* right) const {
   if (left == nullptr) {
     return false;
@@ -903,10 +864,7 @@ bool SkiplistIndex::intervalValid(void* userData, Node* left, Node* right) const
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief compares a key with an element in a skip list, generic callback
-////////////////////////////////////////////////////////////////////////////////
-
 int SkiplistIndex::KeyElementComparator::operator()(void* userData,
     VPackSlice const* leftKey, SkiplistIndexElement const* rightElement) const {
   TRI_ASSERT(nullptr != leftKey);
@@ -928,10 +886,7 @@ int SkiplistIndex::KeyElementComparator::operator()(void* userData,
   return 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief compares two elements in a skip list, this is the generic callback
-////////////////////////////////////////////////////////////////////////////////
-
 int SkiplistIndex::ElementElementComparator::operator()(
     void* userData,
     SkiplistIndexElement const* leftElement,
@@ -1464,10 +1419,7 @@ bool SkiplistIndex::supportsSortCondition(
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief specializes the condition for use with the index
-////////////////////////////////////////////////////////////////////////////////
-
 arangodb::aql::AstNode* SkiplistIndex::specializeCondition(
     arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) const {

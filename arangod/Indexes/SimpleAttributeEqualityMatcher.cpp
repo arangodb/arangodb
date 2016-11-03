@@ -34,11 +34,8 @@ SimpleAttributeEqualityMatcher::SimpleAttributeEqualityMatcher(
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes)
     : _attributes(attributes), _found() {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief match a single of the attributes
 /// this is used for the primary index and the edge index
-////////////////////////////////////////////////////////////////////////////////
-
 bool SimpleAttributeEqualityMatcher::matchOne(
     arangodb::Index const* index, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
@@ -81,11 +78,8 @@ bool SimpleAttributeEqualityMatcher::matchOne(
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief match all of the attributes, in any order
 /// this is used for the hash index
-////////////////////////////////////////////////////////////////////////////////
-
 bool SimpleAttributeEqualityMatcher::matchAll(
     arangodb::Index const* index, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
@@ -146,12 +140,9 @@ bool SimpleAttributeEqualityMatcher::matchAll(
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief specialize the condition for the index
 /// this is used for the primary index and the edge index
 /// requires that a previous matchOne() returned true
-////////////////////////////////////////////////////////////////////////////////
-
 arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
     arangodb::Index const* index, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) {
@@ -201,12 +192,9 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
   return node;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief specialize the condition for the index
 /// this is used for the hash index
 /// requires that a previous matchAll() returned true
-////////////////////////////////////////////////////////////////////////////////
-
 arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll(
     arangodb::Index const* index, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) {
@@ -271,13 +259,10 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll(
   return node;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the costs of using this index and the number of items
 /// that will return in average
 /// cost values have no special meaning, except that multiple cost values are
 /// comparable, and lower values mean lower costs
-////////////////////////////////////////////////////////////////////////////////
-
 void SimpleAttributeEqualityMatcher::calculateIndexCosts(
     arangodb::Index const* index, size_t itemsInIndex, size_t& estimatedItems,
     double& estimatedCost) const {
@@ -320,10 +305,7 @@ void SimpleAttributeEqualityMatcher::calculateIndexCosts(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the access fits
-////////////////////////////////////////////////////////////////////////////////
-
 bool SimpleAttributeEqualityMatcher::accessFitsIndex(
     arangodb::Index const* index, arangodb::aql::AstNode const* access,
     arangodb::aql::AstNode const* other, arangodb::aql::AstNode const* op,

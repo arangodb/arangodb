@@ -46,10 +46,7 @@ arangodb::aql::AstNode const* PathBasedIndex::PermutationState::getValue()
   return nullptr;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the index
-////////////////////////////////////////////////////////////////////////////////
-
 PathBasedIndex::PathBasedIndex(TRI_idx_iid_t iid,
                                arangodb::LogicalCollection* collection,
                                VPackSlice const& info, bool allowPartialIndex)
@@ -70,16 +67,10 @@ PathBasedIndex::PathBasedIndex(TRI_idx_iid_t iid,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the index
-////////////////////////////////////////////////////////////////////////////////
-
 PathBasedIndex::~PathBasedIndex() {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to insert a document into any index type
-////////////////////////////////////////////////////////////////////////////////
-
 template<typename T>
 int PathBasedIndex::fillElement(std::vector<T*>& elements,
                                 TRI_voc_rid_t revisionId,
@@ -162,10 +153,7 @@ int PathBasedIndex::fillElement(std::vector<T*>& elements,
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to create the sole index value insert
-////////////////////////////////////////////////////////////////////////////////
-
 std::vector<std::pair<VPackSlice, uint32_t>> PathBasedIndex::buildIndexValue(
     VPackSlice const documentSlice) {
   size_t const n = _paths.size();
@@ -192,10 +180,7 @@ std::vector<std::pair<VPackSlice, uint32_t>> PathBasedIndex::buildIndexValue(
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to create a set of index combinations to insert
-////////////////////////////////////////////////////////////////////////////////
-
 void PathBasedIndex::buildIndexValues(
     VPackSlice const document, size_t level,
     std::vector<std::vector<std::pair<VPackSlice, uint32_t>>>& toInsert,
@@ -311,10 +296,7 @@ void PathBasedIndex::buildIndexValues(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to transform AttributeNames into strings.
-////////////////////////////////////////////////////////////////////////////////
-
 void PathBasedIndex::fillPaths(std::vector<std::vector<std::string>>& paths,
                                std::vector<int>& expanding) {
   paths.clear();

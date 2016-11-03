@@ -82,10 +82,7 @@ GeoIndex::~GeoIndex() {
 
 size_t GeoIndex::memory() const { return GeoIndex_MemoryUsage(_geoIndex); }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a JSON representation of the index
-////////////////////////////////////////////////////////////////////////////////
-
 void GeoIndex::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
   // Basic index
   Index::toVelocyPack(builder, withFigures);
@@ -326,10 +323,7 @@ GeoCoordinates* GeoIndex::withinQuery(arangodb::Transaction* trx, double lat,
   return GeoIndex_PointsWithinRadius(_geoIndex, &gc, radius);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up the nearest points
-////////////////////////////////////////////////////////////////////////////////
-
 GeoCoordinates* GeoIndex::nearQuery(arangodb::Transaction* trx, double lat,
                                      double lon, size_t count) const {
   GeoCoordinate gc;
