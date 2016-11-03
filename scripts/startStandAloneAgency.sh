@@ -22,6 +22,19 @@ function help() {
   
 }
 
+function shuffle() {
+  local i tmp size max rand
+
+  size=${#array[*]}
+  max=$(( 32768 / size * size ))
+
+  for ((i=size-1; i>0; i--)); do
+    while (( (rand=$RANDOM) >= max )); do :; done
+    rand=$(( rand % (i+1) ))
+    tmp=${array[i]} array[i]=${array[rand]} array[rand]=$tmp
+  done
+}
+
 NRAGENTS=3
 POOLSZ=""
 TRANSPORT="tcp"
@@ -118,7 +131,12 @@ fi
 rm -rf agency
 mkdir -p agency
 PIDS=""
-for aid in `seq 0 $(( $POOLSZ - 1 ))`; do
+
+array=(`seq 0 $(( $POOLSZ - 1 ))`)
+shuffle
+
+for aid in "${array[@]}"; do
+
   port=$(( $BASE + $aid ))
   if [ "$GOSSIP_MODE" = 2 ]; then
     nport=$(( $BASE + $(( $(( $aid + 1 )) % 3 ))))
