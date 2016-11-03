@@ -217,6 +217,8 @@ v3.0.11 (2016-XX-XX)
 
 * fixed issue #2131: use shard key value entered by user in web interface
 
+* fixed issue #2129: cannot kill a long-run query
+
 * fixed issue #2110
 
 * fixed issue #2081
