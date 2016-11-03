@@ -11,6 +11,7 @@ function help() {
   echo "  -w/--wait-for-sync Boolean     (true|false       default: true)"
   echo "  -m/--use-microtime Boolean     (true|false       default: false)"
   echo "  -s/--start-delays  Integer     (                 default: 0)"
+  echo "  -r/--random-delays Boolean     (tru|false        default: false)"
   echo "  -g/--gossip-mode   Integer     (0: Announce first endpoint to all"
   echo "                                  1: Grow list of known endpoints for each"
   echo "                                  2: Cyclic        default: 0)"
@@ -25,13 +26,13 @@ function help() {
 function shuffle() {
   local i tmp size max rand
 
-  size=${#array[*]}
+  size=${#aaid[*]}
   max=$(( 32768 / size * size ))
 
   for ((i=size-1; i>0; i--)); do
     while (( (rand=$RANDOM) >= max )); do :; done
     rand=$(( rand % (i+1) ))
-    tmp=${array[i]} array[i]=${array[rand]} array[rand]=$tmp
+    tmp=${aaid[i]} aaid[i]=${aaid[rand]} aaid[rand]=$tmp
   done
 }
 
@@ -132,10 +133,10 @@ rm -rf agency
 mkdir -p agency
 PIDS=""
 
-array=(`seq 0 $(( $POOLSZ - 1 ))`)
+aaid=(`seq 0 $(( $POOLSZ - 1 ))`)
 shuffle
 
-for aid in "${array[@]}"; do
+for aid in "${aaid[@]}"; do
 
   port=$(( $BASE + $aid ))
   if [ "$GOSSIP_MODE" = 2 ]; then
