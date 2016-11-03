@@ -1668,7 +1668,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
 
       if (system_clock::now() - start > ltimeout) {
         LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Timed out waiting for leader "
-          << agencyEndpoint->_endpoint->specification() << " tries: " << ltries++;
+          << agencyEndpoint->_endpoint->specification() << " tries: " << ltries;
         break;
       }
 
@@ -1677,10 +1677,11 @@ AgencyCommResult AgencyComm::sendWithFailover(
         break;
       } else {
         LOG_TOPIC(WARN, Logger::AGENCYCOMM) << "Waiting on leader election "
-          << agencyEndpoint->_endpoint->specification() << " tries: " << ltries;
+          << agencyEndpoint->_endpoint->specification() << " tries: " << ltries++;
       }
 
       sleep(1);
+
     }
 
     if (result._statusCode ==
