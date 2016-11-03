@@ -213,7 +213,7 @@ void WorkMonitor::deleteHandler(WorkDescription* desc) {
   TRI_ASSERT(desc->_type == WorkType::HANDLER);
 
   desc->_data._handler._handler
-      .std::shared_ptr<rest::RestHandler>::~shared_ptr<rest::RestHandler>();
+      .std::shared_ptr<rest::RestHandler>::~shared_ptr();
 
   desc->_data._handler._canceled.std::atomic<bool>::~atomic();
 }
