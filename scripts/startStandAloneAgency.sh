@@ -187,8 +187,8 @@ for aid in "${aaid[@]}"; do
       sleep $delay
     fi
     ((count+=1))
-    echo
   fi
+  echo
 done
 
 echo "  done. Your agents are ready at port $BASE onward."
