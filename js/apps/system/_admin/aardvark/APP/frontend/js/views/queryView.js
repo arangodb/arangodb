@@ -2061,6 +2061,11 @@
       };
 
       var found = false;
+        
+      if (!Array.isArray(result)) {
+        toReturn.defaultType = 'json';
+        return toReturn;
+      }
 
       // check if result could be displayed as graph
       // case a) result has keys named vertices and edges
