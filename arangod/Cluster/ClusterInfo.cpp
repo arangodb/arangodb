@@ -2156,8 +2156,7 @@ void ClusterInfo::loadCurrentCoordinators() {
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::string const prefixCurrentDBServers = "Current/DBServers";
-static std::string const prefixTargetCleaned = "Target/CleanedOutServers";
-static std::string const prefixTargetFailed = "Target/FailedServers";
+static std::string const prefixTarget = "Target";
 
 void ClusterInfo::loadCurrentDBServers() {
   ++_DBServersProt.wantedVersion;  // Indicate that after *NOW* somebody has to
@@ -2172,10 +2171,9 @@ void ClusterInfo::loadCurrentDBServers() {
 
   // Now contact the agency:
   AgencyCommResult result = _agency.getValues(prefixCurrentDBServers);
-  AgencyCommResult failed = _agency.getValues(prefixTargetFailed);
-  AgencyCommResult cleaned = _agency.getValues(prefixTargetCleaned);
+  AgencyCommResult target = _agency.getValues(prefixTarget);
 
-  if (result.successful()) {
+  if (result.successful() && target.successful()) {
     velocypack::Slice currentDBServers;
     velocypack::Slice failedDBServers;
     velocypack::Slice cleanedDBServers;
@@ -2185,14 +2183,12 @@ void ClusterInfo::loadCurrentDBServers() {
         result.slice()[0].get(std::vector<std::string>(
             {AgencyComm::prefix(), "Current", "DBServers"}));
     }
-    if (!failed.slice().isNone()) {
+    if (!target.slice().isNone()) {
       failedDBServers =
-        failed.slice()[0].get(std::vector<std::string>(
+        target.slice()[0].get(std::vector<std::string>(
               {AgencyComm::prefix(), "Target", "FailedServers"}));
-    }
-    if (!cleaned.slice().isNone()) {
       cleanedDBServers =
-        cleaned.slice()[0].get(std::vector<std::string>(
+        target.slice()[0].get(std::vector<std::string>(
               {AgencyComm::prefix(), "Target", "CleanedOutServers"}));
     }
     if (currentDBServers.isObject() && failedDBServers.isObject()) {

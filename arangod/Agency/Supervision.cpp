@@ -447,7 +447,7 @@ void Supervision::run() {
           }
         }
       }
-      _cv.wait(static_cast<uint64_t>(1000000.0 * _frequency));
+      _cv.wait(1000000 * _frequency);
     }
   }
   if (shutdown) {
