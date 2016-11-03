@@ -82,6 +82,15 @@ void FunctionDefinitions::toVelocyPack(VPackBuilder& builder) {
     builder.openObject();
     builder.add("name", VPackValue(it.second.externalName));
     builder.add("arguments", VPackValue(it.second.arguments));
+    builder.add("implementations", VPackValue(VPackValueType::Array));
+    builder.add(VPackValue("js"));
+    if (it.second.implementation != nullptr) {
+      builder.add(VPackValue("cxx"));
+    }
+    builder.close(); // implementations
+    builder.add("deterministic", VPackValue(it.second.isDeterministic));
+    builder.add("cacheable", VPackValue(it.second.isCacheable));
+    builder.add("canThrow", VPackValue(it.second.canThrow));
     builder.close();
   }
   builder.close();
@@ -178,6 +187,8 @@ struct FunctionDefiner {
                       true, &Functions::Like});
     add({"REGEX_TEST", "AQL_REGEX_TEST", "s,r|b", true, true, false, true,
                        true, &Functions::RegexTest});
+    add({"REGEX_REPLACE", "AQL_REGEX_REPLACE", "s,r,s|b", true, true, false, true,
+                       true, &Functions::RegexReplace});
     add({"LEFT", "AQL_LEFT", "s,n", true, true, false, true, true});
     add({"RIGHT", "AQL_RIGHT", "s,n", true, true, false, true, true});
     add({"TRIM", "AQL_TRIM", "s|ns", true, true, false, true, true});

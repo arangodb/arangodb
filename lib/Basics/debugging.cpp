@@ -401,7 +401,7 @@ void TRI_PrintBacktrace() {
 
 void TRI_FlushDebugging() {
   Logger::flush();
-  Logger::shutdown(true);
+  Logger::shutdown();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -411,7 +411,7 @@ void TRI_FlushDebugging() {
 void TRI_FlushDebugging(char const* file, int line, char const* message) {
   LOG(FATAL) << "assertion failed in " << file << ":" << line << ": " << message;
   Logger::flush();
-  Logger::shutdown(true);
+  Logger::shutdown();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

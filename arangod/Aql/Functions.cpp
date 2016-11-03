@@ -125,8 +125,11 @@ static void ClearLikeCache() {
 /// @brief compile a LIKE pattern from a string
 static std::string BuildLikePattern(char const* ptr, size_t length,
                                     bool caseInsensitive) {
+  std::string pattern;
+  pattern.reserve(length + 8); // reserve some room
+  
   // pattern is always anchored
-  std::string pattern("^");
+  pattern.push_back('^');
   if (caseInsensitive) {
     pattern.append("(?i)");
   }
@@ -1390,6 +1393,77 @@ AqlValue Functions::RegexTest(arangodb::aql::Query* query,
   if (error) {
     // compiling regular expression failed
     RegisterWarning(query, "REGEX_TEST", TRI_ERROR_QUERY_INVALID_REGEX);
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  } 
+  
+  return AqlValue(result);
+}
+
+/// @brief function REGEX_REPLACE
+AqlValue Functions::RegexReplace(arangodb::aql::Query* query,
+                                 arangodb::Transaction* trx,
+                                 VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "REGEX_REPLACE", 3, 4);
+  bool const caseInsensitive = GetBooleanParameter(trx, parameters, 3, false);
+  StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  // build pattern from parameter #1
+  AqlValue regex = ExtractFunctionParameterValue(trx, parameters, 1);
+  AppendAsString(trx, adapter, regex);
+
+  std::string const pattern =
+      BuildRegexPattern(buffer->c_str(), buffer->length(), caseInsensitive);
+  RegexMatcher* matcher = nullptr;
+
+  if (RegexCache != nullptr) {
+    auto it = RegexCache->find(pattern);
+
+    // check regex cache
+    if (it != RegexCache->end()) {
+      matcher = (*it).second;
+    }
+  }
+
+  if (matcher == nullptr) {
+    matcher =
+        arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern);
+
+    try {
+      if (RegexCache == nullptr) {
+        RegexCache = new std::unordered_map<std::string, RegexMatcher*>();
+      }
+      // insert into cache, no matter if pattern is valid or not
+      RegexCache->emplace(pattern, matcher);
+    } catch (...) {
+      delete matcher;
+      ClearRegexCache();
+      throw;
+    }
+  }
+
+  if (matcher == nullptr) {
+    // compiling regular expression failed
+    RegisterWarning(query, "REGEX_REPLACE", TRI_ERROR_QUERY_INVALID_REGEX);
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+
+  // extract value
+  buffer->clear();
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  AppendAsString(trx, adapter, value);
+
+  size_t const split = buffer->length();
+  AqlValue replace = ExtractFunctionParameterValue(trx, parameters, 2);
+  AppendAsString(trx, adapter, replace);
+
+  bool error = false;
+  std::string result = arangodb::basics::Utf8Helper::DefaultUtf8Helper.replace(
+      matcher, buffer->c_str(), split, buffer->c_str() + split, buffer->length() - split, false, error);
+
+  if (error) {
+    // compiling regular expression failed
+    RegisterWarning(query, "REGEX_REPLACE", TRI_ERROR_QUERY_INVALID_REGEX);
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   } 
   

@@ -56,10 +56,7 @@ static inline uint64_t HashElement(void*, SimpleIndexElement const& element) {
   return element.hash();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief determines if a key corresponds to an element
-////////////////////////////////////////////////////////////////////////////////
-
 static bool IsEqualKeyElement(void* userData, uint8_t const* key,
                               uint64_t hash,
                               SimpleIndexElement const& right) {
@@ -75,10 +72,7 @@ static bool IsEqualKeyElement(void* userData, uint8_t const* key,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief determines if two elements are equal
-////////////////////////////////////////////////////////////////////////////////
-
 static bool IsEqualElementElement(void* userData, SimpleIndexElement const& left,
                                   SimpleIndexElement const& right) {
   IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
@@ -216,24 +210,15 @@ PrimaryIndex::~PrimaryIndex() {
   delete _primaryIndex; 
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the number of documents from the index
-////////////////////////////////////////////////////////////////////////////////
-
 size_t PrimaryIndex::size() const { return _primaryIndex->size(); }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the memory usage of the index
-////////////////////////////////////////////////////////////////////////////////
-
 size_t PrimaryIndex::memory() const { 
   return _primaryIndex->memoryUsage();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a VelocyPack representation of the index
-////////////////////////////////////////////////////////////////////////////////
-
 void PrimaryIndex::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
   Index::toVelocyPack(builder, withFigures);
   // hard-coded
@@ -312,14 +297,11 @@ SimpleIndexElement* PrimaryIndex::lookupKeyRef(arangodb::Transaction* trx,
   return element;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief a method to iterate over all elements in the index in
 ///        a sequential order.
 ///        Returns nullptr if all documents have been returned.
 ///        Convention: position === 0 indicates a new start.
 ///        DEPRECATED
-////////////////////////////////////////////////////////////////////////////////
-
 SimpleIndexElement PrimaryIndex::lookupSequential(
     arangodb::Transaction* trx, arangodb::basics::BucketPosition& position,
     uint64_t& total) {
@@ -328,36 +310,27 @@ SimpleIndexElement PrimaryIndex::lookupSequential(
   return _primaryIndex->findSequential(&context, position, total);
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief request an iterator over all elements in the index in
 ///        a sequential order.
-//////////////////////////////////////////////////////////////////////////////
-
 IndexIterator* PrimaryIndex::allIterator(arangodb::Transaction* trx,
                                          ManagedDocumentResult* mmdr,
                                          bool reverse) const {
   return new AllIndexIterator(_collection, trx, mmdr, this, _primaryIndex, reverse);
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief request an iterator over all elements in the index in
 ///        a random order. It is guaranteed that each element is found
 ///        exactly once unless the collection is modified.
-//////////////////////////////////////////////////////////////////////////////
-
 IndexIterator* PrimaryIndex::anyIterator(arangodb::Transaction* trx,
                                          ManagedDocumentResult* mmdr) const {
   return new AnyIndexIterator(_collection, trx, mmdr, this, _primaryIndex);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief a method to iterate over all elements in the index in
 ///        reversed sequential order.
 ///        Returns nullptr if all documents have been returned.
 ///        Convention: position === UINT64_MAX indicates a new start.
 ///        DEPRECATED
-////////////////////////////////////////////////////////////////////////////////
-
 SimpleIndexElement PrimaryIndex::lookupSequentialReverse(
     arangodb::Transaction* trx, arangodb::basics::BucketPosition& position) {
   ManagedDocumentResult result(trx); 
@@ -365,11 +338,8 @@ SimpleIndexElement PrimaryIndex::lookupSequentialReverse(
   return _primaryIndex->findSequentialReverse(&context, position);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a key/element to the index
 /// returns a status code, and *found will contain a found element (if any)
-////////////////////////////////////////////////////////////////////////////////
-
 int PrimaryIndex::insertKey(arangodb::Transaction* trx, TRI_voc_rid_t revisionId, VPackSlice const& doc) {
   ManagedDocumentResult result(trx); 
   IndexLookupContext context(trx, _collection, &result, 1); 
@@ -385,10 +355,7 @@ int PrimaryIndex::insertKey(arangodb::Transaction* trx, TRI_voc_rid_t revisionId
   return _primaryIndex->insert(&context, element);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an key/element from the index
-////////////////////////////////////////////////////////////////////////////////
-
 int PrimaryIndex::removeKey(arangodb::Transaction* trx,
                             TRI_voc_rid_t revisionId, VPackSlice const& doc) {
   ManagedDocumentResult result(trx); 
@@ -418,10 +385,7 @@ int PrimaryIndex::removeKey(arangodb::Transaction* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief resizes the index
-////////////////////////////////////////////////////////////////////////////////
-
 int PrimaryIndex::resize(arangodb::Transaction* trx, size_t targetSize) {
   ManagedDocumentResult result(trx); 
   IndexLookupContext context(trx, _collection, &result, 1); 
@@ -438,10 +402,7 @@ void PrimaryIndex::invokeOnAllElementsForRemoval(
   _primaryIndex->invokeOnAllElementsForRemoval(work);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether the index supports the condition
-////////////////////////////////////////////////////////////////////////////////
-
 bool PrimaryIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
@@ -452,10 +413,7 @@ bool PrimaryIndex::supportsFilterCondition(
                           estimatedCost);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an IndexIterator for the given Condition
-////////////////////////////////////////////////////////////////////////////////
-
 IndexIterator* PrimaryIndex::iteratorForCondition(
     arangodb::Transaction* trx, 
     ManagedDocumentResult* mmdr,
@@ -494,10 +452,7 @@ IndexIterator* PrimaryIndex::iteratorForCondition(
   return nullptr;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an IndexIterator for the given slice
-////////////////////////////////////////////////////////////////////////////////
-
 IndexIterator* PrimaryIndex::iteratorForSlice(
     arangodb::Transaction* trx, 
     ManagedDocumentResult* mmdr,
@@ -513,10 +468,7 @@ IndexIterator* PrimaryIndex::iteratorForSlice(
   return new PrimaryIndexIterator(_collection, trx, mmdr, this, keys);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief specializes the condition for use with the index
-////////////////////////////////////////////////////////////////////////////////
-
 arangodb::aql::AstNode* PrimaryIndex::specializeCondition(
     arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) const {
@@ -525,10 +477,7 @@ arangodb::aql::AstNode* PrimaryIndex::specializeCondition(
   return matcher.specializeOne(this, node, reference);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the iterator, for a single attribute, IN operator
-////////////////////////////////////////////////////////////////////////////////
-
 IndexIterator* PrimaryIndex::createInIterator(
     arangodb::Transaction* trx, 
     ManagedDocumentResult* mmdr,
@@ -561,10 +510,7 @@ IndexIterator* PrimaryIndex::createInIterator(
   return new PrimaryIndexIterator(_collection, trx, mmdr, this, keys);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the iterator, for a single attribute, EQ operator
-////////////////////////////////////////////////////////////////////////////////
-
 IndexIterator* PrimaryIndex::createEqIterator(
     arangodb::Transaction* trx, 
     ManagedDocumentResult* mmdr,
@@ -588,10 +534,7 @@ IndexIterator* PrimaryIndex::createEqIterator(
   return new PrimaryIndexIterator(_collection, trx, mmdr, this, keys);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief add a single value node to the iterator's keys
-////////////////////////////////////////////////////////////////////////////////
-   
 void PrimaryIndex::handleValNode(arangodb::Transaction* trx,
                                  VPackBuilder* keys,
                                  arangodb::aql::AstNode const* valNode,

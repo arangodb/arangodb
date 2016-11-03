@@ -167,11 +167,7 @@ static int runServer(int argc, char** argv) {
 
 #ifdef ARANGODB_HAVE_FORK
   server.addFeature(new DaemonFeature(&server));
-
-  std::unique_ptr<SupervisorFeature> supervisor =
-      std::make_unique<SupervisorFeature>(&server);
-  supervisor->supervisorStart({"Logger"});
-  server.addFeature(supervisor.release());
+  server.addFeature(new SupervisorFeature(&server));
 #endif
 
 #ifdef _WIN32
