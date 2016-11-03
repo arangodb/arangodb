@@ -43,7 +43,7 @@ static Completer* COMPLETER = nullptr;
 
 static void LinenoiseCompletionGenerator(char const* text,
                                          linenoiseCompletions* lc) {
-  if (COMPLETER) {
+  if (COMPLETER && text != nullptr) {
     std::vector<std::string> alternatives = COMPLETER->alternatives(text);
     ShellBase::sortAlternatives(alternatives);
 
