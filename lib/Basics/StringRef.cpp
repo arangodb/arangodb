@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,31 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_SUPERVISOR_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_SUPERVISOR_FEATURE_H 1
+#include "StringRef.h"
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include <iostream>
 
-namespace arangodb {
-class SupervisorFeature final
-    : public application_features::ApplicationFeature {
- public:
-  explicit SupervisorFeature(application_features::ApplicationServer* server);
+std::ostream& operator<<(std::ostream& stream, arangodb::StringRef const& ref) {
+  stream << std::string(ref.data(), ref.length());
+  return stream;
+}
 
- public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void daemonize() override final;
-
- private:
-  bool _supervisor;
-
- private:
-  TRI_pid_t _clientPid;
-};
-};
-
-#endif

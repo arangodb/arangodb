@@ -68,36 +68,30 @@
       if (this.filters.length === 0) {
         return '';
       }
-      var query = ' FILTER ';
       var parts = _.map(this.filters, function (f, i) {
-        var res = '';
-        res += 'x.@attr ';
-        res += f.op;
-        res += ' @param';
-        res += i;
+        var res = 'x.@attr' + i + ' ' + f.op + ' @param' + i;
 
         if (f.op === 'LIKE') {
           bindVars['param' + i] = '%' + f.val + '%';
         } else if (f.op === 'IN' || f.op === 'NOT IN ') {
           if (f.val.indexOf(',') !== -1) {
-            bindVars['param' + i] = f.val.split(',');
+            bindVars['param' + i] = f.val.split(',').map(function(v) { return v.replace(/(^ +| +$)/g, ''); });
           } else {
-            var arr = [];
-            bindVars['param' + i] = arr.push(f.val);
+            bindVars['param' + i] = [ f.val ];
           }
         } else {
           bindVars['param' + i] = f.val;
         }
 
         if (f.attr.indexOf('.') !== -1) {
-          bindVars['attr'] = f.attr.split('.');
+          bindVars['attr' + i] = f.attr.split('.');
         } else {
-          bindVars['attr'] = f.attr;
+          bindVars['attr' + i] = f.attr;
         }
 
         return res;
       });
-      return query + parts.join(' && ');
+      return ' FILTER ' + parts.join(' && ');
     },
 
     setPagesize: function (size) {

@@ -140,6 +140,7 @@ add_library(${LIB_ARANGO} STATIC
   Basics/StaticStrings.cpp
   Basics/StringBuffer.cpp
   Basics/StringHeap.cpp
+  Basics/StringRef.cpp
   Basics/StringUtils.cpp
   Basics/Thread.cpp
   Basics/ThreadPool.cpp
@@ -164,7 +165,6 @@ add_library(${LIB_ARANGO} STATIC
   Basics/prime-numbers.cpp
   Basics/process-utils.cpp
   Basics/socket-utils.cpp
-  Basics/structures.cpp
   Basics/system-functions.cpp
   Basics/terminal-utils.cpp
   Basics/tri-strings.cpp

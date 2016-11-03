@@ -1033,7 +1033,7 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
       for (size_t i = 0; i < n; ++i) {
         auto member = getMemberUnchecked(i);
         if (member != nullptr) {
-          builder.add(VPackValue(member->getString()));
+          builder.add(VPackValuePair(member->getStringValue(), member->getStringLength(), VPackValueType::String));
           member->getMember(0)->toVelocyPackValue(builder);
         }
       }
@@ -1084,7 +1084,7 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
         type == NODE_TYPE_ATTRIBUTE_ACCESS ||
         type == NODE_TYPE_OBJECT_ELEMENT || type == NODE_TYPE_FCALL_USER) {
       // dump "name" of node
-      builder.add("name", VPackValue(getString()));
+      builder.add("name", VPackValuePair(getStringValue(), getStringLength(), VPackValueType::String));
     }
     if (type == NODE_TYPE_FCALL) {
       auto func = static_cast<Function*>(getData());

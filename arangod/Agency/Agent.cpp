@@ -972,6 +972,8 @@ bool Agent::booting() { return (!_config.poolComplete()); }
 /// Compare whatever is in our list already. (ASSERT identity)
 /// If I know more immediately contact peer with my list.
 query_t Agent::gossip(query_t const& in, bool isCallback) {
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Incoming gossip: "
+      << in->slice().toJson();
   VPackSlice slice = in->slice();
   if (!slice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(

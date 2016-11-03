@@ -603,7 +603,6 @@ RestStatus RestAqlHandler::execute() {
     }
     case rest::RequestType::GET: {
       if (suffix.size() != 2) {
-        LOG(ERR) << "Unknown GET API";
         generateError(rest::ResponseCode::NOT_FOUND,
                       TRI_ERROR_HTTP_NOT_FOUND);
       } else {

@@ -328,6 +328,13 @@ while [ $# -gt 0 ];  do
             shift
             ;;
 
+        --rpmDistro)
+            shift
+            CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DRPM_DISTRO=$1"
+            shift
+            ;;
+
+
         --enterprise)
             shift
             ENTERPRISE_GIT_URL=$1
@@ -483,6 +490,9 @@ if test -n "${ENTERPRISE_GIT_URL}" ; then
         echo "I'm on tag: ${GITARGS}"
     else
         GITARGS=`git branch --no-color -q| grep '^\*' | sed "s;\* *;;"`
+        if echo $GITARGS |grep -q ' '; then
+            GITARGS=devel
+        fi
         echo "I'm on Branch: ${GITARGS}"
     fi
     # clean up if we're commanded to:

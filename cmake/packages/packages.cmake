@@ -37,6 +37,17 @@ elseif (MSVC)
   include(packages/nsis)
 endif ()
 
+################################################################################
+## SNAPCRAFT PACKAGE
+################################################################################
+
+if (USE_SNAPCRAFT)
+  if(NOT DEFINED SNAP_PORT)
+    set(SNAP_PORT 8529)
+  endif()
+  include(packages/snap)
+endif ()
+
 configure_file(
   "${CMAKE_SOURCE_DIR}/Installation/cmake/CMakeCPackOptions.cmake.in"
   "${CMAKE_BINARY_DIR}/CMakeCPackOptions.cmake" @ONLY)

@@ -41,7 +41,7 @@ $navbar-size: 150px;
 
   .arangodbLogo {
     height: auto;
-    margin-left: 6px;
+    margin-left: 3px;
     margin-top: 15px;
     width: $navbar-size - 6px;
   }
@@ -171,7 +171,7 @@ $navbar-size: 150px;
   #communityLabel {
     color: $c-white;
     font-family: Roboto,sans-serif;
-    font-size: 7.3pt;
+    font-size: 7pt;
     font-weight: 100;
     left: 38px;
     letter-spacing: 1px;
@@ -209,13 +209,6 @@ $navbar-size: 150px;
       color: $c-warning;
       font-weight: 400;
 
-      i {
-        font-size: 9pt;
-        margin-left: 5px;
-        margin-top: 3px;
-        position: absolute;
-      }
-
       &:hover {
         cursor: pointer;
       }
@@ -228,6 +221,14 @@ $navbar-size: 150px;
         padding-left: 3px;
       }
     }
+
+    i {
+      font-size: 9pt;
+      margin-left: 5px;
+      margin-top: 3px;
+      position: absolute;
+    }
+
   }
 }
 

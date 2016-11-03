@@ -42,5 +42,7 @@ exports.service = joi.object({
   source: joi.alternatives(
     joi.string().description(`Local file path or URL of the service to be installed`),
     joi.object().type(Buffer).description(`Zip bundle of the service to be installed`)
-  ).required().description(`Local file path, URL or zip bundle of the service to be installed`)
+  ).required().description(`Local file path, URL or zip bundle of the service to be installed`),
+  configuration: joi.string().optional().description(`Configuration to use for the service (JSON)`),
+  dependencies: joi.string().optional().description(`Dependency options to use for the service (JSON)`)
 }).required();

@@ -203,10 +203,7 @@ void LookupBuilder::buildNextSearchValue() {
   _builder->close(); // End of search Array
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief determines if two elements are equal
-////////////////////////////////////////////////////////////////////////////////
-
 static bool IsEqualElementElementUnique(void*,
                                         HashIndexElement const* left,
                                         HashIndexElement const* right) {
@@ -214,10 +211,7 @@ static bool IsEqualElementElementUnique(void*,
   return left->revisionId() == right->revisionId();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief determines if two elements are equal
-////////////////////////////////////////////////////////////////////////////////
-
 static bool IsEqualElementElementMulti(void* userData,
                                        HashIndexElement const* left,
                                        HashIndexElement const* right) {
@@ -247,18 +241,12 @@ static bool IsEqualElementElementMulti(void* userData,
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief given a key generates a hash integer
-////////////////////////////////////////////////////////////////////////////////
-
 static uint64_t HashKey(void*, VPackSlice const* key) {
   return HashIndexElement::hash(*key);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief determines if a key corresponds to an element
-////////////////////////////////////////////////////////////////////////////////
-
 static bool IsEqualKeyElementMulti(void* userData,
                                    VPackSlice const* left,
                                    HashIndexElement const* right) {
@@ -283,10 +271,7 @@ static bool IsEqualKeyElementMulti(void* userData,
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief determines if a key corresponds to an element
-////////////////////////////////////////////////////////////////////////////////
-
 static bool IsEqualKeyElementUnique(void* userData, VPackSlice const* left,
                                     uint64_t, HashIndexElement const* right) {
   return IsEqualKeyElementMulti(userData, left, right);
@@ -429,10 +414,7 @@ void HashIndexIteratorVPack::reset() {
   _iterator.reset();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the unique array
-////////////////////////////////////////////////////////////////////////////////
-
 HashIndex::UniqueArray::UniqueArray(
     size_t numPaths,
     TRI_HashArray_t* hashArray, HashElementFunc* hashElement,
@@ -446,10 +428,7 @@ HashIndex::UniqueArray::UniqueArray(
   TRI_ASSERT(_isEqualElElByKey != nullptr);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the unique array
-////////////////////////////////////////////////////////////////////////////////
-
 HashIndex::UniqueArray::~UniqueArray() {
   if (_hashArray != nullptr) {
     auto cb = [this](HashIndexElement* element) -> bool { 
@@ -463,10 +442,7 @@ HashIndex::UniqueArray::~UniqueArray() {
   delete _isEqualElElByKey;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the multi array
-////////////////////////////////////////////////////////////////////////////////
-
 HashIndex::MultiArray::MultiArray(size_t numPaths,
                                   TRI_HashArrayMulti_t* hashArray,
                                   HashElementFunc* hashElement,
@@ -480,10 +456,7 @@ HashIndex::MultiArray::MultiArray(size_t numPaths,
   TRI_ASSERT(_isEqualElElByKey != nullptr);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the multi array
-////////////////////////////////////////////////////////////////////////////////
-
 HashIndex::MultiArray::~MultiArray() {
   if (_hashArray != nullptr) {
     auto cb = [this](HashIndexElement* element) -> bool { 
@@ -536,10 +509,7 @@ HashIndex::HashIndex(TRI_idx_iid_t iid, LogicalCollection* collection,
   func.release();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys the index
-////////////////////////////////////////////////////////////////////////////////
-
 HashIndex::~HashIndex() {
   if (_unique) {
     delete _uniqueArray;
@@ -548,10 +518,7 @@ HashIndex::~HashIndex() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a selectivity estimate for the index
-////////////////////////////////////////////////////////////////////////////////
-
 double HashIndex::selectivityEstimate() const {
   if (_unique) {
     return 1.0;
@@ -568,10 +535,7 @@ double HashIndex::selectivityEstimate() const {
   return estimate;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the index memory usage
-////////////////////////////////////////////////////////////////////////////////
-
 size_t HashIndex::memory() const {
   size_t elementSize = HashIndexElement::baseMemoryUsage(_paths.size());
 
@@ -584,20 +548,14 @@ size_t HashIndex::memory() const {
                              _multiArray->_hashArray->memoryUsage());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a velocypack representation of the index
-////////////////////////////////////////////////////////////////////////////////
-
 void HashIndex::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
   Index::toVelocyPack(builder, withFigures);
   builder.add("unique", VPackValue(_unique));
   builder.add("sparse", VPackValue(_sparse));
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a velocypack representation of the index figures
-////////////////////////////////////////////////////////////////////////////////
-
 void HashIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add("memory", VPackValue(memory()));
@@ -682,10 +640,7 @@ int HashIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
   return insertMulti(trx, revisionId, doc, isRollback);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an entry from the hash array part of the hash index
-////////////////////////////////////////////////////////////////////////////////
-
 int HashIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
                       VPackSlice const& doc, bool isRollback) {
   std::vector<HashIndexElement*> elements;
@@ -736,10 +691,7 @@ int HashIndex::unload() {
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief provides a size hint for the hash index
-////////////////////////////////////////////////////////////////////////////////
-
 int HashIndex::sizeHint(arangodb::Transaction* trx, size_t size) {
   if (_sparse) {
     // for sparse indexes, we assume that we will have less index entries
@@ -757,10 +709,7 @@ int HashIndex::sizeHint(arangodb::Transaction* trx, size_t size) {
   return _multiArray->_hashArray->resize(&context, size);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief locates entries in the hash index given VelocyPack slices
-////////////////////////////////////////////////////////////////////////////////
-
 int HashIndex::lookup(arangodb::Transaction* trx,
                       VPackSlice key,
                       std::vector<HashIndexElement*>& documents) const {
@@ -1017,10 +966,7 @@ int HashIndex::removeMultiElement(arangodb::Transaction* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether the index supports the condition
-////////////////////////////////////////////////////////////////////////////////
-
 bool HashIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
@@ -1031,10 +977,7 @@ bool HashIndex::supportsFilterCondition(
                           estimatedCost);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an IndexIterator for the given Condition
-////////////////////////////////////////////////////////////////////////////////
-
 IndexIterator* HashIndex::iteratorForCondition(
     arangodb::Transaction* trx,
     ManagedDocumentResult* mmdr,
@@ -1046,10 +989,7 @@ IndexIterator* HashIndex::iteratorForCondition(
   return new HashIndexIterator(_collection, trx, mmdr, this, node, reference);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an IndexIterator for the given VelocyPackSlices
-////////////////////////////////////////////////////////////////////////////////
-
 IndexIterator* HashIndex::iteratorForSlice(arangodb::Transaction* trx,
                                            ManagedDocumentResult* mmdr,
                                            VPackSlice const searchValues,
@@ -1065,10 +1005,7 @@ IndexIterator* HashIndex::iteratorForSlice(arangodb::Transaction* trx,
   return new HashIndexIteratorVPack(_collection, trx, mmdr, this, keys);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief specializes the condition for use with the index
-////////////////////////////////////////////////////////////////////////////////
-
 arangodb::aql::AstNode* HashIndex::specializeCondition(
     arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) const {

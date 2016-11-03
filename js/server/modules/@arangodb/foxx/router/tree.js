@@ -128,7 +128,7 @@ module.exports =
 
       const req = new SyntheticRequest(rawReq, this.context);
       const res = new SyntheticResponse(rawRes, this.context);
-      dispatch(route, req, res);
+      dispatch(route, req, res, this);
 
       return true;
     }
@@ -176,6 +176,60 @@ module.exports =
       }
       return paths;
     }
+
+    reverse (route, routeName, params, suffix) {
+      if (typeof params === 'string') {
+        suffix = params;
+        params = undefined;
+      }
+      const reversedRoute = reverse(route, routeName);
+      if (!reversedRoute) {
+        throw new Error(`Route could not be resolved: "${routeName}"`);
+      }
+
+      params = Object.assign({}, params);
+      const parts = [];
+      for (const item of reversedRoute) {
+        const context = item.router || item.endpoint || item.middleware;
+        let i = 0;
+        for (let token of context._pathTokens) {
+          if (token === tokenize.PARAM) {
+            const name = context._pathParamNames[i];
+            if (params.hasOwnProperty(name)) {
+              if (Array.isArray(params[name])) {
+                if (!params[name].length) {
+                  throw new Error(`Not enough values for parameter "${name}"`);
+                }
+                token = params[name][0];
+                params[name] = params[name].slice(1);
+                if (!params[name].length) {
+                  delete params[name];
+                }
+              } else {
+                token = String(params[name]);
+                delete params[name];
+              }
+            } else {
+              throw new Error(`Missing value for parameter "${name}"`);
+            }
+            i++;
+          }
+          if (typeof token === 'string') {
+            parts.push(token);
+          }
+        }
+      }
+
+      const query = querystring.encode(params);
+      let path = '/' + parts.join('/');
+      if (suffix) {
+        path += '/' + suffix;
+      }
+      if (query) {
+        path += '?' + query;
+      }
+      return path;
+    }
 };
 
 function applyPathParams (route) {
@@ -204,7 +258,7 @@ function applyPathParams (route) {
   }
 }
 
-function dispatch (route, req, res) {
+function dispatch (route, req, res, tree) {
   let pathParams = {};
   let queryParams = Object.assign({}, req.queryParams);
   let headers = Object.assign({}, req.headers);
@@ -311,58 +365,8 @@ function dispatch (route, req, res) {
       req.path = joinPath(req.path, req.suffix);
     }
     res._responses = item._responses;
-    req.reverse = function (routeName, params, suffix) {
-      if (typeof params === 'string') {
-        suffix = params;
-        params = undefined;
-      }
-      const reversedRoute = reverse(route.slice(0, i), routeName);
-      if (!reversedRoute) {
-        throw new Error(`Route could not be resolved: "${routeName}"`);
-      }
-
-      params = Object.assign({}, params);
-      const parts = [];
-      for (const item of reversedRoute) {
-        const context = item.router || item.endpoint || item.middleware;
-        let i = 0;
-        for (let token of context._pathTokens) {
-          if (token === tokenize.PARAM) {
-            const name = context._pathParamNames[i];
-            if (params.hasOwnProperty(name)) {
-              if (Array.isArray(params[name])) {
-                if (!params[name].length) {
-                  throw new Error(`Not enough values for parameter "${name}"`);
-                }
-                token = params[name][0];
-                params[name] = params[name].slice(1);
-                if (!params[name].length) {
-                  delete params[name];
-                }
-              } else {
-                token = String(params[name]);
-                delete params[name];
-              }
-            } else {
-              throw new Error(`Missing value for parameter "${name}"`);
-            }
-            i++;
-          }
-          if (typeof token === 'string') {
-            parts.push(token);
-          }
-        }
-      }
-
-      const query = querystring.encode(params);
-      let path = '/' + parts.join('/');
-      if (suffix) {
-        path += '/' + suffix;
-      }
-      if (query) {
-        path += '?' + query;
-      }
-      return path;
+    req.reverse = function (...args) {
+      return tree.reverse(route.slice(0, i), ...args);
     };
 
     if (item.endpoint || item.router) {
@@ -507,7 +511,6 @@ function search (router, path, visited) {
     const child = router._namedRoutes.get(name);
     if (child.router) {
       // traverse named child router
-      console.log(visited.indexOf(child));
       if (tail.length && visited.indexOf(child) === -1) {
         visited.push(child);
         const result = search(child.router, tail, visited);
@@ -516,17 +519,14 @@ function search (router, path, visited) {
           return result;
         }
       }
-    } else {
+    } else if (!tail.length) {
       // found named route
-      if (!tail.length) {
-        return [{endpoint: child}];
-      }
+      return [{endpoint: child}];
     }
   }
 
   // traverse anonymous child routers
   for (const child of router._routes) {
-    console.log(visited.indexOf(child));
     if (child.router && visited.indexOf(child) === -1) {
       visited.push(child);
       const result = search(child.router, tail, visited);

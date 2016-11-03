@@ -122,10 +122,7 @@ RocksDBIterator::RocksDBIterator(LogicalCollection* collection,
   reset();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Reset the cursor
-////////////////////////////////////////////////////////////////////////////////
-
 void RocksDBIterator::reset() {
   if (_reverse) {
     _probe = true;
@@ -138,10 +135,7 @@ void RocksDBIterator::reset() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Get the next element in the index
-////////////////////////////////////////////////////////////////////////////////
-
 IndexLookupResult RocksDBIterator::next() {
   auto comparator = RocksDBFeature::instance()->comparator();
     
@@ -208,30 +202,21 @@ IndexLookupResult RocksDBIterator::next() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the index
-////////////////////////////////////////////////////////////////////////////////
-
 RocksDBIndex::RocksDBIndex(TRI_idx_iid_t iid,
                            arangodb::LogicalCollection* collection,
                            arangodb::velocypack::Slice const& info)
     : PathBasedIndex(iid, collection, info, true),
       _db(RocksDBFeature::instance()->db()) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the index
-////////////////////////////////////////////////////////////////////////////////
-
 RocksDBIndex::~RocksDBIndex() {}
 
 size_t RocksDBIndex::memory() const {
   return 0; // TODO
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a VelocyPack representation of the index
-////////////////////////////////////////////////////////////////////////////////
-
 void RocksDBIndex::toVelocyPack(VPackBuilder& builder,
                                 bool withFigures) const {
   Index::toVelocyPack(builder, withFigures);
@@ -239,19 +224,13 @@ void RocksDBIndex::toVelocyPack(VPackBuilder& builder,
   builder.add("sparse", VPackValue(_sparse));
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a VelocyPack representation of the index figures
-////////////////////////////////////////////////////////////////////////////////
-
 void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add("memory", VPackValue(memory()));
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts a document into the index
-////////////////////////////////////////////////////////////////////////////////
-
 int RocksDBIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
                          VPackSlice const& doc, bool isRollback) {
   auto comparator = RocksDBFeature::instance()->comparator();
@@ -408,10 +387,7 @@ int RocksDBIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a document from the index
-////////////////////////////////////////////////////////////////////////////////
-
 int RocksDBIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
                          VPackSlice const& doc, bool isRollback) {
   std::vector<SkiplistIndexElement*> elements;
@@ -1070,10 +1046,7 @@ IndexIterator* RocksDBIndex::iteratorForCondition(
   return lookup(trx, mmdr, searchSlice, reverse);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief specializes the condition for use with the index
-////////////////////////////////////////////////////////////////////////////////
-
 arangodb::aql::AstNode* RocksDBIndex::specializeCondition(
     arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) const {

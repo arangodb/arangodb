@@ -68,6 +68,7 @@ struct config_t {
   double _supervisionFrequency;
   uint64_t _compactionStepSize;
   double _supervisionGracePeriod;
+  bool _cmdLineTimings;
 
   mutable arangodb::basics::ReadWriteLock _lock; // guard member variables
 
@@ -77,7 +78,7 @@ struct config_t {
   /// @brief ctor
   config_t(size_t as, size_t ps, double minp, double maxp, std::string const& e,
            std::vector<std::string> const& g, bool s, bool w, double f,
-           uint64_t c, double p);
+           uint64_t c, double p, bool t);
 
   /// @brief copy constructor
   config_t(config_t const&);
@@ -170,6 +171,9 @@ struct config_t {
 
   /// @brief Reset RAFT timing
   void pingTimes(double, double);
+
+  /// @brief Supervision grace period
+  bool cmdLineTimings() const;
 
   /// @brief Supervision grace period
   double supervisionGracePeriod() const;

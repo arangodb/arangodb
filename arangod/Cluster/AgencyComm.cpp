@@ -326,7 +326,10 @@ void AgencyCommResult::clear() {
 /// get results of query as slice
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackSlice AgencyCommResult::slice() { return _vpack->slice(); }
+VPackSlice AgencyCommResult::slice() {
+  TRI_ASSERT(_vpack != nullptr);
+  return _vpack->slice();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the static global URL prefix

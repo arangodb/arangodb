@@ -52,7 +52,7 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer* server,
 }
 
 LoggerFeature::~LoggerFeature() {
-  Logger::shutdown(true);
+  Logger::shutdown();
 }
 
 void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -168,7 +168,7 @@ void LoggerFeature::prepare() {
     LogAppender::addTtyAppender();
   }
 
-  if (_forceDirect) {
+  if (_forceDirect || _supervisor) {
     Logger::initialize(false);
   } else {
     Logger::initialize(_threaded);

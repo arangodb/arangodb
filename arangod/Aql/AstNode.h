@@ -232,6 +232,8 @@ struct AstNode {
 
  public:
 
+  static constexpr size_t SortNumberThreshold = 8;
+
   /// @brief return the string value of a node, as an std::string
   std::string getString() const;
 

@@ -50,7 +50,8 @@ void Inception::gossip() {
   
   auto s = std::chrono::system_clock::now();
   std::chrono::seconds timeout(120);
-  size_t i = 0;
+  size_t j = 0;
+  bool complete = false;
 
   CONDITION_LOCKER(guard, _cv);
   
@@ -75,9 +76,11 @@ void Inception::gossip() {
     // gossip peers
     for (auto const& p : config.gossipPeers()) {
       if (p != config.endpoint()) {
-        std::string clientid = config.id() + std::to_string(i++);
+        std::string clientid = config.id() + std::to_string(j++);
         auto hf =
             std::make_unique<std::unordered_map<std::string, std::string>>();
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending gossip message: "
+            << out->toJson() << " to peer " << clientid;
         arangodb::ClusterComm::instance()->asyncRequest(
           clientid, 1, p, rest::RequestType::POST, path,
           std::make_shared<std::string>(out->toJson()), hf,
@@ -88,9 +91,11 @@ void Inception::gossip() {
     // pool entries
     for (auto const& pair : config.pool()) {
       if (pair.second != config.endpoint()) {
-        std::string clientid = config.id() + std::to_string(i++);
+        std::string clientid = config.id() + std::to_string(j++);
         auto hf =
             std::make_unique<std::unordered_map<std::string, std::string>>();
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending gossip message: "
+            << out->toJson() << " to pool member " << clientid;
         arangodb::ClusterComm::instance()->asyncRequest(
           clientid, 1, pair.second, rest::RequestType::POST, path,
           std::make_shared<std::string>(out->toJson()), hf,
@@ -99,7 +104,7 @@ void Inception::gossip() {
     }
 
     // don't panic
-    _cv.wait(100000);
+    _cv.wait(500000);
 
     // Timed out? :(
     if ((std::chrono::system_clock::now() - s) > timeout) {
@@ -114,8 +119,11 @@ void Inception::gossip() {
 
     // We're done
     if (config.poolComplete()) {
-      _agent->startConstituent();
-      break;
+      if (complete) {
+        _agent->startConstituent();
+        break;
+      }
+      complete = true;
     }
     
   }
@@ -439,7 +447,7 @@ bool Inception::estimateRAFTInterval() {
       }
     }
     
-    maxmean = 1.0e-2*std::ceil(100*(.15 + 1.0e-3*maxmean));
+    maxmean = 1.e-3*std::ceil(1.e3*(.1 + 1.0e-3*(maxmean+3*maxstdev)));
     
     LOG_TOPIC(INFO, Logger::AGENCY)
       << "Auto-adapting RAFT timing to: {" << maxmean
@@ -486,7 +494,11 @@ void Inception::run() {
     FATAL_ERROR_EXIT();
   }
 
-  estimateRAFTInterval();
+  // 5. If command line RAFT timings have not been set explicitly
+  //    Try good estimate of RAFT time limits
+  if (!config.cmdLineTimings()) {
+    estimateRAFTInterval();
+  }
   
   _agent->ready(true);
 

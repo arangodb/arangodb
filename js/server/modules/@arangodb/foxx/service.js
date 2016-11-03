@@ -214,10 +214,10 @@ module.exports =
 
     buildRoutes () {
       const service = this;
-      const tree = new Tree(this.main.context, this.router);
+      this.tree = new Tree(this.main.context, this.router);
       let paths = [];
       try {
-        paths = tree.buildSwaggerPaths();
+        paths = this.tree.buildSwaggerPaths();
       } catch (e) {
         console.errorLines(e.stack);
         let err = e.cause;
@@ -251,7 +251,7 @@ module.exports =
             let handled = true;
 
             try {
-              handled = tree.dispatch(req, res);
+              handled = service.tree.dispatch(req, res);
             } catch (e) {
               const logLevel = (
               !e.statusCode ? 'error' : // Unhandled

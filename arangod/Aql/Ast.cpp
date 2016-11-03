@@ -28,6 +28,7 @@
 #include "Aql/Graphs.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterInfo.h"
@@ -1041,12 +1042,12 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections) {
   auto ci = ClusterInfo::instance();
   auto ss = ServerState::instance();
 
-  auto doTheAdd = [&](std::string name) {
+  auto doTheAdd = [&](std::string const& name) {
     _query->collections()->add(name, TRI_TRANSACTION_READ);
     if (ss->isCoordinator()) {
       try {
         auto c = ci->getCollection(_query->vocbase()->name(), name);
-        auto names = c->realNames();
+        auto const& names = c->realNames();
         for (auto const& n : names) {
           _query->collections()->add(n, TRI_TRANSACTION_READ);
         }
@@ -1374,7 +1375,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
         bool isWriteCollection = false;
 
         for (auto const& it : _writeCollections) {
-          if (it->type == NODE_TYPE_PARAMETER && param == it->getString()) {
+          if (it->type == NODE_TYPE_PARAMETER && StringRef(param) == StringRef(it->getStringValue(), it->getStringLength())) {
             isWriteCollection = true;
             break;
           }
@@ -1411,7 +1412,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
           // parameter
           for (size_t i = 0; i < _writeCollections.size(); ++i) {
             if (_writeCollections[i]->type == NODE_TYPE_PARAMETER &&
-                param == _writeCollections[i]->getString()) {
+                StringRef(param) == StringRef(_writeCollections[i]->getStringValue(), _writeCollections[i]->getStringLength())) {
               _writeCollections[i] = node;
               // no break here. replace all occurrences
             }
@@ -2468,7 +2469,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational(AstNode* node) {
   bool const lhsIsConst = lhs->isConstant();
 
   if (!lhsIsConst) {
-    if (rhs->numMembers() >= 8 &&
+    if (rhs->numMembers() >= AstNode::SortNumberThreshold &&
         rhs->type == NODE_TYPE_ARRAY &&
         (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
          node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
@@ -2476,7 +2477,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational(AstNode* node) {
       // it, so we can find elements quicker later using a binary search
       // note that sorting will also set a flag for the node
       rhs->sort();
-      // set sortedness for IN/NIN operator node
+      // remove the sortedness bit for IN/NIN operator node, as the operand is now sorted
       node->setBoolValue(false);
     }
 
@@ -2776,7 +2777,7 @@ AstNode* Ast::optimizeIndexedAccess(AstNode* node) {
     // found a string value (e.g. a['foo']). now turn this into
     // an attribute access (e.g. a.foo) in order to make the node qualify
     // for being turned into an index range later
-    std::string indexValue(index->getString());
+    StringRef indexValue(index->getStringValue(), index->getStringLength());
 
     if (!indexValue.empty() && (indexValue[0] < '0' || indexValue[0] > '9')) {
       // we have to be careful with numeric values here...
