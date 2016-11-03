@@ -215,7 +215,7 @@ void WorkMonitor::deleteHandler(WorkDescription* desc) {
   desc->_data._handler._handler
       .std::shared_ptr<rest::RestHandler>::~shared_ptr<rest::RestHandler>();
 
-  desc->_data._handler._canceled.std::atomic<bool>::~atomic<bool>();
+  desc->_data._handler._canceled.std::atomic<bool>::~atomic();
 }
 
 void WorkMonitor::vpackHandler(VPackBuilder* b, WorkDescription* desc) {
