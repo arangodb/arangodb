@@ -3859,7 +3859,14 @@ std::string TRI_StringifyV8Exception(v8::Isolate* isolate,
         l = "";
       }
 
-      l += std::string((size_t)(end - start + 1), '^');
+      // in fact, we observed start being greater than end sometimes...
+      // this does not make sense and seems to be a bug in V8, but it happens
+      // so we need to work around this
+      if (end >= start) {
+        l += std::string((size_t)(end - start + 1), '^');
+      } else {
+        l = "^";
+      }
 
       result += "!" + l + "\n";
     }
