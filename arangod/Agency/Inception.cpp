@@ -58,6 +58,7 @@ void Inception::gossip() {
   while (!this->isStopping() && !_agent->isStopping()) {
 
     config_t config = _agent->config();  // get a copy of conf
+    size_t version = config.version();
 
     // Build gossip message
     query_t out = std::make_shared<Builder>();
@@ -76,31 +77,49 @@ void Inception::gossip() {
     // gossip peers
     for (auto const& p : config.gossipPeers()) {
       if (p != config.endpoint()) {
+        {
+          MUTEX_LOCKER(ackedLocker,_vLock);
+          if (_acked[p] >= version) {
+            continue;
+          }
+        }
         std::string clientid = config.id() + std::to_string(j++);
         auto hf =
-            std::make_unique<std::unordered_map<std::string, std::string>>();
+          std::make_unique<std::unordered_map<std::string, std::string>>();
         arangodb::ClusterComm::instance()->asyncRequest(
           clientid, 1, p, rest::RequestType::POST, path,
           std::make_shared<std::string>(out->toJson()), hf,
-          std::make_shared<GossipCallback>(_agent), 1.0, true, 0.5);
+          std::make_shared<GossipCallback>(_agent, version), 1.0, true, 0.5);
       }
     }
     
     // pool entries
     for (auto const& pair : config.pool()) {
       if (pair.second != config.endpoint()) {
+        {
+          MUTEX_LOCKER(ackedLocker,_vLock);
+          if (_acked[pair.second] >= version) {
+            continue;
+          }
+        }
         std::string clientid = config.id() + std::to_string(j++);
         auto hf =
-            std::make_unique<std::unordered_map<std::string, std::string>>();
+          std::make_unique<std::unordered_map<std::string, std::string>>();
         arangodb::ClusterComm::instance()->asyncRequest(
           clientid, 1, pair.second, rest::RequestType::POST, path,
           std::make_shared<std::string>(out->toJson()), hf,
-          std::make_shared<GossipCallback>(_agent), 1.0, true, 0.5);
+          std::make_shared<GossipCallback>(_agent, version), 1.0, true, 0.5);
       }
     }
 
-    // don't panic
-    _cv.wait(500000);
+    // We're done
+    if (config.poolComplete()) {
+      if (complete) {
+        _agent->startConstituent();
+        break;
+      }
+      complete = true;
+    }
 
     // Timed out? :(
     if ((std::chrono::system_clock::now() - s) > timeout) {
@@ -113,15 +132,9 @@ void Inception::gossip() {
       break;
     }
 
-    // We're done
-    if (config.poolComplete()) {
-      if (complete) {
-        _agent->startConstituent();
-        break;
-      }
-      complete = true;
-    }
-    
+    // don't panic just yet
+    _cv.wait(250000);
+
   }
   
 }
@@ -319,6 +332,14 @@ void Inception::reportIn(query_t const& query) {
           slice.get("max").getDouble(), slice.get("min").getDouble()} ));
 
 }
+
+void Inception::reportVersionForEp(std::string const& endpoint, size_t version) {
+  MUTEX_LOCKER(versionLocker, _vLock);
+  if (_acked[endpoint] < version) {
+    _acked[endpoint] = version;
+  }
+}
+
 
 bool Inception::estimateRAFTInterval() {
 

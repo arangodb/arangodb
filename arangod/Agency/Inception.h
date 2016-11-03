@@ -61,6 +61,9 @@ public:
   /// @brief Report in from other agents measurements
   void reportIn(query_t const&);
 
+  /// @brief Report acknowledged version for peer id
+  void reportVersionForEp(std::string const&, size_t);
+
   void beginShutdown() override;
   void run() override;
 
@@ -84,9 +87,11 @@ public:
   Agent* _agent;                           //< @brief The agent
   arangodb::basics::ConditionVariable _cv; //< @brief For proper shutdown
   std::vector<double> _pings;              //< @brief pings
-  mutable arangodb::Mutex _pLock;          //< @brief Guard pings
+  std::map<std::string,size_t> _acked;     //< @brief acknowledged config version
+  mutable arangodb::Mutex _vLock;          //< @brieg Guard _acked
+  mutable arangodb::Mutex _pLock;          //< @brief Guard _pings
   std::vector<std::vector<double>> _measurements; //< @brief measurements
-  mutable arangodb::Mutex _mLock;          //< @brief Guard measurements
+  mutable arangodb::Mutex _mLock;          //< @brief Guard _measurements
   
 };
 
