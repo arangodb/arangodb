@@ -213,8 +213,18 @@ class Index {
   /// @brief whether or not the index is sorted
   virtual bool isSorted() const = 0;
 
+  /// @brief whether or not the index has a selectivity estimate
   virtual bool hasSelectivityEstimate() const = 0;
+  
+  /// @brief return the selectivity estimate of the index
+  /// must only be called if hasSelectivityEstimate() returns true
   virtual double selectivityEstimate() const;
+  
+  /// @brief whether or not the index is implicitly unique
+  /// this can be the case if the index is not declared as unique, but contains a 
+  /// unique attribute such as _key
+  virtual bool implicitlyUnique() const;
+
   virtual size_t memory() const = 0;
 
   virtual void toVelocyPack(arangodb::velocypack::Builder&, bool) const;

@@ -79,6 +79,8 @@ class PathBasedIndex : public Index {
     return _expanding;
   }
 
+  bool implicitlyUnique() const override;
+
  protected:
   /// @brief helper function to insert a document into any index type
   template<typename T>

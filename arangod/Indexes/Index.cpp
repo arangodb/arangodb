@@ -481,6 +481,13 @@ double Index::selectivityEstimate() const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
+/// @brief default implementation for implicitlyUnique
+bool Index::implicitlyUnique() const {
+  // simply return whether the index actually is unique
+  // in this base class, we cannot do anything else
+  return _unique; 
+}
+
 /// @brief default implementation for selectivityEstimate
 int Index::batchInsert(arangodb::Transaction*, std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const&, size_t) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);

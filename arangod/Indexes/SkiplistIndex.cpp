@@ -1354,16 +1354,16 @@ bool SkiplistIndex::supportsFilterCondition(
     values = 1;
   }
 
-  if (attributesCoveredByEquality == _fields.size() && unique()) {
+  if (attributesCoveredByEquality == _fields.size() && 
+      (unique() || implicitlyUnique())) {
     // index is unique and condition covers all attributes by equality
     if (estimatedItems >= values) {
       // reduce costs due to uniqueness
       estimatedItems = values;
       estimatedCost = static_cast<double>(estimatedItems);
-    } else {
-      // cost is already low... now slightly prioritize the unique index
-      estimatedCost *= 0.995;
-    }
+    } 
+    // cost is already low... now slightly prioritize the unique index
+    estimatedCost *= 0.995 - 0.05 * (_fields.size() - 1);
     return true;
   }
 

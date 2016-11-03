@@ -63,10 +63,17 @@ bool SimpleAttributeEqualityMatcher::matchOne(
       if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op,
                           reference, nonNullAttributes, false)) {
         // we can use the index
-        // use slightly different cost calculation for IN that for EQ
+        // use slightly different cost calculation for IN than for EQ
         calculateIndexCosts(index, itemsInIndex, estimatedItems, estimatedCost);
-        estimatedItems *= op->getMember(1)->numMembers();
-        estimatedCost *= op->getMember(1)->numMembers();
+        size_t values = 1;
+        auto m = op->getMember(1);
+        if (m->isArray() && m->numMembers() > 1) {
+          // attr IN [ a, b, c ]  =>  this will produce multiple items, so count
+          // them!
+          values = m->numMembers();
+        }
+        estimatedItems *= values;
+        estimatedCost *= values;
         return true;
       }
     }
@@ -268,11 +275,11 @@ void SimpleAttributeEqualityMatcher::calculateIndexCosts(
     double& estimatedCost) const {
   double equalityReductionFactor = 20.0;
 
-  if (index->unique()) {
+  if (index->unique() || index->implicitlyUnique()) {
     // index is unique, and the condition covers all attributes
     // now use a low value for the costs
     estimatedItems = 1;
-    estimatedCost = 0.95;
+    estimatedCost = 0.95 - 0.05 * (index->fields().size() - 1);
   } else if (index->hasSelectivityEstimate()) {
     // use index selectivity estimate
     double estimate = index->selectivityEstimate();
