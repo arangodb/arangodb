@@ -11,7 +11,7 @@ function help() {
   echo "  -w/--wait-for-sync Boolean     (true|false       default: true)"
   echo "  -m/--use-microtime Boolean     (true|false       default: false)"
   echo "  -s/--start-delays  Integer     (                 default: 0)"
-  echo "  -r/--random-delays Boolean     (tru|false        default: false)"
+  echo "  -r/--random-delays Integer     (true|false       default: false)"
   echo "  -g/--gossip-mode   Integer     (0: Announce first endpoint to all"
   echo "                                  1: Grow list of known endpoints for each"
   echo "                                  2: Cyclic        default: 0)"
@@ -68,6 +68,9 @@ while [[ ${1} ]]; do
     -g|--gossip-mode)
       GOSSIP_MODE=${2}
       shift;;
+    -r|--random-delays)
+      RANDOM_DELAYS=${2}
+      shift;;
     -s|--start-delays)
       START_DELAYS=${2}
       shift;;
@@ -107,6 +110,7 @@ printf "\n"
 printf "    use-microtime: %s," "$USE_MICROTIME"
 printf " wait-for-sync: %s," "$WAIT_FOR_SYNC"
 printf " start-delays: %s," "$START_DELAYS"
+printf " random-delays: %s," "$RANDOM_DELAYS"
 printf " gossip-mode: %s\n" "$GOSSIP_MODE"
 
 if [ ! -d arangod ] || [ ! -d arangosh ] || [ ! -d UnitTests ] ; then
@@ -136,6 +140,8 @@ PIDS=""
 aaid=(`seq 0 $(( $POOLSZ - 1 ))`)
 shuffle
 
+count=1
+
 for aid in "${aaid[@]}"; do
 
   port=$(( $BASE + $aid ))
@@ -143,6 +149,7 @@ for aid in "${aaid[@]}"; do
     nport=$(( $BASE + $(( $(( $aid + 1 )) % 3 ))))
     GOSSIP_PEERS=" --agency.endpoint $TRANSPORT://localhost:$nport"
   fi
+  printf "    starting agent %s " "$aid"
   build/bin/arangod \
     -c none \
     --agency.activate true \
@@ -165,7 +172,6 @@ for aid in "${aaid[@]}"; do
     --server.authentication false \
     --server.endpoint $TRANSPORT://localhost:$port \
     --server.statistics false \
-    --server.threads 4 \
     $SSLKEYFILE \
     > agency/$port.stdout 2>&1 &
   PIDS+=$!
@@ -174,6 +180,14 @@ for aid in "${aaid[@]}"; do
     GOSSIP_PEERS+=" --agency.endpoint $TRANSPORT://localhost:$port"
   fi
   sleep $START_DELAYS
+  if [ "$RANDOM_DELAYS" == "true" ] && [ $count -lt $POOLSZ ]; then
+      
+    delay=$(( RANDOM % 16 ))
+    printf " delaying %s seconds" "$delay"
+    sleep $delay
+  fi
+  ((count+=1))
+  echo
 done
 
 echo "  done. Your agents are ready at port $BASE onward."
