@@ -181,7 +181,7 @@ for aid in "${aaid[@]}"; do
   fi
   if [ $count -lt $POOLSZ ]; then
     sleep $START_DELAYS
-    if [ "$RANDOM_DELAYS" == "true" ] && ; then
+    if [ "$RANDOM_DELAYS" == "true" ] ; then
       delay=$(( RANDOM % 16 ))
       printf " delaying %s seconds" "$delay"
       sleep $delay
