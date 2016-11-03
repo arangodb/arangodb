@@ -182,6 +182,11 @@ devel
   inconsistencies in the BDD and TDD interfaces. This fixes the TDD interface
   as well as out-of-sequence problems when using the BDD before/after functions.
 
+* updated bundled JavaScript modules to latest versions; joi has been updated from 8.4 to 9.2
+  (see [joi 9.0.0 release notes](https://github.com/hapijs/joi/issues/920) for information on
+  breaking changes and new features)
+
+* fixed issue #2139
 
 v3.0.11 (2016-XX-XX)
 --------------------
