@@ -125,7 +125,7 @@
         }
 
         var xhr = this;
-        var events = ["loadstart", "load", "abort", "loadend"];
+        var events = ["loadstart", "load", "abort", "error", "loadend"];
 
         function addEventListener(eventName) {
             xhr.addEventListener(eventName, function (event) {
@@ -459,12 +459,16 @@
                 }
 
                 if (this.readyState === FakeXMLHttpRequest.DONE) {
-                    if (this.status < 200 || this.status > 299) {
-                        progress = {loaded: 0, total: 0};
+                    // ensure loaded and total are numbers
+                    progress = {
+                      loaded: this.progress || 0,
+                      total: this.progress || 0
+                    };
+
+                    if (this.status === 0) {
                         event = this.aborted ? "abort" : "error";
                     }
                     else {
-                        progress = {loaded: 100, total: 100};
                         event = "load";
                     }
 
@@ -557,6 +561,15 @@
                 this.readyState = FakeXMLHttpRequest.UNSENT;
             },
 
+            error: function error() {
+                clearResponse(this);
+                this.errorFlag = true;
+                this.requestHeaders = {};
+                this.responseHeaders = {};
+
+                this.readyStateChange(FakeXMLHttpRequest.DONE);
+            },
+
             getResponseHeader: function getResponseHeader(header) {
                 if (this.readyState < FakeXMLHttpRequest.HEADERS_RECEIVED) {
                     return null;
@@ -620,6 +633,7 @@
                 } else if (this.responseType === "" && isXmlContentType(contentType)) {
                     this.responseXML = FakeXMLHttpRequest.parseXML(this.responseText);
                 }
+                this.progress = body.length;
                 this.readyStateChange(FakeXMLHttpRequest.DONE);
             },
 

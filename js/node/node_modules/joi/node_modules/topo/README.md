@@ -2,7 +2,7 @@
 
 Topological sorting with grouping support.
 
-[![Build Status](https://secure.travis-ci.org/hapijs/topo.png)](http://travis-ci.org/hapijs/topo)
+[![Build Status](https://secure.travis-ci.org/hapijs/topo.svg?branch=master)](http://travis-ci.org/hapijs/topo)
 
 Lead Maintainer: [Devin Ivy](https://github.com/devinivy)
 
@@ -12,9 +12,9 @@ See the [API Reference](API.md)
 
 **Example**
 ```node
-var Topo = require('topo');
+const Topo = require('topo');
 
-var morning = new Topo();
+const morning = new Topo();
 
 morning.add('Nap', { after: ['breakfast', 'prep'] });
 

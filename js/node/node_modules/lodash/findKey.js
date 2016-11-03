@@ -10,9 +10,8 @@ var baseFindKey = require('./_baseFindKey'),
  * @memberOf _
  * @since 1.1.0
  * @category Object
- * @param {Object} object The object to search.
- * @param {Array|Function|Object|string} [predicate=_.identity]
- *  The function invoked per iteration.
+ * @param {Object} object The object to inspect.
+ * @param {Function} [predicate=_.identity] The function invoked per iteration.
  * @returns {string|undefined} Returns the key of the matched element,
  *  else `undefined`.
  * @example

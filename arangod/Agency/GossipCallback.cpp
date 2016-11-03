@@ -27,14 +27,15 @@
 using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 
-GossipCallback::GossipCallback(Agent*) : _agent(nullptr) {}
+GossipCallback::GossipCallback(Agent* agent, size_t version) :
+  _agent(agent), _version(version) {}
 
 bool GossipCallback::operator()(arangodb::ClusterCommResult* res) {
   if (res->status == CL_COMM_SENT && res->result->getHttpReturnCode() == 200) {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Got result of gossip message, code: "
       << res->result->getHttpReturnCode() << " body: "
       << res->result->getBodyVelocyPack()->slice().toJson();
-    _agent->gossip(res->result->getBodyVelocyPack(), true);
+    _agent->gossip(res->result->getBodyVelocyPack(), true, _version);
   } else {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Got error from gossip message, status:"
       << res->status;

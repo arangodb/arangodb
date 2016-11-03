@@ -528,7 +528,7 @@ exports.contain = function (ref, values, options) {
         }
     }
     else {
-        const keys = Object.keys(ref);
+        const keys = Object.getOwnPropertyNames(ref);
         for (let i = 0; i < keys.length; ++i) {
             const key = keys[i];
             const pos = values.indexOf(key);
