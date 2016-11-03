@@ -206,8 +206,8 @@ bool config_t::activePushBack(std::string const& id) {
   WRITE_LOCKER(writeLocker, _lock);
   if (_active.size() < _agencySize) {
     _active.push_back(id);
-    return true;
     ++_version;
+    return true;
   }
   return false;
 }
