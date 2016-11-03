@@ -144,7 +144,10 @@
       success: function(data) {
         var currentVersion =
         window.versionHelper.fromString(data.version);
-        $('.navbar #currentVersion').text(" " + data.version.substr(0,3));
+
+        $('.navbar #currentVersion').html(
+          data.version.substr(0, 7) + '<i class="fa fa-check-circle"></i>'
+        );
 
         window.parseVersions = function (json) {
           if (_.isEmpty(json)) {
@@ -152,7 +155,8 @@
             return; // no new version.
           }
           $('#currentVersion').addClass('out-of-date');
-          $('#currentVersion').click(function() {
+          $('#currentVersion .fa').removeClass('fa-check-circle').addClass('fa-exclamation-circle');
+          $('#currentVersion').click(function () {
             showInterface(currentVersion, json);
           });
           //isVersionCheckEnabled(showInterface.bind(window, currentVersion, json));
