@@ -1,5 +1,5 @@
 //! moment.js locale configuration
-//! locale : Turkish [tr]
+//! locale : turkish (tr)
 //! authors : Erhan Gundogan : https://github.com/erhangundogan,
 //!           Burak Yiğit Kaya: https://github.com/BYK
 

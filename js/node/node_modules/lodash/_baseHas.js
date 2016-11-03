@@ -1,3 +1,5 @@
+var getPrototype = require('./_getPrototype');
+
 /** Used for built-in method references. */
 var objectProto = Object.prototype;
 
@@ -13,7 +15,12 @@ var hasOwnProperty = objectProto.hasOwnProperty;
  * @returns {boolean} Returns `true` if `key` exists, else `false`.
  */
 function baseHas(object, key) {
-  return object != null && hasOwnProperty.call(object, key);
+  // Avoid a bug in IE 10-11 where objects with a [[Prototype]] of `null`,
+  // that are composed entirely of index properties, return `false` for
+  // `hasOwnProperty` checks of them.
+  return object != null &&
+    (hasOwnProperty.call(object, key) ||
+      (typeof object == 'object' && key in object && getPrototype(object) === null));
 }
 
 module.exports = baseHas;

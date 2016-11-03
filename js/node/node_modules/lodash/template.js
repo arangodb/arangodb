@@ -17,7 +17,7 @@ var reEmptyStringLeading = /\b__p \+= '';/g,
 
 /**
  * Used to match
- * [ES template delimiters](http://ecma-international.org/ecma-262/7.0/#sec-template-literal-lexical-components).
+ * [ES template delimiters](http://ecma-international.org/ecma-262/6.0/#sec-template-literal-lexical-components).
  */
 var reEsTemplate = /\$\{([^\\}]*(?:\\.[^\\}]*)*)\}/g;
 
@@ -86,8 +86,7 @@ var reUnescapedString = /['\n\r\u2028\u2029\\]/g;
  * compiled({ 'user': 'barney' });
  * // => 'hello barney!'
  *
- * // Use the ES template literal delimiter as an "interpolate" delimiter.
- * // Disable support by replacing the "interpolate" delimiter.
+ * // Use the ES delimiter as an alternative to the default "interpolate" delimiter.
  * var compiled = _.template('hello ${ user }!');
  * compiled({ 'user': 'pebbles' });
  * // => 'hello pebbles!'

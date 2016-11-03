@@ -164,13 +164,7 @@ export function setOffsetToParsedOffset () {
     if (this._tzm) {
         this.utcOffset(this._tzm);
     } else if (typeof this._i === 'string') {
-        var tZone = offsetFromString(matchOffset, this._i);
-
-        if (tZone === 0) {
-            this.utcOffset(0, true);
-        } else {
-            this.utcOffset(offsetFromString(matchOffset, this._i));
-        }
+        this.utcOffset(offsetFromString(matchOffset, this._i));
     }
     return this;
 }

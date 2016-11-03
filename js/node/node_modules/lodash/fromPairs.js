@@ -10,12 +10,12 @@
  * @returns {Object} Returns the new object.
  * @example
  *
- * _.fromPairs([['a', 1], ['b', 2]]);
- * // => { 'a': 1, 'b': 2 }
+ * _.fromPairs([['fred', 30], ['barney', 40]]);
+ * // => { 'fred': 30, 'barney': 40 }
  */
 function fromPairs(pairs) {
   var index = -1,
-      length = pairs == null ? 0 : pairs.length,
+      length = pairs ? pairs.length : 0,
       result = {};
 
   while (++index < length) {

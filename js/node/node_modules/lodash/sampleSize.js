@@ -1,7 +1,7 @@
-var arraySampleSize = require('./_arraySampleSize'),
-    baseSampleSize = require('./_baseSampleSize'),
-    isArray = require('./isArray'),
+var baseClamp = require('./_baseClamp'),
+    baseRandom = require('./_baseRandom'),
     isIterateeCall = require('./_isIterateeCall'),
+    toArray = require('./toArray'),
     toInteger = require('./toInteger');
 
 /**
@@ -25,13 +25,25 @@ var arraySampleSize = require('./_arraySampleSize'),
  * // => [2, 3, 1]
  */
 function sampleSize(collection, n, guard) {
+  var index = -1,
+      result = toArray(collection),
+      length = result.length,
+      lastIndex = length - 1;
+
   if ((guard ? isIterateeCall(collection, n, guard) : n === undefined)) {
     n = 1;
   } else {
-    n = toInteger(n);
+    n = baseClamp(toInteger(n), 0, length);
   }
-  var func = isArray(collection) ? arraySampleSize : baseSampleSize;
-  return func(collection, n);
+  while (++index < n) {
+    var rand = baseRandom(index, lastIndex),
+        value = result[rand];
+
+    result[rand] = result[index];
+    result[index] = value;
+  }
+  result.length = n;
+  return result;
 }
 
 module.exports = sampleSize;

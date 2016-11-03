@@ -37,7 +37,7 @@ var baseAssign = require('./_baseAssign'),
  */
 function create(prototype, properties) {
   var result = baseCreate(prototype);
-  return properties == null ? result : baseAssign(result, properties);
+  return properties ? baseAssign(result, properties) : result;
 }
 
 module.exports = create;

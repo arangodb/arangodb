@@ -28,7 +28,6 @@ function listCacheDelete(key) {
   } else {
     splice.call(data, index, 1);
   }
-  --this.size;
   return true;
 }
 

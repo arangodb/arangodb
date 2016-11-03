@@ -12,13 +12,18 @@ var baseIteratee = require('./_baseIteratee'),
 function createFind(findIndexFunc) {
   return function(collection, predicate, fromIndex) {
     var iterable = Object(collection);
+    predicate = baseIteratee(predicate, 3);
     if (!isArrayLike(collection)) {
-      var iteratee = baseIteratee(predicate, 3);
-      collection = keys(collection);
-      predicate = function(key) { return iteratee(iterable[key], key, iterable); };
+      var props = keys(collection);
     }
-    var index = findIndexFunc(collection, predicate, fromIndex);
-    return index > -1 ? iterable[iteratee ? collection[index] : index] : undefined;
+    var index = findIndexFunc(props || collection, function(value, key) {
+      if (props) {
+        key = value;
+        value = iterable[key];
+      }
+      return predicate(value, key, iterable);
+    }, fromIndex);
+    return index > -1 ? collection[props ? props[index] : index] : undefined;
   };
 }
 

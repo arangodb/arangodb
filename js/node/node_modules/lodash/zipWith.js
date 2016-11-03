@@ -1,4 +1,4 @@
-var baseRest = require('./_baseRest'),
+var rest = require('./rest'),
     unzipWith = require('./unzipWith');
 
 /**
@@ -11,8 +11,7 @@ var baseRest = require('./_baseRest'),
  * @since 3.8.0
  * @category Array
  * @param {...Array} [arrays] The arrays to process.
- * @param {Function} [iteratee=_.identity] The function to combine
- *  grouped values.
+ * @param {Function} [iteratee=_.identity] The function to combine grouped values.
  * @returns {Array} Returns the new array of grouped elements.
  * @example
  *
@@ -21,7 +20,7 @@ var baseRest = require('./_baseRest'),
  * });
  * // => [111, 222]
  */
-var zipWith = baseRest(function(arrays) {
+var zipWith = rest(function(arrays) {
   var length = arrays.length,
       iteratee = length > 1 ? arrays[length - 1] : undefined;
 

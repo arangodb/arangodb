@@ -1,5 +1,5 @@
 //! moment.js locale configuration
-//! locale : Greek [el]
+//! locale : modern greek (el)
 //! author : Aggelos Karalias : https://github.com/mehiel
 
 import moment from '../moment';

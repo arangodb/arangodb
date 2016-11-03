@@ -1,11 +1,12 @@
-var baseKeys = require('./_baseKeys'),
-    getTag = require('./_getTag'),
+var getTag = require('./_getTag'),
     isArguments = require('./isArguments'),
     isArray = require('./isArray'),
     isArrayLike = require('./isArrayLike'),
     isBuffer = require('./isBuffer'),
-    isPrototype = require('./_isPrototype'),
-    isTypedArray = require('./isTypedArray');
+    isFunction = require('./isFunction'),
+    isObjectLike = require('./isObjectLike'),
+    isString = require('./isString'),
+    keys = require('./keys');
 
 /** `Object#toString` result references. */
 var mapTag = '[object Map]',
@@ -16,6 +17,12 @@ var objectProto = Object.prototype;
 
 /** Used to check objects for own properties. */
 var hasOwnProperty = objectProto.hasOwnProperty;
+
+/** Built-in value references. */
+var propertyIsEnumerable = objectProto.propertyIsEnumerable;
+
+/** Detect if properties shadowing those on `Object.prototype` are non-enumerable. */
+var nonEnumShadows = !propertyIsEnumerable.call({ 'valueOf': 1 }, 'valueOf');
 
 /**
  * Checks if `value` is an empty object, collection, map, or set.
@@ -51,27 +58,23 @@ var hasOwnProperty = objectProto.hasOwnProperty;
  * // => false
  */
 function isEmpty(value) {
-  if (value == null) {
-    return true;
-  }
   if (isArrayLike(value) &&
-      (isArray(value) || typeof value == 'string' || typeof value.splice == 'function' ||
-        isBuffer(value) || isTypedArray(value) || isArguments(value))) {
+      (isArray(value) || isString(value) || isFunction(value.splice) ||
+        isArguments(value) || isBuffer(value))) {
     return !value.length;
   }
-  var tag = getTag(value);
-  if (tag == mapTag || tag == setTag) {
-    return !value.size;
-  }
-  if (isPrototype(value)) {
-    return !baseKeys(value).length;
+  if (isObjectLike(value)) {
+    var tag = getTag(value);
+    if (tag == mapTag || tag == setTag) {
+      return !value.size;
+    }
   }
   for (var key in value) {
     if (hasOwnProperty.call(value, key)) {
       return false;
     }
   }
-  return true;
+  return !(nonEnumShadows && keys(value).length);
 }
 
 module.exports = isEmpty;

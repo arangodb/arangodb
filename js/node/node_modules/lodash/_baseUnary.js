@@ -1,5 +1,5 @@
 /**
- * The base implementation of `_.unary` without support for storing metadata.
+ * The base implementation of `_.unary` without support for storing wrapper metadata.
  *
  * @private
  * @param {Function} func The function to cap arguments for.

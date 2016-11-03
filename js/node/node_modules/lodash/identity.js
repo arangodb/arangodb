@@ -1,5 +1,5 @@
 /**
- * This method returns the first argument it receives.
+ * This method returns the first argument given to it.
  *
  * @static
  * @since 0.1.0
@@ -9,7 +9,7 @@
  * @returns {*} Returns `value`.
  * @example
  *
- * var object = { 'a': 1 };
+ * var object = { 'user': 'fred' };
  *
  * console.log(_.identity(object) === object);
  * // => true

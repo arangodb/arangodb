@@ -1,5 +1,5 @@
 //! moment.js locale configuration
-//! locale : Serbian Cyrillic [sr-cyrl]
+//! locale : Serbian-cyrillic (sr-cyrl)
 //! author : Milan Janačković<milanjanackovic@gmail.com> : https://github.com/milan-j
 
 import moment from '../moment';
@@ -38,7 +38,7 @@ export default moment.defineLocale('sr-cyrl', {
     longDateFormat: {
         LT: 'H:mm',
         LTS : 'H:mm:ss',
-        L: 'DD.MM.YYYY',
+        L: 'DD. MM. YYYY',
         LL: 'D. MMMM YYYY',
         LLL: 'D. MMMM YYYY H:mm',
         LLLL: 'dddd, D. MMMM YYYY H:mm'
@@ -48,17 +48,17 @@ export default moment.defineLocale('sr-cyrl', {
         nextDay: '[сутра у] LT',
         nextWeek: function () {
             switch (this.day()) {
-                case 0:
-                    return '[у] [недељу] [у] LT';
-                case 3:
-                    return '[у] [среду] [у] LT';
-                case 6:
-                    return '[у] [суботу] [у] LT';
-                case 1:
-                case 2:
-                case 4:
-                case 5:
-                    return '[у] dddd [у] LT';
+            case 0:
+                return '[у] [недељу] [у] LT';
+            case 3:
+                return '[у] [среду] [у] LT';
+            case 6:
+                return '[у] [суботу] [у] LT';
+            case 1:
+            case 2:
+            case 4:
+            case 5:
+                return '[у] dddd [у] LT';
             }
         },
         lastDay  : '[јуче у] LT',
@@ -98,3 +98,4 @@ export default moment.defineLocale('sr-cyrl', {
         doy : 7  // The week that contains Jan 1st is the first week of the year.
     }
 });
+

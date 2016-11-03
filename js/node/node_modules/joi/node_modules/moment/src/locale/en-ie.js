@@ -1,5 +1,5 @@
 //! moment.js locale configuration
-//! locale : English (Ireland) [en-ie]
+//! locale : Irish english (en-ie)
 //! author : Chris Cartlidge : https://github.com/chriscartlidge
 
 import moment from '../moment';

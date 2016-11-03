@@ -1,6 +1,6 @@
 var toInteger = require('./toInteger');
 
-/** Error message constants. */
+/** Used as the `TypeError` message for "Functions" methods. */
 var FUNC_ERROR_TEXT = 'Expected a function';
 
 /**
@@ -18,7 +18,7 @@ var FUNC_ERROR_TEXT = 'Expected a function';
  * @example
  *
  * jQuery(element).on('click', _.before(5, addContactToList));
- * // => Allows adding up to 4 contacts to the list.
+ * // => allows adding up to 4 contacts to the list
  */
 function before(n, func) {
   var result;

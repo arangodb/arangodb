@@ -1,5 +1,5 @@
 //! moment.js locale configuration
-//! locale : Armenian [hy-am]
+//! locale : Armenian (hy-am)
 //! author : Armendarabyan : https://github.com/armendarabyan
 
 import moment from '../moment';
@@ -66,16 +66,16 @@ export default moment.defineLocale('hy-am', {
     ordinalParse: /\d{1,2}|\d{1,2}-(ին|րդ)/,
     ordinal: function (number, period) {
         switch (period) {
-            case 'DDD':
-            case 'w':
-            case 'W':
-            case 'DDDo':
-                if (number === 1) {
-                    return number + '-ին';
-                }
-                return number + '-րդ';
-            default:
-                return number;
+        case 'DDD':
+        case 'w':
+        case 'W':
+        case 'DDDo':
+            if (number === 1) {
+                return number + '-ին';
+            }
+            return number + '-րդ';
+        default:
+            return number;
         }
     },
     week : {

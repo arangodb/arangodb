@@ -1,5 +1,5 @@
 /**
- * The base implementation of `_.gt` which doesn't coerce arguments.
+ * The base implementation of `_.gt` which doesn't coerce arguments to numbers.
  *
  * @private
  * @param {*} value The value to compare.

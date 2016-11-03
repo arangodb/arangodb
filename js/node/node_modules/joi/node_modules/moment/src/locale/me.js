@@ -1,5 +1,5 @@
 //! moment.js locale configuration
-//! locale : Montenegrin [me]
+//! locale : Montenegrin (me)
 //! author : Miodrag Nikač <miodrag@restartit.me> : https://github.com/miodragnikac
 
 import moment from '../moment';
@@ -38,7 +38,7 @@ export default moment.defineLocale('me', {
     longDateFormat: {
         LT: 'H:mm',
         LTS : 'H:mm:ss',
-        L: 'DD.MM.YYYY',
+        L: 'DD. MM. YYYY',
         LL: 'D. MMMM YYYY',
         LLL: 'D. MMMM YYYY H:mm',
         LLLL: 'dddd, D. MMMM YYYY H:mm'
@@ -49,17 +49,17 @@ export default moment.defineLocale('me', {
 
         nextWeek: function () {
             switch (this.day()) {
-                case 0:
-                    return '[u] [nedjelju] [u] LT';
-                case 3:
-                    return '[u] [srijedu] [u] LT';
-                case 6:
-                    return '[u] [subotu] [u] LT';
-                case 1:
-                case 2:
-                case 4:
-                case 5:
-                    return '[u] dddd [u] LT';
+            case 0:
+                return '[u] [nedjelju] [u] LT';
+            case 3:
+                return '[u] [srijedu] [u] LT';
+            case 6:
+                return '[u] [subotu] [u] LT';
+            case 1:
+            case 2:
+            case 4:
+            case 5:
+                return '[u] dddd [u] LT';
             }
         },
         lastDay  : '[juče u] LT',

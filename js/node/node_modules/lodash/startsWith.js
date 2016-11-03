@@ -10,7 +10,7 @@ var baseClamp = require('./_baseClamp'),
  * @memberOf _
  * @since 3.0.0
  * @category String
- * @param {string} [string=''] The string to inspect.
+ * @param {string} [string=''] The string to search.
  * @param {string} [target] The string to search for.
  * @param {number} [position=0] The position to search from.
  * @returns {boolean} Returns `true` if `string` starts with `target`,
@@ -29,8 +29,7 @@ var baseClamp = require('./_baseClamp'),
 function startsWith(string, target, position) {
   string = toString(string);
   position = baseClamp(toInteger(position), 0, string.length);
-  target = baseToString(target);
-  return string.slice(position, position + target.length) == target;
+  return string.lastIndexOf(baseToString(target), position) == position;
 }
 
 module.exports = startsWith;

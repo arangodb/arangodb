@@ -1,4 +1,5 @@
-var isFunction = require('./isFunction'),
+var getLength = require('./_getLength'),
+    isFunction = require('./isFunction'),
     isLength = require('./isLength');
 
 /**
@@ -27,7 +28,7 @@ var isFunction = require('./isFunction'),
  * // => false
  */
 function isArrayLike(value) {
-  return value != null && isLength(value.length) && !isFunction(value);
+  return value != null && isLength(getLength(value)) && !isFunction(value);
 }
 
 module.exports = isArrayLike;

@@ -1,7 +1,8 @@
-var baseKeys = require('./_baseKeys'),
-    getTag = require('./_getTag'),
+var getTag = require('./_getTag'),
     isArrayLike = require('./isArrayLike'),
+    isObjectLike = require('./isObjectLike'),
     isString = require('./isString'),
+    keys = require('./keys'),
     stringSize = require('./_stringSize');
 
 /** `Object#toString` result references. */
@@ -16,7 +17,7 @@ var mapTag = '[object Map]',
  * @memberOf _
  * @since 0.1.0
  * @category Collection
- * @param {Array|Object|string} collection The collection to inspect.
+ * @param {Array|Object} collection The collection to inspect.
  * @returns {number} Returns the collection size.
  * @example
  *
@@ -34,13 +35,16 @@ function size(collection) {
     return 0;
   }
   if (isArrayLike(collection)) {
-    return isString(collection) ? stringSize(collection) : collection.length;
+    var result = collection.length;
+    return (result && isString(collection)) ? stringSize(collection) : result;
   }
-  var tag = getTag(collection);
-  if (tag == mapTag || tag == setTag) {
-    return collection.size;
+  if (isObjectLike(collection)) {
+    var tag = getTag(collection);
+    if (tag == mapTag || tag == setTag) {
+      return collection.size;
+    }
   }
-  return baseKeys(collection).length;
+  return keys(collection).length;
 }
 
 module.exports = size;

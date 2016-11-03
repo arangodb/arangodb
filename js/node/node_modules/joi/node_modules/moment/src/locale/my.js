@@ -1,8 +1,6 @@
 //! moment.js locale configuration
-//! locale : Burmese [my]
+//! locale : Burmese (my)
 //! author : Squar team, mysquar.com
-//! author : David Rossellat : https://github.com/gholadr
-//! author : Tin Aung Lin : https://github.com/thanyawzinmin
 
 import moment from '../moment';
 

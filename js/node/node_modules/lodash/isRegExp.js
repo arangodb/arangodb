@@ -1,9 +1,17 @@
-var baseIsRegExp = require('./_baseIsRegExp'),
-    baseUnary = require('./_baseUnary'),
-    nodeUtil = require('./_nodeUtil');
+var isObject = require('./isObject');
 
-/* Node.js helper references. */
-var nodeIsRegExp = nodeUtil && nodeUtil.isRegExp;
+/** `Object#toString` result references. */
+var regexpTag = '[object RegExp]';
+
+/** Used for built-in method references. */
+var objectProto = Object.prototype;
+
+/**
+ * Used to resolve the
+ * [`toStringTag`](http://ecma-international.org/ecma-262/6.0/#sec-object.prototype.tostring)
+ * of values.
+ */
+var objectToString = objectProto.toString;
 
 /**
  * Checks if `value` is classified as a `RegExp` object.
@@ -13,7 +21,8 @@ var nodeIsRegExp = nodeUtil && nodeUtil.isRegExp;
  * @since 0.1.0
  * @category Lang
  * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is a regexp, else `false`.
+ * @returns {boolean} Returns `true` if `value` is correctly classified,
+ *  else `false`.
  * @example
  *
  * _.isRegExp(/abc/);
@@ -22,6 +31,8 @@ var nodeIsRegExp = nodeUtil && nodeUtil.isRegExp;
  * _.isRegExp('/abc/');
  * // => false
  */
-var isRegExp = nodeIsRegExp ? baseUnary(nodeIsRegExp) : baseIsRegExp;
+function isRegExp(value) {
+  return isObject(value) && objectToString.call(value) == regexpTag;
+}
 
 module.exports = isRegExp;

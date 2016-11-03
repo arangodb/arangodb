@@ -1,11 +1,12 @@
 var isFunction = require('./isFunction'),
+    isHostObject = require('./_isHostObject'),
     isMasked = require('./_isMasked'),
     isObject = require('./isObject'),
     toSource = require('./_toSource');
 
 /**
  * Used to match `RegExp`
- * [syntax characters](http://ecma-international.org/ecma-262/7.0/#sec-patterns).
+ * [syntax characters](http://ecma-international.org/ecma-262/6.0/#sec-patterns).
  */
 var reRegExpChar = /[\\^$.*+?()[\]{}|]/g;
 
@@ -13,11 +14,10 @@ var reRegExpChar = /[\\^$.*+?()[\]{}|]/g;
 var reIsHostCtor = /^\[object .+?Constructor\]$/;
 
 /** Used for built-in method references. */
-var funcProto = Function.prototype,
-    objectProto = Object.prototype;
+var objectProto = Object.prototype;
 
 /** Used to resolve the decompiled source of functions. */
-var funcToString = funcProto.toString;
+var funcToString = Function.prototype.toString;
 
 /** Used to check objects for own properties. */
 var hasOwnProperty = objectProto.hasOwnProperty;
@@ -40,7 +40,7 @@ function baseIsNative(value) {
   if (!isObject(value) || isMasked(value)) {
     return false;
   }
-  var pattern = isFunction(value) ? reIsNative : reIsHostCtor;
+  var pattern = (isFunction(value) || isHostObject(value)) ? reIsNative : reIsHostCtor;
   return pattern.test(toSource(value));
 }
 

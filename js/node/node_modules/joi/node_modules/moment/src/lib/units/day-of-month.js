@@ -1,7 +1,6 @@
 import { makeGetSet } from '../moment/get-set';
 import { addFormatToken } from '../format/format';
 import { addUnitAlias } from './aliases';
-import { addUnitPriority } from './priorities';
 import { addRegexToken, match1to2, match2 } from '../parse/regex';
 import { addParseToken } from '../parse/token';
 import { DATE } from './constants';
@@ -14,9 +13,6 @@ addFormatToken('D', ['DD', 2], 'Do', 'date');
 // ALIASES
 
 addUnitAlias('date', 'D');
-
-// PRIOROITY
-addUnitPriority('date', 9);
 
 // PARSING
 

@@ -1,5 +1,3 @@
-var root = require('./_root');
-
 /**
  * Gets the timestamp of the number of milliseconds that have elapsed since
  * the Unix epoch (1 January 1970 00:00:00 UTC).
@@ -16,8 +14,8 @@ var root = require('./_root');
  * }, _.now());
  * // => Logs the number of milliseconds it took for the deferred invocation.
  */
-var now = function() {
-  return root.Date.now();
-};
+function now() {
+  return Date.now();
+}
 
 module.exports = now;

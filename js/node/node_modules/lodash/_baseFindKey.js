@@ -4,7 +4,7 @@
  * using `eachFunc`.
  *
  * @private
- * @param {Array|Object} collection The collection to inspect.
+ * @param {Array|Object} collection The collection to search.
  * @param {Function} predicate The function invoked per iteration.
  * @param {Function} eachFunc The function to iterate over `collection`.
  * @returns {*} Returns the found element or its key, else `undefined`.

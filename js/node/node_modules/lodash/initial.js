@@ -1,4 +1,4 @@
-var baseSlice = require('./_baseSlice');
+var dropRight = require('./dropRight');
 
 /**
  * Gets all but the last element of `array`.
@@ -15,8 +15,7 @@ var baseSlice = require('./_baseSlice');
  * // => [1, 2]
  */
 function initial(array) {
-  var length = array == null ? 0 : array.length;
-  return length ? baseSlice(array, 0, -1) : [];
+  return dropRight(array, 1);
 }
 
 module.exports = initial;

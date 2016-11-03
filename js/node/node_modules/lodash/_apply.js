@@ -9,7 +9,8 @@
  * @returns {*} Returns the result of `func`.
  */
 function apply(func, thisArg, args) {
-  switch (args.length) {
+  var length = args.length;
+  switch (length) {
     case 0: return func.call(thisArg);
     case 1: return func.call(thisArg, args[0]);
     case 2: return func.call(thisArg, args[0], args[1]);

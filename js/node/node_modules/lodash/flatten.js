@@ -15,7 +15,7 @@ var baseFlatten = require('./_baseFlatten');
  * // => [1, 2, [3, [4]], 5]
  */
 function flatten(array) {
-  var length = array == null ? 0 : array.length;
+  var length = array ? array.length : 0;
   return length ? baseFlatten(array, 1) : [];
 }
 

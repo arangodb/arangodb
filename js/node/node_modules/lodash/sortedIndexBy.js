@@ -12,7 +12,8 @@ var baseIteratee = require('./_baseIteratee'),
  * @category Array
  * @param {Array} array The sorted array to inspect.
  * @param {*} value The value to evaluate.
- * @param {Function} [iteratee=_.identity] The iteratee invoked per element.
+ * @param {Array|Function|Object|string} [iteratee=_.identity]
+ *  The iteratee invoked per element.
  * @returns {number} Returns the index at which `value` should be inserted
  *  into `array`.
  * @example
@@ -27,7 +28,7 @@ var baseIteratee = require('./_baseIteratee'),
  * // => 0
  */
 function sortedIndexBy(array, value, iteratee) {
-  return baseSortedIndexBy(array, value, baseIteratee(iteratee, 2));
+  return baseSortedIndexBy(array, value, baseIteratee(iteratee));
 }
 
 module.exports = sortedIndexBy;

@@ -1,6 +1,7 @@
-var arrayShuffle = require('./_arrayShuffle'),
-    baseShuffle = require('./_baseShuffle'),
-    isArray = require('./isArray');
+var sampleSize = require('./sampleSize');
+
+/** Used as references for the maximum length and index of an array. */
+var MAX_ARRAY_LENGTH = 4294967295;
 
 /**
  * Creates an array of shuffled values, using a version of the
@@ -18,8 +19,7 @@ var arrayShuffle = require('./_arrayShuffle'),
  * // => [4, 1, 3, 2]
  */
 function shuffle(collection) {
-  var func = isArray(collection) ? arrayShuffle : baseShuffle;
-  return func(collection);
+  return sampleSize(collection, MAX_ARRAY_LENGTH);
 }
 
 module.exports = shuffle;

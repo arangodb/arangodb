@@ -1,5 +1,5 @@
 //! moment.js locale configuration
-//! locale : Danish [da]
+//! locale : danish (da)
 //! author : Ulrik Nielsen : https://github.com/mrbase
 
 import moment from '../moment';

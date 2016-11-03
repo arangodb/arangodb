@@ -1,5 +1,5 @@
 var baseDelay = require('./_baseDelay'),
-    baseRest = require('./_baseRest');
+    rest = require('./rest');
 
 /**
  * Defers invoking the `func` until the current call stack has cleared. Any
@@ -17,9 +17,9 @@ var baseDelay = require('./_baseDelay'),
  * _.defer(function(text) {
  *   console.log(text);
  * }, 'deferred');
- * // => Logs 'deferred' after one millisecond.
+ * // => Logs 'deferred' after one or more milliseconds.
  */
-var defer = baseRest(function(func, args) {
+var defer = rest(function(func, args) {
   return baseDelay(func, 1, args);
 });
 

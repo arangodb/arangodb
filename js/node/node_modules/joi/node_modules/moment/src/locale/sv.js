@@ -1,5 +1,5 @@
 //! moment.js locale configuration
-//! locale : Swedish [sv]
+//! locale : swedish (sv)
 //! author : Jens Alm : https://github.com/ulmus
 
 import moment from '../moment';

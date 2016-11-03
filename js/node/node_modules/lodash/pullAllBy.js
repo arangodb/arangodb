@@ -14,7 +14,8 @@ var baseIteratee = require('./_baseIteratee'),
  * @category Array
  * @param {Array} array The array to modify.
  * @param {Array} values The values to remove.
- * @param {Function} [iteratee=_.identity] The iteratee invoked per element.
+ * @param {Array|Function|Object|string} [iteratee=_.identity]
+ *  The iteratee invoked per element.
  * @returns {Array} Returns `array`.
  * @example
  *
@@ -26,7 +27,7 @@ var baseIteratee = require('./_baseIteratee'),
  */
 function pullAllBy(array, values, iteratee) {
   return (array && array.length && values && values.length)
-    ? basePullAll(array, values, baseIteratee(iteratee, 2))
+    ? basePullAll(array, values, baseIteratee(iteratee))
     : array;
 }
 

@@ -23,7 +23,7 @@
  * // => false
  */
 function isObjectLike(value) {
-  return value != null && typeof value == 'object';
+  return !!value && typeof value == 'object';
 }
 
 module.exports = isObjectLike;

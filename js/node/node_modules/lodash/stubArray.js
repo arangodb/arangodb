@@ -1,5 +1,5 @@
 /**
- * This method returns a new empty array.
+ * A method that returns a new empty array.
  *
  * @static
  * @memberOf _

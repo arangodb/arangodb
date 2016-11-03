@@ -1,5 +1,5 @@
 //! moment.js locale configuration
-//! locale : Scottish Gaelic [gd]
+//! locale : great britain scottish gealic (gd)
 //! author : Jon Ashdown : https://github.com/jonashdown
 
 import moment from '../moment';

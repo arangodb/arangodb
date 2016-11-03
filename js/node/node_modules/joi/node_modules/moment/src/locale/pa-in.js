@@ -1,5 +1,5 @@
 //! moment.js locale configuration
-//! locale : Punjabi (India) [pa-in]
+//! locale : punjabi india (pa-in)
 //! author : Harpreet Singh : https://github.com/harpreetkhalsagtbit
 
 import moment from '../moment';

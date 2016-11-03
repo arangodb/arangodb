@@ -11,7 +11,8 @@ var createAggregator = require('./_createAggregator');
  * @since 3.0.0
  * @category Collection
  * @param {Array|Object} collection The collection to iterate over.
- * @param {Function} [predicate=_.identity] The function invoked per iteration.
+ * @param {Array|Function|Object|string} [predicate=_.identity]
+ *  The function invoked per iteration.
  * @returns {Array} Returns the array of grouped elements.
  * @example
  *

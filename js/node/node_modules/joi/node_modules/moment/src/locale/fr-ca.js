@@ -1,5 +1,5 @@
 //! moment.js locale configuration
-//! locale : French (Canada) [fr-ca]
+//! locale : canadian french (fr-ca)
 //! author : Jonathan Abourbih : https://github.com/jonbca
 
 import moment from '../moment';

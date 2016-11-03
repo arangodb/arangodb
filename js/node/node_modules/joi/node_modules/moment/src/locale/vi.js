@@ -1,5 +1,5 @@
 //! moment.js locale configuration
-//! locale : Vietnamese [vi]
+//! locale : vietnamese (vi)
 //! author : Bang Nguyen : https://github.com/bangnk
 
 import moment from '../moment';

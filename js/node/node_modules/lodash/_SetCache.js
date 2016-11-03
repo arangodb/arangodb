@@ -12,7 +12,7 @@ var MapCache = require('./_MapCache'),
  */
 function SetCache(values) {
   var index = -1,
-      length = values == null ? 0 : values.length;
+      length = values ? values.length : 0;
 
   this.__data__ = new MapCache;
   while (++index < length) {

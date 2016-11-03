@@ -10,6 +10,5 @@ module.exports = {
   'keys': require('../_baseKeys'),
   'rearg': require('../rearg'),
   'spread': require('../spread'),
-  'toInteger': require('../toInteger'),
   'toPath': require('../toPath')
 };

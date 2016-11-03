@@ -1,4 +1,5 @@
 module.exports = {
+  'at': require('./at'),
   'countBy': require('./countBy'),
   'each': require('./each'),
   'eachRight': require('./eachRight'),

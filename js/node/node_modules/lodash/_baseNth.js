@@ -1,7 +1,7 @@
 var isIndex = require('./_isIndex');
 
 /**
- * The base implementation of `_.nth` which doesn't coerce arguments.
+ * The base implementation of `_.nth` which doesn't coerce `n` to an integer.
  *
  * @private
  * @param {Array} array The array to query.

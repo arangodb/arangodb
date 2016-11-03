@@ -1,5 +1,5 @@
 //! moment.js locale configuration
-//! locale : Portuguese (Brazil) [pt-br]
+//! locale : brazilian portuguese (pt-br)
 //! author : Caio Ribeiro Pereira : https://github.com/caio-ribeiro-pereira
 
 import moment from '../moment';

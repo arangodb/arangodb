@@ -2,10 +2,9 @@ var baseUniq = require('./_baseUniq');
 
 /**
  * Creates a duplicate-free version of an array, using
- * [`SameValueZero`](http://ecma-international.org/ecma-262/7.0/#sec-samevaluezero)
- * for equality comparisons, in which only the first occurrence of each element
- * is kept. The order of result values is determined by the order they occur
- * in the array.
+ * [`SameValueZero`](http://ecma-international.org/ecma-262/6.0/#sec-samevaluezero)
+ * for equality comparisons, in which only the first occurrence of each
+ * element is kept.
  *
  * @static
  * @memberOf _
@@ -19,7 +18,9 @@ var baseUniq = require('./_baseUniq');
  * // => [2, 1]
  */
 function uniq(array) {
-  return (array && array.length) ? baseUniq(array) : [];
+  return (array && array.length)
+    ? baseUniq(array)
+    : [];
 }
 
 module.exports = uniq;

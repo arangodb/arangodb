@@ -1,9 +1,17 @@
-var baseIsDate = require('./_baseIsDate'),
-    baseUnary = require('./_baseUnary'),
-    nodeUtil = require('./_nodeUtil');
+var isObjectLike = require('./isObjectLike');
 
-/* Node.js helper references. */
-var nodeIsDate = nodeUtil && nodeUtil.isDate;
+/** `Object#toString` result references. */
+var dateTag = '[object Date]';
+
+/** Used for built-in method references. */
+var objectProto = Object.prototype;
+
+/**
+ * Used to resolve the
+ * [`toStringTag`](http://ecma-international.org/ecma-262/6.0/#sec-object.prototype.tostring)
+ * of values.
+ */
+var objectToString = objectProto.toString;
 
 /**
  * Checks if `value` is classified as a `Date` object.
@@ -13,7 +21,8 @@ var nodeIsDate = nodeUtil && nodeUtil.isDate;
  * @since 0.1.0
  * @category Lang
  * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is a date object, else `false`.
+ * @returns {boolean} Returns `true` if `value` is correctly classified,
+ *  else `false`.
  * @example
  *
  * _.isDate(new Date);
@@ -22,6 +31,8 @@ var nodeIsDate = nodeUtil && nodeUtil.isDate;
  * _.isDate('Mon April 23 2012');
  * // => false
  */
-var isDate = nodeIsDate ? baseUnary(nodeIsDate) : baseIsDate;
+function isDate(value) {
+  return isObjectLike(value) && objectToString.call(value) == dateTag;
+}
 
 module.exports = isDate;

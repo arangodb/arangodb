@@ -1,5 +1,5 @@
 //! moment.js locale configuration
-//! locale : Lao [lo]
+//! locale : lao (lo)
 //! author : Ryan Hart : https://github.com/ryanhart2
 
 import moment from '../moment';

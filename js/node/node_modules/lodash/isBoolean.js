@@ -1,8 +1,17 @@
-var baseGetTag = require('./_baseGetTag'),
-    isObjectLike = require('./isObjectLike');
+var isObjectLike = require('./isObjectLike');
 
 /** `Object#toString` result references. */
 var boolTag = '[object Boolean]';
+
+/** Used for built-in method references. */
+var objectProto = Object.prototype;
+
+/**
+ * Used to resolve the
+ * [`toStringTag`](http://ecma-international.org/ecma-262/6.0/#sec-object.prototype.tostring)
+ * of values.
+ */
+var objectToString = objectProto.toString;
 
 /**
  * Checks if `value` is classified as a boolean primitive or object.
@@ -12,7 +21,8 @@ var boolTag = '[object Boolean]';
  * @since 0.1.0
  * @category Lang
  * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is a boolean, else `false`.
+ * @returns {boolean} Returns `true` if `value` is correctly classified,
+ *  else `false`.
  * @example
  *
  * _.isBoolean(false);
@@ -23,7 +33,7 @@ var boolTag = '[object Boolean]';
  */
 function isBoolean(value) {
   return value === true || value === false ||
-    (isObjectLike(value) && baseGetTag(value) == boolTag);
+    (isObjectLike(value) && objectToString.call(value) == boolTag);
 }
 
 module.exports = isBoolean;

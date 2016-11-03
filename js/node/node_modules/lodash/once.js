@@ -16,7 +16,7 @@ var before = require('./before');
  * var initialize = _.once(createApplication);
  * initialize();
  * initialize();
- * // => `createApplication` is invoked once
+ * // `initialize` invokes `createApplication` once
  */
 function once(func) {
   return before(2, func);

@@ -9,7 +9,7 @@ var baseSortedIndex = require('./_baseSortedIndex'),
  * @memberOf _
  * @since 4.0.0
  * @category Array
- * @param {Array} array The array to inspect.
+ * @param {Array} array The array to search.
  * @param {*} value The value to search for.
  * @returns {number} Returns the index of the matched value, else `-1`.
  * @example
@@ -18,7 +18,7 @@ var baseSortedIndex = require('./_baseSortedIndex'),
  * // => 1
  */
 function sortedIndexOf(array, value) {
-  var length = array == null ? 0 : array.length;
+  var length = array ? array.length : 0;
   if (length) {
     var index = baseSortedIndex(array, value);
     if (index < length && eq(array[index], value)) {

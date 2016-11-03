@@ -1,5 +1,9 @@
 var baseSetData = require('./_baseSetData'),
-    shortOut = require('./_shortOut');
+    now = require('./now');
+
+/** Used to detect hot functions by number of calls within a span of milliseconds. */
+var HOT_COUNT = 150,
+    HOT_SPAN = 16;
 
 /**
  * Sets metadata for `func`.
@@ -15,6 +19,24 @@ var baseSetData = require('./_baseSetData'),
  * @param {*} data The metadata.
  * @returns {Function} Returns `func`.
  */
-var setData = shortOut(baseSetData);
+var setData = (function() {
+  var count = 0,
+      lastCalled = 0;
+
+  return function(key, value) {
+    var stamp = now(),
+        remaining = HOT_SPAN - (stamp - lastCalled);
+
+    lastCalled = stamp;
+    if (remaining > 0) {
+      if (++count >= HOT_COUNT) {
+        return key;
+      }
+    } else {
+      count = 0;
+    }
+    return baseSetData(key, value);
+  };
+}());
 
 module.exports = setData;

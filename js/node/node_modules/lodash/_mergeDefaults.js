@@ -16,10 +16,7 @@ var baseMerge = require('./_baseMerge'),
  */
 function mergeDefaults(objValue, srcValue, key, object, source, stack) {
   if (isObject(objValue) && isObject(srcValue)) {
-    // Recursively merge objects and arrays (susceptible to call stack limits).
-    stack.set(srcValue, objValue);
-    baseMerge(objValue, srcValue, undefined, mergeDefaults, stack);
-    stack['delete'](srcValue);
+    baseMerge(objValue, srcValue, undefined, mergeDefaults, stack.set(srcValue, objValue));
   }
   return objValue;
 }

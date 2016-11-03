@@ -1,6 +1,5 @@
 //! moment.js locale configuration
-//! locale  :  Arabic (Tunisia) [ar-tn]
-//! author : Nader Toukabri : https://github.com/naderio
+//! locale  : Tunisian Arabic (ar-tn)
 
 import moment from '../moment';
 

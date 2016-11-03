@@ -1,5 +1,5 @@
 //! moment.js locale configuration
-//! locale : Telugu [te]
+//! locale : telugu (te)
 //! author : Krishna Chaitanya Thota : https://github.com/kcthota
 
 import moment from '../moment';

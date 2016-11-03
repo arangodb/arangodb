@@ -1,5 +1,4 @@
 var baseInRange = require('./_baseInRange'),
-    toFinite = require('./toFinite'),
     toNumber = require('./toNumber');
 
 /**
@@ -41,12 +40,12 @@ var baseInRange = require('./_baseInRange'),
  * // => true
  */
 function inRange(number, start, end) {
-  start = toFinite(start);
+  start = toNumber(start) || 0;
   if (end === undefined) {
     end = start;
     start = 0;
   } else {
-    end = toFinite(end);
+    end = toNumber(end) || 0;
   }
   number = toNumber(number);
   return baseInRange(number, start, end);

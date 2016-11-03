@@ -13,7 +13,7 @@ var listCacheClear = require('./_listCacheClear'),
  */
 function ListCache(entries) {
   var index = -1,
-      length = entries == null ? 0 : entries.length;
+      length = entries ? entries.length : 0;
 
   this.clear();
   while (++index < length) {

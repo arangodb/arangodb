@@ -1,5 +1,4 @@
-var baseConformsTo = require('./_baseConformsTo'),
-    keys = require('./keys');
+var keys = require('./keys');
 
 /**
  * The base implementation of `_.conforms` which doesn't clone `source`.
@@ -9,9 +8,25 @@ var baseConformsTo = require('./_baseConformsTo'),
  * @returns {Function} Returns the new spec function.
  */
 function baseConforms(source) {
-  var props = keys(source);
+  var props = keys(source),
+      length = props.length;
+
   return function(object) {
-    return baseConformsTo(object, source, props);
+    if (object == null) {
+      return !length;
+    }
+    var index = length;
+    while (index--) {
+      var key = props[index],
+          predicate = source[key],
+          value = object[key];
+
+      if ((value === undefined &&
+          !(key in Object(object))) || !predicate(value)) {
+        return false;
+      }
+    }
+    return true;
   };
 }
 

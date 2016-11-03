@@ -4,7 +4,6 @@ module.exports = {
   'cloneDeep': require('./cloneDeep'),
   'cloneDeepWith': require('./cloneDeepWith'),
   'cloneWith': require('./cloneWith'),
-  'conformsTo': require('./conformsTo'),
   'eq': require('./eq'),
   'gt': require('./gt'),
   'gte': require('./gte'),

@@ -13,7 +13,8 @@ var INFINITY = 1 / 0;
  * @since 4.7.0
  * @category Collection
  * @param {Array|Object} collection The collection to iterate over.
- * @param {Function} [iteratee=_.identity] The function invoked per iteration.
+ * @param {Array|Function|Object|string} [iteratee=_.identity]
+ *  The function invoked per iteration.
  * @returns {Array} Returns the new flattened array.
  * @example
  *

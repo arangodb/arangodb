@@ -9,7 +9,7 @@
  */
 function arrayFilter(array, predicate) {
   var index = -1,
-      length = array == null ? 0 : array.length,
+      length = array ? array.length : 0,
       resIndex = 0,
       result = [];
 

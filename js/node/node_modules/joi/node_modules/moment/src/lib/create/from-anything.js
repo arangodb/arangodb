@@ -1,6 +1,4 @@
 import isArray from '../utils/is-array';
-import isObject from '../utils/is-object';
-import isObjectEmpty from '../utils/is-object-empty';
 import isDate from '../utils/is-date';
 import map from '../utils/map';
 import { createInvalid } from './valid';
@@ -45,11 +43,11 @@ export function prepareConfig (config) {
         return new Moment(checkOverflow(input));
     } else if (isArray(format)) {
         configFromStringAndArray(config);
-    } else if (isDate(input)) {
-        config._d = input;
     } else if (format) {
         configFromStringAndFormat(config);
-    }  else {
+    } else if (isDate(input)) {
+        config._d = input;
+    } else {
         configFromInput(config);
     }
 
@@ -89,11 +87,6 @@ export function createLocalOrUTC (input, format, locale, strict, isUTC) {
     if (typeof(locale) === 'boolean') {
         strict = locale;
         locale = undefined;
-    }
-
-    if ((isObject(input) && isObjectEmpty(input)) ||
-            (isArray(input) && input.length === 0)) {
-        input = undefined;
     }
     // object construction must be done this way.
     // https://github.com/moment/moment/issues/1423

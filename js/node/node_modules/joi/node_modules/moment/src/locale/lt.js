@@ -1,5 +1,5 @@
 //! moment.js locale configuration
-//! locale : Lithuanian [lt]
+//! locale : Lithuanian (lt)
 //! author : Mindaugas Mozūras : https://github.com/mmozuras
 
 import moment from '../moment';
@@ -49,8 +49,7 @@ function translate(number, withoutSuffix, key, isFuture) {
 export default moment.defineLocale('lt', {
     months : {
         format: 'sausio_vasario_kovo_balandžio_gegužės_birželio_liepos_rugpjūčio_rugsėjo_spalio_lapkričio_gruodžio'.split('_'),
-        standalone: 'sausis_vasaris_kovas_balandis_gegužė_birželis_liepa_rugpjūtis_rugsėjis_spalis_lapkritis_gruodis'.split('_'),
-        isFormat: /D[oD]?(\[[^\[\]]*\]|\s)+MMMM?|MMMM?(\[[^\[\]]*\]|\s)+D[oD]?/
+        standalone: 'sausis_vasaris_kovas_balandis_gegužė_birželis_liepa_rugpjūtis_rugsėjis_spalis_lapkritis_gruodis'.split('_')
     },
     monthsShort : 'sau_vas_kov_bal_geg_bir_lie_rgp_rgs_spa_lap_grd'.split('_'),
     weekdays : {

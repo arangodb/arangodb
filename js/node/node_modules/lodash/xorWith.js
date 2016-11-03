@@ -1,14 +1,13 @@
 var arrayFilter = require('./_arrayFilter'),
-    baseRest = require('./_baseRest'),
     baseXor = require('./_baseXor'),
     isArrayLikeObject = require('./isArrayLikeObject'),
-    last = require('./last');
+    last = require('./last'),
+    rest = require('./rest');
 
 /**
  * This method is like `_.xor` except that it accepts `comparator` which is
- * invoked to compare elements of `arrays`. The order of result values is
- * determined by the order they occur in the arrays. The comparator is invoked
- * with two arguments: (arrVal, othVal).
+ * invoked to compare elements of `arrays`. The comparator is invoked with
+ * two arguments: (arrVal, othVal).
  *
  * @static
  * @memberOf _
@@ -25,9 +24,11 @@ var arrayFilter = require('./_arrayFilter'),
  * _.xorWith(objects, others, _.isEqual);
  * // => [{ 'x': 2, 'y': 1 }, { 'x': 1, 'y': 1 }]
  */
-var xorWith = baseRest(function(arrays) {
+var xorWith = rest(function(arrays) {
   var comparator = last(arrays);
-  comparator = typeof comparator == 'function' ? comparator : undefined;
+  if (isArrayLikeObject(comparator)) {
+    comparator = undefined;
+  }
   return baseXor(arrayFilter(arrays, isArrayLikeObject), undefined, comparator);
 });
 

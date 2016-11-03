@@ -1,6 +1,6 @@
 var toInteger = require('./toInteger');
 
-/** Error message constants. */
+/** Used as the `TypeError` message for "Functions" methods. */
 var FUNC_ERROR_TEXT = 'Expected a function';
 
 /**

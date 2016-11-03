@@ -1,7 +1,7 @@
 var arrayEach = require('./_arrayEach'),
-    baseAssignValue = require('./_baseAssignValue'),
+    baseFlatten = require('./_baseFlatten'),
     bind = require('./bind'),
-    flatRest = require('./_flatRest'),
+    rest = require('./rest'),
     toKey = require('./_toKey');
 
 /**
@@ -21,19 +21,19 @@ var arrayEach = require('./_arrayEach'),
  *
  * var view = {
  *   'label': 'docs',
- *   'click': function() {
+ *   'onClick': function() {
  *     console.log('clicked ' + this.label);
  *   }
  * };
  *
- * _.bindAll(view, ['click']);
- * jQuery(element).on('click', view.click);
+ * _.bindAll(view, ['onClick']);
+ * jQuery(element).on('click', view.onClick);
  * // => Logs 'clicked docs' when clicked.
  */
-var bindAll = flatRest(function(object, methodNames) {
-  arrayEach(methodNames, function(key) {
+var bindAll = rest(function(object, methodNames) {
+  arrayEach(baseFlatten(methodNames, 1), function(key) {
     key = toKey(key);
-    baseAssignValue(object, key, bind(object[key], object));
+    object[key] = bind(object[key], object);
   });
   return object;
 });

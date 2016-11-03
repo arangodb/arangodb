@@ -6,14 +6,13 @@ var baseToNumber = require('./_baseToNumber'),
  *
  * @private
  * @param {Function} operator The function to perform the operation.
- * @param {number} [defaultValue] The value used for `undefined` arguments.
  * @returns {Function} Returns the new mathematical operation function.
  */
-function createMathOperation(operator, defaultValue) {
+function createMathOperation(operator) {
   return function(value, other) {
     var result;
     if (value === undefined && other === undefined) {
-      return defaultValue;
+      return 0;
     }
     if (value !== undefined) {
       result = value;

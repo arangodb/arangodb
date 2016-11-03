@@ -1,5 +1,5 @@
 //! moment.js locale configuration
-//! locale : Swahili [sw]
+//! locale : swahili (sw)
 //! author : Fahad Kassim : https://github.com/fadsel
 
 import moment from '../moment';

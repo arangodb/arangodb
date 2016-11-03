@@ -1,13 +1,12 @@
 var baseFlatten = require('./_baseFlatten'),
-    baseRest = require('./_baseRest'),
     baseUniq = require('./_baseUniq'),
     isArrayLikeObject = require('./isArrayLikeObject'),
-    last = require('./last');
+    last = require('./last'),
+    rest = require('./rest');
 
 /**
  * This method is like `_.union` except that it accepts `comparator` which
- * is invoked to compare elements of `arrays`. Result values are chosen from
- * the first array in which the value occurs. The comparator is invoked
+ * is invoked to compare elements of `arrays`. The comparator is invoked
  * with two arguments: (arrVal, othVal).
  *
  * @static
@@ -25,9 +24,11 @@ var baseFlatten = require('./_baseFlatten'),
  * _.unionWith(objects, others, _.isEqual);
  * // => [{ 'x': 1, 'y': 2 }, { 'x': 2, 'y': 1 }, { 'x': 1, 'y': 1 }]
  */
-var unionWith = baseRest(function(arrays) {
+var unionWith = rest(function(arrays) {
   var comparator = last(arrays);
-  comparator = typeof comparator == 'function' ? comparator : undefined;
+  if (isArrayLikeObject(comparator)) {
+    comparator = undefined;
+  }
   return baseUniq(baseFlatten(arrays, 1, isArrayLikeObject, true), undefined, comparator);
 });
 

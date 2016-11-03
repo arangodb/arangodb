@@ -5,7 +5,7 @@ var baseMerge = require('./_baseMerge'),
  * This method is like `_.merge` except that it accepts `customizer` which
  * is invoked to produce the merged values of the destination and source
  * properties. If `customizer` returns `undefined`, merging is handled by the
- * method instead. The `customizer` is invoked with six arguments:
+ * method instead. The `customizer` is invoked with seven arguments:
  * (objValue, srcValue, key, object, source, stack).
  *
  * **Note:** This method mutates `object`.
@@ -26,11 +26,18 @@ var baseMerge = require('./_baseMerge'),
  *   }
  * }
  *
- * var object = { 'a': [1], 'b': [2] };
- * var other = { 'a': [3], 'b': [4] };
+ * var object = {
+ *   'fruits': ['apple'],
+ *   'vegetables': ['beet']
+ * };
+ *
+ * var other = {
+ *   'fruits': ['banana'],
+ *   'vegetables': ['carrot']
+ * };
  *
  * _.mergeWith(object, other, customizer);
- * // => { 'a': [1, 3], 'b': [2, 4] }
+ * // => { 'fruits': ['apple', 'banana'], 'vegetables': ['beet', 'carrot'] }
  */
 var mergeWith = createAssigner(function(object, source, srcIndex, customizer) {
   baseMerge(object, source, srcIndex, customizer);

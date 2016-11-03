@@ -1,5 +1,5 @@
 //! moment.js locale configuration
-//! locale : Breton [br]
+//! locale : breton (br)
 //! author : Jean-Baptiste Le Duigou : https://github.com/jbleduigou
 
 import moment from '../moment';
@@ -14,14 +14,14 @@ function relativeTimeWithMutation(number, withoutSuffix, key) {
 }
 function specialMutationForYears(number) {
     switch (lastNumber(number)) {
-        case 1:
-        case 3:
-        case 4:
-        case 5:
-        case 9:
-            return number + ' bloaz';
-        default:
-            return number + ' vloaz';
+    case 1:
+    case 3:
+    case 4:
+    case 5:
+    case 9:
+        return number + ' bloaz';
+    default:
+        return number + ' vloaz';
     }
 }
 function lastNumber(number) {

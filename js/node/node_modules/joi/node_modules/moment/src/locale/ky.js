@@ -1,5 +1,5 @@
 //! moment.js locale configuration
-//! locale : Kyrgyz [ky]
+//! locale : kyrgyz (ky)
 //! author : Chyngyz Arystan uulu : https://github.com/chyngyz
 
 

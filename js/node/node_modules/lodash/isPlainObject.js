@@ -1,22 +1,28 @@
-var baseGetTag = require('./_baseGetTag'),
-    getPrototype = require('./_getPrototype'),
+var getPrototype = require('./_getPrototype'),
+    isHostObject = require('./_isHostObject'),
     isObjectLike = require('./isObjectLike');
 
 /** `Object#toString` result references. */
 var objectTag = '[object Object]';
 
 /** Used for built-in method references. */
-var funcProto = Function.prototype,
-    objectProto = Object.prototype;
+var objectProto = Object.prototype;
 
 /** Used to resolve the decompiled source of functions. */
-var funcToString = funcProto.toString;
+var funcToString = Function.prototype.toString;
 
 /** Used to check objects for own properties. */
 var hasOwnProperty = objectProto.hasOwnProperty;
 
 /** Used to infer the `Object` constructor. */
 var objectCtorString = funcToString.call(Object);
+
+/**
+ * Used to resolve the
+ * [`toStringTag`](http://ecma-international.org/ecma-262/6.0/#sec-object.prototype.tostring)
+ * of values.
+ */
+var objectToString = objectProto.toString;
 
 /**
  * Checks if `value` is a plain object, that is, an object created by the
@@ -27,7 +33,8 @@ var objectCtorString = funcToString.call(Object);
  * @since 0.8.0
  * @category Lang
  * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is a plain object, else `false`.
+ * @returns {boolean} Returns `true` if `value` is a plain object,
+ *  else `false`.
  * @example
  *
  * function Foo() {
@@ -47,7 +54,8 @@ var objectCtorString = funcToString.call(Object);
  * // => true
  */
 function isPlainObject(value) {
-  if (!isObjectLike(value) || baseGetTag(value) != objectTag) {
+  if (!isObjectLike(value) ||
+      objectToString.call(value) != objectTag || isHostObject(value)) {
     return false;
   }
   var proto = getPrototype(value);
@@ -55,8 +63,8 @@ function isPlainObject(value) {
     return true;
   }
   var Ctor = hasOwnProperty.call(proto, 'constructor') && proto.constructor;
-  return typeof Ctor == 'function' && Ctor instanceof Ctor &&
-    funcToString.call(Ctor) == objectCtorString;
+  return (typeof Ctor == 'function' &&
+    Ctor instanceof Ctor && funcToString.call(Ctor) == objectCtorString);
 }
 
 module.exports = isPlainObject;

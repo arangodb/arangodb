@@ -28,7 +28,7 @@ var nativeReverse = arrayProto.reverse;
  * // => [3, 2, 1]
  */
 function reverse(array) {
-  return array == null ? array : nativeReverse.call(array);
+  return array ? nativeReverse.call(array) : array;
 }
 
 module.exports = reverse;

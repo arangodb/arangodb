@@ -1,5 +1,5 @@
 //! moment.js locale configuration
-//! locale : Spanish [es]
+//! locale : spanish (es)
 //! author : Julio Napurí : https://github.com/julionc
 
 import moment from '../moment';

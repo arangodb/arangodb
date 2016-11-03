@@ -1,16 +1,14 @@
 var baseDifference = require('./_baseDifference'),
     baseFlatten = require('./_baseFlatten'),
-    baseRest = require('./_baseRest'),
     isArrayLikeObject = require('./isArrayLikeObject'),
-    last = require('./last');
+    last = require('./last'),
+    rest = require('./rest');
 
 /**
  * This method is like `_.difference` except that it accepts `comparator`
- * which is invoked to compare elements of `array` to `values`. The order and
- * references of result values are determined by the first array. The comparator
- * is invoked with two arguments: (arrVal, othVal).
- *
- * **Note:** Unlike `_.pullAllWith`, this method returns a new array.
+ * which is invoked to compare elements of `array` to `values`. Result values
+ * are chosen from the first array. The comparator is invoked with two arguments:
+ * (arrVal, othVal).
  *
  * @static
  * @memberOf _
@@ -27,7 +25,7 @@ var baseDifference = require('./_baseDifference'),
  * _.differenceWith(objects, [{ 'x': 1, 'y': 2 }], _.isEqual);
  * // => [{ 'x': 2, 'y': 1 }]
  */
-var differenceWith = baseRest(function(array, values) {
+var differenceWith = rest(function(array, values) {
   var comparator = last(values);
   if (isArrayLikeObject(comparator)) {
     comparator = undefined;

@@ -1,8 +1,10 @@
 var Stack = require('./_Stack'),
+    arrayEach = require('./_arrayEach'),
     assignMergeValue = require('./_assignMergeValue'),
-    baseFor = require('./_baseFor'),
     baseMergeDeep = require('./_baseMergeDeep'),
+    isArray = require('./isArray'),
     isObject = require('./isObject'),
+    isTypedArray = require('./isTypedArray'),
     keysIn = require('./keysIn');
 
 /**
@@ -20,7 +22,14 @@ function baseMerge(object, source, srcIndex, customizer, stack) {
   if (object === source) {
     return;
   }
-  baseFor(source, function(srcValue, key) {
+  if (!(isArray(source) || isTypedArray(source))) {
+    var props = keysIn(source);
+  }
+  arrayEach(props || source, function(srcValue, key) {
+    if (props) {
+      key = srcValue;
+      srcValue = source[key];
+    }
     if (isObject(srcValue)) {
       stack || (stack = new Stack);
       baseMergeDeep(object, source, key, srcIndex, baseMerge, customizer, stack);
@@ -35,7 +44,7 @@ function baseMerge(object, source, srcIndex, customizer, stack) {
       }
       assignMergeValue(object, key, newValue);
     }
-  }, keysIn);
+  });
 }
 
 module.exports = baseMerge;

@@ -1,7 +1,6 @@
 //! moment.js locale configuration
-//! locale : Welsh [cy]
-//! author : Robert Allen : https://github.com/robgallen
-//! author : https://github.com/ryangreaves
+//! locale : Welsh (cy)
+//! author : Robert Allen
 
 import moment from '../moment';
 

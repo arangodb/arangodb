@@ -2,24 +2,25 @@ var apply = require('./_apply'),
     arrayMap = require('./_arrayMap'),
     baseFlatten = require('./_baseFlatten'),
     baseIteratee = require('./_baseIteratee'),
-    baseRest = require('./_baseRest'),
     baseUnary = require('./_baseUnary'),
-    castRest = require('./_castRest'),
-    isArray = require('./isArray');
+    isArray = require('./isArray'),
+    isFlattenableIteratee = require('./_isFlattenableIteratee'),
+    rest = require('./rest');
 
 /* Built-in method references for those with the same name as other `lodash` methods. */
 var nativeMin = Math.min;
 
 /**
- * Creates a function that invokes `func` with its arguments transformed.
+ * Creates a function that invokes `func` with arguments transformed by
+ * corresponding `transforms`.
  *
  * @static
  * @since 4.0.0
  * @memberOf _
  * @category Function
  * @param {Function} func The function to wrap.
- * @param {...(Function|Function[])} [transforms=[_.identity]]
- *  The argument transforms.
+ * @param {...(Array|Array[]|Function|Function[]|Object|Object[]|string|string[])}
+ *  [transforms[_.identity]] The functions to transform.
  * @returns {Function} Returns the new function.
  * @example
  *
@@ -41,13 +42,13 @@ var nativeMin = Math.min;
  * func(10, 5);
  * // => [100, 10]
  */
-var overArgs = castRest(function(func, transforms) {
+var overArgs = rest(function(func, transforms) {
   transforms = (transforms.length == 1 && isArray(transforms[0]))
     ? arrayMap(transforms[0], baseUnary(baseIteratee))
-    : arrayMap(baseFlatten(transforms, 1), baseUnary(baseIteratee));
+    : arrayMap(baseFlatten(transforms, 1, isFlattenableIteratee), baseUnary(baseIteratee));
 
   var funcsLength = transforms.length;
-  return baseRest(function(args) {
+  return rest(function(args) {
     var index = -1,
         length = nativeMin(args.length, funcsLength);
 

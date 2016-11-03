@@ -1,5 +1,5 @@
 //! moment.js locale configuration
-//! locale : French (Switzerland) [fr-ch]
+//! locale : swiss french (fr)
 //! author : Gaspard Bucher : https://github.com/gaspard
 
 import moment from '../moment';

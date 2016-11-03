@@ -3,7 +3,6 @@ var DataView = require('./_DataView'),
     Promise = require('./_Promise'),
     Set = require('./_Set'),
     WeakMap = require('./_WeakMap'),
-    baseGetTag = require('./_baseGetTag'),
     toSource = require('./_toSource');
 
 /** `Object#toString` result references. */
@@ -14,6 +13,16 @@ var mapTag = '[object Map]',
     weakMapTag = '[object WeakMap]';
 
 var dataViewTag = '[object DataView]';
+
+/** Used for built-in method references. */
+var objectProto = Object.prototype;
+
+/**
+ * Used to resolve the
+ * [`toStringTag`](http://ecma-international.org/ecma-262/6.0/#sec-object.prototype.tostring)
+ * of values.
+ */
+var objectToString = objectProto.toString;
 
 /** Used to detect maps, sets, and weakmaps. */
 var dataViewCtorString = toSource(DataView),
@@ -29,18 +38,21 @@ var dataViewCtorString = toSource(DataView),
  * @param {*} value The value to query.
  * @returns {string} Returns the `toStringTag`.
  */
-var getTag = baseGetTag;
+function getTag(value) {
+  return objectToString.call(value);
+}
 
-// Fallback for data views, maps, sets, and weak maps in IE 11 and promises in Node.js < 6.
+// Fallback for data views, maps, sets, and weak maps in IE 11,
+// for data views in Edge, and promises in Node.js.
 if ((DataView && getTag(new DataView(new ArrayBuffer(1))) != dataViewTag) ||
     (Map && getTag(new Map) != mapTag) ||
     (Promise && getTag(Promise.resolve()) != promiseTag) ||
     (Set && getTag(new Set) != setTag) ||
     (WeakMap && getTag(new WeakMap) != weakMapTag)) {
   getTag = function(value) {
-    var result = baseGetTag(value),
+    var result = objectToString.call(value),
         Ctor = result == objectTag ? value.constructor : undefined,
-        ctorString = Ctor ? toSource(Ctor) : '';
+        ctorString = Ctor ? toSource(Ctor) : undefined;
 
     if (ctorString) {
       switch (ctorString) {

@@ -110,10 +110,10 @@ export function configFromString(config) {
 }
 
 hooks.createFromInputFallback = deprecate(
-    'value provided is not in a recognized ISO format. moment construction falls back to js Date(), ' +
-    'which is not reliable across all browsers and versions. Non ISO date formats are ' +
-    'discouraged and will be removed in an upcoming major release. Please refer to ' +
-    'http://momentjs.com/guides/#/warnings/js-date/ for more info.',
+    'moment construction falls back to js Date. This is ' +
+    'discouraged and will be removed in upcoming major ' +
+    'release. Please refer to ' +
+    'https://github.com/moment/moment/issues/1407 for more info.',
     function (config) {
         config._d = new Date(config._i + (config._useUTC ? ' UTC' : ''));
     }

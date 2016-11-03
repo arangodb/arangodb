@@ -1,4 +1,4 @@
-var baseSlice = require('./_baseSlice');
+var drop = require('./drop');
 
 /**
  * Gets all but the first element of `array`.
@@ -15,8 +15,7 @@ var baseSlice = require('./_baseSlice');
  * // => [2, 3]
  */
 function tail(array) {
-  var length = array == null ? 0 : array.length;
-  return length ? baseSlice(array, 1, length) : [];
+  return drop(array, 1);
 }
 
 module.exports = tail;

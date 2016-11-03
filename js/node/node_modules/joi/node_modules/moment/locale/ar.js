@@ -1,13 +1,13 @@
 //! moment.js locale configuration
-//! locale : Arabic [ar]
-//! author : Abdel Said: https://github.com/abdelsaid
-//! author : Ahmed Elkhatib
-//! author : forabi https://github.com/forabi
+//! Locale: Arabic (ar)
+//! Author: Abdel Said: https://github.com/abdelsaid
+//! Changes in months, weekdays: Ahmed Elkhatib
+//! Native plural forms: forabi https://github.com/forabi
 
 ;(function (global, factory) {
    typeof exports === 'object' && typeof module !== 'undefined'
        && typeof require === 'function' ? factory(require('../moment')) :
-   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
+   typeof define === 'function' && define.amd ? define(['moment'], factory) :
    factory(global.moment)
 }(this, function (moment) { 'use strict';
 

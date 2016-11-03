@@ -1,11 +1,11 @@
-var castFunction = require('./_castFunction'),
+var identity = require('./identity'),
     partial = require('./partial');
 
 /**
- * Creates a function that provides `value` to `wrapper` as its first
- * argument. Any additional arguments provided to the function are appended
- * to those provided to the `wrapper`. The wrapper is invoked with the `this`
- * binding of the created function.
+ * Creates a function that provides `value` to the wrapper function as its
+ * first argument. Any additional arguments provided to the function are
+ * appended to those provided to the wrapper function. The wrapper is invoked
+ * with the `this` binding of the created function.
  *
  * @static
  * @memberOf _
@@ -24,7 +24,8 @@ var castFunction = require('./_castFunction'),
  * // => '<p>fred, barney, &amp; pebbles</p>'
  */
 function wrap(value, wrapper) {
-  return partial(castFunction(wrapper), value);
+  wrapper = wrapper == null ? identity : wrapper;
+  return partial(wrapper, value);
 }
 
 module.exports = wrap;

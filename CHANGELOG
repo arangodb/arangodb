@@ -8,12 +8,6 @@ v3.1.0 (2016-10-29)
 
 * added Auto-aptation of RAFT timings as calculations only
 
-* updated bundled JavaScript modules to latest versions; joi has been updated from 8.4 to 9.2
-  (see [joi 9.0.0 release notes](https://github.com/hapijs/joi/issues/920) for information on
-  breaking changes and new features)
-
-* fixed issue #2139
-
 
 v3.1.rc2 (2016-10-10)
 ---------------------

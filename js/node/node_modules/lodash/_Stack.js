@@ -13,8 +13,7 @@ var ListCache = require('./_ListCache'),
  * @param {Array} [entries] The key-value pairs to cache.
  */
 function Stack(entries) {
-  var data = this.__data__ = new ListCache(entries);
-  this.size = data.size;
+  this.__data__ = new ListCache(entries);
 }
 
 // Add methods to `Stack`.

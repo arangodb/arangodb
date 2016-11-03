@@ -8,7 +8,7 @@
  * @returns {Array} Returns `array`.
  */
 function arrayEachRight(array, iteratee) {
-  var length = array == null ? 0 : array.length;
+  var length = array ? array.length : 0;
 
   while (length--) {
     if (iteratee(array[length], length, array) === false) {

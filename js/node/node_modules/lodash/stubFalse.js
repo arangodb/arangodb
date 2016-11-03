@@ -1,5 +1,5 @@
 /**
- * This method returns `false`.
+ * A method that returns `false`.
  *
  * @static
  * @memberOf _

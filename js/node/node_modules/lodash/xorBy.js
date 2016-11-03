@@ -1,23 +1,23 @@
 var arrayFilter = require('./_arrayFilter'),
     baseIteratee = require('./_baseIteratee'),
-    baseRest = require('./_baseRest'),
     baseXor = require('./_baseXor'),
     isArrayLikeObject = require('./isArrayLikeObject'),
-    last = require('./last');
+    last = require('./last'),
+    rest = require('./rest');
 
 /**
  * This method is like `_.xor` except that it accepts `iteratee` which is
  * invoked for each element of each `arrays` to generate the criterion by
- * which by which they're compared. The order of result values is determined
- * by the order they occur in the arrays. The iteratee is invoked with one
- * argument: (value).
+ * which by which they're compared. The iteratee is invoked with one argument:
+ * (value).
  *
  * @static
  * @memberOf _
  * @since 4.0.0
  * @category Array
  * @param {...Array} [arrays] The arrays to inspect.
- * @param {Function} [iteratee=_.identity] The iteratee invoked per element.
+ * @param {Array|Function|Object|string} [iteratee=_.identity]
+ *  The iteratee invoked per element.
  * @returns {Array} Returns the new array of filtered values.
  * @example
  *
@@ -28,12 +28,12 @@ var arrayFilter = require('./_arrayFilter'),
  * _.xorBy([{ 'x': 1 }], [{ 'x': 2 }, { 'x': 1 }], 'x');
  * // => [{ 'x': 2 }]
  */
-var xorBy = baseRest(function(arrays) {
+var xorBy = rest(function(arrays) {
   var iteratee = last(arrays);
   if (isArrayLikeObject(iteratee)) {
     iteratee = undefined;
   }
-  return baseXor(arrayFilter(arrays, isArrayLikeObject), baseIteratee(iteratee, 2));
+  return baseXor(arrayFilter(arrays, isArrayLikeObject), baseIteratee(iteratee));
 });
 
 module.exports = xorBy;

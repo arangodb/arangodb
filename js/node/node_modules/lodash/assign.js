@@ -11,6 +11,12 @@ var objectProto = Object.prototype;
 /** Used to check objects for own properties. */
 var hasOwnProperty = objectProto.hasOwnProperty;
 
+/** Built-in value references. */
+var propertyIsEnumerable = objectProto.propertyIsEnumerable;
+
+/** Detect if properties shadowing those on `Object.prototype` are non-enumerable. */
+var nonEnumShadows = !propertyIsEnumerable.call({ 'valueOf': 1 }, 'valueOf');
+
 /**
  * Assigns own enumerable string keyed properties of source objects to the
  * destination object. Source objects are applied from left to right.
@@ -30,21 +36,21 @@ var hasOwnProperty = objectProto.hasOwnProperty;
  * @example
  *
  * function Foo() {
- *   this.a = 1;
- * }
- *
- * function Bar() {
  *   this.c = 3;
  * }
  *
- * Foo.prototype.b = 2;
- * Bar.prototype.d = 4;
+ * function Bar() {
+ *   this.e = 5;
+ * }
  *
- * _.assign({ 'a': 0 }, new Foo, new Bar);
- * // => { 'a': 1, 'c': 3 }
+ * Foo.prototype.d = 4;
+ * Bar.prototype.f = 6;
+ *
+ * _.assign({ 'a': 1 }, new Foo, new Bar);
+ * // => { 'a': 1, 'c': 3, 'e': 5 }
  */
 var assign = createAssigner(function(object, source) {
-  if (isPrototype(source) || isArrayLike(source)) {
+  if (nonEnumShadows || isPrototype(source) || isArrayLike(source)) {
     copyObject(source, keys(source), object);
     return;
   }

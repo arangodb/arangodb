@@ -1,5 +1,5 @@
 var baseFor = require('./_baseFor'),
-    castFunction = require('./_castFunction'),
+    baseIteratee = require('./_baseIteratee'),
     keysIn = require('./keysIn');
 
 /**
@@ -33,7 +33,7 @@ var baseFor = require('./_baseFor'),
 function forIn(object, iteratee) {
   return object == null
     ? object
-    : baseFor(object, castFunction(iteratee), keysIn);
+    : baseFor(object, baseIteratee(iteratee, 3), keysIn);
 }
 
 module.exports = forIn;

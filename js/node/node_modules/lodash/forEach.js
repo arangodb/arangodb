@@ -1,6 +1,6 @@
 var arrayEach = require('./_arrayEach'),
     baseEach = require('./_baseEach'),
-    castFunction = require('./_castFunction'),
+    baseIteratee = require('./_baseIteratee'),
     isArray = require('./isArray');
 
 /**
@@ -23,7 +23,7 @@ var arrayEach = require('./_arrayEach'),
  * @see _.forEachRight
  * @example
  *
- * _.forEach([1, 2], function(value) {
+ * _([1, 2]).forEach(function(value) {
  *   console.log(value);
  * });
  * // => Logs `1` then `2`.
@@ -35,7 +35,7 @@ var arrayEach = require('./_arrayEach'),
  */
 function forEach(collection, iteratee) {
   var func = isArray(collection) ? arrayEach : baseEach;
-  return func(collection, castFunction(iteratee));
+  return func(collection, baseIteratee(iteratee, 3));
 }
 
 module.exports = forEach;

@@ -9,7 +9,7 @@
  */
 function arrayEach(array, iteratee) {
   var index = -1,
-      length = array == null ? 0 : array.length;
+      length = array ? array.length : 0;
 
   while (++index < length) {
     if (iteratee(array[index], index, array) === false) {

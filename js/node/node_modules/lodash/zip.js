@@ -1,4 +1,4 @@
-var baseRest = require('./_baseRest'),
+var rest = require('./rest'),
     unzip = require('./unzip');
 
 /**
@@ -14,9 +14,9 @@ var baseRest = require('./_baseRest'),
  * @returns {Array} Returns the new array of grouped elements.
  * @example
  *
- * _.zip(['a', 'b'], [1, 2], [true, false]);
- * // => [['a', 1, true], ['b', 2, false]]
+ * _.zip(['fred', 'barney'], [30, 40], [true, false]);
+ * // => [['fred', 30, true], ['barney', 40, false]]
  */
-var zip = baseRest(unzip);
+var zip = rest(unzip);
 
 module.exports = zip;
