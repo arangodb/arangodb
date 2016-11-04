@@ -36,6 +36,15 @@ function shuffle() {
   done
 }
 
+function isuint () {
+  re='^[0-9]+$'
+  if ! [[ $1 =~ $re ]] ; then
+      return 1;
+  else
+      return 0
+  fi
+}
+
 NRAGENTS=3
 POOLSZ=""
 TRANSPORT="tcp"
@@ -133,7 +142,7 @@ if [ "$GOSSIP_MODE" = "0" ]; then
    GOSSIP_PEERS=" --agency.endpoint $TRANSPORT://localhost:$BASE"
 fi
 
-rm -rf agency
+#rm -rf agency
 mkdir -p agency
 PIDS=""
 
@@ -180,10 +189,13 @@ for aid in "${aaid[@]}"; do
     GOSSIP_PEERS+=" --agency.endpoint $TRANSPORT://localhost:$port"
   fi
   if [ $count -lt $POOLSZ ]; then
-    sleep $START_DELAYS
+    if isuint $START_DELAYS; then
+      printf "fixed delay %02ds " "$START_DELAYS"
+      sleep $START_DELAYS
+    fi
     if [ "$RANDOM_DELAYS" == "true" ] ; then
       delay=$(( RANDOM % 16 ))
-      printf " delaying %s seconds" "$delay"
+      printf "random delay %02ds" "$delay"
       sleep $delay
     fi
     ((count+=1))
