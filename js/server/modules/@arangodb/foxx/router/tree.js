@@ -142,12 +142,9 @@ module.exports = class Tree {
       for (const item of route) {
         if (item.router) {
           swagger._merge(item, true);
-          if (item.router) {
-            swagger._merge(item.router);
-          }
         } else {
           swagger._merge(item);
-          swagger._methods = item._methods;
+          swagger._methods = item._methods || swagger._methods;
         }
       }
       for (let token of swagger._pathTokens) {
@@ -462,9 +459,12 @@ function* flatten(node, result) {
     const token = entry[0];
     const child = entry[1];
     if (token === tokenize.WILDCARD || token === tokenize.TERMINAL) {
+      if (child.has($_MIDDLEWARE)) {
+        result = result.concat(...child.get($_MIDDLEWARE));
+      }
       for (const endpoint of child.get($_ROUTES) || []) {
         if (endpoint.router) {
-          yield* flatten(endpoint.tree.root, result.concat(endpoint));
+          yield* flatten(endpoint.tree.root, result.concat(endpoint, endpoint.router));
         } else {
           yield result.concat(endpoint);
         }
