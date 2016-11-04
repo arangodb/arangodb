@@ -1,3 +1,19 @@
+v3.1.1 (XXXX-XX-XX)
+-------------------
+
+* fixed wrong version in web interface login screen (EE only)
+
+* make web interface not display an exclamation mark next to ArangoDB version number 3.1
+
+* fixed search for arbitrary document attributes in web interface in case multiple
+  search values were used on different attribute names. in this case, the search always
+  produced an empty result
+
+* disallow updating `_from` and `_to` values of edges in Smart Graphs. Updating these
+  attributes would lead to potential redistribution of edges to other shards, which must be 
+  avoided.
+
+
 v3.1.0 (2016-10-29)
 -------------------
 
