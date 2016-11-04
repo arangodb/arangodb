@@ -217,7 +217,7 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
       _defaultWaitForSync(false),
       _forceSyncProperties(true),
       _ignoreDatafileErrors(false),
-      _check30Revisions(true),
+      _check30Revisions("true"),
       _throwCollectionNotLoadedError(false),
       _vocbase(nullptr),
       _databasesLists(new DatabasesLists()),
@@ -281,7 +281,8 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   
   options->addHiddenOption("--database.check-30-revisions",
                            "check _rev values in collections created before 3.1",
-                           new BooleanParameter(&_check30Revisions));
+                           new DiscreteValuesParameter<StringParameter>(&_check30Revisions, 
+                           std::unordered_set<std::string>{ "true", "false", "fail" }));
 }
 
 void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

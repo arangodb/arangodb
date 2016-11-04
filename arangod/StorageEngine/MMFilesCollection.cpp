@@ -1089,9 +1089,13 @@ int MMFilesCollection::iterateMarkersOnLoad(arangodb::Transaction* trx) {
       _lastRevision >= static_cast<TRI_voc_rid_t>(2016 - 1970) * 1000 * 60 * 60 * 24 * 365 &&
       application_features::ApplicationServer::server->getFeature<DatabaseFeature>("Database")->check30Revisions()) {
     // a collection from 3.0 or earlier with a _rev value that is higher than we can handle safely
-    LOG(WARN) << "collection '" << _logicalCollection->name() << "' contains _rev values that are higher than expected for an ArangoDB 3.0 database. If this collection was created or used with a pre-release or development version of ArangoDB 3.1, please restart the server with option '--database.check-30-revisions false' to suppress this warning.";
-  }
+    _logicalCollection->setRevisionError();
 
+    LOG(WARN) << "collection '" << _logicalCollection->name() << "' contains _rev values that are higher than expected for an ArangoDB 3.1 database. If this collection was created or used with a pre-release or development version of ArangoDB 3.1, please restart the server with option '--database.check-30-revisions false' to suppress this warning. If this collection was created with an ArangoDB 3.0, please dump the 3.0 database with arangodump and restore it in 3.1 with arangorestore.";
+    if (application_features::ApplicationServer::server->getFeature<DatabaseFeature>("Database")->fail30Revisions()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE, std::string("collection '") + _logicalCollection->name() + "' contains _rev values from 3.0 and needs to be migrated using dump/restore");
+    }
+  }
   
   // update the real statistics for the collection
   try {
