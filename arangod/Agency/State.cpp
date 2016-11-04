@@ -272,7 +272,7 @@ std::vector<log_t> State::get(arangodb::consensus::index_t start,
 std::vector<VPackSlice> State::slices(arangodb::consensus::index_t start,
                                       arangodb::consensus::index_t end) const {
   std::vector<VPackSlice> slices;
-//  MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
+  MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
 
   if (_log.empty()) {
     return slices;
@@ -562,34 +562,38 @@ bool State::loadRemaining() {
   }
       
   auto result = queryResult.result->slice();
+  index_t back = 0;
+
+  {
+    MUTEX_LOCKER(logLock, _logLock);
+    if (result.isArray()) {
       
-  MUTEX_LOCKER(logLock, _logLock);
-  if (result.isArray()) {
-    
-          _log.clear();
-    
-          for (auto const& i : VPackArrayIterator(result)) {
-      buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
-            auto ii = i.resolveExternals();
-            auto req = ii.get("request");
-            tmp->append(req.startAs<char const>(), req.byteSize());
-            try {
-        _log.push_back(
+      _log.clear();
+      
+      for (auto const& i : VPackArrayIterator(result)) {
+        buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
+        auto ii = i.resolveExternals();
+        auto req = ii.get("request");
+        tmp->append(req.startAs<char const>(), req.byteSize());
+        try {
+          _log.push_back(
             log_t(std::stoi(ii.get(StaticStrings::KeyString).copyString()),
                   static_cast<term_t>(ii.get("term").getUInt()), tmp));
-      } catch (std::exception const& e) {
-        LOG_TOPIC(ERR, Logger::AGENCY)
+        } catch (std::exception const& e) {
+          LOG_TOPIC(ERR, Logger::AGENCY)
             << "Failed to convert " +
-                   ii.get(StaticStrings::KeyString).copyString() +
-                   " to integer via std::stoi."
+            ii.get(StaticStrings::KeyString).copyString() +
+            " to integer via std::stoi."
             << e.what();
+        }
       }
     }
+    TRI_ASSERT(!_log.empty());
+    back = _log.back().index;
   }
-      
+  
   _agent->rebuildDBs();
-        TRI_ASSERT(!_log.empty());
-        _agent->lastCommitted(_log.back().index);
+  _agent->lastCommitted(back);
 
   return true;
 }

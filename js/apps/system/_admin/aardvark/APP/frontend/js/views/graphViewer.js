@@ -219,7 +219,15 @@
 
       // render
       this.graphData.modified = this.parseData(this.graphData.original, this.graphData.graphInfo);
-      this.renderGraph(this.graphData.modified, null, true);
+
+      var success = false;
+      try {
+        this.renderGraph(this.graphData.modified, null, true);
+        success = true;
+      } catch (ignore) {
+      }
+
+      return success;
     },
 
     renderAQL: function (data) {

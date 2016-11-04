@@ -1615,7 +1615,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
 
   using namespace std::chrono;
   auto start = system_clock::now();
-  seconds ltimeout(static_cast<int>(timeout));
+  duration<double> to(1.e3*timeout);
 
   {
     READ_LOCKER(readLocker, AgencyComm::_globalLock);
@@ -1666,7 +1666,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
         break;
       }
 
-      if (system_clock::now() - start > ltimeout) {
+      if (system_clock::now() - start > to) {
         LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Timed out waiting for leader "
           << agencyEndpoint->_endpoint->specification() << " tries: " << ltries;
         break;

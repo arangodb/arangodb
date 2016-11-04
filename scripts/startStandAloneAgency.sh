@@ -11,6 +11,7 @@ function help() {
   echo "  -w/--wait-for-sync Boolean     (true|false       default: true)"
   echo "  -m/--use-microtime Boolean     (true|false       default: false)"
   echo "  -s/--start-delays  Integer     (                 default: 0)"
+  echo "  -r/--random-delays Integer     (true|false       default: false)"
   echo "  -g/--gossip-mode   Integer     (0: Announce first endpoint to all"
   echo "                                  1: Grow list of known endpoints for each"
   echo "                                  2: Cyclic        default: 0)"
@@ -20,6 +21,28 @@ function help() {
   echo "  scripts/startStandaloneAgency.sh -a 5 -p 10 -t ssl"
   echo "  scripts/startStandaloneAgency.sh --agency-size 3 --pool-size 5"
   
+}
+
+function shuffle() {
+  local i tmp size max rand
+
+  size=${#aaid[*]}
+  max=$(( 32768 / size * size ))
+
+  for ((i=size-1; i>0; i--)); do
+    while (( (rand=$RANDOM) >= max )); do :; done
+    rand=$(( rand % (i+1) ))
+    tmp=${aaid[i]} aaid[i]=${aaid[rand]} aaid[rand]=$tmp
+  done
+}
+
+function isuint () {
+  re='^[0-9]+$'
+  if ! [[ $1 =~ $re ]] ; then
+      return 1;
+  else
+      return 0
+  fi
 }
 
 NRAGENTS=3
@@ -53,6 +76,9 @@ while [[ ${1} ]]; do
       shift;;
     -g|--gossip-mode)
       GOSSIP_MODE=${2}
+      shift;;
+    -r|--random-delays)
+      RANDOM_DELAYS=${2}
       shift;;
     -s|--start-delays)
       START_DELAYS=${2}
@@ -93,6 +119,7 @@ printf "\n"
 printf "    use-microtime: %s," "$USE_MICROTIME"
 printf " wait-for-sync: %s," "$WAIT_FOR_SYNC"
 printf " start-delays: %s," "$START_DELAYS"
+printf " random-delays: %s," "$RANDOM_DELAYS"
 printf " gossip-mode: %s\n" "$GOSSIP_MODE"
 
 if [ ! -d arangod ] || [ ! -d arangosh ] || [ ! -d UnitTests ] ; then
@@ -115,15 +142,23 @@ if [ "$GOSSIP_MODE" = "0" ]; then
    GOSSIP_PEERS=" --agency.endpoint $TRANSPORT://localhost:$BASE"
 fi
 
-rm -rf agency
+#rm -rf agency
 mkdir -p agency
 PIDS=""
-for aid in `seq 0 $(( $POOLSZ - 1 ))`; do
+
+aaid=(`seq 0 $(( $POOLSZ - 1 ))`)
+shuffle
+
+count=1
+
+for aid in "${aaid[@]}"; do
+
   port=$(( $BASE + $aid ))
   if [ "$GOSSIP_MODE" = 2 ]; then
     nport=$(( $BASE + $(( $(( $aid + 1 )) % 3 ))))
     GOSSIP_PEERS=" --agency.endpoint $TRANSPORT://localhost:$nport"
   fi
+  printf "    starting agent %s " "$aid"
   build/bin/arangod \
     -c none \
     --agency.activate true \
@@ -146,7 +181,6 @@ for aid in `seq 0 $(( $POOLSZ - 1 ))`; do
     --server.authentication false \
     --server.endpoint $TRANSPORT://localhost:$port \
     --server.statistics false \
-    --server.threads 4 \
     $SSLKEYFILE \
     > agency/$port.stdout 2>&1 &
   PIDS+=$!
@@ -154,7 +188,19 @@ for aid in `seq 0 $(( $POOLSZ - 1 ))`; do
   if [ "$GOSSIP_MODE" == "1" ]; then
     GOSSIP_PEERS+=" --agency.endpoint $TRANSPORT://localhost:$port"
   fi
-  sleep $START_DELAYS
+  if [ $count -lt $POOLSZ ]; then
+    if isuint $START_DELAYS; then
+      printf "fixed delay %02ds " "$START_DELAYS"
+      sleep $START_DELAYS
+    fi
+    if [ "$RANDOM_DELAYS" == "true" ] ; then
+      delay=$(( RANDOM % 16 ))
+      printf "random delay %02ds" "$delay"
+      sleep $delay
+    fi
+    ((count+=1))
+  fi
+  echo
 done
 
 echo "  done. Your agents are ready at port $BASE onward."
