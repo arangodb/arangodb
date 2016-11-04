@@ -518,8 +518,8 @@ if [ ! -f Makefile -o ! -f CMakeCache.txt ];  then
           cmake ${SOURCE_DIR} ${CONFIGURE_OPTIONS} -G "${GENERATOR}" || exit 1
 fi
 
-if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
-    if grep ! -q CMAKE_STRIP CMakeCache.txt; then
+if [ -n "$CPACK"  -a -n "${TARGET_DIR}" -a -z "${MSVC}" ];  then
+    if ! grep -q CMAKE_STRIP CMakeCache.txt; then
         echo "cmake failed to detect strip; refusing to build unstripped packages!"
         exit 1
     fi
