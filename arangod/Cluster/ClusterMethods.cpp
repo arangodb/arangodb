@@ -1435,160 +1435,6 @@ int getDocumentOnCoordinator(
   return TRI_ERROR_NO_ERROR;
 }
 
-static void insertIntoShardMap(
-    ClusterInfo* ci, std::string const& dbname, std::string const& documentId,
-    std::unordered_map<ShardID, std::vector<std::string>>& shardMap) {
-  std::vector<std::string> splitId =
-      arangodb::basics::StringUtils::split(documentId, '/');
-  TRI_ASSERT(splitId.size() == 2);
-
-  // First determine the collection ID from the name:
-  std::shared_ptr<LogicalCollection> collinfo =
-      ci->getCollection(dbname, splitId[0]);
-
-  std::string collid = collinfo->cid_as_string();
-  if (collinfo->usesDefaultShardKeys()) {
-    // We only need add one resp. shard
-    VPackBuilder partial;
-    partial.openObject();
-    partial.add(StaticStrings::KeyString, VPackValue(splitId[1]));
-    partial.close();
-    bool usesDefaultShardingAttributes;
-    ShardID shardID;
-
-    int error = ci->getResponsibleShard(collinfo.get(), partial.slice(), true,
-           shardID, usesDefaultShardingAttributes);
-    if (error != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(error);
-    }
-    TRI_ASSERT(usesDefaultShardingAttributes);  // If this is false the if
-                                                // condition should be false in
-                                                // the first place
-    auto it = shardMap.find(shardID);
-    if (it == shardMap.end()) {
-      shardMap.emplace(shardID, std::vector<std::string>({splitId[1]}));
-    } else {
-      it->second.push_back(splitId[1]);
-    }
-  } else {
-    // Sorry we do not know the responsible shard yet
-    // Ask all of them
-    auto shardList = ci->getShardList(collid);
-    for (auto const& shard : *shardList) {
-      auto it = shardMap.find(shard);
-      if (it == shardMap.end()) {
-        shardMap.emplace(shard, std::vector<std::string>({splitId[1]}));
-      } else {
-        it->second.push_back(splitId[1]);
-      }
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a list of filtered documents in a coordinator
-///        All found documents will be inserted into result.
-///        After execution documentIds will contain all id's of documents
-///        that could not be found.
-////////////////////////////////////////////////////////////////////////////////
-
-int getFilteredDocumentsOnCoordinator(
-    std::string const& dbname,
-    std::vector<traverser::TraverserExpression*> const& expressions,
-    std::unordered_set<std::string>& documentIds,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuffer<uint8_t>>>&
-        result) {
-  // Set a few variables needed for our work:
-  ClusterInfo* ci = ClusterInfo::instance();
-  ClusterComm* cc = ClusterComm::instance();
-
-  std::unordered_map<ShardID, std::vector<std::string>> shardRequestMap;
-  for (auto const& doc : documentIds) {
-    try {
-      insertIntoShardMap(ci, dbname, doc, shardRequestMap);
-    } catch (...) {
-    }
-  }
-
-  // Now start the request.
-  // We do not have to care for shard attributes esp. shard by key.
-  // If it is by key the key was only added to one key list, if not
-  // it is contained multiple times.
-  std::vector<ClusterCommRequest> requests;
-  VPackBuilder bodyBuilder;
-  for (auto const& shard : shardRequestMap) {
-    bodyBuilder.clear();
-    bodyBuilder.openObject();
-    bodyBuilder.add("collection", VPackValue(shard.first));
-    bodyBuilder.add("keys", VPackValue(VPackValueType::Array));
-    for (auto const& key : shard.second) {
-      bodyBuilder.add(VPackValue(key));
-    }
-    bodyBuilder.close();  // keys
-    if (!expressions.empty()) {
-      bodyBuilder.add("filter", VPackValue(VPackValueType::Array));
-      for (auto const& e : expressions) {
-        e->toVelocyPack(bodyBuilder);
-      }
-      bodyBuilder.close();  // filter
-    }
-    bodyBuilder.close();  // Object
-
-    auto bodyString = std::make_shared<std::string>(bodyBuilder.toJson());
-    requests.emplace_back("shard:" + shard.first,
-                          arangodb::rest::RequestType::PUT,
-                          "/_db/" + StringUtils::urlEncode(dbname) +
-                              "/_api/simple/lookup-by-keys",
-                          bodyString);
-  }
-
-  // Perform the requests
-  size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::REQUESTS);
-
-  // All requests send, now collect results.
-  for (auto const& req : requests) {
-    auto& res = req.result;
-    if (res.status == CL_COMM_RECEIVED) {
-      VPackSlice resSlice = res.answer->payload(&VPackOptions::Defaults);
-
-      if (!resSlice.isObject()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL, "Received an invalid result in cluster.");
-      }
-      bool isError = arangodb::basics::VelocyPackHelper::getBooleanValue(
-          resSlice, "error", false);
-      if (isError) {
-        return arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-            resSlice, "errorNum", TRI_ERROR_INTERNAL);
-      }
-      VPackSlice documents = resSlice.get("documents");
-      if (!documents.isArray()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL, "Received an invalid result in cluster.");
-      }
-      for (auto const& element : VPackArrayIterator(documents)) {
-        std::string id = arangodb::basics::VelocyPackHelper::getStringValue(
-            element, StaticStrings::IdString, "");
-        VPackBuilder tmp;
-        tmp.add(element);
-        result.emplace(id, tmp.steal());
-      }
-      VPackSlice filtered = resSlice.get("filtered");
-      if (filtered.isArray()) {
-        for (auto const& element : VPackArrayIterator(filtered)) {
-          if (element.isString()) {
-            std::string id = element.copyString();
-            documentIds.erase(id);
-          }
-        }
-      }
-    }
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
 /// @brief fetch edges from TraverserEngines
 ///        Contacts all TraverserEngines placed
 ///        on the DBServers for the given list
@@ -1779,7 +1625,6 @@ void fetchVerticesFromEngines(
 int getFilteredEdgesOnCoordinator(
     std::string const& dbname, std::string const& collname,
     std::string const& vertex, TRI_edge_direction_e const& direction,
-    std::vector<traverser::TraverserExpression*> const& expressions,
     arangodb::rest::ResponseCode& responseCode,
     VPackBuilder& result) {
   TRI_ASSERT(result.isOpenObject());
@@ -1812,25 +1657,14 @@ int getFilteredEdgesOnCoordinator(
   } else if (direction == TRI_EDGE_OUT) {
     queryParameters += "&direction=out";
   }
-  auto reqBodyString = std::make_shared<std::string>();
-  VPackBuilder bodyBuilder;
-  bodyBuilder.openArray();
-  if (!expressions.empty()) {
-    for (auto& e : expressions) {
-      e->toVelocyPack(bodyBuilder);
-    }
-  }
-  bodyBuilder.close();
-  reqBodyString->append(bodyBuilder.toJson());
-
   std::vector<ClusterCommRequest> requests;
   std::string baseUrl = "/_db/" + StringUtils::urlEncode(dbname) + "/_api/edges/";
 
+  auto body = std::make_shared<std::string>();
   for (auto const& p : *shards) {
     requests.emplace_back(
-        "shard:" + p.first, arangodb::rest::RequestType::PUT,
-        baseUrl + StringUtils::urlEncode(p.first) + queryParameters,
-        reqBodyString);
+        "shard:" + p.first, arangodb::rest::RequestType::GET,
+        baseUrl + StringUtils::urlEncode(p.first) + queryParameters, body);
   }
 
   // Perform the requests

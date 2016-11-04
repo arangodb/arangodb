@@ -48,12 +48,13 @@ RestStatus RestEdgesHandler::execute() {
   // execute one of the CRUD methods
   switch (type) {
     case rest::RequestType::GET: {
-      std::vector<traverser::TraverserExpression*> empty;
-      readEdges(empty);
+      readEdges();
       break;
     }
     case rest::RequestType::PUT:
-      readFilteredEdges();
+      // Now unsupported. Just temporary to check
+      TRI_ASSERT(false);
+      readEdges();
       break;
     case rest::RequestType::POST:
       readEdgesForMultipleVertices();
@@ -69,7 +70,6 @@ RestStatus RestEdgesHandler::execute() {
 
 bool RestEdgesHandler::getEdgesForVertexList(
     VPackSlice const ids,
-    std::vector<traverser::TraverserExpression*> const& expressions,
     TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
     VPackBuilder& result, size_t& scannedIndex, size_t& filtered) {
   TRI_ASSERT(ids.isArray());
@@ -103,20 +103,7 @@ bool RestEdgesHandler::getEdgesForVertexList(
     scannedIndex += static_cast<size_t>(edges.length());
 
     for (auto const& edge : VPackArrayIterator(edges)) {
-      bool add = true;
-      if (!expressions.empty()) {
-        for (auto& exp : expressions) {
-          if (exp->isEdgeAccess && !exp->matchesCheck(&trx, edge)) {
-            ++filtered;
-            add = false;
-            break;
-          }
-        }
-      }
-
-      if (add) {
-        result.add(edge);
-      }
+      result.add(edge);
     }
   }
 
@@ -125,7 +112,6 @@ bool RestEdgesHandler::getEdgesForVertexList(
 
 bool RestEdgesHandler::getEdgesForVertex(
     std::string const& id, std::string const& collectionName,
-    std::vector<traverser::TraverserExpression*> const& expressions,
     TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
     VPackBuilder& result, size_t& scannedIndex, size_t& filtered) {
   trx.orderDitch(trx.cid());  // will throw when it fails
@@ -156,20 +142,7 @@ bool RestEdgesHandler::getEdgesForVertex(
     scannedIndex += static_cast<size_t>(edges.length());
 
     for (auto const& edge : VPackArrayIterator(edges)) {
-      bool add = true;
-      if (!expressions.empty()) {
-        for (auto& exp : expressions) {
-          if (exp->isEdgeAccess && !exp->matchesCheck(&trx, edge)) {
-            ++filtered;
-            add = false;
-            break;
-          }
-        }
-      }
-
-      if (add) {
-        result.add(edge);
-      }
+      result.add(edge);
     }
   }
 
@@ -177,8 +150,7 @@ bool RestEdgesHandler::getEdgesForVertex(
 }
 
 // read in- or outbound edges
-bool RestEdgesHandler::readEdges(
-    std::vector<traverser::TraverserExpression*> const& expressions) {
+bool RestEdgesHandler::readEdges() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
@@ -244,7 +216,7 @@ bool RestEdgesHandler::readEdges(
     resultDocument.openObject();
 
     int res = getFilteredEdgesOnCoordinator(
-        _vocbase->name(), collectionName, vertexString, direction, expressions,
+        _vocbase->name(), collectionName, vertexString, direction,
         responseCode, resultDocument);
     if (res != TRI_ERROR_NO_ERROR) {
       generateError(responseCode, res);
@@ -284,9 +256,8 @@ bool RestEdgesHandler::readEdges(
   resultBuilder.add(VPackValue("edges"));  // only key
   resultBuilder.openArray();
   // NOTE: collecitonName is the shard-name in DBServer case
-  bool ok =
-      getEdgesForVertex(startVertex, collectionName, expressions, direction,
-                        trx, resultBuilder, scannedIndex, filtered);
+  bool ok = getEdgesForVertex(startVertex, collectionName, direction, trx,
+                              resultBuilder, scannedIndex, filtered);
   resultBuilder.close();
 
   res = trx.finish(res);
@@ -391,7 +362,6 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
     return false;
   }
 
-  std::vector<traverser::TraverserExpression*> const expressions;
   if (ServerState::instance()->isCoordinator()) {
     rest::ResponseCode responseCode;
     VPackBuilder resultDocument;
@@ -403,7 +373,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
 
         int res = getFilteredEdgesOnCoordinator(
             _vocbase->name(), collectionName, vertexString, direction,
-            expressions, responseCode, resultDocument);
+            responseCode, resultDocument);
         if (res != TRI_ERROR_NO_ERROR) {
           generateError(responseCode, res);
           return false;
@@ -448,8 +418,8 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   resultBuilder.add(VPackValue("edges"));  // only key
   resultBuilder.openArray();
 
-  bool ok = getEdgesForVertexList(body, expressions, direction, trx,
-                                  resultBuilder, scannedIndex, filtered);
+  bool ok = getEdgesForVertexList(body, direction, trx, resultBuilder,
+                                  scannedIndex, filtered);
 
   if (!ok) {
     // Ignore the error
@@ -476,44 +446,4 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
                  trx.transactionContext());
 
   return true;
-}
-
-/// Internal function for optimized edge retrieval.
-/// Allows to send an TraverserExpression for filtering in the body
-/// Not publicly documented on purpose.
-bool RestEdgesHandler::readFilteredEdges() {
-  std::vector<traverser::TraverserExpression*> expressions;
-  bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
-  if (!parseSuccess) {
-    // We continue unfiltered
-    // Filter could be done by caller
-    return readEdges(expressions);
-  }
-  VPackSlice body = parsedBody->slice();
-  arangodb::basics::ScopeGuard guard{[]() -> void {},
-                                     [&expressions]() -> void {
-                                       for (auto& e : expressions) {
-                                         delete e;
-                                       }
-                                     }};
-
-  if (!body.isArray()) {
-    generateError(
-        rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "Expected an array of traverser expressions as body parameter");
-    return false;
-  }
-
-  expressions.reserve(static_cast<size_t>(body.length()));
-
-  for (auto const& exp : VPackArrayIterator(body)) {
-    if (exp.isObject()) {
-      auto expression = std::make_unique<traverser::TraverserExpression>(exp);
-      expressions.emplace_back(expression.get());
-      expression.release();
-    }
-  }
-  return readEdges(expressions);
 }

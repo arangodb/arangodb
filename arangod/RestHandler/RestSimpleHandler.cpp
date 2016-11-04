@@ -369,65 +369,10 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
         // This is for internal use of AQL Traverser only.
         // Should not be documented
         VPackSlice const postFilter = slice.get("filter");
-        if (postFilter.isArray()) {
-          std::vector<arangodb::traverser::TraverserExpression*> expressions;
-          arangodb::basics::ScopeGuard guard{[]() -> void {},
-                                             [&expressions]() -> void {
-                                               for (auto& e : expressions) {
-                                                 delete e;
-                                               }
-                                             }};
-
-          VPackValueLength length = postFilter.length();
-          expressions.reserve(static_cast<size_t>(length));
-
-          for (auto const& it : VPackArrayIterator(postFilter)) {
-            if (it.isObject()) {
-              auto expression =
-                  std::make_unique<traverser::TraverserExpression>(it);
-              expressions.emplace_back(expression.get());
-              expression.release();
-            }
-          }
-
-          result.add(VPackValue("documents"));
-          std::vector<std::string> filteredIds;
-
-          // just needed to build the result
-          SingleCollectionTransaction trx(
-              StandaloneTransactionContext::Create(_vocbase), collectionName,
-              TRI_TRANSACTION_READ);
-
-          result.openArray();
-          for (auto const& tmp : VPackArrayIterator(qResult)) {
-            if (!tmp.isNone()) {
-              bool add = true;
-              for (auto& e : expressions) {
-                if (!e->isEdgeAccess && !e->matchesCheck(&trx, tmp)) {
-                  add = false;
-                  std::string _id = trx.extractIdString(tmp);
-                  filteredIds.emplace_back(std::move(_id));
-                  break;
-                }
-              }
-              if (add) {
-                result.add(tmp);
-              }
-            }
-          }
-          result.close();
-
-          result.add(VPackValue("filtered"));
-          result.openArray();
-          for (auto const& it : filteredIds) {
-            result.add(VPackValue(it));
-          }
-          result.close();
-        } else {
-          result.add(VPackValue("documents"));
-          result.add(qResult);
-          queryResult.result = nullptr;
-        }
+        TRI_ASSERT(postFilter.isNone());
+        result.add(VPackValue("documents"));
+        result.add(qResult);
+        queryResult.result = nullptr;
       } else {
         result.add(VPackValue("documents"));
         result.add(qResult);
