@@ -1246,7 +1246,7 @@ TRI_voc_rid_t TRI_ExtractRevisionId(VPackSlice slice) {
   if (r.isString()) {
     VPackValueLength l;
     char const* p = r.getString(l);
-    return TRI_StringToRid(p, l);
+    return TRI_StringToRid(p, l, false);
   }
   if (r.isInteger()) {
     return r.getNumber<TRI_voc_rid_t>();
@@ -1312,18 +1312,18 @@ std::string TRI_RidToString(TRI_voc_rid_t rid) {
 }
 
 /// @brief Convert a string into a revision ID, no check variant
-TRI_voc_rid_t TRI_StringToRid(std::string const& ridStr, bool& isOld) {
-  return TRI_StringToRid(ridStr.c_str(), ridStr.size(), isOld);
+TRI_voc_rid_t TRI_StringToRid(std::string const& ridStr, bool& isOld, bool warn) {
+  return TRI_StringToRid(ridStr.c_str(), ridStr.size(), isOld, warn);
 }
 
 /// @brief Convert a string into a revision ID, no check variant
-TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len) {
+TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool warn) {
   bool isOld;
-  return TRI_StringToRid(p, len, isOld);
+  return TRI_StringToRid(p, len, isOld, warn);
 }
 
 /// @brief Convert a string into a revision ID, no check variant
-TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool& isOld) {
+TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool& isOld, bool warn) {
   if (len > 0 && *p >= '1' && *p <= '9') {
     // Remove this case before the year 3887 AD because then it will
     // start to clash with encoded timestamps:
@@ -1336,7 +1336,7 @@ TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool& isOld) {
       }
       r *= 10;
     } while (true);
-    if (r > tickLimit) {
+    if (warn && r > tickLimit) {
       // An old tick value that could be confused with a time stamp
       LOG(WARN)
         << "Saw old _rev value that could be confused with a time stamp!";
@@ -1349,17 +1349,17 @@ TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool& isOld) {
 }
 
 /// @brief Convert a string into a revision ID, returns 0 if format invalid
-TRI_voc_rid_t TRI_StringToRidWithCheck(std::string const& ridStr, bool& isOld) {
-  return TRI_StringToRidWithCheck(ridStr.c_str(), ridStr.size(), isOld);
+TRI_voc_rid_t TRI_StringToRidWithCheck(std::string const& ridStr, bool& isOld, bool warn) {
+  return TRI_StringToRidWithCheck(ridStr.c_str(), ridStr.size(), isOld, warn);
 }
 
 /// @brief Convert a string into a revision ID, returns 0 if format invalid
-TRI_voc_rid_t TRI_StringToRidWithCheck(char const* p, size_t len, bool& isOld) {
+TRI_voc_rid_t TRI_StringToRidWithCheck(char const* p, size_t len, bool& isOld, bool warn) {
   if (len > 0 && *p >= '1' && *p <= '9') {
     // Remove this case before the year 3887 AD because then it will
     // start to clash with encoded timestamps:
     TRI_voc_rid_t r = arangodb::basics::StringUtils::uint64_check(p, len);
-    if (r > tickLimit) {
+    if (warn && r > tickLimit) {
       // An old tick value that could be confused with a time stamp
       LOG(WARN)
         << "Saw old _rev value that could be confused with a time stamp!";
