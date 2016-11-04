@@ -8,6 +8,13 @@ if test -z ${CXX}; then
   export CXX=g++
 fi
 
+EP=""
+for i in $@; do
+    if test "$i" == "--enterprise"; then
+        EP="EP"
+    fi
+done
+
 export CPU_CORES=$(grep -c ^processor /proc/cpuinfo)
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -20,7 +27,7 @@ cd ${DIR}/..
     --parallel ${CPU_CORES} \
     --package TGZ \
     --snap \
-    --buildDir build-snap \
+    --buildDir build-${EP}snap \
     --targetDir /var/tmp/ \
     --noopt \
     $@
