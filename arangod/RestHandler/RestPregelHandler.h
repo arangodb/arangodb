@@ -32,7 +32,7 @@ namespace arangodb {
     
   public:
     bool isDirect() const override { return false; }
-    status execute() override;
+    RestStatus execute() override;
     char const* name() const override {return "Pregel Rest Handler";}
   };
 }

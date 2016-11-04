@@ -193,7 +193,7 @@ void Conductor::finishedGlobalStep(VPackSlice& data) {
       b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
       b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
       b.close();
-      sendToAllDBServers(baseUrl + Utils::writeResultsPath, b.slice());
+      sendToAllDBServers(baseUrl + Utils::finalizeExecutionPath, b.slice());
       _state = ExecutionState::FINISHED;
 
     } else {  // trigger next superstep

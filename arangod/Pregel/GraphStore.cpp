@@ -101,6 +101,7 @@ template <typename V, typename E>
 void GraphStore<V, E>::lookupVertices(ShardID const& vertexShard,
                                       TRI_vocbase_t* vocbase) {
   _graphFormat->willUseCollection(vocbase, vertexShard, false);
+    bool storeData = _graphFormat->storesVertexData();
 
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(vocbase),
                                   vertexShard, TRI_TRANSACTION_READ);
@@ -119,48 +120,52 @@ void GraphStore<V, E>::lookupVertices(ShardID const& vertexShard,
     THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up vertices '%s'",
                                   vertexShard.c_str());
   }
-
-  VPackBuilder resultBuilder;
-  resultBuilder.openArray();
-
-  std::unique_ptr<OperationCursor> cursor =
-      trx.indexScan(vertexShard, Transaction::CursorType::ALL,
-                    Transaction::IndexHandle(), {}, 0, INT64_MAX, 1000, false);
-
-  if (cursor->failed()) {
-    THROW_ARANGO_EXCEPTION_FORMAT(cursor->code, "while looking up shard '%s'",
-                                  vertexShard.c_str());
-  }
-  bool storeData = _graphFormat->storesVertexData();
-
-  std::vector<TRI_doc_mptr_t*> result;
-  result.reserve(1000);
-  while (cursor->hasMore()) {
-    cursor->getMoreMptr(result, 1000);
-    for (auto const& mptr : result) {
-      VPackSlice document(mptr->vpack());
-      if (document.isExternal()) {
-        document = document.resolveExternal();
-      }
-      LOG(INFO) << "Loaded Vertex: " << document.toJson();
-
-      std::string vertexId = trx.extractIdString(document);
-      LOG(WARN) << "Loaded " << vertexId;
-      VertexEntry entry(vertexId);
-      if (storeData) {
-        V vertexData;
-        size_t size =
-            _graphFormat->copyVertexData(document, &vertexData, sizeof(V));
-        if (size > 0) {
-          entry._vertexDataOffset = _vertexData.size();
-          _vertexData.push_back(vertexData);
-        } else {
-          LOG(ERR) << "Could not load vertex " << document.toJson();
-        }
-      }
-      _index.push_back(entry);
+    
+    ManagedDocumentResult mmdr(&trx);
+    std::unique_ptr<OperationCursor> cursor =
+    trx.indexScan(vertexShard, Transaction::CursorType::ALL, Transaction::IndexHandle(),
+    {}, &mmdr, 0, UINT64_MAX, 1000, false);
+    
+    if (cursor->failed()) {
+        THROW_ARANGO_EXCEPTION_FORMAT(cursor->code, "while looking up shard '%s'",
+                                      vertexShard.c_str());
     }
-  }
+    
+    LogicalCollection* collection = cursor->collection();
+    std::vector<IndexLookupResult> result;
+    result.reserve(1000);
+    
+    while (cursor->hasMore()) {
+        cursor->getMoreMptr(result, 1000);
+        for (auto const& element : result) {
+            TRI_voc_rid_t revisionId = element.revisionId();
+            if (collection->readRevision(&trx, mmdr, revisionId)) {
+                VPackSlice document(mmdr.vpack());
+                if (document.isExternal()) {
+                    document = document.resolveExternal();
+                }
+                
+                LOG(INFO) << "Loaded Vertex: " << document.toJson();
+                
+                std::string vertexId = trx.extractIdString(document);
+                LOG(WARN) << "Loaded " << vertexId;
+                VertexEntry entry(vertexId);
+                if (storeData) {
+                    V vertexData;
+                    size_t size =
+                    _graphFormat->copyVertexData(document, &vertexData, sizeof(V));
+                    if (size > 0) {
+                        entry._vertexDataOffset = _vertexData.size();
+                        _vertexData.push_back(vertexData);
+                    } else {
+                        LOG(ERR) << "Could not load vertex " << document.toJson();
+                    }
+                }
+                _index.push_back(entry);
+            }
+        }
+    }
+    
 
   res = trx.unlockRead();
   if (res != TRI_ERROR_NO_ERROR) {
@@ -182,6 +187,7 @@ template <typename V, typename E>
 void GraphStore<V, E>::lookupEdges(ShardID const& edgeShard,
                                    TRI_vocbase_t* vocbase) {
   _graphFormat->willUseCollection(vocbase, edgeShard, true);
+  bool storeData = _graphFormat->storesEdgeData();
 
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(vocbase),
                                   edgeShard, TRI_TRANSACTION_READ);
@@ -194,13 +200,15 @@ void GraphStore<V, E>::lookupEdges(ShardID const& edgeShard,
 
   auto info = std::make_unique<arangodb::traverser::EdgeCollectionInfo>(
       &trx, edgeShard, TRI_EDGE_OUT, StaticStrings::FromString, 0);
+    
 
   for (auto& vertexEntry : _index) {
     // kann man strings besser verketten?
     // std::string _from = vertexCollectionName + "/" + vertexEntry.vertexID();
     std::string const& _from = vertexEntry.vertexID();
 
-    auto cursor = info->getEdges(_from);
+    ManagedDocumentResult mmdr(&trx);
+    auto cursor = info->getEdges(_from, &mmdr);
     if (cursor->failed()) {
       THROW_ARANGO_EXCEPTION_FORMAT(cursor->code,
                                     "while looking up edges '%s' from %s",
@@ -209,18 +217,22 @@ void GraphStore<V, E>::lookupEdges(ShardID const& edgeShard,
 
     vertexEntry._edgeDataOffset = _edges.size();
     vertexEntry._edgeCount = 0;
-    bool storeData = _graphFormat->storesEdgeData();
 
-    std::vector<TRI_doc_mptr_t*> result;
-    result.reserve(1000);
-    while (cursor->hasMore()) {
-      cursor->getMoreMptr(result, 1000);
-      for (auto const& mptr : result) {
-        VPackSlice document(mptr->vpack());
-        if (document.isExternal()) {
-          document = document.resolveExternal();
-        }
-        LOG(INFO) << "Loaded Edge: " << document.toJson();
+      LogicalCollection* collection = cursor->collection();
+      std::vector<IndexLookupResult> result;
+      result.reserve(1000);
+      
+      while (cursor->hasMore()) {
+          cursor->getMoreMptr(result, 1000);
+          for (auto const& element : result) {
+              TRI_voc_rid_t revisionId = element.revisionId();
+              if (collection->readRevision(&trx, mmdr, revisionId)) {
+                  VPackSlice document(mmdr.vpack());
+                  if (document.isExternal()) {
+                      document = document.resolveExternal();
+                  }
+
+                  LOG(INFO) << "Loaded Edge: " << document.toJson();
         std::string toVertexID =
             document.get(StaticStrings::ToString).copyString();
 
@@ -238,6 +250,7 @@ void GraphStore<V, E>::lookupEdges(ShardID const& edgeShard,
         } else {
           _edges.emplace_back(toVertexID);
         }
+              }
       }
     }
   }

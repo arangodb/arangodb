@@ -41,7 +41,7 @@ class Utils {
   static std::string const nextGSSPath;
   static std::string const finishedGSSPath;
   static std::string const messagesPath;
-  static std::string const writeResultsPath;
+  static std::string const finalizeExecutionPath;
 
   static std::string const executionNumberKey;
   static std::string const algorithmKey;

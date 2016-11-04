@@ -370,7 +370,6 @@ SET(ARANGOD_SOURCES
   Pregel/VertexComputation.cpp
   Pregel/Worker.cpp
   Pregel/WorkerState.cpp
-  Pregel/WorkerJob.cpp
   Pregel/GraphStore.cpp
   Pregel/Utils.cpp
   Pregel/GraphFormat.cpp

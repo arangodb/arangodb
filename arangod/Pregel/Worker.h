@@ -24,10 +24,7 @@
 #define ARANGODB_PREGEL_WORKER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
-#include "Cluster/ClusterInfo.h"
-
-#include "Algorithm.h"
+#include "Basics/ThreadPool.h"
 #include "WorkerState.h"
 
 struct TRI_vocbase_t;
@@ -39,19 +36,16 @@ class IWorker {
   virtual ~IWorker(){};
   virtual void nextGlobalStep(VPackSlice data) = 0;  // called by coordinator
   virtual void receivedMessages(VPackSlice data) = 0;
-  virtual void writeResults() = 0;
+  virtual void finalizeExecution(VPackSlice data) = 0;
 
   static IWorker* createWorker(TRI_vocbase_t* vocbase, VPackSlice parameters);
 };
 
-template <typename V, typename E, typename M>
-class WorkerJob;
 template <typename V, typename E>
 class GraphStore;
 
 template <typename V, typename E, typename M>
 class Worker : public IWorker {
-  friend class WorkerJob<V, E, M>;
 
  public:
   Worker(std::shared_ptr<GraphStore<V, E>> graphStore,
@@ -60,12 +54,14 @@ class Worker : public IWorker {
 
   void nextGlobalStep(VPackSlice data) override;  // called by coordinator
   void receivedMessages(VPackSlice data) override;
-  void writeResults() override;
+  void finalizeExecution(VPackSlice data) override;
 
  private:
   // Mutex _messagesMutex; TODO figure this out
   std::shared_ptr<WorkerState<V, E, M>> _ctx;
   std::shared_ptr<GraphStore<V, E>> _graphStore;
+  std::unique_ptr<basics::ThreadPool> _workerPool;
+  bool _running = true;
 
   void workerJobIsDone(bool allVerticesHalted);
 };

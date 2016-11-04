@@ -23,15 +23,13 @@
 #include "Worker.h"
 #include "GraphStore.h"
 #include "IncomingCache.h"
+#include "OutgoingCache.h"
 #include "Utils.h"
-#include "WorkerJob.h"
 #include "WorkerState.h"
+#include "VertexComputation.h"
 
-#include "Basics/MutexLocker.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
-#include "Dispatcher/DispatcherFeature.h"
-#include "Dispatcher/DispatcherQueue.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -87,11 +85,8 @@ Worker<V, E, M>::Worker(std::shared_ptr<GraphStore<V, E>> graphStore,
 template <typename V, typename E, typename M>
 Worker<V, E, M>::~Worker() {
   LOG(INFO) << "Called ~Worker()";
-  /*for (auto const& it : _vertices) {
-    delete (it.second);
-  }
-  _vertices.clear();
-  cleanupReadTransactions();*/
+  const size_t threadNum = 1;
+  _workerPool.reset(new ThreadPool(static_cast<size_t>(threadNum), "Pregel Worker"));
 }
 
 /// @brief Setup next superstep
@@ -117,13 +112,57 @@ void Worker<V, E, M>::nextGlobalStep(VPackSlice data) {
   _ctx->_expectedGSS = gss + 1;
   _ctx->readableIncomingCache()->clear();
   _ctx->swapIncomingCaches();  // write cache becomes the readable cache
+    
+    _workerPool->enqueue([this, gss] {
+        
+        OutgoingCache<V, E, M> outCache(_ctx);
+        auto vertexComputation = _ctx->algorithm()->createComputation();
+        vertexComputation->_gss = gss;
+        vertexComputation->_outgoing = &outCache;
+        vertexComputation->_graphStore = _graphStore;
+        
+        size_t activeCount = 0;
+        auto incoming = this->_ctx->readableIncomingCache();
+        std::vector<VertexEntry>& vertexIterator = this->_graphStore->vertexIterator();
+        
+        for (auto& vertexEntry : vertexIterator) {
+            std::string vertexID = vertexEntry.vertexID();
+            MessageIterator<M> messages = incoming->getMessages(vertexID);
+            
+            if (gss == 0 || messages.size() > 0 || vertexEntry.active()) {
+                vertexComputation->_vertexEntry = &vertexEntry;
+                vertexComputation->compute(vertexID, messages);
+                if (vertexEntry.active()) {
+                    activeCount++;
+                } else {
+                    LOG(INFO) << vertexEntry.vertexID() << " vertex has halted";
+                }
+            }
+            if (_running) {
+                return;
+            }
+        }
+        LOG(INFO) << "Finished executing vertex programs.";
+        
+        // ==================== send messages to other shards ====================
+        outCache.sendMessages();
+        size_t sendCount = outCache.sendMessageCount();
+        size_t receivedCount = _ctx->writeableIncomingCache()->receivedMessageCount();
+        if (activeCount == 0 && sendCount == 0 && receivedCount == 0) {
+            LOG(INFO) << "Worker seems to be done";
+            workerJobIsDone(true);
+        } else {
+            LOG(INFO) << "Worker send " << sendCount << " messages";
+            workerJobIsDone(false);
+        }
+    });
 
-  std::unique_ptr<rest::Job> job(
+  /*std::unique_ptr<rest::Job> job(
       new WorkerJob<V, E, M>(this, _ctx, _graphStore));
   int res = DispatcherFeature::DISPATCHER->addJob(job, true);
   if (res != TRI_ERROR_NO_ERROR) {
     LOG(ERR) << "Could not start worker job";
-  }
+  }*/
   LOG(INFO) << "Worker started new gss: " << gss;
 }
 
@@ -179,8 +218,10 @@ void Worker<V, E, M>::workerJobIsDone(bool allDone) {
 }
 
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::writeResults() {
-  /**/
+void Worker<V, E, M>::finalizeExecution(VPackSlice data) {
+  _running = false;
+  _workerPool.reset();
+    
   VPackBuilder b;
   b.openArray();
   auto it = _graphStore->vertexIterator();

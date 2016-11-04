@@ -41,7 +41,7 @@ using namespace arangodb::pregel;
 RestPregelHandler::RestPregelHandler(GeneralRequest* request, GeneralResponse* response)
 : RestVocbaseBaseHandler(request, response) {}
 
-RestHandler::status RestPregelHandler::execute() {
+RestStatus RestPregelHandler::execute() {
   try {    
     bool parseSuccess = true;
     std::shared_ptr<VPackBuilder> parsedBody =
@@ -59,7 +59,7 @@ RestHandler::status RestPregelHandler::execute() {
       if (!sExecutionNum.isInteger()) {
         LOG(ERR) << "Invalid execution number";
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-        return status::DONE;
+        return RestStatus::DONE;
       }
       
       unsigned int executionNumber = sExecutionNum.getUInt();
@@ -67,7 +67,7 @@ RestHandler::status RestPregelHandler::execute() {
         LOG(ERR) << "Invalid suffix";
         generateError(rest::ResponseCode::NOT_FOUND,
                       TRI_ERROR_HTTP_NOT_FOUND);
-        return status::DONE;
+        return RestStatus::DONE;
       } else if (suffix[0] == Utils::finishedGSSPath) {
         Conductor *exe = PregelFeature::instance()->conductor(executionNumber);
         if (exe) {
@@ -83,17 +83,17 @@ RestHandler::status RestPregelHandler::execute() {
           PregelFeature::instance()->addWorker(w, executionNumber);
         }
         w->nextGlobalStep(body);
-      } else if (suffix[0] == "messages") {
+      } else if (suffix[0] == Utils::messagesPath) {
         LOG(INFO) << "messages";
         IWorker *exe = PregelFeature::instance()->worker(executionNumber);
         if (exe) {
           exe->receivedMessages(body);
         }
-      } else if (suffix[0] == "writeResults") {
+      } else if (suffix[0] == Utils::finalizeExecutionPath) {
         IWorker *exe = PregelFeature::instance()->worker(executionNumber);
         if (exe) {
-          exe->writeResults();
-            PregelFeature::instance()->cleanup(executionNumber);
+          exe->finalizeExecution(body);
+          PregelFeature::instance()->cleanup(executionNumber);
         }
       }
       

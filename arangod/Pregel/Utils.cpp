@@ -37,7 +37,7 @@ std::string const Utils::apiPrefix = "/_api/pregel/";
 std::string const Utils::nextGSSPath = "nextGSS";
 std::string const Utils::finishedGSSPath = "finishedGSS";
 std::string const Utils::messagesPath = "messages";
-std::string const Utils::writeResultsPath = "writeResults";
+std::string const Utils::finalizeExecutionPath = "finalizeExecution";
 
 std::string const Utils::executionNumberKey = "exn";
 std::string const Utils::totalVertexCount = "vertexCount";

@@ -39,11 +39,11 @@ enum VertexActivationState {
 template <typename V, typename E, typename M>
 class OutgoingCache;
 template <typename V, typename E, typename M>
-class WorkerJob;
+class Worker;
 
 template <typename V, typename E, typename M>
 class VertexComputation {
-  friend class WorkerJob<V, E, M>;
+  friend class Worker<V, E, M>;
 
  private:
   unsigned int _gss;

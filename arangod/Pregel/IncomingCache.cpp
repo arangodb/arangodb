@@ -50,7 +50,6 @@ void IncomingCache<M>::clear() {
 
 template <typename M>
 void IncomingCache<M>::parseMessages(VPackSlice incomingMessages) {
-  MUTEX_LOCKER(locker, writeMutex);
 
   VPackValueLength length = incomingMessages.length();
   if (length % 2) {
@@ -60,11 +59,11 @@ void IncomingCache<M>::parseMessages(VPackSlice incomingMessages) {
   }
 
   VPackValueLength i = 0;
-  std::string vertexId;
+  std::string toValue;
   for (i = 0; i < length; i++) {
     VPackSlice current = incomingMessages.at(i);
     if (i % 2 == 0) {  // TODO support multiple recipients
-      vertexId = current.copyString();
+      toValue = current.copyString();
     } else {
       M newValue;
       bool sucess = _format->unwrapValue(current, newValue);
@@ -72,29 +71,25 @@ void IncomingCache<M>::parseMessages(VPackSlice incomingMessages) {
         LOG(WARN) << "Invalid message format supplied";
         continue;
       }
-
-      _receivedMessageCount++;
-      auto vmsg = _messages.find(vertexId);
-      if (vmsg != _messages.end()) {  // got a message for the same vertex
-        vmsg->second = _combiner->combine(vmsg->second, newValue);
-      } else {
-        _messages[vertexId] = newValue;
-      }
+      setDirect(toValue, newValue);
     }
   }
 }
 
 template <typename M>
-void IncomingCache<M>::setDirect(std::string const& vertexId, M const& data) {
-  MUTEX_LOCKER(locker, writeMutex);
-  _receivedMessageCount++;
-
-  auto vmsg = _messages.find(vertexId);
-  if (vmsg != _messages.end()) {
-    vmsg->second = data;  // TODO combine1!!!
-  } else {
-    _messages[vertexId] = data;
+void IncomingCache<M>::setDirect(std::string const& toValue, M const& newValue) {
+  {
+    CONDITION_LOCKER(guard, _writeCondition);
+    
+    _receivedMessageCount++;
+    auto vmsg = _messages.find(toValue);
+    if (vmsg != _messages.end()) {// got a message for the same vertex
+      vmsg->second = _combiner->combine(vmsg->second, newValue);
+    } else {
+      _messages[toValue] = newValue;
+    }
   }
+  _writeCondition.signal();
 }
 
 template <typename M>
