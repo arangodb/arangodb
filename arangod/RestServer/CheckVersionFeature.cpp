@@ -97,6 +97,10 @@ void CheckVersionFeature::start() {
 
   // and force shutdown
   server()->beginShutdown();
+  
+  LOG(DEBUG) << "checking version on an empty database";
+  usleep(1 * 1000 * 1000);  
+  TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
 }
 
 void CheckVersionFeature::checkVersion() {

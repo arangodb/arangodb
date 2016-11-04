@@ -187,6 +187,8 @@ struct FunctionDefiner {
                       true, &Functions::Like});
     add({"REGEX_TEST", "AQL_REGEX_TEST", "s,r|b", true, true, false, true,
                        true, &Functions::RegexTest});
+    add({"REGEX_REPLACE", "AQL_REGEX_REPLACE", "s,r,s|b", true, true, false, true,
+                       true, &Functions::RegexReplace});
     add({"LEFT", "AQL_LEFT", "s,n", true, true, false, true, true});
     add({"RIGHT", "AQL_RIGHT", "s,n", true, true, false, true, true});
     add({"TRIM", "AQL_TRIM", "s|ns", true, true, false, true, true});

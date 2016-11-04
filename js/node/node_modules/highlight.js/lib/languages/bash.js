@@ -26,7 +26,7 @@ module.exports = function(hljs) {
 
   return {
     aliases: ['sh', 'zsh'],
-    lexemes: /-?[a-z\.]+/,
+    lexemes: /-?[a-z\._]+/,
     keywords: {
       keyword:
         'if then else elif fi for while in do done case esac function',

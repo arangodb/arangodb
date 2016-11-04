@@ -434,7 +434,8 @@
         '    <option value="&gt;=">&gt;=</option>' +
         '    <option value="LIKE">LIKE</option>' +
         '    <option value="IN">IN</option>' +
-        '    <option value="NOT IN">NOT IN</option>' +
+        '    <option value="=~">NOT IN</option>' +
+        '    <option value="REGEX">REGEX</option>' +
         '</select>' +
         '<input id="attribute_value' + num +
         '" type="text" placeholder="Attribute value" ' +

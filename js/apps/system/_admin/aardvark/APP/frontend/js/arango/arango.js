@@ -181,6 +181,12 @@
         }, {
           label: 'Redo',
           letter: 'Ctrl/Cmd + Shift + Z'
+        }, {
+          label: 'Increase Font Size',
+          letter: 'Shift + Alt + Up'
+        }, {
+          label: 'Decrease Font Size',
+          letter: 'Shift + Alt + Down'
         }]
       },
       doceditor: {

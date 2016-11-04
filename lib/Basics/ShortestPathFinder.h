@@ -408,7 +408,8 @@ public:
 
   virtual ~PathFinder() {}
 
-  virtual bool shortestPath(VertexId& start, VertexId& target, Path& result) = 0;
+  virtual bool shortestPath(VertexId const& start, VertexId const& target, Path& result,
+                            std::function<void()> const& callback) = 0;
 };
 
 template <typename VertexId, typename EdgeId, typename EdgeWeight, typename Path>
@@ -487,12 +488,12 @@ class DynamicDistanceFinder : public PathFinder<VertexId, Path> {
 
    public:
     SearcherTwoThreads(DynamicDistanceFinder* pathFinder, ThreadInfo& myInfo,
-                       ThreadInfo& peerInfo, VertexId& start,
+                       ThreadInfo& peerInfo, VertexId const& start,
                        ExpanderFunction expander, std::string const& id)
         : _pathFinder(pathFinder),
           _myInfo(myInfo),
           _peerInfo(peerInfo),
-          _start(std::move(start)),
+          _start(start),
           _expander(expander),
           _id(id) {}
 
@@ -657,7 +658,7 @@ class DynamicDistanceFinder : public PathFinder<VertexId, Path> {
 
    public:
     Searcher(DynamicDistanceFinder* pathFinder, ThreadInfo& myInfo, ThreadInfo& peerInfo,
-             VertexId& start, ExpanderFunction expander, std::string const& id)
+             VertexId const& start, ExpanderFunction expander, std::string const& id)
         : _pathFinder(pathFinder),
           _myInfo(myInfo),
           _peerInfo(peerInfo),
@@ -806,7 +807,8 @@ class DynamicDistanceFinder : public PathFinder<VertexId, Path> {
   // Caller has to free the result
   // If this returns true there is a path, if this returns false there is no
   // path
-  bool shortestPath(VertexId& start, VertexId& target, Path& result) override {
+  bool shortestPath(VertexId const& start, VertexId const& target, 
+                    Path& result, std::function<void()> const& callback) override {
     // For the result:
     result.clear();
     _highscoreSet = false;
@@ -837,12 +839,20 @@ class DynamicDistanceFinder : public PathFinder<VertexId, Path> {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
+    int counter = 0;
+
     while (!_bingo) {
       if (!forwardSearcher.oneStep()) {
         break;
       }
       if (_bidirectional && !backwardSearcher->oneStep()) {
         break;
+      }
+
+      if (++counter == 10) {
+        // check for abortion
+        callback();
+        counter = 0;
       }
     }
 
@@ -1122,7 +1132,8 @@ class ConstDistanceFinder : public PathFinder<VertexId, Path> {
     clearVisited();
   }
 
-  bool shortestPath(VertexId& start, VertexId& end, Path& result) override {
+  bool shortestPath(VertexId const& start, VertexId const& end, 
+                    Path& result, std::function<void()> const& callback) override {
     result.clear();
     // Init
     if (start == end) {
@@ -1146,6 +1157,8 @@ class ConstDistanceFinder : public PathFinder<VertexId, Path> {
     std::vector<VertexId> neighbors;
     std::deque<VertexId> nextClosure;
     while (!_leftClosure.empty() && !_rightClosure.empty()) {
+      callback();
+
       edges.clear();
       neighbors.clear();
       nextClosure.clear();

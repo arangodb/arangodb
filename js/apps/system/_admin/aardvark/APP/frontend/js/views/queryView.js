@@ -1155,6 +1155,15 @@
         self.resize();
       });
 
+      var setOutputEditorFontSize = function (size) {
+        _.each($('.outputEditors'), function (value) {
+          var id = $(value).children().first().attr('id');
+          id = id.replace('Wrapper', '');
+          var outputEditor = ace.edit(id);
+          outputEditor.setFontSize(size);
+        });
+      };
+
       var editors = [this.aqlEditor, this.bindParamAceEditor];
       _.each(editors, function (editor) {
         editor.commands.addCommand({
@@ -1162,6 +1171,30 @@
           bindKey: {win: 'Ctrl-Shift-C', linux: 'Ctrl-Shift-C', mac: 'Command-Shift-C'},
           exec: function (editor) {
             editor.toggleCommentLines();
+          },
+          multiSelectAction: 'forEach'
+        });
+
+        editor.commands.addCommand({
+          name: 'increaseFontSize',
+          bindKey: {win: 'Shift-Alt-Up', linux: 'Shift-Alt-Up', mac: 'Shift-Alt-Up'},
+          exec: function (editor) {
+            var newSize = parseInt(self.aqlEditor.getFontSize().match(/\d+/)[0]) + 1;
+            newSize += 'pt';
+            self.aqlEditor.setFontSize(newSize);
+            setOutputEditorFontSize(newSize);
+          },
+          multiSelectAction: 'forEach'
+        });
+
+        editor.commands.addCommand({
+          name: 'decreaseFontSize',
+          bindKey: {win: 'Shift-Alt-Down', linux: 'Shift-Alt-Down', mac: 'Shift-Alt-Down'},
+          exec: function (editor) {
+            var newSize = parseInt(self.aqlEditor.getFontSize().match(/\d+/)[0]) - 1;
+            newSize += 'pt';
+            self.aqlEditor.setFontSize(newSize);
+            setOutputEditorFontSize(newSize);
           },
           multiSelectAction: 'forEach'
         });
@@ -1693,6 +1726,8 @@
       if (window.location.hash === '#queries') {
         var outputEditor = ace.edit('outputEditor' + counter);
 
+        var success;
+
         // handle explain query case
         if (!data.msg) {
           // handle usual query
@@ -1710,21 +1745,30 @@
             $('.outputEditorWrapper .tableWrapper').css('max-height', maxHeight);
 
             $('#outputEditor' + counter).hide();
+            success = true;
           } else if (result.defaultType === 'graph') {
             $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after('<div id="outputGraph' + counter + '"></div>');
             $('#outputGraph' + counter).show();
-            self.renderOutputGraph(result, counter);
+            success = self.renderOutputGraph(result, counter);
 
-            $('#outputEditor' + counter).hide();
+            if (success) {
+              $('#outputEditor' + counter).hide();
 
-            $('#outputEditorWrapper' + counter + ' #copy2gV').show();
-            $('#outputEditorWrapper' + counter + ' #copy2gV').bind('click', function () {
-              self.showResultInGraphViewer(result, counter);
-            });
+              $('#outputEditorWrapper' + counter + ' #copy2gV').show();
+              $('#outputEditorWrapper' + counter + ' #copy2gV').bind('click', function () {
+                self.showResultInGraphViewer(result, counter);
+              });
+            } else {
+              $('#outputGraph' + counter).remove();
+            }
           }
 
           // add active class to choosen display method
-          $('#' + result.defaultType + '-switch').addClass('active').css('display', 'inline');
+          if (success !== false) {
+            $('#' + result.defaultType + '-switch').addClass('active').css('display', 'inline');
+          } else {
+            $('#json-switch').addClass('active').css('display', 'inline');
+          }
 
           var appendSpan = function (value, icon, css) {
             if (!css) {
@@ -2062,6 +2106,11 @@
 
       var found = false;
 
+      if (!Array.isArray(result)) {
+        toReturn.defaultType = 'json';
+        return toReturn;
+      }
+
       // check if result could be displayed as graph
       // case a) result has keys named vertices and edges
       if (result[0]) {
@@ -2098,7 +2147,7 @@
           var totalb = result.length;
 
           _.each(result, function (obj) {
-            if (obj._from && obj._to) {
+            if (obj._from && obj._to && obj._id) {
               hitsb++;
             }
           });
@@ -2284,7 +2333,9 @@
         id: '#outputGraph' + counter,
         data: data
       });
-      this.graphViewer.renderAQLPreview();
+      var success = this.graphViewer.renderAQLPreview();
+
+      return success;
     },
 
     showResultInGraphViewer: function (data, counter) {

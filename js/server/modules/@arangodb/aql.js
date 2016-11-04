@@ -352,7 +352,7 @@ msPerUnit.year = msPerUnit.y;
 function clearCaches () {
   'use strict';
 
-  RegexCache = { 'i': { }, '': { } };
+  RegexCache = { 'gi': { }, 'g': { }, 'i': { }, '': { } };
   LikeCache = { 'i': { }, '': { } };
   ISODurationCache = { };
 }
@@ -2162,7 +2162,33 @@ function AQL_REGEX_TEST (value, regex, caseInsensitive) {
 
     return RegexCache[modifiers][regex].test(AQL_TO_STRING(value));
   } catch (err) {
-    WARN('REGEX', INTERNAL.errors.ERROR_QUERY_INVALID_REGEX);
+    WARN('REGEX_TEST', INTERNAL.errors.ERROR_QUERY_INVALID_REGEX);
+    return false;
+  }
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief replaces a substring in a string, using a regex
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_REGEX_REPLACE (value, regex, replacement, caseInsensitive) {
+  'use strict';
+
+  var modifiers = 'g';
+  if (caseInsensitive) {
+    modifiers += 'i';
+  }
+
+  regex = AQL_TO_STRING(regex);
+
+  try {
+    if (RegexCache[modifiers][regex] === undefined) {
+      RegexCache[modifiers][regex] = COMPILE_REGEX(regex, modifiers);
+    }
+
+    return AQL_TO_STRING(value).replace(RegexCache[modifiers][regex], AQL_TO_STRING(replacement));
+  } catch (err) {
+    WARN('REGEX_REPLACE', INTERNAL.errors.ERROR_QUERY_INVALID_REGEX);
     return false;
   }
 }
@@ -5560,6 +5586,7 @@ exports.AQL_SUBSTRING = AQL_SUBSTRING;
 exports.AQL_CONTAINS = AQL_CONTAINS;
 exports.AQL_LIKE = AQL_LIKE;
 exports.AQL_REGEX_TEST = AQL_REGEX_TEST;
+exports.AQL_REGEX_REPLACE = AQL_REGEX_REPLACE;
 exports.AQL_LEFT = AQL_LEFT;
 exports.AQL_RIGHT = AQL_RIGHT;
 exports.AQL_TRIM = AQL_TRIM;

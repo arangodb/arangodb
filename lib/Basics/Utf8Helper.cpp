@@ -24,8 +24,9 @@
 
 #include "Utf8Helper.h"
 #include "Logger/Logger.h"
-#include "Basics/tri-strings.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/directories.h"
+#include "Basics/tri-strings.h"
 #include "unicode/normalizer2.h"
 #include "unicode/brkiter.h"
 #include "unicode/ucasemap.h"
@@ -520,8 +521,9 @@ RegexMatcher* Utf8Helper::buildMatcher(std::string const& pattern) {
 /// @brief whether or not value matches a regex
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Utf8Helper::matches(RegexMatcher* matcher, char const* value,
-                         size_t valueLength, bool partial, bool& error) {
+bool Utf8Helper::matches(RegexMatcher* matcher, 
+                         char const* value, size_t valueLength, 
+                         bool partial, bool& error) {
   TRI_ASSERT(value != nullptr);
   UnicodeString v = UnicodeString::fromUTF8(
       StringPiece(value, static_cast<int32_t>(valueLength)));
@@ -546,6 +548,47 @@ bool Utf8Helper::matches(RegexMatcher* matcher, char const* value,
   }
 
   return (result ? true : false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replace value using a regex
+////////////////////////////////////////////////////////////////////////////////
+
+std::string Utf8Helper::replace(RegexMatcher* matcher, 
+                                char const* value, size_t valueLength, 
+                                char const* replacement, size_t replacementLength,
+                                bool partial, bool& error) {
+  TRI_ASSERT(value != nullptr);
+  UnicodeString v = UnicodeString::fromUTF8(
+      StringPiece(value, static_cast<int32_t>(valueLength)));
+  
+  UnicodeString r = UnicodeString::fromUTF8(
+      StringPiece(replacement, static_cast<int32_t>(replacementLength)));
+
+  matcher->reset(v);
+
+  UErrorCode status = U_ZERO_ERROR;
+  error = false;
+
+  TRI_ASSERT(matcher != nullptr);
+  UnicodeString result;
+
+  if (partial) {
+    // partial match
+    result = matcher->replaceFirst(r, status);
+  } else {
+    // full match
+    result = matcher->replaceAll(r, status);
+  }
+
+  if (U_FAILURE(status)) {
+    error = true;
+    return StaticStrings::Empty;
+  }
+    
+  std::string utf8;
+  result.toUTF8String(utf8);
+  return utf8;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

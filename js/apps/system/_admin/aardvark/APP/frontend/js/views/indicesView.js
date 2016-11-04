@@ -257,7 +257,7 @@
                 arangoHelper.deleteAardvarkJob(job);
               } else if (data.responseJSON.code === 204) {
                 // job is still in quere or pending
-                arangoHelper.arangoMessage('Index', 'There is at least one new index in the queue or in the process of beeing created.');
+                arangoHelper.arangoMessage('Index', 'There is at least one new index in the queue or in the process of being created.');
               }
             } else {
               arangoHelper.deleteAardvarkJob(job);
