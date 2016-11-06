@@ -3,11 +3,6 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-
-var _create = require('babel-runtime/core-js/object/create');
-
-var _create2 = _interopRequireDefault(_create);
-
 exports.badVarPosMessage = badVarPosMessage;
 exports.VariablesInAllowedPosition = VariablesInAllowedPosition;
 
@@ -19,10 +14,8 @@ var _typeComparators = require('../../utilities/typeComparators');
 
 var _typeFromAST = require('../../utilities/typeFromAST');
 
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
 function badVarPosMessage(varName, varType, expectedType) {
-  return 'Variable "$' + varName + '" of type "' + varType + '" used in position ' + ('expecting type "' + expectedType + '".');
+  return 'Variable "$' + varName + '" of type "' + String(varType) + '" used in ' + ('position expecting type "' + String(expectedType) + '".');
 }
 
 /**
@@ -39,12 +32,12 @@ function badVarPosMessage(varName, varType, expectedType) {
  */
 
 function VariablesInAllowedPosition(context) {
-  var varDefMap = (0, _create2.default)(null);
+  var varDefMap = Object.create(null);
 
   return {
     OperationDefinition: {
       enter: function enter() {
-        varDefMap = (0, _create2.default)(null);
+        varDefMap = Object.create(null);
       },
       leave: function leave(operation) {
         var usages = context.getRecursiveVariableUsages(operation);
