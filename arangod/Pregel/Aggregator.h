@@ -23,7 +23,7 @@
 #include <cstdint>
 #include <string>
 
-#include <velocypack/Iterator.h>
+#include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
 
 #ifndef ARANGODB_PREGEL_AGGREGATOR_H
@@ -32,14 +32,16 @@
 namespace arangodb {
 namespace pregel {
 
-template <class T>
+template 
 class Aggregator {
  public:
   Aggregator(const Aggregator&) = delete;
   Aggregator& operator=(const Aggregator&) = delete;
 
-  virtual T const& getValue() const = 0;
-  virtual void reduce(T const& otherValue) = 0;
+  virtual void const* getValue() const = 0;
+  virtual void reduce( void const* otherValue) = 0;
+  virtual void parse(VPackSlice otherValue) = 0;
+  virtual void serialize(VPackBuilder *b) = 0;
   std::string name() { return _name; }
 
  protected:
@@ -49,17 +51,24 @@ class Aggregator {
   std::string _name;
 };
 
-class MinIntegerAggregator : public Aggregator<int64_t> {
-  MinIntegerAggregator(std::string const& name, int64_t init)
+class FloatMinAggregator : public Aggregator {
+  MinIntegerAggregator(std::string const& name, float init)
       : Aggregator(name), _value(init) {}
 
-  int64_t const& getValue() const override { return _value; };
-  void reduce(int64_t const& otherValue) override {
-    if (otherValue < _value) _value = otherValue;
+  void const* getValue() const override { return &_value; };
+  void reduce(void const* otherValue) override {
+    float other = *((float*)otherValue);
+    if (other < _value) _value = other;
+  };
+  void parse(VPackSlice otherValue) override {
+    this->reduce(otherValue.getInteger());
+  };
+  void serialize(VPackBuilder *b) override {
+    b.add(name(), _value);
   };
 
  private:
-  int64_t _value;
+  float _value;
 };
 }
 }

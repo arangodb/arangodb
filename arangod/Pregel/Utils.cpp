@@ -43,7 +43,7 @@ std::string const Utils::executionNumberKey = "exn";
 std::string const Utils::totalVertexCount = "vertexCount";
 std::string const Utils::totalEdgeCount = "edgeCount";
 
-std::string const Utils::shardPlanMapKey = "shardPlanMap";
+std::string const Utils::collectionPlanIdMapKey = "collectionPlanIdMap";
 std::string const Utils::vertexShardsListKey = "vertexShards";
 std::string const Utils::edgeShardsListKey = "edgeShards";
 
@@ -55,6 +55,9 @@ std::string const Utils::globalSuperstepKey = "gss";
 std::string const Utils::messagesKey = "msgs";
 std::string const Utils::senderKey = "sender";
 std::string const Utils::doneKey = "done";
+
+std::string const Utils::parameterMapKey = "params";
+std::string const Utils::aggregatorsKey = "aggregators";
 
 std::string const Utils::edgeShardingKey = "_vertex";
 

@@ -38,9 +38,9 @@ WorkerState<V, E, M>::WorkerState(Algorithm<V, E, M>* algo, DatabaseID dbname,
   VPackSlice vertexShardIDs = params.get(Utils::vertexShardsListKey);
   VPackSlice edgeShardIDs = params.get(Utils::edgeShardsListKey);
   VPackSlice execNum = params.get(Utils::executionNumberKey);
-  VPackSlice planIDs = params.get(Utils::shardPlanMapKey);
+  VPackSlice collectionPlanIdMap = params.get(Utils::collectionPlanIdMapKey);
   if (!coordID.isString() || !vertexShardIDs.isArray() ||
-      !edgeShardIDs.isArray() || !execNum.isInteger()) {
+      !edgeShardIDs.isArray() || !execNum.isInteger() || !collectionPlanIdMap.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Supplied bad parameters to worker");
   }
@@ -63,9 +63,9 @@ WorkerState<V, E, M>::WorkerState(Algorithm<V, E, M>* algo, DatabaseID dbname,
     LOG(INFO) << name;
   }
   
-      for (auto const& it :  VPackObjectIterator(planIDs)) {
-      
-      }
+  for (auto const& it :  VPackObjectIterator(collectionPlanIdMap)) {
+    _collectionPlanIdMap[it.key.toString()] = it.value.toString();
+  }
 
   auto format = algo->messageFormat();
   auto combiner = algo->messageCombiner();

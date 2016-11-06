@@ -111,5 +111,5 @@ RestStatus RestPregelHandler::execute() {
     LOG(ERR) << "Exception";
   }
     
-  return status::DONE;
+  return RestStatus::DONE;
 }

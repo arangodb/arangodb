@@ -57,11 +57,11 @@ class Worker : public IWorker {
   void finalizeExecution(VPackSlice data) override;
 
  private:
-  // Mutex _messagesMutex; TODO figure this out
+  bool _running = true;
   std::shared_ptr<WorkerState<V, E, M>> _ctx;
   std::shared_ptr<GraphStore<V, E>> _graphStore;
   std::unique_ptr<basics::ThreadPool> _workerPool;
-  bool _running = true;
+  std::vector <std::string, std::unique_ptr<Aggregator>> _aggregators;
 
   void workerJobIsDone(bool allVerticesHalted);
 };

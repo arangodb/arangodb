@@ -71,7 +71,7 @@ std::shared_ptr<MessageFormat<int64_t>> SCCAlgorithm::messageFormat() const {
 
 std::shared_ptr<MessageCombiner<int64_t>> SCCAlgorithm::messageCombiner()
     const {
-  return std::shared_ptr<MinIntegerCombiner>(new IntegerMinCombiner());
+  return std::shared_ptr<MinIntegerCombiner>(new MinIntegerCombiner());
 }
 
 struct SCCComputation : public VertexComputation<int64_t, int64_t, int64_t> {

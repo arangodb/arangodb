@@ -25,7 +25,7 @@
 
 #include <velocypack/velocypack-aliases.h>
 #include "Basics/Common.h"
-#include "Cluster/CLusterInfo.h"
+#include "Cluster/ClusterInfo.h"
 
 #include "Algorithm.h"
 
@@ -78,6 +78,8 @@ class WorkerState {
   }
 
   std::shared_ptr<Algorithm<V, E, M>> algorithm() { return _algorithm; }
+  
+  std::map<CollectionID, std::string> const& collectionPlanIdMap() {return _collectionPlanIdMap;};
 
  private:
   /// @brief guard to make sure the database is not dropped while used by us
@@ -89,6 +91,7 @@ class WorkerState {
   std::string _coordinatorId;
   const std::string _database;
   std::vector<ShardID> _localVertexShardIDs, _localEdgeShardIDs;
+  std::map<std::string, std::string> _collectionPlanIdMap;
 
   std::shared_ptr<IncomingCache<M>> _readCache, _writeCache;
   void swapIncomingCaches();  // only call when message receiving is locked

@@ -55,12 +55,10 @@ class OutgoingCache {
   /// @brief two stage map: shard -> vertice -> message
   std::unordered_map<ShardID, std::unordered_map<std::string, M>> _map;
   std::shared_ptr<WorkerState<V, E, M>> _state;
-  std::shared_ptr<LogicalCollection> _collInfo;
   ClusterInfo* _ci;
   std::string _baseUrl;
   /// @brief current number of vertices stored
 
-  std::map<std::string, std::string> _collectionPlanIdMap;
   size_t _containedMessages = 0;
   size_t _sendMessages = 0;
 };

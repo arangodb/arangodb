@@ -46,10 +46,11 @@ class Utils {
   static std::string const executionNumberKey;
   static std::string const algorithmKey;
   static std::string const coordinatorIdKey;
-    
+  
   static std::string const totalVertexCount;
   static std::string const totalEdgeCount;
-  static std::string const shardPlanMapKey;
+
+  static std::string const collectionPlanIdMapKey;
   static std::string const vertexShardsListKey;
   static std::string const edgeShardsListKey;
 
@@ -57,6 +58,9 @@ class Utils {
   static std::string const messagesKey;
   static std::string const senderKey;
   static std::string const doneKey;
+
+  static std::string const parameterMapKey;
+  static std::string const aggregatorsKey;
 
   static std::string const edgeShardingKey;
   static std::string baseUrl(std::string dbName);

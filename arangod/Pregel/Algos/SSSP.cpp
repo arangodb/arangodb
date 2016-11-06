@@ -66,7 +66,7 @@ std::shared_ptr<MessageFormat<int64_t>> SSSPAlgorithm::messageFormat() const {
 
 std::shared_ptr<MessageCombiner<int64_t>> SSSPAlgorithm::messageCombiner()
     const {
-  return std::shared_ptr<MinIntegerCombiner>(new MinIntegerCombiner());
+  return std::shared_ptr<MinIntegerCombiner>(new IntegerMinCombiner());
 }
 
 std::shared_ptr<VertexComputation<int64_t, int64_t, int64_t>>

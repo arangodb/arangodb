@@ -20,25 +20,18 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cstdint>
+#include "Pregel/MessageCombiner.h"
 
-#ifndef ARANGODB_PREGEL_COMBINER_H
-#define ARANGODB_PREGEL_COMBINER_H 1
+#ifndef ARANGODB_PREGEL_FLOAT_SUM_COMBINER_H
+#define ARANGODB_PREGEL_FLOAT_SUM_COMBINER_H 1
 namespace arangodb {
 namespace pregel {
 
-// specify serialization, whatever
-template <class M>
-struct MessageCombiner {
-  virtual ~MessageCombiner() {}
-  virtual M combine(M const& firstValue, M const& secondValue) const = 0;
-};
-
-struct IntegerMinCombiner : public MessageCombiner<int64_t> {
-  IntegerMinCombiner() {}
-  int64_t combine(int64_t const& firstValue,
-                  int64_t const& secondValue) const override {
-    return firstValue < secondValue ? firstValue : secondValue;
+struct FloatSumCombiner : public MessageCombiner<float> {
+  MinIntegerCombiner() {}
+  float combine(float const& firstValue,
+                  float const& secondValue) const override {
+    return firstValue + secondValue;
   };
 };
 }

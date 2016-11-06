@@ -55,11 +55,13 @@ class Conductor {
   Mutex _finishedGSSMutex;  // prevents concurrent calls to finishedGlobalStep
   VocbaseGuard _vocbaseGuard;
   const unsigned int _executionNumber;
+  std::string _algorithm;
   
   ExecutionState _state = ExecutionState::RUNNING;
+
+  std::vector <std::string, std::unique_ptr<Aggregator>> _aggregators;
   std::vector<std::shared_ptr<LogicalCollection>> _vertexCollections, _edgeCollections;
   std::map<ServerID, std::vector<ShardID>> _vertexServerMap;
-  std::string _algorithm;
 
   unsigned int _globalSuperstep;
   int32_t _dbServerCount = 0;

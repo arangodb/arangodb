@@ -87,6 +87,7 @@ Worker<V, E, M>::~Worker() {
   LOG(INFO) << "Called ~Worker()";
   const size_t threadNum = 1;
   _workerPool.reset(new ThreadPool(static_cast<size_t>(threadNum), "Pregel Worker"));
+  _ctx->algorithm()->aggregators(_aggregators);
 }
 
 /// @brief Setup next superstep

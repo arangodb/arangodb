@@ -36,6 +36,9 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Algorithm.h"
+#include "Pregel/Algos/PageRank.h"
+
 using namespace arangodb;
 using namespace arangodb::pregel;
 
@@ -52,6 +55,14 @@ Conductor::Conductor(
   bool isCoordinator = ServerState::instance()->isCoordinator();
   assert(isCoordinator);
   LOG(INFO) << "constructed conductor";
+
+  if (algorithm == "sssp") {
+  } else if (algorithm == "pagerank") {
+    algos::PageRankAlgorithm algo();
+    algo.aggregators(_aggregators);
+  } else {
+    LOG(ERR) << "Unsupported algorithm";
+  }
 }
 
 Conductor::~Conductor() {
@@ -71,8 +82,7 @@ static void printResults(std::vector<ClusterCommRequest> const& requests) {
 }
 
 static void resolveShards(LogicalCollection const* collection,
-                                 std::map<ServerID, std::vector<ShardID>>& serverMap,
-                                 std::map<ServerID, std::map<ShardID, std::string>> &serverShardPlanIdMap) {
+                                 std::map<ServerID, std::vector<ShardID>>& serverMap) {
     
   ClusterInfo* ci = ClusterInfo::instance();
   std::shared_ptr<std::vector<ShardID>> shardIDs =
@@ -83,7 +93,6 @@ static void resolveShards(LogicalCollection const* collection,
       ci->getResponsibleServer(shard);
       if (servers->size() > 0) {
           serverMap[(*servers)[0]].push_back(shard);
-        serverShardPlanIdMap[(*servers)[0]][shard] = collection->planId_as_string();
       }
   }
 }
@@ -91,23 +100,25 @@ static void resolveShards(LogicalCollection const* collection,
 void Conductor::start() {
   ClusterComm* cc = ClusterComm::instance();
   int64_t vertexCount = 0, edgeCount = 0;
-  std::map<ServerID, std::map<ShardID, std::string>> serverShardPlanIdMap;
+  std::map<CollectionID, std::string> collectionPlanIdMap;
   std::map<ServerID, std::vector<ShardID>> edgeServerMap;
   
   for (auto collection : _vertexCollections) {
+    collectionPlanIdMap[collection->name()] = collection->planId_as_string();
     size_t cc = Utils::countDocuments(_vocbaseGuard.vocbase(), collection->name());
     if (cc > 0) {
       vertexCount += cc;
-      resolveShards(collection.get(), _vertexServerMap, serverShardPlanIdMap);
+      resolveShards(collection.get(), _vertexServerMap);
     } else {
       LOG(WARN) << "Collection does not contain vertices";
     }
   }
   for (auto collection : _edgeCollections) {
+    collectionPlanIdMap[collection->name()] = collection->planId_as_string();
     size_t cc = Utils::countDocuments(_vocbaseGuard.vocbase(), collection->name());
     if (cc > 0) {
       edgeCount += cc;
-      resolveShards(collection.get(), edgeServerMap, serverShardPlanIdMap);
+      resolveShards(collection.get(), edgeServerMap);
     } else {
       LOG(WARN) << "Collection does not contain edges";
     }
@@ -147,9 +158,9 @@ void Conductor::start() {
       b.add(VPackValue(eit));
     }
     b.close();
-    b.add(Utils::shardPlanMapKey, VPackValue(VPackValueType::Object));
-    for (auto const& shardPair : serverShardPlanIdMap[it.first]) {
-      b.add(shardPair.first, VPackValue(shardPair.second));
+    b.add(Utils::collectionPlanIdMapKey, VPackValue(VPackValueType::Object));
+    for (auto const& pair : collectionPlanIdMap) {
+      b.add(pair.first, VPackValue(pair.second));
     }
     b.close();
     b.close();
@@ -174,8 +185,20 @@ void Conductor::finishedGlobalStep(VPackSlice& data) {
     LOG(WARN) << "Conductor did not expect another finishedGlobalStep call";
     return;
   }
-
   _responseCount++;
+
+  VPackSlice aggValues = data.get(Utils::aggregatorsKey);
+  if (aggValues.isObject()) {
+    for (std::unique_ptr<Aggregator> &aggregator : _aggregators) {
+        VPackSlice val = aggValues.get(aggregator->name())
+        if (!val.isNone()) {
+          aggregator->parse(val);
+        }
+    }
+  }
+  
+
+
   VPackSlice isDone = data.get(Utils::doneKey);
   if (isDone.isBool() && isDone.getBool()) {
     _doneCount++;

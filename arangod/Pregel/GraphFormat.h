@@ -75,6 +75,33 @@ class IntegerGraphFormat : public GraphFormat<int64_t, int64_t> {
   int64_t readVertexData(void* ptr) override { return *((int64_t*)ptr); }
   int64_t readEdgeData(void* ptr) override { return *((int64_t*)ptr); }
 };
+
+class FloatGraphFormat : public GraphFormat<float, float> {
+  const std::string _field;
+  const float _vDefault, _eDefault;
+
+ public:
+  IntegerGraphFormat(std::string const& field, float vertexNull,
+                     float edgeNull)
+      : _field(field), _vDefault(vertexNull), _eDefault(edgeNull) {}
+
+  size_t copyVertexData(VPackSlice document, void* targetPtr,
+                        size_t maxSize) override {
+    VPackSlice val = document.get(_field);
+    *((float*)targetPtr) = val.isInteger() ? val.getInt() : _vDefault;
+    return sizeof(float);
+  }
+
+  size_t copyEdgeData(VPackSlice document, void* targetPtr,
+                      float maxSize) override {
+    VPackSlice val = document.get(_field);
+    *((float*)targetPtr) = val.isInteger() ? val.getInt() : _eDefault;
+    return sizeof(float);
+  }
+
+  float readVertexData(void* ptr) override { return *((float*)ptr); }
+  float readEdgeData(void* ptr) override { return *((float*)ptr); }
+};
 }
 }
 #endif

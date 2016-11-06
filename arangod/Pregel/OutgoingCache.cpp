@@ -54,19 +54,26 @@ OutgoingCache<V, E, M>::~OutgoingCache() {
 
 template <typename V, typename E, typename M>
 void OutgoingCache<V, E, M>::clear() {
-  // TODO better way?
-  /*for (auto const& it : _map) {
-    for (auto const& it2 : it.second) {
-      it2.second->clear();  // clears VPackBuilder
-    }
-  }*/
   _map.clear();
   _containedMessages = 0;
 }
 
-static void resolveResponsibleShard(ClusterInfo* ci, LogicalCollection* info,
-                                    std::string const& vertexKey,
-                                    std::string& responsibleShard) {
+static inline LogicalCollection* resolveCollection(ClusterInfo* ci,
+                                            std::string const& database,
+                                            std::string const& collectionName,
+                                            std::map<std::string, std::string> const& collectionPlanIdMap) {
+  auto const& it = collectionPlanIdMap.find(collectionName);
+  if (it == collectionPlanIdMap.end()) {
+    LOG(ERR) << "Collection this messages is going to is unkown";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
+  }
+  std::shared_ptr<LogicalCollection> collectionInfo(ci->getCollection(database, it->second));
+  return collectionInfo.get();
+}
+
+static inline void resolveShard(ClusterInfo* ci, LogicalCollection* info,
+                         std::string const& vertexKey,
+                         std::string& responsibleShard) {
   bool usesDefaultShardingAttributes;
   VPackBuilder partial;
   partial.openObject();
@@ -86,15 +93,16 @@ static void resolveResponsibleShard(ClusterInfo* ci, LogicalCollection* info,
 template <typename V, typename E, typename M>
 void OutgoingCache<V, E, M>::sendMessageTo(std::string const& toValue,
                                            M const& data) {
-  assert(_combiner);
-  std::string _key = Utils::vertexKeyFromToValue(toValue);
-  std::string collectionName = Utils::collectionFromToValue(toValue);
   
+  std::size_t pos = toValue.find('/');
+  std::string _key = toValue.substr(pos + 1, toValue.length() - pos - 1);
+  std::string collectionName = toValue.substr(0, pos);
   LOG(INFO) << "Adding outgoing messages for " << collectionName << "/" << _key;
-  std::shared_ptr<LogicalCollection> collectionInfo(_ci->getCollection(_state->database(),
-                                                                       collectionName));
+
+  LogicalCollection *coll =  resolveCollection(_ci, _state->database(),
+                                               collectionName, _state->collectionPlanIdMap());
   ShardID responsibleShard;
-  resolveResponsibleShard(_ci, _collInfo.get(), _key, responsibleShard);
+  resolveShard(_ci, coll, _key, responsibleShard);
   LOG(INFO) << "Responsible shard: " << responsibleShard;
 
   std::vector<ShardID> const& localShards = _state->localVertexShardIDs();

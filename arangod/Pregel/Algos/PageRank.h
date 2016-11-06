@@ -20,27 +20,28 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cstdint>
+#ifndef ARANGODB_PREGEL_ALGOS_SSSP_H
+#define ARANGODB_PREGEL_ALGOS_SSSP_H 1
 
-#ifndef ARANGODB_PREGEL_COMBINER_H
-#define ARANGODB_PREGEL_COMBINER_H 1
+#include "Pregel/Algorithm.h"
+
 namespace arangodb {
 namespace pregel {
+namespace algos {
 
-// specify serialization, whatever
-template <class M>
-struct MessageCombiner {
-  virtual ~MessageCombiner() {}
-  virtual M combine(M const& firstValue, M const& secondValue) const = 0;
-};
+/// PageRank
+ struct PageRankAlgorithm : public Algorithm<float, float, float> {
+ public:
+  SCCAlgorithm() : Algorithm("PageRank") {}
 
-struct IntegerMinCombiner : public MessageCombiner<int64_t> {
-  IntegerMinCombiner() {}
-  int64_t combine(int64_t const& firstValue,
-                  int64_t const& secondValue) const override {
-    return firstValue < secondValue ? firstValue : secondValue;
-  };
+  void aggregators(std::vector<std::unique_ptr<Aggregator>> &aggregators) override;
+  std::shared_ptr<GraphFormat<float, float>> inputFormat() const override;
+  std::shared_ptr<MessageFormat<float>> messageFormat() const override;
+  std::shared_ptr<MessageCombiner<float>> messageCombiner() const override;
+  std::shared_ptr<VertexComputation<float, float, float>>
+  createComputation() const override;
 };
+}
 }
 }
 #endif

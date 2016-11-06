@@ -363,6 +363,7 @@ SET(ARANGOD_SOURCES
   Wal/Slots.cpp
   Wal/SynchronizerThread.cpp
   Pregel/Algorithm.cpp
+  Pregel/Aggregator.cpp
   Pregel/Conductor.cpp
   Pregel/PregelFeature.cpp
   Pregel/IncomingCache.cpp
@@ -376,7 +377,7 @@ SET(ARANGOD_SOURCES
   Pregel/MessageFormat.cpp
   Pregel/ResultWriter.cpp
   Pregel/Algos/SSSP.cpp
-  Pregel/Algos/SCC.cpp
+  Pregel/Algos/PageRank.cpp
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}
 )
 
