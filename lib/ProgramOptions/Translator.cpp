@@ -33,7 +33,7 @@ std::unordered_map<std::string, std::string> environment;
 void arangodb::options::DefineEnvironment(std::string const& keyValues) {
   std::vector<std::string> kvs = basics::StringUtils::split(keyValues, ',', '\\');
 
-  for (auto keyValue : kvs) {
+  for (auto const& keyValue : kvs) {
     std::string key;
     std::string value;
 
