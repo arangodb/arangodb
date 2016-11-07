@@ -72,7 +72,6 @@ VppCommTask::VppCommTask(EventLoop loop, GeneralServer* server,
   _readBuffer.reserve(
       _bufferLength);  // ATTENTION <- this is required so we do not
                        // loose information during a resize
-                       // connectionStatisticsAgentSetVpp();
   _agents.emplace(std::make_pair(0UL, RequestStatisticsAgent(true)));
   getAgent(0UL)->acquire();
 }

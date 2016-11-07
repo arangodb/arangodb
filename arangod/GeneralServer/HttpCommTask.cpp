@@ -58,14 +58,13 @@ HttpCommTask::HttpCommTask(EventLoop loop, GeneralServer* server,
       _allowMethodOverride(GeneralServerFeature::allowMethodOverride()),
       _denyCredentials(true),
       _newRequest(true),
-      _requestType(rest::RequestType::ILLEGAL),  // TODO(fc) remove
-      _fullUrl(),                                // TODO(fc) remove
-      _origin(),                                 // TODO(fc) remove
+      _requestType(rest::RequestType::ILLEGAL),
+      _fullUrl(),
+      _origin(),
       _sinceCompactification(0),
-      _originalBodyLength(0) {  // TODO(fc) remove
+      _originalBodyLength(0) {
   _protocol = "http";
-  connectionStatisticsAgentSetHttp();  // this agent is inherited form
-                                       // sockettask or task
+  connectionStatisticsAgentSetHttp();
   _agents.emplace(std::make_pair(1UL, RequestStatisticsAgent(true)));
 }
 
