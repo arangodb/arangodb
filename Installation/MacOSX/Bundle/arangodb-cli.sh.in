@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ROOTDIR="`echo $0 | sed -e 's:/@CPACK_BUNDLE_PREFIX@/ArangoDB-CLI::'`"
+ROOTDIR="/Applications/@CPACK_PACKAGE_NAME@.app"
 
 # create start script
 
