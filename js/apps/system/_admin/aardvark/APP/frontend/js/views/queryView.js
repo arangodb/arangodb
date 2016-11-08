@@ -1179,7 +1179,7 @@
           name: 'increaseFontSize',
           bindKey: {win: 'Shift-Alt-Up', linux: 'Shift-Alt-Up', mac: 'Shift-Alt-Up'},
           exec: function (editor) {
-            var newSize = parseInt(self.aqlEditor.getFontSize().match(/\d+/)[0]) + 1;
+            var newSize = parseInt(self.aqlEditor.getFontSize().match(/\d+/)[0], 10) + 1;
             newSize += 'pt';
             self.aqlEditor.setFontSize(newSize);
             setOutputEditorFontSize(newSize);
@@ -1191,7 +1191,7 @@
           name: 'decreaseFontSize',
           bindKey: {win: 'Shift-Alt-Down', linux: 'Shift-Alt-Down', mac: 'Shift-Alt-Down'},
           exec: function (editor) {
-            var newSize = parseInt(self.aqlEditor.getFontSize().match(/\d+/)[0]) - 1;
+            var newSize = parseInt(self.aqlEditor.getFontSize().match(/\d+/)[0], 10) - 1;
             newSize += 'pt';
             self.aqlEditor.setFontSize(newSize);
             setOutputEditorFontSize(newSize);

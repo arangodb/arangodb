@@ -3,17 +3,10 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-
-var _create = require('babel-runtime/core-js/object/create');
-
-var _create2 = _interopRequireDefault(_create);
-
 exports.duplicateOperationNameMessage = duplicateOperationNameMessage;
 exports.UniqueOperationNames = UniqueOperationNames;
 
 var _error = require('../../error');
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 /**
  *  Copyright (c) 2015, Facebook, Inc.
@@ -34,7 +27,7 @@ function duplicateOperationNameMessage(operationName) {
  * A GraphQL document is only valid if all defined operations have unique names.
  */
 function UniqueOperationNames(context) {
-  var knownOperationNames = (0, _create2.default)(null);
+  var knownOperationNames = Object.create(null);
   return {
     OperationDefinition: function OperationDefinition(node) {
       var operationName = node.name;

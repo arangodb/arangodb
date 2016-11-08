@@ -2031,7 +2031,7 @@ int RestReplicationHandler::applyCollectionDumpMarker(
 static int restoreDataParser(char const* ptr, char const* pos,
                              std::string const& invalidMsg, bool useRevision,
                              std::string& errorMsg, std::string& key,
-                             std::string& rev, VPackBuilder& builder,
+                             VPackBuilder& builder,
                              VPackSlice& doc,
                              TRI_replication_operation_e& type) {
   builder.clear();
@@ -2090,8 +2090,6 @@ static int restoreDataParser(char const* ptr, char const* pos,
 
         if (doc.hasKey(StaticStrings::KeyString)) {
           key = doc.get(StaticStrings::KeyString).copyString();
-        } else if (useRevision && doc.hasKey(StaticStrings::RevString)) {
-          rev = doc.get(StaticStrings::RevString).copyString();
         }
       }
     }
@@ -2150,6 +2148,7 @@ int RestReplicationHandler::processRestoreDataBatch(
 
   {
     VPackArrayBuilder guard(&allMarkers);
+    std::string key;
     while (ptr < end) {
       char const* pos = strchr(ptr, '\n');
 
@@ -2161,13 +2160,12 @@ int RestReplicationHandler::processRestoreDataBatch(
 
       if (pos - ptr > 1) {
         // found something
-        std::string key;
-        std::string rev;
+        key.clear();
         VPackSlice doc;
         TRI_replication_operation_e type = REPLICATION_INVALID;
 
         int res = restoreDataParser(ptr, pos, invalidMsg, useRevision, errorMsg,
-                                    key, rev, builder, doc, type);
+                                    key, builder, doc, type);
         if (res != TRI_ERROR_NO_ERROR) {
           return res;
         }
@@ -2492,11 +2490,10 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
       // found something
       //
       std::string key;
-      std::string rev;
       VPackSlice doc;
       TRI_replication_operation_e type = REPLICATION_INVALID;
 
-      res = restoreDataParser(ptr, pos, invalidMsg, false, errorMsg, key, rev,
+      res = restoreDataParser(ptr, pos, invalidMsg, false, errorMsg, key,
                               builder, doc, type);
       if (res != TRI_ERROR_NO_ERROR) {
         // We might need to clean up buffers

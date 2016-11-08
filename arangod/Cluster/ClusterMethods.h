@@ -42,10 +42,6 @@ class Builder;
 class Slice;
 }
 
-namespace traverser {
-class TraverserExpression;
-}
-
 struct OperationOptions;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,21 +115,6 @@ int getDocumentOnCoordinator(
     std::unordered_map<int, size_t>& errorCounter,
     std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a list of filtered documents in a coordinator
-///        All found documents will be inserted into result.
-///        After execution documentIds will contain all id's of documents
-///        that could not be found.
-////////////////////////////////////////////////////////////////////////////////
-
-int getFilteredDocumentsOnCoordinator(
-    std::string const& dbname,
-    std::vector<traverser::TraverserExpression*> const& expressions,
-    std::unordered_set<std::string>& documentIds,
-    std::unordered_map<std::string,
-                       std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>&
-        result);
-
 /// @brief fetch edges from TraverserEngines
 ///        Contacts all TraverserEngines placed
 ///        on the DBServers for the given list
@@ -180,7 +161,6 @@ void fetchVerticesFromEngines(
 int getFilteredEdgesOnCoordinator(
     std::string const& dbname, std::string const& collname,
     std::string const& vertex, TRI_edge_direction_e const& direction,
-    std::vector<traverser::TraverserExpression*> const& expressions,
     arangodb::rest::ResponseCode& responseCode,
     arangodb::velocypack::Builder& result);
 

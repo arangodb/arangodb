@@ -154,7 +154,6 @@ class HybridLogicalClock {
     return ms;
   }
 
- private:
   // helper to compute the offset between epoch and 1970
   uint64_t computeOffset1970();
 
@@ -166,6 +165,7 @@ class HybridLogicalClock {
     return (time << 20) + count;
   }
 
+ private:
   static char encodeTable[65];
 
   static signed char decodeTable[256];

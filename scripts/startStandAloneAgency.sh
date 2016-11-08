@@ -142,7 +142,7 @@ if [ "$GOSSIP_MODE" = "0" ]; then
    GOSSIP_PEERS=" --agency.endpoint $TRANSPORT://localhost:$BASE"
 fi
 
-#rm -rf agency
+rm -rf agency
 mkdir -p agency
 PIDS=""
 
@@ -179,7 +179,7 @@ for aid in "${aaid[@]}"; do
     --log.level agency=$LOG_LEVEL \
     --log.use-microtime $USE_MICROTIME \
     --server.authentication false \
-    --server.endpoint $TRANSPORT://localhost:$port \
+    --server.endpoint $TRANSPORT://0.0.0.0:$port \
     --server.statistics false \
     $SSLKEYFILE \
     > agency/$port.stdout 2>&1 &

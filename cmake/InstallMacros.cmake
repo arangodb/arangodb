@@ -55,6 +55,8 @@ macro (generate_path_config name)
   FILE(WRITE ${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_SYSCONFDIR_ARANGO}/${name}.conf "${FileContent}")
 endmacro ()
 
+
+
 # installs a config file -------------------------------------------------------
 macro (install_config name)
   if (MSVC OR (DARWIN AND NOT HOMEBREW))
@@ -65,6 +67,9 @@ macro (install_config name)
   install(
     FILES ${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_SYSCONFDIR_ARANGO}/${name}.conf
     DESTINATION ${CMAKE_INSTALL_SYSCONFDIR_ARANGO})
+  set(INSTALL_CONFIGFILES_LIST
+    "${INSTALL_CONFIGFILES_LIST};${CMAKE_INSTALL_SYSCONFDIR_ARANGO}/${name}.conf"
+    CACHE INTERNAL "INSTALL_CONFIGFILES_LIST")
 endmacro ()
 
 # installs a readme file converting EOL ----------------------------------------

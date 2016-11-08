@@ -3,11 +3,6 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-
-var _keys = require('babel-runtime/core-js/object/keys');
-
-var _keys2 = _interopRequireDefault(_keys);
-
 exports.extendSchema = extendSchema;
 
 var _invariant = require('../jsutils/invariant');
@@ -110,7 +105,7 @@ function extendSchema(schema, documentAST) {
 
   // If this document contains no new types, then return the same unmodified
   // GraphQLSchema instance.
-  if ((0, _keys2.default)(typeExtensionsMap).length === 0 && (0, _keys2.default)(typeDefinitionMap).length === 0) {
+  if (Object.keys(typeExtensionsMap).length === 0 && Object.keys(typeDefinitionMap).length === 0) {
     return schema;
   }
 
@@ -134,7 +129,7 @@ function extendSchema(schema, documentAST) {
     __TypeKind: _introspection.__TypeKind
   };
 
-  // Get the root Query, Mutation, and Subscription types.
+  // Get the root Query, Mutation, and Subscription object types.
   var queryType = getTypeFromDef(schema.getQueryType());
 
   var existingMutationType = schema.getMutationType();
@@ -145,12 +140,13 @@ function extendSchema(schema, documentAST) {
 
   // Iterate through all types, getting the type definition for each, ensuring
   // that any type not directly referenced by a field will get created.
-  var types = (0, _keys2.default)(schema.getTypeMap()).map(function (typeName) {
-    return getTypeFromDef(schema.getType(typeName));
+  var typeMap = schema.getTypeMap();
+  var types = Object.keys(typeMap).map(function (typeName) {
+    return getTypeFromDef(typeMap[typeName]);
   });
 
   // Do the same with new types, appending to the list of defined types.
-  (0, _keys2.default)(typeDefinitionMap).forEach(function (typeName) {
+  Object.keys(typeDefinitionMap).forEach(function (typeName) {
     types.push(getTypeFromAST(typeDefinitionMap[typeName]));
   });
 
@@ -169,7 +165,7 @@ function extendSchema(schema, documentAST) {
 
   function getTypeFromDef(typeDef) {
     var type = _getNamedType(typeDef.name);
-    (0, _invariant2.default)(type, 'Invalid schema');
+    (0, _invariant2.default)(type, 'Missing type from schema');
     return type;
   }
 
@@ -178,6 +174,30 @@ function extendSchema(schema, documentAST) {
     if (!type) {
       throw new _GraphQLError.GraphQLError('Unknown type: "' + astNode.name.value + '". Ensure that this type exists ' + 'either in the original schema, or is added in a type definition.', [astNode]);
     }
+    return type;
+  }
+
+  function getObjectTypeFromAST(astNode) {
+    var type = getTypeFromAST(astNode);
+    (0, _invariant2.default)(type instanceof _definition.GraphQLObjectType, 'Must be Object type.');
+    return type;
+  }
+
+  function getInterfaceTypeFromAST(astNode) {
+    var type = getTypeFromAST(astNode);
+    (0, _invariant2.default)(type instanceof _definition.GraphQLInterfaceType, 'Must be Interface type.');
+    return type;
+  }
+
+  function getInputTypeFromAST(astNode) {
+    var type = getTypeFromAST(astNode);
+    (0, _invariant2.default)((0, _definition.isInputType)(type), 'Must be Input type.');
+    return type;
+  }
+
+  function getOutputTypeFromAST(astNode) {
+    var type = getTypeFromAST(astNode);
+    (0, _invariant2.default)((0, _definition.isOutputType)(type), 'Must be Output type.');
     return type;
   }
 
@@ -266,7 +286,7 @@ function extendSchema(schema, documentAST) {
           })) {
             throw new _GraphQLError.GraphQLError('Type "' + type.name + '" already implements "' + interfaceName + '". ' + 'It cannot also be implemented in this type extension.', [namedType]);
           }
-          interfaces.push(getTypeFromAST(namedType));
+          interfaces.push(getInterfaceTypeFromAST(namedType));
         });
       });
     }
@@ -277,7 +297,7 @@ function extendSchema(schema, documentAST) {
   function extendFieldMap(type) {
     var newFieldMap = {};
     var oldFieldMap = type.getFields();
-    (0, _keys2.default)(oldFieldMap).forEach(function (fieldName) {
+    Object.keys(oldFieldMap).forEach(function (fieldName) {
       var field = oldFieldMap[fieldName];
       newFieldMap[fieldName] = {
         description: field.description,
@@ -300,7 +320,7 @@ function extendSchema(schema, documentAST) {
             throw new _GraphQLError.GraphQLError('Field "' + type.name + '.' + fieldName + '" already exists in the ' + 'schema. It cannot also be defined in this type extension.', [field]);
           }
           newFieldMap[fieldName] = {
-            type: buildFieldType(field.type),
+            type: buildOutputFieldType(field.type),
             args: buildInputValues(field.arguments),
             resolve: cannotExecuteClientSchema
           };
@@ -311,14 +331,14 @@ function extendSchema(schema, documentAST) {
     return newFieldMap;
   }
 
-  function extendFieldType(type) {
-    if (type instanceof _definition.GraphQLList) {
-      return new _definition.GraphQLList(extendFieldType(type.ofType));
+  function extendFieldType(typeDef) {
+    if (typeDef instanceof _definition.GraphQLList) {
+      return new _definition.GraphQLList(extendFieldType(typeDef.ofType));
     }
-    if (type instanceof _definition.GraphQLNonNull) {
-      return new _definition.GraphQLNonNull(extendFieldType(type.ofType));
+    if (typeDef instanceof _definition.GraphQLNonNull) {
+      return new _definition.GraphQLNonNull(extendFieldType(typeDef.ofType));
     }
-    return getTypeFromDef(type);
+    return getTypeFromDef(typeDef);
   }
 
   function buildType(typeAST) {
@@ -336,6 +356,7 @@ function extendSchema(schema, documentAST) {
       case _kinds.INPUT_OBJECT_TYPE_DEFINITION:
         return buildInputObjectType(typeAST);
     }
+    throw new TypeError('Unknown type kind ' + typeAST.kind);
   }
 
   function buildObjectType(typeAST) {
@@ -363,7 +384,7 @@ function extendSchema(schema, documentAST) {
   function buildUnionType(typeAST) {
     return new _definition.GraphQLUnionType({
       name: typeAST.name.value,
-      types: typeAST.types.map(getTypeFromAST),
+      types: typeAST.types.map(getObjectTypeFromAST),
       resolveType: cannotExecuteClientSchema
     });
   }
@@ -408,7 +429,7 @@ function extendSchema(schema, documentAST) {
   }
 
   function buildImplementedInterfaces(typeAST) {
-    return typeAST.interfaces.map(getTypeFromAST);
+    return typeAST.interfaces && typeAST.interfaces.map(getInterfaceTypeFromAST);
   }
 
   function buildFieldMap(typeAST) {
@@ -416,7 +437,7 @@ function extendSchema(schema, documentAST) {
       return field.name.value;
     }, function (field) {
       return {
-        type: buildFieldType(field.type),
+        type: buildOutputFieldType(field.type),
         args: buildInputValues(field.arguments),
         resolve: cannotExecuteClientSchema
       };
@@ -427,7 +448,7 @@ function extendSchema(schema, documentAST) {
     return (0, _keyValMap2.default)(values, function (value) {
       return value.name.value;
     }, function (value) {
-      var type = buildFieldType(value.type);
+      var type = buildInputFieldType(value.type);
       return {
         type: type,
         defaultValue: (0, _valueFromAST.valueFromAST)(value.defaultValue, type)
@@ -435,14 +456,28 @@ function extendSchema(schema, documentAST) {
     });
   }
 
-  function buildFieldType(typeAST) {
+  function buildInputFieldType(typeAST) {
     if (typeAST.kind === _kinds.LIST_TYPE) {
-      return new _definition.GraphQLList(buildFieldType(typeAST.type));
+      return new _definition.GraphQLList(buildInputFieldType(typeAST.type));
     }
     if (typeAST.kind === _kinds.NON_NULL_TYPE) {
-      return new _definition.GraphQLNonNull(buildFieldType(typeAST.type));
+      var nullableType = buildInputFieldType(typeAST.type);
+      (0, _invariant2.default)(!(nullableType instanceof _definition.GraphQLNonNull), 'Must be nullable');
+      return new _definition.GraphQLNonNull(nullableType);
     }
-    return getTypeFromAST(typeAST);
+    return getInputTypeFromAST(typeAST);
+  }
+
+  function buildOutputFieldType(typeAST) {
+    if (typeAST.kind === _kinds.LIST_TYPE) {
+      return new _definition.GraphQLList(buildOutputFieldType(typeAST.type));
+    }
+    if (typeAST.kind === _kinds.NON_NULL_TYPE) {
+      var nullableType = buildOutputFieldType(typeAST.type);
+      (0, _invariant2.default)(!(nullableType instanceof _definition.GraphQLNonNull), 'Must be nullable');
+      return new _definition.GraphQLNonNull(nullableType);
+    }
+    return getOutputTypeFromAST(typeAST);
   }
 }
 

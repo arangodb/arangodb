@@ -1,6 +1,8 @@
 devel
 -----
 
+* added option -D to define a configuration file environment key=value
+
 * ui: added new graph viewer
 
 * ui: aql-editor added tabular & graph display
@@ -188,6 +190,8 @@ devel
 
 * fixed issue #2139
 
+* updated graphql-sync dependency to 0.6.2
+
 v3.0.11 (2016-XX-XX)
 --------------------
 
@@ -209,6 +213,8 @@ v3.0.11 (2016-XX-XX)
 * Foxx tests no longer support the Mocha QUnit interface as this resulted in weird
   inconsistencies in the BDD and TDD interfaces. This fixes the TDD interface
   as well as out-of-sequence problems when using the BDD before/after functions.
+
+* fixed issue #2148
 
 
 v3.0.10 (2016-09-26)

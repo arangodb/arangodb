@@ -448,6 +448,11 @@ fi
 if [ -z "${MSVC}" ]; then
     # MSVC doesn't know howto do assembler in first place.
     CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off"
+    # on all other system cmake tends to be sluggish on finding strip.
+    # workaround by presetting it:
+    if test -z "${STRIP}"; then
+        export STRIP=`which strip`
+    fi
 fi
 
 CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} ${MAINTAINER_MODE}"
@@ -516,6 +521,13 @@ SOURCE_DIR=`compute_relative ${DST}/ ${SRC}/`
 if [ ! -f Makefile -o ! -f CMakeCache.txt ];  then
     CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}" LIBS="${LIBS}" \
           cmake ${SOURCE_DIR} ${CONFIGURE_OPTIONS} -G "${GENERATOR}" || exit 1
+fi
+
+if [ -n "$CPACK"  -a -n "${TARGET_DIR}" -a -z "${MSVC}" ];  then
+    if ! grep -q CMAKE_STRIP CMakeCache.txt; then
+        echo "cmake failed to detect strip; refusing to build unstripped packages!"
+        exit 1
+    fi
 fi
 
 ${MAKE_CMD_PREFIX} ${MAKE} ${MAKE_PARAMS}

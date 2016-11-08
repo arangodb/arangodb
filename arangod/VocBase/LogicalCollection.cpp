@@ -331,10 +331,9 @@ LogicalCollection::LogicalCollection(
       _nextCompactionStartIndex(0),
       _lastCompactionStatus(nullptr),
       _lastCompactionStamp(0.0),
-      _uncollectedLogfileEntries(0) {
+      _uncollectedLogfileEntries(0),
+      _revisionError(false) {
   _keyGenerator.reset(KeyGenerator::factory(other.keyOptions()));
-
-  
   
   // TODO Only DBServer? Is this correct?
   if (ServerState::instance()->isDBServer()) {
@@ -397,8 +396,9 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _nextCompactionStartIndex(0),
       _lastCompactionStatus(nullptr),
       _lastCompactionStamp(0.0),
-      _uncollectedLogfileEntries(0) {
-
+      _uncollectedLogfileEntries(0),
+      _revisionError(false) {
+      
   if (!IsAllowedName(info)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
@@ -410,7 +410,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
                          "with the --database.auto-upgrade option.");
 
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, errorMsg);
-  }
+  } 
 
   if (_isVolatile && _waitForSync) {
     // Illegal collection configuration
@@ -1321,7 +1321,9 @@ void LogicalCollection::open(bool ignoreErrors) {
       << _name << " }";
 
   // successfully opened collection. now adjust version number
-  if (_version != VERSION_31) {
+  if (_version != VERSION_31 && 
+      !_revisionError &&
+      application_features::ApplicationServer::server->getFeature<DatabaseFeature>("Database")->check30Revisions()) {
     _version = VERSION_31;
     bool const doSync =
         application_features::ApplicationServer::getFeature<DatabaseFeature>(
@@ -2014,7 +2016,7 @@ int LogicalCollection::update(Transaction* trx, VPackSlice const newSlice,
     bool isOld;
     VPackValueLength l;
     char const* p = oldRev.getString(l);
-    revisionId = TRI_StringToRid(p, l, isOld);
+    revisionId = TRI_StringToRid(p, l, isOld, false);
     if (isOld) {
       // Do not tolerate old revision IDs
       revisionId = TRI_HybridLogicalClock();
@@ -2174,7 +2176,7 @@ int LogicalCollection::replace(Transaction* trx, VPackSlice const newSlice,
     bool isOld;
     VPackValueLength l;
     char const* p = oldRev.getString(l);
-    revisionId = TRI_StringToRid(p, l, isOld);
+    revisionId = TRI_StringToRid(p, l, isOld, false);
     if (isOld) {
       // Do not tolerate old revision ticks:
       revisionId = TRI_HybridLogicalClock();
@@ -2302,7 +2304,7 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
       bool isOld;
       VPackValueLength l;
       char const* p = oldRev.getString(l);
-      revisionId = TRI_StringToRid(p, l, isOld);
+      revisionId = TRI_StringToRid(p, l, isOld, false);
       if (isOld) {
         // Do not tolerate old revisions
         revisionId = TRI_HybridLogicalClock();
@@ -3300,7 +3302,7 @@ int LogicalCollection::newObjectForInsert(
     bool isOld;
     VPackValueLength l;
     char const* p = oldRev.getString(l);
-    TRI_voc_rid_t oldRevision = TRI_StringToRid(p, l, isOld);
+    TRI_voc_rid_t oldRevision = TRI_StringToRid(p, l, isOld, false);
     if (isOld) {
       oldRevision = TRI_HybridLogicalClock();
     }

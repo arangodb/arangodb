@@ -91,7 +91,7 @@ int EdgeCollectionInfo::getEdgesCoordinator(VPackSlice const& vertexId,
   result.openObject();
   int res = getFilteredEdgesOnCoordinator(
       _trx->vocbase()->name(), _collectionName, vertexId.copyString(),
-      _forwardDir, _unused, responseCode, result);
+      _forwardDir, responseCode, result);
   result.close();
   return res;
 }
@@ -131,7 +131,7 @@ int EdgeCollectionInfo::getReverseEdgesCoordinator(VPackSlice const& vertexId,
   result.openObject();
   int res = getFilteredEdgesOnCoordinator(
       _trx->vocbase()->name(), _collectionName, vertexId.copyString(),
-      _backwardDir, _unused, responseCode, result);
+      _backwardDir, responseCode, result);
   result.close();
   return res;
 }

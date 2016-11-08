@@ -38,7 +38,7 @@ config_t::config_t()
       _waitForSync(true),
       _supervisionFrequency(5.0),
       _compactionStepSize(1000),
-      _supervisionGracePeriod(120),
+      _supervisionGracePeriod(15.0),
       _cmdLineTimings(false),
       _version(0),
       _lock()

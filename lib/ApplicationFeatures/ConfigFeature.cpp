@@ -58,6 +58,9 @@ void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption("--config", "the configuration file or 'none'",
                            new StringParameter(&_file));
 
+  options->addHiddenOption("--define,-D", "define key=value for a @key@ entry in config file",
+                           new VectorParameter<StringParameter>(&_defines));
+
   options->addOption("--check-configuration",
                      "check the configuration and exists",
                      new BooleanParameter(&_checkConfiguration));
@@ -65,6 +68,10 @@ void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options,
                                 const char* binaryPath) {
+  for (auto const& def : _defines) {
+    DefineEnvironment(def);
+  }
+
   loadConfigFile(options, _progname, binaryPath);
 
   if (_checkConfiguration) {
@@ -124,8 +131,12 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
     // clang-format on
 
     auto context = ArangoGlobalContext::CONTEXT;
-    std::string basename = name + ".conf";
+    std::string basename = name;
     std::string filename;
+
+    if (!StringUtils::isSuffix(name, ".conf")) {
+      basename += ".conf";
+    }
 
     if (context != nullptr) {
       filename = FileUtils::buildFilename(FileUtils::buildFilename(context->runRoot(), _SYSCONFDIR_), basename);
@@ -133,11 +144,9 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
     }
 
     if (filename.length() == 0 || !FileUtils::exists(filename)) {
-      
       filename =  FileUtils::buildFilename(FileUtils::currentDirectory(), basename);
 
       LOG_TOPIC(DEBUG, Logger::CONFIG) << "checking '" << filename << "'";
-
 
       if (!FileUtils::exists(filename)) {
         filename = FileUtils::buildFilename(FileUtils::currentDirectory(),
