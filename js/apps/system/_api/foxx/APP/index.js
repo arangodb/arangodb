@@ -296,7 +296,7 @@ instanceRouter.use('/development', devRouter)
 .response(200, schemas.fullInfo, `Description of the service.`);
 
 devRouter.post((req, res) => {
-  const service = fm.development(req.service);
+  const service = fm.development(req.service.mount);
   res.json(serviceToJson(service));
 })
 .summary(`Enable development mode`)
@@ -306,7 +306,7 @@ devRouter.post((req, res) => {
 `);
 
 devRouter.delete((req, res) => {
-  const service = fm.production(req.service);
+  const service = fm.production(req.service.mount);
   res.json(serviceToJson(service));
 })
 .summary(`Disable development mode`)
