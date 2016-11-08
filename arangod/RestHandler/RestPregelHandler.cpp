@@ -68,6 +68,27 @@ RestStatus RestPregelHandler::execute() {
         generateError(rest::ResponseCode::NOT_FOUND,
                       TRI_ERROR_HTTP_NOT_FOUND);
         return RestStatus::DONE;
+      } else if (suffix[0] == Utils::startExecutionPath) {
+        IWorker *w = PregelFeature::instance()->worker(executionNumber);
+        if (w) {
+          LOG(ERR) << "Worker with this execution number already exists.";
+          generateError(rest::ResponseCode::BAD,
+                        TRI_ERROR_HTTP_FORBIDDEN);
+          return RestStatus::DONE;
+        }
+        LOG(INFO) << "creating worker";
+        w = IWorker::createWorker(_vocbase, body);
+        PregelFeature::instance()->addWorker(w, executionNumber);
+      } else if (suffix[0] == Utils::startGSSPath) {
+        IWorker *w = PregelFeature::instance()->worker(executionNumber);
+        if (w) {
+          w->startGlobalStep(body);
+        } else {
+          LOG(ERR) << "Invalid execution number, worker does not exist.";
+          generateError(rest::ResponseCode::NOT_FOUND,
+                        TRI_ERROR_HTTP_NOT_FOUND);
+          return RestStatus::DONE;
+        }
       } else if (suffix[0] == Utils::finishedGSSPath) {
         Conductor *exe = PregelFeature::instance()->conductor(executionNumber);
         if (exe) {
@@ -75,14 +96,6 @@ RestStatus RestPregelHandler::execute() {
         } else {
           LOG(ERR) << "Conductor not found: " << executionNumber;
         }
-      } else if (suffix[0] == Utils::nextGSSPath) {
-        IWorker *w = PregelFeature::instance()->worker(executionNumber);
-        if (!w) {// can happen if gss == 0
-          LOG(INFO) << "creating worker";
-          w = IWorker::createWorker(_vocbase, body);
-          PregelFeature::instance()->addWorker(w, executionNumber);
-        }
-        w->nextGlobalStep(body);
       } else if (suffix[0] == Utils::messagesPath) {
         LOG(INFO) << "messages";
         IWorker *exe = PregelFeature::instance()->worker(executionNumber);

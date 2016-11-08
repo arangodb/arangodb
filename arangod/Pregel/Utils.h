@@ -38,7 +38,8 @@ class Utils {
   // constants
   static std::string const apiPrefix;
 
-  static std::string const nextGSSPath;
+  static std::string const startExecutionPath;
+  static std::string const startGSSPath;
   static std::string const finishedGSSPath;
   static std::string const messagesPath;
   static std::string const finalizeExecutionPath;

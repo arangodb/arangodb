@@ -23,13 +23,13 @@
 #include "PregelFeature.h"
 #include "Conductor.h"
 #include "Worker.h"
+#include "Cluster/ClusterInfo.h"
 
 using namespace arangodb::pregel;
 
 static PregelFeature* Instance;
 
-static unsigned int _exeI = 0;
-unsigned int PregelFeature::createExecutionNumber() { return ++_exeI; }
+unsigned int PregelFeature::createExecutionNumber() { return ClusterInfo::instance()->uniqid(); }
 
 PregelFeature::PregelFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Pregel") {

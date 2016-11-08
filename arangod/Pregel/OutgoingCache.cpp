@@ -134,7 +134,7 @@ void OutgoingCache<V, E, M>::sendMessageTo(std::string const& toValue,
 
 template <typename V, typename E, typename M>
 void OutgoingCache<V, E, M>::sendMessages() {
-  LOG(INFO) << "Beggining to send messages to other machines";
+  LOG(INFO) << "Beginning to send messages to other machines";
 
   std::vector<ClusterCommRequest> requests;
   for (auto const& it : _map) {

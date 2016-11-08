@@ -33,7 +33,8 @@ using namespace arangodb::pregel;
 
 std::string const Utils::apiPrefix = "/_api/pregel/";
 
-std::string const Utils::nextGSSPath = "nextGSS";
+std::string const Utils::startExecutionPath = "startExecution";
+std::string const Utils::startGSSPath = "startGSS";
 std::string const Utils::finishedGSSPath = "finishedGSS";
 std::string const Utils::messagesPath = "messages";
 std::string const Utils::finalizeExecutionPath = "finalizeExecution";

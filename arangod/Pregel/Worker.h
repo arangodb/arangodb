@@ -34,7 +34,7 @@ namespace pregel {
 class IWorker {
  public:
   virtual ~IWorker(){};
-  virtual void nextGlobalStep(VPackSlice data) = 0;  // called by coordinator
+  virtual void startGlobalStep(VPackSlice data) = 0;  // called by coordinator
   virtual void receivedMessages(VPackSlice data) = 0;
   virtual void finalizeExecution(VPackSlice data) = 0;
 
@@ -51,7 +51,7 @@ class Worker : public IWorker {
          std::shared_ptr<WorkerState<V, E, M>> context);
   ~Worker();
 
-  void nextGlobalStep(VPackSlice data) override;  // called by coordinator
+  void startGlobalStep(VPackSlice data) override;  // called by coordinator
   void receivedMessages(VPackSlice data) override;
   void finalizeExecution(VPackSlice data) override;
 

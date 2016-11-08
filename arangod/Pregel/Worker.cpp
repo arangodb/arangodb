@@ -100,7 +100,7 @@ Worker<V, E, M>::~Worker() {
 
 /// @brief Setup next superstep
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::nextGlobalStep(VPackSlice data) {
+void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
   LOG(INFO) << "Called next global step: " << data.toJson();
 
   // TODO do some work?
@@ -121,10 +121,12 @@ void Worker<V, E, M>::nextGlobalStep(VPackSlice data) {
 
   // parse aggregated values
   VPackSlice aggregatedValues = data.get(Utils::aggregatorValuesKey);
-  for (auto const& pair : _aggregators) {
-    VPackSlice val = aggregatedValues.get(pair.second->name());
-    if (!val.isNone()) {
-      pair.second->setAggregatedValue(val);
+  if (aggregatedValues.isObject()) {
+    for (auto const& pair : _aggregators) {
+      VPackSlice val = aggregatedValues.get(pair.second->name());
+      if (!val.isNone()) {
+        pair.second->setAggregatedValue(val);
+      }
     }
   }
 

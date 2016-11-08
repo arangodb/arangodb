@@ -168,7 +168,7 @@ void Conductor::start() {
 
     auto body = std::make_shared<std::string const>(b.toJson());
     requests.emplace_back("server:" + it.first, rest::RequestType::POST,
-                          baseUrl + Utils::nextGSSPath, body);
+                          baseUrl + Utils::startExecutionPath, body);
   }
   size_t nrDone = 0;
   cc->performRequests(requests, 120.0, nrDone, LogTopic("Pregel Conductor"));
@@ -176,6 +176,34 @@ void Conductor::start() {
             << _vertexCollections[0]->name();
   // look at results
   printResults(requests);
+  
+  if (nrDone == requests.size()) {
+    startGlobalStep();
+  } else {
+    LOG(ERR) << "Not all DBServers started the execution";
+  }
+}
+
+void Conductor::startGlobalStep() {
+  
+  VPackBuilder b;
+  b.openObject();
+  b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+  b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
+  b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
+  for (std::unique_ptr<Aggregator>& aggregator : _aggregators) {
+    aggregator->serializeValue(b);
+  }
+  b.close();
+  b.close();
+  
+  std::string baseUrl = Utils::baseUrl(_vocbaseGuard.vocbase()->name());
+  sendToAllDBServers(baseUrl + Utils::startGSSPath, b.slice());
+  
+  for (std::unique_ptr<Aggregator>& aggregator : _aggregators) {
+    aggregator->reset();
+  }
+  LOG(INFO) << "Conductor started new gss " << _globalSuperstep;
 }
 
 void Conductor::finishedGlobalStep(VPackSlice& data) {
@@ -207,8 +235,8 @@ void Conductor::finishedGlobalStep(VPackSlice& data) {
     LOG(INFO) << "Finished gss " << _globalSuperstep;
     _globalSuperstep++;
 
-    std::string baseUrl = Utils::baseUrl(_vocbaseGuard.vocbase()->name());
     if (_doneCount == _dbServerCount || _globalSuperstep == 101) {
+      std::string baseUrl = Utils::baseUrl(_vocbaseGuard.vocbase()->name());
       LOG(INFO) << "Done. We did " << _globalSuperstep - 1 << " rounds";
       VPackBuilder b;
       b.openObject();
@@ -217,24 +245,8 @@ void Conductor::finishedGlobalStep(VPackSlice& data) {
       b.close();
       sendToAllDBServers(baseUrl + Utils::finalizeExecutionPath, b.slice());
       _state = ExecutionState::FINISHED;
-
     } else {  // trigger next superstep
-      VPackBuilder b;
-      b.openObject();
-      b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
-      b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-      b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
-      for (std::unique_ptr<Aggregator>& aggregator : _aggregators) {
-        aggregator->serializeValue(b);
-      }
-      b.close();
-      b.close();
-      sendToAllDBServers(baseUrl + Utils::nextGSSPath, b.slice());
-
-      for (std::unique_ptr<Aggregator>& aggregator : _aggregators) {
-        aggregator->reset();
-      }
-      LOG(INFO) << "Conductor started new gss " << _globalSuperstep;
+      startGlobalStep();
     }
   }
 }
@@ -248,7 +260,7 @@ int Conductor::sendToAllDBServers(std::string path, VPackSlice const& config) {
   _doneCount = 0;
 
   if (_dbServerCount == 0) {
-    LOG(WARN) << "No shards registered for " << _vertexCollections[0]->name();
+    LOG(WARN) << "No servers registered";
     return TRI_ERROR_FAILED;
   }
 
@@ -261,8 +273,7 @@ int Conductor::sendToAllDBServers(std::string path, VPackSlice const& config) {
 
   size_t nrDone = 0;
   cc->performRequests(requests, 120.0, nrDone, LogTopic("Pregel Conductor"));
-  LOG(INFO) << "Send messages to " << nrDone << " shards of "
-            << _vertexCollections[0]->name();
+  LOG(INFO) << "Send messages to " << nrDone << " servers";
   printResults(requests);
 
   return TRI_ERROR_NO_ERROR;

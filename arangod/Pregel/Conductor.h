@@ -53,10 +53,10 @@ class Conductor {
 
  private:
   Mutex _finishedGSSMutex;  // prevents concurrent calls to finishedGlobalStep
+  
   VocbaseGuard _vocbaseGuard;
   const unsigned int _executionNumber;
   std::string _algorithm;
-
   ExecutionState _state = ExecutionState::RUNNING;
 
   std::vector<std::unique_ptr<Aggregator>> _aggregators;
@@ -69,7 +69,7 @@ class Conductor {
   int32_t _responseCount = 0;
   int32_t _doneCount = 0;
 
-  // convenience method
+  void startGlobalStep();
   int sendToAllDBServers(std::string url, VPackSlice const& body);
 };
 }
