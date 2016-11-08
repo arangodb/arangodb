@@ -613,7 +613,7 @@ function uploadToPeerCoordinators (serviceInfo, coordinators) {
   let coordOptions = {
     coordTransactionID: ArangoClusterComm.getId()
   };
-  let req = fs.readBuffer(joinPath(fs.getTempPath(), serviceInfo));
+  let req = fs.readBuffer(serviceInfo);
   let httpOptions = {};
   let mapping = {};
   for (let i = 0; i < coordinators.length; ++i) {
@@ -1336,7 +1336,7 @@ function replace (serviceInfo, mount, options) {
         /* jshint -W075:true */
         let intReq = {appInfo: b.filename, mount, options: intOpts};
         /* jshint -W075:false */
-        ArangoClusterComm.asyncRequest('POST', 'server:' + mapping[res[i].coordinatorTransactionID], db._name(),
+        ArangoClusterComm.asyncRequest('POST', 'server:' + mapping[res[i].clientTransactionID], db._name(),
           '/_admin/foxx/replace', JSON.stringify(intReq), httpOptions, coordOptions);
       }
       cluster.wait(coordOptions, res.length);
@@ -1407,8 +1407,8 @@ function upgrade (serviceInfo, mount, options) {
         /* jshint -W075:true */
         let intReq = {appInfo: b.filename, mount, options: intOpts};
         /* jshint -W075:false */
-        ArangoClusterComm.asyncRequest('POST', 'server:' + mapping[res[i].coordinatorTransactionID], db._name(),
-          '/_admin/foxx/update', JSON.stringify(intReq), httpOptions, coordOptions);
+        ArangoClusterComm.asyncRequest('POST', 'server:' + mapping[res[i].clientTransactionID], db._name(),
+          '/_admin/foxx/upgrade', JSON.stringify(intReq), httpOptions, coordOptions);
       }
       cluster.wait(coordOptions, res.length);
     } else {
@@ -1425,7 +1425,7 @@ function upgrade (serviceInfo, mount, options) {
       req = JSON.stringify(req);
       for (let i = 0; i < coordinators.length; ++i) {
         ArangoClusterComm.asyncRequest('POST', 'server:' + coordinators[i], db._name(),
-          '/_admin/foxx/update', req, httpOptions, coordOptions);
+          '/_admin/foxx/upgrade', req, httpOptions, coordOptions);
       }
       cluster.wait(coordOptions, coordinators.length);
     }
