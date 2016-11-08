@@ -347,33 +347,6 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
       useBreadthFirst);
 }
 
-arangodb::traverser::TraverserOptions::TraverserOptions(
-    TraverserOptions const& other)
-    : _trx(other._trx),
-      _baseVertexExpression(nullptr),
-      _tmpVar(nullptr),
-      _ctx(new aql::FixedVarExpressionContext()),
-      _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
-      minDepth(other.minDepth),
-      maxDepth(other.maxDepth),
-      useBreadthFirst(other.useBreadthFirst),
-      uniqueVertices(other.uniqueVertices),
-      uniqueEdges(other.uniqueEdges) {
-  TRI_ASSERT(other._baseLookupInfos.empty());
-  TRI_ASSERT(other._depthLookupInfo.empty());
-  TRI_ASSERT(other._vertexExpressions.empty());
-  TRI_ASSERT(other._tmpVar == nullptr);
-  TRI_ASSERT(other._baseVertexExpression == nullptr);
-
-  // Check for illegal option combination:
-  TRI_ASSERT(uniqueEdges !=
-             arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL);
-  TRI_ASSERT(
-      uniqueVertices !=
-          arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL ||
-      useBreadthFirst);
-}
-
 arangodb::traverser::TraverserOptions::~TraverserOptions() {
   for (auto& pair : _vertexExpressions) {
     delete pair.second;
