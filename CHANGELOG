@@ -1,6 +1,15 @@
 v3.1.1 (XXXX-XX-XX)
 -------------------
 
+* changed behavior of toJSON() function when serializing an object before saving it in the database
+        
+  if an object provides a toJSON() function, this function is still called for serializing it.
+  the change is that the result of toJSON() is not stringified anymore, but saved as is. previous
+  versions of ArangoDB called toJSON() and after that additionally stringified its result.
+
+  This change will affect the saving of JS Buffer objects, which will now be saved as arrays of
+  bytes instead of a comma-separated string of the Buffer's byte contents.
+
 * allow creating unique indexes on more attributes than present in shardKeys
     
   The following combinations of shardKeys and indexKeys are allowed/not allowed:
