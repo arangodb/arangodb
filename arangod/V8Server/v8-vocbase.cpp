@@ -2732,7 +2732,7 @@ static void JS_DecodeRev(v8::FunctionCallbackInfo<v8::Value> const& args) {
   buffer[20] = (millis / 100) + '0';
   buffer[21] = ((millis / 10) % 10) + '0';
   buffer[22] = (millis % 10) + '0';
-  buffer[23] = 0;
+  buffer[24] = 0;
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("date"),
