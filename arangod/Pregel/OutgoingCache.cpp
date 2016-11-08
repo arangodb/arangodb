@@ -39,7 +39,8 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 
 template <typename V, typename E, typename M>
-OutgoingCache<V, E, M>::OutgoingCache(std::shared_ptr<WorkerState<V, E, M>> state)
+OutgoingCache<V, E, M>::OutgoingCache(
+    std::shared_ptr<WorkerState<V, E, M>> state)
     : _state(state) {
   _ci = ClusterInfo::instance();
   _baseUrl = Utils::baseUrl(_state->database());
@@ -58,22 +59,22 @@ void OutgoingCache<V, E, M>::clear() {
   _containedMessages = 0;
 }
 
-static inline LogicalCollection* resolveCollection(ClusterInfo* ci,
-                                            std::string const& database,
-                                            std::string const& collectionName,
-                                            std::map<std::string, std::string> const& collectionPlanIdMap) {
+static inline LogicalCollection* resolveCollection(
+    ClusterInfo* ci, std::string const& database,
+    std::string const& collectionName,
+    std::map<std::string, std::string> const& collectionPlanIdMap) {
   auto const& it = collectionPlanIdMap.find(collectionName);
-  if (it == collectionPlanIdMap.end()) {
-    LOG(ERR) << "Collection this messages is going to is unkown";
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
+  if (it != collectionPlanIdMap.end()) {
+    std::shared_ptr<LogicalCollection> collectionInfo(ci->getCollection(database,
+                                                                        it->second));
+    return collectionInfo.get();
   }
-  std::shared_ptr<LogicalCollection> collectionInfo(ci->getCollection(database, it->second));
-  return collectionInfo.get();
+  return nullptr;
 }
 
 static inline void resolveShard(ClusterInfo* ci, LogicalCollection* info,
-                         std::string const& vertexKey,
-                         std::string& responsibleShard) {
+                                std::string const& vertexKey,
+                                std::string& responsibleShard) {
   bool usesDefaultShardingAttributes;
   VPackBuilder partial;
   partial.openObject();
@@ -93,14 +94,17 @@ static inline void resolveShard(ClusterInfo* ci, LogicalCollection* info,
 template <typename V, typename E, typename M>
 void OutgoingCache<V, E, M>::sendMessageTo(std::string const& toValue,
                                            M const& data) {
-  
   std::size_t pos = toValue.find('/');
   std::string _key = toValue.substr(pos + 1, toValue.length() - pos - 1);
   std::string collectionName = toValue.substr(0, pos);
   LOG(INFO) << "Adding outgoing messages for " << collectionName << "/" << _key;
 
-  LogicalCollection *coll =  resolveCollection(_ci, _state->database(),
-                                               collectionName, _state->collectionPlanIdMap());
+  LogicalCollection* coll = resolveCollection(
+      _ci, _state->database(), collectionName, _state->collectionPlanIdMap());
+  if (coll == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "Collection this messages is going to is unkown");
+  }
   ShardID responsibleShard;
   resolveShard(_ci, coll, _key, responsibleShard);
   LOG(INFO) << "Responsible shard: " << responsibleShard;
@@ -150,8 +154,10 @@ void OutgoingCache<V, E, M>::sendMessages() {
     }
     package.close();
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    package.add(Utils::executionNumberKey, VPackValue(_state->executionNumber()));
-    package.add(Utils::globalSuperstepKey, VPackValue(_state->globalSuperstep()));
+    package.add(Utils::executionNumberKey,
+                VPackValue(_state->executionNumber()));
+    package.add(Utils::globalSuperstepKey,
+                VPackValue(_state->globalSuperstep()));
     package.close();
     // add a request
     auto body = std::make_shared<std::string>(package.toJson());

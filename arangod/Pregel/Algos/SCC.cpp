@@ -21,16 +21,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SCC.h"
-#include "Pregel/VertexComputation.h"
 #include "Pregel/GraphFormat.h"
 #include "Pregel/Utils.h"
+#include "Pregel/VertexComputation.h"
 
-#include "Vocbase/vocbase.h"
 #include "Cluster/ClusterInfo.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/Transaction.h"
+#include "Vocbase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -38,16 +38,17 @@ using namespace arangodb::pregel::algos;
 
 struct SCCGraphFormat : public GraphFormat<int64_t, int64_t> {
   uint64_t _currentId = 0;
-     void willUseCollection(TRI_vocbase_t *vocbase, std::string const& shard, bool isEdgeCollection) override {
-       int64_t count = Utils::countDocuments(vocbase, shard);
-       _currentId = ClusterInfo::instance()->uniqid(count);
-     }
+  void willUseCollection(TRI_vocbase_t* vocbase, std::string const& shard,
+                         bool isEdgeCollection) override {
+    int64_t count = Utils::countDocuments(vocbase, shard);
+    _currentId = ClusterInfo::instance()->uniqid(count);
+  }
   SCCGraphFormat() {}
 
   size_t copyVertexData(VPackSlice document, void* targetPtr,
                         size_t maxSize) override {
     *((int64_t*)targetPtr) = _currentId;
-      _currentId++;
+    _currentId++;
     return sizeof(int64_t);
   }
 

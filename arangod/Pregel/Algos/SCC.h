@@ -30,7 +30,7 @@ namespace pregel {
 namespace algos {
 
 /// Strongly connected components.
- struct SCCAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
+struct SCCAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
  public:
   SCCAlgorithm() : Algorithm("SCC") {}
 

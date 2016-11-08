@@ -78,8 +78,10 @@ class WorkerState {
   }
 
   std::shared_ptr<Algorithm<V, E, M>> algorithm() { return _algorithm; }
-  
-  std::map<CollectionID, std::string> const& collectionPlanIdMap() {return _collectionPlanIdMap;};
+
+  std::map<CollectionID, std::string> const& collectionPlanIdMap() {
+    return _collectionPlanIdMap;
+  };
 
  private:
   /// @brief guard to make sure the database is not dropped while used by us

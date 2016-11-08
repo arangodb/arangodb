@@ -22,37 +22,37 @@
 
 #include "SSSP.h"
 #include "Pregel/Algorithm.h"
-#include "Pregel/VertexComputation.h"
 #include "Pregel/GraphStore.h"
 #include "Pregel/IncomingCache.h"
+#include "Pregel/VertexComputation.h"
 
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
 struct SSSPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
-    SSSPComputation() {}
-    void compute(std::string const& vertexID,
-                 MessageIterator<int64_t> const& messages) override {
-        int64_t tmp = vertexData();
-        for (const int64_t* msg : messages) {
-            if (tmp < 0 || *msg < tmp) {
-                tmp = *msg;
-            };
-        }
-        int64_t* state = (int64_t*)mutableVertexData();
-        if (tmp >= 0 && (getGlobalSuperstep() == 0 || tmp != *state)) {
-            LOG(INFO) << "Recomputing value for vertex " << vertexID;
-            *state = tmp;  // update state
-            
-            EdgeIterator<int64_t> edges = getEdges();
-            for (EdgeEntry<int64_t>* edge : edges) {
-                int64_t val = *edge->getData() + tmp;
-                std::string const& toID = edge->toVertexID();
-                sendMessage(toID, val);
-            }
-        }
-        voteHalt();
+  SSSPComputation() {}
+  void compute(std::string const& vertexID,
+               MessageIterator<int64_t> const& messages) override {
+    int64_t tmp = vertexData();
+    for (const int64_t* msg : messages) {
+      if (tmp < 0 || *msg < tmp) {
+        tmp = *msg;
+      };
     }
+    int64_t* state = (int64_t*)mutableVertexData();
+    if (tmp >= 0 && (getGlobalSuperstep() == 0 || tmp != *state)) {
+      LOG(INFO) << "Recomputing value for vertex " << vertexID;
+      *state = tmp;  // update state
+
+      EdgeIterator<int64_t> edges = getEdges();
+      for (EdgeEntry<int64_t>* edge : edges) {
+        int64_t val = *edge->getData() + tmp;
+        std::string const& toID = edge->toVertexID();
+        sendMessage(toID, val);
+      }
+    }
+    voteHalt();
+  }
 };
 
 std::shared_ptr<GraphFormat<int64_t, int64_t>> SSSPAlgorithm::inputFormat()

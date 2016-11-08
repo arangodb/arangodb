@@ -46,13 +46,12 @@ Conductor::Conductor(
     unsigned int executionNumber, TRI_vocbase_t* vocbase,
     std::vector<std::shared_ptr<LogicalCollection>> vertexCollections,
     std::vector<std::shared_ptr<LogicalCollection>> edgeCollections,
-    std::string const& algorithm,
-    VPackSlice params)
+    std::string const& algorithm, VPackSlice params)
     : _vocbaseGuard(vocbase),
       _executionNumber(executionNumber),
+      _algorithm(algorithm),
       _vertexCollections(vertexCollections),
-      _edgeCollections(edgeCollections),
-      _algorithm(algorithm) {
+      _edgeCollections(edgeCollections) {
   bool isCoordinator = ServerState::instance()->isCoordinator();
   assert(isCoordinator);
   LOG(INFO) << "constructed conductor";
@@ -83,18 +82,17 @@ static void printResults(std::vector<ClusterCommRequest> const& requests) {
 }
 
 static void resolveShards(LogicalCollection const* collection,
-                                 std::map<ServerID, std::vector<ShardID>>& serverMap) {
-    
+                          std::map<ServerID, std::vector<ShardID>>& serverMap) {
   ClusterInfo* ci = ClusterInfo::instance();
   std::shared_ptr<std::vector<ShardID>> shardIDs =
-  ci->getShardList(collection->cid_as_string());
+      ci->getShardList(collection->cid_as_string());
 
   for (auto const& shard : *shardIDs) {
-      std::shared_ptr<std::vector<ServerID>> servers =
-      ci->getResponsibleServer(shard);
-      if (servers->size() > 0) {
-          serverMap[(*servers)[0]].push_back(shard);
-      }
+    std::shared_ptr<std::vector<ServerID>> servers =
+        ci->getResponsibleServer(shard);
+    if (servers->size() > 0) {
+      serverMap[(*servers)[0]].push_back(shard);
+    }
   }
 }
 
@@ -103,10 +101,11 @@ void Conductor::start() {
   int64_t vertexCount = 0, edgeCount = 0;
   std::map<CollectionID, std::string> collectionPlanIdMap;
   std::map<ServerID, std::vector<ShardID>> edgeServerMap;
-  
+
   for (auto collection : _vertexCollections) {
     collectionPlanIdMap[collection->name()] = collection->planId_as_string();
-    size_t cc = Utils::countDocuments(_vocbaseGuard.vocbase(), collection->name());
+    size_t cc =
+        Utils::countDocuments(_vocbaseGuard.vocbase(), collection->name());
     if (cc > 0) {
       vertexCount += cc;
       resolveShards(collection.get(), _vertexServerMap);
@@ -116,7 +115,8 @@ void Conductor::start() {
   }
   for (auto collection : _edgeCollections) {
     collectionPlanIdMap[collection->name()] = collection->planId_as_string();
-    size_t cc = Utils::countDocuments(_vocbaseGuard.vocbase(), collection->name());
+    size_t cc =
+        Utils::countDocuments(_vocbaseGuard.vocbase(), collection->name());
     if (cc > 0) {
       edgeCount += cc;
       resolveShards(collection.get(), edgeServerMap);
@@ -124,7 +124,7 @@ void Conductor::start() {
       LOG(WARN) << "Collection does not contain edges";
     }
   }
-  
+
   std::string const baseUrl = Utils::baseUrl(_vocbaseGuard.vocbase()->name());
   _globalSuperstep = 0;
   _state = ExecutionState::RUNNING;
@@ -190,15 +190,13 @@ void Conductor::finishedGlobalStep(VPackSlice& data) {
 
   VPackSlice aggValues = data.get(Utils::aggregatorValuesKey);
   if (aggValues.isObject()) {
-    for (std::unique_ptr<Aggregator> &aggregator : _aggregators) {
-        VPackSlice val = aggValues.get(aggregator->name());
-        if (!val.isNone()) {
-          aggregator->parse(val);
-        }
+    for (std::unique_ptr<Aggregator>& aggregator : _aggregators) {
+      VPackSlice val = aggValues.get(aggregator->name());
+      if (!val.isNone()) {
+        aggregator->aggregateValue(val);
+      }
     }
   }
-  
-
 
   VPackSlice isDone = data.get(Utils::doneKey);
   if (isDone.isBool() && isDone.getBool()) {
@@ -225,17 +223,17 @@ void Conductor::finishedGlobalStep(VPackSlice& data) {
       b.openObject();
       b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
       b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-        b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
-        for (std::unique_ptr<Aggregator> &aggregator : _aggregators) {
-            aggregator->serialize(b);
-        }
-        b.close();
+      b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
+      for (std::unique_ptr<Aggregator>& aggregator : _aggregators) {
+        aggregator->serializeValue(b);
+      }
+      b.close();
       b.close();
       sendToAllDBServers(baseUrl + Utils::nextGSSPath, b.slice());
-        
-        for (std::unique_ptr<Aggregator> &aggregator : _aggregators) {
-            aggregator->reset();
-        }
+
+      for (std::unique_ptr<Aggregator>& aggregator : _aggregators) {
+        aggregator->reset();
+      }
       LOG(INFO) << "Conductor started new gss " << _globalSuperstep;
     }
   }
@@ -269,4 +267,3 @@ int Conductor::sendToAllDBServers(std::string path, VPackSlice const& config) {
 
   return TRI_ERROR_NO_ERROR;
 }
-

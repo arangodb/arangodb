@@ -23,8 +23,8 @@
 #include <cstdint>
 #include <string>
 
-#include <velocypack/Slice.h>
 #include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 #ifndef ARANGODB_PREGEL_AGGREGATOR_H
@@ -38,11 +38,18 @@ class Aggregator {
   Aggregator(const Aggregator&) = delete;
   Aggregator& operator=(const Aggregator&) = delete;
 
+  /// @brief Value from superstep S-1 supplied by the conductor
   virtual void const* getAggregatedValue() const = 0;
-  virtual void reduce( void const* otherValue) = 0;
-  virtual void parse(VPackSlice otherValue) = 0;
-  virtual void parseAggregatedValue(VPackSlice otherValue) = 0;
-  virtual void serialize(VPackBuilder &b) = 0;
+  /// @brief Value from superstep S-1 supplied by the conductor
+  virtual void setAggregatedValue(VPackSlice otherValue) = 0;
+
+  /// @brief Value from superstep S calculated by the worker
+  virtual void const* getValue() const = 0;
+  virtual void aggregateValue(void const* otherValue) = 0;
+
+  virtual void aggregateValue(VPackSlice otherValue) = 0;
+  virtual void serializeValue(VPackBuilder& b) = 0;
+
   virtual void reset() = 0;
   std::string const& name() { return _name; }
 
@@ -52,31 +59,32 @@ class Aggregator {
 };
 
 class FloatMaxAggregator : public Aggregator {
-public:
+ public:
   FloatMaxAggregator(std::string const& name, float init)
-      : Aggregator(name), _value(init), _initial(init) {}
+      : Aggregator(name), _aggregated(init), _value(init), _initial(init) {}
 
-  void const* getAggregatedValue() const override { return &_value; };
-  void reduce(void const* otherValue) override {
+  void const* getAggregatedValue() const override { return &_aggregated; };
+  void setAggregatedValue(VPackSlice value) override {
+    _aggregated = (float)value.getDouble();
+  };
+
+  virtual void const* getValue() const override { return &_value; }
+  void aggregateValue(void const* otherValue) override {
     float other = *((float*)otherValue);
     if (other > _value) _value = other;
   };
-  void parse(VPackSlice otherValue) override {
-    float v = (float) otherValue.getDouble();
-    this->reduce(&v);
+  void aggregateValue(VPackSlice otherValue) override {
+    float v = (float)otherValue.getDouble();
+    this->aggregateValue(&v);
   };
-  void parseAggregatedValue(VPackSlice value) override {
-      _value = (float) value.getDouble();
-  };
-  void serialize(VPackBuilder &b) override {
+
+  void serializeValue(VPackBuilder& b) override {
     b.add(_name, VPackValue(_value));
   };
-  void reset() override {
-      _value = _initial;
-  }
+  void reset() override { _value = _initial; }
 
  private:
-  float _value, _initial;
+  float _aggregated, _value, _initial;
 };
 }
 }

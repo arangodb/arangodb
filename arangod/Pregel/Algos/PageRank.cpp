@@ -21,27 +21,27 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PageRank.h"
-#include "Pregel/VertexComputation.h"
+#include "Pregel/Combiners/FloatSumCombiner.h"
 #include "Pregel/GraphFormat.h"
 #include "Pregel/Utils.h"
-#include "Pregel/Combiners/FloatSumCombiner.h"
+#include "Pregel/VertexComputation.h"
 
-#include "Vocbase/vocbase.h"
 #include "Cluster/ClusterInfo.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/Transaction.h"
+#include "Vocbase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
 struct PageRankGraphFormat : public FloatGraphFormat {
-    PageRankGraphFormat(std::string const& field, float vertexNull,
-                     float edgeNull)
-    : FloatGraphFormat(field, vertexNull, edgeNull) {}
-    bool storesEdgeData() const override { return false; }
+  PageRankGraphFormat(std::string const& field, float vertexNull,
+                      float edgeNull)
+      : FloatGraphFormat(field, vertexNull, edgeNull) {}
+  bool storesEdgeData() const override { return false; }
 };
 
 std::shared_ptr<GraphFormat<float, float>> PageRankAlgorithm::inputFormat()
@@ -64,10 +64,10 @@ struct PageRankComputation : public VertexComputation<float, float, float> {
                MessageIterator<float> const& messages) override {
     float tmp = 0;
     for (const float* msg : messages) {
-        tmp += *msg;
+      tmp += *msg;
     }
     float* state = (float*)mutableVertexData();
-    
+
     /*if (tmp >= 0 && (getGlobalSuperstep() == 0 || tmp != *state)) {
       LOG(INFO) << "Recomputing value for vertex " << vertexID;
       *state = tmp;  // update state
@@ -88,7 +88,7 @@ PageRankAlgorithm::createComputation() const {
   return std::shared_ptr<PageRankComputation>(new PageRankComputation());
 }
 
-void PageRankAlgorithm::aggregators(std::vector<std::unique_ptr<Aggregator>> &aggregators) {
-    aggregators.push_back(std::make_unique<FloatMaxAggregator>("convergence", 1));
+void PageRankAlgorithm::aggregators(
+    std::vector<std::unique_ptr<Aggregator>>& aggregators) {
+  aggregators.push_back(std::make_unique<FloatMaxAggregator>("convergence", 1));
 }
-

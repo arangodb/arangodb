@@ -27,15 +27,14 @@
 #include <velocypack/velocypack-aliases.h>
 #include <cstdint>
 
+#include "Aggregator.h"
 #include "Basics/Common.h"
 #include "GraphFormat.h"
 #include "MessageCombiner.h"
 #include "MessageFormat.h"
-#include "Aggregator.h"
 
 namespace arangodb {
 namespace pregel {
-
 
 template <typename V, typename E, typename M>
 class VertexComputation;
@@ -46,11 +45,12 @@ struct Algorithm {
  public:
   virtual ~Algorithm() {}
   // virtual bool isFixpointAlgorithm() const {return false;}
-  //virtual bool preserveTransactions() const { return false; }
+  // virtual bool preserveTransactions() const { return false; }
 
   virtual size_t estimatedVertexSize() const { return sizeof(V); };
   virtual size_t estimatedEdgeSize() const { return sizeof(E); };
-  virtual void aggregators(std::vector<std::unique_ptr<Aggregator>> &aggregators) {}
+  virtual void aggregators(
+      std::vector<std::unique_ptr<Aggregator>>& aggregators) {}
 
   virtual std::shared_ptr<GraphFormat<V, E>> inputFormat() const = 0;
   virtual std::shared_ptr<MessageFormat<M>> messageFormat() const = 0;

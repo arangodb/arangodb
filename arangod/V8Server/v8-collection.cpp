@@ -1871,12 +1871,12 @@ static void JS_Pregel(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                      "string");
     }
     if (args[1]->IsArray()) {
-        parseArray(args[1], vertices);
+        parseArray(args[1], edges);
     } else if (args[1]->IsString()) {
-        vertices.push_back(TRI_ObjectToString(args[1]));
+        edges.push_back(TRI_ObjectToString(args[1]));
     } else {
         TRI_V8_THROW_EXCEPTION_USAGE(
-                                     "Specify either an array of vertex collection names or a single "
+                                     "Specify either an array of edge collection names or a single "
                                      "string");
     }
     std::string algorithm = TRI_ObjectToString(args[2]);

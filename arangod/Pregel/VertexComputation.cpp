@@ -42,7 +42,7 @@ EdgeIterator<E> VertexComputation<V, E, M>::VertexComputation::getEdges() {
 
 template <typename V, typename E, typename M>
 void* VertexComputation<V, E, M>::mutableVertexData() {
-    return _graphStore->mutableVertexData(_vertexEntry);
+  return _graphStore->mutableVertexData(_vertexEntry);
 }
 
 template <typename V, typename E, typename M>

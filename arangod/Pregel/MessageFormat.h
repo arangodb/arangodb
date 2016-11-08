@@ -52,19 +52,19 @@ struct IntegerMessageFormat : public MessageFormat<int64_t> {
     arrayBuilder.add(VPackValue(val));
   }
 };
-    
+
 struct FloatMessageFormat : public MessageFormat<float> {
-    FloatMessageFormat() {}
-    bool unwrapValue(VPackSlice s, float& value) const override {
-        if (s.isDouble()) {
-            value = s.getDouble();
-            return true;
-        }
-        return false;
+  FloatMessageFormat() {}
+  bool unwrapValue(VPackSlice s, float& value) const override {
+    if (s.isDouble()) {
+      value = s.getDouble();
+      return true;
     }
-    void addValue(VPackBuilder& arrayBuilder, float const& val) const override {
-        arrayBuilder.add(VPackValue(val));
-    }
+    return false;
+  }
+  void addValue(VPackBuilder& arrayBuilder, float const& val) const override {
+    arrayBuilder.add(VPackValue(val));
+  }
 };
 }
 }

@@ -46,7 +46,7 @@ class Utils {
   static std::string const executionNumberKey;
   static std::string const algorithmKey;
   static std::string const coordinatorIdKey;
-  
+
   static std::string const totalVertexCount;
   static std::string const totalEdgeCount;
 
@@ -66,8 +66,9 @@ class Utils {
   static std::string baseUrl(std::string dbName);
   static std::string collectionFromToValue(std::string const& graphKey);
   static std::string vertexKeyFromToValue(std::string const& graphKey);
-    
-  static int64_t countDocuments(TRI_vocbase_t* vocbase, std::string const& collection);
+
+  static int64_t countDocuments(TRI_vocbase_t* vocbase,
+                                std::string const& collection);
 };
 }
 }

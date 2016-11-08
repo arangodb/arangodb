@@ -46,7 +46,6 @@ class GraphStore;
 
 template <typename V, typename E, typename M>
 class Worker : public IWorker {
-
  public:
   Worker(std::shared_ptr<GraphStore<V, E>> graphStore,
          std::shared_ptr<WorkerState<V, E, M>> context);

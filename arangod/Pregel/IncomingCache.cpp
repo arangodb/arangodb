@@ -50,7 +50,6 @@ void IncomingCache<M>::clear() {
 
 template <typename M>
 void IncomingCache<M>::parseMessages(VPackSlice incomingMessages) {
-
   VPackValueLength length = incomingMessages.length();
   if (length % 2) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -77,13 +76,14 @@ void IncomingCache<M>::parseMessages(VPackSlice incomingMessages) {
 }
 
 template <typename M>
-void IncomingCache<M>::setDirect(std::string const& toValue, M const& newValue) {
+void IncomingCache<M>::setDirect(std::string const& toValue,
+                                 M const& newValue) {
   {
     CONDITION_LOCKER(guard, _writeCondition);
-    
+
     _receivedMessageCount++;
     auto vmsg = _messages.find(toValue);
-    if (vmsg != _messages.end()) {// got a message for the same vertex
+    if (vmsg != _messages.end()) {  // got a message for the same vertex
       vmsg->second = _combiner->combine(vmsg->second, newValue);
     } else {
       _messages[toValue] = newValue;

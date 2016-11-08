@@ -72,7 +72,7 @@ class EdgeIterator {
   typedef const EdgeIterator<E> const_iterator;
 
   EdgeIterator(std::vector<EdgeEntry<E>>& edges, size_t begin, size_t end)
-      : _edges(edges), _begin(begin), _end(end), _current(0) {}
+      : _edges(edges), _begin(begin), _end(end), _current(begin) {}
 
   iterator begin() { return EdgeIterator(_edges, _begin, _end); }
   const_iterator begin() const { return EdgeIterator(_edges, _begin, _end); }
@@ -263,8 +263,8 @@ class GraphStore {
   size_t globalVertexCount() const { return _globalVertexCount; }
   size_t globalEdgeCount() const { return _globalEdgeCount; }
   void setCounts(size_t vertices, size_t edges) {
-      _globalVertexCount = vertices;
-      _globalEdgeCount = edges;
+    _globalVertexCount = vertices;
+    _globalEdgeCount = edges;
   }
 };
 }

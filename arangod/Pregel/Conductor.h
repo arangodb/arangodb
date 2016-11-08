@@ -42,8 +42,7 @@ class Conductor {
   Conductor(unsigned int executionNumber, TRI_vocbase_t* vocbase,
             std::vector<std::shared_ptr<LogicalCollection>> vertexCollections,
             std::vector<std::shared_ptr<LogicalCollection>> edgeCollections,
-            std::string const& algorithm,
-            VPackSlice params);
+            std::string const& algorithm, VPackSlice params);
   ~Conductor();
 
   void start();
@@ -57,11 +56,12 @@ class Conductor {
   VocbaseGuard _vocbaseGuard;
   const unsigned int _executionNumber;
   std::string _algorithm;
-  
+
   ExecutionState _state = ExecutionState::RUNNING;
 
   std::vector<std::unique_ptr<Aggregator>> _aggregators;
-  std::vector<std::shared_ptr<LogicalCollection>> _vertexCollections, _edgeCollections;
+  std::vector<std::shared_ptr<LogicalCollection>> _vertexCollections,
+      _edgeCollections;
   std::map<ServerID, std::vector<ShardID>> _vertexServerMap;
 
   unsigned int _globalSuperstep;

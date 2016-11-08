@@ -23,8 +23,7 @@
 #ifndef ARANGODB_PREGEL_GRAPH_FORMAT_H
 #define ARANGODB_PREGEL_GRAPH_FORMAT_H 1
 
-#include <velocypack/vpack.h>
-#include <velocypack/velocypack-aliases.h>
+#include <velocypack/Slice.h>
 #include <cstddef>
 
 #include "Basics/Common.h"
@@ -38,9 +37,9 @@ struct GraphFormat {
   virtual void willUseCollection(TRI_vocbase_t* vocbase,
                                  std::string const& shard,
                                  bool isEdgeCollection) {}
-  virtual size_t copyVertexData(VPackSlice document, void* targetPtr,
+  virtual size_t copyVertexData(arangodb::velocypack::Slice document, void* targetPtr,
                                 size_t maxSize) = 0;
-  virtual size_t copyEdgeData(VPackSlice edgeDocument, void* targetPtr,
+  virtual size_t copyEdgeData(arangodb::velocypack::Slice edgeDocument, void* targetPtr,
                               size_t maxSize) = 0;
   virtual V readVertexData(void* ptr) = 0;
   virtual M readEdgeData(void* ptr) = 0;
@@ -58,16 +57,16 @@ class IntegerGraphFormat : public GraphFormat<int64_t, int64_t> {
                      int64_t edgeNull)
       : _field(field), _vDefault(vertexNull), _eDefault(edgeNull) {}
 
-  size_t copyVertexData(VPackSlice document, void* targetPtr,
+  size_t copyVertexData(arangodb::velocypack::Slice document, void* targetPtr,
                         size_t maxSize) override {
-    VPackSlice val = document.get(_field);
+    arangodb::velocypack::Slice val = document.get(_field);
     *((int64_t*)targetPtr) = val.isInteger() ? val.getInt() : _vDefault;
     return sizeof(int64_t);
   }
 
-  size_t copyEdgeData(VPackSlice document, void* targetPtr,
+  size_t copyEdgeData(arangodb::velocypack::Slice document, void* targetPtr,
                       size_t maxSize) override {
-    VPackSlice val = document.get(_field);
+    arangodb::velocypack::Slice val = document.get(_field);
     *((int64_t*)targetPtr) = val.isInteger() ? val.getInt() : _eDefault;
     return sizeof(int64_t);
   }
@@ -81,20 +80,19 @@ class FloatGraphFormat : public GraphFormat<float, float> {
   const float _vDefault, _eDefault;
 
  public:
-  FloatGraphFormat(std::string const& field, float vertexNull,
-                     float edgeNull)
+  FloatGraphFormat(std::string const& field, float vertexNull, float edgeNull)
       : _field(field), _vDefault(vertexNull), _eDefault(edgeNull) {}
 
-  size_t copyVertexData(VPackSlice document, void* targetPtr,
+  size_t copyVertexData(arangodb::velocypack::Slice document, void* targetPtr,
                         size_t maxSize) override {
-    VPackSlice val = document.get(_field);
+    arangodb::velocypack::Slice val = document.get(_field);
     *((float*)targetPtr) = val.isInteger() ? val.getInt() : _vDefault;
     return sizeof(float);
   }
 
-  size_t copyEdgeData(VPackSlice document, void* targetPtr,
+  size_t copyEdgeData(arangodb::velocypack::Slice document, void* targetPtr,
                       size_t maxSize) override {
-    VPackSlice val = document.get(_field);
+    arangodb::velocypack::Slice val = document.get(_field);
     *((float*)targetPtr) = val.isInteger() ? val.getInt() : _eDefault;
     return sizeof(float);
   }

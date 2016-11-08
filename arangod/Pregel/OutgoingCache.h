@@ -23,13 +23,12 @@
 #ifndef ARANGODB_OUT_MESSAGE_CACHE_H
 #define ARANGODB_OUT_MESSAGE_CACHE_H 1
 
-
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 
-#include "WorkerState.h"
 #include "MessageCombiner.h"
 #include "MessageFormat.h"
+#include "WorkerState.h"
 
 namespace arangodb {
 namespace pregel {
