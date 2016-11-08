@@ -22,8 +22,8 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SCHEDULER_SOCKET_TASK2_H
-#define ARANGOD_SCHEDULER_SOCKET_TASK2_H 1
+#ifndef ARANGOD_SCHEDULER_SOCKET_TASK_H
+#define ARANGOD_SCHEDULER_SOCKET_TASK_H 1
 
 #include "Scheduler/Task.h"
 

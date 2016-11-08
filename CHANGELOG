@@ -1,6 +1,8 @@
 devel
 -----
 
+* added option -D to define a configuration file environment key=value
+
 * ui: added new graph viewer
 
 * ui: aql-editor added tabular & graph display
