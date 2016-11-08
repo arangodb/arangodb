@@ -110,6 +110,7 @@ set(TEST_GEO_SUITE    geo_suite)
 set(PACKAGES_LIST)
 set(COPY_PACKAGES_LIST)
 set(CLEAN_PACKAGES_LIST)
+set(INSTALL_CONFIGFILES_LIST)
 
 ################################################################################
 ## VERSION FILES
@@ -903,7 +904,6 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangorestore v8_build)
   add_dependencies(arangosh      v8_build)
 endif ()
-
 
 #copy compile commands to source dir
 if( EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
