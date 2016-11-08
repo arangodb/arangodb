@@ -410,10 +410,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
                          "with the --database.auto-upgrade option.");
 
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, errorMsg);
-  } else if (info.hasKey("indexes") && _version == VERSION_30) {
-    // already a 3.1 collection. upgrade the _version data
-    setVersion(VERSION_31);
-  }
+  } 
 
   if (_isVolatile && _waitForSync) {
     // Illegal collection configuration
