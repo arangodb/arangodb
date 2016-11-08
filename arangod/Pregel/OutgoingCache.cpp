@@ -176,3 +176,4 @@ void OutgoingCache<V, E, M>::sendMessages() {
 
 // template types to create
 template class arangodb::pregel::OutgoingCache<int64_t, int64_t, int64_t>;
+template class arangodb::pregel::OutgoingCache<float, float, float>;

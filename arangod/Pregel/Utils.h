@@ -60,7 +60,7 @@ class Utils {
   static std::string const doneKey;
 
   static std::string const parameterMapKey;
-  static std::string const aggregatorsKey;
+  static std::string const aggregatorValuesKey;
 
   static std::string const edgeShardingKey;
   static std::string baseUrl(std::string dbName);

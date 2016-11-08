@@ -32,14 +32,14 @@ namespace algos {
 /// PageRank
  struct PageRankAlgorithm : public Algorithm<float, float, float> {
  public:
-  SCCAlgorithm() : Algorithm("PageRank") {}
+  PageRankAlgorithm() : Algorithm("PageRank") {}
 
-  void aggregators(std::vector<std::unique_ptr<Aggregator>> &aggregators) override;
   std::shared_ptr<GraphFormat<float, float>> inputFormat() const override;
   std::shared_ptr<MessageFormat<float>> messageFormat() const override;
   std::shared_ptr<MessageCombiner<float>> messageCombiner() const override;
   std::shared_ptr<VertexComputation<float, float, float>>
   createComputation() const override;
+  void aggregators(std::vector<std::unique_ptr<Aggregator>> &aggregators) override;
 };
 }
 }

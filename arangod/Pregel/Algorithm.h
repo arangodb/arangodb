@@ -31,9 +31,11 @@
 #include "GraphFormat.h"
 #include "MessageCombiner.h"
 #include "MessageFormat.h"
+#include "Aggregator.h"
 
 namespace arangodb {
 namespace pregel {
+
 
 template <typename V, typename E, typename M>
 class VertexComputation;

@@ -28,7 +28,7 @@ namespace arangodb {
 namespace pregel {
 
 struct FloatSumCombiner : public MessageCombiner<float> {
-  MinIntegerCombiner() {}
+  FloatSumCombiner() {}
   float combine(float const& firstValue,
                   float const& secondValue) const override {
     return firstValue + secondValue;

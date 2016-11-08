@@ -46,7 +46,8 @@ Conductor::Conductor(
     unsigned int executionNumber, TRI_vocbase_t* vocbase,
     std::vector<std::shared_ptr<LogicalCollection>> vertexCollections,
     std::vector<std::shared_ptr<LogicalCollection>> edgeCollections,
-    std::string const& algorithm)
+    std::string const& algorithm,
+    VPackSlice params)
     : _vocbaseGuard(vocbase),
       _executionNumber(executionNumber),
       _vertexCollections(vertexCollections),
@@ -58,7 +59,7 @@ Conductor::Conductor(
 
   if (algorithm == "sssp") {
   } else if (algorithm == "pagerank") {
-    algos::PageRankAlgorithm algo();
+    algos::PageRankAlgorithm algo;
     algo.aggregators(_aggregators);
   } else {
     LOG(ERR) << "Unsupported algorithm";
@@ -187,10 +188,10 @@ void Conductor::finishedGlobalStep(VPackSlice& data) {
   }
   _responseCount++;
 
-  VPackSlice aggValues = data.get(Utils::aggregatorsKey);
+  VPackSlice aggValues = data.get(Utils::aggregatorValuesKey);
   if (aggValues.isObject()) {
     for (std::unique_ptr<Aggregator> &aggregator : _aggregators) {
-        VPackSlice val = aggValues.get(aggregator->name())
+        VPackSlice val = aggValues.get(aggregator->name());
         if (!val.isNone()) {
           aggregator->parse(val);
         }
@@ -224,8 +225,17 @@ void Conductor::finishedGlobalStep(VPackSlice& data) {
       b.openObject();
       b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
       b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
+        b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
+        for (std::unique_ptr<Aggregator> &aggregator : _aggregators) {
+            aggregator->serialize(b);
+        }
+        b.close();
       b.close();
       sendToAllDBServers(baseUrl + Utils::nextGSSPath, b.slice());
+        
+        for (std::unique_ptr<Aggregator> &aggregator : _aggregators) {
+            aggregator->reset();
+        }
       LOG(INFO) << "Conductor started new gss " << _globalSuperstep;
     }
   }

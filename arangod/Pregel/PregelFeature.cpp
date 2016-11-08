@@ -37,7 +37,7 @@ PregelFeature::PregelFeature(application_features::ApplicationServer* server)
   requiresElevatedPrivileges(false);
   startsAfter("Database");
   startsAfter("Logger");
-  startsAfter("Dispatcher");
+  startsAfter("Endpoint");
   Instance = this;
 }
 

@@ -57,7 +57,7 @@ std::string const Utils::senderKey = "sender";
 std::string const Utils::doneKey = "done";
 
 std::string const Utils::parameterMapKey = "params";
-std::string const Utils::aggregatorsKey = "aggregators";
+std::string const Utils::aggregatorValuesKey = "aggregators";
 
 std::string const Utils::edgeShardingKey = "_vertex";
 

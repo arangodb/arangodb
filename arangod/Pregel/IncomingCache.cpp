@@ -105,3 +105,4 @@ MessageIterator<M> IncomingCache<M>::getMessages(std::string const& vertexId) {
 
 // template types to create
 template class arangodb::pregel::IncomingCache<int64_t>;
+template class arangodb::pregel::IncomingCache<float>;

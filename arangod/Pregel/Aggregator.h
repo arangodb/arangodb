@@ -23,7 +23,8 @@
 #include <cstdint>
 #include <string>
 
-#include <velocypack/Value.h>
+#include <velocypack/Slice.h>
+#include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
 #ifndef ARANGODB_PREGEL_AGGREGATOR_H
@@ -32,43 +33,50 @@
 namespace arangodb {
 namespace pregel {
 
-template 
 class Aggregator {
  public:
   Aggregator(const Aggregator&) = delete;
   Aggregator& operator=(const Aggregator&) = delete;
 
-  virtual void const* getValue() const = 0;
+  virtual void const* getAggregatedValue() const = 0;
   virtual void reduce( void const* otherValue) = 0;
   virtual void parse(VPackSlice otherValue) = 0;
-  virtual void serialize(VPackBuilder *b) = 0;
-  std::string name() { return _name; }
+  virtual void parseAggregatedValue(VPackSlice otherValue) = 0;
+  virtual void serialize(VPackBuilder &b) = 0;
+  virtual void reset() = 0;
+  std::string const& name() { return _name; }
 
  protected:
   Aggregator(std::string const& name) : _name(name) {}
-
- private:
-  std::string _name;
+  const std::string _name;
 };
 
-class FloatMinAggregator : public Aggregator {
-  MinIntegerAggregator(std::string const& name, float init)
-      : Aggregator(name), _value(init) {}
+class FloatMaxAggregator : public Aggregator {
+public:
+  FloatMaxAggregator(std::string const& name, float init)
+      : Aggregator(name), _value(init), _initial(init) {}
 
-  void const* getValue() const override { return &_value; };
+  void const* getAggregatedValue() const override { return &_value; };
   void reduce(void const* otherValue) override {
     float other = *((float*)otherValue);
-    if (other < _value) _value = other;
+    if (other > _value) _value = other;
   };
   void parse(VPackSlice otherValue) override {
-    this->reduce(otherValue.getInteger());
+    float v = (float) otherValue.getDouble();
+    this->reduce(&v);
   };
-  void serialize(VPackBuilder *b) override {
-    b.add(name(), _value);
+  void parseAggregatedValue(VPackSlice value) override {
+      _value = (float) value.getDouble();
   };
+  void serialize(VPackBuilder &b) override {
+    b.add(_name, VPackValue(_value));
+  };
+  void reset() override {
+      _value = _initial;
+  }
 
  private:
-  float _value;
+  float _value, _initial;
 };
 }
 }

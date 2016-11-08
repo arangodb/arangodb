@@ -62,3 +62,4 @@ void VertexComputation<V, E, M>::voteHalt() {
 
 // template types to create
 template class arangodb::pregel::VertexComputation<int64_t, int64_t, int64_t>;
+template class arangodb::pregel::VertexComputation<float, float, float>;

@@ -61,7 +61,7 @@ class Worker : public IWorker {
   std::shared_ptr<WorkerState<V, E, M>> _ctx;
   std::shared_ptr<GraphStore<V, E>> _graphStore;
   std::unique_ptr<basics::ThreadPool> _workerPool;
-  std::vector <std::string, std::unique_ptr<Aggregator>> _aggregators;
+  std::map<std::string, std::unique_ptr<Aggregator>> _aggregators;
 
   void workerJobIsDone(bool allVerticesHalted);
 };

@@ -82,3 +82,4 @@ void WorkerState<V, E, M>::swapIncomingCaches() {
 
 // template types to create
 template class arangodb::pregel::WorkerState<int64_t, int64_t, int64_t>;
+template class arangodb::pregel::WorkerState<float, float, float>;

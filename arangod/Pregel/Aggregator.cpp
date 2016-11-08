@@ -20,7 +20,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Algorithm.h"
+#include "Aggregator.h"
 #include "GraphStore.h"
 #include "IncomingCache.h"
 

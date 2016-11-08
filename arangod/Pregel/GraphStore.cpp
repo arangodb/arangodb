@@ -265,3 +265,5 @@ void GraphStore<V, E>::lookupEdges(ShardID const& edgeShard,
 }
 
 template class arangodb::pregel::GraphStore<int64_t, int64_t>;
+template class arangodb::pregel::GraphStore<float, float>;
+

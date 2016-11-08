@@ -27,6 +27,7 @@
 #include "Utils.h"
 #include "WorkerState.h"
 #include "VertexComputation.h"
+#include "Aggregator.h"
 
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
@@ -87,7 +88,12 @@ Worker<V, E, M>::~Worker() {
   LOG(INFO) << "Called ~Worker()";
   const size_t threadNum = 1;
   _workerPool.reset(new ThreadPool(static_cast<size_t>(threadNum), "Pregel Worker"));
-  _ctx->algorithm()->aggregators(_aggregators);
+    
+  std::vector<std::unique_ptr<Aggregator>> aggrgs;
+  _ctx->algorithm()->aggregators(aggrgs);
+    for (std::unique_ptr<Aggregator> &a : aggrgs) {
+        _aggregators[a->name()] = std::move(a);
+    }
 }
 
 /// @brief Setup next superstep
@@ -108,12 +114,19 @@ void Worker<V, E, M>::nextGlobalStep(VPackSlice data) {
         "Seems like this worker missed a gss, expected %u. Data = %s ",
         _ctx->_expectedGSS, data.toJson().c_str());
   }
-
   _ctx->_globalSuperstep = gss;
   _ctx->_expectedGSS = gss + 1;
-  _ctx->readableIncomingCache()->clear();
-  _ctx->swapIncomingCaches();  // write cache becomes the readable cache
     
+  // parse aggregated values
+  VPackSlice aggregatedValues = data.get(Utils::aggregatorValuesKey);
+  for (auto const& pair : _aggregators) {
+      VPackSlice val = aggregatedValues.get(pair.second->name());
+      if (!val.isNone()) {
+          pair.second->parseAggregatedValue(val);
+      }
+  }
+  
+  // incoming caches are already switched
     _workerPool->enqueue([this, gss] {
         
         OutgoingCache<V, E, M> outCache(_ctx);
@@ -194,6 +207,10 @@ void Worker<V, E, M>::receivedMessages(VPackSlice data) {
 
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::workerJobIsDone(bool allDone) {
+  _ctx->readableIncomingCache()->clear();
+  _ctx->swapIncomingCaches();  // write cache becomes the readable cache
+  _ctx->_expectedGSS = _ctx->_globalSuperstep + 1;
+    
   // notify the conductor that we are done.
   VPackBuilder package;
   package.openObject();
@@ -241,3 +258,4 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice data) {
 
 // template types to create
 template class arangodb::pregel::Worker<int64_t, int64_t, int64_t>;
+template class arangodb::pregel::Worker<float, float, float>;
