@@ -41,6 +41,8 @@ In a cluster setup, the result will also contain the following attributes:
 - *shardKeys*: contains the names of document attributes that are used to
   determine the target shard for documents.
 
+- *replicationFactor*: contains how many copies of each shard are kept on different DBServers.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{400}
