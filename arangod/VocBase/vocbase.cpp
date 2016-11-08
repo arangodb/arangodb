@@ -308,6 +308,8 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
     cid = collection->cid();
 
     collection->setStatus(TRI_VOC_COL_STATUS_LOADED);
+    // set collection version to 3.1, as the collection is just created
+    collection->setVersion(LogicalCollection::VERSION_31);
 
     if (writeMarker) {
       collection->toVelocyPack(builder, false);
@@ -1302,7 +1304,7 @@ void TRI_SanitizeObjectWithEdges(VPackSlice const slice, VPackBuilder& builder) 
 
 /// @brief Convert a revision ID to a string
 constexpr static TRI_voc_rid_t tickLimit 
-  = static_cast<TRI_voc_rid_t>(2016 - 1970) * 1000 * 60 * 60 * 24 * 365;
+  = static_cast<TRI_voc_rid_t>(2016ULL - 1970ULL) * 1000ULL * 60ULL * 60ULL * 24ULL * 365ULL;
 
 std::string TRI_RidToString(TRI_voc_rid_t rid) {
   if (rid <= tickLimit) {
