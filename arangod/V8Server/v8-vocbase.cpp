@@ -2726,7 +2726,11 @@ static void JS_DecodeRev(v8::FunctionCallbackInfo<v8::Value> const& args) {
   time_t timeSeconds = timeMilli / 1000;
   uint64_t millis = timeMilli % 1000;
   struct tm date;
+#ifdef _WIN32
+  gmtime_s(&date, &timeSeconds);
+#else
   gmtime_r(&timeSeconds, &date);
+#endif
   char buffer[32];
   strftime(buffer, 32, "%Y-%m-%dT%H:%M:%S.000Z", &date);
   buffer[20] = (millis / 100) + '0';
