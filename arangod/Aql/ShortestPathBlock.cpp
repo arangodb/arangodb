@@ -534,7 +534,7 @@ bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
   // We do not need this data anymore. Result has been processed.
   // Save some memory.
   _coordinatorCache.clear();
-  bool hasPath = _finder->shortestPath(start, end, *_path);
+  bool hasPath = _finder->shortestPath(start, end, *_path, [this]() { throwIfKilled(); });
 
   if (hasPath) {
     _posInPath = 0;

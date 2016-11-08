@@ -677,6 +677,7 @@ void TraversalBlock::runNeighbors(std::vector<VPackSlice> const& startVertices,
   }
 
   if (!nextDepth.empty()) {
+    throwIfKilled();  // check if we were aborted
     runNeighbors(nextDepth, visited, distinct, direction, depth + 1);
   }
 }

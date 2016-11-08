@@ -39,6 +39,7 @@ class LoggerFeature final : public application_features::ApplicationFeature {
 
  public:
   void setBackgrounded(bool backgrounded) { _backgrounded = backgrounded; }
+  void enableThreaded() { _threaded = true; }
   void disableThreaded() { _threaded = false; }
   void setSupervisor(bool supervisor) { _supervisor = supervisor; }
 

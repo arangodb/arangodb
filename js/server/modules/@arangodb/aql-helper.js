@@ -353,8 +353,7 @@ function findExecutionNodes(plan, nodetype) {
     what = plan.plan;
   }
   what.nodes.forEach(function(node) {
-    if (node.type === nodetype) {
-
+    if (nodetype === undefined || node.type === nodetype) {
       matches.push(node);
     }
     else if (node.type === "SubqueryNode") {

@@ -101,6 +101,31 @@ void SupervisorFeature::daemonize() {
                     FATAL_ERROR_EXIT();
                   }
                  });
+  
+  // callback function that will shutdown the supervisor features (currently that
+  // is just the LoggerFeature) so they can be re-started after the call to fork.
+  // this is required because supervisor and child will run with different Logger
+  // configurations.      
+  auto shutdownSupervisorFeatures = [&supervisorFeatures]() {
+    std::for_each(supervisorFeatures.rbegin(), supervisorFeatures.rend(),
+                  [](ApplicationFeature* feature) { feature->stop(); });
+
+    std::for_each(supervisorFeatures.rbegin(), supervisorFeatures.rend(),
+                  [](ApplicationFeature* feature) { feature->unprepare(); });
+    
+    std::for_each(supervisorFeatures.begin(), supervisorFeatures.end(),
+                [](ApplicationFeature* feature) {
+                  LoggerFeature* logger =
+                      dynamic_cast<LoggerFeature*>(feature);
+
+                  if (logger != nullptr) {
+                    // turn off supervisor mode and re-enable threaded logging
+                    logger->setSupervisor(false);
+                    logger->enableThreaded();
+                  }
+                });
+  };
+
 
   while (!done) {
     // fork of the server
@@ -113,6 +138,8 @@ void SupervisorFeature::daemonize() {
 
     // parent (supervisor)
     if (0 < _clientPid) {
+      LOG_TOPIC(DEBUG, Logger::STARTUP) << "supervisor has forked a child process with pid " << _clientPid;
+
       TRI_SetProcessTitle("arangodb [supervisor]");
 
       std::for_each(supervisorFeatures.begin(), supervisorFeatures.end(),
@@ -145,7 +172,8 @@ void SupervisorFeature::daemonize() {
       int res = waitpid(_clientPid, &status, 0);
       bool horrible = true;
 
-      if (!DONE) {
+      if (DONE) {
+        // signal handler for SIGINT or SIGTERM was invoked
         done = true;
         horrible = false;
       }
@@ -161,6 +189,7 @@ void SupervisorFeature::daemonize() {
             done = true;
             horrible = false;
           } else {
+            TRI_ASSERT(horrible);
             t = time(0) - startTime;
 
             LOG_TOPIC(ERR, Logger::STARTUP)
@@ -179,9 +208,9 @@ void SupervisorFeature::daemonize() {
           }
         } else if (WIFSIGNALED(status)) {
           switch (WTERMSIG(status)) {
-            case 2:
-            case 9:
-            case 15:
+            case 2: // SIGINT
+            case 9: // SIGKILL
+            case 15: // SIGTERM
               LOG_TOPIC(INFO, Logger::STARTUP)
                   << "child " << _clientPid
                   << " died of natural causes, exit status " << WTERMSIG(status);
@@ -190,6 +219,7 @@ void SupervisorFeature::daemonize() {
               break;
 
             default:
+              TRI_ASSERT(horrible);
               t = time(0) - startTime;
 
               LOG_TOPIC(ERR, Logger::STARTUP) << "child " << _clientPid
@@ -217,6 +247,7 @@ void SupervisorFeature::daemonize() {
               break;
           }
         } else {
+          TRI_ASSERT(horrible);
           LOG_TOPIC(ERR, Logger::STARTUP)
               << "child " << _clientPid
               << " died a horrible death, unknown cause";
@@ -224,8 +255,19 @@ void SupervisorFeature::daemonize() {
         }
       }
 
-      if (horrible) {
-        result = EXIT_FAILURE;
+      if (!done) {
+        // we'll soon fork the supervisor process again.
+        // now shutdown the features the supervisor had configured specially 
+        LOG_TOPIC(DEBUG, Logger::STARTUP) << "supervisor will try to fork a new child process";
+
+        shutdownSupervisorFeatures();
+      } else {
+        // adjust exit code
+        if (horrible) {
+          result = EXIT_FAILURE;
+        } else {
+          result = EXIT_SUCCESS;
+        }
       }
     }
 
@@ -251,11 +293,7 @@ void SupervisorFeature::daemonize() {
     }
   }
 
-  std::for_each(supervisorFeatures.rbegin(), supervisorFeatures.rend(),
-                [](ApplicationFeature* feature) { feature->stop(); });
-
-  std::for_each(supervisorFeatures.rbegin(), supervisorFeatures.rend(),
-                [](ApplicationFeature* feature) { feature->unprepare(); });
+  shutdownSupervisorFeatures();
 
   exit(result);
 }

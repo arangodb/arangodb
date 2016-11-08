@@ -1032,6 +1032,44 @@ function optimizerRuleTestSuite() {
       });
       assertTrue(seen);
     },
+    
+    testSortAscWithFilterSubquery : function () {
+      var query = "FOR i IN [123] RETURN (FOR v IN " + colName + " FILTER v.a == i SORT v.b ASC RETURN v)";
+      var rules = AQL_EXPLAIN(query).plan.rules;
+      assertNotEqual(-1, rules.indexOf(ruleName));
+      assertNotEqual(-1, rules.indexOf(secondRuleName));
+      assertNotEqual(-1, rules.indexOf("remove-filter-covered-by-index"));
+
+      var nodes = helper.findExecutionNodes(AQL_EXPLAIN(query).plan, "SubqueryNode")[0].subquery.nodes;
+      var seen = false;
+      nodes.forEach(function(node) {
+        assertNotEqual("SortNode", node.type);
+        if (node.type === "IndexNode") {
+          seen = true;
+          assertFalse(node.reverse); 
+        }
+      });
+      assertTrue(seen);
+    },
+    
+    testSortDescWithFilterSubquery : function () {
+      var query = "FOR i IN [123] RETURN (FOR v IN " + colName + " FILTER v.a == i SORT v.b DESC RETURN v)";
+      var rules = AQL_EXPLAIN(query).plan.rules;
+      assertNotEqual(-1, rules.indexOf(ruleName));
+      assertNotEqual(-1, rules.indexOf(secondRuleName));
+      assertNotEqual(-1, rules.indexOf("remove-filter-covered-by-index"));
+
+      var nodes = helper.findExecutionNodes(AQL_EXPLAIN(query).plan, "SubqueryNode")[0].subquery.nodes;
+      var seen = false;
+      nodes.forEach(function(node) {
+        assertNotEqual("SortNode", node.type);
+        if (node.type === "IndexNode") {
+          seen = true;
+          assertTrue(node.reverse); 
+        }
+      });
+      assertTrue(seen);
+    },
 
     testSortDescWithFilterNonConst : function () {
       var query = "FOR v IN " + colName + " FILTER v.d == NOOPT(123) SORT v.d DESC RETURN v";

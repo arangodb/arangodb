@@ -268,12 +268,13 @@ function transformControllerToRoute(routeInfo, route, isDevel) {
 
 function transformRoutes(rt, routes, controller, prefix, isDevel) {
   rt.forEach(function (route) {
-    route.action = {
-      callback: transformControllerToRoute(route.action, route.url || 'No Route', isDevel)
-    };
     if (route.url) {
       route.url.match = arangodb.normalizeURL(`${prefix}/${route.url.match}`);
     }
+    const url = route.url && route.url.match;
+    route.action = {
+      callback: transformControllerToRoute(route.action, url || 'No Route', isDevel)
+    };
     route.context = controller;
     routes.routes.push(route);
   });
