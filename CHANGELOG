@@ -41,6 +41,8 @@ v3.1.1 (XXXX-XX-XX)
 
 * updated graphql-sync dependency to 0.6.2
 
+* fixed issue #2156
+
 
 v3.1.0 (2016-10-29)
 -------------------
