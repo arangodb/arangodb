@@ -192,6 +192,8 @@ devel
 
 * updated graphql-sync dependency to 0.6.2
 
+* fixed issue #2156
+
 
 v3.1.1 (XXXX-XX-XX)
 -------------------
@@ -246,7 +248,6 @@ v3.1.0 (2016-10-29)
 * fixed issue #2110
 
 * added Auto-aptation of RAFT timings as calculations only
-
 
 
 v3.0.11 (2016-XX-XX)
