@@ -134,6 +134,8 @@ class LogicalCollection {
   uint32_t version() const { 
     return _version; 
   }
+  
+  void setVersion(CollectionVersions version) { _version = version; }
 
   uint32_t internalVersion() const;
 
