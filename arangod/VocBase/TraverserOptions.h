@@ -135,6 +135,10 @@ struct TraverserOptions {
   TraverserOptions(arangodb::aql::Query*, arangodb::velocypack::Slice,
                    arangodb::velocypack::Slice);
 
+  /// @brief This copy constructor is only working during planning phase.
+  ///        After planning this node should not be copied anywhere.
+  TraverserOptions(TraverserOptions const&);
+
   virtual ~TraverserOptions();
 
   /// @brief Build a velocypack for cloning in the plan.
