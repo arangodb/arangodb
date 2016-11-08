@@ -1,6 +1,21 @@
 v3.1.1 (XXXX-XX-XX)
 -------------------
 
+* allow creating unique indexes on more attributes than present in shardKeys
+    
+  The following combinations of shardKeys and indexKeys are allowed/not allowed:
+    
+  shardKeys     indexKeys
+	  a             a        ok
+	  a             b    not ok
+	  a           a b        ok
+	a b             a    not ok
+	a b             b    not ok
+	a b           a b        ok
+	a b         a b c        ok
+      a b c           a b    not ok
+      a b c         a b c        ok
+
 * fixed wrong version in web interface login screen (EE only)
 
 * make web interface not display an exclamation mark next to ArangoDB version number 3.1
