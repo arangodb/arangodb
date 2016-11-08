@@ -19,7 +19,7 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"SampleTask"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
   <span class="hljs-string">"period"</span> : <span class="hljs-number">2</span>, 
-  <span class="hljs-string">"created"</span> : <span class="hljs-number">1474883482.921037</span>, 
+  <span class="hljs-string">"created"</span> : <span class="hljs-number">1478597680.071659</span>, 
   <span class="hljs-string">"command"</span> : <span class="hljs-string">"(function(params) { require('@arangodb').print(params); })(params)"</span>, 
   <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span>, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 

@@ -1,4 +1,4 @@
-v3.0.11 (2016-XX-XX)
+v3.0.11 (2016-11-08)
 --------------------
 
 * fixed issue #2140: supervisor dies instead of respawning child

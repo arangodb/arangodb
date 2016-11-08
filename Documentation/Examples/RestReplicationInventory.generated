@@ -39,7 +39,7 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
     }, 
     { 
       <span class="hljs-string">"parameters"</span> : { 
-        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"5"</span>, 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"4"</span>, 
         <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
         <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
@@ -147,10 +147,10 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
   ], 
   <span class="hljs-string">"state"</span> : { 
     <span class="hljs-string">"running"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"lastLogTick"</span> : <span class="hljs-string">"11050"</span>, 
-    <span class="hljs-string">"lastUncommittedLogTick"</span> : <span class="hljs-string">"11054"</span>, 
+    <span class="hljs-string">"lastLogTick"</span> : <span class="hljs-string">"11053"</span>, 
+    <span class="hljs-string">"lastUncommittedLogTick"</span> : <span class="hljs-string">"11057"</span>, 
     <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">3782</span>, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2016-09-26T09:51:15Z"</span> 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2016-11-08T09:34:33Z"</span> 
   }, 
-  <span class="hljs-string">"tick"</span> : <span class="hljs-string">"11054"</span> 
+  <span class="hljs-string">"tick"</span> : <span class="hljs-string">"11057"</span> 
 }
