@@ -1,0 +1,7 @@
+{
+  "name": "headers",
+  "version": "0.0.1",
+  "author": "arangodb",
+  "description": "simple test case for checking response headers",
+  "main": "index.js"
+}
