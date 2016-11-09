@@ -84,16 +84,13 @@ macro (install_readme input output)
   if (${USE_VERSION_IN_LICENSEDIR})
     set(PKG_VERSION "-${ARANGODB_VERSION}")
   endif ()
-
-  FILE(READ ${PROJECT_SOURCE_DIR}/${input} FileContent)
-  STRING(REPLACE "\r" "" FileContent "${FileContent}")
+  set(CRLFSTYLE "UNIX")
   if (MSVC)
-    STRING(REPLACE "\n" "\r\n" FileContent "${FileContent}")
+    set(CRLFSTYLE "CRLF")
   endif ()
-  FILE(WRITE ${PROJECT_BINARY_DIR}/${output} "${FileContent}")
   install(
-    FILES ${PROJECT_BINARY_DIR}/${output}
-    DESTINATION ${where}${PKG_VERSION})
+    CODE "configure_file(${PROJECT_SOURCE_DIR}/${input} \$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${where}${PKG_VERSION}/${output} NEWLINE_STYLE ${CRLFSTYLE})"
+    )
 endmacro ()
 
 # installs a link to an executable ---------------------------------------------
