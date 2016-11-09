@@ -124,6 +124,11 @@ static void mergeResults(
   resultBody->openArray();
   for (auto const& pair : reverseMapping) {
     VPackSlice arr = resultMap.find(pair.first)->second->slice();
+    if (arr.isObject() && arr.hasKey("error") && arr.get("error").isBoolean() && arr.get("error").getBoolean()) {
+      // an error occurred, now rethrow the error
+      int res = arr.get("errorNum").getNumericValue<int>();
+      THROW_ARANGO_EXCEPTION(res);
+    }
     resultBody->add(arr.at(pair.second));
   }
   resultBody->close();

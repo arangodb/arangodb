@@ -779,24 +779,34 @@ int RestImportHandler::performImport(SingleCollectionTransaction& trx,
       } else {
         opResult = trx.replace(collectionName, updateReplace.slice(), opOptions);
       }
+
+      if (opResult.failed() && res == TRI_ERROR_NO_ERROR) {
+        res = opResult.code;
+      }
    
       VPackSlice resultSlice = opResult.slice();
-      size_t pos = 0; 
-      for (auto const& it : VPackArrayIterator(resultSlice)) {
-        if (!it.hasKey("error") || !it.get("error").getBool()) {
-          ++result._numUpdated;
-        } else {
-          int errorCode = it.get("errorNum").getNumber<int>();
-          makeError(originalPositions[pos], errorCode, babies.slice().at(originalPositions[pos]), result);
-          if (complete) {
-            res = errorCode;
-            break;
+
+      if (resultSlice.isArray()) {
+        size_t pos = 0; 
+        for (auto const& it : VPackArrayIterator(resultSlice)) {
+          if (!it.hasKey("error") || !it.get("error").getBool()) {
+            ++result._numUpdated;
+          } else {
+            int errorCode = it.get("errorNum").getNumber<int>();
+            makeError(originalPositions[pos], errorCode, babies.slice().at(originalPositions[pos]), result);
+            if (complete) {
+              res = errorCode;
+              break;
+            }
           }
+          ++pos;
         }
       }
-
-      ++pos;
     }
+  }
+  
+  if (opResult.failed() && res == TRI_ERROR_NO_ERROR) {
+    res = opResult.code;
   }
   
   return res;
