@@ -30,3 +30,10 @@ add_custom_target(copy_bundle_packages
   COMMAND cp *.dmg ${PACKAGE_TARGET_DIR})
 
 list(APPEND COPY_PACKAGES_LIST copy_bundle_packages)
+
+add_custom_target(remove_packages
+  COMMAND rm -f *.dmg
+  COMMAND rm -rf _CPack_Packages
+  )
+
+list(APPEND CLEAN_PACKAGES_LIST remove_packages)

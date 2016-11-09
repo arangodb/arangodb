@@ -398,7 +398,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _lastCompactionStamp(0.0),
       _uncollectedLogfileEntries(0),
       _revisionError(false) {
-
+      
   if (!IsAllowedName(info)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
@@ -410,7 +410,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
                          "with the --database.auto-upgrade option.");
 
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, errorMsg);
-  }
+  } 
 
   if (_isVolatile && _waitForSync) {
     // Illegal collection configuration

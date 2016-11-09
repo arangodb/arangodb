@@ -897,22 +897,22 @@
       if (this.dashboardView) {
         this.dashboardView.resize();
       }
-      if (this.graphManagementView) {
+      if (this.graphManagementView && Backbone.history.getFragment() === 'graphs') {
         this.graphManagementView.handleResize($('#content').width());
       }
-      if (this.queryView) {
+      if (this.queryView && Backbone.history.getFragment() === 'queries') {
         this.queryView.resize();
       }
       if (this.naviView) {
         this.naviView.resize();
       }
-      if (this.graphViewer) {
+      if (this.graphViewer && Backbone.history.getFragment().indexOf('graph') > -1) {
         this.graphViewer.resize();
       }
-      if (this.documentsView) {
+      if (this.documentsView && Backbone.history.getFragment().indexOf('documents') > -1) {
         this.documentsView.resize();
       }
-      if (this.documentView) {
+      if (this.documentView && Backbone.history.getFragment().indexOf('collection') > -1) {
         this.documentView.resize();
       }
     },

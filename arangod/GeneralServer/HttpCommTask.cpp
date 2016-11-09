@@ -259,7 +259,7 @@ bool HttpCommTask::processRead() {
     }
 
     if (std::strncmp(_readBuffer.c_str(), "VST/1.0\r\n\r\n", 11) == 0) {
-      LOG_TOPIC(INFO, Logger::COMMUNICATION) << "Switching from Http to Vst";
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "Switching from Http to Vst";
       std::shared_ptr<GeneralCommTask> commTask;
       _abandoned = true;
       cancelKeepAlive();
