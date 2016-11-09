@@ -547,7 +547,13 @@ class AssocMulti {
             newBucket[j].writeHashCache(0);
           }
         }
-        empty.emplace_back(newBucket);
+        try {
+          // shouldn't fail as enough space was reserved above, but let's be paranoid
+          empty.emplace_back(newBucket);
+        } catch (...) {
+          delete[] newBucket;
+          throw;
+        }
       }
       
       size_t i = 0;

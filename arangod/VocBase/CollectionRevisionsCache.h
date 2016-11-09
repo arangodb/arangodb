@@ -54,17 +54,25 @@ class CollectionRevisionsCache {
 
   void sizeHint(int64_t hint);
 
+  bool allowInvalidation() const {
+    return _allowInvalidation.load();
+  }
+
+  void allowInvalidation(bool value) {
+    _allowInvalidation.store(value);
+  }
+
   // look up a revision
   bool lookupRevision(arangodb::Transaction* trx, ManagedDocumentResult& result, TRI_voc_rid_t revisionId, bool shouldLock);
   
   // conditionally look up a revision
-  bool lookupRevisionConditional(arangodb::Transaction* trx, ManagedDocumentResult& result, TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal);
+  bool lookupRevisionConditional(arangodb::Transaction* trx, ManagedDocumentResult& result, TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal, bool shouldLock);
   
   // insert from chunk
-  void insertRevision(TRI_voc_rid_t revisionId, RevisionCacheChunk* chunk, uint32_t offset, uint32_t version);
+  void insertRevision(TRI_voc_rid_t revisionId, RevisionCacheChunk* chunk, uint32_t offset, uint32_t version, bool shouldLock);
   
   // insert from WAL
-  void insertRevision(TRI_voc_rid_t revisionId, wal::Logfile* logfile, uint32_t offset);
+  void insertRevision(TRI_voc_rid_t revisionId, wal::Logfile* logfile, uint32_t offset, bool shouldLock);
 
   // remove a revision
   void removeRevision(TRI_voc_rid_t revisionId);
@@ -85,6 +93,8 @@ class CollectionRevisionsCache {
   LogicalCollection* _collection;
 
   ReadCache _readCache;
+
+  std::atomic<bool> _allowInvalidation;
 };
 
 } // namespace arangodb

@@ -330,7 +330,13 @@ class AssocUnique {
 
       for (size_t i = 0; i < _buckets.size(); ++i) {
         auto newBucket = new Element[static_cast<size_t>(nrAlloc)]();
-        empty.emplace_back(newBucket);
+        try {
+          // shouldn't fail as enough space was reserved above, but let's be paranoid
+          empty.emplace_back(newBucket);
+        } catch (...) {
+          delete[] newBucket;
+          throw;
+        }
       }
 
       size_t i = 0;

@@ -39,7 +39,7 @@ namespace arangodb {
 class StringRef {
  public:
   /// @brief create an empty StringRef
-  StringRef() : _data(""), _length(0) {}
+  constexpr StringRef() : _data(""), _length(0) {}
 
   /// @brief create a StringRef from an std::string
   explicit StringRef(std::string const& str) : _data(str.c_str()), _length(str.size()) {}

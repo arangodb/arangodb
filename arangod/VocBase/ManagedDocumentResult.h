@@ -103,8 +103,12 @@ class ManagedDocumentResult {
   void addExisting(ChunkProtector& protector, TRI_voc_rid_t revisionId);
 
   bool hasSeenChunk(RevisionCacheChunk* chunk) const { return _chunkCache.contains(chunk); }
-  TRI_voc_rid_t lastRevisionId() const { return _lastRevisionId; }
-  uint8_t const* lastVPack() const { return _vpack; }
+  inline TRI_voc_rid_t lastRevisionId() const { return _lastRevisionId; }
+
+  inline void setCache(TRI_voc_rid_t revisionId, uint8_t const* vpack) {
+    _lastRevisionId = revisionId;
+    _vpack = vpack;
+  }
 
   //void clear();
 
