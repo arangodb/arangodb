@@ -449,3 +449,49 @@ Please note that filtering using array indexes only works from within AQL querie
 only if the query filters on the indexed attribute using the `IN` operator. The other
 comparison operators (`==`, `!=`, `>`, `>=`, `<`, `<=`, `ANY`, `ALL`, `NONE`) currently
 cannot use array indexes.
+
+!SUBSECTION Vertex centric indexes
+
+As mentioned above, the most important indexes for graphs are the edge
+indexes, indexing the `_from` and `_to` attributes of edge collections.
+They provide very quick access to all edges originating in or arriving
+at a given vertex, which allows to quickly find all neighbours of a vertex
+in a graph.
+
+In many cases one would like to run more specific queries, for example
+finding amongst the edges originating in a given vertex only those
+with the 20 latest time stamps. Exactly this is achieved with "vertex 
+centric indexes". In a sense these are localized indexes for an edge
+collection, which sit at every single vertex.
+
+Technically, they are implemented in ArangoDB as indexes, which sort the 
+complete edge collection first by `_from` and then by other attributes.
+If we for example have a skiplist index on the attributes `_from` and 
+`timestamp` of an edge collection, we can answer the above question
+very quickly with a single range lookup in the index.
+
+Since ArangoDB 3.0 one can create sorted indexes (type "skiplist" and 
+"persistent") that index the special edge attributes `_from` or `_to`
+and additionally other attributes. Since ArangoDB 3.1, these are used
+in graph traversals, when appropriate `FILTER` statements are found
+by the optimizer.
+
+For example, to create a vertex centric index of the above type, you 
+would simply do
+
+```js
+db.edges.ensureIndex({"type":"skiplist", "fields": ["_from", "timestamp"]});
+```
+
+Then, queries like
+
+```js
+FOR v, e, p IN 1..1 OUTBOUND "V/1" edges
+  FILTER e.timestamp >= "2016-11-09"
+  RETURN p
+```
+
+will be considerably faster in case there are many edges originating
+in vertex `"V/1"` but only few with a recent time stamp.
+
+
