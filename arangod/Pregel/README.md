@@ -8,12 +8,39 @@ Pregel Subsystem
 
 Message format between DBServers:
 
+
+
 {sender:"someid", 
 executionNumber:1337, 
 globalSuperstep:123, 
-messages: [vertexID1, data1, vertexID2, data2]
+messages: [<vertexID1>, <slice1>, vertexID2, <slice2>]
 }
+Any type of slice is supported
 
-data1 may be any type of slice, whether array, object or primitive datatype
 
-Future:  vertexID may be an array of vertices
+### Useful Commands
+
+Import graph e.g. https://github.com/arangodb/example-datasets/tree/master/Graphs/1000
+First rename the columns '_key', '_from', '_to' arangoimp will keep those.
+
+In arangosh:
+
+    db._create('vertices', {numberOfShards: 4});
+    db._createEdgeCollection('alt_edges');
+    db._createEdgeCollection('edges', {numberOfShards: 4, 
+                                       shardKeys:["_vertex"], 
+                                       distributeShardsLike:'vertices'
+                                      });
+
+arangoimp --file generated_vertices.csv --type csv --collection vertices --overwrite true --server.endpoint http+tcp://127.0.0.1:8530
+
+arangoimp --file generated_edges.csv --type csv --collection alt_edges --overwrite true --from-collection-prefix "vertices" --to-collection-prefix "vertices"  --server.endpoint http+tcp://127.0.0.1:8530
+
+
+
+AQL script to copy edge collection into one with '_vertex':
+
+FOR doc IN alt_edges
+INSERT {_vertex:SUBSTRING(doc._from,FIND_FIRST(doc._from,"/")+1), 
+_from:doc._from,
+_to:doc._to} IN edges

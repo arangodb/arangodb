@@ -23,9 +23,9 @@
 #ifndef ARANGODB_PREGEL_FEATURE_H
 #define ARANGODB_PREGEL_FEATURE_H 1
 
-#include <unordered_map>
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
+#include <cstdint>
 
 namespace arangodb {
 namespace pregel {
@@ -42,7 +42,7 @@ class PregelFeature final : public application_features::ApplicationFeature {
 
   void beginShutdown() override final;
 
-  unsigned int createExecutionNumber();
+  uint64_t createExecutionNumber();
   void addExecution(Conductor* const exec, unsigned int executionNumber);
   Conductor* conductor(int32_t executionNumber);
 

@@ -43,15 +43,15 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 
 Conductor::Conductor(
-    unsigned int executionNumber, TRI_vocbase_t* vocbase,
-    std::vector<std::shared_ptr<LogicalCollection>> vertexCollections,
-    std::vector<std::shared_ptr<LogicalCollection>> edgeCollections,
-    std::string const& algorithm, VPackSlice params)
+     uint64_t executionNumber, TRI_vocbase_t* vocbase,
+     std::vector<std::shared_ptr<LogicalCollection>> vertexCollections,
+     std::shared_ptr<LogicalCollection> edgeCollection,
+     std::string const& algorithm, VPackSlice params)
     : _vocbaseGuard(vocbase),
       _executionNumber(executionNumber),
       _algorithm(algorithm),
       _vertexCollections(vertexCollections),
-      _edgeCollections(edgeCollections) {
+      _edgeCollection(edgeCollection) {
   bool isCoordinator = ServerState::instance()->isCoordinator();
   assert(isCoordinator);
   LOG(INFO) << "constructed conductor";
@@ -97,14 +97,13 @@ static void resolveShards(LogicalCollection const* collection,
 }
 
 void Conductor::start() {
-  ClusterComm* cc = ClusterComm::instance();
   int64_t vertexCount = 0, edgeCount = 0;
   std::map<CollectionID, std::string> collectionPlanIdMap;
   std::map<ServerID, std::vector<ShardID>> edgeServerMap;
 
   for (auto collection : _vertexCollections) {
     collectionPlanIdMap[collection->name()] = collection->planId_as_string();
-    size_t cc =
+    int64_t cc =
         Utils::countDocuments(_vocbaseGuard.vocbase(), collection->name());
     if (cc > 0) {
       vertexCount += cc;
@@ -113,16 +112,12 @@ void Conductor::start() {
       LOG(WARN) << "Collection does not contain vertices";
     }
   }
-  for (auto collection : _edgeCollections) {
-    collectionPlanIdMap[collection->name()] = collection->planId_as_string();
-    size_t cc =
-        Utils::countDocuments(_vocbaseGuard.vocbase(), collection->name());
-    if (cc > 0) {
-      edgeCount += cc;
-      resolveShards(collection.get(), edgeServerMap);
-    } else {
-      LOG(WARN) << "Collection does not contain edges";
-    }
+  collectionPlanIdMap[_edgeCollection->name()] = _edgeCollection->planId_as_string();
+  edgeCount = Utils::countDocuments(_vocbaseGuard.vocbase(), _edgeCollection->name());
+  if (edgeCount > 0) {
+    resolveShards(_edgeCollection.get(), edgeServerMap);
+  } else {
+    LOG(WARN) << "Collection does not contain edges";
   }
 
   std::string const baseUrl = Utils::baseUrl(_vocbaseGuard.vocbase()->name());
@@ -170,6 +165,8 @@ void Conductor::start() {
     requests.emplace_back("server:" + it.first, rest::RequestType::POST,
                           baseUrl + Utils::startExecutionPath, body);
   }
+  
+  ClusterComm* cc = ClusterComm::instance();
   size_t nrDone = 0;
   cc->performRequests(requests, 120.0, nrDone, LogTopic("Pregel Conductor"));
   LOG(INFO) << "Send messages to " << nrDone << " shards of "
@@ -184,26 +181,40 @@ void Conductor::start() {
   }
 }
 
-void Conductor::startGlobalStep() {
+void Conductor::startGlobalStep() {
   
   VPackBuilder b;
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
   b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-  b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
-  for (std::unique_ptr<Aggregator>& aggregator : _aggregators) {
-    aggregator->serializeValue(b);
+  if (_aggregators.size() > 0) {
+    b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
+    for (std::unique_ptr<Aggregator>& aggregator : _aggregators) {
+      aggregator->serializeValue(b);
+    }
+    b.close();
   }
   b.close();
-  b.close();
   
-  std::string baseUrl = Utils::baseUrl(_vocbaseGuard.vocbase()->name());
-  sendToAllDBServers(baseUrl + Utils::startGSSPath, b.slice());
-  
+  // reset aggregatores ahead of gss
   for (std::unique_ptr<Aggregator>& aggregator : _aggregators) {
     aggregator->reset();
   }
-  LOG(INFO) << "Conductor started new gss " << _globalSuperstep;
+  
+  std::string baseUrl = Utils::baseUrl(_vocbaseGuard.vocbase()->name());
+  // first allow all workers to run worker level operations
+  int r = sendToAllDBServers(baseUrl + Utils::prepareGSSPath, b.slice());
+  
+  if (r == TRI_ERROR_NO_ERROR) {
+    // start vertex level operations
+    sendToAllDBServers(baseUrl + Utils::startGSSPath, b.slice());
+    LOG(INFO) << "Conductor started new gss " << _globalSuperstep;
+  } else {
+    LOG(INFO) << "Seems there is at least one worker out of order";
+    // TODO, in case a worker needs more than 120s to do calculations
+    // this will be triggered as well
+    // TODO handle cluster failures
+  }
 }
 
 void Conductor::finishedGlobalStep(VPackSlice& data) {
@@ -235,9 +246,9 @@ void Conductor::finishedGlobalStep(VPackSlice& data) {
     LOG(INFO) << "Finished gss " << _globalSuperstep;
     _globalSuperstep++;
 
-    if (_doneCount == _dbServerCount || _globalSuperstep == 101) {
+    if (_doneCount == _dbServerCount || _globalSuperstep == 99) {
       std::string baseUrl = Utils::baseUrl(_vocbaseGuard.vocbase()->name());
-      LOG(INFO) << "Done. We did " << _globalSuperstep - 1 << " rounds";
+      LOG(INFO) << "Done. We did " << _globalSuperstep+1 << " rounds";
       VPackBuilder b;
       b.openObject();
       b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
@@ -272,9 +283,9 @@ int Conductor::sendToAllDBServers(std::string path, VPackSlice const& config) {
   }
 
   size_t nrDone = 0;
-  cc->performRequests(requests, 120.0, nrDone, LogTopic("Pregel Conductor"));
+  size_t nrGood = cc->performRequests(requests, 120.0, nrDone, LogTopic("Pregel Conductor"));
   LOG(INFO) << "Send messages to " << nrDone << " servers";
   printResults(requests);
 
-  return TRI_ERROR_NO_ERROR;
+  return nrGood == requests.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
 }

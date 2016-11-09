@@ -46,7 +46,6 @@ class Aggregator {
   /// @brief Value from superstep S calculated by the worker
   virtual void const* getValue() const = 0;
   virtual void aggregateValue(void const* otherValue) = 0;
-
   virtual void aggregateValue(VPackSlice otherValue) = 0;
   virtual void serializeValue(VPackBuilder& b) = 0;
 

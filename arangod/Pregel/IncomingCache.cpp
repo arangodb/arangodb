@@ -94,11 +94,12 @@ void IncomingCache<M>::setDirect(std::string const& toValue,
 
 template <typename M>
 MessageIterator<M> IncomingCache<M>::getMessages(std::string const& vertexId) {
-  LOG(INFO) << "Querying messages for " << vertexId;
   auto vmsg = _messages.find(vertexId);
   if (vmsg != _messages.end()) {
+    LOG(INFO) << "Got a message for " << vertexId;
     return MessageIterator<M>(&vmsg->second);
   } else {
+    LOG(INFO) << "No message for " << vertexId;
     return MessageIterator<M>();
   }
 }

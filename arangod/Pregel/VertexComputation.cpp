@@ -23,6 +23,8 @@
 #include "VertexComputation.h"
 #include "GraphStore.h"
 #include "OutgoingCache.h"
+#include "Worker.h"
+#include "Aggregator.h"
 
 using namespace std;
 using namespace arangodb;
@@ -58,6 +60,23 @@ void VertexComputation<V, E, M>::setVertexData(const V* ptr, size_t size) {
 template <typename V, typename E, typename M>
 void VertexComputation<V, E, M>::voteHalt() {
   _vertexEntry->setActive(false);
+}
+
+template <typename V, typename E, typename M>
+const void* VertexComputation<V, E, M>::getAggregatedValue(std::string const& name) {
+  auto const& it = _aggregators->find(name);
+  if (it !=  _aggregators->end()) {
+    return it->second->getAggregatedValue();
+  }
+  return nullptr;
+}
+
+template <typename V, typename E, typename M>
+void VertexComputation<V, E, M>::aggregateValue(std::string const& name, void const* value) {
+  auto const& it = _aggregators->find(name);
+  if (it !=  _aggregators->end()) {
+    it->second->aggregateValue(value);
+  }
 }
 
 // template types to create

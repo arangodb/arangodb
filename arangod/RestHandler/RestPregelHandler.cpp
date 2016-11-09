@@ -52,76 +52,88 @@ RestStatus RestPregelHandler::execute() {
       LOG(ERR) << "Bad request body\n";
       generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_NOT_IMPLEMENTED, "illegal request for /_api/pregel");
-    } else if (_request->requestType() == rest::RequestType::POST) {
-      
-      std::vector<std::string> const& suffix = _request->suffix();
-      VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
-      if (!sExecutionNum.isInteger()) {
-        LOG(ERR) << "Invalid execution number";
-        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+      return RestStatus::DONE;
+    }
+    if (_request->requestType() != rest::RequestType::POST) {
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                    TRI_ERROR_NOT_IMPLEMENTED, "illegal method for /_api/pregel");
+      return RestStatus::DONE;
+
+    }
+  
+    std::vector<std::string> const& suffix = _request->suffix();
+    VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
+    if (!sExecutionNum.isInteger()) {
+      LOG(ERR) << "Invalid execution number";
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+      return RestStatus::DONE;
+    }
+    
+    uint64_t executionNumber = sExecutionNum.getUInt();
+    if (suffix.size() != 1) {
+      LOG(ERR) << "Invalid suffix";
+      generateError(rest::ResponseCode::NOT_FOUND,
+                    TRI_ERROR_HTTP_NOT_FOUND);
+      return RestStatus::DONE;
+    } else if (suffix[0] == Utils::startExecutionPath) {
+      IWorker *w = PregelFeature::instance()->worker(executionNumber);
+      if (w) {
+        LOG(ERR) << "Worker with this execution number already exists.";
+        generateError(rest::ResponseCode::BAD,
+                      TRI_ERROR_HTTP_FORBIDDEN);
         return RestStatus::DONE;
       }
-      
-      unsigned int executionNumber = sExecutionNum.getUInt();
-      if (suffix.size() != 1) {
-        LOG(ERR) << "Invalid suffix";
+      LOG(INFO) << "creating worker";
+      w = IWorker::createWorker(_vocbase, body);
+      PregelFeature::instance()->addWorker(w, executionNumber);
+    } else if (suffix[0] == Utils::prepareGSSPath) {
+      IWorker *w = PregelFeature::instance()->worker(executionNumber);
+      if (w) {
+        w->prepareGlobalStep(body);
+      } else {
+        LOG(ERR) << "Invalid execution number, worker does not exist.";
         generateError(rest::ResponseCode::NOT_FOUND,
                       TRI_ERROR_HTTP_NOT_FOUND);
         return RestStatus::DONE;
-      } else if (suffix[0] == Utils::startExecutionPath) {
-        IWorker *w = PregelFeature::instance()->worker(executionNumber);
-        if (w) {
-          LOG(ERR) << "Worker with this execution number already exists.";
-          generateError(rest::ResponseCode::BAD,
-                        TRI_ERROR_HTTP_FORBIDDEN);
-          return RestStatus::DONE;
-        }
-        LOG(INFO) << "creating worker";
-        w = IWorker::createWorker(_vocbase, body);
-        PregelFeature::instance()->addWorker(w, executionNumber);
-      } else if (suffix[0] == Utils::startGSSPath) {
-        IWorker *w = PregelFeature::instance()->worker(executionNumber);
-        if (w) {
-          w->startGlobalStep(body);
-        } else {
-          LOG(ERR) << "Invalid execution number, worker does not exist.";
-          generateError(rest::ResponseCode::NOT_FOUND,
-                        TRI_ERROR_HTTP_NOT_FOUND);
-          return RestStatus::DONE;
-        }
-      } else if (suffix[0] == Utils::finishedGSSPath) {
-        Conductor *exe = PregelFeature::instance()->conductor(executionNumber);
-        if (exe) {
-          exe->finishedGlobalStep(body);
-        } else {
-          LOG(ERR) << "Conductor not found: " << executionNumber;
-        }
-      } else if (suffix[0] == Utils::messagesPath) {
-        LOG(INFO) << "messages";
-        IWorker *exe = PregelFeature::instance()->worker(executionNumber);
-        if (exe) {
-          exe->receivedMessages(body);
-        }
-      } else if (suffix[0] == Utils::finalizeExecutionPath) {
-        IWorker *exe = PregelFeature::instance()->worker(executionNumber);
-        if (exe) {
-          exe->finalizeExecution(body);
-          PregelFeature::instance()->cleanup(executionNumber);
-        }
       }
-      
-      VPackBuilder result;
-      result.add(VPackValue("thanks"));
-      generateResult(rest::ResponseCode::OK, result.slice());
-      
-    } else {
-      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                    TRI_ERROR_NOT_IMPLEMENTED, "illegal method for /_api/pregel");
+    } else if (suffix[0] == Utils::startGSSPath) {
+      IWorker *w = PregelFeature::instance()->worker(executionNumber);
+      if (w) {
+        w->startGlobalStep(body);
+      } else {
+        LOG(ERR) << "Invalid execution number, worker does not exist.";
+        generateError(rest::ResponseCode::NOT_FOUND,
+                      TRI_ERROR_HTTP_NOT_FOUND);
+        return RestStatus::DONE;
+      }
+    } else if (suffix[0] == Utils::messagesPath) {
+      IWorker *exe = PregelFeature::instance()->worker(executionNumber);
+      if (exe) {
+        exe->receivedMessages(body);
+      }
+    } else if (suffix[0] == Utils::finishedGSSPath) {
+      Conductor *exe = PregelFeature::instance()->conductor(executionNumber);
+      if (exe) {
+        exe->finishedGlobalStep(body);
+      } else {
+        LOG(ERR) << "Conductor not found: " << executionNumber;
+      }
+    } else if (suffix[0] == Utils::finalizeExecutionPath) {
+      IWorker *exe = PregelFeature::instance()->worker(executionNumber);
+      if (exe) {
+        exe->finalizeExecution(body);
+        PregelFeature::instance()->cleanup(executionNumber);
+      }
     }
+    
+    VPackBuilder result;
+    result.add(VPackValue("thanks"));
+    generateResult(rest::ResponseCode::OK, result.slice());
+    
   } catch (std::exception const &e) {
     LOG(ERR) << e.what();
   } catch(...) {
-    LOG(ERR) << "Exception";
+    LOG(ERR) << "Exception in pregel REST handler";
   }
     
   return RestStatus::DONE;

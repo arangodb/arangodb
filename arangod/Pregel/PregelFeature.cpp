@@ -29,7 +29,7 @@ using namespace arangodb::pregel;
 
 static PregelFeature* Instance;
 
-unsigned int PregelFeature::createExecutionNumber() { return ClusterInfo::instance()->uniqid(); }
+uint64_t PregelFeature::createExecutionNumber() { return ClusterInfo::instance()->uniqid(); }
 
 PregelFeature::PregelFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Pregel") {

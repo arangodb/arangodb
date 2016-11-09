@@ -150,7 +150,6 @@ void GraphStore<V, E>::lookupVertices(ShardID const& vertexShard,
         LOG(INFO) << "Loaded Vertex: " << document.toJson();
 
         std::string vertexId = trx.extractIdString(document);
-        LOG(WARN) << "Loaded " << vertexId;
         VertexEntry entry(vertexId);
         if (storeData) {
           V vertexData;
@@ -188,7 +187,7 @@ template <typename V, typename E>
 void GraphStore<V, E>::lookupEdges(ShardID const& edgeShard,
                                    TRI_vocbase_t* vocbase) {
   _graphFormat->willUseCollection(vocbase, edgeShard, true);
-  bool storeData = _graphFormat->storesEdgeData();
+  const bool storeData = _graphFormat->storesEdgeData();
 
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(vocbase),
                                   edgeShard, TRI_TRANSACTION_READ);
@@ -203,10 +202,11 @@ void GraphStore<V, E>::lookupEdges(ShardID const& edgeShard,
       &trx, edgeShard, TRI_EDGE_OUT, StaticStrings::FromString, 0);
 
   for (auto& vertexEntry : _index) {
-    // kann man strings besser verketten?
-    // std::string _from = vertexCollectionName + "/" + vertexEntry.vertexID();
+    if (vertexEntry._edgeCount != 0) {
+      continue;
+    }
+    
     std::string const& _from = vertexEntry.vertexID();
-
     ManagedDocumentResult mmdr(&trx);
     auto cursor = info->getEdges(_from, &mmdr);
     if (cursor->failed()) {
@@ -215,14 +215,15 @@ void GraphStore<V, E>::lookupEdges(ShardID const& edgeShard,
                                     _from.c_str(), edgeShard.c_str());
     }
 
-    vertexEntry._edgeDataOffset = _edges.size();
-    vertexEntry._edgeCount = 0;
-
     LogicalCollection* collection = cursor->collection();
     std::vector<IndexLookupResult> result;
     result.reserve(1000);
 
     while (cursor->hasMore()) {
+      if (vertexEntry._edgeCount == 0) {
+        vertexEntry._edgeDataOffset = _edges.size();
+      }
+      
       cursor->getMoreMptr(result, 1000);
       for (auto const& element : result) {
         TRI_voc_rid_t revisionId = element.revisionId();
@@ -235,6 +236,7 @@ void GraphStore<V, E>::lookupEdges(ShardID const& edgeShard,
           LOG(INFO) << "Loaded Edge: " << document.toJson();
           std::string toVertexID =
               document.get(StaticStrings::ToString).copyString();
+          vertexEntry._edgeCount += 1;
 
           if (storeData) {
             E edgeData;
@@ -242,7 +244,6 @@ void GraphStore<V, E>::lookupEdges(ShardID const& edgeShard,
                 _graphFormat->copyEdgeData(document, &edgeData, sizeof(E));
             if (size > 0) {
               _edges.emplace_back(toVertexID, edgeData);
-              vertexEntry._edgeCount += 1;
             } else {
               LOG(ERR) << "Trouble when reading data for edge "
                        << document.toJson();

@@ -111,6 +111,10 @@ class EdgeIterator {
   bool operator!=(EdgeIterator const& other) const {
     return _current != other._current;
   }
+  
+  size_t size() const {
+    return _end - _begin;
+  }
 
   /*EdgeIterator(void* beginPtr, void* endPtr)
       : _begin(beginPtr), _end(endPtr), _current(_begin) {}

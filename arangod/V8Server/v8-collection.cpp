@@ -1849,7 +1849,7 @@ static void JS_Pregel(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                      "_pregel(<vertexCollection>, <edgeCollection>, <algorithm>[, "
                                      "{steps:100, ...}]");
     }
-    std::vector<std::string> vertices, edges;
+    std::vector<std::string> vertices;
     auto parseArray = [](v8::Handle<v8::Value> val,
                          std::vector<std::string>& coll) -> void {
         v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(val);
@@ -1866,81 +1866,72 @@ static void JS_Pregel(v8::FunctionCallbackInfo<v8::Value> const& args) {
     } else if (args[0]->IsString()) {
         vertices.push_back(TRI_ObjectToString(args[0]));
     } else {
-        TRI_V8_THROW_EXCEPTION_USAGE(
-                                     "Specify either an array of vertex collection names or a single "
-                                     "string");
+        TRI_V8_THROW_EXCEPTION_USAGE("Specify an array of vertex collections (or a string)");
     }
-    if (args[1]->IsArray()) {
-        parseArray(args[1], edges);
-    } else if (args[1]->IsString()) {
-        edges.push_back(TRI_ObjectToString(args[1]));
-    } else {
-        TRI_V8_THROW_EXCEPTION_USAGE(
-                                     "Specify either an array of edge collection names or a single "
-                                     "string");
+    if (!args[1]->IsString()) {
+      TRI_V8_THROW_EXCEPTION_USAGE("Specify an edge collection to use");
     }
+    std::string edgeCName(TRI_ObjectToString(args[1]));
     std::string algorithm = TRI_ObjectToString(args[2]);
-    VPackBuilder builder;
+    VPackBuilder paramBuilder;
     if (argLength >= 4 && args[3]->IsObject()) {
-        int res = TRI_V8ToVPack(isolate, builder, args[3], false);
+        int res = TRI_V8ToVPack(isolate, paramBuilder, args[3], false);
         if (res != TRI_ERROR_NO_ERROR) {
             TRI_V8_THROW_EXCEPTION(res);
         }
     }
     
-    LOG(INFO) << "Called _pregel(" << vertices << "," << edges << ")";
+    LOG(INFO) << "Called _pregel(" << vertices << "," << edgeCName << ")";
     
-    int result = 0;
     if (ServerState::instance()->isCoordinator()) {
         LOG(INFO) << "Called as a controller";
         
         TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-        std::vector<std::shared_ptr<LogicalCollection>> vColls, eColls;
+        std::vector<std::shared_ptr<LogicalCollection>> vColls;
+        std::shared_ptr<LogicalCollection> edgeCollection;
         try {
-            for (std::string const& name : vertices) {
-                auto coll =
-                ClusterInfo::instance()->getCollection(vocbase->name(), name);
-                if (coll->isSystem()) {
-                    TRI_V8_THROW_EXCEPTION_USAGE(
-                                                 "Cannot use pregel on system collection");
-                }
-                if (!coll->usesDefaultShardKeys()) {
-                    TRI_V8_THROW_EXCEPTION_USAGE(
-                                                 "Vertex collection needs to be shared after '_key'");
-                }
-                vColls.push_back(coll);
+          for (std::string const& name : vertices) {
+            auto coll =
+            ClusterInfo::instance()->getCollection(vocbase->name(), name);
+            if (coll->isSystem()) {
+                TRI_V8_THROW_EXCEPTION_USAGE(
+                                             "Cannot use pregel on system collection");
             }
-            for (std::string const& name : edges) {
-                auto coll =
-                ClusterInfo::instance()->getCollection(vocbase->name(), name);
-                if (coll->isSystem()) {
-                    TRI_V8_THROW_EXCEPTION_USAGE(
-                                                 "Cannot use pregel on system collection");
-                }
-                std::vector<std::string> eKeys = coll->shardKeys();
-                if (eKeys.size() != 1 || eKeys[0] != "_vertex") {
-                    TRI_V8_THROW_EXCEPTION_USAGE(
-                                                 "Edge collection needs to be sharded after '_vertex', or use "
-                                                 "smart graphs");
-                }
-                eColls.push_back(coll);
+            if (!coll->usesDefaultShardKeys()) {
+                TRI_V8_THROW_EXCEPTION_USAGE(
+                                             "Vertex collection needs to be shared after '_key'");
             }
+            vColls.push_back(coll);
+          }
+          edgeCollection =
+          ClusterInfo::instance()->getCollection(vocbase->name(), edgeCName);
+          if (edgeCollection->isSystem()) {
+            TRI_V8_THROW_EXCEPTION_USAGE(
+                                         "Cannot use pregel on system collection");
+          }
+          std::vector<std::string> eKeys = edgeCollection->shardKeys();
+          if (eKeys.size() != 1 || eKeys[0] != "_vertex") {
+              TRI_V8_THROW_EXCEPTION_USAGE(
+                                           "Edge collection needs to be sharded after '_vertex', or use "
+                                           "smart graphs");
+          }
         } catch (...) {
             TRI_V8_THROW_EXCEPTION_USAGE("Collections do not exist");
         }
         
-        result = pregel::PregelFeature::instance()->createExecutionNumber();
-        pregel::Conductor* e = new pregel::Conductor(
-                                                     result, vocbase, vColls, eColls, algorithm, builder.slice());
-        pregel::PregelFeature::instance()->addExecution(e, result);
-        e->start();
-        
+        uint64_t en = pregel::PregelFeature::instance()->createExecutionNumber();
+        pregel::Conductor* c = new pregel::Conductor(en,
+                                                     vocbase,
+                                                     vColls,
+                                                     edgeCollection,
+                                                     algorithm,
+                                                     paramBuilder.slice());
+        pregel::PregelFeature::instance()->addExecution(c, en);
+        c->start();
     } else {
         TRI_V8_THROW_EXCEPTION_USAGE("Only call on a coordinator in cluster");
     }
-    
-    TRI_V8_RETURN(v8::Integer::New(isolate, result));
-    
+  
     TRI_V8_TRY_CATCH_END
 }
 

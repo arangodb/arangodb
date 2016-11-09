@@ -80,6 +80,7 @@ class FloatGraphFormat : public GraphFormat<float, float> {
   const float _vDefault, _eDefault;
 
  public:
+  
   FloatGraphFormat(std::string const& field, float vertexNull, float edgeNull)
       : _field(field), _vDefault(vertexNull), _eDefault(edgeNull) {}
 

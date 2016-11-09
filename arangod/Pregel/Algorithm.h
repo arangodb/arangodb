@@ -55,7 +55,7 @@ struct Algorithm {
   virtual std::shared_ptr<GraphFormat<V, E>> inputFormat() const = 0;
   virtual std::shared_ptr<MessageFormat<M>> messageFormat() const = 0;
   virtual std::shared_ptr<MessageCombiner<M>> messageCombiner() const = 0;
-  virtual std::shared_ptr<VertexComputation<V, E, M>> createComputation()
+  virtual std::shared_ptr<VertexComputation<V, E, M>> createComputation(uint64_t gss)
       const = 0;
 
   std::string const& getName() const { return _name; }

@@ -39,9 +39,9 @@ class Conductor {
  public:
   enum ExecutionState { RUNNING, FINISHED, ERROR };
 
-  Conductor(unsigned int executionNumber, TRI_vocbase_t* vocbase,
+  Conductor(uint64_t executionNumber, TRI_vocbase_t* vocbase,
             std::vector<std::shared_ptr<LogicalCollection>> vertexCollections,
-            std::vector<std::shared_ptr<LogicalCollection>> edgeCollections,
+            std::shared_ptr<LogicalCollection> edgeCollection,
             std::string const& algorithm, VPackSlice params);
   ~Conductor();
 
@@ -55,16 +55,16 @@ class Conductor {
   Mutex _finishedGSSMutex;  // prevents concurrent calls to finishedGlobalStep
   
   VocbaseGuard _vocbaseGuard;
-  const unsigned int _executionNumber;
+  const uint64_t _executionNumber;
   std::string _algorithm;
   ExecutionState _state = ExecutionState::RUNNING;
 
   std::vector<std::unique_ptr<Aggregator>> _aggregators;
-  std::vector<std::shared_ptr<LogicalCollection>> _vertexCollections,
-      _edgeCollections;
+  std::vector<std::shared_ptr<LogicalCollection>> _vertexCollections;
+  std::shared_ptr<LogicalCollection> _edgeCollection;
   std::map<ServerID, std::vector<ShardID>> _vertexServerMap;
 
-  unsigned int _globalSuperstep;
+  uint64_t _globalSuperstep;
   int32_t _dbServerCount = 0;
   int32_t _responseCount = 0;
   int32_t _doneCount = 0;

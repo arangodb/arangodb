@@ -38,7 +38,7 @@ struct SCCAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
   std::shared_ptr<MessageFormat<int64_t>> messageFormat() const override;
   std::shared_ptr<MessageCombiner<int64_t>> messageCombiner() const override;
   std::shared_ptr<VertexComputation<int64_t, int64_t, int64_t>>
-  createComputation() const override;
+  createComputation(uint64_t gss) const override;
 };
 }
 }

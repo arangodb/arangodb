@@ -34,6 +34,7 @@ namespace pregel {
 class IWorker {
  public:
   virtual ~IWorker(){};
+  virtual void prepareGlobalStep(VPackSlice data) = 0;
   virtual void startGlobalStep(VPackSlice data) = 0;  // called by coordinator
   virtual void receivedMessages(VPackSlice data) = 0;
   virtual void finalizeExecution(VPackSlice data) = 0;
@@ -43,14 +44,16 @@ class IWorker {
 
 template <typename V, typename E>
 class GraphStore;
-
+  
 template <typename V, typename E, typename M>
 class Worker : public IWorker {
+  
  public:
   Worker(std::shared_ptr<GraphStore<V, E>> graphStore,
          std::shared_ptr<WorkerState<V, E, M>> context);
   ~Worker();
 
+  void prepareGlobalStep(VPackSlice data) override;
   void startGlobalStep(VPackSlice data) override;  // called by coordinator
   void receivedMessages(VPackSlice data) override;
   void finalizeExecution(VPackSlice data) override;

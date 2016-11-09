@@ -62,33 +62,38 @@ struct PageRankComputation : public VertexComputation<float, float, float> {
   PageRankComputation() {}
   void compute(std::string const& vertexID,
                MessageIterator<float> const& messages) override {
-    float tmp = 0;
-    for (const float* msg : messages) {
-      tmp += *msg;
-    }
-    float* state = (float*)mutableVertexData();
-
-    /*if (tmp >= 0 && (getGlobalSuperstep() == 0 || tmp != *state)) {
-      LOG(INFO) << "Recomputing value for vertex " << vertexID;
-      *state = tmp;  // update state
-
-      EdgeIterator<float> edges = getEdges();
-      for (EdgeEntry<float>* edge : edges) {
-        float val = *(edge->getData()) + tmp;
-        ufloat toID = edge->toPregelID();
-        sendMessage(toID, val);
+    
+    float* ptr = (float*) mutableVertexData();
+    float copy = *ptr;
+    //float old = *ptr;
+    if (getGlobalSuperstep() > 0) {
+      float sum = 0;
+      for (const float* msg : messages) {
+        sum += *msg;
       }
-    }*/
-    voteHalt();
+      *ptr = 0.15 / globalVertexCount() + 0.85 * sum;
+    }
+
+    if (getGlobalSuperstep() < 30) {
+      EdgeIterator<float> edges = getEdges();
+      float val = *ptr / edges.size();
+      for (EdgeEntry<float>* edge : edges) {
+        sendMessage(edge->toVertexID(), val);
+      }
+      float diff = fabsf(copy - *ptr);
+      aggregateValue("convergence", &diff);
+    } else {
+      voteHalt();
+    }
   }
 };
 
 std::shared_ptr<VertexComputation<float, float, float>>
-PageRankAlgorithm::createComputation() const {
+PageRankAlgorithm::createComputation(uint64_t gss) const {
   return std::shared_ptr<PageRankComputation>(new PageRankComputation());
 }
 
 void PageRankAlgorithm::aggregators(
     std::vector<std::unique_ptr<Aggregator>>& aggregators) {
-  aggregators.push_back(std::make_unique<FloatMaxAggregator>("convergence", 1));
+  aggregators.push_back(std::make_unique<FloatMaxAggregator>("convergence", 0));
 }

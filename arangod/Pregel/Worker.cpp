@@ -98,27 +98,38 @@ Worker<V, E, M>::~Worker() {
   LOG(INFO) << "Called ~Worker()";
 }
 
-/// @brief Setup next superstep
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
-  LOG(INFO) << "Called next global step: " << data.toJson();
-
-  // TODO do some work?
+void Worker<V, E, M>::prepareGlobalStep(VPackSlice data) {
+  LOG(INFO) << "Prepare GSS: " << data.toJson();
+  
   VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
   if (!gssSlice.isInteger()) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,
                                   "Invalid gss in %s:%d", __FILE__, __LINE__);
   }
-  unsigned int gss = (unsigned int)gssSlice.getUInt();
+  const uint64_t gss = (uint64_t)gssSlice.getUInt();
   if (_ctx->_expectedGSS != gss) {
     THROW_ARANGO_EXCEPTION_FORMAT(
-        TRI_ERROR_BAD_PARAMETER,
-        "Seems like this worker missed a gss, expected %u. Data = %s ",
-        _ctx->_expectedGSS, data.toJson().c_str());
+                                  TRI_ERROR_BAD_PARAMETER,
+                                  "Seems like this worker missed a gss, expected %u. Data = %s ",
+                                  _ctx->_expectedGSS, data.toJson().c_str());
   }
+  
   _ctx->_globalSuperstep = gss;
-  _ctx->_expectedGSS = gss + 1;
+  _ctx->readableIncomingCache()->clear();
+  _ctx->swapIncomingCaches();  // write cache becomes the readable cache
+}
 
+/// @brief Setup next superstep
+template <typename V, typename E, typename M>
+void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
+  LOG(INFO) << "Starting GSS: " << data.toJson();
+  VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
+  const uint64_t gss = (uint64_t)gssSlice.getUInt();
+  if (gss != _ctx->_globalSuperstep) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Wrong GSS");
+  }
+  
   // parse aggregated values
   VPackSlice aggregatedValues = data.get(Utils::aggregatorValuesKey);
   if (aggregatedValues.isObject()) {
@@ -129,15 +140,17 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
       }
     }
   }
+  LOG(INFO) << "Worker starts new gss: " << gss;
 
   // incoming caches are already switched
   _workerPool->enqueue([this, gss] {
 
     OutgoingCache<V, E, M> outCache(_ctx);
-    auto vertexComputation = _ctx->algorithm()->createComputation();
+    auto vertexComputation = _ctx->algorithm()->createComputation(gss);
     vertexComputation->_gss = gss;
     vertexComputation->_outgoing = &outCache;
     vertexComputation->_graphStore = _graphStore;
+    vertexComputation->_aggregators = &_aggregators;
 
     size_t activeCount = 0;
     auto incoming = this->_ctx->readableIncomingCache();
@@ -177,7 +190,6 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
       workerJobIsDone(false);
     }
   });
-  LOG(INFO) << "Worker started new gss: " << gss;
 }
 
 template <typename V, typename E, typename M>
@@ -190,26 +202,19 @@ void Worker<V, E, M>::receivedMessages(VPackSlice data) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Bad parameters in body");
   }
-  int64_t gss = gssSlice.getInt();
+  uint64_t gss = gssSlice.getUInt();
   if (gss == _ctx->_globalSuperstep) {
     _ctx->writeableIncomingCache()->parseMessages(messageSlice);
-  } else if (gss == _ctx->_globalSuperstep - 1) {
-    LOG(ERR) << "Should not receive messages from last global superstep, "
-                "during computation phase";
-    //_ctx->_readCache->addMessages(messageSlice);
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Superstep out of sync");
+    LOG(ERR) << "Expected: " << _ctx->_globalSuperstep << "Got: "<< gss;
   }
-
-  LOG(INFO) << "Worker combined / stored incoming messages";
 }
 
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::workerJobIsDone(bool allDone) {
-  _ctx->readableIncomingCache()->clear();
-  _ctx->swapIncomingCaches();  // write cache becomes the readable cache
-  _ctx->_expectedGSS = _ctx->_globalSuperstep + 1;
+  _ctx->_expectedGSS =  _ctx->_globalSuperstep + 1;
 
   // notify the conductor that we are done.
   VPackBuilder package;
@@ -218,6 +223,13 @@ void Worker<V, E, M>::workerJobIsDone(bool allDone) {
   package.add(Utils::executionNumberKey, VPackValue(_ctx->executionNumber()));
   package.add(Utils::globalSuperstepKey, VPackValue(_ctx->globalSuperstep()));
   package.add(Utils::doneKey, VPackValue(allDone));
+  if (_aggregators.size() > 0) {
+    package.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
+    for (auto const& pair : _aggregators) {
+      pair.second->serializeValue(package);
+    }
+    package.close();
+  }
   package.close();
 
   ClusterComm* cc = ClusterComm::instance();

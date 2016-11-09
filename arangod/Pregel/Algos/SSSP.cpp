@@ -70,6 +70,6 @@ std::shared_ptr<MessageCombiner<int64_t>> SSSPAlgorithm::messageCombiner()
 }
 
 std::shared_ptr<VertexComputation<int64_t, int64_t, int64_t>>
-SSSPAlgorithm::createComputation() const {
+SSSPAlgorithm::createComputation(uint64_t gss) const {
   return std::shared_ptr<SSSPComputation>(new SSSPComputation());
 }

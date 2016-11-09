@@ -30,17 +30,14 @@
 
 namespace arangodb {
 namespace pregel {
-/*
-enum VertexActivationState {
-  ACTIVE,
-  STOPPED
-};*/
 
 template <typename V, typename E, typename M>
 class OutgoingCache;
 template <typename V, typename E, typename M>
 class Worker;
-
+class Aggregator;
+  
+  
 template <typename V, typename E, typename M>
 class VertexComputation {
   friend class Worker<V, E, M>;
@@ -48,19 +45,33 @@ class VertexComputation {
  private:
   unsigned int _gss;
   OutgoingCache<V, E, M>* _outgoing;
+  std::map<std::string, std::unique_ptr<Aggregator>> *_aggregators;
   std::shared_ptr<GraphStore<V, E>> _graphStore;
   VertexEntry* _vertexEntry;
-
+  
+  
  protected:
   unsigned int getGlobalSuperstep() const { return _gss; }
-  void sendMessage(std::string const& toValue, M const& data);
+  const void* getAggregatedValue(std::string const& name);
+  void aggregateValue(std::string const& name, void const* value);
+  
+  size_t globalVertexCount() {
+    return _graphStore->globalVertexCount();
+  }
+  
+  size_t globalEdgeCount() {
+    return _graphStore->globalEdgeCount();
+  }
+  
   EdgeIterator<E> getEdges();
   void* mutableVertexData();
   V vertexData();
   /// store data, will potentially move the data around
   void setVertexData(const V*, size_t size);
+  
+  void sendMessage(std::string const& toValue, M const& data);
   void voteHalt();
-
+  
  public:
   virtual void compute(std::string const& vertexID,
                        MessageIterator<M> const& messages) = 0;

@@ -37,7 +37,7 @@ struct PageRankAlgorithm : public Algorithm<float, float, float> {
   std::shared_ptr<GraphFormat<float, float>> inputFormat() const override;
   std::shared_ptr<MessageFormat<float>> messageFormat() const override;
   std::shared_ptr<MessageCombiner<float>> messageCombiner() const override;
-  std::shared_ptr<VertexComputation<float, float, float>> createComputation()
+  std::shared_ptr<VertexComputation<float, float, float>> createComputation(uint64_t gss)
       const override;
   void aggregators(
       std::vector<std::unique_ptr<Aggregator>>& aggregators) override;

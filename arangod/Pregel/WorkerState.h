@@ -32,7 +32,6 @@
 namespace arangodb {
 class SingleCollectionTransaction;
 namespace pregel {
-typedef unsigned int prglSeq_t;
 
 template <typename M>
 class IncomingCache;
@@ -49,9 +48,9 @@ class WorkerState {
  public:
   WorkerState(Algorithm<V, E, M>* algo, DatabaseID dbname, VPackSlice params);
 
-  inline prglSeq_t executionNumber() { return _executionNumber; }
+  inline uint64_t executionNumber() { return _executionNumber; }
 
-  inline prglSeq_t globalSuperstep() { return _globalSuperstep; }
+  inline uint64_t globalSuperstep() { return _globalSuperstep; }
 
   inline std::string const& coordinatorId() const { return _coordinatorId; }
 
@@ -85,11 +84,11 @@ class WorkerState {
 
  private:
   /// @brief guard to make sure the database is not dropped while used by us
-  prglSeq_t _executionNumber;
+  uint64_t _executionNumber;
   const std::shared_ptr<Algorithm<V, E, M>> _algorithm;
 
-  prglSeq_t _globalSuperstep = 0;
-  prglSeq_t _expectedGSS = 0;
+  uint64_t _globalSuperstep = 0;
+  uint64_t _expectedGSS = 0;
   std::string _coordinatorId;
   const std::string _database;
   std::vector<ShardID> _localVertexShardIDs, _localEdgeShardIDs;
