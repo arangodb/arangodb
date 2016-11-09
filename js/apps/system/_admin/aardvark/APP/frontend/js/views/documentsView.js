@@ -44,7 +44,6 @@
     },
 
     resize: function () {
-      console.log('resizing');
       var dropdownVisible = false;
       _.each($('.documentsDropdown').first().children(), function (elem) {
         if ($(elem).is(':visible')) {
