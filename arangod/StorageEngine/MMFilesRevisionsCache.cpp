@@ -77,11 +77,11 @@ void MMFilesRevisionsCache::clear() {
   _positions.truncate([](MMFilesDocumentPosition&) { return true; });
 }
 
-void MMFilesRevisionsCache::insert(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal) {
+void MMFilesRevisionsCache::insert(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal, bool shouldLock) {
   TRI_ASSERT(revisionId != 0);
   TRI_ASSERT(dataptr != nullptr);
 
-  WRITE_LOCKER(locker, _lock);
+  CONDITIONAL_WRITE_LOCKER(locker, _lock, shouldLock);
   int res = _positions.insert(nullptr, MMFilesDocumentPosition(revisionId, dataptr, fid, isInWal));
   if (res != TRI_ERROR_NO_ERROR) {
     _positions.removeByKey(nullptr, &revisionId);

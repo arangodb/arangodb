@@ -134,7 +134,11 @@ uint32_t RevisionCacheChunk::advanceWritePosition(uint32_t size) {
   return offset;
 }
 
-void RevisionCacheChunk::invalidate(std::vector<TRI_voc_rid_t>& revisions) {
+bool RevisionCacheChunk::invalidate(std::vector<TRI_voc_rid_t>& revisions) {
+  if (!_collectionCache->allowInvalidation()) {
+    return false;
+  }
+
   // wait until all writers have finished
   while (true) {
     {
@@ -147,6 +151,8 @@ void RevisionCacheChunk::invalidate(std::vector<TRI_voc_rid_t>& revisions) {
   }
 
   revisions.clear();
+  revisions.reserve(8192);
+
   findRevisions(revisions);
   invalidate();
   if (!revisions.empty()) {
@@ -154,6 +160,7 @@ void RevisionCacheChunk::invalidate(std::vector<TRI_voc_rid_t>& revisions) {
   }
   // increase version number once again
   invalidate();
+  return true;
 }
 
 void RevisionCacheChunk::findRevisions(std::vector<TRI_voc_rid_t>& revisions) {

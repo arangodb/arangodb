@@ -195,22 +195,19 @@ void RevisionCacheChunkAllocator::removeCollection(ReadCache* cache) {
 
 bool RevisionCacheChunkAllocator::garbageCollect() {
   RevisionCacheChunk* chunk = nullptr;
+  bool hasMemoryPressure;
 
   {
     WRITE_LOCKER(locker, _chunksLock);
     // LOG(ERR) << "gc: total allocated: " << _totalAllocated << ", target: " << _totalTargetSize;
+    hasMemoryPressure = (_totalAllocated >= _totalTargetSize);
     
-    if (_totalAllocated < _totalTargetSize) {
-      // nothing to do
-      // LOG(ERR) << "gc: not necessary";
-      return false;
-    }
-
-    // try a chunk from the freelist first
-    if (!_freeList.empty()) {
+    if (hasMemoryPressure && !_freeList.empty()) {
+      // try a chunk from the freelist first
       chunk = _freeList.back();
       _freeList.pop_back();
-      // fix statistics here already
+
+      // fix statistics here already, because we already have the lock
       TRI_ASSERT(_totalAllocated >= chunk->size());
       _totalAllocated -= chunk->size();
     } 
@@ -265,45 +262,41 @@ bool RevisionCacheChunkAllocator::garbageCollect() {
           MUTEX_LOCKER(locker, _gcLock);
           
           auto it = _fullChunks.find(chunkInfo.cache);
+          
           if (it != _fullChunks.end()) {
+            (*it).second.erase(chunk);
             if ((*it).second.empty()) {
               _fullChunks.erase(chunkInfo.cache);
-            } else {
-              (*it).second.erase(chunk);
-            }
+            } 
           }
         }
 
-        // now move chunk into freelist
+        // now free the chunk (don't move it into freelist so we
+        // can release the chunk's allocated memory here already)
         {
           WRITE_LOCKER(locker, _chunksLock);
-          try {
-            _freeList.push_back(chunk);
-          } catch (...) {
-            // if movement fails then we simply throw away the chunk
-            TRI_ASSERT(_totalAllocated >= chunk->size());
-            _totalAllocated -= chunk->size();
-            deleteChunk(chunk);
-            throw;
-          }
+
+          TRI_ASSERT(_totalAllocated >= chunk->size());
+          _totalAllocated -= chunk->size();
+          deleteChunk(chunk);
         }
         return true;
       }
-    } else {
+    } else if (hasMemoryPressure) {
       // LOG(ERR) << "gc: invalidating chunk " << chunk;
-      revisions.reserve(8192);
-      chunk->invalidate(revisions);
-      // LOG(ERR) << "gc: invalidating chunk " << chunk << " done";
-      MUTEX_LOCKER(locker, _gcLock);
-          
-      auto it = _fullChunks.find(chunkInfo.cache);
+      if (chunk->invalidate(revisions)) {
+        // LOG(ERR) << "gc: invalidating chunk " << chunk << " done";
+        MUTEX_LOCKER(locker, _gcLock);
+            
+        auto it = _fullChunks.find(chunkInfo.cache);
 
-      if (it != _fullChunks.end()) {
-        auto it2 = (*it).second.find(chunk);
-        if (it2 != (*it).second.end()) {
-          // set to invalidated
-          (*it2).second = true;
-          worked = true;
+        if (it != _fullChunks.end()) {
+          auto it2 = (*it).second.find(chunk);
+          if (it2 != (*it).second.end()) {
+            // set to invalidated
+            (*it2).second = true;
+            worked = true;
+          }
         }
       }
     }

@@ -691,8 +691,15 @@ IndexIterator* EdgeIndex::iteratorForSlice(
     // Invalid searchValue
     return nullptr;
   }
-  VPackSlice const from = searchValues.at(0);
-  VPackSlice const to = searchValues.at(1);
+
+  VPackArrayIterator it(searchValues);
+  TRI_ASSERT(it.valid());
+
+  VPackSlice const from = it.value();
+  
+  it.next();
+  TRI_ASSERT(it.valid());
+  VPackSlice const to = it.value();
 
   if (!from.isNull()) {
     TRI_ASSERT(from.isArray());

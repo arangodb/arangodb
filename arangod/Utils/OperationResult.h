@@ -71,8 +71,7 @@ struct OperationResult {
         wasSynchronous(wasSynchronous),
         countErrorCodes(countErrorCodes) {}
 
-  virtual ~OperationResult() {
-  }
+  ~OperationResult() {}
 
   bool successful() const {
     return code == TRI_ERROR_NO_ERROR;
@@ -82,7 +81,7 @@ struct OperationResult {
     return !successful();
   }
 
-  VPackSlice slice() const {
+  inline VPackSlice slice() const {
     TRI_ASSERT(buffer != nullptr); 
     return VPackSlice(buffer->data());
   }

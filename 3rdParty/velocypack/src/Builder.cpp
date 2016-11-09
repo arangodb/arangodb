@@ -383,7 +383,7 @@ Builder& Builder::close() {
   _start[tos] = 0x0b;
 
   // First determine byte length and its format:
-  unsigned int offsetSize;
+  unsigned int offsetSize = 8;
   // can be 1, 2, 4 or 8 for the byte width of the offsets,
   // the byte length and the number of subvalues:
   if (_pos - tos + index.size() - 6 <= 0xff) {
@@ -392,16 +392,8 @@ Builder& Builder::close() {
     // case we would win back 6 bytes but would need one byte per subvalue
     // for the index table
     offsetSize = 1;
-  } else if (_pos - tos + 2 * index.size() <= 0xffff) {
-    offsetSize = 2;
-  } else if (_pos - tos + 4 * index.size() <= 0xffffffffu) {
-    offsetSize = 4;
-  } else {
-    offsetSize = 8;
-  }
 
-  // Maybe we need to move down data:
-  if (offsetSize == 1) {
+    // Maybe we need to move down data:
     ValueLength targetPos = 3;
     if (_pos > (tos + 9)) {
       ValueLength len = _pos - (tos + 9);
@@ -413,15 +405,19 @@ Builder& Builder::close() {
     for (size_t i = 0; i < n; i++) {
       index[i] -= diff;
     }
+
+    // One could move down things in the offsetSize == 2 case as well,
+    // since we only need 4 bytes in the beginning. However, saving these
+    // 4 bytes has been sacrificed on the Altar of Performance.
+  } else if (_pos - tos + 2 * index.size() <= 0xffff) {
+    offsetSize = 2;
+  } else if (_pos - tos + 4 * index.size() <= 0xffffffffu) {
+    offsetSize = 4;
   }
-  // One could move down things in the offsetSize == 2 case as well,
-  // since we only need 4 bytes in the beginning. However, saving these
-  // 4 bytes has been sacrificed on the Altar of Performance.
 
   // Now build the table:
-  ValueLength tableBase;
   reserveSpace(offsetSize * index.size() + (offsetSize == 8 ? 8 : 0));
-  tableBase = _pos;
+  ValueLength tableBase = _pos;
   _pos += offsetSize * index.size();
   // Object
   if (index.size() >= 2) {
