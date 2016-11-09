@@ -103,7 +103,7 @@ class RevisionCacheChunk {
   
   bool isUsed() noexcept;
 
-  void invalidate(std::vector<TRI_voc_rid_t>& revisions);
+  bool invalidate(std::vector<TRI_voc_rid_t>& revisions);
         
   void wipeout() {
 #ifdef TRI_ENABLE_MAINTAINER_MODE

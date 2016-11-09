@@ -159,6 +159,12 @@ class Buffer {
     reserve(1);
     _buffer[_pos++] = c;
   }
+  
+  void append(uint8_t const* p, ValueLength len) {
+    reserve(len);
+    memcpy(_buffer + _pos, p, checkOverflow(len));
+    _pos += len;
+  }
 
   void append(char const* p, ValueLength len) {
     reserve(len);

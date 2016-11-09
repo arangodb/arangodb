@@ -56,7 +56,10 @@ static bool IsEqualElementElement(void*, RevisionCacheEntry const& left,
 } // namespace
 
 CollectionRevisionsCache::CollectionRevisionsCache(LogicalCollection* collection, RevisionCacheChunkAllocator* allocator) 
-    : _revisions(HashKey, HashElement, IsEqualKeyElement, IsEqualElementElement, IsEqualElementElement, 8, [this]() -> std::string { return std::string("revisions for ") + this->_collection->name(); }), _collection(collection), _readCache(allocator, this) {}
+    : _revisions(HashKey, HashElement, IsEqualKeyElement, IsEqualElementElement, IsEqualElementElement, 8, [this]() -> std::string { return std::string("revisions for ") + this->_collection->name(); }), 
+       _collection(collection), 
+       _readCache(allocator, this),
+       _allowInvalidation(true) {}
 
 CollectionRevisionsCache::~CollectionRevisionsCache() {
   try {
@@ -94,7 +97,7 @@ void CollectionRevisionsCache::sizeHint(int64_t hint) {
     _revisions.resize(nullptr, static_cast<size_t>(hint * 1.1));
   }
 }
-
+  
 // look up a revision
 bool CollectionRevisionsCache::lookupRevision(Transaction* trx, ManagedDocumentResult& result, TRI_voc_rid_t revisionId, bool shouldLock) {
   TRI_ASSERT(revisionId != 0);
@@ -103,7 +106,7 @@ bool CollectionRevisionsCache::lookupRevision(Transaction* trx, ManagedDocumentR
     return true;
   }
 
-  READ_LOCKER(locker, _lock);
+  CONDITIONAL_READ_LOCKER(locker, _lock, shouldLock);
   
   RevisionCacheEntry found = _revisions.findByKey(nullptr, &revisionId);
 
@@ -119,7 +122,7 @@ bool CollectionRevisionsCache::lookupRevision(Transaction* trx, ManagedDocumentR
       ChunkProtector protector = _readCache.insertAndLease(revisionId, reinterpret_cast<uint8_t const*>(logfile->data() + found.offset()), result);
       // must have succeeded (otherwise an exception was thrown)
       // and insert result into the hash
-      insertRevision(revisionId, protector.chunk(), protector.offset(), protector.version());
+      insertRevision(revisionId, protector.chunk(), protector.offset(), protector.version(), shouldLock);
       // TODO: handle WAL reference counters
       return true;
     } 
@@ -144,11 +147,11 @@ bool CollectionRevisionsCache::lookupRevision(Transaction* trx, ManagedDocumentR
   // insert found revision into our hash
   ChunkProtector protector = _readCache.insertAndLease(revisionId, vpack, result);
   // insert result into the hash
-  insertRevision(revisionId, protector.chunk(), protector.offset(), protector.version());
+  insertRevision(revisionId, protector.chunk(), protector.offset(), protector.version(), shouldLock);
   return true;
 }
 
-bool CollectionRevisionsCache::lookupRevisionConditional(Transaction* trx, ManagedDocumentResult& result, TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal) {
+bool CollectionRevisionsCache::lookupRevisionConditional(Transaction* trx, ManagedDocumentResult& result, TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal, bool shouldLock) {
   // fetch document from engine
   uint8_t const* vpack = readFromEngineConditional(revisionId, maxTick, excludeWal);
 
@@ -159,18 +162,18 @@ bool CollectionRevisionsCache::lookupRevisionConditional(Transaction* trx, Manag
   // insert found revision into our hash
   ChunkProtector protector = _readCache.insertAndLease(revisionId, vpack, result);
   // insert result into the hash
-  insertRevision(revisionId, protector.chunk(), protector.offset(), protector.version());
+  insertRevision(revisionId, protector.chunk(), protector.offset(), protector.version(), shouldLock);
   return true;
 }
   
 // insert from chunk
-void CollectionRevisionsCache::insertRevision(TRI_voc_rid_t revisionId, RevisionCacheChunk* chunk, uint32_t offset, uint32_t version) {
+void CollectionRevisionsCache::insertRevision(TRI_voc_rid_t revisionId, RevisionCacheChunk* chunk, uint32_t offset, uint32_t version, bool shouldLock) {
   TRI_ASSERT(revisionId != 0);
   TRI_ASSERT(chunk != nullptr);
   TRI_ASSERT(offset != UINT32_MAX);
   TRI_ASSERT(version != 0 && version != UINT32_MAX);
 
-  WRITE_LOCKER(locker, _lock);
+  CONDITIONAL_WRITE_LOCKER(locker, _lock, shouldLock);
   int res = _revisions.insert(nullptr, RevisionCacheEntry(revisionId, chunk, offset, version));
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -181,9 +184,9 @@ void CollectionRevisionsCache::insertRevision(TRI_voc_rid_t revisionId, Revision
 }
 
 // insert from WAL
-void CollectionRevisionsCache::insertRevision(TRI_voc_rid_t revisionId, wal::Logfile* logfile, uint32_t offset) {
-  TRI_ASSERT(false);
-  WRITE_LOCKER(locker, _lock);
+void CollectionRevisionsCache::insertRevision(TRI_voc_rid_t revisionId, wal::Logfile* logfile, uint32_t offset, bool shouldLock) {
+  CONDITIONAL_WRITE_LOCKER(locker, _lock, shouldLock);
+
   int res = _revisions.insert(nullptr, RevisionCacheEntry(revisionId, logfile, offset));
 
   if (res != TRI_ERROR_NO_ERROR) {

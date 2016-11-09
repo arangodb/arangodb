@@ -80,7 +80,7 @@ struct ConstDistanceExpanderLocal {
   void operator()(VPackSlice const& v, std::vector<VPackSlice>& resEdges,
                   std::vector<VPackSlice>& neighbors) {
     ManagedDocumentResult* mmdr = _block->_mmdr.get();
-    std::shared_ptr<arangodb::OperationCursor> edgeCursor;
+    std::unique_ptr<arangodb::OperationCursor> edgeCursor;
     for (auto const& edgeCollection : _block->_collectionInfos) {
       TRI_ASSERT(edgeCollection != nullptr);
       if (_isReverse) {

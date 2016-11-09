@@ -332,6 +332,7 @@ LogicalCollection::LogicalCollection(
       _lastCompactionStatus(nullptr),
       _lastCompactionStamp(0.0),
       _uncollectedLogfileEntries(0),
+      _isInitialIteration(false),
       _revisionError(false) {
   _keyGenerator.reset(KeyGenerator::factory(other.keyOptions()));
   
@@ -397,6 +398,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _lastCompactionStatus(nullptr),
       _lastCompactionStamp(0.0),
       _uncollectedLogfileEntries(0),
+      _isInitialIteration(false),
       _revisionError(false) {
       
   if (!IsAllowedName(info)) {
@@ -681,10 +683,6 @@ uint32_t LogicalCollection::internalVersion() const {
   return _internalVersion;
 }
 
-TRI_voc_cid_t LogicalCollection::cid() const {
-  return _cid;
-}
-
 std::string LogicalCollection::cid_as_string() const {
   return basics::StringUtils::itoa(_cid);
 }
@@ -838,10 +836,6 @@ VPackSlice LogicalCollection::keyOptions() const {
   return VPackSlice(_keyOptions->data());
 }
 
-arangodb::KeyGenerator* LogicalCollection::keyGenerator() const {
-  return _keyGenerator.get();
-}
-
 // SECTION: Indexes
 uint32_t LogicalCollection::indexBuckets() const {
   return _indexBuckets;
@@ -981,13 +975,18 @@ int LogicalCollection::rename(std::string const& newName) {
 }
 
 int LogicalCollection::close() {
-  // This was unload
+  // This was unload() in 3.0
   auto primIdx = primaryIndex();
   auto idxSize = primIdx->size();
 
   if (!_isDeleted &&
       _physical->initialCount() != static_cast<int64_t>(idxSize)) {
     _physical->updateCount(idxSize);
+
+    // save new "count" value
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    bool const doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
+    engine->changeCollection(_vocbase, _cid, this, doSync);
   }
 
   // We also have to unload the indexes.
@@ -1016,8 +1015,11 @@ void LogicalCollection::drop() {
   engine->dropCollection(_vocbase, this);
   _isDeleted = true;
 
-  // save some memory by freeing the revisions cache
+  // save some memory by freeing the revisions cache and indexes
+  _keyGenerator.reset();
   _revisionsCache.reset(); 
+  _indexes.clear();
+  _physical.reset();
 }
 
 void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
@@ -1106,10 +1108,6 @@ void LogicalCollection::toVelocyPack(VPackBuilder& builder, bool includeIndexes,
   TRI_ASSERT(!builder.isClosed());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->getCollectionInfo(_vocbase, _cid, builder, includeIndexes, maxTick);
-}
-
-TRI_vocbase_t* LogicalCollection::vocbase() const {
-  return _vocbase;
 }
 
 void LogicalCollection::increaseInternalVersion() {
@@ -1255,6 +1253,13 @@ void LogicalCollection::open(bool ignoreErrors) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->getCollectionInfo(_vocbase, cid(), builder, true, 0);
 
+  VPackSlice initialCount = builder.slice().get(std::vector<std::string>({ "parameters", "count" }));
+  if (initialCount.isNumber()) {
+    int64_t count = initialCount.getNumber<int64_t>();
+    if (count > 0) {
+      _physical->updateCount(count);
+    }
+  }
   double start = TRI_microtime();
 
   LOG_TOPIC(TRACE, Logger::PERFORMANCE)
@@ -1278,6 +1283,9 @@ void LogicalCollection::open(bool ignoreErrors) {
       << "iterate-markers { collection: " << _vocbase->name() << "/"
       << _name << " }";
 
+  _revisionsCache->allowInvalidation(false);
+  _isInitialIteration = true;
+
   // iterate over all markers of the collection
   res = getPhysical()->iterateMarkersOnLoad(&trx);
 
@@ -1286,6 +1294,8 @@ void LogicalCollection::open(bool ignoreErrors) {
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string("cannot iterate data of document collection: ") + TRI_errno_string(res));
   }
+  
+  _isInitialIteration = false;
 
   // build the indexes meta-data, but do not fill the indexes yet
   {
@@ -1314,6 +1324,8 @@ void LogicalCollection::open(bool ignoreErrors) {
     // build the index structures, and fill the indexes
     fillIndexes(&trx);
   }
+  
+  _revisionsCache->allowInvalidation(true);
 
   LOG_TOPIC(TRACE, Logger::PERFORMANCE)
       << "[timer] " << Logger::FIXED(TRI_microtime() - start)
@@ -3524,17 +3536,17 @@ void LogicalCollection::newObjectForRemove(
 
 bool LogicalCollection::readRevision(Transaction* trx, ManagedDocumentResult& result, TRI_voc_rid_t revisionId) {
   TRI_ASSERT(_revisionsCache);
-  return _revisionsCache->lookupRevision(trx, result, revisionId, _status == TRI_VOC_COL_STATUS_LOADING);
+  return _revisionsCache->lookupRevision(trx, result, revisionId, !_isInitialIteration);
 }
 
 bool LogicalCollection::readRevisionConditional(Transaction* trx, ManagedDocumentResult& result, TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal) {
   TRI_ASSERT(_revisionsCache);
-  return _revisionsCache->lookupRevisionConditional(trx, result, revisionId, maxTick, excludeWal);
+  return _revisionsCache->lookupRevisionConditional(trx, result, revisionId, maxTick, excludeWal, true);
 }
 
 void LogicalCollection::insertRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal) {
   // note: there is no need to insert into the cache here as the data points to temporary storage
-  getPhysical()->insertRevision(revisionId, dataptr, fid, isInWal);
+  getPhysical()->insertRevision(revisionId, dataptr, fid, isInWal, true);
 }
 
 void LogicalCollection::updateRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal) {
