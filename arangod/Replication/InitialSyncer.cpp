@@ -974,6 +974,7 @@ int InitialSyncer::handleCollectionSync(
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
+
   if (count.getNumber<size_t>() <= 0) {
     // remote collection has no documents. now truncate our local collection
     SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_WRITE);
@@ -1056,6 +1057,12 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
 
   TRI_DEFER(col->ditches()->freeDitch(ditch));
 
+  std::unordered_set<RevisionCacheChunk*> chunks;
+  auto cleanupChunks = [&chunks]() {
+    for (auto& chunk : chunks) { chunk->release(); }
+  };
+  TRI_DEFER(cleanupChunks());
+
   {
     SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->cid(), TRI_TRANSACTION_READ);
   
@@ -1086,6 +1093,8 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
       }
       return true;
     });
+
+    trx.transactionContext()->stealChunks(chunks);
 
     if (checkAborted()) {
       return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
@@ -1185,7 +1194,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
-  
+
   OperationOptions options;
   options.silent = true;
   options.ignoreRevs = true;
@@ -1338,7 +1347,7 @@ int InitialSyncer::handleSyncKeys(arangodb::LogicalCollection* col,
         match = false;
       }
     }
-  
+
     if (match) {
       // match
       nextStart = localTo + 1;

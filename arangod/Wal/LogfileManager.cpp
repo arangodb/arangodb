@@ -1782,6 +1782,11 @@ int LogfileManager::readShutdownInfo() {
   if (lastTick > 0) {
     _hasFoundLastTick = true;
   }
+ 
+  // read last assigned revision id to seed HLC value 
+  uint64_t hlc =
+      arangodb::basics::VelocyPackHelper::stringUInt64(slice.get("hlc"));
+  TRI_HybridLogicalClock(static_cast<TRI_voc_tick_t>(hlc));
 
   // read id of last collected logfile (maybe 0)
   uint64_t lastCollectedId = arangodb::basics::VelocyPackHelper::stringUInt64(
@@ -1811,6 +1816,7 @@ int LogfileManager::readShutdownInfo() {
     _lastSealedId = static_cast<Logfile::IdType>(lastSealedId);
 
     LOG(TRACE) << "initial values for WAL logfile manager: tick: " << lastTick
+               << ", hlc: " << hlc 
                << ", lastCollected: " << _lastCollectedId.load()
                << ", lastSealed: " << _lastSealedId.load();
   }
@@ -1839,16 +1845,10 @@ int LogfileManager::writeShutdownInfo(bool writeShutdownTime) {
       lastSealedId = _lastSealedId;
     }
 
-    std::string val;
-
-    val = basics::StringUtils::itoa(TRI_CurrentTickServer());
-    builder.add("tick", VPackValue(val));
-
-    val = basics::StringUtils::itoa(lastCollectedId);
-    builder.add("lastCollected", VPackValue(val));
-
-    val = basics::StringUtils::itoa(lastSealedId);
-    builder.add("lastSealed", VPackValue(val));
+    builder.add("tick", VPackValue(basics::StringUtils::itoa(TRI_CurrentTickServer())));
+    builder.add("hlc", VPackValue(basics::StringUtils::itoa(TRI_HybridLogicalClock())));
+    builder.add("lastCollected", VPackValue(basics::StringUtils::itoa(lastCollectedId)));
+    builder.add("lastSealed", VPackValue(basics::StringUtils::itoa(lastSealedId)));
 
     if (writeShutdownTime) {
       std::string const t(utilities::timeString());
@@ -2134,6 +2134,11 @@ int LogfileManager::inspectLogfiles() {
 
   // update the tick with the max tick we found in the WAL
   TRI_UpdateTickServer(_recoverState->lastTick);
+    
+  // use maximum revision value found from WAL to adjust HLC value
+  // should it be lower
+  LOG(TRACE) << "setting max HLC value to " << _recoverState->maxRevisionId;
+  TRI_HybridLogicalClock(_recoverState->maxRevisionId);
 
   return TRI_ERROR_NO_ERROR;
 }

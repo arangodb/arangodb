@@ -79,11 +79,7 @@ function createErrorRoute (service, body, title) {
 
 function createServiceNeedsConfigurationRoute (service) {
   return createErrorRoute(service, dd`
-      <p>This service is not configured.</p>
-      ${service.isDevelopment && `
-      <h3>Configuration Information</h3>
-      <pre>${escapeHtml(JSON.stringify(service.getConfiguration(), null, 2))}</pre>
-    `}
+    <p>This service is not configured.</p>
   `);
 }
 

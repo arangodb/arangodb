@@ -344,7 +344,7 @@ int PrimaryIndex::insertKey(arangodb::Transaction* trx, TRI_voc_rid_t revisionId
   ManagedDocumentResult result(trx); 
   IndexLookupContext context(trx, _collection, &result, 1); 
   SimpleIndexElement element(buildKeyElement(revisionId, doc));
-  
+ 
   return _primaryIndex->insert(&context, element);
 }
 
