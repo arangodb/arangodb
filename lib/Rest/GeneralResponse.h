@@ -135,6 +135,15 @@ class GeneralResponse {
   void setHeaderNC(std::string const& key, std::string&& value) {
     _headers[key] = std::move(value);
   }
+  
+  // adds a header if not set. the header field name must be lower-cased
+  void setHeaderNCIfNotSet(std::string const& key, std::string const& value) {
+    if (_headers.find(key) != _headers.end()) {
+      // already set
+      return;
+    }
+    _headers.emplace(key, value);
+  }
 
  public:
   // generates the response body, sets the content type; this might
