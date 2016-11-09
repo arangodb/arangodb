@@ -1,6 +1,44 @@
 v3.1.1 (XXXX-XX-XX)
 -------------------
 
+* preserve last-used HLC value across server starts
+
+* allow more control over handling of pre-3.1 _rev values
+    
+  this changes the server startup option `--database.check-30-revisions` from a boolean (true/false)
+  parameter to a string parameter with the following possible values:
+    
+  - "fail":
+    will validate _rev values of 3.0 collections on collection loading and throw an exception when invalid _rev values are found.
+    in this case collections with invalid _rev values are marked as corrupted and cannot be used in the ArangoDB 3.1 instance.
+    the fix procedure for such collections is to export the collections from 3.0 database with arangodump and restore them in 3.1 with arangorestore.
+    collections that do not contain invalid _rev values are marked as ok and will not be re-checked on following loads.
+    collections that contain invalid _rev values will be re-checked on following loads.
+    
+  - "true":
+    will validate _rev values of 3.0 collections on collection loading and print a warning when invalid _rev values are found.
+    in this case collections with invalid _rev values can be used in the ArangoDB 3.1 instance.
+    however, subsequent operations on documents with invalid _rev values may silently fail or fail with explicit errors.
+    the fix procedure for such collections is to export the collections from 3.0 database with arangodump and restore them in 3.1 with arangorestore.
+    collections that do not contain invalid _rev values are marked as ok and will not be re-checked on following loads.
+    collections that contain invalid _rev values will be re-checked on following loads.
+    
+  - "false":
+    will not validate _rev values on collection loading and not print warnings.
+    no hint is given when invalid _rev values are found.
+    subsequent operations on documents with invalid _rev values may silently fail or fail with explicit errors.
+    this setting does not affect whether collections are re-checked later.
+    collections will be re-checked on following loads if `--database.check-30-revisions` is later set to either `true` or `fail`.
+    
+  The change also suppresses warnings that were printed when collections were restored using arangorestore, and the restore
+  data contained invalid _rev values. Now these warnings are suppressed, and new HLC _rev values are generated for these documents
+  as before.
+
+* added missing functions to AQL syntax highlighter in web interface
+
+* fixed display of `ANY` direction in traversal explainer output (direction `ANY` was shown as either
+  `INBOUND` or `OUTBOUND`)
+
 * changed behavior of toJSON() function when serializing an object before saving it in the database
         
   if an object provides a toJSON() function, this function is still called for serializing it.
@@ -256,7 +294,15 @@ v3.1.alpha2 (2016-09-01)
   as well as out-of-sequence problems when using the BDD before/after functions.
 
 
-v3.0.11 (2016-XX-XX)
+v3.0.12 (XXXX-XX-XX)
+--------------------
+
+* fixed issues #2149, #2159
+
+* fixed error reporting for issue #2158
+
+
+v3.0.11 (2016-11-08)
 --------------------
 
 * fixed issue #2140: supervisor dies instead of respawning child
