@@ -951,8 +951,8 @@ int RestImportHandler::performImport(SingleCollectionTransaction& trx,
         res = opResult.code;
       }
 
+      VPackSlice resultSlice = opResult.slice();
       if (resultSlice.isArray()) {
-        VPackSlice resultSlice = opResult.slice();
         size_t pos = 0;
         for (auto const& it : VPackArrayIterator(resultSlice)) {
           if (!it.hasKey("error") || !it.get("error").getBool()) {
