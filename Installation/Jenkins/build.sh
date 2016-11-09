@@ -448,6 +448,11 @@ fi
 if [ -z "${MSVC}" ]; then
     # MSVC doesn't know howto do assembler in first place.
     CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off"
+    # on all other system cmake tends to be sluggish on finding strip.
+    # workaround by presetting it:
+    if test -z "${STRIP}"; then
+        export STRIP=`which strip`
+    fi
 fi
 
 CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} ${MAINTAINER_MODE}"

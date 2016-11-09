@@ -44,7 +44,7 @@ struct RecoverState {
   RecoverState& operator=(RecoverState const&) = delete;
 
   /// @brief creates the recover state
-  explicit RecoverState(bool);
+  explicit RecoverState(bool ignoreRecoveryErrors);
 
   /// @brief destroys the recover state
   ~RecoverState();
@@ -169,6 +169,7 @@ struct RecoverState {
 
   bool ignoreRecoveryErrors;
   int64_t errorCount;
+  TRI_voc_rid_t maxRevisionId;
 
  private:
   TRI_voc_tick_t lastDatabaseId;

@@ -1088,7 +1088,7 @@ int MMFilesCollection::iterateMarkersOnLoad(arangodb::Transaction* trx) {
              << openState._deletions << " deletion markers for collection '" << _logicalCollection->name() << "'";
   
   if (_logicalCollection->version() <= LogicalCollection::VERSION_30 && 
-      _lastRevision >= static_cast<TRI_voc_rid_t>(2016 - 1970) * 1000 * 60 * 60 * 24 * 365 &&
+      _lastRevision >= static_cast<TRI_voc_rid_t>(2016ULL - 1970ULL) * 1000ULL * 60ULL * 60ULL * 24ULL * 365ULL &&
       application_features::ApplicationServer::server->getFeature<DatabaseFeature>("Database")->check30Revisions()) {
     // a collection from 3.0 or earlier with a _rev value that is higher than we can handle safely
     _logicalCollection->setRevisionError();

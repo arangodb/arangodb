@@ -1,7 +1,12 @@
 # -*- mode: CMAKE; -*-
+
+# we will handle install into the target directory on our own via debconf:
+set(PACKAGING_HANDLE_CONFIG_FILES true)
+
 ################################################################################
 # This produces the debian packages, using client/deb.txt for the second package.
 ################################################################################
+
 FILE(READ "${PROJECT_SOURCE_DIR}/Installation/debian/packagedesc.txt" CPACK_DEBIAN_PACKAGE_DESCRIPTION)
 set(CPACK_DEBIAN_PACKAGE_SECTION "database")
 set(CPACK_DEBIAN_PACKAGE_CONFLICTS "arangodb, ${CPACKG_PACKAGE_CONFLICTS}, ${CPACKG_PACKAGE_CONFLICTS}-client, ${CPACK_PACKAGE_NAME}-client")
@@ -35,7 +40,7 @@ list(APPEND CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA
   
   "${PROJECT_SOURCE_DIR}/Installation/debian/preinst"
   "${PROJECT_SOURCE_DIR}/Installation/debian/postrm"
-  "${PROJECT_SOURCE_DIR}/Installation/debian/prerm;")
+  "${PROJECT_SOURCE_DIR}/Installation/debian/prerm")
 
 if(CMAKE_TARGET_ARCHITECTURES MATCHES ".*x86_64.*")
   set(ARANGODB_PACKAGE_ARCHITECTURE "amd64")
@@ -49,6 +54,16 @@ endif()
 set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE ${ARANGODB_PACKAGE_ARCHITECTURE})
 set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}_${ARANGODB_PACKAGE_ARCHITECTURE}")
 
+set(conffiles_list "")
+list(REMOVE_DUPLICATES INSTALL_CONFIGFILES_LIST)
+foreach (_configFile ${INSTALL_CONFIGFILES_LIST})
+  list(APPEND CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA ${_configFile})
+  set(conffiles_list "${conffiles_list}${_configFile}\n")
+endforeach()
+
+set(DH_CONFFILES_NAME "${PROJECT_BINARY_DIR}/conffiles")
+FILE(WRITE ${DH_CONFFILES_NAME} "${conffiles_list}")
+list(APPEND CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${DH_CONFFILES_NAME}")
 
 # deploy the Init script:
 install(

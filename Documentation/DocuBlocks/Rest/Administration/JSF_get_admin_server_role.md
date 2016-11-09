@@ -15,8 +15,7 @@ Possible return values for *role* are:
 - *SECONDARY*: the server is a secondary database server in a cluster
 - *AGENT*: the server is an agency node in a cluster
 - *UNDEFINED*: in a cluster, *UNDEFINED* is returned if the server role cannot be
-   determined. On a single server, *UNDEFINED* is the only possible return
-   value.
+   determined.
 
 @RESTRETURNCODES
 

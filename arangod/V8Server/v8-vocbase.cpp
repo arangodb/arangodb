@@ -41,6 +41,7 @@
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
 #include "Aql/QueryRegistry.h"
+#include "Basics/HybridLogicalClock.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
@@ -2690,6 +2691,10 @@ void TRI_V8ReloadRouting(v8::Isolate* isolate) {
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if we are in the enterprise edition
+////////////////////////////////////////////////////////////////////////////////
+
 static void JS_IsEnterprise(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -2698,6 +2703,49 @@ static void JS_IsEnterprise(v8::FunctionCallbackInfo<v8::Value> const& args) {
 #else
   TRI_V8_RETURN(v8::True(isolate));
 #endif
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief decode a _rev time stamp
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_DecodeRev(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  
+  if (args.Length() != 1 || !args[0]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("DECODE_REV(<string>)");
+  }
+
+  std::string rev = TRI_ObjectToString(args[0]);
+  uint64_t revInt = HybridLogicalClock::decodeTimeStamp(rev);
+  uint64_t timeMilli = HybridLogicalClock::extractTime(revInt);
+  uint64_t count = HybridLogicalClock::extractCount(revInt);
+  
+  time_t timeSeconds = timeMilli / 1000;
+  uint64_t millis = timeMilli % 1000;
+  struct tm date;
+#ifdef _WIN32
+  gmtime_s(&date, &timeSeconds);
+#else
+  gmtime_r(&timeSeconds, &date);
+#endif
+  char buffer[32];
+  strftime(buffer, 32, "%Y-%m-%dT%H:%M:%S.000Z", &date);
+  buffer[20] = (millis / 100) + '0';
+  buffer[21] = ((millis / 10) % 10) + '0';
+  buffer[22] = (millis % 10) + '0';
+  buffer[24] = 0;
+
+  v8::Handle<v8::Object> result = v8::Object::New(isolate);
+  result->Set(TRI_V8_ASCII_STRING("date"),
+              TRI_V8_ASCII_STRING(buffer));
+  result->Set(TRI_V8_ASCII_STRING("count"),
+              v8::Number::New(isolate, count));
+
+  TRI_V8_RETURN(result);
+  
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2892,6 +2940,11 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_IS_ENTERPRISE"),
                                JS_IsEnterprise);
+
+  TRI_AddGlobalFunctionVocbase(isolate, context,
+                               TRI_V8_ASCII_STRING("DECODE_REV"),
+                               JS_DecodeRev);
+
   // .............................................................................
   // create global variables
   // .............................................................................
