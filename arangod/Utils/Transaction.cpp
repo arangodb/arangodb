@@ -996,7 +996,7 @@ void Transaction::extractKeyAndRevFromDocument(VPackSlice slice,
       if (revSlice.isString()) {
         VPackValueLength l;
         char const* p = revSlice.getString(l);
-        revisionId = TRI_StringToRid(p, l);
+        revisionId = TRI_StringToRid(p, l, false);
       } else if (revSlice.isNumber()) {
         revisionId = revSlice.getNumericValue<TRI_voc_rid_t>();
       }
@@ -1016,7 +1016,7 @@ void Transaction::extractKeyAndRevFromDocument(VPackSlice slice,
     keySlice = slice.get(StaticStrings::KeyString);    
     VPackValueLength l;
     char const* p = slice.get(StaticStrings::RevString).getString(l);
-    revisionId = TRI_StringToRid(p, l);
+    revisionId = TRI_StringToRid(p, l, false);
   }
 }
 
@@ -1037,7 +1037,7 @@ TRI_voc_rid_t Transaction::extractRevFromDocument(VPackSlice slice) {
       if (revSlice.isString()) {
         VPackValueLength l;
         char const* p = revSlice.getString(l);
-        return TRI_StringToRid(p, l);
+        return TRI_StringToRid(p, l, false);
       } else if (revSlice.isNumber()) {
         return revSlice.getNumericValue<TRI_voc_rid_t>();
       }
@@ -1054,7 +1054,7 @@ TRI_voc_rid_t Transaction::extractRevFromDocument(VPackSlice slice) {
   { 
     VPackValueLength l;
     char const* p = slice.get(StaticStrings::RevString).getString(l);
-    return TRI_StringToRid(p, l);
+    return TRI_StringToRid(p, l, false);
   }
 }
 

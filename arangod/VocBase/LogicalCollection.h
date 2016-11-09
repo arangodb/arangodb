@@ -128,12 +128,16 @@ class LogicalCollection {
   void setCompactionStatus(char const*);
   double lastCompactionStamp() const { return _lastCompactionStamp; }
   void lastCompactionStamp(double value) { _lastCompactionStamp = value; }
+
+  void setRevisionError() { _revisionError = true; }
   
 
   // SECTION: Meta Information
   uint32_t version() const { 
     return _version; 
   }
+  
+  void setVersion(CollectionVersions version) { _version = version; }
 
   uint32_t internalVersion() const;
 
@@ -581,6 +585,8 @@ class LogicalCollection {
   std::atomic<int64_t> _uncollectedLogfileEntries;
 
   bool _isInitialIteration;
+
+  bool _revisionError;
 };
 
 }  // namespace arangodb

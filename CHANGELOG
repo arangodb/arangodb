@@ -1,3 +1,49 @@
+v3.1.1 (XXXX-XX-XX)
+-------------------
+
+* changed behavior of toJSON() function when serializing an object before saving it in the database
+        
+  if an object provides a toJSON() function, this function is still called for serializing it.
+  the change is that the result of toJSON() is not stringified anymore, but saved as is. previous
+  versions of ArangoDB called toJSON() and after that additionally stringified its result.
+
+  This change will affect the saving of JS Buffer objects, which will now be saved as arrays of
+  bytes instead of a comma-separated string of the Buffer's byte contents.
+
+* allow creating unique indexes on more attributes than present in shardKeys
+    
+  The following combinations of shardKeys and indexKeys are allowed/not allowed:
+    
+  shardKeys     indexKeys
+	  a             a        ok
+	  a             b    not ok
+	  a           a b        ok
+	a b             a    not ok
+	a b             b    not ok
+	a b           a b        ok
+	a b         a b c        ok
+      a b c           a b    not ok
+      a b c         a b c        ok
+
+* fixed wrong version in web interface login screen (EE only)
+
+* make web interface not display an exclamation mark next to ArangoDB version number 3.1
+
+* fixed search for arbitrary document attributes in web interface in case multiple
+  search values were used on different attribute names. in this case, the search always
+  produced an empty result
+
+* disallow updating `_from` and `_to` values of edges in Smart Graphs. Updating these
+  attributes would lead to potential redistribution of edges to other shards, which must be 
+  avoided.
+
+* fixed issue #2148
+
+* updated graphql-sync dependency to 0.6.2
+
+* fixed issue #2156
+
+
 v3.1.0 (2016-10-29)
 -------------------
 
@@ -231,6 +277,8 @@ v3.0.11 (2016-XX-XX)
 * Foxx tests no longer support the Mocha QUnit interface as this resulted in weird
   inconsistencies in the BDD and TDD interfaces. This fixes the TDD interface
   as well as out-of-sequence problems when using the BDD before/after functions.
+
+* fixed issue #2148
 
 
 v3.0.10 (2016-09-26)

@@ -1366,6 +1366,16 @@ LogicalCollection* MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase, std
   patch.openObject();
   patch.add("isSystem", VPackValue(isSystemValue));
   patch.add("path", VPackValue(path));
+
+  // auto-magic version detection to disambiguate collections from 3.0 and from 3.1
+  if (slice.hasKey("version") && slice.get("version").isNumber() && 
+      slice.get("version").getNumber<int>() == LogicalCollection::VERSION_30 &&
+      slice.hasKey("allowUserKeys") && slice.hasKey("replicationFactor") && slice.hasKey("numberOfShards")) {
+    // these attributes were added to parameter.json in 3.1. so this is a 3.1 collection already
+    // fix version number
+    patch.add("version", VPackValue(LogicalCollection::VERSION_31));
+  }
+
   patch.close();
   VPackBuilder b2 = VPackCollection::merge(slice, patch.slice(), false);
   slice = b2.slice();

@@ -172,7 +172,7 @@ bool ExtractDocumentHandle(v8::Isolate* isolate,
     }
     v8::String::Utf8Value str(revObj);
     bool isOld;
-    uint64_t rid = TRI_StringToRidWithCheck(*str, str.length(), isOld);
+    uint64_t rid = TRI_StringToRidWithCheck(*str, str.length(), isOld, false);
 
     if (rid == 0) {
       return false;

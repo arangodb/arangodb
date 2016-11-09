@@ -32,7 +32,7 @@ function coerceInt(value) {
   if (num === num && num <= MAX_INT && num >= MIN_INT) {
     return (num < 0 ? Math.ceil : Math.floor)(num);
   }
-  return null;
+  throw new TypeError('Int cannot represent non 32-bit signed integer value: ' + value);
 }
 
 var GraphQLInt = exports.GraphQLInt = new _definition.GraphQLScalarType({
@@ -53,7 +53,10 @@ var GraphQLInt = exports.GraphQLInt = new _definition.GraphQLScalarType({
 
 function coerceFloat(value) {
   var num = Number(value);
-  return num === num ? num : null;
+  if (num === num) {
+    return num;
+  }
+  throw new TypeError('Float cannot represent non numeric value: ' + value);
 }
 
 var GraphQLFloat = exports.GraphQLFloat = new _definition.GraphQLScalarType({

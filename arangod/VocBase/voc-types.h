@@ -63,19 +63,19 @@ typedef uint64_t TRI_server_id_t;
 std::string TRI_RidToString(TRI_voc_rid_t rid);
 
 /// @brief Convert a string into a revision ID, no check variant
-TRI_voc_rid_t TRI_StringToRid(std::string const& ridStr, bool& isOld);
+TRI_voc_rid_t TRI_StringToRid(std::string const& ridStr, bool& isOld, bool warn);
 
 /// @brief Convert a string into a revision ID, no check variant
-TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len);
+TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool warn);
 
 /// @brief Convert a string into a revision ID, no check variant
-TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool& isOld);
+TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool& isOld, bool warn);
 
 /// @brief Convert a string into a revision ID, returns 0 if format invalid
-TRI_voc_rid_t TRI_StringToRidWithCheck(std::string const& ridStr, bool& isOld);
+TRI_voc_rid_t TRI_StringToRidWithCheck(std::string const& ridStr, bool& isOld, bool warn);
 
 /// @brief Convert a string into a revision ID, returns 0 if format invalid
-TRI_voc_rid_t TRI_StringToRidWithCheck(char const* p, size_t len, bool& isOld);
+TRI_voc_rid_t TRI_StringToRidWithCheck(char const* p, size_t len, bool& isOld, bool warn);
 
 /// @brief enum for write operations
 enum TRI_voc_document_operation_e : uint8_t {

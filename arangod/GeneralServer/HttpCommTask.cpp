@@ -105,7 +105,7 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code, int errorNum,
 
 void HttpCommTask::addResponse(HttpResponse* response) {
   resetKeepAlive();
-
+   
   _requestPending = false;
 
   // CORS response handling
@@ -114,15 +114,18 @@ void HttpCommTask::addResponse(HttpResponse* response) {
     // access-control-allow-origin header now
     LOG(TRACE) << "handling CORS response";
 
-    response->setHeaderNC(StaticStrings::AccessControlExposeHeaders,
-                          StaticStrings::ExposedCorsHeaders);
-
     // send back original value of "Origin" header
-    response->setHeaderNC(StaticStrings::AccessControlAllowOrigin, _origin);
+    response->setHeaderNCIfNotSet(StaticStrings::AccessControlAllowOrigin, _origin);
 
     // send back "Access-Control-Allow-Credentials" header
-    response->setHeaderNC(StaticStrings::AccessControlAllowCredentials,
-                          (_denyCredentials ? "false" : "true"));
+    response->setHeaderNCIfNotSet(StaticStrings::AccessControlAllowCredentials,
+                                  (_denyCredentials ? "false" : "true"));
+    
+    // use "IfNotSet" here because we should not override HTTP headers set
+    // by Foxx applications
+    response->setHeaderNCIfNotSet(StaticStrings::AccessControlExposeHeaders,
+                                  StaticStrings::ExposedCorsHeaders);
+
   }
 
   // set "connection" header, keep-alive is the default
@@ -651,7 +654,7 @@ bool HttpCommTask::checkContentLength(HttpRequest* request,
 void HttpCommTask::processCorsOptions(std::unique_ptr<HttpRequest> request) {
   HttpResponse response(rest::ResponseCode::OK);
 
-  response.setHeaderNC(StaticStrings::Allow, StaticStrings::CorsMethods);
+  response.setHeaderNCIfNotSet(StaticStrings::Allow, StaticStrings::CorsMethods);
 
   if (!_origin.empty()) {
     LOG(TRACE) << "got CORS preflight request";
@@ -660,26 +663,24 @@ void HttpCommTask::processCorsOptions(std::unique_ptr<HttpRequest> request) {
 
     // send back which HTTP methods are allowed for the resource
     // we'll allow all
-    response.setHeaderNC(StaticStrings::AccessControlAllowMethods,
-                         StaticStrings::CorsMethods);
+    response.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowMethods,
+                                 StaticStrings::CorsMethods);
 
     if (!allowHeaders.empty()) {
       // allow all extra headers the client requested
       // we don't verify them here. the worst that can happen is that the
-      // client
-      // sends some broken headers and then later cannot access the data on
-      // the
-      // server. that's a client problem.
-      response.setHeaderNC(StaticStrings::AccessControlAllowHeaders,
-                           allowHeaders);
+      // client sends some broken headers and then later cannot access the data on
+      // the server. that's a client problem.
+      response.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowHeaders,
+                                   allowHeaders);
 
       LOG(TRACE) << "client requested validation of the following headers: "
                  << allowHeaders;
     }
 
     // set caching time (hard-coded value)
-    response.setHeaderNC(StaticStrings::AccessControlMaxAge,
-                         StaticStrings::N1800);
+    response.setHeaderNCIfNotSet(StaticStrings::AccessControlMaxAge,
+                                 StaticStrings::N1800);
   }
 
   processResponse(&response);

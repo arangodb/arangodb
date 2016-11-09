@@ -515,6 +515,13 @@ if [ ! -f Makefile -o ! -f CMakeCache.txt ];  then
           cmake ${SOURCE_DIR} ${CONFIGURE_OPTIONS} -G "${GENERATOR}" || exit 1
 fi
 
+if [ -n "$CPACK"  -a -n "${TARGET_DIR}" -a -z "${MSVC}" ];  then
+    if ! grep -q CMAKE_STRIP CMakeCache.txt; then
+        echo "cmake failed to detect strip; refusing to build unstripped packages!"
+        exit 1
+    fi
+fi
+
 ${MAKE_CMD_PREFIX} ${MAKE} ${MAKE_PARAMS}
 
 (cd ${SOURCE_DIR}; git rev-parse HEAD > last_compiled_version.sha)

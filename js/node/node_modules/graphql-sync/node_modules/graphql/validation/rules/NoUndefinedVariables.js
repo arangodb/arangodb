@@ -3,17 +3,10 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-
-var _create = require('babel-runtime/core-js/object/create');
-
-var _create2 = _interopRequireDefault(_create);
-
 exports.undefinedVarMessage = undefinedVarMessage;
 exports.NoUndefinedVariables = NoUndefinedVariables;
 
 var _error = require('../../error');
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 /**
  *  Copyright (c) 2015, Facebook, Inc.
@@ -35,12 +28,12 @@ function undefinedVarMessage(varName, opName) {
  * and via fragment spreads, are defined by that operation.
  */
 function NoUndefinedVariables(context) {
-  var variableNameDefined = (0, _create2.default)(null);
+  var variableNameDefined = Object.create(null);
 
   return {
     OperationDefinition: {
       enter: function enter() {
-        variableNameDefined = (0, _create2.default)(null);
+        variableNameDefined = Object.create(null);
       },
       leave: function leave(operation) {
         var usages = context.getRecursiveVariableUsages(operation);

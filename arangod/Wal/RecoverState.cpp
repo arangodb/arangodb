@@ -77,6 +77,7 @@ RecoverState::RecoverState(bool ignoreRecoveryErrors)
       emptyLogfiles(),
       ignoreRecoveryErrors(ignoreRecoveryErrors),
       errorCount(0),
+      maxRevisionId(0),
       lastDatabaseId(0),
       lastCollectionId(0) {
         
@@ -327,6 +328,17 @@ bool RecoverState::InitialScanMarker(TRI_df_marker_t const* marker, void* data,
   TRI_df_marker_type_t const type = marker->getType();
 
   switch (type) {
+    case TRI_DF_MARKER_VPACK_DOCUMENT: {
+      VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
+      if (payloadSlice.isObject()) {
+        TRI_voc_rid_t revisionId = Transaction::extractRevFromDocument(payloadSlice);
+        if (revisionId > state->maxRevisionId) {
+          state->maxRevisionId = revisionId;
+        }
+      }
+      break;
+    }
+
     case TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION: {
       // insert this transaction into the list of failed transactions
       // we do this because if we don't find a commit marker for this
