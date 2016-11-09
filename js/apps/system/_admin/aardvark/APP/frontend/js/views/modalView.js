@@ -216,6 +216,10 @@
       if (checked) {
         obj.checked = checked;
       }
+      if (value) {
+        obj.checked = value;
+      }
+
       return obj;
     },
 
