@@ -28,6 +28,7 @@
 #include "Aql/Query.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterEdgeCursor.h"
+#include "Indexes/Index.h"
 #include "VocBase/SingleServerTraverser.h"
 
 #include <velocypack/Iterator.h>
@@ -412,6 +413,37 @@ void arangodb::traverser::TraverserOptions::toVelocyPack(VPackBuilder& builder) 
       builder.add("uniqueEdges", VPackValue("global"));
       break;
   }
+}
+
+void arangodb::traverser::TraverserOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
+  VPackObjectBuilder guard(&builder);
+
+  // base indexes
+  builder.add("base", VPackValue(VPackValueType::Array));
+  for (auto const& it : _baseLookupInfos) {
+    for (auto const& it2 : it.idxHandles) {
+      builder.openObject();
+      it2.getIndex()->toVelocyPack(builder, false);
+      builder.close();
+    }
+  }
+  builder.close();
+  
+  // depth lookup indexes
+  builder.add("levels", VPackValue(VPackValueType::Object));
+  for (auto const& it : _depthLookupInfo) {
+    builder.add(VPackValue(std::to_string(it.first)));
+    builder.add(VPackValue(VPackValueType::Array));
+    for (auto const& it2 : it.second) {
+      for (auto const& it3 : it2.idxHandles) {
+        builder.openObject();
+        it3.getIndex()->toVelocyPack(builder, false);
+        builder.close();
+      }
+    }
+    builder.close();
+  }
+  builder.close();
 }
 
 void arangodb::traverser::TraverserOptions::buildEngineInfo(VPackBuilder& result) const {

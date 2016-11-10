@@ -287,11 +287,20 @@ function printTraversalDetails (traversals) {
   var maxOptionsLen = String('Options').length;
   var maxConditionsLen = String('Filter conditions').length;
 
-  var optify = function(opts, colorize) {
+  var optify = function(options, colorize) {
+    var opts = { 
+      bfs: options.bfs || undefined, /* only print if set to true to space room */
+      uniqueVertices: options.uniqueVertices, 
+      uniqueEdges: options.uniqueEdges 
+    };
+
     var result = '';
     for (var att in opts) {
       if (result.length > 0) {
         result += ', ';
+      }
+      if (opts[att] === undefined) {
+        continue;
       }
       if (colorize) {
         result += keyword(att) + ': ';
@@ -339,12 +348,7 @@ function printTraversalDetails (traversals) {
       }
     }
     if (node.hasOwnProperty('traversalFlags')) {
-      var opts = optify({ 
-        bfs: node.traversalFlags.bfs, 
-        uniqueVertices: node.traversalFlags.uniqueVertices, 
-        uniqueEdges: node.traversalFlags.uniqueEdges 
-      });
-
+      var opts = optify(node.traversalFlags); 
       if (opts.length > maxOptionsLen) {
         maxOptionsLen = opts.length;
       }
@@ -381,12 +385,7 @@ function printTraversalDetails (traversals) {
     }
 
     if (traversals[i].hasOwnProperty('traversalFlags')) {
-      var opts = { 
-        bfs: traversals[i].traversalFlags.bfs, 
-        uniqueVertices: traversals[i].traversalFlags.uniqueVertices, 
-        uniqueEdges: traversals[i].traversalFlags.uniqueEdges 
-      };
-      line += optify(opts, true) + pad(1 + maxOptionsLen - optify(opts, false).length) + '   ';
+      line += optify(traversals[i].traversalFlags, true) + pad(1 + maxOptionsLen - optify(traversals[i].traversalFlags, false).length) + '   ';
     } else {
       line += pad(1 + maxOptionsLen) + '   ';
     }
@@ -875,16 +874,60 @@ function processQuery (query, explain) {
           value(node.minMaxDepth) + '  ' + annotation('/* min..maxPathDepth */') + ' ';
 
         var translate = ['ANY', 'INBOUND', 'OUTBOUND'];
-        var defaultDirection = node.directions[0];
-        var otherOffset = 1;
-        if (node.directions.length > 1 && 
-            node.edgeCollections.length > 1 &&
-            node.edgeCollections[0] === node.edgeCollections[1]) {
-          // direction ANY is now represented by two traversals: an INBOUND and an OUTBOUND traversal
-          defaultDirection = 0; // switch default direction to ANY 
-          ++otherOffset;
+        var directions = [], d;
+        for (var i = 0; i < node.edgeCollections.length; ++i) {
+          var isLast = (i + 1 === node.edgeCollections.length);
+          d = node.directions[i];
+          if (!isLast && node.edgeCollections[i] === node.edgeCollections[i + 1]) {
+            // direction ANY is represented by two traversals: an INBOUND and an OUTBOUND traversal
+            // on the same collection
+            d = 0; // ANY
+          }
+          directions.push({ collection: node.edgeCollections[i], direction: d });
+
+          if (!isLast && node.edgeCollections[i] === node.edgeCollections[i + 1]) {
+            // don't print same collection twice
+            ++i; 
+          }
         }
-        rc += keyword(translate[defaultDirection]);
+        var allIndexes = [];
+        for (i = 0; i < node.edgeCollections.length; ++i) {
+          d = node.directions[i];
+          // base indexes
+          var ix = node.indexes.base[i];
+          ix.collection = node.edgeCollections[i];
+          ix.condition = keyword("base " + translate[d]);
+          ix.level = -1;
+          ix.direction = d;
+          ix.node = node.id;
+          allIndexes.push(ix);
+          
+          // level-specific indexes
+          for (var l in node.indexes.levels) {
+            ix = node.indexes.levels[l][i];
+            ix.collection = node.edgeCollections[i];
+            ix.condition = keyword("level " + parseInt(l, 10) + " " + translate[d]);
+            ix.level = parseInt(l, 10);
+            ix.direction = d;
+            ix.node = node.id;
+            allIndexes.push(ix);
+          }
+        }
+
+        allIndexes.sort(function(l, r) {
+          if (l.collection !== r.collection) {
+            return l.collection < r.collection ? -1 : 1;
+          }
+          if (l.level !== r.level) {
+            return l.level < r.level ? -1 : 1;
+          }
+          if (l.direction !== r.direction) {
+            return l.direction < r.direction ? -1 : 1;
+          }
+          return 0;
+        });
+
+        rc += keyword(translate[directions[0].direction]);
         if (node.hasOwnProperty('vertexId')) {
           rc += " '" + value(node.vertexId) + "' ";
         } else {
@@ -893,18 +936,9 @@ function processQuery (query, explain) {
         rc += annotation('/* startnode */') + '  ';
 
         if (Array.isArray(node.graph)) {
-          rc += collection(node.edgeCollections[0]);
-          for (var i = otherOffset; i < node.edgeCollections.length; ++i) {
-            rc += ', ';
-            if (i + 1 < node.edgeCollections.length && 
-                node.edgeCollections[i + 1] === node.edgeCollections[i]) {
-              // a collection that is used for both INBOUND and OUTBOUND is
-              // converted to ANY here
-              rc += keyword(translate[0]) + ' ' + collection(node.edgeCollections[i]);
-              ++i; // 
-            } else {
-              rc += keyword(translate[node.directions[i]]) + ' ' + collection(node.edgeCollections[i]);
-            }
+          rc += collection(directions[0].collection);
+          for (i = 1; i < directions.length; ++i) {
+            rc += ', ' + keyword(translate[directions[i].direction]) + ' ' + collection(directions[i].collection);
           }
         } else {
           rc += keyword('GRAPH') + " '" + value(node.graph) + "'";
@@ -938,6 +972,11 @@ function processQuery (query, explain) {
           node.edgeCollectionNameStrLen = edgeCols.join(', ').length;
           node.graph = '<anonymous>';
         }
+
+        allIndexes.forEach(function (idx) {
+          indexes.push(idx);
+        });
+
         return rc;
       case 'ShortestPathNode':
         if (node.hasOwnProperty('vertexOutVariable')) {
@@ -947,7 +986,7 @@ function processQuery (query, explain) {
           parts.push(variableName(node.edgeOutVariable) + '  ' + annotation('/* edge */'));
         }
         translate = ['ANY', 'INBOUND', 'OUTBOUND'];
-        defaultDirection = node.directions[0];
+        var defaultDirection = node.directions[0];
         rc = `${keyword("FOR")} ${parts.join(", ")} ${keyword("IN") } ${keyword(translate[defaultDirection])} `;
         if (node.hasOwnProperty('startVertexId')) {
           rc += `'${value(node.startVertexId)}'`;
