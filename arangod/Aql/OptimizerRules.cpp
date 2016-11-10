@@ -3726,6 +3726,30 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
   opt->addPlan(plan, rule, modified);
 }
 
+/// @brief prepares traversals for execution (hidden rule)
+void arangodb::aql::prepareTraversalsRule(Optimizer* opt,
+                                          ExecutionPlan* plan,
+                                          Optimizer::Rule const* rule) {
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> tNodes{a};
+  plan->findNodesOfType(tNodes, EN::TRAVERSAL, true);
+
+  if (tNodes.empty()) {
+    // no traversals present
+    opt->addPlan(plan, rule, false);
+    return;
+  }
+  
+  // first make a pass over all traversal nodes and remove unused 
+  // variables from them  
+  for (auto const& n : tNodes) {
+    TraversalNode* traversal = static_cast<TraversalNode*>(n);
+    traversal->prepareOptions();
+  }
+  
+  opt->addPlan(plan, rule, true);
+}  
+
 /// @brief pulls out simple subqueries and merges them with the level above
 ///
 /// For example, if we have the input query

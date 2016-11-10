@@ -1,6 +1,8 @@
 v3.1.1 (XXXX-XX-XX)
 -------------------
 
+* display index usage of traversals in AQL explainer output (previously missing)
+
 * fixed isuse #2163
 
 * preserve last-used HLC value across server starts

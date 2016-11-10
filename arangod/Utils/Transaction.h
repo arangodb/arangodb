@@ -85,8 +85,6 @@ class Transaction {
 
  public:
 
-  double const TRX_FOLLOWER_TIMEOUT = 3.0;
-
   class IndexHandle {
     friend class Transaction;
     std::shared_ptr<arangodb::Index> _index;
@@ -106,12 +104,14 @@ class Transaction {
 
     bool isEdgeIndex() const;
 
-   private:
+   public:
     std::shared_ptr<arangodb::Index> getIndex() const;
   };
 
   using VPackBuilder = arangodb::velocypack::Builder;
   using VPackSlice = arangodb::velocypack::Slice;
+  
+  double const TRX_FOLLOWER_TIMEOUT = 3.0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Transaction
