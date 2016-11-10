@@ -911,7 +911,19 @@ void VelocyPackHelper::patchDouble(VPackSlice slice, double value) {
   // get pointer to the start of the value
   uint8_t* p = const_cast<uint8_t*>(slice.begin());
   // skip one byte for the header and overwrite
+#ifdef __arm__
+  // ARM does not support unaligned writes, now copy bytewise
+  uint64_t dv;
+  memcpy(&dv, &value, sizeof(double));
+  VPackValueLength vSize = sizeof(double);
+  for (uint64_t x = dv; vSize > 0; vSize--) {
+    *(++p) = x & 0xff;
+    x >>= 8;
+  }
+#else
+  // other platforms support unaligned writes
   *reinterpret_cast<double*>(p + 1) = value;
+#endif  
 }
 
 #ifndef USE_ENTERPRISE
