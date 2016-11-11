@@ -153,7 +153,7 @@ class HashIndex final : public PathBasedIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate() const override;
+  double selectivityEstimate(arangodb::StringRef const* = nullptr) const override;
 
   size_t memory() const override;
 
