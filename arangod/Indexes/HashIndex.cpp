@@ -519,7 +519,7 @@ HashIndex::~HashIndex() {
 }
 
 /// @brief returns a selectivity estimate for the index
-double HashIndex::selectivityEstimate() const {
+double HashIndex::selectivityEstimate(StringRef const*) const {
   if (_unique) {
     return 1.0;
   }

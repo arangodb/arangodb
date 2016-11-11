@@ -386,8 +386,8 @@ std::pair<bool, bool> Condition::findIndexes(
 
 /// @brief get the attributes for a sub-condition that are const
 /// (i.e. compared with equality)
-std::vector<std::vector<arangodb::basics::AttributeName>> Condition::getConstAttributes (Variable const* reference,
-                                                                                         bool includeNull) {
+std::vector<std::vector<arangodb::basics::AttributeName>> Condition::getConstAttributes(Variable const* reference,
+                                                                                        bool includeNull) {
   std::vector<std::vector<arangodb::basics::AttributeName>> result;
 
   if (_root == nullptr) {

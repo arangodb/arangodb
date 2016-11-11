@@ -25,6 +25,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
+#include "Basics/StringRef.h"
 #include "Indexes/Index.h"
 #include "VocBase/vocbase.h"
 
@@ -50,12 +51,17 @@ bool SimpleAttributeEqualityMatcher::matchOne(
     if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       TRI_ASSERT(op->numMembers() == 2);
       // EQ is symmetric
+      int which = -1;
       if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op,
-                          reference, nonNullAttributes, false) ||
-          accessFitsIndex(index, op->getMember(1), op->getMember(0), op,
                           reference, nonNullAttributes, false)) {
+        which = 0;
+      } else if (accessFitsIndex(index, op->getMember(1), op->getMember(0), op,
+                                 reference, nonNullAttributes, false)) {
+        which = 1;
+      } 
+      if (which >= 0) {
         // we can use the index
-        calculateIndexCosts(index, itemsInIndex, estimatedItems, estimatedCost);
+        calculateIndexCosts(index, op->getMember(which), itemsInIndex, estimatedItems, estimatedCost);
         return true;
       }
     } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
@@ -64,7 +70,7 @@ bool SimpleAttributeEqualityMatcher::matchOne(
                           reference, nonNullAttributes, false)) {
         // we can use the index
         // use slightly different cost calculation for IN than for EQ
-        calculateIndexCosts(index, itemsInIndex, estimatedItems, estimatedCost);
+        calculateIndexCosts(index, op->getMember(0), itemsInIndex, estimatedItems, estimatedCost);
         size_t values = 1;
         auto m = op->getMember(1);
         if (m->isArray() && m->numMembers() > 1) {
@@ -135,7 +141,7 @@ bool SimpleAttributeEqualityMatcher::matchAll(
       values = 1;
     }
 
-    calculateIndexCosts(index, itemsInIndex, estimatedItems, estimatedCost);
+    calculateIndexCosts(index, nullptr, itemsInIndex, estimatedItems, estimatedCost);
     estimatedItems *= values;
     estimatedCost *= static_cast<double>(values);
     return true;
@@ -271,9 +277,12 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll(
 /// cost values have no special meaning, except that multiple cost values are
 /// comparable, and lower values mean lower costs
 void SimpleAttributeEqualityMatcher::calculateIndexCosts(
-    arangodb::Index const* index, size_t itemsInIndex, size_t& estimatedItems,
+    arangodb::Index const* index, arangodb::aql::AstNode const* attribute,
+    size_t itemsInIndex, size_t& estimatedItems,
     double& estimatedCost) const {
-  double equalityReductionFactor = 20.0;
+  // note: attribute will be set to the index attribute for single-attribute
+  // indexes such as the primary and edge indexes, and is a nullptr for the
+  // other indexes
 
   if (index->unique() || index->implicitlyUnique()) {
     // index is unique, and the condition covers all attributes
@@ -282,12 +291,17 @@ void SimpleAttributeEqualityMatcher::calculateIndexCosts(
     estimatedCost = 0.95 - 0.05 * (index->fields().size() - 1);
   } else if (index->hasSelectivityEstimate()) {
     // use index selectivity estimate
-    double estimate = index->selectivityEstimate();
+    StringRef att;
+    if (attribute != nullptr && attribute->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+      att = StringRef(attribute->getStringValue(), attribute->getStringLength());
+    }
+    double estimate = index->selectivityEstimate(&att);
     if (estimate <= 0.0) {
       // prevent division by zero
       estimatedItems = itemsInIndex;
       // the more attributes are contained in the index, the more specific the
       // lookup will be
+      double equalityReductionFactor = 20.0;
       for (size_t i = 0; i < index->fields().size(); ++i) {
         estimatedItems /= static_cast<size_t>(equalityReductionFactor);
         // decrease the effect of the equality reduction factor

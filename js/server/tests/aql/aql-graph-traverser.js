@@ -1493,9 +1493,8 @@ function optimizeInSuite () {
         assertEqual(extra.stats.filtered, 0);
       } else {
         // We have only 10 valid elements in the array.
-        assertEqual(extra.stats.filtered, 90);
+        assertEqual(extra.stats.filtered, 0);
       }
-
       assertEqual(result.count(), 1000);
 
       // if the rule is disabled we expect to do way more filtering
@@ -1556,7 +1555,7 @@ function optimizeInSuite () {
         assertEqual(extra.stats.filtered, 0);
       } else {
         // We have only 10 valid elements in the array.
-        assertEqual(extra.stats.filtered, 90);
+        assertEqual(extra.stats.filtered, 0);
       }
       assertEqual(result.count(), 1000);
 
@@ -1568,7 +1567,7 @@ function optimizeInSuite () {
         assertEqual(extra.stats.filtered, 0);
       } else {
         // We have only 10 valid elements in the array.
-        assertEqual(extra.stats.filtered, 90);
+        assertEqual(extra.stats.filtered, 0);
       }
       assertEqual(result.count(), 1000);
 

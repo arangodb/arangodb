@@ -715,8 +715,6 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
     }
   }
 
-
-
   // In variable
   if (usesInVariable()) {
     nodes.add(VPackValue("inVariable"));
@@ -820,6 +818,8 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
     nodes.close();
   }
 
+  nodes.add(VPackValue("indexes"));
+  _options->toVelocyPackIndexes(nodes);
 
   // And close it:
   nodes.close();
@@ -952,6 +952,9 @@ double TraversalNode::estimateCost(size_t& nrItems) const {
 }
 
 void TraversalNode::prepareOptions() {
+  if (_optionsBuild) {
+    return;
+  }
   TRI_ASSERT(!_optionsBuild);
   _options->_tmpVar = _tmpObjVariable;
 

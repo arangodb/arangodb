@@ -143,6 +143,9 @@ struct TraverserOptions {
 
   /// @brief Build a velocypack for cloning in the plan.
   void toVelocyPack(arangodb::velocypack::Builder&) const;
+  
+  /// @brief Build a velocypack for indexes
+  void toVelocyPackIndexes(arangodb::velocypack::Builder&) const;
 
   /// @brief Build a velocypack containing all relevant information
   ///        for DBServer traverser engines.
