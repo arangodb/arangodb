@@ -136,7 +136,7 @@ class PrimaryIndex final : public Index {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate() const override { return 1.0; }
+  double selectivityEstimate(arangodb::StringRef const* = nullptr) const override { return 1.0; }
 
   size_t size() const;
 

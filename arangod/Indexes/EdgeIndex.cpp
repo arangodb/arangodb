@@ -26,6 +26,7 @@
 #include "Aql/SortCondition.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringRef.h"
 #include "Basics/fasthash.h"
 #include "Basics/hashes.h"
 #include "Indexes/IndexLookupContext.h"
@@ -415,12 +416,26 @@ void EdgeIndex::buildSearchValueFromArray(TRI_edge_direction_e dir,
 }
 
 /// @brief return a selectivity estimate for the index
-double EdgeIndex::selectivityEstimate() const {
+double EdgeIndex::selectivityEstimate(arangodb::StringRef const* attribute) const {
   if (_edgesFrom == nullptr || 
       _edgesTo == nullptr || 
       ServerState::instance()->isCoordinator()) {
     // use hard-coded selectivity estimate in case of cluster coordinator
     return 0.1;
+  }
+      
+  if (attribute != nullptr) {
+    // the index attribute is given here
+    // now check if we can restrict the selectivity estimation to the correct
+    // part of the index
+    if (attribute->compare(StaticStrings::FromString) == 0) {
+      // _from
+      return _edgesFrom->selectivity();
+    } else if (attribute->compare(StaticStrings::ToString) == 0) {
+      // _to
+      return _edgesTo->selectivity();
+    }
+    // other attribute. now return the average selectivity
   }
 
   // return average selectivity of the two index parts

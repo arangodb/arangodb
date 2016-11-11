@@ -79,8 +79,10 @@ class SimpleAttributeEqualityMatcher {
   /// that will return in average
   /// cost values have no special meaning, except that multiple cost values are
   /// comparable, and lower values mean lower costs
-  void calculateIndexCosts(arangodb::Index const*, size_t, size_t&,
-                           double&) const;
+  void calculateIndexCosts(arangodb::Index const* index, 
+                           arangodb::aql::AstNode const* attribute,
+                           size_t itemsInIndex, size_t& estimatedItems,
+                           double& estimatedCost) const;
 
   /// @brief whether or not the access fits
   bool accessFitsIndex(arangodb::Index const*, arangodb::aql::AstNode const*,
