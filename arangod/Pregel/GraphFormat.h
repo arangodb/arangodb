@@ -32,17 +32,18 @@ struct TRI_vocbase_t;
 namespace arangodb {
 namespace pregel {
 
-template <typename V, typename M>
+template <typename V, typename E>
 struct GraphFormat {
-  virtual void willUseCollection(TRI_vocbase_t* vocbase,
-                                 std::string const& shard,
-                                 bool isEdgeCollection) {}
+  
+  virtual size_t estimatedVertexSize() const { return sizeof(V); };
+  virtual size_t estimatedEdgeSize() const { return sizeof(E); };
+  
   virtual size_t copyVertexData(arangodb::velocypack::Slice document, void* targetPtr,
                                 size_t maxSize) = 0;
   virtual size_t copyEdgeData(arangodb::velocypack::Slice edgeDocument, void* targetPtr,
                               size_t maxSize) = 0;
   virtual V readVertexData(void* ptr) = 0;
-  virtual M readEdgeData(void* ptr) = 0;
+  virtual E readEdgeData(void* ptr) = 0;
 
   virtual bool storesVertexData() const { return true; }
   virtual bool storesEdgeData() const { return true; }

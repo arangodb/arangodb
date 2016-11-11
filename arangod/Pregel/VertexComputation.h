@@ -22,8 +22,9 @@
 
 #include <cstddef>
 #include "Basics/Common.h"
+#include "OutgoingCache.h"
+#include "WorkerContext.h"
 #include "GraphStore.h"
-#include "IncomingCache.h"
 
 #ifndef ARANGODB_PREGEL_COMPUTATION_H
 #define ARANGODB_PREGEL_COMPUTATION_H 1
@@ -32,47 +33,62 @@ namespace arangodb {
 namespace pregel {
 
 template <typename V, typename E, typename M>
-class OutgoingCache;
-template <typename V, typename E, typename M>
 class Worker;
 class Aggregator;
-  
   
 template <typename V, typename E, typename M>
 class VertexComputation {
   friend class Worker<V, E, M>;
-
- private:
-  unsigned int _gss;
-  OutgoingCache<V, E, M>* _outgoing;
-  std::map<std::string, std::unique_ptr<Aggregator>> *_aggregators;
-  std::shared_ptr<GraphStore<V, E>> _graphStore;
+  
+  uint64_t _gss;
+  WorkerContext* _context;
+  GraphStore<V,E> *_graphStore;
+  OutgoingCache<M>* _outgoing;
+  const AggregatorUsage *_conductorAggregators;
+  AggregatorUsage *_workerAggregators;
   VertexEntry* _vertexEntry;
   
-  
- protected:
-  unsigned int getGlobalSuperstep() const { return _gss; }
-  const void* getAggregatedValue(std::string const& name);
-  void aggregateValue(std::string const& name, void const* value);
-  
-  size_t globalVertexCount() {
-    return _graphStore->globalVertexCount();
-  }
-  
-  size_t globalEdgeCount() {
-    return _graphStore->globalEdgeCount();
-  }
-  
-  EdgeIterator<E> getEdges();
-  void* mutableVertexData();
-  V vertexData();
-  /// store data, will potentially move the data around
-  void setVertexData(const V*, size_t size);
-  
-  void sendMessage(std::string const& toValue, M const& data);
-  void voteHalt();
-  
  public:
+  
+  template<typename T>
+  inline void aggregate(std::string const& name, const T* valuePtr) {
+    _workerAggregators->aggregate(name, valuePtr);
+  }
+  
+  template<typename T>
+  inline const T* getAggregatedValue(std::string const& name){
+    return (const T*) _conductorAggregators->getAggregatedValue(name);
+  }
+  
+  inline WorkerContext const* context() {return _context;}
+  
+  void* mutableVertexData() {
+    return _graphStore->mutableVertexData(_vertexEntry);
+  }
+  
+  V vertexData() {
+    return _graphStore->copyVertexData(_vertexEntry);
+  }
+  
+  EdgeIterator<E> getEdges() {
+    return _graphStore->edgeIterator(_vertexEntry);
+  }
+  
+  /// store data, will potentially move the data around
+  void setVertexData(void const* ptr, size_t size) {
+    _graphStore->replaceVertexData(_vertexEntry, (void*)ptr, size);
+  }
+  
+  void sendMessage(std::string const& toVertexID, M const& data) {
+    _outgoing->sendMessageTo(toVertexID, data);
+  }
+  
+  void voteHalt() {
+    _vertexEntry->setActive(false);
+  }
+  
+  inline uint64_t globalSuperstep() const { return _gss;}
+  
   virtual void compute(std::string const& vertexID,
                        MessageIterator<M> const& messages) = 0;
 };

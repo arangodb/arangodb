@@ -362,19 +362,14 @@ SET(ARANGOD_SOURCES
   Wal/Slot.cpp
   Wal/Slots.cpp
   Wal/SynchronizerThread.cpp
-  Pregel/Algorithm.cpp
-  Pregel/Aggregator.cpp
   Pregel/Conductor.cpp
   Pregel/PregelFeature.cpp
   Pregel/IncomingCache.cpp
   Pregel/OutgoingCache.cpp
-  Pregel/VertexComputation.cpp
   Pregel/Worker.cpp
   Pregel/WorkerState.cpp
   Pregel/GraphStore.cpp
   Pregel/Utils.cpp
-  Pregel/GraphFormat.cpp
-  Pregel/MessageFormat.cpp
   Pregel/ResultWriter.cpp
   Pregel/Algos/SSSP.cpp
   Pregel/Algos/PageRank.cpp

@@ -40,7 +40,7 @@ struct SSSPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
       };
     }
     int64_t* state = (int64_t*)mutableVertexData();
-    if (tmp >= 0 && (getGlobalSuperstep() == 0 || tmp != *state)) {
+    if (tmp >= 0 && (globalSuperstep() == 0 || tmp != *state)) {
       LOG(INFO) << "Recomputing value for vertex " << vertexID;
       *state = tmp;  // update state
 
@@ -55,21 +55,21 @@ struct SSSPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
   }
 };
 
-std::shared_ptr<GraphFormat<int64_t, int64_t>> SSSPAlgorithm::inputFormat()
+GraphFormat<int64_t, int64_t>* SSSPAlgorithm::inputFormat()
     const {
-  return std::make_shared<IntegerGraphFormat>("value", -1, 1);
+  return new IntegerGraphFormat("value", -1, 1);
 }
 
-std::shared_ptr<MessageFormat<int64_t>> SSSPAlgorithm::messageFormat() const {
-  return std::shared_ptr<IntegerMessageFormat>(new IntegerMessageFormat());
+MessageFormat<int64_t>* SSSPAlgorithm::messageFormat() const {
+  return new IntegerMessageFormat();
 }
 
-std::shared_ptr<MessageCombiner<int64_t>> SSSPAlgorithm::messageCombiner()
+MessageCombiner<int64_t>* SSSPAlgorithm::messageCombiner()
     const {
-  return std::shared_ptr<IntegerMinCombiner>(new IntegerMinCombiner());
+  return new IntegerMinCombiner();
 }
 
-std::shared_ptr<VertexComputation<int64_t, int64_t, int64_t>>
+VertexComputation<int64_t, int64_t, int64_t>*
 SSSPAlgorithm::createComputation(uint64_t gss) const {
-  return std::shared_ptr<SSSPComputation>(new SSSPComputation());
+  return new SSSPComputation();
 }

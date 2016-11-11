@@ -21,8 +21,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PageRank.h"
+#include "Pregel/Aggregator.h"
 #include "Pregel/Combiners/FloatSumCombiner.h"
 #include "Pregel/GraphFormat.h"
+#include "Pregel/MessageIterator.h"
 #include "Pregel/Utils.h"
 #include "Pregel/VertexComputation.h"
 
@@ -37,6 +39,11 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
+PageRankAlgorithm::PageRankAlgorithm(arangodb::velocypack::Slice params) : Algorithm("PageRank") {
+  VPackSlice t = params.get("convergenceThreshold");
+  _threshold = t.isDouble() ? t.getDouble() : 0.02;
+}
+
 struct PageRankGraphFormat : public FloatGraphFormat {
   PageRankGraphFormat(std::string const& field, float vertexNull,
                       float edgeNull)
@@ -44,56 +51,61 @@ struct PageRankGraphFormat : public FloatGraphFormat {
   bool storesEdgeData() const override { return false; }
 };
 
-std::shared_ptr<GraphFormat<float, float>> PageRankAlgorithm::inputFormat()
+GraphFormat<float, float>* PageRankAlgorithm::inputFormat()
     const {
-  return std::make_shared<PageRankGraphFormat>("value", 0, 0);
+  return new PageRankGraphFormat("value", 0, 0);
 }
 
-std::shared_ptr<MessageFormat<float>> PageRankAlgorithm::messageFormat() const {
-  return std::shared_ptr<FloatMessageFormat>(new FloatMessageFormat());
+MessageFormat<float>* PageRankAlgorithm::messageFormat() const {
+  return new FloatMessageFormat();
 }
 
-std::shared_ptr<MessageCombiner<float>> PageRankAlgorithm::messageCombiner()
+MessageCombiner<float>* PageRankAlgorithm::messageCombiner()
     const {
-  return std::shared_ptr<FloatSumCombiner>(new FloatSumCombiner());
+  return new FloatSumCombiner();
 }
 
 struct PageRankComputation : public VertexComputation<float, float, float> {
-  PageRankComputation() {}
+  float _limit;
+  PageRankComputation(float t) : _limit(t) {}
   void compute(std::string const& vertexID,
                MessageIterator<float> const& messages) override {
     
     float* ptr = (float*) mutableVertexData();
     float copy = *ptr;
     //float old = *ptr;
-    if (getGlobalSuperstep() > 0) {
+    if (globalSuperstep() > 0) {
       float sum = 0;
       for (const float* msg : messages) {
         sum += *msg;
       }
-      *ptr = 0.15 / globalVertexCount() + 0.85 * sum;
+      *ptr = 0.15 / context()->vertexCount() + 0.85 * sum;
     }
-
-    if (getGlobalSuperstep() < 30) {
+    float diff = fabsf(copy - *ptr);
+    aggregate("convergence", &diff);
+    
+    // TODO definetly incorrect to just take local diff, needs global diff
+    // globalDiff < _limit && ...
+    if (globalSuperstep() < 30) {
       EdgeIterator<float> edges = getEdges();
       float val = *ptr / edges.size();
       for (EdgeEntry<float>* edge : edges) {
         sendMessage(edge->toVertexID(), val);
       }
-      float diff = fabsf(copy - *ptr);
-      aggregateValue("convergence", &diff);
     } else {
       voteHalt();
     }
   }
 };
 
-std::shared_ptr<VertexComputation<float, float, float>>
+VertexComputation<float, float, float>*
 PageRankAlgorithm::createComputation(uint64_t gss) const {
-  return std::shared_ptr<PageRankComputation>(new PageRankComputation());
+  return new PageRankComputation(_threshold);
 }
 
-void PageRankAlgorithm::aggregators(
-    std::vector<std::unique_ptr<Aggregator>>& aggregators) {
-  aggregators.push_back(std::make_unique<FloatMaxAggregator>("convergence", 0));
+Aggregator* PageRankAlgorithm::aggregator(std::string const& name) const {
+  if (name == "convergence") {
+    return new FloatMaxAggregator(0);
+  }
+  return nullptr;
 }

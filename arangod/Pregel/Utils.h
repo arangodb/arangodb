@@ -36,8 +36,9 @@ class Utils {
 
  public:
   // constants
+  
+  static std::string const edgeShardingKey;
   static std::string const apiPrefix;
-
   static std::string const startExecutionPath;
   static std::string const prepareGSSPath;
   static std::string const startGSSPath;
@@ -49,9 +50,6 @@ class Utils {
   static std::string const algorithmKey;
   static std::string const coordinatorIdKey;
 
-  static std::string const totalVertexCount;
-  static std::string const totalEdgeCount;
-
   static std::string const collectionPlanIdMapKey;
   static std::string const vertexShardsListKey;
   static std::string const edgeShardsListKey;
@@ -60,11 +58,13 @@ class Utils {
   static std::string const messagesKey;
   static std::string const senderKey;
   static std::string const doneKey;
-
-  static std::string const parameterMapKey;
   static std::string const aggregatorValuesKey;
+  static std::string const totalVertexCount;
+  static std::string const totalEdgeCount;
 
-  static std::string const edgeShardingKey;
+  // User parameters
+  static std::string const userParametersKey;
+
   static std::string baseUrl(std::string dbName);
   static std::string collectionFromToValue(std::string const& graphKey);
   static std::string vertexKeyFromToValue(std::string const& graphKey);

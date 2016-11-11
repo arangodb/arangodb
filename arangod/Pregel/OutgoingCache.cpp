@@ -38,23 +38,23 @@
 using namespace arangodb;
 using namespace arangodb::pregel;
 
-template <typename V, typename E, typename M>
-OutgoingCache<V, E, M>::OutgoingCache(
-    std::shared_ptr<WorkerState<V, E, M>> state)
-    : _state(state) {
+template <typename M>
+OutgoingCache<M>::OutgoingCache (WorkerState *state,
+                                 MessageFormat<M> *format,
+                                 MessageCombiner<M> *combiner,
+                                 IncomingCache<M> *cache)
+    : _state(state), _format(format), _combiner(combiner), _localCache(cache) {
   _ci = ClusterInfo::instance();
   _baseUrl = Utils::baseUrl(_state->database());
-  _format = _state->algorithm()->messageFormat();
-  _combiner = _state->algorithm()->messageCombiner();
 }
 
-template <typename V, typename E, typename M>
-OutgoingCache<V, E, M>::~OutgoingCache() {
+template <typename M>
+OutgoingCache<M>::~OutgoingCache() {
   clear();
 }
 
-template <typename V, typename E, typename M>
-void OutgoingCache<V, E, M>::clear() {
+template <typename M>
+void OutgoingCache<M>::clear() {
   _map.clear();
   _containedMessages = 0;
 }
@@ -91,8 +91,8 @@ static inline void resolveShard(ClusterInfo* ci, LogicalCollection* info,
   TRI_ASSERT(usesDefaultShardingAttributes);  // should be true anyway
 }
 
-template <typename V, typename E, typename M>
-void OutgoingCache<V, E, M>::sendMessageTo(std::string const& toValue,
+template <typename M>
+void OutgoingCache<M>::sendMessageTo(std::string const& toValue,
                                            M const& data) {
   std::size_t pos = toValue.find('/');
   std::string _key = toValue.substr(pos + 1, toValue.length() - pos - 1);
@@ -112,8 +112,7 @@ void OutgoingCache<V, E, M>::sendMessageTo(std::string const& toValue,
   std::vector<ShardID> const& localShards = _state->localVertexShardIDs();
   if (std::find(localShards.begin(), localShards.end(), responsibleShard) !=
       localShards.end()) {
-    auto incoming = _state->writeableIncomingCache();
-    incoming->setDirect(toValue, data);
+    _localCache->setDirect(toValue, data);
     LOG(INFO) << "Worker: Got messages for myself " << toValue << " <- "
               << data;
 
@@ -132,8 +131,8 @@ void OutgoingCache<V, E, M>::sendMessageTo(std::string const& toValue,
   // TODO treshold  sending
 }
 
-template <typename V, typename E, typename M>
-void OutgoingCache<V, E, M>::sendMessages() {
+template <typename M>
+void OutgoingCache<M>::sendMessages() {
   LOG(INFO) << "Beginning to send messages to other machines";
 
   std::vector<ClusterCommRequest> requests;
@@ -181,5 +180,5 @@ void OutgoingCache<V, E, M>::sendMessages() {
 }
 
 // template types to create
-template class arangodb::pregel::OutgoingCache<int64_t, int64_t, int64_t>;
-template class arangodb::pregel::OutgoingCache<float, float, float>;
+template class arangodb::pregel::OutgoingCache<int64_t>;
+template class arangodb::pregel::OutgoingCache<float>;

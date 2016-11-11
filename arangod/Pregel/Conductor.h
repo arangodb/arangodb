@@ -30,7 +30,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/vocbase.h"
 
-#include "Aggregator.h"
+#include "AggregatorUsage.h"
 
 namespace arangodb {
 namespace pregel {
@@ -42,10 +42,10 @@ class Conductor {
   Conductor(uint64_t executionNumber, TRI_vocbase_t* vocbase,
             std::vector<std::shared_ptr<LogicalCollection>> vertexCollections,
             std::shared_ptr<LogicalCollection> edgeCollection,
-            std::string const& algorithm, VPackSlice params);
+            std::string const& algorithm);
   ~Conductor();
 
-  void start();
+  void start(VPackSlice params);
   void finishedGlobalStep(VPackSlice& data);  //
   void cancel();
 
@@ -59,7 +59,7 @@ class Conductor {
   std::string _algorithm;
   ExecutionState _state = ExecutionState::RUNNING;
 
-  std::vector<std::unique_ptr<Aggregator>> _aggregators;
+  std::unique_ptr<AggregatorUsage> _aggregatorUsage;
   std::vector<std::shared_ptr<LogicalCollection>> _vertexCollections;
   std::shared_ptr<LogicalCollection> _edgeCollection;
   std::map<ServerID, std::vector<ShardID>> _vertexServerMap;

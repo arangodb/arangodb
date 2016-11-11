@@ -37,7 +37,10 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Algorithm.h"
+#include "Pregel/Algos/SSSP.h"
 #include "Pregel/Algos/PageRank.h"
+
+#include <algorithm>
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -46,21 +49,17 @@ Conductor::Conductor(
      uint64_t executionNumber, TRI_vocbase_t* vocbase,
      std::vector<std::shared_ptr<LogicalCollection>> vertexCollections,
      std::shared_ptr<LogicalCollection> edgeCollection,
-     std::string const& algorithm, VPackSlice params)
+     std::string const& algorithm)
     : _vocbaseGuard(vocbase),
       _executionNumber(executionNumber),
       _algorithm(algorithm),
       _vertexCollections(vertexCollections),
-      _edgeCollection(edgeCollection) {
+      _edgeCollection(edgeCollection){
   bool isCoordinator = ServerState::instance()->isCoordinator();
   assert(isCoordinator);
   LOG(INFO) << "constructed conductor";
-
-  if (algorithm == "sssp") {
-  } else if (algorithm == "pagerank") {
-    algos::PageRankAlgorithm algo;
-    algo.aggregators(_aggregators);
-  } else {
+  std::vector<std::string> algos {"sssp", "pagerank"};
+  if (std::find(algos.begin(), algos.end(), _algorithm) == algos.end()) {
     LOG(ERR) << "Unsupported algorithm";
   }
 }
@@ -96,7 +95,19 @@ static void resolveShards(LogicalCollection const* collection,
   }
 }
 
-void Conductor::start() {
+void Conductor::start(VPackSlice userConfig) {
+  if (userConfig.isNone()) {
+    userConfig = VPackSlice::emptyObjectSlice();
+  }
+  
+  if ("sssp" == _algorithm) {
+    auto a = algos::SSSPAlgorithm();
+    _aggregatorUsage.reset(new AggregatorUsage(&a));
+  } else if ("pagerank" == _algorithm) {
+    auto a = algos::PageRankAlgorithm(userConfig);
+    _aggregatorUsage.reset(new AggregatorUsage(&a));
+  }
+  
   int64_t vertexCount = 0, edgeCount = 0;
   std::map<CollectionID, std::string> collectionPlanIdMap;
   std::map<ServerID, std::vector<ShardID>> edgeServerMap;
@@ -141,6 +152,7 @@ void Conductor::start() {
     b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
     b.add(Utils::globalSuperstepKey, VPackValue(0));
     b.add(Utils::algorithmKey, VPackValue(_algorithm));
+    b.add(Utils::userParametersKey, userConfig);
     b.add(Utils::coordinatorIdKey, VPackValue(coordinatorId));
     b.add(Utils::totalVertexCount, VPackValue(vertexCount));
     b.add(Utils::totalEdgeCount, VPackValue(edgeCount));
@@ -187,19 +199,15 @@ void Conductor::startGlobalStep() {
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
   b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-  if (_aggregators.size() > 0) {
+  if (_aggregatorUsage->size() > 0) {
     b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
-    for (std::unique_ptr<Aggregator>& aggregator : _aggregators) {
-      aggregator->serializeValue(b);
-    }
+    _aggregatorUsage->serializeValues(b);
     b.close();
   }
   b.close();
   
   // reset aggregatores ahead of gss
-  for (std::unique_ptr<Aggregator>& aggregator : _aggregators) {
-    aggregator->reset();
-  }
+  _aggregatorUsage->resetValues();
   
   std::string baseUrl = Utils::baseUrl(_vocbaseGuard.vocbase()->name());
   // first allow all workers to run worker level operations
@@ -227,14 +235,9 @@ void Conductor::finishedGlobalStep(VPackSlice& data) {
   }
   _responseCount++;
 
-  VPackSlice aggValues = data.get(Utils::aggregatorValuesKey);
-  if (aggValues.isObject()) {
-    for (std::unique_ptr<Aggregator>& aggregator : _aggregators) {
-      VPackSlice val = aggValues.get(aggregator->name());
-      if (!val.isNone()) {
-        aggregator->aggregateValue(val);
-      }
-    }
+  VPackSlice workerValues = data.get(Utils::aggregatorValuesKey);
+  if (workerValues.isObject()) {
+    _aggregatorUsage->aggregateValues(workerValues);
   }
 
   VPackSlice isDone = data.get(Utils::doneKey);
@@ -246,9 +249,9 @@ void Conductor::finishedGlobalStep(VPackSlice& data) {
     LOG(INFO) << "Finished gss " << _globalSuperstep;
     _globalSuperstep++;
 
-    if (_doneCount == _dbServerCount || _globalSuperstep == 99) {
+    if (_doneCount == _dbServerCount || _globalSuperstep == 100) {
       std::string baseUrl = Utils::baseUrl(_vocbaseGuard.vocbase()->name());
-      LOG(INFO) << "Done. We did " << _globalSuperstep+1 << " rounds";
+      LOG(INFO) << "Done. We did " << _globalSuperstep << " rounds";
       VPackBuilder b;
       b.openObject();
       b.add(Utils::executionNumberKey, VPackValue(_executionNumber));

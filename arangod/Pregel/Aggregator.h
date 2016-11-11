@@ -32,59 +32,61 @@
 
 namespace arangodb {
 namespace pregel {
-
+ 
 class Aggregator {
- public:
   Aggregator(const Aggregator&) = delete;
   Aggregator& operator=(const Aggregator&) = delete;
-
+ public:
+  Aggregator(){}
+  virtual ~Aggregator(){}
+  
   /// @brief Value from superstep S-1 supplied by the conductor
-  virtual void const* getAggregatedValue() const = 0;
-  /// @brief Value from superstep S-1 supplied by the conductor
-  virtual void setAggregatedValue(VPackSlice otherValue) = 0;
+  virtual void aggregate(const void *valuePtr) = 0;
+  virtual void aggregate(VPackSlice slice) = 0;
 
-  /// @brief Value from superstep S calculated by the worker
   virtual void const* getValue() const = 0;
-  virtual void aggregateValue(void const* otherValue) = 0;
-  virtual void aggregateValue(VPackSlice otherValue) = 0;
-  virtual void serializeValue(VPackBuilder& b) = 0;
-
+  //virtual void setValue(VPackSlice slice) = 0;
+  virtual VPackValue vpackValue() = 0;
+  
   virtual void reset() = 0;
-  std::string const& name() { return _name; }
-
- protected:
-  Aggregator(std::string const& name) : _name(name) {}
-  const std::string _name;
 };
 
 class FloatMaxAggregator : public Aggregator {
  public:
-  FloatMaxAggregator(std::string const& name, float init)
-      : Aggregator(name), _aggregated(init), _value(init), _initial(init) {}
-
-  void const* getAggregatedValue() const override { return &_aggregated; };
-  void setAggregatedValue(VPackSlice value) override {
-    _aggregated = (float)value.getDouble();
-  };
-
-  virtual void const* getValue() const override { return &_value; }
-  void aggregateValue(void const* otherValue) override {
-    float other = *((float*)otherValue);
+  FloatMaxAggregator(float init)
+      : _value(init), _initial(init) {}
+  
+  void aggregate(void const* valuePtr) override {
+    float other = *((float*)valuePtr);
     if (other > _value) _value = other;
   };
-  void aggregateValue(VPackSlice otherValue) override {
-    float v = (float)otherValue.getDouble();
-    this->aggregateValue(&v);
+  void aggregate(VPackSlice slice) override {
+    float f = slice.getDouble();
+    aggregate(&f);
+  }
+  
+  void const* getValue() const override {
+    return &_value;
   };
-
-  void serializeValue(VPackBuilder& b) override {
-    b.add(_name, VPackValue(_value));
+  /*void setValue(VPackSlice slice) override {
+    _value = (float)slice.getDouble();
+  }*/
+  VPackValue vpackValue() override {
+    return VPackValue(_value);
   };
-  void reset() override { _value = _initial; }
-
+  
+  void reset() override {
+    _value = _initial;
+  }
+  
  private:
-  float _aggregated, _value, _initial;
+  float _value, _initial;
 };
+  
+struct IAggregatorCreator {
+  virtual Aggregator* aggregator(std::string const& name) const = 0;
+};
+
 }
 }
 #endif

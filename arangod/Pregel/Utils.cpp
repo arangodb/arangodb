@@ -31,8 +31,8 @@
 
 using namespace arangodb::pregel;
 
+std::string const Utils::edgeShardingKey = "_vertex";
 std::string const Utils::apiPrefix = "/_api/pregel/";
-
 std::string const Utils::startExecutionPath = "startExecution";
 std::string const Utils::prepareGSSPath = "prepareGSS";
 std::string const Utils::startGSSPath = "startGSS";
@@ -41,14 +41,11 @@ std::string const Utils::messagesPath = "messages";
 std::string const Utils::finalizeExecutionPath = "finalizeExecution";
 
 std::string const Utils::executionNumberKey = "exn";
-std::string const Utils::totalVertexCount = "vertexCount";
-std::string const Utils::totalEdgeCount = "edgeCount";
+
 
 std::string const Utils::collectionPlanIdMapKey = "collectionPlanIdMap";
 std::string const Utils::vertexShardsListKey = "vertexShards";
 std::string const Utils::edgeShardsListKey = "edgeShards";
-
-// std::string const Utils::resultShardKey = "resultShard";
 
 std::string const Utils::coordinatorIdKey = "coordinatorId";
 std::string const Utils::algorithmKey = "algorithm";
@@ -56,11 +53,12 @@ std::string const Utils::globalSuperstepKey = "gss";
 std::string const Utils::messagesKey = "msgs";
 std::string const Utils::senderKey = "sender";
 std::string const Utils::doneKey = "done";
-
-std::string const Utils::parameterMapKey = "params";
 std::string const Utils::aggregatorValuesKey = "aggregators";
 
-std::string const Utils::edgeShardingKey = "_vertex";
+std::string const Utils::userParametersKey = "userparams";
+std::string const Utils::totalVertexCount = "vertexCount";
+std::string const Utils::totalEdgeCount = "edgeCount";
+
 
 std::string Utils::baseUrl(std::string dbName) {
   return "/_db/" + basics::StringUtils::urlEncode(dbName) + Utils::apiPrefix;

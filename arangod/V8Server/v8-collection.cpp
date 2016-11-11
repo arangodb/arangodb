@@ -1924,10 +1924,9 @@ static void JS_Pregel(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                                      vocbase,
                                                      vColls,
                                                      edgeCollection,
-                                                     algorithm,
-                                                     paramBuilder.slice());
+                                                     algorithm);
         pregel::PregelFeature::instance()->addExecution(c, en);
-        c->start();
+        c->start(paramBuilder.slice());
     } else {
         TRI_V8_THROW_EXCEPTION_USAGE("Only call on a coordinator in cluster");
     }

@@ -27,26 +27,22 @@
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 
-#include "Algorithm.h"
-
 namespace arangodb {
 class SingleCollectionTransaction;
 namespace pregel {
-
-template <typename M>
-class IncomingCache;
+  
 template <typename V, typename E, typename M>
 class Worker;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief carry common parameters
 ////////////////////////////////////////////////////////////////////////////////
-template <typename V, typename E, typename M>
 class WorkerState {
-  friend class Worker<V, E, M>;
+  template <typename V, typename E, typename M>
+  friend class Worker;
 
  public:
-  WorkerState(Algorithm<V, E, M>* algo, DatabaseID dbname, VPackSlice params);
+  WorkerState(DatabaseID dbname, VPackSlice params);
 
   inline uint64_t executionNumber() { return _executionNumber; }
 
@@ -64,38 +60,23 @@ class WorkerState {
     return _localEdgeShardIDs;
   }
 
-  // inline ShardID const& edgeShardId() const {
-  //    return _edgeShardID;
-  //}
-
-  inline std::shared_ptr<IncomingCache<M>> readableIncomingCache() {
-    return _readCache;
-  }
-
-  inline std::shared_ptr<IncomingCache<M>> writeableIncomingCache() {
-    return _writeCache;
-  }
-
-  std::shared_ptr<Algorithm<V, E, M>> algorithm() { return _algorithm; }
-
   std::map<CollectionID, std::string> const& collectionPlanIdMap() {
     return _collectionPlanIdMap;
   };
+  
+  //inline uint64_t numWorkerThreads() {
+  //  return _numWorkerThreads;
+  //}
 
  private:
-  /// @brief guard to make sure the database is not dropped while used by us
   uint64_t _executionNumber;
-  const std::shared_ptr<Algorithm<V, E, M>> _algorithm;
-
   uint64_t _globalSuperstep = 0;
-  uint64_t _expectedGSS = 0;
+  //uint64_t _numWorkerThreads = 1;
+
   std::string _coordinatorId;
   const std::string _database;
   std::vector<ShardID> _localVertexShardIDs, _localEdgeShardIDs;
   std::map<std::string, std::string> _collectionPlanIdMap;
-
-  std::shared_ptr<IncomingCache<M>> _readCache, _writeCache;
-  void swapIncomingCaches();  // only call when message receiving is locked
 };
 }
 }

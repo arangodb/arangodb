@@ -33,65 +33,16 @@
 
 #include "MessageCombiner.h"
 #include "MessageFormat.h"
+#include "MessageIterator.h"
 
 namespace arangodb {
 namespace pregel {
 
-template <typename M>
-class MessageIterator {
- public:
-  MessageIterator() : _data(nullptr), _current(0), _size(0) {}
-
-  typedef MessageIterator<M> iterator;
-  typedef const MessageIterator<M> const_iterator;
-
-  explicit MessageIterator(M const* data) : _data(data), _size(data ? 1 : 0) {}
-
-  iterator begin() { return MessageIterator(_data); }
-  const_iterator begin() const { return MessageIterator(_data); }
-  iterator end() {
-    auto it = MessageIterator(_data);
-    it._current = it._size;
-    return it;
-  }
-  const_iterator end() const {
-    auto it = MessageIterator(_data);
-    it._current = it._size;
-    return it;
-  }
-  const M* operator*() const { return _data; }
-
-  // prefix ++
-  MessageIterator& operator++() {
-    _current++;
-    return *this;
-  }
-
-  // postfix ++
-  MessageIterator operator++(int) {
-    MessageIterator result(_data);
-    ++(*this);
-    return result;
-  }
-
-  bool operator!=(MessageIterator const& other) const {
-    return _current != other._current;
-  }
-
-  size_t size() const { return _size; }
-
- private:
-  M const* _data;
-  size_t _current = 0;
-  const size_t _size = 1;
-};
-
-/* In the longer run, maybe write optimized implementations for certain use
+  /* In the longer run, maybe write optimized implementations for certain use
  cases. For example threaded
  processing */
 template <typename M>
 class IncomingCache {
-  ;
 
  public:
   IncomingCache(std::shared_ptr<MessageFormat<M>>& format,

@@ -20,10 +20,11 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_SSSP_H
-#define ARANGODB_PREGEL_ALGOS_SSSP_H 1
+#ifndef ARANGODB_PREGEL_ALGOS_PAGERANK_H
+#define ARANGODB_PREGEL_ALGOS_PAGERANK_H 1
 
 #include "Pregel/Algorithm.h"
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace pregel {
@@ -31,16 +32,17 @@ namespace algos {
 
 /// PageRank
 struct PageRankAlgorithm : public Algorithm<float, float, float> {
+  float _threshold;
+  
  public:
-  PageRankAlgorithm() : Algorithm("PageRank") {}
+  PageRankAlgorithm(arangodb::velocypack::Slice params);
 
-  std::shared_ptr<GraphFormat<float, float>> inputFormat() const override;
-  std::shared_ptr<MessageFormat<float>> messageFormat() const override;
-  std::shared_ptr<MessageCombiner<float>> messageCombiner() const override;
-  std::shared_ptr<VertexComputation<float, float, float>> createComputation(uint64_t gss)
+  GraphFormat<float, float>* inputFormat() const override;
+  MessageFormat<float>* messageFormat() const override;
+  MessageCombiner<float>* messageCombiner() const override;
+  VertexComputation<float, float, float>* createComputation(uint64_t gss)
       const override;
-  void aggregators(
-      std::vector<std::unique_ptr<Aggregator>>& aggregators) override;
+  Aggregator* aggregator(std::string const& name) const override;
 };
 }
 }

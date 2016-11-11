@@ -43,7 +43,7 @@ template <typename V, typename E>
 GraphStore<V, E>::GraphStore(
     std::vector<ShardID> const& vertexShards,
     std::vector<ShardID> const& edgeShards, TRI_vocbase_t* vocbase,
-    std::shared_ptr<GraphFormat<V, E>> const graphFormat)
+    GraphFormat<V, E> *graphFormat)
     : _graphFormat(graphFormat) {
   for (auto& shard : vertexShards) {
     lookupVertices(shard, vocbase);
@@ -102,7 +102,7 @@ void GraphStore<V, E>::cleanupReadTransactions() {
 template <typename V, typename E>
 void GraphStore<V, E>::lookupVertices(ShardID const& vertexShard,
                                       TRI_vocbase_t* vocbase) {
-  _graphFormat->willUseCollection(vocbase, vertexShard, false);
+  //_graphFormat->willUseCollection(vocbase, vertexShard, false);
   bool storeData = _graphFormat->storesVertexData();
 
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(vocbase),
@@ -186,7 +186,7 @@ void GraphStore<V, E>::lookupVertices(ShardID const& vertexShard,
 template <typename V, typename E>
 void GraphStore<V, E>::lookupEdges(ShardID const& edgeShard,
                                    TRI_vocbase_t* vocbase) {
-  _graphFormat->willUseCollection(vocbase, edgeShard, true);
+  //_graphFormat->willUseCollection(vocbase, edgeShard, true);
   const bool storeData = _graphFormat->storesEdgeData();
 
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(vocbase),

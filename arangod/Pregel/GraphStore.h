@@ -244,17 +244,15 @@ class GraphStore {
   std::vector<VertexEntry> _index;
   std::vector<V> _vertexData;
   std::vector<EdgeEntry<E>> _edges;
-  const std::shared_ptr<GraphFormat<V, E>> _graphFormat;
+  const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
 
   size_t _localVerticeCount;
   size_t _localEdgeCount;
-  size_t _globalVertexCount;
-  size_t _globalEdgeCount;
 
  public:
   GraphStore(std::vector<ShardID> const& vertexShards,
              std::vector<ShardID> const& edgeShards, TRI_vocbase_t* vocbase,
-             std::shared_ptr<GraphFormat<V, E>> const graphFormat);
+             GraphFormat<V, E> *graphFormat);
   ~GraphStore();
 
   std::vector<VertexEntry>& vertexIterator();
@@ -263,13 +261,6 @@ class GraphStore {
   void* mutableVertexData(VertexEntry const* entry);
   V copyVertexData(VertexEntry const* entry);
   void replaceVertexData(VertexEntry const* entry, void* data, size_t size);
-
-  size_t globalVertexCount() const { return _globalVertexCount; }
-  size_t globalEdgeCount() const { return _globalEdgeCount; }
-  void setCounts(size_t vertices, size_t edges) {
-    _globalVertexCount = vertices;
-    _globalEdgeCount = edges;
-  }
 };
 }
 }

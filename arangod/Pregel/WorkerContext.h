@@ -1,0 +1,75 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Simon Grätzer
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef ARANGODB_PREGEL_WORKER_CONTEXT_H
+#define ARANGODB_PREGEL_WORKER_CONTEXT_H 1
+
+#include <functional>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+#include "Basics/Common.h"
+#include "AggregatorUsage.h"
+#include "Utils.h"
+
+namespace arangodb {
+namespace pregel {
+
+class WorkerContext {
+  template <typename V, typename E, typename M>
+  friend class Worker;
+  
+  uint64_t _vertexCount, _edgeCount;
+  const AggregatorUsage *_conductorAggregators;
+  AggregatorUsage *_workerAggregators;
+  
+protected:
+  
+  template<typename T>
+  inline void aggregate(std::string const& name, const T *valuePtr) {
+    _workerAggregators->aggregate(name, valuePtr);
+  }
+  
+  template<typename T>
+  inline const T* getAggregatedValue(std::string const& name){
+    return _conductorAggregators->getAggregatedValue(name);
+  }
+
+  virtual void preApplication() {};
+  virtual void preGlobalSuperstep(uint64_t gss) {};
+  virtual void postGlobalSuperstep(uint64_t gss) {};
+  virtual void postApplication() {};
+  
+ public:
+  WorkerContext() {};
+
+  inline uint64_t vertexCount() const {
+    return _vertexCount;
+  }
+  
+  inline uint64_t edegCount() const {
+    return _edgeCount;
+  }
+  
+};
+}
+}
+#endif

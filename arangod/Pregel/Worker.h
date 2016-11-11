@@ -26,6 +26,10 @@
 #include "Basics/Common.h"
 #include "Basics/ThreadPool.h"
 #include "WorkerState.h"
+#include "WorkerContext.h"
+#include "Algorithm.h"
+#include "AggregatorUsage.h"
+
 
 struct TRI_vocbase_t;
 namespace arangodb {
@@ -45,12 +49,17 @@ class IWorker {
 template <typename V, typename E>
 class GraphStore;
   
+template <typename M>
+class IncomingCache;
+  
+  
 template <typename V, typename E, typename M>
 class Worker : public IWorker {
   
  public:
-  Worker(std::shared_ptr<GraphStore<V, E>> graphStore,
-         std::shared_ptr<WorkerState<V, E, M>> context);
+  Worker(TRI_vocbase_t* vocbase,
+         Algorithm<V, E, M> *algorithm,
+         VPackSlice params);
   ~Worker();
 
   void prepareGlobalStep(VPackSlice data) override;
@@ -60,11 +69,21 @@ class Worker : public IWorker {
 
  private:
   bool _running = true;
-  std::shared_ptr<WorkerState<V, E, M>> _ctx;
-  std::shared_ptr<GraphStore<V, E>> _graphStore;
+  std::unique_ptr<WorkerState> _state;
+  std::unique_ptr<Algorithm<V, E, M>> _algorithm;
+  std::unique_ptr<WorkerContext> _workerContext;
+  uint64_t _expectedGSS = 0;
+  
   std::unique_ptr<basics::ThreadPool> _workerPool;
-  std::map<std::string, std::unique_ptr<Aggregator>> _aggregators;
-
+  std::unique_ptr<GraphStore<V, E>> _graphStore;
+  std::unique_ptr<IncomingCache<M>> _readCache, _writeCache;
+  std::unique_ptr<AggregatorUsage> _conductorAggregators;
+  std::unique_ptr<AggregatorUsage> _workerAggregators;
+  
+  void swapIncomingCaches() {
+    std::swap(_readCache, _writeCache);
+    _writeCache->clear();
+  }
   void workerJobIsDone(bool allVerticesHalted);
 };
 }

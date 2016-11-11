@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+ ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2016 ArangoDB GmbH, Cologne, Germany
@@ -23,7 +23,7 @@
 #ifndef ARANGODB_PREGEL_ALGORITHM_H
 #define ARANGODB_PREGEL_ALGORITHM_H 1
 
-#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 #include <cstdint>
 
@@ -32,6 +32,7 @@
 #include "GraphFormat.h"
 #include "MessageCombiner.h"
 #include "MessageFormat.h"
+#include "WorkerContext.h"
 
 namespace arangodb {
 namespace pregel {
@@ -41,21 +42,17 @@ class VertexComputation;
 
 // specify serialization, whatever
 template <typename V, typename E, typename M>
-struct Algorithm {
+struct Algorithm : IAggregatorCreator {
  public:
   virtual ~Algorithm() {}
   // virtual bool isFixpointAlgorithm() const {return false;}
   // virtual bool preserveTransactions() const { return false; }
-
-  virtual size_t estimatedVertexSize() const { return sizeof(V); };
-  virtual size_t estimatedEdgeSize() const { return sizeof(E); };
-  virtual void aggregators(
-      std::vector<std::unique_ptr<Aggregator>>& aggregators) {}
-
-  virtual std::shared_ptr<GraphFormat<V, E>> inputFormat() const = 0;
-  virtual std::shared_ptr<MessageFormat<M>> messageFormat() const = 0;
-  virtual std::shared_ptr<MessageCombiner<M>> messageCombiner() const = 0;
-  virtual std::shared_ptr<VertexComputation<V, E, M>> createComputation(uint64_t gss)
+  virtual WorkerContext* workerContext(VPackSlice userParams) const {return new WorkerContext();}
+  virtual Aggregator* aggregator(std::string const& name) const {return nullptr;}
+  virtual GraphFormat<V, E>* inputFormat() const = 0;
+  virtual MessageFormat<M>* messageFormat() const = 0;
+  virtual MessageCombiner<M>* messageCombiner() const = 0;
+  virtual VertexComputation<V, E, M>* createComputation(uint64_t gss)
       const = 0;
 
   std::string const& getName() const { return _name; }

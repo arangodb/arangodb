@@ -28,17 +28,15 @@
 using namespace arangodb;
 using namespace arangodb::pregel;
 
-template <typename V, typename E, typename M>
-WorkerState<V, E, M>::WorkerState(Algorithm<V, E, M>* algo, DatabaseID dbname,
+WorkerState::WorkerState(DatabaseID dbname,
                                   VPackSlice params)
-    : _algorithm(algo), _database(dbname) {
+    : _database(dbname) {
   VPackSlice coordID = params.get(Utils::coordinatorIdKey);
-  // VPackSlice vertexCollName = params.get(Utils::vertexCollectionNameKey);
-  // VPackSlice vertexCollPlanId = params.get(Utils::vertexCollectionPlanIdKey);
   VPackSlice vertexShardIDs = params.get(Utils::vertexShardsListKey);
   VPackSlice edgeShardIDs = params.get(Utils::edgeShardsListKey);
   VPackSlice execNum = params.get(Utils::executionNumberKey);
   VPackSlice collectionPlanIdMap = params.get(Utils::collectionPlanIdMapKey);
+  //VPackSlice threadNum = params.get(Utils::collectionPlanIdMapKey);
   if (!coordID.isString() || !vertexShardIDs.isArray() ||
       !edgeShardIDs.isArray() || !execNum.isInteger() ||
       !collectionPlanIdMap.isObject()) {
@@ -67,20 +65,5 @@ WorkerState<V, E, M>::WorkerState(Algorithm<V, E, M>* algo, DatabaseID dbname,
   for (auto const& it : VPackObjectIterator(collectionPlanIdMap)) {
     _collectionPlanIdMap[it.key.copyString()] = it.value.copyString();
   }
-
-  auto format = algo->messageFormat();
-  auto combiner = algo->messageCombiner();
-  _readCache = std::make_shared<IncomingCache<M>>(format, combiner);
-  _writeCache = std::make_shared<IncomingCache<M>>(format, combiner);
 }
 
-template <typename V, typename E, typename M>
-void WorkerState<V, E, M>::swapIncomingCaches() {
-  auto t = _readCache;
-  _readCache = _writeCache;
-  _writeCache = t;
-}
-
-// template types to create
-template class arangodb::pregel::WorkerState<int64_t, int64_t, int64_t>;
-template class arangodb::pregel::WorkerState<float, float, float>;
