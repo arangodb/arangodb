@@ -31,6 +31,8 @@ const Module = require('module');
 const semver = require('semver');
 const path = require('path');
 const fs = require('fs');
+const ArangoError = require('@arangodb').ArangoError;
+const errors = require('@arangodb').errors;
 const defaultTypes = require('@arangodb/foxx/types');
 const FoxxContext = require('@arangodb/foxx/context');
 const parameterTypes = require('@arangodb/foxx/manager-utils').parameterTypes;
@@ -440,8 +442,17 @@ module.exports =
     executeScript (name, argv) {
       var scripts = this.manifest.scripts;
       // Only run setup/teardown scripts if they exist
-      if (!scripts[name] && (name === 'setup' || name === 'teardown')) {
-        return undefined;
+      if (!scripts[name]) {
+        if (name === 'setup' || name === 'teardown') {
+          return undefined;
+        }
+        throw new ArangoError({
+          errorNum: errors.ERROR_SERVICE_UNKNOWN_SCRIPT.code,
+          errorMessage: dd`
+            ${errors.ERROR_SERVICE_UNKNOWN_SCRIPT.message}
+            Name: ${name}
+          `
+        });
       }
       return this.run(scripts[name], {
         foxxContext: {

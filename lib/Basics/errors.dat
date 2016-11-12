@@ -273,7 +273,8 @@ ERROR_USER_NOT_FOUND,1703,"user not found","Will be raised when a user name is u
 ERROR_USER_CHANGE_PASSWORD,1704,"user must change his password","Will be raised when the user must change his password."
 
 ################################################################################
-## Service management errors
+## Service management errors (legacy)
+## These have been superceded by the Foxx management errors in public APIs.
 ################################################################################
 
 ERROR_SERVICE_INVALID_NAME,1750,"invalid service name","Will be raised when an invalid service name is specified."
@@ -344,19 +345,25 @@ SIMPLE_CLIENT_COULD_NOT_READ,2003,"could not read from server","Will be raised w
 ################################################################################
 ## Communicator errors
 ################################################################################
+
 COMMUNICATOR_REQUEST_ABORTED,2100,"Request aborted", "Request was aborted."
 
 ################################################################################
-## Foxx Manager errors
+## Foxx management errors
 ################################################################################
 
-ERROR_MALFORMED_MANIFEST_FILE,3000,"malformed manifest file","The manifest file is malformed. It is not in a valid JSON format."
-ERROR_INVALID_SERVICE_MANIFEST,3001,"manifest file is invalid","The manifest file of this service is invalid."
-ERROR_INVALID_FOXX_OPTIONS,3004,"invalid foxx options","The options used to configure the foxx are invalid."
-ERROR_INVALID_MOUNTPOINT,3007,"mountpoint is invalid","mountpoint is invalid"
-ERROR_SERVICE_NOT_FOUND,3009,"Service not found","No service found at this mountpoint"
-ERROR_SERVICE_NEEDS_CONFIGURATION,3010,"Service not configured","The service has to be configured before it can be used"
-ERROR_SERVICE_MOUNTPOINT_CONFLICT,3011,"mountpoint already in use","A service has already been installed at this mountpoint"
+ERROR_MALFORMED_MANIFEST_FILE,3000,"failed to parse manifest file","The service manifest file is not well-formed JSON."
+ERROR_INVALID_SERVICE_MANIFEST,3001,"manifest file is invalid","The service manifest contains invalid values."
+ERROR_INVALID_FOXX_OPTIONS,3004,"service options are invalid","The service options contain invalid values."
+ERROR_INVALID_MOUNTPOINT,3007,"invalid mountpath","The service mountpath contains invalid characters."
+ERROR_SERVICE_NOT_FOUND,3009,"service not found","No service found at the given mountpath."
+ERROR_SERVICE_NEEDS_CONFIGURATION,3010,"service needs configuration","The service is missing configuration or dependencies."
+ERROR_SERVICE_MOUNTPOINT_CONFLICT,3011,"service already exists","A service already exists at the given mountpath."
+ERROR_SERVICE_MANIFEST_NOT_FOUND,3012,"missing manifest file","The service directory does not contain a manifest file."
+ERROR_SERVICE_OPTIONS_MALFORMED,3013,"failed to parse service options","The service options are not well-formed JSON."
+ERROR_SERVICE_SOURCE_NOT_FOUND,3014,"source path not found","The source path does not match a file or directory."
+ERROR_SERVICE_SOURCE_ERROR,3015,"error resolving source","The source path could not be resolved."
+ERROR_SERVICE_UNKNOWN_SCRIPT,3016,"unknown script","The service does not have a script with this name."
 
 ################################################################################
 ## JavaScript module loader errors
@@ -364,7 +371,6 @@ ERROR_SERVICE_MOUNTPOINT_CONFLICT,3011,"mountpoint already in use","A service ha
 
 ERROR_MODULE_NOT_FOUND,3100,"cannot locate module","The module path could not be resolved."
 ERROR_MODULE_FAILURE,3103,"failed to invoke module","Failed to invoke the module in its context."
-
 
 ################################################################################
 ## Enterprise errors
