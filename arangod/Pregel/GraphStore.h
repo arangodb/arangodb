@@ -29,7 +29,10 @@
 #include "GraphFormat.h"
 
 struct TRI_vocbase_t;
+
 namespace arangodb {
+class SingleCollectionTransaction;
+class LogicalCollection;
 namespace pregel {
 
 /// @brief header entry for the edge file
@@ -224,7 +227,9 @@ class VertexIterator {
     return _current != other._current;
   }
 };
-
+  
+class WorkerState;
+  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief carry graph data for a worker job
 ////////////////////////////////////////////////////////////////////////////////
@@ -234,24 +239,30 @@ class GraphStore {
   // int _indexFd, _vertexFd, _edgeFd;
   // void *_indexMapping, *_vertexMapping, *_edgeMapping;
   // size_t _indexSize, _vertexSize, _edgeSize;
-  std::map<std::string, std::string> _shardsPlanIdMap;
-
-  void lookupVertices(ShardID const& vertexShard, TRI_vocbase_t* vocbase);
-  void lookupEdges(ShardID const& edgeShardID, TRI_vocbase_t* vocbase);
-  void cleanupReadTransactions();
+  //std::map<std::string, std::string> _shardsPlanIdMap;
 
   // only for demo, move to memory
   std::vector<VertexEntry> _index;
   std::vector<V> _vertexData;
   std::vector<EdgeEntry<E>> _edges;
-  const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
-
+  
   size_t _localVerticeCount;
   size_t _localEdgeCount;
-
+  
+  VocbaseGuard _vocbaseGuard;
+  const WorkerState *_workerState;
+  const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
+  std::unordered_map<std::string, SingleCollectionTransaction*> _transactions;
+  std::shared_ptr<LogicalCollection> _edgeCollection;
+  
+  void loadVertices(ShardID const& vertexShard);
+  SingleCollectionTransaction* edgeTransaction(ShardID const& shard);
+  void loadEdges(VertexEntry &entry);
+  void cleanupTransactions();
+  
  public:
-  GraphStore(std::vector<ShardID> const& vertexShards,
-             std::vector<ShardID> const& edgeShards, TRI_vocbase_t* vocbase,
+  GraphStore(TRI_vocbase_t* vocbase,
+             const WorkerState* state,
              GraphFormat<V, E> *graphFormat);
   ~GraphStore();
 

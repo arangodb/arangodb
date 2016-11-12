@@ -27,10 +27,11 @@
 #include "Basics/Common.h"
 
 struct TRI_vocbase_t;
+
 namespace arangodb {
-
+class LogicalCollection;
 namespace pregel {
-
+  
 class Utils {
   Utils() = delete;
 
@@ -49,8 +50,8 @@ class Utils {
   static std::string const executionNumberKey;
   static std::string const algorithmKey;
   static std::string const coordinatorIdKey;
-
   static std::string const collectionPlanIdMapKey;
+  static std::string const edgeCollectionPlanIdKey;
   static std::string const vertexShardsListKey;
   static std::string const edgeShardsListKey;
 
@@ -71,6 +72,14 @@ class Utils {
 
   static int64_t countDocuments(TRI_vocbase_t* vocbase,
                                 std::string const& collection);
+  static LogicalCollection* resolveCollection(std::string const& database,
+                                              std::string const& collectionName,
+                                              std::map<std::string, std::string>
+                                                  const& collectionPlanIdMap);
+  static void resolveShard(LogicalCollection* info,
+                           std::string const& shardKey,
+                           std::string const& vertexKey,
+                           std::string& responsibleShard);
 };
 }
 }

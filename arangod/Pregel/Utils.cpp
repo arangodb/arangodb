@@ -28,7 +28,10 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/vocbase.h"
+#include "Cluster/ClusterInfo.h"
+#include "VocBase/LogicalCollection.h"
 
+using namespace arangodb;
 using namespace arangodb::pregel;
 
 std::string const Utils::edgeShardingKey = "_vertex";
@@ -41,9 +44,8 @@ std::string const Utils::messagesPath = "messages";
 std::string const Utils::finalizeExecutionPath = "finalizeExecution";
 
 std::string const Utils::executionNumberKey = "exn";
-
-
 std::string const Utils::collectionPlanIdMapKey = "collectionPlanIdMap";
+std::string const Utils::edgeCollectionPlanIdKey = "edgePlanId";
 std::string const Utils::vertexShardsListKey = "vertexShards";
 std::string const Utils::edgeShardsListKey = "edgeShards";
 
@@ -93,4 +95,38 @@ int64_t Utils::countDocuments(TRI_vocbase_t* vocbase,
   VPackSlice s = opResult.slice();
   TRI_ASSERT(s.isNumber());
   return s.getInt();
+}
+
+LogicalCollection* Utils::resolveCollection(std::string const& database,
+                                     std::string const& collectionName,
+                                     std::map<std::string, std::string> const& collectionPlanIdMap) {
+  ClusterInfo* ci = ClusterInfo::instance();
+  auto const& it = collectionPlanIdMap.find(collectionName);
+  if (it != collectionPlanIdMap.end()) {
+    std::shared_ptr<LogicalCollection> collectionInfo(ci->getCollection(database,
+                                                                        it->second));
+    return collectionInfo.get();
+  }
+  return nullptr;
+}
+
+void Utils::resolveShard(LogicalCollection* info,
+                         std::string const& shardKey,
+                         std::string const& vertexKey,
+                         std::string& responsibleShard) {
+  ClusterInfo* ci = ClusterInfo::instance();
+  bool usesDefaultShardingAttributes;
+  VPackBuilder partial;
+  partial.openObject();
+  partial.add(shardKey, VPackValue(vertexKey));
+  partial.close();
+  LOG(INFO) << "Partial doc: " << partial.toJson();
+  int res =
+  ci->getResponsibleShard(info, partial.slice(), true, responsibleShard,
+                          usesDefaultShardingAttributes);
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+                                   res, "could not resolve the responsible shard");
+  }
+  TRI_ASSERT(usesDefaultShardingAttributes);  // should be true anyway
 }

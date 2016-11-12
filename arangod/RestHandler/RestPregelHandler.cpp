@@ -126,9 +126,8 @@ RestStatus RestPregelHandler::execute() {
       }
     }
     
-    VPackBuilder result;
-    result.add(VPackValue("thanks"));
-    generateResult(rest::ResponseCode::OK, result.slice());
+    VPackSlice result;
+    generateResult(rest::ResponseCode::OK, result);
     
   } catch (std::exception const &e) {
     LOG(ERR) << e.what();

@@ -55,13 +55,13 @@ IWorker* IWorker::createWorker(TRI_vocbase_t* vocbase, VPackSlice body) {
   VPackSlice userParams = body.get(Utils::userParametersKey);
   IWorker* worker = nullptr;
   if (algorithm.compareString("sssp") == 0) {
-    std::unique_ptr<algos::SSSPAlgorithm> algo(new algos::SSSPAlgorithm());
-    worker = new Worker<int64_t, int64_t, int64_t>(vocbase, algo.get(), body);
-    algo.release();
+    worker = new Worker<int64_t, int64_t, int64_t>(vocbase,
+                                                   new algos::SSSPAlgorithm(),
+                                                   body);
   } else if (algorithm.compareString("pagerank") == 0) {
-    std::unique_ptr<algos::PageRankAlgorithm> algo(new algos::PageRankAlgorithm(userParams));
-    worker = new Worker<float, float, float>(vocbase, algo.get(), body);
-    algo.release();
+    worker = new Worker<float, float, float>(vocbase,
+                                             new algos::PageRankAlgorithm(userParams),
+                                             body);
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Unsupported Algorithm");
@@ -73,18 +73,16 @@ template <typename V, typename E, typename M>
 Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase,
                         Algorithm<V, E, M> *algo,
                         VPackSlice initConfig)
-    : _running(true) {
+    : _running(true), _algorithm(algo) {
   
   VPackSlice userParams = initConfig.get(Utils::userParametersKey);
   _state.reset(new WorkerState(vocbase->name(), initConfig));
-  _algorithm.reset(algo);
   _workerContext.reset(algo->workerContext(userParams));
   
   const size_t threadNum = 1;
   _workerPool.reset(new ThreadPool(static_cast<size_t>(threadNum), "Pregel Worker"));
-  _graphStore.reset(new GraphStore<V, E>(_state->localVertexShardIDs(),
-                                         _state->localEdgeShardIDs(),
-                                         vocbase,
+  _graphStore.reset(new GraphStore<V, E>(vocbase,
+                                         _state.get(),
                                          algo->inputFormat()));
   std::shared_ptr<MessageFormat<M>> mFormat(algo->messageFormat());
   std::shared_ptr<MessageCombiner<M>> combiner(algo->messageCombiner());

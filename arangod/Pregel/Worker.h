@@ -81,7 +81,7 @@ class Worker : public IWorker {
   std::unique_ptr<AggregatorUsage> _workerAggregators;
   
   void swapIncomingCaches() {
-    std::swap(_readCache, _writeCache);
+    _readCache.swap(_writeCache);
     _writeCache->clear();
   }
   void workerJobIsDone(bool allVerticesHalted);

@@ -78,8 +78,7 @@ void IncomingCache<M>::parseMessages(VPackSlice incomingMessages) {
 template <typename M>
 void IncomingCache<M>::setDirect(std::string const& toValue,
                                  M const& newValue) {
-  {
-    CONDITION_LOCKER(guard, _writeCondition);
+    MUTEX_LOCKER(guard, _writeLock);
 
     _receivedMessageCount++;
     auto vmsg = _messages.find(toValue);
@@ -88,8 +87,6 @@ void IncomingCache<M>::setDirect(std::string const& toValue,
     } else {
       _messages[toValue] = newValue;
     }
-  }
-  _writeCondition.signal();
 }
 
 template <typename M>

@@ -57,7 +57,6 @@ class OutgoingCache {
   MessageFormat<M> *_format;
   MessageCombiner<M> *_combiner;
   IncomingCache<M> *_localCache;
-  ClusterInfo* _ci;
   std::string _baseUrl;
 
   /// @brief two stage map: shard -> vertice -> message

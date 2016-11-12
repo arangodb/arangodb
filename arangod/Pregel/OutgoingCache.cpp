@@ -44,7 +44,6 @@ OutgoingCache<M>::OutgoingCache (WorkerState *state,
                                  MessageCombiner<M> *combiner,
                                  IncomingCache<M> *cache)
     : _state(state), _format(format), _combiner(combiner), _localCache(cache) {
-  _ci = ClusterInfo::instance();
   _baseUrl = Utils::baseUrl(_state->database());
 }
 
@@ -59,38 +58,6 @@ void OutgoingCache<M>::clear() {
   _containedMessages = 0;
 }
 
-static inline LogicalCollection* resolveCollection(
-    ClusterInfo* ci, std::string const& database,
-    std::string const& collectionName,
-    std::map<std::string, std::string> const& collectionPlanIdMap) {
-  auto const& it = collectionPlanIdMap.find(collectionName);
-  if (it != collectionPlanIdMap.end()) {
-    std::shared_ptr<LogicalCollection> collectionInfo(ci->getCollection(database,
-                                                                        it->second));
-    return collectionInfo.get();
-  }
-  return nullptr;
-}
-
-static inline void resolveShard(ClusterInfo* ci, LogicalCollection* info,
-                                std::string const& vertexKey,
-                                std::string& responsibleShard) {
-  bool usesDefaultShardingAttributes;
-  VPackBuilder partial;
-  partial.openObject();
-  partial.add(StaticStrings::KeyString, VPackValue(vertexKey));
-  partial.close();
-  LOG(INFO) << "Partial doc: " << partial.toJson();
-  int res =
-      ci->getResponsibleShard(info, partial.slice(), true, responsibleShard,
-                              usesDefaultShardingAttributes);
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        res, "OutgoingCache could not resolve the responsible shard");
-  }
-  TRI_ASSERT(usesDefaultShardingAttributes);  // should be true anyway
-}
-
 template <typename M>
 void OutgoingCache<M>::sendMessageTo(std::string const& toValue,
                                            M const& data) {
@@ -99,14 +66,15 @@ void OutgoingCache<M>::sendMessageTo(std::string const& toValue,
   std::string collectionName = toValue.substr(0, pos);
   LOG(INFO) << "Adding outgoing messages for " << collectionName << "/" << _key;
 
-  LogicalCollection* coll = resolveCollection(
-      _ci, _state->database(), collectionName, _state->collectionPlanIdMap());
+  LogicalCollection* coll = Utils::resolveCollection(_state->database(),
+                                                     collectionName,
+                                                     _state->collectionPlanIdMap());
   if (coll == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Collection this messages is going to is unkown");
   }
   ShardID responsibleShard;
-  resolveShard(_ci, coll, _key, responsibleShard);
+  Utils::resolveShard(coll, StaticStrings::KeyString, _key, responsibleShard);
   LOG(INFO) << "Responsible shard: " << responsibleShard;
 
   std::vector<ShardID> const& localShards = _state->localVertexShardIDs();

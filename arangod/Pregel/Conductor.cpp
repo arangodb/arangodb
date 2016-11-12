@@ -64,17 +64,12 @@ Conductor::Conductor(
   }
 }
 
-Conductor::~Conductor() {
-  /*for (auto const &it : _aggregators) {
-      delete(it.second);
-  }
-  _aggregators.clear();*/
-}
+Conductor::~Conductor() {}
 
 static void printResults(std::vector<ClusterCommRequest> const& requests) {
   for (auto const& req : requests) {
     auto& res = req.result;
-    if (res.status == CL_COMM_RECEIVED) {
+    if (res.status == CL_COMM_RECEIVED && res.answer_code != rest::ResponseCode::OK) {
       LOG(INFO) << res.answer->payload().toJson();
     }
   }
@@ -123,7 +118,6 @@ void Conductor::start(VPackSlice userConfig) {
       LOG(WARN) << "Collection does not contain vertices";
     }
   }
-  collectionPlanIdMap[_edgeCollection->name()] = _edgeCollection->planId_as_string();
   edgeCount = Utils::countDocuments(_vocbaseGuard.vocbase(), _edgeCollection->name());
   if (edgeCount > 0) {
     resolveShards(_edgeCollection.get(), edgeServerMap);
@@ -166,6 +160,8 @@ void Conductor::start(VPackSlice userConfig) {
       b.add(VPackValue(eit));
     }
     b.close();
+    b.add(Utils::edgeCollectionPlanIdKey,
+          VPackValue(_edgeCollection->planId_as_string()));
     b.add(Utils::collectionPlanIdMapKey, VPackValue(VPackValueType::Object));
     for (auto const& pair : collectionPlanIdMap) {
       b.add(pair.first, VPackValue(pair.second));
@@ -258,14 +254,14 @@ void Conductor::finishedGlobalStep(VPackSlice& data) {
       b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
       b.close();
       sendToAllDBServers(baseUrl + Utils::finalizeExecutionPath, b.slice());
-      _state = ExecutionState::FINISHED;
+      _state = ExecutionState::DONE;
     } else {  // trigger next superstep
       startGlobalStep();
     }
   }
 }
 
-void Conductor::cancel() { _state = ExecutionState::ERROR; }
+void Conductor::cancel() { _state = ExecutionState::CANCELED; }
 
 int Conductor::sendToAllDBServers(std::string path, VPackSlice const& config) {
   ClusterComm* cc = ClusterComm::instance();

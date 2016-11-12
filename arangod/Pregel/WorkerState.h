@@ -64,6 +64,10 @@ class WorkerState {
     return _collectionPlanIdMap;
   };
   
+  std::string const& edgeCollectionPlanId() const {
+    return _edgeCollectionPlanId;
+  }
+  
   //inline uint64_t numWorkerThreads() {
   //  return _numWorkerThreads;
   //}
@@ -77,6 +81,7 @@ class WorkerState {
   const std::string _database;
   std::vector<ShardID> _localVertexShardIDs, _localEdgeShardIDs;
   std::map<std::string, std::string> _collectionPlanIdMap;
+  std::string _edgeCollectionPlanId;
 };
 }
 }

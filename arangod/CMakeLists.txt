@@ -347,7 +347,7 @@ SET(ARANGOD_SOURCES
   VocBase/transaction.cpp
   VocBase/vocbase.cpp
   Wal/AllocatorThread.cpp
-  Wal/CollectorThread.cpp
+  Wal/CollectorThread.cppb
   Wal/DocumentOperation.cpp
   Wal/Logfile.cpp
   Wal/LogfileManager.cpp
@@ -365,7 +365,6 @@ SET(ARANGOD_SOURCES
   Pregel/WorkerState.cpp
   Pregel/GraphStore.cpp
   Pregel/Utils.cpp
-  Pregel/ResultWriter.cpp
   Pregel/Algos/SSSP.cpp
   Pregel/Algos/PageRank.cpp
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}

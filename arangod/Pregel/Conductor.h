@@ -37,7 +37,7 @@ namespace pregel {
 
 class Conductor {
  public:
-  enum ExecutionState { RUNNING, FINISHED, ERROR };
+  enum ExecutionState { RUNNING, DONE, CANCELED};
 
   Conductor(uint64_t executionNumber, TRI_vocbase_t* vocbase,
             std::vector<std::shared_ptr<LogicalCollection>> vertexCollections,

@@ -28,8 +28,7 @@
 #include <string>
 
 #include "Basics/Common.h"
-#include "Basics/ConditionLocker.h"
-#include "Basics/ConditionVariable.h"
+#include "Basics/Mutex.h"
 
 #include "MessageCombiner.h"
 #include "MessageFormat.h"
@@ -63,7 +62,7 @@ class IncomingCache {
   size_t receivedMessageCount() { return _receivedMessageCount; }
 
  private:
-  arangodb::basics::ConditionVariable _writeCondition;
+  mutable Mutex _writeLock;
   std::unordered_map<std::string, M> _messages;
   size_t _receivedMessageCount;
 
