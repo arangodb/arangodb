@@ -55,9 +55,6 @@ const executeGlobalContextFunction = require('internal').executeGlobalContextFun
 const actions = require('@arangodb/actions');
 const plainServerVersion = require('@arangodb').plainServerVersion;
 
-const throwDownloadError = arangodb.throwDownloadError;
-const throwFileNotFound = arangodb.throwFileNotFound;
-
 // Regular expressions for joi patterns
 const RE_EMPTY = /^$/;
 const RE_NOT_EMPTY = /./;
@@ -472,7 +469,13 @@ function checkManifest (filename, inputManifest, mount, isDevelopment) {
 function validateManifestFile (filename, mount, isDevelopment) {
   let mf;
   if (!fs.exists(filename)) {
-    throwFileNotFound(`Cannot find manifest file "${filename}"`);
+    throw new ArangoError({
+      errorNum: errors.ERROR_SERVICE_MANIFEST_NOT_FOUND.code,
+      errorMessage: dd`
+        ${errors.ERROR_SERVICE_MANIFEST_NOT_FOUND.message}
+        File: ${filename}
+      `
+    });
   }
   try {
     mf = JSON.parse(fs.read(filename));
@@ -713,7 +716,13 @@ function extractServiceToPath (archive, targetPath, noDelete) {
   }
 
   if (found === undefined) {
-    throwFileNotFound(`Cannot find manifest file in zip file "${tempFile}"`);
+    throw new ArangoError({
+      errorNum: errors.ERROR_SERVICE_MANIFEST_NOT_FOUND.code,
+      errorMessage: dd`
+        ${errors.ERROR_SERVICE_MANIFEST_NOT_FOUND.message}
+        Source: ${tempFile}
+      `
+    });
   }
 
   var mp;
@@ -786,11 +795,23 @@ function installServiceFromRemote (url, targetPath) {
     }, tempFile);
 
     if (result.code < 200 || result.code > 299) {
-      throwDownloadError(`Could not download from "${url}"`);
+      throw new ArangoError({
+        errorNum: errors.ERROR_SERVICE_SOURCE_ERROR.code,
+        errorMessage: dd`
+          ${errors.ERROR_SERVICE_SOURCE_ERROR.message}
+          URL: ${url}
+          Status: ${result.code}
+        `
+      });
     }
-  } catch (err) {
-    let details = String(err.stack || err);
-    throwDownloadError(`Could not download from "${url}": ${details}`);
+  } catch (e) {
+    throw new ArangoError({
+      errorNum: errors.ERROR_SERVICE_SOURCE_ERROR.code,
+      errorMessage: dd`
+        ${errors.ERROR_SERVICE_SOURCE_ERROR.message}
+        URL: ${url}
+      `
+    }, {cause: e});
   }
   extractServiceToPath(tempFile, targetPath);
 }
@@ -829,6 +850,15 @@ function isLocalFile (path) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function installServiceFromLocal (path, targetPath) {
+  if (!fs.exists(path)) {
+    throw new ArangoError({
+      errorNum: errors.ERROR_SERVICE_SOURCE_NOT_FOUND.code,
+      errorMessage: dd`
+        ${errors.ERROR_SERVICE_SOURCE_NOT_FOUND.message}
+        Path: ${path}
+      `
+    });
+  }
   if (fs.isDirectory(path)) {
     extractServiceToPath(utils.zipDirectory(path), targetPath);
   } else {

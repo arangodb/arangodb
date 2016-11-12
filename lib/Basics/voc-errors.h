@@ -589,20 +589,28 @@
 ///   Will be raised when the client could not read data.
 /// - 2100: @LIT{Request aborted}
 ///    "Request was aborted."
-/// - 3000: @LIT{malformed manifest file}
-///   The manifest file is malformed. It is not in a valid JSON format.
+/// - 3000: @LIT{failed to parse manifest file}
+///   The service manifest file is not well-formed JSON.
 /// - 3001: @LIT{manifest file is invalid}
-///   The manifest file of this service is invalid.
-/// - 3004: @LIT{invalid foxx options}
-///   The options used to configure the foxx are invalid.
-/// - 3007: @LIT{mountpoint is invalid}
-///   mountpoint is invalid
-/// - 3009: @LIT{Service not found}
-///   No service found at this mountpoint
-/// - 3010: @LIT{Service not configured}
-///   The service has to be configured before it can be used
-/// - 3011: @LIT{mountpoint already in use}
-///   A service has already been installed at this mountpoint
+///   The service manifest contains invalid values.
+/// - 3004: @LIT{service options are invalid}
+///   The service options contain invalid values.
+/// - 3007: @LIT{invalid mountpath}
+///   The service mountpath contains invalid characters.
+/// - 3009: @LIT{service not found}
+///   No service found at the given mountpath.
+/// - 3010: @LIT{service needs configuration}
+///   The service is missing configuration or dependencies.
+/// - 3011: @LIT{service already exists}
+///   A service already exists at the given mountpath.
+/// - 3012: @LIT{missing manifest file}
+///   The service directory does not contain a manifest file.
+/// - 3013: @LIT{failed to parse service options}
+///   The service options are not well-formed JSON.
+/// - 3014: @LIT{source path not found}
+///   The source path does not match a file or directory.
+/// - 3015: @LIT{error resolving source}
+///   The source path could not be resolved.
 /// - 3100: @LIT{cannot locate module}
 ///   The module path could not be resolved.
 /// - 3103: @LIT{failed to invoke module}
@@ -3140,9 +3148,9 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3000: ERROR_MALFORMED_MANIFEST_FILE
 ///
-/// malformed manifest file
+/// failed to parse manifest file
 ///
-/// The manifest file is malformed. It is not in a valid JSON format.
+/// The service manifest file is not well-formed JSON.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_MALFORMED_MANIFEST_FILE                                 (3000)
@@ -3152,7 +3160,7 @@ void TRI_InitializeErrorMessages ();
 ///
 /// manifest file is invalid
 ///
-/// The manifest file of this service is invalid.
+/// The service manifest contains invalid values.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_INVALID_SERVICE_MANIFEST                                (3001)
@@ -3160,9 +3168,9 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3004: ERROR_INVALID_FOXX_OPTIONS
 ///
-/// invalid foxx options
+/// service options are invalid
 ///
-/// The options used to configure the foxx are invalid.
+/// The service options contain invalid values.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_INVALID_FOXX_OPTIONS                                    (3004)
@@ -3170,9 +3178,9 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3007: ERROR_INVALID_MOUNTPOINT
 ///
-/// mountpoint is invalid
+/// invalid mountpath
 ///
-/// mountpoint is invalid
+/// The service mountpath contains invalid characters.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_INVALID_MOUNTPOINT                                      (3007)
@@ -3180,9 +3188,9 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3009: ERROR_SERVICE_NOT_FOUND
 ///
-/// Service not found
+/// service not found
 ///
-/// No service found at this mountpoint
+/// No service found at the given mountpath.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_SERVICE_NOT_FOUND                                       (3009)
@@ -3190,9 +3198,9 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3010: ERROR_SERVICE_NEEDS_CONFIGURATION
 ///
-/// Service not configured
+/// service needs configuration
 ///
-/// The service has to be configured before it can be used
+/// The service is missing configuration or dependencies.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_SERVICE_NEEDS_CONFIGURATION                             (3010)
@@ -3200,12 +3208,52 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3011: ERROR_SERVICE_MOUNTPOINT_CONFLICT
 ///
-/// mountpoint already in use
+/// service already exists
 ///
-/// A service has already been installed at this mountpoint
+/// A service already exists at the given mountpath.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_SERVICE_MOUNTPOINT_CONFLICT                             (3011)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3012: ERROR_FOXX_MANIFEST_NOT_FOUND
+///
+/// missing manifest file
+///
+/// The service directory does not contain a manifest file.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_FOXX_MANIFEST_NOT_FOUND                                 (3012)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3013: ERROR_FOXX_OPTIONS_MALFORMED
+///
+/// failed to parse service options
+///
+/// The service options are not well-formed JSON.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_FOXX_OPTIONS_MALFORMED                                  (3013)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3014: ERROR_FOXX_SOURCE_NOT_FOUND
+///
+/// source path not found
+///
+/// The source path does not match a file or directory.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_FOXX_SOURCE_NOT_FOUND                                   (3014)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3015: ERROR_FOXX_SOURCE_ERROR
+///
+/// error resolving source
+///
+/// The source path could not be resolved.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_FOXX_SOURCE_ERROR                                       (3015)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3100: ERROR_MODULE_NOT_FOUND
