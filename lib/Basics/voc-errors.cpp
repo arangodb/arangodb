@@ -253,10 +253,11 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_SERVICE_NOT_FOUND, "service not found");
   REG_ERROR(ERROR_SERVICE_NEEDS_CONFIGURATION, "service needs configuration");
   REG_ERROR(ERROR_SERVICE_MOUNTPOINT_CONFLICT, "service already exists");
-  REG_ERROR(ERROR_FOXX_MANIFEST_NOT_FOUND, "missing manifest file");
-  REG_ERROR(ERROR_FOXX_OPTIONS_MALFORMED, "failed to parse service options");
-  REG_ERROR(ERROR_FOXX_SOURCE_NOT_FOUND, "source path not found");
-  REG_ERROR(ERROR_FOXX_SOURCE_ERROR, "error resolving source");
+  REG_ERROR(ERROR_SERVICE_MANIFEST_NOT_FOUND, "missing manifest file");
+  REG_ERROR(ERROR_SERVICE_OPTIONS_MALFORMED, "failed to parse service options");
+  REG_ERROR(ERROR_SERVICE_SOURCE_NOT_FOUND, "source path not found");
+  REG_ERROR(ERROR_SERVICE_SOURCE_ERROR, "error resolving source");
+  REG_ERROR(ERROR_SERVICE_UNKNOWN_SCRIPT, "unknown script");
   REG_ERROR(ERROR_MODULE_NOT_FOUND, "cannot locate module");
   REG_ERROR(ERROR_MODULE_FAILURE, "failed to invoke module");
   REG_ERROR(ERROR_NO_SMART_COLLECTION, "collection is not smart");

@@ -611,6 +611,8 @@
 ///   The source path does not match a file or directory.
 /// - 3015: @LIT{error resolving source}
 ///   The source path could not be resolved.
+/// - 3016: @LIT{unknown script}
+///   The service does not have a script with this name.
 /// - 3100: @LIT{cannot locate module}
 ///   The module path could not be resolved.
 /// - 3103: @LIT{failed to invoke module}
@@ -3216,44 +3218,54 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_SERVICE_MOUNTPOINT_CONFLICT                             (3011)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 3012: ERROR_FOXX_MANIFEST_NOT_FOUND
+/// @brief 3012: ERROR_SERVICE_MANIFEST_NOT_FOUND
 ///
 /// missing manifest file
 ///
 /// The service directory does not contain a manifest file.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_FOXX_MANIFEST_NOT_FOUND                                 (3012)
+#define TRI_ERROR_SERVICE_MANIFEST_NOT_FOUND                              (3012)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 3013: ERROR_FOXX_OPTIONS_MALFORMED
+/// @brief 3013: ERROR_SERVICE_OPTIONS_MALFORMED
 ///
 /// failed to parse service options
 ///
 /// The service options are not well-formed JSON.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_FOXX_OPTIONS_MALFORMED                                  (3013)
+#define TRI_ERROR_SERVICE_OPTIONS_MALFORMED                               (3013)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 3014: ERROR_FOXX_SOURCE_NOT_FOUND
+/// @brief 3014: ERROR_SERVICE_SOURCE_NOT_FOUND
 ///
 /// source path not found
 ///
 /// The source path does not match a file or directory.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_FOXX_SOURCE_NOT_FOUND                                   (3014)
+#define TRI_ERROR_SERVICE_SOURCE_NOT_FOUND                                (3014)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 3015: ERROR_FOXX_SOURCE_ERROR
+/// @brief 3015: ERROR_SERVICE_SOURCE_ERROR
 ///
 /// error resolving source
 ///
 /// The source path could not be resolved.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_FOXX_SOURCE_ERROR                                       (3015)
+#define TRI_ERROR_SERVICE_SOURCE_ERROR                                    (3015)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3016: ERROR_SERVICE_UNKNOWN_SCRIPT
+///
+/// unknown script
+///
+/// The service does not have a script with this name.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SERVICE_UNKNOWN_SCRIPT                                  (3016)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3100: ERROR_MODULE_NOT_FOUND
