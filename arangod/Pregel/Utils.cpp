@@ -23,13 +23,13 @@
 #include "Utils.h"
 #include "Basics/StringUtils.h"
 
+#include "Cluster/ClusterInfo.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/vocbase.h"
-#include "VocBase/vocbase.h"
-#include "Cluster/ClusterInfo.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -60,7 +60,6 @@ std::string const Utils::aggregatorValuesKey = "aggregators";
 std::string const Utils::userParametersKey = "userparams";
 std::string const Utils::totalVertexCount = "vertexCount";
 std::string const Utils::totalEdgeCount = "edgeCount";
-
 
 std::string Utils::baseUrl(std::string dbName) {
   return "/_db/" + basics::StringUtils::urlEncode(dbName) + Utils::apiPrefix;
@@ -97,21 +96,20 @@ int64_t Utils::countDocuments(TRI_vocbase_t* vocbase,
   return s.getInt();
 }
 
-LogicalCollection* Utils::resolveCollection(std::string const& database,
-                                     std::string const& collectionName,
-                                     std::map<std::string, std::string> const& collectionPlanIdMap) {
+LogicalCollection* Utils::resolveCollection(
+    std::string const& database, std::string const& collectionName,
+    std::map<std::string, std::string> const& collectionPlanIdMap) {
   ClusterInfo* ci = ClusterInfo::instance();
   auto const& it = collectionPlanIdMap.find(collectionName);
   if (it != collectionPlanIdMap.end()) {
-    std::shared_ptr<LogicalCollection> collectionInfo(ci->getCollection(database,
-                                                                        it->second));
+    std::shared_ptr<LogicalCollection> collectionInfo(
+        ci->getCollection(database, it->second));
     return collectionInfo.get();
   }
   return nullptr;
 }
 
-void Utils::resolveShard(LogicalCollection* info,
-                         std::string const& shardKey,
+void Utils::resolveShard(LogicalCollection* info, std::string const& shardKey,
                          std::string const& vertexKey,
                          std::string& responsibleShard) {
   ClusterInfo* ci = ClusterInfo::instance();
@@ -122,11 +120,11 @@ void Utils::resolveShard(LogicalCollection* info,
   partial.close();
   LOG(INFO) << "Partial doc: " << partial.toJson();
   int res =
-  ci->getResponsibleShard(info, partial.slice(), true, responsibleShard,
-                          usesDefaultShardingAttributes);
+      ci->getResponsibleShard(info, partial.slice(), true, responsibleShard,
+                              usesDefaultShardingAttributes);
   if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-                                   res, "could not resolve the responsible shard");
+    THROW_ARANGO_EXCEPTION_MESSAGE(res,
+                                   "could not resolve the responsible shard");
   }
   TRI_ASSERT(usesDefaultShardingAttributes);  // should be true anyway
 }

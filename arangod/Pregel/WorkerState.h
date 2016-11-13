@@ -30,7 +30,7 @@
 namespace arangodb {
 class SingleCollectionTransaction;
 namespace pregel {
-  
+
 template <typename V, typename E, typename M>
 class Worker;
 
@@ -63,19 +63,19 @@ class WorkerState {
   std::map<CollectionID, std::string> const& collectionPlanIdMap() {
     return _collectionPlanIdMap;
   };
-  
+
   std::string const& edgeCollectionPlanId() const {
     return _edgeCollectionPlanId;
   }
-  
-  //inline uint64_t numWorkerThreads() {
+
+  // inline uint64_t numWorkerThreads() {
   //  return _numWorkerThreads;
   //}
 
  private:
   uint64_t _executionNumber;
   uint64_t _globalSuperstep = 0;
-  //uint64_t _numWorkerThreads = 1;
+  // uint64_t _numWorkerThreads = 1;
 
   std::string _coordinatorId;
   const std::string _database;

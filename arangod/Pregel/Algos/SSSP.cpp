@@ -39,7 +39,7 @@ struct SSSPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
         tmp = *msg;
       };
     }
-    int64_t* state = (int64_t*)mutableVertexData();
+    int64_t* state = mutableVertexData<int64_t>();
     if (tmp >= 0 && (globalSuperstep() == 0 || tmp != *state)) {
       LOG(INFO) << "Recomputing value for vertex " << vertexID;
       *state = tmp;  // update state
@@ -57,7 +57,7 @@ struct SSSPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
 
 GraphFormat<int64_t, int64_t>* SSSPAlgorithm::inputFormat()
     const {
-  return new IntegerGraphFormat("value", -1, 1);
+  return new IntegerGraphFormat(_sourceField, _resultField, -1, 1);
 }
 
 MessageFormat<int64_t>* SSSPAlgorithm::messageFormat() const {

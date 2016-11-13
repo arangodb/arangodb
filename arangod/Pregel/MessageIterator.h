@@ -74,7 +74,6 @@ class MessageIterator {
   size_t _current = 0;
   const size_t _size = 1;
 };
-
 }
 }
 #endif

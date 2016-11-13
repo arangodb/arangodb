@@ -35,15 +35,14 @@ namespace pregel {
 /* In the longer run, maybe write optimized implementations for certain use
  cases. For example threaded
  processing */
-template <typename M> class IncomingCache;
-  
+template <typename M>
+class IncomingCache;
+
 template <typename M>
 class OutgoingCache {
  public:
-  OutgoingCache(WorkerState *state,
-                MessageFormat<M> *format,
-                MessageCombiner<M> *combiner,
-                IncomingCache<M> *cache);
+  OutgoingCache(WorkerState* state, MessageFormat<M>* format,
+                MessageCombiner<M>* combiner, IncomingCache<M>* cache);
   ~OutgoingCache();
 
   void sendMessageTo(std::string const& toValue, M const& data);
@@ -53,15 +52,15 @@ class OutgoingCache {
   void sendMessages();
 
  private:
-  WorkerState *_state;
-  MessageFormat<M> *_format;
-  MessageCombiner<M> *_combiner;
-  IncomingCache<M> *_localCache;
+  WorkerState* _state;
+  MessageFormat<M>* _format;
+  MessageCombiner<M>* _combiner;
+  IncomingCache<M>* _localCache;
   std::string _baseUrl;
 
   /// @brief two stage map: shard -> vertice -> message
   std::unordered_map<ShardID, std::unordered_map<std::string, M>> _map;
-  
+
   /// @brief current number of vertices stored
   size_t _containedMessages = 0;
   size_t _sendMessages = 0;

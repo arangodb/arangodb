@@ -23,38 +23,38 @@
 #ifndef ARANGODB_PREGEL_AGGRGS_CLLCTR_H
 #define ARANGODB_PREGEL_AGGRGS_CLLCTR_H 1
 
-#include <functional>
-#include <velocypack/Slice.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+#include <functional>
+#include <map>
 #include "Aggregator.h"
 
 namespace arangodb {
 namespace pregel {
-  
+
 struct IAggregatorCreator;
 
 class AggregatorUsage {
-  const IAggregatorCreator *_create;
+  const IAggregatorCreator* _create;
   /// written by the local worker or thread
   std::map<std::string, Aggregator*> _values;
   /// from the conductor, gathered from the last superstep
-  //std::map<std::string, Aggregator*> _global;
-  
-public:
-  
-  AggregatorUsage(const IAggregatorCreator *c) : _create(c) {}
-  
+  // std::map<std::string, Aggregator*> _global;
+
+ public:
+  AggregatorUsage(const IAggregatorCreator* c) : _create(c) {}
+
   ~AggregatorUsage() {
     for (auto const& it : _values) {
       delete it.second;
     }
     _values.clear();
   }
-  
+
   void aggregate(std::string const& name, const void* valuePtr) {
     auto it = _values.find(name);
-    if (it !=  _values.end()) {
+    if (it != _values.end()) {
       it->second->aggregate(valuePtr);
     } else {
       std::unique_ptr<Aggregator> agg(_create->aggregator(name));
@@ -65,21 +65,21 @@ public:
       }
     }
   }
-  
+
   const void* getAggregatedValue(std::string const& name) const {
     auto const& it = _values.find(name);
-    if (it !=  _values.end()) {
+    if (it != _values.end()) {
       return it->second->getValue();
     }
     return nullptr;
   }
-  
+
   void resetValues() {
-    for (auto &it : _values) {
+    for (auto& it : _values) {
       it.second->reset();
     }
   }
-  
+
   void aggregateValues(AggregatorUsage const& workerValues) {
     for (auto const& pair : workerValues._values) {
       std::string const& name = pair.first;
@@ -100,7 +100,7 @@ public:
   void aggregateValues(VPackSlice workerValues) {
     for (auto const& keyValue : VPackObjectIterator(workerValues)) {
       std::string name = keyValue.key.copyString();
-      auto const &it = _values.find(name);
+      auto const& it = _values.find(name);
       if (it != _values.end()) {
         it->second->aggregate(keyValue.value);
       } else {
@@ -113,19 +113,15 @@ public:
       }
     }
   }
-  
-  void serializeValues(VPackBuilder &b) const {
+
+  void serializeValues(VPackBuilder& b) const {
     for (auto const& pair : _values) {
-      b.add(pair.first,
-            pair.second->vpackValue());
+      b.add(pair.first, pair.second->vpackValue());
     }
   }
-  
-  size_t size() {
-    return _values.size();
-  }
-};
 
+  size_t size() { return _values.size(); }
+};
 }
 }
 #endif

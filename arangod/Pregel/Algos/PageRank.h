@@ -31,7 +31,7 @@ namespace pregel {
 namespace algos {
 
 /// PageRank
-struct PageRankAlgorithm : public Algorithm<float, float, float> {
+struct PageRankAlgorithm : public SimpleAlgorithm<float, float, float> {
   float _threshold;
   
  public:

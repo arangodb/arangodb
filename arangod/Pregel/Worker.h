@@ -25,17 +25,21 @@
 
 #include "Basics/Common.h"
 #include "Basics/ThreadPool.h"
-#include "WorkerState.h"
-#include "WorkerContext.h"
-#include "Algorithm.h"
-#include "AggregatorUsage.h"
-
+#include "Pregel/AggregatorUsage.h"
+#include "Pregel/Algorithm.h"
+#include "Pregel/WorkerContext.h"
+#include "Pregel/WorkerState.h"
 
 struct TRI_vocbase_t;
 namespace arangodb {
+class RestPregelHandler;
 namespace pregel {
 
 class IWorker {
+  template <typename V, typename E, typename M>
+  static IWorker* createWorker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
+                               VPackSlice body);
+
  public:
   virtual ~IWorker(){};
   virtual void prepareGlobalStep(VPackSlice data) = 0;
@@ -43,31 +47,19 @@ class IWorker {
   virtual void receivedMessages(VPackSlice data) = 0;
   virtual void finalizeExecution(VPackSlice data) = 0;
 
-  static IWorker* createWorker(TRI_vocbase_t* vocbase, VPackSlice parameters);
+  static IWorker* createWorker(TRI_vocbase_t* vocbase, VPackSlice body);
 };
 
 template <typename V, typename E>
 class GraphStore;
-  
+
 template <typename M>
 class IncomingCache;
-  
-  
+
 template <typename V, typename E, typename M>
 class Worker : public IWorker {
+  friend class arangodb::RestPregelHandler;
   
- public:
-  Worker(TRI_vocbase_t* vocbase,
-         Algorithm<V, E, M> *algorithm,
-         VPackSlice params);
-  ~Worker();
-
-  void prepareGlobalStep(VPackSlice data) override;
-  void startGlobalStep(VPackSlice data) override;  // called by coordinator
-  void receivedMessages(VPackSlice data) override;
-  void finalizeExecution(VPackSlice data) override;
-
- private:
   bool _running = true;
   std::unique_ptr<WorkerState> _state;
   std::unique_ptr<Algorithm<V, E, M>> _algorithm;
@@ -80,11 +72,22 @@ class Worker : public IWorker {
   std::unique_ptr<AggregatorUsage> _conductorAggregators;
   std::unique_ptr<AggregatorUsage> _workerAggregators;
   
-  void swapIncomingCaches() {
+  void _swapIncomingCaches() {
     _readCache.swap(_writeCache);
     _writeCache->clear();
   }
-  void workerJobIsDone(bool allVerticesHalted);
+  void _executeGlobalStep();
+  void _workerJobIsDone(bool allVerticesHalted);
+  
+ public:
+  Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algorithm,
+         VPackSlice params);
+  ~Worker();
+  
+  void prepareGlobalStep(VPackSlice data) override;
+  void startGlobalStep(VPackSlice data) override;  // called by coordinator
+  void receivedMessages(VPackSlice data) override;
+  void finalizeExecution(VPackSlice data) override;
 };
 }
 }

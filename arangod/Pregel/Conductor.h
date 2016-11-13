@@ -28,17 +28,43 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Cluster/ClusterInfo.h"
+#include "Pregel/AggregatorUsage.h"
 #include "VocBase/vocbase.h"
 
-#include "AggregatorUsage.h"
-
 namespace arangodb {
+class RestPregelHandler;
 namespace pregel {
 
-class Conductor {
- public:
-  enum ExecutionState { RUNNING, DONE, CANCELED};
+enum ExecutionState { DEFAULT, RUNNING, DONE, CANCELED };
 
+class Conductor {
+  friend class arangodb::RestPregelHandler;
+
+  VocbaseGuard _vocbaseGuard;
+  const uint64_t _executionNumber;
+  const std::string _algorithm;
+  ExecutionState _state;
+  std::vector<std::shared_ptr<LogicalCollection>> _vertexCollections;
+  std::shared_ptr<LogicalCollection> _edgeCollection;
+
+  // initialized on startup
+  std::unique_ptr<IAggregatorCreator> _agregatorCreator;
+  std::unique_ptr<AggregatorUsage> _aggregatorUsage;
+  std::map<ServerID, std::vector<ShardID>> _vertexServerMap;
+
+  uint64_t _globalSuperstep = 0;
+  int32_t _dbServerCount = 0;
+  int32_t _responseCount = 0;
+  int32_t _doneCount = 0;
+  Mutex _finishedGSSMutex;  // prevents concurrent calls to finishedGlobalStep
+
+  void startGlobalStep();
+  int sendToAllDBServers(std::string url, VPackSlice const& body);
+
+  // === REST callbacks ===
+  void finishedGlobalStep(VPackSlice& data);
+
+ public:
   Conductor(uint64_t executionNumber, TRI_vocbase_t* vocbase,
             std::vector<std::shared_ptr<LogicalCollection>> vertexCollections,
             std::shared_ptr<LogicalCollection> edgeCollection,
@@ -46,31 +72,9 @@ class Conductor {
   ~Conductor();
 
   void start(VPackSlice params);
-  void finishedGlobalStep(VPackSlice& data);  //
   void cancel();
 
   ExecutionState getState() { return _state; }
-
- private:
-  Mutex _finishedGSSMutex;  // prevents concurrent calls to finishedGlobalStep
-  
-  VocbaseGuard _vocbaseGuard;
-  const uint64_t _executionNumber;
-  std::string _algorithm;
-  ExecutionState _state = ExecutionState::RUNNING;
-
-  std::unique_ptr<AggregatorUsage> _aggregatorUsage;
-  std::vector<std::shared_ptr<LogicalCollection>> _vertexCollections;
-  std::shared_ptr<LogicalCollection> _edgeCollection;
-  std::map<ServerID, std::vector<ShardID>> _vertexServerMap;
-
-  uint64_t _globalSuperstep;
-  int32_t _dbServerCount = 0;
-  int32_t _responseCount = 0;
-  int32_t _doneCount = 0;
-
-  void startGlobalStep();
-  int sendToAllDBServers(std::string url, VPackSlice const& body);
 };
 }
 }

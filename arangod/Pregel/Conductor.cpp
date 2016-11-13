@@ -37,28 +37,39 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Algorithm.h"
-#include "Pregel/Algos/SSSP.h"
 #include "Pregel/Algos/PageRank.h"
+#include "Pregel/Algos/SSSP.h"
 
 #include <algorithm>
 
 using namespace arangodb;
 using namespace arangodb::pregel;
 
+static IAggregatorCreator* resolveAlgorithm(std::string name,
+                                            VPackSlice userParams) {
+  if ("sssp" == name) {
+    return new algos::SSSPAlgorithm(userParams);
+  } else if ("pagerank" == name) {
+    return new algos::PageRankAlgorithm(userParams);
+  }
+  return nullptr;
+}
+
 Conductor::Conductor(
-     uint64_t executionNumber, TRI_vocbase_t* vocbase,
-     std::vector<std::shared_ptr<LogicalCollection>> vertexCollections,
-     std::shared_ptr<LogicalCollection> edgeCollection,
-     std::string const& algorithm)
+    uint64_t executionNumber, TRI_vocbase_t* vocbase,
+    std::vector<std::shared_ptr<LogicalCollection>> vertexCollections,
+    std::shared_ptr<LogicalCollection> edgeCollection,
+    std::string const& algorithm)
     : _vocbaseGuard(vocbase),
       _executionNumber(executionNumber),
       _algorithm(algorithm),
+      _state(ExecutionState::DEFAULT),
       _vertexCollections(vertexCollections),
-      _edgeCollection(edgeCollection){
+      _edgeCollection(edgeCollection) {
   bool isCoordinator = ServerState::instance()->isCoordinator();
   assert(isCoordinator);
   LOG(INFO) << "constructed conductor";
-  std::vector<std::string> algos {"sssp", "pagerank"};
+  std::vector<std::string> algos{"sssp", "pagerank"};
   if (std::find(algos.begin(), algos.end(), _algorithm) == algos.end()) {
     LOG(ERR) << "Unsupported algorithm";
   }
@@ -69,8 +80,9 @@ Conductor::~Conductor() {}
 static void printResults(std::vector<ClusterCommRequest> const& requests) {
   for (auto const& req : requests) {
     auto& res = req.result;
-    if (res.status == CL_COMM_RECEIVED && res.answer_code != rest::ResponseCode::OK) {
-      LOG(INFO) << res.answer->payload().toJson();
+    if (res.status == CL_COMM_RECEIVED
+        && res.answer_code != rest::ResponseCode::OK) {
+      LOG(ERR) << req.destination << ": " << res.answer->payload().toJson();
     }
   }
 }
@@ -94,15 +106,13 @@ void Conductor::start(VPackSlice userConfig) {
   if (userConfig.isNone()) {
     userConfig = VPackSlice::emptyObjectSlice();
   }
-  
-  if ("sssp" == _algorithm) {
-    auto a = algos::SSSPAlgorithm();
-    _aggregatorUsage.reset(new AggregatorUsage(&a));
-  } else if ("pagerank" == _algorithm) {
-    auto a = algos::PageRankAlgorithm(userConfig);
-    _aggregatorUsage.reset(new AggregatorUsage(&a));
+  _agregatorCreator.reset(resolveAlgorithm(_algorithm, userConfig));
+  if (!_agregatorCreator) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "Algorithm not found");
   }
-  
+
+  _aggregatorUsage.reset(new AggregatorUsage(_agregatorCreator.get()));
   int64_t vertexCount = 0, edgeCount = 0;
   std::map<CollectionID, std::string> collectionPlanIdMap;
   std::map<ServerID, std::vector<ShardID>> edgeServerMap;
@@ -118,7 +128,8 @@ void Conductor::start(VPackSlice userConfig) {
       LOG(WARN) << "Collection does not contain vertices";
     }
   }
-  edgeCount = Utils::countDocuments(_vocbaseGuard.vocbase(), _edgeCollection->name());
+  edgeCount =
+      Utils::countDocuments(_vocbaseGuard.vocbase(), _edgeCollection->name());
   if (edgeCount > 0) {
     resolveShards(_edgeCollection.get(), edgeServerMap);
   } else {
@@ -173,7 +184,7 @@ void Conductor::start(VPackSlice userConfig) {
     requests.emplace_back("server:" + it.first, rest::RequestType::POST,
                           baseUrl + Utils::startExecutionPath, body);
   }
-  
+
   ClusterComm* cc = ClusterComm::instance();
   size_t nrDone = 0;
   cc->performRequests(requests, 120.0, nrDone, LogTopic("Pregel Conductor"));
@@ -181,7 +192,7 @@ void Conductor::start(VPackSlice userConfig) {
             << _vertexCollections[0]->name();
   // look at results
   printResults(requests);
-  
+
   if (nrDone == requests.size()) {
     startGlobalStep();
   } else {
@@ -190,7 +201,6 @@ void Conductor::start(VPackSlice userConfig) {
 }
 
 void Conductor::startGlobalStep() {
-  
   VPackBuilder b;
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
@@ -201,14 +211,14 @@ void Conductor::startGlobalStep() {
     b.close();
   }
   b.close();
-  
+
   // reset aggregatores ahead of gss
   _aggregatorUsage->resetValues();
-  
+
   std::string baseUrl = Utils::baseUrl(_vocbaseGuard.vocbase()->name());
   // first allow all workers to run worker level operations
   int r = sendToAllDBServers(baseUrl + Utils::prepareGSSPath, b.slice());
-  
+
   if (r == TRI_ERROR_NO_ERROR) {
     // start vertex level operations
     sendToAllDBServers(baseUrl + Utils::startGSSPath, b.slice());
@@ -282,7 +292,8 @@ int Conductor::sendToAllDBServers(std::string path, VPackSlice const& config) {
   }
 
   size_t nrDone = 0;
-  size_t nrGood = cc->performRequests(requests, 120.0, nrDone, LogTopic("Pregel Conductor"));
+  size_t nrGood = cc->performRequests(requests, 120.0, nrDone,
+                                      LogTopic("Pregel Conductor"));
   LOG(INFO) << "Send messages to " << nrDone << " servers";
   printResults(requests);
 

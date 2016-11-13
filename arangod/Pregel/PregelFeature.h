@@ -23,9 +23,9 @@
 #ifndef ARANGODB_PREGEL_FEATURE_H
 #define ARANGODB_PREGEL_FEATURE_H 1
 
+#include <cstdint>
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
-#include <cstdint>
 
 namespace arangodb {
 namespace pregel {

@@ -23,11 +23,11 @@
 #ifndef ARANGODB_PREGEL_WORKER_CONTEXT_H
 #define ARANGODB_PREGEL_WORKER_CONTEXT_H 1
 
-#include <functional>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
-#include "Basics/Common.h"
+#include <functional>
 #include "AggregatorUsage.h"
+#include "Basics/Common.h"
 #include "Utils.h"
 
 namespace arangodb {
@@ -36,39 +36,33 @@ namespace pregel {
 class WorkerContext {
   template <typename V, typename E, typename M>
   friend class Worker;
-  
+
   uint64_t _vertexCount, _edgeCount;
-  const AggregatorUsage *_conductorAggregators;
-  AggregatorUsage *_workerAggregators;
-  
-protected:
-  
-  template<typename T>
-  inline void aggregate(std::string const& name, const T *valuePtr) {
+  const AggregatorUsage* _conductorAggregators;
+  AggregatorUsage* _workerAggregators;
+
+ protected:
+  template <typename T>
+  inline void aggregate(std::string const& name, const T* valuePtr) {
     _workerAggregators->aggregate(name, valuePtr);
   }
-  
-  template<typename T>
-  inline const T* getAggregatedValue(std::string const& name){
+
+  template <typename T>
+  inline const T* getAggregatedValue(std::string const& name) {
     return _conductorAggregators->getAggregatedValue(name);
   }
 
-  virtual void preApplication() {};
-  virtual void preGlobalSuperstep(uint64_t gss) {};
-  virtual void postGlobalSuperstep(uint64_t gss) {};
-  virtual void postApplication() {};
-  
- public:
-  WorkerContext() {};
+  virtual void preApplication(){};
+  virtual void preGlobalSuperstep(uint64_t gss){};
+  virtual void postGlobalSuperstep(uint64_t gss){};
+  virtual void postApplication(){};
 
-  inline uint64_t vertexCount() const {
-    return _vertexCount;
-  }
-  
-  inline uint64_t edegCount() const {
-    return _edgeCount;
-  }
-  
+ public:
+  WorkerContext(){};
+
+  inline uint64_t vertexCount() const { return _vertexCount; }
+
+  inline uint64_t edegCount() const { return _edgeCount; }
 };
 }
 }

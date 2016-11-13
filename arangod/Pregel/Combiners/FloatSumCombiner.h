@@ -30,7 +30,7 @@ namespace pregel {
 struct FloatSumCombiner : public MessageCombiner<float> {
   FloatSumCombiner() {}
   float combine(float const& firstValue,
-                  float const& secondValue) const override {
+                float const& secondValue) const override {
     return firstValue + secondValue;
   };
 };

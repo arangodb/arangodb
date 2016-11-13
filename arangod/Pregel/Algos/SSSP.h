@@ -32,9 +32,9 @@ namespace algos {
 /// Single Source Shortest Path. Uses integer attribute 'value', the source
 /// should have
 /// the value == 0, all others -1 or an undefined value
-struct SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
+struct SSSPAlgorithm : public SimpleAlgorithm<int64_t, int64_t, int64_t> {
  public:
-  SSSPAlgorithm() : Algorithm("SSSP") {}
+  SSSPAlgorithm(VPackSlice userParams) : SimpleAlgorithm("SSSP", userParams) {}
 
   GraphFormat<int64_t, int64_t>* inputFormat() const override;
   MessageFormat<int64_t>* messageFormat() const override;

@@ -1,4 +1,4 @@
- ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2016 ArangoDB GmbH, Cologne, Germany
@@ -47,13 +47,16 @@ struct Algorithm : IAggregatorCreator {
   virtual ~Algorithm() {}
   // virtual bool isFixpointAlgorithm() const {return false;}
   // virtual bool preserveTransactions() const { return false; }
-  virtual WorkerContext* workerContext(VPackSlice userParams) const {return new WorkerContext();}
-  virtual Aggregator* aggregator(std::string const& name) const {return nullptr;}
+  virtual WorkerContext* workerContext(VPackSlice userParams) const {
+    return new WorkerContext();
+  }
   virtual GraphFormat<V, E>* inputFormat() const = 0;
+  virtual Aggregator* aggregator(std::string const& name) const {
+    return nullptr;
+  }
   virtual MessageFormat<M>* messageFormat() const = 0;
   virtual MessageCombiner<M>* messageCombiner() const = 0;
-  virtual VertexComputation<V, E, M>* createComputation(uint64_t gss)
-      const = 0;
+  virtual VertexComputation<V, E, M>* createComputation(uint64_t gss) const = 0;
 
   std::string const& getName() const { return _name; }
 
@@ -62,6 +65,20 @@ struct Algorithm : IAggregatorCreator {
 
  private:
   std::string _name;
+};
+
+template <typename V, typename E, typename M>
+class SimpleAlgorithm : public Algorithm<V, E, M> {
+ protected:
+  std::string _sourceField, _resultField;
+
+  SimpleAlgorithm(std::string const& name, VPackSlice userParams)
+      : Algorithm<V, E, M>(name) {
+    VPackSlice field = userParams.get("sourceField");
+    _sourceField = field.isString() ? field.copyString() : "value";
+    field = userParams.get("resultField");
+    _resultField = field.isString() ? field.copyString() : "result";
+  }
 };
 }
 }

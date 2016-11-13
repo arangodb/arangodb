@@ -78,15 +78,15 @@ void IncomingCache<M>::parseMessages(VPackSlice incomingMessages) {
 template <typename M>
 void IncomingCache<M>::setDirect(std::string const& toValue,
                                  M const& newValue) {
-    MUTEX_LOCKER(guard, _writeLock);
+  MUTEX_LOCKER(guard, _writeLock);
 
-    _receivedMessageCount++;
-    auto vmsg = _messages.find(toValue);
-    if (vmsg != _messages.end()) {  // got a message for the same vertex
-      vmsg->second = _combiner->combine(vmsg->second, newValue);
-    } else {
-      _messages[toValue] = newValue;
-    }
+  _receivedMessageCount++;
+  auto vmsg = _messages.find(toValue);
+  if (vmsg != _messages.end()) {  // got a message for the same vertex
+    vmsg->second = _combiner->combine(vmsg->second, newValue);
+  } else {
+    _messages[toValue] = newValue;
+  }
 }
 
 template <typename M>

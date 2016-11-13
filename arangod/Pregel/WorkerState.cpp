@@ -28,8 +28,7 @@
 using namespace arangodb;
 using namespace arangodb::pregel;
 
-WorkerState::WorkerState(DatabaseID dbname,
-                                  VPackSlice params)
+WorkerState::WorkerState(DatabaseID dbname, VPackSlice params)
     : _database(dbname) {
   VPackSlice coordID = params.get(Utils::coordinatorIdKey);
   VPackSlice vertexShardIDs = params.get(Utils::vertexShardsListKey);
@@ -67,4 +66,3 @@ WorkerState::WorkerState(DatabaseID dbname,
   }
   _edgeCollectionPlanId = edgePlanID.copyString();
 }
-

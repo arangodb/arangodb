@@ -37,12 +37,11 @@
 namespace arangodb {
 namespace pregel {
 
-  /* In the longer run, maybe write optimized implementations for certain use
- cases. For example threaded
- processing */
+/* In the longer run, maybe write optimized implementations for certain use
+cases. For example threaded
+processing */
 template <typename M>
 class IncomingCache {
-
  public:
   IncomingCache(std::shared_ptr<MessageFormat<M>>& format,
                 std::shared_ptr<MessageCombiner<M>>& combiner)

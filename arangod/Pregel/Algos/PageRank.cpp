@@ -39,21 +39,25 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
-PageRankAlgorithm::PageRankAlgorithm(arangodb::velocypack::Slice params) : Algorithm("PageRank") {
+PageRankAlgorithm::PageRankAlgorithm(arangodb::velocypack::Slice params) : SimpleAlgorithm("PageRank", params) {
   VPackSlice t = params.get("convergenceThreshold");
-  _threshold = t.isDouble() ? t.getDouble() : 0.02;
+  _threshold = t.isNumber() ? t.getNumber<float>() : 0.00002;
 }
 
 struct PageRankGraphFormat : public FloatGraphFormat {
-  PageRankGraphFormat(std::string const& field, float vertexNull,
-                      float edgeNull)
-      : FloatGraphFormat(field, vertexNull, edgeNull) {}
+  PageRankGraphFormat(std::string const& s, std::string const& r)
+      : FloatGraphFormat(s, r, 0, 0) {}
   bool storesEdgeData() const override { return false; }
+  size_t copyVertexData(arangodb::velocypack::Slice document, void* targetPtr,
+                        size_t maxSize) override {
+    *((float*)targetPtr) = _vDefault;
+    return sizeof(float);
+  }
 };
 
 GraphFormat<float, float>* PageRankAlgorithm::inputFormat()
     const {
-  return new PageRankGraphFormat("value", 0, 0);
+  return new PageRankGraphFormat(_sourceField, _resultField);
 }
 
 MessageFormat<float>* PageRankAlgorithm::messageFormat() const {
@@ -71,9 +75,12 @@ struct PageRankComputation : public VertexComputation<float, float, float> {
   void compute(std::string const& vertexID,
                MessageIterator<float> const& messages) override {
     
-    float* ptr = (float*) mutableVertexData();
+    float* ptr = mutableVertexData<float>();
     float copy = *ptr;
-    //float old = *ptr;
+    // TODO do initialization in GraphFormat?
+    if (globalSuperstep() == 0 && *ptr == 0) {
+      *ptr = 1.0 / context()->vertexCount();
+    }
     if (globalSuperstep() > 0) {
       float sum = 0;
       for (const float* msg : messages) {
@@ -83,10 +90,12 @@ struct PageRankComputation : public VertexComputation<float, float, float> {
     }
     float diff = fabsf(copy - *ptr);
     aggregate("convergence", &diff);
+    const float *val = getAggregatedValue<float>("convergence");
+    if (val) {
+      diff = *val;
+    }
     
-    // TODO definetly incorrect to just take local diff, needs global diff
-    // globalDiff < _limit && ...
-    if (globalSuperstep() < 30) {
+    if (globalSuperstep() < 30 && diff > _limit) {
       EdgeIterator<float> edges = getEdges();
       float val = *ptr / edges.size();
       for (EdgeEntry<float>* edge : edges) {

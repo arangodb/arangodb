@@ -39,10 +39,9 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 
 template <typename M>
-OutgoingCache<M>::OutgoingCache (WorkerState *state,
-                                 MessageFormat<M> *format,
-                                 MessageCombiner<M> *combiner,
-                                 IncomingCache<M> *cache)
+OutgoingCache<M>::OutgoingCache(WorkerState* state, MessageFormat<M>* format,
+                                MessageCombiner<M>* combiner,
+                                IncomingCache<M>* cache)
     : _state(state), _format(format), _combiner(combiner), _localCache(cache) {
   _baseUrl = Utils::baseUrl(_state->database());
 }
@@ -60,18 +59,18 @@ void OutgoingCache<M>::clear() {
 
 template <typename M>
 void OutgoingCache<M>::sendMessageTo(std::string const& toValue,
-                                           M const& data) {
+                                     M const& data) {
   std::size_t pos = toValue.find('/');
   std::string _key = toValue.substr(pos + 1, toValue.length() - pos - 1);
   std::string collectionName = toValue.substr(0, pos);
   LOG(INFO) << "Adding outgoing messages for " << collectionName << "/" << _key;
 
-  LogicalCollection* coll = Utils::resolveCollection(_state->database(),
-                                                     collectionName,
-                                                     _state->collectionPlanIdMap());
+  LogicalCollection* coll = Utils::resolveCollection(
+      _state->database(), collectionName, _state->collectionPlanIdMap());
   if (coll == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "Collection this messages is going to is unkown");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "Collection this messages is going to is unkown");
   }
   ShardID responsibleShard;
   Utils::resolveShard(coll, StaticStrings::KeyString, _key, responsibleShard);

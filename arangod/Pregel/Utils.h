@@ -31,13 +31,13 @@ struct TRI_vocbase_t;
 namespace arangodb {
 class LogicalCollection;
 namespace pregel {
-  
+
 class Utils {
   Utils() = delete;
 
  public:
   // constants
-  
+
   static std::string const edgeShardingKey;
   static std::string const apiPrefix;
   static std::string const startExecutionPath;
@@ -72,12 +72,10 @@ class Utils {
 
   static int64_t countDocuments(TRI_vocbase_t* vocbase,
                                 std::string const& collection);
-  static LogicalCollection* resolveCollection(std::string const& database,
-                                              std::string const& collectionName,
-                                              std::map<std::string, std::string>
-                                                  const& collectionPlanIdMap);
-  static void resolveShard(LogicalCollection* info,
-                           std::string const& shardKey,
+  static LogicalCollection* resolveCollection(
+      std::string const& database, std::string const& collectionName,
+      std::map<std::string, std::string> const& collectionPlanIdMap);
+  static void resolveShard(LogicalCollection* info, std::string const& shardKey,
                            std::string const& vertexKey,
                            std::string& responsibleShard);
 };

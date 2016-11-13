@@ -114,10 +114,8 @@ class EdgeIterator {
   bool operator!=(EdgeIterator const& other) const {
     return _current != other._current;
   }
-  
-  size_t size() const {
-    return _end - _begin;
-  }
+
+  size_t size() const { return _end - _begin; }
 
   /*EdgeIterator(void* beginPtr, void* endPtr)
       : _begin(beginPtr), _end(endPtr), _current(_begin) {}
@@ -227,9 +225,9 @@ class VertexIterator {
     return _current != other._current;
   }
 };
-  
+
 class WorkerState;
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief carry graph data for a worker job
 ////////////////////////////////////////////////////////////////////////////////
@@ -239,31 +237,33 @@ class GraphStore {
   // int _indexFd, _vertexFd, _edgeFd;
   // void *_indexMapping, *_vertexMapping, *_edgeMapping;
   // size_t _indexSize, _vertexSize, _edgeSize;
-  //std::map<std::string, std::string> _shardsPlanIdMap;
+  // std::map<std::string, std::string> _shardsPlanIdMap;
 
   // only for demo, move to memory
   std::vector<VertexEntry> _index;
   std::vector<V> _vertexData;
   std::vector<EdgeEntry<E>> _edges;
-  
+
   size_t _localVerticeCount;
   size_t _localEdgeCount;
-  
+
   VocbaseGuard _vocbaseGuard;
-  const WorkerState *_workerState;
+  const WorkerState* _workerState;
   const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
   std::unordered_map<std::string, SingleCollectionTransaction*> _transactions;
   std::shared_ptr<LogicalCollection> _edgeCollection;
-  
-  void loadVertices(ShardID const& vertexShard);
+
   SingleCollectionTransaction* edgeTransaction(ShardID const& shard);
-  void loadEdges(VertexEntry &entry);
   void cleanupTransactions();
   
+  void loadVertices(ShardID const& vertexShard);
+  void loadEdges(VertexEntry& entry);
+  void storeVertices(ShardID const& vertexShard);
+  void storeEdges(VertexEntry& entry);
+
  public:
-  GraphStore(TRI_vocbase_t* vocbase,
-             const WorkerState* state,
-             GraphFormat<V, E> *graphFormat);
+  GraphStore(TRI_vocbase_t* vocbase, const WorkerState* state,
+             GraphFormat<V, E>* graphFormat);
   ~GraphStore();
 
   std::vector<VertexEntry>& vertexIterator();
@@ -272,6 +272,8 @@ class GraphStore {
   void* mutableVertexData(VertexEntry const* entry);
   V copyVertexData(VertexEntry const* entry);
   void replaceVertexData(VertexEntry const* entry, void* data, size_t size);
+
+  void storeResults();
 };
 }
 }
