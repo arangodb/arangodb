@@ -65,15 +65,16 @@ void OutgoingCache<M>::sendMessageTo(std::string const& toValue,
   std::string collectionName = toValue.substr(0, pos);
   LOG(INFO) << "Adding outgoing messages for " << collectionName << "/" << _key;
 
-  LogicalCollection* coll = Utils::resolveCollection(
-      _state->database(), collectionName, _state->collectionPlanIdMap());
-  if (coll == nullptr) {
+  auto collInfo = Utils::resolveCollection(_state->database(),
+                                           collectionName,
+                                           _state->collectionPlanIdMap());
+  if (!collInfo) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         "Collection this messages is going to is unkown");
   }
   ShardID responsibleShard;
-  Utils::resolveShard(coll, StaticStrings::KeyString, _key, responsibleShard);
+  Utils::resolveShard(collInfo.get(), StaticStrings::KeyString, _key, responsibleShard);
   LOG(INFO) << "Responsible shard: " << responsibleShard;
 
   std::vector<ShardID> const& localShards = _state->localVertexShardIDs();

@@ -44,3 +44,11 @@ FOR doc IN alt_edges
 INSERT {_vertex:SUBSTRING(doc._from,FIND_FIRST(doc._from,"/")+1), 
 _from:doc._from,
 _to:doc._to} IN edges
+
+
+
+  LET values = (
+     FOR s IN vertices
+      RETURN s.result
+  )
+  RETURN SUM(values)

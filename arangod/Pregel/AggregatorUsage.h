@@ -37,10 +37,7 @@ struct IAggregatorCreator;
 
 class AggregatorUsage {
   const IAggregatorCreator* _create;
-  /// written by the local worker or thread
   std::map<std::string, Aggregator*> _values;
-  /// from the conductor, gathered from the last superstep
-  // std::map<std::string, Aggregator*> _global;
 
  public:
   AggregatorUsage(const IAggregatorCreator* c) : _create(c) {}

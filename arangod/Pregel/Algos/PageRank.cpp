@@ -91,11 +91,11 @@ struct PageRankComputation : public VertexComputation<float, float, float> {
     float diff = fabsf(copy - *ptr);
     aggregate("convergence", &diff);
     const float *val = getAggregatedValue<float>("convergence");
-    if (val) {
+    if (val) {// if global convergence is available use it
       diff = *val;
     }
     
-    if (globalSuperstep() < 30 && diff > _limit) {
+    if (globalSuperstep() < 50 && diff > _limit) {
       EdgeIterator<float> edges = getEdges();
       float val = *ptr / edges.size();
       for (EdgeEntry<float>* edge : edges) {

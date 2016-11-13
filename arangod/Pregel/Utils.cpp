@@ -67,7 +67,7 @@ std::string Utils::baseUrl(std::string dbName) {
 
 std::string Utils::collectionFromToValue(std::string const& graphKey) {
   std::size_t pos = graphKey.find('/');
-  return graphKey.substr(0, pos + 1);
+  return graphKey.substr(0, pos);
 }
 
 std::string Utils::vertexKeyFromToValue(std::string const& graphKey) {
@@ -96,20 +96,19 @@ int64_t Utils::countDocuments(TRI_vocbase_t* vocbase,
   return s.getInt();
 }
 
-LogicalCollection* Utils::resolveCollection(
+std::shared_ptr<LogicalCollection> Utils::resolveCollection(
     std::string const& database, std::string const& collectionName,
     std::map<std::string, std::string> const& collectionPlanIdMap) {
   ClusterInfo* ci = ClusterInfo::instance();
   auto const& it = collectionPlanIdMap.find(collectionName);
   if (it != collectionPlanIdMap.end()) {
-    std::shared_ptr<LogicalCollection> collectionInfo(
-        ci->getCollection(database, it->second));
-    return collectionInfo.get();
+    return ci->getCollection(database, it->second);
   }
-  return nullptr;
+  return std::shared_ptr<LogicalCollection>();
 }
 
-void Utils::resolveShard(LogicalCollection* info, std::string const& shardKey,
+void Utils::resolveShard(LogicalCollection* info,
+                         std::string const& shardKey,
                          std::string const& vertexKey,
                          std::string& responsibleShard) {
   ClusterInfo* ci = ClusterInfo::instance();

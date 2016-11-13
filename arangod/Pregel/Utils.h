@@ -72,10 +72,12 @@ class Utils {
 
   static int64_t countDocuments(TRI_vocbase_t* vocbase,
                                 std::string const& collection);
-  static LogicalCollection* resolveCollection(
-      std::string const& database, std::string const& collectionName,
+  static std::shared_ptr<LogicalCollection> resolveCollection(
+                                                              std::string const& database,
+                                                              std::string const& collectionName,
       std::map<std::string, std::string> const& collectionPlanIdMap);
-  static void resolveShard(LogicalCollection* info, std::string const& shardKey,
+  static void resolveShard(LogicalCollection* info,
+                           std::string const& shardKey,
                            std::string const& vertexKey,
                            std::string& responsibleShard);
 };

@@ -60,7 +60,7 @@ class WorkerState {
     return _localEdgeShardIDs;
   }
 
-  std::map<CollectionID, std::string> const& collectionPlanIdMap() {
+  std::map<CollectionID, std::string> const& collectionPlanIdMap() const {
     return _collectionPlanIdMap;
   };
 

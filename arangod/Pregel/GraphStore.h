@@ -253,13 +253,12 @@ class GraphStore {
   std::unordered_map<std::string, SingleCollectionTransaction*> _transactions;
   std::shared_ptr<LogicalCollection> _edgeCollection;
 
-  SingleCollectionTransaction* edgeTransaction(ShardID const& shard);
+  SingleCollectionTransaction* readTransaction(ShardID const& shard);
+  SingleCollectionTransaction* writeTransaction(ShardID const& shard);
   void cleanupTransactions();
   
   void loadVertices(ShardID const& vertexShard);
   void loadEdges(VertexEntry& entry);
-  void storeVertices(ShardID const& vertexShard);
-  void storeEdges(VertexEntry& entry);
 
  public:
   GraphStore(TRI_vocbase_t* vocbase, const WorkerState* state,

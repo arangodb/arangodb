@@ -269,8 +269,9 @@ template <typename V, typename E, typename M>
 void Worker<V, E, M>::finalizeExecution(VPackSlice body) {
   _running = false;
   _workerPool.reset();
-
-  VPackBuilder b;
+  _graphStore->storeResults();
+  
+  /*VPackBuilder b;
   b.openArray();
   auto it = _graphStore->vertexIterator();
   for (const VertexEntry& vertexEntry : it) {
@@ -283,7 +284,7 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice body) {
     b.add(v.slice());
   }
   b.close();
-  LOG(INFO) << "Results. " << b.toJson();
+  LOG(INFO) << "Results. " << b.toJson();//*/
 }
 
 // template types to create
