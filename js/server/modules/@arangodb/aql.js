@@ -1214,6 +1214,10 @@ function AQL_DOCUMENT (collection, id) {
   }
 
   try {
+    if (TYPEWEIGHT(collection) !== TYPEWEIGHT_STRING) {
+      WARN("DOCUMENT", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      return null;
+    }
     return COLLECTION(collection, "DOCUMENT").document(id);
   }
   catch (e2) {
