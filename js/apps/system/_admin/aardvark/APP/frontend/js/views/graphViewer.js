@@ -1888,7 +1888,7 @@
 
       if (aqlMode) {
         // aql editor settings
-        self.renderer = 'webgl';
+        self.renderer = 'canvas';
 
         if (graph.nodes.length < 500) {
           self.algorithm = 'fruchtermann';
