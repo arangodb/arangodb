@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global window, document, Backbone, $, arangoHelper, templateEngine, Joi*/
+/* global window, document, Backbone, $, arangoHelper, templateEngine, Joi */
 (function () {
   'use strict';
 
@@ -130,7 +130,7 @@
         arangoHelper.arangoError('DB ', 'Databasename should not start with _');
         return false;
       }
-      if (!db.match(/^[a-zA-Z][a-zA-Z0-9_\-]*$/)) {
+      if (!db.match(/^[a-zA-Z][a-zA-Z0-9_-]*$/)) {
         arangoHelper.arangoError('DB', 'Databasename may only contain numbers, letters, _ and -');
         return false;
       }

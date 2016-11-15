@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, templateEngine, $, window*/
+/* global Backbone, templateEngine, $, window */
 (function () {
   'use strict';
   window.StatisticBarView = Backbone.View.extend({

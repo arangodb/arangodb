@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global window, _, arangoHelper, $*/
+/* global window, _, arangoHelper, $ */
 (function () {
   'use strict';
 
@@ -208,12 +208,6 @@
         query: query,
         bindVars: bindVars
       };
-      /*
-      if (this.getTotal() < 10000 || this.filters.length > 0) {
-        queryObj.options = {
-          fullCount: true,
-        }
-      }*/
 
       var checkCursorStatus = function (jobid) {
         $.ajax({

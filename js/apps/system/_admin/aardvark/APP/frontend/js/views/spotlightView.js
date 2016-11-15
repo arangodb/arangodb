@@ -1,7 +1,7 @@
 /* jshint browser: true */
 /* jshint unused: false */
 /* global Backbone, $, window, setTimeout, _ */
-/* global arangoHelper, templateEngine*/
+/* global arangoHelper, templateEngine */
 
 (function () {
   'use strict';
