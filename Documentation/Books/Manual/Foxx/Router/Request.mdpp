@@ -119,7 +119,9 @@ The request object specifies the following properties:
 
 * **suffix**: `string`
 
-  The trailing path relative to the current route if the current route ends in a wildcard.
+  The trailing path relative to the current route if the current route ends in a wildcard (e.g. `/something/*`).
+
+  **Note**: Starting with ArangoDB 3.2 is passed into the service as-is, i.e. percentage escape sequences like `%2F` will no longer be unescaped. Also note that the suffix may contain path segments like `..` which may have special meaning if the suffix is used to build filesystem paths.
 
 * **trustProxy**: `boolean`
 

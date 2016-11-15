@@ -2018,7 +2018,7 @@ function pathHandler (req, res, options, next) {
   'use strict';
 
   var filepath, root, filename, encodedFilename;
-  filepath = req.suffix.length ? path.resolve(path.sep, ...req.suffix) : '';
+  filepath = req.suffix.length ? path.resolve(path.sep, ...req.suffix.map((part) => decodeURIComponent(part))) : '';
   root = options.path;
 
   if (options.root) {

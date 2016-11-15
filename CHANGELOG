@@ -3,6 +3,8 @@ devel
 
 * added option -D to define a configuration file environment key=value
 
+* Foxx request URL suffix is no longer unescaped
+
 
 v3.1.1 (XXXX-XX-XX)
 -------------------

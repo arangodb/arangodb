@@ -427,7 +427,7 @@ function * findRoutes (node, result, suffix, path) {
       );
     }
   } else {
-    const part = suffix[0];
+    const part = decodeURIComponent(suffix[0]);
     const path2 = path.concat(part);
     const suffix2 = suffix.slice(1);
     for (const childNode of [node.get(part), node.get(tokenize.PARAM)]) {

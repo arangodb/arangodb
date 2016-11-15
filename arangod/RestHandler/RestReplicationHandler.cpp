@@ -77,12 +77,12 @@ RestReplicationHandler::~RestReplicationHandler() {}
 RestStatus RestReplicationHandler::execute() {
   // extract the request type
   auto const type = _request->requestType();
-  auto const& suffix = _request->suffix();
+  auto const& suffixes = _request->suffixes();
 
-  size_t const len = suffix.size();
+  size_t const len = suffixes.size();
 
   if (len >= 1) {
-    std::string const& command = suffix[0];
+    std::string const& command = suffixes[0];
 
     if (command == "logger-state") {
       if (type != rest::RequestType::GET) {
@@ -523,8 +523,8 @@ void RestReplicationHandler::handleCommandLoggerFirstTick() {
 void RestReplicationHandler::handleCommandBatch() {
   // extract the request type
   auto const type = _request->requestType();
-  auto const& suffix = _request->suffix();
-  size_t const len = suffix.size();
+  auto const& suffixes = _request->suffixes();
+  size_t const len = suffixes.size();
 
   TRI_ASSERT(len >= 1);
 
@@ -562,7 +562,7 @@ void RestReplicationHandler::handleCommandBatch() {
   if (type == rest::RequestType::PUT && len >= 2) {
     // extend an existing blocker
     TRI_voc_tick_t id =
-        static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffix[1]));
+        static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffixes[1]));
 
     auto input = _request->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
 
@@ -591,7 +591,7 @@ void RestReplicationHandler::handleCommandBatch() {
   if (type == rest::RequestType::DELETE_REQ && len >= 2) {
     // delete an existing blocker
     TRI_voc_tick_t id =
-        static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffix[1]));
+        static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffixes[1]));
 
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     int res = engine->removeCompactionBlocker(_vocbase, id);
@@ -616,8 +616,8 @@ void RestReplicationHandler::handleCommandBatch() {
 void RestReplicationHandler::handleCommandBarrier() {
   // extract the request type
   auto const type = _request->requestType();
-  std::vector<std::string> const& suffix = _request->suffix();
-  size_t const len = suffix.size();
+  std::vector<std::string> const& suffixes = _request->suffixes();
+  size_t const len = suffixes.size();
 
   TRI_ASSERT(len >= 1);
 
@@ -667,7 +667,7 @@ void RestReplicationHandler::handleCommandBarrier() {
 
   if (type == rest::RequestType::PUT && len >= 2) {
     // extend an existing barrier
-    TRI_voc_tick_t id = StringUtils::uint64(suffix[1]);
+    TRI_voc_tick_t id = StringUtils::uint64(suffixes[1]);
 
     std::shared_ptr<VPackBuilder> input =
         _request->toVelocyPackBuilderPtr(&VPackOptions::Defaults);
@@ -703,7 +703,7 @@ void RestReplicationHandler::handleCommandBarrier() {
 
   if (type == rest::RequestType::DELETE_REQ && len >= 2) {
     // delete an existing barrier
-    TRI_voc_tick_t id = StringUtils::uint64(suffix[1]);
+    TRI_voc_tick_t id = StringUtils::uint64(suffixes[1]);
 
     if (arangodb::wal::LogfileManager::instance()->removeLogfileBarrier(id)) {
       resetResponse(rest::ResponseCode::NO_CONTENT);
@@ -2751,9 +2751,9 @@ void RestReplicationHandler::handleCommandCreateKeys() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandGetKeys() {
-  std::vector<std::string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffixes = _request->suffixes();
 
-  if (suffix.size() != 2) {
+  if (suffixes.size() != 2) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting GET /_api/replication/keys/<keys-id>");
     return;
@@ -2775,7 +2775,7 @@ void RestReplicationHandler::handleCommandGetKeys() {
     }
   }
 
-  std::string const& id = suffix[1];
+  std::string const& id = suffixes[1];
 
   auto keysRepository = _vocbase->collectionKeys();
   TRI_ASSERT(keysRepository != nullptr);
@@ -2829,9 +2829,9 @@ void RestReplicationHandler::handleCommandGetKeys() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandFetchKeys() {
-  std::vector<std::string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffixes = _request->suffixes();
 
-  if (suffix.size() != 2) {
+  if (suffixes.size() != 2) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/replication/keys/<keys-id>");
     return;
@@ -2874,7 +2874,7 @@ void RestReplicationHandler::handleCommandFetchKeys() {
     return;
   }
 
-  std::string const& id = suffix[1];
+  std::string const& id = suffixes[1];
 
   auto keysRepository = _vocbase->collectionKeys();
   TRI_ASSERT(keysRepository != nullptr);
@@ -2928,15 +2928,15 @@ void RestReplicationHandler::handleCommandFetchKeys() {
 }
 
 void RestReplicationHandler::handleCommandRemoveKeys() {
-  std::vector<std::string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffixes = _request->suffixes();
 
-  if (suffix.size() != 2) {
+  if (suffixes.size() != 2) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/replication/keys/<keys-id>");
     return;
   }
 
-  std::string const& id = suffix[1];
+  std::string const& id = suffixes[1];
 
   auto keys = _vocbase->collectionKeys();
   TRI_ASSERT(keys != nullptr);
