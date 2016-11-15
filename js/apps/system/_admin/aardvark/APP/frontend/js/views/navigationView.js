@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, templateEngine, $, window, arangoHelper, _*/
+/* global Backbone, templateEngine, $, window, arangoHelper, _ */
 (function () {
   'use strict';
   window.NavigationView = Backbone.View.extend({
@@ -185,22 +185,6 @@
     },
 
     subMenuConfig: {
-      /*
-      collection: [
-        {
-          name: 'Settings',
-          view: undefined
-        },
-        {
-          name: 'Indexes',
-          view: undefined
-        },
-        {
-          name: 'Content',
-          view: undefined,
-          active: true
-        }
-      ],*/
       cluster: [
         {
           name: 'Dashboard',
@@ -376,8 +360,8 @@
     },
 
     hideDropdown: function (e) {
-      var tab = e.target || e.srcElement;
-      tab = $(tab).parent();
+      // var tab = e.target || e.srcElement;
+      // tab = $(tab).parent();
       $('#link_dropdown').fadeOut(1);
       $('#tools_dropdown').fadeOut(1);
       $('#dbs_dropdown').fadeOut(1);

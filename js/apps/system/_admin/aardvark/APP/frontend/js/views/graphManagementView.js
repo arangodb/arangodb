@@ -301,7 +301,6 @@
             $('#graphManagementDropdown').show();
           }
 
-          self.events['click .tableRow'] = self.showHideDefinition.bind(self);
           self.events['change tr[id*="newEdgeDefinitions"]'] = self.setFromAndTo.bind(self);
           self.events['click .graphViewer-icon-button'] = self.addRemoveDefinition.bind(self);
           self.events['click #graphTab a'] = self.toggleTab.bind(self);
@@ -362,19 +361,6 @@
           $('#toCollections' + id).attr('disabled', false);
         }
       }
-
-    /* following not needed? => destroys webif modal
-    tmp = $('input[id*="newEdgeDefinitions"]')
-    for (i = 0; i < tmp.length ; i++) {
-      id = tmp[i].id
-      $('#' + id).select2({
-        tags : this.eCollList,
-        showSearchBox: false,
-        minimumResultsForSearch: -1,
-        width: "336px",
-        maximumSelectionSize: 1
-      })
-    }*/
     },
 
     editGraph: function (e) {
@@ -913,16 +899,6 @@
 
       window.modalView.hide();
       arangoHelper.arangoNotification('Graph', 'Reset successful.');
-    },
-
-    showHideDefinition: function (e) {
-      /* e.stopPropagation()
-      var id = $(e.currentTarget).attr("id"), number
-      if (id.indexOf("row_newEdgeDefinitions") !== -1 ) {
-        number = id.split("row_newEdgeDefinitions")[1]
-        $('#row_fromCollections' + number).toggle()
-        $('#row_toCollections' + number).toggle()
-      }*/
     },
 
     addRemoveDefinition: function (e) {

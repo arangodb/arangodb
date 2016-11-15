@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* global Backbone, $, window, setTimeout, Joi, _ */
-/* global templateEngine*/
+/* global templateEngine */
 
 (function () {
   'use strict';
