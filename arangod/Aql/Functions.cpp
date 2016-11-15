@@ -2699,7 +2699,9 @@ AqlValue Functions::Document(arangodb::aql::Query* query,
 
   AqlValue collectionValue = ExtractFunctionParameterValue(trx, parameters, 0);
   if (!collectionValue.isString()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    RegisterWarning(query, "DOCUMENT",
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
   std::string collectionName(collectionValue.slice().copyString());
 
