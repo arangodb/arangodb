@@ -62,7 +62,7 @@ _TRI_BlockCrc32_SSE42:
 
         movq    %rdx,%r10  /* copy length to %r10 for later */
         andq    $7,%rdx    /* get length mod 8              */
-        lea     crct1,%r9  /* get address of crct1 table    */
+        lea     crct1(%rip),%r9  /* get address of crct1 table    */
         movl    (%r9,%rdx,4),%ecx  /* table lookup to %ecx  */
         subq    %rdx,%r10  /* subtract 0-7 from length      */
         subq    $8,%r10    /* and subtract another 8        */
@@ -98,7 +98,7 @@ _TRI_BlockCrc32_SSE42:
         addq    $256,%rdx  /* table disp for long strings   */
         cmpq    $256,%r10  /* if length less than 256 . .   */
         cmovb   %r10,%rdx  /* just use length as disp       */
-        lea     crctj,%rdi /* get address of jump table     */
+        lea     crctj(%rip),%rdi /* get address of jump table     */
         movq    (%rdi,%rdx),%rdi /* compute jump address    */
         andq    $-128,%r10 /* now get length correct        */
         subq    $128,%r10  /* only used in 256+ case ynn    */
@@ -171,7 +171,7 @@ y0:
 
 /* initialization of the triple-stream method               */
 
-        lea     crct2,%rcx /* set %rcx permanently as crct2 */
+        lea     crct2(%rip),%rcx /* set %rcx permanently as crct2 */
         movq    $0,%r8     /* work out first 11 words of B  */
         crc32q  (%rsi),%r8
         crc32q  8(%rsi),%r8
