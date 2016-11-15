@@ -5,6 +5,7 @@ SCRIPT_DIR=`dirname $0`
 SRC_DIR="${SCRIPT_DIR}/../"
 ENTERPRISE_SRC_DIR=${SRC_DIR}/enterprise
 
+FORCE_TAG=0
 TAG=1
 BOOK=1
 BUILD=1
@@ -25,6 +26,11 @@ while [ "$#" -gt 0 ];  do
             shift
             PARALLEL=$1
             shift
+            ;;
+        
+        --force-tag)
+            shift
+            FORCE_TAG=1
             ;;
         
         --no-lint)
@@ -81,9 +87,11 @@ if echo ${VERSION} | grep -q -- '-'; then
     exit 1
 fi
 
-if git tag | grep -q "^v$VERSION$";  then
-    echo "$0: version $VERSION already defined"
-    exit 1
+if test "${FORCE_TAG}" == 0; then
+    if git tag | grep -q "^v$VERSION$";  then
+        echo "$0: version $VERSION already defined"
+        exit 1
+    fi
 fi
 
 if fgrep -q "v$VERSION" CHANGELOG;  then
@@ -187,16 +195,26 @@ if [ "$TAG" == "1" ];  then
     git commit -m "release version $VERSION" -a
     git push
 
-    git tag "v$VERSION"
-    git push --tags
+    if test "${FORCE_TAG}" == 0; then
+        git tag "v$VERSION"
+        git push --tags
+    else
+        git tag -f "v$VERSION"
+        git push --tags -f
+    fi        
 
     cd ${ENTERPRISE_SRC_DIR}
     git commit -m "release version $VERSION enterprise" -a
     git push
 
-    git tag "v$VERSION"
-    git push --tags
-
+    if test "${FORCE_TAG}" == 0; then
+        git tag "v$VERSION"
+        git push --tags
+    else
+        git tag -f "v$VERSION"
+        git push --tags -f
+    fi
+    
     echo
     echo "--------------------------------------------------"
     echo "Remember to update the VERSION in 'devel' as well."
