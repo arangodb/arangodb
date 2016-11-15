@@ -1801,6 +1801,7 @@ function arangoErrorToHttpCode (num) {
     case arangodb.ERROR_USER_NOT_FOUND:
     case arangodb.ERROR_TASK_NOT_FOUND:
     case arangodb.ERROR_QUERY_NOT_FOUND:
+    case arangodb.ERROR_SERVICE_NOT_FOUND:
       return exports.HTTP_NOT_FOUND;
 
     case arangodb.ERROR_REQUEST_CANCELED:
@@ -1808,6 +1809,7 @@ function arangoErrorToHttpCode (num) {
 
     case arangodb.ERROR_ARANGO_DUPLICATE_NAME:
     case arangodb.ERROR_ARANGO_DUPLICATE_IDENTIFIER:
+    case arangodb.ERROR_SERVICE_MOUNTPOINT_CONFLICT:
       return exports.HTTP_CONFLICT;
 
     case arangodb.ERROR_CLUSTER_UNSUPPORTED:
