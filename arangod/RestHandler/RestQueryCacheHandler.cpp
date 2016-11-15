@@ -93,9 +93,9 @@ bool RestQueryCacheHandler::readProperties() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestQueryCacheHandler::replaceProperties() {
-  auto const& suffix = _request->suffix();
+  auto const& suffixes = _request->suffixes();
 
-  if (suffix.size() != 1 || suffix[0] != "properties") {
+  if (suffixes.size() != 1 || suffixes[0] != "properties") {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/query-cache/properties");

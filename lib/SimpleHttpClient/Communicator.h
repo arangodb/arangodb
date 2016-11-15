@@ -87,6 +87,7 @@ struct CurlHandle {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
     curl_easy_setopt(_handle, CURLOPT_PRIVATE, _rip.get());
+    curl_easy_setopt(_handle, CURLOPT_PATH_AS_IS, 1L); 
   }
   ~CurlHandle() {
     if (_handle != nullptr) {

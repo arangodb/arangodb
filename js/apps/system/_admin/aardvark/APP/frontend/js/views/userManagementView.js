@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global frontendConfig, window, document, Backbone, $, arangoHelper, templateEngine, Joi*/
+/* global frontendConfig, window, document, Backbone, $, arangoHelper, templateEngine, Joi */
 (function () {
   'use strict';
 
@@ -176,14 +176,6 @@
         $('#newUsername').closest('th').css('backgroundColor', 'red');
         return false;
       }
-      /*      if (!username.match(/^[a-zA-Z][a-zA-Z0-9_\-]*$/)) {
-              arangoHelper.arangoError("Name may only contain numbers, letters, _ and -")
-              return false
-            }
-            if (!user.match(/^[a-zA-Z][a-zA-Z\-]*$/)) {
-              arangoHelper.arangoError("Name may only letters and -")
-              return false
-            }*/
       return true;
     },
 

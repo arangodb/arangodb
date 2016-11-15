@@ -75,9 +75,9 @@ RestStatus RestDocumentHandler::execute() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::createDocument() {
-  std::vector<std::string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
-  if (suffix.size() > 1) {
+  if (suffixes.size() > 1) {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "superfluous suffix, expecting " + DOCUMENT_PATH +
@@ -87,8 +87,8 @@ bool RestDocumentHandler::createDocument() {
 
   bool found;
   std::string collectionName;
-  if (suffix.size() == 1) {
-    collectionName = suffix[0];
+  if (suffixes.size() == 1) {
+    collectionName = suffixes[0];
     found = true;
   } else {
     collectionName = _request->value("collection", found);
@@ -168,7 +168,7 @@ bool RestDocumentHandler::createDocument() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readDocument() {
-  size_t const len = _request->suffix().size();
+  size_t const len = _request->suffixes().size();
 
   switch (len) {
     case 0:
@@ -193,11 +193,11 @@ bool RestDocumentHandler::readDocument() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readSingleDocument(bool generateBody) {
-  std::vector<std::string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   // split the document reference
-  std::string const& collection = suffix[0];
-  std::string const& key = suffix[1];
+  std::string const& collection = suffixes[0];
+  std::string const& key = suffixes[1];
 
   // check for an etag
   bool isValidRevision;
@@ -288,9 +288,9 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::checkDocument() {
-  std::vector<std::string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
-  if (suffix.size() != 2) {
+  if (suffixes.size() != 2) {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting URI /_api/document/<document-handle>");
@@ -324,9 +324,9 @@ bool RestDocumentHandler::updateDocument() { return modifyDocument(true); }
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::modifyDocument(bool isPatch) {
-  std::vector<std::string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
-  if (suffix.size() > 2) {
+  if (suffixes.size() > 2) {
     std::string msg("expecting ");
     msg.append(isPatch ? "PATCH" : "PUT");
     msg.append(
@@ -338,15 +338,15 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     return false;
   }
 
-  bool isArrayCase = suffix.size() <= 1;
+  bool isArrayCase = suffixes.size() <= 1;
 
   std::string collectionName;
   std::string key;
 
   if (isArrayCase) {
     bool found;
-    if (suffix.size() == 1) {
-      collectionName = suffix[0];
+    if (suffixes.size() == 1) {
+      collectionName = suffixes[0];
       found = true;
     } else {
       collectionName = _request->value("collection", found);
@@ -360,8 +360,8 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
       return false;
     }
   } else {
-    collectionName = suffix[0];
-    key = suffix[1];
+    collectionName = suffixes[0];
+    key = suffixes[1];
   }
 
   bool parseSuccess = true;
@@ -477,9 +477,9 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::deleteDocument() {
-  std::vector<std::string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
-  if (suffix.size() < 1 || suffix.size() > 2) {
+  if (suffixes.size() < 1 || suffixes.size() > 2) {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/document/<document-handle> or "
@@ -488,15 +488,15 @@ bool RestDocumentHandler::deleteDocument() {
   }
 
   // split the document reference
-  std::string const& collectionName = suffix[0];
+  std::string const& collectionName = suffixes[0];
   std::string key;
-  if (suffix.size() == 2) {
-    key = suffix[1];
+  if (suffixes.size() == 2) {
+    key = suffixes[1];
   }
 
   // extract the revision if single document case
   TRI_voc_rid_t revision = 0;
-  if (suffix.size() == 2) {
+  if (suffixes.size() == 2) {
     bool isValidRevision = false;
     revision = extractRevision("if-match", nullptr, isValidRevision);
     if (!isValidRevision) {
@@ -518,7 +518,7 @@ bool RestDocumentHandler::deleteDocument() {
   VPackSlice search;
   std::shared_ptr<VPackBuilder> builderPtr;
 
-  if (suffix.size() == 2) {
+  if (suffixes.size() == 2) {
     {
       VPackObjectBuilder guard(&builder);
       builder.add(StaticStrings::KeyString, VPackValue(key));
@@ -551,7 +551,7 @@ bool RestDocumentHandler::deleteDocument() {
 
   SingleCollectionTransaction trx(transactionContext, collectionName,
                                   TRI_TRANSACTION_WRITE);
-  if (suffix.size() == 2 || !search.isArray()) {
+  if (suffixes.size() == 2 || !search.isArray()) {
     trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
   }
 
@@ -587,9 +587,9 @@ bool RestDocumentHandler::deleteDocument() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readManyDocuments() {
-  std::vector<std::string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
-  if (suffix.size() != 1) {
+  if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/document/<collection> with a BODY");
@@ -597,7 +597,7 @@ bool RestDocumentHandler::readManyDocuments() {
   }
 
   // split the document reference
-  std::string const& collectionName = suffix[0];
+  std::string const& collectionName = suffixes[0];
 
   OperationOptions opOptions;
   opOptions.ignoreRevs = extractBooleanParameter("ignoreRevs", true);

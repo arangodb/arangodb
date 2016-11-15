@@ -42,8 +42,8 @@ WorkMonitorHandler::WorkMonitorHandler(GeneralRequest* request,
 bool WorkMonitorHandler::isDirect() const { return true; }
 
 RestStatus WorkMonitorHandler::execute() {
-  auto suffix = _request->suffix();
-  size_t const len = suffix.size();
+  auto const& suffixes = _request->suffixes();
+  size_t const len = suffixes.size();
   auto const type = _request->requestType();
 
   if (type == rest::RequestType::GET) {
@@ -70,7 +70,7 @@ RestStatus WorkMonitorHandler::execute() {
       return RestStatus::DONE;
     }
 
-    uint64_t id = StringUtils::uint64(suffix[0]);
+    uint64_t id = StringUtils::uint64(suffixes[0]);
     WorkMonitor::cancelWork(id);
 
     VPackBuilder b;

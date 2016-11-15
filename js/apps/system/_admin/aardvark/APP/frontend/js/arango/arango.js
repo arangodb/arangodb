@@ -28,7 +28,7 @@
 
   window.versionHelper = {
     fromString: function (s) {
-      var parts = s.replace(/-[a-zA-Z0-9_\-]*$/g, '').split('.');
+      var parts = s.replace(/-[a-zA-Z0-9_-]*$/g, '').split('.');
       return {
         major: parseInt(parts[0], 10) || 0,
         minor: parseInt(parts[1], 10) || 0,

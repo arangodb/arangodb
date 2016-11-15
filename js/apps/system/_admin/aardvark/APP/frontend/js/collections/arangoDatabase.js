@@ -1,5 +1,5 @@
 /* jshint browser: true */
-/* global window, arangoHelper, Backbone, $, window, _*/
+/* global window, arangoHelper, Backbone, $, window, _ */
 
 (function () {
   'use strict';
