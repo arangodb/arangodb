@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global $, window, navigator, _, arangoHelper*/
+/* global $, window, navigator, _, arangoHelper */
 (function () {
   'use strict';
 
