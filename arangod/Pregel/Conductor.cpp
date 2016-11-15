@@ -36,7 +36,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Algorithm.h"
+#include "Pregel/Algorithm.h"
 #include "Pregel/Algos/PageRank.h"
 #include "Pregel/Algos/SSSP.h"
 
@@ -233,18 +233,22 @@ void Conductor::startGlobalStep() {
 
 void Conductor::finishedGlobalStep(VPackSlice& data) {
   MUTEX_LOCKER(mutexLocker, _finishedGSSMutex);
-
-  LOG(INFO) << "Conductor received finishedGlobalStep callback";
   if (_state != ExecutionState::RUNNING) {
     LOG(WARN) << "Conductor did not expect another finishedGlobalStep call";
     return;
   }
+  uint64_t gss = data.get(Utils::globalSuperstepKey).getUInt();
+  if (gss != _globalSuperstep) {
+    LOG(WARN) << "Conductor did received a callback from the wrong superstep";
+    return;
+  }
+  
   _responseCount++;
-
   VPackSlice workerValues = data.get(Utils::aggregatorValuesKey);
   if (workerValues.isObject()) {
     _aggregatorUsage->aggregateValues(workerValues);
   }
+  _workerStats.accumulate(data);
 
   VPackSlice isDone = data.get(Utils::doneKey);
   if (isDone.isBool() && isDone.getBool()) {
@@ -256,13 +260,16 @@ void Conductor::finishedGlobalStep(VPackSlice& data) {
     _globalSuperstep++;
 
     if (_doneCount == _dbServerCount || _globalSuperstep == 100) {
-      std::string baseUrl = Utils::baseUrl(_vocbaseGuard.vocbase()->name());
       LOG(INFO) << "Done. We did " << _globalSuperstep << " rounds";
+      LOG(INFO) << "Send: " << _workerStats.sendCount
+      << " Received: " << _workerStats.receivedCount;
+
       VPackBuilder b;
       b.openObject();
       b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
       b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
       b.close();
+      std::string baseUrl = Utils::baseUrl(_vocbaseGuard.vocbase()->name());
       sendToAllDBServers(baseUrl + Utils::finalizeExecutionPath, b.slice());
       _state = ExecutionState::DONE;
     } else {  // trigger next superstep

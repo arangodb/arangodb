@@ -54,12 +54,16 @@ std::string const Utils::algorithmKey = "algorithm";
 std::string const Utils::globalSuperstepKey = "gss";
 std::string const Utils::messagesKey = "msgs";
 std::string const Utils::senderKey = "sender";
-std::string const Utils::doneKey = "done";
 std::string const Utils::aggregatorValuesKey = "aggregators";
-
-std::string const Utils::userParametersKey = "userparams";
+std::string const Utils::activeCountKey = "activeCount";
+std::string const Utils::receivedCountKey = "receivedCount";
+std::string const Utils::sendCountKey = "sendCount";
 std::string const Utils::totalVertexCount = "vertexCount";
 std::string const Utils::totalEdgeCount = "edgeCount";
+
+std::string const Utils::doneKey = "done";
+
+std::string const Utils::userParametersKey = "userparams";
 
 std::string Utils::baseUrl(std::string dbName) {
   return "/_db/" + basics::StringUtils::urlEncode(dbName) + Utils::apiPrefix;
@@ -117,7 +121,7 @@ void Utils::resolveShard(LogicalCollection* info,
   partial.openObject();
   partial.add(shardKey, VPackValue(vertexKey));
   partial.close();
-  LOG(INFO) << "Partial doc: " << partial.toJson();
+//  LOG(INFO) << "Partial doc: " << partial.toJson();
   int res =
       ci->getResponsibleShard(info, partial.slice(), true, responsibleShard,
                               usesDefaultShardingAttributes);

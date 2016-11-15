@@ -34,6 +34,9 @@ In arangosh:
 
 arangoimp --file generated_vertices.csv --type csv --collection vertices --overwrite true --server.endpoint http+tcp://127.0.0.1:8530
 
+Or:
+for(var i=0; i < 5000; i++) db.vertices.save({_key:i+""});
+
 arangoimp --file generated_edges.csv --type csv --collection alt_edges --overwrite true --from-collection-prefix "vertices" --to-collection-prefix "vertices"  --server.endpoint http+tcp://127.0.0.1:8530
 
 

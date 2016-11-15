@@ -29,6 +29,7 @@
 #include "Pregel/VertexComputation.h"
 #include "Pregel/WorkerState.h"
 
+
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/ticks.h"
@@ -194,20 +195,19 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
 
     // ==================== send messages to other shards ====================
     outCache.sendMessages();
+    
+    // ==================== Track statistics =================================
+    // the stats we want to keep should be final. At this point we can only be sure of the
+    // messages we have received in total from the last superstep, and the messages we have send in
+    // the current superstep. Other workers are likely not finished yet, and might still send stuff
     size_t sendCount = outCache.sendMessageCount();
-    size_t receivedCount = this->_writeCache->receivedMessageCount();
+    size_t receivedCount = this->_readCache->receivedMessageCount();
 
     // ========================= merge aggregators ===========================
-    // TODO locking
     _workerAggregators->aggregateValues(*vertexComputation->_workerAggregators);
-
-    if (activeCount == 0 && sendCount == 0 && receivedCount == 0) {
-      LOG(INFO) << "Worker seems to be done";
-      _workerJobIsDone(true);
-    } else {
-      LOG(INFO) << "Worker send " << sendCount << " messages";
-      _workerJobIsDone(false);
-    }
+    
+    WorkerStats stats(activeCount, sendCount, receivedCount);
+    _workerJobIsDone(stats);
   });
 }
 
@@ -232,7 +232,7 @@ void Worker<V, E, M>::receivedMessages(VPackSlice data) {
 }
 
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::_workerJobIsDone(bool allDone) {
+void Worker<V, E, M>::_workerJobIsDone(WorkerStats stats) {
   _expectedGSS = _state->_globalSuperstep + 1;
 
   // notify the conductor that we are done.
@@ -241,7 +241,8 @@ void Worker<V, E, M>::_workerJobIsDone(bool allDone) {
   package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
   package.add(Utils::executionNumberKey, VPackValue(_state->executionNumber()));
   package.add(Utils::globalSuperstepKey, VPackValue(_state->globalSuperstep()));
-  package.add(Utils::doneKey, VPackValue(allDone));
+  package.add(Utils::doneKey, VPackValue(stats.allZero()));// TODO remove
+  stats.addValues(package);
   if (_workerAggregators->size() > 0) {
     package.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
     _workerAggregators->serializeValues(package);
@@ -261,7 +262,7 @@ void Worker<V, E, M>::_workerJobIsDone(bool allDone) {
                    90.0);
   LOG(INFO) << "Sending finishedGSS to coordinator: "
             << _state->coordinatorId();
-  if (allDone)
+  if (stats.allZero())
     LOG(INFO) << "WE have no active vertices, and did not send messages";
 }
 

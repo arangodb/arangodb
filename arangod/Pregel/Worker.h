@@ -29,6 +29,7 @@
 #include "Pregel/Algorithm.h"
 #include "Pregel/WorkerContext.h"
 #include "Pregel/WorkerState.h"
+#include "Pregel/Statistics.h"
 
 struct TRI_vocbase_t;
 namespace arangodb {
@@ -77,7 +78,7 @@ class Worker : public IWorker {
     _writeCache->clear();
   }
   void _executeGlobalStep();
-  void _workerJobIsDone(bool allVerticesHalted);
+  void _workerJobIsDone(WorkerStats stats);
   
  public:
   Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algorithm,

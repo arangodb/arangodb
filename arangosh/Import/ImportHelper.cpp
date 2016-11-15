@@ -488,7 +488,7 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
   }
     
   if (!_convert) {
-    _lineBuffer.appendText(field, fieldLength);
+    _lineBuffer.appendJsonEncoded(field, fieldLength);
     return;
   }
 

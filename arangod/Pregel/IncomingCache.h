@@ -63,7 +63,7 @@ class IncomingCache {
  private:
   mutable Mutex _writeLock;
   std::unordered_map<std::string, M> _messages;
-  size_t _receivedMessageCount;
+  size_t _receivedMessageCount = 0;
 
   std::shared_ptr<MessageFormat<M>> _format;
   std::shared_ptr<MessageCombiner<M>> _combiner;

@@ -29,6 +29,7 @@
 #include "Basics/Mutex.h"
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/AggregatorUsage.h"
+#include "Pregel/Statistics.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
@@ -56,6 +57,7 @@ class Conductor {
   int32_t _dbServerCount = 0;
   int32_t _responseCount = 0;
   int32_t _doneCount = 0;
+  WorkerStats _workerStats;
   Mutex _finishedGSSMutex;  // prevents concurrent calls to finishedGlobalStep
 
   void startGlobalStep();

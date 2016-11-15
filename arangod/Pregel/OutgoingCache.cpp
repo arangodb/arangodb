@@ -83,7 +83,7 @@ void OutgoingCache<M>::sendMessageTo(std::string const& toValue,
     _localCache->setDirect(toValue, data);
     LOG(INFO) << "Worker: Got messages for myself " << toValue << " <- "
               << data;
-
+    _sendMessages++;
   } else {
     // std::unordered_map<std::string, VPackBuilder*> vertexMap =;
     std::unordered_map<std::string, M>& vertexMap = _map[responsibleShard];
@@ -94,9 +94,11 @@ void OutgoingCache<M>::sendMessageTo(std::string const& toValue,
       vertexMap[toValue] = data;
     }
     _containedMessages++;
+    
+    if (_containedMessages > 1000) {
+      sendMessages();
+    }
   }
-
-  // TODO treshold  sending
 }
 
 template <typename M>

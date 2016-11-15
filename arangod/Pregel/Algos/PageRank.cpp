@@ -80,8 +80,7 @@ struct PageRankComputation : public VertexComputation<float, float, float> {
     // TODO do initialization in GraphFormat?
     if (globalSuperstep() == 0 && *ptr == 0) {
       *ptr = 1.0 / context()->vertexCount();
-    }
-    if (globalSuperstep() > 0) {
+    } else if (globalSuperstep() > 0) {
       float sum = 0;
       for (const float* msg : messages) {
         sum += *msg;

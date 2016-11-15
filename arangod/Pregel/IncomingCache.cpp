@@ -41,9 +41,7 @@ IncomingCache<M>::~IncomingCache() {
 
 template <typename M>
 void IncomingCache<M>::clear() {
-  /*for (auto const& it : _messages) {
-    it.second->clear();
-  }*/
+  MUTEX_LOCKER(guard, _writeLock);
   _receivedMessageCount = 0;
   _messages.clear();
 }
