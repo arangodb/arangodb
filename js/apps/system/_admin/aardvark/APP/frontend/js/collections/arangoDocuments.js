@@ -75,7 +75,7 @@
           bindVars['param' + i] = '%' + f.val + '%';
         } else if (f.op === 'IN' || f.op === 'NOT IN ') {
           if (f.val.indexOf(',') !== -1) {
-            bindVars['param' + i] = f.val.split(',').map(function (v) { return v.replace(/(^ +| +$)/g, ''); });
+            bindVars['param' + i] = f.val.split(',').map (function (v) { return v.replace(/(^ +| +$)/g, ''); });
           } else {
             bindVars['param' + i] = [ f.val ];
           }
