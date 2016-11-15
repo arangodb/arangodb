@@ -15,7 +15,7 @@ ArangoDB
 3.0: [![Build Status](https://secure.travis-ci.org/arangodb/arangodb.png?branch=3.0)](http://travis-ci.org/arangodb/arangodb)
 3.1: [![Build Status](https://secure.travis-ci.org/arangodb/arangodb.png?branch=3.1)](http://travis-ci.org/arangodb/arangodb)
 
-Slack: [![ArangoDB-Logo](http://slack.arangodb.com/badge.svg)](https://slack.arangodb.com)
+Slack: [![ArangoDB-Logo](https://slack.arangodb.com/badge.svg)](https://slack.arangodb.com)
 
 ArangoDB is a multi-model, open-source database with flexible data models for
 documents, graphs, and key-values. Build high performance applications using a
