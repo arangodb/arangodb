@@ -71,15 +71,16 @@ function post_api_pregel (req, res) {
   }
   
   var params = json.params || {};
-  if (json.vertexCollections && typeof json.vertexCollections === 'array'
+  if (json.vertexCollections && json.vertexCollections instanceof Array
       && json.edgeCollection && typeof json.edgeCollection === 'string') {
     
-    var executionNum = db._pregel(json.vertexCollections,
-                                  json.edgeCollection,
-                                  algorithm,
-                                  params);
-    // TODO response
-  } else if (json.graphName && typeof json.graphName === 'string') {
+    var executionNum = db._pregelStart(json.vertexCollections,
+                                       json.edgeCollection,
+                                      algorithm,
+                                      params);
+    actions.resultOk(req, res, actions.HTTP_OK, executionNum);
+    
+  } else if (json.graphName &&  typeof json.graphName === 'string') {
     var graph = graph_module._graph(json.graphName);
     if (graph) {
       var vertexCollections = [];
@@ -90,11 +91,9 @@ function post_api_pregel (req, res) {
       var edges = graph._edgeCollections();
       if (edges.length > 0) {
         var edgeCollection = [0].name()
-        var executionNum = db._pregel(vertexCollections,
-                                      edgeCollection,
-                                      algorithm,
-                                      params);
-        
+        var executionNum = db._pregelStart(vertexCollections, edgeCollection,
+                                           algorithm, params);
+        actions.resultOk(req, res, actions.HTTP_OK, executionNum);
         
       } else {
         return badParam(req, res, "No edge collection specified");
@@ -109,11 +108,23 @@ function post_api_pregel (req, res) {
 }
 
 function get_api_pregel(req, res) {
-  
+  if (req.suffix.length === 1) {
+    var executionNum = decodeURIComponent(req.suffix[0]);
+    var status = db._pregelStatus(executionNum);
+    actions.resultOk(req, res, actions.HTTP_OK, status);
+  } else {
+    return badParam(req, res, "invalid parameters, specify execution number");
+  }
 }
 
 function delete_api_pregel(req, res) {
-
+  if (req.suffix.length === 1) {
+    var executionNum = decodeURIComponent(req.suffix[0]);
+    var status = db._pregelCancel(executionNum);
+    actions.resultOk(req, res, actions.HTTP_OK, "");
+  } else {
+    return badParam(req, res, "invalid parameters, specify execution number");
+  }
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -137,6 +148,7 @@ actions.defineHttp({
         case actions.DELETE:
           delete_api_pregel(req, res);
           break;
+        
         default:
           actions.resultUnsupported(req, res);
       }

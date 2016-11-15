@@ -62,23 +62,26 @@ class Worker : public IWorker {
   friend class arangodb::RestPregelHandler;
   
   bool _running = true;
-  std::unique_ptr<WorkerState> _state;
+  WorkerState _state;
+  WorkerStats _workerStats;
+  uint64_t _expectedGSS = 0;
   std::unique_ptr<Algorithm<V, E, M>> _algorithm;
   std::unique_ptr<WorkerContext> _workerContext;
-  uint64_t _expectedGSS = 0;
-  
+ 
   std::unique_ptr<basics::ThreadPool> _workerPool;
   std::unique_ptr<GraphStore<V, E>> _graphStore;
   std::unique_ptr<IncomingCache<M>> _readCache, _writeCache;
   std::unique_ptr<AggregatorUsage> _conductorAggregators;
   std::unique_ptr<AggregatorUsage> _workerAggregators;
+  std::unique_ptr<MessageFormat<M>> _messageFormat;
+  std::unique_ptr<MessageCombiner<M>> _messageCombiner;
   
   void _swapIncomingCaches() {
     _readCache.swap(_writeCache);
     _writeCache->clear();
   }
   void _executeGlobalStep();
-  void _workerJobIsDone(WorkerStats stats);
+  void _workerJobIsDone(WorkerStats const& stats);
   
  public:
   Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algorithm,

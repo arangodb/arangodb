@@ -1833,11 +1833,10 @@ static void JS_UpdateVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief todo
+/// @brief Pregel Stuff
 ////////////////////////////////////////////////////////////////////////////////
 
-
-static void JS_Pregel(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_TRY_CATCH_BEGIN(isolate);
     v8::HandleScope scope(isolate);
     
@@ -1846,7 +1845,7 @@ static void JS_Pregel(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (argLength < 3 || !args[2]->IsString()) {
         // TODO extend this for named graphs, use the Graph class
         TRI_V8_THROW_EXCEPTION_USAGE(
-                                     "_pregel(<vertexCollection>, <edgeCollection>, <algorithm>[, "
+                                     "_pregelStart(<vertexCollection>, <edgeCollection>, <algorithm>[, "
                                      "{steps:100, ...}]");
     }
     std::vector<std::string> vertices;
@@ -1932,6 +1931,52 @@ static void JS_Pregel(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   
     TRI_V8_TRY_CATCH_END
+}
+
+static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  
+  // check the arguments
+  uint32_t const argLength = args.Length();
+  if (argLength != 1 || args[0]->IsNumber() || args[0]->IsString()) {
+    // TODO extend this for named graphs, use the Graph class
+    TRI_V8_THROW_EXCEPTION_USAGE("_pregelStatus(<executionNum>]");
+  }
+  uint64_t executionNum = TRI_ObjectToUInt64(args[0], true);
+  pregel::Conductor *c = pregel::PregelFeature::instance()->conductor(executionNum);
+  if (!c) {
+    TRI_V8_THROW_EXCEPTION_USAGE("Execution number is invalid");
+  }
+  VPackBuilder result;
+  result.openObject();
+  result.add("running", VPackValue(c->getState() == pregel::ExecutionState::RUNNING,
+                                   VPackValueType::Bool));
+  result.add("gss", VPackValue(c->globalSuperstep()));
+  c->workerStats().serializeValues(result);
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_PregelCancel(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  
+  // check the arguments
+  uint32_t const argLength = args.Length();
+  if (argLength != 1 || args[0]->IsNumber() || args[0]->IsString()) {
+    // TODO extend this for named graphs, use the Graph class
+    TRI_V8_THROW_EXCEPTION_USAGE("_pregelStatus(<executionNum>]");
+  }
+  uint64_t executionNum = TRI_ObjectToUInt64(args[0], true);
+  pregel::Conductor *c = pregel::PregelFeature::instance()->conductor(executionNum);
+  if (!c) {
+    TRI_V8_THROW_EXCEPTION_USAGE("Execution number is invalid");
+  }
+  c->cancel();
+  
+  TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2808,7 +2853,9 @@ static void JS_CompletionsVocbase(
   result->Set(j++, TRI_V8_ASCII_STRING("_update()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_useDatabase()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_version()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_pregel()"));
+  result->Set(j++, TRI_V8_ASCII_STRING("_pregelStart()"));
+  result->Set(j++, TRI_V8_ASCII_STRING("_pregelStatus()"));
+  result->Set(j++, TRI_V8_ASCII_STRING("_pregelStop()"));
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -3090,8 +3137,12 @@ void TRI_InitV8Collection(v8::Handle<v8::Context> context,
                        JS_ReplaceVocbase);
   TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_update"),
                        JS_UpdateVocbase);
-  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_pregel"),
-                       JS_Pregel);
+  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_pregelStart"),
+                       JS_PregelStart);
+  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_pregelStatus"),
+                       JS_PregelStatus);
+  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_pregelCancel"),
+                       JS_PregelCancel);
 
   // an internal API used for storing a document without wrapping a V8
   // collection object

@@ -76,7 +76,9 @@ class Conductor {
   void start(VPackSlice params);
   void cancel();
 
-  ExecutionState getState() { return _state; }
+  ExecutionState getState() const { return _state; }
+  WorkerStats workerStats() const {return _workerStats;}
+  uint64_t globalSuperstep() const {return _globalSuperstep;}
 };
 }
 }

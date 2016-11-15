@@ -72,20 +72,19 @@ IWorker* IWorker::createWorker(TRI_vocbase_t* vocbase, VPackSlice body) {
 template <typename V, typename E, typename M>
 Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
                         VPackSlice initConfig)
-    : _running(true), _algorithm(algo) {
+    : _running(true), _state(vocbase->name(), initConfig), _algorithm(algo) {
   VPackSlice userParams = initConfig.get(Utils::userParametersKey);
-  _state.reset(new WorkerState(vocbase->name(), initConfig));
   _workerContext.reset(algo->workerContext(userParams));
 
   const size_t threadNum = 1;
   _workerPool.reset(
       new ThreadPool(static_cast<size_t>(threadNum), "Pregel Worker"));
   _graphStore.reset(
-      new GraphStore<V, E>(vocbase, _state.get(), algo->inputFormat()));
-  std::shared_ptr<MessageFormat<M>> mFormat(algo->messageFormat());
-  std::shared_ptr<MessageCombiner<M>> combiner(algo->messageCombiner());
-  _readCache.reset(new IncomingCache<M>(mFormat, combiner));
-  _writeCache.reset(new IncomingCache<M>(mFormat, combiner));
+      new GraphStore<V, E>(vocbase, &_state, algo->inputFormat()));
+  _messageFormat.reset(algo->messageFormat());
+  _messageCombiner.reset(algo->messageCombiner());
+  _readCache.reset(new IncomingCache<M>(_messageFormat.get(), _messageCombiner.get()));
+  _writeCache.reset(new IncomingCache<M>(_messageFormat.get(), _messageCombiner.get()));
   _conductorAggregators.reset(new AggregatorUsage(algo));
   _workerAggregators.reset(new AggregatorUsage(algo));
 
@@ -123,7 +122,7 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data) {
   }
   
   // clean up message caches, intialize gss
-  _state->_globalSuperstep = gss;
+  _state._globalSuperstep = gss;
   _swapIncomingCaches();  // write cache becomes the readable cache
   // parse aggregated values from conductor
   _conductorAggregators->resetValues();
@@ -144,7 +143,7 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
   LOG(INFO) << "Starting GSS: " << data.toJson();
   VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
   const uint64_t gss = (uint64_t)gssSlice.getUInt();
-  if (gss != _state->globalSuperstep()) {
+  if (gss != _state.globalSuperstep()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Wrong GSS");
   }
   LOG(INFO) << "Worker starts new gss: " << gss;
@@ -153,13 +152,22 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
   // for (; numThreads > 0; numThreads--) {}
   // incoming caches are already switched
   _workerPool->enqueue([this, gss] {
+    if (!this->_running) {
+      LOG(INFO) << "Execution aborted prematurely.";
+      return;
+    }
 
-    std::unique_ptr<MessageFormat<M>> format(_algorithm->messageFormat());
-    std::unique_ptr<MessageCombiner<M>> combiner(_algorithm->messageCombiner());
-    
-    OutgoingCache<M> outCache(_state.get(), format.get(), combiner.get(),
-                              this->_writeCache.get());
+    // thread local objects, TODO reduce instantiation of format and combiner
+    //std::shared_ptr<MessageFormat<M>> format(_algorithm->messageFormat());
+    //std::shared_ptr<MessageCombiner<M>> combiner(_algorithm->messageCombiner());
+    //IncomingCache<M> localIncoming(format, combiner);
     AggregatorUsage workerAggregator(_algorithm.get());
+    
+    OutgoingCache<M> outCache(&_state,
+                              _messageFormat.get(),
+                              _messageCombiner.get(),
+                              _writeCache.get());//&localIncoming
+    
     std::unique_ptr<VertexComputation<V, E, M>> vertexComputation(
         _algorithm->createComputation(gss));
     vertexComputation->_gss = gss;
@@ -222,27 +230,28 @@ void Worker<V, E, M>::receivedMessages(VPackSlice data) {
                                    "Bad parameters in body");
   }
   uint64_t gss = gssSlice.getUInt();
-  if (gss == _state->_globalSuperstep) {
+  if (gss == _state._globalSuperstep) {
     _writeCache->parseMessages(messageSlice);
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Superstep out of sync");
-    LOG(ERR) << "Expected: " << _state->_globalSuperstep << "Got: " << gss;
+    LOG(ERR) << "Expected: " << _state._globalSuperstep << "Got: " << gss;
   }
 }
 
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::_workerJobIsDone(WorkerStats stats) {
-  _expectedGSS = _state->_globalSuperstep + 1;
+void Worker<V, E, M>::_workerJobIsDone(WorkerStats const& stats) {
+  _expectedGSS = _state._globalSuperstep + 1;
+  _readCache->clear();//no need to keep old messages around
 
   // notify the conductor that we are done.
   VPackBuilder package;
   package.openObject();
   package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-  package.add(Utils::executionNumberKey, VPackValue(_state->executionNumber()));
-  package.add(Utils::globalSuperstepKey, VPackValue(_state->globalSuperstep()));
+  package.add(Utils::executionNumberKey, VPackValue(_state.executionNumber()));
+  package.add(Utils::globalSuperstepKey, VPackValue(_state.globalSuperstep()));
   package.add(Utils::doneKey, VPackValue(stats.allZero()));// TODO remove
-  stats.addValues(package);
+  stats.serializeValues(package);
   if (_workerAggregators->size() > 0) {
     package.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
     _workerAggregators->serializeValues(package);
@@ -251,17 +260,17 @@ void Worker<V, E, M>::_workerJobIsDone(WorkerStats stats) {
   package.close();
 
   ClusterComm* cc = ClusterComm::instance();
-  std::string baseUrl = Utils::baseUrl(_state->database());
+  std::string baseUrl = Utils::baseUrl(_state.database());
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
   auto headers =
       std::make_unique<std::unordered_map<std::string, std::string>>();
   auto body = std::make_shared<std::string const>(package.toJson());
   cc->asyncRequest("", coordinatorTransactionID,
-                   "server:" + _state->coordinatorId(), rest::RequestType::POST,
+                   "server:" + _state.coordinatorId(), rest::RequestType::POST,
                    baseUrl + Utils::finishedGSSPath, body, headers, nullptr,
                    90.0);
   LOG(INFO) << "Sending finishedGSS to coordinator: "
-            << _state->coordinatorId();
+            << _state.coordinatorId();
   if (stats.allZero())
     LOG(INFO) << "WE have no active vertices, and did not send messages";
 }
@@ -270,7 +279,14 @@ template <typename V, typename E, typename M>
 void Worker<V, E, M>::finalizeExecution(VPackSlice body) {
   _running = false;
   _workerPool.reset();
-  _graphStore->storeResults();
+  
+  VPackSlice store = body.get(Utils::storeResultsKey);
+  if (store.isBool() && store.getBool() == true) {
+    _graphStore->storeResults();
+  } else {
+    LOG(WARN) << "Discarding results";
+  }
+  _graphStore.reset();
   
   /*VPackBuilder b;
   b.openArray();

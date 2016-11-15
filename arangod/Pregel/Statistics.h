@@ -36,6 +36,7 @@ struct WorkerStats {
   size_t activeCount;
   size_t sendCount;
   size_t receivedCount;
+  uint64_t superstepRuntimeMilli = 0;
 
   WorkerStats() : activeCount(0), sendCount(0), receivedCount(0) {}
   WorkerStats(size_t a, size_t s, size_t r) : activeCount(a), sendCount(s), receivedCount(r) {}
@@ -55,13 +56,14 @@ struct WorkerStats {
     }
   }
 
-  void addValues(VPackBuilder& b) const {
+  void serializeValues(VPackBuilder& b) const {
     b.add(Utils::activeCountKey, VPackValue(activeCount));
     b.add(Utils::sendCountKey, VPackValue(sendCount));
     b.add(Utils::receivedCountKey, VPackValue(receivedCount));
+    b.add(Utils::superstepRuntimeMilliKey, VPackValue(superstepRuntimeMilli));
   }
   
-  bool allZero() {
+  bool allZero() const {
     return activeCount == 0 && sendCount == 0 && receivedCount == 0;
   }
 };

@@ -51,6 +51,12 @@ function startExecution(options) {
       URL += '/' + encodeURIComponent(options);
     }
   }*/
+  var first = options.vertexCollections && options.vertexCollections instanceof Array
+  && options.edgeCollection && typeof options.edgeCollection === 'string';
+  var second = options.graphName &&  typeof options.graphName === 'string'
+  if (!first && !second) {
+    throw "Invalid parameters, either {vertexCollections:['',..], edgeCollection: ''} or {graphName:'<graph>'} or graph name";
+  }
   var requestResult = db._connection.POST(API, JSON.stringify(options));
   arangosh.checkRequestResult(requestResult);
   return requestResult;

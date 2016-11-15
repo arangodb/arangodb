@@ -43,8 +43,7 @@ processing */
 template <typename M>
 class IncomingCache {
  public:
-  IncomingCache(std::shared_ptr<MessageFormat<M>>& format,
-                std::shared_ptr<MessageCombiner<M>>& combiner)
+  IncomingCache(MessageFormat<M> const* format, MessageCombiner<M> const* combiner)
       : _format(format), _combiner(combiner) {}
   ~IncomingCache();
 
@@ -57,6 +56,7 @@ class IncomingCache {
   /// @brief internal method to direclty set the messages for a vertex. Only
   /// valid with already combined messages
   void setDirect(std::string const& vertexId, M const& data);
+  void mergeCache(IncomingCache<M> const& otherCache);
 
   size_t receivedMessageCount() { return _receivedMessageCount; }
 
@@ -65,8 +65,8 @@ class IncomingCache {
   std::unordered_map<std::string, M> _messages;
   size_t _receivedMessageCount = 0;
 
-  std::shared_ptr<MessageFormat<M>> _format;
-  std::shared_ptr<MessageCombiner<M>> _combiner;
+  MessageFormat<M> const* _format;
+  MessageCombiner<M> const* _combiner;
 };
 }
 }

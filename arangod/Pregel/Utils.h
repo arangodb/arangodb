@@ -59,10 +59,12 @@ class Utils {
   static std::string const messagesKey;
   static std::string const senderKey;
   static std::string const doneKey;
+  static std::string const storeResultsKey;
   static std::string const aggregatorValuesKey;
   static std::string const activeCountKey;
   static std::string const receivedCountKey;
   static std::string const sendCountKey;
+  static std::string const superstepRuntimeMilliKey;
   static std::string const totalVertexCount;
   static std::string const totalEdgeCount;
 

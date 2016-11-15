@@ -233,10 +233,7 @@ void Conductor::startGlobalStep() {
 
 void Conductor::finishedGlobalStep(VPackSlice& data) {
   MUTEX_LOCKER(mutexLocker, _finishedGSSMutex);
-  if (_state != ExecutionState::RUNNING) {
-    LOG(WARN) << "Conductor did not expect another finishedGlobalStep call";
-    return;
-  }
+
   uint64_t gss = data.get(Utils::globalSuperstepKey).getUInt();
   if (gss != _globalSuperstep) {
     LOG(WARN) << "Conductor did received a callback from the wrong superstep";
@@ -259,18 +256,28 @@ void Conductor::finishedGlobalStep(VPackSlice& data) {
     LOG(INFO) << "Finished gss " << _globalSuperstep;
     _globalSuperstep++;
 
-    if (_doneCount == _dbServerCount || _globalSuperstep == 100) {
+    if (_state != ExecutionState::RUNNING
+        || _doneCount == _dbServerCount
+        || _globalSuperstep == 100) {
+      
       LOG(INFO) << "Done. We did " << _globalSuperstep << " rounds";
       LOG(INFO) << "Send: " << _workerStats.sendCount
       << " Received: " << _workerStats.receivedCount;
+      
+      bool storeResults = _state == ExecutionState::RUNNING;
+      if (_state == ExecutionState::CANCELED) {
+        LOG(WARN) << "Execution was canceled, results will be discarded.";
+      }
 
       VPackBuilder b;
       b.openObject();
       b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
       b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
+      b.add(Utils::storeResultsKey, VPackValue(storeResults));
       b.close();
       std::string baseUrl = Utils::baseUrl(_vocbaseGuard.vocbase()->name());
       sendToAllDBServers(baseUrl + Utils::finalizeExecutionPath, b.slice());
+      
       _state = ExecutionState::DONE;
     } else {  // trigger next superstep
       startGlobalStep();

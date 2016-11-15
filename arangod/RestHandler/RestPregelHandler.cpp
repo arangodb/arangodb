@@ -61,7 +61,7 @@ RestStatus RestPregelHandler::execute() {
 
     }
   
-    std::vector<std::string> const& suffix = _request->suffix();
+    std::vector<std::string> const& suffix = _request->suffixes();
     VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
     if (!sExecutionNum.isInteger()) {
       LOG(ERR) << "Invalid execution number";

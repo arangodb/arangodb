@@ -88,6 +88,22 @@ void IncomingCache<M>::setDirect(std::string const& toValue,
 }
 
 template <typename M>
+void IncomingCache<M>::mergeCache(IncomingCache<M> const& otherCache) {
+  MUTEX_LOCKER(guard, _writeLock);
+  
+  // cannot call setDirect since it locks
+  for (auto const& pair : otherCache._messages) {
+    _receivedMessageCount++;
+    auto vmsg = _messages.find(pair.first);
+    if (vmsg != _messages.end()) {  // got a message for the same vertex
+      vmsg->second = _combiner->combine(vmsg->second, pair.second);
+    } else {
+      _messages[pair.first] = pair.second;
+    }
+  }
+}
+
+template <typename M>
 MessageIterator<M> IncomingCache<M>::getMessages(std::string const& vertexId) {
   auto vmsg = _messages.find(vertexId);
   if (vmsg != _messages.end()) {
