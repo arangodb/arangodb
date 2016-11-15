@@ -87,6 +87,7 @@ v3.1.1 (XXXX-XX-XX)
 
 * fixed issue #2156
 
+* fixed CRC4 assembly linkage
 
 v3.1.0 (2016-10-29)
 -------------------
