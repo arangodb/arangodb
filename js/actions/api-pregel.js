@@ -132,7 +132,7 @@ function delete_api_pregel(req, res) {
 // //////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url: '_api/pregel',
+  url: '_api/control_pregel',
 
   callback: function (req, res) {
     try {

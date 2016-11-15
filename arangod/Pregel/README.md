@@ -25,9 +25,9 @@ First rename the columns '_key', '_from', '_to' arangoimp will keep those.
 
 In arangosh:
 
-    db._create('vertices', {numberOfShards: 4});
+    db._create('vertices', {numberOfShards: 2});
     db._createEdgeCollection('alt_edges');
-    db._createEdgeCollection('edges', {numberOfShards: 4, 
+    db._createEdgeCollection('edges', {numberOfShards: 2, 
                                        shardKeys:["_vertex"], 
                                        distributeShardsLike:'vertices'
                                       });
@@ -37,7 +37,7 @@ arangoimp --file generated_vertices.csv --type csv --collection vertices --overw
 Or:
 for(var i=0; i < 5000; i++) db.vertices.save({_key:i+""});
 
-arangoimp --file generated_edges.csv --type csv --collection alt_edges --overwrite true --from-collection-prefix "vertices" --to-collection-prefix "vertices"  --server.endpoint http+tcp://127.0.0.1:8530
+arangoimp --file generated_edges.csv --type csv --collection alt_edges --overwrite true --from-collection-prefix "vertices" --to-collection-prefix "vertices" --convert false  --server.endpoint http+tcp://127.0.0.1:8530
 
 
 

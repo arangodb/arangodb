@@ -33,12 +33,12 @@ var arangodb = require('@arangodb');
 var throwBadParameter = arangodb.throwBadParameter;
 var db = internal.db;
 
-var API = '/_api/pregel';
+var API = '/_api/control_pregel';
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief creates a new pregel execution
 // //////////////////////////////////////////////////////////////////////////////
-function startExecution(options) {
+var startExecution = function(options, algo) {
   /*var URL = API;
 
   if (typeof (options) === 'object') {
@@ -53,25 +53,29 @@ function startExecution(options) {
   }*/
   var first = options.vertexCollections && options.vertexCollections instanceof Array
   && options.edgeCollection && typeof options.edgeCollection === 'string';
-  var second = options.graphName &&  typeof options.graphName === 'string'
-  if (!first && !second) {
+  var second = typeof options.graphName === 'string' && typeof options.algorithm === 'string';
+  var third = typeof options === 'string' && typeof algo === 'string';
+  if (!first && !second && !third) {
     throw "Invalid parameters, either {vertexCollections:['',..], edgeCollection: ''} or {graphName:'<graph>'} or graph name";
+  }
+  if (third) {
+    options = {graphName:options, algorithm:algo};
   }
   var requestResult = db._connection.POST(API, JSON.stringify(options));
   arangosh.checkRequestResult(requestResult);
   return requestResult;
 };
 
-function getExecutionStatus(executionID) {
-  var requestResult = db._connection.GET(API + '/' + executionID);
+var getExecutionStatus = function (executionID) {
+  var URL = API + '/' + encodeURIComponent(executionID);
+  var requestResult = db._connection.GET(URL);
   arangosh.checkRequestResult(requestResult);
-
   return requestResult;
 };
 
-function cancelExecution(executionID) {
-  
-  var requestResult = db._connection.DELETE(API + '/' + executionID);
+var cancelExecution = function (executionID) {
+  var URL = API + '/' + encodeURIComponent(executionID);
+  var requestResult = db._connection.DELETE(URL);
   arangosh.checkRequestResult(requestResult);
   return requestResult;
 };
