@@ -25,6 +25,7 @@
 const NotFound = require('http-errors').NotFound;
 const fs = require('fs');
 const joinPath = require('path').join;
+const resolvePath = require('path').resolve;
 const internal = require('internal');
 const errors = require('@arangodb').errors;
 const FoxxManager = require('@arangodb/foxx/manager');
@@ -102,7 +103,8 @@ module.exports = function createSwaggerRouteHandler(foxxMount, opts) {
     } else if (path === 'index.html') {
       path = indexFile;
     }
-    const filePath = path.charAt(0) === '/' ? path : joinPath(swaggerRoot, path);
+    path = resolvePath('/', path);
+    const filePath = joinPath(swaggerRoot, path);
     if (!fs.isFile(filePath)) {
       throw new NotFound(`unknown path "${req._raw.url}"`);
     }

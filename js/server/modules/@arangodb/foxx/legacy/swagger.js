@@ -25,6 +25,7 @@
 var _ = require('lodash');
 var fs = require('fs');
 var joinPath = require('path').join;
+var resolvePath = require('path').resolve;
 var internal = require('internal');
 var ArangoError = require('@arangodb').ArangoError;
 var errors = require('@arangodb').errors;
@@ -93,12 +94,10 @@ function createSwaggerRouteHandler(defaultAppPath, opts) {
 }
 
 function swaggerPath(path, basePath) {
-  if (path.charAt(0) === '/') {
-    return path;
-  }
   if (!basePath) {
     basePath = joinPath(internal.startupPath, 'server', 'assets', 'swagger');
   }
+  path = resolvePath('/', path);
   return joinPath(basePath, path);
 }
 
