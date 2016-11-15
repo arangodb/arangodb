@@ -1295,7 +1295,7 @@
 
     updateAQL: function () {
       var content = this.aqlEditor.getValue();
-      var queryName = localStorage.getItem('lastOpenQuery');
+      var queryName = $('#lastQueryName').html();
       var query = this.collection.findWhere({name: queryName});
 
       if (query) {
