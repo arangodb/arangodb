@@ -1,20 +1,20 @@
-shell> curl --dump - http://localhost:8529/_api/document/products/9799
+shell> curl --dump - http://localhost:8529/_api/document/products/9798
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: <span class="hljs-string">"_U_D0_du---"</span>
+etag: <span class="hljs-string">"_UEfD1Me---"</span>
 
 { 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9799"</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/9799"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_U_D0_du---"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9798"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/9798"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UEfD1Me---"</span>, 
   <span class="hljs-string">"inhabitants"</span> : { 
     <span class="hljs-string">"china"</span> : <span class="hljs-number">1366980000</span>, 
     <span class="hljs-string">"india"</span> : <span class="hljs-number">1263590000</span>, 
     <span class="hljs-string">"usa"</span> : <span class="hljs-number">319220000</span> 
   } 
 }
-shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/document/products/9799?mergeObjects=true &lt;&lt;EOF
+shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/document/products/9798?mergeObjects=true &lt;&lt;EOF
 { 
   <span class="hljs-string">"inhabitants"</span> : { 
     <span class="hljs-string">"indonesia"</span> : <span class="hljs-number">252164800</span>, 
@@ -23,16 +23,16 @@ shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/docume
 }
 EOF
 
-shell> curl --dump - http://localhost:8529/_api/document/products/9799
+shell> curl --dump - http://localhost:8529/_api/document/products/9798
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: <span class="hljs-string">"_U_D0_d6---"</span>
+etag: <span class="hljs-string">"_UEfD1Mu---"</span>
 
 { 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9799"</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/9799"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_U_D0_d6---"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9798"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/9798"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UEfD1Mu---"</span>, 
   <span class="hljs-string">"inhabitants"</span> : { 
     <span class="hljs-string">"china"</span> : <span class="hljs-number">1366980000</span>, 
     <span class="hljs-string">"india"</span> : <span class="hljs-number">1263590000</span>, 
@@ -41,7 +41,7 @@ etag: <span class="hljs-string">"_U_D0_d6---"</span>
     <span class="hljs-string">"brazil"</span> : <span class="hljs-number">203553000</span> 
   } 
 }
-shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/document/products/9799?mergeObjects=false &lt;&lt;EOF
+shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/document/products/9798?mergeObjects=false &lt;&lt;EOF
 { 
   <span class="hljs-string">"inhabitants"</span> : { 
     <span class="hljs-string">"pakistan"</span> : <span class="hljs-number">188346000</span> 
@@ -51,25 +51,25 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: <span class="hljs-string">"_U_D0_eS---"</span>
-location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/products/<span class="hljs-number">9799</span>
+etag: <span class="hljs-string">"_UEfD1NC---"</span>
+location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/products/<span class="hljs-number">9798</span>
 
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/9799"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9799"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_U_D0_eS---"</span>, 
-  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_U_D0_d6---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/9798"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9798"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UEfD1NC---"</span>, 
+  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_UEfD1Mu---"</span> 
 }
-shell> curl --dump - http://localhost:8529/_api/document/products/9799
+shell> curl --dump - http://localhost:8529/_api/document/products/9798
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: <span class="hljs-string">"_U_D0_eS---"</span>
+etag: <span class="hljs-string">"_UEfD1NC---"</span>
 
 { 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9799"</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/9799"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_U_D0_eS---"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9798"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/9798"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UEfD1NC---"</span>, 
   <span class="hljs-string">"inhabitants"</span> : { 
     <span class="hljs-string">"pakistan"</span> : <span class="hljs-number">188346000</span> 
   } 
