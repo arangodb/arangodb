@@ -44,8 +44,10 @@ bool SimpleAttributeEqualityMatcher::matchOne(
     
   std::unordered_set<std::string> nonNullAttributes;
   _found.clear();
+  
+  size_t const n = node->numMembers();
 
-  for (size_t i = 0; i < node->numMembers(); ++i) {
+  for (size_t i = 0; i < n; ++i) {
     auto op = node->getMember(i);
 
     if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
@@ -72,11 +74,13 @@ bool SimpleAttributeEqualityMatcher::matchOne(
         // use slightly different cost calculation for IN than for EQ
         calculateIndexCosts(index, op->getMember(0), itemsInIndex, estimatedItems, estimatedCost);
         size_t values = 1;
-        auto m = op->getMember(1);
-        if (m->isArray() && m->numMembers() > 1) {
-          // attr IN [ a, b, c ]  =>  this will produce multiple items, so count
-          // them!
-          values = m->numMembers();
+        if (!index->unique() && !index->implicitlyUnique()) {
+          auto m = op->getMember(1);
+          if (m->isArray() && m->numMembers() > 1) {
+            // attr IN [ a, b, c ]  =>  this will produce multiple items, so count
+            // them!
+            values = m->numMembers();
+          }
         }
         estimatedItems *= values;
         estimatedCost *= values;
@@ -98,11 +102,13 @@ bool SimpleAttributeEqualityMatcher::matchAll(
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) {
   std::unordered_set<std::string> nonNullAttributes;
-  size_t values = 0;
+  size_t values = 1;
   
   _found.clear();
 
-  for (size_t i = 0; i < node->numMembers(); ++i) {
+  size_t const n = node->numMembers();
+
+  for (size_t i = 0; i < n; ++i) {
     auto op = node->getMember(i);
 
     if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
@@ -118,12 +124,14 @@ bool SimpleAttributeEqualityMatcher::matchAll(
 
       if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op,
                           reference, nonNullAttributes, false)) {
-        auto m = op->getMember(1);
+        if (!index->unique() && !index->implicitlyUnique()) {
+          auto m = op->getMember(1);
 
-        if (m->isArray() && m->numMembers() > 1) {
-          // attr IN [ a, b, c ]  =>  this will produce multiple items, so count
-          // them!
-          values += m->numMembers() - 1;
+          if (m->isArray() && m->numMembers() > 1) {
+            // attr IN [ a, b, c ]  =>  this will produce multiple items, so count
+            // them!
+            values *= m->numMembers();
+          }
         }
       }
     }
