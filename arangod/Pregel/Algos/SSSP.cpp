@@ -44,7 +44,7 @@ struct SSSPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
       LOG(INFO) << "Recomputing value for vertex " << vertexID;
       *state = tmp;  // update state
 
-      EdgeIterator<int64_t> edges = getEdges();
+      RangeIterator<EdgeEntry<int64_t>> edges = getEdges();
       for (EdgeEntry<int64_t>* edge : edges) {
         int64_t val = *edge->getData() + tmp;
         std::string const& toID = edge->toVertexID();

@@ -26,6 +26,7 @@
 #include <cstdint>
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
+#include "Basics/Mutex.h"
 
 namespace arangodb {
 namespace pregel {
@@ -43,18 +44,19 @@ class PregelFeature final : public application_features::ApplicationFeature {
   void beginShutdown() override final;
 
   uint64_t createExecutionNumber();
-  void addExecution(Conductor* const exec, unsigned int executionNumber);
-  Conductor* conductor(int32_t executionNumber);
+  void addExecution(Conductor* const exec, uint64_t executionNumber);
+  Conductor* conductor(uint64_t executionNumber);
 
-  void addWorker(IWorker* const worker, unsigned int executionNumber);
-  IWorker* worker(unsigned int executionNumber);
+  void addWorker(IWorker* const worker, uint64_t executionNumber);
+  IWorker* worker(uint64_t executionNumber);
 
-  void cleanup(unsigned int executionNumber);
+  void cleanup(uint64_t executionNumber);
   void cleanupAll();
 
  private:
-  std::unordered_map<unsigned int, Conductor*> _conductors;
-  std::unordered_map<unsigned int, IWorker*> _workers;
+  std::unordered_map<uint64_t, Conductor*> _conductors;
+  std::unordered_map<uint64_t, IWorker*> _workers;
+  Mutex _mutex;
 };
 }
 }

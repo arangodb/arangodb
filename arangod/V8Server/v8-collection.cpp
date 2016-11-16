@@ -1879,7 +1879,7 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
       }
   }
   
-  LOG(INFO) << "Called _pregel(" << vertices[0] << "," << edgeCName << ")";
+  LOG(INFO) << "Called _pregelStart(" << vertices[0] << "," << edgeCName << ")";
   
   if (ServerState::instance()->isCoordinator()) {
     LOG(INFO) << "Called as a controller";

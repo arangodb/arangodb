@@ -29,7 +29,7 @@
 #include "Pregel/VertexComputation.h"
 #include "Pregel/WorkerState.h"
 
-
+#include "Basics/MutexLocker.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/ticks.h"
@@ -76,7 +76,7 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
   VPackSlice userParams = initConfig.get(Utils::userParametersKey);
   _workerContext.reset(algo->workerContext(userParams));
 
-  const size_t threadNum = 1;
+  const size_t threadNum = TRI_numberProcessors();
   _workerPool.reset(
       new ThreadPool(static_cast<size_t>(threadNum), "Pregel Worker"));
   _graphStore.reset(
@@ -106,8 +106,10 @@ Worker<V, E, M>::~Worker() {
 
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::prepareGlobalStep(VPackSlice data) {
+  // Only expect serial calls from the conductor. Lock to prevent malicous activity
+  MUTEX_LOCKER(guard, _conductorMutex);
+  
   LOG(INFO) << "Prepare GSS: " << data.toJson();
-
   VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
   if (!gssSlice.isInteger()) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,
@@ -140,6 +142,9 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data) {
 /// @brief Setup next superstep
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
+  // Only expect serial calls from the conductor. Lock to prevent malicous activity
+  MUTEX_LOCKER(guard, _conductorMutex);
+  
   LOG(INFO) << "Starting GSS: " << data.toJson();
   VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
   const uint64_t gss = (uint64_t)gssSlice.getUInt();
@@ -148,7 +153,7 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
   }
   LOG(INFO) << "Worker starts new gss: " << gss;
   
-  //TRI_numberProcessors()
+  
   //size_t numThreads = _workerPool->numThreads();
   // for (; numThreads > 0; numThreads--) {}
   // incoming caches are already switched
@@ -181,17 +186,17 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
     vertexComputation->_workerAggregators = &workerAggregator;
 
     size_t activeCount = 0;
-    std::vector<VertexEntry>& vertexIterator =
+    RangeIterator<VertexEntry> vertexIterator =
         _graphStore->vertexIterator();
 
-    for (auto& vertexEntry : vertexIterator) {
-      std::string vertexID = vertexEntry.vertexID();
+    for (VertexEntry *vertexEntry : vertexIterator) {
+      std::string vertexID = vertexEntry->vertexID();
       MessageIterator<M> messages = _readCache->getMessages(vertexID);
 
-      if (gss == 0 || messages.size() > 0 || vertexEntry.active()) {
-        vertexComputation->_vertexEntry = &vertexEntry;
+      if (gss == 0 || messages.size() > 0 || vertexEntry->active()) {
+        vertexComputation->_vertexEntry = vertexEntry;
         vertexComputation->compute(vertexID, messages);
-        if (vertexEntry.active()) {
+        if (vertexEntry->active()) {
           activeCount++;
         } else {
           LOG(INFO) << vertexID << " vertex has halted";
@@ -286,6 +291,9 @@ void Worker<V, E, M>::_workerJobIsDone(WorkerStats const& stats) {
 
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::finalizeExecution(VPackSlice body) {
+  // Only expect serial calls from the conductor. Lock to prevent malicous activity
+  MUTEX_LOCKER(guard, _conductorMutex);
+  
   _running = false;
   _workerPool.reset();
   

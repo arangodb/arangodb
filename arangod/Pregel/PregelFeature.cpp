@@ -24,6 +24,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Conductor.h"
 #include "Worker.h"
+#include "Basics/MutexLocker.h"
 
 using namespace arangodb::pregel;
 
@@ -50,12 +51,15 @@ PregelFeature* PregelFeature::instance() { return Instance; }
 void PregelFeature::beginShutdown() { cleanupAll(); }
 
 void PregelFeature::addExecution(Conductor* const exec,
-                                 unsigned int executionNumber) {
+                                 uint64_t executionNumber) {
+  MUTEX_LOCKER(guard, _mutex);
   //_executions.
   _conductors[executionNumber] = exec;
 }
 
-Conductor* PregelFeature::conductor(int executionNumber) {
+Conductor* PregelFeature::conductor(uint64_t executionNumber) {
+  MUTEX_LOCKER(guard, _mutex);
+  
   auto it = _conductors.find(executionNumber);
   if (it != _conductors.end())
     return it->second;
@@ -64,11 +68,13 @@ Conductor* PregelFeature::conductor(int executionNumber) {
 }
 
 void PregelFeature::addWorker(IWorker* const worker,
-                              unsigned int executionNumber) {
+                              uint64_t executionNumber) {
+  MUTEX_LOCKER(guard, _mutex);
   _workers[executionNumber] = worker;
 }
 
-IWorker* PregelFeature::worker(unsigned int executionNumber) {
+IWorker* PregelFeature::worker(uint64_t executionNumber) {
+  MUTEX_LOCKER(guard, _mutex);
   auto it = _workers.find(executionNumber);
   if (it != _workers.end())
     return it->second;
@@ -76,7 +82,8 @@ IWorker* PregelFeature::worker(unsigned int executionNumber) {
     return nullptr;
 }
 
-void PregelFeature::cleanup(unsigned int executionNumber) {
+void PregelFeature::cleanup(uint64_t executionNumber) {
+  MUTEX_LOCKER(guard, _mutex);
   auto cit = _conductors.find(executionNumber);
   if (cit != _conductors.end()) {
     delete (cit->second);
@@ -90,6 +97,7 @@ void PregelFeature::cleanup(unsigned int executionNumber) {
 }
 
 void PregelFeature::cleanupAll() {
+  MUTEX_LOCKER(guard, _mutex);
   for (auto it : _conductors) {
     delete (it.second);
   }

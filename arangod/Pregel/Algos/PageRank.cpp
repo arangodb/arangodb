@@ -95,7 +95,7 @@ struct PageRankComputation : public VertexComputation<float, float, float> {
     }
     
     if (globalSuperstep() < 50 && diff > _limit) {
-      EdgeIterator<float> edges = getEdges();
+      RangeIterator<EdgeEntry<float>> edges = getEdges();
       float val = *ptr / edges.size();
       for (EdgeEntry<float>* edge : edges) {
         sendMessage(edge->toVertexID(), val);

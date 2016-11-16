@@ -68,7 +68,7 @@ class Conductor {
 
  public:
   Conductor(uint64_t executionNumber, TRI_vocbase_t* vocbase,
-            std::vector<std::shared_ptr<LogicalCollection>> vertexCollections,
+            std::vector<std::shared_ptr<LogicalCollection>> const& vertexCollections,
             std::shared_ptr<LogicalCollection> edgeCollection,
             std::string const& algorithm);
   ~Conductor();

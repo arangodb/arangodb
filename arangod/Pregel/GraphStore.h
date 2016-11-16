@@ -38,7 +38,6 @@ namespace pregel {
 /// @brief header entry for the edge file
 template <typename E>
 struct EdgeEntry {
-  ;
 
  private:
   // size_t _nextEntryOffset;
@@ -63,55 +62,52 @@ struct EdgeEntry {
   }
 };
 
-template <typename E>
-class EdgeIterator {
+template <typename T>
+class RangeIterator {
  private:
   // void *_begin, *_end, *_current;
-  std::vector<EdgeEntry<E>>& _edges;
+  std::vector<T>& _vector;
   size_t _begin, _end, _current;
 
  public:
-  typedef EdgeIterator<E> iterator;
-  typedef const EdgeIterator<E> const_iterator;
+  typedef RangeIterator<T> iterator;
+  typedef const RangeIterator<T> const_iterator;
 
-  EdgeIterator(std::vector<EdgeEntry<E>>& edges, size_t begin, size_t end)
-      : _edges(edges), _begin(begin), _end(end), _current(begin) {}
+  RangeIterator(std::vector<T>& v, size_t begin, size_t end)
+      : _vector(v), _begin(begin), _end(end), _current(begin) {}
 
-  iterator begin() { return EdgeIterator(_edges, _begin, _end); }
-  const_iterator begin() const { return EdgeIterator(_edges, _begin, _end); }
+  iterator begin() { return RangeIterator(_vector, _begin, _end); }
+  const_iterator begin() const { return RangeIterator(_vector, _begin, _end); }
   iterator end() {
-    auto it = EdgeIterator(_edges, _begin, _end);
+    auto it = RangeIterator(_vector, _begin, _end);
     it._current = it._end;
     return it;
   }
   const_iterator end() const {
-    auto it = EdgeIterator(_edges, _begin, _end);
+    auto it = RangeIterator(_vector, _begin, _end);
     it._current = it._end;
     return it;
   }
 
   // prefix ++
-  EdgeIterator& operator++() {
+  RangeIterator& operator++() {
     _current++;
     return *this;
   }
 
   // postfix ++
-  EdgeIterator<E>& operator++(int) {
-    EdgeIterator result(*this);
+  RangeIterator<T>& operator++(int) {
+    RangeIterator<T> result(*this);
     ++(*this);
     return result;
   }
 
-  EdgeEntry<E>* operator*() const {
-    EdgeEntry<E>* el = _edges.data();
-    if (_current != _end)
-      return el + _current;
-    else
-      return nullptr;
+  T* operator*() const {
+    T* el = _vector.data();
+    return _current != _end ? el + _current : nullptr;
   }
 
-  bool operator!=(EdgeIterator const& other) const {
+  bool operator!=(RangeIterator<T> const& other) const {
     return _current != other._current;
   }
 
@@ -174,14 +170,14 @@ struct VertexEntry {
     return std::string(_vertexID, _vertexIDSize);
   };*/
 };
-
+  
 // unused right now
-class VertexIterator {
+/*class LinkedListIterator {
  private:
   intptr_t _begin, _end, _current;
 
-  /*VertexIterator(const VertexIterator&) = delete;
-  VertexIterator& operator=(const FileInfo&) = delete;*/
+  VertexIterator(const VertexIterator&) = delete;
+  VertexIterator& operator=(const FileInfo&) = delete;
 
  public:
   typedef VertexIterator iterator;
@@ -224,7 +220,7 @@ class VertexIterator {
   bool operator!=(VertexIterator const& other) const {
     return _current != other._current;
   }
-};
+};*/
 
 class WorkerState;
 
@@ -265,8 +261,8 @@ class GraphStore {
              GraphFormat<V, E>* graphFormat);
   ~GraphStore();
 
-  std::vector<VertexEntry>& vertexIterator();
-  EdgeIterator<E> edgeIterator(VertexEntry const* entry);
+  RangeIterator<VertexEntry> vertexIterator();
+  RangeIterator<EdgeEntry<E>> edgeIterator(VertexEntry const* entry);
 
   void* mutableVertexData(VertexEntry const* entry);
   V copyVertexData(VertexEntry const* entry);

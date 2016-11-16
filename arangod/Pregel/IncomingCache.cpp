@@ -55,10 +55,9 @@ void IncomingCache<M>::parseMessages(VPackSlice incomingMessages) {
         "There must always be an even number of entries in messages");
   }
 
-  VPackValueLength i = 0;
   std::string toValue;
-  for (i = 0; i < length; i++) {
-    VPackSlice current = incomingMessages.at(i);
+  VPackValueLength i = 0;
+  for (VPackSlice current : VPackArrayIterator(incomingMessages)) {
     if (i % 2 == 0) {  // TODO support multiple recipients
       toValue = current.copyString();
     } else {
@@ -70,6 +69,7 @@ void IncomingCache<M>::parseMessages(VPackSlice incomingMessages) {
       }
       setDirect(toValue, newValue);
     }
+    i++;
   }
 }
 
@@ -83,7 +83,7 @@ void IncomingCache<M>::setDirect(std::string const& toValue,
   if (vmsg != _messages.end()) {  // got a message for the same vertex
     vmsg->second = _combiner->combine(vmsg->second, newValue);
   } else {
-    _messages[toValue] = newValue;
+    _messages.insert(std::make_pair(toValue, newValue));
   }
 }
 
@@ -97,7 +97,7 @@ void IncomingCache<M>::mergeCache(IncomingCache<M> const& otherCache) {
     if (vmsg != _messages.end()) {  // got a message for the same vertex
       vmsg->second = _combiner->combine(vmsg->second, pair.second);
     } else {
-      _messages[pair.first] = pair.second;
+      _messages.insert(pair);
     }
   }
   _receivedMessageCount += otherCache._receivedMessageCount;

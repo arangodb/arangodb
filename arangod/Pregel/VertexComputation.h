@@ -68,7 +68,7 @@ class VertexComputation {
 
   V vertexData() { return _graphStore->copyVertexData(_vertexEntry); }
 
-  EdgeIterator<E> getEdges() { return _graphStore->edgeIterator(_vertexEntry); }
+  RangeIterator<EdgeEntry<E>> getEdges() { return _graphStore->edgeIterator(_vertexEntry); }
 
   /// store data, will potentially move the data around
   void setVertexData(void const* ptr, size_t size) {

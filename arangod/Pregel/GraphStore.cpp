@@ -59,8 +59,8 @@ GraphStore<V, E>::~GraphStore() {
 }
 
 template <typename V, typename E>
-std::vector<VertexEntry>& GraphStore<V, E>::vertexIterator() {
-  return _index;
+RangeIterator<VertexEntry> GraphStore<V, E>::vertexIterator() {
+  return RangeIterator<VertexEntry>(_index, 0, _index.size());
 }
 
 template <typename V, typename E>
@@ -83,9 +83,9 @@ void GraphStore<V, E>::replaceVertexData(VertexEntry const* entry, void* data,
 }
 
 template <typename V, typename E>
-EdgeIterator<E> GraphStore<V, E>::edgeIterator(VertexEntry const* entry) {
+RangeIterator<EdgeEntry<E>> GraphStore<V, E>::edgeIterator(VertexEntry const* entry) {
   size_t end = entry->_edgeDataOffset + entry->_edgeCount;
-  return EdgeIterator<E>(_edges, entry->_edgeDataOffset, end);
+  return RangeIterator<EdgeEntry<E>>(_edges, entry->_edgeDataOffset, end);
 }
 
 
@@ -205,8 +205,6 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard) {
     THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up vertices '%s'",
                                   vertexShard.c_str());
   }
-  /*TRI_ASSERT( ==
-             _ctx->_vertexCollectionPlanId);*/
 }
 
 template <typename V, typename E>

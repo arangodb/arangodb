@@ -25,6 +25,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/ThreadPool.h"
+#include "Basics/Mutex.h"
 #include "Pregel/AggregatorUsage.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/WorkerContext.h"
@@ -59,7 +60,7 @@ class IncomingCache;
 
 template <typename V, typename E, typename M>
 class Worker : public IWorker {
-  friend class arangodb::RestPregelHandler;
+  //friend class arangodb::RestPregelHandler;
   
   bool _running = true;
   WorkerState _state;
@@ -75,6 +76,10 @@ class Worker : public IWorker {
   std::unique_ptr<AggregatorUsage> _workerAggregators;
   std::unique_ptr<MessageFormat<M>> _messageFormat;
   std::unique_ptr<MessageCombiner<M>> _messageCombiner;
+  
+  size_t _runningThreads;
+  Mutex _threadMutex;
+  Mutex _conductorMutex;
   
   void _swapIncomingCaches() {
     _readCache.swap(_writeCache);

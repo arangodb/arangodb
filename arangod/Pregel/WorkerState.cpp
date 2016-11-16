@@ -62,7 +62,7 @@ WorkerState::WorkerState(DatabaseID dbname, VPackSlice params)
   }
 
   for (auto const& it : VPackObjectIterator(collectionPlanIdMap)) {
-    _collectionPlanIdMap[it.key.copyString()] = it.value.copyString();
+    _collectionPlanIdMap.emplace(it.key.copyString(), it.value.copyString());
   }
   _edgeCollectionPlanId = edgePlanID.copyString();
 }

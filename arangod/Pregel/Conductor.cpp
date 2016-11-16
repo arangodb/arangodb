@@ -57,7 +57,7 @@ static IAggregatorCreator* resolveAlgorithm(std::string name,
 
 Conductor::Conductor(
     uint64_t executionNumber, TRI_vocbase_t* vocbase,
-    std::vector<std::shared_ptr<LogicalCollection>> vertexCollections,
+    std::vector<std::shared_ptr<LogicalCollection>> const& vertexCollections,
     std::shared_ptr<LogicalCollection> edgeCollection,
     std::string const& algorithm)
     : _vocbaseGuard(vocbase),
@@ -67,7 +67,7 @@ Conductor::Conductor(
       _vertexCollections(vertexCollections),
       _edgeCollection(edgeCollection) {
   bool isCoordinator = ServerState::instance()->isCoordinator();
-  assert(isCoordinator);
+  TRI_ASSERT(isCoordinator);
   LOG(INFO) << "constructed conductor";
   std::vector<std::string> algos{"sssp", "pagerank"};
   if (std::find(algos.begin(), algos.end(), _algorithm) == algos.end()) {
@@ -103,7 +103,7 @@ static void resolveShards(LogicalCollection const* collection,
 }
 
 void Conductor::start(VPackSlice userConfig) {
-  if (userConfig.isNone()) {
+  if (!userConfig.isObject()) {
     userConfig = VPackSlice::emptyObjectSlice();
   }
   _agregatorCreator.reset(resolveAlgorithm(_algorithm, userConfig));
@@ -117,7 +117,7 @@ void Conductor::start(VPackSlice userConfig) {
   std::map<CollectionID, std::string> collectionPlanIdMap;
   std::map<ServerID, std::vector<ShardID>> edgeServerMap;
 
-  for (auto collection : _vertexCollections) {
+  for (auto &collection : _vertexCollections) {
     collectionPlanIdMap[collection->name()] = collection->planId_as_string();
     int64_t cc =
         Utils::countDocuments(_vocbaseGuard.vocbase(), collection->name());
@@ -145,7 +145,7 @@ void Conductor::start(VPackSlice userConfig) {
   if (_vertexServerMap.size() != edgeServerMap.size()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "Vertex and edge collections are not shared correctly");
+        "Vertex and edge collections are not sharded correctly");
   }
 
   std::string coordinatorId = ServerState::instance()->getId();
@@ -187,7 +187,7 @@ void Conductor::start(VPackSlice userConfig) {
 
   ClusterComm* cc = ClusterComm::instance();
   size_t nrDone = 0;
-  cc->performRequests(requests, 120.0, nrDone, LogTopic("Pregel Conductor"));
+  cc->performRequests(requests, 5.0 * 60.0, nrDone, LogTopic("Pregel Conductor"));
   LOG(INFO) << "Send messages to " << nrDone << " shards of "
             << _vertexCollections[0]->name();
   // look at results
@@ -200,6 +200,8 @@ void Conductor::start(VPackSlice userConfig) {
   }
 }
 
+// only called by the conductor, is protected by the
+// mutex locked in finishedGlobalStep
 void Conductor::startGlobalStep() {
   VPackBuilder b;
   b.openObject();
@@ -225,7 +227,7 @@ void Conductor::startGlobalStep() {
     LOG(INFO) << "Conductor started new gss " << _globalSuperstep;
   } else {
     LOG(INFO) << "Seems there is at least one worker out of order";
-    // TODO, in case a worker needs more than 120s to do calculations
+    // TODO, in case a worker needs more than 5 minutes to do calculations
     // this will be triggered as well
     // TODO handle cluster failures
   }
@@ -307,7 +309,7 @@ int Conductor::sendToAllDBServers(std::string path, VPackSlice const& config) {
   }
 
   size_t nrDone = 0;
-  size_t nrGood = cc->performRequests(requests, 120.0, nrDone,
+  size_t nrGood = cc->performRequests(requests, 5.0 * 60.0, nrDone,
                                       LogTopic("Pregel Conductor"));
   LOG(INFO) << "Send messages to " << nrDone << " servers";
   printResults(requests);
