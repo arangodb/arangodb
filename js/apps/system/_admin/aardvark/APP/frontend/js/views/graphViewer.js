@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global arangoHelper, _, frontendConfig, slicePath, icon, Joi, wheelnav, document, sigma, Backbone, templateEngine, $, window*/
+/* global arangoHelper, _, frontendConfig, slicePath, icon, Joi, wheelnav, document, sigma, Backbone, templateEngine, $, window */
 (function () {
   'use strict';
 
@@ -219,7 +219,15 @@
 
       // render
       this.graphData.modified = this.parseData(this.graphData.original, this.graphData.graphInfo);
-      this.renderGraph(this.graphData.modified, null, true);
+
+      var success = false;
+      try {
+        this.renderGraph(this.graphData.modified, null, true);
+        success = true;
+      } catch (ignore) {
+      }
+
+      return success;
     },
 
     renderAQL: function (data) {
@@ -1880,7 +1888,7 @@
 
       if (aqlMode) {
         // aql editor settings
-        self.renderer = 'webgl';
+        self.renderer = 'canvas';
 
         if (graph.nodes.length < 500) {
           self.algorithm = 'fruchtermann';

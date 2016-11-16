@@ -33,14 +33,13 @@ class Agent;
 
 class GossipCallback : public arangodb::ClusterCommCallback {
  public:
-  explicit GossipCallback(Agent*);
+  explicit GossipCallback(Agent*, size_t);
 
   virtual bool operator()(arangodb::ClusterCommResult*) override final;
 
-  void shutdown();
-
  private:
   Agent* _agent;
+  size_t _version;
 };
 }
 }  // namespace

@@ -28,7 +28,7 @@
 
   window.versionHelper = {
     fromString: function (s) {
-      var parts = s.replace(/-[a-zA-Z0-9_\-]*$/g, '').split('.');
+      var parts = s.replace(/-[a-zA-Z0-9_-]*$/g, '').split('.');
       return {
         major: parseInt(parts[0], 10) || 0,
         minor: parseInt(parts[1], 10) || 0,
@@ -181,6 +181,12 @@
         }, {
           label: 'Redo',
           letter: 'Ctrl/Cmd + Shift + Z'
+        }, {
+          label: 'Increase Font Size',
+          letter: 'Shift + Alt + Up'
+        }, {
+          label: 'Decrease Font Size',
+          letter: 'Shift + Alt + Down'
         }]
       },
       doceditor: {
@@ -454,7 +460,9 @@
     },
 
     arangoError: function (title, content, info) {
-      window.App.notificationList.add({title: title, content: content, info: info, type: 'error'});
+      if (!$('#offlinePlaceholder').is(':visible')) {
+        window.App.notificationList.add({title: title, content: content, info: info, type: 'error'});
+      }
     },
 
     arangoWarning: function (title, content, info) {
@@ -790,10 +798,16 @@
       localStorage.setItem('authenticationNotification', false);
     },
 
-    renderEmpty: function (string) {
-      $('#content').html(
-        '<div class="noContent"><p>' + string + '</p></div>'
-      );
+    renderEmpty: function (string, iconClass) {
+      if (!iconClass) {
+        $('#content').html(
+          '<div class="noContent"><p>' + string + '</p></div>'
+        );
+      } else {
+        $('#content').html(
+          '<div class="noContent"><p>' + string + '<i class="' + iconClass + '"></i></p></div>'
+        );
+      }
     },
 
     download: function (url, callback) {

@@ -57,7 +57,7 @@ class IniFileParser {
         std::regex::ECMAScript);
     // an include line
     _matchers.include = std::regex(
-        "^[ \t]*@include[ \t]*([-_A-Za-z0-9/i\\.]*)[ \t]*$", std::regex::ECMAScript);
+        "^[ \t]*@include[ \t]*([-_A-Za-z0-9/\\.]*)[ \t]*$", std::regex::ECMAScript);
   }
 
   // parse a config file. returns true if all is well, false otherwise

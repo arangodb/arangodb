@@ -1,5 +1,5 @@
 /* jshint browser: true */
-/* global $, Joi, _, arangoHelper, templateEngine, window*/
+/* global $, Joi, _, arangoHelper, templateEngine, window */
 (function () {
   'use strict';
 
@@ -47,7 +47,7 @@
       validateInput: function () {
         return [
           {
-            rule: Joi.string().regex(/^(\/(APP[^\/]+|(?!APP)[a-zA-Z0-9_\-%]+))+$/i),
+            rule: Joi.string().regex(/^(\/(APP[^/]+|(?!APP)[a-zA-Z0-9_\-%]+))+$/i),
             msg: 'May not contain /APP'
           },
           {
@@ -59,7 +59,7 @@
             msg: 'Mountpoints with _ are reserved for internal use'
           },
           {
-            rule: Joi.string().regex(/[^\/]$/),
+            rule: Joi.string().regex(/[^/]$/),
             msg: 'May not end with /'
           },
           {
@@ -81,7 +81,7 @@
       validateInput: function () {
         return [
           {
-            rule: Joi.string().required().regex(/^[a-zA-Z0-9_\-]+\/[a-zA-Z0-9_\-]+$/),
+            rule: Joi.string().required().regex(/^[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+$/),
             msg: 'No valid Github account and repository.'
           }
         ];
@@ -130,7 +130,7 @@
       validateInput: function () {
         return [
           {
-            rule: Joi.string().required().regex(/^[a-zA-Z0-9 \.,;\-]+$/),
+            rule: Joi.string().required().regex(/^[a-zA-Z0-9 .,;-]+$/),
             msg: 'Has to be non empty.'
           }
         ];
@@ -240,7 +240,7 @@
       };
 
       try {
-        Joi.assert(url, Joi.string().regex(/^[a-zA-Z0-9_\-]+\/[a-zA-Z0-9_\-]+$/));
+        Joi.assert(url, Joi.string().regex(/^[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+$/));
       } catch (e) {
         return;
       }

@@ -113,7 +113,7 @@ void RestoreFeature::collectOptions(
                      new BooleanParameter(&_overwrite));
 
   options->addOption("--recycle-ids",
-                     "recycle collection and revision ids from dump",
+                     "recycle collection ids from dump",
                      new BooleanParameter(&_recycleIds));
 
   options->addOption("--default-number-of-shards",

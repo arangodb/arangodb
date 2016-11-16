@@ -22,21 +22,22 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SCHEDULER_SOCKET_TASK2_H
-#define ARANGOD_SCHEDULER_SOCKET_TASK2_H 1
+#ifndef ARANGOD_SCHEDULER_SOCKET_TASK_H
+#define ARANGOD_SCHEDULER_SOCKET_TASK_H 1
 
 #include "Scheduler/Task.h"
 
 #include <boost/asio/ssl.hpp>
 
-#include "Basics/asio-helper.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/asio-helper.h"
 #include "Scheduler/Socket.h"
 #include "Statistics/StatisticsAgent.h"
 
 namespace arangodb {
 namespace rest {
 class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
+  friend class HttpCommTask;
   explicit SocketTask(SocketTask const&) = delete;
   SocketTask& operator=(SocketTask const&) = delete;
 
@@ -45,15 +46,30 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
 
  public:
   SocketTask(EventLoop, std::unique_ptr<Socket>, ConnectionInfo&&,
-             double keepAliveTimeout);
+             double keepAliveTimeout, bool skipInit);
 
   virtual ~SocketTask();
+
+  std::unique_ptr<Socket> releasePeer() {
+    _abandoned = true;
+    return std::move(_peer);
+  }
+
+  ConnectionInfo&& releaseConnectionInfo() {
+    _abandoned = true;
+    return std::move(_connectionInfo);
+  }
 
  public:
   void start();
 
  protected:
   virtual bool processRead() = 0;
+
+  // This function is used during the protocol switch from http
+  // to VelocyStream. This way we no not require additional
+  // constructor arguments. It should not be used otherwise.
+  void addToReadBuffer(char const* data, std::size_t len);
 
  protected:
   void addWriteBuffer(std::unique_ptr<basics::StringBuffer> buffer) {
@@ -89,6 +105,7 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
   boost::asio::deadline_timer _keepAliveTimer;
 
   bool _closeRequested = false;
+  std::atomic_bool _abandoned;
 
  private:
   bool reserveMemory();

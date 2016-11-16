@@ -83,7 +83,7 @@ class GeneralCommTask : public SocketTask {
 
  public:
   GeneralCommTask(EventLoop, GeneralServer*, std::unique_ptr<Socket>,
-                  ConnectionInfo&&, double keepAliveTimeout);
+                  ConnectionInfo&&, double keepAliveTimeout, bool skipSocketInit = false);
 
   virtual void addResponse(GeneralResponse*) = 0;
   virtual arangodb::Endpoint::TransportType transportType() = 0;
@@ -123,9 +123,6 @@ class GeneralCommTask : public SocketTask {
   std::unordered_map<uint64_t, RequestStatisticsAgent> _agents;
 
  private:
-  void handleTimeout() /* override final */ { /* _clientClosed = true; */
-  }
-
   bool handleRequest(std::shared_ptr<RestHandler>);
   void handleRequestDirectly(std::shared_ptr<RestHandler>);
   bool handleRequestAsync(std::shared_ptr<RestHandler>,

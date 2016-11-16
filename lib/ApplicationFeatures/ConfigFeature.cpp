@@ -68,7 +68,7 @@ void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options,
                                 const char* binaryPath) {
-  for (auto def : _defines) {
+  for (auto const& def : _defines) {
     DefineEnvironment(def);
   }
 

@@ -193,7 +193,7 @@ class ReadCache {
   ChunkProtector readAndLease(RevisionCacheEntry const&, ManagedDocumentResult& result);
 
   ChunkProtector insertAndLease(TRI_voc_rid_t revisionId, uint8_t const* vpack, ManagedDocumentResult& result);
-
+  
  private:
   RevisionCacheChunkAllocator* _allocator;
   CollectionRevisionsCache* _collectionCache; 

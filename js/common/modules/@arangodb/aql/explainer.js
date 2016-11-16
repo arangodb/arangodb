@@ -284,7 +284,42 @@ function printTraversalDetails (traversals) {
   var maxMinMaxDepth = String('Depth').length;
   var maxVertexCollectionNameStrLen = String('Vertex collections').length;
   var maxEdgeCollectionNameStrLen = String('Edge collections').length;
+  var maxOptionsLen = String('Options').length;
   var maxConditionsLen = String('Filter conditions').length;
+
+  var optify = function(options, colorize) {
+    var opts = { 
+      bfs: options.bfs || undefined, /* only print if set to true to space room */
+      uniqueVertices: options.uniqueVertices, 
+      uniqueEdges: options.uniqueEdges 
+    };
+
+    var result = '';
+    for (var att in opts) {
+      if (result.length > 0) {
+        result += ', ';
+      }
+      if (opts[att] === undefined) {
+        continue;
+      }
+      if (colorize) {
+        result += keyword(att) + ': ';
+        if (typeof opts[att] === 'boolean') {
+          result += value(opts[att] ? 'true' : 'false');
+        } else {
+          result += value(String(opts[att]));
+        }
+      } else {
+        result += att + ': ';
+        if (typeof opts[att] === 'boolean') {
+          result += (opts[att] ? 'true' : 'false');
+        } else {
+          result += String(opts[att]);
+        }
+      }
+    }
+    return result;
+  };
 
   traversals.forEach(function (node) {
     var l = String(node.id).length;
@@ -312,12 +347,19 @@ function printTraversalDetails (traversals) {
         maxEdgeCollectionNameStrLen = node.edgeCollectionNameStrLen;
       }
     }
+    if (node.hasOwnProperty('traversalFlags')) {
+      var opts = optify(node.traversalFlags); 
+      if (opts.length > maxOptionsLen) {
+        maxOptionsLen = opts.length;
+      }
+    }
   });
 
   var line = ' ' + pad(1 + maxIdLen - String('Id').length) + header('Id') + '   ' +
   header('Depth') + pad(1 + maxMinMaxDepth - String('Depth').length) + '   ' +
   header('Vertex collections') + pad(1 + maxVertexCollectionNameStrLen - 'Vertex collections'.length) + '   ' +
   header('Edge collections') + pad(1 + maxEdgeCollectionNameStrLen - 'Edge collections'.length) + '   ' +
+  header('Options') + pad(1 + maxOptionsLen - 'Options'.length) + '   ' +
   header('Filter conditions');
 
   stringBuilder.appendLine(line);
@@ -342,6 +384,12 @@ function printTraversalDetails (traversals) {
       line += pad(1 + maxEdgeCollectionNameStrLen) + '   ';
     }
 
+    if (traversals[i].hasOwnProperty('traversalFlags')) {
+      line += optify(traversals[i].traversalFlags, true) + pad(1 + maxOptionsLen - optify(traversals[i].traversalFlags, false).length) + '   ';
+    } else {
+      line += pad(1 + maxOptionsLen) + '   ';
+    }
+
     if (traversals[i].hasOwnProperty('ConditionStr')) {
       line += traversals[i].ConditionStr;
     }
@@ -358,7 +406,7 @@ function printShortestPathDetails (shortestPaths) {
   }
 
   stringBuilder.appendLine();
-  stringBuilder.appendLine(section('Shortest Paths on graphs:'));
+  stringBuilder.appendLine(section('Shortest paths on graphs:'));
 
   var maxIdLen = String('Id').length;
   var maxVertexCollectionNameStrLen = String('Vertex collections').length;
@@ -826,8 +874,60 @@ function processQuery (query, explain) {
           value(node.minMaxDepth) + '  ' + annotation('/* min..maxPathDepth */') + ' ';
 
         var translate = ['ANY', 'INBOUND', 'OUTBOUND'];
-        var defaultDirection = node.directions[0];
-        rc += keyword(translate[defaultDirection]);
+        var directions = [], d;
+        for (var i = 0; i < node.edgeCollections.length; ++i) {
+          var isLast = (i + 1 === node.edgeCollections.length);
+          d = node.directions[i];
+          if (!isLast && node.edgeCollections[i] === node.edgeCollections[i + 1]) {
+            // direction ANY is represented by two traversals: an INBOUND and an OUTBOUND traversal
+            // on the same collection
+            d = 0; // ANY
+          }
+          directions.push({ collection: node.edgeCollections[i], direction: d });
+
+          if (!isLast && node.edgeCollections[i] === node.edgeCollections[i + 1]) {
+            // don't print same collection twice
+            ++i; 
+          }
+        }
+        var allIndexes = [];
+        for (i = 0; i < node.edgeCollections.length; ++i) {
+          d = node.directions[i];
+          // base indexes
+          var ix = node.indexes.base[i];
+          ix.collection = node.edgeCollections[i];
+          ix.condition = keyword("base " + translate[d]);
+          ix.level = -1;
+          ix.direction = d;
+          ix.node = node.id;
+          allIndexes.push(ix);
+          
+          // level-specific indexes
+          for (var l in node.indexes.levels) {
+            ix = node.indexes.levels[l][i];
+            ix.collection = node.edgeCollections[i];
+            ix.condition = keyword("level " + parseInt(l, 10) + " " + translate[d]);
+            ix.level = parseInt(l, 10);
+            ix.direction = d;
+            ix.node = node.id;
+            allIndexes.push(ix);
+          }
+        }
+
+        allIndexes.sort(function(l, r) {
+          if (l.collection !== r.collection) {
+            return l.collection < r.collection ? -1 : 1;
+          }
+          if (l.level !== r.level) {
+            return l.level < r.level ? -1 : 1;
+          }
+          if (l.direction !== r.direction) {
+            return l.direction < r.direction ? -1 : 1;
+          }
+          return 0;
+        });
+
+        rc += keyword(translate[directions[0].direction]);
         if (node.hasOwnProperty('vertexId')) {
           rc += " '" + value(node.vertexId) + "' ";
         } else {
@@ -836,14 +936,10 @@ function processQuery (query, explain) {
         rc += annotation('/* startnode */') + '  ';
 
         if (Array.isArray(node.graph)) {
-          rc += node.graph.map(function (g, index) {
-            var tmp = '';
-            if (node.directions[index] !== defaultDirection) {
-              tmp += keyword(translate[node.directions[index]]);
-              tmp += ' ';
-            }
-            return tmp + collection(g);
-          }).join(', ');
+          rc += collection(directions[0].collection);
+          for (i = 1; i < directions.length; ++i) {
+            rc += ', ' + keyword(translate[directions[i].direction]) + ' ' + collection(directions[i].collection);
+          }
         } else {
           rc += keyword('GRAPH') + " '" + value(node.graph) + "'";
         }
@@ -876,6 +972,11 @@ function processQuery (query, explain) {
           node.edgeCollectionNameStrLen = edgeCols.join(', ').length;
           node.graph = '<anonymous>';
         }
+
+        allIndexes.forEach(function (idx) {
+          indexes.push(idx);
+        });
+
         return rc;
       case 'ShortestPathNode':
         if (node.hasOwnProperty('vertexOutVariable')) {
@@ -885,7 +986,7 @@ function processQuery (query, explain) {
           parts.push(variableName(node.edgeOutVariable) + '  ' + annotation('/* edge */'));
         }
         translate = ['ANY', 'INBOUND', 'OUTBOUND'];
-        defaultDirection = node.directions[0];
+        var defaultDirection = node.directions[0];
         rc = `${keyword("FOR")} ${parts.join(", ")} ${keyword("IN") } ${keyword(translate[defaultDirection])} `;
         if (node.hasOwnProperty('startVertexId')) {
           rc += `'${value(node.startVertexId)}'`;

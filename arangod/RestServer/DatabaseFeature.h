@@ -118,7 +118,9 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   void enableUpgrade() { _upgrade = true; }
   bool throwCollectionNotLoadedError() const { return _throwCollectionNotLoadedError.load(std::memory_order_relaxed); }
   void throwCollectionNotLoadedError(bool value) { _throwCollectionNotLoadedError.store(value); }
-  bool check30Revisions() const { return _check30Revisions; }
+  bool check30Revisions() const { return _check30Revisions == "true" || _check30Revisions == "fail"; }
+  bool fail30Revisions() const { return _check30Revisions == "fail"; }
+  void isInitiallyEmpty(bool value) { _isInitiallyEmpty = value; }
 
  private:
   void closeDatabases();
@@ -155,7 +157,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   bool _defaultWaitForSync;
   bool _forceSyncProperties;
   bool _ignoreDatafileErrors;
-  bool _check30Revisions;
+  std::string _check30Revisions;
   std::atomic<bool> _throwCollectionNotLoadedError;
 
   TRI_vocbase_t* _vocbase;

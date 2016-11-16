@@ -52,6 +52,7 @@ static const std::string supervisionFrequencyStr = "supervision frequency";
 static const std::string supervisionGracePeriodStr = "supervision grace period";
 static const std::string compactionStepSizeStr = "compaction step size";
 static const std::string defaultEndpointStr = "tcp://localhost:8529";
+static const std::string versionStr = "version";
 
 struct config_t {
   std::string _id;
@@ -68,6 +69,8 @@ struct config_t {
   double _supervisionFrequency;
   uint64_t _compactionStepSize;
   double _supervisionGracePeriod;
+  bool _cmdLineTimings;
+  size_t _version;
 
   mutable arangodb::basics::ReadWriteLock _lock; // guard member variables
 
@@ -77,7 +80,7 @@ struct config_t {
   /// @brief ctor
   config_t(size_t as, size_t ps, double minp, double maxp, std::string const& e,
            std::vector<std::string> const& g, bool s, bool w, double f,
-           uint64_t c, double p);
+           uint64_t c, double p, bool t);
 
   /// @brief copy constructor
   config_t(config_t const&);
@@ -124,6 +127,9 @@ struct config_t {
   /// @brief pool size
   size_t compactionStepSize() const;
 
+  /// @brief pool size
+  size_t version() const;
+
   /// @brief of active agents
   query_t activeToBuilder() const;
   query_t activeAgentsToBuilder() const;
@@ -168,6 +174,13 @@ struct config_t {
   /// @brief Get maximum RAFT timeout
   double maxPing() const;
 
+  /// @brief Reset RAFT timing
+  void pingTimes(double, double);
+
+  /// @brief Supervision grace period
+  bool cmdLineTimings() const;
+
+  /// @brief Supervision grace period
   double supervisionGracePeriod() const;
 
   /// @brief Get replacement for deceased active agent

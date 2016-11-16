@@ -30,6 +30,7 @@
 #include "StorageEngine/MMFilesDatafileStatistics.h"
 #include "StorageEngine/MMFilesRevisionsCache.h"
 #include "VocBase/Ditch.h"
+#include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/PhysicalCollection.h"
 
@@ -38,6 +39,7 @@ struct TRI_df_marker_t;
 
 namespace arangodb {
 class LogicalCollection;
+class PrimaryIndex;
 
 class MMFilesCollection final : public PhysicalCollection {
  friend class MMFilesCompactorThread;
@@ -47,6 +49,7 @@ class MMFilesCollection final : public PhysicalCollection {
   /// @brief state during opening of a collection
   struct OpenIteratorState {
     LogicalCollection* _collection;
+    arangodb::PrimaryIndex* _primaryIndex;
     TRI_voc_tid_t _tid;
     TRI_voc_fid_t _fid;
     std::unordered_map<TRI_voc_fid_t, DatafileStatisticsContainer*> _stats;
@@ -57,9 +60,11 @@ class MMFilesCollection final : public PhysicalCollection {
     uint64_t _deletions;
     uint64_t _documents;
     int64_t _initialCount;
+    bool const _trackKeys;
 
     OpenIteratorState(LogicalCollection* collection, arangodb::Transaction* trx) 
         : _collection(collection),
+          _primaryIndex(collection->primaryIndex()),
           _tid(0),
           _fid(0),
           _stats(),
@@ -69,7 +74,8 @@ class MMFilesCollection final : public PhysicalCollection {
           _context(trx, collection, &_mmdr, 1),
           _deletions(0),
           _documents(0),
-          _initialCount(-1) {
+          _initialCount(-1),
+          _trackKeys(collection->keyGenerator()->trackKeys()) {
       TRI_ASSERT(collection != nullptr);
       TRI_ASSERT(trx != nullptr);
     }
@@ -104,8 +110,8 @@ class MMFilesCollection final : public PhysicalCollection {
   void figures(std::shared_ptr<arangodb::velocypack::Builder>&) override;
   
   // datafile management
-  int applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
-                        std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) override;
+  bool applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
+                         std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) override;
 
   /// @brief closes an open collection
   int close() override;
@@ -191,7 +197,7 @@ class MMFilesCollection final : public PhysicalCollection {
 
   uint8_t const* lookupRevisionVPack(TRI_voc_rid_t revisionId) const override;
   uint8_t const* lookupRevisionVPackConditional(TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal) const override;
-  void insertRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal) override;
+  void insertRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal, bool shouldLock) override;
   void updateRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal) override;
   bool updateRevisionConditional(TRI_voc_rid_t revisionId, TRI_df_marker_t const* oldPosition, TRI_df_marker_t const* newPosition, TRI_voc_fid_t newFid, bool isInWal) override;
   void removeRevision(TRI_voc_rid_t revisionId, bool updateStats) override;

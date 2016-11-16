@@ -5,6 +5,9 @@ const fs = require('fs');
 const joi = require('joi');
 const semver = require('semver');
 
+const actions = require('@arangodb/actions');
+const ArangoError = require('@arangodb').ArangoError;
+const errors = require('@arangodb').errors;
 const fm = require('@arangodb/foxx/manager');
 const fmu = require('@arangodb/foxx/manager-utils');
 const createRouter = require('@arangodb/foxx/router');
@@ -15,6 +18,12 @@ const router = createRouter();
 module.context.registerType('multipart/form-data', require('./multipart'));
 module.context.use(router);
 
+const legacyErrors = new Map([
+  [errors.ERROR_SERVICE_INVALID_NAME.code, errors.ERROR_FOXX_SOURCE_NOT_FOUND.code],
+  [errors.ERROR_SERVICE_INVALID_MOUNT.code, errors.ERROR_INVALID_MOUNTPOINT.code],
+  [errors.ERROR_SERVICE_DOWNLOAD_FAILED.code, errors.ERROR_FOXX_SOURCE_ERROR.code],
+  [errors.ERROR_SERVICE_UPLOAD_FAILED.code, errors.ERROR_FOXX_SOURCE_ERROR.code]
+]);
 
 const serviceToJson = (service) => (
   {
@@ -40,6 +49,41 @@ function writeUploadToTempFile (buffer) {
   return filename;
 }
 
+function prepareServiceRequestBody (req, res, next) {
+  if (req.body.source instanceof Buffer) {
+    req.body.source = writeUploadToTempFile(req.body.source);
+  }
+  try {
+    if (req.body.dependencies) {
+      req.body.dependencies = JSON.parse(req.body.dependencies);
+    }
+    if (req.body.configuration) {
+      req.body.configuration = JSON.parse(req.body.configuration);
+    }
+  } catch (e) {
+    throw new ArangoError({
+      errorNum: errors.ERROR_SERVICE_OPTIONS_MALFORMED.code,
+      errorMessage: dd`
+        ${errors.ERROR_SERVICE_OPTIONS_MALFORMED.message}
+        Details: ${e.message}
+      `
+    }, {cause: e});
+  }
+  next();
+}
+
+router.use((req, res, next) => {
+  try {
+    next();
+  } catch (e) {
+    if (e.isArangoError) {
+      const errorNum = legacyErrors.get(e.errorNum) || e.errorNum;
+      const status = actions.arangoErrorToHttpCode(errorNum);
+      res.throw(status, e.errorMessage, {errorNum, cause: e});
+    }
+    throw e;
+  }
+});
 
 router.get((req, res) => {
   res.json(
@@ -49,6 +93,7 @@ router.get((req, res) => {
         mount: service.mount,
         name: service.manifest.name,
         version: service.manifest.version,
+        provides: service.manifest.provides || {},
         development: service.isDevelopment,
         legacy: isLegacy(service)
       }
@@ -61,17 +106,16 @@ router.get((req, res) => {
   Fetches a list of services installed in the current database.
 `);
 
-
-router.post((req, res) => {
-  let source = req.body.source;
-  if (source instanceof Buffer) {
-    source = writeUploadToTempFile(source);
+router.post(prepareServiceRequestBody, (req, res) => {
+  const mount = req.queryParams.mount;
+  fm.install(req.body.source, mount, _.omit(req.queryParams, ['mount']));
+  if (req.body.configuration) {
+    fm.setConfiguration(mount, {configuration: req.body.configuration, replace: true});
   }
-  const service = fm.install(
-    source,
-    req.queryParams.mount,
-    _.omit(req.queryParams, ['mount'])
-  );
+  if (req.body.dependencies) {
+    fm.setDependencies(mount, {dependencies: req.body.dependencies, replace: true});
+  }
+  const service = fm.lookupService(mount);
   res.json(serviceToJson(service));
 })
 .body(schemas.service, ['multipart/form-data', 'application/json'], `Service to be installed.`)
@@ -88,7 +132,6 @@ router.post((req, res) => {
   or as a binary zip file using multipart form upload.
 `);
 
-
 const instanceRouter = createRouter();
 instanceRouter.use((req, res, next) => {
   const mount = req.queryParams.mount;
@@ -102,7 +145,6 @@ instanceRouter.use((req, res, next) => {
 .queryParam('mount', schemas.mount, `Mount path of the installed service.`);
 router.use(instanceRouter);
 
-
 const serviceRouter = createRouter();
 instanceRouter.use('/service', serviceRouter);
 
@@ -115,17 +157,16 @@ serviceRouter.get((req, res) => {
   Fetches detailed information for the service at the given mount path.
 `);
 
-
-serviceRouter.patch((req, res) => {
-  let source = req.body.source;
-  if (source instanceof Buffer) {
-    source = writeUploadToTempFile(source);
+serviceRouter.patch(prepareServiceRequestBody, (req, res) => {
+  const mount = req.queryParams.mount;
+  fm.upgrade(req.body.source, mount, _.omit(req.queryParams, ['mount']));
+  if (req.body.configuration) {
+    fm.setConfiguration(mount, {configuration: req.body.configuration, replace: false});
   }
-  const service = fm.upgrade(
-    source,
-    req.queryParams.mount,
-    _.omit(req.queryParams, ['mount'])
-  );
+  if (req.body.dependencies) {
+    fm.setDependencies(mount, {dependencies: req.body.dependencies, replace: false});
+  }
+  const service = fm.lookupService(mount);
   res.json(serviceToJson(service));
 })
 .body(schemas.service, ['multipart/form-data', 'application/json'], `Service to be installed.`)
@@ -143,17 +184,16 @@ serviceRouter.patch((req, res) => {
   or as a binary zip file using multipart form upload.
 `);
 
-
-serviceRouter.put((req, res) => {
-  let source = req.body.source;
-  if (source instanceof Buffer) {
-    source = writeUploadToTempFile(source);
+serviceRouter.put(prepareServiceRequestBody, (req, res) => {
+  const mount = req.queryParams.mount;
+  fm.replace(req.body.source, mount, _.omit(req.queryParams, ['mount']));
+  if (req.body.configuration) {
+    fm.setConfiguration(mount, {configuration: req.body.configuration, replace: true});
   }
-  const service = fm.replace(
-    source,
-    req.queryParams.mount,
-    _.omit(req.queryParams, ['mount'])
-  );
+  if (req.body.dependencies) {
+    fm.setDependencies(mount, {dependencies: req.body.dependencies, replace: true});
+  }
+  const service = fm.lookupService(mount);
   res.json(serviceToJson(service));
 })
 .body(schemas.service, ['multipart/form-data', 'application/json'], `Service to be installed.`)
@@ -171,7 +211,6 @@ serviceRouter.put((req, res) => {
   or as a binary zip file using multipart form upload.
 `);
 
-
 serviceRouter.delete((req, res) => {
   fm.uninstall(
     req.queryParams.mount,
@@ -185,7 +224,6 @@ serviceRouter.delete((req, res) => {
 .description(dd`
   Removes the service at the given mount path from the database and file system.
 `);
-
 
 const configRouter = createRouter();
 instanceRouter.use('/configuration', configRouter)
@@ -229,7 +267,6 @@ configRouter.put((req, res) => {
   Any omitted options will be reset to their default values or marked as unconfigured.
 `);
 
-
 const depsRouter = createRouter();
 instanceRouter.use('/dependencies', depsRouter)
 .response(200, schemas.deps, `Dependency options of the service.`);
@@ -272,13 +309,12 @@ depsRouter.put((req, res) => {
   Any omitted dependencies will be disabled.
 `);
 
-
 const devRouter = createRouter();
 instanceRouter.use('/development', devRouter)
 .response(200, schemas.fullInfo, `Description of the service.`);
 
 devRouter.post((req, res) => {
-  const service = fm.development(req.service);
+  const service = fm.development(req.service.mount);
   res.json(serviceToJson(service));
 })
 .summary(`Enable development mode`)
@@ -288,7 +324,7 @@ devRouter.post((req, res) => {
 `);
 
 devRouter.delete((req, res) => {
-  const service = fm.production(req.service);
+  const service = fm.production(req.service.mount);
   res.json(serviceToJson(service));
 })
 .summary(`Disable development mode`)
@@ -296,7 +332,6 @@ devRouter.delete((req, res) => {
   Puts the service at the given mount path into production mode.
   Changes to the service's code will no longer be reflected automatically.
 `);
-
 
 const scriptsRouter = createRouter();
 instanceRouter.use('/scripts', scriptsRouter);
@@ -327,7 +362,6 @@ scriptsRouter.post('/:name', (req, res) => {
   Returns the exports of the script, if any.
 `);
 
-
 instanceRouter.post('/tests', (req, res) => {
   const service = req.service;
   const reporter = req.queryParams.reporter || null;
@@ -339,7 +373,6 @@ instanceRouter.post('/tests', (req, res) => {
 .description(dd`
   Runs the tests for the service at the given mount path and returns the results.
 `);
-
 
 instanceRouter.get('/readme', (req, res) => {
   const service = req.service;

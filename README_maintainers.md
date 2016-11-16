@@ -26,7 +26,7 @@ repository.
 
 CMake flags
 -----------
- * *-DUSE_MAINTAINER_MODE* - generate lex/yacc files
+ * *-DUSE_MAINTAINER_MODE=1* - generate lex/yacc and errors files
  * *-DUSE_BACKTRACE=1* - add backtraces to native code asserts & exceptions
  * *-DUSE_FAILURE_TESTS=1* - adds javascript hook to crash the server for data integrity tests
 

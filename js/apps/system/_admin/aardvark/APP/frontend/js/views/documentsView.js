@@ -44,8 +44,19 @@
     },
 
     resize: function () {
-      $('#docPureTable').height($('.centralRow').height() - 210);
-      $('#docPureTable .pure-table-body').css('max-height', $('#docPureTable').height() - 47);
+      var dropdownVisible = false;
+      _.each($('.documentsDropdown').first().children(), function (elem) {
+        if ($(elem).is(':visible')) {
+          dropdownVisible = true;
+        }
+      });
+      if (dropdownVisible) {
+        $('#docPureTable').height($('.centralRow').height() - 210 - 57);
+        $('#docPureTable .pure-table-body').css('max-height', $('#docPureTable').height() - 47);
+      } else {
+        $('#docPureTable').height($('.centralRow').height() - 210);
+        $('#docPureTable .pure-table-body').css('max-height', $('#docPureTable').height() - 47);
+      }
     },
 
     setCollectionId: function (colid, page) {
@@ -229,40 +240,6 @@
     buildCollectionLink: function (collection) {
       return 'collection/' + encodeURIComponent(collection.get('name')) + '/documents/1';
     },
-    /*
-    prevCollection : function () {
-      if (this.collectionContext.prev !== null) {
-        $('#collectionPrev').parent().removeClass('disabledPag')
-        window.App.navigate(
-          this.buildCollectionLink(
-            this.collectionContext.prev
-          ),
-          {
-            trigger: true
-          }
-        )
-      }
-      else {
-        $('#collectionPrev').parent().addClass('disabledPag')
-      }
-    },
-
-    nextCollection : function () {
-      if (this.collectionContext.next !== null) {
-        $('#collectionNext').parent().removeClass('disabledPag')
-        window.App.navigate(
-          this.buildCollectionLink(
-            this.collectionContext.next
-          ),
-          {
-            trigger: true
-          }
-        )
-      }
-      else {
-        $('#collectionNext').parent().addClass('disabledPag')
-      }
-    },*/
 
     markFilterToggle: function () {
       if (this.restoredFilters.length > 0) {
@@ -282,8 +259,13 @@
       this.changeEditMode();
       $('#filterHeader').hide();
       $('#importHeader').hide();
-      $('#editHeader').slideToggle(200);
+      $('#editHeader').slideToggle(1);
       $('#exportHeader').hide();
+
+      var self = this;
+      window.setTimeout(function () {
+        self.resize();
+      }, 50);
     },
 
     filterCollection: function () {
@@ -296,7 +278,12 @@
       $('#importHeader').hide();
       $('#editHeader').hide();
       $('#exportHeader').hide();
-      $('#filterHeader').slideToggle(200);
+      $('#filterHeader').slideToggle(1);
+
+      var self = this;
+      window.setTimeout(function () {
+        self.resize();
+      }, 50);
 
       var i;
       for (i in this.filters) {
@@ -314,10 +301,14 @@
       this.changeEditMode(false);
       $('#exportCollection').toggleClass('activated');
       this.markFilterToggle();
-      $('#exportHeader').slideToggle(200);
+      $('#exportHeader').slideToggle(1);
       $('#importHeader').hide();
       $('#filterHeader').hide();
       $('#editHeader').hide();
+      var self = this;
+      window.setTimeout(function () {
+        self.resize();
+      }, 50);
     },
 
     importCollection: function () {
@@ -326,10 +317,14 @@
       this.changeEditMode(false);
       $('#importCollection').toggleClass('activated');
       $('#exportCollection').removeClass('activated');
-      $('#importHeader').slideToggle(200);
+      $('#importHeader').slideToggle(1);
       $('#filterHeader').hide();
       $('#editHeader').hide();
       $('#exportHeader').hide();
+      var self = this;
+      window.setTimeout(function () {
+        self.resize();
+      }, 50);
     },
 
     changeEditMode: function (enable) {
@@ -430,8 +425,12 @@
         '    <option value="!=">!=</option>' +
         '    <option value="&lt;">&lt;</option>' +
         '    <option value="&lt;=">&lt;=</option>' +
-        '    <option value="&gt;=">&gt;=</option>' +
         '    <option value="&gt;">&gt;</option>' +
+        '    <option value="&gt;=">&gt;=</option>' +
+        '    <option value="LIKE">LIKE</option>' +
+        '    <option value="IN">IN</option>' +
+        '    <option value="=~">NOT IN</option>' +
+        '    <option value="REGEX">REGEX</option>' +
         '</select>' +
         '<input id="attribute_value' + num +
         '" type="text" placeholder="Attribute value" ' +

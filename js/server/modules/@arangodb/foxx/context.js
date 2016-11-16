@@ -52,6 +52,15 @@ module.exports =
       return this.service.router.use(path, router, name);
     }
 
+    reverse (routeName, params, suffix) {
+      return this.service.tree.reverse(
+        this.service.router._routes,
+        routeName,
+        params,
+        suffix
+      );
+    }
+
     registerType (type, def) {
       assert(
         (

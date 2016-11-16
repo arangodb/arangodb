@@ -201,8 +201,7 @@ bool EndpointList::hasSsl() const {
       return true;
     }
 
-    if (StringUtils::isPrefix(key, "vpp+ssl://") ||
-        StringUtils::isPrefix(key, "vst+ssl://")) {
+    if (StringUtils::isPrefix(key, "vst+ssl://")) {
       return true;
     }
   }

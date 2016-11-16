@@ -1,23 +1,46 @@
 # -*- mode: CMAKE; -*-
+
+# we will handle install into the target directory on our own via debconf:
+set(PACKAGING_HANDLE_CONFIG_FILES true)
+
 ################################################################################
 # This produces the debian packages, using client/deb.txt for the second package.
 ################################################################################
+
 FILE(READ "${PROJECT_SOURCE_DIR}/Installation/debian/packagedesc.txt" CPACK_DEBIAN_PACKAGE_DESCRIPTION)
 set(CPACK_DEBIAN_PACKAGE_SECTION "database")
 set(CPACK_DEBIAN_PACKAGE_CONFLICTS "arangodb, ${CPACKG_PACKAGE_CONFLICTS}, ${CPACKG_PACKAGE_CONFLICTS}-client, ${CPACK_PACKAGE_NAME}-client")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
-set(CPACK_DEBIAN_COMPRESSION_TYPE "xz")
+if(NOT DISABLE_XZ_DEB)
+  set(CPACK_DEBIAN_COMPRESSION_TYPE "xz")
+endif()
 set(CPACK_DEBIAN_PACKAGE_HOMEPAGE ${ARANGODB_URL_INFO_ABOUT})
 set(CPACK_COMPONENTS_ALL debian-extras)
 set(CPACK_GENERATOR "DEB")
 
+# substitute the package name so debconf works:
+configure_file (
+  "${PROJECT_SOURCE_DIR}/Installation/debian/templates.in"
+  "${PROJECT_BINARY_DIR}/Installation/debian/templates"
+  NEWLINE_STYLE UNIX)
+configure_file (
+  "${PROJECT_SOURCE_DIR}/Installation/debian/config.in"
+  "${PROJECT_BINARY_DIR}/Installation/debian/config"
+  NEWLINE_STYLE UNIX)
+configure_file (
+  "${PROJECT_SOURCE_DIR}/Installation/debian/postinst.in"
+  "${PROJECT_BINARY_DIR}/Installation/debian/postinst"
+  NEWLINE_STYLE UNIX)
+
+
 list(APPEND CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA
-  "${PROJECT_SOURCE_DIR}/Installation/debian/templates"
-  "${PROJECT_SOURCE_DIR}/Installation/debian/config"
-  "${PROJECT_SOURCE_DIR}/Installation/debian/postinst"
+  "${PROJECT_BINARY_DIR}/Installation/debian/templates"
+  "${PROJECT_BINARY_DIR}/Installation/debian/config"
+  "${PROJECT_BINARY_DIR}/Installation/debian/postinst"
+  
   "${PROJECT_SOURCE_DIR}/Installation/debian/preinst"
   "${PROJECT_SOURCE_DIR}/Installation/debian/postrm"
-  "${PROJECT_SOURCE_DIR}/Installation/debian/prerm;")
+  "${PROJECT_SOURCE_DIR}/Installation/debian/prerm")
 
 if(CMAKE_TARGET_ARCHITECTURES MATCHES ".*x86_64.*")
   set(ARANGODB_PACKAGE_ARCHITECTURE "amd64")
@@ -31,6 +54,16 @@ endif()
 set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE ${ARANGODB_PACKAGE_ARCHITECTURE})
 set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}_${ARANGODB_PACKAGE_ARCHITECTURE}")
 
+set(conffiles_list "")
+list(REMOVE_DUPLICATES INSTALL_CONFIGFILES_LIST)
+foreach (_configFile ${INSTALL_CONFIGFILES_LIST})
+  list(APPEND CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA ${_configFile})
+  set(conffiles_list "${conffiles_list}${_configFile}\n")
+endforeach()
+
+set(DH_CONFFILES_NAME "${PROJECT_BINARY_DIR}/conffiles")
+FILE(WRITE ${DH_CONFFILES_NAME} "${conffiles_list}")
+list(APPEND CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${DH_CONFFILES_NAME}")
 
 # deploy the Init script:
 install(
@@ -67,8 +100,10 @@ add_custom_target(package-arongodb-client
 list(APPEND PACKAGES_LIST package-arongodb-client)
 
 
-add_custom_target(copy_packages
+add_custom_target(copy_deb_packages
   COMMAND cp *.deb ${PACKAGE_TARGET_DIR})
+
+list(APPEND COPY_PACKAGES_LIST copy_deb_packages)
 
 add_custom_target(remove_packages
   COMMAND rm -f *.deb

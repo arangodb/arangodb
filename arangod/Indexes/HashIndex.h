@@ -39,18 +39,12 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief hash index query parameter
-////////////////////////////////////////////////////////////////////////////////
-
 namespace arangodb {
 
 class HashIndex;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Class to build Slice lookups out of AST Conditions
-////////////////////////////////////////////////////////////////////////////////
-
 class LookupBuilder {
   private:
     TransactionBuilderLeaser _builder;
@@ -84,10 +78,7 @@ class LookupBuilder {
 class HashIndexIterator final : public IndexIterator {
  public:
   
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Construct an HashIndexIterator based on Ast Conditions
-////////////////////////////////////////////////////////////////////////////////
-
   HashIndexIterator(LogicalCollection* collection, arangodb::Transaction* trx, 
                     ManagedDocumentResult* mmdr,
                     HashIndex const* index,
@@ -114,10 +105,7 @@ class HashIndexIterator final : public IndexIterator {
 class HashIndexIteratorVPack final : public IndexIterator {
  public:
   
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Construct an HashIndexIterator based on VelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
   HashIndexIteratorVPack(LogicalCollection* collection,
       arangodb::Transaction* trx, 
       ManagedDocumentResult* mmdr,
@@ -165,7 +153,7 @@ class HashIndex final : public PathBasedIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate() const override;
+  double selectivityEstimate(arangodb::StringRef const* = nullptr) const override;
 
   size_t memory() const override;
 
@@ -196,14 +184,11 @@ class HashIndex final : public PathBasedIndex {
                                       arangodb::aql::Variable const*,
                                       bool) const override;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an IndexIterator for the given VelocyPackSlices
 ///        Each slice represents the field at the same position. (order matters)
 ///        And each slice has to be an object of one of the following types:
 ///        1) {"eq": <compareValue>} // The value in index is exactly this
 ///        2) {"in": <compareValues>} // The value in index os one of them
-////////////////////////////////////////////////////////////////////////////////
-
   IndexIterator* iteratorForSlice(arangodb::Transaction*, 
                                   ManagedDocumentResult*,
                                   arangodb::velocypack::Slice const,
@@ -237,10 +222,7 @@ class HashIndex final : public PathBasedIndex {
                        arangodb::aql::Variable const* reference,
                        std::unordered_set<size_t>& found) const;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief given an element generates a hash integer
-  //////////////////////////////////////////////////////////////////////////////
-
  private:
   class HashElementFunc {
    public:
@@ -259,10 +241,7 @@ class HashIndex final : public PathBasedIndex {
     }
   };
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief determines if a key corresponds to an element
-  //////////////////////////////////////////////////////////////////////////////
-
   class IsEqualElementElementByKey {
     size_t _numFields;
 
@@ -296,10 +275,7 @@ class HashIndex final : public PathBasedIndex {
 
  private:
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief the actual hash index (unique type)
-  //////////////////////////////////////////////////////////////////////////////
-
   typedef arangodb::basics::AssocUnique<arangodb::velocypack::Slice,
                                         HashIndexElement*> TRI_HashArray_t;
 
@@ -316,10 +292,7 @@ class HashIndex final : public PathBasedIndex {
     size_t _numPaths;
   };
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief the actual hash index (multi type)
-  //////////////////////////////////////////////////////////////////////////////
-
   typedef arangodb::basics::AssocMulti<arangodb::velocypack::Slice,
                                        HashIndexElement*, uint32_t,
                                        false> TRI_HashArrayMulti_t;

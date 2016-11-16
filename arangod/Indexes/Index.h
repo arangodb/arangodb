@@ -37,6 +37,7 @@ namespace arangodb {
 
 class LogicalCollection;
 class ManagedDocumentResult;
+class StringRef;
 
 namespace velocypack {
 class Builder;
@@ -72,10 +73,7 @@ class Index {
   virtual ~Index();
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief index types
-  //////////////////////////////////////////////////////////////////////////////
-
   enum IndexType {
     TRI_IDX_TYPE_UNKNOWN = 0,
     TRI_IDX_TYPE_PRIMARY_INDEX,
@@ -98,10 +96,7 @@ class Index {
     return _fields;
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief return the index fields names
-  //////////////////////////////////////////////////////////////////////////////
-
   inline std::vector<std::vector<std::string>> fieldNames() const {
     std::vector<std::vector<std::string>> result;
 
@@ -115,10 +110,7 @@ class Index {
     return result;
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the ith attribute is expanded (somewhere)
-  //////////////////////////////////////////////////////////////////////////////
-
   inline bool isAttributeExpanded(size_t i) const {
     if (i >= _fields.size()) {
       return false;
@@ -126,10 +118,7 @@ class Index {
     return TRI_AttributeNamesHaveExpansion(_fields[i]);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not any attribute is expanded
-  //////////////////////////////////////////////////////////////////////////////
-
   inline bool isAttributeExpanded(
       std::vector<arangodb::basics::AttributeName> const& attribute) const {
     for (auto const& it : _fields) {
@@ -222,14 +211,21 @@ class Index {
 
   virtual bool matchesDefinition(arangodb::velocypack::Slice const&) const;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the index is sorted
-  //////////////////////////////////////////////////////////////////////////////
-
   virtual bool isSorted() const = 0;
 
+  /// @brief whether or not the index has a selectivity estimate
   virtual bool hasSelectivityEstimate() const = 0;
-  virtual double selectivityEstimate() const;
+  
+  /// @brief return the selectivity estimate of the index
+  /// must only be called if hasSelectivityEstimate() returns true
+  virtual double selectivityEstimate(arangodb::StringRef const* = nullptr) const;
+  
+  /// @brief whether or not the index is implicitly unique
+  /// this can be the case if the index is not declared as unique, but contains a 
+  /// unique attribute such as _key
+  virtual bool implicitlyUnique() const;
+
   virtual size_t memory() const = 0;
 
   virtual void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
@@ -286,12 +282,9 @@ class Index {
                            std::unordered_set<std::string>& nonNullAttributes,
                            bool) const;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Transform the list of search slices to search values.
   ///        This will multiply all IN entries and simply return all other
   ///        entries.
-  //////////////////////////////////////////////////////////////////////////////
-
   virtual void expandInSearchValues(arangodb::velocypack::Slice const,
                                     arangodb::velocypack::Builder&) const;
 

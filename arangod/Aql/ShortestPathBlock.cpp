@@ -80,7 +80,7 @@ struct ConstDistanceExpanderLocal {
   void operator()(VPackSlice const& v, std::vector<VPackSlice>& resEdges,
                   std::vector<VPackSlice>& neighbors) {
     ManagedDocumentResult* mmdr = _block->_mmdr.get();
-    std::shared_ptr<arangodb::OperationCursor> edgeCursor;
+    std::unique_ptr<arangodb::OperationCursor> edgeCursor;
     for (auto const& edgeCollection : _block->_collectionInfos) {
       TRI_ASSERT(edgeCollection != nullptr);
       if (_isReverse) {
@@ -554,7 +554,7 @@ bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
   // We do not need this data anymore. Result has been processed.
   // Save some memory.
   _coordinatorCache.clear();
-  bool hasPath = _finder->shortestPath(start, end, *_path);
+  bool hasPath = _finder->shortestPath(start, end, *_path, [this]() { throwIfKilled(); });
 
   if (hasPath) {
     _posInPath = 0;
@@ -614,18 +614,15 @@ AqlItemBlock* ShortestPathBlock::getSome(size_t, size_t atMost) {
   // only copy 1st row of registers inherited from previous frame(s)
   inheritRegisters(cur, res.get(), _pos);
 
-  // TODO this might be optimized in favor of direct mptr.
   // TODO: lease builder?
   VPackBuilder resultBuilder;
   for (size_t j = 0; j < toSend; j++) {
     if (usesVertexOutput()) {
-      // TODO this might be optimized in favor of direct mptr.
       resultBuilder.clear();
       _path->vertexToVelocyPack(_trx, _mmdr.get(), _posInPath, resultBuilder);
       res->setValue(j, _vertexReg, AqlValue(resultBuilder.slice()));
     }
     if (usesEdgeOutput()) {
-      // TODO this might be optimized in favor of direct mptr.
       resultBuilder.clear();
       _path->edgeToVelocyPack(_trx, _mmdr.get(), _posInPath, resultBuilder);
       res->setValue(j, _edgeReg, AqlValue(resultBuilder.slice()));

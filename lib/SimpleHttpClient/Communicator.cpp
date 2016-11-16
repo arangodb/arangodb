@@ -93,7 +93,7 @@ int dumb_socketpair(SOCKET socks[2], int make_overlapped) {
 
     if (listen(listener, 1) == SOCKET_ERROR) break;
 
-    socks[0] = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, flags);
+    socks[0] = WSASocketW(AF_INET, SOCK_STREAM, 0, NULL, 0, flags);
     if (socks[0] == -1) break;
     if (connect(socks[0], &a.addr, sizeof(a.inaddr)) == SOCKET_ERROR) break;
 
@@ -377,7 +377,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
   }
   std::string prefix("Communicator(" + std::to_string(rip->_ticketId) +
                      ") // ");
-  LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+  LOG_TOPIC(TRACE, Logger::REQUESTS)
       << prefix << "Curl rc is : " << rc << " after "
       << Logger::FIXED(TRI_microtime() - rip->_startTime) << " s";
   if (strlen(rip->_errorBuffer) != 0) {

@@ -715,8 +715,6 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
     }
   }
 
-
-
   // In variable
   if (usesInVariable()) {
     nodes.add(VPackValue("inVariable"));
@@ -820,6 +818,8 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
     nodes.close();
   }
 
+  nodes.add(VPackValue("indexes"));
+  _options->toVelocyPackIndexes(nodes);
 
   // And close it:
   nodes.close();
@@ -952,6 +952,9 @@ double TraversalNode::estimateCost(size_t& nrItems) const {
 }
 
 void TraversalNode::prepareOptions() {
+  if (_optionsBuild) {
+    return;
+  }
   TRI_ASSERT(!_optionsBuild);
   _options->_tmpVar = _tmpObjVariable;
 
@@ -1007,7 +1010,7 @@ void TraversalNode::prepareOptions() {
       std::vector<std::vector<std::string>> fieldNames =
           info.idxHandles[0].fieldNames();
       for (size_t i = 0; i < fieldNames.size(); ++i) {
-        auto f = fieldNames[i];
+        auto const& f = fieldNames[i];
         if (f.size() == 1 && f[0] == usedField) {
           // we only work for _from and _to not _from.foo which would be null anyways...
           info.conditionNeedUpdate = true;

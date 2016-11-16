@@ -4,6 +4,21 @@ The following list shows in detail which features have been added or improved in
 ArangoDB 3.1. ArangoDB 3.1 also contains several bugfixes that are not listed
 here.
 
+!SECTION SmartGraphs
+
+ArangoDB 3.1 adds a first major enterprise only feature called SmartGraphs.
+SmartGraphs form an addition to the already existing graph features and allow to
+scale graphs beyond a single machine while keeping almost the same query performance.
+The SmartGraph feature is suggested for all graph database use cases that require
+a cluster of database servers for what ever reason.
+You can either have a graph that is too large to be stored on a single machine only.
+Or you can have a small graph, but at the same time need additional data with has to be
+sharded and you want to keep all of them in the same envirenment.
+Or you simply use the cluster for high-availability.
+In all the above cases SmartGraphs will significantly increase the performance of
+graph operations.
+For more detailed information read [this manual section](../Graphs/SmartGraphs/index.html).
+
 !SECTION Data format
 
 The format of the revision values stored in the `_rev` attribute of documents
@@ -25,8 +40,11 @@ ArangoDB up to 3.0 used [libev](http://software.schmorp.de/pkg/libev.html) for
 the communication layer. ArangoDB starting from 3.1 uses
 [Boost ASIO](www.boost.org).
 
+Starting with ArangoDB 3.1 we begin to provide the VelocyStream Protocol (vst) as
+a addition to the established http protocol.
+
 A few options have changed concerning communication, please checkout
-[Incompatible changes in 3.1](ReleaseNotes/UpgradingChanges31.html).
+[Incompatible changes in 3.1](./UpgradingChanges31.html).
 
 !SECTION Cluster
 
@@ -148,8 +166,7 @@ AQL query editor in the web interface.
 
 !SECTION Audit Log
 
-Audit logging has been added, see [Auditing](Auditing/index.html).
-
+Audit logging has been added, see [Auditing](../Auditing/index.html).
 
 !SECTION Client tools
 
@@ -172,9 +189,25 @@ The shard view in cluster mode now displays a progress indicator while moving sh
 
 !SECTION Authentication
 
-Up to arangodb 3.0 authentication was only possible using basic authentication.
+Up to ArangoDB 3.0 authentication of client requests was only possible with HTTP basic 
+authentication.
 
-Alternatively it is now possible to use a JWT for authenticating a request.
+Starting with 3.1 it is now possible to also use a [JSON Web Tokens](https://jwt.io/)
+(JWT) for authenticating incoming requests.
 
 For details check the HTTP authentication chapter. Both authentication methods are
 valid and will be supported in the near future. Use whatever suits you best.
+
+!SECTION Foxx
+
+!SUBSECTION GraphQL
+
+It is now easy to get started with providing GraphQL APIs in Foxx, see [Foxx GraphQL](../Foxx/GraphQL.md).
+
+!SUBSECTION OAuth2
+
+Foxx now officially provides a module for implementing OAuth2 clients, see [Foxx OAuth2](../Foxx/OAuth2.md).
+
+!SUBSECTION Per-route middleware
+
+It's now possible to specify middleware functions for a route when defining a route handler. These middleware functions only apply to the single route and share the route's parameter definitions. Check out the [Foxx Router documentation](../Foxx/Router/README.md) for more information.

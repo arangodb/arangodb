@@ -120,7 +120,6 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, ExecutionPlan* plan,
       continue;
     }
 
-    static size_t const Threshold = 8;
     auto ast = plan->getAst();
     AstNode const* originalArg = nullptr;
 
@@ -150,7 +149,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, ExecutionPlan* plan,
       }
 
       if (testNode->type == NODE_TYPE_ARRAY &&
-          testNode->numMembers() < Threshold) {
+          testNode->numMembers() < AstNode::SortNumberThreshold) {
         // number of values is below threshold
         continue;
       }
@@ -169,7 +168,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, ExecutionPlan* plan,
       size_t nrItems = 0;
       sub->getSubquery()->getCost(nrItems);
 
-      if (nrItems < Threshold) {
+      if (nrItems < AstNode::SortNumberThreshold) {
         continue;
       }
 
@@ -3725,6 +3724,30 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
 
   opt->addPlan(plan, rule, modified);
 }
+
+/// @brief prepares traversals for execution (hidden rule)
+void arangodb::aql::prepareTraversalsRule(Optimizer* opt,
+                                          ExecutionPlan* plan,
+                                          Optimizer::Rule const* rule) {
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> tNodes{a};
+  plan->findNodesOfType(tNodes, EN::TRAVERSAL, true);
+
+  if (tNodes.empty()) {
+    // no traversals present
+    opt->addPlan(plan, rule, false);
+    return;
+  }
+  
+  // first make a pass over all traversal nodes and remove unused 
+  // variables from them  
+  for (auto const& n : tNodes) {
+    TraversalNode* traversal = static_cast<TraversalNode*>(n);
+    traversal->prepareOptions();
+  }
+  
+  opt->addPlan(plan, rule, true);
+}  
 
 /// @brief pulls out simple subqueries and merges them with the level above
 ///

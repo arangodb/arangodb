@@ -191,6 +191,10 @@ void patchUpdateStatementsRule(Optimizer*, ExecutionPlan*,
 void optimizeTraversalsRule(Optimizer* opt, ExecutionPlan* plan,
                             Optimizer::Rule const* rule);
 
+/// @brief prepares traversals for execution (hidden rule)
+void prepareTraversalsRule(Optimizer* opt, ExecutionPlan* plan,
+                           Optimizer::Rule const* rule);
+
 /// @brief moves simple subqueries one level higher
 void inlineSubqueriesRule(Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 

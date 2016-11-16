@@ -85,16 +85,19 @@ RestStatus RestAgencyPrivHandler::execute() {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
     arangodb::velocypack::Options opts;
-    if (_request->suffix().size() == 0) {  // empty request
+
+    auto const& suffixes = _request->suffixes();
+
+    if (suffixes.empty()) {  // empty request
       return reportErrorEmptyRequest();
-    } else if (_request->suffix().size() > 1) {  // request too long
+    } else if (suffixes.size() > 1) {  // request too long
       return reportTooManySuffices();
     } else {
       term_t term = 0;
       term_t prevLogTerm = 0;
       std::string id;  // leaderId for appendEntries, cadidateId for requestVote
       arangodb::consensus::index_t prevLogIndex, leaderCommit;
-      if (_request->suffix()[0] == "appendEntries") {  // appendEntries
+      if (suffixes[0] == "appendEntries") {  // appendEntries
         if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
@@ -109,7 +112,7 @@ RestStatus RestAgencyPrivHandler::execute() {
         } else {
           return reportBadQuery();  // bad query
         }
-      } else if (_request->suffix()[0] == "requestVote") {  // requestVote
+      } else if (suffixes[0] == "requestVote") {  // requestVote
         if (readValue("term", term) && readValue("candidateId", id) &&
             readValue("prevLogIndex", prevLogIndex) &&
             readValue("prevLogTerm", prevLogTerm)) {
@@ -118,7 +121,7 @@ RestStatus RestAgencyPrivHandler::execute() {
           result.add("term", VPackValue(ret.term));
           result.add("voteGranted", VPackValue(ret.success));
         }
-      } else if (_request->suffix()[0] == "notifyAll") {  // notify
+      } else if (suffixes[0] == "notifyAll") {  // notify
         if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
@@ -130,7 +133,7 @@ RestStatus RestAgencyPrivHandler::execute() {
         } else {
           return reportBadQuery();  // bad query
         }
-      } else if (_request->suffix()[0] == "activate") {  // notify
+      } else if (suffixes[0] == "activate") {  // notify
         if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
@@ -151,7 +154,7 @@ RestStatus RestAgencyPrivHandler::execute() {
           LOG_TOPIC(ERR, Logger::AGENCY) << "Activation failed: " << e.what();
         }
         
-      } else if (_request->suffix()[0] == "gossip") {
+      } else if (suffixes[0] == "gossip") {
         if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
@@ -165,7 +168,18 @@ RestStatus RestAgencyPrivHandler::execute() {
         } catch (std::exception const& e) {
           return reportBadQuery(e.what());
         }
-      } else if (_request->suffix()[0] == "activeAgents") {
+      } else if (suffixes[0] == "measure") {
+        if (_request->requestType() != rest::RequestType::POST) {
+          return reportMethodNotAllowed();
+        }
+        arangodb::velocypack::Options options;
+        auto query = _request->toVelocyPackBuilderPtr(&options);
+        try {
+          _agent->reportMeasurement(query);
+        } catch (std::exception const& e) {
+          return reportBadQuery(e.what());
+        }
+      } else if (suffixes[0] == "activeAgents") {
         if (_request->requestType() != rest::RequestType::GET) {
           return reportMethodNotAllowed();
         }
@@ -173,7 +187,7 @@ RestStatus RestAgencyPrivHandler::execute() {
           result.add("active",
                      _agent->config().activeAgentsToBuilder()->slice());
         }
-      } else if (_request->suffix()[0] == "inform") {
+      } else if (suffixes[0] == "inform") {
         arangodb::velocypack::Options options;
         query_t query = _request->toVelocyPackBuilderPtr(&options);
         try {

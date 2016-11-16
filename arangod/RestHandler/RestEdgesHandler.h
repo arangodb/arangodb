@@ -32,10 +32,6 @@
 namespace arangodb {
 class SingleCollectionTransaction;
 
-namespace traverser {
-class TraverserExpression;
-}
-
 class RestEdgesHandler : public RestVocbaseBaseHandler {
  public:
   explicit RestEdgesHandler(GeneralRequest*, GeneralResponse*);
@@ -47,18 +43,9 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief reads all edges in given direction for given vertex
-  ///        Uses the TraverserExpression for filtering.
-  ///        Might be nullptr for no filtering
   //////////////////////////////////////////////////////////////////////////////
 
-  bool readEdges(std::vector<traverser::TraverserExpression*> const&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief reads all edges in given direction for given vertex
-  ///        Also parses the body into an TraverserExpression
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool readFilteredEdges();
+  bool readEdges();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief reads all edges in given direction for a given list of vertices
@@ -72,7 +59,6 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
 
   bool getEdgesForVertex(
       std::string const& id, std::string const& collectionName,
-      std::vector<traverser::TraverserExpression*> const& expressions,
       TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
       arangodb::velocypack::Builder&, size_t& scannedIndex, size_t& filtered);
 
@@ -82,7 +68,6 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
 
   bool getEdgesForVertexList(
       arangodb::velocypack::Slice const ids,
-      std::vector<traverser::TraverserExpression*> const& expressions,
       TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
       arangodb::velocypack::Builder&, size_t& scannedIndex, size_t& filtered);
 };

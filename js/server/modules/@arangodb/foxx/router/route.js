@@ -33,7 +33,33 @@ module.exports =
       }
       super(path);
       this._methods = methods;
-      this._handler = handler;
+      if (Array.isArray(handler)) {
+        this._handler = (req, res) => {
+          let i = 0;
+          let result, hasResult;
+          const next = (err) => {
+            if (err) {
+              res.throw(err);
+            }
+            const fn = handler[i];
+            i += 1;
+            if (i < handler.length) {
+              const temp = fn(req, res, next);
+              if (!hasResult) {
+                hasResult = true;
+                result = temp;
+              }
+            } else {
+              result = fn(req, res);
+              hasResult = true;
+            }
+          };
+          next();
+          return result;
+        };
+      } else {
+        this._handler = handler;
+      }
       this.name = name;
       if (!methods.some(
           (method) => actions.BODYFREE_METHODS.indexOf(method) === -1

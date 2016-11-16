@@ -25,6 +25,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
+#include "Basics/StringRef.h"
 #include "Indexes/Index.h"
 #include "VocBase/vocbase.h"
 
@@ -34,11 +35,8 @@ SimpleAttributeEqualityMatcher::SimpleAttributeEqualityMatcher(
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes)
     : _attributes(attributes), _found() {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief match a single of the attributes
 /// this is used for the primary index and the edge index
-////////////////////////////////////////////////////////////////////////////////
-
 bool SimpleAttributeEqualityMatcher::matchOne(
     arangodb::Index const* index, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
@@ -46,19 +44,26 @@ bool SimpleAttributeEqualityMatcher::matchOne(
     
   std::unordered_set<std::string> nonNullAttributes;
   _found.clear();
+  
+  size_t const n = node->numMembers();
 
-  for (size_t i = 0; i < node->numMembers(); ++i) {
+  for (size_t i = 0; i < n; ++i) {
     auto op = node->getMember(i);
 
     if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       TRI_ASSERT(op->numMembers() == 2);
       // EQ is symmetric
+      int which = -1;
       if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op,
-                          reference, nonNullAttributes, false) ||
-          accessFitsIndex(index, op->getMember(1), op->getMember(0), op,
                           reference, nonNullAttributes, false)) {
+        which = 0;
+      } else if (accessFitsIndex(index, op->getMember(1), op->getMember(0), op,
+                                 reference, nonNullAttributes, false)) {
+        which = 1;
+      } 
+      if (which >= 0) {
         // we can use the index
-        calculateIndexCosts(index, itemsInIndex, estimatedItems, estimatedCost);
+        calculateIndexCosts(index, op->getMember(which), itemsInIndex, estimatedItems, estimatedCost);
         return true;
       }
     } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
@@ -66,10 +71,19 @@ bool SimpleAttributeEqualityMatcher::matchOne(
       if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op,
                           reference, nonNullAttributes, false)) {
         // we can use the index
-        // use slightly different cost calculation for IN that for EQ
-        calculateIndexCosts(index, itemsInIndex, estimatedItems, estimatedCost);
-        estimatedItems *= op->getMember(1)->numMembers();
-        estimatedCost *= op->getMember(1)->numMembers();
+        // use slightly different cost calculation for IN than for EQ
+        calculateIndexCosts(index, op->getMember(0), itemsInIndex, estimatedItems, estimatedCost);
+        size_t values = 1;
+        if (!index->unique() && !index->implicitlyUnique()) {
+          auto m = op->getMember(1);
+          if (m->isArray() && m->numMembers() > 1) {
+            // attr IN [ a, b, c ]  =>  this will produce multiple items, so count
+            // them!
+            values = m->numMembers();
+          }
+        }
+        estimatedItems *= values;
+        estimatedCost *= values;
         return true;
       }
     }
@@ -81,21 +95,20 @@ bool SimpleAttributeEqualityMatcher::matchOne(
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief match all of the attributes, in any order
 /// this is used for the hash index
-////////////////////////////////////////////////////////////////////////////////
-
 bool SimpleAttributeEqualityMatcher::matchAll(
     arangodb::Index const* index, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) {
   std::unordered_set<std::string> nonNullAttributes;
-  size_t values = 0;
+  size_t values = 1;
   
   _found.clear();
 
-  for (size_t i = 0; i < node->numMembers(); ++i) {
+  size_t const n = node->numMembers();
+
+  for (size_t i = 0; i < n; ++i) {
     auto op = node->getMember(i);
 
     if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
@@ -111,12 +124,14 @@ bool SimpleAttributeEqualityMatcher::matchAll(
 
       if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op,
                           reference, nonNullAttributes, false)) {
-        auto m = op->getMember(1);
+        if (!index->unique() && !index->implicitlyUnique()) {
+          auto m = op->getMember(1);
 
-        if (m->isArray() && m->numMembers() > 1) {
-          // attr IN [ a, b, c ]  =>  this will produce multiple items, so count
-          // them!
-          values += m->numMembers() - 1;
+          if (m->isArray() && m->numMembers() > 1) {
+            // attr IN [ a, b, c ]  =>  this will produce multiple items, so count
+            // them!
+            values *= m->numMembers();
+          }
         }
       }
     }
@@ -134,7 +149,7 @@ bool SimpleAttributeEqualityMatcher::matchAll(
       values = 1;
     }
 
-    calculateIndexCosts(index, itemsInIndex, estimatedItems, estimatedCost);
+    calculateIndexCosts(index, nullptr, itemsInIndex, estimatedItems, estimatedCost);
     estimatedItems *= values;
     estimatedCost *= static_cast<double>(values);
     return true;
@@ -146,12 +161,9 @@ bool SimpleAttributeEqualityMatcher::matchAll(
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief specialize the condition for the index
 /// this is used for the primary index and the edge index
 /// requires that a previous matchOne() returned true
-////////////////////////////////////////////////////////////////////////////////
-
 arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
     arangodb::Index const* index, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) {
@@ -201,12 +213,9 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
   return node;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief specialize the condition for the index
 /// this is used for the hash index
 /// requires that a previous matchAll() returned true
-////////////////////////////////////////////////////////////////////////////////
-
 arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll(
     arangodb::Index const* index, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) {
@@ -271,31 +280,36 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll(
   return node;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the costs of using this index and the number of items
 /// that will return in average
 /// cost values have no special meaning, except that multiple cost values are
 /// comparable, and lower values mean lower costs
-////////////////////////////////////////////////////////////////////////////////
-
 void SimpleAttributeEqualityMatcher::calculateIndexCosts(
-    arangodb::Index const* index, size_t itemsInIndex, size_t& estimatedItems,
+    arangodb::Index const* index, arangodb::aql::AstNode const* attribute,
+    size_t itemsInIndex, size_t& estimatedItems,
     double& estimatedCost) const {
-  double equalityReductionFactor = 20.0;
+  // note: attribute will be set to the index attribute for single-attribute
+  // indexes such as the primary and edge indexes, and is a nullptr for the
+  // other indexes
 
-  if (index->unique()) {
+  if (index->unique() || index->implicitlyUnique()) {
     // index is unique, and the condition covers all attributes
     // now use a low value for the costs
     estimatedItems = 1;
-    estimatedCost = 0.95;
+    estimatedCost = 0.95 - 0.05 * (index->fields().size() - 1);
   } else if (index->hasSelectivityEstimate()) {
     // use index selectivity estimate
-    double estimate = index->selectivityEstimate();
+    StringRef att;
+    if (attribute != nullptr && attribute->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+      att = StringRef(attribute->getStringValue(), attribute->getStringLength());
+    }
+    double estimate = index->selectivityEstimate(&att);
     if (estimate <= 0.0) {
       // prevent division by zero
       estimatedItems = itemsInIndex;
       // the more attributes are contained in the index, the more specific the
       // lookup will be
+      double equalityReductionFactor = 20.0;
       for (size_t i = 0; i < index->fields().size(); ++i) {
         estimatedItems /= static_cast<size_t>(equalityReductionFactor);
         // decrease the effect of the equality reduction factor
@@ -320,10 +334,7 @@ void SimpleAttributeEqualityMatcher::calculateIndexCosts(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the access fits
-////////////////////////////////////////////////////////////////////////////////
-
 bool SimpleAttributeEqualityMatcher::accessFitsIndex(
     arangodb::Index const* index, arangodb::aql::AstNode const* access,
     arangodb::aql::AstNode const* other, arangodb::aql::AstNode const* op,

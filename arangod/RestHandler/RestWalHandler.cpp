@@ -35,15 +35,15 @@ RestWalHandler::RestWalHandler(
     : RestVocbaseBaseHandler(request, response) {}
 
 RestStatus RestWalHandler::execute() {
-  std::vector<std::string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffixes = _request->suffixes();
 
-  if (suffix.size() != 1) {
+  if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting /_admin/wal/<operation>");
     return RestStatus::DONE;
   }
   
-  std::string const& operation = suffix[0];
+  std::string const& operation = suffixes[0];
 
   // extract the sub-request type
   auto const type = _request->requestType();

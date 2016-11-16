@@ -1220,6 +1220,14 @@ static void JS_PropertiesVocbaseCol(
     result->Set(
         TRI_V8_ASCII_STRING("replicationFactor"),
         v8::Number::New(isolate, static_cast<double>(c->replicationFactor())));
+    std::string shardsLike = c->distributeShardsLike();
+    if (!shardsLike.empty()) {
+      CollectionNameResolver resolver(c->vocbase());
+      TRI_voc_cid_t cid = static_cast<TRI_voc_cid_t>(arangodb::basics::StringUtils::uint64(shardsLike));
+      result->Set(
+          TRI_V8_ASCII_STRING("distributeShardsLike"),
+          TRI_V8_STD_STRING(resolver.getCollectionNameCluster(cid)));
+    }
 
     TRI_V8_RETURN(result);
   }
@@ -1298,7 +1306,7 @@ static void JS_PropertiesVocbaseCol(
   result->Set(IsVolatileKey,
               v8::Boolean::New(isolate, collection->isVolatile()));
   result->Set(JournalSizeKey,
-              v8::Number::New(isolate, collection->journalSize()));
+              v8::Number::New(isolate, (double) collection->journalSize()));
   result->Set(TRI_V8_ASCII_STRING("indexBuckets"),
               v8::Number::New(isolate, collection->indexBuckets()));
 
@@ -1859,9 +1867,7 @@ static int GetRevisionCoordinator(arangodb::LogicalCollection* collection,
   std::string const databaseName(collection->dbName());
   std::string const cid = collection->cid_as_string();
 
-  int res = revisionOnCoordinator(databaseName, cid, rid);
-
-  return res;
+  return revisionOnCoordinator(databaseName, cid, rid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

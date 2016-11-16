@@ -26,6 +26,7 @@
 #include "Aql/SortCondition.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringRef.h"
 #include "Basics/fasthash.h"
 #include "Basics/hashes.h"
 #include "Indexes/IndexLookupContext.h"
@@ -48,10 +49,7 @@ static std::vector<std::vector<arangodb::basics::AttributeName>> const IndexAttr
     {{arangodb::basics::AttributeName("_from", false)},
      {arangodb::basics::AttributeName("_to", false)}};
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes an edge key
-////////////////////////////////////////////////////////////////////////////////
-
 static uint64_t HashElementKey(void*, VPackSlice const* key) {
   TRI_ASSERT(key != nullptr);
   // we can get away with the fast hash function here, as edge
@@ -59,10 +57,7 @@ static uint64_t HashElementKey(void*, VPackSlice const* key) {
   return SimpleIndexElement::hash(*key);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes an edge
-////////////////////////////////////////////////////////////////////////////////
-
 static uint64_t HashElementEdge(void*, SimpleIndexElement const& element, bool byKey) {
   if (byKey) {
     return element.hash();
@@ -72,10 +67,7 @@ static uint64_t HashElementEdge(void*, SimpleIndexElement const& element, bool b
   return fasthash64(&revisionId, sizeof(revisionId), 0x56781234);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if key and element match
-////////////////////////////////////////////////////////////////////////////////
-
 static bool IsEqualKeyEdge(void* userData, VPackSlice const* left, SimpleIndexElement const& right) {
   TRI_ASSERT(left != nullptr);
   IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
@@ -90,18 +82,12 @@ static bool IsEqualKeyEdge(void* userData, VPackSlice const* left, SimpleIndexEl
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief checks for elements are equal
-////////////////////////////////////////////////////////////////////////////////
-
 static bool IsEqualElementEdge(void*, SimpleIndexElement const& left, SimpleIndexElement const& right) {
   return left.revisionId() == right.revisionId();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief checks for elements are equal
-////////////////////////////////////////////////////////////////////////////////
-
 static bool IsEqualElementEdgeByKey(void* userData, SimpleIndexElement const& left, SimpleIndexElement const& right) {
   IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
   try {
@@ -429,16 +415,27 @@ void EdgeIndex::buildSearchValueFromArray(TRI_edge_direction_e dir,
   builder.close();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a selectivity estimate for the index
-////////////////////////////////////////////////////////////////////////////////
-
-double EdgeIndex::selectivityEstimate() const {
+double EdgeIndex::selectivityEstimate(arangodb::StringRef const* attribute) const {
   if (_edgesFrom == nullptr || 
       _edgesTo == nullptr || 
       ServerState::instance()->isCoordinator()) {
     // use hard-coded selectivity estimate in case of cluster coordinator
     return 0.1;
+  }
+      
+  if (attribute != nullptr) {
+    // the index attribute is given here
+    // now check if we can restrict the selectivity estimation to the correct
+    // part of the index
+    if (attribute->compare(StaticStrings::FromString) == 0) {
+      // _from
+      return _edgesFrom->selectivity();
+    } else if (attribute->compare(StaticStrings::ToString) == 0) {
+      // _to
+      return _edgesTo->selectivity();
+    }
+    // other attribute. now return the average selectivity
   }
 
   // return average selectivity of the two index parts
@@ -448,20 +445,14 @@ double EdgeIndex::selectivityEstimate() const {
   return estimate;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the memory usage for the index
-////////////////////////////////////////////////////////////////////////////////
-
 size_t EdgeIndex::memory() const {
   TRI_ASSERT(_edgesFrom != nullptr);
   TRI_ASSERT(_edgesTo != nullptr);
   return _edgesFrom->memoryUsage() + _edgesTo->memoryUsage();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a VelocyPack representation of the index
-////////////////////////////////////////////////////////////////////////////////
-
 void EdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
   Index::toVelocyPack(builder, withFigures);
 
@@ -470,10 +461,7 @@ void EdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
   builder.add("sparse", VPackValue(false));
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a VelocyPack representation of the index figures
-////////////////////////////////////////////////////////////////////////////////
-
 void EdgeIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   Index::toVelocyPackFigures(builder);
   builder.add("buckets", VPackValue(_numBuckets));
@@ -576,10 +564,7 @@ int EdgeIndex::unload() {
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief provides a size hint for the edge index
-////////////////////////////////////////////////////////////////////////////////
-
 int EdgeIndex::sizeHint(arangodb::Transaction* trx, size_t size) {
   // we assume this is called when setting up the index and the index
   // is still empty
@@ -604,10 +589,7 @@ int EdgeIndex::sizeHint(arangodb::Transaction* trx, size_t size) {
   return _edgesTo->resize(&context, size + 2049);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether the index supports the condition
-////////////////////////////////////////////////////////////////////////////////
-
 bool EdgeIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
@@ -618,10 +600,7 @@ bool EdgeIndex::supportsFilterCondition(
                           estimatedCost);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an IndexIterator for the given Condition
-////////////////////////////////////////////////////////////////////////////////
-
 IndexIterator* EdgeIndex::iteratorForCondition(
     arangodb::Transaction* trx, 
     ManagedDocumentResult* mmdr,
@@ -662,10 +641,7 @@ IndexIterator* EdgeIndex::iteratorForCondition(
   return nullptr;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief specializes the condition for use with the index
-////////////////////////////////////////////////////////////////////////////////
-
 arangodb::aql::AstNode* EdgeIndex::specializeCondition(
     arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) const {
@@ -674,12 +650,9 @@ arangodb::aql::AstNode* EdgeIndex::specializeCondition(
   return matcher.specializeOne(this, node, reference);
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief Transform the list of search slices to search values.
 ///        This will multiply all IN entries and simply return all other
 ///        entries.
-//////////////////////////////////////////////////////////////////////////////
-
 void EdgeIndex::expandInSearchValues(VPackSlice const slice,
                                      VPackBuilder& builder) const {
   TRI_ASSERT(slice.isArray());
@@ -711,7 +684,6 @@ void EdgeIndex::expandInSearchValues(VPackSlice const slice,
   }
   builder.close();
 }
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an IndexIterator for the given VelocyPackSlices.
 ///        The searchValue is a an Array with exactly two Entries.
 ///        If the first is set it means we are searching for _from (OUTBOUND),
@@ -726,8 +698,6 @@ void EdgeIndex::expandInSearchValues(VPackSlice const slice,
 ///        Reverse is not supported, hence ignored
 ///        NOTE: The iterator is only valid as long as the slice points to
 ///        a valid memory region.
-////////////////////////////////////////////////////////////////////////////////
-
 IndexIterator* EdgeIndex::iteratorForSlice(
     arangodb::Transaction* trx, 
     ManagedDocumentResult* mmdr,
@@ -736,8 +706,15 @@ IndexIterator* EdgeIndex::iteratorForSlice(
     // Invalid searchValue
     return nullptr;
   }
-  VPackSlice const from = searchValues.at(0);
-  VPackSlice const to = searchValues.at(1);
+
+  VPackArrayIterator it(searchValues);
+  TRI_ASSERT(it.valid());
+
+  VPackSlice const from = it.value();
+  
+  it.next();
+  TRI_ASSERT(it.valid());
+  VPackSlice const to = it.value();
 
   if (!from.isNull()) {
     TRI_ASSERT(from.isArray());
@@ -771,10 +748,7 @@ IndexIterator* EdgeIndex::iteratorForSlice(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the iterator
-////////////////////////////////////////////////////////////////////////////////
-
 IndexIterator* EdgeIndex::createEqIterator(
     arangodb::Transaction* trx, 
     ManagedDocumentResult* mmdr,
@@ -798,10 +772,7 @@ IndexIterator* EdgeIndex::createEqIterator(
   return new EdgeIndexIterator(_collection, trx, mmdr, this, isFrom ? _edgesFrom : _edgesTo, keys);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the iterator
-////////////////////////////////////////////////////////////////////////////////
-
 IndexIterator* EdgeIndex::createInIterator(
     arangodb::Transaction* trx, 
     ManagedDocumentResult* mmdr,
@@ -832,10 +803,7 @@ IndexIterator* EdgeIndex::createInIterator(
   return new EdgeIndexIterator(_collection, trx, mmdr, this, isFrom ? _edgesFrom : _edgesTo, keys);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief add a single value node to the iterator's keys
-////////////////////////////////////////////////////////////////////////////////
-    
 void EdgeIndex::handleValNode(VPackBuilder* keys,
                               arangodb::aql::AstNode const* valNode) const {
   if (!valNode->isStringValue() || valNode->getStringLength() == 0) {

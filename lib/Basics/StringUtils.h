@@ -169,10 +169,10 @@ std::vector<std::string> split(std::string const& source,
 
 template <typename C>
 std::string join(C const& source, std::string const& delim = ",") {
-  std::string result = "";
+  std::string result;
   bool first = true;
 
-  for (auto c : source) {
+  for (auto const& c : source) {
     if (first) {
       first = false;
     } else {
@@ -187,8 +187,20 @@ std::string join(C const& source, std::string const& delim = ",") {
 
 template <typename C>
 std::string join(C const& source, char delim = ',') {
-  std::string delimStr(1, delim);
-  return join(source, delimStr);
+  std::string result;
+  bool first = true;
+
+  for (auto const& c : source) {
+    if (first) {
+      first = false;
+    } else {
+      result.push_back(delim);
+    }
+
+    result += c;
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

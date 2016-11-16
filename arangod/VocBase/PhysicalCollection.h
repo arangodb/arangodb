@@ -63,8 +63,8 @@ class PhysicalCollection {
   /// @brief rotate the active journal - will do nothing if there is no journal
   virtual int rotateActiveJournal() = 0;
   
-  virtual int applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
-                                std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) = 0;
+  virtual bool applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
+                                 std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) = 0;
 
   /// @brief increase dead stats for a datafile, if it exists
   virtual void updateStats(TRI_voc_fid_t fid, DatafileStatisticsContainer const& values) = 0;
@@ -98,7 +98,7 @@ class PhysicalCollection {
   
   virtual uint8_t const* lookupRevisionVPack(TRI_voc_rid_t revisionId) const = 0;
   virtual uint8_t const* lookupRevisionVPackConditional(TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal) const = 0;
-  virtual void insertRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal) = 0;
+  virtual void insertRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal, bool shouldLock) = 0;
   virtual void updateRevision(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal) = 0;
   virtual bool updateRevisionConditional(TRI_voc_rid_t revisionId, TRI_df_marker_t const* oldPosition, TRI_df_marker_t const* newPosition, TRI_voc_fid_t newFid, bool isInWal) = 0;
   virtual void removeRevision(TRI_voc_rid_t revisionId, bool updateStats) = 0;

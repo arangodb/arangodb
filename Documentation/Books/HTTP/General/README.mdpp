@@ -151,18 +151,18 @@ To authenticate via JWT you must first obtain a JWT. To do so send a POST reques
 
 */_open/auth*
 
-containing *username* and *password* JSON encoded like so:
+containing *username* and *password* JSON-encoded like so:
 
 {"username":"root","password":"rootPassword"}
 
-Upon success the endpoint will return a 200 OK and an answer containing the jwt in a JSON
+Upon success the endpoint will return a 200 OK and an answer containing the JWT in a JSON-
 encoded object like so:
 
 ```
 {"jwt":"eyJhbGciOiJIUzI1NiI..x6EfI","must_change_password":false}
 ```
 
-This jwt should then be used within the Authorization HTTP header in subsequent requests:
+This JWT should then be used within the Authorization HTTP header in subsequent requests:
 
 ```
 Authorization: bearer eyJhbGciOiJIUzI1NiI..x6EfI

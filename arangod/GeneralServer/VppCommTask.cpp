@@ -58,21 +58,20 @@ using namespace arangodb::rest;
 
 VppCommTask::VppCommTask(EventLoop loop, GeneralServer* server,
                          std::unique_ptr<Socket> socket, ConnectionInfo&& info,
-                         double timeout)
+                         double timeout, bool skipInit)
     : Task(loop, "VppCommTask"),
-      GeneralCommTask(loop, server, std::move(socket), std::move(info),
-                      timeout),
+      GeneralCommTask(loop, server, std::move(socket), std::move(info), timeout,
+                      skipInit),
       _authenticatedUser(),
       _authentication(nullptr) {
-  _authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>(
-    "Authentication");
+  _authentication = application_features::ApplicationServer::getFeature<
+      AuthenticationFeature>("Authentication");
   TRI_ASSERT(_authentication != nullptr);
 
   _protocol = "vst";
   _readBuffer.reserve(
       _bufferLength);  // ATTENTION <- this is required so we do not
                        // loose information during a resize
-                       // connectionStatisticsAgentSetVpp();
   _agents.emplace(std::make_pair(0UL, RequestStatisticsAgent(true)));
   getAgent(0UL)->acquire();
 }
@@ -90,6 +89,10 @@ void VppCommTask::addResponse(VppResponse* response) {
     }
   }
 
+#if 0
+  // don't print by default because at this place the toJson() may
+  // invoke the custom type handler, which is not present here
+
   LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
                                           << "created response:";
   for (auto const& slice : slices) {
@@ -100,6 +103,7 @@ void VppCommTask::addResponse(VppResponse* response) {
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "--";
   }
   LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "response -- end";
+#endif
 
   static uint32_t const chunkSize =
       arangodb::application_features::ApplicationServer::getFeature<
@@ -182,7 +186,8 @@ bool VppCommTask::isChunkComplete(char* start) {
   return true;
 }
 
-void VppCommTask::handleAuthentication(VPackSlice const& header, uint64_t messageId) {
+void VppCommTask::handleAuthentication(VPackSlice const& header,
+                                       uint64_t messageId) {
   // std::string encryption = header.at(2).copyString();
   std::string user = header.at(3).copyString();
   std::string pass = header.at(4).copyString();
@@ -194,20 +199,23 @@ void VppCommTask::handleAuthentication(VPackSlice const& header, uint64_t messag
     auto auth = basics::StringUtils::encodeBase64(user + ":" + pass);
     AuthResult result = _authentication->authInfo()->checkAuthentication(
         AuthInfo::AuthType::BASIC, auth);
-    
+
     authOk = result._authorized;
+    if (authOk) {
+      _authenticatedUser = std::move(user);
+    }
   }
 
   if (authOk) {
     // mop: hmmm...user should be completely ignored if there is no auth IMHO
-    _authenticatedUser = std::move(user);
+    // obi: user who sends authentication expects a reply
     handleSimpleError(rest::ResponseCode::OK, TRI_ERROR_NO_ERROR,
-        "authentication successful", messageId);
+                      "authentication successful", messageId);
   } else {
     _authenticatedUser.clear();
     handleSimpleError(rest::ResponseCode::UNAUTHORIZED,
-        TRI_ERROR_HTTP_UNAUTHORIZED, "authentication failed",
-        messageId);
+                      TRI_ERROR_HTTP_UNAUTHORIZED, "authentication failed",
+                      messageId);
   }
 }
 
@@ -267,7 +275,7 @@ bool VppCommTask::processRead() {
     // get type of request
     int type = meta::underlyingValue(rest::RequestType::ILLEGAL);
     try {
-      type = header.at(1).getInt();
+      type = header.at(1).getNumber<int>();
     } catch (std::exception const& e) {
       handleSimpleError(rest::ResponseCode::BAD, chunkHeader._messageID);
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
@@ -288,11 +296,13 @@ bool VppCommTask::processRead() {
       request->setUser(_authenticatedUser);
 
       // check authentication
-      std::string const& dbname = request->databaseName();
       AuthLevel level = AuthLevel::RW;
-      if (!_authenticatedUser.empty() || !dbname.empty()) {
-        level = _authentication->canUseDatabase(
-            _authenticatedUser, dbname);
+      if (_authentication->isEnabled()) {  // only check authorization if
+                                           // authentication is enabled
+        std::string const& dbname = request->databaseName();
+        if (!(_authenticatedUser.empty() && dbname.empty())) {
+          level = _authentication->canUseDatabase(_authenticatedUser, dbname);
+        }
       }
 
       if (level != AuthLevel::RW) {

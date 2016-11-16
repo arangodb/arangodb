@@ -91,7 +91,6 @@ RestStatus RestImportHandler::execute() {
       // extract the import type
       std::string const& documentType = _request->value("type", found);
 
-      /////////////////////////////////////////////////////////////////////////////////
       switch (_response->transportType()) {
         case Endpoint::TransportType::HTTP: {
           if (found &&
@@ -102,8 +101,8 @@ RestStatus RestImportHandler::execute() {
             // CSV
             createFromKeyValueList();
           }
-        } break;
-        /////////////////////////////////////////////////////////////////////////////////
+          break;
+        } 
         case Endpoint::TransportType::VPP: {
           if (found &&
               (documentType == "documents" || documentType == "array" ||
@@ -113,7 +112,8 @@ RestStatus RestImportHandler::execute() {
             generateNotImplemented("ILLEGAL " + IMPORT_PATH);
             createFromKeyValueListVPack();
           }
-        } break;
+          break;
+        } 
       }
       /////////////////////////////////////////////////////////////////////////////////
     } break;
@@ -171,6 +171,7 @@ std::string RestImportHandler::buildParseError(size_t i,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief process a single VelocyPack document of Object Type
 ////////////////////////////////////////////////////////////////////////////////
+
 int RestImportHandler::handleSingleDocument(SingleCollectionTransaction& trx,
                                             RestImportResult& result,
                                             VPackBuilder& babies,
@@ -191,76 +192,81 @@ int RestImportHandler::handleSingleDocument(SingleCollectionTransaction& trx,
     registerError(result, errorMsg);
     return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
   }
+    
+  if (!isEdgeCollection) {
+    babies.add(slice);
+    return TRI_ERROR_NO_ERROR;
+  }
+
 
   // document ok, now import it
   VPackBuilder newBuilder;
 
-  if (isEdgeCollection) {
-    // add prefixes to _from and _to
-    if (!_fromPrefix.empty() || !_toPrefix.empty()) {
-      TransactionBuilderLeaser tempBuilder(&trx);
+  // add prefixes to _from and _to
+  if (!_fromPrefix.empty() || !_toPrefix.empty()) {
+    TransactionBuilderLeaser tempBuilder(&trx);
 
-      tempBuilder->openObject();
-      if (!_fromPrefix.empty()) {
-        VPackSlice from = slice.get(StaticStrings::FromString);
-        if (from.isString()) {
-          std::string f = from.copyString();
-          if (f.find('/') == std::string::npos) {
-            tempBuilder->add(StaticStrings::FromString,
-                             VPackValue(_fromPrefix + f));
-          }
-        } else if (from.isInteger()) {
-          uint64_t f = from.getNumber<uint64_t>();
+    tempBuilder->openObject();
+    if (!_fromPrefix.empty()) {
+      VPackSlice from = slice.get(StaticStrings::FromString);
+      if (from.isString()) {
+        std::string f = from.copyString();
+        if (f.find('/') == std::string::npos) {
           tempBuilder->add(StaticStrings::FromString,
-                           VPackValue(_fromPrefix + std::to_string(f)));
+                            VPackValue(_fromPrefix + f));
         }
-      }
-      if (!_toPrefix.empty()) {
-        VPackSlice to = slice.get(StaticStrings::ToString);
-        if (to.isString()) {
-          std::string t = to.copyString();
-          if (t.find('/') == std::string::npos) {
-            tempBuilder->add(StaticStrings::ToString,
-                             VPackValue(_toPrefix + t));
-          }
-        } else if (to.isInteger()) {
-          uint64_t t = to.getNumber<uint64_t>();
-          tempBuilder->add(StaticStrings::ToString,
-                           VPackValue(_toPrefix + std::to_string(t)));
-        }
-      }
-      tempBuilder->close();
-
-      if (tempBuilder->slice().length() > 0) {
-        newBuilder =
-            VPackCollection::merge(slice, tempBuilder->slice(), false, false);
-        slice = newBuilder.slice();
+      } else if (from.isInteger()) {
+        uint64_t f = from.getNumber<uint64_t>();
+        tempBuilder->add(StaticStrings::FromString,
+                          VPackValue(_fromPrefix + std::to_string(f)));
       }
     }
-
-    try {
-      arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
-          slice, StaticStrings::FromString);
-      arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
-          slice, StaticStrings::ToString);
-    } catch (arangodb::basics::Exception const&) {
-      std::string part = VPackDumper::toString(slice);
-      if (part.size() > 255) {
-        // UTF-8 chars in string will be escaped so we can truncate it at any
-        // point
-        part = part.substr(0, 255) + "...";
+    if (!_toPrefix.empty()) {
+      VPackSlice to = slice.get(StaticStrings::ToString);
+      if (to.isString()) {
+        std::string t = to.copyString();
+        if (t.find('/') == std::string::npos) {
+          tempBuilder->add(StaticStrings::ToString,
+                            VPackValue(_toPrefix + t));
+        }
+      } else if (to.isInteger()) {
+        uint64_t t = to.getNumber<uint64_t>();
+        tempBuilder->add(StaticStrings::ToString,
+                          VPackValue(_toPrefix + std::to_string(t)));
       }
+    }
+    tempBuilder->close();
 
-      std::string errorMsg =
-          positionize(i) +
-          "missing '_from' or '_to' attribute, offending document: " + part;
-
-      registerError(result, errorMsg);
-      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
+    if (tempBuilder->slice().length() > 0) {
+      newBuilder =
+          VPackCollection::merge(slice, tempBuilder->slice(), false, false);
+      slice = newBuilder.slice();
     }
   }
 
+  try {
+    arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
+        slice, StaticStrings::FromString);
+    arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
+        slice, StaticStrings::ToString);
+  } catch (arangodb::basics::Exception const&) {
+    std::string part = VPackDumper::toString(slice);
+    if (part.size() > 255) {
+      // UTF-8 chars in string will be escaped so we can truncate it at any
+      // point
+      part = part.substr(0, 255) + "...";
+    }
+
+    std::string errorMsg =
+        positionize(i) +
+        "missing '_from' or '_to' attribute, offending document: " + part;
+
+    registerError(result, errorMsg);
+    return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
+  }
+
   babies.add(slice);
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -275,9 +281,9 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
   RestImportResult result;
 
-  std::vector<std::string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffixes = _request->suffixes();
 
-  if (suffix.size() != 0) {
+  if (!suffixes.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "superfluous suffix, expecting " + IMPORT_PATH +
                       "?collection=<identifier>");
@@ -528,9 +534,9 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
 
   RestImportResult result;
 
-  std::vector<std::string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffixes = _request->suffixes();
 
-  if (suffix.size() != 0) {
+  if (!suffixes.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "superfluous suffix, expecting " + IMPORT_PATH +
                       "?collection=<identifier>");
@@ -636,9 +642,9 @@ bool RestImportHandler::createFromKeyValueList() {
 
   RestImportResult result;
 
-  std::vector<std::string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffixes = _request->suffixes();
 
-  if (suffix.size() != 0) {
+  if (!suffixes.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "superfluous suffix, expecting " + IMPORT_PATH +
                       "?collection=<identifier>");
@@ -941,24 +947,33 @@ int RestImportHandler::performImport(SingleCollectionTransaction& trx,
             trx.replace(collectionName, updateReplace.slice(), opOptions);
       }
 
-      VPackSlice resultSlice = opResult.slice();
-      size_t pos = 0;
-      for (auto const& it : VPackArrayIterator(resultSlice)) {
-        if (!it.hasKey("error") || !it.get("error").getBool()) {
-          ++result._numUpdated;
-        } else {
-          int errorCode = it.get("errorNum").getNumber<int>();
-          makeError(originalPositions[pos], errorCode,
-                    babies.slice().at(originalPositions[pos]), result);
-          if (complete) {
-            res = errorCode;
-            break;
-          }
-        }
+      if (opResult.failed() && res == TRI_ERROR_NO_ERROR) {
+        res = opResult.code;
       }
 
-      ++pos;
+      VPackSlice resultSlice = opResult.slice();
+      if (resultSlice.isArray()) {
+        size_t pos = 0;
+        for (auto const& it : VPackArrayIterator(resultSlice)) {
+          if (!it.hasKey("error") || !it.get("error").getBool()) {
+            ++result._numUpdated;
+          } else {
+            int errorCode = it.get("errorNum").getNumber<int>();
+            makeError(originalPositions[pos], errorCode,
+                      babies.slice().at(originalPositions[pos]), result);
+            if (complete) {
+              res = errorCode;
+              break;
+            }
+          }
+          ++pos;
+        }
+      }
     }
+  }
+  
+  if (opResult.failed() && res == TRI_ERROR_NO_ERROR) {
+    res = opResult.code;
   }
 
   return res;

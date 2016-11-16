@@ -55,6 +55,8 @@ macro (generate_path_config name)
   FILE(WRITE ${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_SYSCONFDIR_ARANGO}/${name}.conf "${FileContent}")
 endmacro ()
 
+
+
 # installs a config file -------------------------------------------------------
 macro (install_config name)
   if (MSVC OR (DARWIN AND NOT HOMEBREW))
@@ -65,6 +67,9 @@ macro (install_config name)
   install(
     FILES ${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_SYSCONFDIR_ARANGO}/${name}.conf
     DESTINATION ${CMAKE_INSTALL_SYSCONFDIR_ARANGO})
+  set(INSTALL_CONFIGFILES_LIST
+    "${INSTALL_CONFIGFILES_LIST};${CMAKE_INSTALL_SYSCONFDIR_ARANGO}/${name}.conf"
+    CACHE INTERNAL "INSTALL_CONFIGFILES_LIST")
 endmacro ()
 
 # installs a readme file converting EOL ----------------------------------------
@@ -79,16 +84,13 @@ macro (install_readme input output)
   if (${USE_VERSION_IN_LICENSEDIR})
     set(PKG_VERSION "-${ARANGODB_VERSION}")
   endif ()
-
-  FILE(READ ${PROJECT_SOURCE_DIR}/${input} FileContent)
-  STRING(REPLACE "\r" "" FileContent "${FileContent}")
+  set(CRLFSTYLE "UNIX")
   if (MSVC)
-    STRING(REPLACE "\n" "\r\n" FileContent "${FileContent}")
+    set(CRLFSTYLE "CRLF")
   endif ()
-  FILE(WRITE ${PROJECT_BINARY_DIR}/${output} "${FileContent}")
   install(
-    FILES ${PROJECT_BINARY_DIR}/${output}
-    DESTINATION ${where}${PKG_VERSION})
+    CODE "configure_file(${PROJECT_SOURCE_DIR}/${input} \$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${where}${PKG_VERSION}/${output} NEWLINE_STYLE ${CRLFSTYLE})"
+    )
 endmacro ()
 
 # installs a link to an executable ---------------------------------------------

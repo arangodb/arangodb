@@ -29,6 +29,14 @@ const Middleware = require('@arangodb/foxx/router/middleware');
 const tokenize = require('@arangodb/foxx/router/tokenize');
 const check = require('@arangodb/foxx/check-args');
 
+const repeat = (times, value) => {
+  const arr = Array(times);
+  for (let i = 0; i < times; i++) {
+    arr[i] = value;
+  }
+  return arr;
+};
+
 const Router = module.exports =
   class Router extends SwaggerContext {
     constructor () {
@@ -42,12 +50,18 @@ const Router = module.exports =
       ctx.output += '[Router]';
     }
 
-    use (path, fn, name) { [path, fn, name] = check(
+    use (...args) {
+      const argv = check(
         'router.use',
-        ['path?', 'fn', 'name?'],
-        ['string', check.validateMountable, 'string'],
-        [path, fn, name]
+        args,
+        [['path', 'string'], ['fn', check.validateMountable], ['name', 'string']],
+        [['path', 'string'], ['fn', check.validateMountable]],
+        [['fn', check.validateMountable], ['name', 'string']],
+        [['fn', check.validateMountable]]
       );
+      let path = argv.path;
+      let fn = argv.fn;
+      let name = argv.name;
       if (fn.isFoxxRouter) {
         if (!path) {
           path = '/*';
@@ -85,12 +99,18 @@ const Router = module.exports =
       return middleware;
     }
 
-    all (path, handler, name) { [path, handler, name] = check(
+    all (...args) {
+      const argv = check(
         'router.all',
-        ['path?', 'handler', 'name?'],
-        ['string', 'function', 'string'],
-        [path, handler, name]
+        args,
+        [['path', 'string'], ...repeat(Math.max(1, args.length - 2), ['handler', 'function']), ['name', 'string']],
+        [['path', 'string'], ...repeat(Math.max(1, args.length - 1), ['handler', 'function'])],
+        [...repeat(Math.max(1, args.length - 1), ['handler', 'function']), ['name', 'string']],
+        repeat(args.length, ['handler', 'function'])
       );
+      const path = argv.path;
+      const handler = argv.handler;
+      const name = argv.name;
       const route = new Route(ALL_METHODS, path, handler, name);
       this._routes.push(route);
       if (route.name) {
@@ -103,12 +123,18 @@ const Router = module.exports =
 Router.prototype.isFoxxRouter = true;
 
 ALL_METHODS.forEach(function (method) {
-  Router.prototype[method.toLowerCase()] = function (path, handler, name) { [path, handler, name] = check(
+  Router.prototype[method.toLowerCase()] = function (...args) {
+    const argv = check(
       `router.${method.toLowerCase()}`,
-      ['path?', 'handler', 'name?'],
-      ['string', 'function', 'string'],
-      [path, handler, name]
+      args,
+      [['path', 'string'], ...repeat(Math.max(1, args.length - 2), ['handler', 'function']), ['name', 'string']],
+      [['path', 'string'], ...repeat(Math.max(1, args.length - 1), ['handler', 'function'])],
+      [...repeat(Math.max(1, args.length - 1), ['handler', 'function']), ['name', 'string']],
+      repeat(args.length, ['handler', 'function'])
     );
+    const path = argv.path;
+    const handler = argv.handler;
+    const name = argv.name;
     const route = new Route([method], path, handler, name);
     this._routes.push(route);
     if (route.name) {

@@ -1072,9 +1072,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
    
   { 
     VPackSlice s(static_cast<uint8_t*>(marker->vpack()));
-    VPackValueLength l;
-    char const* p = s.get(StaticStrings::RevString).getString(l);
-    TRI_voc_rid_t rid = TRI_StringToRid(p, l);
+    TRI_voc_rid_t rid = Transaction::extractRevFromDocument(s);
     collection->setRevision(rid, false);
   }
 

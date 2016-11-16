@@ -125,7 +125,7 @@ MAKE=make
 PACKAGE_MAKE=make
 MAKE_PARAMS=""
 MAKE_CMD_PREFIX=""
-CONFIGURE_OPTIONS="$CMAKE_OPENSSL"
+CONFIGURE_OPTIONS="$CMAKE_OPENSSL ${CONFIGURE_OPTIONS}"
 INSTALL_PREFIX="/"
 MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=off"
 
@@ -295,6 +295,11 @@ while [ $# -gt 0 ];  do
             shift
             ;;
 
+        --snap)
+            CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DUSE_SNAPCRAFT=ON -DSNAP_PORT=8533"
+            shift
+            ;;
+
         --parallel)
             shift
             PARALLEL_BUILDS=$1
@@ -322,6 +327,13 @@ while [ $# -gt 0 ];  do
             CXGCC=1
             shift
             ;;
+
+        --rpmDistro)
+            shift
+            CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DRPM_DISTRO=$1"
+            shift
+            ;;
+
 
         --enterprise)
             shift
@@ -436,6 +448,11 @@ fi
 if [ -z "${MSVC}" ]; then
     # MSVC doesn't know howto do assembler in first place.
     CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off"
+    # on all other system cmake tends to be sluggish on finding strip.
+    # workaround by presetting it:
+    if test -z "${STRIP}"; then
+        export STRIP=`which strip`
+    fi
 fi
 
 CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} ${MAINTAINER_MODE}"
@@ -478,6 +495,9 @@ if test -n "${ENTERPRISE_GIT_URL}" ; then
         echo "I'm on tag: ${GITARGS}"
     else
         GITARGS=`git branch --no-color -q| grep '^\*' | sed "s;\* *;;"`
+        if echo $GITARGS |grep -q ' '; then
+            GITARGS=devel
+        fi
         echo "I'm on Branch: ${GITARGS}"
     fi
     # clean up if we're commanded to:
@@ -501,6 +521,13 @@ SOURCE_DIR=`compute_relative ${DST}/ ${SRC}/`
 if [ ! -f Makefile -o ! -f CMakeCache.txt ];  then
     CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}" LIBS="${LIBS}" \
           cmake ${SOURCE_DIR} ${CONFIGURE_OPTIONS} -G "${GENERATOR}" || exit 1
+fi
+
+if [ -n "$CPACK"  -a -n "${TARGET_DIR}" -a -z "${MSVC}" ];  then
+    if ! grep -q CMAKE_STRIP CMakeCache.txt; then
+        echo "cmake failed to detect strip; refusing to build unstripped packages!"
+        exit 1
+    fi
 fi
 
 ${MAKE_CMD_PREFIX} ${MAKE} ${MAKE_PARAMS}

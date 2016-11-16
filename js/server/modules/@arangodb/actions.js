@@ -38,6 +38,7 @@ var Module = require('module');
 
 var fs = require('fs');
 var util = require('util');
+var path = require('path');
 var mimeTypes = require('mime-types');
 var console = require('console');
 
@@ -1801,6 +1802,7 @@ function arangoErrorToHttpCode (num) {
     case arangodb.ERROR_USER_NOT_FOUND:
     case arangodb.ERROR_TASK_NOT_FOUND:
     case arangodb.ERROR_QUERY_NOT_FOUND:
+    case arangodb.ERROR_SERVICE_NOT_FOUND:
       return exports.HTTP_NOT_FOUND;
 
     case arangodb.ERROR_REQUEST_CANCELED:
@@ -1808,6 +1810,7 @@ function arangoErrorToHttpCode (num) {
 
     case arangodb.ERROR_ARANGO_DUPLICATE_NAME:
     case arangodb.ERROR_ARANGO_DUPLICATE_IDENTIFIER:
+    case arangodb.ERROR_SERVICE_MOUNTPOINT_CONFLICT:
       return exports.HTTP_CONFLICT;
 
     case arangodb.ERROR_CLUSTER_UNSUPPORTED:
@@ -2015,7 +2018,7 @@ function pathHandler (req, res, options, next) {
   'use strict';
 
   var filepath, root, filename, encodedFilename;
-  filepath = fs.join(...req.suffix);
+  filepath = req.suffix.length ? path.resolve(path.sep, ...req.suffix.map((part) => decodeURIComponent(part))) : '';
   root = options.path;
 
   if (options.root) {

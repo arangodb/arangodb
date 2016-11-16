@@ -565,7 +565,7 @@ RestStatus RestAqlHandler::execute() {
   // " << arangodb::ServerState::instance()->getId() << ": " <<
   // _request->fullUrl() << ": " << _request->body() << "\n\n";
 
-  std::vector<std::string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffixes = _request->suffixes();
 
   // extract the sub-request type
   rest::RequestType type = _request->requestType();
@@ -573,16 +573,16 @@ RestStatus RestAqlHandler::execute() {
   // execute one of the CRUD methods
   switch (type) {
     case rest::RequestType::POST: {
-      if (suffix.size() != 1) {
+      if (suffixes.size() != 1) {
         generateError(rest::ResponseCode::NOT_FOUND,
                       TRI_ERROR_HTTP_NOT_FOUND);
-      } else if (suffix[0] == "instantiate") {
+      } else if (suffixes[0] == "instantiate") {
         createQueryFromVelocyPack();
-      } else if (suffix[0] == "parse") {
+      } else if (suffixes[0] == "parse") {
         parseQuery();
-      } else if (suffix[0] == "explain") {
+      } else if (suffixes[0] == "explain") {
         explainQuery();
-      } else if (suffix[0] == "query") {
+      } else if (suffixes[0] == "query") {
         createQueryFromString();
       } else {
         LOG(ERR) << "Unknown API";
@@ -592,22 +592,22 @@ RestStatus RestAqlHandler::execute() {
       break;
     }
     case rest::RequestType::PUT: {
-      if (suffix.size() != 2) {
+      if (suffixes.size() != 2) {
         LOG(ERR) << "unknown PUT API";
         generateError(rest::ResponseCode::NOT_FOUND,
                       TRI_ERROR_HTTP_NOT_FOUND);
       } else {
-        useQuery(suffix[0], suffix[1]);
+        useQuery(suffixes[0], suffixes[1]);
       }
       break;
     }
     case rest::RequestType::GET: {
-      if (suffix.size() != 2) {
+      if (suffixes.size() != 2) {
         LOG(ERR) << "Unknown GET API";
         generateError(rest::ResponseCode::NOT_FOUND,
                       TRI_ERROR_HTTP_NOT_FOUND);
       } else {
-        getInfoQuery(suffix[0], suffix[1]);
+        getInfoQuery(suffixes[0], suffixes[1]);
       }
       break;
     }

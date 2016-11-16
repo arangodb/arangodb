@@ -100,6 +100,8 @@ struct Functions {
                        VPackFunctionParameters const&);
   static AqlValue RegexTest(arangodb::aql::Query*, arangodb::Transaction*,
                         VPackFunctionParameters const&);
+  static AqlValue RegexReplace(arangodb::aql::Query*, arangodb::Transaction*,
+                               VPackFunctionParameters const&);
   static AqlValue Passthru(arangodb::aql::Query*, arangodb::Transaction*,
                            VPackFunctionParameters const&);
   static AqlValue Unset(arangodb::aql::Query*, arangodb::Transaction*,

@@ -52,55 +52,6 @@ namespace traverser {
 
 struct TraverserOptions;
 
-//TODO Deprecated
-class TraverserExpression {
- public:
-  bool isEdgeAccess;
-  arangodb::aql::AstNodeType comparisonType;
-  arangodb::aql::AstNode const* varAccess;
-  std::unique_ptr<arangodb::velocypack::Builder> compareTo;
-
-  TraverserExpression(bool pisEdgeAccess,
-                      arangodb::aql::AstNodeType pcomparisonType,
-                      arangodb::aql::AstNode const* pvarAccess)
-      : isEdgeAccess(pisEdgeAccess),
-        comparisonType(pcomparisonType),
-        varAccess(pvarAccess),
-        compareTo(nullptr) {}
-
-  explicit TraverserExpression(arangodb::velocypack::Slice const& slice);
-
-  virtual ~TraverserExpression() {
-    // no need to destroy varAccess here. Its memory is managed via the
-    // _nodeRegister variable in this class
-
-    for (auto& it : _stringRegister) {
-      delete it;
-    }
-  }
-
-  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
-
-  bool matchesCheck(arangodb::Transaction*,
-                    arangodb::velocypack::Slice const& element) const;
-
- protected:
-  TraverserExpression()
-      : isEdgeAccess(false),
-        comparisonType(arangodb::aql::NODE_TYPE_ROOT),
-        varAccess(nullptr),
-        compareTo(nullptr) {}
-
- private:
-  bool recursiveCheck(arangodb::aql::AstNode const*,
-                      arangodb::velocypack::Slice& value,
-                      arangodb::velocypack::Slice& base) const;
-
-  // Required when creating this expression without AST
-  std::vector<std::unique_ptr<arangodb::aql::AstNode const>> _nodeRegister;
-  std::vector<std::string*> _stringRegister;
-};
-
 class ShortestPath {
   friend class basics::DynamicDistanceFinder<arangodb::velocypack::Slice,
                                              arangodb::velocypack::Slice,

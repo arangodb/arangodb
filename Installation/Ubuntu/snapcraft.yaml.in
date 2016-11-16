@@ -1,4 +1,4 @@
-name: @CMAKE_PROJECT_NAME@
+name: @CPACK_PACKAGE_NAME@
 version: @CPACK_PACKAGE_VERSION@
 description: "ArangoDB is a native multi-model database with flexible data models for
   documents, graphs, and key-values. Build high performance applications using a convenient
@@ -12,7 +12,7 @@ grade: stable
 #grade: devel
 
 parts:
-  arangodb3:
+  @CPACK_PACKAGE_NAME@:
     source: @CPACK_PACKAGE_TGZ@
     plugin: dump
     snap:

@@ -105,6 +105,8 @@ class LogicalCollection {
   static bool IsAllowedName(bool isSystem, std::string const& name);
 
   void ensureRevisionsCache();
+      
+  void isInitialIteration(bool value) { _isInitialIteration = value; }
 
   // TODO: MOVE TO PHYSICAL?  
   bool isFullyCollected();
@@ -126,16 +128,23 @@ class LogicalCollection {
   void setCompactionStatus(char const*);
   double lastCompactionStamp() const { return _lastCompactionStamp; }
   void lastCompactionStamp(double value) { _lastCompactionStamp = value; }
+
+  void setRevisionError() { _revisionError = true; }
   
 
   // SECTION: Meta Information
   uint32_t version() const { 
     return _version; 
   }
+  
+  void setVersion(CollectionVersions version) { _version = version; }
 
   uint32_t internalVersion() const;
 
-  TRI_voc_cid_t cid() const;
+  inline TRI_voc_cid_t cid() const {
+    return _cid;
+  }
+
   std::string cid_as_string() const;
 
   TRI_voc_cid_t planId() const;
@@ -212,7 +221,9 @@ class LogicalCollection {
 
   // Get a reference to this KeyGenerator.
   // Caller is not allowed to free it.
-  arangodb::KeyGenerator* keyGenerator() const;
+  inline arangodb::KeyGenerator* keyGenerator() const {
+    return _keyGenerator.get();
+  }
   
   PhysicalCollection* getPhysical() const { return _physical.get(); }
 
@@ -259,10 +270,9 @@ class LogicalCollection {
   ///        The builder has to be an opened Type::Object
   void toVelocyPack(arangodb::velocypack::Builder&, bool, TRI_voc_tick_t);
 
-  TRI_vocbase_t* vocbase() const;
-
-  // Only Local
-  void updateCount(size_t);
+  inline TRI_vocbase_t* vocbase() const {
+    return _vocbase;
+  }
 
   // Update this collection.
   virtual int update(arangodb::velocypack::Slice const&, bool);
@@ -288,8 +298,8 @@ class LogicalCollection {
     return getPhysical()->updateStats(fid, values);
   }
   
-  int applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
-                        std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) {
+  bool applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
+                         std::function<bool(TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker)> const& callback) {
     return getPhysical()->applyForTickRange(dataMin, dataMax, callback);
   }
   
@@ -573,6 +583,12 @@ class LogicalCollection {
   double _lastCompactionStamp;
   
   std::atomic<int64_t> _uncollectedLogfileEntries;
+
+  /// @brief: flag that is set to true when the documents are
+  /// initial enumerated and the primary index is built
+  bool _isInitialIteration;
+
+  bool _revisionError;
 };
 
 }  // namespace arangodb

@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* global Backbone, $, window, setTimeout, Joi, _ */
-/* global templateEngine*/
+/* global templateEngine */
 
 (function () {
   'use strict';
@@ -216,6 +216,10 @@
       if (checked) {
         obj.checked = checked;
       }
+      if (value) {
+        obj.checked = value;
+      }
+
       return obj;
     },
 

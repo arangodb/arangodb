@@ -110,28 +110,6 @@ RestHandler* RestHandlerFactory::createHandler(
   std::string const* modifiedPath = &path;
   std::string prefix;
 
-#if 0
-  if (strncmp(path.c_str(), "/_api/document/", 15) == 0) {
-    prefix = "/_api/document";
-
-    size_t l = prefix.size() + 1;
-    size_t n = path.find_first_of('/', l);
-
-    while (n != std::string::npos) {
-      request->addSuffix(path.substr(l, n - l));
-      l = n + 1;
-      n = path.find_first_of('/', l);
-    }
-
-    if (l < path.size()) {
-      request->addSuffix(path.substr(l));
-    }
-
-    return new RestDocumentHandler(request.release(),
-                                   response.release());
-  }
-#endif
-
   auto i = ii.find(path);
 
   // no direct match, check prefix matches

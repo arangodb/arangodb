@@ -93,8 +93,7 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
     copy = copy.substr(5);
   }
 
-  if (StringUtils::isPrefix(copy, "vpp+") ||
-      StringUtils::isPrefix(copy, "vst+")) {
+  if (StringUtils::isPrefix(copy, "vst+")) {
     protocol = TransportType::VPP;
     prefix = "vst+";
     copy = copy.substr(4);
@@ -213,8 +212,7 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
   if (StringUtils::isPrefix(copy, "http+")) {
     protocol = TransportType::HTTP;
     copy = copy.substr(5);
-  } else if (StringUtils::isPrefix(copy, "vpp+") ||
-             StringUtils::isPrefix(copy, "vst+")) {
+  } else if (StringUtils::isPrefix(copy, "vst+")) {
     protocol = TransportType::VPP;
     copy = copy.substr(4);
   } else {

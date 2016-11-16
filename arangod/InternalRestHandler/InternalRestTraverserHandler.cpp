@@ -82,8 +82,8 @@ RestStatus InternalRestTraverserHandler::execute() {
 }
 
 void InternalRestTraverserHandler::createEngine() {
-  std::vector<std::string> const& suffix = _request->suffix();
-  if (!suffix.empty()) {
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+  if (!suffixes.empty()) {
     // POST does not allow path parameters
     generateError(ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -111,8 +111,8 @@ void InternalRestTraverserHandler::createEngine() {
 }
 
 void InternalRestTraverserHandler::queryEngine() {
-  std::vector<std::string> const& suffix = _request->suffix();
-  size_t count = suffix.size();
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+  size_t count = suffixes.size();
   if (count < 2 || count > 3) {
     generateError(
         ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -120,8 +120,8 @@ void InternalRestTraverserHandler::queryEngine() {
     return;
   }
 
-  std::string const& option = suffix[0];
-  auto engineId = static_cast<traverser::TraverserEngineID>(basics::StringUtils::uint64(suffix[1]));
+  std::string const& option = suffixes[0];
+  auto engineId = static_cast<traverser::TraverserEngineID>(basics::StringUtils::uint64(suffixes[1]));
   if (engineId == 0) {
     generateError(
         ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -149,7 +149,7 @@ void InternalRestTraverserHandler::queryEngine() {
           "expected PUT " + INTERNAL_TRAVERSER_PATH + "/lock/<TraverserEngineId>/<shardId>");
       return;
     }
-    if (!engine->lockCollection(suffix[2])) {
+    if (!engine->lockCollection(suffixes[2])) {
       generateError(ResponseCode::SERVER_ERROR,
                     TRI_ERROR_HTTP_SERVER_ERROR, "lock lead to an exception");
       return;
@@ -237,8 +237,8 @@ void InternalRestTraverserHandler::queryEngine() {
 }
 
 void InternalRestTraverserHandler::destroyEngine() {
-  std::vector<std::string> const& suffix = _request->suffix();
-  if (suffix.size() != 1) {
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+  if (suffixes.size() != 1) {
     // DELETE requires the id as path parameter
     generateError(
         ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -246,7 +246,7 @@ void InternalRestTraverserHandler::destroyEngine() {
     return;
   }
 
-  traverser::TraverserEngineID id = basics::StringUtils::uint64(suffix[0]);
+  traverser::TraverserEngineID id = basics::StringUtils::uint64(suffixes[0]);
   _registry->destroy(id);
   generateResult(ResponseCode::OK,
                  arangodb::basics::VelocyPackHelper::TrueValue());

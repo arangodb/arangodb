@@ -307,15 +307,15 @@ function CollectionDocumentSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSaveSpecialCharsDocumentKey : function () {
-      [ ":", "-", "_", "@", "a@b", "a@b.c", "a-b-c", "_a", "@a", "@a-b", ":80", ":_", "@:_",
+      [ ":", "-", "_", "@", ".", "..", "...", "a@b", "a@b.c", "a-b-c", "_a", "@a", "@a-b", ":80", ":_", "@:_",
         "0", "1", "123456", "0123456", "true", "false", "a", "A", "a1", "A1", "01ab01", "01AB01",
-        "abcd-efgh", "abcd_efgh", "Abcd_Efgh", "@", "@@", "abc@foo.bar", "@..abc-@-foo__bar", 
+        "abcd-efgh", "abcd_efgh", "Abcd_Efgh", "@@", "abc@foo.bar", "@..abc-@-foo__bar", 
         ".foobar", "-foobar", "_foobar", "@foobar", "(valid)", "%valid", "$valid",
         "$$bill,y'all", "'valid", "'a-key-is-a-key-is-a-key'", "m+ller", ";valid", ",valid", "!valid!",
-        ":", ":::", ":-:-:", ";", ";;;;;;;;;;", "(", ")", "()xoxo()", "%",
+        ":::", ":-:-:", ";", ";;;;;;;;;;", "(", ")", "()xoxo()", "%",
         "%-%-%-%", ":-)", "!", "!!!!", "'", "''''", "this-key's-valid.", "=",
         "==================================================", "-=-=-=___xoxox-",
-        "*", "(*)", "****", ".", "...", "-", "--", "_", "__" ].forEach(function (key) {
+        "*", "(*)", "****", "--", "__" ].forEach(function (key) {
         var doc1 = collection.save({ _key: key, value: key });
         assertEqual(key, doc1._key);
         assertEqual(cn + "/" + key, doc1._id);

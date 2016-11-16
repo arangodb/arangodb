@@ -25,6 +25,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VPackStringBufferAdapter.h"
@@ -326,8 +327,8 @@ bool VelocyPackHelper::VPackIdEqual::operator()(VPackSlice const& lhs,
           0);
 };
 
-bool VelocyPackHelper::VPackHashedStringEqual::operator()(VPackHashedSlice const& lhs,
-                                                          VPackHashedSlice const& rhs) const noexcept {
+bool VelocyPackHelper::VPackHashedStringEqual::operator()(basics::VPackHashedSlice const& lhs,
+                                                          basics::VPackHashedSlice const& rhs) const noexcept {
   auto const lh = lhs.slice.head();
   auto const rh = rhs.slice.head();
 
@@ -910,7 +911,19 @@ void VelocyPackHelper::patchDouble(VPackSlice slice, double value) {
   // get pointer to the start of the value
   uint8_t* p = const_cast<uint8_t*>(slice.begin());
   // skip one byte for the header and overwrite
+#ifdef __arm__
+  // ARM does not support unaligned writes, now copy bytewise
+  uint64_t dv;
+  memcpy(&dv, &value, sizeof(double));
+  VPackValueLength vSize = sizeof(double);
+  for (uint64_t x = dv; vSize > 0; vSize--) {
+    *(++p) = x & 0xff;
+    x >>= 8;
+  }
+#else
+  // other platforms support unaligned writes
   *reinterpret_cast<double*>(p + 1) = value;
+#endif  
 }
 
 #ifndef USE_ENTERPRISE
@@ -938,6 +951,20 @@ uint64_t VelocyPackHelper::hashByAttributes(
       }
       hash = sub.normalizedHash(hash);
     }
+  } else if (slice.isString() && attributes.size() == 1 &&
+             attributes[0] == StaticStrings::KeyString) {
+    arangodb::StringRef subKey(slice);
+    size_t pos = subKey.find('/');
+    if (pos != std::string::npos) {
+      // We have an _id. Split it.
+      subKey = subKey.substr(pos + 1);
+      VPackBuilder temporaryBuilder;
+      temporaryBuilder.add(VPackValuePair(subKey.data(), subKey.length(), VPackValueType::String));
+      VPackSlice tmp = temporaryBuilder.slice();
+      hash = tmp.normalizedHash(hash);
+    } else {
+      hash = slice.normalizedHash(hash);
+    }
   }
   return hash;
 }
@@ -946,7 +973,8 @@ uint64_t VelocyPackHelper::hashByAttributes(
 void VelocyPackHelper::SanitizeExternals(VPackSlice const input,
                                          VPackBuilder& output) {
   if (input.isExternal()) {
-    output.add(input.resolveExternal());
+    // recursively resolve externals
+    SanitizeExternals(input.resolveExternal(), output);
   } else if (input.isObject()) {
     output.openObject();
     for (auto const& it : VPackObjectIterator(input)) {
@@ -970,13 +998,13 @@ bool VelocyPackHelper::hasExternals(VPackSlice input) {
     return true;
   } else if (input.isObject()) {
     for (auto const& it : VPackObjectIterator(input)) {
-      if (hasExternals(it.value) == true) {
+      if (hasExternals(it.value)) {
         return true;
-      };
+      }
     }
   } else if (input.isArray()) {
     for (auto const& it : VPackArrayIterator(input)) {
-      if (hasExternals(it) == true) {
+      if (hasExternals(it)) {
         return true;
       }
     }

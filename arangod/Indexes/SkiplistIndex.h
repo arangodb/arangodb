@@ -158,7 +158,6 @@ class SkiplistInLookupBuilder : public BaseSkiplistLookupBuilder {
     void buildSearchValues();
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Iterator structure for skip list. We require a start and stop node
 ///
 /// Intervals are open in the sense that both end points are not members
@@ -166,8 +165,6 @@ class SkiplistInLookupBuilder : public BaseSkiplistLookupBuilder {
 /// on the start node to get the first element and that the stop node
 /// can be NULL. Note that it is ensured that all intervals in an iterator
 /// are non-empty.
-////////////////////////////////////////////////////////////////////////////////
-
 class SkiplistIterator final : public IndexIterator {
  private:
   friend class SkiplistIndex;
@@ -198,20 +195,13 @@ class SkiplistIterator final : public IndexIterator {
  public:
   char const* typeName() const override { return "skiplist-index-iterator"; }
 
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief Get the next element in the skiplist
-  ////////////////////////////////////////////////////////////////////////////////
-
   IndexLookupResult next() override;
 
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief Reset the cursor
-  ////////////////////////////////////////////////////////////////////////////////
-
   void reset() override;
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Iterator structure for skip list. We require a start and stop node
 ///
 /// Intervals are open in the sense that both end points are not members
@@ -219,8 +209,6 @@ class SkiplistIterator final : public IndexIterator {
 /// on the start node to get the first element and that the stop node
 /// can be NULL. Note that it is ensured that all intervals in an iterator
 /// are non-empty.
-////////////////////////////////////////////////////////////////////////////////
-
 class SkiplistIterator2 final : public IndexIterator {
  private:
   // Shorthand for the skiplist node
@@ -270,42 +258,27 @@ class SkiplistIterator2 final : public IndexIterator {
 
   char const* typeName() const override { return "skiplist-index-iterator2"; }
 
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief Get the next element in the skiplist
-  ////////////////////////////////////////////////////////////////////////////////
-
   IndexLookupResult next() override;
 
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief Reset the cursor
-  ////////////////////////////////////////////////////////////////////////////////
-
   void reset() override;
   
   size_t numPaths() const { return _numPaths; }
 
  private:
 
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief Initialize left and right endpoints with current lookup
   ///        value. Also points the _cursor to the border of this interval.
-  ////////////////////////////////////////////////////////////////////////////////
-
   void initNextInterval();
 
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief Forward the cursor to the next interval. If there was no
   ///        interval the next one is computed. If the _cursor has
   ///        nullptr after this call the iterator is exhausted.
-  ////////////////////////////////////////////////////////////////////////////////
-
   void forwardCursor();
 
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief Checks if the interval is valid. It is declared invalid if
   ///        one border is nullptr or the right is lower than left.
-  ////////////////////////////////////////////////////////////////////////////////
-
   bool intervalValid(void*, Node*, Node*) const;
 };
 
@@ -416,11 +389,8 @@ class SkiplistIndex final : public PathBasedIndex {
       arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
       std::vector<std::vector<arangodb::aql::AstNode const*>>&, bool&) const;
 
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief Checks if the interval is valid. It is declared invalid if
   ///        one border is nullptr or the right is lower than left.
-  ////////////////////////////////////////////////////////////////////////////////
-
   // Shorthand for the skiplist node
   typedef arangodb::basics::SkipListNode<VPackSlice,
                                          SkiplistIndexElement> Node;
@@ -433,10 +403,7 @@ class SkiplistIndex final : public PathBasedIndex {
 
   KeyElementComparator CmpKeyElm;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief the actual skiplist index
-  //////////////////////////////////////////////////////////////////////////////
-
   TRI_Skiplist* _skiplistIndex;
 };
 }

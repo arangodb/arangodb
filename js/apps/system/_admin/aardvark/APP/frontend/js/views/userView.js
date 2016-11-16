@@ -255,7 +255,7 @@
         $('#newUsername').closest('th').css('backgroundColor', 'red');
         return false;
       }
-      if (!username.match(/^[a-zA-Z][a-zA-Z0-9_\-]*$/)) {
+      if (!username.match(/^[a-zA-Z][a-zA-Z0-9_-]*$/)) {
         arangoHelper.arangoError(
           'Wrong Username', 'Username may only contain numbers, letters, _ and -'
         );
@@ -273,7 +273,7 @@
       if (name === '') {
         return true;
       }
-      if (!name.match(/^[a-zA-Z][a-zA-Z0-9_\-\ ]*$/)) {
+      if (!name.match(/^[a-zA-Z][a-zA-Z0-9_-]*$/)) {
         arangoHelper.arangoError(
           'Wrong Username', 'Username may only contain numbers, letters, _ and -'
         );

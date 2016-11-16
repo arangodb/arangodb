@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, document, _, arangoHelper, window, setTimeout, $, templateEngine, frontendConfig*/
+/* global Backbone, document, _, arangoHelper, window, setTimeout, $, templateEngine, frontendConfig */
 
 (function () {
   'use strict';
@@ -61,21 +61,29 @@
       }
 
       $('.bodyWrapper').show();
+      self.checkVersion();
 
+      return this;
+    },
+
+    checkVersion: function () {
+      var self = this;
       window.setTimeout(function () {
         var a = document.getElementById('loginSVG');
         var svgDoc = a.contentDocument;
         var svgItem;
 
-        if (window.isEnterprise) {
-          svgItem = svgDoc.getElementById('logo-enterprise');
+        if (frontendConfig.isEnterprise !== undefined) {
+          if (frontendConfig.isEnterprise) {
+            svgItem = svgDoc.getElementById('logo-enterprise');
+          } else {
+            svgItem = svgDoc.getElementById('logo-community');
+          }
+          svgItem.setAttribute('visibility', 'visible');
         } else {
-          svgItem = svgDoc.getElementById('logo-community');
+          self.checkVersion();
         }
-        svgItem.setAttribute('visibility', 'visible');
-      }, 300);
-
-      return this;
+      }, 150);
     },
 
     clear: function () {

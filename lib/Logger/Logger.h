@@ -210,7 +210,7 @@ class Logger {
 
  public:
   static void initialize(bool);
-  static void shutdown(bool);
+  static void shutdown();
   static void flush();
 
  private:

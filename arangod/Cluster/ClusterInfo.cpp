@@ -2164,8 +2164,7 @@ void ClusterInfo::loadCurrentCoordinators() {
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::string const prefixCurrentDBServers = "Current/DBServers";
-static std::string const prefixTargetCleaned = "Target/CleanedOutServers";
-static std::string const prefixTargetFailed = "Target/FailedServers";
+static std::string const prefixTarget = "Target";
 
 void ClusterInfo::loadCurrentDBServers() {
   ++_DBServersProt.wantedVersion;  // Indicate that after *NOW* somebody has to
@@ -2180,10 +2179,9 @@ void ClusterInfo::loadCurrentDBServers() {
 
   // Now contact the agency:
   AgencyCommResult result = _agency.getValues(prefixCurrentDBServers);
-  AgencyCommResult failed = _agency.getValues(prefixTargetFailed);
-  AgencyCommResult cleaned = _agency.getValues(prefixTargetCleaned);
+  AgencyCommResult target = _agency.getValues(prefixTarget);
 
-  if (result.successful()) {
+  if (result.successful() && target.successful()) {
     velocypack::Slice currentDBServers;
     velocypack::Slice failedDBServers;
     velocypack::Slice cleanedDBServers;
@@ -2192,13 +2190,13 @@ void ClusterInfo::loadCurrentDBServers() {
       currentDBServers = result.slice()[0].get(std::vector<std::string>(
           {AgencyCommManager::path(), "Current", "DBServers"}));
     }
-    if (!failed.slice().isNone()) {
-      failedDBServers = failed.slice()[0].get(std::vector<std::string>(
-          {AgencyCommManager::path(), "Target", "FailedServers"}));
-    }
-    if (!cleaned.slice().isNone()) {
-      cleanedDBServers = cleaned.slice()[0].get(std::vector<std::string>(
-          {AgencyCommManager::path(), "Target", "CleanedOutServers"}));
+    if (target.slice().length() > 0) {
+      failedDBServers =
+        target.slice()[0].get(std::vector<std::string>(
+              {AgencyCommManager::path(), "Target", "FailedServers"}));
+      cleanedDBServers =
+        target.slice()[0].get(std::vector<std::string>(
+              {AgencyCommManager::path(), "Target", "CleanedOutServers"}));
     }
     if (currentDBServers.isObject() && failedDBServers.isObject()) {
       decltype(_DBServers) newDBServers;

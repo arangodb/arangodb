@@ -118,10 +118,7 @@ class EdgeIndex final : public Index {
                                         arangodb::velocypack::Builder&);
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief typedef for hash tables
-  //////////////////////////////////////////////////////////////////////////////
-
  public:
   IndexType type() const override {
     return Index::TRI_IDX_TYPE_EDGE_INDEX;
@@ -135,7 +132,7 @@ class EdgeIndex final : public Index {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate() const override;
+  double selectivityEstimate(arangodb::StringRef const* = nullptr) const override;
 
   size_t memory() const override;
 
@@ -172,16 +169,12 @@ class EdgeIndex final : public Index {
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Transform the list of search slices to search values.
   ///        This will multiply all IN entries and simply return all other
   ///        entries.
-  //////////////////////////////////////////////////////////////////////////////
-
   void expandInSearchValues(arangodb::velocypack::Slice const,
                             arangodb::velocypack::Builder&) const override;
 
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief creates an IndexIterator for the given VelocyPackSlices.
   ///        The searchValue is a an Array with exactly two Entries, one of them
   ///        has to be NONE.
@@ -195,8 +188,6 @@ class EdgeIndex final : public Index {
   ///        Reverse is not supported, hence ignored
   ///        NOTE: The iterator is only valid as long as the slice points to
   ///        a valid memory region.
-  ////////////////////////////////////////////////////////////////////////////////
-
   IndexIterator* iteratorForSlice(arangodb::Transaction*, 
                                   ManagedDocumentResult*,
                                   arangodb::velocypack::Slice const,

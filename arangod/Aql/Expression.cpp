@@ -260,7 +260,7 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
 
   size_t const n = right.length();
 
-  if (n > 3 && 
+  if (n >= AstNode::SortNumberThreshold && 
       (node->getMember(1)->isSorted() ||
       ((node->type == NODE_TYPE_OPERATOR_BINARY_IN || 
         node->type == NODE_TYPE_OPERATOR_BINARY_NIN) && node->getBoolValue()))) {
@@ -699,10 +699,11 @@ AqlValue Expression::executeSimpleExpressionObject(
 
       Functions::Stringify(trx, adapter, slice);
       
-      std::string key(buffer->begin(), buffer->length());
-      builder->add(VPackValue(key));
+      builder->add(VPackValuePair(buffer->begin(), buffer->length(), VPackValueType::String));
 
       if (mustCheckUniqueness) {
+        std::string key(buffer->begin(), buffer->length());
+
         // note each individual object key name with latest value position
         auto it = uniqueKeyValues.find(key);
 
@@ -721,9 +722,10 @@ AqlValue Expression::executeSimpleExpressionObject(
     } else {
       TRI_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
 
+      builder->add(VPackValuePair(member->getStringValue(), member->getStringLength(), VPackValueType::String));
+
       if (mustCheckUniqueness) {
         std::string key(member->getString());
-        builder->add(VPackValue(key));
 
         // note each individual object key name with latest value position
         auto it = uniqueKeyValues.find(key);
@@ -736,10 +738,6 @@ AqlValue Expression::executeSimpleExpressionObject(
           (*it).second = i;
           isUnique = false;
         }
-      
-      } else {
-        // object has only one key or multiple unique keys. no need to de-duplicate
-        builder->add(VPackValuePair(member->getStringValue(), member->getStringLength(), VPackValueType::String));
       }
     
       // value
@@ -852,8 +850,8 @@ AqlValue Expression::executeSimpleExpressionFCall(
     AstNode const* node, arangodb::Transaction* trx, bool& mustDestroy) {
 
   mustDestroy = false;
-  // some functions have C++ handlers
-  // check if the called function has one
+  // only some functions have C++ handlers
+  // check that the called function actually has one
   auto func = static_cast<Function*>(node->getData());
   TRI_ASSERT(func->implementation != nullptr);
 
@@ -872,7 +870,7 @@ AqlValue Expression::executeSimpleExpressionFCall(
       auto arg = member->getMemberUnchecked(i);
 
       if (arg->type == NODE_TYPE_COLLECTION) {
-        parameters.emplace_back(AqlValue(arg->getString()));
+        parameters.emplace_back(arg->getStringValue(), arg->getStringLength());
         destroyParameters.push_back(true);
       } else {
         bool localMustDestroy;
@@ -883,11 +881,12 @@ AqlValue Expression::executeSimpleExpressionFCall(
     }
 
     TRI_ASSERT(parameters.size() == destroyParameters.size());
+    TRI_ASSERT(parameters.size() == n);
 
     AqlValue a = func->implementation(_ast->query(), trx, parameters);
     mustDestroy = true; // function result is always dynamic
 
-    for (size_t i = 0; i < parameters.size(); ++i) {
+    for (size_t i = 0; i < n; ++i) {
       if (destroyParameters[i]) {
         parameters[i].destroy();
       }
@@ -1033,7 +1032,7 @@ AqlValue Expression::executeSimpleExpressionNaryAndOr(
   if (node->type == NODE_TYPE_OPERATOR_NARY_AND) {
     for (size_t i = 0; i < count; ++i) {
       AqlValue check =
-          executeSimpleExpression(node->getMember(i), trx, mustDestroy, true);
+          executeSimpleExpression(node->getMemberUnchecked(i), trx, mustDestroy, true);
       if (!check.toBoolean()) {
         // Check is false. Return it.
         return check;
@@ -1050,7 +1049,7 @@ AqlValue Expression::executeSimpleExpressionNaryAndOr(
   // OR
   for (size_t i = 0; i < count; ++i) {
     AqlValue check =
-        executeSimpleExpression(node->getMember(i), trx, mustDestroy, true);
+        executeSimpleExpression(node->getMemberUnchecked(i), trx, mustDestroy, true);
     if (check.toBoolean()) {
       // Check is true. Return it.
       return check;

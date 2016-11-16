@@ -74,8 +74,6 @@ class EdgeCollectionInfo {
 
   TRI_edge_direction_e _backwardDir;
 
-  std::vector<arangodb::traverser::TraverserExpression*> _unused;
-
  public:
 
   EdgeCollectionInfo(arangodb::Transaction* trx,

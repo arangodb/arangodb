@@ -32,7 +32,8 @@ unsure about whether using an index will violate the policy, it will not make us
 
 !SECTION Troubleshooting
 
-When in doubt about whether and which indexes will be used for executing a given AQL query, use
+When in doubt about whether and which indexes will be used for executing a given AQL query,
+click the *Explain* button in the web interface in the *Queries* view or use
 the `explain()` method for the statement as follows (from the ArangoShell):
 
 ```js
@@ -75,6 +76,10 @@ If any of the explain methods shows that a query is not using indexes, the follo
 
   In these cases the queries should be rewritten so that only the index attribute is present on one side of 
   the operator, or additional filters and indexes should be used to restrict the amount of documents otherwise.
+
+* certain AQL functions such as `WITHIN()` or `FULLTEXT()` do utilize indexes internally, but their use is
+  not mentioned in the query explanation for functions in general. These functions will raise query errors
+  (at runtime) if no suitable index is present for the collection in question.
 
 * the query optimizer will in general pick one index per collection in a query. It can pick more than
   one index per collection if the FILTER condition contains multiple branches combined with logical `OR`.

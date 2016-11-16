@@ -12,7 +12,7 @@
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
@@ -223,8 +223,6 @@ size_t State::removeConflicts(query_t const& transactions) { // Under MUTEX in A
                                                queryResult.details);
               }
 
-              queryResult.result->slice();
-
               // volatile logs
               _log.erase(_log.begin() + pos, _log.end());
               
@@ -393,6 +391,7 @@ bool State::loadCollections(TRI_vocbase_t* vocbase,
   _options.waitForSync = waitForSync;
   _options.silent = true;
 
+  
   if (loadPersisted()) {
     MUTEX_LOCKER(logLock, _logLock);
     if (_log.empty()) {
@@ -420,7 +419,9 @@ bool State::loadPersisted() {
   loadOrPersistConfiguration();
 
   if (checkCollection("log") && checkCollection("compact")) {
-    return (loadCompacted() && loadRemaining());
+      bool lc = loadCompacted();
+      bool lr = loadRemaining();
+        return (lc && lr);
   }
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Couldn't find persisted log";
@@ -435,6 +436,7 @@ bool State::loadCompacted() {
   bindVars->openObject();
   bindVars->close();
 
+  
   std::string const aql(
       std::string("FOR c IN compact SORT c._key DESC LIMIT 1 RETURN c"));
   arangodb::aql::Query query(false, _vocbase, aql.c_str(), aql.size(), bindVars,
@@ -451,10 +453,11 @@ bool State::loadCompacted() {
   if (result.isArray() && result.length()) {
     MUTEX_LOCKER(logLock, _logLock);
     for (auto const& i : VPackArrayIterator(result)) {
+      auto ii = i.resolveExternals();
       buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
-      (*_agent) = i;
+      (*_agent) = ii;
       try {
-        _cur = std::stoul(i.get("_key").copyString());
+        _cur = std::stoul(ii.get("_key").copyString());
       } catch (std::exception const& e) {
         LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__
                                        << __LINE__;
@@ -490,8 +493,10 @@ bool State::loadOrPersistConfiguration() {
       result.length()) {  // We already have a persisted conf
 
     try {
-      LOG_TOPIC(DEBUG, Logger::AGENCY) << "Merging configuration " << result[0].toJson();
-      _agent->mergeConfiguration(result[0]);
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
+        << "Merging configuration " << result[0].resolveExternals().toJson();
+      _agent->mergeConfiguration(result[0].resolveExternals());
+      
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::AGENCY)
           << "Failed to merge persisted configuration into runtime "
@@ -551,37 +556,44 @@ bool State::loadRemaining() {
                              nullptr, arangodb::aql::PART_MAIN);
 
   auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
-
+      
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
   }
-
+      
   auto result = queryResult.result->slice();
+  index_t back = 0;
 
-  MUTEX_LOCKER(logLock, _logLock);
-  if (result.isArray()) {
-    _log.clear();
-    for (auto const& i : VPackArrayIterator(result)) {
-      buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
-      auto req = i.get("request");
-      tmp->append(req.startAs<char const>(), req.byteSize());
-      try {
-        _log.push_back(
-            log_t(std::stoi(i.get(StaticStrings::KeyString).copyString()),
-                  static_cast<term_t>(i.get("term").getUInt()), tmp));
-      } catch (std::exception const& e) {
-        LOG_TOPIC(ERR, Logger::AGENCY)
+  {
+    MUTEX_LOCKER(logLock, _logLock);
+    if (result.isArray()) {
+      
+      _log.clear();
+      
+      for (auto const& i : VPackArrayIterator(result)) {
+        buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
+        auto ii = i.resolveExternals();
+        auto req = ii.get("request");
+        tmp->append(req.startAs<char const>(), req.byteSize());
+        try {
+          _log.push_back(
+            log_t(std::stoi(ii.get(StaticStrings::KeyString).copyString()),
+                  static_cast<term_t>(ii.get("term").getUInt()), tmp));
+        } catch (std::exception const& e) {
+          LOG_TOPIC(ERR, Logger::AGENCY)
             << "Failed to convert " +
-                   i.get(StaticStrings::KeyString).copyString() +
-                   " to integer via std::stoi."
+            ii.get(StaticStrings::KeyString).copyString() +
+            " to integer via std::stoi."
             << e.what();
+        }
       }
     }
+    TRI_ASSERT(!_log.empty());
+    back = _log.back().index;
   }
-
+  
   _agent->rebuildDBs();
-  TRI_ASSERT(!_log.empty());
-  _agent->lastCommitted(_log.back().index);
+  _agent->lastCommitted(back);
 
   return true;
 }

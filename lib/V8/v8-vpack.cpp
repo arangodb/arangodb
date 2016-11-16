@@ -84,6 +84,7 @@ static v8::Handle<v8::Value> ObjectVPackObject(v8::Isolate* isolate,
       v8::Local<v8::Value> sub;
       if (v.isString()) {
         char const* p = v.getString(l);
+        // value of _key, _id, _from, _to, and _rev is ASCII too
         sub = TRI_V8_ASCII_PAIR_STRING(p, l);
       } else {
         sub = TRI_VPackToV8(isolate, v, options, &slice);
@@ -413,17 +414,7 @@ static int V8ToVPack(BuilderContext& context,
 
           if (!converted.IsEmpty()) {
             // return whatever toJSON returned
-            v8::String::Utf8Value str(converted->ToString());
-
-            if (*str == nullptr) {
-              return TRI_ERROR_OUT_OF_MEMORY;
-            }
-
-            // this passes ownership for the utf8 string to the JSON object
-            AddValue<VPackValuePair, inObject>(
-                context, attributeName,
-                VPackValuePair(*str, str.length(), VPackValueType::String));
-            return TRI_ERROR_NO_ERROR;
+            return V8ToVPack<performAllChecks, inObject>(context, converted, attributeName);
           }
         }
 
