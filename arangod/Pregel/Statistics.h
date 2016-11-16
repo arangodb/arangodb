@@ -54,6 +54,10 @@ struct WorkerStats {
     if (p.isInteger()) {
       receivedCount += p.getUInt();
     }
+    p = statValues.get(Utils::superstepRuntimeMilliKey);
+    if (p.isInteger()) {
+      superstepRuntimeMilli += p.getUInt();
+    }
   }
 
   void serializeValues(VPackBuilder& b) const {

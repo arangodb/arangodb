@@ -76,23 +76,25 @@ function post_api_pregel (req, res) {
     
     var executionNum = db._pregelStart(json.vertexCollections,
                                        json.edgeCollection,
-                                      algorithm,
-                                      params);
+                                       json.algorithm,
+                                       params);
     actions.resultOk(req, res, actions.HTTP_OK, executionNum);
     
   } else if (json.graphName &&  typeof json.graphName === 'string') {
     var graph = graph_module._graph(json.graphName);
     if (graph) {
       var vertexCollections = [];
-      var vcs = graph._vertecCollections();
-      for (var i = 0; i < fcs.length; i++) {
-        vertexCollections.push(vcs[i].name());
+      var vcs = graph._vertexCollections(true);
+      for (var key in vcs) {
+        vertexCollections.push(vcs[key].name());
       }
       var edges = graph._edgeCollections();
       if (edges.length > 0) {
-        var edgeCollection = [0].name()
-        var executionNum = db._pregelStart(vertexCollections, edgeCollection,
-                                           algorithm, params);
+        var edgeCollection = edges[0].name()
+        var executionNum = db._pregelStart(vertexCollections,
+                                           edgeCollection,
+                                           json.algorithm,
+                                           params);
         actions.resultOk(req, res, actions.HTTP_OK, executionNum);
         
       } else {

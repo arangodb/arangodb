@@ -148,6 +148,7 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
   }
   LOG(INFO) << "Worker starts new gss: " << gss;
   
+  //TRI_numberProcessors()
   //size_t numThreads = _workerPool->numThreads();
   // for (; numThreads > 0; numThreads--) {}
   // incoming caches are already switched
@@ -156,6 +157,8 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
       LOG(INFO) << "Execution aborted prematurely.";
       return;
     }
+    
+    double start = TRI_microtime();
 
     // thread local objects, TODO reduce instantiation of format and combiner
     //std::shared_ptr<MessageFormat<M>> format(_algorithm->messageFormat());
@@ -183,7 +186,7 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
 
     for (auto& vertexEntry : vertexIterator) {
       std::string vertexID = vertexEntry.vertexID();
-      MessageIterator<M> messages = this->_readCache->getMessages(vertexID);
+      MessageIterator<M> messages = _readCache->getMessages(vertexID);
 
       if (gss == 0 || messages.size() > 0 || vertexEntry.active()) {
         vertexComputation->_vertexEntry = &vertexEntry;
@@ -194,6 +197,10 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
           LOG(INFO) << vertexID << " vertex has halted";
         }
       }
+      // TODO delete read messages immediatly
+      // technically messages to non-existing vertices trigger
+      // their creation
+      
       if (!_running) {
         LOG(INFO) << "Execution aborted prematurely.";
         return;
@@ -215,6 +222,7 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
     _workerAggregators->aggregateValues(*vertexComputation->_workerAggregators);
     
     WorkerStats stats(activeCount, sendCount, receivedCount);
+    stats.superstepRuntimeMilli = (uint64_t)((TRI_microtime() - start)*1000.0);
     _workerJobIsDone(stats);
   });
 }
@@ -231,6 +239,7 @@ void Worker<V, E, M>::receivedMessages(VPackSlice data) {
   }
   uint64_t gss = gssSlice.getUInt();
   if (gss == _state._globalSuperstep) {
+    // handles locking for us
     _writeCache->parseMessages(messageSlice);
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,

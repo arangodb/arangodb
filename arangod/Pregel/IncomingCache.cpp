@@ -93,7 +93,6 @@ void IncomingCache<M>::mergeCache(IncomingCache<M> const& otherCache) {
   
   // cannot call setDirect since it locks
   for (auto const& pair : otherCache._messages) {
-    _receivedMessageCount++;
     auto vmsg = _messages.find(pair.first);
     if (vmsg != _messages.end()) {  // got a message for the same vertex
       vmsg->second = _combiner->combine(vmsg->second, pair.second);
@@ -101,6 +100,7 @@ void IncomingCache<M>::mergeCache(IncomingCache<M> const& otherCache) {
       _messages[pair.first] = pair.second;
     }
   }
+  _receivedMessageCount += otherCache._receivedMessageCount;
 }
 
 template <typename M>

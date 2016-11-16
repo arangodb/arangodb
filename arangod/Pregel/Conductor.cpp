@@ -263,6 +263,7 @@ void Conductor::finishedGlobalStep(VPackSlice& data) {
       LOG(INFO) << "Done. We did " << _globalSuperstep << " rounds";
       LOG(INFO) << "Send: " << _workerStats.sendCount
       << " Received: " << _workerStats.receivedCount;
+      LOG(INFO) << "Superstep Time: " << _workerStats.superstepRuntimeMilli << "ms";
       
       bool storeResults = _state == ExecutionState::RUNNING;
       if (_state == ExecutionState::CANCELED) {

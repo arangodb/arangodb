@@ -40,7 +40,7 @@ template <typename V, typename E, typename M>
 class VertexComputation {
   friend class Worker<V, E, M>;
 
-  uint64_t _gss;
+  uint64_t _gss = 0;
   WorkerContext* _context;
   GraphStore<V, E>* _graphStore;
   OutgoingCache<M>* _outgoing;

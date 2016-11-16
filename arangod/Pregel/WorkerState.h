@@ -73,7 +73,7 @@ class WorkerState {
   //}
 
  private:
-  uint64_t _executionNumber;
+  uint64_t _executionNumber = 0;
   uint64_t _globalSuperstep = 0;
   // uint64_t _numWorkerThreads = 1;
 
