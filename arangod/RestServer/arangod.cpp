@@ -183,7 +183,7 @@ static int runServer(int argc, char** argv) {
 
   // storage engines
   server.addFeature(new MMFilesEngine(&server));
-  server.addFeature(new RocksDBEngine(&server));
+  //server.addFeature(new RocksDBEngine(&server));
 
   try {
     server.run(argc, argv);
@@ -245,5 +245,5 @@ int main(int argc, char* argv[]) {
     }
   } else
 #endif
-    return runServer(argc, argv);
+  return runServer(argc, argv);
 }

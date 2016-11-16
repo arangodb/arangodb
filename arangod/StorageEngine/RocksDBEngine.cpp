@@ -52,6 +52,7 @@ std::string const RocksDBEngine::EngineName("RocksDB");
 // create the storage engine
 RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
     : StorageEngine(server, EngineName) {
+  TRI_ASSERT(false);
 }
 
 RocksDBEngine::~RocksDBEngine() {
