@@ -521,11 +521,7 @@ class LogfileManager final : public application_features::ApplicationFeature {
   // a lock protecting ALL buckets in _transactions
   basics::ReadWriteLock _allTransactionsLock;
 
-#ifdef _WIN32
   struct {
-#else
-  struct alignas(64) {
-#endif
     // a lock protecting _activeTransactions and _failedTransactions
     basics::ReadWriteLock _lock;
 
