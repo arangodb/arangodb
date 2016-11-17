@@ -216,6 +216,7 @@ void Conductor::startGlobalStep() {
 
   // reset aggregatores ahead of gss
   _aggregatorUsage->resetValues();
+  _workerStats.activeCount = 0;// reset currently active vertices
 
   std::string baseUrl = Utils::baseUrl(_vocbaseGuard.vocbase()->name());
   // first allow all workers to run worker level operations

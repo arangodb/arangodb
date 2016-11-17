@@ -189,7 +189,7 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
     });
     start = end;
     end = end+delta;
-    if (total - end < delta || total < end) {
+    if (total < delta+end) {// swallow the rest
       end = total;
     }
   } while(start != total);
