@@ -77,6 +77,11 @@ ClusterFeature::~ClusterFeature() {
 void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("cluster", "Configure the cluster");
 
+  options->addObsoleteOption("--cluster.username",
+                             "username used for cluster-internal communication");
+  options->addObsoleteOption("--cluster.password",
+                             "password used for cluster-internal communication");
+
   options->addOption("--cluster.agency-endpoint",
                      "agency endpoint to connect to",
                      new VectorParameter<StringParameter>(&_agencyEndpoints));
