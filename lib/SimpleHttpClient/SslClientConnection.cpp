@@ -130,6 +130,10 @@ void SslClientConnection::init(uint64_t sslProtocol) {
     case TLS_V1:
       meth = TLSv1_method();
       break;
+    
+    case TLS_V12:
+      meth = TLSv1_2_method();
+      break;
 
     default:
       // fallback is to use tlsv1
