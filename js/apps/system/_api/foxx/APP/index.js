@@ -108,18 +108,22 @@ router.get((req, res) => {
 
 router.post(prepareServiceRequestBody, (req, res) => {
   const mount = req.queryParams.mount;
-  fm.install(req.body.source, mount, _.omit(req.queryParams, ['mount']));
+  fm.install(req.body.source, mount, _.omit(req.queryParams, ['mount', 'development']));
   if (req.body.configuration) {
     fm.setConfiguration(mount, {configuration: req.body.configuration, replace: true});
   }
   if (req.body.dependencies) {
     fm.setDependencies(mount, {dependencies: req.body.dependencies, replace: true});
   }
+  if (req.queryParams.development) {
+    fm.development(mount);
+  }
   const service = fm.lookupService(mount);
   res.json(serviceToJson(service));
 })
 .body(schemas.service, ['multipart/form-data', 'application/json'], `Service to be installed.`)
 .queryParam('mount', schemas.mount, `Mount path the service should be installed at.`)
+.queryParam('development', schemas.flag.default(false), `Enable development mode.`)
 .queryParam('setup', schemas.flag.default(true), `Run the service's setup script.`)
 .queryParam('legacy', schemas.flag.default(false), `Service should be installed in 2.8 legacy compatibility mode.`)
 .response(201, schemas.fullInfo, `Description of the installed service.`)
