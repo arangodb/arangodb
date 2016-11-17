@@ -1,0 +1,6 @@
+{
+  "main": "index.js",
+  "files": {
+    "static": "static"
+  }
+}

@@ -66,7 +66,7 @@ inline RestStatus RestAgencyHandler::reportTooManySuffices() {
 
 inline RestStatus RestAgencyHandler::reportUnknownMethod() {
   LOG_TOPIC(WARN, Logger::AGENCY) << "Public REST interface has no method "
-                                  << _request->suffix()[0];
+                                  << _request->suffixes()[0];
   generateError(rest::ResponseCode::NOT_FOUND, 405);
   return RestStatus::DONE;
 }
@@ -330,26 +330,27 @@ inline RestStatus RestAgencyHandler::reportMethodNotAllowed() {
 
 RestStatus RestAgencyHandler::execute() {
   try {
-    if (_request->suffix().size() == 0) {  // Empty request
+    auto const& suffixes = _request->suffixes();
+    if (suffixes.empty()) {  // Empty request
       return reportErrorEmptyRequest();
-    } else if (_request->suffix().size() > 1) {  // path size >= 2
+    } else if (suffixes.size() > 1) {  // path size >= 2
       return reportTooManySuffices();
     } else {
-      if (_request->suffix()[0] == "write") {
+      if (suffixes[0] == "write") {
         return handleWrite();
-      } else if (_request->suffix()[0] == "read") {
+      } else if (suffixes[0] == "read") {
         return handleRead();
-      } else if (_request->suffix()[0] == "config") {
+      } else if (suffixes[0] == "config") {
         if (_request->requestType() != rest::RequestType::GET) {
           return reportMethodNotAllowed();
         }
         return handleConfig();
-      } else if (_request->suffix()[0] == "state") {
+      } else if (suffixes[0] == "state") {
         if (_request->requestType() != rest::RequestType::GET) {
           return reportMethodNotAllowed();
         }
         return handleState();
-      } else if (_request->suffix()[0] == "stores") {
+      } else if (suffixes[0] == "stores") {
         return handleStores();
       } else {
         return reportUnknownMethod();

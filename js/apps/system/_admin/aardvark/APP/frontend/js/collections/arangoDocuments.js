@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global window, _, arangoHelper, $*/
+/* global window, _, arangoHelper, $ */
 (function () {
   'use strict';
 
@@ -75,7 +75,7 @@
           bindVars['param' + i] = '%' + f.val + '%';
         } else if (f.op === 'IN' || f.op === 'NOT IN ') {
           if (f.val.indexOf(',') !== -1) {
-            bindVars['param' + i] = f.val.split(',').map (function (v) { return v.replace(/(^ +| +$)/g, ''); });
+            bindVars['param' + i] = f.val.split(',').map(function (v) { return v.replace(/(^ +| +$)/g, ''); });
           } else {
             bindVars['param' + i] = [ f.val ];
           }
@@ -208,12 +208,6 @@
         query: query,
         bindVars: bindVars
       };
-      /*
-      if (this.getTotal() < 10000 || this.filters.length > 0) {
-        queryObj.options = {
-          fullCount: true,
-        }
-      }*/
 
       var checkCursorStatus = function (jobid) {
         $.ajax({

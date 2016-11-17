@@ -54,7 +54,7 @@ static RocksDBFeature* Instance = nullptr;
 
 RocksDBFeature::RocksDBFeature(
     application_features::ApplicationServer* server)
-    : application_features::ApplicationFeature(server, "RocksDB"),
+    : application_features::ApplicationFeature(server, "RocksDBIndex"),
       _db(nullptr), _comparator(nullptr), _path(), _active(true),
       _writeBufferSize(0), _maxWriteBufferNumber(2), 
       _delayedWriteRate(2 * 1024 * 1024), _minWriteBufferNumberToMerge(1),

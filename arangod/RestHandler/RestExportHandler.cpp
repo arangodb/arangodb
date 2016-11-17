@@ -177,9 +177,9 @@ VPackBuilder RestExportHandler::buildOptions(VPackSlice const& slice) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestExportHandler::createCursor() {
-  std::vector<std::string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffixes = _request->suffixes();
 
-  if (suffix.size() != 0) {
+  if (!suffixes.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting POST /_api/export");
     return;
@@ -290,15 +290,15 @@ void RestExportHandler::createCursor() {
 }
 
 void RestExportHandler::modifyCursor() {
-  std::vector<std::string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffixes = _request->suffixes();
 
-  if (suffix.size() != 1) {
+  if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/export/<cursor-id>");
     return;
   }
 
-  std::string const& id = suffix[0];
+  std::string const& id = suffixes[0];
 
   auto cursors = _vocbase->cursorRepository();
   TRI_ASSERT(cursors != nullptr);
@@ -341,15 +341,15 @@ void RestExportHandler::modifyCursor() {
 }
 
 void RestExportHandler::deleteCursor() {
-  std::vector<std::string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffixes = _request->suffixes();
 
-  if (suffix.size() != 1) {
+  if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/export/<cursor-id>");
     return;
   }
 
-  std::string const& id = suffix[0];
+  std::string const& id = suffixes[0];
 
   auto cursors = _vocbase->cursorRepository();
   TRI_ASSERT(cursors != nullptr);

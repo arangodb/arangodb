@@ -1,7 +1,7 @@
 /* jshint browser: true */
 /* jshint unused: false */
 /* global Backbone, $, window, setTimeout */
-/* global templateEngine*/
+/* global templateEngine */
 
 (function () {
   'use strict';

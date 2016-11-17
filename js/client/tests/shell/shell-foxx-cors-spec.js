@@ -7,9 +7,8 @@ var fs = require('fs');
 var internal = require('internal');
 var basePath = fs.makeAbsolute(fs.join(internal.startupPath, 'common', 'test-data', 'apps'));
 var url = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
-require("console").warn(url);
 
-describe('HTTP headers in Foxx apps', function () {
+describe('HTTP headers in Foxx services', function () {
   describe('Check request-response', function () {
     var mount;
 

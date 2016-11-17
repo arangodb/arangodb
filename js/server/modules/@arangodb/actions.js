@@ -38,6 +38,7 @@ var Module = require('module');
 
 var fs = require('fs');
 var util = require('util');
+var path = require('path');
 var mimeTypes = require('mime-types');
 var console = require('console');
 
@@ -2017,7 +2018,7 @@ function pathHandler (req, res, options, next) {
   'use strict';
 
   var filepath, root, filename, encodedFilename;
-  filepath = fs.join(...req.suffix);
+  filepath = req.suffix.length ? path.resolve(path.sep, ...req.suffix.map((part) => decodeURIComponent(part))) : '';
   root = options.path;
 
   if (options.root) {

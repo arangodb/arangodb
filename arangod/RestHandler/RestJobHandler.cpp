@@ -52,11 +52,11 @@ RestStatus RestJobHandler::execute() {
   if (type == rest::RequestType::GET) {
     getJob();
   } else if (type == rest::RequestType::PUT) {
-    std::vector<std::string> const& suffix = _request->suffix();
+    std::vector<std::string> const& suffixes = _request->suffixes();
 
-    if (suffix.size() == 1) {
+    if (suffixes.size() == 1) {
       putJob();
-    } else if (suffix.size() == 2) {
+    } else if (suffixes.size() == 2) {
       putJobMethod();
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
@@ -72,8 +72,8 @@ RestStatus RestJobHandler::execute() {
 }
 
 void RestJobHandler::putJob() {
-  std::vector<std::string> const& suffix = _request->suffix();
-  std::string const& value = suffix[0];
+  std::vector<std::string> const& suffixes = _request->suffixes();
+  std::string const& value = suffixes[0];
   uint64_t jobId = StringUtils::uint64(value);
 
   AsyncJobResult::Status status;
@@ -103,9 +103,9 @@ void RestJobHandler::putJob() {
 }
 
 void RestJobHandler::putJobMethod() {
-  std::vector<std::string> const& suffix = _request->suffix();
-  std::string const& value = suffix[0];
-  std::string const& method = suffix[1];
+  std::vector<std::string> const& suffixes = _request->suffixes();
+  std::string const& value = suffixes[0];
+  std::string const& method = suffixes[1];
   uint64_t jobId = StringUtils::uint64(value);
 
   if (method == "cancel") {
@@ -130,14 +130,14 @@ void RestJobHandler::putJobMethod() {
 }
 
 void RestJobHandler::getJob() {
-  std::vector<std::string> const suffix = _request->suffix();
+  std::vector<std::string> const& suffixes = _request->suffixes();
 
-  if (suffix.size() != 1) {
+  if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
   }
 
-  std::string const type = suffix[0];
+  std::string const type = suffixes[0];
 
   if (!type.empty() && type[0] >= '1' && type[0] <= '9') {
     getJobById(type);
@@ -201,14 +201,14 @@ void RestJobHandler::getJobByType(std::string const& type) {
 }
 
 void RestJobHandler::deleteJob() {
-  std::vector<std::string> const suffix = _request->suffix();
+  std::vector<std::string> const& suffixes = _request->suffixes();
 
-  if (suffix.size() != 1) {
+  if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
   }
 
-  std::string const& value = suffix[0];
+  std::string const& value = suffixes[0];
 
   if (value == "all") {
     _jobManager->deleteJobResults();

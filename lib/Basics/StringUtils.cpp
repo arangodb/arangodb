@@ -1236,7 +1236,7 @@ std::string urlEncode(char const* src, size_t const len) {
       result.push_back(*src);
     }
 
-    else if (*src == '-' || *src == '_' || *src == '.' || *src == '~') {
+    else if (*src == '-' || *src == '_' || *src == '~') {
       result.push_back(*src);
     }
 

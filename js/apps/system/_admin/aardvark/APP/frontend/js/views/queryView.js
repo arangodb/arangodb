@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, $, setTimeout, localStorage, ace, Storage, window, _, console, btoa*/
+/* global Backbone, $, setTimeout, localStorage, ace, Storage, window, _, console, btoa */
 /* global _, arangoHelper, numeral, templateEngine, Joi */
 
 (function () {
@@ -1339,7 +1339,7 @@
 
     updateAQL: function () {
       var content = this.aqlEditor.getValue();
-      var queryName = localStorage.getItem('lastOpenQuery');
+      var queryName = $('#lastQueryName').html();
       var query = this.collection.findWhere({name: queryName});
 
       if (query) {

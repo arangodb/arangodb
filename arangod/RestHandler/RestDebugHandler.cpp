@@ -40,13 +40,13 @@ bool RestDebugHandler::isDirect() const { return false; }
 RestStatus RestDebugHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
-  size_t const len = _request->suffix().size();
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+  size_t const len = suffixes.size();
 
-  if (len == 0 || len > 2 || !(_request->suffix()[0] == "failat")) {
+  if (len == 0 || len > 2 || suffixes[0] != "failat") {
     generateNotImplemented("ILLEGAL /_admin/debug/failat");
     return RestStatus::DONE;
   }
-  std::vector<std::string> const& suffix = _request->suffix();
 
   // execute one of the CRUD methods
   switch (type) {
@@ -54,12 +54,12 @@ RestStatus RestDebugHandler::execute() {
       if (len == 1) {
         TRI_ClearFailurePointsDebugging();
       } else {
-        TRI_RemoveFailurePointDebugging(suffix[1].c_str());
+        TRI_RemoveFailurePointDebugging(suffixes[1].c_str());
       }
       break;
     case rest::RequestType::PUT:
       if (len == 2) {
-        TRI_AddFailurePointDebugging(suffix[1].c_str());
+        TRI_AddFailurePointDebugging(suffixes[1].c_str());
       } else {
         generateNotImplemented("ILLEGAL /_admin/debug/failat");
       }
