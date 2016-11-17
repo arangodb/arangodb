@@ -42,7 +42,7 @@ RecoveryFeature::RecoveryFeature(ApplicationServer* server)
   requiresElevatedPrivileges(false);
   startsAfter("Database"); 
   startsAfter("LogfileManager");
-  startsAfter("RocksDB");
+  startsAfter("RocksDBIndex");
 }
 
 /// @brief run the recovery procedure

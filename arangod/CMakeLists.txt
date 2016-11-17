@@ -291,6 +291,7 @@ SET(ARANGOD_SOURCES
   StorageEngine/MMFilesDatafileStatistics.cpp
   StorageEngine/MMFilesEngine.cpp
   StorageEngine/MMFilesRevisionsCache.cpp
+  StorageEngine/RocksDBEngine.cpp
   Utils/AqlTransaction.cpp
   Utils/CollectionExport.cpp
   Utils/CollectionKeys.cpp

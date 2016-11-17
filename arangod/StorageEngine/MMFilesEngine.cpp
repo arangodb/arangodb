@@ -472,13 +472,6 @@ int MMFilesEngine::getCollectionsAndIndexes(TRI_vocbase_t* vocbase,
   return TRI_ERROR_NO_ERROR;
 }
 
-// determine the maximum revision id previously handed out by the storage
-// engine. this value is used as a lower bound for further HLC values handed out by
-// the server. called at server start only, after getDatabases() and getCollectionsAndIndexes()
-uint64_t MMFilesEngine::getMaxRevision() {
-  return _maxTick;
-}
-  
 TRI_vocbase_t* MMFilesEngine::openDatabase(VPackSlice const& parameters, bool isUpgrade) {
   VPackSlice idSlice = parameters.get("id");
   TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(basics::StringUtils::uint64(idSlice.copyString()));

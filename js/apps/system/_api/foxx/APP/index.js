@@ -19,10 +19,10 @@ module.context.registerType('multipart/form-data', require('./multipart'));
 module.context.use(router);
 
 const legacyErrors = new Map([
-  [errors.ERROR_SERVICE_INVALID_NAME.code, errors.ERROR_FOXX_SOURCE_NOT_FOUND.code],
+  [errors.ERROR_SERVICE_INVALID_NAME.code, errors.ERROR_SERVICE_SOURCE_NOT_FOUND.code],
   [errors.ERROR_SERVICE_INVALID_MOUNT.code, errors.ERROR_INVALID_MOUNTPOINT.code],
-  [errors.ERROR_SERVICE_DOWNLOAD_FAILED.code, errors.ERROR_FOXX_SOURCE_ERROR.code],
-  [errors.ERROR_SERVICE_UPLOAD_FAILED.code, errors.ERROR_FOXX_SOURCE_ERROR.code]
+  [errors.ERROR_SERVICE_DOWNLOAD_FAILED.code, errors.ERROR_SERVICE_SOURCE_ERROR.code],
+  [errors.ERROR_SERVICE_UPLOAD_FAILED.code, errors.ERROR_SERVICE_SOURCE_ERROR.code]
 ]);
 
 const serviceToJson = (service) => (
@@ -108,18 +108,22 @@ router.get((req, res) => {
 
 router.post(prepareServiceRequestBody, (req, res) => {
   const mount = req.queryParams.mount;
-  fm.install(req.body.source, mount, _.omit(req.queryParams, ['mount']));
+  fm.install(req.body.source, mount, _.omit(req.queryParams, ['mount', 'development']));
   if (req.body.configuration) {
     fm.setConfiguration(mount, {configuration: req.body.configuration, replace: true});
   }
   if (req.body.dependencies) {
     fm.setDependencies(mount, {dependencies: req.body.dependencies, replace: true});
   }
+  if (req.queryParams.development) {
+    fm.development(mount);
+  }
   const service = fm.lookupService(mount);
   res.json(serviceToJson(service));
 })
 .body(schemas.service, ['multipart/form-data', 'application/json'], `Service to be installed.`)
 .queryParam('mount', schemas.mount, `Mount path the service should be installed at.`)
+.queryParam('development', schemas.flag.default(false), `Enable development mode.`)
 .queryParam('setup', schemas.flag.default(true), `Run the service's setup script.`)
 .queryParam('legacy', schemas.flag.default(false), `Service should be installed in 2.8 legacy compatibility mode.`)
 .response(201, schemas.fullInfo, `Description of the installed service.`)
@@ -360,6 +364,19 @@ scriptsRouter.post('/:name', (req, res) => {
 .description(dd`
   Runs the given script for the service at the given mount path.
   Returns the exports of the script, if any.
+`);
+
+instanceRouter.post('/download', (req, res) => {
+  const service = req.service;
+  const dir = fs.join(fs.makeAbsolute(service.root), service.path);
+  const zipPath = fmu.zipDirectory(dir);
+  const name = service.mount.replace(/^\/|\/$/g, '').replace(/\//g, '_');
+  res.download(zipPath, `${name}.zip`);
+})
+.response(200, ['application/zip'], `Zip bundle of the service.`)
+.summary(`Download service bundle`)
+.description(dd`
+  Creates and downloads a zip bundle of the service directory.
 `);
 
 instanceRouter.post('/tests', (req, res) => {

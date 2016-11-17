@@ -54,7 +54,7 @@ class Response {
     this.body = this.rawBody = res.body;
     if (this.body && encoding !== null) {
       this.body = this.body.toString(encoding || 'utf-8');
-      if (json) {
+      if (json !== false) {
         try {
           this.json = JSON.parse(this.body);
         } catch (e) {

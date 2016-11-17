@@ -25,6 +25,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "StorageEngine/MMFilesEngine.h"
+#include "StorageEngine/RocksDBEngine.h"
 #include "StorageEngine/StorageEngine.h"
 
 using namespace arangodb;
@@ -78,6 +79,7 @@ void EngineSelectorFeature::unprepare() {
 // return all available storage engines
 std::unordered_set<std::string> EngineSelectorFeature::availableEngines() { 
   return std::unordered_set<std::string>{
-    MMFilesEngine::EngineName 
+    MMFilesEngine::EngineName
+    // MMFilesEngine::EngineName, RocksDBEngine::EngineName 
   };
 }
