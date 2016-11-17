@@ -73,6 +73,7 @@ void RevisionCacheChunkAllocator::startGcThread() {
 }
  
 void RevisionCacheChunkAllocator::stopGcThread() { 
+  _gcThread->beginShutdown();
   while (_gcThread->isRunning()) {
     usleep(10000);
   }
