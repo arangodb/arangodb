@@ -25,19 +25,7 @@ echo
 echo "$0: testing ArangoDB"
 
 ulimit -c unlimited -S # enable core files
-./scripts/unittest all \
-  --skipRanges true \
-  --skipTimeCritical true \
-  --skipNondeterministic true \
-  --skipSsl true \
-  --skipBoost true \
-  --skipEndpoints true \
-  --skipGeo true
-
-success=`cat out/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json`
-if test "$success" == "false"; then
-  exit 1
-fi
+./scripts/quickieTest.sh
 
 echo
 echo "$0: done"
