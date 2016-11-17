@@ -63,6 +63,7 @@ void linenoiseSetMultiLine(int ml);
 void linenoisePrintKeyCodes(void);
 /* the following is extension to the original linenoise API */
 int linenoiseInstallWindowChangeHandler(void);
+int linenoiseGotKey(void);
 
 #ifdef __cplusplus
 }

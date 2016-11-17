@@ -12,6 +12,8 @@ devel
 v3.1.1 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #2176
+
 * fixed issue #2168
 
 * display index usage of traversals in AQL explainer output (previously missing)
