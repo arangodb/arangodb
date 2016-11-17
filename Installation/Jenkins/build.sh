@@ -452,6 +452,7 @@ if [ -z "${MSVC}" ]; then
     # workaround by presetting it:
     if test -z "${STRIP}"; then
         export STRIP=`which strip`
+        CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCMAKE_STRIP=${STRIP}"
     fi
 fi
 
