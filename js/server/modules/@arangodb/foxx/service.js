@@ -432,11 +432,11 @@ module.exports =
     }
 
     getScripts () {
-      const scripts = [];
+      const names = {};
       for (const name of Object.keys(this.manifest.scripts)) {
-        scripts.push({name, title: getReadableName(name)});
+        names[name] = getReadableName(name);
       }
-      return scripts;
+      return names;
     }
 
     executeScript (name, argv) {
