@@ -56,6 +56,7 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Ssl/SslInterface.h"
+#include "Ssl/ssl-helper.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -622,6 +623,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   rest::RequestType method = rest::RequestType::GET;
   bool returnBodyOnError = false;
   int maxRedirects = 5;
+  uint64_t sslProtocol = TLS_V1;
 
   if (args.Length() > 2) {
     if (!args[2]->IsObject()) {
@@ -632,6 +634,17 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     if (options.IsEmpty()) {
       TRI_V8_THROW_EXCEPTION_USAGE(signature);
+    }
+    
+    // ssl protocol
+    if (options->Has(TRI_V8_ASCII_STRING("sslProtocol"))) {
+      if (sslProtocol >= SSL_LAST) {
+        // invalid protocol
+        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                       "invalid option value for sslProtocol");
+      }
+      
+      sslProtocol = TRI_ObjectToUInt64(options->Get(TRI_V8_ASCII_STRING("sslProtocol")), false);
     }
 
     // method
@@ -792,7 +805,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
 
     std::unique_ptr<GeneralClientConnection> connection(
-        GeneralClientConnection::factory(ep.get(), timeout, timeout, 3, 0));
+        GeneralClientConnection::factory(ep.get(), timeout, timeout, 3, sslProtocol));
 
     if (connection == nullptr) {
       TRI_V8_THROW_EXCEPTION_MEMORY();

@@ -325,12 +325,13 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
 
   uint64_t nrCommands = 0;
 
-  ClientFeature* client =
-      dynamic_cast<ClientFeature*>(server()->feature("Client"));
+  ClientFeature* client = server()->getFeature<ClientFeature>("Client");
 
   if (!client->isEnabled()) {
     client = nullptr;
   }
+
+  bool lastEmpty = false;
 
   while (true) {
     _console->setPromptError(promptError);
@@ -340,14 +341,16 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
     std::string input =
         v8LineEditor.prompt(prompt._colored, prompt._plain, eof);
 
-    if (eof) {
+    if (eof && lastEmpty) {
       break;
     }
 
     if (input.empty()) {
       promptError = false;
+      lastEmpty = true;
       continue;
     }
+    lastEmpty = false;
 
     _console->log(prompt._plain + input + "\n");
 
@@ -424,7 +427,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
       V8PlatformFeature::resetOutOfMemory(_isolate);
     }
   }
-
+      
   if (!_console->quiet()) {
     _console->printLine("");
     _console->printByeBye();

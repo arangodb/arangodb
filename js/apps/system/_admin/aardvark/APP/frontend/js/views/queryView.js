@@ -21,6 +21,7 @@
 
     customQueries: [],
     cachedQueries: {},
+    graphViewers: [],
     queries: [],
 
     state: {
@@ -695,6 +696,18 @@
 
       this.initDone = true;
       this.renderBindParamTable(true);
+      this.restoreCachedQueries();
+    },
+
+    cleanupGraphs: function () {
+      _.each(this.graphViewers, function (graphView) {
+        graphView.killCurrentGraph();
+        graphView.remove();
+      });
+      $('canvas').remove();
+
+      this.graphViewers = null;
+      this.graphViewers = [];
     },
 
     afterRender: function () {
@@ -711,8 +724,6 @@
         self.resize();
       }, 10);
       self.deselect(self.aqlEditor);
-
-      this.restoreCachedQueries();
     },
 
     restoreCachedQueries: function () {
@@ -2325,7 +2336,7 @@
     },
 
     renderOutputGraph: function (data, counter) {
-      this.graphViewer = new window.GraphViewer({
+      this.graphViewers[counter] = new window.GraphViewer({
         name: undefined,
         documentStore: window.App.arangoDocumentStore,
         collection: new window.GraphCollection(),
@@ -2333,7 +2344,7 @@
         id: '#outputGraph' + counter,
         data: data
       });
-      var success = this.graphViewer.renderAQLPreview();
+      var success = this.graphViewers[counter].renderAQLPreview();
 
       return success;
     },

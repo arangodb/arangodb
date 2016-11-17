@@ -346,23 +346,23 @@ struct DiscreteValuesParameter : public T {
                    std::unordered_set<typename T::ValueType> const& allowed)
       : T(ptr), allowed(allowed) {
 
-  if (allowed.find(*ptr) == allowed.end()) {
-    // default value is not in list of allowed values
-    std::string msg("invalid default value for DiscreteValues parameter: ");
-    msg.append(stringifyValue(*ptr));
-    msg.append(". allowed values: ");
-    size_t i = 0;
-    for (auto const& it : allowed) {
-      if (i > 0) {
-        msg.append(" or ");
+    if (allowed.find(*ptr) == allowed.end()) {
+      // default value is not in list of allowed values
+      std::string msg("invalid default value for DiscreteValues parameter: ");
+      msg.append(stringifyValue(*ptr));
+      msg.append(". allowed values: ");
+      size_t i = 0;
+      for (auto const& it : allowed) {
+        if (i > 0) {
+          msg.append(" or ");
+        }
+        msg.append(stringifyValue(it));
+        ++i;
       }
-      msg.append(stringifyValue(it));
-      ++i;
-    }
 
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
+    }
   }
-}
 
   std::string set(std::string const& value) override {
     auto it = allowed.find(fromString<typename T::ValueType>(value));
