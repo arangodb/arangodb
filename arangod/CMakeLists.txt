@@ -348,7 +348,7 @@ SET(ARANGOD_SOURCES
   VocBase/transaction.cpp
   VocBase/vocbase.cpp
   Wal/AllocatorThread.cpp
-  Wal/CollectorThread.cppb
+  Wal/CollectorThread.cpp
   Wal/DocumentOperation.cpp
   Wal/Logfile.cpp
   Wal/LogfileManager.cpp
