@@ -9,6 +9,7 @@
     toUpdate: [],
     dbServers: [],
     isCluster: undefined,
+    lastRoute: undefined,
 
     routes: {
       '': 'cluster',
@@ -46,6 +47,12 @@
     },
 
     execute: function (callback, args) {
+      if (this.lastRoute === '#queries') {
+        // cleanup old canvas elements
+        this.queryView.cleanupGraphs();
+      }
+
+      this.lastRoute = window.location.hash;
       // this function executes before every route call
       $('#subNavigationBar .breadcrumb').html('');
       $('#subNavigationBar .bottom').html('');
@@ -242,6 +249,8 @@
           documentStore: this.arangoDocumentStore,
           collectionsStore: this.arangoCollectionsStore
         });
+
+        arangoHelper.initSigma();
       }.bind(this);
 
       $(window).resize(function () {
@@ -703,6 +712,8 @@
         if (this.graphViewer.graphSettingsView) {
           this.graphViewer.graphSettingsView.remove();
         }
+        this.graphViewer.killCurrentGraph();
+        this.graphViewer.unbind();
         this.graphViewer.remove();
       }
 
