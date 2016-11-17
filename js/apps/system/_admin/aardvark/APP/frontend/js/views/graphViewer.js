@@ -10,6 +10,8 @@
     remove: function () {
       this.$el.empty().off(); /* off to unbind the events */
       this.stopListening();
+      this.unbind();
+      delete this.el;
       return this;
     },
 
@@ -35,7 +37,6 @@
       this.name = options.name;
       this.userConfig = options.userConfig;
       this.documentStore = options.documentStore;
-      this.initSigma();
 
       if (this.name !== undefined) {
         this.collection.fetch({
@@ -88,42 +89,6 @@
 
     graphConfig: null,
     graphSettings: null,
-
-    initSigma: function () {
-      // init sigma
-      try {
-        sigma.classes.graph.addMethod('neighbors', function (nodeId) {
-          var k;
-          var neighbors = {};
-          var index = this.allNeighborsIndex[nodeId] || {};
-
-          for (k in index) {
-            neighbors[k] = this.nodesIndex[k];
-          }
-          return neighbors;
-        });
-
-        sigma.classes.graph.addMethod('getNodeEdges', function (nodeId) {
-          var edges = this.edges();
-          var edgesToReturn = [];
-
-          _.each(edges, function (edge) {
-            if (edge.source === nodeId || edge.target === nodeId) {
-              edgesToReturn.push(edge.id);
-            }
-          });
-          return edgesToReturn;
-        });
-
-        sigma.classes.graph.addMethod('getNodeEdgesCount', function (id) {
-          return this.allNeighborsCount[id];
-        });
-
-        sigma.classes.graph.addMethod('getNodesCount', function () {
-          return this.nodesArray.length;
-        });
-      } catch (ignore) {}
-    },
 
     downloadPNG: function () {
       var size = parseInt($('#graph-container').width(), 10);
@@ -687,6 +652,7 @@
 
           // Override default settings:
           sigma.settings.drawEdgeLabels = true;
+          sigma.settings.clone = true;
         }
       }
     },
@@ -1846,6 +1812,7 @@
         autoRescale: true,
         mouseEnabled: true,
         touchEnabled: true,
+        approximateLabelWidth: true,
         font: 'Roboto'
       };
 

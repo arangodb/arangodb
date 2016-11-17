@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global Blob, window, $, document, _, arangoHelper, frontendConfig, arangoHelper, localStorage */
+/* global Blob, window, sigma, $, document, _, arangoHelper, frontendConfig, arangoHelper, localStorage */
 
 (function () {
   'use strict';
@@ -802,6 +802,42 @@
           '<div class="noContent"><p>' + string + '<i class="' + iconClass + '"></i></p></div>'
         );
       }
+    },
+
+    initSigma: function () {
+      // init sigma
+      try {
+        sigma.classes.graph.addMethod('neighbors', function (nodeId) {
+          var k;
+          var neighbors = {};
+          var index = this.allNeighborsIndex[nodeId] || {};
+
+          for (k in index) {
+            neighbors[k] = this.nodesIndex[k];
+          }
+          return neighbors;
+        });
+
+        sigma.classes.graph.addMethod('getNodeEdges', function (nodeId) {
+          var edges = this.edges();
+          var edgesToReturn = [];
+
+          _.each(edges, function (edge) {
+            if (edge.source === nodeId || edge.target === nodeId) {
+              edgesToReturn.push(edge.id);
+            }
+          });
+          return edgesToReturn;
+        });
+
+        sigma.classes.graph.addMethod('getNodeEdgesCount', function (id) {
+          return this.allNeighborsCount[id];
+        });
+
+        sigma.classes.graph.addMethod('getNodesCount', function () {
+          return this.nodesArray.length;
+        });
+      } catch (ignore) {}
     },
 
     download: function (url, callback) {
