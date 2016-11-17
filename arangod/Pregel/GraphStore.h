@@ -149,7 +149,7 @@ struct VertexEntry {
   size_t _vertexDataOffset;  // size_t vertexID length
   size_t _edgeDataOffset;
   size_t _edgeCount;
-  bool _active;
+  bool _active = true;
 
  public:
   VertexEntry(std::string const& vid)
@@ -261,7 +261,10 @@ class GraphStore {
              GraphFormat<V, E>* graphFormat);
   ~GraphStore();
 
-  RangeIterator<VertexEntry> vertexIterator();
+  inline size_t vertexCount() {
+    return _index.size();
+  }
+  RangeIterator<VertexEntry> vertexIterator(size_t start, size_t count);
   RangeIterator<EdgeEntry<E>> edgeIterator(VertexEntry const* entry);
 
   void* mutableVertexData(VertexEntry const* entry);

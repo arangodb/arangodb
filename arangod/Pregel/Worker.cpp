@@ -139,103 +139,10 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data) {
   }
 }
 
-/// @brief Setup next superstep
-template <typename V, typename E, typename M>
-void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
-  // Only expect serial calls from the conductor. Lock to prevent malicous activity
-  MUTEX_LOCKER(guard, _conductorMutex);
-  
-  LOG(INFO) << "Starting GSS: " << data.toJson();
-  VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
-  const uint64_t gss = (uint64_t)gssSlice.getUInt();
-  if (gss != _state.globalSuperstep()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Wrong GSS");
-  }
-  LOG(INFO) << "Worker starts new gss: " << gss;
-  
-  
-  //size_t numThreads = _workerPool->numThreads();
-  // for (; numThreads > 0; numThreads--) {}
-  // incoming caches are already switched
-  _workerPool->enqueue([this, gss] {
-    if (!this->_running) {
-      LOG(INFO) << "Execution aborted prematurely.";
-      return;
-    }
-    
-    double start = TRI_microtime();
-
-    // thread local objects, TODO reduce instantiation of format and combiner
-    //std::shared_ptr<MessageFormat<M>> format(_algorithm->messageFormat());
-    //std::shared_ptr<MessageCombiner<M>> combiner(_algorithm->messageCombiner());
-    //IncomingCache<M> localIncoming(format, combiner);
-    AggregatorUsage workerAggregator(_algorithm.get());
-    
-    OutgoingCache<M> outCache(&_state,
-                              _messageFormat.get(),
-                              _messageCombiner.get(),
-                              _writeCache.get());//&localIncoming
-    
-    std::unique_ptr<VertexComputation<V, E, M>> vertexComputation(
-        _algorithm->createComputation(gss));
-    vertexComputation->_gss = gss;
-    vertexComputation->_context = _workerContext.get();
-    vertexComputation->_graphStore = _graphStore.get();
-    vertexComputation->_outgoing = &outCache;
-    vertexComputation->_conductorAggregators = _conductorAggregators.get();
-    vertexComputation->_workerAggregators = &workerAggregator;
-
-    size_t activeCount = 0;
-    RangeIterator<VertexEntry> vertexIterator =
-        _graphStore->vertexIterator();
-
-    for (VertexEntry *vertexEntry : vertexIterator) {
-      std::string vertexID = vertexEntry->vertexID();
-      MessageIterator<M> messages = _readCache->getMessages(vertexID);
-
-      if (gss == 0 || messages.size() > 0 || vertexEntry->active()) {
-        vertexComputation->_vertexEntry = vertexEntry;
-        vertexComputation->compute(vertexID, messages);
-        if (vertexEntry->active()) {
-          activeCount++;
-        } else {
-          LOG(INFO) << vertexID << " vertex has halted";
-        }
-      }
-      // TODO delete read messages immediatly
-      // technically messages to non-existing vertices trigger
-      // their creation
-      
-      if (!_running) {
-        LOG(INFO) << "Execution aborted prematurely.";
-        return;
-      }
-    }
-    LOG(INFO) << "Finished executing vertex programs.";
-
-    // ==================== send messages to other shards ====================
-    outCache.sendMessages();
-    
-    // ==================== Track statistics =================================
-    // the stats we want to keep should be final. At this point we can only be sure of the
-    // messages we have received in total from the last superstep, and the messages we have send in
-    // the current superstep. Other workers are likely not finished yet, and might still send stuff
-    size_t sendCount = outCache.sendMessageCount();
-    size_t receivedCount = this->_readCache->receivedMessageCount();
-
-    // ========================= merge aggregators ===========================
-    _workerAggregators->aggregateValues(*vertexComputation->_workerAggregators);
-    
-    WorkerStats stats(activeCount, sendCount, receivedCount);
-    stats.superstepRuntimeMilli = (uint64_t)((TRI_microtime() - start)*1000.0);
-    _workerJobIsDone(stats);
-  });
-}
-
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::receivedMessages(VPackSlice data) {
   LOG(INFO) << "Worker received some messages: " << data.toJson();
-
+  
   VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
   VPackSlice messageSlice = data.get(Utils::messagesKey);
   if (!gssSlice.isInteger() || !messageSlice.isArray()) {
@@ -253,10 +160,123 @@ void Worker<V, E, M>::receivedMessages(VPackSlice data) {
   }
 }
 
+/// @brief Setup next superstep
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::_workerJobIsDone(WorkerStats const& stats) {
-  _expectedGSS = _state._globalSuperstep + 1;
+void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
+  // Only expect serial calls from the conductor. Lock to prevent malicous activity
+  MUTEX_LOCKER(guard, _conductorMutex);
+  
+  LOG(INFO) << "Starting GSS: " << data.toJson();
+  VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
+  const uint64_t gss = (uint64_t)gssSlice.getUInt();
+  if (gss != _state.globalSuperstep()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Wrong GSS");
+  }
+  LOG(INFO) << "Worker starts new gss: " << gss;
+  
+  size_t total = _graphStore->vertexCount();
+  size_t delta = total / _workerPool->numThreads();
+  size_t start = 0, end = delta;
+  _runningThreads = total / delta;//rounds-up unsigned integers
+  do {
+    _workerPool->enqueue([this, start, end] {
+      if (!_running) {
+        LOG(INFO) << "Execution aborted prematurely.";
+        return;
+      }
+      auto vertexIterator = _graphStore->vertexIterator(start, end);
+      _executeGlobalStep(vertexIterator);
+    });
+    start = end;
+    end = end+delta;
+    if (total - end < delta || total < end) {
+      end = total;
+    }
+  } while(start != total);
+}
+
+// internally called for
+template <typename V, typename E, typename M>
+void Worker<V, E, M>::_executeGlobalStep(RangeIterator<VertexEntry> &vertexIterator) {
+  double start = TRI_microtime();
+
+  // thread local caches
+  IncomingCache<M> localIncoming(_messageFormat.get(), _messageCombiner.get());
+  OutgoingCache<M> outCache(&_state,
+                            _messageFormat.get(),
+                            _messageCombiner.get(),
+                            &localIncoming);
+  AggregatorUsage workerAggregator(_algorithm.get());
+  
+  // TODO look if we can avoid instantiating this
+  uint64_t gss = _state.globalSuperstep();
+  std::unique_ptr<VertexComputation<V, E, M>>
+    vertexComputation(_algorithm->createComputation(gss));
+  vertexComputation->_gss = gss;
+  vertexComputation->_context = _workerContext.get();
+  vertexComputation->_graphStore = _graphStore.get();
+  vertexComputation->_outgoing = &outCache;
+  vertexComputation->_conductorAggregators = _conductorAggregators.get();
+  vertexComputation->_workerAggregators = &workerAggregator;
+  
+  size_t activeCount = 0;
+  for (VertexEntry *vertexEntry : vertexIterator) {
+    std::string vertexID = vertexEntry->vertexID();
+    MessageIterator<M> messages = _readCache->getMessages(vertexID);
+    
+    if (messages.size() > 0 || vertexEntry->active()) {
+      vertexComputation->_vertexEntry = vertexEntry;
+      vertexComputation->compute(vertexID, messages);
+      if (vertexEntry->active()) {
+        activeCount++;
+      } else {
+        LOG(INFO) << vertexID << " vertex has halted";
+      }
+    }
+    // TODO delete read messages immediatly
+    // technically messages to non-existing vertices trigger
+    // their creation
+    
+    if (!_running) {
+      LOG(INFO) << "Execution aborted prematurely.";
+      break;
+    }
+  }
+  // ==================== send messages to other shards ====================
+  outCache.sendMessages();
+  // merge thread local messages, _writeCache does locking
+  _writeCache->mergeCache(localIncoming);
+  // TODO ask how to implement message sending without waiting for a response
+  
+  LOG(INFO) << "Finished executing vertex programs.";
+  
+  WorkerStats stats;
+  stats.activeCount = activeCount;
+  stats.sendCount = outCache.sendMessageCount();;
+  stats.superstepRuntimeMilli = (uint64_t)((TRI_microtime() - start)*1000.0);
+  _workerThreadDone(vertexComputation->_workerAggregators, stats);
+}
+
+template <typename V, typename E, typename M>
+void Worker<V, E, M>::_workerThreadDone(AggregatorUsage *threadAggregators,
+                                        WorkerStats const& threadStats) {
+  MUTEX_LOCKER(guard, _threadMutex);
+  // merge the thread local stats and aggregators
+  _workerAggregators->aggregateValues(*threadAggregators);
+  _superstepStats.accumulate(threadStats);
+  
+  _runningThreads--;
+  if (_runningThreads > 0) {
+    return;// there are still threads running
+  }
+  
+  // ==================== Track statistics =================================
+  // the stats we want to keep should be final. At this point we can only be sure of the
+  // messages we have received in total from the last superstep, and the messages we have send in
+  // the current superstep. Other workers are likely not finished yet, and might still send stuff
+  _superstepStats.receivedCount = _readCache->receivedMessageCount();
   _readCache->clear();//no need to keep old messages around
+  _expectedGSS = _state._globalSuperstep + 1;
 
   // notify the conductor that we are done.
   VPackBuilder package;
@@ -264,29 +284,33 @@ void Worker<V, E, M>::_workerJobIsDone(WorkerStats const& stats) {
   package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
   package.add(Utils::executionNumberKey, VPackValue(_state.executionNumber()));
   package.add(Utils::globalSuperstepKey, VPackValue(_state.globalSuperstep()));
-  package.add(Utils::doneKey, VPackValue(stats.allZero()));// TODO remove
-  stats.serializeValues(package);
-  if (_workerAggregators->size() > 0) {
+  package.add(Utils::doneKey, VPackValue(_superstepStats.allZero()));// TODO remove
+  _superstepStats.serializeValues(package);// add stats
+  if (_workerAggregators->size() > 0) {// add aggregators
     package.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
     _workerAggregators->serializeValues(package);
     package.close();
   }
   package.close();
+  
+  if (_superstepStats.allZero()) {
+    LOG(INFO) << "WE have no active vertices, and did not send messages";
+  }
+  _superstepStats.reset();// don't forget to reset at the end of the superstep
 
+  // TODO ask how to implement message sending without waiting for a response
+  // ============ Call Coordinator ============
   ClusterComm* cc = ClusterComm::instance();
   std::string baseUrl = Utils::baseUrl(_state.database());
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
   auto headers =
       std::make_unique<std::unordered_map<std::string, std::string>>();
   auto body = std::make_shared<std::string const>(package.toJson());
-  cc->asyncRequest("", coordinatorTransactionID,
+  cc->asyncRequest("endGSS", coordinatorTransactionID,
                    "server:" + _state.coordinatorId(), rest::RequestType::POST,
                    baseUrl + Utils::finishedGSSPath, body, headers, nullptr,
-                   90.0);
-  LOG(INFO) << "Sending finishedGSS to coordinator: "
-            << _state.coordinatorId();
-  if (stats.allZero())
-    LOG(INFO) << "WE have no active vertices, and did not send messages";
+                   90.0,// timeout + single request
+                   true);
 }
 
 template <typename V, typename E, typename M>

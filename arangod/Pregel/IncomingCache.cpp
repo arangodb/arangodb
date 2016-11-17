@@ -90,6 +90,7 @@ void IncomingCache<M>::setDirect(std::string const& toValue,
 template <typename M>
 void IncomingCache<M>::mergeCache(IncomingCache<M> const& otherCache) {
   MUTEX_LOCKER(guard, _writeLock);
+  _receivedMessageCount += otherCache._receivedMessageCount;
   
   // cannot call setDirect since it locks
   for (auto const& pair : otherCache._messages) {
@@ -100,7 +101,6 @@ void IncomingCache<M>::mergeCache(IncomingCache<M> const& otherCache) {
       _messages.insert(pair);
     }
   }
-  _receivedMessageCount += otherCache._receivedMessageCount;
 }
 
 template <typename M>

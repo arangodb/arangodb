@@ -62,7 +62,7 @@ class WorkerContext {
 
   inline uint64_t vertexCount() const { return _vertexCount; }
 
-  inline uint64_t edegCount() const { return _edgeCount; }
+  inline uint64_t edgeCount() const { return _edgeCount; }
 };
 }
 }

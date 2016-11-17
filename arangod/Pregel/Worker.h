@@ -57,6 +57,10 @@ class GraphStore;
 
 template <typename M>
 class IncomingCache;
+  
+template <typename T>
+class RangeIterator;
+struct VertexEntry;
 
 template <typename V, typename E, typename M>
 class Worker : public IWorker {
@@ -68,6 +72,7 @@ class Worker : public IWorker {
   uint64_t _expectedGSS = 0;
   std::unique_ptr<Algorithm<V, E, M>> _algorithm;
   std::unique_ptr<WorkerContext> _workerContext;
+  Mutex _conductorMutex;// locks callbak methods
  
   std::unique_ptr<basics::ThreadPool> _workerPool;
   std::unique_ptr<GraphStore<V, E>> _graphStore;
@@ -76,25 +81,28 @@ class Worker : public IWorker {
   std::unique_ptr<AggregatorUsage> _workerAggregators;
   std::unique_ptr<MessageFormat<M>> _messageFormat;
   std::unique_ptr<MessageCombiner<M>> _messageCombiner;
+  WorkerStats _superstepStats;
   
   size_t _runningThreads;
-  Mutex _threadMutex;
-  Mutex _conductorMutex;
+  mutable Mutex _threadMutex;
   
   void _swapIncomingCaches() {
     _readCache.swap(_writeCache);
     _writeCache->clear();
   }
-  void _executeGlobalStep();
-  void _workerJobIsDone(WorkerStats const& stats);
+  
+  void _executeGlobalStep(RangeIterator<VertexEntry> &vertexIterator);
+  void _workerThreadDone(AggregatorUsage *threadAggregators,
+                         WorkerStats const& threadStats);
   
  public:
   Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algorithm,
          VPackSlice params);
   ~Worker();
   
+  // ====== called by rest handler =====
   void prepareGlobalStep(VPackSlice data) override;
-  void startGlobalStep(VPackSlice data) override;  // called by coordinator
+  void startGlobalStep(VPackSlice data) override;
   void receivedMessages(VPackSlice data) override;
   void finalizeExecution(VPackSlice data) override;
 };

@@ -33,14 +33,21 @@ namespace pregel {
 
 
 struct WorkerStats {
-  size_t activeCount;
-  size_t sendCount;
-  size_t receivedCount;
+  size_t activeCount = 0;
+  size_t sendCount = 0;
+  size_t receivedCount = 0;
   uint64_t superstepRuntimeMilli = 0;
 
-  WorkerStats() : activeCount(0), sendCount(0), receivedCount(0) {}
+  WorkerStats() {}
   WorkerStats(size_t a, size_t s, size_t r) : activeCount(a), sendCount(s), receivedCount(r) {}
 
+  void accumulate(WorkerStats const& other) {
+    activeCount += other.activeCount;
+    sendCount += other.sendCount;
+    receivedCount += other.receivedCount;
+    superstepRuntimeMilli += other.superstepRuntimeMilli;
+  }
+  
   void accumulate(VPackSlice statValues) {
     VPackSlice p = statValues.get(Utils::activeCountKey);
     if (p.isInteger()) {
@@ -69,6 +76,13 @@ struct WorkerStats {
   
   bool allZero() const {
     return activeCount == 0 && sendCount == 0 && receivedCount == 0;
+  }
+  
+  void reset() {
+    activeCount = 0;
+    sendCount = 0;
+    receivedCount = 0;
+    superstepRuntimeMilli = 0;
   }
 };
 }

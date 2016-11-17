@@ -222,8 +222,8 @@ void Conductor::startGlobalStep() {
   int r = sendToAllDBServers(baseUrl + Utils::prepareGSSPath, b.slice());
 
   if (r == TRI_ERROR_NO_ERROR) {
-    // start vertex level operations
-    sendToAllDBServers(baseUrl + Utils::startGSSPath, b.slice());
+    // start vertex level operations, does not get a response
+    sendToAllDBServers(baseUrl + Utils::startGSSPath, b.slice());// call me maybe
     LOG(INFO) << "Conductor started new gss " << _globalSuperstep;
   } else {
     LOG(INFO) << "Seems there is at least one worker out of order";

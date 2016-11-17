@@ -59,8 +59,8 @@ GraphStore<V, E>::~GraphStore() {
 }
 
 template <typename V, typename E>
-RangeIterator<VertexEntry> GraphStore<V, E>::vertexIterator() {
-  return RangeIterator<VertexEntry>(_index, 0, _index.size());
+RangeIterator<VertexEntry> GraphStore<V, E>::vertexIterator(size_t start, size_t end) {
+  return RangeIterator<VertexEntry>(_index, start, end);
 }
 
 template <typename V, typename E>
@@ -78,7 +78,6 @@ template <typename V, typename E>
 void GraphStore<V, E>::replaceVertexData(VertexEntry const* entry, void* data,
                                          size_t size) {
   void* ptr = _vertexData.data() + entry->_vertexDataOffset;
-  ;
   memcpy(ptr, data, size);
 }
 
