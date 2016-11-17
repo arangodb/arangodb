@@ -115,11 +115,12 @@ struct DatabaseIdStringComparator {
 
 }
 
-std::string const MMFilesEngine::EngineName("MMFiles");
+std::string const MMFilesEngine::EngineName("mmfiles");
+std::string const MMFilesEngine::FeatureName("MMFilesEngine");
 
 // create the storage engine
 MMFilesEngine::MMFilesEngine(application_features::ApplicationServer* server)
-    : StorageEngine(server, EngineName),
+    : StorageEngine(server, EngineName, FeatureName),
       _isUpgrade(false),
       _maxTick(0) {
 }
