@@ -73,3 +73,13 @@ tell application "Terminal"
   activate
 end tell
 EOF
+
+# start safari and open web ui
+
+sleep 10;
+/usr/bin/osascript <<-EOF
+tell application "Safari"
+  open location "http://127.0.0.1:8529/"
+  activate
+end tell
+EOF
