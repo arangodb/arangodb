@@ -404,7 +404,7 @@
         } else if (opt.type === 'json') {
           cfg[key] = val && JSON.stringify(JSON.parse(val));
         } else {
-          cfg[key] = window.arangoHelper.escapeHtml(val);
+          cfg[key] = val;
           return;
         }
       });
