@@ -51,8 +51,6 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::string _myId;
   std::string _myRole;
   std::string _myAddress;
-  std::string _username;
-  std::string _password;
   std::string _dataPath;
   std::string _logPath;
   std::string _arangodPath;

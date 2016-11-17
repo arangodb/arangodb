@@ -48,7 +48,6 @@ using namespace arangodb::options;
 
 ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Cluster"),
-      _username("root"),
       _unregisterOnShutdown(false),
       _enableCluster(false),
       _heartbeatThread(nullptr),
@@ -99,11 +98,11 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--cluster.username",
                      "username used for cluster-internal communication",
-                     new StringParameter(&_username));
+                     new ObsoleteParameter());
 
   options->addOption("--cluster.password",
                      "password used for cluster-internal communication",
-                     new StringParameter(&_password));
+                     new ObsoleteParameter());
 
   options->addOption("--cluster.data-path",
                      "path to cluster database directory",
