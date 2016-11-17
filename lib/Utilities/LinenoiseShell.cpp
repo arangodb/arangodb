@@ -99,11 +99,15 @@ std::string LinenoiseShell::getLine(std::string const& prompt, bool& eof) {
 
   if (line != nullptr) {
     eof = false;
-    std::string const stringValue(line);
+    std::string stringValue(line);
     ::free(line);
     return stringValue;
   }
 
-  eof = true;
+  if (!linenoiseGotKey() || !isatty(STDIN_FILENO)) {
+    // only set eof if we did not get any key presses from linenoise
+    eof = true;
+  }
+
   return "";
 }

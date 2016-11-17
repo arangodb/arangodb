@@ -2483,8 +2483,11 @@ static bool isCharacterAlphanumeric(char32_t testChar) {
 #ifndef _WIN32
 static bool gotResize = false;
 #endif
+static int gotKey = 0;
 
 int InputBuffer::getInputLine(PromptBase& pi) {
+  gotKey = 0;
+
   // The latest history entry is always our current buffer
   if (len > 0) {
     size_t bufferSize = sizeof(char32_t) * len + 1;
@@ -2526,6 +2529,11 @@ int InputBuffer::getInputLine(PromptBase& pi) {
     int c;
     if (terminatingKeystroke == -1) {
       c = linenoiseReadChar();  // get a new keystroke
+
+      if (c != 0 && (c != ctrlChar('C'))) {
+        // set flag that we got some input
+        gotKey = 1;
+      }
 
 #ifndef _WIN32
       if (c == 0 && gotResize) {
@@ -3412,4 +3420,8 @@ int linenoiseInstallWindowChangeHandler(void) {
   }
 #endif
   return 0;
+}
+
+int linenoiseGotKey(void) {
+  return gotKey;
 }
