@@ -96,7 +96,7 @@ module.exports =
       if (warnings) {
         console.warnLines(`Stored configuration for service "${data.mount}" has errors:\n  ${
           Object.keys(warnings).map((key) => warnings[key]).join('\n  ')
-        }`);
+        }\nValues for unknown options will be discarded if you save the configuration in production mode using the web interface.`);
       }
 
       this.thumbnail = null;
