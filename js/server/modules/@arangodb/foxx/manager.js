@@ -1621,6 +1621,7 @@ function requireService (mount) {
     'requireService(<mount>)',
     [ [ 'Mount path', 'string' ] ],
     [ mount ]);
+  mount = '/' + mount.replace(/(^\/+|\/+$)/, '');
   utils.validateMount(mount, true);
   var service = lookupService(mount);
   if (service.needsConfiguration()) {
