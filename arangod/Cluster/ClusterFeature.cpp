@@ -157,7 +157,7 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   // validate --cluster.my-id
-  if (_myId.empty()) {
+/*  if (_myId.empty()) {
     if (_myLocalInfo.empty()) {
       LOG(FATAL) << "Need to specify a local cluster identifier via "
                     "--cluster.my-local-info";
@@ -177,7 +177,7 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       LOG(FATAL) << "invalid value specified for --cluster.my-id";
       FATAL_ERROR_EXIT();
     }
-  }
+    }*/
 
   // validate system-replication-factor
   if (_systemReplicationFactor == 0) {

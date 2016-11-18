@@ -42,6 +42,8 @@ class ServerState {
     ROLE_AGENT
   };
 
+  static const std::vector<std::string> RoleStr;
+
   /// @brief an enum describing the possible states a server can have
   enum StateEnum {
     STATE_UNDEFINED = 0,  // initial value

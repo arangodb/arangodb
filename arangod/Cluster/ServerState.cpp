@@ -26,6 +26,10 @@
 #include <iomanip>
 #include <sstream>
 
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
+
 #include "Agency/AgencyComm.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
@@ -73,6 +77,10 @@ ServerState* ServerState::instance() { return &Instance; }
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the string representation of a role
 ////////////////////////////////////////////////////////////////////////////////
+
+const std::vector<std::string> ServerState::RoleStr ({
+    "NONE_", "SNGL_", "PRMR_", "SCND_", "CRDN_", "AGNT_"
+      });
 
 std::string ServerState::roleToString(ServerState::RoleEnum role) {
   switch (role) {
@@ -370,14 +378,10 @@ std::string ServerState::createIdForRole(AgencyComm comm,
       sleep(1);
     }
 
-    size_t idCounter = 1;
     VPackSlice entry;
     do {
-      std::ostringstream idss;
-      idss << std::setw(3) << std::setfill('0') << idCounter++;
-      id = serverIdPrefix + idss.str();
+      id = RoleStr.at(role) + to_string(boost::uuids::random_generator()());
       entry = servers.get(id);
-
       LOG_TOPIC(TRACE, Logger::STARTUP)
           << id << " found in existing keys: " << (!entry.isNone());
     } while (!entry.isNone());
