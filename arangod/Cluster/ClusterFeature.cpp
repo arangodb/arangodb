@@ -32,6 +32,7 @@
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -219,6 +220,15 @@ void ClusterFeature::prepare() {
   if (agency->isEnabled() || _enableCluster) {
     // initialize ClusterComm library, must call initialize only once
     ClusterComm::initialize();
+    auto authenticationFeature =
+      application_features::ApplicationServer::getFeature<AuthenticationFeature>(
+          "Authentication");
+
+    if (authenticationFeature->isEnabled() && !authenticationFeature->hasUserdefinedJwt()) {
+      LOG(FATAL) << "Cluster authentication enabled but jwt not set via command line. Please"
+        << " provide --server.jwt-secret which is used throughout the cluster.";
+      FATAL_ERROR_EXIT();
+    }
   }
 
   // return if cluster is disabled
