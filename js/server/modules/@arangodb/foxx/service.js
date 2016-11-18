@@ -92,6 +92,7 @@ module.exports =
 
       this.configuration = createConfiguration(this.manifest.configuration);
       this.dependencies = createDependencies(this.manifest.dependencies, this.options.dependencies);
+
       const warnings = this.applyConfiguration(this.options.configuration, false);
       if (warnings) {
         console.warnLines(`Stored configuration for service "${data.mount}" has errors:\n  ${
@@ -196,18 +197,44 @@ module.exports =
         const def = definitions[name];
         const value = deps[name];
 
-        if (value === undefined || value === null || value === '') {
-          this.options.dependencies[name] = undefined;
-          if (def.required !== false) {
-            warnings[name] = 'is required';
-          }
-          continue;
-        }
+        if (def.multiple) {
+          this.options.dependencies[name] = deps;
+          const values = Array.isArray(value) ? value : (
+            (value === undefined || value === null || value === '')
+            ? []
+            : [value]
+          );
 
-        if (typeof value !== 'string') {
-          warnings[name] = 'must be a string';
+          if (!values.length) {
+            if (def.required !== false) {
+              warnings[name] = 'is required';
+            }
+            continue;
+          }
+
+          for (let i = 0; i < values.length; i++) {
+            const value = values[i];
+            if (typeof value !== 'string') {
+              warnings[name] = `at ${i} must be a string`;
+            } else {
+              this.options.dependencies[name].push(value);
+            }
+          }
         } else {
-          this.options.dependencies[name] = value;
+          this.options.dependencies[name] = undefined;
+
+          if (value === undefined || value === null || value === '') {
+            if (def.required !== false) {
+              warnings[name] = 'is required';
+            }
+            continue;
+          }
+
+          if (typeof value !== 'string') {
+            warnings[name] = 'must be a string';
+          } else {
+            this.options.dependencies[name] = value;
+          }
         }
       }
 
@@ -398,11 +425,10 @@ module.exports =
     needsConfiguration () {
       const config = this.getConfiguration();
       const deps = this.getDependencies();
-      return _.some(config, function (cfg) {
-          return cfg.current === undefined && cfg.required !== false;
-        }) || _.some(deps, function (dep) {
-          return dep.current === undefined && dep.required !== false;
-        });
+      return (
+        _.some(config, (cfg) => cfg.current === undefined && cfg.required) ||
+        _.some(deps, (dep) => (dep.multiple ? !dep.current.length : !dep.current) && dep.required)
+      );
     }
 
     run (filename, options) {
@@ -556,16 +582,28 @@ function createConfiguration (definitions) {
 function createDependencies (definitions, options) {
   const deps = {};
   for (const name of Object.keys(definitions)) {
+    const dfn = definitions[name];
     Object.defineProperty(deps, name, {
-      configurable: true,
       enumerable: true,
-      get() {
-        const mount = options[name];
-        if (!mount) {
-          return null;
+      get () {
+        const fm = require('@arangodb/foxx/manager');
+        const value = options[name];
+        if (!dfn.multiple) {
+          return value ? fm.requireService(value) : null;
         }
-        const FoxxManager = require('@arangodb/foxx/manager');
-        return FoxxManager.requireService('/' + mount.replace(/(^\/+|\/+$)/, ''));
+        const multi = [];
+        if (value) {
+          for (let i = 0; i < value.length; i++) {
+            const item = value[i];
+            Object.defineProperty(multi, String(i), {
+              enumerable: true,
+              get: () => item ? fm.requireService(item) : null
+            });
+          }
+        }
+        Object.freeze(multi);
+        Object.seal(multi);
+        return multi;
       }
     });
   }
