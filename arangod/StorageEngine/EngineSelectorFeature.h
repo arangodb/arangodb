@@ -39,7 +39,10 @@ class EngineSelectorFeature final : public application_features::ApplicationFeat
   void unprepare() override final;
   
   // return the names of all available storage engines
-  static std::unordered_set<std::string> availableEngines();
+  static std::unordered_set<std::string> availableEngineNames();
+
+  // return all available storage engines
+  static std::unordered_map<std::string, std::string> availableEngines(); 
   
  public:
   // selected storage engine. this will contain a pointer to the storage engine after

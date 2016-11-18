@@ -47,11 +47,12 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-std::string const RocksDBEngine::EngineName("RocksDB");
+std::string const RocksDBEngine::EngineName("rocksdb");
+std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 
 // create the storage engine
 RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
-    : StorageEngine(server, EngineName) {
+    : StorageEngine(server, EngineName, FeatureName) {
 }
 
 RocksDBEngine::~RocksDBEngine() {

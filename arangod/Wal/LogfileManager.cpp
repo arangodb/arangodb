@@ -116,7 +116,7 @@ LogfileManager::LogfileManager(ApplicationServer* server)
   startsAfter("RevisionCache");
 
   for (auto const& it : EngineSelectorFeature::availableEngines()) {
-    startsAfter(it);
+    startsAfter(it.second);
   }
 }
 

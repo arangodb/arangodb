@@ -420,7 +420,7 @@ else ()
     OptimizeForArchitecture()
   endif ()
 
-  set(BASE_FLAGS "${Vc_ARCHITECTURE_FLAGS} ${BASE_FLAGS}")
+  set(BASE_FLAGS "${Vc_COMPILE_FLAGS} ${BASE_FLAGS}")
 endif ()
 
 ################################################################################

@@ -5,7 +5,7 @@ var expect = require('chai').expect;
 var FoxxManager = require('org/arangodb/foxx/manager');
 var fs = require('fs');
 var internal = require('internal');
-var basePath = fs.makeAbsolute(fs.join(internal.startupPath, 'common', 'test-data', 'apps'));
+var basePath = fs.makeAbsolute(fs.join(internal.startupPath, 'common', 'test-data', 'apps', 'headers'));
 var url = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
 
 describe('HTTP headers in Foxx services', function () {
@@ -28,6 +28,7 @@ describe('HTTP headers in Foxx services', function () {
     it("sends a CORS options request", function () {
       var opts = { headers: { "origin" : url }, method: "OPTIONS" };
       var result = internal.download(url + "/unittest/headers/header-echo", "", opts);
+      expect(result.code).to.eql(200);
       expect(result.headers['allow']).to.eql('DELETE, GET, HEAD, PATCH, POST, PUT');
       expect(result.headers['access-control-expose-headers']).to.eql('etag, content-encoding, content-length, location, server, x-arango-errors, x-arango-async-id');
       expect(result.headers['access-control-allow-credentials']).to.eql('true');
@@ -38,6 +39,7 @@ describe('HTTP headers in Foxx services', function () {
     it("sends a CORS options request, overriding headers", function () {
       var opts = { headers: { "origin" : url, 'x-session-id' : 'abc' } };
       var result = internal.download(url + "/unittest/headers/header-cors", "", opts);
+      expect(result.code).to.eql(204);
       expect(result.headers['access-control-expose-headers']).to.eql('x-session-id');
     });
     

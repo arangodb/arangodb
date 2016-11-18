@@ -8,6 +8,8 @@ devel
 * @arangodb/request option json now defaults to `true` if the response body is not empty and encoding is not explicitly set to `null` (binary).
   The option can still be set to `false` to avoid unnecessary attempts at parsing the response as JSON.
 
+* Foxx configuration values for unknown options will be discarded when saving the configuration in production mode using the web interface
+
 
 v3.1.1 (XXXX-XX-XX)
 -------------------

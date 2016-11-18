@@ -171,30 +171,3 @@ configure_file (
   "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/directories.h"
   NEWLINE_STYLE UNIX
 )
-
-# sub directories --------------------------------------------------------------
-
-#if(BUILD_STATIC_EXECUTABLES)
-#  set(CMAKE_EXE_LINKER_FLAGS -static)
-#  set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
-#  set(CMAKE_EXE_LINK_DYNAMIC_C_FLAGS)       # remove -Wl,-Bdynamic
-#  set(CMAKE_EXE_LINK_DYNAMIC_CXX_FLAGS)
-#  set(CMAKE_SHARED_LIBRARY_C_FLAGS)         # remove -fPIC
-#  set(CMAKE_SHARED_LIBRARY_CXX_FLAGS)
-#  set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)    # remove -rdynamic
-#  set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)
-#  # Maybe this works as well, haven't tried yet.
-#  # set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS FALSE)
-#else(BUILD_STATIC_EXECUTABLES)
-#  # Set RPATH to use for installed targets; append linker search path
-#  set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${LOFAR_LIBDIR}")
-#  set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-#endif(BUILD_STATIC_EXECUTABLES) 
-
-
-#--------------------------------------------------------------------------------
-#get_cmake_property(_variableNames VARIABLES)
-#foreach (_variableName ${_variableNames})
-#    message(STATUS "${_variableName}=${${_variableName}}")
-#endforeach()
-#--------------------------------------------------------------------------------
