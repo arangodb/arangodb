@@ -317,7 +317,8 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
     client = nullptr;
   }
 
-  bool lastEmpty = false;
+  bool const isBatch = isatty(STDIN_FILENO) == 0;
+  bool lastEmpty = isBatch;
 
   while (true) {
     _console->setPromptError(promptError);
@@ -336,7 +337,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
       lastEmpty = true;
       continue;
     }
-    lastEmpty = false;
+    lastEmpty = isBatch;
 
     _console->log(prompt._plain + input + "\n");
 
