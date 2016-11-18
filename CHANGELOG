@@ -11,6 +11,12 @@ devel
 * Foxx configuration values for unknown options will be discarded when saving the configuration in production mode using the web interface
 
 
+v3.1.2 (20XX-XX-XX)
+-------------------
+
+* added support for descriptions field in Foxx dependencies
+
+
 v3.1.1 (XXXX-XX-XX)
 -------------------
 
