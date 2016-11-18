@@ -70,12 +70,13 @@ class GeneralClientConnection {
   /// @brief create a new connection from an endpoint
   //////////////////////////////////////////////////////////////////////////////
 
-  static GeneralClientConnection* factory(Endpoint*, double,
-                                          double, size_t, uint64_t);
+  static GeneralClientConnection* factory(Endpoint*, double requestTimeout,
+                                          double connectTimeout, size_t numRetries, 
+                                          uint64_t sslProtocol);
 
   static GeneralClientConnection* factory(
-      std::unique_ptr<Endpoint>&, double, double, size_t,
-      uint64_t);
+      std::unique_ptr<Endpoint>&, double requestTimeout, double connectTimeout, 
+      size_t numRetries, uint64_t sslProtocol);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the endpoint

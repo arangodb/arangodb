@@ -2970,6 +2970,7 @@ static void JS_DatafilesVocbaseCol(
 
   TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection);
 
+  // TODO: move this into engine
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   if (std::string(engine->typeName()) != MMFilesEngine::EngineName) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "operation only supported in MMFiles engine");
@@ -2981,7 +2982,7 @@ static void JS_DatafilesVocbaseCol(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
   }
 
-  MMFilesEngineCollectionFiles structure= dynamic_cast<MMFilesEngine*>(engine)->scanCollectionDirectory(collection->path());
+  MMFilesEngineCollectionFiles structure = dynamic_cast<MMFilesEngine*>(engine)->scanCollectionDirectory(collection->path());
 
   // build result
   v8::Handle<v8::Object> result = v8::Object::New(isolate);

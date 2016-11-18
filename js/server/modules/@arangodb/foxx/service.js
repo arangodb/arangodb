@@ -96,7 +96,7 @@ module.exports =
       if (warnings) {
         console.warnLines(`Stored configuration for service "${data.mount}" has errors:\n  ${
           Object.keys(warnings).map((key) => warnings[key]).join('\n  ')
-        }`);
+        }\nValues for unknown options will be discarded if you save the configuration in production mode using the web interface.`);
       }
 
       this.thumbnail = null;
@@ -432,11 +432,11 @@ module.exports =
     }
 
     getScripts () {
-      const scripts = [];
+      const names = {};
       for (const name of Object.keys(this.manifest.scripts)) {
-        scripts.push({name, title: getReadableName(name)});
+        names[name] = getReadableName(name);
       }
-      return scripts;
+      return names;
     }
 
     executeScript (name, argv) {

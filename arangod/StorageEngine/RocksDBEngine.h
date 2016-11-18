@@ -238,6 +238,7 @@ class RocksDBEngine final : public StorageEngine {
   
  public:
   static std::string const EngineName;
+  static std::string const FeatureName;
 
  private:
   std::string _basePath;

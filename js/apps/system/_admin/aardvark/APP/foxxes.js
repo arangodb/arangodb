@@ -238,7 +238,8 @@ foxxRouter.get('/config', function (req, res) {
 foxxRouter.patch('/config', function (req, res) {
   const mount = decodeURIComponent(req.queryParams.mount);
   const configuration = req.body;
-  FoxxManager.setConfiguration(mount, {configuration});
+  const service = FoxxManager.lookupService(mount);
+  FoxxManager.setConfiguration(mount, {configuration, replace: !service.isDevelopment});
   res.json(FoxxManager.configuration(mount));
 })
 .body(joi.object().optional(), 'Configuration to apply.')
@@ -272,7 +273,8 @@ foxxRouter.get('/deps', function (req, res) {
 foxxRouter.patch('/deps', function (req, res) {
   const mount = decodeURIComponent(req.queryParams.mount);
   const dependencies = req.body;
-  FoxxManager.setDependencies(mount, {dependencies});
+  const service = FoxxManager.lookupService(mount);
+  FoxxManager.setDependencies(mount, {dependencies, replace: !service.isDevelopment});
   res.json(FoxxManager.dependencies(mount));
 })
 .body(joi.object().optional(), 'Dependency options to apply.')

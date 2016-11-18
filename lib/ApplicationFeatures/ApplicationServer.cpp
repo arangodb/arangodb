@@ -522,6 +522,10 @@ void ApplicationServer::start() {
   bool abortStartup = false;
 
   for (auto feature : _orderedFeatures) {
+    if (!feature->isEnabled()) {
+      continue;
+    }
+
     LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::start";
 
     try {
@@ -543,6 +547,9 @@ void ApplicationServer::start() {
       for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend();
            ++it) {
         auto feature = *it;
+        if (!feature->isEnabled()) {
+          continue;
+        }
         if (feature->state() == FeatureState::STARTED) {
           LOG(TRACE) << "forcefully stopping feature '" << feature->name() << "'";
           try {
@@ -579,6 +586,9 @@ void ApplicationServer::stop() {
   for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend();
        ++it) {
     auto feature = *it;
+    if (!feature->isEnabled()) {
+      continue;
+    }
 
     LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::stop";
     feature->stop();

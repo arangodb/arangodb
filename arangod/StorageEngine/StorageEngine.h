@@ -42,9 +42,9 @@ class StorageEngine : public application_features::ApplicationFeature {
  public:
 
   // create the storage engine
-  StorageEngine(application_features::ApplicationServer* server, std::string const& name) 
-      : application_features::ApplicationFeature(server, name), _typeName(name) {
- 
+  StorageEngine(application_features::ApplicationServer* server, std::string const& engineName, std::string const& featureName) 
+      : application_features::ApplicationFeature(server, featureName), _typeName(engineName) {
+
     // each specific storage engine feature is optional. the storage engine selection feature
     // will make sure that exactly one engine is selected at startup 
     setOptional(true);

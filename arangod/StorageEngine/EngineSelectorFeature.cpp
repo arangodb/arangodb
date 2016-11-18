@@ -46,24 +46,24 @@ void EngineSelectorFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
 
   options->addHiddenOption("--server.storage-engine", 
                            "storage engine type",
-                           new DiscreteValuesParameter<StringParameter>(&_engine, availableEngines()));
+                           new DiscreteValuesParameter<StringParameter>(&_engine, availableEngineNames()));
 }
 
 void EngineSelectorFeature::prepare() {
   // deactivate all engines but the selected one
-  for (auto& engine : availableEngines()) {
-    StorageEngine* e = application_features::ApplicationServer::getFeature<StorageEngine>(engine);
+  for (auto const& engine : availableEngines()) {
+    StorageEngine* e = application_features::ApplicationServer::getFeature<StorageEngine>(engine.second);
 
-    if (engine == _engine) {
+    if (engine.first == _engine) {
       // this is the selected engine
-      LOG_TOPIC(TRACE, Logger::STARTUP) << "enabling storage engine " << engine;
+      LOG_TOPIC(TRACE, Logger::STARTUP) << "using storage engine " << engine.first;
       e->enable();
 
       // register storage engine
       ENGINE = e;
     } else {
       // turn off all other storage engines
-      LOG_TOPIC(TRACE, Logger::STARTUP) << "disabling storage engine " << engine;
+      LOG_TOPIC(TRACE, Logger::STARTUP) << "disabling storage engine " << engine.first;
       e->disable();
     }
   }
@@ -76,10 +76,19 @@ void EngineSelectorFeature::unprepare() {
   ENGINE = nullptr;
 }
 
+// return the names of all available storage engines
+std::unordered_set<std::string> EngineSelectorFeature::availableEngineNames() {
+  std::unordered_set<std::string> result;
+  for (auto const& it : availableEngines()) {
+    result.emplace(it.first);
+  }
+  return result; 
+}
+
 // return all available storage engines
-std::unordered_set<std::string> EngineSelectorFeature::availableEngines() { 
-  return std::unordered_set<std::string>{
-    MMFilesEngine::EngineName
-    // MMFilesEngine::EngineName, RocksDBEngine::EngineName 
+std::unordered_map<std::string, std::string> EngineSelectorFeature::availableEngines() { 
+  return std::unordered_map<std::string, std::string>{
+    {MMFilesEngine::EngineName, MMFilesEngine::FeatureName},
+    {RocksDBEngine::EngineName, RocksDBEngine::FeatureName}
   };
 }
