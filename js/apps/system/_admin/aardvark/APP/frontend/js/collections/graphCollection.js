@@ -29,6 +29,39 @@
       });
     },
 
+    createNode: function (gName, gCollection, data, callback) {
+      $.ajax({
+        type: 'POST',
+        url: arangoHelper.databaseUrl('/_api/gharial/') + encodeURIComponent(gName) + '/vertex/' + encodeURIComponent(gCollection),
+        contentType: 'application/json',
+        data: JSON.stringify(data),
+        processData: true,
+        success: function (response) {
+          callback(false, response.vertex._id);
+        },
+        error: function (response) {
+          callback(true, null, response.responseJSON.errorMessage);
+        }
+      });
+    },
+
+    createEdge: function (gName, gCollection, data, callback) {
+      $.ajax({
+        cache: false,
+        type: 'POST',
+        url: arangoHelper.databaseUrl('/_api/gharial/') + encodeURIComponent(gName) + '/edge/' + encodeURIComponent(gCollection),
+        data: JSON.stringify(data),
+        contentType: 'application/json',
+        processData: false,
+        success: function (response) {
+          callback(false, response.edge._id);
+        },
+        error: function (response) {
+          callback(true, null, response.responseJSON.errorMessage);
+        }
+      });
+    },
+
     comparator: function (item, item2) {
       var a = item.get('_key') || '';
       var b = item2.get('_key') || '';
