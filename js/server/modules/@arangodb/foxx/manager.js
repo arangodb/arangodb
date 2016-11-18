@@ -130,6 +130,7 @@ const manifestSchema = {
         .keys({
           name: joi.string().default('*'),
           version: joi.string().default('*'),
+          description: joi.string().optional(),
           required: joi.boolean().default(true)
         })
     ))
