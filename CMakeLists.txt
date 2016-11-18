@@ -519,6 +519,7 @@ option(USE_JEMALLOC
 
 set(FORCE_JEMALLOC_LIB "" CACHE STRING "force this library command to link jemalloc")
 
+message(STATUS "jemalloc ${JEMALLOC_FOUND}")
 if (USE_JEMALLOC)
   if (NOT JEMALLOC_FOUND)
     message(FATAL_ERROR "jemalloc build was requested but jemalloc not found")
