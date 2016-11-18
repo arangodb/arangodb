@@ -3,6 +3,8 @@ v3.1.2 (20XX-XX-XX)
 
 * added support for descriptions field in Foxx dependencies
 
+* enforce a user defined jwt when doing authentication in the cluster
+
 
 v3.1.1 (2016-11-15)
 -------------------
