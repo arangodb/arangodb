@@ -517,19 +517,14 @@ option(USE_JEMALLOC
   ${JEMALLOC_DEFAULT_VALUE}
 )
 
-set(FORCE_JEMALLOC_LIB "" CACHE STRING "force this library command to link jemalloc")
-
+# mop: FORCE_JEMALLOC_LIB removed...set JEMALLOC_jemalloc_LIBRARY instead
 if (USE_JEMALLOC)
   if (NOT JEMALLOC_FOUND)
     message(FATAL_ERROR "jemalloc build was requested but jemalloc not found")
   endif ()
   add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
 
-  if (FORCE_JEMALLOC_LIB STREQUAL "")
-    set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_jemalloc_LIBRARY})
-  else ()
-    set(SYS_LIBS ${SYS_LIBS} ${FORCE_JEMALLOC_LIB})
-  endif ()
+  set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_jemalloc_LIBRARY})
 endif ()
 set(CMAKE_FIND_LIBRARY_SUFFIXES ${DEFAULT_LIBRARY_SUFFIXES})
 
