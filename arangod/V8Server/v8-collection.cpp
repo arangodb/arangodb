@@ -1848,16 +1848,20 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "_pregelStart(<vertexCollection>, <edgeCollection>, <algorithm>[, "
                                    "{steps:100, ...}]");
   }
-  std::vector<std::string> vertices;
-  if (args[0]->IsArray()) {
-    v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(args[0]);
+  auto parse = [](v8::Local<v8::Value> const& value, std::vector<std::string> &out) {
+    v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(value);
     uint32_t const n = array->Length();
     for (uint32_t i = 0; i < n; ++i) {
       v8::Handle<v8::Value> obj = array->Get(i);
       if (obj->IsString()) {
-        vertices.push_back(TRI_ObjectToString(obj));
+        out.push_back(TRI_ObjectToString(obj));
       }
     }
+  };
+  
+  std::vector<std::string> vertices, edges;
+  if (args[0]->IsArray()) {
+    parse(args[0], vertices);
   } else if (args[0]->IsString()) {
       vertices.push_back(TRI_ObjectToString(args[0]));
   } else {
@@ -1866,10 +1870,16 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (vertices.size() == 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("Specify at least one vertex collection");
   }
-  if (!args[1]->IsString()) {
-    TRI_V8_THROW_EXCEPTION_USAGE("Specify an edge collection to use");
+  if (args[1]->IsArray()) {
+    parse(args[1], edges);
+  } else if (args[1]->IsString()) {
+    edges.push_back(TRI_ObjectToString(args[1]));
+  } else {
+    TRI_V8_THROW_EXCEPTION_USAGE("Specify an array of edge collections (or a string)");
   }
-  std::string edgeCName(TRI_ObjectToString(args[1]));
+  if (edges.size() == 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("Specify at least one edge collection");
+  }
   std::string algorithm = TRI_ObjectToString(args[2]);
   VPackBuilder paramBuilder;
   if (argLength >= 4 && args[3]->IsObject()) {
@@ -1879,14 +1889,11 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
       }
   }
   
-  LOG(INFO) << "Called _pregelStart(" << vertices[0] << "," << edgeCName << ")";
-  
   if (ServerState::instance()->isCoordinator()) {
     LOG(INFO) << "Called as a controller";
     
     TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-    std::vector<std::shared_ptr<LogicalCollection>> vColls;
-    std::shared_ptr<LogicalCollection> edgeCollection;
+    std::vector<std::shared_ptr<LogicalCollection>> vColls, eColls;
     try {
       for (std::string const& name : vertices) {
         auto coll =
@@ -1901,17 +1908,20 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
         }
         vColls.push_back(coll);
       }
-      edgeCollection =
-      ClusterInfo::instance()->getCollection(vocbase->name(), edgeCName);
-      if (edgeCollection->isSystem()) {
-        TRI_V8_THROW_EXCEPTION_USAGE(
-                                     "Cannot use pregel on system collection");
-      }
-      std::vector<std::string> eKeys = edgeCollection->shardKeys();
-      if (eKeys.size() != 1 || eKeys[0] != "_vertex") {
+      for (std::string const& name : edges) {
+        auto coll =
+        ClusterInfo::instance()->getCollection(vocbase->name(), name);
+        if (coll->isSystem()) {
+          TRI_V8_THROW_EXCEPTION_USAGE(
+                                       "Cannot use pregel on system collection");
+        }
+        std::vector<std::string> eKeys = coll->shardKeys();
+        if (eKeys.size() != 1 || eKeys[0] != "_vertex") {
           TRI_V8_THROW_EXCEPTION_USAGE(
                                        "Edge collection needs to be sharded after '_vertex', or use "
                                        "smart graphs");
+        }
+        eColls.push_back(coll);
       }
     } catch (...) {
         TRI_V8_THROW_EXCEPTION_USAGE("Collections do not exist");
@@ -1921,7 +1931,7 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
     pregel::Conductor* c = new pregel::Conductor(en,
                                                  vocbase,
                                                  vColls,
-                                                 edgeCollection,
+                                                 eColls,
                                                  algorithm);
     pregel::PregelFeature::instance()->addExecution(c, en);
     c->start(paramBuilder.slice());

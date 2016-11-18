@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 
 #include "Utils/Transaction.h"
-#include "Utils/V8TransactionContext.h"
+#include "Utils/TransactionContext.h"
 #include "VocBase/ticks.h"
 #include "VocBase/transaction.h"
 
@@ -39,7 +39,7 @@ class ExplicitTransaction : public Transaction {
   /// @brief create the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  ExplicitTransaction(std::shared_ptr<V8TransactionContext> transactionContext,
+  ExplicitTransaction(std::shared_ptr<TransactionContext> transactionContext,
                       std::vector<std::string> const& readCollections,
                       std::vector<std::string> const& writeCollections,
                       double lockTimeout, bool waitForSync,

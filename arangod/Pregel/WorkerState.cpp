@@ -31,14 +31,13 @@ using namespace arangodb::pregel;
 WorkerState::WorkerState(DatabaseID dbname, VPackSlice params)
     : _database(dbname) {
   VPackSlice coordID = params.get(Utils::coordinatorIdKey);
-  VPackSlice vertexShardIDs = params.get(Utils::vertexShardsListKey);
-  VPackSlice edgeShardIDs = params.get(Utils::edgeShardsListKey);
+  VPackSlice vertexShardMap = params.get(Utils::vertexShardsKey);
+  VPackSlice edgeShardMap = params.get(Utils::edgeShardsKey);
   VPackSlice execNum = params.get(Utils::executionNumberKey);
   VPackSlice collectionPlanIdMap = params.get(Utils::collectionPlanIdMapKey);
-  VPackSlice edgePlanID = params.get(Utils::edgeCollectionPlanIdKey);
-  if (!coordID.isString() || !vertexShardIDs.isArray() ||
-      !edgeShardIDs.isArray() || !execNum.isInteger() ||
-      !collectionPlanIdMap.isObject() || !edgePlanID.isString()) {
+  if (!coordID.isString() || !edgeShardMap.isObject() ||
+      !vertexShardMap.isObject() || !execNum.isInteger() ||
+      !collectionPlanIdMap.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Supplied bad parameters to worker");
   }
@@ -47,22 +46,25 @@ WorkerState::WorkerState(DatabaseID dbname, VPackSlice params)
   //_vertexCollectionName = vertexCollName.copyString();
   //_vertexCollectionPlanId = vertexCollPlanId.copyString();
 
-  LOG(INFO) << "Local Shards:";
-  VPackArrayIterator vertices(vertexShardIDs);
-  for (VPackSlice shardSlice : vertices) {
-    ShardID name = shardSlice.copyString();
-    _localVertexShardIDs.push_back(name);
-    LOG(INFO) << name;
+  for (auto const& pair : VPackObjectIterator(vertexShardMap)) {
+    std::vector<ShardID> shards;
+    for (VPackSlice shardSlice : VPackArrayIterator(pair.value)) {
+      ShardID shard = shardSlice.copyString();
+      shards.push_back(shard);
+      _localVertexShardIDs.push_back(shard);
+    }
+    _vertexCollectionShards.emplace(pair.key.copyString(), shards);
   }
-  VPackArrayIterator edges(edgeShardIDs);
-  for (VPackSlice shardSlice : edges) {
-    ShardID name = shardSlice.copyString();
-    _localEdgeShardIDs.push_back(name);
-    LOG(INFO) << name;
+      
+  for (auto const& pair : VPackObjectIterator(edgeShardMap)) {
+    std::vector<ShardID> shards;
+    for (VPackSlice shardSlice : VPackArrayIterator(pair.value)) {
+      shards.push_back(shardSlice.copyString());
+    }
+    _edgeCollectionShards.emplace(pair.key.copyString(), shards);
   }
 
   for (auto const& it : VPackObjectIterator(collectionPlanIdMap)) {
     _collectionPlanIdMap.emplace(it.key.copyString(), it.value.copyString());
   }
-  _edgeCollectionPlanId = edgePlanID.copyString();
 }

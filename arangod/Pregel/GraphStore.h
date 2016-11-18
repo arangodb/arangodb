@@ -26,12 +26,13 @@
 #include <cstdint>
 #include <cstdio>
 #include "Cluster/ClusterInfo.h"
+#include "VocBase/voc-types.h"
 #include "GraphFormat.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class SingleCollectionTransaction;
+class Transaction;
 class LogicalCollection;
 namespace pregel {
 
@@ -43,6 +44,8 @@ struct EdgeEntry {
   // size_t _nextEntryOffset;
   // size_t _dataSize;
   std::string _toVertexID;
+  TRI_voc_cid_t sourceShardID;
+  TRI_voc_cid_t targetShardID;
   E _data;
   // size_t _vertexIDSize;
   // char _vertexID[1];
@@ -246,15 +249,14 @@ class GraphStore {
   VocbaseGuard _vocbaseGuard;
   const WorkerState* _workerState;
   const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
-  std::unordered_map<std::string, SingleCollectionTransaction*> _transactions;
-  std::shared_ptr<LogicalCollection> _edgeCollection;
 
-  SingleCollectionTransaction* readTransaction(ShardID const& shard);
-  SingleCollectionTransaction* writeTransaction(ShardID const& shard);
+  Transaction *_transaction;
+  //SingleCollectionTransaction* readTransaction(ShardID const& shard);
+  //SingleCollectionTransaction* writeTransaction(ShardID const& shard);
   void cleanupTransactions();
   
-  void loadVertices(ShardID const& vertexShard);
-  void loadEdges(VertexEntry& entry);
+  void loadVertices(ShardID const& vertexShard, ShardID const& edgeShard);
+  void loadEdges(ShardID const& edgeShard, VertexEntry& entry);
 
  public:
   GraphStore(TRI_vocbase_t* vocbase, const WorkerState* state,

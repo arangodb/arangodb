@@ -27,10 +27,7 @@ In arangosh:
 
     db._create('vertices', {numberOfShards: 2});
     db._createEdgeCollection('alt_edges');
-    db._createEdgeCollection('edges', {numberOfShards: 2, 
-                                       shardKeys:["_vertex"], 
-                                       distributeShardsLike:'vertices'
-                                      });
+    db._createEdgeCollection('edges', {numberOfShards: 2, shardKeys:["_vertex"], distributeShardsLike:'vertices'});
 
 arangoimp --file generated_vertices.csv --type csv --collection vertices --overwrite true --server.endpoint http+tcp://127.0.0.1:8530
 

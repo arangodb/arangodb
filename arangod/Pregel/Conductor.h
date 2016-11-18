@@ -46,12 +46,12 @@ class Conductor {
   const std::string _algorithm;
   ExecutionState _state;
   std::vector<std::shared_ptr<LogicalCollection>> _vertexCollections;
-  std::shared_ptr<LogicalCollection> _edgeCollection;
+  std::vector<std::shared_ptr<LogicalCollection>> _edgeCollections;
+  std::vector<ServerID> _dbServers;
 
   // initialized on startup
   std::unique_ptr<IAggregatorCreator> _agregatorCreator;
   std::unique_ptr<AggregatorUsage> _aggregatorUsage;
-  std::map<ServerID, std::vector<ShardID>> _vertexServerMap;
 
   uint64_t _globalSuperstep = 0;
   int32_t _dbServerCount = 0;
@@ -69,7 +69,7 @@ class Conductor {
  public:
   Conductor(uint64_t executionNumber, TRI_vocbase_t* vocbase,
             std::vector<std::shared_ptr<LogicalCollection>> const& vertexCollections,
-            std::shared_ptr<LogicalCollection> edgeCollection,
+            std::vector<std::shared_ptr<LogicalCollection>> const& edgeCollections,
             std::string const& algorithm);
   ~Conductor();
 

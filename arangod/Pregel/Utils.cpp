@@ -45,9 +45,8 @@ std::string const Utils::finalizeExecutionPath = "finalizeExecution";
 
 std::string const Utils::executionNumberKey = "exn";
 std::string const Utils::collectionPlanIdMapKey = "collectionPlanIdMap";
-std::string const Utils::edgeCollectionPlanIdKey = "edgePlanId";
-std::string const Utils::vertexShardsListKey = "vertexShards";
-std::string const Utils::edgeShardsListKey = "edgeShards";
+std::string const Utils::vertexShardsKey = "vertexShards";
+std::string const Utils::edgeShardsKey = "edgeShards";
 
 std::string const Utils::coordinatorIdKey = "coordinatorId";
 std::string const Utils::algorithmKey = "algorithm";

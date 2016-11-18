@@ -28,7 +28,7 @@
 #include "Indexes/Index.h"
 #include "Utils.h"
 #include "Utils/OperationCursor.h"
-#include "Utils/SingleCollectionTransaction.h"
+#include "Utils/ExplicitTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/Transaction.h"
 #include "VocBase/EdgeCollectionInfo.h"
@@ -41,16 +41,49 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 
 template <typename V, typename E>
-GraphStore<V, E>::GraphStore(TRI_vocbase_t* vocbase, const WorkerState* state,
+GraphStore<V, E>::GraphStore(TRI_vocbase_t* vb, const WorkerState* state,
                              GraphFormat<V, E>* graphFormat)
-    : _vocbaseGuard(vocbase), _workerState(state), _graphFormat(graphFormat) {
-  _edgeCollection = ClusterInfo::instance()->getCollection(
-      vocbase->name(), state->edgeCollectionPlanId());
+    : _vocbaseGuard(vb), _workerState(state), _graphFormat(graphFormat) {
+//  _edgeCollection = ClusterInfo::instance()->getCollection(
+//      vb->name(), state->edgeCollectionPlanId());
+  std::vector<std::string> readColls, writeColls;
+  for (auto const& pair : state->vertexCollectionShards()) {
+    for (auto const& shard : pair.second) {
+      readColls.push_back(shard);
+    }
+  }
+  for (auto const& pair : state->edgeCollectionShards()) {
+    for (auto const& shard : pair.second) {
+      readColls.push_back(shard);
+    }
+  }
+  double lockTimeout =
+  (double)(TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT / 1000000ULL);
+  _transaction = new ExplicitTransaction(StandaloneTransactionContext::Create(_vocbaseGuard.vocbase()),
+                                         readColls, writeColls,
+                                         lockTimeout, false, false);
+  int res = _transaction->begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 
-  for (auto& shard : state->localVertexShardIDs()) {
-    loadVertices(shard);
+  std::map<CollectionID, std::vector<ShardID>> const& vertexMap = state->vertexCollectionShards();
+  std::map<CollectionID, std::vector<ShardID>> const& edgeMap = state->edgeCollectionShards();
+  for (auto const& pair : vertexMap) {
+    std::vector<ShardID> const& vertexShards = pair.second;
+    for (size_t i = 0; i < vertexShards.size(); i++) {
+      // distributeshardslike should cause the edges for a vertex to be
+      // in the same shard index. x in vertexShard2 => E(x) in edgeShard2
+      for (auto const& pair2 : edgeMap) {
+        std::vector<ShardID> const& edgeShards = pair2.second;
+        TRI_ASSERT(vertexShards.size() == edgeShards.size());
+        loadVertices(vertexShards[i], edgeShards[i]);
+      }
+    }
   }
   cleanupTransactions();
+      
+  LOG(INFO) << "Loaded " << _index.size() << "vertices and " << _edges.size() << " edges";
 }
 
 template <typename V, typename E>
@@ -88,7 +121,7 @@ RangeIterator<EdgeEntry<E>> GraphStore<V, E>::edgeIterator(VertexEntry const* en
 }
 
 
-
+/*
 template <typename V, typename E>
 SingleCollectionTransaction* GraphStore<V, E>::readTransaction(ShardID const& shard) {
   auto it = _transactions.find(shard);
@@ -106,11 +139,11 @@ SingleCollectionTransaction* GraphStore<V, E>::readTransaction(ShardID const& sh
     _transactions[shard] = trx.get();
     return trx.release();
   }
-}
+}*/
 
 template <typename V, typename E>
 void GraphStore<V, E>::cleanupTransactions() {
-  for (auto const& it : _transactions) {  // clean transactions
+  /*for (auto const& it : _transactions) {  // clean transactions
     if (it.second->getStatus() == TRI_TRANSACTION_RUNNING) {
       if (it.second->commit() != TRI_ERROR_NO_ERROR) {
         LOG(WARN) << "Pregel worker: Failed to commit on a read transaction";
@@ -118,36 +151,35 @@ void GraphStore<V, E>::cleanupTransactions() {
     }
     delete (it.second);
   }
-  _transactions.clear();
+  _transactions.clear();*/
+  if (_transaction) {
+    if (_transaction->getStatus() == TRI_TRANSACTION_RUNNING) {
+      if (_transaction->commit() != TRI_ERROR_NO_ERROR) {
+        LOG(WARN) << "Pregel worker: Failed to commit on a read transaction";
+      }
+    }
+    delete _transaction;
+    _transaction = nullptr;
+  }
 }
 
 
 template <typename V, typename E>
-void GraphStore<V, E>::loadVertices(ShardID const& vertexShard) {
+void GraphStore<V, E>::loadVertices(ShardID const& vertexShard, ShardID const& edgeShard) {
   //_graphFormat->willUseCollection(vocbase, vertexShard, false);
   bool storeData = _graphFormat->storesVertexData();
 
-  SingleCollectionTransaction trx(
-      StandaloneTransactionContext::Create(_vocbaseGuard.vocbase()),
-      vertexShard, TRI_TRANSACTION_READ);
+  TRI_voc_cid_t cid = _transaction->addCollectionAtRuntime(vertexShard);
+  _transaction->orderDitch(cid);  // will throw when it fails
 
-  int res = trx.begin();
+  /*int res = _transaction->lockRead();
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up vertices '%s'",
                                   vertexShard.c_str());
-  }
+  }*/
 
-  TRI_voc_cid_t cid = trx.addCollectionAtRuntime(vertexShard);
-  trx.orderDitch(cid);  // will throw when it fails
-
-  res = trx.lockRead();
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up vertices '%s'",
-                                  vertexShard.c_str());
-  }
-
-  ManagedDocumentResult mmdr(&trx);
-  std::unique_ptr<OperationCursor> cursor = trx.indexScan(
+  ManagedDocumentResult mmdr(_transaction);
+  std::unique_ptr<OperationCursor> cursor = _transaction->indexScan(
       vertexShard, Transaction::CursorType::ALL, Transaction::IndexHandle(), {},
       &mmdr, 0, UINT64_MAX, 1000, false);
 
@@ -164,7 +196,7 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard) {
     cursor->getMoreMptr(result, 1000);
     for (auto const& element : result) {
       TRI_voc_rid_t revisionId = element.revisionId();
-      if (collection->readRevision(&trx, mmdr, revisionId)) {
+      if (collection->readRevision(_transaction, mmdr, revisionId)) {
         VPackSlice document(mmdr.vpack());
         if (document.isExternal()) {
           document = document.resolveExternal();
@@ -172,7 +204,7 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard) {
 
         LOG(INFO) << "Loaded Vertex: " << document.toJson();
 
-        std::string vertexId = trx.extractIdString(document);
+        std::string vertexId = _transaction->extractIdString(document);
         VertexEntry entry(vertexId);
         if (storeData) {
           V vertexData;
@@ -185,42 +217,44 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard) {
             LOG(ERR) << "Could not load vertex " << document.toJson();
           }
         }
-        loadEdges(entry);
+        
+        loadEdges(edgeShard, entry);
         _index.push_back(entry);
       }
     }
   }
 
-  res = trx.unlockRead();
+  /*res = trx.unlockRead();
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up shard '%s'",
                                   vertexShard.c_str());
   }
 
-  //_shardsPlanIdMap[vertexShard] =
-  // trx.documentCollection()->planId_as_string();
+  
   res = trx.finish(res);
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up vertices '%s'",
                                   vertexShard.c_str());
-  }
+  }//*/
 }
 
 template <typename V, typename E>
-void GraphStore<V, E>::loadEdges(VertexEntry& vertexEntry) {
+void GraphStore<V, E>::loadEdges(ShardID const& shard, VertexEntry& vertexEntry) {
   //_graphFormat->willUseCollection(vocbase, edgeShard, true);
   const bool storeData = _graphFormat->storesEdgeData();
   std::string const& _from = vertexEntry.vertexID();
   const std::string _key = Utils::vertexKeyFromToValue(_from);
-  ShardID shard;
-  Utils::resolveShard(_edgeCollection.get(), Utils::edgeShardingKey, _key,
-                      shard);
+  
 
-  SingleCollectionTransaction* trx = readTransaction(shard);
-  traverser::EdgeCollectionInfo info(trx, shard, TRI_EDGE_OUT,
+  /*ShardID shard;
+  Utils::resolveShard(_edgeCollection.get(), Utils::edgeShardingKey,
+                      _key, shard);*/
+
+  //Transaction* trx = readTransaction(shard);
+  traverser::EdgeCollectionInfo info(_transaction, shard, TRI_EDGE_OUT,
                                      StaticStrings::FromString, 0);
 
-  ManagedDocumentResult mmdr(trx);
+  ManagedDocumentResult mmdr(_transaction);
   auto cursor = info.getEdges(_from, &mmdr);
   if (cursor->failed()) {
     THROW_ARANGO_EXCEPTION_FORMAT(cursor->code,
@@ -240,7 +274,7 @@ void GraphStore<V, E>::loadEdges(VertexEntry& vertexEntry) {
     cursor->getMoreMptr(result, 1000);
     for (auto const& element : result) {
       TRI_voc_rid_t revisionId = element.revisionId();
-      if (collection->readRevision(trx, mmdr, revisionId)) {
+      if (collection->readRevision(_transaction, mmdr, revisionId)) {
         VPackSlice document(mmdr.vpack());
         if (document.isExternal()) {
           document = document.resolveExternal();
@@ -276,7 +310,7 @@ void GraphStore<V, E>::loadEdges(VertexEntry& vertexEntry) {
   }*/
 }
 
-template <typename V, typename E>
+/*template <typename V, typename E>
 SingleCollectionTransaction* GraphStore<V, E>::writeTransaction(ShardID const& shard) {
   
   auto it = _transactions.find(shard);
@@ -295,10 +329,27 @@ SingleCollectionTransaction* GraphStore<V, E>::writeTransaction(ShardID const& s
     _transactions[shard] = trx.get();
     return trx.release();
   }
-}
+}*/
 
 template <typename V, typename E>
 void GraphStore<V,E>::storeResults() {
+  
+  std::vector<std::string> readColls, writeColls;
+  for (auto shard : _workerState->localVertexShardIDs() ) {
+    writeColls.push_back(shard);
+  }
+  //for (auto shard : _workerState->localEdgeShardIDs() ) {
+  //  writeColls(shard);
+  //}
+  double lockTimeout =
+  (double)(TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT / 1000000ULL);
+  _transaction = new ExplicitTransaction(StandaloneTransactionContext::Create(_vocbaseGuard.vocbase()),
+                                         readColls, writeColls,
+                                         lockTimeout, false, false);
+  int res = _transaction->begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
   
   OperationOptions options;
   for (auto& vertexEntry : _index) {
@@ -316,7 +367,6 @@ void GraphStore<V,E>::storeResults() {
     
     std::string shard;
     Utils::resolveShard(collInfo.get(), StaticStrings::KeyString, _key, shard);
-    SingleCollectionTransaction* trx = writeTransaction(shard);
     
     void* data = mutableVertexData(&vertexEntry);
     VPackBuilder b;
@@ -325,7 +375,7 @@ void GraphStore<V,E>::storeResults() {
     _graphFormat->buildVertexDocument(b, data, sizeof(V));
     b.close();
     
-    OperationResult result = trx->update(shard, b.slice(), options);
+    OperationResult result = _transaction->update(shard, b.slice(), options);
     if (result.code != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(result.code);
     }

@@ -52,21 +52,21 @@ class WorkerState {
 
   inline std::string const& database() const { return _database; }
 
-  inline std::vector<ShardID> const& localVertexShardIDs() const {
-    return _localVertexShardIDs;
+  inline std::map<CollectionID, std::vector<ShardID>> const& vertexCollectionShards() const {
+    return _vertexCollectionShards;
   }
 
-  inline std::vector<ShardID> const& localEdgeShardIDs() const {
-    return _localEdgeShardIDs;
+  inline std::map<CollectionID, std::vector<ShardID>> const& edgeCollectionShards() const {
+    return _edgeCollectionShards;
   }
 
-  std::map<CollectionID, std::string> const& collectionPlanIdMap() const {
+  inline std::map<CollectionID, std::string> const& collectionPlanIdMap() const {
     return _collectionPlanIdMap;
   };
-
-  std::string const& edgeCollectionPlanId() const {
-    return _edgeCollectionPlanId;
-  }
+  
+  inline std::vector<ShardID> const& localVertexShardIDs() const {
+    return _localVertexShardIDs;
+  };
 
   // inline uint64_t numWorkerThreads() {
   //  return _numWorkerThreads;
@@ -79,9 +79,10 @@ class WorkerState {
 
   std::string _coordinatorId;
   const std::string _database;
-  std::vector<ShardID> _localVertexShardIDs, _localEdgeShardIDs;
+  std::vector<ShardID> _localVertexShardIDs;
+  std::map<CollectionID, std::vector<ShardID>> _vertexCollectionShards, _edgeCollectionShards;
+  
   std::map<std::string, std::string> _collectionPlanIdMap;
-  std::string _edgeCollectionPlanId;
 };
 }
 }

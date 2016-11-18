@@ -44,7 +44,7 @@ template <typename M>
 class IncomingCache {
  public:
   IncomingCache(MessageFormat<M> const* format, MessageCombiner<M> const* combiner)
-      : _format(format), _combiner(combiner), _receivedMessageCount(0) {}
+      : _receivedMessageCount(0), _format(format), _combiner(combiner) {}
   ~IncomingCache();
 
   void parseMessages(VPackSlice messages);

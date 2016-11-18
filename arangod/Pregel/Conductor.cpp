@@ -58,14 +58,14 @@ static IAggregatorCreator* resolveAlgorithm(std::string name,
 Conductor::Conductor(
     uint64_t executionNumber, TRI_vocbase_t* vocbase,
     std::vector<std::shared_ptr<LogicalCollection>> const& vertexCollections,
-    std::shared_ptr<LogicalCollection> edgeCollection,
+    std::vector<std::shared_ptr<LogicalCollection>> const& edgeCollections,
     std::string const& algorithm)
     : _vocbaseGuard(vocbase),
       _executionNumber(executionNumber),
       _algorithm(algorithm),
       _state(ExecutionState::DEFAULT),
       _vertexCollections(vertexCollections),
-      _edgeCollection(edgeCollection) {
+      _edgeCollections(edgeCollections) {
   bool isCoordinator = ServerState::instance()->isCoordinator();
   TRI_ASSERT(isCoordinator);
   LOG(INFO) << "constructed conductor";
@@ -88,7 +88,9 @@ static void printResults(std::vector<ClusterCommRequest> const& requests) {
 }
 
 static void resolveShards(LogicalCollection const* collection,
-                          std::map<ServerID, std::vector<ShardID>>& serverMap) {
+                          std::map<ServerID, std::map<CollectionID,
+                            std::vector<ShardID>>> &serverMap) {
+  
   ClusterInfo* ci = ClusterInfo::instance();
   std::shared_ptr<std::vector<ShardID>> shardIDs =
       ci->getShardList(collection->cid_as_string());
@@ -97,7 +99,7 @@ static void resolveShards(LogicalCollection const* collection,
     std::shared_ptr<std::vector<ServerID>> servers =
         ci->getResponsibleServer(shard);
     if (servers->size() > 0) {
-      serverMap[(*servers)[0]].push_back(shard);
+      serverMap[(*servers)[0]][collection->name()].push_back(shard);
     }
   }
 }
@@ -115,34 +117,38 @@ void Conductor::start(VPackSlice userConfig) {
   _aggregatorUsage.reset(new AggregatorUsage(_agregatorCreator.get()));
   int64_t vertexCount = 0, edgeCount = 0;
   std::map<CollectionID, std::string> collectionPlanIdMap;
-  std::map<ServerID, std::vector<ShardID>> edgeServerMap;
+  std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>> vertexMap, edgeMap;
 
+  // resolve plan id's and shards on the servers
   for (auto &collection : _vertexCollections) {
-    collectionPlanIdMap[collection->name()] = collection->planId_as_string();
+    collectionPlanIdMap.emplace(collection->name(), collection->planId_as_string());
     int64_t cc =
         Utils::countDocuments(_vocbaseGuard.vocbase(), collection->name());
     if (cc > 0) {
       vertexCount += cc;
-      resolveShards(collection.get(), _vertexServerMap);
-    } else {
-      LOG(WARN) << "Collection does not contain vertices";
+      resolveShards(collection.get(), vertexMap);
     }
   }
-  edgeCount =
-      Utils::countDocuments(_vocbaseGuard.vocbase(), _edgeCollection->name());
-  if (edgeCount > 0) {
-    resolveShards(_edgeCollection.get(), edgeServerMap);
-  } else {
-    LOG(WARN) << "Collection does not contain edges";
+  for (auto &collection : _edgeCollections) {
+    collectionPlanIdMap.emplace(collection->name(), collection->planId_as_string());
+    int64_t cc =
+    Utils::countDocuments(_vocbaseGuard.vocbase(), collection->name());
+    if (cc > 0) {
+      edgeCount += cc;
+      resolveShards(collection.get(), edgeMap);
+    }
   }
-
+  for (auto const& pair : vertexMap) {
+    _dbServers.push_back(pair.first);
+  }
+  
   std::string const baseUrl = Utils::baseUrl(_vocbaseGuard.vocbase()->name());
   _globalSuperstep = 0;
   _state = ExecutionState::RUNNING;
-  _dbServerCount = _vertexServerMap.size();
+  _dbServerCount = _dbServers.size();
   _responseCount = 0;
   _doneCount = 0;
-  if (_vertexServerMap.size() != edgeServerMap.size()) {
+  if (vertexMap.size() != edgeMap.size()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         "Vertex and edge collections are not sharded correctly");
@@ -151,7 +157,11 @@ void Conductor::start(VPackSlice userConfig) {
   std::string coordinatorId = ServerState::instance()->getId();
   LOG(INFO) << "My id: " << coordinatorId;
   std::vector<ClusterCommRequest> requests;
-  for (auto const& it : _vertexServerMap) {
+  for (auto const& it : vertexMap) {
+    ServerID const& server = it.first;
+    std::map<CollectionID, std::vector<ShardID>> const& vertexShardMap = it.second;
+    std::map<CollectionID, std::vector<ShardID>> const& edgeShardMap = edgeMap[it.first];
+    
     VPackBuilder b;
     b.openObject();
     b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
@@ -161,18 +171,24 @@ void Conductor::start(VPackSlice userConfig) {
     b.add(Utils::coordinatorIdKey, VPackValue(coordinatorId));
     b.add(Utils::totalVertexCount, VPackValue(vertexCount));
     b.add(Utils::totalEdgeCount, VPackValue(edgeCount));
-    b.add(Utils::vertexShardsListKey, VPackValue(VPackValueType::Array));
-    for (ShardID const& vit : it.second) {
-      b.add(VPackValue(vit));
+    b.add(Utils::vertexShardsKey, VPackValue(VPackValueType::Object));
+    for (auto const& pair : vertexShardMap) {
+      b.add(pair.first, VPackValue(VPackValueType::Array));
+      for (ShardID const& shard : pair.second) {
+        b.add(VPackValue(shard));
+      }
+      b.close();
     }
     b.close();
-    b.add(Utils::edgeShardsListKey, VPackValue(VPackValueType::Array));
-    for (ShardID const& eit : edgeServerMap[it.first]) {
-      b.add(VPackValue(eit));
+    b.add(Utils::edgeShardsKey, VPackValue(VPackValueType::Object));
+    for (auto const& pair : edgeShardMap) {
+      b.add(pair.first, VPackValue(VPackValueType::Array));
+      for (ShardID const& shard : pair.second) {
+        b.add(VPackValue(shard));
+      }
+      b.close();
     }
     b.close();
-    b.add(Utils::edgeCollectionPlanIdKey,
-          VPackValue(_edgeCollection->planId_as_string()));
     b.add(Utils::collectionPlanIdMapKey, VPackValue(VPackValueType::Object));
     for (auto const& pair : collectionPlanIdMap) {
       b.add(pair.first, VPackValue(pair.second));
@@ -181,7 +197,7 @@ void Conductor::start(VPackSlice userConfig) {
     b.close();
 
     auto body = std::make_shared<std::string const>(b.toJson());
-    requests.emplace_back("server:" + it.first, rest::RequestType::POST,
+    requests.emplace_back("server:" + server, rest::RequestType::POST,
                           baseUrl + Utils::startExecutionPath, body);
   }
 
@@ -293,7 +309,7 @@ void Conductor::cancel() { _state = ExecutionState::CANCELED; }
 
 int Conductor::sendToAllDBServers(std::string path, VPackSlice const& config) {
   ClusterComm* cc = ClusterComm::instance();
-  _dbServerCount = _vertexServerMap.size();
+  _dbServerCount = _dbServers.size();
   _responseCount = 0;
   _doneCount = 0;
 
@@ -304,8 +320,8 @@ int Conductor::sendToAllDBServers(std::string path, VPackSlice const& config) {
 
   auto body = std::make_shared<std::string const>(config.toJson());
   std::vector<ClusterCommRequest> requests;
-  for (auto const& it : _vertexServerMap) {
-    requests.emplace_back("server:" + it.first, rest::RequestType::POST, path,
+  for (auto const& server : _dbServers) {
+    requests.emplace_back("server:" + server, rest::RequestType::POST, path,
                           body);
   }
 
