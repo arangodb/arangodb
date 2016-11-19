@@ -12,6 +12,8 @@ devel
 
 * module.context.dependencies is now immutable
 
+* process.stdout.isTTY now returns `true` in arangosh and when running arangod with the `--console` flag
+
 
 v3.1.2 (20XX-XX-XX)
 -------------------
