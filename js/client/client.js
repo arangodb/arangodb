@@ -164,7 +164,6 @@ var initHelp = function () {
 if (typeof window === 'undefined') {
   // We're in arangosh
   initHelp();
-
   // these variables are not defined in the browser context
   if (!(
     global.IS_EXECUTE_SCRIPT ||
@@ -189,10 +188,12 @@ if (typeof window === 'undefined') {
   }
 
   try {
-    delete global.IS_EXECUTE_SCRIPT;
-    delete global.IS_EXECUTE_STRING;
-    delete global.IS_CHECK_SCRIPT;
-    delete global.IS_UNIT_TESTS;
-    delete global.IS_JS_LINT;
+    global.process.stdout.isTTY = true;
   } catch (e) {}
+
+  delete global.IS_EXECUTE_SCRIPT;
+  delete global.IS_EXECUTE_STRING;
+  delete global.IS_CHECK_SCRIPT;
+  delete global.IS_UNIT_TESTS;
+  delete global.IS_JS_LINT;
 }
