@@ -10,6 +10,8 @@ devel
 
 * Foxx configuration values for unknown options will be discarded when saving the configuration in production mode using the web interface
 
+* module.context.dependencies is now immutable
+
 
 v3.1.2 (20XX-XX-XX)
 -------------------
