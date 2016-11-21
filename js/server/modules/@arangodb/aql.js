@@ -3136,11 +3136,8 @@ function AQL_UNIQUE (values) {
 
     if (!keys.hasOwnProperty(key)) {
       keys[key] = normalized;
+      result.push(value);
     }
-  });
-
-  Object.keys(keys).forEach(function (k) {
-    result.push(keys[k]);
   });
 
   return result;
@@ -3396,6 +3393,10 @@ function AQL_APPEND (list, values, unique) {
     return list;
   } else if (type !== TYPEWEIGHT_ARRAY) {
     values = [ values ];
+  }
+
+  if (unique) {
+    list = AQL_UNIQUE(list);
   }
 
   if (values.length === 0) {
