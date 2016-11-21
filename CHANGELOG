@@ -1,6 +1,8 @@
 devel
 -----
 
+* change default log output for tools to stdout (instead of stderr)
+
 * added option -D to define a configuration file environment key=value
 
 * Foxx request URL suffix is no longer unescaped
