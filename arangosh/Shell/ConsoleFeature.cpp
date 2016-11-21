@@ -362,7 +362,6 @@ void ConsoleFeature::printWelcomeInfo() {
 
 void ConsoleFeature::printByeBye() {
   if (!_quiet) {
-    printLine("<ctrl-D>");
     printLine(TRI_BYE_MESSAGE);
   }
 }

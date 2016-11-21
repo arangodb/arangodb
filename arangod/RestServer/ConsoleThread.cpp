@@ -163,14 +163,14 @@ start_pretty_print();
       }
 
       std::string input;
-      bool eof;
+      ShellBase::EofType eof;
 
       {
         MUTEX_LOCKER(mutexLocker, serverConsoleMutex);
         input = console.prompt("arangod> ", "arangod", eof);
       }
 
-      if (eof) {
+      if (eof == ShellBase::EOF_FORCE_ABORT) {
         _userAborted.store(true);
       }
 
