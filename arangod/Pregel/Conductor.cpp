@@ -142,6 +142,8 @@ void Conductor::start(VPackSlice userConfig) {
     _dbServers.push_back(pair.first);
   }
   
+  LOG(INFO) << vertexCount << " vertices, " << edgeCount << " edges";
+  
   std::string const baseUrl = Utils::baseUrl(_vocbaseGuard.vocbase()->name());
   _globalSuperstep = 0;
   _state = ExecutionState::RUNNING;
