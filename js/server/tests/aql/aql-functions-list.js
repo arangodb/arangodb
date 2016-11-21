@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual */
+/*global assertEqual, assertNull */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, functions
 ///
@@ -670,45 +670,53 @@ function ahuacatlListTestSuite () {
       }
       var actual = getQueryResults("RETURN APPEND(" + JSON.stringify(l1) + ", " + JSON.stringify(l2) + ")");
       var l = l1.concat(l2);
-      assertEqual(l, actual[0]);
       assertEqual(1000, actual[0].length);
+      assertEqual(l, actual[0]);
 
       actual = getQueryResults("RETURN APPEND(" + JSON.stringify(l) + ", " + JSON.stringify(l1) + ")");
-      l = l.concat(l1);
-      assertEqual(l, actual[0]);
+      var lx = l.concat(l1);
       assertEqual(1500, actual[0].length);
+      assertEqual(lx, actual[0]);
+      
+      actual = getQueryResults("RETURN NOOPT(APPEND(" + JSON.stringify(l) + ", " + JSON.stringify(l1) + "))");
+      assertEqual(1500, actual[0].length);
+      assertEqual(lx, actual[0]);
 
       actual = getQueryResults("RETURN APPEND(" + JSON.stringify(l) + ", " + JSON.stringify(l1) + ", true)");
-      assertEqual(l, actual[0]);
-      assertEqual(1500, actual[0].length);
+      assertEqual(1000, actual[0].length);
+      assertEqual(l1.concat(l2), actual[0]);
+      
+      actual = getQueryResults("RETURN NOOPT(APPEND(" + JSON.stringify(l) + ", " + JSON.stringify(l1) + ", true))");
+      assertEqual(1000, actual[0].length);
+      assertEqual(l1.concat(l2), actual[0]);
 
       actual = getQueryResults("RETURN NOOPT(APPEND(" + JSON.stringify(l1) + ", " + JSON.stringify(l2) + "))");
       l = l1.concat(l2);
-      assertEqual(l, actual[0]);
       assertEqual(1000, actual[0].length);
+      assertEqual(l, actual[0]);
 
       actual = getQueryResults("RETURN NOOPT(APPEND(" + JSON.stringify(l) + ", " + JSON.stringify(l1) + "))");
-      l = l.concat(l1);
-      assertEqual(l, actual[0]);
+      lx = l.concat(l1);
       assertEqual(1500, actual[0].length);
+      assertEqual(lx, actual[0]);
 
       actual = getQueryResults("RETURN NOOPT(APPEND(" + JSON.stringify(l) + ", " + JSON.stringify(l1) + ", true))");
+      assertEqual(1000, actual[0].length);
       assertEqual(l, actual[0]);
-      assertEqual(1500, actual[0].length);
 
       actual = getQueryResults("RETURN NOOPT(V8(APPEND(" + JSON.stringify(l1) + ", " + JSON.stringify(l2) + ")))");
-      l = l1.concat(l2);
-      assertEqual(l, actual[0]);
+      lx = l1.concat(l2);
       assertEqual(1000, actual[0].length);
+      assertEqual(lx, actual[0]);
 
       actual = getQueryResults("RETURN NOOPT(V8(APPEND(" + JSON.stringify(l) + ", " + JSON.stringify(l1) + ")))");
-      l = l.concat(l1);
-      assertEqual(l, actual[0]);
+      lx = l.concat(l1);
       assertEqual(1500, actual[0].length);
+      assertEqual(lx, actual[0]);
 
       actual = getQueryResults("RETURN NOOPT(V8(APPEND(" + JSON.stringify(l) + ", " + JSON.stringify(l1) + ", true)))");
+      assertEqual(1000, actual[0].length);
       assertEqual(l, actual[0]);
-      assertEqual(1500, actual[0].length);
     },
 
     testAppendDocuments : function () {
@@ -722,7 +730,34 @@ function ahuacatlListTestSuite () {
       assertEqual(actual.length, 10);
       actual = actual.sort(function(l, r) { if (l._key < r._key) { return -1;} else if (l._key > r._key) { return 1;} return 0; });
       for (i = 0; i < 10; ++i) {
-        assertEqual(actual[i]._key, "test"+i);
+        assertEqual(actual[i]._key, "test" + i);
+      }
+      
+      actual = getQueryResults("LET tmp = (FOR x IN @@collection RETURN x) RETURN V8(APPEND([], tmp))", bindVars);
+      assertEqual(actual.length, 1);
+      actual = actual[0];
+      assertEqual(actual.length, 10);
+      actual = actual.sort(function(l, r) { if (l._key < r._key) { return -1;} else if (l._key > r._key) { return 1;} return 0; });
+      for (i = 0; i < 10; ++i) {
+        assertEqual(actual[i]._key, "test" + i);
+      }
+
+      actual = getQueryResults("LET tmp = (FOR x IN @@collection RETURN x) RETURN APPEND(tmp, [])", bindVars);
+      assertEqual(actual.length, 1);
+      actual = actual[0];
+      assertEqual(actual.length, 10);
+      actual = actual.sort(function(l, r) { if (l._key < r._key) { return -1;} else if (l._key > r._key) { return 1;} return 0; });
+      for (i = 0; i < 10; ++i) {
+        assertEqual(actual[i]._key, "test" + i);
+      }
+      
+      actual = getQueryResults("LET tmp = (FOR x IN @@collection RETURN x) RETURN V8(APPEND(tmp, []))", bindVars);
+      assertEqual(actual.length, 1);
+      actual = actual[0];
+      assertEqual(actual.length, 10);
+      actual = actual.sort(function(l, r) { if (l._key < r._key) { return -1;} else if (l._key > r._key) { return 1;} return 0; });
+      for (i = 0; i < 10; ++i) {
+        assertEqual(actual[i]._key, "test" + i);
       }
     },
 
@@ -731,14 +766,31 @@ function ahuacatlListTestSuite () {
         collection.save({_key: "test" + i});
       }
       var bindVars = {"@collection" : collectionName};
-      var actual = getQueryResults("LET tmp = (FOR x IN @@collection RETURN x) RETURN APPEND('stringvalue', tmp)", bindVars);
+      var actual = getQueryResults("LET tmp = (FOR x IN @@collection SORT x._key RETURN x) RETURN APPEND(tmp, 'stringvalue')", bindVars);
       assertEqual(actual.length, 1);
       actual = actual[0];
-      assertEqual(actual.length, 10);
-      actual = actual.sort(function(l, r) { if (l._key < r._key) { return -1;} else if (l._key > r._key) { return 1;} return 0; });
+      assertEqual(actual.length, 11);
+      assertEqual(actual[10], 'stringvalue');
       for (i = 0; i < 10; ++i) {
-        assertEqual(actual[i]._key, "test"+i);
+        assertEqual(actual[i]._key, "test" + i);
       }
+      
+      actual = getQueryResults("LET tmp = (FOR x IN @@collection SORT x._key RETURN x) RETURN V8(APPEND(tmp, 'stringvalue'))", bindVars);
+      assertEqual(actual.length, 1);
+      actual = actual[0];
+      assertEqual(actual.length, 11);
+      assertEqual(actual[10], 'stringvalue');
+      for (i = 0; i < 10; ++i) {
+        assertEqual(actual[i]._key, "test" + i);
+      }
+      
+      actual = getQueryResults("LET tmp = (FOR x IN @@collection RETURN x) RETURN APPEND('stringvalue', tmp)", bindVars);
+      assertEqual(actual.length, 1);
+      assertNull(actual[0]);
+      
+      actual = getQueryResults("LET tmp = (FOR x IN @@collection RETURN x) RETURN V8(APPEND('stringvalue', tmp))", bindVars);
+      assertEqual(actual.length, 1);
+      assertNull(actual[0]);
     },
 
     testAppendDocuments3 : function () {
@@ -746,24 +798,54 @@ function ahuacatlListTestSuite () {
         collection.save({_key: "test" + i});
       }
       var bindVars = {"@collection" : collectionName};
-      var actual = getQueryResults("LET tmp = (FOR x IN @@collection RETURN x._id) RETURN APPEND('stringvalue', tmp)", bindVars);
+      var actual = getQueryResults("LET tmp = (FOR x IN @@collection RETURN x._id) RETURN APPEND(tmp, 'stringvalue')", bindVars);
       assertEqual(actual.length, 1);
       actual = actual[0];
-      assertEqual(actual.length, 10);
+      assertEqual(actual.length, 11);
       actual = actual.sort(function(l, r) { if (l < r) { return -1;} else if (l > r) { return 1;} return 0; });
+      assertEqual('stringvalue', actual[10]);
       for (i = 0; i < 10; ++i) {
-        assertEqual(actual[i], collectionName + "/test"+i);
+        assertEqual(actual[i], collectionName + "/test" + i);
       }
+      
+      actual = getQueryResults("LET tmp = (FOR x IN @@collection RETURN x._id) RETURN V8(APPEND(tmp, 'stringvalue'))", bindVars);
+      assertEqual(actual.length, 1);
+      actual = actual[0];
+      assertEqual(actual.length, 11);
+      actual = actual.sort(function(l, r) { if (l < r) { return -1;} else if (l > r) { return 1;} return 0; });
+      assertEqual('stringvalue', actual[10]);
+      for (i = 0; i < 10; ++i) {
+        assertEqual(actual[i], collectionName + "/test" + i);
+      }
+      
+      actual = getQueryResults("LET tmp = (FOR x IN @@collection RETURN x._id) RETURN APPEND('stringvalue', tmp)", bindVars);
+      assertEqual(actual.length, 1);
+      assertNull(actual[0]);
+      
+      actual = getQueryResults("LET tmp = (FOR x IN @@collection RETURN x._id) RETURN V8(APPEND('stringvalue', tmp))", bindVars);
+      assertEqual(actual.length, 1);
+      assertNull(actual[0]);
     },
 
     testAppendSecondUnique : function () {
       var actual = getQueryResults("RETURN APPEND('stringvalue', [1,1,1,1,1,1], true)");
       assertEqual(actual.length, 1);
       actual = actual[0];
-      assertEqual(actual, null);
+      assertNull(null);
+      
+      actual = getQueryResults("RETURN V8(APPEND('stringvalue', [1,1,1,1,1,1], true))");
+      assertEqual(actual.length, 1);
+      actual = actual[0];
+      assertNull(null);
+      
+      actual = getQueryResults("RETURN APPEND([1,1,1,1,1,1], 'stringvalue', true)");
+      assertEqual(actual.length, 1);
+      assertEqual([1, 'stringvalue'], actual[0]);
+      
+      actual = getQueryResults("RETURN V8(APPEND([1,1,1,1,1,1], 'stringvalue', true))");
+      assertEqual(actual.length, 1);
+      assertEqual([1, 'stringvalue'], actual[0]);
     },
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test append function
@@ -781,6 +863,9 @@ function ahuacatlListTestSuite () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(APPEND()))"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(APPEND([ ])))"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(APPEND([ ], [ ], false, [ ])))"); 
+      
+      assertEqual([ null ], getQueryResults("RETURN APPEND('foo', [1])"));
+      assertEqual([ null ], getQueryResults("RETURN V8(APPEND('foo', [1]))"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
