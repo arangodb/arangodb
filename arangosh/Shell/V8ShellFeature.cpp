@@ -338,11 +338,11 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
     _console->setPromptError(promptError);
     auto prompt = _console->buildPrompt(client);
 
-    bool eof;
+    ShellBase::EofType eof = ShellBase::EOF_NONE;
     std::string input =
         v8LineEditor.prompt(prompt._colored, prompt._plain, eof);
 
-    if (eof && lastEmpty) {
+    if (eof == ShellBase::EOF_FORCE_ABORT || (eof == ShellBase::EOF_ABORT && lastEmpty)) {
       break;
     }
 
