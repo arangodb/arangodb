@@ -21,8 +21,8 @@ describe('Foxx Manager', function () {
     });
 
     it("doesn't mutilate mounted apps", function () {
-      var deps1 = {hello: {name: 'world', required: true, version: '*'}};
-      var deps2 = {clobbered: {name: 'completely', required: true, version: '*'}};
+      var deps1 = {hello: {name: 'world', required: true, version: '*', multiple: false}};
+      var deps2 = {clobbered: {name: 'completely', required: true, version: '*', multiple: false}};
 
       var service = FoxxManager.lookupService(mount);
       expect(service.manifest.dependencies).to.eql({});
