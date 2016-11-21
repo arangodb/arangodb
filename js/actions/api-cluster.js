@@ -1161,7 +1161,6 @@ actions.defineHttp({
 
     var leaderOP, followerOP, leaderR, followerR, leaderBody, followerBody;
     var options = { timeout: 10 };
-    console.log(dbsToCheck);
 
     _.each(dbsToCheck, function (shard) {
       if (shard.leader.charAt(0) === '_') {
