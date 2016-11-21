@@ -167,7 +167,7 @@ start_pretty_print();
       }
 
       std::string input;
-      bool eof;
+      ShellBase::EofType eof;
 
       isolate->CancelTerminateExecution();
 
@@ -176,7 +176,7 @@ start_pretty_print();
         input = console.prompt("arangod> ", "arangod", eof);
       }
 
-      if (eof) {
+      if (eof == ShellBase::EOF_FORCE_ABORT) {
         _userAborted.store(true);
       }
 

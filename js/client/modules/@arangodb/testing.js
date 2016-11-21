@@ -2038,69 +2038,111 @@ testFuncs.fail = function (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 testFuncs.arangosh = function (options) {
-  let ret = {
-    'testArangoshExitCodeFail': {
-      status: true,
-      total: 0
-    },
-    'testArangoshExitCodeSuccess': {
-      status: true,
-      total: 0
-    },
-    'testArangoshShebang': {
-      status: true,
-      total: 0
+  let ret = {};
+  [ 
+    'testArangoshExitCodeNoConnect', 
+    'testArangoshExitCodeFail', 
+    'testArangoshExitCodeFailButCaught', 
+    'testArangoshExitCodeEmpty', 
+    'testArangoshExitCodeSuccess', 
+    'testArangoshExitCodeStatements', 
+    'testArangoshExitCodeStatements2', 
+    'testArangoshExitCodeNewlines', 
+    'testArangoshExitCodeEcho',
+    'testArangoshShebang',
+  ].forEach(function(what) {
+    ret[what] = { status: true, total: 0 };
+  });
+
+  function runTest(section, title, command, expectedReturnCode, opts) {
+    print('--------------------------------------------------------------------------------');
+    print(title);
+    print('--------------------------------------------------------------------------------');
+
+    let args = makeArgsArangosh(options);
+    args['javascript.execute-string'] = command;
+    args['log.level'] = 'error';
+
+    for (let op in opts) {
+      args[op] = opts[op];
     }
-  };
 
-  print('--------------------------------------------------------------------------------');
-  print('Starting arangosh with exception throwing script:');
-  print('--------------------------------------------------------------------------------');
+    const startTime = time();
+    print(args);
+    let rc = executeExternalAndWait(ARANGOSH_BIN, toArgv(args));
+    const deltaTime = time() - startTime;
+    const failSuccess = (rc.hasOwnProperty('exit') && rc.exit === expectedReturnCode);
 
-  let args = makeArgsArangosh(options);
-  args['javascript.execute-string'] = "throw('foo')";
-  args['log.level'] = 'error';
-
-  const startTime = time();
-  let rc = executeExternalAndWait(ARANGOSH_BIN, toArgv(args));
-  const deltaTime = time() - startTime;
-  const failSuccess = (rc.hasOwnProperty('exit') && rc.exit === 1);
-
-  if (!failSuccess) {
-    ret.testArangoshExitCodeFail['message'] =
-      "didn't get expected return code (1): \n" +
-      yaml.safeDump(rc);
+    if (!failSuccess) {
+      ret[section]['message'] =
+        "didn't get expected return code (" + expectedReturnCode + "): \n" +
+        yaml.safeDump(rc);
+    }
+  
+    ++ret[section]['total'];
+    ret[section]['status'] = failSuccess;
+    ret[section]['duration'] = deltaTime;
+    print((failSuccess ? GREEN : RED) + 'Status: ' + (failSuccess ? 'SUCCESS' : 'FAIL') + RESET);
   }
+  
+  runTest('testArangoshExitCodeNoConnect', 'Starting arangosh with failing connect:', "db._databases();", 1, { 'server.endpoint' : 'tcp://127.0.0.1:0' });
+  print();
 
-  ++ret.testArangoshExitCodeFail['total'];
-  ret.testArangoshExitCodeFail['status'] = failSuccess;
-  ret.testArangoshExitCodeFail['duration'] = deltaTime;
-  print((failSuccess ? GREEN : RED) + 'Status: ' + (failSuccess ? 'SUCCESS' : 'FAIL') + RESET);
+  runTest('testArangoshExitCodeFail', 'Starting arangosh with exception throwing script:', "throw('foo')", 1, {});
+  print();
+  
+  runTest('testArangoshExitCodeFailButCaught', 'Starting arangosh with a caught exception:', "try { throw('foo'); } catch (err) {}", 0, {});
+  print();
+  
+  runTest('testArangoshExitCodeEmpty', 'Starting arangosh with empty script:', "", 0, {});
+  print();
+  
+  runTest('testArangoshExitCodeSuccess', 'Starting arangosh with regular terminating script:', ";", 0, {});
+  print();
+  
+  runTest('testArangoshExitCodeStatements', 'Starting arangosh with multiple statements:', "var a = 1; if (a !== 1) throw('boom!');", 0, {});
+  print();
+  
+  runTest('testArangoshExitCodeStatements2', 'Starting arangosh with multiple statements:', "var a = 1;\nif (a !== 1) throw('boom!');\nif (a === 1) print('success');", 0, {});
+  print();
+  
+  runTest('testArangoshExitCodeNewlines', 'Starting arangosh with newlines:', "q = `FOR i\nIN [1,2,3]\nRETURN i`;\nq += 'abc'\n", 0, {});
+  print();
+  
+  if (platform.substr(0, 3) !== 'win') {
+    var echoSuccess = true;
+    var deltaTime2 = 0;
+    var execFile = fs.getTempFile();
 
-  print('\n--------------------------------------------------------------------------------');
-  print('Starting arangosh with regular terminating script:');
-  print('--------------------------------------------------------------------------------');
+    print('\n--------------------------------------------------------------------------------');
+    print('Starting arangosh via echo');
+    print('--------------------------------------------------------------------------------');
+    
+    fs.write(execFile,
+      'echo "db._databases();" | ' + fs.makeAbsolute(ARANGOSH_BIN) + ' --server.endpoint tcp://127.0.0.1:0');
 
-  args['javascript.execute-string'] = ';';
-  args['log.level'] = 'warning';
+    executeExternalAndWait('sh', ['-c', 'chmod a+x ' + execFile]);
 
-  const startTime2 = time();
-  rc = executeExternalAndWait(ARANGOSH_BIN, toArgv(args));
-  const deltaTime2 = time() - startTime2;
+    const startTime2 = time();
+    let rc = executeExternalAndWait('sh', ['-c', execFile]);
+    deltaTime2 = time() - startTime2;
 
-  const successSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
+    echoSuccess = (rc.hasOwnProperty('exit') && rc.exit === 1);
 
-  if (!successSuccess) {
-    ret.testArangoshExitCodeFail['message'] =
-      "didn't get expected return code (0): \n" +
-      yaml.safeDump(rc);
+    if (!echoSuccess) {
+      ret.testArangoshExitCodeEcho['message'] =
+        "didn't get expected return code (1): \n" +
+        yaml.safeDump(rc);
+    }
+    
+    fs.remove(execFile);
+
+    ++ret.testArangoshExitCodeEcho['total'];
+    ret.testArangoshExitCodeEcho['status'] = echoSuccess;
+    ret.testArangoshExitCodeEcho['duration'] = deltaTime2;
+    print((echoSuccess ? GREEN : RED) + 'Status: ' + (echoSuccess ? 'SUCCESS' : 'FAIL') + RESET);
   }
-
-  ++ret.testArangoshExitCodeSuccess['total'];
-  ret.testArangoshExitCodeSuccess['status'] = failSuccess;
-  ret.testArangoshExitCodeSuccess['duration'] = deltaTime2;
-  print((successSuccess ? GREEN : RED) + 'Status: ' + (successSuccess ? 'SUCCESS' : 'FAIL') + RESET);
-
+ 
   // test shebang execution with arangosh
   if (!options.skipShebang && platform.substr(0, 3) !== 'win') {
     var shebangSuccess = true;
@@ -2122,7 +2164,7 @@ testFuncs.arangosh = function (options) {
     executeExternalAndWait('sh', ['-c', 'chmod a+x ' + shebangFile]);
 
     const startTime3 = time();
-    rc = executeExternalAndWait('sh', ['-c', shebangFile]);
+    let rc = executeExternalAndWait('sh', ['-c', shebangFile]);
     deltaTime3 = time() - startTime3;
 
     if (options.verbose) {

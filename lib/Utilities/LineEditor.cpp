@@ -63,7 +63,7 @@ bool LineEditor::close() { return _shell->close(); }
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string LineEditor::prompt(std::string const& prompt,
-                               std::string const& begin, bool& eof) {
+                               std::string const& begin, ShellBase::EofType& eof) {
   return _shell->prompt(prompt, begin, eof);
 }
 
