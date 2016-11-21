@@ -600,7 +600,7 @@ function changeAllShardReponsibilities (oldServer, newServer) {
         ArangoAgency.set(collectionKey, done[collectionKey], 0);
       });
     } catch (e2) {
-      console.error('Got error during rolback', e2);
+      console.error('Got error during rollback', e2);
     }
     throw e;
   }
@@ -1161,7 +1161,6 @@ actions.defineHttp({
 
     var leaderOP, followerOP, leaderR, followerR, leaderBody, followerBody;
     var options = { timeout: 10 };
-    console.log(dbsToCheck);
 
     _.each(dbsToCheck, function (shard) {
       if (shard.leader.charAt(0) === '_') {

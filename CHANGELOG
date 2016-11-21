@@ -1,6 +1,8 @@
 devel
 -----
 
+* change default log output for tools to stdout (instead of stderr)
+
 * added option -D to define a configuration file environment key=value
 
 * Foxx request URL suffix is no longer unescaped
@@ -9,6 +11,16 @@ devel
   The option can still be set to `false` to avoid unnecessary attempts at parsing the response as JSON.
 
 * Foxx configuration values for unknown options will be discarded when saving the configuration in production mode using the web interface
+
+* module.context.dependencies is now immutable
+
+* process.stdout.isTTY now returns `true` in arangosh and when running arangod with the `--console` flag
+
+
+v3.1.2 (20XX-XX-XX)
+-------------------
+
+* added support for descriptions field in Foxx dependencies
 
 
 v3.1.1 (XXXX-XX-XX)

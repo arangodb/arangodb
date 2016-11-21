@@ -27,3 +27,4 @@ queues = false
 
 [log]
 level = info
+file = -

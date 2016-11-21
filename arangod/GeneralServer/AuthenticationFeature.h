@@ -56,6 +56,7 @@ class AuthenticationFeature final
   bool authenticationSystemOnly() const { return _authenticationSystemOnly; }
   std::string jwtSecret() { return authInfo()->jwtSecret(); }
   std::string generateNewJwtSecret();
+  bool hasUserdefinedJwt() { return !_jwtSecretProgramOption.empty(); }
   void setJwtSecret(std::string const& jwtSecret) { authInfo()->setJwtSecret(jwtSecret); }
   AuthInfo* authInfo();
   AuthLevel canUseDatabase(std::string const& username, std::string const& dbname);

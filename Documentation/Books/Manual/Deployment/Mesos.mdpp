@@ -115,14 +115,14 @@ To install ArangoDB via marathon you need a proper config file:
     "--nr_dbservers=2",
     "--nr_coordinators=2",
     "--failover_timeout=86400",
-    "--arangodb_image=arangodb/arangodb-mesos:3.0",
+    "--arangodb_image=arangodb/arangodb-mesos:3.1",
     "--secondaries_with_dbservers=false",
     "--coordinators_with_dbservers=false"
   ],
   "container": {
     "type": "DOCKER",
     "docker": {
-      "image": "arangodb/arangodb-mesos-framework:3.0",
+      "image": "arangodb/arangodb-mesos-framework:3.1",
       "network": "HOST"
     }
   },
@@ -154,4 +154,4 @@ The easiest is to simply delete ArangoDB and then deploy the cleanup-framework (
 
 !SUBSECTION Configuration options
 
-The Arangodb Mesos framework has a ton of different options which are listed and described here: https://github.com/arangodb/arangodb-mesos-framework/tree/3.0
+The Arangodb Mesos framework has a ton of different options which are listed and described here: https://github.com/arangodb/arangodb-mesos-framework/tree/3.1

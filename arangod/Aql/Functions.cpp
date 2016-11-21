@@ -3131,8 +3131,7 @@ AqlValue Functions::Push(arangodb::aql::Query* query,
   } 
   
   if (!list.isArray()) {
-    RegisterWarning(query, "PUSH",
-                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    RegisterInvalidArgumentWarning(query, "PUSH");
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
@@ -3219,38 +3218,47 @@ AqlValue Functions::Append(arangodb::aql::Query* query,
   
   AqlValueMaterializer materializer(trx);
   VPackSlice l = materializer.slice(list, false);
+  
+  if (l.isNull()) {
+    return toAppend.clone();
+  }
+    
+  if (!l.isArray()) {
+    RegisterInvalidArgumentWarning(query, "APPEND");
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+  
+  std::unordered_set<VPackSlice> added;
 
   TransactionBuilderLeaser builder(trx);
   builder->openArray();
-
-  if (!list.isNull(true)) {
-    if (list.isArray()) {
-      for (auto const& it : VPackArrayIterator(l)) {
+      
+  for (auto const& it : VPackArrayIterator(l)) {
+    if (unique) {
+      if (added.find(it) == added.end()) {
         builder->add(it);
+        added.emplace(it);
       }
+    } else {
+      builder->add(it);
     }
   }
+    
+  AqlValueMaterializer materializer2(trx);
+  VPackSlice slice = materializer2.slice(toAppend, false);
   
-  auto options = trx->transactionContextPtr()->getVPackOptions();
-  if (!toAppend.isArray()) {
-    if (!unique || !ListContainsElement(options, l, t)) {
-      builder->add(t);
+  if (!slice.isArray()) {
+    if (!unique || added.find(slice) == added.end()) {
+      builder->add(slice);
     }
   } else {
-    AqlValueMaterializer materializer(trx);
-    VPackSlice slice = materializer.slice(toAppend, false);
-    if (unique) {
-      std::unordered_set<VPackSlice> added;
-      added.reserve(static_cast<size_t>(slice.length()));
-      for (auto const& it : VPackArrayIterator(slice)) {
-        if (added.find(it) == added.end() &&
-            !ListContainsElement(options, l, it)) {
+    for (auto const& it : VPackArrayIterator(slice)) {
+      if (unique) {
+        if (added.find(it) == added.end()) {
           builder->add(it);
           added.emplace(it);
         }
-      }
-    } else {
-      for (auto const& it : VPackArrayIterator(slice)) {
+      } else {
         builder->add(it);
       }
     }

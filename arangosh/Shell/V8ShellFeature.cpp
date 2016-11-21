@@ -331,17 +331,18 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
     client = nullptr;
   }
 
-  bool lastEmpty = false;
+  bool const isBatch = isatty(STDIN_FILENO) == 0;
+  bool lastEmpty = isBatch;
 
   while (true) {
     _console->setPromptError(promptError);
     auto prompt = _console->buildPrompt(client);
 
-    bool eof;
+    ShellBase::EofType eof = ShellBase::EOF_NONE;
     std::string input =
         v8LineEditor.prompt(prompt._colored, prompt._plain, eof);
 
-    if (eof && lastEmpty) {
+    if (eof == ShellBase::EOF_FORCE_ABORT || (eof == ShellBase::EOF_ABORT && lastEmpty)) {
       break;
     }
 
@@ -350,7 +351,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
       lastEmpty = true;
       continue;
     }
-    lastEmpty = false;
+    lastEmpty = isBatch;
 
     _console->log(prompt._plain + input + "\n");
 
