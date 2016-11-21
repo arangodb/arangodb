@@ -600,7 +600,7 @@ function changeAllShardReponsibilities (oldServer, newServer) {
         ArangoAgency.set(collectionKey, done[collectionKey], 0);
       });
     } catch (e2) {
-      console.error('Got error during rolback', e2);
+      console.error('Got error during rollback', e2);
     }
     throw e;
   }
