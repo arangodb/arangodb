@@ -155,6 +155,8 @@ start_pretty_print();
       MUTEX_LOCKER(mutexLocker, serverConsoleMutex);
       serverConsole = &console;
     }
+  
+    bool lastEmpty = false;
 
     while (!isStopping() && !_userAborted.load()) {
       if (nrCommands >= gcInterval) {
@@ -170,7 +172,7 @@ start_pretty_print();
         input = console.prompt("arangod> ", "arangod", eof);
       }
 
-      if (eof == ShellBase::EOF_FORCE_ABORT) {
+      if (eof == ShellBase::EOF_FORCE_ABORT || (eof == ShellBase::EOF_ABORT && lastEmpty)) {
         _userAborted.store(true);
       }
 
@@ -179,8 +181,10 @@ start_pretty_print();
       }
 
       if (input.empty()) {
+        lastEmpty = true;
         continue;
       }
+      lastEmpty = false;
 
       nrCommands++;
       console.addHistory(input);
