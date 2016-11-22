@@ -339,6 +339,11 @@ while [ $# -gt 0 ];  do
             CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DRPM_DISTRO=$1"
             shift
             ;;
+        
+        --staticOpenSSL)
+            shift
+            CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DOPENSSL_USE_STATIC_LIBS=TRUE"
+            ;;
 
 
         --enterprise)
