@@ -130,7 +130,9 @@ const manifestSchema = {
         .keys({
           name: joi.string().default('*'),
           version: joi.string().default('*'),
-          required: joi.boolean().default(true)
+          description: joi.string().optional(),
+          required: joi.boolean().default(true),
+          multiple: joi.boolean().default(false)
         })
     ))
   ),
@@ -1620,6 +1622,7 @@ function requireService (mount) {
     'requireService(<mount>)',
     [ [ 'Mount path', 'string' ] ],
     [ mount ]);
+  mount = '/' + mount.replace(/(^\/+|\/+$)/, '');
   utils.validateMount(mount, true);
   var service = lookupService(mount);
   if (service.needsConfiguration()) {

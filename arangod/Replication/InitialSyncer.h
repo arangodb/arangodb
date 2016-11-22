@@ -105,6 +105,8 @@ class InitialSyncer : public Syncer {
     return _processedCollections;
   }
 
+  std::string progress() { return _progress; }
+
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set a progress message

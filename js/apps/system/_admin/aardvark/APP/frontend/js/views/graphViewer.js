@@ -824,12 +824,12 @@
     addNode: function () {
       var self = this;
 
-      var collectionId = $('.modal-body #new-node-collection-attr').val();
+      var collection = $('.modal-body #new-node-collection-attr').val();
       var key = $('.modal-body #new-node-key-attr').last().val();
 
       var callback = function (error, id, msg) {
         if (error) {
-          arangoHelper.arangoError('Could not create node', msg.errorMessage);
+          arangoHelper.arangoError('Could not create node', msg);
         } else {
           $('#emptyGraph').remove();
           self.currentGraph.graph.addNode({
@@ -850,12 +850,20 @@
           self.cameraToNode(self.currentGraph.graph.nodes(id));
         }
       };
-
-      if (key !== '' || key !== undefined) {
-        this.documentStore.createTypeDocument(collectionId, key, callback);
-      } else {
-        this.documentStore.createTypeDocument(collectionId, null, callback);
+      var data = {};
+      if (key !== '' && key !== undefined) {
+        data._key = key;
       }
+      if (this.graphSettings.isSmart) {
+        var smartAttribute = $('#new-smart-key-attr').val();
+        if (smartAttribute !== '' && smartAttribute !== undefined) {
+          data[this.graphSettings.smartGraphAttribute] = smartAttribute;
+        } else {
+          data[this.graphSettings.smartGraphAttribute] = null;
+        }
+      }
+
+      this.collection.createNode(self.name, collection, data, callback);
     },
 
     deleteEdgeModal: function (edgeId) {
@@ -905,7 +913,7 @@
         _.each(this.graphSettings.vertexCollections, function (val) {
           collections.push({
             label: val.name,
-            value: val.id
+            value: val.name
           });
         });
 
@@ -925,6 +933,27 @@
             ]
           )
         );
+
+        if (this.graphSettings.isSmart) {
+          tableContent.push(
+            window.modalView.createTextEntry(
+              'new-smart-key-attr',
+              this.graphSettings.smartGraphAttribute + '*',
+              undefined,
+              'The attribute value that is used to smartly shard the vertices of a graph. \n' +
+              'Every vertex in this Graph has to have this attribute. \n' +
+              'Cannot be modified later.',
+              'Cannot be modified later.',
+              false,
+              [
+                {
+                  rule: Joi.string().allow('').optional(),
+                  msg: ''
+                }
+              ]
+            )
+          );
+        }
 
         tableContent.push(
           window.modalView.createSelectEntry(
@@ -956,33 +985,27 @@
       var from = self.contextState._from;
       var to = self.contextState._to;
 
-      var collectionName;
+      var collection;
       if ($('.modal-body #new-edge-collection-attr').val() === '') {
-        collectionName = $('.modal-body #new-edge-collection-attr').text();
+        collection = $('.modal-body #new-edge-collection-attr').text();
       } else {
-        collectionName = $('.modal-body #new-edge-collection-attr').val();
+        collection = $('.modal-body #new-edge-collection-attr').val();
       }
       var key = $('.modal-body #new-edge-key-attr').last().val();
 
-      var callback = function (error, data, msg) {
+      var callback = function (error, id, msg) {
         if (!error) {
-          // success
+          var edge = {
+            source: from,
+            target: to,
+            id: id,
+            color: self.graphConfig.edgeColor || self.ecolor
+          };
+
           if (self.graphConfig.edgeEditable === 'true') {
-            self.currentGraph.graph.addEdge({
-              source: from,
-              size: 1,
-              target: to,
-              id: data._id,
-              color: self.graphConfig.edgeColor || self.ecolor
-            });
-          } else {
-            self.currentGraph.graph.addEdge({
-              source: from,
-              target: to,
-              id: data._id,
-              color: self.graphConfig.edgeColor || self.ecolor
-            });
+            edge.size = 1;
           }
+          self.currentGraph.graph.addEdge(edge);
 
           // rerender graph
           if (self.graphConfig) {
@@ -992,7 +1015,7 @@
           }
           self.currentGraph.refresh();
         } else {
-          arangoHelper.arangoError('Could not create edge', msg.errorMessage);
+          arangoHelper.arangoError('Could not create edge', msg);
         }
 
         // then clear states
@@ -1000,11 +1023,14 @@
         window.modalView.hide();
       };
 
-      if (key !== '' || key !== undefined) {
-        this.documentStore.createTypeEdge(collectionName, from, to, key, callback);
-      } else {
-        this.documentStore.createTypeEdge(collectionName, from, to, null, callback);
+      var data = {
+        _from: from,
+        _to: to
+      };
+      if (key !== '' && key !== undefined) {
+        data._key = key;
       }
+      this.collection.createEdge(self.name, collection, data, callback);
     },
 
     addEdgeModal: function (edgeDefinitions) {
@@ -1053,7 +1079,7 @@
               'new-edge-collection-attr',
               'Edge collection',
               edgeDefinitions[0],
-              'The edges collection to be used.'
+              'The edge collection to be used.'
             )
           );
         }
@@ -1980,8 +2006,12 @@
 
             // validate edgeDefinitions
             var foundEdgeDefinitions = self.getEdgeDefinitionCollections(fromCollection, toCollection);
-            self.addEdgeModal(foundEdgeDefinitions, self.contextState._from, self.contextState._to);
-            self.clearOldContextMenu(false);
+            if (foundEdgeDefinitions.length === 0) {
+              arangoHelper.arangoNotification('Graph', 'No valid edge definition found.');
+            } else {
+              self.addEdgeModal(foundEdgeDefinitions, self.contextState._from, self.contextState._to);
+              self.clearOldContextMenu(false);
+            }
           } else {
             if (!self.dragging) {
               if (self.contextState.createEdge === true) {

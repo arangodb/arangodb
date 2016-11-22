@@ -1238,7 +1238,7 @@ static void JS_GetTempFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
     create = TRI_ObjectToBoolean(args[1]);
   }
 
-  char* result = 0;
+  char* result = nullptr;
   long systemError;
   std::string errorMessage;
   if (TRI_GetTempName(p, &result, create, systemError, errorMessage) !=

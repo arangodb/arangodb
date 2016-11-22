@@ -67,5 +67,9 @@
     require('@arangodb').checkAvailableVersions();
   }
 
+  if (internal.options().console) {
+    global.process.stdout.isTTY = true;
+  }
+
   return true;
 }());

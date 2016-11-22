@@ -376,10 +376,10 @@ static void JS_SynchronizeReplication(
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (errorMsg.empty()) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot sync from remote endpoint");
+      TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot sync from remote endpoint. last progress message was '" + syncer.progress() + "'");
     } else {
       TRI_V8_THROW_EXCEPTION_MESSAGE(
-          res, "cannot sync from remote endpoint: " + errorMsg);
+          res, "cannot sync from remote endpoint: " + errorMsg + ". last progress message was '" + syncer.progress() + "'");
     }
   }
 

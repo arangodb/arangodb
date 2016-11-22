@@ -33,7 +33,7 @@ class Completer;
 /// @brief LinenoiseShell
 ////////////////////////////////////////////////////////////////////////////////
 
-class LinenoiseShell : public ShellBase {
+class LinenoiseShell final : public ShellBase {
  public:
   LinenoiseShell(std::string const& history, Completer*);
 
@@ -48,7 +48,7 @@ class LinenoiseShell : public ShellBase {
 
   bool writeHistory() override final;
 
-  std::string getLine(std::string const& prompt, bool& eof) override final;
+  std::string getLine(std::string const& prompt, EofType& eof) override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the shell implementation supports colors

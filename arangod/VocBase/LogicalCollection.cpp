@@ -990,19 +990,21 @@ int LogicalCollection::close() {
     idx->unload();
   }
 
-  TRI_ASSERT(_revisionsCache);
-  _revisionsCache->clear();
+  if (_revisionsCache != nullptr) {
+    _revisionsCache->clear();
+  }
 
   return getPhysical()->close();
 }
 
 void LogicalCollection::unload() {
-  TRI_ASSERT(_revisionsCache);
-  _revisionsCache->closeWriteChunk();
+  if (_revisionsCache != nullptr) {
+    _revisionsCache->closeWriteChunk();
+  }
 }
 
 void LogicalCollection::drop() {
-  if (_revisionsCache) {
+  if (_revisionsCache != nullptr) {
     _revisionsCache->clear();
   }
 
@@ -3531,12 +3533,12 @@ void LogicalCollection::newObjectForRemove(
 }
 
 bool LogicalCollection::readRevision(Transaction* trx, ManagedDocumentResult& result, TRI_voc_rid_t revisionId) {
-  TRI_ASSERT(_revisionsCache);
+  TRI_ASSERT(_revisionsCache != nullptr);
   return _revisionsCache->lookupRevision(trx, result, revisionId, !_isInitialIteration);
 }
 
 bool LogicalCollection::readRevisionConditional(Transaction* trx, ManagedDocumentResult& result, TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal) {
-  TRI_ASSERT(_revisionsCache);
+  TRI_ASSERT(_revisionsCache != nullptr);
   return _revisionsCache->lookupRevisionConditional(trx, result, revisionId, maxTick, excludeWal, true);
 }
 
