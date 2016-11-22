@@ -22,7 +22,7 @@ Note that the above is true only for all collections that are declared in the
 
 There might be situations when declaring all collections a priori is not possible,
 for example, because further collections are determined by a dynamic AQL query 
-inside the transaction, for example a query using AQL graph functions.
+inside the transaction, for example a query using AQL graph traversal.
 
 In this case, it would be impossible to know beforehand which collection to lock, and
 thus it is legal to not declare collections that will be accessed in the transaction in

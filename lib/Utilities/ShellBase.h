@@ -43,6 +43,9 @@ class ShellBase {
   enum console_state_e { STATE_NONE = 0, STATE_OPENED = 1, STATE_CLOSED = 2 };
 
  public:
+
+  enum EofType { EOF_NONE = 0, EOF_ABORT = 1, EOF_FORCE_ABORT = 2 };
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a shell
   //////////////////////////////////////////////////////////////////////////////
@@ -66,7 +69,7 @@ class ShellBase {
   //////////////////////////////////////////////////////////////////////////////
 
   std::string prompt(std::string const& prompt, std::string const& begin,
-                     bool& eof);
+                     EofType& eof);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -103,7 +106,7 @@ class ShellBase {
   /// @brief get next line
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual std::string getLine(std::string const& prompt, bool& eof) = 0;
+  virtual std::string getLine(std::string const& prompt, EofType& eof) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the shell implementation supports colors

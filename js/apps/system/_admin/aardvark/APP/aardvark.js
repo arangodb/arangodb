@@ -379,6 +379,12 @@ authRouter.get('/graph/:name', function (req, res) {
         vertexCollections: vertexCollections
       }
     };
+    if (isEnterprise) {
+      if (graph.__isSmart) {
+        toReturn.settings.isSmart = graph.__isSmart;
+        toReturn.settings.smartGraphAttribute = graph.__smartGraphAttribute;
+      }
+    }
   } else {
     var aqlQuery;
     if (config.query) {
@@ -607,6 +613,12 @@ authRouter.get('/graph/:name', function (req, res) {
         startVertex: startVertex
       }
     };
+    if (isEnterprise) {
+      if (graph.__isSmart) {
+        toReturn.settings.isSmart = graph.__isSmart;
+        toReturn.settings.smartGraphAttribute = graph.__smartGraphAttribute;
+      }
+    }
   }
 
   res.json(toReturn);
