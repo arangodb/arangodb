@@ -343,7 +343,6 @@ while [ $# -gt 0 ];  do
         --staticOpenSSL)
             shift
             CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DOPENSSL_USE_STATIC_LIBS=TRUE"
-            shift
             ;;
 
 
