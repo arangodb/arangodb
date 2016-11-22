@@ -165,6 +165,10 @@ class Traverser {
   friend class BreadthFirstEnumerator;
   friend class DepthFirstEnumerator;
   friend class NeighborsEnumerator;
+#ifdef USE_ENTERPRISE
+  friend class SmartDepthFirstPathEnumerator;
+  friend class SmartBreadthFirstPathEnumerator;
+#endif
 
  protected:
 
