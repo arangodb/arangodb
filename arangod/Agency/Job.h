@@ -54,6 +54,7 @@ static std::string const blockedShardsPrefix = "/Supervision/Shards/";
 static std::string const serverStatePrefix = "/Sync/ServerStates/";
 static std::string const planVersion = "/Plan/Version";
 static std::string const plannedServers = "/Plan/DBServers";
+static std::string const healthPrefix = "/Supervision/Health/";
 
 inline arangodb::consensus::write_ret_t transact(Agent* _agent,
                                                  Builder const& transaction,
