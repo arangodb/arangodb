@@ -137,6 +137,7 @@ COVERGAE=0
 CPACK=
 FAILURE_TESTS=0
 GCC5=0
+GCC6=0
 GOLD=0
 SANITIZE=0
 VERBOSE=0
@@ -202,6 +203,11 @@ while [ $# -gt 0 ];  do
 
         --gcc5)
             GCC5=1
+            shift
+            ;;
+
+        --gcc6)
+            GCC6=1
             shift
             ;;
 
@@ -365,6 +371,10 @@ fi
 if [ "$GCC5" == 1 ]; then
     CC=/usr/bin/gcc-5
     CXX=/usr/bin/g++-5
+elif [ "$GCC6" == 1 ]; then
+    CC=/usr/bin/gcc-6
+    CXX=/usr/bin/g++-6
+    CXXFLAGS="${CXXFLAGS} -std=c++11"
 elif [ "$CLANG" == 1 ]; then
     CC=/usr/bin/clang
     CXX=/usr/bin/clang++
