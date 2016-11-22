@@ -276,15 +276,19 @@
         collections: ordered
       }));
 
+      var doRerender = false;
       _.each(collections, function (shard) {
         _.each(shard.Plan, function (val, key) {
           if (val.progress) {
-            window.setTimeout(function () {
-              self.render();
-            }, 1500);
+            doRerender = true;
           }
         });
       });
+      if (doRerender) {
+        window.setTimeout(function () {
+          self.render();
+        }, 1500);
+      }
     },
 
     updateServerTime: function () {

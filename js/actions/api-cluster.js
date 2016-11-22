@@ -1173,20 +1173,35 @@ actions.defineHttp({
       }
 
       // get counts of leader and follower shard
-      leaderOP = ArangoClusterComm.asyncRequest('GET', 'server:' + shard.leader, '_system',
+      leaderOP = null;
+      try {
+        leaderOP = ArangoClusterComm.asyncRequest('GET', 'server:' + shard.leader, '_system',
         '/_api/collection/' + shard.shard + '/count', '', {}, options);
-      followerOP = ArangoClusterComm.asyncRequest('GET', 'server:' + shard.toCheck, '_system',
+      } catch (e) {
+      }
+
+      followerOP = null;
+      try {
+        followerOP = ArangoClusterComm.asyncRequest('GET', 'server:' + shard.toCheck, '_system',
         '/_api/collection/' + shard.shard + '/count', '', {}, options);
-
-      leaderR = ArangoClusterComm.wait(leaderOP);
-      followerR = ArangoClusterComm.wait(followerOP);
-
-      leaderBody = JSON.parse(leaderR.body);
-      followerBody = JSON.parse(followerR.body);
+      } catch (e) {
+      }
+      let leaderCount = null;
+      if (leaderOP) {
+        leaderR = ArangoClusterComm.wait(leaderOP);
+        leaderBody = JSON.parse(leaderR.body);
+        leaderCount = leaderBody.count;
+      }
+      let followerCount = null;
+      if (followerOP) {
+        followerR = ArangoClusterComm.wait(followerOP);
+        followerBody = JSON.parse(followerR.body);
+        followerCount = followerBody.count;
+      }
 
       result.results[shard.collection].Plan[shard.shard].progress = {
-        total: leaderBody.count,
-        current: followerBody.count
+        total: leaderCount,
+        current: followerCount
       };
     });
 
