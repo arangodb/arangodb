@@ -157,29 +157,6 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  // validate --cluster.my-id
-/*  if (_myId.empty()) {
-    if (_myLocalInfo.empty()) {
-      LOG(FATAL) << "Need to specify a local cluster identifier via "
-                    "--cluster.my-local-info";
-      FATAL_ERROR_EXIT();
-    }
-
-    if (_myAddress.empty()) {
-      LOG(FATAL)
-          << "must specify --cluster.my-address if --cluster.my-id is empty";
-      FATAL_ERROR_EXIT();
-    }
-  } else {
-    size_t found = _myId.find_first_not_of(
-        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
-
-    if (found != std::string::npos) {
-      LOG(FATAL) << "invalid value specified for --cluster.my-id";
-      FATAL_ERROR_EXIT();
-    }
-    }*/
-
   // validate system-replication-factor
   if (_systemReplicationFactor == 0) {
     LOG(FATAL) << "system replication factor must be greater 0";
@@ -188,14 +165,14 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void ClusterFeature::prepare() {
+
   ServerState::instance()->setDataPath(_dataPath);
   ServerState::instance()->setLogPath(_logPath);
   ServerState::instance()->setArangodPath(_arangodPath);
   ServerState::instance()->setDBserverConfig(_dbserverConfig);
   ServerState::instance()->setCoordinatorConfig(_coordinatorConfig);
 
-  V8DealerFeature* v8Dealer =
-      ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+  auto v8Dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
 
   v8Dealer->defineDouble("SYS_DEFAULT_REPLICATION_FACTOR_SYSTEM",
                          _systemReplicationFactor);
@@ -213,16 +190,15 @@ void ClusterFeature::prepare() {
   // create an instance (this will not yet create a thread)
   ClusterComm::instance();
 
-  AgencyFeature* agency =
-      application_features::ApplicationServer::getFeature<AgencyFeature>(
-          "Agency");
+  auto agency =
+    application_features::ApplicationServer::getFeature<AgencyFeature>("Agency");
 
   if (agency->isEnabled() || _enableCluster) {
     // initialize ClusterComm library, must call initialize only once
     ClusterComm::initialize();
     auto authenticationFeature =
       application_features::ApplicationServer::getFeature<AuthenticationFeature>(
-          "Authentication");
+        "Authentication");
 
     if (authenticationFeature->isEnabled() && !authenticationFeature->hasUserdefinedJwt()) {
       LOG(FATAL) << "Cluster authentication enabled but jwt not set via command line. Please"
@@ -291,8 +267,8 @@ void ClusterFeature::prepare() {
     }
   }
 
-  ServerState::RoleEnum role = ServerState::instance()->getRole();
-  std::string endpoints = AgencyCommManager::MANAGER->endpointsString();
+  auto role = ServerState::instance()->getRole();
+  auto endpoints = AgencyCommManager::MANAGER->endpointsString();
   
   if (role == ServerState::ROLE_UNDEFINED) {
     // no role found
@@ -324,9 +300,10 @@ void ClusterFeature::prepare() {
   // otherwise we can do very little, in particular, we cannot create
   // any collection:
   if (role == ServerState::ROLE_COORDINATOR) {
-    ClusterInfo* ci = ClusterInfo::instance();
 
+    auto ci = ClusterInfo::instance();
     double start = TRI_microtime();
+    
     while (true) {
       LOG(INFO) << "Waiting for a DBserver to show up...";
       ci->loadCurrentDBServers();
@@ -335,9 +312,9 @@ void ClusterFeature::prepare() {
         LOG(INFO) << "Found " << DBServers.size() << " DBservers.";
         break;
       }
-
       sleep(1);
-    };
+    }
+    
   }
 
   if (_myAddress.empty()) {
@@ -348,13 +325,12 @@ void ClusterFeature::prepare() {
   }
 
   // now we can validate --cluster.my-address
-  std::string const unified = Endpoint::unifiedForm(_myAddress);
-
-  if (unified.empty()) {
+  if (Endpoint::unifiedForm(_myAddress).empty()) {
     LOG(FATAL) << "invalid endpoint '" << _myAddress
                << "' specified for --cluster.my-address";
     FATAL_ERROR_EXIT();
   }
+  
 }
 
 // YYY #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

@@ -152,7 +152,6 @@ COMP=1000
 BASE=4001
 NATH=$(( $NRDBSERVERS + $NRCOORDINATORS + $NRAGENTS ))
 
-rm -rf cluster
 if [ -d cluster-init ];then
   cp -a cluster-init cluster
 fi
@@ -224,7 +223,6 @@ start() {
        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
        --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
        --server.endpoint $TRANSPORT://127.0.0.1:$PORT \
-       --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
        --cluster.my-role $ROLE \
        --log.file cluster/$PORT.log \
        --log.level info \
@@ -256,7 +254,6 @@ startTerminal() {
         --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
         --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
         --server.endpoint $TRANSPORT://127.0.0.1:$PORT \
-        --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
         --cluster.my-role $ROLE \
         --log.file cluster/$PORT.log \
         --log.level info \
@@ -286,7 +283,6 @@ startDebugger() {
       --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
       --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
       --server.endpoint $TRANSPORT://127.0.0.1:$PORT \
-      --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
       --cluster.my-role $ROLE \
       --log.file cluster/$PORT.log \
       --log.level info \
@@ -316,7 +312,6 @@ startRR() {
         --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
         --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
         --server.endpoint $TRANSPORT://127.0.0.1:$PORT \
-        --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
         --cluster.my-role $ROLE \
         --log.file cluster/$PORT.log \
         --log.level info \

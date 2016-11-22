@@ -31,11 +31,13 @@
 #include <boost/uuid/uuid_io.hpp>
 
 #include "Agency/AgencyComm.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterInfo.h"
 #include "Logger/Logger.h"
+#include "RestServer/DatabasePathFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -201,7 +203,7 @@ ServerState::RoleEnum ServerState::getRole() {
     return role;
   }
 
-  TRI_ASSERT(!_id.empty());
+  //TRI_ASSERT(!_id.empty());
   findAndSetRoleBlocking();
   return loadRole();
 }
@@ -351,14 +353,38 @@ std::string ServerState::createIdForRole(AgencyComm comm,
 
   std::string const serverIdPrefix =
       agencyKey.substr(0, agencyKey.length() - 1);
-  std::string id;
 
   VPackBuilder builder;
   builder.add(VPackValue("none"));
 
   VPackSlice idValue = builder.slice();
   AgencyCommResult createResult;
-  do {
+
+  auto dbpath =
+    application_features::ApplicationServer::getFeature<DatabasePathFeature>(
+      "DatabasePath");
+  TRI_ASSERT(dbpath != nullptr);
+  auto filePath = dbpath->directory() + "/UUID";
+  auto ifs = std::ifstream(filePath);
+  std::string id;
+  
+  LOG(WARN) << "Opening " << filePath << " for reading ###";
+  if (ifs.is_open()) {
+    std::getline(ifs, id);
+    ifs.close();
+    LOG(WARN) << "DONE id:" << id;
+  } else {
+    LOG(WARN) << "FAILED ###";
+    
+    LOG(WARN) << "Opening " << filePath << " for writing ###";
+    auto ofs = std::ofstream(filePath);
+    id = RoleStr.at(role) + to_string(boost::uuids::random_generator()());
+    ofs << id << std::endl;
+    ofs.close();
+    LOG(WARN) << "DONE ###";    
+  }
+
+//  do {
     AgencyCommResult result = comm.getValues("Plan/" + agencyKey);
     if (!result.successful()) {
       LOG(FATAL) << "Couldn't fetch Plan/" << agencyKey
@@ -378,17 +404,13 @@ std::string ServerState::createIdForRole(AgencyComm comm,
       sleep(1);
     }
 
-    VPackSlice entry;
-    do {
-      id = RoleStr.at(role) + to_string(boost::uuids::random_generator()());
-      entry = servers.get(id);
-      LOG_TOPIC(TRACE, Logger::STARTUP)
-          << id << " found in existing keys: " << (!entry.isNone());
-    } while (!entry.isNone());
+    VPackSlice entry = servers.get(id);
+    LOG_TOPIC(TRACE, Logger::STARTUP)
+      << id << " found in existing keys: " << (!entry.isNone());
 
     createResult =
         comm.casValue("Plan/" + agencyKey + "/" + id, idValue, false, 0.0, 0.0);
-  } while (!createResult.successful());
+    //} while (!createResult.successful());  
 
   VPackBuilder localIdBuilder;
   localIdBuilder.add(VPackValue(id));
