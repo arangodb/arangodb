@@ -171,6 +171,9 @@ void HttpCommTask::addResponse(HttpResponse* response) {
   double const totalTime = agent->elapsedSinceReadStart();
 
   // append write buffer and statistics
+  //TRI_ASSERT(agent->_statistics != nullptr); // this is ok for async handler
+                                             // not checkable here as we do not
+                                             // have access to the handler
   addWriteBuffer(std::move(buffer), agent);
 
   // and give some request information

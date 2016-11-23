@@ -77,7 +77,7 @@ void RestJobHandler::putJob() {
   uint64_t jobId = StringUtils::uint64(value);
 
   AsyncJobResult::Status status;
-  GeneralResponse* response = _jobManager->getJobResult(jobId, status, true);
+  GeneralResponse* response = _jobManager->getJobResult(jobId, status, true); //gets job and removes it form the manager
 
   if (status == AsyncJobResult::JOB_UNDEFINED) {
     // unknown or already fetched job
@@ -152,7 +152,7 @@ void RestJobHandler::getJobById(std::string const& value) {
   // numeric job id, just pull the job status and return it
   AsyncJobResult::Status status;
   TRI_ASSERT(_jobManager != nullptr);
-  _jobManager->getJobResult(jobId, status, false);
+  _jobManager->getJobResult(jobId, status, false); //just gets status
 
   if (status == AsyncJobResult::JOB_UNDEFINED) {
     // unknown or already fetched job
