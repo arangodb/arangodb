@@ -992,11 +992,7 @@ std::string SimpleHttpClient::getServerVersion(int* errorCode) {
 
   if (response->wasHttpError()) {
     std::string msg = getHttpErrorMessage(response.get(), errorCode);
-    if (errorCode != nullptr) {
-      setErrorMessage(msg, *errorCode);
-    } else {
-      setErrorMessage(msg, false);
-    }
+    setErrorMessage(msg, false);
   }
   _connection->disconnect();
 

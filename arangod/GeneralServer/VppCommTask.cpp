@@ -220,7 +220,7 @@ void VppCommTask::handleAuthentication(VPackSlice const& header,
 }
 
 // reads data from the socket
-bool VppCommTask::processRead() {
+bool VppCommTask::processRead(double startTime) {
   RequestStatisticsAgent agent(true);
 
   auto& prv = _processReadVariables;

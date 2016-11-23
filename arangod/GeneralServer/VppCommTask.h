@@ -61,7 +61,7 @@ class VppCommTask : public GeneralCommTask {
  protected:
   // read data check if chunk and message are complete
   // if message is complete execute a request
-  bool processRead() override;
+  bool processRead(double startTime) override;
 
   std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) override final;

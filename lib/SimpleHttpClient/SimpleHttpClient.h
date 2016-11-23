@@ -229,7 +229,7 @@ class SimpleHttpClient {
 
   void setErrorMessage(std::string const& message, int error) {
     if (error != TRI_ERROR_NO_ERROR) {
-      _errorMessage = message + ": " + strerror(error);
+      _errorMessage = message + ": " + TRI_errno_string(error);
     } else {
       setErrorMessage(message);
     }
