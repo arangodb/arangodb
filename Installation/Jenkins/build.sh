@@ -510,7 +510,7 @@ if test -n "${ENTERPRISE_GIT_URL}" ; then
         GITARGS=`git describe --exact-match --tags ${GITSHA}`
         echo "I'm on tag: ${GITARGS}"
     else
-        GITARGS=`git branch --no-color -q| grep '^\*' | sed "s;\* *;;"`
+        GITARGS=`git branch --no-color| grep '^\*' | sed "s;\* *;;"`
         if echo $GITARGS |grep -q ' '; then
             GITARGS=devel
         fi

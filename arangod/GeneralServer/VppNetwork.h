@@ -218,7 +218,7 @@ inline void send_many(
     }
   }
 
-  // send fist
+  // send first
   resultVecRef.push_back(
       createChunkForNetworkMultiFirst(completeMessage->c_str(), offsetBegin,
                                       offsetEnd, id, numberOfChunks, totalLen));
