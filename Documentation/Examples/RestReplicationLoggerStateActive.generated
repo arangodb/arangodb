@@ -9,11 +9,11 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
     <span class="hljs-string">"lastLogTick"</span> : <span class="hljs-string">"11107"</span>, 
     <span class="hljs-string">"lastUncommittedLogTick"</span> : <span class="hljs-string">"11107"</span>, 
     <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">3802</span>, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2016-11-08T09:34:35Z"</span> 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2016-11-23T10:40:50Z"</span> 
   }, 
   <span class="hljs-string">"server"</span> : { 
-    <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.0.11"</span>, 
-    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"39329977589318"</span> 
+    <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.0.12"</span>, 
+    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"161250158749124"</span> 
   }, 
   <span class="hljs-string">"clients"</span> : [ ] 
 }

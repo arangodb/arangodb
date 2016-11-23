@@ -2,7 +2,7 @@ arangosh&gt; <span class="hljs-keyword">var</span> graph_module = <span class="h
 arangosh&gt; graph_module._drop(<span class="hljs-string">"social"</span>);
 <span class="hljs-literal">true</span>
 arangosh&gt; db._collection(<span class="hljs-string">"female"</span>);
-[ArangoCollection <span class="hljs-number">16449</span>, <span class="hljs-string">"female"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
+[ArangoCollection <span class="hljs-number">16458</span>, <span class="hljs-string">"female"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
 arangosh&gt; db._collection(<span class="hljs-string">"male"</span>);
 [ArangoCollection <span class="hljs-number">16460</span>, <span class="hljs-string">"male"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
 arangosh&gt; db._collection(<span class="hljs-string">"relation"</span>);

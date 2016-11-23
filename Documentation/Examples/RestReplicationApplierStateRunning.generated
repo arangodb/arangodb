@@ -5,14 +5,14 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 { 
   <span class="hljs-string">"state"</span> : { 
-    <span class="hljs-string">"running"</span> : <span class="hljs-literal">true</span>, 
+    <span class="hljs-string">"running"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"lastAppliedContinuousTick"</span> : <span class="hljs-literal">null</span>, 
     <span class="hljs-string">"lastProcessedContinuousTick"</span> : <span class="hljs-literal">null</span>, 
     <span class="hljs-string">"lastAvailableContinuousTick"</span> : <span class="hljs-literal">null</span>, 
     <span class="hljs-string">"safeResumeTick"</span> : <span class="hljs-literal">null</span>, 
     <span class="hljs-string">"progress"</span> : { 
-      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2016-11-08T09:34:13Z"</span>, 
-      <span class="hljs-string">"message"</span> : <span class="hljs-string">"fetching master state information"</span>, 
+      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2016-11-23T10:40:26Z"</span>, 
+      <span class="hljs-string">"message"</span> : <span class="hljs-string">"applier shut down"</span>, 
       <span class="hljs-string">"failedConnects"</span> : <span class="hljs-number">0</span> 
     }, 
     <span class="hljs-string">"totalRequests"</span> : <span class="hljs-number">0</span>, 
@@ -20,13 +20,15 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
     <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"totalOperationsExcluded"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"lastError"</span> : { 
-      <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">0</span> 
+      <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1402</span>, 
+      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2016-11-23T10:40:26Z"</span>, 
+      <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"got invalid response from master at tcp://127.0.0.1:8529: HTTP 401: Unauthorized"</span> 
     }, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2016-11-08T09:34:13Z"</span> 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2016-11-23T10:40:26Z"</span> 
   }, 
   <span class="hljs-string">"server"</span> : { 
-    <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.0.11"</span>, 
-    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"39329977589318"</span> 
+    <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.0.12"</span>, 
+    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"161250158749124"</span> 
   }, 
   <span class="hljs-string">"endpoint"</span> : <span class="hljs-string">"tcp://127.0.0.1:8529"</span>, 
   <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span> 
