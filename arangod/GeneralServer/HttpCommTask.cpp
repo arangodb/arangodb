@@ -104,7 +104,7 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code, int errorNum,
 
 void HttpCommTask::addResponse(HttpResponse* response) {
   resetKeepAlive();
-   
+
   _requestPending = false;
 
   // CORS response handling
@@ -119,7 +119,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
     // send back "Access-Control-Allow-Credentials" header
     response->setHeaderNCIfNotSet(StaticStrings::AccessControlAllowCredentials,
                                   (_denyCredentials ? "false" : "true"));
-    
+
     // use "IfNotSet" here because we should not override HTTP headers set
     // by Foxx applications
     response->setHeaderNCIfNotSet(StaticStrings::AccessControlExposeHeaders,
@@ -167,6 +167,9 @@ void HttpCommTask::addResponse(HttpResponse* response) {
   double const totalTime = agent->elapsedSinceReadStart();
 
   // append write buffer and statistics
+  //TRI_ASSERT(agent->_statistics != nullptr); // this is ok for async handler
+                                             // not checkable here as we do not
+                                             // have access to the handler
   addWriteBuffer(std::move(buffer), agent);
 
   // and give some request information
