@@ -237,7 +237,7 @@ bool HttpCommTask::processRead(double startTime) {
     }
 
     // request started
-    agent->requestStatisticsAgentSetReadStart();
+    agent->requestStatisticsAgentSetReadStart(startTime);
 
     // check for the end of the request
     for (; ptr < end; ptr++) {

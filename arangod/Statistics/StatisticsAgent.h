@@ -146,10 +146,10 @@ class RequestStatisticsAgent
     }
   }
 
-  void requestStatisticsAgentSetReadStart() {
+  void requestStatisticsAgentSetReadStart(double startTime /* = TRI_StatisticsTime() */) {
     if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr && _statistics->_readStart == 0.0) {
-        _lastReadStart = _statistics->_readStart = TRI_StatisticsTime();
+        _lastReadStart = _statistics->_readStart = startTime;
       }
     }
   }
