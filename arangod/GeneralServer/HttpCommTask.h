@@ -36,7 +36,7 @@ class HttpCommTask : public GeneralCommTask {
   };
 
  protected:
-  bool processRead() override;
+  bool processRead(double startTime) override;
 
   std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) override final;

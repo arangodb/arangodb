@@ -185,7 +185,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
 }
 
 // reads data from the socket
-bool HttpCommTask::processRead() {
+bool HttpCommTask::processRead(double startTime) {
   cancelKeepAlive();
 
   TRI_ASSERT(_readBuffer.c_str() != nullptr);
@@ -269,7 +269,7 @@ bool HttpCommTask::processRead() {
           GeneralServerFeature::keepAliveTimeout(), /*skipSocketInit*/ true);
       commTask->addToReadBuffer(_readBuffer.c_str() + 11,
                                 _readBuffer.length() - 11);
-      commTask->processRead();
+      commTask->processRead(startTime);
       commTask->start();
       // statistics?!
       return false;
