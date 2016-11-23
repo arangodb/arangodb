@@ -65,7 +65,7 @@ describe ArangoDB do
       cmd = "/_admin/statistics"
       doc = ArangoDB.log_get("#{prefix}-get-statistics", cmd)
       doc.code.should eq(200)
-      async_requests_1 = doc.parsed_response['http']['requestsAsync']
+      async_requests_1 = doc.parsed_response['http']['requestsAsync'].to_i
 
       # get version async - should increase async counter
       cmd = "/_api/version"
@@ -81,8 +81,8 @@ describe ArangoDB do
       cmd = "/_admin/statistics"
       doc = ArangoDB.log_get("#{prefix}-get-statistics", cmd)
       doc.code.should eq(200)
-      async_requests_2 = doc.parsed_response['http']['requestsAsync']
-      expect(async_requests_1.to_i).to be < async_requests_2.to_i
+      async_requests_2 = doc.parsed_response['http']['requestsAsync'].to_i
+      async_requests_1.should be < async_requests_2
 
       # get version async - should not increase async counter
       cmd = "/_api/version"
@@ -95,8 +95,8 @@ describe ArangoDB do
       cmd = "/_admin/statistics"
       doc = ArangoDB.log_get("#{prefix}-get-statistics", cmd)
       doc.code.should eq(200)
-      async_requests_3 = doc.parsed_response['http']['requestsAsync']
-      expect(async_requests_2.to_i).to eq async_requests_3.to_i
+      async_requests_3 = doc.parsed_response['http']['requestsAsync'].to_i
+      async_requests_2.should eq async_requests_3
     end
 
   end
