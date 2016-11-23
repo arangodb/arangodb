@@ -368,6 +368,7 @@ SET(ARANGOD_SOURCES
   Pregel/Utils.cpp
   Pregel/Algos/SSSP.cpp
   Pregel/Algos/PageRank.cpp
+  Pregel/Recovery.cpp
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}
 )
 

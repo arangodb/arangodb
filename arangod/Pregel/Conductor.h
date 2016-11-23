@@ -53,6 +53,7 @@ class Conductor {
   std::unique_ptr<IAggregatorCreator> _agregatorCreator;
   std::unique_ptr<AggregatorUsage> _aggregatorUsage;
 
+  double _startTimeSecs = 0;
   uint64_t _globalSuperstep = 0;
   int32_t _dbServerCount = 0;
   int32_t _responseCount = 0;

@@ -144,7 +144,7 @@ void Conductor::start(VPackSlice userConfig) {
   
   LOG(INFO) << vertexCount << " vertices, " << edgeCount << " edges";
   
-  std::string const baseUrl = Utils::baseUrl(_vocbaseGuard.vocbase()->name());
+  _startTimeSecs = TRI_microtime();
   _globalSuperstep = 0;
   _state = ExecutionState::RUNNING;
   _dbServerCount = _dbServers.size();
@@ -156,6 +156,7 @@ void Conductor::start(VPackSlice userConfig) {
         "Vertex and edge collections are not sharded correctly");
   }
 
+  std::string const baseUrl = Utils::baseUrl(_vocbaseGuard.vocbase()->name());
   std::string coordinatorId = ServerState::instance()->getId();
   LOG(INFO) << "My id: " << coordinatorId;
   std::vector<ClusterCommRequest> requests;
@@ -197,6 +198,7 @@ void Conductor::start(VPackSlice userConfig) {
     }
     b.close();
     b.close();
+
 
     auto body = std::make_shared<std::string const>(b.toJson());
     requests.emplace_back("server:" + server, rest::RequestType::POST,
@@ -284,13 +286,13 @@ void Conductor::finishedGlobalStep(VPackSlice& data) {
       LOG(INFO) << "Done. We did " << _globalSuperstep << " rounds";
       LOG(INFO) << "Send: " << _workerStats.sendCount
       << " Received: " << _workerStats.receivedCount;
-      LOG(INFO) << "Superstep Time: " << _workerStats.superstepRuntimeMilli << "ms";
+      LOG(INFO) << "Worker Runtime: " << _workerStats.superstepRuntimeSecs << "s";
+      LOG(INFO) << "Total Runtim: " << TRI_microtime() - _startTimeSecs << "s";
       
       bool storeResults = _state == ExecutionState::RUNNING;
       if (_state == ExecutionState::CANCELED) {
         LOG(WARN) << "Execution was canceled, results will be discarded.";
       }
-
       VPackBuilder b;
       b.openObject();
       b.add(Utils::executionNumberKey, VPackValue(_executionNumber));

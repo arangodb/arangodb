@@ -36,7 +36,7 @@ struct WorkerStats {
   size_t activeCount = 0;
   size_t sendCount = 0;
   size_t receivedCount = 0;
-  uint64_t superstepRuntimeMilli = 0;
+  double superstepRuntimeSecs= 0;
 
   WorkerStats() {}
   WorkerStats(size_t a, size_t s, size_t r) : activeCount(a), sendCount(s), receivedCount(r) {}
@@ -45,7 +45,7 @@ struct WorkerStats {
     activeCount += other.activeCount;
     sendCount += other.sendCount;
     receivedCount += other.receivedCount;
-    superstepRuntimeMilli += other.superstepRuntimeMilli;
+    superstepRuntimeSecs += other.superstepRuntimeSecs;
   }
   
   void accumulate(VPackSlice statValues) {
@@ -61,9 +61,9 @@ struct WorkerStats {
     if (p.isInteger()) {
       receivedCount += p.getUInt();
     }
-    p = statValues.get(Utils::superstepRuntimeMilliKey);
-    if (p.isInteger()) {
-      superstepRuntimeMilli += p.getUInt();
+    p = statValues.get(Utils::superstepRuntimeKey);
+    if (p.isNumber()) {
+      superstepRuntimeSecs += p.getNumber<double>();
     }
   }
 
@@ -71,7 +71,7 @@ struct WorkerStats {
     b.add(Utils::activeCountKey, VPackValue(activeCount));
     b.add(Utils::sendCountKey, VPackValue(sendCount));
     b.add(Utils::receivedCountKey, VPackValue(receivedCount));
-    b.add(Utils::superstepRuntimeMilliKey, VPackValue(superstepRuntimeMilli));
+    b.add(Utils::superstepRuntimeKey, VPackValue(superstepRuntimeSecs));
   }
   
   bool allZero() const {
@@ -82,7 +82,7 @@ struct WorkerStats {
     activeCount = 0;
     sendCount = 0;
     receivedCount = 0;
-    superstepRuntimeMilli = 0;
+    superstepRuntimeSecs = 0;
   }
 };
 }

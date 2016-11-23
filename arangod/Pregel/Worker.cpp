@@ -253,7 +253,7 @@ void Worker<V, E, M>::_executeGlobalStep(RangeIterator<VertexEntry> &vertexItera
   WorkerStats stats;
   stats.activeCount = activeCount;
   stats.sendCount = outCache.sendMessageCount();;
-  stats.superstepRuntimeMilli = (uint64_t)((TRI_microtime() - start)*1000.0);
+  stats.superstepRuntimeSecs = TRI_microtime() - start;
   _workerThreadDone(vertexComputation->_workerAggregators, stats);
 }
 

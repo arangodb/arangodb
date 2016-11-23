@@ -58,7 +58,7 @@ std::string const Utils::aggregatorValuesKey = "aggregators";
 std::string const Utils::activeCountKey = "activeCount";
 std::string const Utils::receivedCountKey = "receivedCount";
 std::string const Utils::sendCountKey = "sendCount";
-std::string const Utils::superstepRuntimeMilliKey = "superstepRuntime";
+std::string const Utils::superstepRuntimeKey = "superstepRuntime";
 std::string const Utils::totalVertexCount = "vertexCount";
 std::string const Utils::totalEdgeCount = "edgeCount";
 
