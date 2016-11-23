@@ -49,6 +49,7 @@ class RestAgencyHandler : public RestBaseHandler {
   RestStatus handleStores();
   RestStatus handleRead();
   RestStatus handleWrite();
+  RestStatus handleTransact();
   RestStatus handleConfig();
   RestStatus reportMethodNotAllowed();
   RestStatus handleState();

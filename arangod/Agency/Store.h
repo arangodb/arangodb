@@ -57,6 +57,9 @@ class Store : public arangodb::Thread {
   /// @brief Apply entry in query
   std::vector<bool> apply(query_t const& query, bool verbose = false);
 
+  /// @brief Apply single entry in query
+  bool apply(Slice const& query, bool verbose = false);
+
   /// @brief Apply entry in query
   std::vector<bool> apply(std::vector<Slice> const& query,
                           index_t lastCommitIndex, term_t term,
@@ -65,6 +68,10 @@ class Store : public arangodb::Thread {
   /// @brief Read specified query from store
   std::vector<bool> read(query_t const& query, query_t& result) const;
 
+  /// @brief Read individual entry specified in slice into builder
+  bool read(arangodb::velocypack::Slice const&,
+            arangodb::velocypack::Builder&) const;
+  
   /// @brief Begin shutdown of thread
   void beginShutdown() override final;
 
@@ -106,10 +113,6 @@ class Store : public arangodb::Thread {
   std::multimap<std::string, std::string> const& observerTable() const;
   std::multimap<std::string, std::string>& observedTable();
   std::multimap<std::string, std::string> const& observedTable() const;
-
-  /// @brief Read individual entry specified in slice into builder
-  bool read(arangodb::velocypack::Slice const&,
-            arangodb::velocypack::Builder&) const;
 
   /// @brief Check precondition
   bool check(arangodb::velocypack::Slice const&) const;

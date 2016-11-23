@@ -67,6 +67,7 @@ MMFilesDocumentPosition MMFilesRevisionsCache::lookup(TRI_voc_rid_t revisionId) 
 }
 
 void MMFilesRevisionsCache::sizeHint(int64_t hint) {
+  WRITE_LOCKER(locker, _lock);
   if (hint > 256) {
     _positions.resize(nullptr, static_cast<size_t>(hint * 1.1));
   }

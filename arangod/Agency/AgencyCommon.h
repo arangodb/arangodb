@@ -53,10 +53,10 @@ struct read_ret_t {
   std::string redirect;       // If not accepted redirect id
   std::vector<bool> success;  // Query's precond OK
   query_t result;             // Query result
-  read_ret_t(bool a, std::string const& id,
-             std::vector<bool> const& suc = std::vector<bool>(),
-             query_t res = nullptr)
-      : accepted(a), redirect(id), success(suc), result(res) {}
+  read_ret_t(
+    bool a, std::string const& id,
+    std::vector<bool> const& suc = std::vector<bool>(), query_t res = nullptr)
+    : accepted(a), redirect(id), success(suc), result(res) {}
 };
 
 struct write_ret_t {
@@ -68,7 +68,18 @@ struct write_ret_t {
   write_ret_t(bool a, std::string const& id) : accepted(a), redirect(id) {}
   write_ret_t(bool a, std::string const& id, std::vector<bool> const& app,
               std::vector<index_t> const& idx)
-      : accepted(a), redirect(id), applied(app), indices(idx) {}
+    : accepted(a), redirect(id), applied(app), indices(idx) {}
+};
+
+struct trans_ret_t {
+  bool accepted;         // Query accepted (i.e. we are leader)
+  std::string redirect;  // If not accepted redirect id
+  index_t maxind;
+  query_t result;
+  trans_ret_t() : accepted(false), redirect("") {}
+  trans_ret_t(bool a, std::string const& id) : accepted(a), redirect(id) {}
+  trans_ret_t(bool a, std::string const& id, index_t mi, query_t const& res)
+    : accepted(a), redirect(id), maxind(mi), result(res) {}
 };
 
 struct log_t {

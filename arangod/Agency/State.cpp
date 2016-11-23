@@ -143,6 +143,24 @@ std::vector<arangodb::consensus::index_t> State::log(
   return idx;
 }
 
+/// Log transaction (leader)
+arangodb::consensus::index_t State::log(
+  velocypack::Slice const& slice, term_t term) {
+
+  arangodb::consensus::index_t idx = 0;
+  auto buf = std::make_shared<Buffer<uint8_t>>();
+  
+  MUTEX_LOCKER(mutexLocker, _logLock);  // log entries must stay in order
+  buf->append((char const*)slice.begin(), slice.byteSize());
+  TRI_ASSERT(!_log.empty()); // log must not ever be empty
+  idx = _log.back().index + 1;
+  _log.push_back(log_t(idx, term, buf));  // log to RAM
+  persist(idx, term, slice);               // log to disk
+
+  return _log.back().index;
+  
+}
+
 /// Log transactions (follower)
 arangodb::consensus::index_t State::log(query_t const& transactions,
                                         size_t ndups) {
