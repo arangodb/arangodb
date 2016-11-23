@@ -142,8 +142,7 @@ class Communicator {
   CURLMcode _mc;
   curl_waitfd _wakeup;
 #ifdef _WIN32
-  SOCKET socks[2];
-  HANDLE _fds[2];
+  SOCKET _socks[2];
 #else
   int _fds[2];
 #endif
