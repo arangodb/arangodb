@@ -152,6 +152,7 @@ COMP=1000
 BASE=4001
 NATH=$(( $NRDBSERVERS + $NRCOORDINATORS + $NRAGENTS ))
 
+rm -rf cluster
 if [ -d cluster-init ];then
   cp -a cluster-init cluster
 fi
