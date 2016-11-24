@@ -64,8 +64,12 @@ HttpCommTask::HttpCommTask(EventLoop loop, GeneralServer* server,
       _sinceCompactification(0),
       _originalBodyLength(0) {
   _protocol = "http";
+
   connectionStatisticsAgentSetHttp();
-  _agents.emplace(std::make_pair(1UL, RequestStatisticsAgent(true)));
+  auto agent = std::unique_ptr<RequestStatisticsAgent>(new RequestStatisticsAgent(true));
+  agent->acquire();
+  MUTEX_LOCKER(lock, _agentsMutex);
+  _agents.emplace(std::make_pair(1UL, std::move(agent)));
 }
 
 void HttpCommTask::handleSimpleError(rest::ResponseCode code,
@@ -237,7 +241,7 @@ bool HttpCommTask::processRead(double startTime) {
     }
 
     // request started
-    agent->requestStatisticsAgentSetReadStart();
+    agent->requestStatisticsAgentSetReadStart(startTime);
 
     // check for the end of the request
     for (; ptr < end; ptr++) {
