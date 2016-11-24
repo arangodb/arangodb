@@ -558,6 +558,29 @@ int TRI_datafile_t::reserveElement(TRI_voc_size_t size, TRI_df_marker_t** positi
   return TRI_ERROR_NO_ERROR;
 }
 
+int TRI_datafile_t::lockInMemory() {
+  TRI_ASSERT(!_lockedInMemory);
+  int res = TRI_MMFileLock(_data, _initSize);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    _lockedInMemory = true;
+  }
+  return res;
+}
+
+int TRI_datafile_t::unlockFromMemory() {
+  if (!_lockedInMemory) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  int res = TRI_MMFileUnlock(_data, _initSize);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    _lockedInMemory = false;
+  }
+  return res;
+}
+
 /// @brief writes a marker to the datafile
 /// this function will write the marker as-is, without any CRC or tick updates
 int TRI_datafile_t::writeElement(void* position, TRI_df_marker_t const* marker, bool forceSync) {
@@ -979,6 +1002,7 @@ TRI_datafile_t::TRI_datafile_t(std::string const& filename, int fd, void* mmHand
           _lastError(TRI_ERROR_NO_ERROR),
           _full(false),
           _isSealed(false),
+          _lockedInMemory(false),
           _synced(data),
           _written(nullptr) {
   // filename is a string for physical datafiles, and NULL for anonymous regions
