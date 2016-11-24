@@ -27,6 +27,10 @@ v3.1.2 (20XX-XX-XX)
 * Startup mode of agency is explicitly set to persistence with inside
   agent configuration
 
+* Fixed statistics for requests.
+
+* Fixed race condition in processing of VelocyStream (vst) binary protocol.
+
 v3.1.1 (2016-11-15)
 -------------------
 
