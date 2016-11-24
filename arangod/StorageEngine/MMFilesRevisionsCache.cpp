@@ -83,6 +83,7 @@ void MMFilesRevisionsCache::insert(TRI_voc_rid_t revisionId, uint8_t const* data
 
   CONDITIONAL_WRITE_LOCKER(locker, _lock, shouldLock);
   int res = _positions.insert(nullptr, MMFilesDocumentPosition(revisionId, dataptr, fid, isInWal));
+
   if (res != TRI_ERROR_NO_ERROR) {
     _positions.removeByKey(nullptr, &revisionId);
     _positions.insert(nullptr, MMFilesDocumentPosition(revisionId, dataptr, fid, isInWal));

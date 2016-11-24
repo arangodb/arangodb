@@ -1197,7 +1197,7 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id, std::strin
     for (auto const& it : VPackArrayIterator(slice)) {
       // we found a collection that is still active
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
-      arangodb::LogicalCollection* collection = StorageEngine::registerCollection(ConditionalWriteLocker<ReadWriteLock>::DoLock(), vocbase.get(), it);
+      arangodb::LogicalCollection* collection = StorageEngine::registerCollection(vocbase.get(), it);
 
       registerCollectionPath(vocbase->id(), collection->cid(), collection->path());
 
@@ -1610,6 +1610,7 @@ int MMFilesEngine::startCompactor(TRI_vocbase_t* vocbase) {
 
   {
     MUTEX_LOCKER(locker, _threadsLock);
+
     auto it = _compactorThreads.find(vocbase);
 
     if (it != _compactorThreads.end()) {

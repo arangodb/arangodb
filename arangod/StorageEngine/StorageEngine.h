@@ -245,8 +245,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   
  protected:
   arangodb::LogicalCollection* registerCollection(
-      bool doLock, TRI_vocbase_t* vocbase, arangodb::velocypack::Slice params) {
-    return vocbase->registerCollection(doLock, params);
+      TRI_vocbase_t* vocbase, arangodb::velocypack::Slice params) {
+    return vocbase->registerCollection(true, params);
   }
  
  private:
