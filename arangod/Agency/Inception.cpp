@@ -368,7 +368,7 @@ bool Inception::estimateRAFTInterval() {
           2.0, true);
       }
     }
-    std::this_thread::sleep_for(std::chrono::duration<double,std::milli>(5));
+    std::this_thread::sleep_for(std::chrono::duration<double,std::milli>(1));
   }
 
   auto s = system_clock::now();
@@ -469,7 +469,7 @@ bool Inception::estimateRAFTInterval() {
       }
     }
     
-    maxmean = 1.e-3*std::ceil(1.e3*(.25 + 1.0e-3*(maxmean+3*maxstdev)));
+    maxmean = 1.e-3*std::ceil(1.e3*(.2 + 1.0e-3*(maxmean+3*maxstdev)));
     
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Auto-adapting RAFT timing to: {" << maxmean
@@ -499,8 +499,9 @@ void Inception::run() {
          " start gossip protocol...";
   }
 
+  config_t config = _agent->config();
   // 1. If active agency, do as you're told
-  if (activeAgencyFromPersistence()) {
+  if (config.startup() == "persistence" && activeAgencyFromPersistence()) {
     _agent->ready(true);  
   }
   
@@ -510,7 +511,7 @@ void Inception::run() {
   }
   
   // 3. Else gossip
-  config_t config = _agent->config();
+  config = _agent->config();
   if (!_agent->ready() && !config.poolComplete()) {
     gossip();
   }
@@ -528,7 +529,7 @@ void Inception::run() {
   if (!config.cmdLineTimings()) {
     estimateRAFTInterval();
   }
-  
+
   _agent->ready(true);
 
 }

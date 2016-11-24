@@ -5,7 +5,7 @@
 AQL offers the following functions to filter data based on
 [geo indexes](../../Manual/Indexing/Geo.html). These functions require the collection to have at
 least one geo index. If no geo index can be found, calling this function will fail
-with an error.
+with an error at runtime. There is no error when explaining the query however.
 
 !SUBSECTION NEAR()
 

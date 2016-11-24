@@ -46,7 +46,7 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _waitForSync(true),
       _supervisionFrequency(5.0),
       _compactionStepSize(1000),
-      _supervisionGracePeriod(120.0),
+      _supervisionGracePeriod(15.0),
       _cmdLineTimings(false)
 {
   setOptional(true);
