@@ -53,6 +53,7 @@ static const std::string supervisionGracePeriodStr = "supervision grace period";
 static const std::string compactionStepSizeStr = "compaction step size";
 static const std::string defaultEndpointStr = "tcp://localhost:8529";
 static const std::string versionStr = "version";
+static const std::string startupStr = "startup";
 
 struct config_t {
   std::string _id;
@@ -71,6 +72,7 @@ struct config_t {
   double _supervisionGracePeriod;
   bool _cmdLineTimings;
   size_t _version;
+  std::string _startup;
 
   mutable arangodb::basics::ReadWriteLock _lock; // guard member variables
 
@@ -188,6 +190,10 @@ struct config_t {
 
   /// @brief Get next agent in line of succession
   std::string nextAgentInLine() const;
+
+  /// @brief
+  std::string startup() const;
+  
 
 };
 }

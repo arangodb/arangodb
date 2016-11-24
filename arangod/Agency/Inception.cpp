@@ -368,7 +368,7 @@ bool Inception::estimateRAFTInterval() {
           2.0, true);
       }
     }
-    std::this_thread::sleep_for(std::chrono::duration<double,std::milli>(5));
+    std::this_thread::sleep_for(std::chrono::duration<double,std::milli>(1));
   }
 
   auto s = system_clock::now();
@@ -469,7 +469,7 @@ bool Inception::estimateRAFTInterval() {
       }
     }
     
-    maxmean = 1.e-3*std::ceil(1.e3*(.25 + 1.0e-3*(maxmean+3*maxstdev)));
+    maxmean = 1.e-3*std::ceil(1.e3*(.2 + 1.0e-3*(maxmean+3*maxstdev)));
     
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Auto-adapting RAFT timing to: {" << maxmean
