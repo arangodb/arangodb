@@ -19,8 +19,13 @@ v3.1.2 (20XX-XX-XX)
   the gossip protocol to find peers.
 
 * (Enterprise only) fixed a bug in the statistic report for SmartGraph traversals.
-Now they state correctly how many documents were fetched from the index and how many
-have been filtered.
+  Now they state correctly how many documents were fetched from the index and how many
+  have been filtered.
+
+* Fixed increments of version in agent configurations.
+
+* Startup mode of agency is explicitly set to persistence with inside
+  agent configuration 
 
 v3.1.1 (2016-11-15)
 -------------------
