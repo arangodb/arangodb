@@ -233,6 +233,7 @@ static bool IsEqualElementElementMulti(void* userData,
     VPackSlice rightData = right->slice(context, i);
 
     int res = arangodb::basics::VelocyPackHelper::compare(leftData, rightData, false);
+
     if (res != 0) {
       return false;
     }
@@ -263,6 +264,7 @@ static bool IsEqualKeyElementMulti(void* userData,
     VPackSlice const rightVPack = right->slice(context, i);
   
     int res = arangodb::basics::VelocyPackHelper::compare(leftVPack, rightVPack, false);
+
     if (res != 0) {
       return false;
     }
@@ -480,7 +482,7 @@ HashIndex::HashIndex(TRI_idx_iid_t iid, LogicalCollection* collection,
   }
 
   auto func = std::make_unique<HashElementFunc>();
-  auto compare = std::make_unique<IsEqualElementElementByKey>(_paths.size());
+  auto compare = std::make_unique<IsEqualElementElementByKey>(_paths.size(), _useExpansion);
 
   if (_unique) {
     auto array = std::make_unique<TRI_HashArray_t>(
