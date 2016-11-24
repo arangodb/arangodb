@@ -22,6 +22,10 @@ v3.1.2 (20XX-XX-XX)
 
 * added support for descriptions field in Foxx dependencies
 
+* (Enterprise only) fixed a bug in the statistic report for SmartGraph traversals.
+Now they state correctly how many documents were fetched from the index and how many
+have been filtered.
+
 
 v3.1.1 (XXXX-XX-XX)
 -------------------

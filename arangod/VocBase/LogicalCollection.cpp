@@ -3083,6 +3083,7 @@ int LogicalCollection::updateDocument(
   res = insertSecondaryIndexes(trx, newRevisionId, newDoc, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    // TODO: move down
     removeRevision(newRevisionId, false);
 
     // rollback

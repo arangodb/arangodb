@@ -205,9 +205,6 @@ specific iteration depths. You can filter for absolute positions in the path
 by specifying a positive number (which then qualifies for the optimizations),
 or relative positions to the end of the path by specifying a negative number.
 
-**Note**: In the current state, there is no way to define a filter for all
-elements on the path. This will be added in a future version.
-
 !SUBSUBSECTION Filtering edges on the path
 
 ```js
@@ -249,6 +246,40 @@ the attribute *theFalse* equal to *false*. The resulting paths will be up to
 **Note**: Although we have defined a *min* of 1, we will only get results of
 depth 2. This is because for all results in depth 1 the second edge does not
 exist and hence cannot fulfill the condition here.
+
+!SUBSUBSECTION Filter on the entire path
+
+With the help of array comparison operators filters can also be defined
+on the entire path, like ALL edges should have theTruth == true:
+
+```js
+FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+  FILTER p.edges[*].theTruth ALL == true
+  RETURN p
+```
+
+Or NONE of the edges should have theTruth == true:
+
+```js
+FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+  FILTER p.edges[*].theTruth NONE == true
+  RETURN p
+```
+
+Both examples above are recognized by the optimizer and can potentially use other indexes
+than the edge index.
+
+It is also possible to define that at least one edge on the path has to fulfill the condition:
+
+```js
+FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+  FILTER p.edges[*].theTruth ANY == true
+  RETURN p
+```
+
+It is guaranteed that at least one, but potentially more edges fulfill the condition.
+All of the above filters can be defined on vertices in the exact same way.
+
 
 !SUBSECTION Examples
 
