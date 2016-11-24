@@ -229,6 +229,8 @@ void MMFilesEngine::getDatabases(arangodb::velocypack::Builder& result) {
       // invalid id
       continue;
     }
+    
+    TRI_UpdateTickServer(id);
 
     // construct and validate path
     std::string const directory(basics::FileUtils::buildFilename(_databasePath, name));
