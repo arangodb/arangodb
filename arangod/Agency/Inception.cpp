@@ -28,6 +28,7 @@
 #include "Agency/MeasureCallback.h"
 #include "Basics/ConditionLocker.h"
 #include "Cluster/ClusterComm.h"
+#include "GeneralServer/RestHandlerFactory.h"
 
 #include <chrono>
 #include <numeric>
@@ -490,6 +491,13 @@ bool Inception::activeAgencyFromCommandLine() {
 
 // @brief Thread main
 void Inception::run() {
+  while (arangodb::rest::RestHandlerFactory::isMaintenance() &&
+         !this->isStopping() && !_agent->isStopping()) {
+    usleep(1000000);
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "Waiting for RestHandlerFactory to exit maintenance mode before we "
+         " start gossip protocol...";
+  }
 
   // 1. If active agency, do as you're told
   if (activeAgencyFromPersistence()) {
