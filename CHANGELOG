@@ -5,6 +5,10 @@ v3.1.2 (20XX-XX-XX)
 
 * enforce a user defined jwt when doing authentication in the cluster
 
+* fixed a bug in the agency inception visible only under Windows. One has
+  to wait until the RestServer maintenance mode is off, before we start
+  the gossip protocol to find peers.
+
 * (Enterprise only) fixed a bug in the statistic report for SmartGraph traversals.
 Now they state correctly how many documents were fetched from the index and how many
 have been filtered.
