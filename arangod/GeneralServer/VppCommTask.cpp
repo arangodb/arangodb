@@ -73,6 +73,7 @@ VppCommTask::VppCommTask(EventLoop loop, GeneralServer* server,
       _bufferLength);  // ATTENTION <- this is required so we do not
                        // loose information during a resize
                        // connectionStatisticsAgentSetVpp();
+  std::lock_guard<std::mutex> lock(_agentsMutex);
   _agents.emplace(std::make_pair(0UL, RequestStatisticsAgent(true)));
   getAgent(0UL)->acquire();
 }
@@ -129,6 +130,7 @@ void VppCommTask::addResponse(VppResponse* response) {
       << "\"," << Logger::FIXED(totalTime, 6);
 
   if (id) {
+    std::lock_guard<std::mutex> lock(_agentsMutex);
     _agents.erase(id); //all ids except 0
   } else {
     getAgent(0UL)->acquire();
@@ -240,6 +242,7 @@ bool VppCommTask::processRead(double startTime) {
     RequestStatisticsAgent agent(true);
     agent.acquire();
     agent.requestStatisticsAgentSetReadStart(startTime);
+    std::lock_guard<std::mutex> lock(_agentsMutex);
     _agents.emplace(std::make_pair(chunkHeader._messageID, std::move(agent)));
   }
 

@@ -38,7 +38,7 @@ class StatisticsAgent {
   StatisticsAgent& operator=(StatisticsAgent const&) = delete;
 
  public:
-  StatisticsAgent(bool standalone = false)
+  explicit StatisticsAgent(bool standalone = false)
       : _statistics(standalone ? FUNC::acquire() : nullptr),
         _lastReadStart(0.0) {}
 
@@ -117,7 +117,7 @@ class RequestStatisticsAgent
     : public StatisticsAgent<TRI_request_statistics_t,
                              RequestStatisticsAgentDesc> {
  public:
-  RequestStatisticsAgent(bool standalone = false)
+  explicit RequestStatisticsAgent(bool standalone = false)
       : StatisticsAgent(standalone) {}
 
   RequestStatisticsAgent(RequestStatisticsAgent const&) = delete;
