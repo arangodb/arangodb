@@ -150,6 +150,11 @@ void LogfileManager::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--wal.allow-oversize-entries",
       "allow entries that are bigger than '--wal.logfile-size'",
       new BooleanParameter(&_allowOversizeEntries));
+  
+  options->addHiddenOption(
+      "--wal.use-mlock",
+      "mlock WAL logfiles in memory (may require elevated privileges or limits)",
+      new BooleanParameter(&_useMLock));
 
   options->addOption("--wal.directory", "logfile directory",
                      new StringParameter(&_directory));
@@ -1534,6 +1539,10 @@ void LogfileManager::setCollectionDone(Logfile* logfile) {
   {
     WRITE_LOCKER(writeLocker, _logfilesLock);
     logfile->setStatus(Logfile::StatusType::COLLECTED);
+
+    if (_useMLock) {
+      logfile->unlockFromMemory();
+    }
   }
 
   {
@@ -2160,13 +2169,17 @@ int LogfileManager::createReserveLogfile(uint32_t size) {
     realsize = filesize();
   }
 
-  std::unique_ptr<Logfile> logfile(Logfile::createNew(filename.c_str(), id, realsize));
+  std::unique_ptr<Logfile> logfile(Logfile::createNew(filename, id, realsize));
 
   if (logfile == nullptr) {
     int res = TRI_errno();
 
     LOG(ERR) << "unable to create logfile: " << TRI_errno_string(res);
     return res;
+  }
+
+  if (_useMLock) {
+    logfile->lockInMemory();
   }
 
   {
