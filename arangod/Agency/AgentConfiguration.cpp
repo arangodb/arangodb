@@ -41,6 +41,7 @@ config_t::config_t()
       _supervisionGracePeriod(15.0),
       _cmdLineTimings(false),
       _version(0),
+      _startup("origin"),
       _lock()
       {}
 
@@ -60,6 +61,7 @@ config_t::config_t(size_t as, size_t ps, double minp, double maxp,
       _supervisionGracePeriod(p),
       _cmdLineTimings(t),
       _version(0),
+      _startup("origin"),     
       _lock() {}
 
 config_t::config_t(config_t const& other) { *this = other; }
@@ -80,7 +82,8 @@ config_t::config_t(config_t&& other)
       _compactionStepSize(std::move(other._compactionStepSize)),
       _supervisionGracePeriod(std::move(other._supervisionGracePeriod)),
       _cmdLineTimings(std::move(other._cmdLineTimings)),
-      _version(std::move(other._version)) {}
+      _version(std::move(other._version)),
+      _startup(std::move(other._startup)){}
 
 config_t& config_t::operator=(config_t const& other) {
   // must hold the lock of other to copy _pool, _minPing, _maxPing etc.
@@ -102,6 +105,7 @@ config_t& config_t::operator=(config_t const& other) {
   _supervisionGracePeriod = other._supervisionGracePeriod;
   _cmdLineTimings = other._cmdLineTimings;
   _version = other._version;
+  _startup = other._startup;
   return *this;
 }
 
@@ -122,6 +126,7 @@ config_t& config_t::operator=(config_t&& other) {
   _supervisionGracePeriod = std::move(other._supervisionGracePeriod);
   _cmdLineTimings = std::move(other._cmdLineTimings);
   _version = std::move(other._version);
+  _startup = std::move(other._startup);
   return *this;
 }
 
@@ -207,7 +212,7 @@ double config_t::supervisionFrequency() const {
 bool config_t::activePushBack(std::string const& id) {
   WRITE_LOCKER(writeLocker, _lock);
   if (_active.size() < _agencySize &&
-      std::find(_active.begin(), _active.end(), id) != _active.end()) {
+      std::find(_active.begin(), _active.end(), id) == _active.end()) {
     _active.push_back(id);
     ++_version;
     return true;
@@ -475,11 +480,13 @@ query_t config_t::toBuilder() const {
     ret->add(compactionStepSizeStr, VPackValue(_compactionStepSize));
     ret->add(supervisionGracePeriodStr, VPackValue(_supervisionGracePeriod));
     ret->add(versionStr, VPackValue(_version));
+    ret->add(startupStr, VPackValue(_startup));
   }
   ret->close();
   return ret;
 }
 
+// Set my id
 bool config_t::setId(std::string const& i) {
   WRITE_LOCKER(writeLocker, _lock);
   if (_id.empty()) {
@@ -492,12 +499,19 @@ bool config_t::setId(std::string const& i) {
   }
 }
 
+// Get startup fix
+std::string config_t::startup() const {
+  READ_LOCKER(readLocker, _lock);
+  return _startup;
+}
+
 /// @brief merge from persisted configuration
 bool config_t::merge(VPackSlice const& conf) {
   WRITE_LOCKER(writeLocker, _lock); // All must happen under the lock or else ...
 
   _id = conf.get(idStr).copyString();  // I get my id
   _pool[_id] = _endpoint;              // Register my endpoint with it
+  _startup = "persistence";
 
   std::stringstream ss;
   ss << "Agency size: ";
@@ -641,3 +655,5 @@ bool config_t::merge(VPackSlice const& conf) {
   ++_version;
   return true;
 }
+
+
