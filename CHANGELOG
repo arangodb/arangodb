@@ -1,6 +1,15 @@
 v3.1.2 (20XX-XX-XX)
 -------------------
 
+* save a flag in the agency indicating that the system collection were created.
+  this prevents hanging coordinators during startup when the system collections
+  got into a bad state somehow
+
+* adjust server failed job so it will cancel any shard movement jobs
+  when a server became healthy again
+
+* improve several cluster related log messages
+
 * added support for descriptions field in Foxx dependencies
 
 * enforce a user defined jwt when doing authentication in the cluster
