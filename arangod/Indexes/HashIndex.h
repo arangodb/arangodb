@@ -244,16 +244,17 @@ class HashIndex final : public PathBasedIndex {
   /// @brief determines if a key corresponds to an element
   class IsEqualElementElementByKey {
     size_t _numFields;
+    bool _allowExpansion;
 
    public:
-    explicit IsEqualElementElementByKey(size_t n) : _numFields(n) {}
+    IsEqualElementElementByKey(size_t n, bool allowExpansion) : _numFields(n), _allowExpansion(allowExpansion) {}
 
     bool operator()(void* userData, HashIndexElement const* left,
                     HashIndexElement const* right) {
       TRI_ASSERT(left->revisionId() != 0);
       TRI_ASSERT(right->revisionId() != 0);
 
-      if (left->revisionId() == right->revisionId()) {
+      if (!_allowExpansion && left->revisionId() == right->revisionId()) {
         return true;
       }
 
@@ -264,6 +265,7 @@ class HashIndex final : public PathBasedIndex {
         VPackSlice rightData = right->slice(context, i);
 
         int res = arangodb::basics::VelocyPackHelper::compare(leftData, rightData, false);
+
         if (res != 0) {
           return false;
         }

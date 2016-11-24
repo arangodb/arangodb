@@ -210,7 +210,7 @@ class AssocUnique {
       uintptr_t pageSize = getpagesize();
       mem = (mem / pageSize) * pageSize;
       void* memptr = reinterpret_cast<void*>(mem);
-      TRI_MMFileAdvise(memptr, b._nrAlloc * sizeof(Element*),
+      TRI_MMFileAdvise(memptr, b._nrAlloc * sizeof(Element),
                        TRI_MADVISE_RANDOM);
     }
 #endif
