@@ -68,7 +68,7 @@ HttpCommTask::HttpCommTask(EventLoop loop, GeneralServer* server,
   connectionStatisticsAgentSetHttp();
   auto agent = std::unique_ptr<RequestStatisticsAgent>(new RequestStatisticsAgent(true));
   agent->acquire();
-  std::lock_guard<std::mutex> lock(_agentsMutex);
+  MUTEX_LOCKER(lock, _agentsMutex);
   _agents.emplace(std::make_pair(1UL, std::move(agent)));
 }
 

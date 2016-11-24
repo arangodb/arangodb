@@ -25,12 +25,12 @@
 #ifndef ARANGOD_GENERAL_SERVER_GENERAL_COMM_TASK_H
 #define ARANGOD_GENERAL_SERVER_GENERAL_COMM_TASK_H 1
 
-#include <mutex>
 #include "Scheduler/SocketTask.h"
 
 #include <openssl/ssl.h>
 
 #include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Scheduler/Socket.h"
 
@@ -90,7 +90,7 @@ class GeneralCommTask : public SocketTask {
   virtual arangodb::Endpoint::TransportType transportType() = 0;
 
   RequestStatisticsAgent* getAgent(uint64_t id) {
-    std::lock_guard<std::mutex> lock(_agentsMutex);
+    MUTEX_LOCKER(lock, _agentsMutex);
     auto agentIt = _agents.find(id);
     if (agentIt != _agents.end()) {
       return agentIt->second.get();
@@ -123,7 +123,7 @@ class GeneralCommTask : public SocketTask {
   rest::ProtocolVersion _protocolVersion = rest::ProtocolVersion::UNKNOWN;
 
   std::unordered_map<uint64_t, std::unique_ptr<RequestStatisticsAgent>> _agents;
-  std::mutex _agentsMutex;
+  ::arangodb::Mutex _agentsMutex;
 
  private:
   bool handleRequest(std::shared_ptr<RestHandler>);
