@@ -347,7 +347,7 @@ void Optimizer::setupRules() {
   // rule not yet tested
   registerRule("split-filters",
                splitFiltersRule,
-               splitFiltersRule_pass1, 
+               splitFiltersRule_pass1,
                true);
 #endif
 
@@ -413,7 +413,7 @@ void Optimizer::setupRules() {
   // merge filters into traversals
   registerRule("optimize-traversals", optimizeTraversalsRule,
                optimizeTraversalsRule_pass6, DoesNotCreateAdditionalPlans, true);
-  
+
   // prepare traversal info
   registerRule("prepare-traversals", prepareTraversalsRule,
                prepareTraversalsRule_pass6, DoesNotCreateAdditionalPlans, false, true);
@@ -484,6 +484,10 @@ void Optimizer::setupRules() {
   // patch update statements
   registerRule("patch-update-statements", patchUpdateStatementsRule,
                patchUpdateStatementsRule_pass9, DoesNotCreateAdditionalPlans, true);
+
+  // patch update statements
+  registerRule("geo-index-optimizer", optimizeGeoIndexRule,
+               geoDistanceRule, DoesNotCreateAdditionalPlans, true);
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
     // distribute operations in cluster

@@ -57,7 +57,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, ExecutionPlan* plan,
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::FILTER, true);
-  
+
   bool modified = false;
 
   for (auto const& n : nodes) {
@@ -383,7 +383,7 @@ void arangodb::aql::removeUnnecessaryFiltersRule(Optimizer* opt,
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::FILTER, true);
-  
+
   bool modified = false;
   std::unordered_set<ExecutionNode*> toUnlink;
 
@@ -447,7 +447,7 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::COLLECT, true);
-  
+
   bool modified = false;
 
   for (auto const& n : nodes) {
@@ -705,7 +705,7 @@ void arangodb::aql::removeSortRandRule(Optimizer* opt, ExecutionPlan* plan,
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::SORT, true);
-  
+
   bool modified = false;
 
   for (auto const& n : nodes) {
@@ -954,8 +954,8 @@ void arangodb::aql::moveCalculationsDownRule(Optimizer* opt,
       } else if (currentType == EN::INDEX ||
                  currentType == EN::ENUMERATE_COLLECTION ||
                  currentType == EN::ENUMERATE_LIST ||
-                 currentType == EN::TRAVERSAL || 
-                 currentType == EN::SHORTEST_PATH || 
+                 currentType == EN::TRAVERSAL ||
+                 currentType == EN::SHORTEST_PATH ||
                  currentType == EN::COLLECT ||
                  currentType == EN::NORESULTS) {
         // we will not push further down than such nodes
@@ -1191,7 +1191,7 @@ void arangodb::aql::moveFiltersUpRule(Optimizer* opt, ExecutionPlan* plan,
         // must not move a filter beyond a node that can throw
         break;
       }
-      
+
       if (current->isModificationNode()) {
         // must not move a filter beyond a modification node
         break;
@@ -1249,7 +1249,7 @@ class arangodb::aql::RedundantCalculationsReplacer final
       std::unordered_map<VariableId, Variable const*> const& replacements)
       : _replacements(replacements) {
   }
-  
+
   template <typename T>
   void replaceStartTargetVariables(ExecutionNode* en) {
     auto node = static_cast<T*>(en);
@@ -1271,7 +1271,7 @@ class arangodb::aql::RedundantCalculationsReplacer final
     auto node = static_cast<CalculationNode*>(en);
     std::unordered_set<Variable const*> variables;
     node->expression()->variables(variables);
-    
+
     // check if the calculation uses any of the variables that we want to
     // replace
     for (auto const& it : variables) {
@@ -1304,12 +1304,12 @@ class arangodb::aql::RedundantCalculationsReplacer final
         replaceInVariable<FilterNode>(en);
         break;
       }
-      
+
       case EN::TRAVERSAL: {
         replaceInVariable<TraversalNode>(en);
         break;
       }
-      
+
       case EN::SHORTEST_PATH: {
         replaceStartTargetVariables<ShortestPathNode>(en);
         break;
@@ -1331,7 +1331,7 @@ class arangodb::aql::RedundantCalculationsReplacer final
         }
         // node->_keepVariables does not need to be updated at the moment as the
         // "remove-redundant-calculations" rule will stop when it finds a COLLECT
-        // with an INTO, and the "inline-subqueries" rule will abort there as well 
+        // with an INTO, and the "inline-subqueries" rule will abort there as well
         break;
       }
 
@@ -1352,7 +1352,7 @@ class arangodb::aql::RedundantCalculationsReplacer final
         replaceInVariable<InsertNode>(en);
         break;
       }
-      
+
       case EN::UPSERT: {
         auto node = static_cast<UpsertNode*>(en);
 
@@ -1379,7 +1379,7 @@ class arangodb::aql::RedundantCalculationsReplacer final
         }
         break;
       }
-      
+
       case EN::REPLACE: {
         auto node = static_cast<ReplaceNode*>(en);
 
@@ -1465,7 +1465,7 @@ void arangodb::aql::removeRedundantCalculationsRule(
           continue;
         }
 
-        bool const isEqual = (buffer.length() == referenceExpression.size() && 
+        bool const isEqual = (buffer.length() == referenceExpression.size() &&
                               memcmp(buffer.c_str(), referenceExpression.c_str(), buffer.length()) == 0);
         buffer.reset();
 
@@ -1571,7 +1571,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
         continue;
       }
       // will remove subquery when we get here
-    } 
+    }
 
     auto outvars = n->getVariablesSetHere();
     TRI_ASSERT(outvars.size() == 1);
@@ -1589,13 +1589,13 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
       // it's a temporary variable that we can fuse with the other
       // calculation easily
 
-      if (n->canThrow() || 
+      if (n->canThrow() ||
           !static_cast<CalculationNode*>(n)->expression()->isDeterministic()) {
         continue;
       }
 
       AstNode const* rootNode = static_cast<CalculationNode*>(n)->expression()->node();
-      
+
       if (rootNode->type == NODE_TYPE_REFERENCE) {
         // if the LET is a simple reference to another variable, e.g. LET a = b
         // then replace all references to a with references to b
@@ -1643,7 +1643,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
               usageCount = 0;
               break;
             }
-          } 
+          }
           if (current->getType() != EN::CALCULATION) {
             // don't know how to replace the variable in a non-LET node
             // abort the search
@@ -1651,7 +1651,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
             break;
           }
 
-          // got a LET. we can replace the variable reference in it by 
+          // got a LET. we can replace the variable reference in it by
           // something else
           ++usageCount;
           other = static_cast<CalculationNode*>(current);
@@ -1688,7 +1688,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
         otherExpression->replaceVariableReference(outvars[0], rootNode);
 
         toUnlink.emplace(n);
-      } 
+      }
     }
   }
 
@@ -1777,7 +1777,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       size_t coveredAttributes = 0;
       auto resultPair = trx->getIndexForSortCondition(
           enumerateCollectionNode->collection()->getName(),
-          &sortCondition, outVariable, 
+          &sortCondition, outVariable,
           enumerateCollectionNode->collection()->count(),
           usedIndexes, coveredAttributes);
       if (resultPair.second) {
@@ -1856,7 +1856,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       // all indexes use the same attributes and index conditions guarantee
       // sorted output
     }
-      
+
     TRI_ASSERT(indexes.size() == 1 || cond->isSorted());
 
     // if we get here, we either have one index or multiple indexes on the same
@@ -1883,7 +1883,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       // order as the IndexNode...
       // now check if the sort attributes match the ones of the index
       size_t const numCovered =
-          sortCondition.coveredAttributes(outVariable, fields); 
+          sortCondition.coveredAttributes(outVariable, fields);
 
       if (numCovered >= sortCondition.numAttributes()) {
         // sort condition is fully covered by index... now we can remove the
@@ -1908,7 +1908,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
           // now check if the index fields are the same as the sort condition
           // fields
           // e.g. FILTER c.value1 == 1 && c.value2 == 42 SORT c.value1, c.value2
-          size_t const numCovered = 
+          size_t const numCovered =
               sortCondition.coveredAttributes(outVariable, fields);
 
           if (numCovered == sortCondition.numAttributes() &&
@@ -1997,7 +1997,7 @@ void arangodb::aql::useIndexForSortRule(Optimizer* opt, ExecutionPlan* plan,
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::SORT, true);
-  
+
   bool modified = false;
 
   for (auto const& n : nodes) {
@@ -2017,11 +2017,11 @@ void arangodb::aql::useIndexForSortRule(Optimizer* opt, ExecutionPlan* plan,
 /// @brief try to remove filters which are covered by indexes
 void arangodb::aql::removeFiltersCoveredByIndexRule(
     Optimizer* opt, ExecutionPlan* plan, Optimizer::Rule const* rule) {
-  
+
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::FILTER, true);
-  
+
   std::unordered_set<ExecutionNode*> toUnlink;
   bool modified = false;
 
@@ -2188,7 +2188,7 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(
 
         auto dep = nwalker->getFirstDependency();
 
-        if (dep->getType() != EN::ENUMERATE_COLLECTION && 
+        if (dep->getType() != EN::ENUMERATE_COLLECTION &&
             dep->getType() != EN::ENUMERATE_LIST) {
           break;
         }
@@ -2284,7 +2284,7 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, ExecutionPlan* plan,
   if (arangodb::ServerState::instance()->isCoordinator()) {
     // find subqueries
     std::unordered_map<ExecutionNode*, ExecutionNode*> subqueries;
-    
+
     SmallVector<ExecutionNode*>::allocator_type::arena_type s;
     SmallVector<ExecutionNode*> subs{s};
     plan->findNodesOfType(subs, ExecutionNode::SUBQUERY, true);
@@ -2726,7 +2726,7 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::GATHER, true);
-  
+
   bool modified = false;
 
   for (auto& n : nodes) {
@@ -2804,7 +2804,7 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
 /// only a SingletonNode and possibly some CalculationNodes as dependencies
 void arangodb::aql::removeUnnecessaryRemoteScatterRule(
     Optimizer* opt, ExecutionPlan* plan, Optimizer::Rule const* rule) {
-  
+
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::REMOTE, true);
@@ -3177,7 +3177,7 @@ struct OrSimplifier {
   Ast* ast;
 
   explicit OrSimplifier(Ast* ast) : ast(ast) {}
-  
+
   std::string stringifyNode(AstNode const* node) const {
     try {
       return node->toString();
@@ -3252,7 +3252,7 @@ struct OrSimplifier {
     else {
       values->addMember(lhs);
     }
-    
+
     if (rightIsArray) {
       size_t const n = rhs->numMembers();
       for (size_t i = 0; i < n; ++i) {
@@ -3274,16 +3274,16 @@ struct OrSimplifier {
     if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
       auto lhs = node->getMember(0);
       auto rhs = node->getMember(1);
-      
+
       auto lhsNew = simplify(lhs);
       auto rhsNew = simplify(rhs);
-      
+
       if (lhs != lhsNew || rhs != rhsNew) {
         // create a modified node
         node = ast->createNodeBinaryOperator(node->type, lhsNew, rhsNew);
       }
 
-      if ((lhsNew->type == NODE_TYPE_OPERATOR_BINARY_EQ || lhsNew->type == NODE_TYPE_OPERATOR_BINARY_IN) && 
+      if ((lhsNew->type == NODE_TYPE_OPERATOR_BINARY_EQ || lhsNew->type == NODE_TYPE_OPERATOR_BINARY_IN) &&
           (rhsNew->type == NODE_TYPE_OPERATOR_BINARY_EQ || rhsNew->type == NODE_TYPE_OPERATOR_BINARY_IN)) {
         std::string leftName;
         std::string rightName;
@@ -3293,8 +3293,8 @@ struct OrSimplifier {
         AstNode const* rightValue = nullptr;
 
         for (size_t i = 0; i < 4; ++i) {
-          if (detect(lhsNew, i >= 2, leftName, leftAttr, leftValue) && 
-              detect(rhsNew, i % 2 == 0, rightName, rightAttr, rightValue) && 
+          if (detect(lhsNew, i >= 2, leftName, leftAttr, leftValue) &&
+              detect(rhsNew, i % 2 == 0, rightName, rightAttr, rightValue) &&
               leftName == rightName) {
             return buildValues(leftAttr, leftValue, lhsNew->type == NODE_TYPE_OPERATOR_BINARY_IN, rightValue, rhsNew->type == NODE_TYPE_OPERATOR_BINARY_IN);
           }
@@ -3304,11 +3304,11 @@ struct OrSimplifier {
       // return node as is
       return const_cast<AstNode*>(node);
     }
-    
+
     if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
       auto lhs = node->getMember(0);
       auto rhs = node->getMember(1);
-      
+
       auto lhsNew = simplify(lhs);
       auto rhsNew = simplify(rhs);
 
@@ -3319,7 +3319,7 @@ struct OrSimplifier {
 
       // fallthrough intentional
     }
-      
+
     return const_cast<AstNode*>(node);
   }
 };
@@ -3355,7 +3355,7 @@ void arangodb::aql::replaceOrWithInRule(Optimizer* opt, ExecutionPlan* plan,
     if (outVar.size() != 1 || outVar[0]->id != inVar[0]->id) {
       continue;
     }
-    
+
     auto root = cn->expression()->node();
 
     OrSimplifier simplifier(plan->getAst());
@@ -3364,7 +3364,7 @@ void arangodb::aql::replaceOrWithInRule(Optimizer* opt, ExecutionPlan* plan,
     if (newRoot != root) {
       ExecutionNode* newNode = nullptr;
       Expression* expr = new Expression(plan->getAst(), newRoot);
-      
+
       try {
         TRI_IF_FAILURE("OptimizerRules::replaceOrWithInRuleOom") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -3607,7 +3607,7 @@ void arangodb::aql::patchUpdateStatementsRule(Optimizer* opt,
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::UPDATE, false);
-  
+
   bool modified = false;
 
   for (auto const& n : nodes) {
@@ -3680,16 +3680,16 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
     opt->addPlan(plan, rule, false);
     return;
   }
-  
+
   bool modified = false;
-  
-  // first make a pass over all traversal nodes and remove unused 
-  // variables from them  
+
+  // first make a pass over all traversal nodes and remove unused
+  // variables from them
   for (auto const& n : tNodes) {
     TraversalNode* traversal = static_cast<TraversalNode*>(n);
 
     auto varsUsedLater = n->getVarsUsedLater();
-    
+
     // note that we can NOT optimize away the vertex output variable
     // yet, as many traversal internals depend on the number of vertices
     // found/built
@@ -3700,7 +3700,7 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
       traversal->setEdgeOutput(nullptr);
       modified = true;
     }
-    
+
     outVariable = traversal->pathOutVariable();
     if (outVariable != nullptr &&
         varsUsedLater.find(outVariable) == varsUsedLater.end()) {
@@ -3738,16 +3738,16 @@ void arangodb::aql::prepareTraversalsRule(Optimizer* opt,
     opt->addPlan(plan, rule, false);
     return;
   }
-  
-  // first make a pass over all traversal nodes and remove unused 
-  // variables from them  
+
+  // first make a pass over all traversal nodes and remove unused
+  // variables from them
   for (auto const& n : tNodes) {
     TraversalNode* traversal = static_cast<TraversalNode*>(n);
     traversal->prepareOptions();
   }
-  
+
   opt->addPlan(plan, rule, true);
-}  
+}
 
 /// @brief pulls out simple subqueries and merges them with the level above
 ///
@@ -3755,17 +3755,17 @@ void arangodb::aql::prepareTraversalsRule(Optimizer* opt,
 ///
 /// FOR x IN (
 ///     FOR y IN collection FILTER y.value >= 5 RETURN y.test
-///   ) 
+///   )
 ///   RETURN x.a
 ///
 /// then this rule will transform it into:
-/// 
+///
 /// FOR tmp IN collection
-///   FILTER tmp.value >= 5 
+///   FILTER tmp.value >= 5
 ///   LET x = tmp.test
 ///   RETURN x.a
-void arangodb::aql::inlineSubqueriesRule(Optimizer* opt, 
-                                         ExecutionPlan* plan, 
+void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
+                                         ExecutionPlan* plan,
                                          Optimizer::Rule const* rule) {
 
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
@@ -3781,12 +3781,12 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
 
   for (auto const& n : nodes) {
     auto subqueryNode = static_cast<SubqueryNode*>(n);
-  
+
     if (subqueryNode->isModificationQuery()) {
       // can't modify modifying subqueries
       continue;
     }
-    
+
     if (subqueryNode->canThrow()) {
       // can't inline throwing subqueries
       continue;
@@ -3845,10 +3845,10 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
           auto previous = n->getFirstDependency();
           auto insert = n->getFirstParent();
           TRI_ASSERT(insert != nullptr);
-  
+
           // unlink the original SubqueryNode
           plan->unlinkNode(n, false);
-           
+
           for (auto& it : subNodes) {
             // first unlink them all
             plan->unlinkNode(it, true);
@@ -3872,7 +3872,7 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
                 queryVariables->renameVariable(variable->id);
               }
             }
-          } 
+          }
 
           // link the top node in the subquery with the original plan
           if (previous != nullptr) {
@@ -3883,13 +3883,13 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
           plan->unlinkNode(listNode, false);
 
           queryVariables->renameVariable(returnNode->inVariable()->id, listNode->outVariable()->name);
-        
+
           // finally replace the variables
           std::unordered_map<VariableId, Variable const*> replacements;
           replacements.emplace(listNode->outVariable()->id, returnNode->inVariable());
           RedundantCalculationsReplacer finder(replacements);
           plan->root()->walk(&finder);
-    
+
           // abort optimization
           current = nullptr;
         }
@@ -3898,8 +3898,8 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
       if (current == nullptr) {
         break;
       }
-         
-      varsUsed.clear(); 
+
+      varsUsed.clear();
       current->getVariablesUsedHere(varsUsed);
       if (varsUsed.find(out) != varsUsed.end()) {
         // we found another node that uses the subquery variable
@@ -3912,5 +3912,100 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
   }
 
   opt->addPlan(plan, rule, modified);
+}
+
+
+void arangodb::aql::optimizeGeoIndexRule(Optimizer* opt,
+                                         ExecutionPlan* plan,
+                                         Optimizer::Rule const* rule) {
+
+  LOG(ERR) << "ENTER GEO RULE";
+
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> nodes{a};
+
+//  plan->findEndNodes(nodes, true);
+//
+//  for(auto node : nodes){
+//    auto current = node;
+//    while(current != nullptr){
+//      if(current->getType() == EN::SORT) {
+//
+//      }
+//
+//      LOG(ERR) << current->getTypeString();
+//      current = current->getFirstDependency();
+//    }
+//  }
+
+  plan->findNodesOfType(nodes, EN::SORT, true);
+
+  bool modified = false;
+
+  for (auto const& n : nodes) {
+    auto node = static_cast<SortNode*>(n);
+    auto const& elements = node->getElements();
+    if (elements.size() != 1) {
+      // we're looking for "SORT DISTANCE()", which has just one sort criterion
+      continue;
+    }
+
+    auto const variable = elements[0].first;
+    TRI_ASSERT(variable != nullptr);
+
+    auto setter = plan->getVarSetBy(variable->id);
+
+    if (setter == nullptr || setter->getType() != EN::CALCULATION) {
+      continue;
+    }
+
+    auto cn = static_cast<CalculationNode*>(setter);
+    auto const expression = cn->expression();
+
+    if (expression == nullptr || expression->node() == nullptr ||
+        expression->node()->type != NODE_TYPE_FCALL) {
+      // not the right type of node
+      continue;
+    }
+
+    auto funcNode = expression->node();
+    auto func = static_cast<Function const*>(funcNode->getData());
+
+    LOG(ERR) << "FuncNode #members: " << funcNode->numMembers();
+
+    // we're looking for "DISTANCE()", which is a function call
+    // with an empty parameters array
+    if (   func->externalName != "DISTANCE" || funcNode->numMembers() != 1  ) {
+      continue;
+    }
+
+    LOG(ERR) << "FOUND DISTANCE RULE";
+
+    auto const& distance = funcNode->getMember(0);
+
+    if(distance->numMembers() != 4){
+      continue;
+    }
+
+    auto const& a = distance->getMember(0);
+    auto const& b = distance->getMember(1);
+    auto const& c = distance->getMember(2);
+    auto const& d = distance->getMember(3);
+
+    //we need at leaset do attribute access nodes
+    if ( ! ( a->isAttributeAccessForVariable() && b->isAttributeAccessForVariable() )
+       &&! ( c->isAttributeAccessForVariable() && d->isAttributeAccessForVariable() )){
+      continue;
+    }
+    LOG(ERR) << "FOUND DISTANCE RULE WITH ATTRIBUTE ACCESS";
+
+
+  }
+
+  if(!modified){
+    opt->addPlan(plan, rule, false);
+  }
+
+  LOG(ERR) << "EXIT GEO RULE";
 }
 
