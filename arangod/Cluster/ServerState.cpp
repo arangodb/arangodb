@@ -29,6 +29,10 @@
 #include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
 
+#include <boost/uuid/uuid.hpp>             // uuid class
+#include <boost/uuid/uuid_generators.hpp>  // generators
+#include <boost/uuid/uuid_io.hpp>          // streaming operators etc.
+
 #include <iomanip>
 #include <sstream>
 
@@ -377,9 +381,8 @@ std::string ServerState::createIdForRole(
     size_t idCounter = 1;
     VPackSlice entry;
     do {
-      std::ostringstream idss;
-      idss << std::setw(3) << std::setfill('0') << idCounter++;
-      id = serverIdPrefix + idss.str();
+
+      id = to_string(boost::uuids::random_generator()());
       entry = servers.get(id);
 
       LOG_TOPIC(TRACE, Logger::STARTUP) << id << " found in existing keys: " 
