@@ -549,11 +549,13 @@ std::string Communicator::createSafeDottedCurlUrl(
 }
 
 void Communicator::abortRequest(Ticket ticketId) {
-  LOG(ERR) << "Aborting " << ticketId;
   auto handle = _handlesInProgress.find(ticketId);
   if (handle == _handlesInProgress.end()) {
     return;
   }
+  std::string prefix("Communicator(" + std::to_string(handle->second->_rip->_ticketId) +
+                     ") // ");
+  LOG_TOPIC(WARN, Logger::REQUESTS) << prefix << "aborting request to " << handle->second->_rip->_destination.url();
   handle->second->_rip->_callbacks._onError(TRI_COMMUNICATOR_REQUEST_ABORTED,
                                             {nullptr});
   _handlesInProgress.erase(ticketId);
