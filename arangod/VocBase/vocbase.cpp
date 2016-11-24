@@ -793,6 +793,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
   VPackSlice const slice = builder.slice();
 
   TRI_ASSERT(cid != 0);
+  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(cid));
 
   int res = TRI_ERROR_NO_ERROR;
 
