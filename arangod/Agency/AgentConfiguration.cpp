@@ -152,9 +152,11 @@ double config_t::maxPing() const {
 
 void config_t::pingTimes(double minPing, double maxPing) {
   WRITE_LOCKER(writeLocker, _lock);
-  _minPing = minPing;
-  _maxPing = maxPing;
-  ++_version;
+  if (_minPing != minPing || _maxPing != maxPing ) {
+    _minPing = minPing;
+    _maxPing = maxPing;
+    ++_version;
+  }
 }
 
 std::map<std::string, std::string> config_t::pool() const {
@@ -204,7 +206,8 @@ double config_t::supervisionFrequency() const {
 
 bool config_t::activePushBack(std::string const& id) {
   WRITE_LOCKER(writeLocker, _lock);
-  if (_active.size() < _agencySize) {
+  if (_active.size() < _agencySize &&
+      std::find(_active.begin(), _active.end(), id) != _active.end()) {
     _active.push_back(id);
     ++_version;
     return true;
@@ -219,37 +222,41 @@ std::vector<std::string> config_t::gossipPeers() const {
 
 void config_t::eraseFromGossipPeers(std::string const& endpoint) {
   WRITE_LOCKER(readLocker, _lock);
-  _gossipPeers.erase(
-    std::remove(_gossipPeers.begin(), _gossipPeers.end(), endpoint),
-    _gossipPeers.end());
-  ++_version;
+  if (std::find(_gossipPeers.begin(), _gossipPeers.end(), endpoint) !=
+      _gossipPeers.end()) {
+    _gossipPeers.erase(
+      std::remove(_gossipPeers.begin(), _gossipPeers.end(), endpoint),
+      _gossipPeers.end());
+    ++_version;
+  }
 }
 
 bool config_t::addToPool(std::pair<std::string, std::string> const& i) {
   WRITE_LOCKER(readLocker, _lock);
   if (_pool.find(i.first) == _pool.end()) {
     _pool[i.first] = i.second;
+    ++_version;
   } else {
     if (_pool.at(i.first) != i.second) {  /// discrepancy!
       return false;
     }
   }
-  ++_version;
   return true;
 }
 
 bool config_t::swapActiveMember(
   std::string const& failed, std::string const& repl) {
-  WRITE_LOCKER(writeLocker, _lock);
   try {
+    WRITE_LOCKER(writeLocker, _lock);
     std::replace (_active.begin(), _active.end(), failed, repl);
+    ++_version;
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCY)
       << "Replacing " << failed << " with " << repl
       << "failed miserably: " << e.what();
     return false;
   }
-  ++_version;
+
   return true;
 }
 
@@ -330,6 +337,7 @@ query_t config_t::poolToBuilder() const {
 void config_t::update(query_t const& message) {
   VPackSlice slice = message->slice();
   std::map<std::string, std::string> pool;
+  bool changed = false;
   for (auto const& p : VPackObjectIterator(slice.get("pool"))) {
     pool[p.key.copyString()] = p.value.copyString();
   }
@@ -340,11 +348,15 @@ void config_t::update(query_t const& message) {
   WRITE_LOCKER(writeLocker, _lock);
   if (pool != _pool) {
     _pool = pool;
+    changed=true;
   }
   if (active != _active) {
     _active = active;
+    changed=true;
   }
-  ++_version;
+  if (changed) {
+    ++_version;
+  }
 }
 
 /// @brief override this configuration with prevailing opinion (startup)
