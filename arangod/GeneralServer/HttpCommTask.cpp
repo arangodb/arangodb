@@ -66,7 +66,10 @@ HttpCommTask::HttpCommTask(EventLoop loop, GeneralServer* server,
   _protocol = "http";
   connectionStatisticsAgentSetHttp();  // this agent is inherited form
                                        // sockettask or task
-  _agents.emplace(std::make_pair(1UL, RequestStatisticsAgent(true)));
+  auto agent = std::unique_ptr<RequestStatisticsAgent>(new RequestStatisticsAgent(true));
+  agent->acquire();
+  std::lock_guard<std::mutex> lock(_agentsMutex);
+  _agents.emplace(std::make_pair(1UL, std::move(agent)));
 }
 
 void HttpCommTask::handleSimpleError(rest::ResponseCode code,
@@ -105,7 +108,7 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code, int errorNum,
 
 void HttpCommTask::addResponse(HttpResponse* response) {
   resetKeepAlive();
-   
+
   _requestPending = false;
 
   // CORS response handling
@@ -120,7 +123,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
     // send back "Access-Control-Allow-Credentials" header
     response->setHeaderNCIfNotSet(StaticStrings::AccessControlAllowCredentials,
                                   (_denyCredentials ? "false" : "true"));
-    
+
     // use "IfNotSet" here because we should not override HTTP headers set
     // by Foxx applications
     response->setHeaderNCIfNotSet(StaticStrings::AccessControlExposeHeaders,
