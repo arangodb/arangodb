@@ -134,7 +134,7 @@ function cancelBarrier (endpoint, database, barrierId) {
     '/_api/replication/barrier/' + barrierId;
   var r = request({url, method: 'DELETE' });
   if (r.status !== 200 && r.status !== 204) {
-    console.error('CancelBarrier: error', r);
+    console.error('CancelBarrier: error', url, r.status, r.body);
     return false;
   }
   console.debug('cancelBarrier: success');

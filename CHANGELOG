@@ -92,15 +92,15 @@ v3.1.1 (2016-11-15)
   The following combinations of shardKeys and indexKeys are allowed/not allowed:
     
   shardKeys     indexKeys
-	  a             a        ok
-	  a             b    not ok
-	  a           a b        ok
-	a b             a    not ok
-	a b             b    not ok
-	a b           a b        ok
-	a b         a b c        ok
-      a b c           a b    not ok
-      a b c         a b c        ok
+      a             a        ok
+      a             b    not ok
+      a           a b        ok
+    a b             a    not ok
+    a b             b    not ok
+    a b           a b        ok
+    a b         a b c        ok
+  a b c           a b    not ok
+  a b c         a b c        ok
 
 * fixed wrong version in web interface login screen (EE only)
 
