@@ -130,6 +130,9 @@ function cancelReadLockOnLeader (endpoint, database, lockJobId) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function cancelBarrier (endpoint, database, barrierId) {
+  if (barrierId <= 0) {
+    return true;
+  }
   var url = endpointToURL(endpoint) + '/_db/' + database +
     '/_api/replication/barrier/' + barrierId;
   var r = request({url, method: 'DELETE' });

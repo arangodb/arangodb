@@ -1238,6 +1238,10 @@ static void JS_PropertiesVocbaseCol(
       collection->cid(),
       isModification ? TRI_TRANSACTION_WRITE : TRI_TRANSACTION_READ);
 
+  if (!isModification) {
+    trx.addHint(TRI_TRANSACTION_HINT_NO_USAGE_LOCK, false);
+  }
+  
   int res = trx.begin();
   
   if (res != TRI_ERROR_NO_ERROR) {
