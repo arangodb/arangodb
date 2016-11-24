@@ -496,12 +496,9 @@ bool Agent::load() {
   }
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Reassembling spearhead and read stores.";
-  {
-    MUTEX_LOCKER(commitLock, _ioLock);
-    _spearhead.apply(
-      _state.slices(_lastCommitIndex + 1), _lastCommitIndex, _constituent.term());
-  }
-
+  _spearhead.apply(
+    _state.slices(_lastCommitIndex + 1), _lastCommitIndex, _constituent.term());
+  
   {
     CONDITION_LOCKER(guard, _appendCV);
     guard.broadcast();
@@ -910,7 +907,7 @@ void Agent::notify(query_t const& message) {
 
 // Rebuild key value stores
 bool Agent::rebuildDBs() {
-  
+
   MUTEX_LOCKER(mutexLocker, _ioLock);
 
   _spearhead.apply(_state.slices(_lastCommitIndex + 1), _lastCommitIndex,

@@ -499,8 +499,9 @@ void Inception::run() {
          " start gossip protocol...";
   }
 
+  config_t config = _agent->config();
   // 1. If active agency, do as you're told
-  if (activeAgencyFromPersistence()) {
+  if (config.startup() == "persistence" && activeAgencyFromPersistence()) {
     _agent->ready(true);  
   }
   
@@ -510,7 +511,7 @@ void Inception::run() {
   }
   
   // 3. Else gossip
-  config_t config = _agent->config();
+  config = _agent->config();
   if (!_agent->ready() && !config.poolComplete()) {
     gossip();
   }
@@ -528,7 +529,7 @@ void Inception::run() {
   if (!config.cmdLineTimings()) {
     estimateRAFTInterval();
   }
-  
+
   _agent->ready(true);
 
 }
