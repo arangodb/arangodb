@@ -378,7 +378,6 @@ std::string ServerState::createIdForRole(
       sleep(1);
     }
 
-    size_t idCounter = 1;
     VPackSlice entry;
     do {
 
