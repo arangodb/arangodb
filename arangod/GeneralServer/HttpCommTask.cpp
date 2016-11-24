@@ -64,8 +64,12 @@ HttpCommTask::HttpCommTask(EventLoop loop, GeneralServer* server,
       _sinceCompactification(0),
       _originalBodyLength(0) {
   _protocol = "http";
+
   connectionStatisticsAgentSetHttp();
-  _agents.emplace(std::make_pair(1UL, RequestStatisticsAgent(true)));
+  auto agent = std::unique_ptr<RequestStatisticsAgent>(new RequestStatisticsAgent(true));
+  agent->acquire();
+  std::lock_guard<std::mutex> lock(_agentsMutex);
+  _agents.emplace(std::make_pair(1UL, std::move(agent)));
 }
 
 void HttpCommTask::handleSimpleError(rest::ResponseCode code,

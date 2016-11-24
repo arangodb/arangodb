@@ -93,7 +93,7 @@ class GeneralCommTask : public SocketTask {
     std::lock_guard<std::mutex> lock(_agentsMutex);
     auto agentIt = _agents.find(id);
     if (agentIt != _agents.end()) {
-      return &(agentIt->second);
+      return agentIt->second.get();
     } else {
       throw std::logic_error("there should be an agent for every request");
     }
@@ -122,7 +122,7 @@ class GeneralCommTask : public SocketTask {
   char const* _protocol = "unknown";
   rest::ProtocolVersion _protocolVersion = rest::ProtocolVersion::UNKNOWN;
 
-  std::map<uint64_t, RequestStatisticsAgent> _agents;
+  std::unordered_map<uint64_t, std::unique_ptr<RequestStatisticsAgent>> _agents;
   std::mutex _agentsMutex;
 
  private:
