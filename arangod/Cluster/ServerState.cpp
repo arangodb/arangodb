@@ -369,7 +369,7 @@ std::string ServerState::createIdForRole(AgencyComm comm,
       "DatabasePath");
   TRI_ASSERT(dbpath != nullptr);
   auto filePath = dbpath->directory() + "/UUID";
-  auto ifs = std::ifstream(filePath);
+  std::ifstream ifs(filePath);
   std::string id;
   
   if (ifs.is_open()) {
@@ -378,7 +378,7 @@ std::string ServerState::createIdForRole(AgencyComm comm,
     LOG_TOPIC(INFO, Logger::CLUSTER)
       << "Restarting with persisted UUID " << id;
   } else {
-    auto ofs = std::ofstream(filePath);
+    std::ofstream ofs(filePath);
     id = RoleStr.at(role) + "-" + to_string(boost::uuids::random_generator()());
     ofs << id << std::endl;
     ofs.close();
