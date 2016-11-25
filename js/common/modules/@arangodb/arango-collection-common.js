@@ -444,7 +444,6 @@ ArangoCollection.prototype.ensureHashIndex = function () {
 
   return this.ensureIndex(addIndexOptions({
     type: 'hash',
-    unique: false
   }, arguments));
 };
 
