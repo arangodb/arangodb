@@ -3918,7 +3918,8 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
   opt->addPlan(plan, rule, modified);
 }
 
-
+// FIXME - return value can be simpler as the accesspaths is contained within the collection
+// TODO - index attribues as sigle attribues or list
 static boost::optional<std::tuple<EnumerateCollectionNode*,std::vector<std::string>,std::vector<std::string>>>
 geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionNode* ex, ExecutionPlan* plan){
   using SV = std::vector<std::string>;
@@ -3969,7 +3970,7 @@ geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionN
           }
         }
 
-        //check access paths
+        //check access paths of attribues in ast and those in index match
         if( index.fieldNames()[0] == accessPath1 && index.fieldNames()[1] == accessPath2 ){
           return std::tuple<EnumerateCollectionNode* ,SV,SV>{collNode, std::move(accessPath1), std::move(accessPath2) };
         }
@@ -3995,29 +3996,35 @@ void arangodb::aql::optimizeGeoIndexRule(Optimizer* opt,
   for (auto const& n : nodes) {
     auto node = static_cast<SortNode*>(n);
     auto const& elements = node->getElements();
+
+    // we're looking for "SORT DISTANCE(x,y,a,b) ASC", which has just one sort criterion
     if ( !(elements.size() == 1 && elements[0].second)) {
-      // we're looking for "SORT DISTANCE(x,y,a,b) ASC", which has just one sort criterion
       continue;
     }
 
+    //variable of sort expression
     auto const variable = elements[0].first;
     TRI_ASSERT(variable != nullptr);
 
+    //// find the expression that is bound to the variable
+    // get the expression node that holds the cacluation
     auto setter = plan->getVarSetBy(variable->id);
-
     if (setter == nullptr || setter->getType() != EN::CALCULATION) {
       continue;
     }
 
+    // downcast to calculation node and get expression
     auto cn = static_cast<CalculationNode*>(setter);
     auto const expression = cn->expression();
 
+    // the expression must exist and it must be a function call
     if (expression == nullptr || expression->node() == nullptr ||
         expression->node()->type != NODE_TYPE_FCALL) {
       // not the right type of node
       continue;
     }
 
+    //get the ast node of the expression
     AstNode const* funcNode = expression->node();
     auto func = static_cast<Function const*>(funcNode->getData());
 
@@ -4040,25 +4047,23 @@ void arangodb::aql::optimizeGeoIndexRule(Optimizer* opt,
     auto result1 = geoDistanceFunctionArgCheck(argPair1, node, plan);
     auto result2 = geoDistanceFunctionArgCheck(argPair2, node, plan);
 
+    // xor only one argument pair shall have a geoIndex
     if (  ( !result1 && !result2 ) || ( result1 && result2 ) ){
       continue;
     }
 
     LOG(ERR) << "  FOUND DISTANCE RULE WITH ATTRIBUTE ACCESS";
 
-    if(result1){
-      LOG(ERR) << "  attributes: " << std::get<1>(result1.get())[0]
-               << ", " << std::get<2>(result1.get())[0]
-               << " of collection:" << std::get<0>(result1.get())->collection()->getName()
-               << " are geoindexed";
-    } else {
-      LOG(ERR) << "  attributes: " << std::get<1>(result2.get())[0]
-               << ", " << std::get<2>(result2.get())[0]
-               << " of collection:" << std::get<0>(result2.get())->collection()->getName()
-               << " are geoindexed";
+    if(!result1){
+      result1 = std::move(result2);
     }
 
-    //replace sort node
+    LOG(ERR) << "  attributes: " << std::get<1>(result1.get())[0]
+             << ", " << std::get<2>(result1.get())[0]
+             << " of collection:" << std::get<0>(result1.get())->collection()->getName()
+             << " are geoindexed";
+
+    //TODO replace sort node with index node
     //modified=true;
     modified=false;
 
