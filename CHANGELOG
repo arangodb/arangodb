@@ -1,4 +1,4 @@
-v3.1.2 (20XX-XX-XX)
+v3.1.2 (2016-11-24)
 -------------------
 
 * save a flag in the agency indicating that the system collection were created.
@@ -26,6 +26,10 @@ v3.1.2 (20XX-XX-XX)
 
 * Startup mode of agency is explicitly set to persistence with inside
   agent configuration
+
+* Fixed statistics for requests.
+
+* Fixed race condition in processing of VelocyStream (vst) binary protocol.
 
 v3.1.1 (2016-11-15)
 -------------------
