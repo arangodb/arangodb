@@ -64,7 +64,7 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
   void start();
 
  protected:
-  virtual bool processRead() = 0;
+  virtual bool processRead(double start_time) = 0;
 
   // This function is used during the protocol switch from http
   // to VelocyStream. This way we no not require additional

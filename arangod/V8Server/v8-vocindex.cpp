@@ -932,6 +932,8 @@ static void JS_GetIndexesVocbaseCol(
   SingleCollectionTransaction trx(
       V8TransactionContext::Create(collection->vocbase(), true),
       collection->cid(), TRI_TRANSACTION_READ);
+    
+  trx.addHint(TRI_TRANSACTION_HINT_NO_USAGE_LOCK, false);
 
   int res = trx.begin();
 
@@ -942,12 +944,11 @@ static void JS_GetIndexesVocbaseCol(
   // READ-LOCK start
   trx.lockRead();
 
-  arangodb::LogicalCollection* col = trx.documentCollection();
-  std::string const collectionName(col->name());
+  std::string const collectionName(collection->name());
 
   // get list of indexes
   TransactionBuilderLeaser builder(&trx);
-  auto indexes = col->getIndexes();
+  auto indexes = collection->getIndexes();
 
   trx.finish(res);
   // READ-LOCK end

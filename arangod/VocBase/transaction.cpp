@@ -400,11 +400,21 @@ static int UseCollections(TRI_transaction_t* trx, int nestingLevel) {
       } else {
         // use without usage-lock (lock already set externally)
         trxCollection->_collection = trx->_vocbase->lookupCollection(trxCollection->_cid);
+
+        if (trxCollection->_collection == nullptr) {
+          return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+        }
       }
 
       if (trxCollection->_collection == nullptr) {
         // something went wrong
-        return TRI_errno();
+        int res = TRI_errno();
+
+        if (res == TRI_ERROR_NO_ERROR) {
+          // must return an error
+          res = TRI_ERROR_INTERNAL;
+        }
+        return res;
       }
 
       if (trxCollection->_accessType == TRI_TRANSACTION_WRITE &&

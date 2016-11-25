@@ -248,7 +248,6 @@ static void JS_SynchronizeReplication(
     database = vocbase->name();
   }
 
-
   std::unordered_map<std::string, bool> restrictCollections;
   if (object->Has(TRI_V8_ASCII_STRING("restrictCollections")) &&
       object->Get(TRI_V8_ASCII_STRING("restrictCollections"))->IsArray()) {
@@ -371,7 +370,21 @@ static void JS_SynchronizeReplication(
     }
 
     result->Set(TRI_V8_ASCII_STRING("collections"), collections);
+  } catch (arangodb::basics::Exception const& ex) {
+    res = ex.code();
+    if (errorMsg.empty()) {
+      errorMsg = std::string("caught exception: ") + ex.what();
+    }
+  } catch (std::exception const& ex) {
+    res = TRI_ERROR_INTERNAL;
+    if (errorMsg.empty()) {
+      errorMsg = std::string("caught exception: ") + ex.what();
+    }
   } catch (...) {
+    res = TRI_ERROR_INTERNAL;
+    if (errorMsg.empty()) {
+      errorMsg = "caught unknown exception";
+    }
   }
 
   if (res != TRI_ERROR_NO_ERROR) {

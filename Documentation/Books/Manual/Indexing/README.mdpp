@@ -13,3 +13,4 @@ There are special sections for
  - [Persistent Indexes](Persistent.md)
  - [Fulltext Indexes](Fulltext.md)
  - [Geo-spatial Indexes](Geo.md)
+ - [Vertex-centric Indexes](VertexCentric.md)
