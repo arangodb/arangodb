@@ -2066,33 +2066,35 @@ std::unordered_map<std::string, std::vector<std::string>> distributeShards(
 
   // fetch a unique id for each shard to create
   uint64_t const id = ci->uniqid(numberOfShards);
-
-  // now create the shards
-  size_t count = 0;
+  
+  size_t leaderIndex = 0;
+  size_t followerIndex = 0;
   for (uint64_t i = 0; i < numberOfShards; ++i) {
     // determine responsible server(s)
     std::vector<std::string> serverIds;
     for (uint64_t j = 0; j < replicationFactor; ++j) {
-      std::string candidate;
-      size_t count2 = 0;
-      bool found = true;
-      do {
-        candidate = dbServers[count++];
-        if (count >= dbServers.size()) {
-          count = 0;
-        }
-        if (++count2 == dbServers.size() + 1) {
-          LOG_TOPIC(WARN, Logger::CLUSTER)
-            << "createCollectionCoordinator: replicationFactor is "
-            << "too large for the number of DBservers";
-          found = false;
-          break;
-        }
-      } while (std::find(serverIds.begin(), serverIds.end(), candidate) !=
-               serverIds.end());
-      if (found) {
-        serverIds.push_back(candidate);
+      if (j >= dbServers.size()) {
+        LOG_TOPIC(WARN, Logger::CLUSTER)
+          << "createCollectionCoordinator: replicationFactor is "
+          << "too large for the number of DBservers";
+        break;
       }
+      std::string candidate;
+      // mop: leader
+      if (serverIds.size() == 0) {
+        candidate = dbServers[leaderIndex++];
+        if (leaderIndex >= dbServers.size()) {
+          leaderIndex = 0;
+        }
+      } else {
+        do {
+          candidate = dbServers[followerIndex++];
+          if (followerIndex >= dbServers.size()) {
+            followerIndex = 0;
+          }
+        } while (candidate == serverIds[0]); // mop: ignore leader
+      }
+      serverIds.push_back(candidate);
     }
 
     // determine shard id

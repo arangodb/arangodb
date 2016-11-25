@@ -5,7 +5,6 @@ devel
 
       db._query("FOR i IN 1..100000 SORT i RETURN i", {}, { options: { memoryLimit: 100000 } });
 
-
 * added convenience function to create vertex-centric indexes.
 Usage: `db.collection.ensureVertexCentricIndex("label", {type: "hash", direction: "outbound"})`
 That will create an index that can be used on OUTBOUND with filtering on the
@@ -58,6 +57,7 @@ v3.1.2 (2016-11-24)
 Now they state correctly how many documents were fetched from the index and how many
 have been filtered.
 
+* Prevent uniform shard distribution when replicationFactor == numServers
 
 v3.1.1 (2016-11-15)
 -------------------
