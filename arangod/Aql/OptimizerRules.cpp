@@ -3955,12 +3955,12 @@ geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionN
           continue;
         }
 
-        if(false){
+        if(true){
           //FIXME -  REMOVE DEBUG CODE LATER
           auto vecs = std::vector<std::vector<SV>>{index.fieldNames(), std::vector<SV>{accessPath1, accessPath2}};
           for(auto vec : vecs ){
             for(auto path : vec){
-              std::cout << " VECTOR:  ";
+              std::cout << "AccessPath VECTOR:  ";
               for(auto word : path){
                 std::cout << word << " ";
               }
@@ -3970,8 +3970,8 @@ geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionN
         }
 
         //check access paths
-        if( index.fieldNames() == std::vector<SV>{accessPath1, accessPath2} ){
-          return std::tuple<EnumerateCollectionNode* ,SV,SV>{collNode, accessPath1, accessPath2 };
+        if( index.fieldNames()[0] == accessPath1 && index.fieldNames()[1] == accessPath2 ){
+          return std::tuple<EnumerateCollectionNode* ,SV,SV>{collNode, std::move(accessPath1), std::move(accessPath2) };
         }
       }
     }
