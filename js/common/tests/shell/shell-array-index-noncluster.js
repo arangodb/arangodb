@@ -101,7 +101,7 @@ function arrayHashIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertAndReadArrayCombinedUnique : function () {
-      collection.ensureIndex({ type: "hash", fields: [ "a[*]", "b[*]" ], unique: true });
+      collection.ensureHashIndex("a[*]", "b[*]", {unique: true});
 
       collection.save({a: [1, 2], b: ["a", "b"]});
 
@@ -159,6 +159,7 @@ function arrayHashIndexSuite () {
 /// @brief test: Multiple index batch inserts
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
     testInsertBatches : function () {
       // this really needs to be 1,000,000 documents to reproduce a bug that
       // occurred with exactly this value and no others
@@ -173,6 +174,7 @@ function arrayHashIndexSuite () {
       assertEqual(1000 * 1000, collection.count());
       assertEqual(3, collection.getIndexes().length);
     }
+*/
 
   };
 }
