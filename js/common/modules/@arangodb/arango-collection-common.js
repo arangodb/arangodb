@@ -539,3 +539,11 @@ ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
   });
 };
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief ensures a geo constraint
+// / since ArangoDB 2.5, this is just a redirection to ensureGeoIndex
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureGeoConstraint = function (lat, lon) {
+  return this.ensureGeoIndex(lat, lon);
+};
