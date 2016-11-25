@@ -101,7 +101,7 @@ function arrayHashIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertAndReadArrayCombinedUnique : function () {
-      collection.ensureHashIndex("a[*]", "b[*]", {unique: true});
+      collection.ensureIndex({ type: "hash", fields: [ "a[*]", "b[*]" ], unique: true });
 
       collection.save({a: [1, 2], b: ["a", "b"]});
 
