@@ -502,7 +502,7 @@ boost::optional<bool> VppCommTask::getMessageFromMultiChunks(
     }
     auto& im = incompleteMessageItr->second;  // incomplete Message
     im._currentChunk++;
-    assert(im._currentChunk == chunkHeader._chunk);
+    TRI_ASSERT(im._currentChunk == chunkHeader._chunk);
     im._buffer.append(vpackBegin, std::distance(vpackBegin, chunkEnd));
     // check buffer longer than length
 
