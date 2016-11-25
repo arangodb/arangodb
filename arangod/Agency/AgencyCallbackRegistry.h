@@ -24,7 +24,7 @@
 #ifndef CLUSTER_AGENCYCALLACKREGISTRY_H
 #define CLUSTER_AGENCYCALLACKREGISTRY_H 1
 
-#include "Cluster/AgencyCallback.h"
+#include "Agency/AgencyCallback.h"
 #include "Basics/ReadWriteLock.h"
 
 namespace arangodb {

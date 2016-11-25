@@ -23,9 +23,9 @@
 
 #include "Constituent.h"
 
+#include <thread>
 #include <chrono>
 #include <iomanip>
-#include <thread>
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>

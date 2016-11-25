@@ -122,14 +122,15 @@ void SocketTask::addWriteBuffer(StringBuffer* buffer,
 
     delete buffer;
     if (stat) {
-      LOG_TOPIC(TRACE, Logger::REQUESTS)
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION)
           << "SocketTask::addWriteBuffer - Statistics release: "
           << stat->to_string();
       TRI_ReleaseRequestStatistics(stat);
     } else {
-      LOG_TOPIC(TRACE, Logger::REQUESTS) << "SocketTask::addWriteBuffer - "
-                                            "Statistics release: nullptr - "
-                                            "nothing to realease";
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+          << "SocketTask::addWriteBuffer - "
+             "Statistics release: nullptr - "
+             "nothing to realease";
     }
 
     return;
@@ -206,7 +207,13 @@ void SocketTask::completedWriteBuffer() {
   if (_writeBufferStatistics != nullptr) {
     _writeBufferStatistics->_writeEnd = TRI_StatisticsTime();
 #ifdef DEBUG_STATISTICS
+<<<<<<< HEAD
+    LOG_TOPIC(TRACE, Logger::REQUESTS)
+      << "SocketTask::addWriteBuffer - Statistics release: "
+      << _writeBufferStatistics->to_string();
+=======
         _writeBufferStatistics->trace_log();
+>>>>>>> origin/devel
 #endif
     TRI_ReleaseRequestStatistics(_writeBufferStatistics);
     _writeBufferStatistics = nullptr;
@@ -217,7 +224,7 @@ void SocketTask::completedWriteBuffer() {
                                           "nothing to realease";
 #endif
   }
-
+  
   if (_writeBuffers.empty()) {
     if (_closeRequested) {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "SocketTask::"
@@ -329,6 +336,7 @@ bool SocketTask::reserveMemory() {
 
 bool SocketTask::trySyncRead() {
   boost::system::error_code err;
+
   if (_abandoned) {
     return false;
   }
@@ -477,6 +485,7 @@ void SocketTask::asyncReadSome() {
     _peer->asyncRead(boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE),
                      handler);
   }
+
 }
 
 void SocketTask::closeReceiveStream() {

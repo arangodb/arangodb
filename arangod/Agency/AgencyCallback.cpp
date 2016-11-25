@@ -21,9 +21,7 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/MutexLocker.h"
-#include "Basics/ConditionLocker.h"
-#include "Logger/Logger.h"
+#include "AgencyCallback.h"
 
 #include <chrono>
 #include <thread>
@@ -32,19 +30,16 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "AgencyCallback.h"
+#include "Basics/ConditionLocker.h"
+#include "Basics/MutexLocker.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 
-AgencyCallback::AgencyCallback(AgencyComm& agency, 
-                               std::string const& key, 
+AgencyCallback::AgencyCallback(AgencyComm& agency, std::string const& key,
                                std::function<bool(VPackSlice const&)> const& cb,
-                               bool needsValue,
-                               bool needsInitialValue) 
-  : key(key),
-    _agency(agency),
-    _cb(cb),
-    _needsValue(needsValue) {
+                               bool needsValue, bool needsInitialValue)
+    : key(key), _agency(agency), _cb(cb), _needsValue(needsValue) {
   if (_needsValue && needsInitialValue) {
     refetchAndUpdate(true);
   }
@@ -69,14 +64,14 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex) {
              << result.errorCode() << " " << result.errorMessage();
     return;
   }
-  
+
   std::vector<std::string> kv =
-    basics::StringUtils::split(AgencyComm::prefixPath() + key,'/');
+      basics::StringUtils::split(AgencyCommManager::path(key), '/');
   kv.erase(std::remove(kv.begin(), kv.end(), ""), kv.end());
-  
+
   std::shared_ptr<VPackBuilder> newData = std::make_shared<VPackBuilder>();
   newData->add(result.slice()[0].get(kv));
-  
+
   if (needToAcquireMutex) {
     CONDITION_LOCKER(locker, _cv);
     checkValue(newData);
@@ -89,20 +84,20 @@ void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData) {
   // Only called from refetchAndUpdate, we always have the mutex when
   // we get here!
   if (!_lastData || !_lastData->slice().equals(newData->slice())) {
-    LOG_TOPIC(DEBUG, Logger::CLUSTER)
-      << "AgencyCallback: Got new value " << newData->slice().typeName()
-      << " " << newData->toJson();
+    LOG_TOPIC(DEBUG, Logger::CLUSTER) << "AgencyCallback: Got new value "
+                                      << newData->slice().typeName() << " "
+                                      << newData->toJson();
     if (execute(newData)) {
       _lastData = newData;
     } else {
-      LOG_TOPIC(DEBUG, Logger::CLUSTER)
-        << "Callback was not successful for " << newData->toJson();
+      LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Callback was not successful for "
+                                        << newData->toJson();
     }
   }
 }
 
 bool AgencyCallback::executeEmpty() {
-  // only called from refetchAndUpdate, we always have the mutex when 
+  // only called from refetchAndUpdate, we always have the mutex when
   // we get here!
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Executing (empty)";
   bool result = _cb(VPackSlice::noneSlice());
@@ -113,7 +108,7 @@ bool AgencyCallback::executeEmpty() {
 }
 
 bool AgencyCallback::execute(std::shared_ptr<VPackBuilder> newData) {
-  // only called from refetchAndUpdate, we always have the mutex when 
+  // only called from refetchAndUpdate, we always have the mutex when
   // we get here!
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Executing";
   bool result = _cb(newData->slice());
@@ -128,9 +123,8 @@ void AgencyCallback::executeByCallbackOrTimeout(double maxTimeout) {
   // before entering this function!
   if (!_cv.wait(static_cast<uint64_t>(maxTimeout * 1000000.0))) {
     LOG_TOPIC(DEBUG, Logger::CLUSTER)
-      << "Waiting done and nothing happended. Refetching to be sure";
+        << "Waiting done and nothing happended. Refetching to be sure";
     // mop: watches have not triggered during our sleep...recheck to be sure
     refetchAndUpdate(false);
   }
 }
-

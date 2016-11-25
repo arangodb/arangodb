@@ -191,6 +191,46 @@ std::vector<bool> Store::apply(query_t const& query, bool verbose) {
   return success;
 }
 
+
+/// Apply single query 
+bool Store::apply(Slice const& query, bool verbose) {
+
+  bool success = false;
+
+  try {
+    MUTEX_LOCKER(storeLocker, _storeLock);
+    switch (query.length()) {
+    case 1:  // No precondition
+      success = applies(query[0]);
+      break;
+    case 2:  // precondition
+      if (check(query[1])) {
+        success = applies(query[0]);
+      } else {  // precondition failed
+        LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
+      }
+      break;
+    default:  // Wrong
+      LOG_TOPIC(ERR, Logger::AGENCY)
+        << "We can only handle log entry with or without precondition!";
+      break;
+    }  
+    // Wake up TTL processing
+    {
+      CONDITION_LOCKER(guard, _cv);
+      _cv.signal();
+    }
+      
+  } catch (std::exception const& e) {  // Catch any erorrs
+    LOG_TOPIC(ERR, Logger::AGENCY)
+      << __FILE__ << ":" << __LINE__ << " " << e.what();
+  }
+    
+  return success;
+  
+}
+
+
 /// template<class T, class U> std::multimap<std::string, std::string>
 std::ostream& operator<<(std::ostream& os,
                          std::multimap<std::string, std::string> const& m) {
@@ -201,6 +241,7 @@ std::ostream& operator<<(std::ostream& os,
   return os;
 }
 
+
 /// Notification type
 struct notify_t {
   std::string key;
@@ -209,6 +250,7 @@ struct notify_t {
   notify_t(std::string const& k, std::string const& m, std::string const& o)
       : key(k), modified(m), oper(o) {}
 };
+
 
 /// Apply (from logs)
 std::vector<bool> Store::apply(
@@ -233,6 +275,9 @@ std::vector<bool> Store::apply(
           std::string oper = j.value.get("op").copyString();
           if (!(oper == "observe" || oper == "unobserve")) {
             std::string uri = j.key.copyString();
+            if (!uri.empty() && uri.at(0)!='/') {
+              uri = std::string("/") + uri;
+            }
             while (true) {
               // TODO: Check if not a special lock will help
               {

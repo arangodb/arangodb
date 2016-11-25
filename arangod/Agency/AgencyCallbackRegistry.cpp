@@ -22,6 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgencyCallbackRegistry.h"
+
+#include <ctime>
+
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
@@ -29,11 +35,6 @@
 #include "Endpoint/Endpoint.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
-
-#include <ctime>
-
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 

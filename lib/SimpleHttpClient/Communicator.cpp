@@ -178,7 +178,7 @@ Ticket Communicator::addRequest(Destination destination,
 #endif
 
   if (numBytes != 1) {
-    LOG_TOPIC(WARN, Logger::REQUESTS)
+    LOG_TOPIC(WARN, Logger::COMMUNICATION)
         << "Couldn't wake up pipe. numBytes was " + std::to_string(numBytes);
   }
 
@@ -383,7 +383,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
       << prefix << "Curl rc is : " << rc << " after "
       << Logger::FIXED(TRI_microtime() - rip->_startTime) << " s";
   if (strlen(rip->_errorBuffer) != 0) {
-    LOG_TOPIC(TRACE, Logger::REQUESTS)
+    LOG_TOPIC(TRACE, Logger::COMMUNICATION)
         << prefix << "Curl error details: " << rip->_errorBuffer;
   }
 
@@ -451,7 +451,8 @@ void Communicator::logHttpBody(std::string const& prefix,
                                std::string const& data) {
   std::string::size_type n = 0;
   while (n < data.length()) {
-    LOG_TOPIC(DEBUG, Logger::REQUESTS) << prefix << " " << data.substr(n, 80);
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << prefix << " "
+                                            << data.substr(n, 80);
     n += 80;
   }
 }
@@ -465,8 +466,8 @@ void Communicator::logHttpHeaders(std::string const& prefix,
     if (n == std::string::npos) {
       break;
     }
-    LOG_TOPIC(DEBUG, Logger::REQUESTS) << prefix << " "
-                                       << headerData.substr(last, n - last);
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+        << prefix << " " << headerData.substr(last, n - last);
     last = n + 2;
   }
 }
@@ -484,7 +485,7 @@ int Communicator::curlDebug(CURL* handle, curl_infotype type, char* data,
 
   switch (type) {
     case CURLINFO_TEXT:
-      LOG_TOPIC(TRACE, Logger::REQUESTS) << prefix << "Text: " << dataStr;
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION) << prefix << "Text: " << dataStr;
       break;
     case CURLINFO_HEADER_OUT:
       logHttpHeaders(prefix + "Header >>", dataStr);

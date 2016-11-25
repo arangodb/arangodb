@@ -191,17 +191,18 @@ void HeartbeatThread::runDBServer() {
             << "Looking at Sync/Commands/" + _myId;
 
         AgencyReadTransaction trx(std::vector<std::string>(
-            {_agency.prefixPath() + "Shutdown",
-             _agency.prefixPath() + "Current/Version",
-             _agency.prefixPath() + "Sync/Commands/" + _myId}));
+            {AgencyCommManager::path("Shutdown"),
+             AgencyCommManager::path("Current/Version"),
+             AgencyCommManager::path("Sync/Commands", _myId)}));
 
         AgencyCommResult result = _agency.sendTransactionWithFailover(trx);
         if (!result.successful()) {
           LOG_TOPIC(WARN, Logger::HEARTBEAT)
               << "Heartbeat: Could not read from agency!";
         } else {
-          VPackSlice shutdownSlice = result.slice()[0].get(
-              std::vector<std::string>({_agency.prefix(), "Shutdown"}));
+          VPackSlice shutdownSlice =
+              result.slice()[0].get(std::vector<std::string>(
+                  {AgencyCommManager::path(), "Shutdown"}));
 
           if (shutdownSlice.isBool() && shutdownSlice.getBool()) {
             ApplicationServer::server->beginShutdown();
@@ -212,7 +213,7 @@ void HeartbeatThread::runDBServer() {
           handleStateChange(result);
 
           VPackSlice s = result.slice()[0].get(std::vector<std::string>(
-              {_agency.prefix(), std::string("Current"),
+              {AgencyCommManager::path(), std::string("Current"),
                std::string("Version")}));
           if (!s.isInteger()) {
             LOG_TOPIC(ERR, Logger::HEARTBEAT)
@@ -307,8 +308,8 @@ void HeartbeatThread::runDBServer() {
 
 void HeartbeatThread::runCoordinator() {
   AuthenticationFeature* authentication =
-    application_features::ApplicationServer::getFeature<AuthenticationFeature>(
-        "Authentication");
+      application_features::ApplicationServer::getFeature<
+          AuthenticationFeature>("Authentication");
   TRI_ASSERT(authentication != nullptr);
   LOG_TOPIC(TRACE, Logger::HEARTBEAT)
       << "starting heartbeat thread (coordinator version)";
@@ -338,16 +339,15 @@ void HeartbeatThread::runCoordinator() {
         break;
       }
 
-      AgencyReadTransaction trx(std::vector<std::string>({
-        _agency.prefixPath() + "Current/Version",
-        _agency.prefixPath() + "Current/Foxxmaster",
-        _agency.prefixPath() + "Current/FoxxmasterQueueupdate",
-        _agency.prefixPath() + "Plan/Version",
-        _agency.prefixPath() + "Shutdown",
-        _agency.prefixPath() + "Sync/Commands/" + _myId,
-        _agency.prefixPath() + "Sync/UserVersion",
-        _agency.prefixPath() + "Target/FailedServers"
-      }));
+      AgencyReadTransaction trx(std::vector<std::string>(
+          {AgencyCommManager::path("Current/Version"),
+           AgencyCommManager::path("Current/Foxxmaster"),
+           AgencyCommManager::path("Current/FoxxmasterQueueupdate"),
+           AgencyCommManager::path("Plan/Version"),
+           AgencyCommManager::path("Shutdown"),
+           AgencyCommManager::path("Sync/Commands", _myId),
+           AgencyCommManager::path("Sync/UserVersion"),
+           AgencyCommManager::path("Target/FailedServers")}));
       AgencyCommResult result = _agency.sendTransactionWithFailover(trx);
 
       if (!result.successful()) {
@@ -355,7 +355,7 @@ void HeartbeatThread::runCoordinator() {
             << "Heartbeat: Could not read from agency!";
       } else {
         VPackSlice shutdownSlice = result.slice()[0].get(
-            std::vector<std::string>({_agency.prefix(), "Shutdown"}));
+            std::vector<std::string>({AgencyCommManager::path(), "Shutdown"}));
 
         if (shutdownSlice.isBool() && shutdownSlice.getBool()) {
           ApplicationServer::server->beginShutdown();
@@ -373,9 +373,9 @@ void HeartbeatThread::runCoordinator() {
         // about to become the new foxxmaster we must immediately refresh our
         // queues this is done in ServerState...if queueupdate is set after
         // foxxmaster the change will be reset again
-        VPackSlice foxxmasterQueueupdateSlice =
-            result.slice()[0].get(std::vector<std::string>(
-                {_agency.prefix(), "Current", "FoxxmasterQueueupdate"}));
+        VPackSlice foxxmasterQueueupdateSlice = result.slice()[0].get(
+            std::vector<std::string>({AgencyCommManager::path(), "Current",
+                                      "FoxxmasterQueueupdate"}));
 
         if (foxxmasterQueueupdateSlice.isBool()) {
           ServerState::instance()->setFoxxmasterQueueupdate(
@@ -384,14 +384,15 @@ void HeartbeatThread::runCoordinator() {
 
         VPackSlice foxxmasterSlice =
             result.slice()[0].get(std::vector<std::string>(
-                {_agency.prefix(), "Current", "Foxxmaster"}));
+                {AgencyCommManager::path(), "Current", "Foxxmaster"}));
 
         if (foxxmasterSlice.isString()) {
           ServerState::instance()->setFoxxmaster(foxxmasterSlice.copyString());
         }
 
-        VPackSlice versionSlice = result.slice()[0].get(
-            std::vector<std::string>({_agency.prefix(), "Plan", "Version"}));
+        VPackSlice versionSlice =
+            result.slice()[0].get(std::vector<std::string>(
+                {AgencyCommManager::path(), "Plan", "Version"}));
 
         if (versionSlice.isInteger()) {
           // there is a plan version
@@ -416,7 +417,7 @@ void HeartbeatThread::runCoordinator() {
         }
 
         VPackSlice slice = result.slice()[0].get(std::vector<std::string>(
-            {_agency.prefix(), "Sync", "UserVersion"}));
+            {AgencyCommManager::path(), "Sync", "UserVersion"}));
 
         if (slice.isInteger()) {
           // there is a UserVersion
@@ -434,8 +435,8 @@ void HeartbeatThread::runCoordinator() {
           }
         }
 
-        versionSlice = result.slice()[0].get(
-            std::vector<std::string>({_agency.prefix(), "Current", "Version"}));
+        versionSlice = result.slice()[0].get(std::vector<std::string>(
+            {AgencyCommManager::path(), "Current", "Version"}));
         if (versionSlice.isInteger()) {
           uint64_t currentVersion = 0;
           try {
@@ -452,11 +453,10 @@ void HeartbeatThread::runCoordinator() {
           }
         }
 
-        VPackSlice failedServersSlice = result.slice()[0].get(
-          std::vector<std::string>({_agency.prefix(), "Target",
-                "FailedServers"})
-          );
-        
+        VPackSlice failedServersSlice =
+            result.slice()[0].get(std::vector<std::string>(
+                {AgencyCommManager::path(), "Target", "FailedServers"}));
+
         if (failedServersSlice.isObject()) {
           std::vector<std::string> failedServers = {};
           for (auto const& server : VPackObjectIterator(failedServersSlice)) {
@@ -466,7 +466,8 @@ void HeartbeatThread::runCoordinator() {
           }
           ClusterInfo::instance()->setFailedServers(failedServers);
         } else {
-          LOG_TOPIC(WARN, Logger::HEARTBEAT) << "FailedServers is not an object. ignoring for now";
+          LOG_TOPIC(WARN, Logger::HEARTBEAT)
+              << "FailedServers is not an object. ignoring for now";
         }
       }
 
@@ -557,8 +558,9 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
   if (result.successful()) {
     std::vector<TRI_voc_tick_t> ids;
-    velocypack::Slice databases = result.slice()[0].get(
-        std::vector<std::string>({AgencyComm::prefix(), "Plan", "Databases"}));
+    velocypack::Slice databases =
+        result.slice()[0].get(std::vector<std::string>(
+            {AgencyCommManager::path(), "Plan", "Databases"}));
 
     if (!databases.isObject()) {
       return false;
@@ -724,7 +726,8 @@ bool HeartbeatThread::syncDBServerStatusQuo() {
 
 bool HeartbeatThread::handleStateChange(AgencyCommResult& result) {
   VPackSlice const slice = result.slice()[0].get(std::vector<std::string>(
-      {AgencyComm::prefix(), "Sync", "Commands", _myId}));
+      {AgencyCommManager::path(), "Sync", "Commands", _myId}));
+
   if (slice.isString()) {
     std::string command = slice.copyString();
     ServerState::StateEnum newState = ServerState::stringToState(command);
@@ -753,7 +756,7 @@ bool HeartbeatThread::sendState() {
   }
 
   if (++_numFails % _maxFailsBeforeWarning == 0) {
-    std::string const endpoints = AgencyComm::getEndpointsString();
+    std::string const endpoints = AgencyCommManager::MANAGER->endpointsString();
 
     LOG_TOPIC(WARN, Logger::HEARTBEAT)
         << "heartbeat could not be sent to agency endpoints (" << endpoints
