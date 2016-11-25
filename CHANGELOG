@@ -3,6 +3,8 @@ v3.1.3 (xxxx-xx-xx)
 
 * fix endless loop when trying to create a collection with replicationFactor: -1
 
+* Prevent uniform shard distribution when replicationFactor == numServers
+
 v3.1.2 (2016-11-24)
 -------------------
 
