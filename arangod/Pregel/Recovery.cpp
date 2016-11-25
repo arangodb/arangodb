@@ -26,6 +26,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Utils.h"
+#include "Pregel/Conductor.h"
 #include "Pregel/WorkerState.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 
@@ -40,12 +41,17 @@ RecoveryManager::RecoveryManager(Conductor *c) : _conductor(c) {
   _agencyCallbackRegistry = cluster->agencyCallbackRegistry();
 }
 
-void RecoveryManager::monitorCollections(std::vector<std::shared_ptr<LogicalCollection>> const& collections) {
+RecoveryManager::~RecoveryManager() {
+  for (auto call : _agencyCallbacks) {
+    _agencyCallbackRegistry->unregisterCallback(call);
+  }
+}
 
-  /*
+void RecoveryManager::monitorDBServers(std::vector<ServerID> const& dbServers) {
+  
   std::function<bool(VPackSlice const& result)> dbServerChanged =
-  [=](VPackSlice const& result) {
-    if (result.isObject() && result.length() == (size_t)numberOfShards) {
+  [](VPackSlice const& result) {
+    /*if (result.isObject() && result.length() == (size_t)numberOfShards) {
       std::string tmpMsg = "";
       bool tmpHaveError = false;
       
@@ -73,21 +79,20 @@ void RecoveryManager::monitorCollections(std::vector<std::shared_ptr<LogicalColl
         return true;
       }
       *dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, *errMsg);
-    }
+    }*/
+    LOG(INFO) << result.toString();
     return true;
   };
+  //std::string const& dbName = _conductor->_vocbaseGuard.vocbase()->name();
   
-  // ATTENTION: The following callback calls the above closure in a
-  // different thread. Nevertheless, the closure accesses some of our
-  // local variables. Therefore we have to protect all accesses to them
-  // by a mutex. We use the mutex of the condition variable in the
-  // AgencyCallback for this.
-  auto agencyCallback = std::make_shared<AgencyCallback>(
-                                                         ac, "Current/Collections/" + databaseName + "/" + collectionID,
-                                                         dbServerChanged, true, false);
-  _agencyCallbackRegistry->registerCallback(agencyCallback);
-  TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));*/
-  
+  for (auto server : dbServers) {
+    _statusMap[server] = "";
+    std::string path = "Supervision/Health/" + server + "/Status";
+    auto call = std::make_shared<AgencyCallback>(_agency, path,
+                                                 dbServerChanged, true, false);
+    _agencyCallbacks.push_back(call);
+    _agencyCallbackRegistry->registerCallback(call);
+  }
   
 }
 

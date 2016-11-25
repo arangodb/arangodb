@@ -30,6 +30,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/AggregatorUsage.h"
 #include "Pregel/Statistics.h"
+#include "Pregel/Recovery.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
@@ -41,10 +42,13 @@ enum ExecutionState { DEFAULT, RUNNING, DONE, CANCELED };
 class Conductor {
   friend class arangodb::RestPregelHandler;
 
-  VocbaseGuard _vocbaseGuard;
+  ExecutionState _state = ExecutionState::DEFAULT;
+  const VocbaseGuard _vocbaseGuard;
   const uint64_t _executionNumber;
   const std::string _algorithm;
-  ExecutionState _state;
+  Mutex _finishedGSSMutex;  // prevents concurrent calls to finishedGlobalStep
+  RecoveryManager _recoveryManager;
+  
   std::vector<std::shared_ptr<LogicalCollection>> _vertexCollections;
   std::vector<std::shared_ptr<LogicalCollection>> _edgeCollections;
   std::vector<ServerID> _dbServers;
@@ -53,16 +57,13 @@ class Conductor {
   std::unique_ptr<IAggregatorCreator> _agregatorCreator;
   std::unique_ptr<AggregatorUsage> _aggregatorUsage;
 
-  double _startTimeSecs = 0;
+  double _startTimeSecs = 0, _endTimeSecs = 0;
   uint64_t _globalSuperstep = 0;
-  int32_t _dbServerCount = 0;
-  int32_t _responseCount = 0;
-  int32_t _doneCount = 0;
+  uint32_t _responseCount = 0, _doneCount = 0;
   WorkerStats _workerStats;
-  Mutex _finishedGSSMutex;  // prevents concurrent calls to finishedGlobalStep
 
-  void startGlobalStep();
-  int sendToAllDBServers(std::string url, VPackSlice const& body);
+  bool _startGlobalStep();
+  int _sendToAllDBServers(std::string url, VPackSlice const& body);
 
   // === REST callbacks ===
   void finishedGlobalStep(VPackSlice& data);
@@ -80,6 +81,9 @@ class Conductor {
   ExecutionState getState() const { return _state; }
   WorkerStats workerStats() const {return _workerStats;}
   uint64_t globalSuperstep() const {return _globalSuperstep;}
+  double totalRuntimeSecs() {
+    return _endTimeSecs == 0 ? TRI_microtime() - _startTimeSecs : _endTimeSecs - _startTimeSecs;
+  }
 };
 }
 }

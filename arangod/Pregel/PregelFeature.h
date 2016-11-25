@@ -46,6 +46,7 @@ class PregelFeature final : public application_features::ApplicationFeature {
   uint64_t createExecutionNumber();
   void addExecution(Conductor* const exec, uint64_t executionNumber);
   Conductor* conductor(uint64_t executionNumber);
+  void notifyConductorOutage();
 
   void addWorker(IWorker* const worker, uint64_t executionNumber);
   IWorker* worker(uint64_t executionNumber);

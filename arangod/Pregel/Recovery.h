@@ -39,14 +39,17 @@ class GraphStore;
 class RecoveryManager {
   
   AgencyComm _agency;
-  AgencyCallbackRegistry *_agencyCallbackRegistry;
-  Conductor *_conductor;// weak
+  AgencyCallbackRegistry *_agencyCallbackRegistry;//weak
+  Conductor *_conductor;
+
+  std::map<ServerID, std::string> _statusMap;
+  std::vector<std::shared_ptr<AgencyCallback>> _agencyCallbacks;
   
  public:
   RecoveryManager(Conductor *c);
-  ~RecoveryManager() {}
+  ~RecoveryManager();
 
-  void monitorCollections(std::vector<std::shared_ptr<LogicalCollection>> const& collections);
+  void monitorDBServers(std::vector<ServerID> const& dbServers);
   bool allServersAvailable(std::vector<ServerID> const& dbServers);
 };
   

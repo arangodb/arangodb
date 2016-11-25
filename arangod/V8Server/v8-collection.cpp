@@ -1964,6 +1964,7 @@ static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
   result.add("running", VPackValue(c->getState() == pregel::ExecutionState::RUNNING,
                                    VPackValueType::Bool));
   result.add("gss", VPackValue(c->globalSuperstep()));
+  result.add("totalRuntime", VPackValue(c->totalRuntimeSecs()));
   c->workerStats().serializeValues(result);
   result.close();
   TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));

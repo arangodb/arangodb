@@ -63,7 +63,7 @@ Conductor::Conductor(
     : _vocbaseGuard(vocbase),
       _executionNumber(executionNumber),
       _algorithm(algorithm),
-      _state(ExecutionState::DEFAULT),
+      _recoveryManager(this),
       _vertexCollections(vertexCollections),
       _edgeCollections(edgeCollections) {
   bool isCoordinator = ServerState::instance()->isCoordinator();
@@ -147,7 +147,6 @@ void Conductor::start(VPackSlice userConfig) {
   _startTimeSecs = TRI_microtime();
   _globalSuperstep = 0;
   _state = ExecutionState::RUNNING;
-  _dbServerCount = _dbServers.size();
   _responseCount = 0;
   _doneCount = 0;
   if (vertexMap.size() != edgeMap.size()) {
@@ -214,7 +213,9 @@ void Conductor::start(VPackSlice userConfig) {
   printResults(requests);
 
   if (nrDone == requests.size()) {
-    startGlobalStep();
+    if (_startGlobalStep()) {
+      _recoveryManager.monitorDBServers(_dbServers);
+    }
   } else {
     LOG(ERR) << "Not all DBServers started the execution";
   }
@@ -222,7 +223,7 @@ void Conductor::start(VPackSlice userConfig) {
 
 // only called by the conductor, is protected by the
 // mutex locked in finishedGlobalStep
-void Conductor::startGlobalStep() {
+bool Conductor::_startGlobalStep() {
   VPackBuilder b;
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
@@ -240,17 +241,19 @@ void Conductor::startGlobalStep() {
 
   std::string baseUrl = Utils::baseUrl(_vocbaseGuard.vocbase()->name());
   // first allow all workers to run worker level operations
-  int r = sendToAllDBServers(baseUrl + Utils::prepareGSSPath, b.slice());
+  int r = _sendToAllDBServers(baseUrl + Utils::prepareGSSPath, b.slice());
 
   if (r == TRI_ERROR_NO_ERROR) {
     // start vertex level operations, does not get a response
-    sendToAllDBServers(baseUrl + Utils::startGSSPath, b.slice());// call me maybe
+    _sendToAllDBServers(baseUrl + Utils::startGSSPath, b.slice());// call me maybe
     LOG(INFO) << "Conductor started new gss " << _globalSuperstep;
+    return true;
   } else {
     LOG(INFO) << "Seems there is at least one worker out of order";
     // TODO, in case a worker needs more than 5 minutes to do calculations
     // this will be triggered as well
     // TODO handle cluster failures
+    return false;
   }
 }
 
@@ -275,24 +278,22 @@ void Conductor::finishedGlobalStep(VPackSlice& data) {
     _doneCount++;
   }
 
-  if (_responseCount == _dbServerCount) {
+  if (_responseCount == _dbServers.size()) {
     LOG(INFO) << "Finished gss " << _globalSuperstep;
     _globalSuperstep++;
 
     if (_state != ExecutionState::RUNNING
-        || _doneCount == _dbServerCount
+        || _doneCount == _dbServers.size()
         || _globalSuperstep == 100) {
       
-      LOG(INFO) << "Done. We did " << _globalSuperstep << " rounds";
-      LOG(INFO) << "Send: " << _workerStats.sendCount
-      << " Received: " << _workerStats.receivedCount;
-      LOG(INFO) << "Worker Runtime: " << _workerStats.superstepRuntimeSecs << "s";
-      LOG(INFO) << "Total Runtim: " << TRI_microtime() - _startTimeSecs << "s";
-      
+      _endTimeSecs = TRI_microtime();
       bool storeResults = _state == ExecutionState::RUNNING;
       if (_state == ExecutionState::CANCELED) {
         LOG(WARN) << "Execution was canceled, results will be discarded.";
+      } else {
+        _state = ExecutionState::DONE;
       }
+      
       VPackBuilder b;
       b.openObject();
       b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
@@ -300,24 +301,27 @@ void Conductor::finishedGlobalStep(VPackSlice& data) {
       b.add(Utils::storeResultsKey, VPackValue(storeResults));
       b.close();
       std::string baseUrl = Utils::baseUrl(_vocbaseGuard.vocbase()->name());
-      sendToAllDBServers(baseUrl + Utils::finalizeExecutionPath, b.slice());
+      _sendToAllDBServers(baseUrl + Utils::finalizeExecutionPath, b.slice());
       
-      _state = ExecutionState::DONE;
+      LOG(INFO) << "Done. We did " << _globalSuperstep << " rounds";
+      LOG(INFO) << "Send: " << _workerStats.sendCount
+      << " Received: " << _workerStats.receivedCount;
+      LOG(INFO) << "Worker Runtime: " << _workerStats.superstepRuntimeSecs << "s";
+      LOG(INFO) << "Total Runtime: " << totalRuntimeSecs() << "s";
+      
     } else {  // trigger next superstep
-      startGlobalStep();
+      _startGlobalStep();
     }
   }
 }
 
-void Conductor::cancel() { _state = ExecutionState::CANCELED; }
+void Conductor::cancel() {_state = ExecutionState::CANCELED; }
 
-int Conductor::sendToAllDBServers(std::string path, VPackSlice const& config) {
+int Conductor::_sendToAllDBServers(std::string path, VPackSlice const& config) {
   ClusterComm* cc = ClusterComm::instance();
-  _dbServerCount = _dbServers.size();
   _responseCount = 0;
   _doneCount = 0;
-
-  if (_dbServerCount == 0) {
+  if (_dbServers.size() == 0) {
     LOG(WARN) << "No servers registered";
     return TRI_ERROR_FAILED;
   }
