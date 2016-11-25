@@ -350,7 +350,6 @@ std::string ServerState::createIdForRole(
   
   std::string const agencyKey = roleToAgencyKey(role);
   
-  std::string const serverIdPrefix = agencyKey.substr(0, agencyKey.length() - 1);
   std::string id;
 
   VPackBuilder builder;
