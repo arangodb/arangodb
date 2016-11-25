@@ -183,7 +183,7 @@ class AgencyPrecondition {
 
 class AgencyOperation {
  public:
-  AgencyOperation(std::string const& key);
+  explicit AgencyOperation(std::string const& key);
   
   AgencyOperation(std::string const& key, AgencySimpleOperationType opType);
 
@@ -405,7 +405,7 @@ class AgencyCommManager {
   static std::string generateStamp();
 
  public:
-  AgencyCommManager(std::string const& prefix) : _prefix(prefix) {}
+  explicit AgencyCommManager(std::string const& prefix) : _prefix(prefix) {}
 
  public:
   bool start();

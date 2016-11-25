@@ -77,8 +77,8 @@ struct trans_ret_t {
   index_t maxind;
   size_t failed;
   query_t result;
-  trans_ret_t() : accepted(false), redirect("") {}
-  trans_ret_t(bool a, std::string const& id) : accepted(a), redirect(id) {}
+  trans_ret_t() : accepted(false), redirect(""), maxind(0), failed(0) {}
+  trans_ret_t(bool a, std::string const& id) : accepted(a), redirect(id), maxind(0), failed(0) {}
   trans_ret_t(bool a, std::string const& id, index_t mi, size_t f,
               query_t const& res) : accepted(a), redirect(id), maxind(mi),
                                     failed(f), result(res) {}

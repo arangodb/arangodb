@@ -61,7 +61,7 @@ static void addEmptyVPackObject(std::string const& name,
 // -----------------------------------------------------------------------------
 
 AgencyPrecondition::AgencyPrecondition()
-  : type(AgencyPrecondition::Type::NONE) {}
+  : type(AgencyPrecondition::Type::NONE), empty(false) {}
 
 AgencyPrecondition::AgencyPrecondition(std::string const& key, Type t, bool e)
     : key(AgencyCommManager::path(key)), type(t), empty(e) {}

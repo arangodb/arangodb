@@ -573,8 +573,6 @@ query_t Agent::lastAckedAgo() const {
 }
 
 trans_ret_t Agent::transact(query_t const& queries) {
-
-  std::vector<bool> applied;
   arangodb::consensus::index_t maxind = 0; // maximum write index
 
   if (!_constituent.leading()) {
@@ -634,7 +632,6 @@ trans_ret_t Agent::transact(query_t const& queries) {
 
 /// Write new entries to replicated state and store
 write_ret_t Agent::write(query_t const& query) {
-
   std::vector<bool> applied;
   std::vector<index_t> indices;
 
