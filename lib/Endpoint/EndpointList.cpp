@@ -23,8 +23,8 @@
 
 #include "EndpointList.h"
 
-#include "Logger/Logger.h"
 #include "Basics/StringUtils.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

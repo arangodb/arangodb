@@ -22,17 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Agent.h"
-#include "GossipCallback.h"
-
-#include "Basics/ConditionLocker.h"
-#include "RestServer/DatabaseFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
-#include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <chrono>
+
+#include "Agency/GossipCallback.h"
+#include "Basics/ConditionLocker.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::velocypack;
@@ -572,6 +572,65 @@ query_t Agent::lastAckedAgo() const {
   
 }
 
+trans_ret_t Agent::transact(query_t const& queries) {
+
+  std::vector<bool> applied;
+  arangodb::consensus::index_t maxind = 0; // maximum write index
+
+  if (!_constituent.leading()) {
+    return trans_ret_t(false, _constituent.leaderID());
+  }
+
+  // Apply to spearhead and get indices for log entries
+  auto qs = queries->slice();
+  auto ret = std::make_shared<arangodb::velocypack::Builder>();
+  size_t failed = 0;
+  ret->openArray();
+  {
+    
+    MUTEX_LOCKER(mutexLocker, _ioLock);
+    
+    // Only leader else redirect
+    if (challengeLeadership()) {
+      _constituent.candidate();
+      return trans_ret_t(false, NO_LEADER);
+    }
+    
+    for (const auto& query : VPackArrayIterator(qs)) {
+      if (query[0].isObject()) {
+        if(_spearhead.apply(query)) {
+          maxind = _state.log(query[0], term());
+          ret->add(VPackValue(maxind));
+        } else {
+          ret->add(VPackValue(0));
+          ++failed;
+        }
+      } else if (query[0].isString()) {
+        _spearhead.read(query, *ret);
+      }
+    }
+    
+    // (either no writes or all preconditions failed)
+    if (maxind == 0) {
+      ret->clear();
+      ret->openArray();      
+      for (const auto& query : VPackArrayIterator(qs)) {
+        if (query[0].isObject()) {
+          ret->add(VPackValue(0));
+        } else if (query[0].isString()) {
+          _readDB.read(query, *ret);
+        }
+      }
+    }
+    
+  }
+  ret->close();
+  
+  // Report that leader has persisted
+  reportIn(id(), maxind);
+
+  return trans_ret_t(true, id(), maxind, failed, ret);
+}
 
 /// Write new entries to replicated state and store
 write_ret_t Agent::write(query_t const& query) {
@@ -750,8 +809,7 @@ void Agent::detectActiveAgentFailures() {
           LOG_TOPIC(DEBUG, Logger::AGENCY) << "Active agent " << id << " has failed. << "
                     << repl << " will be promoted to active agency membership";
           // Guarded in ::
-          _activator =
-            std::unique_ptr<AgentActivator>(new AgentActivator(this, id, repl));
+          _activator = std::make_unique<AgentActivator>(this, id, repl);
           _activator->start();
           return;
         }

@@ -40,57 +40,57 @@ thread_local TRI_request_statistics_t* TRI_request_statistics_t::STATS =
 
 static size_t const QUEUE_SIZE = 1000;
 
-std::string TRI_request_statistics_t::to_string(){
-    std::stringstream ss;
-    ss << std::boolalpha << std::setprecision(20) << "statistics      "
-       << std::endl
-       << "_readStart      " << _readStart << std::endl
-       << "_readEnd        " << _readEnd << std::endl
-       << "_queueStart     " << _queueStart << std::endl
-       << "_queueEnd       " << _queueEnd << std::endl
-       << "_requestStart   " << _requestStart << std::endl
-       << "_requestEnd     " << _requestEnd << std::endl
-       << "_writeStart     " << _writeStart << std::endl
-       << "_writeEnd       " << _writeEnd << std::endl
-       << "_receivedBytes  " << _receivedBytes << std::endl
-       << "_sentBytes      " << _sentBytes << std::endl
-       << "_async          " << _async << std::endl
-       << "_tooLarge       " << _tooLarge << std::endl
-       << "_executeError   " << _executeError << std::endl
-       << "_ignore         " << _ignore << std::endl;
+std::string TRI_request_statistics_t::to_string() {
+  std::stringstream ss;
+  ss << std::boolalpha << std::setprecision(20) << "statistics      "
+      << std::endl
+      << "_readStart      " << _readStart << std::endl
+      << "_readEnd        " << _readEnd << std::endl
+      << "_queueStart     " << _queueStart << std::endl
+      << "_queueEnd       " << _queueEnd << std::endl
+      << "_requestStart   " << _requestStart << std::endl
+      << "_requestEnd     " << _requestEnd << std::endl
+      << "_writeStart     " << _writeStart << std::endl
+      << "_writeEnd       " << _writeEnd << std::endl
+      << "_receivedBytes  " << _receivedBytes << std::endl
+      << "_sentBytes      " << _sentBytes << std::endl
+      << "_async          " << _async << std::endl
+      << "_tooLarge       " << _tooLarge << std::endl
+      << "_executeError   " << _executeError << std::endl
+      << "_ignore         " << _ignore << std::endl;
 
-    return ss.str();
+  return ss.str();
 }
 
 void TRI_request_statistics_t::trace_log(){
-    LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-       << "_readStart      " << _readStart;
-    LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-       << "_readEnd        " << _readEnd;
-    LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-       << "_queueStart     " << _queueStart;
-    LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-       << "_queueEnd       " << _queueEnd;
-    LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-       << "_requestStart   " << _requestStart;
-    LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-       << "_requestEnd     " << _requestEnd;
-    LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-       << "_writeStart     " << _writeStart;
-    LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-       << "_writeEnd       " << _writeEnd;
-    LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-       << "_receivedBytes  " << _receivedBytes;
-    LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-       << "_sentBytes      " << _sentBytes;
-    LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-       << "_async          " << _async;
-    LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-       << "_tooLarge       " << _tooLarge;
-    LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-       << "_executeError   " << _executeError;
-    LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-       << "_ignore         " << _ignore;
+  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+      << "_readStart      " << _readStart;
+  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+      << "_readEnd        " << _readEnd;
+  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+      << "_queueStart     " << _queueStart;
+  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+      << "_queueEnd       " << _queueEnd;
+  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+      << "_requestStart   " << _requestStart;
+  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+      << "_requestEnd     " << _requestEnd;
+  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+      << "_writeStart     " << _writeStart;
+  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+      << "_writeEnd       " << _writeEnd;
+  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+      << "_receivedBytes  " << _receivedBytes;
+  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+      << "_sentBytes      " << _sentBytes;
+  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+      << "_async          " << _async;
+  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+      << "_tooLarge       " << _tooLarge;
+  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+      << "_executeError   " << _executeError;
+  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+      << "_ignore         " << _ignore;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -120,6 +120,8 @@ static boost::lockfree::queue<TRI_request_statistics_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessRequestStatistics(TRI_request_statistics_t* statistics) {
+  TRI_ASSERT(statistics != nullptr);
+
   {
     MUTEX_LOCKER(mutexLocker, RequestDataLock);
 
@@ -179,7 +181,7 @@ static void ProcessRequestStatistics(TRI_request_statistics_t* statistics) {
   // clear statistics
   statistics->reset();
 
-// put statistics item back onto the freelist
+  // put statistics item back onto the freelist
   int tries = 0;
   while (++tries < 1000) {
     if (RequestFreeList.push(statistics)) {
@@ -189,7 +191,7 @@ static void ProcessRequestStatistics(TRI_request_statistics_t* statistics) {
   }
   if (tries > 1) {
     LOG_TOPIC(WARN, Logger::REQUESTS) << "RequestFreeList.push failed "
-      << tries-1 << " times.";
+      << tries - 1 << " times.";
   }
 }
 

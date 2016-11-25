@@ -22,6 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Collection.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Exceptions.h"
@@ -31,9 +35,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
-
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;

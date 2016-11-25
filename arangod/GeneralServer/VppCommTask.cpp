@@ -8,7 +8,7 @@
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     vpp://www.apache.org/licenses/LICENSE-2.0
+///     http://www.apache.org/licenses/LICENSE-2.0
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -68,11 +68,11 @@ VppCommTask::VppCommTask(EventLoop loop, GeneralServer* server,
       AuthenticationFeature>("Authentication");
   TRI_ASSERT(_authentication != nullptr);
 
-  _protocol = "vpp";
+  _protocol = "vst";
   _readBuffer.reserve(
       _bufferLength);  // ATTENTION <- this is required so we do not
-                       // loose information during a resize
-    auto agent = std::unique_ptr<RequestStatisticsAgent>(new RequestStatisticsAgent(true));
+                       // lose information during a resize
+    auto agent = std::make_unique<RequestStatisticsAgent>(true);
     agent->acquire();
     MUTEX_LOCKER(lock, _agentsMutex);
     _agents.emplace(std::make_pair(0UL, std::move(agent)));
@@ -123,7 +123,7 @@ void VppCommTask::addResponse(VppResponse* response) {
 
   // and give some request information
   LOG_TOPIC(INFO, Logger::REQUESTS)
-      << "\"vpp-request-end\",\"" << (void*)this << "\",\""
+      << "\"vst-request-end\",\"" << (void*)this << "\",\""
       << _connectionInfo.clientAddress << "\",\""
       << VppRequest::translateVersion(_protocolVersion) << "\","
       << static_cast<int>(response->responseCode()) << ","
@@ -239,7 +239,7 @@ bool VppCommTask::processRead(double startTime) {
 
   if (chunkHeader._isFirst) {
     //create agent for new messages
-    auto agent = std::unique_ptr<RequestStatisticsAgent>(new RequestStatisticsAgent(true));
+    auto agent = std::make_unique<RequestStatisticsAgent>(true);
     agent->acquire();
     agent->requestStatisticsAgentSetReadStart(startTime);
     MUTEX_LOCKER(lock, _agentsMutex);
@@ -276,11 +276,11 @@ bool VppCommTask::processRead(double startTime) {
   if (doExecute) {
     VPackSlice header = message.header();
 
-    LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"vpp-request-header\",\""
+    LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"vst-request-header\",\""
                                        << "\"," << message.header().toJson()
                                        << "\"";
 
-    LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"vpp-request-payload\",\""
+    LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"vst-request-payload\",\""
                                        << "\"," << message.payload().toJson()
                                        << "\"";
 
@@ -502,7 +502,7 @@ boost::optional<bool> VppCommTask::getMessageFromMultiChunks(
     }
     auto& im = incompleteMessageItr->second;  // incomplete Message
     im._currentChunk++;
-    assert(im._currentChunk == chunkHeader._chunk);
+    TRI_ASSERT(im._currentChunk == chunkHeader._chunk);
     im._buffer.append(vpackBegin, std::distance(vpackBegin, chunkEnd));
     // check buffer longer than length
 

@@ -28,6 +28,16 @@ bool Socket::handshake() {
   if (!_encrypted) {
     return true;
   }
+
+  if (_handshakeDone) {
+    return true;
+  }
   
-  return sslHandshake();
+  bool ok = sslHandshake();
+
+  if (ok) {
+    _handshakeDone = true;
+  }
+
+  return ok;
 }

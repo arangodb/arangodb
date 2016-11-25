@@ -63,6 +63,9 @@ class State {
   std::vector<index_t> log(query_t const& query,
                            std::vector<bool> const& indices, term_t term);
 
+  /// @brief Single log entry (leader)
+  arangodb::consensus::index_t log(velocypack::Slice const& slice, term_t term);
+    
   /// @brief Log entries (followers)
   arangodb::consensus::index_t log(query_t const& queries, size_t ndups = 0);
 

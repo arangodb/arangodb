@@ -541,7 +541,7 @@ class LogicalCollection {
   std::vector<std::shared_ptr<arangodb::Index>> _indexes;
 
   // SECTION: Replication
-  int const _replicationFactor;
+  size_t const _replicationFactor;
 
   // SECTION: Sharding
   size_t _numberOfShards;
