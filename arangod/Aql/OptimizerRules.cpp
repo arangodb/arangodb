@@ -46,6 +46,8 @@
 #include "Cluster/ClusterInfo.h"
 #include "Utils/Transaction.h"
 #include "VocBase/TraverserOptions.h"
+#include <boost/optional.hpp>
+#include <tuple>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -3915,6 +3917,36 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
 }
 
 
+static boost::optional<std::tuple<EnumerateCollectionNode*,std::vector<std::string>,std::vector<std::string>>>
+geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionNode* ex, ExecutionPlan* plan){
+  using SV = std::vector<std::string>;
+  LOG(ERR) << "    enter argument check";
+  // first and second should be based on the same document - need to provide the document
+  // in order to see which collection is bound to it and if that collections supports geo index
+  if( !pair.first->isAttributeAccessForVariable() || !pair.second->isAttributeAccessForVariable()){
+    LOG(ERR) << "      not both args are of type attribute access";
+    return boost::none;
+  }
+
+  // expect access of the for doc.attribute
+  // TODO: more complex access path have to be added: loop until REFERENCE TYPE IS FOUND
+  auto setter1 = plan->getVarSetBy(static_cast<Variable const*>(pair.first->getMember(0)->getData())->id);
+  auto setter2 = plan->getVarSetBy(static_cast<Variable const*>(pair.first->getMember(0)->getData())->id);
+
+  LOG(ERR) << "      got setter";
+  if(setter1 == setter2){
+    if(setter1->getType() == EN::ENUMERATE_COLLECTION){
+      auto collNode = reinterpret_cast<EnumerateCollectionNode*>(setter1);
+      auto collection = collNode->collection(); //what kind of indexes does it have on what attributes
+      // TODO - check collection for geoindex
+      LOG(ERR) << "        SETTER IS ENUMERATE_COLLECTION: " << collection->getName();
+      return std::tuple<EnumerateCollectionNode* ,SV,SV>{collNode, SV{pair.first->getString()},SV{pair.second->getString()}};
+    }
+  }
+
+  return boost::none;
+}
+
 void arangodb::aql::optimizeGeoIndexRule(Optimizer* opt,
                                          ExecutionPlan* plan,
                                          Optimizer::Rule const* rule) {
@@ -3923,30 +3955,15 @@ void arangodb::aql::optimizeGeoIndexRule(Optimizer* opt,
 
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
-
-//  plan->findEndNodes(nodes, true);
-//
-//  for(auto node : nodes){
-//    auto current = node;
-//    while(current != nullptr){
-//      if(current->getType() == EN::SORT) {
-//
-//      }
-//
-//      LOG(ERR) << current->getTypeString();
-//      current = current->getFirstDependency();
-//    }
-//  }
+  bool modified = false;
 
   plan->findNodesOfType(nodes, EN::SORT, true);
-
-  bool modified = false;
 
   for (auto const& n : nodes) {
     auto node = static_cast<SortNode*>(n);
     auto const& elements = node->getElements();
-    if (elements.size() != 1) {
-      // we're looking for "SORT DISTANCE()", which has just one sort criterion
+    if ( !(elements.size() == 1 && elements[0].second)) {
+      // we're looking for "SORT DISTANCE(x,y,a,b) ASC", which has just one sort criterion
       continue;
     }
 
@@ -3968,10 +3985,8 @@ void arangodb::aql::optimizeGeoIndexRule(Optimizer* opt,
       continue;
     }
 
-    auto funcNode = expression->node();
+    AstNode const* funcNode = expression->node();
     auto func = static_cast<Function const*>(funcNode->getData());
-
-    LOG(ERR) << "FuncNode #members: " << funcNode->numMembers();
 
     // we're looking for "DISTANCE()", which is a function call
     // with an empty parameters array
@@ -3979,33 +3994,46 @@ void arangodb::aql::optimizeGeoIndexRule(Optimizer* opt,
       continue;
     }
 
-    LOG(ERR) << "FOUND DISTANCE RULE";
+    LOG(ERR) << "  FOUND DISTANCE RULE";
 
-    auto const& distance = funcNode->getMember(0);
-
-    if(distance->numMembers() != 4){
+    auto const& distanceArgs = funcNode->getMember(0);
+    if(distanceArgs->numMembers() != 4){
       continue;
     }
 
-    auto const& a = distance->getMember(0);
-    auto const& b = distance->getMember(1);
-    auto const& c = distance->getMember(2);
-    auto const& d = distance->getMember(3);
+    std::pair<AstNode*,AstNode*> argPair1 = { distanceArgs->getMember(0), distanceArgs->getMember(1) };
+    std::pair<AstNode*,AstNode*> argPair2 = { distanceArgs->getMember(2), distanceArgs->getMember(3) };
 
-    //we need at leaset do attribute access nodes
-    if ( ! ( a->isAttributeAccessForVariable() && b->isAttributeAccessForVariable() )
-       &&! ( c->isAttributeAccessForVariable() && d->isAttributeAccessForVariable() )){
+    auto result1 = geoDistanceFunctionArgCheck(argPair1, node, plan);
+    auto result2 = geoDistanceFunctionArgCheck(argPair2, node, plan);
+
+    if (  ( !result1 && !result2 ) || ( result1 && result2 ) ){
       continue;
     }
-    LOG(ERR) << "FOUND DISTANCE RULE WITH ATTRIBUTE ACCESS";
 
+    LOG(ERR) << "  FOUND DISTANCE RULE WITH ATTRIBUTE ACCESS";
+
+    if(result1){
+      LOG(ERR) << "  attributes: " << std::get<1>(result1.get())[0]
+               << ", " << std::get<2>(result1.get())[0]
+               << " of collection:" << std::get<0>(result1.get())->collection()->getName()
+               << " are geoindexed";
+    } else {
+      LOG(ERR) << "  attributes: " << std::get<1>(result2.get())[0]
+               << ", " << std::get<2>(result2.get())[0]
+               << " of collection:" << std::get<0>(result2.get())->collection()->getName()
+               << " are geoindexed";
+    }
+
+    //replace sort node
+    //modified=true;
+    modified=false;
 
   }
 
-  if(!modified){
-    opt->addPlan(plan, rule, false);
-  }
+  opt->addPlan(plan, rule, modified);
 
   LOG(ERR) << "EXIT GEO RULE";
+  LOG(ERR) << "";
 }
 
