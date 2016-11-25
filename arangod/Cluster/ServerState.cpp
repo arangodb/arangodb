@@ -81,7 +81,7 @@ ServerState* ServerState::instance() { return &Instance; }
 ////////////////////////////////////////////////////////////////////////////////
 
 const std::vector<std::string> ServerState::RoleStr ({
-    "NONE_", "SNGL_", "PRMR_", "SCND_", "CRDN_", "AGNT_"
+    "NONE", "SNGL", "PRMR", "SCND", "CRDN", "AGNT"
       });
 
 std::string ServerState::roleToString(ServerState::RoleEnum role) {
@@ -241,7 +241,11 @@ bool ServerState::unregister() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief try to register with a role
 ////////////////////////////////////////////////////////////////////////////////
-bool ServerState::registerWithRole(ServerState::RoleEnum role) {
+bool ServerState::registerWithRole(ServerState::RoleEnum role,
+                                   std::string const& myAddress) {
+
+  setLocalInfo(RoleStr.at(role) + ":" + myAddress);
+  
   if (!getId().empty()) {
     LOG_TOPIC(INFO, Logger::CLUSTER)
         << "Registering with role and localinfo. Supplied id is being ignored";
@@ -250,7 +254,7 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role) {
 
   AgencyComm comm;
   AgencyCommResult result;
-  std::string localInfoEncoded = StringUtils::urlEncode(_localInfo);
+  std::string localInfoEncoded = StringUtils::urlEncode(getLocalInfo());
   result = comm.getValues("Target/MapLocalToID/" + localInfoEncoded);
 
   std::string id;
@@ -349,16 +353,18 @@ std::string ServerState::roleToAgencyKey(ServerState::RoleEnum role) {
 //////////////////////////////////////////////////////////////////////////////
 std::string ServerState::createIdForRole(AgencyComm comm,
                                          ServerState::RoleEnum role) {
+  
+  typedef std::pair<AgencyOperation,AgencyPrecondition> operationType;
   std::string const agencyKey = roleToAgencyKey(role);
-
+  
   std::string const serverIdPrefix =
-      agencyKey.substr(0, agencyKey.length() - 1);
-
+    agencyKey.substr(0, agencyKey.length() - 1);
+  
   VPackBuilder builder;
   builder.add(VPackValue("none"));
-
+  
   AgencyCommResult createResult;
-
+  
   auto dbpath =
     application_features::ApplicationServer::getFeature<DatabasePathFeature>(
       "DatabasePath");
@@ -374,13 +380,13 @@ std::string ServerState::createIdForRole(AgencyComm comm,
       << "Restarting with persisted UUID " << id;
   } else {
     auto ofs = std::ofstream(filePath);
-    id = RoleStr.at(role) + to_string(boost::uuids::random_generator()());
+    id = RoleStr.at(role) + "-" + to_string(boost::uuids::random_generator()());
     ofs << id << std::endl;
     ofs.close();
     LOG_TOPIC(INFO, Logger::CLUSTER)
       << "Fresh start. Persisting new UUID " << id;
   }
-
+  
   AgencyCommResult result = comm.getValues("Plan/" + agencyKey);
   if (!result.successful()) {
     LOG(FATAL) << "Couldn't fetch Plan/" << agencyKey
@@ -395,57 +401,67 @@ std::string ServerState::createIdForRole(AgencyComm comm,
     FATAL_ERROR_EXIT();
   }
   
-  // mop: it is not our first run. wait a bit.
-  if (!id.empty()) {
-    sleep(1);
-  }
-  
   VPackSlice entry = servers.get(id);
   LOG_TOPIC(TRACE, Logger::STARTUP)
     << id << " found in existing keys: " << (!entry.isNone());
   
-  //createResult =
-  //comm.casValue("Plan/" + agencyKey + "/" + id, builder.slice(), false, 0.0, 0.0);
+  std::string targetIdStr =
+    (role == ROLE_COORDINATOR) ?
+    "Target/LatestCoordinatorId" : "Target/LatestDBServerId";
+  std::string planUrl = "Plan/" + agencyKey + "/" + id;
+  std::string targetUrl = "Target/MapUniqueToShortID/" + id;
 
-  auto idEntry = std::pair<AgencyOperation,AgencyPrecondition>(
-    AgencyOperation(
-      "Plan/" + agencyKey + "/" + id,
-      AgencyValueOperationType::SET, builder.slice()),
-    AgencyPrecondition()
-    );
-  auto uniqInc = std::pair<AgencyOperation,AgencyPrecondition>(
-    AgencyOperation(
-      "Target/coordTransId", AgencySimpleOperationType::INCREMENT_OP),
-    AgencyPrecondition()
-    );
-  auto uniqGet = std::pair<AgencyOperation,AgencyPrecondition>(
-    AgencyOperation("Target/coordTransId"),
-    AgencyPrecondition()
-    );
+  VPackBuilder empty;
+  { VPackObjectBuilder preconditionDefinition(&empty); }
   
   AgencyGeneralTransaction reg;
-  reg.operations.push_back(idEntry);
-  reg.operations.push_back(uniqInc);
-  reg.operations.push_back(uniqGet);
-  LOG(WARN) << "###############################################################";
+  reg.operations.push_back(
+    operationType(
+      AgencyOperation(planUrl, AgencyValueOperationType::SET, builder.slice()),
+      AgencyPrecondition(planUrl, AgencyPrecondition::Type::EMPTY, true)));
+  reg.operations.push_back(
+    operationType(
+      AgencyOperation(targetIdStr, AgencySimpleOperationType::INCREMENT_OP),
+      AgencyPrecondition(targetUrl, AgencyPrecondition::Type::EMPTY, true)));
+  reg.operations.push_back(
+    operationType(AgencyOperation(targetIdStr), AgencyPrecondition()));
+  
   result = comm.sendTransactionWithFailover(reg, 0.0);
-  LOG(WARN) << "###############################################################";
 
+  LOG(WARN) << result.slice().toJson();
   
+  VPackSlice latestId = result.slice()[2].get(
+    std::vector<std::string>(
+      {AgencyCommManager::path(), "Target",
+          (role == ROLE_COORDINATOR) ?
+          "LatestCoordinatorId" : "LatestDBServerId"}));
+
+
   VPackBuilder localIdBuilder;
-  localIdBuilder.add(VPackValue(id));
-  
-  VPackSlice localIdValue = localIdBuilder.slice();
-  
-  AgencyCommResult mapResult =
-      comm.setValue("Target/MapLocalToID/" + StringUtils::urlEncode(_localInfo),
-                    localIdValue, 0.0);
+  {
+    VPackObjectBuilder b(&localIdBuilder);
 
-  if (!mapResult.successful()) {
-    LOG(FATAL) << "Couldn't register Id as localId";
-    FATAL_ERROR_EXIT();
+    localIdBuilder.add("TransactionID", latestId);
+
+    std::stringstream ss;
+
+    ss << ((role == ROLE_COORDINATOR) ? "Coordinator" : "DBServer")
+       << std::setw(4) << std::setfill('0') << latestId.getNumber<uint32_t>();
+
+    std::string shortName = ss.str();
+
+    localIdBuilder.add("ShortName", VPackValue(shortName));
+
   }
 
+  AgencyWriteTransaction shortId (
+    {AgencyOperation(
+        targetUrl, AgencyValueOperationType::SET, localIdBuilder.slice())},
+    AgencyPrecondition(targetUrl, AgencyPrecondition::Type::EMPTY, true)
+    );
+
+  result = comm.sendTransactionWithFailover(shortId, 0.0);
+  
   return id;
 }
 

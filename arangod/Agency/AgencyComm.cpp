@@ -76,17 +76,36 @@ void AgencyPrecondition::toVelocyPack(VPackBuilder& builder) const {
     {
       VPackObjectBuilder preconditionDefinition(&builder);
       switch (type) {
-        case AgencyPrecondition::Type::EMPTY:
-          builder.add("oldEmpty", VPackValue(empty));
-          break;
-
-        case AgencyPrecondition::Type::VALUE:
-          builder.add("old", value);
-          break;
-
+      case AgencyPrecondition::Type::EMPTY:
+        builder.add("oldEmpty", VPackValue(empty));
+        break;
+      case AgencyPrecondition::Type::VALUE:
+        builder.add("old", value);
+        break;
         // mop: useless compiler warning :S
-        case AgencyPrecondition::Type::NONE:
-          break;
+      case AgencyPrecondition::Type::NONE:
+        break;
+      }
+    }
+  }
+}
+
+void AgencyPrecondition::toGeneralBuilder(VPackBuilder& builder) const {
+  if (type != AgencyPrecondition::Type::NONE) {
+    VPackObjectBuilder preconditionDefinition(&builder);
+    builder.add(VPackValue(key));
+    {
+      VPackObjectBuilder preconditionDefinition(&builder);
+      switch (type) {
+      case AgencyPrecondition::Type::EMPTY:
+        builder.add("oldEmpty", VPackValue(empty));
+        break;
+       case AgencyPrecondition::Type::VALUE:
+        builder.add("old", value);
+        break;
+         // mop: useless compiler warning :S
+      case AgencyPrecondition::Type::NONE:
+        break;
       }
     }
   } else {
@@ -201,15 +220,15 @@ std::string AgencyGeneralTransaction::toJson() const {
 }
 
 void AgencyGeneralTransaction::toVelocyPack(VPackBuilder& builder) const {
-    for (auto const& operation : operations) {
-      VPackArrayBuilder guard2(&builder);
-      if (std::get<0>(operation).type().type == AgencyOperationType::Type::READ) {
-        std::get<0>(operation).toGeneralBuilder(builder);
-      } else {
-        std::get<0>(operation).toGeneralBuilder(builder);
-        std::get<1>(operation).toVelocyPack(builder);
-      }
+  for (auto const& operation : operations) {
+    VPackArrayBuilder guard2(&builder);
+    if (std::get<0>(operation).type().type == AgencyOperationType::Type::READ) {
+      std::get<0>(operation).toGeneralBuilder(builder);
+    } else {
+      std::get<0>(operation).toGeneralBuilder(builder);
+      std::get<1>(operation).toGeneralBuilder(builder);
     }
+  }
 }
 
 void AgencyGeneralTransaction::push_back(
@@ -920,17 +939,30 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
     AgencyTransaction const& transaction, double timeout) {
   std::string url = AgencyComm::AGENCY_URL_PREFIX;
 
-  url += transaction.isWriteTransaction() ? "/write" : "/read";
+  switch (transaction.type()) {
+  case AgencyTransaction::Type::READ:
+    url += "/read";
+    break;
+  case AgencyTransaction::Type::WRITE:
+    url += "/write";
+    break;
+  case AgencyTransaction::Type::GENERAL:
+    url += "/transact";
+    break;
+  default:
+    // We should never get here.
+    TRI_ASSERT(false);
+    break;
+  }
 
   VPackBuilder builder;
   {
     VPackArrayBuilder guard(&builder);
     transaction.toVelocyPack(builder);
   }
-  LOG(WARN) << transaction.toJson();
 
   LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
-      << "sending transaction with fail-over to '" << url << "'";
+    << "sending " << builder.toJson() << "'" << url << "'";
 
   AgencyCommResult result = sendWithFailover(
       arangodb::rest::RequestType::POST,
@@ -938,14 +970,10 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
                       : timeout),
       url, builder.slice().toJson(), false);
 
-  if (!result.successful()) {
-    return result;
-  }
-
   try {
     result.setVPack(VPackParser::fromJson(result.body().c_str()));
 
-    if (transaction.isWriteTransaction()) {
+    if (transaction.type() == AgencyTransaction::Type::WRITE) {
       if (!result.slice().isObject() ||
           !result.slice().get("results").isArray()) {
         result._statusCode = 500;

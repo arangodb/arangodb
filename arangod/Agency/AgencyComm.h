@@ -168,6 +168,7 @@ class AgencyPrecondition {
 
  public:
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
+  void toGeneralBuilder(arangodb::velocypack::Builder& builder) const;
 
  public:
   std::string key;
@@ -209,13 +210,15 @@ class AgencyOperation {
 // -----------------------------------------------------------------------------
 
 class AgencyTransaction {
- public:
+
+public:
   virtual ~AgencyTransaction() = default;
 
- public:
+  enum class Type { READ, WRITE, GENERAL };
+
   virtual std::string toJson() const = 0;
   virtual void toVelocyPack(arangodb::velocypack::Builder&) const = 0;
-  virtual bool isWriteTransaction() const = 0;
+  virtual Type type() const = 0;
 };
 
 
@@ -243,9 +246,11 @@ struct AgencyGeneralTransaction : public AgencyTransaction {
 
   std::string toJson() const override final;
 
-  bool isWriteTransaction() const override final { return true; }
-
   void push_back(std::pair<AgencyOperation,AgencyPrecondition> const&);
+
+  AgencyTransaction::Type type() const override final {
+    return AgencyTransaction::Type::GENERAL;
+  }
 
 };
 
@@ -295,7 +300,9 @@ struct AgencyWriteTransaction : public AgencyTransaction {
 
   std::string toJson() const override final;
 
-  bool isWriteTransaction() const override final { return true; }
+  AgencyTransaction::Type type() const override final {
+    return AgencyTransaction::Type::WRITE;
+  }
 
  public:
   std::vector<AgencyPrecondition> preconditions;
@@ -322,7 +329,9 @@ struct AgencyReadTransaction : public AgencyTransaction {
 
   std::string toJson() const override final;
 
-  bool isWriteTransaction() const override final { return false; }
+  AgencyTransaction::Type type() const override final{
+    return AgencyTransaction::Type::READ;
+  }
 
  public:
   std::vector<std::string> keys;

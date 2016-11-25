@@ -73,6 +73,7 @@ static std::string const syncPrefix = "/Sync/ServerStates/";
 static std::string const healthPrefix = "/Supervision/Health/";
 static std::string const planDBServersPrefix = "/Plan/DBServers";
 static std::string const planCoordinatorsPrefix = "/Plan/Coordinators";
+static std::string const targetShortID = "/Target/MapUniqueToShortID/";
 static std::string const currentServersRegisteredPrefix =
     "/Current/ServersRegistered";
 static std::string const foxxmaster = "/Current/Foxxmaster";
@@ -136,6 +137,11 @@ std::vector<check_t> Supervision::checkDBServers() {
     todelete.erase(std::remove(todelete.begin(), todelete.end(), serverID),
                    todelete.end());
 
+    std::string shortName = "Unknown";
+    try {
+      shortName = _snapshot(targetShortID + serverID + "/ShortName").toJson();
+    } catch (...) {} 
+
     try {  // Existing
       lastHeartbeatTime =
           _snapshot(healthPrefix + serverID + "/LastHeartbeatSent").toJson();
@@ -158,6 +164,8 @@ std::vector<check_t> Supervision::checkDBServers() {
     report->add("LastHeartbeatSent", VPackValue(heartbeatTime));
     report->add("LastHeartbeatStatus", VPackValue(heartbeatStatus));
     report->add("Role", VPackValue("DBServer"));
+    report->add("ShortName", VPackValue(shortName));
+
     auto endpoint = serversRegistered.find(serverID);
     if (endpoint != serversRegistered.end()) {
       endpoint = endpoint->second->children().find("endpoint");
@@ -277,6 +285,11 @@ std::vector<check_t> Supervision::checkCoordinators() {
     todelete.erase(std::remove(todelete.begin(), todelete.end(), serverID),
                    todelete.end());
 
+    std::string shortName = "Unknown";
+    try {
+      shortName = _snapshot(targetShortID + serverID + "/ShortName").toJson();
+    } catch (...) {} 
+
     try {  // Existing
       lastHeartbeatTime =
           _snapshot(healthPrefix + serverID + "/LastHeartbeatSent").toJson();
@@ -297,6 +310,7 @@ std::vector<check_t> Supervision::checkCoordinators() {
     report->add("LastHeartbeatSent", VPackValue(heartbeatTime));
     report->add("LastHeartbeatStatus", VPackValue(heartbeatStatus));
     report->add("Role", VPackValue("Coordinator"));
+    report->add("ShortName", VPackValue(shortName));
     auto endpoint = serversRegistered.find(serverID);
     if (endpoint != serversRegistered.end()) {
       endpoint = endpoint->second->children().find("endpoint");

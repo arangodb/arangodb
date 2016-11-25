@@ -261,7 +261,7 @@ void ClusterFeature::prepare() {
       FATAL_ERROR_EXIT();
     }
 
-    if (!ServerState::instance()->registerWithRole(role)) {
+    if (!ServerState::instance()->registerWithRole(role, _myAddress)) {
       LOG(FATAL) << "Couldn't register at agency.";
       FATAL_ERROR_EXIT();
     }

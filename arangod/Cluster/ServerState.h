@@ -138,7 +138,7 @@ class ServerState {
   /// @brief get the server role
   RoleEnum getRole();
   
-  bool registerWithRole(RoleEnum);
+  bool registerWithRole(RoleEnum, std::string const&);
   
   bool unregister();
 
