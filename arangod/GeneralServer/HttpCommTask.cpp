@@ -66,7 +66,7 @@ HttpCommTask::HttpCommTask(EventLoop loop, GeneralServer* server,
   _protocol = "http";
 
   connectionStatisticsAgentSetHttp();
-  auto agent = std::unique_ptr<RequestStatisticsAgent>(new RequestStatisticsAgent(true));
+  auto agent = std::make_unique<RequestStatisticsAgent>(true);
   agent->acquire();
   MUTEX_LOCKER(lock, _agentsMutex);
   _agents.emplace(std::make_pair(1UL, std::move(agent)));
@@ -167,7 +167,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
         << "\"";
   }
 
-  auto agent = getAgent(1);
+  auto agent = getAgent(1UL);
   double const totalTime = agent->elapsedSinceReadStart();
 
   // append write buffer and statistics
