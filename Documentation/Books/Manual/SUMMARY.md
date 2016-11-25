@@ -52,6 +52,7 @@
     * [Persistent](Indexing/Persistent.md)
     * [Fulltext Indexes](Indexing/Fulltext.md)
     * [Geo Indexes](Indexing/Geo.md)
+    * [Vertex Centric Indexes](Indexing/VertexCentric.md)
 #
 * [Graphs](Graphs/README.md)
   * [General Graphs](Graphs/GeneralGraphs/README.md)

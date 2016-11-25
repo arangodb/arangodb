@@ -1,0 +1,2 @@
+arangosh&gt; <span class="hljs-string">`collection.ensureIndex({ type: "hash", fields: [ "_from", "type" ] })`</span>
+collection.ensureIndex({ <span class="hljs-attr">type</span>: <span class="hljs-string">"hash"</span>, <span class="hljs-attr">fields</span>: [ <span class="hljs-string">"_from"</span>, <span class="hljs-string">"type"</span> ] })
