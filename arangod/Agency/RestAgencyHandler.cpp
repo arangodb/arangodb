@@ -333,8 +333,10 @@ RestStatus RestAgencyHandler::handleTransact() {
     if (ret.maxind > 0) {
       _agent->waitFor(ret.maxind);
     }
-    
-    generateResult(rest::ResponseCode::OK, ret.result->slice());
+    generateResult(
+      (ret.failed==0) ?
+        rest::ResponseCode::OK : rest::ResponseCode::PRECONDITION_FAILED,
+      ret.result->slice());
     
   } else {            // Redirect to leader
     if (_agent->leaderID() == NO_LEADER) {

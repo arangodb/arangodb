@@ -60,6 +60,9 @@ static void addEmptyVPackObject(std::string const& name,
 // --SECTION--                                                AgencyPrecondition
 // -----------------------------------------------------------------------------
 
+AgencyPrecondition::AgencyPrecondition()
+  : type(AgencyPrecondition::Type::NONE) {}
+
 AgencyPrecondition::AgencyPrecondition(std::string const& key, Type t, bool e)
     : key(AgencyCommManager::path(key)), type(t), empty(e) {}
 
@@ -86,12 +89,20 @@ void AgencyPrecondition::toVelocyPack(VPackBuilder& builder) const {
           break;
       }
     }
+  } else {
+    VPackObjectBuilder guard(&builder);    
   }
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   AgencyOperation
 // -----------------------------------------------------------------------------
+
+AgencyOperation::AgencyOperation(std::string const& key)
+    : _key(AgencyCommManager::path(key)), _opType() {
+  _opType.type = AgencyOperationType::Type::READ;
+  LOG(WARN) << _opType.toString();
+}
 
 AgencyOperation::AgencyOperation(std::string const& key,
                                  AgencySimpleOperationType opType)
@@ -106,6 +117,10 @@ AgencyOperation::AgencyOperation(std::string const& key,
     : _key(AgencyCommManager::path(key)), _opType(), _value(value) {
   _opType.type = AgencyOperationType::Type::VALUE;
   _opType.value = opType;
+}
+
+AgencyOperationType AgencyOperation::type() const {
+  return _opType;
 }
 
 void AgencyOperation::toVelocyPack(VPackBuilder& builder) const {
@@ -125,6 +140,28 @@ void AgencyOperation::toVelocyPack(VPackBuilder& builder) const {
       }
     }
   }
+}
+
+void AgencyOperation::toGeneralBuilder(VPackBuilder& builder) const {
+  if (_opType.type == AgencyOperationType::Type::READ) {
+    builder.add(VPackValue(_key));
+  } else {
+    VPackObjectBuilder operation(&builder);
+    builder.add(VPackValue(_key));
+    VPackObjectBuilder valueOperation(&builder);
+    builder.add("op", VPackValue(_opType.toString()));
+    if (_opType.type == AgencyOperationType::Type::VALUE) {
+      if (_opType.value == AgencyValueOperationType::OBSERVE ||
+          _opType.value == AgencyValueOperationType::UNOBSERVE) {
+        builder.add("url", _value);
+      } else {
+        builder.add("new", _value);
+      }
+      if (_ttl > 0) {
+        builder.add("ttl", VPackValue(_ttl));
+      }
+    }
+  } 
 }
 
 // -----------------------------------------------------------------------------
@@ -151,6 +188,33 @@ void AgencyWriteTransaction::toVelocyPack(VPackBuilder& builder) const {
       precondition.toVelocyPack(builder);
     }
   }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          AgencyGeneralTransaction
+// -----------------------------------------------------------------------------
+
+std::string AgencyGeneralTransaction::toJson() const {
+  VPackBuilder builder;
+  toVelocyPack(builder);
+  return builder.toJson();
+}
+
+void AgencyGeneralTransaction::toVelocyPack(VPackBuilder& builder) const {
+    for (auto const& operation : operations) {
+      VPackArrayBuilder guard2(&builder);
+      if (std::get<0>(operation).type().type == AgencyOperationType::Type::READ) {
+        std::get<0>(operation).toGeneralBuilder(builder);
+      } else {
+        std::get<0>(operation).toGeneralBuilder(builder);
+        std::get<1>(operation).toVelocyPack(builder);
+      }
+    }
+}
+
+void AgencyGeneralTransaction::push_back(
+  std::pair<AgencyOperation,AgencyPrecondition> const& oper) {
+  operations.push_back(oper);
 }
 
 // -----------------------------------------------------------------------------
@@ -863,6 +927,7 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
     VPackArrayBuilder guard(&builder);
     transaction.toVelocyPack(builder);
   }
+  LOG(WARN) << transaction.toJson();
 
   LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
       << "sending transaction with fail-over to '" << url << "'";

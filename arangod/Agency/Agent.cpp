@@ -587,6 +587,7 @@ trans_ret_t Agent::transact(query_t const& queries) {
   // Apply to spearhead and get indices for log entries
   auto qs = queries->slice();
   auto ret = std::make_shared<arangodb::velocypack::Builder>();
+  size_t failed = 0;
   ret->openArray();
   {
     
@@ -605,6 +606,7 @@ trans_ret_t Agent::transact(query_t const& queries) {
           ret->add(VPackValue(maxind));
         } else {
           ret->add(VPackValue(0));
+          ++failed;
         }
       } else if (query[0].isString()) {
         _spearhead.read(query, *ret);
@@ -630,7 +632,7 @@ trans_ret_t Agent::transact(query_t const& queries) {
   // Report that leader has persisted
   reportIn(id(), maxind);
 
-  return trans_ret_t(true, id(), maxind, ret);
+  return trans_ret_t(true, id(), maxind, failed, ret);
 }
 
 /// Write new entries to replicated state and store

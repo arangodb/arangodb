@@ -72,6 +72,12 @@ class AgencyCommResultEntry {
 // --SECTION--                                          AgencyValueOperationType
 // -----------------------------------------------------------------------------
 
+enum class AgencyReadOperationType { READ };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          AgencyValueOperationType
+// -----------------------------------------------------------------------------
+
 enum class AgencyValueOperationType { SET, OBSERVE, UNOBSERVE, PUSH, PREPEND };
 
 // -----------------------------------------------------------------------------
@@ -92,7 +98,7 @@ enum class AgencySimpleOperationType {
 
 class AgencyOperationType {
  public:
-  enum class Type { VALUE, SIMPLE };
+  enum class Type { VALUE, SIMPLE, READ };
 
  public:
   Type type;
@@ -100,6 +106,7 @@ class AgencyOperationType {
   union {
     AgencyValueOperationType value;
     AgencySimpleOperationType simple;
+    AgencyReadOperationType read;
   };
 
  public:
@@ -136,6 +143,10 @@ class AgencyOperationType {
           default:
             return "unknown_operation_type";
         }
+        break;
+      case Type::READ:
+        return "read";
+        break;
       default:
         return "unknown_operation_type";
     }
@@ -151,6 +162,7 @@ class AgencyPrecondition {
   enum class Type { NONE, EMPTY, VALUE };
 
  public:
+  AgencyPrecondition();
   AgencyPrecondition(std::string const& key, Type, bool e);
   AgencyPrecondition(std::string const& key, Type, VPackSlice const);
 
@@ -170,6 +182,8 @@ class AgencyPrecondition {
 
 class AgencyOperation {
  public:
+  AgencyOperation(std::string const& key);
+  
   AgencyOperation(std::string const& key, AgencySimpleOperationType opType);
 
   AgencyOperation(std::string const& key, AgencyValueOperationType opType,
@@ -177,6 +191,8 @@ class AgencyOperation {
 
  public:
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
+  void toGeneralBuilder(arangodb::velocypack::Builder& builder) const;
+  AgencyOperationType type() const;
 
  public:
   uint32_t _ttl = 0;
@@ -200,6 +216,37 @@ class AgencyTransaction {
   virtual std::string toJson() const = 0;
   virtual void toVelocyPack(arangodb::velocypack::Builder&) const = 0;
   virtual bool isWriteTransaction() const = 0;
+};
+
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          AgencyGeneralTransaction
+// -----------------------------------------------------------------------------
+
+struct AgencyGeneralTransaction : public AgencyTransaction {
+
+  explicit AgencyGeneralTransaction(
+    std::pair<AgencyOperation,AgencyPrecondition> const& operation) {
+    operations.push_back(operation);
+  }
+  
+  explicit AgencyGeneralTransaction(
+    std::vector<std::pair<AgencyOperation,AgencyPrecondition>> const& _operations)
+    : operations(_operations) {}
+  
+  AgencyGeneralTransaction() = default;
+  
+  std::vector<std::pair<AgencyOperation,AgencyPrecondition>> operations;
+
+  void toVelocyPack(
+    arangodb::velocypack::Builder& builder) const override final;
+
+  std::string toJson() const override final;
+
+  bool isWriteTransaction() const override final { return true; }
+
+  void push_back(std::pair<AgencyOperation,AgencyPrecondition> const&);
+
 };
 
 // -----------------------------------------------------------------------------

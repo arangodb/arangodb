@@ -75,11 +75,13 @@ struct trans_ret_t {
   bool accepted;         // Query accepted (i.e. we are leader)
   std::string redirect;  // If not accepted redirect id
   index_t maxind;
+  size_t failed;
   query_t result;
   trans_ret_t() : accepted(false), redirect("") {}
   trans_ret_t(bool a, std::string const& id) : accepted(a), redirect(id) {}
-  trans_ret_t(bool a, std::string const& id, index_t mi, query_t const& res)
-    : accepted(a), redirect(id), maxind(mi), result(res) {}
+  trans_ret_t(bool a, std::string const& id, index_t mi, size_t f,
+              query_t const& res) : accepted(a), redirect(id), maxind(mi),
+                                    failed(f), result(res) {}
 };
 
 struct log_t {

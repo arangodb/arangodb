@@ -357,7 +357,6 @@ std::string ServerState::createIdForRole(AgencyComm comm,
   VPackBuilder builder;
   builder.add(VPackValue("none"));
 
-  VPackSlice idValue = builder.slice();
   AgencyCommResult createResult;
 
   auto dbpath =
@@ -368,55 +367,76 @@ std::string ServerState::createIdForRole(AgencyComm comm,
   auto ifs = std::ifstream(filePath);
   std::string id;
   
-  LOG(WARN) << "Opening " << filePath << " for reading ###";
   if (ifs.is_open()) {
     std::getline(ifs, id);
     ifs.close();
-    LOG(WARN) << "DONE id:" << id;
+    LOG_TOPIC(INFO, Logger::CLUSTER)
+      << "Restarting with persisted UUID " << id;
   } else {
-    LOG(WARN) << "FAILED ###";
-    
-    LOG(WARN) << "Opening " << filePath << " for writing ###";
     auto ofs = std::ofstream(filePath);
     id = RoleStr.at(role) + to_string(boost::uuids::random_generator()());
     ofs << id << std::endl;
     ofs.close();
-    LOG(WARN) << "DONE ###";    
+    LOG_TOPIC(INFO, Logger::CLUSTER)
+      << "Fresh start. Persisting new UUID " << id;
   }
 
-//  do {
-    AgencyCommResult result = comm.getValues("Plan/" + agencyKey);
-    if (!result.successful()) {
-      LOG(FATAL) << "Couldn't fetch Plan/" << agencyKey
-                 << " from agency. Agency is not initialized?";
-      FATAL_ERROR_EXIT();
-    }
-    VPackSlice servers = result.slice()[0].get(std::vector<std::string>(
-        {AgencyCommManager::path(), "Plan", agencyKey}));
-    if (!servers.isObject()) {
-      LOG(FATAL) << "Plan/" << agencyKey << " in agency is no object. "
-                 << "Agency not initialized?";
-      FATAL_ERROR_EXIT();
-    }
+  AgencyCommResult result = comm.getValues("Plan/" + agencyKey);
+  if (!result.successful()) {
+    LOG(FATAL) << "Couldn't fetch Plan/" << agencyKey
+               << " from agency. Agency is not initialized?";
+    FATAL_ERROR_EXIT();
+  }
+  VPackSlice servers = result.slice()[0].get(
+    std::vector<std::string>({AgencyCommManager::path(), "Plan", agencyKey}));
+  if (!servers.isObject()) {
+    LOG(FATAL) << "Plan/" << agencyKey << " in agency is no object. "
+               << "Agency not initialized?";
+    FATAL_ERROR_EXIT();
+  }
+  
+  // mop: it is not our first run. wait a bit.
+  if (!id.empty()) {
+    sleep(1);
+  }
+  
+  VPackSlice entry = servers.get(id);
+  LOG_TOPIC(TRACE, Logger::STARTUP)
+    << id << " found in existing keys: " << (!entry.isNone());
+  
+  //createResult =
+  //comm.casValue("Plan/" + agencyKey + "/" + id, builder.slice(), false, 0.0, 0.0);
 
-    // mop: it is not our first run. wait a bit.
-    if (!id.empty()) {
-      sleep(1);
-    }
+  auto idEntry = std::pair<AgencyOperation,AgencyPrecondition>(
+    AgencyOperation(
+      "Plan/" + agencyKey + "/" + id,
+      AgencyValueOperationType::SET, builder.slice()),
+    AgencyPrecondition()
+    );
+  auto uniqInc = std::pair<AgencyOperation,AgencyPrecondition>(
+    AgencyOperation(
+      "Target/coordTransId", AgencySimpleOperationType::INCREMENT_OP),
+    AgencyPrecondition()
+    );
+  auto uniqGet = std::pair<AgencyOperation,AgencyPrecondition>(
+    AgencyOperation("Target/coordTransId"),
+    AgencyPrecondition()
+    );
+  
+  AgencyGeneralTransaction reg;
+  reg.operations.push_back(idEntry);
+  reg.operations.push_back(uniqInc);
+  reg.operations.push_back(uniqGet);
+  LOG(WARN) << "###############################################################";
+  result = comm.sendTransactionWithFailover(reg, 0.0);
+  LOG(WARN) << "###############################################################";
 
-    VPackSlice entry = servers.get(id);
-    LOG_TOPIC(TRACE, Logger::STARTUP)
-      << id << " found in existing keys: " << (!entry.isNone());
-
-    createResult =
-        comm.casValue("Plan/" + agencyKey + "/" + id, idValue, false, 0.0, 0.0);
-    //} while (!createResult.successful());  
-
+  
   VPackBuilder localIdBuilder;
   localIdBuilder.add(VPackValue(id));
-
+  
   VPackSlice localIdValue = localIdBuilder.slice();
-
+  
   AgencyCommResult mapResult =
       comm.setValue("Target/MapLocalToID/" + StringUtils::urlEncode(_localInfo),
                     localIdValue, 0.0);
