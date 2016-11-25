@@ -71,8 +71,8 @@ VppCommTask::VppCommTask(EventLoop loop, GeneralServer* server,
   _protocol = "vpp";
   _readBuffer.reserve(
       _bufferLength);  // ATTENTION <- this is required so we do not
-                       // loose information during a resize
-    auto agent = std::unique_ptr<RequestStatisticsAgent>(new RequestStatisticsAgent(true));
+                       // lose information during a resize
+    auto agent = std::make_unique<RequestStatisticsAgent>(true);
     agent->acquire();
     MUTEX_LOCKER(lock, _agentsMutex);
     _agents.emplace(std::make_pair(0UL, std::move(agent)));
@@ -239,7 +239,7 @@ bool VppCommTask::processRead(double startTime) {
 
   if (chunkHeader._isFirst) {
     //create agent for new messages
-    auto agent = std::unique_ptr<RequestStatisticsAgent>(new RequestStatisticsAgent(true));
+    auto agent = std::make_unique<RequestStatisticsAgent>(true);
     agent->acquire();
     agent->requestStatisticsAgentSetReadStart(startTime);
     MUTEX_LOCKER(lock, _agentsMutex);

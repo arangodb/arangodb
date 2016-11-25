@@ -750,8 +750,7 @@ void Agent::detectActiveAgentFailures() {
           LOG_TOPIC(DEBUG, Logger::AGENCY) << "Active agent " << id << " has failed. << "
                     << repl << " will be promoted to active agency membership";
           // Guarded in ::
-          _activator =
-            std::unique_ptr<AgentActivator>(new AgentActivator(this, id, repl));
+          _activator = std::make_unique<AgentActivator>(this, id, repl);
           _activator->start();
           return;
         }

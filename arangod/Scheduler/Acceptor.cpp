@@ -40,8 +40,8 @@ std::unique_ptr<Acceptor> Acceptor::factory(
     boost::asio::io_service& ioService, Endpoint* endpoint) {
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   if (endpoint->domainType() == Endpoint::DomainType::UNIX) {
-    return std::unique_ptr<AcceptorUnixDomain>(new AcceptorUnixDomain(ioService, endpoint));
+    return std::make_unique<AcceptorUnixDomain>(ioService, endpoint);
   }
 #endif
-  return std::unique_ptr<AcceptorTcp>(new AcceptorTcp(ioService, endpoint));
+  return std::make_unique<AcceptorTcp>(ioService, endpoint);
 }
