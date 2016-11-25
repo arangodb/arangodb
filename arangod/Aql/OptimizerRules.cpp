@@ -46,8 +46,10 @@
 #include "Cluster/ClusterInfo.h"
 #include "Utils/Transaction.h"
 #include "VocBase/TraverserOptions.h"
+#include "Indexes/Index.h"
 #include <boost/optional.hpp>
 #include <tuple>
+#include <iostream>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -3931,16 +3933,47 @@ geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionN
   // expect access of the for doc.attribute
   // TODO: more complex access path have to be added: loop until REFERENCE TYPE IS FOUND
   auto setter1 = plan->getVarSetBy(static_cast<Variable const*>(pair.first->getMember(0)->getData())->id);
-  auto setter2 = plan->getVarSetBy(static_cast<Variable const*>(pair.first->getMember(0)->getData())->id);
+  auto setter2 = plan->getVarSetBy(static_cast<Variable const*>(pair.second->getMember(0)->getData())->id);
+  SV accessPath1{pair.first->getString()};
+  SV accessPath2{pair.second->getString()};
 
   LOG(ERR) << "      got setter";
   if(setter1 == setter2){
     if(setter1->getType() == EN::ENUMERATE_COLLECTION){
       auto collNode = reinterpret_cast<EnumerateCollectionNode*>(setter1);
-      auto collection = collNode->collection(); //what kind of indexes does it have on what attributes
+      auto coll = collNode->collection(); //what kind of indexes does it have on what attributes
+      auto lcoll = coll->getCollection();
       // TODO - check collection for geoindex
-      LOG(ERR) << "        SETTER IS ENUMERATE_COLLECTION: " << collection->getName();
-      return std::tuple<EnumerateCollectionNode* ,SV,SV>{collNode, SV{pair.first->getString()},SV{pair.second->getString()}};
+      LOG(ERR) << "        SETTER IS ENUMERATE_COLLECTION: " << coll->getName();
+      for(auto indexShardPtr : lcoll->getIndexes()){
+        // get real index
+        arangodb::Index& index = *indexShardPtr.get();
+
+        // check if current index is a geoindex
+        if(  !(index.type() == arangodb::Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX)
+          && !(index.type() == arangodb::Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX)){
+          continue;
+        }
+
+        if(false){
+          //FIXME -  REMOVE DEBUG CODE LATER
+          auto vecs = std::vector<std::vector<SV>>{index.fieldNames(), std::vector<SV>{accessPath1, accessPath2}};
+          for(auto vec : vecs ){
+            for(auto path : vec){
+              std::cout << " VECTOR:  ";
+              for(auto word : path){
+                std::cout << word << " ";
+              }
+              std::cout << std::endl;
+            }
+          }
+        }
+
+        //check access paths
+        if( index.fieldNames() == std::vector<SV>{accessPath1, accessPath2} ){
+          return std::tuple<EnumerateCollectionNode* ,SV,SV>{collNode, accessPath1, accessPath2 };
+        }
+      }
     }
   }
 
