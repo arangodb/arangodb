@@ -381,7 +381,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _version(ReadNumericValue<uint32_t>(info, "version", currentVersion())),
       _indexBuckets(ReadNumericValue<uint32_t>(
           info, "indexBuckets", DatabaseFeature::defaultIndexBuckets())),
-      _replicationFactor(ReadNumericValue<int>(info, "replicationFactor", 1)),
+      _replicationFactor(ReadNumericValue<size_t>(info, "replicationFactor", 1)),
       _numberOfShards(ReadNumericValue<size_t>(info, "numberOfShards", 1)),
       _allowUserKeys(ReadBooleanValue(info, "allowUserKeys", true)),
       _shardIds(new ShardMap()),
@@ -870,7 +870,7 @@ void LogicalCollection::getIndexesVPack(VPackBuilder& result,
 
 // SECTION: Replication
 int LogicalCollection::replicationFactor() const {
-  return _replicationFactor;
+  return static_cast<int>(_replicationFactor);
 }
 
 // SECTION: Sharding
