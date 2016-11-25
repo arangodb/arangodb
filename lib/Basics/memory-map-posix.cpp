@@ -184,9 +184,11 @@ int TRI_MMFileLock(void* memoryAddress, size_t numOfBytes) {
     return res;
   }
 
+#if (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE
   char buffer[256];
   char* p = strerror_r(errno, buffer, 256);
   LOG_TOPIC(WARN, Logger::MMAP) << "mlock for range " << Logger::RANGE(memoryAddress, numOfBytes) << " failed with: " << p << " ";
+#endif
   return TRI_ERROR_SYS_ERROR;
 }
 
@@ -201,9 +203,11 @@ int TRI_MMFileUnlock(void* memoryAddress, size_t numOfBytes) {
     return res;
   }
 
+#if (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE
   char buffer[256];
   char* p = strerror_r(errno, buffer, 256);
   LOG_TOPIC(WARN, Logger::MMAP) << "munlock for range " << Logger::RANGE(memoryAddress, numOfBytes) << " failed with: " << p << " ";
+#endif
   return TRI_ERROR_SYS_ERROR;
 }
 
