@@ -22,9 +22,13 @@
 
 #include "PregelFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "Conductor.h"
-#include "Worker.h"
+#include "Pregel/Conductor.h"
+#include "Pregel/Worker.h"
+#include "Pregel/Recovery.h"
 #include "Basics/MutexLocker.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ClusterFeature.h"
+
 
 using namespace arangodb::pregel;
 
@@ -36,17 +40,35 @@ uint64_t PregelFeature::createExecutionNumber() {
 
 PregelFeature::PregelFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Pregel") {
-  setOptional(true);
+  setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Database");
   startsAfter("Logger");
   startsAfter("Endpoint");
+  startsAfter("Cluster");
   Instance = this;
 }
 
-PregelFeature::~PregelFeature() { cleanupAll(); }
+PregelFeature::~PregelFeature() {
+  if (_recoveryManager) {
+    delete _recoveryManager;
+  }
+  cleanupAll();
+}
 
 PregelFeature* PregelFeature::instance() { return Instance; }
+
+void PregelFeature::start() {
+  ClusterFeature* cluster =
+  application_features::ApplicationServer::getFeature<ClusterFeature>(
+                                                                      "Cluster");
+  if (cluster != nullptr) {
+    AgencyCallbackRegistry *registry = cluster->agencyCallbackRegistry();
+    if (registry != nullptr) {
+      _recoveryManager = new RecoveryManager(registry);
+    }
+  }
+}
 
 void PregelFeature::beginShutdown() { cleanupAll(); }
 
@@ -59,12 +81,8 @@ void PregelFeature::addExecution(Conductor* const exec,
 
 Conductor* PregelFeature::conductor(uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
-  
   auto it = _conductors.find(executionNumber);
-  if (it != _conductors.end())
-    return it->second;
-  else
-    return nullptr;
+  return it != _conductors.end() ? it->second : nullptr;
 }
 
 void PregelFeature::addWorker(IWorker* const worker,
@@ -76,10 +94,7 @@ void PregelFeature::addWorker(IWorker* const worker,
 IWorker* PregelFeature::worker(uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   auto it = _workers.find(executionNumber);
-  if (it != _workers.end())
-    return it->second;
-  else
-    return nullptr;
+  return it != _workers.end() ? it->second : nullptr;
 }
 
 void PregelFeature::cleanup(uint64_t executionNumber) {
@@ -106,4 +121,10 @@ void PregelFeature::cleanupAll() {
     delete (it.second);
   }
   _workers.clear();
+}
+
+void PregelFeature::notifyConductors() {
+  for (auto it : _conductors) {
+    it.second->checkForWorkerOutage();
+  }
 }

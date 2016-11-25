@@ -22,32 +22,33 @@
 
 #include "Recovery.h"
 
-#include "Basics/Exceptions.h"
-#include "Cluster/ClusterFeature.h"
+#include "Basics/MutexLocker.h"
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/WorkerState.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "Pregel/PregelFeature.h"
+#include "Agency/Supervision.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
 
-RecoveryManager::RecoveryManager(Conductor *c) : _conductor(c) {
-  ClusterFeature* cluster =
-  application_features::ApplicationServer::getFeature<ClusterFeature>(
-                                                                      "Cluster");
-  TRI_ASSERT(cluster != nullptr);
-  _agencyCallbackRegistry = cluster->agencyCallbackRegistry();
+RecoveryManager::RecoveryManager(AgencyCallbackRegistry *registry) : _agencyCallbackRegistry(registry) {
 }
 
 RecoveryManager::~RecoveryManager() {
+  stopMonitoring();
+}
+
+void RecoveryManager::stopMonitoring() {
   for (auto call : _agencyCallbacks) {
     _agencyCallbackRegistry->unregisterCallback(call);
   }
+  _agencyCallbacks.clear();
 }
 
 void RecoveryManager::monitorDBServers(std::vector<ServerID> const& dbServers) {
+  MUTEX_LOCKER(guard, _lock);
   
   std::function<bool(VPackSlice const& result)> dbServerChanged =
   [](VPackSlice const& result) {
@@ -80,25 +81,59 @@ void RecoveryManager::monitorDBServers(std::vector<ServerID> const& dbServers) {
       }
       *dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, *errMsg);
     }*/
+    
+    PregelFeature::instance()->notifyConductors();
+    
     LOG(INFO) << result.toString();
     return true;
   };
   //std::string const& dbName = _conductor->_vocbaseGuard.vocbase()->name();
   
-  for (auto server : dbServers) {
-    _statusMap[server] = "";
-    std::string path = "Supervision/Health/" + server + "/Status";
-    auto call = std::make_shared<AgencyCallback>(_agency, path,
-                                                 dbServerChanged, true, false);
-    _agencyCallbacks.push_back(call);
-    _agencyCallbackRegistry->registerCallback(call);
-  }
+  std::string path = "Plan/Collections/_system/6500032";
+  auto call = std::make_shared<AgencyCallback>(_agency, path,
+                                               dbServerChanged, true, false);
+  _agencyCallbacks.push_back(call);
+  _agencyCallbackRegistry->registerCallback(call);
+  
+  /*for (auto server : dbServers) {
+    auto const& it = _statusMap.find(server);
+    if (it == _statusMap.end()) {
+      std::string path = "Supervision/Health/" + server + "/Status/";
+      auto call = std::make_shared<AgencyCallback>(_agency, path,
+                                                   dbServerChanged, true, false);
+      _agencyCallbacks.push_back(call);
+      _agencyCallbackRegistry->registerCallback(call);
+    }
+  }*/
   
 }
 
 bool RecoveryManager::allServersAvailable(std::vector<ServerID> const& dbServers) {
+  MUTEX_LOCKER(guard, _lock);
   
+  if (TRI_microtime() - _lastHealthCheck >  5.0) {
+    //Supervis
+    AgencyCommResult result = _agency.getValues("Supervision/Health/");
+    if (result.successful() && result.slice().isObject()) {
+      for (auto server : VPackObjectIterator(result.slice())) {
+        std::string status = server.value.get("Status").copyString();
+        _statusMap[server.key.copyString()] = status;
+      }
+      _lastHealthCheck = TRI_microtime();// I don't like this
+    }
+  }
   
-  return false;
+  std::string failed(consensus::Supervision::HEALTH_STATUS_FAILED);
+  
+  for (auto const& server : dbServers) {
+    auto const& it = _statusMap.find(server);
+    if (it != _statusMap.end()) {
+      if (it->second == failed) {
+        return false;
+      }
+    }
+  }
+  
+  return true;
 }
 

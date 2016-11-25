@@ -33,6 +33,7 @@ namespace pregel {
 
 class Conductor;
 class IWorker;
+class RecoveryManager;
 
 class PregelFeature final : public application_features::ApplicationFeature {
  public:
@@ -41,23 +42,26 @@ class PregelFeature final : public application_features::ApplicationFeature {
 
   static PregelFeature* instance();
 
+  void start() override final;
   void beginShutdown() override final;
 
   uint64_t createExecutionNumber();
   void addExecution(Conductor* const exec, uint64_t executionNumber);
   Conductor* conductor(uint64_t executionNumber);
-  void notifyConductorOutage();
+  void notifyConductors();
 
   void addWorker(IWorker* const worker, uint64_t executionNumber);
   IWorker* worker(uint64_t executionNumber);
 
   void cleanup(uint64_t executionNumber);
   void cleanupAll();
+  RecoveryManager* recoveryManager() {return _recoveryManager;}
 
  private:
   std::unordered_map<uint64_t, Conductor*> _conductors;
   std::unordered_map<uint64_t, IWorker*> _workers;
   Mutex _mutex;
+  RecoveryManager* _recoveryManager;
 };
 }
 }

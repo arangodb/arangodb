@@ -23,6 +23,7 @@
 #ifndef ARANGODB_PREGEL_RECOVERY_H
 #define ARANGODB_PREGEL_RECOVERY_H 1
 
+#include "Basics/Mutex.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/AgencyComm.h"
 #include "Cluster/AgencyCallbackRegistry.h"
@@ -32,7 +33,6 @@
 namespace arangodb {
 namespace pregel {
 
-class Conductor;
 template<typename V, typename E>
 class GraphStore;
   
@@ -40,16 +40,18 @@ class RecoveryManager {
   
   AgencyComm _agency;
   AgencyCallbackRegistry *_agencyCallbackRegistry;//weak
-  Conductor *_conductor;
-
+  Mutex _lock;
+  double _lastHealthCheck = 0;
+  
   std::map<ServerID, std::string> _statusMap;
   std::vector<std::shared_ptr<AgencyCallback>> _agencyCallbacks;
   
  public:
-  RecoveryManager(Conductor *c);
+  RecoveryManager(AgencyCallbackRegistry *registry);
   ~RecoveryManager();
 
   void monitorDBServers(std::vector<ServerID> const& dbServers);
+  void stopMonitoring();
   bool allServersAvailable(std::vector<ServerID> const& dbServers);
 };
   

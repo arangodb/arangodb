@@ -39,6 +39,8 @@
 #include "Pregel/Algorithm.h"
 #include "Pregel/Algos/PageRank.h"
 #include "Pregel/Algos/SSSP.h"
+#include "Pregel/PregelFeature.h"
+#include "Pregel/Recovery.h"
 
 #include <algorithm>
 
@@ -63,7 +65,6 @@ Conductor::Conductor(
     : _vocbaseGuard(vocbase),
       _executionNumber(executionNumber),
       _algorithm(algorithm),
-      _recoveryManager(this),
       _vertexCollections(vertexCollections),
       _edgeCollections(edgeCollections) {
   bool isCoordinator = ServerState::instance()->isCoordinator();
@@ -214,7 +215,7 @@ void Conductor::start(VPackSlice userConfig) {
 
   if (nrDone == requests.size()) {
     if (_startGlobalStep()) {
-      _recoveryManager.monitorDBServers(_dbServers);
+      PregelFeature::instance()->recoveryManager()->monitorDBServers(_dbServers);
     }
   } else {
     LOG(ERR) << "Not all DBServers started the execution";
@@ -316,6 +317,75 @@ void Conductor::finishedGlobalStep(VPackSlice& data) {
 }
 
 void Conductor::cancel() {_state = ExecutionState::CANCELED; }
+
+void Conductor::checkForWorkerOutage() {
+  RecoveryManager *manager = PregelFeature::instance()->recoveryManager();
+  if (manager) {
+    if (manager->allServersAvailable(_dbServers) == false) {
+      // we lost a DBServer, we need to reconfigure all remainging servers
+      // so they load the data for the lost machine
+      
+      std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>> vertexMap, edgeMap;
+      
+      // resolve plan id's and shards on the servers
+      for (auto &collection : _vertexCollections) {
+        resolveShards(collection.get(), vertexMap);
+      }
+      for (auto &collection : _edgeCollections) {
+        resolveShards(collection.get(), edgeMap);
+      }
+      _dbServers.clear();
+      for (auto const& pair : vertexMap) {
+        _dbServers.push_back(pair.first);
+      }
+      
+      std::string const baseUrl = Utils::baseUrl(_vocbaseGuard.vocbase()->name());
+      std::string coordinatorId = ServerState::instance()->getId();
+      LOG(INFO) << "My id: " << coordinatorId;
+      std::vector<ClusterCommRequest> requests;
+      for (auto const& it : vertexMap) {
+        ServerID const& server = it.first;
+        std::map<CollectionID, std::vector<ShardID>> const& vertexShardMap = it.second;
+        std::map<CollectionID, std::vector<ShardID>> const& edgeShardMap = edgeMap[it.first];
+        
+        VPackBuilder b;
+        b.openObject();
+        b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+        b.add(Utils::vertexShardsKey, VPackValue(VPackValueType::Object));
+        for (auto const& pair : vertexShardMap) {
+          b.add(pair.first, VPackValue(VPackValueType::Array));
+          for (ShardID const& shard : pair.second) {
+            b.add(VPackValue(shard));
+          }
+          b.close();
+        }
+        b.close();
+        b.add(Utils::edgeShardsKey, VPackValue(VPackValueType::Object));
+        for (auto const& pair : edgeShardMap) {
+          b.add(pair.first, VPackValue(VPackValueType::Array));
+          for (ShardID const& shard : pair.second) {
+            b.add(VPackValue(shard));
+          }
+          b.close();
+        }
+        b.close();
+        b.close();
+        
+        
+        auto body = std::make_shared<std::string const>(b.toJson());
+        requests.emplace_back("server:" + server, rest::RequestType::POST,
+                              baseUrl + Utils::reconfigurePath, body);
+      }
+      
+      ClusterComm* cc = ClusterComm::instance();
+      size_t nrDone = 0;
+      cc->performRequests(requests, 5.0 * 60.0, nrDone, LogTopic("Pregel Conductor"));
+      LOG(INFO) << "Send messages to " << nrDone << " shards of "
+      << _vertexCollections[0]->name();
+      
+    }
+  }
+}
 
 int Conductor::_sendToAllDBServers(std::string path, VPackSlice const& config) {
   ClusterComm* cc = ClusterComm::instance();

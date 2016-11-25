@@ -20,8 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_WORKER_CONTEXT_H
-#define ARANGODB_PREGEL_WORKER_CONTEXT_H 1
+#ifndef ARANGODB_PREGEL_MASTER_CONTEXT_H
+#define ARANGODB_PREGEL_MASTER_CONTEXT_H 1
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -32,23 +32,20 @@
 namespace arangodb {
 namespace pregel {
 
-class WorkerContext {
-  template <typename V, typename E, typename M>
-  friend class Worker;
+class MasterContext {
 
   uint64_t _vertexCount, _edgeCount;
-  const AggregatorUsage* _conductorAggregators;
-  AggregatorUsage* _workerAggregators;
+  const AggregatorUsage* _aggregators;
 
  protected:
   template <typename T>
   inline void aggregate(std::string const& name, const T* valuePtr) {
-    _workerAggregators->aggregate(name, valuePtr);
+    _aggregators->aggregate(name, valuePtr);
   }
 
   template <typename T>
   inline const T* getAggregatedValue(std::string const& name) {
-    return _conductorAggregators->getAggregatedValue(name);
+    return _aggregators->getAggregatedValue(name);
   }
 
   virtual void preApplication(){};
@@ -56,8 +53,12 @@ class WorkerContext {
   virtual void postGlobalSuperstep(uint64_t gss){};
   virtual void postApplication(){};
 
+  virtual void compensate() {
+    
+  }
+  
  public:
-  WorkerContext(){};
+  MasterContext(){};
 
   inline uint64_t vertexCount() const { return _vertexCount; }
 

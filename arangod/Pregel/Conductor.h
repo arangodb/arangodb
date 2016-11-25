@@ -30,7 +30,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/AggregatorUsage.h"
 #include "Pregel/Statistics.h"
-#include "Pregel/Recovery.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
@@ -41,13 +40,17 @@ enum ExecutionState { DEFAULT, RUNNING, DONE, CANCELED };
 
 class Conductor {
   friend class arangodb::RestPregelHandler;
+  enum OperationMode {
+    NORMAL,
+    RECOVERY
+  };
 
   ExecutionState _state = ExecutionState::DEFAULT;
+  OperationMode _operationMode = OperationMode::NORMAL;
   const VocbaseGuard _vocbaseGuard;
   const uint64_t _executionNumber;
   const std::string _algorithm;
   Mutex _finishedGSSMutex;  // prevents concurrent calls to finishedGlobalStep
-  RecoveryManager _recoveryManager;
   
   std::vector<std::shared_ptr<LogicalCollection>> _vertexCollections;
   std::vector<std::shared_ptr<LogicalCollection>> _edgeCollections;
@@ -77,6 +80,7 @@ class Conductor {
 
   void start(VPackSlice params);
   void cancel();
+  void checkForWorkerOutage();
 
   ExecutionState getState() const { return _state; }
   WorkerStats workerStats() const {return _workerStats;}
