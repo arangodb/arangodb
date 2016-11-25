@@ -23,6 +23,9 @@
 
 #include "v8-agency.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -31,9 +34,6 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::application_features;

@@ -99,9 +99,10 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "arangodb cluster supervision frequency [s]",
                      new DoubleParameter(&_supervisionFrequency));
 
-  options->addOption("--agency.supervision-grace-period",
-                     "supervision time, after which a server is considered to have failed [s]",
-                     new DoubleParameter(&_supervisionGracePeriod));
+  options->addOption(
+      "--agency.supervision-grace-period",
+      "supervision time, after which a server is considered to have failed [s]",
+      new DoubleParameter(&_supervisionGracePeriod));
 
   options->addOption("--agency.compaction-step-size",
                      "step size between state machine compactions",
@@ -172,7 +173,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  if (_maxElectionTimeout <= 2 * _minElectionTimeout) {
+  if (_maxElectionTimeout <= 2. * _minElectionTimeout) {
     LOG_TOPIC(WARN, Logger::AGENCY)
         << "agency.election-timeout-max should probably be chosen longer!"
         << " " << __FILE__ << __LINE__;

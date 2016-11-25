@@ -23,6 +23,8 @@
 
 #include "RestAgencyHandler.h"
 
+#include <thread>
+
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -31,8 +33,6 @@
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
-
-#include <thread>
 
 using namespace arangodb;
 
@@ -105,137 +105,259 @@ RestStatus RestAgencyHandler::handleStores() {
 }
 
 RestStatus RestAgencyHandler::handleWrite() {
-  arangodb::velocypack::Options options;  // TODO: User not wait.
-  if (_request->requestType() == rest::RequestType::POST) {
-    query_t query;
 
-    try {
-      query = _request->toVelocyPackBuilderPtr(&options);
-    } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << ":"
-                                     << __LINE__;
-      Builder body;
-      body.openObject();
-      body.add("message", VPackValue(e.what()));
-      body.close();
-      generateResult(rest::ResponseCode::BAD, body.slice());
-      return RestStatus::DONE;
-    }
-
-    if (!query->slice().isArray()) {
-      Builder body;
-      body.openObject();
-      body.add("message",
-               VPackValue("Expecting array of arrays as body for writes"));
-      body.close();
-      generateResult(rest::ResponseCode::BAD, body.slice());
-      return RestStatus::DONE;
-    }
-
-    if (query->slice().length() == 0) {
-      Builder body;
-      body.openObject();
-      body.add("message", VPackValue("Empty request."));
-      body.close();
-      generateResult(rest::ResponseCode::BAD, body.slice());
-      return RestStatus::DONE;
-    }
-
-    auto s = std::chrono::system_clock::now();  // Leadership established?
-    std::chrono::duration<double> timeout(_agent->config().minPing());
-    while (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
-      if ((std::chrono::system_clock::now() - s) > timeout) {
-        Builder body;
-        body.openObject();
-        body.add("message", VPackValue("No leader"));
-        body.close();
-        generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
-        LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
-        return RestStatus::DONE;
-      }
-      std::this_thread::sleep_for(duration_t(100));
-    }
-
-    write_ret_t ret;
-
-    try {
-      ret = _agent->write(query);
-    } catch (std::exception const& e) {
-      LOG_TOPIC(DEBUG, Logger::AGENCY) << "Malformed write query " << query;
-      Builder body;
-      body.openObject();
-      body.add("message",
-               VPackValue(std::string("Malformed write query") + e.what()));
-      body.close();
-      generateResult(rest::ResponseCode::BAD, body.slice());
-      return RestStatus::DONE;
-    }
-
-    if (ret.accepted) {  // We're leading and handling the request
-      bool found;
-      std::string call_mode = _request->header("x-arangodb-agency-mode", found);
-      if (!found) {
-        call_mode = "waitForCommitted";
-      }
-
-      size_t errors = 0;
-      Builder body;
-      body.openObject();
-
-      if (call_mode != "noWait") {
-        // Note success/error
-        body.add("results", VPackValue(VPackValueType::Array));
-        for (auto const& index : ret.indices) {
-          body.add(VPackValue(index));
-          if (index == 0) {
-            errors++;
-          }
-        }
-        body.close();
-
-        // Wait for commit of highest except if it is 0?
-        if (!ret.indices.empty() && call_mode == "waitForCommitted") {
-          arangodb::consensus::index_t max_index = 0;
-          try {
-            max_index =
-                *std::max_element(ret.indices.begin(), ret.indices.end());
-          } catch (std::exception const& e) {
-            LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__
-                                            << ":" << __LINE__;
-          }
-
-          if (max_index > 0) {
-            _agent->waitFor(max_index);
-          }
-        }
-      }
-
-      body.close();
-
-      if (errors > 0) {  // Some/all requests failed
-        generateResult(rest::ResponseCode::PRECONDITION_FAILED, body.slice());
-      } else {  // All good
-        generateResult(rest::ResponseCode::OK, body.slice());
-      }
-    } else {  // Redirect to leader
-      if (_agent->leaderID() == NO_LEADER) {
-        Builder body;
-        body.openObject();
-        body.add("message", VPackValue("No leader"));
-        body.close();
-        generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
-        LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
-        return RestStatus::DONE;
-      } else {
-        TRI_ASSERT(ret.redirect != _agent->id());
-        redirectRequest(ret.redirect);
-      }
-    }
-  } else {  // Unknown method
+  if (_request->requestType() != rest::RequestType::POST) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
   }
+  
+  arangodb::velocypack::Options options;
+  query_t query;
+
+  // Convert to velocypack
+  try {
+    query = _request->toVelocyPackBuilderPtr(&options);
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::AGENCY)
+      << e.what() << " " << __FILE__ << ":" << __LINE__;
+    Builder body;
+    body.openObject();
+    body.add("message", VPackValue(e.what()));
+    body.close();
+    generateResult(rest::ResponseCode::BAD, body.slice());
+    return RestStatus::DONE;
+  }
+
+  // Need Array input
+  if (!query->slice().isArray()) {
+    Builder body;
+    body.openObject();
+    body.add(
+      "message", VPackValue("Expecting array of arrays as body for writes"));
+    body.close();
+    generateResult(rest::ResponseCode::BAD, body.slice());
+    return RestStatus::DONE;
+  }
+
+  // Empty request array
+  if (query->slice().length() == 0) {
+    Builder body;
+    body.openObject();
+    body.add("message", VPackValue("Empty request."));
+    body.close();
+    generateResult(rest::ResponseCode::BAD, body.slice());
+    return RestStatus::DONE;
+  }
+
+  // Leadership established?
+  auto s = std::chrono::system_clock::now();
+  std::chrono::duration<double> timeout(_agent->config().minPing());
+  while (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
+    if ((std::chrono::system_clock::now() - s) > timeout) {
+      Builder body;
+      body.openObject();
+      body.add("message", VPackValue("No leader"));
+      body.close();
+      generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
+      LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
+      return RestStatus::DONE;
+    }
+    std::this_thread::sleep_for(duration_t(100));
+  }
+
+
+  // Do write
+  write_ret_t ret;
+  try {
+    ret = _agent->write(query);
+  } catch (std::exception const& e) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Malformed write query " << query;
+    Builder body;
+    body.openObject();
+    body.add("message",
+             VPackValue(std::string("Malformed write query") + e.what()));
+    body.close();
+    generateResult(rest::ResponseCode::BAD, body.slice());
+    return RestStatus::DONE;
+  }
+
+  // We're leading and handling the request
+  if (ret.accepted) {  
+
+    bool found;
+    std::string call_mode = _request->header("x-arangodb-agency-mode", found);
+    if (!found) {
+      call_mode = "waitForCommitted";
+    }
+    
+    size_t errors = 0;
+    Builder body;
+    body.openObject();
+    
+    if (call_mode != "noWait") {
+      // Note success/error
+      body.add("results", VPackValue(VPackValueType::Array));
+      for (auto const& index : ret.indices) {
+        body.add(VPackValue(index));
+        if (index == 0) {
+          errors++;
+        }
+      }
+      body.close();
+      
+      // Wait for commit of highest except if it is 0?
+      if (!ret.indices.empty() && call_mode == "waitForCommitted") {
+        arangodb::consensus::index_t max_index = 0;
+        try {
+          max_index =
+            *std::max_element(ret.indices.begin(), ret.indices.end());
+        } catch (std::exception const& e) {
+          LOG_TOPIC(WARN, Logger::AGENCY)
+            << e.what() << " " << __FILE__ << ":" << __LINE__;
+        }
+        
+        if (max_index > 0) {
+          _agent->waitFor(max_index);
+        }
+        
+      }
+    }
+    
+    body.close();
+    
+    if (errors > 0) { // Some/all requests failed
+      generateResult(rest::ResponseCode::PRECONDITION_FAILED, body.slice());
+    } else {          // All good
+        generateResult(rest::ResponseCode::OK, body.slice());
+    }
+    
+  } else {            // Redirect to leader
+    if (_agent->leaderID() == NO_LEADER) {
+      Builder body;
+      body.openObject();
+      body.add("message", VPackValue("No leader"));
+      body.close();
+      generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
+      LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
+      return RestStatus::DONE;
+    } else {
+      TRI_ASSERT(ret.redirect != _agent->id());
+      redirectRequest(ret.redirect);
+    }
+  }
+
   return RestStatus::DONE;
+  
 }
+
+
+
+RestStatus RestAgencyHandler::handleTransact() {
+
+  if (_request->requestType() != rest::RequestType::POST) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
+  }
+  
+  arangodb::velocypack::Options options;
+  query_t query;
+
+  // Convert to velocypack
+  try {
+    query = _request->toVelocyPackBuilderPtr(&options);
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::AGENCY)
+      << e.what() << " " << __FILE__ << ":" << __LINE__;
+    Builder body;
+    body.openObject();
+    body.add("message", VPackValue(e.what()));
+    body.close();
+    generateResult(rest::ResponseCode::BAD, body.slice());
+    return RestStatus::DONE;
+  }
+
+  // Need Array input
+  if (!query->slice().isArray()) {
+    Builder body;
+    body.openObject();
+    body.add(
+      "message", VPackValue("Expecting array of arrays as body for writes"));
+    body.close();
+    generateResult(rest::ResponseCode::BAD, body.slice());
+    return RestStatus::DONE;
+  }
+
+  // Empty request array
+  if (query->slice().length() == 0) {
+    Builder body;
+    body.openObject();
+    body.add("message", VPackValue("Empty request."));
+    body.close();
+    generateResult(rest::ResponseCode::BAD, body.slice());
+    return RestStatus::DONE;
+  }
+
+  // Leadership established?
+  auto s = std::chrono::system_clock::now();
+  std::chrono::duration<double> timeout(_agent->config().minPing());
+  while (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
+    if ((std::chrono::system_clock::now() - s) > timeout) {
+      Builder body;
+      body.openObject();
+      body.add("message", VPackValue("No leader"));
+      body.close();
+      generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
+      LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
+      return RestStatus::DONE;
+    }
+    std::this_thread::sleep_for(duration_t(100));
+  }
+
+  // Do write
+  trans_ret_t ret;
+  try {
+    ret = _agent->transact(query);
+  } catch (std::exception const& e) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Malformed write query " << query;
+    Builder body;
+    body.openObject();
+    body.add(
+      "message", VPackValue(std::string("Malformed write query") + e.what()));
+    body.close();
+    generateResult(rest::ResponseCode::BAD, body.slice());
+    return RestStatus::DONE;
+  }
+
+  // We're leading and handling the request
+  if (ret.accepted) {  
+
+    // Wait for commit of highest except if it is 0?
+    if (ret.maxind > 0) {
+      _agent->waitFor(ret.maxind);
+    }
+    generateResult(
+      (ret.failed==0) ?
+        rest::ResponseCode::OK : rest::ResponseCode::PRECONDITION_FAILED,
+      ret.result->slice());
+    
+  } else {            // Redirect to leader
+    if (_agent->leaderID() == NO_LEADER) {
+      Builder body;
+      body.openObject();
+      body.add("message", VPackValue("No leader"));
+      body.close();
+      generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
+      LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
+      return RestStatus::DONE;
+    } else {
+      TRI_ASSERT(ret.redirect != _agent->id());
+      redirectRequest(ret.redirect);
+    }
+  }
+
+  return RestStatus::DONE;
+  
+}
+
+
 
 inline RestStatus RestAgencyHandler::handleRead() {
   arangodb::velocypack::Options options;
@@ -340,6 +462,8 @@ RestStatus RestAgencyHandler::execute() {
         return handleWrite();
       } else if (suffixes[0] == "read") {
         return handleRead();
+      } else if (suffixes[0] == "transact") {
+        return handleTransact();
       } else if (suffixes[0] == "config") {
         if (_request->requestType() != rest::RequestType::GET) {
           return reportMethodNotAllowed();

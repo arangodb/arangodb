@@ -48,7 +48,7 @@ function isuint () {
 NRAGENTS=3
 POOLSZ=""
 TRANSPORT="tcp"
-LOG_LEVEL="INFO"
+LOG_LEVEL=""
 WAIT_FOR_SYNC="true"
 USE_MICROTIME="false"
 GOSSIP_MODE=0
@@ -66,8 +66,20 @@ while [[ ${1} ]]; do
       TRANSPORT=${2}
       shift;;
     -l|--log-level)
-      LOG_LEVEL=${2}
-      shift;;
+      case ${2} in
+        =*)
+          LOG_LEVEL="$LOG_LEVEL --log.level ${2}"
+          ;;
+        *=*)
+          LOG_LEVEL="$LOG_LEVEL --log.level ${2}"
+          ;;
+        *)
+          LOG_LEVEL="$LOG_LEVEL --log.level agency=${2}"
+          ;;
+      esac
+        
+      shift
+      ;;
     -w|--wait-for-sync)
       WAIT_FOR_SYNC=${2}
       shift;;
@@ -98,7 +110,11 @@ while [[ ${1} ]]; do
   fi
 done
 
-if [ "$POOLSZ" == "" ] ; then
+if [ "$LOG_LEVEL" == "" ];  then
+  LOG_LEVEL="--log.level agency=info"
+fi
+
+if [ "$POOLSZ" == "" ]; then
   POOLSZ=$NRAGENTS
 fi
 
@@ -176,7 +192,7 @@ for aid in "${aaid[@]}"; do
     --javascript.v8-contexts 1 \
     --log.file agency/$port.log \
     --log.force-direct true \
-    --log.level agency=$LOG_LEVEL \
+    $LOG_LEVEL \
     --log.use-microtime $USE_MICROTIME \
     --server.authentication false \
     --server.endpoint $TRANSPORT://0.0.0.0:$port \

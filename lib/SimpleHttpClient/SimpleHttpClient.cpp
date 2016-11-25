@@ -40,7 +40,8 @@ namespace arangodb {
 namespace httpclient {
 
 /// @brief empty map, used for headers
-std::unordered_map<std::string, std::string> const SimpleHttpClient::NO_HEADERS {};
+std::unordered_map<std::string, std::string> const
+    SimpleHttpClient::NO_HEADERS{};
 
 /// @brief default value for max packet size
 size_t SimpleHttpClient::MaxPacketSize = 128 * 1024 * 1024;
@@ -138,9 +139,10 @@ void SimpleHttpClient::close() {
 /// have been _maxRetries retries
 ////////////////////////////////////////////////////////////////////////////////
 
-SimpleHttpResult* SimpleHttpClient::retryRequest(
-    rest::RequestType method, std::string const& location,
-    char const* body, size_t bodyLength) {
+SimpleHttpResult* SimpleHttpClient::retryRequest(rest::RequestType method,
+                                                 std::string const& location,
+                                                 char const* body,
+                                                 size_t bodyLength) {
   return retryRequest(method, location, body, bodyLength, NO_HEADERS);
 }
 
@@ -153,8 +155,8 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleHttpResult* SimpleHttpClient::retryRequest(
-    rest::RequestType method, std::string const& location,
-    char const* body, size_t bodyLength,
+    rest::RequestType method, std::string const& location, char const* body,
+    size_t bodyLength,
     std::unordered_map<std::string, std::string> const& headers) {
   SimpleHttpResult* result = nullptr;
   size_t tries = 0;
@@ -195,9 +197,10 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
 /// this version does not allow specifying custom headers
 ////////////////////////////////////////////////////////////////////////////////
 
-SimpleHttpResult* SimpleHttpClient::request(
-    rest::RequestType method, std::string const& location,
-    char const* body, size_t bodyLength) {
+SimpleHttpResult* SimpleHttpClient::request(rest::RequestType method,
+                                            std::string const& location,
+                                            char const* body,
+                                            size_t bodyLength) {
   return doRequest(method, location, body, bodyLength, NO_HEADERS);
 }
 
@@ -207,8 +210,8 @@ SimpleHttpResult* SimpleHttpClient::request(
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleHttpResult* SimpleHttpClient::request(
-    rest::RequestType method, std::string const& location,
-    char const* body, size_t bodyLength,
+    rest::RequestType method, std::string const& location, char const* body,
+    size_t bodyLength,
     std::unordered_map<std::string, std::string> const& headers) {
   return doRequest(method, location, body, bodyLength, headers);
 }
@@ -218,8 +221,8 @@ SimpleHttpResult* SimpleHttpClient::request(
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleHttpResult* SimpleHttpClient::doRequest(
-    rest::RequestType method, std::string const& location,
-    char const* body, size_t bodyLength,
+    rest::RequestType method, std::string const& location, char const* body,
+    size_t bodyLength,
     std::unordered_map<std::string, std::string> const& headers) {
   // ensure connection has not yet been invalidated
   TRI_ASSERT(_connection != nullptr);
@@ -273,8 +276,8 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
 
         if (!res) {
           setErrorMessage("Error writing to '" +
-                          _connection->getEndpoint()->specification() +
-                          "' '" + _connection->getErrorDetails() + "'");
+                          _connection->getEndpoint()->specification() + "' '" +
+                          _connection->getErrorDetails() + "'");
           this->close();  // this sets _state to IN_CONNECT for a retry
         } else {
           _written += bytesWritten;
@@ -302,8 +305,8 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
         // If there was an error, then we are doomed:
         if (!res) {
           setErrorMessage("Error reading from: '" +
-                          _connection->getEndpoint()->specification() +
-                          "' '" + _connection->getErrorDetails() + "'");
+                          _connection->getEndpoint()->specification() + "' '" +
+                          _connection->getErrorDetails() + "'");
 
           if (_connection->isInterrupted()) {
             this->close();
@@ -352,7 +355,7 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
 
           else {
             // In all other cases of closed connection, we are doomed:
-            this->close(); 
+            this->close();
             _state = DEAD;
             setErrorMessage("Got unexpected response from remote");
             break;
@@ -444,16 +447,14 @@ void SimpleHttpClient::clearReadBuffer() {
 /// @brief sets username and password
 ////////////////////////////////////////////////////////////////////////////////
 
-void SimpleHttpClient::setJwt(std::string const& jwt) {
-  _jwt = jwt;
-}
+void SimpleHttpClient::setJwt(std::string const& jwt) { _jwt = jwt; }
 
 void SimpleHttpClient::setUserNamePassword(std::string const& prefix,
                                            std::string const& username,
                                            std::string const& password) {
   std::string value =
       arangodb::basics::StringUtils::encodeBase64(username + ":" + password);
-  
+
   _pathToBasicAuth.push_back(std::make_pair(prefix, value));
 }
 
@@ -500,8 +501,8 @@ SimpleHttpResult* SimpleHttpClient::getResult() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SimpleHttpClient::setRequest(
-    rest::RequestType method, std::string const& location,
-    char const* body, size_t bodyLength,
+    rest::RequestType method, std::string const& location, char const* body,
+    size_t bodyLength,
     std::unordered_map<std::string, std::string> const& headers) {
   // clear read-buffer (no pipeling!)
   _readBufferOffset = 0;
@@ -604,7 +605,8 @@ void SimpleHttpClient::setRequest(
 
   _writeBuffer.ensureNullTerminated();
 
-  LOG(TRACE) << "Request: " << std::string(_writeBuffer.c_str(), _writeBuffer.length());
+  LOG(TRACE) << "Request: "
+             << std::string(_writeBuffer.c_str(), _writeBuffer.length());
 
   if (_state == DEAD) {
     _connection->resetNumConnectRetries();
@@ -830,8 +832,7 @@ void SimpleHttpClient::processChunkedHeader() {
   uint32_t contentLength;
 
   try {
-    contentLength =
-        static_cast<uint32_t>(std::stol(line, nullptr, 16));  
+    contentLength = static_cast<uint32_t>(std::stol(line, nullptr, 16));
   } catch (...) {
     setErrorMessage("found invalid content-length", true);
     // reset connection
@@ -903,8 +904,8 @@ void SimpleHttpClient::processChunkedBody() {
 /// @brief extract an error message from a response
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string SimpleHttpClient::getHttpErrorMessage(SimpleHttpResult const* result,
-                                                  int* errorCode) {
+std::string SimpleHttpClient::getHttpErrorMessage(
+    SimpleHttpResult const* result, int* errorCode) {
   if (errorCode != nullptr) {
     *errorCode = TRI_ERROR_NO_ERROR;
   }
@@ -913,7 +914,8 @@ std::string SimpleHttpClient::getHttpErrorMessage(SimpleHttpResult const* result
   std::string details;
 
   try {
-    std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(body.c_str(), body.length());
+    std::shared_ptr<VPackBuilder> builder =
+        VPackParser::fromJson(body.c_str(), body.length());
 
     VPackSlice slice = builder->slice();
     if (slice.isObject()) {
@@ -924,15 +926,17 @@ std::string SimpleHttpClient::getHttpErrorMessage(SimpleHttpResult const* result
         if (errorCode != nullptr) {
           *errorCode = errorNum;
         }
-        details = ": ArangoError " + std::to_string(errorNum) + ": " + msg.copyString();
+        details = ": ArangoError " + std::to_string(errorNum) + ": " +
+                  msg.copyString();
       }
     }
   } catch (...) {
     // don't rethrow here. we'll respond with an error message anyway
   }
 
-  return "got error from server: HTTP " + std::to_string(result->getHttpReturnCode()) +
-         " (" + result->getHttpReturnMessage() + ")" + details;
+  return "got error from server: HTTP " +
+         std::to_string(result->getHttpReturnCode()) + " (" +
+         result->getHttpReturnMessage() + ")" + details;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -951,13 +955,15 @@ std::string SimpleHttpClient::getServerVersion(int* errorCode) {
     return "";
   }
 
-  if (response->getHttpReturnCode() == static_cast<int>(rest::ResponseCode::OK)) {
+  if (response->getHttpReturnCode() ==
+      static_cast<int>(rest::ResponseCode::OK)) {
     // default value
     std::string version = "arango";
 
     arangodb::basics::StringBuffer const& body = response->getBody();
     try {
-      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(body.c_str(), body.length());
+      std::shared_ptr<VPackBuilder> builder =
+          VPackParser::fromJson(body.c_str(), body.length());
 
       VPackSlice slice = builder->slice();
       if (slice.isObject()) {
@@ -982,8 +988,8 @@ std::string SimpleHttpClient::getServerVersion(int* errorCode) {
       setErrorMessage("Unable to parse server response", false);
       return "";
     }
-  } 
-  
+  }
+
   if (response->wasHttpError()) {
     std::string msg = getHttpErrorMessage(response.get(), errorCode);
     setErrorMessage(msg, false);

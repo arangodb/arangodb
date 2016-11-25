@@ -118,7 +118,7 @@ class GeneralCommTask : public SocketTask {
  protected:
   GeneralServer* const _server;
 
-  // protocol to use http, vpp
+  // protocol to use http, vst
   char const* _protocol = "unknown";
   rest::ProtocolVersion _protocolVersion = rest::ProtocolVersion::UNKNOWN;
 

@@ -23,12 +23,12 @@
 
 #include "AgentActivator.h"
 
+#include <chrono>
+#include <thread>
+
 #include "Agency/Agent.h"
 #include "Agency/ActivationCallback.h"
 #include "Basics/ConditionLocker.h"
-
-#include <chrono>
-#include <thread>
 
 using namespace arangodb::consensus;
 using namespace std::chrono;

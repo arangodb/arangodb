@@ -92,6 +92,9 @@ class Agent : public arangodb::Thread {
   /// @brief Read from agency
   read_ret_t read(query_t const&);
 
+  /// @brief Attempt read/write transaction
+  trans_ret_t transact(query_t const&);
+
   /// @brief Received by followers to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2).
   bool recvAppendEntriesRPC(term_t term, std::string const& leaderId,
