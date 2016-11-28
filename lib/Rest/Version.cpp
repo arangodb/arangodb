@@ -148,6 +148,12 @@ void Version::initialize() {
   Values["maintainer-mode"] = "false";
 #endif
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  Values["failure-tests"] = "true";
+#else
+  Values["failure-tests"] = "false";
+#endif
+
 #ifdef ARANGODB_HAVE_TCMALLOC
   Values["tcmalloc"] = "true";
 #else
