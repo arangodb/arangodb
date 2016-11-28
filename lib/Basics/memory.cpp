@@ -26,6 +26,8 @@
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 #include <sys/time.h>
 #include <unistd.h>
+
+#include <new>
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,34 +76,25 @@
 #define REALLOC_WRAPPER(zone, ptr, n) BuiltInRealloc(ptr, n)
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief core memory zone, allocation will never fail
-////////////////////////////////////////////////////////////////////////////////
-
 static TRI_memory_zone_t TriCoreMemZone;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief unknown memory zone
-////////////////////////////////////////////////////////////////////////////////
-
 static TRI_memory_zone_t TriUnknownMemZone;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief memory reserve for core memory zone
-////////////////////////////////////////////////////////////////////////////////
-
 static void* CoreReserve;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the core was initialized
-////////////////////////////////////////////////////////////////////////////////
-
 static int CoreInitialized = 0;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief configuration parameters for memory error tests
-////////////////////////////////////////////////////////////////////////////////
+/// @brief core memory zone, allocation will never fail
+TRI_memory_zone_t* TRI_CORE_MEM_ZONE = &TriCoreMemZone;
 
+/// @brief unknown memory zone
+TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE = &TriUnknownMemZone;
+
+/// @brief configuration parameters for memory error tests
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 static size_t FailMinSize = 0;
 static double FailProbability = 0.0;
@@ -123,11 +116,8 @@ static inline void CheckSize(uint64_t n, char const* file, int line) {
 }
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief timestamp for failing malloc
-////////////////////////////////////////////////////////////////////////////////
-
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
+/// @brief timestamp for failing malloc
 static inline double CurrentTimeStamp(void) {
   struct timeval tv;
   gettimeofday(&tv, 0);
@@ -136,11 +126,8 @@ static inline double CurrentTimeStamp(void) {
 }
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not a malloc operation should intentionally fail
-////////////////////////////////////////////////////////////////////////////////
-
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
+/// @brief whether or not a malloc operation should intentionally fail
 static bool ShouldFail(size_t n) {
   if (FailMinSize > 0 && FailMinSize > n) {
     return false;
@@ -162,11 +149,8 @@ static bool ShouldFail(size_t n) {
 }
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief intentionally failing malloc - used for failure tests
-////////////////////////////////////////////////////////////////////////////////
-
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
+/// @brief intentionally failing malloc - used for failure tests
 static void* FailMalloc(TRI_memory_zone_t* zone, size_t n) {
   // we can fail, so let's check whether we should fail intentionally...
   if (zone->_failable && ShouldFail(n)) {
@@ -179,11 +163,8 @@ static void* FailMalloc(TRI_memory_zone_t* zone, size_t n) {
 }
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief intentionally failing realloc - used for failure tests
-////////////////////////////////////////////////////////////////////////////////
-
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
+/// @brief intentionally failing realloc - used for failure tests
 static void* FailRealloc(TRI_memory_zone_t* zone, void* old, size_t n) {
   // we can fail, so let's check whether we should fail intentionally...
   if (zone->_failable && ShouldFail(n)) {
@@ -196,11 +177,8 @@ static void* FailRealloc(TRI_memory_zone_t* zone, void* old, size_t n) {
 }
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize failing malloc
-////////////////////////////////////////////////////////////////////////////////
-
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
+/// @brief initialize failing malloc
 static void InitFailMalloc(void) {
   // get failure probability
   char* value = getenv("ARANGODB_FAILMALLOC_PROBABILITY");
@@ -232,25 +210,85 @@ static void InitFailMalloc(void) {
     }
   }
 }
-
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief core memory zone, allocation will never fail
-////////////////////////////////////////////////////////////////////////////////
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+/// @brief overloaded, intentionally failing operator new
+void* operator new (size_t size) throw(std::bad_alloc) {
+  if (ShouldFail(size)) {
+    throw std::bad_alloc();
+  }
 
-TRI_memory_zone_t* TRI_CORE_MEM_ZONE = &TriCoreMemZone;
+  void* pointer = malloc(size);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unknown memory zone
-////////////////////////////////////////////////////////////////////////////////
+  if (pointer == nullptr) {
+    throw std::bad_alloc();
+  }
 
-TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE = &TriUnknownMemZone;
+  return pointer;
+}
 
-////////////////////////////////////////////////////////////////////////////////
+/// @brief overloaded, intentionally failing operator new, non-throwing
+void* operator new (size_t size, std::nothrow_t const&) throw() {
+  if (ShouldFail(size)) {
+    return nullptr;
+  }
+  return malloc(size);
+}
+
+/// @brief overloaded, intentionally failing operator new[]
+void* operator new[] (size_t size) throw(std::bad_alloc) {
+  if (ShouldFail(size)) {
+    throw std::bad_alloc();
+  }
+
+  void* pointer = malloc(size);
+
+  if (pointer == nullptr) {
+    throw std::bad_alloc();
+  }
+
+  return pointer;
+}
+
+/// @brief overloaded, intentionally failing operator new[], non-throwing
+void* operator new[] (size_t size, std::nothrow_t const&) throw() {
+  if (ShouldFail(size)) {
+    return nullptr;
+  }
+  return malloc(size);
+}
+
+/// @brief overloaded operator delete
+void operator delete (void* pointer) throw() {
+  if (pointer) {
+    free(pointer);
+  }
+}
+
+/// @brief overloaded operator delete
+void operator delete (void* pointer, std::nothrow_t const&) throw() {
+  if (pointer) {
+    free(pointer);
+  }
+}
+
+/// @brief overloaded operator delete
+void operator delete[] (void* pointer) throw() {
+  if (pointer) {
+    free(pointer);
+  }
+}
+
+/// @brief overloaded operator delete
+void operator delete[] (void* pointer, std::nothrow_t const&) throw() {
+  if (pointer) {
+    free(pointer);
+  }
+}
+#endif
+
 /// @brief system memory allocation
-////////////////////////////////////////////////////////////////////////////////
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void* TRI_SystemAllocateZ(uint64_t n, bool set, char const* file, int line) {
 #else
@@ -271,10 +309,7 @@ void* TRI_SystemAllocate(uint64_t n, bool set) {
   return m;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief basic memory management for allocate
-////////////////////////////////////////////////////////////////////////////////
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void* TRI_AllocateZ(TRI_memory_zone_t* zone, uint64_t n, bool set,
                     char const* file, int line) {
@@ -329,10 +364,7 @@ void* TRI_Allocate(TRI_memory_zone_t* zone, uint64_t n, bool set) {
   return m;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief basic memory management for reallocate
-////////////////////////////////////////////////////////////////////////////////
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void* TRI_ReallocateZ(TRI_memory_zone_t* zone, void* m, uint64_t n,
                       char const* file, int line) {
@@ -388,10 +420,7 @@ void* TRI_Reallocate(TRI_memory_zone_t* zone, void* m, uint64_t n) {
   return p;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief basic memory management for deallocate
-////////////////////////////////////////////////////////////////////////////////
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void TRI_FreeZ(TRI_memory_zone_t* zone, void* m, char const* file, int line) {
 #else
@@ -411,13 +440,10 @@ void TRI_Free(TRI_memory_zone_t* zone, void* m) {
   free(p);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief free memory allocated by some low-level functions
 ///
 /// this can be used to free memory that was not allocated by TRI_Allocate, but
 /// by malloc et al
-////////////////////////////////////////////////////////////////////////////////
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void TRI_SystemFreeZ(void* p, char const* file, int line) {
 #else
@@ -432,27 +458,7 @@ void TRI_SystemFree(void* p) {
   free(p);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wrapper for realloc
-///
-/// this wrapper is used together with libev, as the builtin libev allocator
-/// causes problems with Valgrind:
-/// - http://lists.schmorp.de/pipermail/libev/2012q2/001917.html
-/// - http://lists.gnu.org/archive/html/bug-gnulib/2011-03/msg00243.html
-////////////////////////////////////////////////////////////////////////////////
-
-void* TRI_WrappedReallocate(void* ptr, long size) {
-  if (ptr == nullptr && size == 0) {
-    return nullptr;
-  }
-
-  return BuiltInRealloc(ptr, (size_t)size);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize memory subsystem
-////////////////////////////////////////////////////////////////////////////////
-
 void TRI_InitializeMemory() {
   if (CoreInitialized == 0) {
     static size_t const ReserveSize = 1024 * 1024 * 10;
@@ -480,10 +486,7 @@ void TRI_InitializeMemory() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown memory subsystem
-////////////////////////////////////////////////////////////////////////////////
-
 void TRI_ShutdownMemory() {
   if (CoreInitialized == 1) {
     free(CoreReserve);
