@@ -299,7 +299,7 @@
 #define TRI_DIR_SEPARATOR_STR "/"
 
 #define TRI_O_CLOEXEC O_CLOEXEC
-#define TRI_NOATIME O_NOATIME
+#define TRI_NOATIME 0
 
 #define TRI_CHDIR ::chdir
 #define TRI_CLOSE ::close
@@ -442,7 +442,7 @@
 #define TRI_DIR_SEPARATOR_STR "/"
 
 #define TRI_O_CLOEXEC O_CLOEXEC
-#define TRI_NOATIME O_NOATIME
+#define TRI_NOATIME 0
 
 #define TRI_CHDIR ::chdir
 #define TRI_CLOSE ::close

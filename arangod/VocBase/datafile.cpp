@@ -144,12 +144,9 @@ static bool CheckCrcMarker(TRI_df_marker_t const* marker, char const* end) {
 
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new datafile
 ///
 /// returns the file descriptor or -1 if the file cannot be created
-////////////////////////////////////////////////////////////////////////////////
-
 static int CreateDatafile(std::string const& filename, TRI_voc_size_t maximalSize) {
   TRI_ERRORBUF;
 
@@ -1824,11 +1821,8 @@ TRI_datafile_t* TRI_datafile_t::openHelper(std::string const& filename, bool ign
   TRI_ASSERT(!filename.empty());
   TRI_voc_fid_t fid = GetNumericFilenamePart(filename.c_str());
 
-  // ..........................................................................
   // attempt to open a datafile file
-  // ..........................................................................
-
-  int fd = TRI_OPEN(filename.c_str(), O_RDWR | TRI_O_CLOEXEC | TRI_NOATIME);
+  int fd = TRI_OPEN(filename.c_str(), O_RDWR | TRI_O_CLOEXEC);
 
   if (fd < 0) {
     TRI_SYSTEM_ERROR();
