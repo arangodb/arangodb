@@ -3929,17 +3929,23 @@ struct GeoIndexInfo {
   std::vector<std::string> _latitude;
 };
 
-// FIXME - return value can be simpler as the accesspaths are contained within the collection/index
+
+
+
 // TODO - remove debug code
-// TODO - index attributes as single attribute or list
+#ifdef OBIDEBUG
+  #define OBILEVEL ERR
+#else
+  #define OBILEVEL TRACE
+#endif
 static boost::optional<GeoIndexInfo>
 geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionNode* ex, ExecutionPlan* plan){
   using SV = std::vector<std::string>;
-  LOG(ERR) << "    enter argument check";
+  LOG(OBILEVEL) << "    enter argument check";
   // first and second should be based on the same document - need to provide the document
   // in order to see which collection is bound to it and if that collections supports geo-index
   if( !pair.first->isAttributeAccessForVariable() || !pair.second->isAttributeAccessForVariable()){
-    LOG(ERR) << "      not both args are of type attribute access";
+    LOG(OBILEVEL) << "      not both args are of type attribute access";
     return boost::none;
   }
 
@@ -3950,14 +3956,14 @@ geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionN
   SV accessPath1{pair.first->getString()};
   SV accessPath2{pair.second->getString()};
 
-  LOG(ERR) << "      got setter";
+  LOG(OBILEVEL) << "      got setter";
   if(setter1 == setter2){
     if(setter1->getType() == EN::ENUMERATE_COLLECTION){
       auto collNode = reinterpret_cast<EnumerateCollectionNode*>(setter1);
       auto coll = collNode->collection(); //what kind of indexes does it have on what attributes
       auto lcoll = coll->getCollection();
       // TODO - check collection for suitable geo-indexes
-      LOG(ERR) << "        SETTER IS ENUMERATE_COLLECTION: " << coll->getName();
+      LOG(OBILEVEL) << "        SETTER IS ENUMERATE_COLLECTION: " << coll->getName();
       for(auto indexShardPtr : lcoll->getIndexes()){
         // get real index
         arangodb::Index& index = *indexShardPtr.get();
@@ -3968,19 +3974,19 @@ geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionN
           continue;
         }
 
-        if(true){
-          //FIXME -  REMOVE DEBUG CODE LATER
-          auto vecs = std::vector<std::vector<SV>>{index.fieldNames(), std::vector<SV>{accessPath1, accessPath2}};
-          for(auto vec : vecs ){
-            for(auto path : vec){
-              std::cout << "AccessPath VECTOR:  ";
-              for(auto word : path){
-                std::cout << word << " ";
-              }
-              std::cout << std::endl;
+#ifdef OBIDEBUG
+        //FIXME -  REMOVE DEBUG CODE LATER
+        auto vecs = std::vector<std::vector<SV>>{index.fieldNames(), std::vector<SV>{accessPath1, accessPath2}};
+        for(auto vec : vecs ){
+          for(auto path : vec){
+            std::cout << "AccessPath VECTOR:  ";
+            for(auto word : path){
+              std::cout << word << " ";
             }
+            std::cout << std::endl;
           }
         }
+#endif
 
         //check access paths of attribues in ast and those in index match
         if( index.fieldNames()[0] == accessPath1 && index.fieldNames()[1] == accessPath2 ){
@@ -3993,14 +3999,11 @@ geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionN
   return boost::none;
 }
 
-
-/* The following Rule looks for a Sort Node that makes use of the distance function
- * and replaces it */
 void arangodb::aql::optimizeGeoIndexRule(Optimizer* opt,
                                          ExecutionPlan* plan,
                                          Optimizer::Rule const* rule) {
 
-  LOG(ERR) << "ENTER GEO RULE";
+  LOG(OBILEVEL) << "ENTER GEO RULE";
 
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
@@ -4049,7 +4052,7 @@ void arangodb::aql::optimizeGeoIndexRule(Optimizer* opt,
       continue;
     }
 
-    LOG(ERR) << "  FOUND DISTANCE RULE";
+    LOG(OBILEVEL) << "  FOUND DISTANCE RULE";
 
     auto const& distanceArgs = funcNode->getMember(0);
     if(distanceArgs->numMembers() != 4){
@@ -4067,38 +4070,35 @@ void arangodb::aql::optimizeGeoIndexRule(Optimizer* opt,
       continue;
     }
 
-    LOG(ERR) << "  FOUND DISTANCE RULE WITH ATTRIBUTE ACCESS";
+    LOG(OBILEVEL) << "  FOUND DISTANCE RULE WITH ATTRIBUTE ACCESS";
 
     if(!result1){
       result1 = std::move(result2);
     }
 
-    LOG(ERR) << "  attributes: " << result1.get()._longitude[0]
+    LOG(OBILEVEL) << "  attributes: " << result1.get()._longitude[0]
              << ", " << result1.get()._longitude
              << " of collection:" << result1.get()._collection->getName()
              << " are geoindexed";
 
+    break; //remove this to make use of the index
+
     auto cnode = result1.get()._collectionNode;
     auto& idxPtr = result1.get()._index;
 
-    auto condition = std::make_unique<Condition>(plan->getAst());
+    //create new index node and register it
+    auto condition = std::make_unique<Condition>(plan->getAst()); //What is this condition exactly about
     condition->normalize(plan);
-
-    std::unique_ptr<ExecutionNode> inodePtr(new IndexNode(
+    auto inode = new IndexNode(
             plan, plan->nextId(), cnode->vocbase(),
             cnode->collection(), cnode->outVariable(),
             std::vector<Transaction::IndexHandle>{Transaction::IndexHandle{idxPtr}},
-            condition.get(), elements[0].second));
-
+            condition.get(), !elements[0].second);
+    plan->registerNode(inode);
     condition.release();
 
-    // a sort node must have a parent
-    auto sort_parent = n->getFirstParent();
-    // remove sort node
-    sort_parent->removeDependency(n);
-
-    //replace EnumerateColletion node with new IndexNode
-    cnode->getFirstParent()->replaceDependency(cnode,inodePtr.release());
+    plan->unlinkNode(n);
+    plan->replaceNode(cnode,inode);
 
     //signal that plan has been changed
     modified=true;
@@ -4107,7 +4107,7 @@ void arangodb::aql::optimizeGeoIndexRule(Optimizer* opt,
 
   opt->addPlan(plan, rule, modified);
 
-  LOG(ERR) << "EXIT GEO RULE";
-  LOG(ERR) << "";
+  LOG(OBILEVEL) << "EXIT GEO RULE";
+  LOG(OBILEVEL) << "";
 }
 
