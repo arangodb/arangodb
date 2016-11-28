@@ -3193,7 +3193,6 @@ function optimizeNonVertexCentricIndexesSuite () {
   };
 };
 
-/*
 jsunity.run(namedGraphSuite);
 jsunity.run(multiCollectionGraphSuite);
 jsunity.run(multiEdgeCollectionGraphSuite);
@@ -3206,7 +3205,6 @@ jsunity.run(multiEdgeDirectionSuite);
 jsunity.run(subQuerySuite);
 jsunity.run(optionsSuite);
 jsunity.run(optimizeQuantifierSuite);
-*/
 jsunity.run(optimizeNonVertexCentricIndexesSuite);
 
 return jsunity.done();

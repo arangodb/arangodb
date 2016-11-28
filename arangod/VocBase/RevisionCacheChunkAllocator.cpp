@@ -42,6 +42,14 @@ RevisionCacheChunkAllocator::RevisionCacheChunkAllocator(uint32_t defaultChunkSi
 }
 
 RevisionCacheChunkAllocator::~RevisionCacheChunkAllocator() {
+  try {
+    while (garbageCollect()) {
+      // garbage collect until nothing more to do
+    }
+  } catch (...) {
+    // must not throw here
+  }
+
   // free all chunks
   WRITE_LOCKER(locker, _chunksLock);
 
@@ -98,7 +106,7 @@ RevisionCacheChunk* RevisionCacheChunkAllocator::orderChunk(CollectionRevisionsC
   uint32_t const targetSize = RevisionCacheChunk::alignSize((std::max)(valueSize, chunkSize), blockSize());
   {
     // first check if there's a chunk ready on the freelist
-    READ_LOCKER(locker, _chunksLock);
+    WRITE_LOCKER(locker, _chunksLock);
     if (!_freeList.empty()) {
       RevisionCacheChunk* chunk = _freeList.back();
 
@@ -155,6 +163,7 @@ void RevisionCacheChunkAllocator::returnUsed(ReadCache* cache, RevisionCacheChun
 
   {
     MUTEX_LOCKER(locker, _gcLock);
+
     auto it = _fullChunks.find(cache);
 
     if (it == _fullChunks.end()) {
@@ -208,6 +217,7 @@ bool RevisionCacheChunkAllocator::garbageCollect() {
       chunk = _freeList.back();
       _freeList.pop_back();
 
+      TRI_ASSERT(chunk != nullptr);
       // fix statistics here already, because we already have the lock
       TRI_ASSERT(_totalAllocated >= chunk->size());
       _totalAllocated -= chunk->size();

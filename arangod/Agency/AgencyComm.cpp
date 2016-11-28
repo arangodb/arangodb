@@ -56,12 +56,16 @@ static void addEmptyVPackObject(std::string const& name,
   VPackObjectBuilder c(&builder);
 }
 
+const std::vector<std::string> AgencyTransaction::TypeUrl(
+  { "/read", "/write", "/transact" });
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                AgencyPrecondition
 // -----------------------------------------------------------------------------
 
 AgencyPrecondition::AgencyPrecondition()
-  : type(AgencyPrecondition::Type::NONE), empty(false) {}
+  : type(AgencyPrecondition::Type::NONE) {}
 
 AgencyPrecondition::AgencyPrecondition(std::string const& key, Type t, bool e)
     : key(AgencyCommManager::path(key)), type(t), empty(e) {}
@@ -209,6 +213,12 @@ void AgencyWriteTransaction::toVelocyPack(VPackBuilder& builder) const {
   }
 }
 
+bool AgencyWriteTransaction::validate(AgencyCommResult const& result) const {
+  return (result.slice().isObject() &&
+          result.slice().hasKey("results") &&
+          result.slice().get("results").isArray());
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                          AgencyGeneralTransaction
 // -----------------------------------------------------------------------------
@@ -236,6 +246,10 @@ void AgencyGeneralTransaction::push_back(
   operations.push_back(oper);
 }
 
+bool AgencyGeneralTransaction::validate(AgencyCommResult const& result) const {
+  return (result.slice().isArray() && result.slice().length() == 1);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                             AgencyReadTransaction
 // -----------------------------------------------------------------------------
@@ -251,6 +265,10 @@ void AgencyReadTransaction::toVelocyPack(VPackBuilder& builder) const {
   for (std::string const& key : keys) {
     builder.add(VPackValue(key));
   }
+}
+
+bool AgencyReadTransaction::validate(AgencyCommResult const& result) const {
+  return (result.slice().isArray() && result.slice().length() == 1);
 }
 
 // -----------------------------------------------------------------------------
@@ -341,7 +359,7 @@ void AgencyCommResult::clear() {
   _statusCode = 0;
 }
 
-VPackSlice AgencyCommResult::slice() { return _vpack->slice(); }
+VPackSlice AgencyCommResult::slice() const { return _vpack->slice(); }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 AgencyCommManager
@@ -939,21 +957,7 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
     AgencyTransaction const& transaction, double timeout) {
   std::string url = AgencyComm::AGENCY_URL_PREFIX;
 
-  switch (transaction.type()) {
-  case AgencyTransaction::Type::READ:
-    url += "/read";
-    break;
-  case AgencyTransaction::Type::WRITE:
-    url += "/write";
-    break;
-  case AgencyTransaction::Type::GENERAL:
-    url += "/transact";
-    break;
-  default:
-    // We should never get here.
-    TRI_ASSERT(false);
-    break;
-  }
+  url += transaction.path();
 
   VPackBuilder builder;
   {
@@ -973,29 +977,11 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
   try {
     result.setVPack(VPackParser::fromJson(result.body().c_str()));
 
-    if (transaction.type() == AgencyTransaction::Type::WRITE) {
-      if (!result.slice().isObject() ||
-          !result.slice().get("results").isArray()) {
-        result._statusCode = 500;
-        return result;
-      }
-
-      if (result.slice().get("results").length() != 1) {
-        result._statusCode = 500;
-        return result;
-      }
-    } else {
-      if (!result.slice().isArray()) {
-        result._statusCode = 500;
-        return result;
-      }
-
-      if (result.slice().length() != 1) {
-        result._statusCode = 500;
-        return result;
-      }
+    if (!transaction.validate(result)) {
+      result._statusCode = 500;
+      return result;
     }
-
+    
     result._body.clear();
 
   } catch (std::exception& e) {

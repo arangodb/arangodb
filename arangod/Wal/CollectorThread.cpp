@@ -712,9 +712,9 @@ int CollectorThread::collect(Logfile* logfile) {
   }
 
   // We will sequentially scan the logfile for collection:
-  TRI_MMFileAdvise(df->_data, df->_maximalSize, TRI_MADVISE_SEQUENTIAL);
-  TRI_MMFileAdvise(df->_data, df->_maximalSize, TRI_MADVISE_WILLNEED);
-  TRI_DEFER(TRI_MMFileAdvise(df->_data, df->_maximalSize, TRI_MADVISE_RANDOM));
+  df->sequentialAccess();
+  df->willNeed();
+  TRI_DEFER(df->randomAccess());
 
   // create a state for the collector, beginning with the list of failed
   // transactions
@@ -756,14 +756,30 @@ int CollectorThread::collect(Logfile* logfile) {
       collectionIds.emplace(cid);
     }
   }
+    
+  OperationsType sortedOperations;
 
   // now for each collection, write all surviving markers into collection
   // datafiles
   for (auto it = collectionIds.begin(); it != collectionIds.end(); ++it) {
     auto cid = (*it);
 
-    OperationsType sortedOperations;
+    // calculate required size for sortedOperations vector
+    sortedOperations.clear();
+    {
+      size_t requiredSize = 0;
 
+      auto it1 = state.structuralOperations.find(cid);
+      if (it1 != state.structuralOperations.end()) {
+        requiredSize += (*it1).second.size();
+      }
+      auto it2 = state.documentOperations.find(cid);
+      if (it2 != state.documentOperations.end()) {
+        requiredSize += (*it2).second.size();
+      }
+      sortedOperations.reserve(requiredSize);
+    }
+  
     // insert structural operations - those are already sorted by tick
     if (state.structuralOperations.find(cid) !=
         state.structuralOperations.end()) {

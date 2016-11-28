@@ -198,6 +198,7 @@ void prepareTraversalsRule(Optimizer* opt, ExecutionPlan* plan,
 /// @brief moves simple subqueries one level higher
 void inlineSubqueriesRule(Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
+void optimizeGeoIndexRule(Optimizer* opt, ExecutionPlan* plan, Optimizer::Rule const* rule);
 }  // namespace aql
 }  // namespace arangodb
 

@@ -146,6 +146,9 @@ void V8ShellFeature::start() {
 }
 
 void V8ShellFeature::unprepare() {
+  // turn off memory allocation failures before we move into V8 code
+  TRI_DisallowMemoryFailures();
+
   {
     v8::Locker locker{_isolate};
 
@@ -177,6 +180,9 @@ void V8ShellFeature::unprepare() {
   }
 
   _isolate->Dispose();
+  
+  // turn on memory allocation failures again
+  TRI_AllowMemoryFailures();
 }
 
 bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
