@@ -122,6 +122,8 @@ class AssocUnique {
     }
     numberBuckets = nr;
     _bucketsMask = nr - 1;
+    
+    _buckets.reserve(numberBuckets);
 
     try {
       for (size_t j = 0; j < numberBuckets; j++) {
@@ -175,6 +177,12 @@ class AssocUnique {
   void resizeInternal(UserData* userData, Bucket& b, uint64_t targetSize,
                       bool allowShrink) {
     if (b._nrAlloc >= targetSize && !allowShrink) {
+      return;
+    }
+    if (allowShrink && 
+        b._nrAlloc >= targetSize && 
+        b._nrAlloc < 1.25 * targetSize) {
+      // no need to shrink the bucket if it's not big enough
       return;
     }
 
