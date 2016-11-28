@@ -154,7 +154,7 @@ static int CreateDatafile(std::string const& filename, TRI_voc_size_t maximalSiz
   TRI_ERRORBUF;
 
   // open the file
-  int fd = TRI_CREATE(filename.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+  int fd = TRI_CREATE(filename.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC | TRI_NOATIME,
                       S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 
   TRI_IF_FAILURE("CreateDatafile1") {
@@ -1812,7 +1812,7 @@ TRI_datafile_t* TRI_datafile_t::openHelper(std::string const& filename, bool ign
   // attempt to open a datafile file
   // ..........................................................................
 
-  int fd = TRI_OPEN(filename.c_str(), O_RDWR | TRI_O_CLOEXEC);
+  int fd = TRI_OPEN(filename.c_str(), O_RDWR | TRI_O_CLOEXEC | TRI_NOATIME);
 
   if (fd < 0) {
     TRI_SYSTEM_ERROR();
