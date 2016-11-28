@@ -69,7 +69,7 @@ class Optimizer {
     // determine the "right" type of CollectNode and
     // add a sort node for each COLLECT (may be removed later)
     specializeCollectRule_pass1 = 105,
-    
+
     inlineSubqueriesRule_pass1 = 106,
 
     // split and-combined filters into multiple smaller filters
@@ -192,7 +192,9 @@ class Optimizer {
     removeUnnecessaryRemoteScatterRule_pass10 = 1040,
 
     // recognize that a RemoveNode can be moved to the shards
-    undistributeRemoveAfterEnumCollRule_pass10 = 1050
+    undistributeRemoveAfterEnumCollRule_pass10 = 1050,
+
+    geoDistanceRule = 1060
   };
 
  public:
