@@ -1020,8 +1020,8 @@ int RecoverState::replayLogfile(Logfile* logfile, int number) {
   TRI_datafile_t* df = logfile->df();
 
   // Advise on sequential use:
-  TRI_MMFileAdvise(df->_data, df->maximalSize(), TRI_MADVISE_SEQUENTIAL);
-  TRI_MMFileAdvise(df->_data, df->maximalSize(), TRI_MADVISE_WILLNEED);
+  df->sequentialAccess();
+  df->willNeed();
 
   if (!TRI_IterateDatafile(df, &RecoverState::ReplayMarker, static_cast<void*>(this))) {
     LOG(WARN) << "WAL inspection failed when scanning logfile '" << logfileName << "'";
@@ -1029,7 +1029,7 @@ int RecoverState::replayLogfile(Logfile* logfile, int number) {
   }
 
   // Advise on random access use:
-  TRI_MMFileAdvise(df->_data, df->maximalSize(), TRI_MADVISE_RANDOM);
+  df->randomAccess();
 
   return TRI_ERROR_NO_ERROR;
 }

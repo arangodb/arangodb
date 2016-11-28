@@ -246,8 +246,8 @@ void LogfileManager::prepare() {
   auto databasePath = ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
   _databasePath = databasePath->directory();
 
-  std::string const shutdownFile = shutdownFilename();
-  bool const shutdownFileExists = basics::FileUtils::exists(shutdownFile);
+  _shutdownFile = shutdownFilename();
+  bool const shutdownFileExists = basics::FileUtils::exists(_shutdownFile);
 
   if (shutdownFileExists) {
     LOG(TRACE) << "shutdown file found";
@@ -255,7 +255,7 @@ void LogfileManager::prepare() {
     int res = readShutdownInfo();
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(FATAL) << "could not open shutdown file '" << shutdownFile
+      LOG(FATAL) << "could not open shutdown file '" << _shutdownFile
                  << "': " << TRI_errno_string(res);
       FATAL_ERROR_EXIT();
     }
@@ -1771,10 +1771,10 @@ void LogfileManager::closeLogfiles() {
 
 // reads the shutdown information
 int LogfileManager::readShutdownInfo() {
-  std::string const filename = shutdownFilename();
+  TRI_ASSERT(!_shutdownFile.empty());
   std::shared_ptr<VPackBuilder> builder;
   try {
-    builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
+    builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(_shutdownFile);
   } catch (...) {
     return TRI_ERROR_INTERNAL;
   }
@@ -1838,7 +1838,7 @@ int LogfileManager::readShutdownInfo() {
 int LogfileManager::writeShutdownInfo(bool writeShutdownTime) {
   TRI_IF_FAILURE("LogfileManagerWriteShutdown") { return TRI_ERROR_DEBUG; }
 
-  std::string const filename = shutdownFilename();
+  TRI_ASSERT(!_shutdownFile.empty());
 
   try {
     VPackBuilder builder;
@@ -1871,15 +1871,15 @@ int LogfileManager::writeShutdownInfo(bool writeShutdownTime) {
       // time
       MUTEX_LOCKER(mutexLocker, _shutdownFileLock);
       ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
-          filename, builder.slice(), true);
+          _shutdownFile, builder.slice(), true);
     }
 
     if (!ok) {
-      LOG(ERR) << "unable to write WAL state file '" << filename << "'";
+      LOG(ERR) << "unable to write WAL state file '" << _shutdownFile << "'";
       return TRI_ERROR_CANNOT_WRITE_FILE;
     }
   } catch (...) {
-    LOG(ERR) << "unable to write WAL state file '" << filename << "'";
+    LOG(ERR) << "unable to write WAL state file '" << _shutdownFile << "'";
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -2103,8 +2103,11 @@ int LogfileManager::inspectLogfiles() {
     LOG(TRACE) << "inspecting logfile " << logfile->id() << " ("
                << logfile->statusText() << ")";
 
+    TRI_datafile_t* df = logfile->df();
+    df->sequentialAccess();
+
     // update the tick statistics
-    if (!TRI_IterateDatafile(logfile->df(), &RecoverState::InitialScanMarker,
+    if (!TRI_IterateDatafile(df, &RecoverState::InitialScanMarker,
                              static_cast<void*>(_recoverState))) {
       std::string const logfileName = logfile->filename();
       LOG(WARN) << "WAL inspection failed when scanning logfile '"
@@ -2114,13 +2117,12 @@ int LogfileManager::inspectLogfiles() {
 
     LOG(TRACE) << "inspected logfile " << logfile->id() << " ("
                << logfile->statusText()
-               << "), tickMin: " << logfile->df()->_tickMin
-               << ", tickMax: " << logfile->df()->_tickMax;
+               << "), tickMin: " << df->_tickMin
+               << ", tickMax: " << df->_tickMax;
 
     if (logfile->status() == Logfile::StatusType::SEALED) {
       // If it is sealed, switch to random access:
-      TRI_datafile_t* df = logfile->df();
-      TRI_MMFileAdvise(df->_data, df->_maximalSize, TRI_MADVISE_RANDOM);
+      df->randomAccess();
     }
 
     {
@@ -2230,7 +2232,7 @@ int LogfileManager::ensureDirectory() {
 
 // return the absolute name of the shutdown file
 std::string LogfileManager::shutdownFilename() const {
-  return (_databasePath + TRI_DIR_SEPARATOR_STR) + "SHUTDOWN";
+  return _databasePath + TRI_DIR_SEPARATOR_STR + "SHUTDOWN";
 }
 
 // return an absolute filename for a logfile id
@@ -2238,4 +2240,3 @@ std::string LogfileManager::logfileName(Logfile::IdType id) const {
   return _directory + std::string("logfile-") + basics::StringUtils::itoa(id) +
          std::string(".db");
 }
-

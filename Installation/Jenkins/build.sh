@@ -466,8 +466,12 @@ if [ -z "${MSVC}" ]; then
     # on all other system cmake tends to be sluggish on finding strip.
     # workaround by presetting it:
     if test -z "${STRIP}"; then
-        export STRIP=`which strip`
+        STRIP=/usr/bin/strip
+        if [ ! -f ${STRIP} ] ; then
+            STRIP=`which strip`
+        fi
         CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCMAKE_STRIP=${STRIP}"
+        export STRIP
     fi
 fi
 

@@ -154,7 +154,7 @@ static int CreateDatafile(std::string const& filename, TRI_voc_size_t maximalSiz
   TRI_ERRORBUF;
 
   // open the file
-  int fd = TRI_CREATE(filename.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+  int fd = TRI_CREATE(filename.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC | TRI_NOATIME,
                       S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 
   TRI_IF_FAILURE("CreateDatafile1") {
@@ -557,6 +557,22 @@ int TRI_datafile_t::reserveElement(TRI_voc_size_t size, TRI_df_marker_t** positi
 
   return TRI_ERROR_NO_ERROR;
 }
+  
+void TRI_datafile_t::sequentialAccess() {
+  TRI_MMFileAdvise(_data, _maximalSize, TRI_MADVISE_SEQUENTIAL);
+}
+
+void TRI_datafile_t::randomAccess() {
+  TRI_MMFileAdvise(_data, _maximalSize, TRI_MADVISE_RANDOM);
+}
+
+void TRI_datafile_t::willNeed() {
+  TRI_MMFileAdvise(_data, _maximalSize, TRI_MADVISE_WILLNEED);
+}
+
+void TRI_datafile_t::dontNeed() {
+  TRI_MMFileAdvise(_data, _maximalSize, TRI_MADVISE_DONTNEED);
+}
 
 int TRI_datafile_t::lockInMemory() {
   TRI_ASSERT(!_lockedInMemory);
@@ -876,7 +892,7 @@ int TRI_datafile_t::seal() {
 
   if (isPhysical()) {
     // From now on we predict random access (until collection or compaction):
-    TRI_MMFileAdvise(_data, _maximalSize, TRI_MADVISE_RANDOM);
+    randomAccess();
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -1013,7 +1029,7 @@ TRI_datafile_t::TRI_datafile_t(std::string const& filename, int fd, void* mmHand
     TRI_ASSERT(fd >= 0);
 
     // Advise OS that sequential access is going to happen:
-    TRI_MMFileAdvise(_data, _maximalSize, TRI_MADVISE_SEQUENTIAL);
+    sequentialAccess();
   }
 }
   
@@ -1791,8 +1807,8 @@ TRI_datafile_t* TRI_datafile_t::open(std::string const& filename, bool ignoreFai
   }
 
   // Advise on sequential use:
-  TRI_MMFileAdvise(datafile->_data, datafile->_maximalSize, TRI_MADVISE_SEQUENTIAL);
-  TRI_MMFileAdvise(datafile->_data, datafile->_maximalSize, TRI_MADVISE_WILLNEED);
+  datafile->sequentialAccess();
+  datafile->willNeed();
 
   return datafile.release();
 }
@@ -1812,7 +1828,7 @@ TRI_datafile_t* TRI_datafile_t::openHelper(std::string const& filename, bool ign
   // attempt to open a datafile file
   // ..........................................................................
 
-  int fd = TRI_OPEN(filename.c_str(), O_RDWR | TRI_O_CLOEXEC);
+  int fd = TRI_OPEN(filename.c_str(), O_RDWR | TRI_O_CLOEXEC | TRI_NOATIME);
 
   if (fd < 0) {
     TRI_SYSTEM_ERROR();

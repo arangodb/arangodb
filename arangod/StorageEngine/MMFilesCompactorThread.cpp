@@ -251,8 +251,8 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
 
     // We will sequentially scan the logfile for collection:
     if (df->isPhysical()) {
-      TRI_MMFileAdvise(df->_data, df->_maximalSize, TRI_MADVISE_SEQUENTIAL);
-      TRI_MMFileAdvise(df->_data, df->_maximalSize, TRI_MADVISE_WILLNEED);
+      df->sequentialAccess();
+      df->willNeed();
     }
 
     if (i == 0) {
@@ -323,7 +323,7 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
     }
 
     if (df->isPhysical()) {
-      TRI_MMFileAdvise(df->_data, df->_maximalSize, TRI_MADVISE_RANDOM);
+      df->randomAccess();
     }
 
     if (!ok) {
@@ -840,102 +840,107 @@ void MMFilesCompactorThread::run() {
     // compaction loop
     TRI_vocbase_t::State state = _vocbase->state();
 
-    engine->tryPreventCompaction(_vocbase, [this, &numCompacted, &collections](TRI_vocbase_t* vocbase) {
-      // compaction is currently allowed
-      numCompacted = 0;
-      try {
-        // copy all collections
-        collections = _vocbase->collections(false);
-      } catch (...) {
-        collections.clear();
-      }
+    try {
+      engine->tryPreventCompaction(_vocbase, [this, &numCompacted, &collections](TRI_vocbase_t* vocbase) {
+        // compaction is currently allowed
+        numCompacted = 0;
+        try {
+          // copy all collections
+          collections = _vocbase->collections(false);
+        } catch (...) {
+          collections.clear();
+        }
 
-      for (auto& collection : collections) {
-        bool worked = false;
+        for (auto& collection : collections) {
+          bool worked = false;
 
-        auto callback = [this, &collection, &worked]() -> void {
-          if (collection->status() != TRI_VOC_COL_STATUS_LOADED &&
-              collection->status() != TRI_VOC_COL_STATUS_UNLOADING) {
-            return;
-          }
-
-          bool doCompact = collection->doCompact();
-
-          // for document collection, compactify datafiles
-          if (collection->status() == TRI_VOC_COL_STATUS_LOADED && doCompact) {
-            // check whether someone else holds a read-lock on the compaction
-            // lock
-
-            TryCompactionLocker compactionLocker(collection);
-
-            if (!compactionLocker.isLocked()) {
-              // someone else is holding the compactor lock, we'll not compact
+          auto callback = [this, &collection, &worked]() -> void {
+            if (collection->status() != TRI_VOC_COL_STATUS_LOADED &&
+                collection->status() != TRI_VOC_COL_STATUS_UNLOADING) {
               return;
             }
 
-            try {
-              double const now = TRI_microtime();
-              if (collection->lastCompactionStamp() + compactionCollectionInterval() <= now) {
-                auto ce = collection->ditches()->createCompactionDitch(__FILE__,
-                                                                      __LINE__);
+            bool doCompact = collection->doCompact();
 
-                if (ce == nullptr) {
-                  // out of memory
-                  LOG_TOPIC(WARN, Logger::COMPACTOR) << "out of memory when trying to create compaction ditch";
-                } else {
-                  try {
-                    bool wasBlocked = false;
-                    worked = compactCollection(collection, wasBlocked);
+            // for document collection, compactify datafiles
+            if (collection->status() == TRI_VOC_COL_STATUS_LOADED && doCompact) {
+              // check whether someone else holds a read-lock on the compaction
+              // lock
 
-                    if (!worked && !wasBlocked) {
-                      // set compaction stamp
-                      collection->lastCompactionStamp(now);
-                    }
-                    // if we worked or were blocked, then we don't set the compaction stamp to
-                    // force another round of compaction
-                  } catch (...) {
-                    LOG_TOPIC(ERR, Logger::COMPACTOR) << "an unknown exception occurred during compaction";
-                    // in case an error occurs, we must still free this ditch
-                  }
+              TryCompactionLocker compactionLocker(collection);
 
-                  collection->ditches()->freeDitch(ce);
-                }
+              if (!compactionLocker.isLocked()) {
+                // someone else is holding the compactor lock, we'll not compact
+                return;
               }
-            } catch (...) {
-              // in case an error occurs, we must still relase the lock
-              LOG_TOPIC(ERR, Logger::COMPACTOR) << "an unknown exception occurred during compaction";
+
+              try {
+                double const now = TRI_microtime();
+                if (collection->lastCompactionStamp() + compactionCollectionInterval() <= now) {
+                  auto ce = collection->ditches()->createCompactionDitch(__FILE__,
+                                                                        __LINE__);
+
+                  if (ce == nullptr) {
+                    // out of memory
+                    LOG_TOPIC(WARN, Logger::COMPACTOR) << "out of memory when trying to create compaction ditch";
+                  } else {
+                    try {
+                      bool wasBlocked = false;
+                      worked = compactCollection(collection, wasBlocked);
+
+                      if (!worked && !wasBlocked) {
+                        // set compaction stamp
+                        collection->lastCompactionStamp(now);
+                      }
+                      // if we worked or were blocked, then we don't set the compaction stamp to
+                      // force another round of compaction
+                    } catch (...) {
+                      LOG_TOPIC(ERR, Logger::COMPACTOR) << "an unknown exception occurred during compaction";
+                      // in case an error occurs, we must still free this ditch
+                    }
+
+                    collection->ditches()->freeDitch(ce);
+                  }
+                }
+              } catch (...) {
+                // in case an error occurs, we must still relase the lock
+                LOG_TOPIC(ERR, Logger::COMPACTOR) << "an unknown exception occurred during compaction";
+              }
             }
+          };
+
+          if (!collection->tryExecuteWhileStatusLocked(callback)) {
+            continue;
           }
-        };
 
-        if (!collection->tryExecuteWhileStatusLocked(callback)) {
-          continue;
+          if (worked) {
+            ++numCompacted;
+
+            // signal the cleanup thread that we worked and that it can now wake
+            // up
+            CONDITION_LOCKER(locker, _condition);
+            locker.signal();
+          }
         }
+      }, true);
 
-        if (worked) {
-          ++numCompacted;
-
-          // signal the cleanup thread that we worked and that it can now wake
-          // up
-          CONDITION_LOCKER(locker, _condition);
-          locker.signal();
-        }
+      if (numCompacted > 0) {
+        // no need to sleep long or go into wait state if we worked.
+        // maybe there's still work left
+        usleep(1000);
+      } else if (state != TRI_vocbase_t::State::SHUTDOWN_COMPACTOR && _vocbase->state() == TRI_vocbase_t::State::NORMAL) {
+        // only sleep while server is still running
+        CONDITION_LOCKER(locker, _condition);
+        _condition.wait(compactionSleepTime());
       }
-    }, true);
-
-    if (numCompacted > 0) {
-      // no need to sleep long or go into wait state if we worked.
-      // maybe there's still work left
-      usleep(1000);
-    } else if (state != TRI_vocbase_t::State::SHUTDOWN_COMPACTOR && _vocbase->state() == TRI_vocbase_t::State::NORMAL) {
-      // only sleep while server is still running
-      CONDITION_LOCKER(locker, _condition);
-      _condition.wait(compactionSleepTime());
-    }
-  
-    if (state == TRI_vocbase_t::State::SHUTDOWN_COMPACTOR || isStopping()) {
-      // server shutdown or database has been removed
-      break;
+    
+      if (state == TRI_vocbase_t::State::SHUTDOWN_COMPACTOR || isStopping()) {
+        // server shutdown or database has been removed
+        break;
+      }
+      
+    } catch (...) {
+      // caught an error during compaction. simply ignore it and go on
     }
   }
 
