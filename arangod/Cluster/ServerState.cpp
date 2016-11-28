@@ -427,8 +427,6 @@ std::string ServerState::createIdForRole(AgencyComm comm,
   
   result = comm.sendTransactionWithFailover(reg, 0.0);
 
-  LOG(WARN) << result.slice().toJson();
-  
   VPackSlice latestId = result.slice()[2].get(
     std::vector<std::string>(
       {AgencyCommManager::path(), "Target",
