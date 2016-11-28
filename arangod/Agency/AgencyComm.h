@@ -206,6 +206,52 @@ class AgencyOperation {
 };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                  AgencyCommResult
+// -----------------------------------------------------------------------------
+
+class AgencyCommResult {
+ public:
+  AgencyCommResult();
+  AgencyCommResult(int code, std::string const& message);
+  ~AgencyCommResult() = default;
+
+ public:
+  bool successful() const { return (_statusCode >= 200 && _statusCode <= 299); }
+
+  bool connected() const;
+
+  int httpCode() const;
+
+  int errorCode() const;
+
+  std::string errorMessage() const;
+
+  std::string errorDetails() const;
+
+  std::string const location() const { return _location; }
+
+  std::string const body() const { return _body; }
+
+  void clear();
+
+  VPackSlice slice() const;
+  void setVPack(std::shared_ptr<velocypack::Builder> vpack) { _vpack = vpack; }
+
+ public:
+  std::string _location;
+  std::string _message;
+  std::string _body;
+  std::string _realBody;
+
+  std::map<std::string, AgencyCommResultEntry> _values;
+  int _statusCode;
+  bool _connected;
+
+ private:
+  std::shared_ptr<velocypack::Builder> _vpack;
+};
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 AgencyTransaction
 // -----------------------------------------------------------------------------
 
@@ -214,13 +260,15 @@ class AgencyTransaction {
 public:
   virtual ~AgencyTransaction() = default;
 
-  enum class Type { READ, WRITE, GENERAL };
+  static const std::vector<std::string> TypeUrl;
 
   virtual std::string toJson() const = 0;
   virtual void toVelocyPack(arangodb::velocypack::Builder&) const = 0;
-  virtual Type type() const = 0;
-};
+  virtual std::string const& path() const = 0;
 
+  virtual bool validate(AgencyCommResult const& result) const = 0;
+  
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          AgencyGeneralTransaction
@@ -248,9 +296,12 @@ struct AgencyGeneralTransaction : public AgencyTransaction {
 
   void push_back(std::pair<AgencyOperation,AgencyPrecondition> const&);
 
-  AgencyTransaction::Type type() const override final {
-    return AgencyTransaction::Type::GENERAL;
+  inline std::string const& path() const override final {
+    return AgencyTransaction::TypeUrl[2];
   }
+
+  virtual bool validate(AgencyCommResult const& result) const override final;
+  
 
 };
 
@@ -259,7 +310,9 @@ struct AgencyGeneralTransaction : public AgencyTransaction {
 // -----------------------------------------------------------------------------
 
 struct AgencyWriteTransaction : public AgencyTransaction {
- public:
+
+public:
+
   explicit AgencyWriteTransaction(AgencyOperation const& operation) {
     operations.push_back(operation);
   }
@@ -294,17 +347,17 @@ struct AgencyWriteTransaction : public AgencyTransaction {
 
   AgencyWriteTransaction() = default;
 
- public:
   void toVelocyPack(
       arangodb::velocypack::Builder& builder) const override final;
 
   std::string toJson() const override final;
 
-  AgencyTransaction::Type type() const override final {
-    return AgencyTransaction::Type::WRITE;
+  inline std::string const& path() const override final {
+    return AgencyTransaction::TypeUrl[1];
   }
 
- public:
+  virtual bool validate(AgencyCommResult const& result) const override final;
+
   std::vector<AgencyPrecondition> preconditions;
   std::vector<AgencyOperation> operations;
 };
@@ -314,7 +367,9 @@ struct AgencyWriteTransaction : public AgencyTransaction {
 // -----------------------------------------------------------------------------
 
 struct AgencyReadTransaction : public AgencyTransaction {
- public:
+
+public:
+
   explicit AgencyReadTransaction(std::string const& key) {
     keys.push_back(key);
   }
@@ -323,64 +378,19 @@ struct AgencyReadTransaction : public AgencyTransaction {
 
   AgencyReadTransaction() = default;
 
- public:
   void toVelocyPack(
       arangodb::velocypack::Builder& builder) const override final;
 
   std::string toJson() const override final;
 
-  AgencyTransaction::Type type() const override final{
-    return AgencyTransaction::Type::READ;
+  inline std::string const& path() const override final {
+    return AgencyTransaction::TypeUrl[0];
   }
 
- public:
+  virtual bool validate(AgencyCommResult const& result) const override final;
+
   std::vector<std::string> keys;
-};
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  AgencyCommResult
-// -----------------------------------------------------------------------------
-
-class AgencyCommResult {
- public:
-  AgencyCommResult();
-  AgencyCommResult(int code, std::string const& message);
-  ~AgencyCommResult() = default;
-
- public:
-  bool successful() const { return (_statusCode >= 200 && _statusCode <= 299); }
-
-  bool connected() const;
-
-  int httpCode() const;
-
-  int errorCode() const;
-
-  std::string errorMessage() const;
-
-  std::string errorDetails() const;
-
-  std::string const location() const { return _location; }
-
-  std::string const body() const { return _body; }
-
-  void clear();
-
-  VPackSlice slice();
-  void setVPack(std::shared_ptr<velocypack::Builder> vpack) { _vpack = vpack; }
-
- public:
-  std::string _location;
-  std::string _message;
-  std::string _body;
-  std::string _realBody;
-
-  std::map<std::string, AgencyCommResultEntry> _values;
-  int _statusCode;
-  bool _connected;
-
- private:
-  std::shared_ptr<velocypack::Builder> _vpack;
 };
 
 // -----------------------------------------------------------------------------
