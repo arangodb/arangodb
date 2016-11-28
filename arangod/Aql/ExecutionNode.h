@@ -21,6 +21,24 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
+
+// Execution plans like the one below are made of Nodes that inherit the
+// ExecutionNode class as a base class.
+//
+// Execution plan:
+//  Id   NodeType                  Est.   Comment
+//   1   SingletonNode                1   * ROOT
+//   2   EnumerateCollectionNode   6400     - FOR d IN ulf   /* full collection scan */
+//   3   CalculationNode           6400       - LET #1 = DISTANCE(d.`lat`, d.`lon`, 0, 0)   /* simple expression */   /* collections used: d : ulf */
+//   4   SortNode                  6400       - SORT #1 ASC
+//   5   LimitNode                    5       - LIMIT 0, 5
+//   6   ReturnNode                   5       - RETURN d
+//
+// Even though the Singleton Node has a comment saying it is the ROOT node the
+// you navigate form SortNode to LimitNode by calling getParents() on the
+// SortNode effectively going down the list. If you want to go up to 5 to 4
+// again you need to call getDependencies()
+
 #ifndef ARANGOD_AQL_EXECUTION_NODE_H
 #define ARANGOD_AQL_EXECUTION_NODE_H 1
 
