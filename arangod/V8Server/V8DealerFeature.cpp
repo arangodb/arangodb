@@ -244,12 +244,18 @@ void V8DealerFeature::start() {
 }
 
 void V8DealerFeature::unprepare() {
+  // turn off memory allocation failures before going into v8 code 
+  TRI_DisallowMemoryFailures();
+
   shutdownContexts();
 
   // delete GC thread after all action threads have been stopped
   delete _gcThread;
 
   DEALER = nullptr;
+
+  // turn on memory allocation failures again
+  TRI_AllowMemoryFailures();
 }
 
 bool V8DealerFeature::addGlobalContextMethod(std::string const& method) {
@@ -288,115 +294,126 @@ void V8DealerFeature::collectGarbage() {
   uint64_t const reducedWaitTime =
       static_cast<uint64_t>(_gcFrequency * 1000.0 * 200.0);
 
+  // turn off memory allocation failures before going into v8 code 
+  TRI_DisallowMemoryFailures();
+
   while (_stopping == 0) {
-    V8Context* context = nullptr;
-    bool wasDirty = false;
-
-    {
-      bool gotSignal = false;
-      preferFree = !preferFree;
-      CONDITION_LOCKER(guard, _contextCondition);
-
-      if (_dirtyContexts.empty()) {
-        uint64_t waitTime = useReducedWait ? reducedWaitTime : regularWaitTime;
-
-        // we'll wait for a signal or a timeout
-        gotSignal = guard.wait(waitTime);
-      }
-
-      if (preferFree && !_freeContexts.empty()) {
-        context = pickFreeContextForGc();
-      }
-
-      if (context == nullptr && !_dirtyContexts.empty()) {
-        context = _dirtyContexts.back();
-        _dirtyContexts.pop_back();
-        if (context->_numExecutions < 50 && !context->_hasActiveExternals) {
-          // don't collect this one yet. it doesn't have externals, so there
-          // is no urge for garbage collection
-          _freeContexts.emplace_back(context);
-          context = nullptr;
-        } else {
-          wasDirty = true;
-        }
-      }
-
-      if (context == nullptr && !preferFree && !gotSignal &&
-          !_freeContexts.empty()) {
-        // we timed out waiting for a signal, so we have idle time that we can
-        // spend on running the GC pro-actively
-        // We'll pick one of the free contexts and clean it up
-        context = pickFreeContextForGc();
-      }
-
-      // there is no context to clean up, probably they all have been cleaned up
-      // already. increase the wait time so we don't cycle too much in the GC
-      // loop
-      // and waste CPU unnecessary
-      useReducedWait = (context != nullptr);
-    }
-
-    // update last gc time
-    double lastGc = TRI_microtime();
-    gc->updateGcStamp(lastGc);
-
-    if (context != nullptr) {
-      arangodb::CustomWorkStack custom("V8 GC", (uint64_t)context->_id);
-
-      LOG(TRACE) << "collecting V8 garbage in context #" << context->_id
-                 << ", numExecutions: " << context->_numExecutions
-                 << ", hasActive: " << context->_hasActiveExternals
-                 << ", wasDirty: " << wasDirty;
-      bool hasActiveExternals = false;
-      auto isolate = context->_isolate;
-      TRI_ASSERT(context->_locker == nullptr);
-      context->_locker = new v8::Locker(isolate);
-      isolate->Enter();
-      {
-        v8::HandleScope scope(isolate);
-
-        auto localContext =
-            v8::Local<v8::Context>::New(isolate, context->_context);
-
-        localContext->Enter();
-
-        {
-          v8::Context::Scope contextScope(localContext);
-
-          TRI_ASSERT(context->_locker->IsLocked(isolate));
-          TRI_ASSERT(v8::Locker::IsLocked(isolate));
-
-          TRI_GET_GLOBALS();
-          TRI_RunGarbageCollectionV8(isolate, 1.0);
-          hasActiveExternals = v8g->hasActiveExternals();
-        }
-
-        localContext->Exit();
-      }
-
-      isolate->Exit();
-      delete context->_locker;
-      context->_locker = nullptr;
-
-      // update garbage collection statistics
-      context->_hasActiveExternals = hasActiveExternals;
-      context->_numExecutions = 0;
-      context->_lastGcStamp = lastGc;
+    try {
+      V8Context* context = nullptr;
+      bool wasDirty = false;
 
       {
+        bool gotSignal = false;
+        preferFree = !preferFree;
         CONDITION_LOCKER(guard, _contextCondition);
 
-        if (wasDirty) {
-          _freeContexts.emplace_back(context);
-        } else {
-          _freeContexts.insert(_freeContexts.begin(), context);
+        if (_dirtyContexts.empty()) {
+          uint64_t waitTime = useReducedWait ? reducedWaitTime : regularWaitTime;
+
+          // we'll wait for a signal or a timeout
+          gotSignal = guard.wait(waitTime);
         }
-        guard.broadcast();
+
+        if (preferFree && !_freeContexts.empty()) {
+          context = pickFreeContextForGc();
+        }
+
+        if (context == nullptr && !_dirtyContexts.empty()) {
+          context = _dirtyContexts.back();
+          _dirtyContexts.pop_back();
+          if (context->_numExecutions < 50 && !context->_hasActiveExternals) {
+            // don't collect this one yet. it doesn't have externals, so there
+            // is no urge for garbage collection
+            _freeContexts.emplace_back(context);
+            context = nullptr;
+          } else {
+            wasDirty = true;
+          }
+        }
+
+        if (context == nullptr && !preferFree && !gotSignal &&
+            !_freeContexts.empty()) {
+          // we timed out waiting for a signal, so we have idle time that we can
+          // spend on running the GC pro-actively
+          // We'll pick one of the free contexts and clean it up
+          context = pickFreeContextForGc();
+        }
+
+        // there is no context to clean up, probably they all have been cleaned up
+        // already. increase the wait time so we don't cycle too much in the GC
+        // loop
+        // and waste CPU unnecessary
+        useReducedWait = (context != nullptr);
       }
-    } else {
-      useReducedWait = false;  // sanity
+
+      // update last gc time
+      double lastGc = TRI_microtime();
+      gc->updateGcStamp(lastGc);
+
+      if (context != nullptr) {
+        arangodb::CustomWorkStack custom("V8 GC", (uint64_t)context->_id);
+
+        LOG(TRACE) << "collecting V8 garbage in context #" << context->_id
+                  << ", numExecutions: " << context->_numExecutions
+                  << ", hasActive: " << context->_hasActiveExternals
+                  << ", wasDirty: " << wasDirty;
+        bool hasActiveExternals = false;
+        auto isolate = context->_isolate;
+        TRI_ASSERT(context->_locker == nullptr);
+        context->_locker = new v8::Locker(isolate);
+        isolate->Enter();
+        {
+          v8::HandleScope scope(isolate);
+
+          auto localContext =
+              v8::Local<v8::Context>::New(isolate, context->_context);
+
+          localContext->Enter();
+
+          {
+            v8::Context::Scope contextScope(localContext);
+
+            TRI_ASSERT(context->_locker->IsLocked(isolate));
+            TRI_ASSERT(v8::Locker::IsLocked(isolate));
+
+            TRI_GET_GLOBALS();
+            TRI_RunGarbageCollectionV8(isolate, 1.0);
+            hasActiveExternals = v8g->hasActiveExternals();
+          }
+
+          localContext->Exit();
+        }
+
+        isolate->Exit();
+        delete context->_locker;
+        context->_locker = nullptr;
+
+        // update garbage collection statistics
+        context->_hasActiveExternals = hasActiveExternals;
+        context->_numExecutions = 0;
+        context->_lastGcStamp = lastGc;
+
+        {
+          CONDITION_LOCKER(guard, _contextCondition);
+
+          if (wasDirty) {
+            _freeContexts.emplace_back(context);
+          } else {
+            _freeContexts.insert(_freeContexts.begin(), context);
+          }
+          guard.broadcast();
+        }
+      } else {
+        useReducedWait = false;  // sanity
+      }
+    } catch (...) {
+      // simply ignore errors here
+      useReducedWait = false; 
     }
-  }
+  } 
+  
+  // turn on memory allocation failures again
+  TRI_AllowMemoryFailures();
 
   _gcFinished = true;
 }
@@ -538,6 +555,9 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
   TRI_ASSERT(context != nullptr);
   TRI_ASSERT(context->_isolate != nullptr);
   auto isolate = context->_isolate;
+
+  // turn off memory allocation failures before going into v8 code 
+  TRI_DisallowMemoryFailures();
 
   TRI_ASSERT(context->_locker == nullptr);
   context->_locker = new v8::Locker(isolate);
@@ -708,6 +728,9 @@ void V8DealerFeature::exitContext(V8Context* context) {
 
     guard.broadcast();
   }
+  
+  // turn on memory allocation failures again
+  TRI_AllowMemoryFailures();
 }
 
 void V8DealerFeature::defineContextUpdate(

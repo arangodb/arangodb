@@ -231,6 +231,11 @@ struct TRI_datafile_t {
   int reserveElement(TRI_voc_size_t size, TRI_df_marker_t** position,
                      TRI_voc_size_t maximalJournalSize);
   
+  void sequentialAccess();
+  void randomAccess();
+  void willNeed();
+  void dontNeed();
+  
   int lockInMemory();
   int unlockFromMemory();
 

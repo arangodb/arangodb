@@ -117,6 +117,9 @@ ArangoGlobalContext::ArangoGlobalContext(int argc, char* argv[],
           TRI_GetInstallRoot(TRI_LocateBinaryPath(argv[0]), InstallDirectory)),
       _ret(EXIT_FAILURE),
       _useEventLog(true) {
+  // allow failing memory allocations for the global context thread (i.e. main program thread)
+  TRI_AllowMemoryFailures();
+
   static char const* serverName = "arangod";
   if (_binaryName.size() < strlen(serverName) ||
       _binaryName.substr(_binaryName.size() - strlen(serverName)) !=

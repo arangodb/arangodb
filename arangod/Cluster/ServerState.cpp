@@ -414,45 +414,40 @@ std::string ServerState::createIdForRole(AgencyComm comm,
   { VPackObjectBuilder preconditionDefinition(&empty); }
   
   AgencyGeneralTransaction reg;
-  reg.operations.push_back(
+  reg.operations.push_back( // Plan entry if not exists
     operationType(
       AgencyOperation(planUrl, AgencyValueOperationType::SET, builder.slice()),
       AgencyPrecondition(planUrl, AgencyPrecondition::Type::EMPTY, true)));
-  reg.operations.push_back(
+  reg.operations.push_back( // ShortID incrementif not already got one
     operationType(
       AgencyOperation(targetIdStr, AgencySimpleOperationType::INCREMENT_OP),
       AgencyPrecondition(targetUrl, AgencyPrecondition::Type::EMPTY, true)));
-  reg.operations.push_back(
+  reg.operations.push_back( // Get shortID
     operationType(AgencyOperation(targetIdStr), AgencyPrecondition()));
-  
   result = comm.sendTransactionWithFailover(reg, 0.0);
 
-  LOG(WARN) << result.slice().toJson();
-  
   VPackSlice latestId = result.slice()[2].get(
     std::vector<std::string>(
       {AgencyCommManager::path(), "Target",
           (role == ROLE_COORDINATOR) ?
           "LatestCoordinatorId" : "LatestDBServerId"}));
   
-  
   VPackBuilder localIdBuilder;
   {
     VPackObjectBuilder b(&localIdBuilder);
     localIdBuilder.add("TransactionID", latestId);
-    std::stringstream ss;
+    std::stringstream ss; // ShortName
     ss << ((role == ROLE_COORDINATOR) ? "Coordinator" : "DBServer")
        << std::setw(4) << std::setfill('0') << latestId.getNumber<uint32_t>();
     std::string shortName = ss.str();
     localIdBuilder.add("ShortName", VPackValue(shortName));
   }
   
-  AgencyWriteTransaction shortId (
+  AgencyWriteTransaction shortId( // Set new shortID if not got one already
     {AgencyOperation(
         targetUrl, AgencyValueOperationType::SET, localIdBuilder.slice())},
     AgencyPrecondition(targetUrl, AgencyPrecondition::Type::EMPTY, true)
     );
-  
   result = comm.sendTransactionWithFailover(shortId, 0.0);
   
   return id;
