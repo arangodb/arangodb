@@ -139,6 +139,10 @@ void TRI_SystemFreeZ(void*, char const*, int);
 void TRI_SystemFree(void*);
 #endif
 
+void TRI_AllowMemoryFailures();
+
+void TRI_DisallowMemoryFailures();
+
 /// @brief initialize memory subsystem
 void TRI_InitializeMemory(void);
 

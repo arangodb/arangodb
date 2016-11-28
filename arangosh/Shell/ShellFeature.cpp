@@ -133,6 +133,9 @@ void ShellFeature::start() {
 
   V8ShellFeature* shell = application_features::ApplicationServer::getFeature<V8ShellFeature>("V8Shell");
 
+  // turn off memory allocation failures before we move into V8 code
+  TRI_DisallowMemoryFailures();
+
   bool ok = false;
 
   try {
@@ -172,5 +175,7 @@ void ShellFeature::start() {
     ok = false;
   }
 
+  // turn on memory allocation failures again
+  TRI_AllowMemoryFailures();
   *_result = ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

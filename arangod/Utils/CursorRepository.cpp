@@ -256,12 +256,12 @@ bool CursorRepository::containsUsedCursor() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool CursorRepository::garbageCollect(bool force) {
-  std::vector<arangodb::Cursor*> found;
-  found.reserve(MaxCollectCount);
-
   auto const now = TRI_microtime();
+  std::vector<arangodb::Cursor*> found;
 
-  {
+  try {
+    found.reserve(MaxCollectCount);
+
     MUTEX_LOCKER(mutexLocker, _lock);
 
     for (auto it = _cursors.begin(); it != _cursors.end(); /* no hoisting */) {
@@ -293,6 +293,8 @@ bool CursorRepository::garbageCollect(bool force) {
         ++it;
       }
     }
+  } catch (...) {
+    // go on and remove whatever we found so far
   }
 
   // remove cursors outside the lock

@@ -157,6 +157,9 @@ Thread::Thread(std::string const& name)
       _affinity(-1),
       _workDescription(nullptr) {
   TRI_InitThread(&_thread);
+  
+  // allow failing memory allocations for all threads by default 
+  TRI_AllowMemoryFailures();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

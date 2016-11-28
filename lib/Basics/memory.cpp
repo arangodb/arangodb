@@ -99,6 +99,7 @@ TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE = &TriUnknownMemZone;
 static size_t FailMinSize = 0;
 static double FailProbability = 0.0;
 static double FailStartStamp = 0.0;
+static thread_local int AllowMemoryFailures = -1;
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -134,6 +135,10 @@ static bool ShouldFail(size_t n) {
   }
 
   if (FailProbability == 0.0) {
+    return false;
+  }
+
+  if (AllowMemoryFailures != 1) {
     return false;
   }
 
@@ -456,6 +461,18 @@ void TRI_SystemFree(void* p) {
   }
 #endif
   free(p);
+}
+
+void TRI_AllowMemoryFailures() {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  AllowMemoryFailures = 1;
+#endif
+}
+
+void TRI_DisallowMemoryFailures() {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  AllowMemoryFailures = 0;
+#endif
 }
 
 /// @brief initialize memory subsystem
