@@ -239,6 +239,8 @@ void config_t::eraseFromGossipPeers(std::string const& endpoint) {
 bool config_t::addToPool(std::pair<std::string, std::string> const& i) {
   WRITE_LOCKER(readLocker, _lock);
   if (_pool.find(i.first) == _pool.end()) {
+    LOG_TOPIC(INFO, Logger::AGENCY)
+      << "Adding " << i.first << "(" << i.second << ") to agent pool";
     _pool[i.first] = i.second;
     ++_version;
   } else {
@@ -253,12 +255,12 @@ bool config_t::swapActiveMember(
   std::string const& failed, std::string const& repl) {
   try {
     WRITE_LOCKER(writeLocker, _lock);
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Replacing " << failed << " with " << repl;
     std::replace (_active.begin(), _active.end(), failed, repl);
     ++_version;
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCY)
-      << "Replacing " << failed << " with " << repl
-      << "failed miserably: " << e.what();
+      << "Replacing " << failed << " with " << repl << "failed : " << e.what();
     return false;
   }
 
