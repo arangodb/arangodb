@@ -4081,7 +4081,7 @@ void arangodb::aql::optimizeGeoIndexRule(Optimizer* opt,
              << " of collection:" << result1.get()._collection->getName()
              << " are geoindexed";
 
-    break; //remove this to make use of the index
+    //break; //remove this to make use of the index
 
     auto cnode = result1.get()._collectionNode;
     auto& idxPtr = result1.get()._index;

@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "GeoIndex/GeoIndex.h"
 #include "Indexes/Index.h"
+#include "Indexes/IndexIterator.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -37,6 +38,34 @@
 static_assert(sizeof(GeoCoordinate::data) >= sizeof(TRI_voc_rid_t), "invalid size of GeoCoordinate.data");
 
 namespace arangodb {
+class GeoIndex;
+
+class GeoIndexIterator final : public IndexIterator {
+ public:
+  
+/// @brief Construct an GeoIndexIterator based on Ast Conditions
+  GeoIndexIterator(LogicalCollection* collection, arangodb::Transaction* trx, 
+                    ManagedDocumentResult* mmdr,
+                    GeoIndex const* index,
+                    arangodb::aql::AstNode const*,
+                    arangodb::aql::Variable const*);
+
+  ~GeoIndexIterator() = default;
+  
+  char const* typeName() const override { return "geo-index-iterator"; }
+
+  IndexLookupResult next() override;
+
+  //void nextBabies(std::vector<IndexLookupResult>&, size_t) override;
+
+  void reset() override;
+
+ private:
+  GeoIndex const* _index;
+  //LookupBuilder _lookups;
+  GeoCoordinates* _lookupResult;
+  size_t _posInBuffer;
+};
 
 class GeoIndex final : public Index {
  public:
@@ -65,6 +94,12 @@ class GeoIndex final : public Index {
 
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
+  
+  IndexIterator* iteratorForCondition(arangodb::Transaction*,
+                                      ManagedDocumentResult*,
+                                      arangodb::aql::AstNode const*,
+                                      arangodb::aql::Variable const*,
+                                      bool) const override;
   
   bool allowExpansion() const override { return false; }
   

@@ -28,6 +28,57 @@
 #include "VocBase/transaction.h"
 
 using namespace arangodb;
+GeoIndexIterator::GeoIndexIterator(LogicalCollection* collection,
+                                     arangodb::Transaction* trx,
+                                     ManagedDocumentResult* mmdr,
+                                     GeoIndex const* index,
+                                     arangodb::aql::AstNode const* node,
+                                     arangodb::aql::Variable const* reference)
+    : IndexIterator(collection, trx, mmdr, index),
+      _index(index),
+      // lookup will hold the inforamtion if this is a cursor for
+      // near/within and the reference point
+      //_lookups(trx, node, reference, index->fields()),
+      _lookupResult(nullptr),
+      _posInBuffer(0) {
+    //_index->lookup(_trx, _lookups.lookup(), _buffer);
+}
+
+IndexLookupResult GeoIndexIterator::next() {
+  if (!_lookupResult){
+    _lookupResult = _index->nearQuery(_trx,0,0,10);
+  }
+  //implement
+  if (_posInBuffer < _lookupResult->length){
+    //is data the revision id?
+    return IndexLookupResult(GeoIndex::toRevision(_lookupResult->coordinates[_posInBuffer++].data));
+  }
+  // if there are no more results we return the default constructed IndexLookupResult
+  return IndexLookupResult{};
+}
+
+// optional
+// void GeoIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t atMost) {
+//   //implement provide fast implementation
+// }
+
+/// @brief creates an IndexIterator for the given Condition
+IndexIterator* GeoIndex::iteratorForCondition(
+    arangodb::Transaction* trx,
+    ManagedDocumentResult* mmdr,
+    arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* reference, bool) const {
+  TRI_IF_FAILURE("HashIndex::noIterator")  {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  return new GeoIndexIterator(_collection, trx, mmdr, this, node, reference);
+}
+
+
+void GeoIndexIterator::reset() {
+  _lookupResult = nullptr;
+  _posInBuffer = 0;
+}
 
 GeoIndex::GeoIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
                      VPackSlice const& info)

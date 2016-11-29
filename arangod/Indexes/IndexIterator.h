@@ -21,6 +21,30 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+// In order to implement a new IndexIterator the folling functions need to be
+// implmeneted.
+//
+// typeName() returns a string descibing the type of the indexIterator
+//
+// The next() function of the IndexIterator returns IndexLookupResults that are
+// created from RevisionIds. If there is nothing more to return a default
+// constructed IndesLookupResult is returend.
+//
+// reset() resets the iterator
+//
+// optional - default implementation provided:
+//
+// nextBabies() gets more than one result, the function is meant to increase
+// performance when receiving a single result from the index is more expensive
+// per item than the item costs when receiving multiple results.
+//
+// skip(trySkip, skipped) tries to skip the next trySkip elements
+//
+// When finished you need to implement the fuction:
+//    virtual IndexIterator* iteratorForCondition(...)
+// So a there is a way to create an iterator for the index
+
+
 #ifndef ARANGOD_INDEXES_INDEX_ITERATOR_H
 #define ARANGOD_INDEXES_INDEX_ITERATOR_H 1
 
