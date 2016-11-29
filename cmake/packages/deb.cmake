@@ -10,7 +10,15 @@ set(PACKAGING_HANDLE_CONFIG_FILES true)
 FILE(READ "${PROJECT_SOURCE_DIR}/Installation/debian/packagedesc.txt" CPACK_DEBIAN_PACKAGE_DESCRIPTION)
 set(CPACK_DEBIAN_PACKAGE_SECTION "database")
 set(CPACK_DEBIAN_PACKAGE_CONFLICTS "arangodb, ${CPACKG_PACKAGE_CONFLICTS}, ${CPACKG_PACKAGE_CONFLICTS}-client, ${CPACK_PACKAGE_NAME}-client")
-set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+
+# build of dependecies (yet) don't work for cross compiling
+if (CROSS_COMPILING)
+  set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS OFF)
+  set(CPACK_DEBIAN_PACKAGE_DEPENDS "libc6 (>= 2.14), libgcc1 (>= 1:3.4), libssl1.0.0 (>= 1.0.1), libstdc++6 (>= 5.2)")
+else()
+  set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+endif()
+
 if(NOT DISABLE_XZ_DEB)
   set(CPACK_DEBIAN_COMPRESSION_TYPE "xz")
 endif()
