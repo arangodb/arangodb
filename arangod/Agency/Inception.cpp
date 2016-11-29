@@ -31,6 +31,7 @@
 #include "GeneralServer/RestHandlerFactory.h"
 
 #include <chrono>
+#include <iomanip>
 #include <numeric>
 #include <thread>
 
@@ -361,7 +362,8 @@ bool Inception::estimateRAFTInterval() {
 
   using namespace std::chrono;
   LOG_TOPIC(INFO, Logger::AGENCY) << "Estimating RAFT timeouts ...";
-  size_t nrep = 100;
+  size_t nrep = 25;
+  double precision = 1.0e-2;
     
   std::string path("/_api/agency/config");
   auto config = _agent->config();
@@ -387,7 +389,7 @@ bool Inception::estimateRAFTInterval() {
   }
 
   auto s = system_clock::now();
-  seconds timeout(10);
+  seconds timeout(15);
 
   CONDITION_LOCKER(guard, _cv);
 
@@ -486,12 +488,15 @@ bool Inception::estimateRAFTInterval() {
           maxstdev = meas[1];
         }
       }
+
       
-      mn = 1.e-3*std::ceil(1.e3*(.25 + 1.0e-3*(maxmean+3*maxstdev)));
+      mn = precision *
+        std::ceil((1./precision)*(.25 + precision*(maxmean+3*maxstdev)));
       mx = 5. * mn;
       
       LOG_TOPIC(INFO, Logger::AGENCY)
-        << "Auto-adapting RAFT bracket to: {" << mn << ", " << mx << "} seconds";
+        << "Auto-adapting RAFT bracket to: {"
+        << std::fixed << std::setprecision(2) << mn << ", " << mx << "} seconds";
       
       _agent->resetRAFTTimes(mn, mx);
 

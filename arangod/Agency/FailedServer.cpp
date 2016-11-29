@@ -138,15 +138,18 @@ bool FailedServer::start() {
             for (auto const& shard : collection("shards").children()) {
               VPackArrayIterator dbsit(shard.second->slice());
               
-              // Only proceed if leader and create job
-              if ((*dbsit.begin()).copyString() != _server) {
-                continue;
-              }
-              
-              FailedLeader(
+              // Failed leader
+              if ((*dbsit.begin()).copyString() == _server) {
+                FailedLeader(
                   _snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                   _jobId, _agencyPrefix, database.first, collptr.first,
                   shard.first, _server, shard.second->slice()[1].copyString());
+              } else {
+                FailedFollower(
+                  _snapshot, _agent, _jobId + "-" + std::to_string(sub++),
+                  _jobId, _agencyPrefix, database.first, collptr.first,
+                  shard.first, _server, shard.second->slice()[1].copyString());
+              }
             }
           }
 
