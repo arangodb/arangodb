@@ -294,7 +294,7 @@ std::string TRI_GetTempPath();
 /// @brief get a temporary file name
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_GetTempName(char const*, char**, bool const createFile,
+int TRI_GetTempName(char const*, char**, bool createFile,
                     long& systemError, std::string& errorMessage);
 
 ////////////////////////////////////////////////////////////////////////////////
