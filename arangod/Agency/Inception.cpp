@@ -239,8 +239,6 @@ bool Inception::restartingActiveAgent() {
   auto s = std::chrono::system_clock::now();
   std::chrono::seconds timeout(60);
 
-  long waitInterval(500000);
-  
   // Can only be done responcibly, if we are complete
   if (myConfig.poolComplete()) {
     
@@ -248,6 +246,8 @@ bool Inception::restartingActiveAgent() {
     auto active = myConfig.active();
     
     CONDITION_LOCKER(guard, _cv);
+
+    long waitInterval(500000);  
 
     while (!this->isStopping() && !_agent->isStopping()) {
 
