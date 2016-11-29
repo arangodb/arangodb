@@ -239,8 +239,6 @@ bool Inception::restartingActiveAgent() {
   auto s = std::chrono::system_clock::now();
   std::chrono::seconds timeout(60);
 
-  long waitInterval(500000);
-  
   // Can only be done responcibly, if we are complete
   if (myConfig.poolComplete()) {
     
@@ -248,6 +246,8 @@ bool Inception::restartingActiveAgent() {
     auto active = myConfig.active();
     
     CONDITION_LOCKER(guard, _cv);
+
+    long waitInterval(500000);  
 
     while (!this->isStopping() && !_agent->isStopping()) {
 
@@ -361,13 +361,16 @@ bool Inception::estimateRAFTInterval() {
 
   using namespace std::chrono;
   LOG_TOPIC(INFO, Logger::AGENCY) << "Estimating RAFT timeouts ...";
+  size_t nrep = 100;
     
   std::string path("/_api/agency/config");
-  auto pool = _agent->config().pool();
-  auto myid = _agent->id();
+  auto config = _agent->config();
 
-  for (size_t i = 0; i < 25; ++i) {
-    for (auto const& peer : pool) {
+  auto myid = _agent->id();
+  double to = 0.25;
+
+  for (size_t i = 0; i < nrep; ++i) {
+    for (auto const& peer : config.pool()) {
       if (peer.first != myid) {
         std::string clientid = peer.first + std::to_string(i);
         auto hf =
@@ -379,11 +382,12 @@ bool Inception::estimateRAFTInterval() {
           2.0, true);
       }
     }
-    std::this_thread::sleep_for(std::chrono::duration<double,std::milli>(1));
+    std::this_thread::sleep_for(std::chrono::duration<double,std::milli>(to));
+    to *= 1.01;
   }
 
   auto s = system_clock::now();
-  seconds timeout(3);
+  seconds timeout(10);
 
   CONDITION_LOCKER(guard, _cv);
 
@@ -393,7 +397,7 @@ bool Inception::estimateRAFTInterval() {
     
     {
       MUTEX_LOCKER(lock, _pLock);
-      if (_pings.size() == 25*(pool.size()-1)) {
+      if (_pings.size() == nrep*(config.size()-1)) {
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "All pings are in";
         break;
       }
@@ -433,14 +437,14 @@ bool Inception::estimateRAFTInterval() {
     measurement.add("max", VPackValue(mx));
     measurement.close();
     std::string measjson = measurement.toJson();
-    
+
     path = privApiPrefix + "measure";
-    for (auto const& peer : pool) {
+    for (auto const& peer : config.pool()) {
       if (peer.first != myid) {
         auto clientId = "1";
         auto comres   = arangodb::ClusterComm::instance()->syncRequest(
           clientId, 1, peer.second, rest::RequestType::POST, path,
-          measjson, std::unordered_map<std::string, std::string>(), 2.0);
+          measjson, std::unordered_map<std::string, std::string>(), 5.0);
       }
     }
     
@@ -455,7 +459,7 @@ bool Inception::estimateRAFTInterval() {
       
       {
         MUTEX_LOCKER(lock, _mLock);
-        if (_measurements.size() == pool.size()) {
+        if (_measurements.size() == config.size()) {
           LOG_TOPIC(DEBUG, Logger::AGENCY) << "All measurements are in";
           break;
         }
@@ -470,24 +474,32 @@ bool Inception::estimateRAFTInterval() {
       
     }
 
-    double maxmean  = .0;
-    double maxstdev = .0;
-    for (auto const& meas : _measurements) {
-      if (maxmean < meas[0]) {
-        maxmean = meas[0];
+    if (_measurements.size() == config.size()) {
+    
+      double maxmean  = .0;
+      double maxstdev = .0;
+      for (auto const& meas : _measurements) {
+        if (maxmean < meas[0]) {
+          maxmean = meas[0];
+        }
+        if (maxstdev < meas[1]) {
+          maxstdev = meas[1];
+        }
       }
-      if (maxstdev < meas[1]) {
-        maxstdev = meas[1];
-      }
+      
+      mn = 1.e-3*std::ceil(1.e3*(.25 + 1.0e-3*(maxmean+3*maxstdev)));
+      mx = 5. * mn;
+      
+      LOG_TOPIC(INFO, Logger::AGENCY)
+        << "Auto-adapting RAFT bracket to: {" << mn << ", " << mx << "} seconds";
+      
+      _agent->resetRAFTTimes(mn, mx);
+
+    } else {
+
+      return false;
+
     }
-    
-    mn = 1.e-3*std::ceil(1.e3*(.25 + 1.0e-3*(maxmean+3*maxstdev)));
-    mx = 5. * mn;
-    
-    LOG_TOPIC(INFO, Logger::AGENCY)
-      << "Auto-adapting RAFT bracket to: {" << mn << ", " << mx << "} seconds";
-    
-    _agent->resetRAFTTimes(mn, mx);
     
   }
 
