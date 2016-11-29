@@ -1009,7 +1009,9 @@ void TraversalNode::prepareOptions() {
     } else {
       std::vector<std::vector<std::string>> fieldNames =
           info.idxHandles[0].fieldNames();
-      for (size_t i = 0; i < fieldNames.size(); ++i) {
+      size_t max = info.indexCondition->numMembers();
+      TRI_ASSERT(max <= fieldNames.size());
+      for (size_t i = 0; i < max; ++i) {
         auto const& f = fieldNames[i];
         if (f.size() == 1 && f[0] == usedField) {
           // we only work for _from and _to not _from.foo which would be null anyways...
