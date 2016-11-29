@@ -19,7 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
+
+//#define DEBUG_STATISTICS
 
 #include "SocketTask.h"
 
@@ -119,14 +122,15 @@ void SocketTask::addWriteBuffer(StringBuffer* buffer,
 
     delete buffer;
     if (stat) {
-      LOG_TOPIC(TRACE, Logger::REQUESTS)
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION)
           << "SocketTask::addWriteBuffer - Statistics release: "
           << stat->to_string();
       TRI_ReleaseRequestStatistics(stat);
     } else {
-      LOG_TOPIC(TRACE, Logger::REQUESTS) << "SocketTask::addWriteBuffer - "
-                                            "Statistics release: nullptr - "
-                                            "nothing to realease";
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+          << "SocketTask::addWriteBuffer - "
+             "Statistics release: nullptr - "
+             "nothing to realease";
     }
 
     return;
@@ -143,6 +147,10 @@ void SocketTask::addWriteBuffer(StringBuffer* buffer,
                                   // completedWriteBuffer does this work with
                                   // async?
 
+  if(_writeBufferStatistics){
+    _writeBufferStatistics->_writeStart = TRI_StatisticsTime();
+  }
+
   if (_writeBuffer != nullptr) {
     boost::system::error_code ec;
     size_t total = _writeBuffer->length();
@@ -153,6 +161,9 @@ void SocketTask::addWriteBuffer(StringBuffer* buffer,
       ec.assign(boost::system::errc::success,
                 boost::system::generic_category());
       written = _peer->write(_writeBuffer, err);
+      if(_writeBufferStatistics){
+        _writeBufferStatistics->_sentBytes += written;
+      }
       if (written == total) {
         completedWriteBuffer();
         return;
@@ -170,6 +181,9 @@ void SocketTask::addWriteBuffer(StringBuffer* buffer,
     auto self = shared_from_this();
     auto handler = [self, this](const boost::system::error_code& ec,
                                 std::size_t transferred) {
+      if(_writeBufferStatistics){
+        _writeBufferStatistics->_sentBytes += transferred;
+      }
       if (ec) {
         LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
             << "SocketTask::addWriterBuffer(async_write) - write on stream "
@@ -191,12 +205,16 @@ void SocketTask::completedWriteBuffer() {
   _writeBuffer = nullptr;
 
   if (_writeBufferStatistics != nullptr) {
-#ifdef DEBUG_STATISTICS
-    LOG_TOPIC(TRACE, Logger::REQUESTS)
-        << "SocketTask::addWriteBuffer - Statistics release: "
-        << _writeBufferStatistics->to_string();
-#endif
     _writeBufferStatistics->_writeEnd = TRI_StatisticsTime();
+#ifdef DEBUG_STATISTICS
+<<<<<<< HEAD
+    LOG_TOPIC(TRACE, Logger::REQUESTS)
+      << "SocketTask::addWriteBuffer - Statistics release: "
+      << _writeBufferStatistics->to_string();
+=======
+        _writeBufferStatistics->trace_log();
+>>>>>>> origin/devel
+#endif
     TRI_ReleaseRequestStatistics(_writeBufferStatistics);
     _writeBufferStatistics = nullptr;
   } else {
@@ -206,7 +224,7 @@ void SocketTask::completedWriteBuffer() {
                                           "nothing to realease";
 #endif
   }
-
+  
   if (_writeBuffers.empty()) {
     if (_closeRequested) {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "SocketTask::"
@@ -318,6 +336,7 @@ bool SocketTask::reserveMemory() {
 
 bool SocketTask::trySyncRead() {
   boost::system::error_code err;
+
   if (_abandoned) {
     return false;
   }
@@ -390,8 +409,8 @@ void SocketTask::asyncReadSome() {
 
         continue;
       }
-
-      while (processRead()) {
+      double start_time = TRI_StatisticsTime();
+      while (processRead(start_time)) {
         if (_abandoned) {
           return;
         }
@@ -442,7 +461,8 @@ void SocketTask::asyncReadSome() {
 
       _readBuffer.increaseLength(transferred);
 
-      while (processRead()) {
+      double start_time = TRI_StatisticsTime();
+      while (processRead(start_time)) {
         if (_closeRequested) {
           break;
         }
@@ -465,6 +485,7 @@ void SocketTask::asyncReadSome() {
     _peer->asyncRead(boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE),
                      handler);
   }
+
 }
 
 void SocketTask::closeReceiveStream() {

@@ -22,7 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-cluster.h"
-#include "Cluster/AgencyComm.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Agency/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterComm.h"
@@ -35,9 +39,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "V8Server/v8-vocbaseprivate.h"
-
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -190,11 +191,10 @@ static void JS_IsEnabledAgency(
     TRI_V8_THROW_EXCEPTION_USAGE("isEnabled()");
   }
 
-  std::string const prefix = AgencyComm::prefixPath();
-
-  if (!prefix.empty()) {
+  if (AgencyCommManager::isEnabled()) {
     TRI_V8_RETURN_TRUE();
   }
+
   TRI_V8_RETURN_FALSE();
   TRI_V8_TRY_CATCH_END
 }
@@ -472,7 +472,7 @@ static void JS_EndpointsAgency(
     TRI_V8_THROW_EXCEPTION_USAGE("endpoints()");
   }
 
-  std::vector<std::string> endpoints = AgencyComm::getEndpoints();
+  std::vector<std::string> endpoints = AgencyCommManager::MANAGER->endpoints();
   // make the list of endpoints unique
   std::sort(endpoints.begin(), endpoints.end());
   endpoints.assign(endpoints.begin(),
@@ -498,44 +498,9 @@ static void JS_PrefixAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (args.Length() > 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("prefix(<strip>)");
-  }
-
-  bool strip = false;
-  if (args.Length() > 0) {
-    strip = TRI_ObjectToBoolean(args[0]);
-  }
-
-  std::string const prefix = AgencyComm::prefixPath();
-
-  if (strip && prefix.size() > 2) {
-    TRI_V8_RETURN_PAIR_STRING(prefix.c_str() + 1, (int)prefix.size() - 2);
-  }
+  std::string const prefix = AgencyCommManager::path();
 
   TRI_V8_RETURN_STD_STRING(prefix);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the agency prefix
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_SetPrefixAgency(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("setPrefix(<prefix>)");
-  }
-
-  bool const result = AgencyComm::setPrefix(TRI_ObjectToString(args[0]));
-
-  if (result) {
-    TRI_V8_RETURN_TRUE();
-  }
-  TRI_V8_RETURN_FALSE();
   TRI_V8_TRY_CATCH_END
 }
 
@@ -587,7 +552,7 @@ static void JS_VersionAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   AgencyComm comm;
-  std::string const version = comm.getVersion();
+  std::string const version = comm.version();
 
   TRI_V8_RETURN_STD_STRING(version);
   TRI_V8_TRY_CATCH_END
@@ -2086,8 +2051,6 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        JS_EndpointsAgency);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("prefix"),
                        JS_PrefixAgency);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("setPrefix"),
-                       JS_SetPrefixAgency, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("uniqid"),
                        JS_UniqidAgency);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("unlockRead"),

@@ -30,6 +30,7 @@
 #include <openssl/ssl.h>
 
 #include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Scheduler/Socket.h"
 
@@ -89,9 +90,10 @@ class GeneralCommTask : public SocketTask {
   virtual arangodb::Endpoint::TransportType transportType() = 0;
 
   RequestStatisticsAgent* getAgent(uint64_t id) {
+    MUTEX_LOCKER(lock, _agentsMutex);
     auto agentIt = _agents.find(id);
     if (agentIt != _agents.end()) {
-      return &(agentIt->second);
+      return agentIt->second.get();
     } else {
       throw std::logic_error("there should be an agent for every request");
     }
@@ -116,11 +118,12 @@ class GeneralCommTask : public SocketTask {
  protected:
   GeneralServer* const _server;
 
-  // protocol to use http, vpp
+  // protocol to use http, vst
   char const* _protocol = "unknown";
   rest::ProtocolVersion _protocolVersion = rest::ProtocolVersion::UNKNOWN;
 
-  std::unordered_map<uint64_t, RequestStatisticsAgent> _agents;
+  std::unordered_map<uint64_t, std::unique_ptr<RequestStatisticsAgent>> _agents;
+  ::arangodb::Mutex _agentsMutex;
 
  private:
   bool handleRequest(std::shared_ptr<RestHandler>);

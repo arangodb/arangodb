@@ -8,7 +8,7 @@
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     vpp://www.apache.org/licenses/LICENSE-2.0
+///     http://www.apache.org/licenses/LICENSE-2.0
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -68,12 +68,14 @@ VppCommTask::VppCommTask(EventLoop loop, GeneralServer* server,
       AuthenticationFeature>("Authentication");
   TRI_ASSERT(_authentication != nullptr);
 
-  _protocol = "vpp";
+  _protocol = "vst";
   _readBuffer.reserve(
       _bufferLength);  // ATTENTION <- this is required so we do not
-                       // loose information during a resize
-  _agents.emplace(std::make_pair(0UL, RequestStatisticsAgent(true)));
-  getAgent(0UL)->acquire();
+                       // lose information during a resize
+    auto agent = std::make_unique<RequestStatisticsAgent>(true);
+    agent->acquire();
+    MUTEX_LOCKER(lock, _agentsMutex);
+    _agents.emplace(std::make_pair(0UL, std::move(agent)));
 }
 
 void VppCommTask::addResponse(VppResponse* response) {
@@ -116,20 +118,20 @@ void VppCommTask::addResponse(VppResponse* response) {
   double const totalTime = getAgent(id)->elapsedSinceReadStart();
 
   for (auto&& buffer : buffers) {
-    // is the multiple getAgent ok? REVIEW (fc)
     addWriteBuffer(std::move(buffer), getAgent(id));
   }
 
   // and give some request information
   LOG_TOPIC(INFO, Logger::REQUESTS)
-      << "\"vpp-request-end\",\"" << (void*)this << "\",\""
+      << "\"vst-request-end\",\"" << (void*)this << "\",\""
       << _connectionInfo.clientAddress << "\",\""
       << VppRequest::translateVersion(_protocolVersion) << "\","
       << static_cast<int>(response->responseCode()) << ","
       << "\"," << Logger::FIXED(totalTime, 6);
 
   if (id) {
-    _agents.erase(id);
+    MUTEX_LOCKER(lock, _agentsMutex);
+    _agents.erase(id); //all ids except 0
   } else {
     getAgent(0UL)->acquire();
   }
@@ -220,9 +222,7 @@ void VppCommTask::handleAuthentication(VPackSlice const& header,
 }
 
 // reads data from the socket
-bool VppCommTask::processRead() {
-  RequestStatisticsAgent agent(true);
-
+bool VppCommTask::processRead(double startTime) {
   auto& prv = _processReadVariables;
 
   auto chunkBegin = _readBuffer.begin() + prv._readBufferOffset;
@@ -237,11 +237,21 @@ bool VppCommTask::processRead() {
   bool read_maybe_only_part_of_buffer = false;
   VppInputMessage message;  // filled in CASE 1 or CASE 2b
 
+  if (chunkHeader._isFirst) {
+    //create agent for new messages
+    auto agent = std::make_unique<RequestStatisticsAgent>(true);
+    agent->acquire();
+    agent->requestStatisticsAgentSetReadStart(startTime);
+    MUTEX_LOCKER(lock, _agentsMutex);
+    _agents.emplace(std::make_pair(chunkHeader._messageID, std::move(agent)));
+  }
+
   if (chunkHeader._isFirst && chunkHeader._chunk == 1) {
     // CASE 1: message is in one chunk
     if (auto rv = getMessageFromSingleChunk(chunkHeader, message, doExecute,
                                             vpackBegin, chunkEnd)) {
-      return *rv;
+      return *rv; // the optional will only contain false or boost::none
+                  // so the execution will contine if a message is complete
     }
   } else {
     if (auto rv = getMessageFromMultiChunks(chunkHeader, message, doExecute,
@@ -249,6 +259,8 @@ bool VppCommTask::processRead() {
       return *rv;
     }
   }
+
+  getAgent(chunkHeader._messageID)->requestStatisticsAgentSetQueueEnd();
 
   read_maybe_only_part_of_buffer = true;
   prv._currentChunkLength = 0;  // we have read a complete chunk
@@ -264,11 +276,11 @@ bool VppCommTask::processRead() {
   if (doExecute) {
     VPackSlice header = message.header();
 
-    LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"vpp-request-header\",\""
+    LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"vst-request-header\",\""
                                        << "\"," << message.header().toJson()
                                        << "\"";
 
-    LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"vpp-request-payload\",\""
+    LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"vst-request-payload\",\""
                                        << "\"," << message.payload().toJson()
                                        << "\"";
 
@@ -409,12 +421,7 @@ boost::optional<bool> VppCommTask::getMessageFromSingleChunk(
     ChunkHeader const& chunkHeader, VppInputMessage& message, bool& doExecute,
     char const* vpackBegin, char const* chunkEnd) {
   // add agent for this new message
-  _agents.emplace(
-      std::make_pair(chunkHeader._messageID, RequestStatisticsAgent(true)));
 
-  auto agent = getAgent(chunkHeader._messageID);
-  agent->acquire();
-  agent->requestStatisticsAgentSetReadStart();
 
   LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
                                           << "chunk contains single message";
@@ -444,7 +451,6 @@ boost::optional<bool> VppCommTask::getMessageFromSingleChunk(
   message.set(chunkHeader._messageID, std::move(buffer), payloads);  // fixme
 
   doExecute = true;
-  getAgent(chunkHeader._messageID)->requestStatisticsAgentSetReadEnd();
   return boost::none;
 }
 
@@ -457,13 +463,6 @@ boost::optional<bool> VppCommTask::getMessageFromMultiChunks(
   // CASE 2a: chunk starts new message
   if (chunkHeader._isFirst) {  // first chunk of multi chunk message
     // add agent for this new message
-    _agents.emplace(
-        std::make_pair(chunkHeader._messageID, RequestStatisticsAgent(true)));
-
-    auto agent = getAgent(chunkHeader._messageID);
-    agent->acquire();
-    agent->requestStatisticsAgentSetReadStart();
-
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
                                             << "chunk starts a new message";
     if (incompleteMessageItr != _incompleteMessages.end()) {
@@ -492,7 +491,6 @@ boost::optional<bool> VppCommTask::getMessageFromMultiChunks(
 
     // CASE 2b: chunk continues a message
   } else {  // followup chunk of some mesage
-    // do not add agent for this continued message
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VppCommTask: "
                                             << "chunk continues a message";
     if (incompleteMessageItr == _incompleteMessages.end()) {
@@ -504,7 +502,7 @@ boost::optional<bool> VppCommTask::getMessageFromMultiChunks(
     }
     auto& im = incompleteMessageItr->second;  // incomplete Message
     im._currentChunk++;
-    assert(im._currentChunk == chunkHeader._chunk);
+    TRI_ASSERT(im._currentChunk == chunkHeader._chunk);
     im._buffer.append(vpackBegin, std::distance(vpackBegin, chunkEnd));
     // check buffer longer than length
 
@@ -542,7 +540,6 @@ boost::optional<bool> VppCommTask::getMessageFromMultiChunks(
       // check length
 
       doExecute = true;
-      getAgent(chunkHeader._messageID)->requestStatisticsAgentSetReadEnd();
     }
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
         << "VppCommTask: "

@@ -427,7 +427,7 @@ module.exports =
       const deps = this.getDependencies();
       return (
         _.some(config, (cfg) => cfg.current === undefined && cfg.required) ||
-        _.some(deps, (dep) => (dep.multiple ? !dep.current.length : !dep.current) && dep.required)
+        _.some(deps, (dep) => (dep.multiple ? (!dep.current || !dep.current.length) : !dep.current) && dep.required)
       );
     }
 

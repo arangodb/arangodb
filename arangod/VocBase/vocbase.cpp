@@ -120,10 +120,12 @@ arangodb::LogicalCollection* TRI_vocbase_t::registerCollection(
     catch (...) {
       _collectionsByName.erase(name);
       _collectionsById.erase(cid);
+      TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
       throw;
     }
   
     collection->setStatus(TRI_VOC_COL_STATUS_UNLOADED);
+    TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
   }
 
   return collection.release();
@@ -169,7 +171,7 @@ int TRI_vocbase_t::writeDropCollectionMarker(TRI_voc_cid_t collectionId,
 bool TRI_vocbase_t::unregisterCollection(arangodb::LogicalCollection* collection) {
   TRI_ASSERT(collection != nullptr);
   std::string const colName(collection->name());
-
+  
   // pre-condition
   TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
 
@@ -179,7 +181,7 @@ bool TRI_vocbase_t::unregisterCollection(arangodb::LogicalCollection* collection
     // same name, but with a different id
     _collectionsByName.erase(colName);
   } 
-
+  
   // post-condition
   TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
 
@@ -485,10 +487,12 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
                                         bool writeMarker, DropState& state) {
   state = DROP_EXIT;
   std::string const colName(collection->name());
+    
+  WRITE_LOCKER(writeLocker, _collectionsLock);
 
   WRITE_LOCKER_EVENTUAL(locker, collection->_lock, 1000);
 
-  arangodb::aql::QueryCache::instance()->invalidate(this, colName.c_str());
+  arangodb::aql::QueryCache::instance()->invalidate(this);
 
   // collection already deleted
   if (collection->status() == TRI_VOC_COL_STATUS_DELETED) {
@@ -520,6 +524,8 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
     unregisterCollection(collection);
 
     locker.unlock();
+
+    writeLocker.unlock();
 
     if (writeMarker) {
       writeDropCollectionMarker(collection->cid(), collection->name());
@@ -561,6 +567,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
     unregisterCollection(collection);
 
     locker.unlock();
+    writeLocker.unlock();
 
     if (writeMarker) {
       writeDropCollectionMarker(collection->cid(), collection->name());
@@ -593,7 +600,7 @@ void TRI_vocbase_t::shutdown() {
   std::vector<arangodb::LogicalCollection*> collections;
 
   {
-    READ_LOCKER(writeLocker, _collectionsLock);
+    READ_LOCKER(readLocker, _collectionsLock);
     collections = _collections;
   }
 
@@ -633,6 +640,7 @@ std::vector<std::string> TRI_vocbase_t::collectionNames() {
   std::vector<std::string> result;
 
   READ_LOCKER(readLocker, _collectionsLock);
+
   result.reserve(_collectionsByName.size());
   for (auto const& it : _collectionsByName) {
     result.emplace_back(it.first);
@@ -785,6 +793,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
   VPackSlice const slice = builder.slice();
 
   TRI_ASSERT(cid != 0);
+  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(cid));
 
   int res = TRI_ERROR_NO_ERROR;
 
@@ -968,7 +977,9 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
   }
 
   READ_LOCKER(readLocker, _inventoryLock);
+
   int res = collection->rename(newName);
+
   if (res != TRI_ERROR_NO_ERROR) {
     // Renaming failed
     return res;

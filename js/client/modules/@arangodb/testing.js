@@ -241,7 +241,6 @@ let CONFIG_RELATIVE_DIR;
 let JS_DIR;
 let JS_ENTERPRISE_DIR;
 let LOGS_DIR;
-let PEM_FILE;
 let UNITTESTS_DIR;
 let GDB_OUTPUT="";
 
@@ -293,29 +292,24 @@ function makeResults (testname) {
 // / @brief arguments for testing (server)
 // //////////////////////////////////////////////////////////////////////////////
 
-function makeArgsArangod (options, appDir) {
+function makeArgsArangod (options, appDir, role) {
   if (appDir === undefined) {
     appDir = fs.getTempPath();
   }
 
   fs.makeDirectoryRecursive(appDir, true);
 
+  let config = "arangod.conf";
+
+  if (role !== undefined && role !== null && role !== "") {
+    config = "arangod-" + role + ".conf";
+  }
+
   return {
-    'configuration': 'none',
-    'database.force-sync-properties': 'false',
-    'database.maximal-journal-size': '1048576',
+    'configuration': 'etc/testing/' + config,
+    '--define': 'TOP_DIR=' + TOP_DIR,
     'javascript.app-path': appDir,
-    'javascript.startup-directory': JS_DIR,
-    'javascript.module-directory': JS_ENTERPRISE_DIR,
-    'javascript.v8-contexts': '5',
-    'http.trusted-origin': options.httpTrustedOrigin || 'all',
-    'log.level': 'warn',
-    'log.level=replication=warn': null,
-    //'log.level=requests=trace': null,
-    'server.allow-use-database': 'true',
-    'server.authentication': 'false',
-    'server.threads': '20',
-    'ssl.keyfile': PEM_FILE
+    'http.trusted-origin': options.httpTrustedOrigin || 'all'
   };
 }
 
@@ -325,7 +319,7 @@ function makeArgsArangod (options, appDir) {
 
 function makeArgsArangosh (options) {
   return {
-    'configuration': 'none',
+    'configuration': 'etc/testing/arangosh.conf',
     'javascript.startup-directory': JS_DIR,
     'javascript.module-directory': JS_ENTERPRISE_DIR,
     'server.username': options.username,
@@ -1149,7 +1143,7 @@ function runArangoImp (options, instanceInfo, what) {
 
 function runArangoDumpRestore (options, instanceInfo, which, database) {
   let args = {
-    'configuration': 'none',
+    'configuration': (which === 'dump' ? 'etc/testing/arangodump.conf' : 'etc/testing/arangorestore.conf'),
     'server.username': options.username,
     'server.password': options.password,
     'server.endpoint': instanceInfo.endpoint,
@@ -1177,7 +1171,7 @@ function runArangoDumpRestore (options, instanceInfo, which, database) {
 
 function runArangoBenchmark (options, instanceInfo, cmds) {
   let args = {
-    'configuration': 'none',
+    'configuration': 'etc/testing/arangobench.conf',
     'server.username': options.username,
     'server.password': options.password,
     'server.endpoint': instanceInfo.endpoint,
@@ -1312,21 +1306,20 @@ function shutdownInstance (instanceInfo, options) {
 
 function startInstanceCluster (instanceInfo, protocol, options,
   addArgs, rootDir) {
-  let makeArgs = function (name, args) {
+  let makeArgs = function (name, role, args) {
     args = args || options.extraArgs;
 
     let subDir = fs.join(rootDir, name);
     fs.makeDirectoryRecursive(subDir);
 
-    let subArgs = makeArgsArangod(options, fs.join(subDir, 'apps'));
+    let subArgs = makeArgsArangod(options, fs.join(subDir, 'apps'), role);
     subArgs = Object.assign(subArgs, args);
 
     return [subArgs, subDir];
   };
 
-//  options.agencySize = 1;
   options.agencyWaitForSync = false;
-  startInstanceAgency(instanceInfo, protocol, options, ...makeArgs('agency', {}));
+  startInstanceAgency(instanceInfo, protocol, options, ...makeArgs('agency', 'agency', {}));
 
   let agencyEndpoint = instanceInfo.endpoint;
   let i;
@@ -1339,7 +1332,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
     primaryArgs['cluster.my-role'] = 'PRIMARY';
     primaryArgs['cluster.agency-endpoint'] = agencyEndpoint;
 
-    startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('dbserver' + i, primaryArgs), 'dbserver');
+    startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('dbserver' + i, 'dbserver', primaryArgs), 'dbserver');
   }
 
   for (i=0;i<options.coordinators;i++) {
@@ -1350,9 +1343,8 @@ function startInstanceCluster (instanceInfo, protocol, options,
     coordinatorArgs['cluster.my-local-info'] = endpoint;
     coordinatorArgs['cluster.my-role'] = 'COORDINATOR';
     coordinatorArgs['cluster.agency-endpoint'] = agencyEndpoint;
-    //coordinatorArgs['log.level=requests=trace'] =  null;
 
-    startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('coordinator' + i, coordinatorArgs), 'coordinator');
+    startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('coordinator' + i, 'coordinator', coordinatorArgs), 'coordinator');
   }
 
   // disabled because not in use (jslint)
@@ -1393,7 +1385,7 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   fs.makeDirectoryRecursive(dataDir);
   fs.makeDirectoryRecursive(appDir);
 
-  let args = makeArgsArangod(options, appDir);
+  let args = makeArgsArangod(options, appDir, role);
   let endpoint;
   let port;
   
@@ -1413,10 +1405,6 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   args['database.directory'] = dataDir;
   args['log.file'] = fs.join(rootDir, 'log');
 
-  // flush log messages directly and not asynchronously
-  // (helps debugging)
-  args['log.force-direct'] = 'true';
-
   if (protocol === 'ssl') {
     args['ssl.keyfile'] = fs.join('UnitTests', 'server.pem');
   }
@@ -1429,10 +1417,7 @@ function startArango (protocol, options, addArgs, rootDir, role) {
 
   if (options.verbose) {
     args['log.level'] = 'debug';
-  } else {
-    args['log.level'] = 'error';
   }
-  //args['log.level=requests=trace'] = null;
 
   instanceInfo.url = endpointToURL(instanceInfo.endpoint);
   instanceInfo.pid = executeArangod(ARANGOD_BIN, toArgv(args), options).pid;
@@ -1457,8 +1442,7 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   return instanceInfo;
 }
 
-function startInstanceAgency (instanceInfo, protocol, options,
-  addArgs, rootDir) {
+function startInstanceAgency (instanceInfo, protocol, options, addArgs, rootDir) {
   const dataDir = fs.join(rootDir, 'data');
 
   const N = options.agencySize;
@@ -4180,7 +4164,6 @@ function unitTest (cases, options) {
   JS_DIR = fs.join(TOP_DIR, 'js');
   JS_ENTERPRISE_DIR = fs.join(TOP_DIR, 'enterprise/js');
   LOGS_DIR = fs.join(TOP_DIR, 'logs');
-  PEM_FILE = fs.join(TOP_DIR, 'UnitTests', 'server.pem');
 
   let checkFiles = [
     ARANGOBENCH_BIN,

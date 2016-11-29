@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,68 +23,72 @@
 #ifndef ARANGOD_CONSENSUS_AGENCY_COMMON_H
 #define ARANGOD_CONSENSUS_AGENCY_COMMON_H 1
 
-#include "Basics/VelocyPackHelper.h"
-#include "Logger/Logger.h"
+#include "AgencyCommon.h"
+
+#include <chrono>
 
 #include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <chrono>
-#include <memory>
+#include "Basics/VelocyPackHelper.h"
+#include "Logger/Logger.h"
 
 namespace arangodb {
 namespace consensus {
+static std::string const pubApiPrefix = "/_api/agency/";
+static std::string const privApiPrefix = "/_api/agency_priv/";
+static std::string const NO_LEADER = "";
 
-/// @brief Term type
-typedef uint64_t term_t;
-
-/// @brief Agent roles
 enum role_t { FOLLOWER, CANDIDATE, LEADER };
 
-static const std::string NO_LEADER = "";
-
-/// @brief Duration type
 typedef std::chrono::duration<long, std::ratio<1, 1000>> duration_t;
+typedef uint64_t index_t;
+typedef uint64_t term_t;
 
-/// @brief Log query type
+using buffer_t = std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>;
 using query_t = std::shared_ptr<arangodb::velocypack::Builder>;
 
-/// @brief Log entry index type
-typedef uint64_t index_t;
-
-/// @brief Read request return type
 struct read_ret_t {
-  bool accepted;              ///< @brief Query accepted (i.e. we are leader)
-  std::string redirect;       ///< @brief If not accepted redirect id
-  std::vector<bool> success;  ///< @brief Query's precond OK
-  query_t result;             ///< @brief Query result
-  read_ret_t(bool a, std::string const& id,
-             std::vector<bool> const& suc = std::vector<bool>(), query_t res = nullptr)
-      : accepted(a), redirect(id), success(suc), result(res) {}
+  bool accepted;              // Query accepted (i.e. we are leader)
+  std::string redirect;       // If not accepted redirect id
+  std::vector<bool> success;  // Query's precond OK
+  query_t result;             // Query result
+  read_ret_t(
+    bool a, std::string const& id,
+    std::vector<bool> const& suc = std::vector<bool>(), query_t res = nullptr)
+    : accepted(a), redirect(id), success(suc), result(res) {}
 };
 
-/// @brief Write request return type
 struct write_ret_t {
-  bool accepted;         ///< @brief Query accepted (i.e. we are leader)
-  std::string redirect;  ///< @brief If not accepted redirect id
+  bool accepted;         // Query accepted (i.e. we are leader)
+  std::string redirect;  // If not accepted redirect id
   std::vector<bool> applied;
   std::vector<index_t> indices;  // Indices of log entries (if any) to wait for
   write_ret_t() : accepted(false), redirect("") {}
   write_ret_t(bool a, std::string const& id) : accepted(a), redirect(id) {}
   write_ret_t(bool a, std::string const& id, std::vector<bool> const& app,
               std::vector<index_t> const& idx)
-      : accepted(a), redirect(id), applied(app), indices(idx) {}
+    : accepted(a), redirect(id), applied(app), indices(idx) {}
 };
 
-/// @brief Buffer type
-using buffer_t = std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>;
+struct trans_ret_t {
+  bool accepted;         // Query accepted (i.e. we are leader)
+  std::string redirect;  // If not accepted redirect id
+  index_t maxind;
+  size_t failed;
+  query_t result;
+  trans_ret_t() : accepted(false), redirect(""), maxind(0), failed(0) {}
+  trans_ret_t(bool a, std::string const& id) : accepted(a), redirect(id), maxind(0), failed(0) {}
+  trans_ret_t(bool a, std::string const& id, index_t mi, size_t f,
+              query_t const& res) : accepted(a), redirect(id), maxind(mi),
+                                    failed(f), result(res) {}
+};
 
-/// @brief State entry
 struct log_t {
-  index_t index;                        ///< @brief Log index
-  term_t term;                          ///< @brief Log term
-  buffer_t entry;                       ///< @brief To log
-  std::chrono::milliseconds timestamp;  ///< @brief Timestamp
+  index_t index;                        // Log index
+  term_t term;                          // Log term
+  buffer_t entry;                       // To log
+  std::chrono::milliseconds timestamp;  // Timestamp
 
   log_t(index_t idx, term_t t, buffer_t const& e)
       : index(idx),
@@ -101,11 +104,6 @@ struct log_t {
   }
 };
 
-
-static std::string const pubApiPrefix = "/_api/agency/";
-static std::string const privApiPrefix = "/_api/agency_priv/";
-
-/// @brief Private RPC return type
 struct priv_rpc_ret_t {
   bool success;
   term_t term;

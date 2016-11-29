@@ -422,8 +422,9 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
       validator.validate(slice.start(), slice.byteSize());
       std::string jsonString = slice.toJson();
 
-      LOG_TOPIC(DEBUG, Logger::REQUESTS) << "json handed into v8 request:\n"
-                                         << jsonString;
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+          << "json handed into v8 request:\n"
+          << jsonString;
 
       req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(jsonString));
       headers["content-length"] = StringUtils::itoa(jsonString.size());
@@ -733,7 +734,9 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
     char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *filename, &length);
 
     if (content == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FILE_NOT_FOUND, std::string("unable to read file '") + *filename + "'");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_FILE_NOT_FOUND,
+          std::string("unable to read file '") + *filename + "'");
     }
 
     switch (response->transportType()) {
@@ -745,7 +748,8 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
 
       case Endpoint::TransportType::VPP: {
         VPackBuilder builder;
-        builder.add(VPackValuePair(reinterpret_cast<uint8_t const*>(content), length));
+        builder.add(
+            VPackValuePair(reinterpret_cast<uint8_t const*>(content), length));
         TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
         // create vpack from file

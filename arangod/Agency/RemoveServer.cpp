@@ -22,9 +22,9 @@
 
 #include "RemoveServer.h"
 
-#include "AddFollower.h"
-#include "Agent.h"
-#include "Job.h"
+#include "Agency/AddFollower.h"
+#include "Agency/Agent.h"
+#include "Agency/Job.h"
 
 using namespace arangodb::consensus;
 

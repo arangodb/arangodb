@@ -67,6 +67,7 @@ MMFilesDocumentPosition MMFilesRevisionsCache::lookup(TRI_voc_rid_t revisionId) 
 }
 
 void MMFilesRevisionsCache::sizeHint(int64_t hint) {
+  WRITE_LOCKER(locker, _lock);
   if (hint > 256) {
     _positions.resize(nullptr, static_cast<size_t>(hint * 1.1));
   }
@@ -83,6 +84,7 @@ void MMFilesRevisionsCache::insert(TRI_voc_rid_t revisionId, uint8_t const* data
 
   CONDITIONAL_WRITE_LOCKER(locker, _lock, shouldLock);
   int res = _positions.insert(nullptr, MMFilesDocumentPosition(revisionId, dataptr, fid, isInWal));
+
   if (res != TRI_ERROR_NO_ERROR) {
     _positions.removeByKey(nullptr, &revisionId);
     _positions.insert(nullptr, MMFilesDocumentPosition(revisionId, dataptr, fid, isInWal));

@@ -64,8 +64,12 @@ HttpCommTask::HttpCommTask(EventLoop loop, GeneralServer* server,
       _sinceCompactification(0),
       _originalBodyLength(0) {
   _protocol = "http";
+
   connectionStatisticsAgentSetHttp();
-  _agents.emplace(std::make_pair(1UL, RequestStatisticsAgent(true)));
+  auto agent = std::make_unique<RequestStatisticsAgent>(true);
+  agent->acquire();
+  MUTEX_LOCKER(lock, _agentsMutex);
+  _agents.emplace(std::make_pair(1UL, std::move(agent)));
 }
 
 void HttpCommTask::handleSimpleError(rest::ResponseCode code,
@@ -104,7 +108,7 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code, int errorNum,
 
 void HttpCommTask::addResponse(HttpResponse* response) {
   resetKeepAlive();
-   
+
   _requestPending = false;
 
   // CORS response handling
@@ -119,7 +123,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
     // send back "Access-Control-Allow-Credentials" header
     response->setHeaderNCIfNotSet(StaticStrings::AccessControlAllowCredentials,
                                   (_denyCredentials ? "false" : "true"));
-    
+
     // use "IfNotSet" here because we should not override HTTP headers set
     // by Foxx applications
     response->setHeaderNCIfNotSet(StaticStrings::AccessControlExposeHeaders,
@@ -163,10 +167,13 @@ void HttpCommTask::addResponse(HttpResponse* response) {
         << "\"";
   }
 
-  auto agent = getAgent(1);
+  auto agent = getAgent(1UL);
   double const totalTime = agent->elapsedSinceReadStart();
 
   // append write buffer and statistics
+  //TRI_ASSERT(agent->_statistics != nullptr); // this is ok for async handler
+                                             // not checkable here as we do not
+                                             // have access to the handler
   addWriteBuffer(std::move(buffer), agent);
 
   // and give some request information
@@ -184,7 +191,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
 }
 
 // reads data from the socket
-bool HttpCommTask::processRead() {
+bool HttpCommTask::processRead(double startTime) {
   cancelKeepAlive();
 
   TRI_ASSERT(_readBuffer.c_str() != nullptr);
@@ -234,7 +241,7 @@ bool HttpCommTask::processRead() {
     }
 
     // request started
-    agent->requestStatisticsAgentSetReadStart();
+    agent->requestStatisticsAgentSetReadStart(startTime);
 
     // check for the end of the request
     for (; ptr < end; ptr++) {
@@ -268,7 +275,7 @@ bool HttpCommTask::processRead() {
           GeneralServerFeature::keepAliveTimeout(), /*skipSocketInit*/ true);
       commTask->addToReadBuffer(_readBuffer.c_str() + 11,
                                 _readBuffer.length() - 11);
-      commTask->processRead();
+      commTask->processRead(startTime);
       commTask->start();
       // statistics?!
       return false;
@@ -277,16 +284,22 @@ bool HttpCommTask::processRead() {
     if (ptr < end) {
       _readPosition = ptr - _readBuffer.c_str() + 4;
 
+      char const* sptr = _readBuffer.c_str() + _startPosition;
+      size_t slen = _readPosition - _startPosition;
+
+      if (slen == 11 && memcmp(sptr, "VST/1.1", 7) == 0) {
+        LOG(WARN) << "got VelocyStream request on HTTP port";
+        return false;
+      }
+
       LOG(TRACE) << "HTTP READ FOR " << (void*)this << ": "
-                 << std::string(_readBuffer.c_str() + _startPosition,
-                                _readPosition - _startPosition);
+                 << std::string(sptr, slen);
 
       // check that we know, how to serve this request and update the connection
       // information, i. e. client and server addresses and ports and create a
       // request context for that request
-      _incompleteRequest.reset(new HttpRequest(
-          _connectionInfo, _readBuffer.c_str() + _startPosition,
-          _readPosition - _startPosition, _allowMethodOverride));
+      _incompleteRequest.reset(
+          new HttpRequest(_connectionInfo, sptr, slen, _allowMethodOverride));
 
       GeneralServerFeature::HANDLER_FACTORY->setRequestContext(
           _incompleteRequest.get());
@@ -402,8 +415,7 @@ bool HttpCommTask::processRead() {
             l = 6;
           }
 
-          LOG(WARN) << "got corrupted HTTP request '"
-                    << std::string(_readBuffer.c_str() + _startPosition, l)
+          LOG(WARN) << "got corrupted HTTP request '" << std::string(sptr, l)
                     << "'";
 
           // bad request, method not allowed

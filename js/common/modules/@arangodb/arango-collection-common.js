@@ -398,3 +398,151 @@ ArangoCollection.prototype.replaceByExample = function (example, newValue, waitF
 ArangoCollection.prototype.updateByExample = function (example, newValue, keepNull, waitForSync, limit) {
   throw 'cannot call abstract updateExample function';
 };
+
+
+// //////////////////////////////////////////////////////////////////////////////
+// / SECTION Indexes
+// //////////////////////////////////////////////////////////////////////////////
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief add options from arguments to index specification
+// //////////////////////////////////////////////////////////////////////////////
+
+function addIndexOptions (body, parameters) {
+  body.fields = [];
+
+  var setOption = function (k) {
+    if (! body.hasOwnProperty(k)) {
+      body[k] = parameters[i][k];
+    }
+  };
+
+  var i;
+  for (i = 0; i < parameters.length; ++i) {
+    if (typeof parameters[i] === 'string') {
+      // set fields
+      body.fields.push(parameters[i]);
+    }
+    else if (typeof parameters[i] === 'object' &&
+      ! Array.isArray(parameters[i]) &&
+      parameters[i] !== null) {
+      // set arbitrary options
+      Object.keys(parameters[i]).forEach(setOption);
+      break;
+    }
+  }
+
+  return body;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief ensures a hash index
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureHashIndex = function () {
+  'use strict';
+
+  return this.ensureIndex(addIndexOptions({
+    type: 'hash',
+  }, arguments));
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief ensures a unique constraint
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureUniqueConstraint = function () {
+  'use strict';
+
+  return this.ensureIndex(addIndexOptions({
+    type: 'hash',
+    unique: true
+  }, arguments));
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief ensures a unique skip-list index
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureUniqueSkiplist = function () {
+  'use strict';
+
+  return this.ensureIndex(addIndexOptions({
+    type: 'skiplist',
+    unique: true
+  }, arguments));
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief ensures a skip-list index
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureSkiplist = function () {
+  'use strict';
+
+  return this.ensureIndex(addIndexOptions({
+    type: 'skiplist',
+    unique: false
+  }, arguments));
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief ensures a fulltext index
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureFulltextIndex = function (field, minLength) {
+  'use strict';
+
+  if (! Array.isArray(field)) {
+    field = [ field ];
+  }
+
+  return this.ensureIndex({
+    type: 'fulltext',
+    minLength: minLength || undefined,
+    fields: field
+  });
+};
+
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief ensures a geo index
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
+  'use strict';
+
+  if (typeof lat !== 'string') {
+    throw 'usage: ensureGeoIndex(<lat>, <lon>) or ensureGeoIndex(<loc>[, <geoJson>])';
+  }
+
+  if (typeof lon === 'boolean') {
+    return this.ensureIndex({
+      type: 'geo1',
+      fields: [ lat ],
+      geoJson: lon
+    });
+  }
+
+  if (lon === undefined) {
+    return this.ensureIndex({
+      type: 'geo1',
+      fields: [ lat ],
+      geoJson: false
+    });
+  }
+
+  return this.ensureIndex({
+    type: 'geo2',
+    fields: [ lat, lon ]
+  });
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief ensures a geo constraint
+// / since ArangoDB 2.5, this is just a redirection to ensureGeoIndex
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureGeoConstraint = function (lat, lon) {
+  return this.ensureGeoIndex(lat, lon);
+};

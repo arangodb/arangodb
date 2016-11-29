@@ -71,6 +71,14 @@ class Logfile {
   /// @brief whether or not a logfile is empty
   static int judge(std::string const&);
 
+  int lockInMemory() {
+    return _df->lockInMemory();
+  }
+  
+  int unlockFromMemory() {
+    return _df->unlockFromMemory();
+  }
+
   /// @brief return the filename
   inline std::string filename() const {
     if (_df == nullptr) {

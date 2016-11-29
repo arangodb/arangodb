@@ -28,6 +28,7 @@
 #include "Agency/MeasureCallback.h"
 #include "Basics/ConditionLocker.h"
 #include "Cluster/ClusterComm.h"
+#include "GeneralServer/RestHandlerFactory.h"
 
 #include <chrono>
 #include <numeric>
@@ -450,8 +451,9 @@ bool Inception::estimateRAFTInterval() {
       }
       
       if ((system_clock::now() - s) > timeout) {
-        LOG_TOPIC(WARN, Logger::AGENCY)
-          << "Timed out waiting for other measurements. Auto-adaptation failed! Will stick to command line arguments";
+        LOG_TOPIC(WARN, Logger::AGENCY) <<
+          "Timed out waiting for other measurements. Auto-adaptation failed!"
+          "Will stick to command line arguments";
         return false;
       }
       
@@ -490,9 +492,17 @@ bool Inception::activeAgencyFromCommandLine() {
 
 // @brief Thread main
 void Inception::run() {
+  while (arangodb::rest::RestHandlerFactory::isMaintenance() &&
+         !this->isStopping() && !_agent->isStopping()) {
+    usleep(1000000);
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "Waiting for RestHandlerFactory to exit maintenance mode before we "
+         " start gossip protocol...";
+  }
 
+  config_t config = _agent->config();
   // 1. If active agency, do as you're told
-  if (activeAgencyFromPersistence()) {
+  if (config.startup() == "persistence" && activeAgencyFromPersistence()) {
     _agent->ready(true);  
   }
   
@@ -502,7 +512,7 @@ void Inception::run() {
   }
   
   // 3. Else gossip
-  config_t config = _agent->config();
+  config = _agent->config();
   if (!_agent->ready() && !config.poolComplete()) {
     gossip();
   }
@@ -520,7 +530,7 @@ void Inception::run() {
   if (!config.cmdLineTimings()) {
     estimateRAFTInterval();
   }
-  
+
   _agent->ready(true);
 
 }

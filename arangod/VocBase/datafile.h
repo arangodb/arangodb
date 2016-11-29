@@ -230,6 +230,14 @@ struct TRI_datafile_t {
   /// @brief reserves room for an element, advances the pointer
   int reserveElement(TRI_voc_size_t size, TRI_df_marker_t** position,
                      TRI_voc_size_t maximalJournalSize);
+  
+  void sequentialAccess();
+  void randomAccess();
+  void willNeed();
+  void dontNeed();
+  
+  int lockInMemory();
+  int unlockFromMemory();
 
   TRI_voc_fid_t fid() const { return _fid; }
   TRI_df_state_e state() const { return _state; }
@@ -293,6 +301,7 @@ struct TRI_datafile_t {
   bool _full;  // at least one request was rejected because there is not enough
                // room
   bool _isSealed;  // true, if footer has been written
+  bool _lockedInMemory;  // whether or not the datafile is locked in memory (mlock) 
   // .............................................................................
   // access to the following attributes must be protected by a _lock
   // .............................................................................

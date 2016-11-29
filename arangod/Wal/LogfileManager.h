@@ -460,6 +460,7 @@ class LogfileManager final : public application_features::ApplicationFeature {
   RecoverState* _recoverState;
 
   bool _allowOversizeEntries = true;
+  bool _useMLock = false;
   std::string _directory = "";
   uint32_t _historicLogfiles = 10;
   bool _ignoreLogfileErrors = false;
@@ -517,6 +518,8 @@ class LogfileManager final : public application_features::ApplicationFeature {
 
   // a lock protecting the shutdown file
   Mutex _shutdownFileLock;
+
+  std::string _shutdownFile;
 
   // a lock protecting ALL buckets in _transactions
   basics::ReadWriteLock _allTransactionsLock;

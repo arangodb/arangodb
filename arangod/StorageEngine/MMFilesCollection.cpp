@@ -813,13 +813,15 @@ bool MMFilesCollection::iterateDatafiles(std::function<bool(TRI_df_marker_t cons
 bool MMFilesCollection::iterateDatafilesVector(std::vector<TRI_datafile_t*> const& files,
                                                std::function<bool(TRI_df_marker_t const*, TRI_datafile_t*)> const& cb) {
   for (auto const& datafile : files) {
+    datafile->sequentialAccess();
+    datafile->willNeed();
+
     if (!TRI_IterateDatafile(datafile, cb)) {
       return false;
     }
 
     if (datafile->isPhysical() && datafile->_isSealed) {
-      TRI_MMFileAdvise(datafile->_data, datafile->maximalSize(),
-                       TRI_MADVISE_RANDOM);
+      datafile->randomAccess();
     }
   }
 

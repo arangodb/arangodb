@@ -381,7 +381,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _version(ReadNumericValue<uint32_t>(info, "version", currentVersion())),
       _indexBuckets(ReadNumericValue<uint32_t>(
           info, "indexBuckets", DatabaseFeature::defaultIndexBuckets())),
-      _replicationFactor(ReadNumericValue<int>(info, "replicationFactor", 1)),
+      _replicationFactor(ReadNumericValue<size_t>(info, "replicationFactor", 1)),
       _numberOfShards(ReadNumericValue<size_t>(info, "numberOfShards", 1)),
       _allowUserKeys(ReadBooleanValue(info, "allowUserKeys", true)),
       _shardIds(new ShardMap()),
@@ -558,6 +558,9 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
     _followers.reset(new FollowerInfo(this));
   }
   
+  // update server's tick value
+  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(_cid));
+
   setCompactionStatus("compaction not yet started");
 }
 
@@ -867,7 +870,7 @@ void LogicalCollection::getIndexesVPack(VPackBuilder& result,
 
 // SECTION: Replication
 int LogicalCollection::replicationFactor() const {
-  return _replicationFactor;
+  return static_cast<int>(_replicationFactor);
 }
 
 // SECTION: Sharding
@@ -1799,6 +1802,8 @@ int LogicalCollection::fillIndexes(arangodb::Transaction* trx) {
 void LogicalCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
   // primary index must be added at position 0
   TRI_ASSERT(idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX || _indexes.empty());
+      
+  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(idx->id()));
 
   _indexes.emplace_back(idx);
 
@@ -3083,6 +3088,7 @@ int LogicalCollection::updateDocument(
   res = insertSecondaryIndexes(trx, newRevisionId, newDoc, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    // TODO: move down
     removeRevision(newRevisionId, false);
 
     // rollback

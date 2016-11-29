@@ -23,8 +23,8 @@
 
 #include "UnassumedLeadership.h"
 
-#include "Agent.h"
-#include "Job.h"
+#include "Agency/Agent.h"
+#include "Agency/Job.h"
 
 using namespace arangodb::consensus;
 

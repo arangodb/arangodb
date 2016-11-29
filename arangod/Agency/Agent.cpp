@@ -22,17 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Agent.h"
-#include "GossipCallback.h"
-
-#include "Basics/ConditionLocker.h"
-#include "RestServer/DatabaseFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
-#include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <chrono>
+
+#include "Agency/GossipCallback.h"
+#include "Basics/ConditionLocker.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::velocypack;
@@ -496,12 +496,9 @@ bool Agent::load() {
   }
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Reassembling spearhead and read stores.";
-//  {
-//    MUTEX_LOCKER(commitLock, _ioLock);
-    _spearhead.apply(
-      _state.slices(_lastCommitIndex + 1), _lastCommitIndex, _constituent.term());
-//  }
-
+  _spearhead.apply(
+    _state.slices(_lastCommitIndex + 1), _lastCommitIndex, _constituent.term());
+  
   {
     CONDITION_LOCKER(guard, _appendCV);
     guard.broadcast();
@@ -575,10 +572,66 @@ query_t Agent::lastAckedAgo() const {
   
 }
 
+trans_ret_t Agent::transact(query_t const& queries) {
+  arangodb::consensus::index_t maxind = 0; // maximum write index
+
+  if (!_constituent.leading()) {
+    return trans_ret_t(false, _constituent.leaderID());
+  }
+
+  // Apply to spearhead and get indices for log entries
+  auto qs = queries->slice();
+  auto ret = std::make_shared<arangodb::velocypack::Builder>();
+  size_t failed = 0;
+  ret->openArray();
+  {
+    
+    MUTEX_LOCKER(mutexLocker, _ioLock);
+    
+    // Only leader else redirect
+    if (challengeLeadership()) {
+      _constituent.candidate();
+      return trans_ret_t(false, NO_LEADER);
+    }
+    
+    for (const auto& query : VPackArrayIterator(qs)) {
+      if (query[0].isObject()) {
+        if(_spearhead.apply(query)) {
+          maxind = _state.log(query[0], term());
+          ret->add(VPackValue(maxind));
+        } else {
+          ret->add(VPackValue(0));
+          ++failed;
+        }
+      } else if (query[0].isString()) {
+        _spearhead.read(query, *ret);
+      }
+    }
+    
+    // (either no writes or all preconditions failed)
+    if (maxind == 0) {
+      ret->clear();
+      ret->openArray();      
+      for (const auto& query : VPackArrayIterator(qs)) {
+        if (query[0].isObject()) {
+          ret->add(VPackValue(0));
+        } else if (query[0].isString()) {
+          _readDB.read(query, *ret);
+        }
+      }
+    }
+    
+  }
+  ret->close();
+  
+  // Report that leader has persisted
+  reportIn(id(), maxind);
+
+  return trans_ret_t(true, id(), maxind, failed, ret);
+}
 
 /// Write new entries to replicated state and store
 write_ret_t Agent::write(query_t const& query) {
-
   std::vector<bool> applied;
   std::vector<index_t> indices;
 
@@ -753,8 +806,7 @@ void Agent::detectActiveAgentFailures() {
           LOG_TOPIC(DEBUG, Logger::AGENCY) << "Active agent " << id << " has failed. << "
                     << repl << " will be promoted to active agency membership";
           // Guarded in ::
-          _activator =
-            std::unique_ptr<AgentActivator>(new AgentActivator(this, id, repl));
+          _activator = std::make_unique<AgentActivator>(this, id, repl);
           _activator->start();
           return;
         }
@@ -1020,47 +1072,53 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   }
 
   query_t out = std::make_shared<Builder>();
-  out->openObject();
-  if (!isCallback) {
+
+  {  
+    VPackObjectBuilder b(out.get());
+    
     std::vector<std::string> gossipPeers = _config.gossipPeers();
     if (!gossipPeers.empty()) {
       try {
         _config.eraseFromGossipPeers(endpoint);
       } catch (std::exception const& e) {
-        LOG_TOPIC(ERR, Logger::AGENCY) << __FILE__ << ":" << __LINE__ << " "
-                                       << e.what();
+        LOG_TOPIC(ERR, Logger::AGENCY)
+          << __FILE__ << ":" << __LINE__ << " " << e.what();
       }
     }
-
+    
     size_t counter = 0;
     for (auto const& i : incoming) {
-      if (++counter >
-          _config.poolSize()) {  /// more data than pool size: fatal!
-        LOG_TOPIC(FATAL, Logger::AGENCY)
-            << "Too many peers for poolsize: " << counter << ">"
-            << _config.poolSize();
+      
+      /// more data than pool size: fatal!
+      if (++counter > _config.poolSize()) {
+        LOG_TOPIC(FATAL, Logger::AGENCY) << "Too many peers for poolsize: "
+                                         << counter << ">" << _config.poolSize();
         FATAL_ERROR_EXIT();
       }
-
+      
+      /// disagreement over pool membership: fatal!
       if (!_config.addToPool(i)) {
         LOG_TOPIC(FATAL, Logger::AGENCY) << "Discrepancy in agent pool!";
         FATAL_ERROR_EXIT();
       }
+      
     }
-
-    // bool send = false;
-    std::map<std::string, std::string> pool = _config.pool();
-
-    out->add("endpoint", VPackValue(_config.endpoint()));
-    out->add("id", VPackValue(_config.id()));
-    out->add("pool", VPackValue(VPackValueType::Object));
-    for (auto const& i : pool) {
-      out->add(i.first, VPackValue(i.second));
+    
+    if (!isCallback) { // no gain in callback to a callback.
+      std::map<std::string, std::string> pool = _config.pool();
+      
+      out->add("endpoint", VPackValue(_config.endpoint()));
+      out->add("id", VPackValue(_config.id()));
+      out->add(VPackValue("pool"));
+      {
+        VPackObjectBuilder bb(out.get());
+        for (auto const& i : pool) {
+          out->add(i.first, VPackValue(i.second));
+        }
+      }
     }
-    out->close();
   }
-  out->close();
-
+  
   LOG_TOPIC(TRACE, Logger::AGENCY) << "Answering with gossip "
                                    << out->slice().toJson();
   return out;

@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "State.h"
-#include "Agent.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
@@ -33,6 +32,11 @@
 #include <sstream>
 #include <thread>
 
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
+
+#include "Agency/Agent.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/StaticStrings.h"
@@ -44,10 +48,6 @@
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
-
-#include <boost/uuid/uuid.hpp>             // uuid class
-#include <boost/uuid/uuid_generators.hpp>  // generators
-#include <boost/uuid/uuid_io.hpp>          // streaming operators etc.
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -141,6 +141,24 @@ std::vector<arangodb::consensus::index_t> State::log(
   }
 
   return idx;
+}
+
+/// Log transaction (leader)
+arangodb::consensus::index_t State::log(
+  velocypack::Slice const& slice, term_t term) {
+
+  arangodb::consensus::index_t idx = 0;
+  auto buf = std::make_shared<Buffer<uint8_t>>();
+  
+  MUTEX_LOCKER(mutexLocker, _logLock);  // log entries must stay in order
+  buf->append((char const*)slice.begin(), slice.byteSize());
+  TRI_ASSERT(!_log.empty()); // log must not ever be empty
+  idx = _log.back().index + 1;
+  _log.push_back(log_t(idx, term, buf));  // log to RAM
+  persist(idx, term, slice);               // log to disk
+
+  return _log.back().index;
+  
 }
 
 /// Log transactions (follower)
