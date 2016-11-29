@@ -546,3 +546,50 @@ ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
 ArangoCollection.prototype.ensureGeoConstraint = function (lat, lon) {
   return this.ensureGeoIndex(lat, lon);
 };
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief ensures a vertex-centric index
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.ensureVertexCentricIndex = function (...fields) {
+  let options = fields.pop();
+  if (!typeof options === 'object' || Array.isArray(options)) {
+    let err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
+    err.errorMessage = 'usage: ensureVertexCentricIndex(<...fields>, options), options has to be an object';
+    throw err;
+  }
+  let dir = options.direction;
+  if (typeof dir === 'string') {
+    dir = dir.toLowerCase();
+  }
+  if (fields.length === 0 && options.hasOwnProperty("fields") && Array.isArray(options.fields)) {
+    // This copies the content of the array.
+    fields = options.fields.slice(0);
+  }
+  if (fields.length === 0) {
+    let err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
+    err.errorMessage = 'usage: ensureVertexCentricIndex(<...fields>, options), we need a non empty list of fields';
+    throw err;
+  }
+  switch (dir) {
+    case "outbound":
+      fields.unshift("_from");
+      break;
+    case "inbound":
+      fields.unshift("_to");
+      break;
+    default:
+      let err = new ArangoError();
+      err.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
+      err.errorMessage = 'usage: ensureVertexCentricIndex(<...fields>, options), options.direction has to be "inbound" or "outbound"';
+      throw err;
+  }
+  options.fields = fields;
+  if (!options.hasOwnProperty('type')) {
+    options.type = 'hash';
+  }
+  return this.ensureIndex(options);
+
+}
