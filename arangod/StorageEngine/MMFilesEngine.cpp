@@ -1376,6 +1376,68 @@ LogicalCollection* MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase, std
   VPackBuilder b2 = VPackCollection::merge(slice, patch.slice(), false);
   slice = b2.slice();
 
+  // handle indexes
+  std::unordered_set<uint64_t> foundIds;
+  VPackBuilder indexesPatch;
+  indexesPatch.openObject();
+  indexesPatch.add("indexes", VPackValue(VPackValueType::Array));
+
+  // merge indexes into the collection structure
+  VPackSlice indexes = slice.get("indexes");
+  if (indexes.isArray()) {
+    // simply copy over existing index definitions
+    for (auto const& it : VPackArrayIterator(indexes)) {
+      indexesPatch.add(it);
+      VPackSlice id = it.get("id");
+      if (id.isString()) {
+        foundIds.emplace(basics::StringUtils::uint64(id.copyString()));
+      }
+    }
+  }
+
+  // check files within the directory and find index definitions
+  std::vector<std::string> files = TRI_FilesDirectory(path.c_str());
+
+  for (auto const& file : files) {
+    std::vector<std::string> parts = StringUtils::split(file, '.');
+    
+    if (parts.size() < 2 || parts.size() > 3 || parts[0].empty()) {
+      continue;
+    }
+    
+    std::vector<std::string> next = StringUtils::split(parts[0], "-");
+    if (next.size() < 2) {
+      continue;
+    }
+
+    if (next[0] == "index" && parts[1] == "json") {
+      std::string filename =
+        arangodb::basics::FileUtils::buildFilename(path, file);
+      std::shared_ptr<VPackBuilder> content =
+        arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
+      VPackSlice indexSlice = content->slice();
+      if (!indexSlice.isObject()) {
+        // invalid index definition
+        continue;
+      }
+
+      VPackSlice id = indexSlice.get("id");
+      if (id.isString()) {
+        auto idxId = basics::StringUtils::uint64(id.copyString());
+        if (foundIds.find(idxId) == foundIds.end()) {
+          foundIds.emplace(idxId);
+          indexesPatch.add(indexSlice);
+        }
+      }
+    }
+  }
+
+  indexesPatch.close();
+  indexesPatch.close();
+
+  VPackBuilder b3 = VPackCollection::merge(slice, indexesPatch.slice(), false);
+  slice = b3.slice();
+  
   return new LogicalCollection(vocbase, slice, true);
 }
 

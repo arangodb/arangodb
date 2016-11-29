@@ -3231,6 +3231,7 @@ const recoveryTests = [
   'drop-collections',
   'collections-reuse',
   'collections-different-attributes',
+  'indexes-after-flush',
   'indexes-hash',
   'indexes-rocksdb',
   'indexes-rocksdb-nosync',

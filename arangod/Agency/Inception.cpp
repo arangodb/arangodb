@@ -48,11 +48,14 @@ Inception::~Inception() { shutdown(); }
 /// - Create outgoing gossip.
 /// - Send to all peers
 void Inception::gossip() {
+
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Entering gossip phase ...";
   
   auto s = std::chrono::system_clock::now();
-  std::chrono::seconds timeout(120);
+  std::chrono::seconds timeout(3600);
   size_t j = 0;
   bool complete = false;
+  long waitInterval = 250000;
 
   CONDITION_LOCKER(guard, _cv);
   
@@ -120,6 +123,8 @@ void Inception::gossip() {
     // We're done
     if (config.poolComplete()) {
       if (complete) {
+        LOG_TOPIC(INFO, Logger::AGENCY) << "Agent pool completed. Stopping "
+          "active gossipping. Starting RAFT process.";
         _agent->startConstituent();
         break;
       }
@@ -138,7 +143,8 @@ void Inception::gossip() {
     }
 
     // don't panic just yet
-    _cv.wait(250000);
+    _cv.wait(waitInterval);
+    waitInterval *= 2;
 
   }
   
@@ -148,6 +154,8 @@ void Inception::gossip() {
 // @brief Active agency from persisted database
 bool Inception::activeAgencyFromPersistence() {
 
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Found persisted agent pool ...";
+  
   auto myConfig = _agent->config();
   std::string const path = pubApiPrefix + "config";
 
@@ -230,6 +238,8 @@ bool Inception::restartingActiveAgent() {
 
   auto s = std::chrono::system_clock::now();
   std::chrono::seconds timeout(60);
+
+  long waitInterval(500000);
   
   // Can only be done responcibly, if we are complete
   if (myConfig.poolComplete()) {
@@ -292,7 +302,7 @@ bool Inception::restartingActiveAgent() {
       // Timed out? :(
       if ((std::chrono::system_clock::now() - s) > timeout) {
         if (myConfig.poolComplete()) {
-          LOG_TOPIC(DEBUG, Logger::AGENCY) << "Stopping active gossipping!";
+          LOG_TOPIC(DEBUG, Logger::AGENCY) << "Joined complete pool!";
         } else {
           LOG_TOPIC(ERR, Logger::AGENCY)
             << "Failed to find complete pool of agents. Giving up!";
@@ -300,7 +310,8 @@ bool Inception::restartingActiveAgent() {
         break;
       }
       
-      _cv.wait(500000);
+      _cv.wait(waitInterval);
+      waitInterval *= 2;
 
     }
   }
@@ -349,8 +360,8 @@ void Inception::reportVersionForEp(std::string const& endpoint, size_t version) 
 bool Inception::estimateRAFTInterval() {
 
   using namespace std::chrono;
-  
-  
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Estimating RAFT timeouts ...";
+    
   std::string path("/_api/agency/config");
   auto pool = _agent->config().pool();
   auto myid = _agent->id();
@@ -470,13 +481,13 @@ bool Inception::estimateRAFTInterval() {
       }
     }
     
-    maxmean = 1.e-3*std::ceil(1.e3*(.2 + 1.0e-3*(maxmean+3*maxstdev)));
+    mn = 1.e-3*std::ceil(1.e3*(.25 + 1.0e-3*(maxmean+3*maxstdev)));
+    mx = 5. * mn;
     
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
-      << "Auto-adapting RAFT timing to: {" << maxmean
-      << ", " << 5.0*maxmean << "}s";
+    LOG_TOPIC(INFO, Logger::AGENCY)
+      << "Auto-adapting RAFT bracket to: {" << mn << ", " << mx << "} seconds";
     
-    _agent->resetRAFTTimes(maxmean, 5.0*maxmean);
+    _agent->resetRAFTTimes(mn, mx);
     
   }
 
