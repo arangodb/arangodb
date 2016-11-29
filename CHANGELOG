@@ -13,6 +13,10 @@ v3.1.3 (xxxx-xx-xx)
 
 * Prevent uniform shard distribution when replicationFactor == numServers
 
+* Gossipping for 1 hour before giving up
+
+* Moderate log output of inception and startup of RAFT algorithm
+
 v3.1.2 (2016-11-24)
 -------------------
 
