@@ -1091,8 +1091,8 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
       
       /// more data than pool size: fatal!
       if (++counter > _config.poolSize()) {
-        LOG_TOPIC(FATAL, Logger::AGENCY) << "Too many peers for poolsize: "
-                                         << counter << ">" << _config.poolSize();
+        LOG_TOPIC(FATAL, Logger::AGENCY)
+          << "Too many peers in pool: " << counter << ">" << _config.poolSize();
         FATAL_ERROR_EXIT();
       }
       
