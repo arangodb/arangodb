@@ -42,7 +42,7 @@ class GeoIndex;
 
 class GeoIndexIterator final : public IndexIterator {
  public:
-  
+
 /// @brief Construct an GeoIndexIterator based on Ast Conditions
   GeoIndexIterator(LogicalCollection* collection, arangodb::Transaction* trx, 
                     ManagedDocumentResult* mmdr,
@@ -50,24 +50,29 @@ class GeoIndexIterator final : public IndexIterator {
                     arangodb::aql::AstNode const*,
                     arangodb::aql::Variable const*);
 
-  ~GeoIndexIterator() = default;
-  
+  ~GeoIndexIterator() {
+    replaceCursor(nullptr);
+  };
+
   char const* typeName() const override { return "geo-index-iterator"; }
 
   IndexLookupResult next() override;
 
-  //void nextBabies(std::vector<IndexLookupResult>&, size_t) override;
+  void nextBabies(std::vector<IndexLookupResult>&, size_t) override;
 
   void reset() override;
 
  private:
+  ::GeoCursor* replaceCursor(::GeoCursor* c);
+  ::GeoCursor* createCursor(double lat, double lon);
+
   GeoIndex const* _index;
+  ::GeoCursor* _cursor;
   //LookupBuilder _lookups;
-  GeoCoordinates* _lookupResult;
-  size_t _posInBuffer;
 };
 
 class GeoIndex final : public Index {
+friend class GeoIndexIterator;
  public:
   GeoIndex() = delete;
 

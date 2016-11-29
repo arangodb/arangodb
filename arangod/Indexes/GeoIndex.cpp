@@ -26,6 +26,7 @@
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "VocBase/transaction.h"
+#include "Indexes/GeoIndex.h"
 
 using namespace arangodb;
 GeoIndexIterator::GeoIndexIterator(LogicalCollection* collection,
@@ -39,28 +40,54 @@ GeoIndexIterator::GeoIndexIterator(LogicalCollection* collection,
       // lookup will hold the inforamtion if this is a cursor for
       // near/within and the reference point
       //_lookups(trx, node, reference, index->fields()),
-      _lookupResult(nullptr),
-      _posInBuffer(0) {
-    //_index->lookup(_trx, _lookups.lookup(), _buffer);
-}
+      _cursor(nullptr)
+    {}
 
 IndexLookupResult GeoIndexIterator::next() {
-  if (!_lookupResult){
-    _lookupResult = _index->nearQuery(_trx,0,0,10);
+  if (!_cursor){
+    createCursor(0,0);
   }
-  //implement
-  if (_posInBuffer < _lookupResult->length){
-    //is data the revision id?
-    return IndexLookupResult(GeoIndex::toRevision(_lookupResult->coordinates[_posInBuffer++].data));
+
+  auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(_cursor,1));
+  if(coords && coords->length){
+    auto revision = ::GeoIndex::toRevision(coords->coordinates[0].data);
+    return IndexLookupResult{revision};
   }
   // if there are no more results we return the default constructed IndexLookupResult
   return IndexLookupResult{};
 }
 
-// optional
-// void GeoIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t atMost) {
-//   //implement provide fast implementation
-// }
+void GeoIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t batchSize) {
+  if (!_cursor){
+    createCursor(0,0);
+  }
+
+  result.clear();
+  if (batchSize > 0) {
+    auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(_cursor,batchSize));
+    size_t length = coords ? coords->length : 0;
+    if (!length){
+      return;
+    }
+
+    for(std::size_t index = 0; index < length; ++index){
+      result.emplace_back(IndexLookupResult(::GeoIndex::toRevision(coords->coordinates[index].data)));
+    }
+  }
+}
+ 
+::GeoCursor* GeoIndexIterator::replaceCursor(::GeoCursor* c){
+  if(_cursor){
+    ::GeoIndex_CursorFree(_cursor);
+  }
+ _cursor = c;
+ return _cursor;
+}
+
+::GeoCursor* GeoIndexIterator::createCursor(double lat, double lon){
+  ::GeoCoordinate coor{lat, lon, 0};
+  return replaceCursor(::GeoIndex_NewCursor(_index->_geoIndex, &coor));
+}
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* GeoIndex::iteratorForCondition(
@@ -76,8 +103,7 @@ IndexIterator* GeoIndex::iteratorForCondition(
 
 
 void GeoIndexIterator::reset() {
-  _lookupResult = nullptr;
-  _posInBuffer = 0;
+  replaceCursor(nullptr);
 }
 
 GeoIndex::GeoIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
