@@ -174,40 +174,52 @@ static int CreateDatafile(std::string const& filename, TRI_voc_size_t maximalSiz
     return -1;
   }
 
-  // fill file with zeros from FileNullBuffer
-  size_t writeSize = TRI_GetNullBufferSizeFiles();
-  size_t written = 0;
-  while (written < maximalSize) {
-    if (writeSize + written > maximalSize) {
-      writeSize = maximalSize - written;
-    }
+#ifdef __linux__
+  // try fallocate first
+  int res = fallocate(fd, FALLOC_FL_ZERO_RANGE, 0, maximalSize);
+#else 
+  // no fallocate present, or at least pretend it's not there...
+  int res = TRI_ERROR_NOT_IMPLEMENTED;
+#endif
 
-    ssize_t writeResult =
-        TRI_WRITE(fd, TRI_GetNullBufferFiles(), static_cast<TRI_write_t>(writeSize));
+  if (res != TRI_ERROR_NO_ERROR) {
+    // either fallocate failed or it is not there...
 
-    TRI_IF_FAILURE("CreateDatafile2") {
-      // intentionally fail
-      writeResult = -1;
-      errno = ENOSPC;
-    }
-
-    if (writeResult < 0) {
-      if (errno == ENOSPC) {
-        TRI_set_errno(TRI_ERROR_ARANGO_FILESYSTEM_FULL);
-        LOG(ERR) << "cannot create datafile '" << filename << "': " << TRI_last_error();
-      } else {
-        TRI_SYSTEM_ERROR();
-        TRI_set_errno(TRI_ERROR_SYS_ERROR);
-        LOG(ERR) << "cannot create datafile '" << filename << "': " << TRI_GET_ERRORBUF;
+    // fill file with zeros from FileNullBuffer
+    size_t writeSize = TRI_GetNullBufferSizeFiles();
+    size_t written = 0;
+    while (written < maximalSize) {
+      if (writeSize + written > maximalSize) {
+        writeSize = maximalSize - written;
       }
 
-      TRI_CLOSE(fd);
-      TRI_UnlinkFile(filename.c_str());
+      ssize_t writeResult =
+          TRI_WRITE(fd, TRI_GetNullBufferFiles(), static_cast<TRI_write_t>(writeSize));
 
-      return -1;
+      TRI_IF_FAILURE("CreateDatafile2") {
+        // intentionally fail
+        writeResult = -1;
+        errno = ENOSPC;
+      }
+
+      if (writeResult < 0) {
+        if (errno == ENOSPC) {
+          TRI_set_errno(TRI_ERROR_ARANGO_FILESYSTEM_FULL);
+          LOG(ERR) << "cannot create datafile '" << filename << "': " << TRI_last_error();
+        } else {
+          TRI_SYSTEM_ERROR();
+          TRI_set_errno(TRI_ERROR_SYS_ERROR);
+          LOG(ERR) << "cannot create datafile '" << filename << "': " << TRI_GET_ERRORBUF;
+        }
+
+        TRI_CLOSE(fd);
+        TRI_UnlinkFile(filename.c_str());
+
+        return -1;
+      }
+
+      written += static_cast<size_t>(writeResult);
     }
-
-    written += static_cast<size_t>(writeResult);
   }
 
   // go back to offset 0

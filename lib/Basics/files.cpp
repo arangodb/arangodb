@@ -2220,13 +2220,11 @@ std::string TRI_GetTempPath() {
 /// @brief get a temporary file name
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_GetTempName(char const* directory, char** result, bool const createFile,
+int TRI_GetTempName(char const* directory, char** result, bool createFile,
                     long& systemError, std::string& errorMessage) {
-  char* dir;
-  int tries;
-
   std::string temp = TRI_GetUserTempPath();
 
+  char* dir;
   if (directory != nullptr) {
     dir = TRI_Concatenate2File(temp.c_str(), directory);
   } else {
@@ -2249,7 +2247,7 @@ int TRI_GetTempName(char const* directory, char** result, bool const createFile,
     return TRI_ERROR_CANNOT_CREATE_DIRECTORY;
   }
 
-  tries = 0;
+  int tries = 0;
   while (tries++ < 10) {
     TRI_pid_t pid;
     char* tempName;
