@@ -363,7 +363,6 @@ bool Inception::estimateRAFTInterval() {
   using namespace std::chrono;
   LOG_TOPIC(INFO, Logger::AGENCY) << "Estimating RAFT timeouts ...";
   size_t nrep = 25;
-  double precision = 1.0e-2;
     
   std::string path("/_api/agency/config");
   auto config = _agent->config();
@@ -489,7 +488,7 @@ bool Inception::estimateRAFTInterval() {
         }
       }
 
-      
+      double precision = 1.0e-2;
       mn = precision *
         std::ceil((1./precision)*(.25 + precision*(maxmean+3*maxstdev)));
       mx = 5. * mn;

@@ -107,6 +107,7 @@ bool FailedFollower::create() {
 }
 
 bool FailedFollower::start() {
+
   // DBservers
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
@@ -115,13 +116,6 @@ bool FailedFollower::start() {
 
   Node const& current = _snapshot(curPath);
 
-  if (current.slice().length() == 1) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to shift follower role for shard " +
-                                          _shard + " from " + _from + " to " +
-                                          _to + ". No in-sync followers:" +
-                                          current.slice().toJson();
-    return false;
-  }
 
   // Copy todo to pending
   Builder todo, pending;
@@ -141,6 +135,7 @@ bool FailedFollower::start() {
   }
   todo.close();
 
+  
   // Transaction
   pending.openArray();
 
@@ -189,11 +184,13 @@ bool FailedFollower::start() {
 
   // Precondition
   // --- Check that Current servers are as we expect
+ 
   pending.openObject();
-  pending.add(_agencyPrefix + curPath, VPackValue(VPackValueType::Object));
+  /* pending.add(_agencyPrefix + curPath, VPackValue(VPackValueType::Object));
   pending.add("old", current.slice());
   pending.close();
-
+  */
+  
   // --- Check if shard is not blocked
   pending.add(_agencyPrefix + blockedShardsPrefix + _shard,
               VPackValue(VPackValueType::Object));
@@ -207,8 +204,8 @@ bool FailedFollower::start() {
   write_ret_t res = transact(_agent, pending);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    LOG_TOPIC(INFO, Logger::AGENCY) << "Pending: Change followership " + _shard +
-                                           " from " + _from + " to " + _to;
+    LOG_TOPIC(INFO, Logger::AGENCY)
+      << "Pending: Change followership " + _shard + " from " + _from + " to " + _to;
     return true;
   }
 

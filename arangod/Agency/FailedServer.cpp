@@ -136,30 +136,52 @@ bool FailedServer::start() {
           Node const& collection = *(collptr.second);
           Node const& replicationFactor = collection("replicationFactor");
           if (replicationFactor.slice().getUInt() > 1) {
-            for (auto const& shard : collection("shards").children()) {
-              VPackArrayIterator dbsit(shard.second->slice());
+            auto available = availableServers();
+            
               
-              // Failed leader
-              if ((*dbsit.begin()).copyString() == _server) {
-                FailedLeader(
-                  _snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                  _jobId, _agencyPrefix, database.first, collptr.first,
-                  shard.first, _server, shard.second->slice()[1].copyString());
-              } else {
+            for (auto const& shard : collection("shards").children()) {
+
+              size_t pos = 0;
+              bool found = false;
+              
+              for (auto const& it : VPackArrayIterator(shard.second->slice())) {
+
+                auto dbs = it.copyString();
+
+                available.erase(
+                  std::remove(available.begin(), available.end(), dbs),
+                  available.end());
+
+                if (dbs == _server) {
+                  if (pos == 0) {
+                    FailedLeader(
+                      _snapshot, _agent, _jobId + "-" + std::to_string(sub++),
+                      _jobId, _agencyPrefix, database.first, collptr.first,
+                      shard.first, _server, shard.second->slice()[1].copyString());
+                    continue;
+                  } else {
+                    found = true;
+                  }
+                }
+                
+                ++pos;
+              }
+
+              if (found && available.size() > 0) {
+                auto randIt = available.begin();
+                std::advance(randIt, std::rand() % available.size());
                 FailedFollower(
                   _snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                   _jobId, _agencyPrefix, database.first, collptr.first,
-                  shard.first, _server, shard.second->slice()[1].copyString());
+                  shard.first, _server, *randIt);
               }
             }
           }
-
         } else {
           for (auto const& shard : collection("shards").children()) {
-            UnassumedLeadership(_snapshot, _agent,
-                                _jobId + "-" + std::to_string(sub++), _jobId,
-                                _agencyPrefix, database.first, collptr.first,
-                                shard.first, _server);
+            UnassumedLeadership(
+              _snapshot, _agent, _jobId + "-" + std::to_string(sub++), _jobId,
+              _agencyPrefix, database.first, collptr.first, shard.first, _server);
           }
         }
       }
