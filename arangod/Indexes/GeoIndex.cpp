@@ -88,6 +88,7 @@ void GeoIndexIterator::evaluateCondition() {
 }
 
 IndexLookupResult GeoIndexIterator::next() {
+  LOG(ERR) << "ENTER next";
   if (!_cursor){
     createCursor(_lat,_lon);
   }
@@ -104,6 +105,7 @@ IndexLookupResult GeoIndexIterator::next() {
 }
 
 void GeoIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t batchSize) {
+  LOG(ERR) << "ENTER nextBabies";
   if (!_cursor){
     createCursor(_lat,_lon);
   }
@@ -117,11 +119,14 @@ void GeoIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t
     }
 
     for(std::size_t index = 0; index < length; ++index){
-      while (_near || GeoIndex_distance(&_coor, &coords->coordinates[index]) <= _withinRange ){
+      if (_near || GeoIndex_distance(&_coor, &coords->coordinates[index]) <= _withinRange ){
         result.emplace_back(IndexLookupResult(::GeoIndex::toRevision(coords->coordinates[index].data)));
+      } else {
+        break;
       }
     }
   }
+  LOG(ERR) << "EXIT nextBabies";
 }
 
 ::GeoCursor* GeoIndexIterator::replaceCursor(::GeoCursor* c){
