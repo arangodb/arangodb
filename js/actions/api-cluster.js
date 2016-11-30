@@ -33,7 +33,7 @@
 
 var actions = require('@arangodb/actions');
 var cluster = require('@arangodb/cluster');
-// var internal = require('internal');
+//var internal = require('internal');
 var _ = require('lodash');
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -483,6 +483,7 @@ actions.defineHttp({
   prefix: false,
 
   callback: function (req, res) {
+
     if (req.requestType !== actions.PUT ||
       !require('@arangodb/cluster').isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
@@ -527,13 +528,18 @@ actions.defineHttp({
       var oldValue;
       try {
         oldValue = ArangoAgency.get('Plan/DBServers/' + body.primary, false,
-          false);
-        oldValue = oldValue.arango.Plan.DBServers[body.primary];
+                                    false);
+        if (oldValue.arango.Plan.DBServers.hasOwnProperty(body.primary)) {
+          oldValue = oldValue.arango.Plan.DBServers[body.primary];
+        } else {
+          throw true;
+        }
       } catch (e1) {
         actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
           'Primary with the given ID is not configured in Agency.');
         return;
       }
+
       if (oldValue !== body.oldSecondary) {
         actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED, 0,
           'Primary does not have the given oldSecondary as ' +
