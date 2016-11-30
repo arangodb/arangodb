@@ -42,7 +42,7 @@ This can be created with the following way:
     @startDocuBlockInline ensureVertexCentricHashIndex
     @EXAMPLE_ARANGOSH_OUTPUT{ensureVertexCentricHashIndex}
     ~db._createEdgeCollection("collection");
-    collection.ensureIndex({ type: "hash", fields: [ "_from", "type" ] })
+    db.collection.ensureIndex({ type: "hash", fields: [ "_from", "type" ] })
     ~db._drop("collection");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock ensureVertexCentricHashIndex
