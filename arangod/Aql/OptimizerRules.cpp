@@ -3929,8 +3929,35 @@ struct GeoIndexInfo {
   std::vector<std::string> _latitude;
 };
 
+std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info,
+                                             AstNode* lat, AstNode* lon, AstNode* withRange = nullptr){
+  auto ast = plan->getAst();
+  auto varAstNode = ast->createNodeReference(info._collectionNode->outVariable());
 
+  auto nAryAnd = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+  nAryAnd->reserve(withRange ? 3 : 2);
 
+  auto latKey = ast->createNodeAttributeAccess(varAstNode, "latitude",8);
+  auto latEq = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, latKey, lat);
+  nAryAnd->addMember(latEq);
+
+  auto lonKey = ast->createNodeAttributeAccess(varAstNode, "longitude",9);
+  auto lonEq = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, lonKey, lon);
+  nAryAnd->addMember(lonEq);
+
+  if(withRange){
+    auto withKey = ast->createNodeAttributeAccess(varAstNode, "within",6);
+    auto withEq = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, withKey, withRange);
+    nAryAnd->addMember(withEq);
+  }
+
+  auto unAryOr = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_OR, nAryAnd);
+
+  auto condition = std::make_unique<Condition>(ast);
+  condition->andCombine(unAryOr);
+  condition->normalize(plan);
+  return condition;
+}
 
 // TODO - remove debug code
 #ifdef OBIDEBUG
@@ -4048,19 +4075,19 @@ void arangodb::aql::optimizeGeoIndexRule(Optimizer* opt,
 
     // we're looking for "DISTANCE()", which is a function call
     // with an empty parameters array
-    if (   func->externalName != "DISTANCE" || funcNode->numMembers() != 1  ) {
+    if ( func->externalName != "DISTANCE" || funcNode->numMembers() != 1  ) {
       continue;
     }
 
     LOG(OBILEVEL) << "  FOUND DISTANCE RULE";
 
-    auto const& distanceArgs = funcNode->getMember(0);
-    if(distanceArgs->numMembers() != 4){
+    auto const& functionArguments = funcNode->getMember(0);
+    if(functionArguments->numMembers() < 4){
       continue;
     }
 
-    std::pair<AstNode*,AstNode*> argPair1 = { distanceArgs->getMember(0), distanceArgs->getMember(1) };
-    std::pair<AstNode*,AstNode*> argPair2 = { distanceArgs->getMember(2), distanceArgs->getMember(3) };
+    std::pair<AstNode*,AstNode*> argPair1 = { functionArguments->getMember(0), functionArguments->getMember(1) };
+    std::pair<AstNode*,AstNode*> argPair2 = { functionArguments->getMember(2), functionArguments->getMember(3) };
 
     auto result1 = geoDistanceFunctionArgCheck(argPair1, node, plan);
     auto result2 = geoDistanceFunctionArgCheck(argPair2, node, plan);
@@ -4072,53 +4099,31 @@ void arangodb::aql::optimizeGeoIndexRule(Optimizer* opt,
 
     LOG(OBILEVEL) << "  FOUND DISTANCE RULE WITH ATTRIBUTE ACCESS";
 
-    bool firstPairContainsVars = true;
-    if(!result1){
-      firstPairContainsVars = false;
-      result1 = std::move(result2);
+    std::pair<AstNode*,AstNode*>* constantPair;
+    GeoIndexInfo info;
+    if(result1){
+      info = std::move(result1.get());
+      constantPair = &argPair2;
+    } else {
+      info = std::move(result2.get());
+      constantPair = &argPair1;
     }
 
-    LOG(OBILEVEL) << "  attributes: " << result1.get()._longitude[0]
-             << ", " << result1.get()._longitude
-             << " of collection:" << result1.get()._collection->getName()
+    LOG(OBILEVEL) << "  attributes: " << info._longitude[0]
+             << ", " << info._longitude
+             << " of collection:" << info._collection->getName()
              << " are geoindexed";
 
     //break; //remove this to make use of the index
 
-    auto cnode = result1.get()._collectionNode;
-    auto& idxPtr = result1.get()._index;
+    auto cnode = info._collectionNode;
+    auto& idxPtr = info._index;
 
     std::unique_ptr<Condition> condition;
-
-    auto getVars = [&](std::pair<AstNode*,AstNode*>& pair){
-      auto ast = plan->getAst();
-
-      auto varAstNode = ast->createNodeReference(cnode->outVariable());
-
-
-      auto latKey = ast->createNodeAttributeAccess(varAstNode, "latitude",8);
-      auto latEq = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,latKey, pair.first);
-
-      auto lonKey = ast->createNodeAttributeAccess(varAstNode, "longitude",9);
-      auto lonEq = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,lonKey, pair.second);
-      
-      auto nAryAnd = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
-      nAryAnd->reserve(2);
-      nAryAnd->addMember(latEq);
-      nAryAnd->addMember(lonEq);
-
-      auto unAryOr = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_OR, nAryAnd);
-
-      auto condition = std::make_unique<Condition>(ast);
-      condition->andCombine(unAryOr);
-      condition->normalize(plan);
-      return condition;
-    };
-
-    if(firstPairContainsVars){
-      condition = getVars(argPair2);
+    if(functionArguments->numMembers() == 4){
+      condition = buildGeoCondition(plan,info, constantPair->first, constantPair->second);
     } else {
-      condition = getVars(argPair1);
+      condition = buildGeoCondition(plan,info, constantPair->first, constantPair->second, functionArguments->getMember(4));
     }
 
     auto inode = new IndexNode(
