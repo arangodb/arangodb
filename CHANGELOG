@@ -17,6 +17,9 @@ v3.1.3 (xxxx-xx-xx)
 
 * Moderate log output of inception and startup of RAFT algorithm
 
+* Fixed faulty error message on missing primaru db server when trying
+  to change secondary
+
 v3.1.2 (2016-11-24)
 -------------------
 
