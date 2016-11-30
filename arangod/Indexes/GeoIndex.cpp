@@ -21,31 +21,74 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "GeoIndex.h"
-#include "Logger/Logger.h"
+#include "Aql/Ast.h"
+#include "Aql/AstNode.h"
+#include "Aql/SortCondition.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
-#include "VocBase/transaction.h"
+#include "GeoIndex.h"
 #include "Indexes/GeoIndex.h"
+#include "Logger/Logger.h"
+#include "VocBase/transaction.h"
 
 using namespace arangodb;
 GeoIndexIterator::GeoIndexIterator(LogicalCollection* collection,
                                      arangodb::Transaction* trx,
                                      ManagedDocumentResult* mmdr,
                                      GeoIndex const* index,
-                                     arangodb::aql::AstNode const* node,
-                                     arangodb::aql::Variable const* reference)
+                                     arangodb::aql::AstNode const* cond,
+                                     arangodb::aql::Variable const* var)
     : IndexIterator(collection, trx, mmdr, index),
       _index(index),
+      _cursor(nullptr),
+      _condition(cond),
+      _variable(var),
+      _lat(0),
+      _lon(0),
+      _near(true),
+      _withinRange(0),
+      _withinInverse(false)
       // lookup will hold the inforamtion if this is a cursor for
       // near/within and the reference point
       //_lookups(trx, node, reference, index->fields()),
-      _cursor(nullptr)
-    {}
+    {
+      evaluateCondition();
+    }
+
+void GeoIndexIterator::evaluateCondition() {
+  LOG(ERR) << "ENTER evaluate Condition";
+
+  if (_condition) {
+    LOG(ERR) << "The Condition is";
+    _condition->dump(0);
+    auto numMembers = _condition->numMembers();
+
+    if(numMembers >= 2){
+      _lat = _condition->getMember(0)->getMember(1)->getDoubleValue();
+      LOG(ERR) << "lat: " << _lat;
+      _lon = _condition->getMember(1)->getMember(1)->getDoubleValue();
+      LOG(ERR) << "lon: " << _lon;
+    }
+
+    if (numMembers == 2){ //near
+      _near = true;
+    } else if (numMembers == 3) { //within
+      _near = false;
+      _withinRange = _condition->getMember(2)->getMember(1)->getDoubleValue();
+    } else {
+      LOG(ERR) << "Invalid Number of arguments";
+    }
+
+  } else {
+    LOG(ERR) << "No Condition passed to constructor";
+  }
+
+  LOG(ERR) << "EXIT evaluate Condition";
+}
 
 IndexLookupResult GeoIndexIterator::next() {
   if (!_cursor){
-    createCursor(0,0);
+    createCursor(_lat,_lon);
   }
 
   auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(_cursor,1));
@@ -59,7 +102,7 @@ IndexLookupResult GeoIndexIterator::next() {
 
 void GeoIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t batchSize) {
   if (!_cursor){
-    createCursor(0,0);
+    createCursor(_lat,_lon);
   }
 
   result.clear();
@@ -75,7 +118,7 @@ void GeoIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t
     }
   }
 }
- 
+
 ::GeoCursor* GeoIndexIterator::replaceCursor(::GeoCursor* c){
   if(_cursor){
     ::GeoIndex_CursorFree(_cursor);

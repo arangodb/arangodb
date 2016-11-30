@@ -65,10 +65,17 @@ class GeoIndexIterator final : public IndexIterator {
  private:
   ::GeoCursor* replaceCursor(::GeoCursor* c);
   ::GeoCursor* createCursor(double lat, double lon);
+  void evaluateCondition(); //called in constructor
 
   GeoIndex const* _index;
   ::GeoCursor* _cursor;
-  //LookupBuilder _lookups;
+  arangodb::aql::AstNode const* _condition;
+  arangodb::aql::Variable const* _variable;
+  double _lat;
+  double _lon;
+  bool _near;
+  double _withinRange;
+  double _withinInverse;
 };
 
 class GeoIndex final : public Index {

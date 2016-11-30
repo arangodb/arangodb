@@ -4072,7 +4072,9 @@ void arangodb::aql::optimizeGeoIndexRule(Optimizer* opt,
 
     LOG(OBILEVEL) << "  FOUND DISTANCE RULE WITH ATTRIBUTE ACCESS";
 
+    bool firstPairContainsVars = true;
     if(!result1){
+      firstPairContainsVars = false;
       result1 = std::move(result2);
     }
 
@@ -4086,9 +4088,39 @@ void arangodb::aql::optimizeGeoIndexRule(Optimizer* opt,
     auto cnode = result1.get()._collectionNode;
     auto& idxPtr = result1.get()._index;
 
-    //create new index node and register it
-    auto condition = std::make_unique<Condition>(plan->getAst()); //What is this condition exactly about
-    condition->normalize(plan);
+    std::unique_ptr<Condition> condition;
+
+    auto getVars = [&](std::pair<AstNode*,AstNode*>& pair){
+      auto ast = plan->getAst();
+
+      auto varAstNode = ast->createNodeReference(cnode->outVariable());
+
+
+      auto latKey = ast->createNodeAttributeAccess(varAstNode, "latitude",8);
+      auto latEq = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,latKey, pair.first);
+
+      auto lonKey = ast->createNodeAttributeAccess(varAstNode, "longitude",9);
+      auto lonEq = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,lonKey, pair.second);
+      
+      auto nAryAnd = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+      nAryAnd->reserve(2);
+      nAryAnd->addMember(latEq);
+      nAryAnd->addMember(lonEq);
+
+      auto unAryOr = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_OR, nAryAnd);
+
+      auto condition = std::make_unique<Condition>(ast);
+      condition->andCombine(unAryOr);
+      condition->normalize(plan);
+      return condition;
+    };
+
+    if(firstPairContainsVars){
+      condition = getVars(argPair2);
+    } else {
+      condition = getVars(argPair1);
+    }
+
     auto inode = new IndexNode(
             plan, plan->nextId(), cnode->vocbase(),
             cnode->collection(), cnode->outVariable(),
@@ -4102,7 +4134,6 @@ void arangodb::aql::optimizeGeoIndexRule(Optimizer* opt,
 
     //signal that plan has been changed
     modified=true;
-
   }
 
   opt->addPlan(plan, rule, modified);
