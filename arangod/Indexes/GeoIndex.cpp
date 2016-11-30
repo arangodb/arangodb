@@ -41,6 +41,7 @@ GeoIndexIterator::GeoIndexIterator(LogicalCollection* collection,
     : IndexIterator(collection, trx, mmdr, index),
       _index(index),
       _cursor(nullptr),
+      _coor(),
       _condition(cond),
       _variable(var),
       _lat(0),
@@ -93,8 +94,10 @@ IndexLookupResult GeoIndexIterator::next() {
 
   auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(_cursor,1));
   if(coords && coords->length){
-    auto revision = ::GeoIndex::toRevision(coords->coordinates[0].data);
-    return IndexLookupResult{revision};
+    if(_near || GeoIndex_distance(&_coor, &coords->coordinates[0]) <= _withinRange ){
+      auto revision = ::GeoIndex::toRevision(coords->coordinates[0].data);
+      return IndexLookupResult{revision};
+    }
   }
   // if there are no more results we return the default constructed IndexLookupResult
   return IndexLookupResult{};
@@ -114,7 +117,9 @@ void GeoIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t
     }
 
     for(std::size_t index = 0; index < length; ++index){
-      result.emplace_back(IndexLookupResult(::GeoIndex::toRevision(coords->coordinates[index].data)));
+      while (_near || GeoIndex_distance(&_coor, &coords->coordinates[index]) <= _withinRange ){
+        result.emplace_back(IndexLookupResult(::GeoIndex::toRevision(coords->coordinates[index].data)));
+      }
     }
   }
 }
@@ -128,8 +133,8 @@ void GeoIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t
 }
 
 ::GeoCursor* GeoIndexIterator::createCursor(double lat, double lon){
-  ::GeoCoordinate coor{lat, lon, 0};
-  return replaceCursor(::GeoIndex_NewCursor(_index->_geoIndex, &coor));
+  _coor = GeoCoordinate{lat, lon, 0};
+  return replaceCursor(::GeoIndex_NewCursor(_index->_geoIndex, &_coor));
 }
 
 /// @brief creates an IndexIterator for the given Condition

@@ -69,6 +69,7 @@ class GeoIndexIterator final : public IndexIterator {
 
   GeoIndex const* _index;
   ::GeoCursor* _cursor;
+  ::GeoCoordinate _coor;
   arangodb::aql::AstNode const* _condition;
   arangodb::aql::Variable const* _variable;
   double _lat;
