@@ -174,12 +174,14 @@ static int CreateDatafile(std::string const& filename, TRI_voc_size_t maximalSiz
     return -1;
   }
 
-#ifdef __linux__
-  // try fallocate first
-  int res = fallocate(fd, FALLOC_FL_ZERO_RANGE, 0, maximalSize);
-#else 
   // no fallocate present, or at least pretend it's not there...
   int res = TRI_ERROR_NOT_IMPLEMENTED;
+
+#ifdef __linux__
+#ifdef FALLOC_FL_ZERO_RANGE
+  // try fallocate
+  res = fallocate(fd, FALLOC_FL_ZERO_RANGE, 0, maximalSize);
+#endif
 #endif
 
   if (res != TRI_ERROR_NO_ERROR) {
