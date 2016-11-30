@@ -487,7 +487,7 @@ Then, queries like
 
 ```js
 FOR v, e, p IN 1..1 OUTBOUND "V/1" edges
-  FILTER e.timestamp >= "2016-11-09"
+  FILTER e.timestamp ALL >= "2016-11-09"
   RETURN p
 ```
 
