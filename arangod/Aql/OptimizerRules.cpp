@@ -3959,6 +3959,9 @@ std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan, GeoIndexInfo& 
   return condition;
 }
 
+
+
+// GEO RULES //////////////////////////////////////////////////////////////////
 // TODO - remove debug code
 #ifdef OBIDEBUG
   #define OBILEVEL ERR
@@ -4089,70 +4092,82 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, ExecutionNode* node, A
 };
 
 
-AstNode const* identifyGeoOptimizationCandidate(bool sort, ExecutionPlan* plan, ExecutionNode* n){
-  if(sort){
-    auto node = static_cast<SortNode*>(n);
-    auto const& elements = node->getElements();
+AstNode const* identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, ExecutionPlan* plan, ExecutionNode* n){
+  ExecutionNode* setter = nullptr;
 
-    // we're looking for "SORT DISTANCE(x,y,a,b) ASC", which has just one sort criterion
-    if ( !(elements.size() == 1 && elements[0].second)) {
-      return nullptr;
+  switch(type){
+    case EN::SORT: {
+      auto node = static_cast<SortNode*>(n);
+      auto const& elements = node->getElements();
+
+      // we're looking for "SORT DISTANCE(x,y,a,b) ASC", which has just one sort criterion
+      if ( !(elements.size() == 1 && elements[0].second)) {
+        return nullptr;
+      }
+
+      //variable of sort expression
+      auto const variable = elements[0].first;
+      TRI_ASSERT(variable != nullptr);
+
+      //// find the expression that is bound to the variable
+      // get the expression node that holds the cacluation
+      setter = plan->getVarSetBy(variable->id);
     }
+    break;
 
-    //variable of sort expression
-    auto const variable = elements[0].first;
-    TRI_ASSERT(variable != nullptr);
+    case EN::FILTER: {
+      auto node = static_cast<FilterNode*>(n);
 
-    //// find the expression that is bound to the variable
-    // get the expression node that holds the cacluation
-    auto setter = plan->getVarSetBy(variable->id);
-    if (setter == nullptr || setter->getType() != EN::CALCULATION) {
-      return nullptr;
+      // filter nodes always have one input variable
+       auto varsUsedHere = node->getVariablesUsedHere();
+      TRI_ASSERT(varsUsedHere.size() == 1);
+
+      // now check who introduced our variable
+      auto variable = varsUsedHere[0];
+      setter = plan->getVarSetBy(variable->id);
     }
+    break;
 
-    // downcast to calculation node and get expression
-    auto cn = static_cast<CalculationNode*>(setter);
-    auto const expression = cn->expression();
-
-    // the expression must exist and it must be a function call
-    if (expression == nullptr || expression->node() == nullptr ||
-        expression->node()->type != NODE_TYPE_FCALL) {
-      // not the right type of node
+    default:
       return nullptr;
-    }
+  }
 
-    //get the ast node of the expression
-    AstNode const* funcNode = expression->node();
-    auto func = static_cast<Function const*>(funcNode->getData());
+  if (setter == nullptr || setter->getType() != EN::CALCULATION) {
+    return nullptr;
+  }
+  // downcast to calculation node and get expression
+  auto cn = static_cast<CalculationNode*>(setter);
+  auto const expression = cn->expression();
 
-    // we're looking for "DISTANCE()", which is a function call
-    // with an empty parameters array
-    if ( func->externalName != "DISTANCE" || funcNode->numMembers() != 1  ) {
-      return nullptr;
-    }
-    return funcNode;
-  } else {
+  // the expression must exist and it must be a function call
+  if (expression == nullptr || expression->node() == nullptr ||
+      expression->node()->type != NODE_TYPE_FCALL) {
+    // not the right type of node
     return nullptr;
   }
 
+  //get the ast node of the expression
+  AstNode const* funcNode = expression->node();
+  auto func = static_cast<Function const*>(funcNode->getData());
 
+  // we're looking for "DISTANCE()", which is a function call
+  // with an empty parameters array
+  if ( func->externalName != "DISTANCE" || funcNode->numMembers() != 1  ) {
+    return nullptr;
+  }
+  return funcNode;
+
+
+
+  return nullptr;
 };
 
-
-void arangodb::aql::optimizeGeoIndexRule(Optimizer* opt,
-                                         ExecutionPlan* plan,
-                                         Optimizer::Rule const* rule) {
-
-  LOG(OBILEVEL) << "ENTER GEO RULE";
-
+void checkNodesForGeoOptimization(ExecutionNode::NodeType type, ExecutionPlan* plan, bool& modified){
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
-  bool modified = false;
-
   plan->findNodesOfType(nodes, EN::SORT, true);
-
   for (auto const& n : nodes) {
-    auto funcNode = identifyGeoOptimizationCandidate(true, plan, n);
+    auto funcNode = identifyGeoOptimizationCandidate(EN::SORT, plan, n);
     if(!funcNode){
       continue;
     }
@@ -4161,6 +4176,17 @@ void arangodb::aql::optimizeGeoIndexRule(Optimizer* opt,
       modified = true;
     }
   }
+}
+
+void arangodb::aql::optimizeGeoIndexRule(Optimizer* opt,
+                                         ExecutionPlan* plan,
+                                         Optimizer::Rule const* rule) {
+
+  LOG(OBILEVEL) << "ENTER GEO RULE";
+
+  bool modified = false;
+  checkNodesForGeoOptimization(EN::SORT, plan, modified);
+  checkNodesForGeoOptimization(EN::FILTER, plan, modified);
   opt->addPlan(plan, rule, modified);
 
   LOG(OBILEVEL) << "EXIT GEO RULE";
