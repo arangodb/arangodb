@@ -35,24 +35,18 @@ namespace pregel {
 template <typename V, typename E, typename M>
 class Worker;
 class Aggregator;
-
+  
 template <typename V, typename E, typename M>
-class VertexComputation {
+class VertexContext {
   friend class Worker<V, E, M>;
 
   uint64_t _gss = 0;
   WorkerContext* _context;
   GraphStore<V, E>* _graphStore;
-  OutgoingCache<M>* _outgoing;
   const AggregatorUsage* _conductorAggregators;
-  AggregatorUsage* _workerAggregators;
   VertexEntry* _vertexEntry;
 
  public:
-  template <typename T>
-  inline void aggregate(std::string const& name, const T* valuePtr) {
-    _workerAggregators->aggregate(name, valuePtr);
-  }
 
   template <typename T>
   inline const T* getAggregatedValue(std::string const& name) {
@@ -74,18 +68,40 @@ class VertexComputation {
   void setVertexData(void const* ptr, size_t size) {
     _graphStore->replaceVertexData(_vertexEntry, (void*)ptr, size);
   }
+  
+  void voteHalt() {_vertexEntry->setActive(false); }
+  void voteActive() {_vertexEntry->setActive(true);}
 
+  inline uint64_t globalSuperstep() const { return _gss; }
+};
+  
+template <typename V, typename E, typename M>
+class VertexComputation : public VertexContext<V, E, M> {
+  friend class Worker<V, E, M>;
+  
+  OutgoingCache<M>* _outgoing;
+  AggregatorUsage* _workerAggregators;
+  
+public:
+  
+  template <typename T>
+  inline void aggregate(std::string const& name, const T* valuePtr) {
+    _workerAggregators->aggregate(name, valuePtr);
+  }
+  
   void sendMessage(std::string const& toVertexID, M const& data) {
     _outgoing->sendMessageTo(toVertexID, data);
   }
-
-  void voteHalt() { _vertexEntry->setActive(false); }
-
-  inline uint64_t globalSuperstep() const { return _gss; }
-
+  
   virtual void compute(std::string const& vertexID,
                        MessageIterator<M> const& messages) = 0;
 };
+  
+template <typename V, typename E, typename M>
+struct VertexCompensate : public VertexContext<V, E, M> {
+  virtual void compensate(std::string const& vertexID, bool inLostPartition) = 0;
+};
+  
 }
 }
 #endif

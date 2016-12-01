@@ -29,6 +29,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Pregel/PregelFeature.h"
+#include "Pregel/AlgoRegistry.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/Worker.h"
 #include "Pregel/Utils.h"
@@ -84,7 +85,7 @@ RestStatus RestPregelHandler::execute() {
         return RestStatus::DONE;
       }
       LOG(INFO) << "creating worker";
-      w = IWorker::createWorker(_vocbase, body);
+      w = AlgoRegistry::createWorker(_vocbase, body);
       PregelFeature::instance()->addWorker(w, executionNumber);
     } else if (suffix[0] == Utils::prepareGSSPath) {
       IWorker *w = PregelFeature::instance()->worker(executionNumber);
@@ -124,6 +125,12 @@ RestStatus RestPregelHandler::execute() {
         exe->finalizeExecution(body);
         PregelFeature::instance()->cleanup(executionNumber);
       }
+    } else if (suffix[0] == Utils::recoveryPath) {
+      IWorker *w = PregelFeature::instance()->worker(executionNumber);
+      if (!w) {
+        w = AlgoRegistry::createWorker(_vocbase, body);
+      }
+      w->startRecovery(body);
     }
     
     VPackSlice result;

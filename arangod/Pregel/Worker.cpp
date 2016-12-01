@@ -25,11 +25,13 @@
 #include "Pregel/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/OutgoingCache.h"
+#include "Pregel/PregelFeature.h"
 #include "Pregel/Utils.h"
 #include "Pregel/VertexComputation.h"
 #include "Pregel/WorkerState.h"
 
 #include "Basics/MutexLocker.h"
+#include "Basics/ThreadPool.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/ticks.h"
@@ -38,36 +40,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Algos/PageRank.h"
-#include "Algos/SSSP.h"
-
 using namespace arangodb;
 using namespace arangodb::pregel;
-
-template <typename V, typename E, typename M>
-IWorker* IWorker::createWorker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
-                               VPackSlice body) {
-  return new Worker<V, E, M>(vocbase, algo, body);
-}
-
-IWorker* IWorker::createWorker(TRI_vocbase_t* vocbase, VPackSlice body) {
-  VPackSlice algorithm = body.get(Utils::algorithmKey);
-  if (!algorithm.isString()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "Supplied bad parameters to worker");
-  }
-
-  VPackSlice userParams = body.get(Utils::userParametersKey);
-  if (algorithm.compareString("sssp") == 0) {
-    return createWorker(vocbase, new algos::SSSPAlgorithm(userParams), body);
-  } else if (algorithm.compareString("pagerank") == 0) {
-    return createWorker(vocbase, new algos::PageRankAlgorithm(userParams), body);
-  } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "Unsupported Algorithm");
-  }
-  return nullptr;
-};
 
 template <typename V, typename E, typename M>
 Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
@@ -75,12 +49,8 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
     : _running(true), _state(vocbase->name(), initConfig), _algorithm(algo) {
   VPackSlice userParams = initConfig.get(Utils::userParametersKey);
   _workerContext.reset(algo->workerContext(userParams));
-
-  const size_t threadNum = TRI_numberProcessors();
-  _workerPool.reset(
-      new ThreadPool(static_cast<size_t>(threadNum), "Pregel Worker"));
   _graphStore.reset(
-      new GraphStore<V, E>(vocbase, &_state, algo->inputFormat()));
+      new GraphStore<V, E>(vocbase, _state, algo->inputFormat()));
   _messageFormat.reset(algo->messageFormat());
   _messageCombiner.reset(algo->messageCombiner());
   _readCache.reset(new IncomingCache<M>(_messageFormat.get(), _messageCombiner.get()));
@@ -88,11 +58,7 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
   _conductorAggregators.reset(new AggregatorUsage(algo));
   _workerAggregators.reset(new AggregatorUsage(algo));
 
-  if (_workerContext != nullptr) {
-    _workerContext->_vertexCount =
-        initConfig.get(Utils::totalVertexCount).getUInt();
-    _workerContext->_edgeCount =
-        initConfig.get(Utils::totalEdgeCount).getUInt();
+  if (_workerContext) {
     _workerContext->_conductorAggregators = _conductorAggregators.get();
     _workerContext->_workerAggregators = _workerAggregators.get();
     _workerContext->preApplication();
@@ -174,12 +140,13 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
   }
   LOG(INFO) << "Worker starts new gss: " << gss;
   
+  ThreadPool *pool = PregelFeature::instance()->threadPool();
   size_t total = _graphStore->vertexCount();
-  size_t delta = total / _workerPool->numThreads();
+  size_t delta = total / pool->numThreads();
   size_t start = 0, end = delta;
   _runningThreads = total / delta;//rounds-up unsigned integers
   do {
-    _workerPool->enqueue([this, start, end] {
+    pool->enqueue([this, start, end] {
       if (!_running) {
         LOG(INFO) << "Execution aborted prematurely.";
         return;
@@ -195,7 +162,15 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
   } while(start != total);
 }
 
-// internally called for
+template <typename V, typename E, typename M>
+void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M> *ctx) {
+  ctx->_gss = _state.globalSuperstep();
+  ctx->_context = _workerContext.get();
+  ctx->_graphStore = _graphStore.get();
+  ctx->_conductorAggregators = _conductorAggregators.get();
+}
+
+// internally called in a WORKER THREAD!!
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_executeGlobalStep(RangeIterator<VertexEntry> &vertexIterator) {
   double start = TRI_microtime();
@@ -209,14 +184,10 @@ void Worker<V, E, M>::_executeGlobalStep(RangeIterator<VertexEntry> &vertexItera
   AggregatorUsage workerAggregator(_algorithm.get());
   
   // TODO look if we can avoid instantiating this
-  uint64_t gss = _state.globalSuperstep();
   std::unique_ptr<VertexComputation<V, E, M>>
-    vertexComputation(_algorithm->createComputation(gss));
-  vertexComputation->_gss = gss;
-  vertexComputation->_context = _workerContext.get();
-  vertexComputation->_graphStore = _graphStore.get();
+  vertexComputation(_algorithm->createComputation(_state.globalSuperstep()));
+  _initializeVertexContext(vertexComputation.get());
   vertexComputation->_outgoing = &outCache;
-  vertexComputation->_conductorAggregators = _conductorAggregators.get();
   vertexComputation->_workerAggregators = &workerAggregator;
   
   size_t activeCount = 0;
@@ -257,16 +228,17 @@ void Worker<V, E, M>::_executeGlobalStep(RangeIterator<VertexEntry> &vertexItera
   _workerThreadDone(vertexComputation->_workerAggregators, stats);
 }
 
+// called at the end of a worker thread, needs mutex
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_workerThreadDone(AggregatorUsage *threadAggregators,
                                         WorkerStats const& threadStats) {
-  MUTEX_LOCKER(guard, _threadMutex);
+  MUTEX_LOCKER(guard, _threadMutex);// only one thread at a time
+  
   // merge the thread local stats and aggregators
   _workerAggregators->aggregateValues(*threadAggregators);
   _superstepStats.accumulate(threadStats);
-  
   _runningThreads--;
-  if (_runningThreads > 0) {
+  if (_runningThreads > 0) {// should work like a join operatopm
     return;// there are still threads running
   }
   
@@ -284,18 +256,19 @@ void Worker<V, E, M>::_workerThreadDone(AggregatorUsage *threadAggregators,
   package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
   package.add(Utils::executionNumberKey, VPackValue(_state.executionNumber()));
   package.add(Utils::globalSuperstepKey, VPackValue(_state.globalSuperstep()));
-  package.add(Utils::doneKey, VPackValue(_superstepStats.allZero()));// TODO remove
-  _superstepStats.serializeValues(package);// add stats
   if (_workerAggregators->size() > 0) {// add aggregators
     package.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
     _workerAggregators->serializeValues(package);
     package.close();
   }
-  package.close();
-  
-  if (_superstepStats.allZero()) {
+  _superstepStats.serializeValues(package);// add stats
+  if (_superstepStats.activeCount == 0
+      && _superstepStats.sendCount == 0
+      && _superstepStats.receivedCount == 0) {
     LOG(INFO) << "WE have no active vertices, and did not send messages";
+    package.add(Utils::doneKey, VPackValue(true));
   }
+  package.close();
   _superstepStats.reset();// don't forget to reset at the end of the superstep
 
   // TODO ask how to implement message sending without waiting for a response
@@ -306,7 +279,7 @@ void Worker<V, E, M>::_workerThreadDone(AggregatorUsage *threadAggregators,
   auto headers =
       std::make_unique<std::unordered_map<std::string, std::string>>();
   auto body = std::make_shared<std::string const>(package.toJson());
-  cc->asyncRequest("endGSS", coordinatorTransactionID,
+  cc->asyncRequest("", coordinatorTransactionID,
                    "server:" + _state.coordinatorId(), rest::RequestType::POST,
                    baseUrl + Utils::finishedGSSPath, body, headers, nullptr,
                    90.0,// timeout + single request
@@ -317,13 +290,11 @@ template <typename V, typename E, typename M>
 void Worker<V, E, M>::finalizeExecution(VPackSlice body) {
   // Only expect serial calls from the conductor. Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _conductorMutex);
-  
   _running = false;
-  _workerPool.reset();
   
   VPackSlice store = body.get(Utils::storeResultsKey);
   if (store.isBool() && store.getBool() == true) {
-    _graphStore->storeResults();
+    _graphStore->storeResults(_state);
   } else {
     LOG(WARN) << "Discarding results";
   }
@@ -343,6 +314,45 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice body) {
   }
   b.close();
   LOG(INFO) << "Results. " << b.toJson();//*/
+}
+
+template <typename V, typename E, typename M>
+void Worker<V, E, M>::startRecovery(VPackSlice data) {
+  VPackSlice method = data.get(Utils::recoveryMethodKey);
+  if (method.compareString(Utils::compensate) == 0) {
+    WorkerState nextState(_state.database(), data);
+    _graphStore->loadShards(nextState);
+    _state = nextState;
+    
+    // TODO start compensate method
+    /*
+    ThreadPool *pool = PregelFeature::instance()->threadPool();
+    pool->enqueue([this, start, end] {
+      if (!_running) {
+        LOG(INFO) << "Execution aborted prematurely.";
+        return;
+      }
+      
+      size_t total = _graphStore->vertexCount();
+      size_t start = 0, end = delta;
+      auto vertexIterator = _graphStore->vertexIterator(start, end);
+      _executeGlobalStep(vertexIterator);
+    });
+    
+    uint64_t gss = _state.globalSuperstep();
+    std::unique_ptr<VertexComputation<V, E, M>>
+    vertexComputation(_algorithm->createComputation(gss));
+    vertexComputation->_gss = gss;
+    vertexComputation->_context = _workerContext.get();
+    vertexComputation->_graphStore = _graphStore.get();
+    vertexComputation->_outgoing = &outCache;
+    vertexComputation->_conductorAggregators = _conductorAggregators.get();
+    vertexComputation->_workerAggregators = &workerAggregator;
+    */
+    
+  } else if (method.compareString(Utils::rollback) == 0) {
+    
+  }
 }
 
 // template types to create

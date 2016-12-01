@@ -29,6 +29,9 @@
 #include "Basics/Mutex.h"
 
 namespace arangodb {
+namespace basics {
+class ThreadPool;
+}
 namespace pregel {
 
 class Conductor;
@@ -48,20 +51,22 @@ class PregelFeature final : public application_features::ApplicationFeature {
   uint64_t createExecutionNumber();
   void addExecution(Conductor* const exec, uint64_t executionNumber);
   Conductor* conductor(uint64_t executionNumber);
-  void notifyConductors();
 
   void addWorker(IWorker* const worker, uint64_t executionNumber);
   IWorker* worker(uint64_t executionNumber);
 
   void cleanup(uint64_t executionNumber);
   void cleanupAll();
-  RecoveryManager* recoveryManager() {return _recoveryManager;}
-
+  
+  basics::ThreadPool* threadPool() {return _threadPool.get();}
+  RecoveryManager* recoveryManager() {return _recoveryManager.get();}
+  
  private:
+  Mutex _mutex;
+  std::unique_ptr<RecoveryManager> _recoveryManager;
+  std::unique_ptr<basics::ThreadPool> _threadPool;
   std::unordered_map<uint64_t, Conductor*> _conductors;
   std::unordered_map<uint64_t, IWorker*> _workers;
-  Mutex _mutex;
-  RecoveryManager* _recoveryManager;
 };
 }
 }

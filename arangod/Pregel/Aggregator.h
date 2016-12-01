@@ -76,10 +76,6 @@ class FloatMaxAggregator : public Aggregator {
  private:
   float _value, _initial;
 };
-
-struct IAggregatorCreator {
-  virtual Aggregator* aggregator(std::string const& name) const = 0;
-};
 }
 }
 #endif

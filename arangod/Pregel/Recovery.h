@@ -25,34 +25,38 @@
 
 #include "Basics/Mutex.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/AgencyComm.h"
-#include "Cluster/AgencyCallbackRegistry.h"
+#include "Agency/AgencyComm.h"
+#include "Agency/AgencyCallbackRegistry.h"
 #include <velocypack/velocypack-aliases.h>
 #include <velocypack/vpack.h>
+
 
 namespace arangodb {
 namespace pregel {
 
 template<typename V, typename E>
 class GraphStore;
+class Conductor;
   
 class RecoveryManager {
   
+  Mutex _lock;
   AgencyComm _agency;
   AgencyCallbackRegistry *_agencyCallbackRegistry;//weak
-  Mutex _lock;
   double _lastHealthCheck = 0;
   
-  std::map<ServerID, std::string> _statusMap;
-  std::vector<std::shared_ptr<AgencyCallback>> _agencyCallbacks;
+  std::map<ShardID, std::set<Conductor*>> _listeners;
+  std::map<ShardID, ServerID> _primaryServer;
+  std::map<ShardID, std::shared_ptr<AgencyCallback>> _agencyCallbacks;
   
  public:
   RecoveryManager(AgencyCallbackRegistry *registry);
   ~RecoveryManager();
 
-  void monitorDBServers(std::vector<ServerID> const& dbServers);
-  void stopMonitoring();
-  bool allServersAvailable(std::vector<ServerID> const& dbServers);
+  void monitorCollections(std::vector<std::shared_ptr<LogicalCollection>> const& collections, Conductor*);
+  void monitorShard(CollectionID const& cid, ShardID const& shard);
+  void stopMonitoring(Conductor*);
+  //bool allServersAvailable(std::vector<ServerID> const& dbServers);
 };
   
 class RecoveryWorker {

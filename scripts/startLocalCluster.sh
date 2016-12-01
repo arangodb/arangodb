@@ -224,6 +224,7 @@ start() {
        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
        --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
        --server.endpoint $TRANSPORT://127.0.0.1:$PORT \
+       --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
        --cluster.my-role $ROLE \
        --log.file cluster/$PORT.log \
        --log.level info \

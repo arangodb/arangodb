@@ -41,7 +41,7 @@ std::string const Utils::startGSSPath = "startGSS";
 std::string const Utils::finishedGSSPath = "finishedGSS";
 std::string const Utils::messagesPath = "messages";
 std::string const Utils::finalizeExecutionPath = "finalizeExecution";
-std::string const Utils::reconfigurePath = "reconfigure";
+std::string const Utils::recoveryPath = "reconfigure";
 
 std::string const Utils::executionNumberKey = "exn";
 std::string const Utils::collectionPlanIdMapKey = "collectionPlanIdMap";
@@ -53,6 +53,11 @@ std::string const Utils::algorithmKey = "algorithm";
 std::string const Utils::globalSuperstepKey = "gss";
 std::string const Utils::messagesKey = "msgs";
 std::string const Utils::senderKey = "sender";
+std::string const Utils::doneKey = "done";
+std::string const Utils::recoveryMethodKey = "rmethod";
+std::string const Utils::compensate = "compensate";
+std::string const Utils::rollback = "rollback";
+
 std::string const Utils::storeResultsKey = "storeResults";
 std::string const Utils::aggregatorValuesKey = "aggregators";
 std::string const Utils::activeCountKey = "activeCount";
@@ -62,7 +67,6 @@ std::string const Utils::superstepRuntimeKey = "superstepRuntime";
 std::string const Utils::totalVertexCount = "vertexCount";
 std::string const Utils::totalEdgeCount = "edgeCount";
 
-std::string const Utils::doneKey = "done";
 
 std::string const Utils::userParametersKey = "userparams";
 

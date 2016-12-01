@@ -78,7 +78,7 @@ class WorkerState {
   // uint64_t _numWorkerThreads = 1;
 
   std::string _coordinatorId;
-  const std::string _database;
+  std::string _database;
   std::vector<ShardID> _localVertexShardIDs;
   std::map<CollectionID, std::vector<ShardID>> _vertexCollectionShards, _edgeCollectionShards;
   

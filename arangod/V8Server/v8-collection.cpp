@@ -1935,10 +1935,9 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
     pregel::Conductor* c = new pregel::Conductor(en,
                                                  vocbase,
                                                  vColls,
-                                                 eColls,
-                                                 algorithm);
+                                                 eColls);
     pregel::PregelFeature::instance()->addExecution(c, en);
-    c->start(paramBuilder.slice());
+    c->start(algorithm, paramBuilder.slice());
     
     TRI_V8_RETURN(v8::Number::New(isolate, en));
   } else {

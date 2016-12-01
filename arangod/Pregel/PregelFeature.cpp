@@ -26,6 +26,7 @@
 #include "Pregel/Worker.h"
 #include "Pregel/Recovery.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/ThreadPool.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
 
@@ -46,12 +47,11 @@ PregelFeature::PregelFeature(application_features::ApplicationServer* server)
   startsAfter("Logger");
   startsAfter("Endpoint");
   startsAfter("Cluster");
-  Instance = this;
 }
 
 PregelFeature::~PregelFeature() {
   if (_recoveryManager) {
-    delete _recoveryManager;
+    _recoveryManager.reset();
   }
   cleanupAll();
 }
@@ -59,13 +59,18 @@ PregelFeature::~PregelFeature() {
 PregelFeature* PregelFeature::instance() { return Instance; }
 
 void PregelFeature::start() {
+  Instance = this;
+
+  const size_t threadNum = TRI_numberProcessors();
+  _threadPool.reset(new basics::ThreadPool(threadNum, "Pregel"));
+  
   ClusterFeature* cluster =
   application_features::ApplicationServer::getFeature<ClusterFeature>(
                                                                       "Cluster");
   if (cluster != nullptr) {
     AgencyCallbackRegistry *registry = cluster->agencyCallbackRegistry();
     if (registry != nullptr) {
-      _recoveryManager = new RecoveryManager(registry);
+      _recoveryManager.reset(new RecoveryManager(registry));
     }
   }
 }
@@ -123,8 +128,3 @@ void PregelFeature::cleanupAll() {
   _workers.clear();
 }
 
-void PregelFeature::notifyConductors() {
-  for (auto it : _conductors) {
-    it.second->checkForWorkerOutage();
-  }
-}

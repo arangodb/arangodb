@@ -46,7 +46,7 @@ class Utils {
   static std::string const finishedGSSPath;
   static std::string const messagesPath;
   static std::string const finalizeExecutionPath;
-  static std::string const reconfigurePath;
+  static std::string const recoveryPath;
 
   static std::string const executionNumberKey;
   static std::string const algorithmKey;
@@ -59,6 +59,10 @@ class Utils {
   static std::string const messagesKey;
   static std::string const senderKey;
   static std::string const doneKey;
+  static std::string const recoveryMethodKey;
+  static std::string const compensate;
+  static std::string const rollback;
+  
   static std::string const storeResultsKey;
   static std::string const aggregatorValuesKey;
   static std::string const activeCountKey;

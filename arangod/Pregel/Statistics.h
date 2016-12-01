@@ -74,10 +74,6 @@ struct WorkerStats {
     b.add(Utils::superstepRuntimeKey, VPackValue(superstepRuntimeSecs));
   }
   
-  bool allZero() const {
-    return activeCount == 0 && sendCount == 0 && receivedCount == 0;
-  }
-  
   void reset() {
     activeCount = 0;
     sendCount = 0;

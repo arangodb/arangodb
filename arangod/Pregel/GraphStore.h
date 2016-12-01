@@ -25,6 +25,7 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <set>
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/voc-types.h"
 #include "GraphFormat.h"
@@ -41,15 +42,11 @@ template <typename E>
 struct EdgeEntry {
 
  private:
-  // size_t _nextEntryOffset;
-  // size_t _dataSize;
   std::string _toVertexID;
   TRI_voc_cid_t sourceShardID;
   TRI_voc_cid_t targetShardID;
   E _data;
-  // size_t _vertexIDSize;
-  // char _vertexID[1];
-
+  
  public:
   // EdgeEntry() : _nextEntryOffset(0), _dataSize(0), _vertexIDSize(0) {}
   EdgeEntry(std::string const& vid, E const& data)
@@ -143,19 +140,20 @@ class RangeIterator {
   }*/
 };
 
+typedef std::string VertexID;
 struct VertexEntry {
   template <typename V, typename E>
   friend class GraphStore;
 
  private:
-  const std::string _vertexID;
+  const VertexID _vertexID;
   size_t _vertexDataOffset;  // size_t vertexID length
   size_t _edgeDataOffset;
   size_t _edgeCount;
   bool _active = true;
 
  public:
-  VertexEntry(std::string const& vid)
+  VertexEntry(VertexID const& vid)
       : _vertexID(vid),
         _vertexDataOffset(0),
         _edgeDataOffset(0),
@@ -168,7 +166,7 @@ struct VertexEntry {
   inline size_t getSize() { return sizeof(VertexEntry); }
   inline bool active() const { return _active; }
   inline void setActive(bool bb) { _active = bb; }
-  inline std::string const& vertexID() const { return _vertexID; };
+  inline VertexID const& vertexID() const { return _vertexID; };
   /*std::string const& vertexID() const {
     return std::string(_vertexID, _vertexIDSize);
   };*/
@@ -243,26 +241,25 @@ class GraphStore {
   std::vector<V> _vertexData;
   std::vector<EdgeEntry<E>> _edges;
 
+  std::set<ShardID> _loadedShards;
   size_t _localVerticeCount;
   size_t _localEdgeCount;
 
   VocbaseGuard _vocbaseGuard;
-  const WorkerState* _workerState;
   const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
 
   Transaction *_transaction;
-  //SingleCollectionTransaction* readTransaction(ShardID const& shard);
-  //SingleCollectionTransaction* writeTransaction(ShardID const& shard);
   void cleanupTransactions();
   
   void loadVertices(ShardID const& vertexShard, ShardID const& edgeShard);
   void loadEdges(ShardID const& edgeShard, VertexEntry& entry);
 
  public:
-  GraphStore(TRI_vocbase_t* vocbase, const WorkerState* state,
+  GraphStore(TRI_vocbase_t* vocbase, WorkerState const& state,
              GraphFormat<V, E>* graphFormat);
   ~GraphStore();
 
+  void loadShards(WorkerState const& state);
   inline size_t vertexCount() {
     return _index.size();
   }
@@ -273,7 +270,7 @@ class GraphStore {
   V copyVertexData(VertexEntry const* entry);
   void replaceVertexData(VertexEntry const* entry, void* data, size_t size);
 
-  void storeResults();
+  void storeResults(WorkerState const& state);
 };
 }
 }

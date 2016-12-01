@@ -55,9 +55,12 @@ class WorkerContext {
   virtual void preGlobalSuperstep(uint64_t gss){};
   virtual void postGlobalSuperstep(uint64_t gss){};
   virtual void postApplication(){};
-
+  
  public:
-  WorkerContext(){};
+  WorkerContext(VPackSlice params) {
+    _vertexCount = params.get(Utils::totalVertexCount).getUInt();
+    _edgeCount = params.get(Utils::totalEdgeCount).getUInt();
+  };
 
   inline uint64_t vertexCount() const { return _vertexCount; }
 

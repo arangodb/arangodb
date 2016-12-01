@@ -24,7 +24,6 @@
 #define ARANGODB_PREGEL_WORKER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/ThreadPool.h"
 #include "Basics/Mutex.h"
 #include "Pregel/AggregatorUsage.h"
 #include "Pregel/Algorithm.h"
@@ -38,9 +37,6 @@ class RestPregelHandler;
 namespace pregel {
 
 class IWorker {
-  template <typename V, typename E, typename M>
-  static IWorker* createWorker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
-                               VPackSlice body);
 
  public:
   virtual ~IWorker(){};
@@ -48,8 +44,7 @@ class IWorker {
   virtual void startGlobalStep(VPackSlice data) = 0;  // called by coordinator
   virtual void receivedMessages(VPackSlice data) = 0;
   virtual void finalizeExecution(VPackSlice data) = 0;
-
-  static IWorker* createWorker(TRI_vocbase_t* vocbase, VPackSlice body);
+  virtual void startRecovery(VPackSlice data) = 0;
 };
 
 template <typename V, typename E>
@@ -61,6 +56,9 @@ class IncomingCache;
 template <typename T>
 class RangeIterator;
 struct VertexEntry;
+  
+template <typename V, typename E, typename M>
+class VertexContext;
 
 template <typename V, typename E, typename M>
 class Worker : public IWorker {
@@ -74,7 +72,6 @@ class Worker : public IWorker {
   std::unique_ptr<WorkerContext> _workerContext;
   Mutex _conductorMutex;// locks callbak methods
  
-  std::unique_ptr<basics::ThreadPool> _workerPool;
   std::unique_ptr<GraphStore<V, E>> _graphStore;
   std::unique_ptr<IncomingCache<M>> _readCache, _writeCache;
   std::unique_ptr<AggregatorUsage> _conductorAggregators;
@@ -91,6 +88,7 @@ class Worker : public IWorker {
     _writeCache->clear();
   }
   
+  void _initializeVertexContext(VertexContext<V, E, M> *ctx);
   void _executeGlobalStep(RangeIterator<VertexEntry> &vertexIterator);
   void _workerThreadDone(AggregatorUsage *threadAggregators,
                          WorkerStats const& threadStats);
@@ -105,6 +103,7 @@ class Worker : public IWorker {
   void startGlobalStep(VPackSlice data) override;
   void receivedMessages(VPackSlice data) override;
   void finalizeExecution(VPackSlice data) override;
+  void startRecovery(VPackSlice data) override;
 };
 }
 }

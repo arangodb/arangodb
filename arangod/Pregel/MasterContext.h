@@ -33,6 +33,7 @@ namespace arangodb {
 namespace pregel {
 
 class MasterContext {
+  friend class Conductor;
 
   uint64_t _vertexCount, _edgeCount;
   const AggregatorUsage* _aggregators;
@@ -49,16 +50,14 @@ class MasterContext {
   }
 
   virtual void preApplication(){};
-  virtual void preGlobalSuperstep(uint64_t gss){};
-  virtual void postGlobalSuperstep(uint64_t gss){};
+  virtual void betweenGlobalSuperstep(uint64_t gss){};
   virtual void postApplication(){};
 
-  virtual void compensate() {
-    
-  }
+  virtual void preCompensation(uint64_t gss) {}
+  virtual void postCompensation(uint64_t gss) {}
   
  public:
-  MasterContext(){};
+  MasterContext(VPackSlice params){};
 
   inline uint64_t vertexCount() const { return _vertexCount; }
 

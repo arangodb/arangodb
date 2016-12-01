@@ -26,12 +26,13 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 #include <cstdint>
+#include <functional>
 
-#include "Aggregator.h"
 #include "Basics/Common.h"
 #include "GraphFormat.h"
 #include "MessageCombiner.h"
 #include "MessageFormat.h"
+#include "MasterContext.h"
 #include "WorkerContext.h"
 
 namespace arangodb {
@@ -39,32 +40,55 @@ namespace pregel {
 
 template <typename V, typename E, typename M>
 class VertexComputation;
-
-// specify serialization, whatever
+  
 template <typename V, typename E, typename M>
-struct Algorithm : IAggregatorCreator {
- public:
-  virtual ~Algorithm() {}
+class VertexCompensation;
+
+class Aggregator;
+
+struct IAlgorithm {
+  virtual ~IAlgorithm() {}
+  
   // virtual bool isFixpointAlgorithm() const {return false;}
   // virtual bool preserveTransactions() const { return false; }
-  virtual WorkerContext* workerContext(VPackSlice userParams) const {
-    return new WorkerContext();
+  virtual bool supportsCompensation() const {
+    return false;
   }
-  virtual GraphFormat<V, E>* inputFormat() const = 0;
+  
   virtual Aggregator* aggregator(std::string const& name) const {
     return nullptr;
   }
+  
+  virtual MasterContext* masterContext(VPackSlice userParams) {
+    return new MasterContext(userParams);
+  }
+  
+  std::string const& name() const { return _name; }
+  
+protected:
+  IAlgorithm(std::string const& name) : _name(name){};
+  
+private:
+  std::string _name;
+};
+
+
+// specify serialization, whatever
+template <typename V, typename E, typename M>
+struct Algorithm : IAlgorithm {
+ public:
+  virtual WorkerContext* workerContext(VPackSlice userParams) const {
+    return new WorkerContext(userParams);
+  }
+  virtual GraphFormat<V, E>* inputFormat() const = 0;
   virtual MessageFormat<M>* messageFormat() const = 0;
   virtual MessageCombiner<M>* messageCombiner() const = 0;
   virtual VertexComputation<V, E, M>* createComputation(uint64_t gss) const = 0;
-
-  std::string const& getName() const { return _name; }
-
- protected:
-  Algorithm(std::string const& name) : _name(name){};
-
- private:
-  std::string _name;
+  virtual VertexCompensation<V, E, M>* createCompensation() {
+    return nullptr;
+  }
+protected:
+  Algorithm(std::string const& name) : IAlgorithm(name){};
 };
 
 template <typename V, typename E, typename M>

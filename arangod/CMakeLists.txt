@@ -358,17 +358,19 @@ SET(ARANGOD_SOURCES
   Wal/Slot.cpp
   Wal/Slots.cpp
   Wal/SynchronizerThread.cpp
-  Pregel/Conductor.cpp
-  Pregel/PregelFeature.cpp
-  Pregel/IncomingCache.cpp
-  Pregel/OutgoingCache.cpp
-  Pregel/Worker.cpp
-  Pregel/WorkerState.cpp
-  Pregel/GraphStore.cpp
-  Pregel/Utils.cpp
+  Pregel/AggregatorUsage.cpp
+  Pregel/AlgoRegistry.cpp
   Pregel/Algos/SSSP.cpp
   Pregel/Algos/PageRank.cpp
+  Pregel/Conductor.cpp
+  Pregel/GraphStore.cpp
+  Pregel/IncomingCache.cpp
+  Pregel/OutgoingCache.cpp
+  Pregel/PregelFeature.cpp
+  Pregel/Utils.cpp
   Pregel/Recovery.cpp
+  Pregel/Worker.cpp
+  Pregel/WorkerState.cpp
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}
 )
 

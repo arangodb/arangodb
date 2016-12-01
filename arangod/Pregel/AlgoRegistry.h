@@ -20,34 +20,22 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_AGGRGS_USAGE_H
-#define ARANGODB_PREGEL_AGGRGS_USAGE_H 1
+#ifndef ARANGODB_PREGEL_REGISTRY_H
+#define ARANGODB_PREGEL_REGISTRY_H 1
 
-#include <velocypack/vpack.h>
-#include <velocypack/velocypack-aliases.h>
-#include <functional>
-#include <map>
+#include <string>
+#include "Algorithm.h"
+#include "Worker.h"
 
+struct TRI_vocbase_t;
 namespace arangodb {
 namespace pregel {
-  
-struct IAlgorithm;
-class Aggregator;
-
-class AggregatorUsage {
-  const IAlgorithm* _create;
-  std::map<std::string, Aggregator*> _values;
-
- public:
-  AggregatorUsage(const IAlgorithm* c) : _create(c) {}
-  ~AggregatorUsage();
-  void aggregate(std::string const& name, const void* valuePtr);
-  const void* getAggregatedValue(std::string const& name) const;
-  void resetValues();
-  void aggregateValues(AggregatorUsage const& workerValues);
-  void aggregateValues(VPackSlice workerValues);
-  void serializeValues(VPackBuilder& b) const;
-  size_t size();
+struct AlgoRegistry {
+  static IAlgorithm* createAlgorithm(std::string const& algorithm, VPackSlice userParams);
+  static IWorker* createWorker(TRI_vocbase_t* vocbase, VPackSlice body);
+private:
+  template <typename V, typename E, typename M>
+  static IWorker* createWorker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo, VPackSlice body);
 };
 }
 }

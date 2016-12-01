@@ -28,7 +28,6 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Cluster/ClusterInfo.h"
-#include "Pregel/AggregatorUsage.h"
 #include "Pregel/Statistics.h"
 #include "VocBase/vocbase.h"
 
@@ -37,6 +36,9 @@ class RestPregelHandler;
 namespace pregel {
 
 enum ExecutionState { DEFAULT, RUNNING, DONE, CANCELED };
+class MasterContext;
+class AggregatorUsage;
+struct IAlgorithm;
 
 class Conductor {
   friend class arangodb::RestPregelHandler;
@@ -49,7 +51,8 @@ class Conductor {
   OperationMode _operationMode = OperationMode::NORMAL;
   const VocbaseGuard _vocbaseGuard;
   const uint64_t _executionNumber;
-  const std::string _algorithm;
+  std::unique_ptr<IAlgorithm> _algorithm;
+  VPackBuilder _userParams;
   Mutex _finishedGSSMutex;  // prevents concurrent calls to finishedGlobalStep
   
   std::vector<std::shared_ptr<LogicalCollection>> _vertexCollections;
@@ -57,8 +60,8 @@ class Conductor {
   std::vector<ServerID> _dbServers;
 
   // initialized on startup
-  std::unique_ptr<IAggregatorCreator> _agregatorCreator;
   std::unique_ptr<AggregatorUsage> _aggregatorUsage;
+  std::unique_ptr<MasterContext> _masterContext;
 
   double _startTimeSecs = 0, _endTimeSecs = 0;
   uint64_t _globalSuperstep = 0;
@@ -66,7 +69,8 @@ class Conductor {
   WorkerStats _workerStats;
 
   bool _startGlobalStep();
-  int _sendToAllDBServers(std::string url, VPackSlice const& body);
+  int _initializeWorkers(std::string const& suffix, VPackSlice additional);
+  int _sendToAllDBServers(std::string const& suffix, VPackSlice const& message);
 
   // === REST callbacks ===
   void finishedGlobalStep(VPackSlice& data);
@@ -74,13 +78,12 @@ class Conductor {
  public:
   Conductor(uint64_t executionNumber, TRI_vocbase_t* vocbase,
             std::vector<std::shared_ptr<LogicalCollection>> const& vertexCollections,
-            std::vector<std::shared_ptr<LogicalCollection>> const& edgeCollections,
-            std::string const& algorithm);
+            std::vector<std::shared_ptr<LogicalCollection>> const& edgeCollections);
   ~Conductor();
 
-  void start(VPackSlice params);
+  void start(std::string const& algoName, VPackSlice userConfig);
   void cancel();
-  void checkForWorkerOutage();
+  void startRecovery();
 
   ExecutionState getState() const { return _state; }
   WorkerStats workerStats() const {return _workerStats;}
