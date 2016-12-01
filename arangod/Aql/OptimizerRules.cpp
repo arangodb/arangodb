@@ -4155,11 +4155,8 @@ AstNode const* identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, Ex
   if ( func->externalName != "DISTANCE" || funcNode->numMembers() != 1  ) {
     return nullptr;
   }
+
   return funcNode;
-
-
-
-  return nullptr;
 };
 
 void checkNodesForGeoOptimization(ExecutionNode::NodeType type, ExecutionPlan* plan, bool& modified){
