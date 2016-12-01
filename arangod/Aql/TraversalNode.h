@@ -100,7 +100,7 @@ class TraversalNode : public ExecutionNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return TRAVERSAL; }
 
-  /// @brief flag, ob smart traversal (enterprise edition only!) is done
+  /// @brief flag, if smart traversal (enterprise edition only!) is done
   bool isSmart() const {
     return _isSmart;
   }
