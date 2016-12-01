@@ -46,6 +46,12 @@ var removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
 ////////////////////////////////////////////////////////////////////////////////
 
 function optimizerRuleTestSuite() {
+  // quickly disable tests here
+  var enabled = {
+    basics : true,
+    sort   : true
+  }
+
   var ruleName = "use-geoindex";
   var secondRuleName = "use-geoindexes";
   var removeCalculationNodes = "remove-unnecessary-calculations-2";
@@ -135,65 +141,69 @@ function optimizerRuleTestSuite() {
     },
 
     testRuleBasics : function () {
-      geocol.ensureIndex({ type: "hash", fields: [ "y", "z" ], unique: false });
+      if(enabled.basics){
+        geocol.ensureIndex({ type: "hash", fields: [ "y", "z" ], unique: false });
 
-      var queries = [ 
-        //query                                                         clust  sort   filter
-        [ "FOR d IN " + colName + " SORT distance(d.lat,d.lon, 0 ,0 ) ASC RETURN 1", false, false, false ],
-        [ "FOR d IN " + colName + " SORT distance(0, 0, d.lat,d.lon ) ASC RETURN 1", false, false, false ],
-        [ "FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 1 RETURN 1", false, false, false ],
-//        [ "FOR d IN geocol FILTER distance(d.lat,d.lon, 0 ,0 ) < 1 RETURN 1", false, false, false ]
-      ];
+        var queries = [ 
+          //query                                                         clust  sort   filter
+          [ "FOR d IN " + colName + " SORT distance(d.lat,d.lon, 0 ,0 ) ASC LIMIT 1 RETURN d", false, false, false ],
+          [ "FOR d IN " + colName + " SORT distance(0, 0, d.lat,d.lon ) ASC LIMIT 1 RETURN d", false, false, false ],
+          //[ "FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d", false, false, false ],
+        ];
 
-      queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query[0]);
+        queries.forEach(function(query) {
+          var result = AQL_EXPLAIN(query[0]);
 
-        // //optimized on cluster
-        // if (query[1]) {
-        //   assertNotEqual(-1, removeAlwaysOnClusterRules(result.plan.rules).indexOf(ruleName), query[0]);
-        // }
-        // else {
-        //   assertEqual(-1, removeAlwaysOnClusterRules(result.plan.rules).indexOf(ruleName), query[0]);
-        // }
+          // //optimized on cluster
+          // if (query[1]) {
+          //   assertNotEqual(-1, removeAlwaysOnClusterRules(result.plan.rules).indexOf(ruleName), query[0]);
+          // }
+          // else {
+          //   assertEqual(-1, removeAlwaysOnClusterRules(result.plan.rules).indexOf(ruleName), query[0]);
+          // }
 
-        //sort nodes
-        if (query[2]) {
-          hasSortNode(result);
-        } else {
-          hasNoSortNode(result);
-        }
+          //sort nodes
+          if (query[2]) {
+            hasSortNode(result);
+          } else {
+            hasNoSortNode(result);
+          }
 
-        //filter nodes
-        if (query[3]) {
-          hasFilterNode(result);
-        } else {
-          hasNoFilterNode(result);
-        }
+          //filter nodes
+          if (query[3]) {
+            hasFilterNode(result);
+          } else {
+            hasNoFilterNode(result);
+          }
 
-      });
+        });
+      }
     }, // testRuleBasics
 
     testRuleSort : function () {
-      geocol.ensureIndex({ type: "hash", fields: [ "y", "z" ], unique: false });
+      if(enabled.sort){
+        var queries = [ 
+          [ "FOR d IN " + colName + " SORT distance(d.lat,d.lon, 0 ,0 ) ASC LIMIT 5 RETURN d", false, false, false ],
+          [ "FOR d IN " + colName + " SORT distance(0, 0, d.lat,d.lon ) ASC LIMIT 5 RETURN d", false, false, false ],
+          [ "FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 2 RETURN d", false, false, false ],
+        ];
 
-      var queries = [ 
-        [ "FOR d IN " + colName + " SORT distance(d.lat,d.lon, 0 ,0 ) ASC RETURN 5", false, false, false ],
-        [ "FOR d IN " + colName + " SORT distance(0, 0, d.lat,d.lon ) ASC RETURN 5", false, false, false ],
-        [ "FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 2 RETURN 5", false, false, false ],
-      ];
+        var expected = [
+          [[0,0], [-1,0], [0,1], [1,0], [0,-1]],
+          [[0,0], [-1,0], [0,1], [1,0], [0,-1]],
+          [[0,0], [-1,0], [0,1], [1,0], [0,-1]],
+        ]
 
-      var expected = [
-        [(0,0), (-1,0), (0,1), (1,0), (0,-1)],
-        [(0,0), (-1,0), (0,1), (1,0), (0,-1)],
-        [(0,0), (-1,0), (0,1), (1,0), (0,-1)],
-      ]
-
-      queries.forEach(function(query, qindex) {
-        var result = AQL_EXECUTE(query[0]);
-        for(var rindex=0; rindex < result.size; rindex){
-          expect.expected[qindex][rindex].to.be.equal((result.lat , result.lon));
-        }
-      });
+        queries.forEach(function(query, qindex) {
+          var result = AQL_EXECUTE(query[0]);
+          pairs = result.json.map(function(res){
+              return [res.lat,res.lon];
+          });
+          internal.print(pairs)
+          assertEqual(expected[qindex].sort(),pairs.sort())
+          //expect(expected[qindex].sort()).to.be.equal(result.json.sort())
+        });
+      }
     } // testRuleSort
 
   }; // test dictionary (return)
