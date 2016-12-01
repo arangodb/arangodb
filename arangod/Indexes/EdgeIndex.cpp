@@ -150,7 +150,7 @@ IndexLookupResult EdgeIndexIterator::next() {
     } else {
       _lastElement = _buffer.back();
       // found something
-      return IndexLookupResult(_buffer.at(_posInBuffer++).revisionId());
+      return IndexLookupResult(_buffer[_posInBuffer++].revisionId());
     }
 
     // found no result. now go to next lookup value in _keys

@@ -28,6 +28,7 @@
 #include "Agency/AddFollower.h"
 #include "Agency/Agent.h"
 #include "Agency/CleanOutServer.h"
+#include "Agency/FailedFollower.h"
 #include "Agency/FailedLeader.h"
 #include "Agency/FailedServer.h"
 #include "Agency/Job.h"
@@ -576,6 +577,8 @@ void Supervision::workJobs() {
       MoveShard(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "failedLeader") {
       FailedLeader(_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "failedFollower") {
+      FailedFollower(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "unassumedLeadership") {
       UnassumedLeadership(_snapshot, _agent, jobId, creator, _agencyPrefix);
     }
@@ -598,6 +601,8 @@ void Supervision::workJobs() {
     } else if (jobType == "moveShard") {
       MoveShard(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "failedLeader") {
+      FailedLeader(_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "failedFollower") {
       FailedLeader(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "unassumedLeadership") {
       UnassumedLeadership(_snapshot, _agent, jobId, creator, _agencyPrefix);

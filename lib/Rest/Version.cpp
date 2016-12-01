@@ -95,11 +95,18 @@ void Version::initialize() {
   Values["boost-version"] = getBoostVersion();
   Values["build-date"] = getBuildDate();
   Values["compiler"] = getCompiler();
+#ifdef _DEBUG
+  Values["debug"] = "true";
+#else
+  Values["debug"] = "false";
+#endif
   Values["endianness"] = getEndianness();
   Values["fd-setsize"] = arangodb::basics::StringUtils::itoa(FD_SETSIZE);
+  Values["full-version-string"] = ARANGODB_VERSION_FULL;
   Values["icu-version"] = getICUVersion();
   Values["libev-version"] = getLibevVersion();
   Values["openssl-version"] = getOpenSSLVersion();
+  Values["platform"] = TRI_PLATFORM;
   Values["server-version"] = getServerVersion();
   Values["sizeof int"] = arangodb::basics::StringUtils::itoa(sizeof(int));
   Values["sizeof void*"] = arangodb::basics::StringUtils::itoa(sizeof(void*));

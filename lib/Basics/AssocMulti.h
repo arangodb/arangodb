@@ -102,7 +102,7 @@ struct Entry {
                    // list of all items with the same key
   IndexType prev;  // index of the data preceding in the linked
                    // list of all items with the same key
-  uint64_t readHashCache() { return hashCache; }
+  uint64_t readHashCache() const { return hashCache; }
   void writeHashCache(uint64_t v) { hashCache = v; }
 
   Entry() : hashCache(0), value(), next(INVALID_INDEX), prev(INVALID_INDEX) {}
@@ -118,7 +118,7 @@ struct Entry<Element, IndexType, false> {
                    // list of all items with the same key
   IndexType prev;  // index of the data preceding in the linked
                    // list of all items with the same key
-  uint64_t readHashCache() { return 0; }
+  uint64_t readHashCache() const { return 0; }
   void writeHashCache(uint64_t v) { TRI_ASSERT(false); }
   
   Entry() : value(), next(INVALID_INDEX), prev(INVALID_INDEX) {}
@@ -222,6 +222,8 @@ class AssocMulti {
     }
     numberBuckets = nr;
     _bucketsMask = nr - 1;
+
+    _buckets.reserve(numberBuckets);
 
     try {
       for (size_t j = 0; j < numberBuckets; j++) {
@@ -540,13 +542,6 @@ class AssocMulti {
     try {
       for (size_t i = 0; i < _buckets.size(); ++i) {
         auto newBucket = new EntryType[static_cast<size_t>(_initialSize)]();
-        for (IndexType j = 0; j < _initialSize; ++j) {
-          newBucket[j].next = INVALID_INDEX;
-          newBucket[j].prev = INVALID_INDEX;
-          if (useHashCache) {
-            newBucket[j].writeHashCache(0);
-          }
-        }
         try {
           // shouldn't fail as enough space was reserved above, but let's be paranoid
           empty.emplace_back(newBucket);

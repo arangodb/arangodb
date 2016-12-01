@@ -310,7 +310,7 @@ IndexLookupResult HashIndexIterator::next() {
 
     if (!_buffer.empty()) {
       // found something
-      return IndexLookupResult(_buffer.at(_posInBuffer++)->revisionId());
+      return IndexLookupResult(_buffer[_posInBuffer++]->revisionId());
     }
   }
 }
@@ -346,7 +346,7 @@ void HashIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_
       }
 
       for (size_t i = _posInBuffer; i < atMost + _posInBuffer; ++i) {
-        result.emplace_back(_buffer.at(i)->revisionId());
+        result.emplace_back(_buffer[i]->revisionId());
       }
       _posInBuffer += atMost;
       return;
@@ -405,7 +405,7 @@ IndexLookupResult HashIndexIteratorVPack::next() {
 
     if (!_buffer.empty()) {
       // found something
-      return IndexLookupResult(_buffer.at(_posInBuffer++)->revisionId());
+      return IndexLookupResult(_buffer[_posInBuffer++]->revisionId());
     }
   }
 }

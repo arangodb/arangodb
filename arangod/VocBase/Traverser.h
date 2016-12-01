@@ -53,12 +53,9 @@ namespace traverser {
 struct TraverserOptions;
 
 class ShortestPath {
-  friend class basics::DynamicDistanceFinder<arangodb::velocypack::Slice,
-                                             arangodb::velocypack::Slice,
-                                             size_t, ShortestPath>;
-  friend class basics::DynamicDistanceFinder<arangodb::velocypack::Slice,
-                                             arangodb::velocypack::Slice,
-                                             double, ShortestPath>;
+  friend class arangodb::basics::DynamicDistanceFinder<
+      arangodb::velocypack::Slice, arangodb::velocypack::Slice, double,
+      ShortestPath>;
   friend class arangodb::basics::ConstDistanceFinder<
       arangodb::velocypack::Slice, arangodb::velocypack::Slice,
       arangodb::basics::VelocyPackHelper::VPackStringHash,

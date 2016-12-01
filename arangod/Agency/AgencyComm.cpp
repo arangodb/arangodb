@@ -65,7 +65,7 @@ const std::vector<std::string> AgencyTransaction::TypeUrl(
 // -----------------------------------------------------------------------------
 
 AgencyPrecondition::AgencyPrecondition()
-  : type(AgencyPrecondition::Type::NONE) {}
+  : type(AgencyPrecondition::Type::NONE), empty(true) {}
 
 AgencyPrecondition::AgencyPrecondition(std::string const& key, Type t, bool e)
     : key(AgencyCommManager::path(key)), type(t), empty(e) {}
@@ -367,11 +367,8 @@ VPackSlice AgencyCommResult::slice() const { return _vpack->slice(); }
 
 std::unique_ptr<AgencyCommManager> AgencyCommManager::MANAGER;
 
-AgencyConnectionOptions AgencyCommManager::CONNECTION_OPTIONS = {
-    ._connectTimeout = 15.0,
-    ._requestTimeout = 120.0,
-    ._lockTimeout = 120.0,
-    ._connectRetries = 10};
+AgencyConnectionOptions
+AgencyCommManager::CONNECTION_OPTIONS (15.0, 120.0, 120.0, 10);
 
 void AgencyCommManager::initialize(std::string const& prefix) {
   MANAGER.reset(new AgencyCommManager(prefix));

@@ -29,6 +29,12 @@ if(SNAPCRAFT_FOUND)
     NEWLINE_STYLE UNIX
     @ONLY
   )
+
+  file(
+    COPY        "${SNAPCRAFT_TEMPLATE_DIR}/arangodb.png"
+    DESTINATION "${SNAPCRAFT_SOURCE_DIR}/"
+  )
+
   add_custom_target(snap_TGZ
     COMMENT "create TGZ-package"
     COMMAND ${CMAKE_CPACK_COMMAND} -G TGZ

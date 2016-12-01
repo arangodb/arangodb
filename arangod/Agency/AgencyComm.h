@@ -49,8 +49,10 @@ class Slice;
 // --SECTION--                                           AgencyConnectionOptions
 // -----------------------------------------------------------------------------
 
-class AgencyConnectionOptions {
- public:
+struct AgencyConnectionOptions {
+  AgencyConnectionOptions(double ct, double rt, double lt, size_t cr) :
+    _connectTimeout(ct), _requestTimeout(rt), _lockTimeout(lt),
+    _connectRetries(cr) {}
   double _connectTimeout;
   double _requestTimeout;
   double _lockTimeout;

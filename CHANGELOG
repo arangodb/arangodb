@@ -1,6 +1,11 @@
 devel
 -----
 
+* Added convenience function to create vertex-centric indexes.
+Usage: `db.collection.ensureVertexCentricIndex("label", {type: "hash", direction: "outbound"})`
+That will create an index that can be used on OUTBOUND with filtering on the
+edge attribute `label`.
+
 * change default log output for tools to stdout (instead of stderr)
 
 * added option -D to define a configuration file environment key=value
@@ -16,6 +21,18 @@ devel
 
 * process.stdout.isTTY now returns `true` in arangosh and when running arangod with the `--console` flag
 
+v3.1.3 (xxxx-xx-xx)
+-------------------
+
+* fix a traversal bug when using skiplist indexes:
+  if we have a skiplist of ["a", "unused", "_from"] and a traversal like:
+  FOR v,e,p IN OUTBOUND @start @@edges
+    FILTER p.edges[0].a == 'foo'
+    RETURN v
+  And the above index applied on "a" is considered better than EdgeIndex, than
+  the executor got into undefined behaviour.
+
+* fix endless loop when trying to create a collection with replicationFactor: -1
 
 v3.1.2 (20XX-XX-XX)
 -------------------
