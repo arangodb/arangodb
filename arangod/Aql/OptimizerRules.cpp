@@ -4026,6 +4026,119 @@ geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionN
   return boost::none;
 }
 
+
+bool applyGeoOptimization(bool near, ExecutionPlan* plan, ExecutionNode* node, AstNode const* funcNode, bool asc){
+  auto const& functionArguments = funcNode->getMember(0);
+  if(functionArguments->numMembers() < 4){
+    return false;
+  }
+
+  std::pair<AstNode*,AstNode*> argPair1 = { functionArguments->getMember(0), functionArguments->getMember(1) };
+  std::pair<AstNode*,AstNode*> argPair2 = { functionArguments->getMember(2), functionArguments->getMember(3) };
+
+  auto result1 = geoDistanceFunctionArgCheck(argPair1, node, plan);
+  auto result2 = geoDistanceFunctionArgCheck(argPair2, node, plan);
+
+  // xor only one argument pair shall have a geoIndex
+  if (  ( !result1 && !result2 ) || ( result1 && result2 ) ){
+    return false;
+  }
+
+  LOG(OBILEVEL) << "  FOUND DISTANCE RULE WITH ATTRIBUTE ACCESS";
+
+  std::pair<AstNode*,AstNode*>* constantPair;
+  GeoIndexInfo info;
+  if(result1){
+    info = std::move(result1.get());
+    constantPair = &argPair2;
+  } else {
+    info = std::move(result2.get());
+    constantPair = &argPair1;
+  }
+
+  LOG(OBILEVEL) << "  attributes: " << info._longitude[0]
+           << ", " << info._longitude
+           << " of collection:" << info._collection->getName()
+           << " are geoindexed";
+
+  //break; //remove this to make use of the index
+
+  auto cnode = info._collectionNode;
+  auto& idxPtr = info._index;
+
+  std::unique_ptr<Condition> condition;
+  if(functionArguments->numMembers() == 4){
+    condition = buildGeoCondition(plan,info, constantPair->first, constantPair->second);
+  } else {
+    condition = buildGeoCondition(plan,info, constantPair->first, constantPair->second, functionArguments->getMember(4));
+  }
+
+  auto inode = new IndexNode(
+          plan, plan->nextId(), cnode->vocbase(),
+          cnode->collection(), cnode->outVariable(),
+          std::vector<Transaction::IndexHandle>{Transaction::IndexHandle{idxPtr}},
+          condition.get(), asc);
+  plan->registerNode(inode);
+  condition.release();
+
+  plan->unlinkNode(node);
+  plan->replaceNode(cnode,inode);
+
+  //signal that plan has been changed
+  return true;
+};
+
+
+AstNode const* identifyGeoOptimizationCandidate(bool sort, ExecutionPlan* plan, ExecutionNode* n){
+  if(sort){
+    auto node = static_cast<SortNode*>(n);
+    auto const& elements = node->getElements();
+
+    // we're looking for "SORT DISTANCE(x,y,a,b) ASC", which has just one sort criterion
+    if ( !(elements.size() == 1 && elements[0].second)) {
+      return nullptr;
+    }
+
+    //variable of sort expression
+    auto const variable = elements[0].first;
+    TRI_ASSERT(variable != nullptr);
+
+    //// find the expression that is bound to the variable
+    // get the expression node that holds the cacluation
+    auto setter = plan->getVarSetBy(variable->id);
+    if (setter == nullptr || setter->getType() != EN::CALCULATION) {
+      return nullptr;
+    }
+
+    // downcast to calculation node and get expression
+    auto cn = static_cast<CalculationNode*>(setter);
+    auto const expression = cn->expression();
+
+    // the expression must exist and it must be a function call
+    if (expression == nullptr || expression->node() == nullptr ||
+        expression->node()->type != NODE_TYPE_FCALL) {
+      // not the right type of node
+      return nullptr;
+    }
+
+    //get the ast node of the expression
+    AstNode const* funcNode = expression->node();
+    auto func = static_cast<Function const*>(funcNode->getData());
+
+    // we're looking for "DISTANCE()", which is a function call
+    // with an empty parameters array
+    if ( func->externalName != "DISTANCE" || funcNode->numMembers() != 1  ) {
+      return nullptr;
+    }
+    return funcNode;
+  } else {
+    return nullptr;
+  }
+
+
+};
+
+
 void arangodb::aql::optimizeGeoIndexRule(Optimizer* opt,
                                          ExecutionPlan* plan,
                                          Optimizer::Rule const* rule) {
@@ -4039,108 +4152,15 @@ void arangodb::aql::optimizeGeoIndexRule(Optimizer* opt,
   plan->findNodesOfType(nodes, EN::SORT, true);
 
   for (auto const& n : nodes) {
-    auto node = static_cast<SortNode*>(n);
-    auto const& elements = node->getElements();
-
-    // we're looking for "SORT DISTANCE(x,y,a,b) ASC", which has just one sort criterion
-    if ( !(elements.size() == 1 && elements[0].second)) {
+    auto funcNode = identifyGeoOptimizationCandidate(true, plan, n);
+    if(!funcNode){
       continue;
     }
-
-    //variable of sort expression
-    auto const variable = elements[0].first;
-    TRI_ASSERT(variable != nullptr);
-
-    //// find the expression that is bound to the variable
-    // get the expression node that holds the cacluation
-    auto setter = plan->getVarSetBy(variable->id);
-    if (setter == nullptr || setter->getType() != EN::CALCULATION) {
-      continue;
-    }
-
-    // downcast to calculation node and get expression
-    auto cn = static_cast<CalculationNode*>(setter);
-    auto const expression = cn->expression();
-
-    // the expression must exist and it must be a function call
-    if (expression == nullptr || expression->node() == nullptr ||
-        expression->node()->type != NODE_TYPE_FCALL) {
-      // not the right type of node
-      continue;
-    }
-
-    //get the ast node of the expression
-    AstNode const* funcNode = expression->node();
-    auto func = static_cast<Function const*>(funcNode->getData());
-
-    // we're looking for "DISTANCE()", which is a function call
-    // with an empty parameters array
-    if ( func->externalName != "DISTANCE" || funcNode->numMembers() != 1  ) {
-      continue;
-    }
-
     LOG(OBILEVEL) << "  FOUND DISTANCE RULE";
-
-    auto const& functionArguments = funcNode->getMember(0);
-    if(functionArguments->numMembers() < 4){
-      continue;
+    if (applyGeoOptimization(true, plan, n, funcNode, true)){
+      modified = true;
     }
-
-    std::pair<AstNode*,AstNode*> argPair1 = { functionArguments->getMember(0), functionArguments->getMember(1) };
-    std::pair<AstNode*,AstNode*> argPair2 = { functionArguments->getMember(2), functionArguments->getMember(3) };
-
-    auto result1 = geoDistanceFunctionArgCheck(argPair1, node, plan);
-    auto result2 = geoDistanceFunctionArgCheck(argPair2, node, plan);
-
-    // xor only one argument pair shall have a geoIndex
-    if (  ( !result1 && !result2 ) || ( result1 && result2 ) ){
-      continue;
-    }
-
-    LOG(OBILEVEL) << "  FOUND DISTANCE RULE WITH ATTRIBUTE ACCESS";
-
-    std::pair<AstNode*,AstNode*>* constantPair;
-    GeoIndexInfo info;
-    if(result1){
-      info = std::move(result1.get());
-      constantPair = &argPair2;
-    } else {
-      info = std::move(result2.get());
-      constantPair = &argPair1;
-    }
-
-    LOG(OBILEVEL) << "  attributes: " << info._longitude[0]
-             << ", " << info._longitude
-             << " of collection:" << info._collection->getName()
-             << " are geoindexed";
-
-    //break; //remove this to make use of the index
-
-    auto cnode = info._collectionNode;
-    auto& idxPtr = info._index;
-
-    std::unique_ptr<Condition> condition;
-    if(functionArguments->numMembers() == 4){
-      condition = buildGeoCondition(plan,info, constantPair->first, constantPair->second);
-    } else {
-      condition = buildGeoCondition(plan,info, constantPair->first, constantPair->second, functionArguments->getMember(4));
-    }
-
-    auto inode = new IndexNode(
-            plan, plan->nextId(), cnode->vocbase(),
-            cnode->collection(), cnode->outVariable(),
-            std::vector<Transaction::IndexHandle>{Transaction::IndexHandle{idxPtr}},
-            condition.get(), !elements[0].second);
-    plan->registerNode(inode);
-    condition.release();
-
-    plan->unlinkNode(n);
-    plan->replaceNode(cnode,inode);
-
-    //signal that plan has been changed
-    modified=true;
   }
-
   opt->addPlan(plan, rule, modified);
 
   LOG(OBILEVEL) << "EXIT GEO RULE";
