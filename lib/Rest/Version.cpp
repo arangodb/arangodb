@@ -102,7 +102,7 @@ void Version::initialize() {
 #endif
   Values["endianness"] = getEndianness();
   Values["fd-setsize"] = arangodb::basics::StringUtils::itoa(FD_SETSIZE);
-  Values["full-version-string"] = ARANGODB_VERSION_FULL;
+  Values["full-version-string"] = getVerboseVersionString();
   Values["icu-version"] = getICUVersion();
   Values["libev-version"] = getLibevVersion();
   Values["openssl-version"] = getOpenSSLVersion();
