@@ -591,5 +591,4 @@ ArangoCollection.prototype.ensureVertexCentricIndex = function (...fields) {
     options.type = 'hash';
   }
   return this.ensureIndex(options);
-
-}
+};

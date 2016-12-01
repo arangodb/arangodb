@@ -40,6 +40,7 @@ const arangodb = require('@arangodb');
 ////////////////////////////////////////////////////////////////////////////////
 
 function vertexCentricIndexSuite() {
+  var collection = null;
 
   return {
 
