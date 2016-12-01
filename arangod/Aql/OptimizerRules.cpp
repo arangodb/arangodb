@@ -4102,6 +4102,7 @@ AstNode const* identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, Ex
 
       // we're looking for "SORT DISTANCE(x,y,a,b) ASC", which has just one sort criterion
       if ( !(elements.size() == 1 && elements[0].second)) {
+        //test on second makes sure the SORT is ascending
         return nullptr;
       }
 

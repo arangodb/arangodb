@@ -1,6 +1,9 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global assertEqual, assertFalse, assertTrue, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
 
+// execute with:
+// ./scripts/unittest shell_server_aql --test js/server/tests/aql/aql-optimizer-geoindex.js 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
 ///
@@ -28,6 +31,7 @@
 /// @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+const expect = require('chai').expect;
 var internal = require("internal");
 var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
@@ -75,6 +79,12 @@ function optimizerRuleTestSuite() {
   };
   var hasNoSortNode = function (plan) {
     assertEqual(findExecutionNodes(plan, "SortNode").length, 0, "Has no SortNode");
+  };
+  var hasFilterNode = function (plan) {
+    assertEqual(findExecutionNodes(plan, "FilterNode").length, 1, "Has FilterNode");
+  };
+  var hasNoFilterNode = function (plan) {
+    assertEqual(findExecutionNodes(plan, "FilterNode").length, 0, "Has no FilterNode");
   };
   var hasNoIndexNode = function (plan) {
     assertEqual(findExecutionNodes(plan, "IndexNode").length, 0, "Has no IndexNode");
@@ -129,8 +139,9 @@ function optimizerRuleTestSuite() {
 
       var queries = [ 
         //query                                                         clust  sort   filter
-        [ "FOR d IN " + colName + " SORT distance(d.lat,d.lon, 0 ,0 ) RETURN 1", false, false, false ],
-        [ "FOR d IN " + colName + " SORT distance(0, 0, d.lat,d.lon ) RETURN 1", false, false, false ]
+        [ "FOR d IN " + colName + " SORT distance(d.lat,d.lon, 0 ,0 ) ASC RETURN 1", false, false, false ],
+        [ "FOR d IN " + colName + " SORT distance(0, 0, d.lat,d.lon ) ASC RETURN 1", false, false, false ],
+        [ "FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 1 RETURN 1", false, false, false ],
 //        [ "FOR d IN geocol FILTER distance(d.lat,d.lon, 0 ,0 ) < 1 RETURN 1", false, false, false ]
       ];
 
@@ -153,10 +164,10 @@ function optimizerRuleTestSuite() {
         }
 
         //filter nodes
-        if (query[2]) {
-          hasSortNode(result);
+        if (query[3]) {
+          hasFilterNode(result);
         } else {
-          hasNoSortNode(result);
+          hasNoFilterNode(result);
         }
 
       });
@@ -166,18 +177,21 @@ function optimizerRuleTestSuite() {
       geocol.ensureIndex({ type: "hash", fields: [ "y", "z" ], unique: false });
 
       var queries = [ 
-        //query                                                         clust  sort   filter
-        [ "FOR d IN " + colName + " SORT distance(d.lat,d.lon, 0 ,0 ) RETURN 5", false, false, false ],
+        [ "FOR d IN " + colName + " SORT distance(d.lat,d.lon, 0 ,0 ) ASC RETURN 5", false, false, false ],
+        [ "FOR d IN " + colName + " SORT distance(0, 0, d.lat,d.lon ) ASC RETURN 5", false, false, false ],
+        [ "FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 2 RETURN 5", false, false, false ],
       ];
 
       var expected = [
-        [(0,0), (-1,0), (0,1), (1,0), (0,-1)]
+        [(0,0), (-1,0), (0,1), (1,0), (0,-1)],
+        [(0,0), (-1,0), (0,1), (1,0), (0,-1)],
+        [(0,0), (-1,0), (0,1), (1,0), (0,-1)],
       ]
 
       queries.forEach(function(query, qindex) {
         var result = AQL_EXECUTE(query[0]);
         for(var rindex=0; rindex < result.size; rindex){
-          assertEqual(expected[qindex][rindex], (result.lat , result.lon));
+          expect.expected[qindex][rindex].to.be.equal((result.lat , result.lon));
         }
       });
     } // testRuleSort
