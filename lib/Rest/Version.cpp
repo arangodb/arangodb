@@ -106,6 +106,7 @@ void Version::initialize() {
   Values["icu-version"] = getICUVersion();
   Values["libev-version"] = getLibevVersion();
   Values["openssl-version"] = getOpenSSLVersion();
+  Values["platform"] = TRI_PLATFORM;
   Values["server-version"] = getServerVersion();
   Values["sizeof int"] = arangodb::basics::StringUtils::itoa(sizeof(int));
   Values["sizeof void*"] = arangodb::basics::StringUtils::itoa(sizeof(void*));
