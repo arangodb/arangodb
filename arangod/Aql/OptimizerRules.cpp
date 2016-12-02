@@ -3918,6 +3918,9 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
   opt->addPlan(plan, rule, modified);
 }
 
+
+
+// GEO RULES //////////////////////////////////////////////////////////////////
 struct GeoIndexInfo{
   operator bool() const { return node; }
   GeoIndexInfo()
@@ -3970,23 +3973,14 @@ std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan, GeoIndexInfo& 
   return condition;
 }
 
-
-
-// GEO RULES //////////////////////////////////////////////////////////////////
-// TODO - remove debug code
-#ifdef OBIDEBUG
-  #define OBILEVEL ERR
-#else
-  #define OBILEVEL TRACE
-#endif
 static boost::optional<GeoIndexInfo>
 geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionNode* ex, ExecutionPlan* plan, GeoIndexInfo info){
   using SV = std::vector<std::string>;
-  LOG(OBILEVEL) << "    enter argument check";
+  LOG_TOPIC(DEBUG, Logger::DEVEL) << "    enter argument check";
   // first and second should be based on the same document - need to provide the document
   // in order to see which collection is bound to it and if that collections supports geo-index
   if( !pair.first->isAttributeAccessForVariable() || !pair.second->isAttributeAccessForVariable()){
-    LOG(OBILEVEL) << "      not both args are of type attribute access";
+    LOG_TOPIC(DEBUG, Logger::DEVEL) << "      not both args are of type attribute access";
     return boost::none;
   }
 
@@ -3997,14 +3991,14 @@ geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionN
   SV accessPath1{pair.first->getString()};
   SV accessPath2{pair.second->getString()};
 
-  LOG(OBILEVEL) << "      got setter";
+  LOG_TOPIC(DEBUG, Logger::DEVEL) << "      got setter";
   if(setter1 == setter2){
     if(setter1->getType() == EN::ENUMERATE_COLLECTION){
       auto collNode = reinterpret_cast<EnumerateCollectionNode*>(setter1);
       auto coll = collNode->collection(); //what kind of indexes does it have on what attributes
       auto lcoll = coll->getCollection();
       // TODO - check collection for suitable geo-indexes
-      LOG(OBILEVEL) << "        SETTER IS ENUMERATE_COLLECTION: " << coll->getName();
+      LOG_TOPIC(DEBUG, Logger::DEVEL) << "        SETTER IS ENUMERATE_COLLECTION: " << coll->getName();
       for(auto indexShardPtr : lcoll->getIndexes()){
         // get real index
         arangodb::Index& index = *indexShardPtr.get();
@@ -4015,7 +4009,7 @@ geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionN
           continue;
         }
 
-#ifdef OBIDEBUG
+        /////////////////////////////////////////////////
         //FIXME -  REMOVE DEBUG CODE LATER
         auto vecs = std::vector<std::vector<SV>>{index.fieldNames(), std::vector<SV>{accessPath1, accessPath2}};
         for(auto vec : vecs ){
@@ -4027,7 +4021,7 @@ geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionN
             std::cout << std::endl;
           }
         }
-#endif
+        /////////////////////////////////////////////////
 
         //check access paths of attribues in ast and those in index match
         if( index.fieldNames()[0] == accessPath1 && index.fieldNames()[1] == accessPath2 ){
@@ -4063,7 +4057,7 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, ExecutionNode* node, G
     return false;
   }
 
-  LOG(OBILEVEL) << "  FOUND DISTANCE RULE WITH ATTRIBUTE ACCESS";
+  LOG_TOPIC(DEBUG, Logger::DEVEL) << "  FOUND DISTANCE RULE WITH ATTRIBUTE ACCESS";
 
   std::pair<AstNode*,AstNode*>* constantPair;
   GeoIndexInfo res;
@@ -4075,7 +4069,7 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, ExecutionNode* node, G
     constantPair = &argPair1;
   }
 
-  LOG(OBILEVEL) << "  attributes: " << res.longitude[0]
+  LOG_TOPIC(DEBUG, Logger::DEVEL) << "  attributes: " << res.longitude[0]
            << ", " << res.longitude
            << " of collection:" << res.collection->getName()
            << " are geoindexed";
@@ -4124,6 +4118,7 @@ GeoIndexInfo isDistanceFunction(AstNode const* node){
   if ( func->externalName != "DISTANCE" || node->numMembers() != 1  ) {
     return rv;
   }
+  LOG_TOPIC(DEBUG, Logger::DEVEL) << "FOUND DISTANCE FUNCTION";
   rv.node = node;
   return rv;
 }
@@ -4150,6 +4145,7 @@ GeoIndexInfo isGeoFilterExpression(AstNode const* node){
   if(first_dist_fun && true){
     first_dist_fun.within = true;
     first_dist_fun.range = 1.0; //fixme
+    LOG_TOPIC(DEBUG, Logger::DEVEL) << "FOUND WITHIN";
     return first_dist_fun;
   }
   
@@ -4157,6 +4153,7 @@ GeoIndexInfo isGeoFilterExpression(AstNode const* node){
   if (second_dist_fun && true){
     second_dist_fun.within = true;
     second_dist_fun.range = 1.0; //fixme
+    LOG_TOPIC(DEBUG, Logger::DEVEL) << "FOUND WITHIN";
     return second_dist_fun;
   }
 
@@ -4248,7 +4245,7 @@ void checkNodesForGeoOptimization(ExecutionNode::NodeType type, ExecutionPlan* p
     if(!geoRequestDescripton){
       continue;
     }
-    LOG(OBILEVEL) << "  FOUND DISTANCE RULE";
+    LOG_TOPIC(DEBUG, Logger::DEVEL) << "  FOUND NEAR OR WITHIN";
     if (applyGeoOptimization(true, plan, n, geoRequestDescripton, true)){
       modified = true;
     }
@@ -4259,14 +4256,14 @@ void arangodb::aql::optimizeGeoIndexRule(Optimizer* opt,
                                          ExecutionPlan* plan,
                                          Optimizer::Rule const* rule) {
 
-  LOG(OBILEVEL) << "ENTER GEO RULE";
+  LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER GEO RULE";
 
   bool modified = false;
   checkNodesForGeoOptimization(EN::SORT, plan, modified);
   checkNodesForGeoOptimization(EN::FILTER, plan, modified);
   opt->addPlan(plan, rule, modified);
 
-  LOG(OBILEVEL) << "EXIT GEO RULE";
-  LOG(OBILEVEL) << "";
+  LOG_TOPIC(DEBUG, Logger::DEVEL) << "EXIT GEO RULE";
+  LOG_TOPIC(DEBUG, Logger::DEVEL) << "";
 }
 

@@ -57,18 +57,18 @@ GeoIndexIterator::GeoIndexIterator(LogicalCollection* collection,
     }
 
 void GeoIndexIterator::evaluateCondition() {
-  LOG(ERR) << "ENTER evaluate Condition";
+  LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER evaluate Condition";
 
   if (_condition) {
-    LOG(ERR) << "The Condition is";
+    LOG_TOPIC(DEBUG, Logger::DEVEL) << "The Condition is";
     _condition->dump(0);
     auto numMembers = _condition->numMembers();
 
     if(numMembers >= 2){
       _lat = _condition->getMember(0)->getMember(1)->getDoubleValue();
-      LOG(ERR) << "lat: " << _lat;
+      LOG_TOPIC(DEBUG, Logger::DEVEL) << "lat: " << _lat;
       _lon = _condition->getMember(1)->getMember(1)->getDoubleValue();
-      LOG(ERR) << "lon: " << _lon;
+      LOG_TOPIC(DEBUG, Logger::DEVEL) << "lon: " << _lon;
     }
 
     if (numMembers == 2){ //near
@@ -77,18 +77,18 @@ void GeoIndexIterator::evaluateCondition() {
       _near = false;
       _withinRange = _condition->getMember(2)->getMember(1)->getDoubleValue();
     } else {
-      LOG(ERR) << "Invalid Number of arguments";
+      LOG_TOPIC(DEBUG, Logger::DEVEL) << "Invalid Number of arguments";
     }
 
   } else {
-    LOG(ERR) << "No Condition passed to constructor";
+    LOG_TOPIC(DEBUG, Logger::DEVEL) << "No Condition passed to constructor";
   }
 
-  LOG(ERR) << "EXIT evaluate Condition";
+  LOG_TOPIC(DEBUG, Logger::DEVEL) << "EXIT evaluate Condition";
 }
 
 IndexLookupResult GeoIndexIterator::next() {
-  LOG(ERR) << "ENTER next";
+  LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER next";
   if (!_cursor){
     createCursor(_lat,_lon);
   }
@@ -105,7 +105,7 @@ IndexLookupResult GeoIndexIterator::next() {
 }
 
 void GeoIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t batchSize) {
-  LOG(ERR) << "ENTER nextBabies";
+  LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER nextBabies";
   if (!_cursor){
     createCursor(_lat,_lon);
   }
@@ -126,7 +126,7 @@ void GeoIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t
       }
     }
   }
-  LOG(ERR) << "EXIT nextBabies";
+  LOG_TOPIC(DEBUG, Logger::DEVEL) << "EXIT nextBabies";
 }
 
 ::GeoCursor* GeoIndexIterator::replaceCursor(::GeoCursor* c){
