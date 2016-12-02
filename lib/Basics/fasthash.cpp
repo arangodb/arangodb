@@ -45,7 +45,6 @@ uint64_t fasthash64(const void* buf, size_t len, uint64_t seed) {
   uint8_t const* pos = (uint8_t const*)buf;
   uint8_t const* end = pos + len;
   uint64_t h = seed ^ (len * m);
-  uint64_t v;
   
   while (pos != end) {
     len = end - pos;
@@ -53,7 +52,7 @@ uint64_t fasthash64(const void* buf, size_t len, uint64_t seed) {
       len = 8;
     }
 
-    v = 0;
+    uint64_t v = 0;
     switch (len) {
       case 8:
         v ^= (uint64_t)pos[7] << 56;
