@@ -54,6 +54,7 @@ class Utils {
   static std::string const collectionPlanIdMapKey;
   static std::string const vertexShardsKey;
   static std::string const edgeShardsKey;
+  static std::string const globalShardListKey;
 
   static std::string const globalSuperstepKey;
   static std::string const messagesKey;

@@ -31,8 +31,7 @@ using namespace arangodb::pregel::algos;
 
 struct SSSPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
   SSSPComputation() {}
-  void compute(std::string const& vertexID,
-               MessageIterator<int64_t> const& messages) override {
+  void compute(MessageIterator<int64_t> const& messages) override {
     int64_t tmp = vertexData();
     for (const int64_t* msg : messages) {
       if (tmp < 0 || *msg < tmp) {
@@ -41,14 +40,12 @@ struct SSSPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
     }
     int64_t* state = mutableVertexData<int64_t>();
     if (tmp >= 0 && (globalSuperstep() == 0 || tmp != *state)) {
-      LOG(INFO) << "Recomputing value for vertex " << vertexID;
       *state = tmp;  // update state
 
-      RangeIterator<EdgeEntry<int64_t>> edges = getEdges();
-      for (EdgeEntry<int64_t>* edge : edges) {
-        int64_t val = *edge->getData() + tmp;
-        std::string const& toID = edge->toVertexID();
-        sendMessage(toID, val);
+      RangeIterator<Edge<int64_t>> edges = getEdges();
+      for (Edge<int64_t>* edge : edges) {
+        int64_t val = *edge->data() + tmp;
+        sendMessage(edge, val);
       }
     }
     voteHalt();

@@ -28,7 +28,8 @@
 #include <set>
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/voc-types.h"
-#include "GraphFormat.h"
+#include "Pregel/GraphFormat.h"
+#include "Pregel/Iterators.h"
 
 struct TRI_vocbase_t;
 
@@ -37,124 +38,54 @@ class Transaction;
 class LogicalCollection;
 namespace pregel {
 
+typedef uint16_t prgl_shard_t;
+  
 /// @brief header entry for the edge file
 template <typename E>
-struct EdgeEntry {
-
- private:
-  std::string _toVertexID;
-  TRI_voc_cid_t sourceShardID;
-  TRI_voc_cid_t targetShardID;
+class Edge {
+  prgl_shard_t _sourceShard;
+  prgl_shard_t _targetShard;
+  std::string _toKey;
   E _data;
   
  public:
   // EdgeEntry() : _nextEntryOffset(0), _dataSize(0), _vertexIDSize(0) {}
-  EdgeEntry(std::string const& vid, E const& data)
-      : _toVertexID(vid), _data(data) {}
-  EdgeEntry(std::string const& vid) : _toVertexID(vid) {}
-  ~EdgeEntry() {}
+  Edge(prgl_shard_t source,
+       prgl_shard_t target,
+       std::string const& key)
+  : _sourceShard(source),
+    _targetShard(target),
+    _toKey(key) {}
 
   // size_t getSize() { return sizeof(EdgeEntry) + _vertexIDSize + _dataSize; }
-  std::string const& toVertexID() { return _toVertexID; }
+  std::string const& toKey() const { return _toKey; }
   // size_t getDataSize() { return _dataSize; }
-  E* getData() {
+  inline E* data() {
     return &_data;  // static_cast<E>(this + sizeof(EdgeEntry) + _vertexIDSize);
   }
+  inline prgl_shard_t sourceShard() const {
+    return _sourceShard;
+  }
+  inline prgl_shard_t targetShard() const {
+    return _targetShard;
+  }
 };
 
-template <typename T>
-class RangeIterator {
- private:
-  // void *_begin, *_end, *_current;
-  std::vector<T>& _vector;
-  size_t _begin, _end, _current;
-
- public:
-  typedef RangeIterator<T> iterator;
-  typedef const RangeIterator<T> const_iterator;
-
-  RangeIterator(std::vector<T>& v, size_t begin, size_t end)
-      : _vector(v), _begin(begin), _end(end), _current(begin) {}
-
-  iterator begin() { return RangeIterator(_vector, _begin, _end); }
-  const_iterator begin() const { return RangeIterator(_vector, _begin, _end); }
-  iterator end() {
-    auto it = RangeIterator(_vector, _begin, _end);
-    it._current = it._end;
-    return it;
-  }
-  const_iterator end() const {
-    auto it = RangeIterator(_vector, _begin, _end);
-    it._current = it._end;
-    return it;
-  }
-
-  // prefix ++
-  RangeIterator& operator++() {
-    _current++;
-    return *this;
-  }
-
-  // postfix ++
-  RangeIterator<T>& operator++(int) {
-    RangeIterator<T> result(*this);
-    ++(*this);
-    return result;
-  }
-
-  T* operator*() const {
-    T* el = _vector.data();
-    return _current != _end ? el + _current : nullptr;
-  }
-
-  bool operator!=(RangeIterator<T> const& other) const {
-    return _current != other._current;
-  }
-
-  size_t size() const { return _end - _begin; }
-
-  /*EdgeIterator(void* beginPtr, void* endPtr)
-      : _begin(beginPtr), _end(endPtr), _current(_begin) {}
-  iterator begin() { return EdgeIterator(_begin, _end); }
-  const_iterator begin() const { return EdgeIterator(_begin, _end); }
-  iterator end() {
-    auto it = EdgeIterator(_begin, _end);
-    it._current = it._end;
-    return it;
-  }
-  const_iterator end() const {
-    auto it = EdgeIterator(_begin, _end);
-    it._current = it._end;
-    return it;
-  }
-
-  // prefix ++
-  EdgeIterator<E>& operator++() {
-    EdgeEntry<E>* entry = static_cast<EdgeEntry<E>>(_current);
-    _current += entry->getSize();
-    return *this;
-  }
-
-  EdgeEntry<E>* operator*() const {
-    return _current != _end ? static_cast<EdgeEntry<E>>(_current) : nullptr;
-  }*/
-};
-
-typedef std::string VertexID;
-struct VertexEntry {
+class VertexEntry {
   template <typename V, typename E>
   friend class GraphStore;
 
- private:
-  const VertexID _vertexID;
+  const prgl_shard_t _shard;// TODO optimize and remove
+  const std::string _key;
   size_t _vertexDataOffset;  // size_t vertexID length
   size_t _edgeDataOffset;
   size_t _edgeCount;
   bool _active = true;
 
  public:
-  VertexEntry(VertexID const& vid)
-      : _vertexID(vid),
+  VertexEntry(prgl_shard_t shard, std::string const& key)
+      : _shard(shard),
+        _key(key),
         _vertexDataOffset(0),
         _edgeDataOffset(0),
         _edgeCount(0),
@@ -166,9 +97,11 @@ struct VertexEntry {
   inline size_t getSize() { return sizeof(VertexEntry); }
   inline bool active() const { return _active; }
   inline void setActive(bool bb) { _active = bb; }
-  inline VertexID const& vertexID() const { return _vertexID; };
-  /*std::string const& vertexID() const {
-    return std::string(_vertexID, _vertexIDSize);
+  
+  inline prgl_shard_t shard() const {return _shard;}
+  inline std::string const& key() const { return _key; };
+  /*std::string const& key() const {
+    return std::string(_key, _keySize);
   };*/
 };
   
@@ -222,15 +155,21 @@ struct VertexEntry {
     return _current != other._current;
   }
 };*/
-
+  
 class WorkerState;
+template <typename V, typename E>
+struct GraphFormat;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief carry graph data for a worker job
 ////////////////////////////////////////////////////////////////////////////////
 template <typename V, typename E>
 class GraphStore {
- private:
+  
+  VocbaseGuard _vocbaseGuard;
+  const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
+  Transaction *_transaction;// temporary transaction
+  
   // int _indexFd, _vertexFd, _edgeFd;
   // void *_indexMapping, *_vertexMapping, *_edgeMapping;
   // size_t _indexSize, _vertexSize, _edgeSize;
@@ -239,20 +178,20 @@ class GraphStore {
   // only for demo, move to memory
   std::vector<VertexEntry> _index;
   std::vector<V> _vertexData;
-  std::vector<EdgeEntry<E>> _edges;
+  std::vector<Edge<E>> _edges;
 
   std::set<ShardID> _loadedShards;
   size_t _localVerticeCount;
   size_t _localEdgeCount;
-
-  VocbaseGuard _vocbaseGuard;
-  const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
-
-  Transaction *_transaction;
-  void cleanupTransactions();
   
-  void loadVertices(ShardID const& vertexShard, ShardID const& edgeShard);
-  void loadEdges(ShardID const& edgeShard, VertexEntry& entry);
+  void _cleanupTransactions();
+  void _loadVertices(WorkerState const& state,
+                     ShardID const& vertexShard,
+                     ShardID const& edgeShard);
+  void _loadEdges(WorkerState const& state,
+                  ShardID const& shard,
+                  VertexEntry& vertexEntry,
+                  std::string const& documentID);
 
  public:
   GraphStore(TRI_vocbase_t* vocbase, WorkerState const& state,
@@ -264,12 +203,13 @@ class GraphStore {
     return _index.size();
   }
   RangeIterator<VertexEntry> vertexIterator(size_t start, size_t count);
-  RangeIterator<EdgeEntry<E>> edgeIterator(VertexEntry const* entry);
+  RangeIterator<Edge<E>> edgeIterator(VertexEntry const* entry);
 
   void* mutableVertexData(VertexEntry const* entry);
   V copyVertexData(VertexEntry const* entry);
   void replaceVertexData(VertexEntry const* entry, void* data, size_t size);
-
+  
+  /// Write results to database
   void storeResults(WorkerState const& state);
 };
 }

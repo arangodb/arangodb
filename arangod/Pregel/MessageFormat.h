@@ -38,7 +38,7 @@ struct MessageFormat {
   virtual bool unwrapValue(VPackSlice body, M& value) const = 0;
   virtual void addValue(VPackBuilder& arrayBuilder, M const& val) const = 0;
 };
-
+  
 struct IntegerMessageFormat : public MessageFormat<int64_t> {
   IntegerMessageFormat() {}
   bool unwrapValue(VPackSlice s, int64_t& value) const override {
@@ -57,7 +57,7 @@ struct FloatMessageFormat : public MessageFormat<float> {
   FloatMessageFormat() {}
   bool unwrapValue(VPackSlice s, float& value) const override {
     if (s.isDouble()) {
-      value = s.getDouble();
+      value = (float)s.getDouble();
       return true;
     }
     return false;
@@ -66,6 +66,23 @@ struct FloatMessageFormat : public MessageFormat<float> {
     arrayBuilder.add(VPackValue(val));
   }
 };
+  
+/*
+ template <typename M>
+ struct NumberMessageFormat : public MessageFormat<M> {
+ static_assert(std::is_arithmetic<M>::value, "Type must be numeric");
+ NumberMessageFormat() {}
+ bool unwrapValue(VPackSlice s, int64_t& value) const override {
+ if (s.isNumber()) {
+ value = s.getNumber<M>();
+ return true;
+ }
+ return false;
+ }
+ void addValue(VPackBuilder& arrayBuilder, int64_t const& val) const override {
+ arrayBuilder.add(VPackValue(val));
+ }
+ };*/
 }
 }
 #endif

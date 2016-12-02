@@ -24,7 +24,7 @@
 #include "Pregel/Aggregator.h"
 #include "Pregel/Combiners/FloatSumCombiner.h"
 #include "Pregel/GraphFormat.h"
-#include "Pregel/MessageIterator.h"
+#include "Pregel/Iterators.h"
 #include "Pregel/Utils.h"
 #include "Pregel/VertexComputation.h"
 
@@ -41,7 +41,7 @@ using namespace arangodb::pregel::algos;
 
 PageRankAlgorithm::PageRankAlgorithm(arangodb::velocypack::Slice params) : SimpleAlgorithm("PageRank", params) {
   VPackSlice t = params.get("convergenceThreshold");
-  _threshold = t.isNumber() ? t.getNumber<float>() : 0.00002;
+  _threshold = t.isNumber() ? t.getNumber<float>() : 0.00002f;
 }
 
 struct PageRankGraphFormat : public FloatGraphFormat {
@@ -72,20 +72,19 @@ MessageCombiner<float>* PageRankAlgorithm::messageCombiner()
 struct PageRankComputation : public VertexComputation<float, float, float> {
   float _limit;
   PageRankComputation(float t) : _limit(t) {}
-  void compute(std::string const& vertexID,
-               MessageIterator<float> const& messages) override {
+  void compute(MessageIterator<float> const& messages) override {
     
     float* ptr = mutableVertexData<float>();
     float copy = *ptr;
     // TODO do initialization in GraphFormat?
     if (globalSuperstep() == 0 && *ptr == 0) {
-      *ptr = 1.0 / context()->vertexCount();
+      *ptr = 1.0f / context()->vertexCount();
     } else if (globalSuperstep() > 0) {
       float sum = 0;
       for (const float* msg : messages) {
         sum += *msg;
       }
-      *ptr = 0.15 / context()->vertexCount() + 0.85 * sum;
+      *ptr = 0.15f / context()->vertexCount() + 0.85f * sum;
     }
     float diff = fabsf(copy - *ptr);
     aggregate("convergence", &diff);
@@ -95,10 +94,10 @@ struct PageRankComputation : public VertexComputation<float, float, float> {
     }
     
     if (globalSuperstep() < 50 && diff > _limit) {
-      RangeIterator<EdgeEntry<float>> edges = getEdges();
+      RangeIterator<Edge<float>> edges = getEdges();
       float val = *ptr / edges.size();
-      for (EdgeEntry<float>* edge : edges) {
-        sendMessage(edge->toVertexID(), val);
+      for (Edge<float>* edge : edges) {
+        sendMessage(edge, val);
       }
     } else {
       voteHalt();

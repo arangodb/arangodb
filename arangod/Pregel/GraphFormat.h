@@ -114,14 +114,14 @@ protected:
   size_t copyVertexData(arangodb::velocypack::Slice document, void* targetPtr,
                         size_t maxSize) override {
     arangodb::velocypack::Slice val = document.get(_sourceField);
-    *((float*)targetPtr) = val.isDouble() ? val.getDouble() : _vDefault;
+    *((float*)targetPtr) = val.isDouble() ? (float)val.getDouble() : _vDefault;
     return sizeof(float);
   }
 
   size_t copyEdgeData(arangodb::velocypack::Slice document, void* targetPtr,
                       size_t maxSize) override {
     arangodb::velocypack::Slice val = document.get(_sourceField);
-    *((float*)targetPtr) = val.isDouble() ? val.getDouble() : _eDefault;
+    *((float*)targetPtr) = val.isDouble() ? (float)val.getDouble() : _eDefault;
     return sizeof(float);
   }
 

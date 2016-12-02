@@ -41,22 +41,25 @@ RecoveryManager::~RecoveryManager() {
   for (auto const& call : _agencyCallbacks) {
     _agencyCallbackRegistry->unregisterCallback(call.second);
   }
+  _listeners.clear();
   _agencyCallbacks.clear();
 }
 
-
-void RecoveryManager::stopMonitoring(Conductor*) {
+void RecoveryManager::stopMonitoring(Conductor *listener) {
   MUTEX_LOCKER(guard, _lock);
   
-  for (auto const& it : _listeners) {
-    
+  for (auto &pair : _listeners) {
+    if (pair.second.find(listener) != pair.second.end()) {
+      pair.second.erase(listener);
+    }
+    if (pair.second.size() == 0) {
+      std::shared_ptr<AgencyCallback> callback = _agencyCallbacks[pair.first];
+      _agencyCallbackRegistry->unregisterCallback(callback);
+      _agencyCallbacks.erase(pair.first);
+    }
   }
 }
-/*
-std::map<ShardID, std::set<Conductor*>> _listeners;
-std::map<ShardID, ServerID> _primaryServer;
-std::map<ShardID, std::shared_ptr<AgencyCallback>> _agencyCallbacks;
-*/
+
 void RecoveryManager::monitorCollections(std::vector<std::shared_ptr<LogicalCollection>> const& collections,
                                          Conductor *listener) {
   MUTEX_LOCKER(guard, _lock);
@@ -127,37 +130,5 @@ void RecoveryManager::monitorShard(CollectionID const& cid, ShardID const& shard
     auto call = std::make_shared<AgencyCallback>(_agency, path, listener, true, false);
     _agencyCallbacks.emplace(shard, call);
     _agencyCallbackRegistry->registerCallback(call);
-  
   }
 }
-
-/*
-bool RecoveryManager::allServersAvailable(std::vector<ServerID> const& dbServers) {
-  MUTEX_LOCKER(guard, _lock);
-  
-  if (TRI_microtime() - _lastHealthCheck >  5.0) {
-    //Supervis
-    AgencyCommResult result = _agency.getValues("Supervision/Health/");
-    if (result.successful() && result.slice().isObject()) {
-      for (auto server : VPackObjectIterator(result.slice())) {
-        std::string status = server.value.get("Status").copyString();
-        _statusMap[server.key.copyString()] = status;
-      }
-      _lastHealthCheck = TRI_microtime();// I don't like this
-    }
-  }
-  
-  std::string failed(consensus::Supervision::HEALTH_STATUS_FAILED);
-  
-  for (auto const& server : dbServers) {
-    auto const& it = _statusMap.find(server);
-    if (it != _statusMap.end()) {
-      if (it->second == failed) {
-        return false;
-      }
-    }
-  }
-  
-  return true;
-}*/
-

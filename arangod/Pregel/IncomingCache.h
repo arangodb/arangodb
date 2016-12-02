@@ -30,9 +30,10 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 
-#include "MessageCombiner.h"
-#include "MessageFormat.h"
-#include "MessageIterator.h"
+#include "Pregel/MessageCombiner.h"
+#include "Pregel/MessageFormat.h"
+#include "Pregel/Iterators.h"
+#include "Pregel/GraphStore.h"
 
 namespace arangodb {
 namespace pregel {
@@ -50,19 +51,19 @@ class IncomingCache {
   void parseMessages(VPackSlice messages);
   /// @brief get messages for vertex id. (Don't use keys from _from or _to
   /// directly, they contain the collection name)
-  MessageIterator<M> getMessages(std::string const& vertexId);
+  MessageIterator<M> getMessages(prgl_shard_t shard, std::string const& key);
   void clear();
 
   /// @brief internal method to direclty set the messages for a vertex. Only
   /// valid with already combined messages
-  void setDirect(std::string const& vertexId, M const& data);
+  void setDirect(prgl_shard_t shard, std::string const& vertexId, M const& data);
   void mergeCache(IncomingCache<M> const& otherCache);
 
   size_t receivedMessageCount() { return _receivedMessageCount; }
 
  private:
   mutable Mutex _writeLock;
-  std::unordered_map<std::string, M> _messages;
+  std::unordered_map<prgl_shard_t, std::unordered_map<std::string, M>> _shardMap;
   size_t _receivedMessageCount = 0;
 
   MessageFormat<M> const* _format;

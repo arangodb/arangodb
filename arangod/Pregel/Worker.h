@@ -55,7 +55,7 @@ class IncomingCache;
   
 template <typename T>
 class RangeIterator;
-struct VertexEntry;
+class VertexEntry;
   
 template <typename V, typename E, typename M>
 class VertexContext;

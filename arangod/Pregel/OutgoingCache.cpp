@@ -33,8 +33,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <algorithm>
-
 using namespace arangodb;
 using namespace arangodb::pregel;
 
@@ -53,61 +51,42 @@ OutgoingCache<M>::~OutgoingCache() {
 
 template <typename M>
 void OutgoingCache<M>::clear() {
-  _map.clear();
+  _shardMap.clear();
   _containedMessages = 0;
 }
 
 template <typename M>
-void OutgoingCache<M>::sendMessageTo(std::string const& toValue,
-                                     M const& data) {
-  std::size_t pos = toValue.find('/');
-  std::string _key = toValue.substr(pos + 1, toValue.length() - pos - 1);
-  std::string collectionName = toValue.substr(0, pos);
-  LOG(INFO) << "Adding outgoing messages for " << collectionName << "/" << _key;
+void OutgoingCache<M>::appendMessage(prgl_shard_t shard, std::string const& key, M const& data) {
 
-  auto collInfo = Utils::resolveCollection(_state->database(),
-                                           collectionName,
-                                           _state->collectionPlanIdMap());
-  if (!collInfo) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "Collection this messages is going to is unkown");
-  }
-  ShardID responsibleShard;
-  Utils::resolveShard(collInfo.get(), StaticStrings::KeyString, _key, responsibleShard);
-  LOG(INFO) << "Responsible shard: " << responsibleShard;
-
-  std::vector<ShardID> const& localShards = _state->localVertexShardIDs();
-  if (std::find(localShards.begin(), localShards.end(), responsibleShard) !=
-      localShards.end()) {
-    _localCache->setDirect(toValue, data);
-    LOG(INFO) << "Worker: Got messages for myself " << toValue << " <- "
+  if (_state->isLocalVertexShard(shard)) {
+    _localCache->setDirect(shard, key, data);
+    LOG(INFO) << "Worker: Got messages for myself " << key << " <- "
               << data;
     _sendMessages++;
   } else {
-    // std::unordered_map<std::string, VPackBuilder*> vertexMap =;
-    std::unordered_map<std::string, M>& vertexMap = _map[responsibleShard];
-    auto it = vertexMap.find(toValue);
+    // std::unordered_shardMap<std::string, VPackBuilder*> vertexMap =;
+    std::unordered_map<std::string, M>& vertexMap = _shardMap[shard];
+    auto it = vertexMap.find(key);
     if (it != vertexMap.end()) {  // more than one message
-      vertexMap[toValue] = _combiner->combine(vertexMap[toValue], data);
+      vertexMap[key] = _combiner->combine(vertexMap[key], data);
     } else {  // first message for this vertex
-      vertexMap[toValue] = data;
+      vertexMap.emplace(key, data);
     }
     _containedMessages++;
     
     if (_containedMessages > 1000) {
-      sendMessages();
+      flushMessages();
     }
   }
 }
 
 template <typename M>
-void OutgoingCache<M>::sendMessages() {
+void OutgoingCache<M>::flushMessages() {
   LOG(INFO) << "Beginning to send messages to other machines";
 
   std::vector<ClusterCommRequest> requests;
-  for (auto const& it : _map) {
-    ShardID const& shard = it.first;
+  for (auto const& it : _shardMap) {
+    prgl_shard_t shard = it.first;
     std::unordered_map<std::string, M> const& vertexMessageMap = it.second;
     if (vertexMessageMap.size() == 0) {
       continue;
@@ -129,11 +108,12 @@ void OutgoingCache<M>::sendMessages() {
                 VPackValue(_state->globalSuperstep()));
     package.close();
     // add a request
+    ShardID const& shardId = _state->globalShardIDs()[shard];
     auto body = std::make_shared<std::string>(package.toJson());
-    requests.emplace_back("shard:" + shard, rest::RequestType::POST,
+    requests.emplace_back("shard:" + shardId, rest::RequestType::POST,
                           _baseUrl + Utils::messagesPath, body);
 
-    LOG(INFO) << "Worker: Sending data to other Shard: " << shard
+    LOG(INFO) << "Worker: Sending data to other Shard: " << shardId
               << ". Message: " << package.toJson();
   }
   size_t nrDone = 0;

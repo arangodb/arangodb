@@ -62,7 +62,7 @@ class VertexContext {
 
   V vertexData() { return _graphStore->copyVertexData(_vertexEntry); }
 
-  RangeIterator<EdgeEntry<E>> getEdges() { return _graphStore->edgeIterator(_vertexEntry); }
+  RangeIterator<Edge<E>> getEdges() { return _graphStore->edgeIterator(_vertexEntry); }
 
   /// store data, will potentially move the data around
   void setVertexData(void const* ptr, size_t size) {
@@ -89,16 +89,16 @@ public:
     _workerAggregators->aggregate(name, valuePtr);
   }
   
-  void sendMessage(std::string const& toVertexID, M const& data) {
-    _outgoing->sendMessageTo(toVertexID, data);
+  void sendMessage(Edge<E> const* edge, M const& data) {
+    _outgoing->appendMessage(edge->targetShard(), edge->toKey(), data);
   }
   
-  virtual void compute(std::string const& vertexID,
-                       MessageIterator<M> const& messages) = 0;
+  virtual void compute(MessageIterator<M> const& messages) = 0;
 };
   
 template <typename V, typename E, typename M>
-struct VertexCompensate : public VertexContext<V, E, M> {
+class VertexCompensate : public VertexContext<V, E, M> {
+public:
   virtual void compensate(std::string const& vertexID, bool inLostPartition) = 0;
 };
   

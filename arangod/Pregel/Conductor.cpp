@@ -59,7 +59,12 @@ Conductor::Conductor(
   LOG(INFO) << "constructed conductor";
 }
 
-Conductor::~Conductor() {}
+Conductor::~Conductor() {
+  RecoveryManager *mngr = PregelFeature::instance()->recoveryManager();
+  if (mngr) {
+    mngr->stopMonitoring(this);
+  }
+}
 
 void Conductor::start(std::string const& algoName, VPackSlice userConfig) {
   if (!userConfig.isObject()) {
@@ -84,8 +89,11 @@ void Conductor::start(std::string const& algoName, VPackSlice userConfig) {
   int res = _initializeWorkers(Utils::startExecutionPath, VPackSlice());
   if (res == TRI_ERROR_NO_ERROR) {
     if (_startGlobalStep()) {
+      // listens for changing primary DBServers on each collection shard
       RecoveryManager *mngr = PregelFeature::instance()->recoveryManager();
-      mngr->monitorCollections(_vertexCollections, this);
+      if (mngr) {
+        mngr->monitorCollections(_vertexCollections, this);
+      }
     }
   } else {
     _state = ExecutionState::CANCELED;
@@ -228,12 +236,13 @@ void Conductor::startRecovery() {
 }
 
 static void resolveShards(LogicalCollection const* collection,
-                          std::map<ServerID, std::map<CollectionID,
-                          std::vector<ShardID>>> &serverMap) {
+                          std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>> &serverMap,
+                          std::vector<ShardID> &allShards) {
   
   ClusterInfo* ci = ClusterInfo::instance();
   std::shared_ptr<std::vector<ShardID>> shardIDs =
   ci->getShardList(collection->cid_as_string());
+  allShards.insert(allShards.end(), shardIDs->begin(), shardIDs->end());
   
   for (auto const& shard : *shardIDs) {
     std::shared_ptr<std::vector<ServerID>> servers =
@@ -249,6 +258,8 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
   int64_t vertexCount = 0, edgeCount = 0;
   std::map<CollectionID, std::string> collectionPlanIdMap;
   std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>> vertexMap, edgeMap;
+  std::vector<ShardID> allShardIDs;
+  
   // resolve plan id's and shards on the servers
   for (auto &collection : _vertexCollections) {
     collectionPlanIdMap.emplace(collection->name(), collection->planId_as_string());
@@ -256,7 +267,7 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
     Utils::countDocuments(_vocbaseGuard.vocbase(), collection->name());
     if (cc > 0) {
       vertexCount += cc;
-      resolveShards(collection.get(), vertexMap);
+      resolveShards(collection.get(), vertexMap, allShardIDs);
     }
   }
   for (auto &collection : _edgeCollections) {
@@ -265,12 +276,13 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
     Utils::countDocuments(_vocbaseGuard.vocbase(), collection->name());
     if (cc > 0) {
       edgeCount += cc;
-      resolveShards(collection.get(), edgeMap);
+      resolveShards(collection.get(), edgeMap, allShardIDs);
     }
   }
   for (auto const& pair : vertexMap) {
     _dbServers.push_back(pair.first);
   }
+  
   
   LOG(INFO) << vertexCount << " vertices, " << edgeCount << " edges";
   if (vertexMap.size() != edgeMap.size()) {
@@ -330,6 +342,11 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
     b.add(Utils::collectionPlanIdMapKey, VPackValue(VPackValueType::Object));
     for (auto const& pair : collectionPlanIdMap) {
       b.add(pair.first, VPackValue(pair.second));
+    }
+    b.close();
+    b.add(Utils::globalShardListKey, VPackValue(VPackValueType::Array));
+    for (std::string const& shard : allShardIDs) {
+      b.add(VPackValue(shard));
     }
     b.close();
     b.close();

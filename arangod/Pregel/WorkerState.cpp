@@ -35,9 +35,10 @@ WorkerState::WorkerState(DatabaseID dbname, VPackSlice params)
   VPackSlice edgeShardMap = params.get(Utils::edgeShardsKey);
   VPackSlice execNum = params.get(Utils::executionNumberKey);
   VPackSlice collectionPlanIdMap = params.get(Utils::collectionPlanIdMapKey);
+  VPackSlice globalShards = params.get(Utils::globalShardListKey);
   if (!coordID.isString() || !edgeShardMap.isObject() ||
       !vertexShardMap.isObject() || !execNum.isInteger() ||
-      !collectionPlanIdMap.isObject()) {
+      !collectionPlanIdMap.isObject() || !globalShards.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Supplied bad parameters to worker");
   }
@@ -59,9 +60,15 @@ WorkerState::WorkerState(DatabaseID dbname, VPackSlice params)
   for (auto const& pair : VPackObjectIterator(edgeShardMap)) {
     std::vector<ShardID> shards;
     for (VPackSlice shardSlice : VPackArrayIterator(pair.value)) {
-      shards.push_back(shardSlice.copyString());
+      ShardID shard = shardSlice.copyString();
+      shards.push_back(shard);
+      _localEdgeShardIDs.push_back(shard);
     }
     _edgeCollectionShards.emplace(pair.key.copyString(), shards);
+  }
+      
+  for (VPackSlice shard : VPackArrayIterator(globalShards)) {
+    _globalShardIDs.push_back(shard.copyString());
   }
 
   for (auto const& it : VPackObjectIterator(collectionPlanIdMap)) {

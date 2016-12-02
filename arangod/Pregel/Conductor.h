@@ -35,20 +35,21 @@ namespace arangodb {
 class RestPregelHandler;
 namespace pregel {
 
-enum ExecutionState { DEFAULT, RUNNING, DONE, CANCELED };
+enum ExecutionState { DEFAULT,// before calling start
+  RUNNING,// during normal operation
+  DONE,// after everyting is done
+  CANCELED,// after an error or manual canceling
+  RECOVERING// during recovery
+};
+  
 class MasterContext;
 class AggregatorUsage;
 struct IAlgorithm;
 
 class Conductor {
   friend class arangodb::RestPregelHandler;
-  enum OperationMode {
-    NORMAL,
-    RECOVERY
-  };
-
+  
   ExecutionState _state = ExecutionState::DEFAULT;
-  OperationMode _operationMode = OperationMode::NORMAL;
   const VocbaseGuard _vocbaseGuard;
   const uint64_t _executionNumber;
   std::unique_ptr<IAlgorithm> _algorithm;
@@ -70,10 +71,12 @@ class Conductor {
 
   bool _startGlobalStep();
   int _initializeWorkers(std::string const& suffix, VPackSlice additional);
+  int _finalizeWorkers();
   int _sendToAllDBServers(std::string const& suffix, VPackSlice const& message);
 
   // === REST callbacks ===
   void finishedGlobalStep(VPackSlice& data);
+  void finishedRecovery(VPackSlice& data);
 
  public:
   Conductor(uint64_t executionNumber, TRI_vocbase_t* vocbase,

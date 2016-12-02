@@ -23,6 +23,7 @@
 #ifndef ARANGODB_PREGEL_WORKER_STATE_H
 #define ARANGODB_PREGEL_WORKER_STATE_H 1
 
+#include <algorithm>
 #include <velocypack/velocypack-aliases.h>
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
@@ -64,14 +65,33 @@ class WorkerState {
     return _collectionPlanIdMap;
   };
   
+  // same content on every worker, has to stay equal!!!!
+  inline std::vector<ShardID> const& globalShardIDs() const {
+    return _globalShardIDs;
+  };
+
+  // convenvience access without guaranteed order, same values as in
+  // vertexCollectionShards
   inline std::vector<ShardID> const& localVertexShardIDs() const {
     return _localVertexShardIDs;
   };
-
-  // inline uint64_t numWorkerThreads() {
-  //  return _numWorkerThreads;
-  //}
-
+  // convenvience access without guaranteed order, same values as in
+  // edgeCollectionShards
+  inline std::vector<ShardID> const& localEdgeShardIDs() const {
+    return _localEdgeShardIDs;
+  };
+  inline size_t shardId(ShardID const& responsibleShard) const {
+    auto it = std::find(_globalShardIDs.begin(), _globalShardIDs.end(), responsibleShard);
+    return it != _globalShardIDs.end() ? it - _globalShardIDs.begin() : (uint16_t)-1;
+  }
+  // index in globalShardIDs
+  inline bool isLocalVertexShard(size_t shardIndex) const {
+    // TODO cache this? prob small
+    ShardID const& shard = _globalShardIDs[shardIndex];
+    return std::find(_localVertexShardIDs.begin(), _localVertexShardIDs.end(), shard)
+            != _localVertexShardIDs.end();
+  }
+  
  private:
   uint64_t _executionNumber = 0;
   uint64_t _globalSuperstep = 0;
@@ -79,9 +99,12 @@ class WorkerState {
 
   std::string _coordinatorId;
   std::string _database;
-  std::vector<ShardID> _localVertexShardIDs;
-  std::map<CollectionID, std::vector<ShardID>> _vertexCollectionShards, _edgeCollectionShards;
   
+  std::vector<ShardID> _globalShardIDs;
+  std::vector<ShardID> _localVertexShardIDs, _localEdgeShardIDs;
+  
+  
+  std::map<CollectionID, std::vector<ShardID>> _vertexCollectionShards, _edgeCollectionShards;
   std::map<std::string, std::string> _collectionPlanIdMap;
 };
 }

@@ -192,16 +192,15 @@ void Worker<V, E, M>::_executeGlobalStep(RangeIterator<VertexEntry> &vertexItera
   
   size_t activeCount = 0;
   for (VertexEntry *vertexEntry : vertexIterator) {
-    std::string vertexID = vertexEntry->vertexID();
-    MessageIterator<M> messages = _readCache->getMessages(vertexID);
+    MessageIterator<M> messages = _readCache->getMessages(vertexEntry->shard(), vertexEntry->key());
     
     if (messages.size() > 0 || vertexEntry->active()) {
       vertexComputation->_vertexEntry = vertexEntry;
-      vertexComputation->compute(vertexID, messages);
+      vertexComputation->compute(messages);
       if (vertexEntry->active()) {
         activeCount++;
       } else {
-        LOG(INFO) << vertexID << " vertex has halted";
+        LOG(INFO) << vertexEntry->key() << " vertex has halted";
       }
     }
     // TODO delete read messages immediatly
@@ -214,7 +213,7 @@ void Worker<V, E, M>::_executeGlobalStep(RangeIterator<VertexEntry> &vertexItera
     }
   }
   // ==================== send messages to other shards ====================
-  outCache.sendMessages();
+  outCache.flushMessages();
   // merge thread local messages, _writeCache does locking
   _writeCache->mergeCache(localIncoming);
   // TODO ask how to implement message sending without waiting for a response

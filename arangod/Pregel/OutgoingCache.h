@@ -25,10 +25,12 @@
 
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
+#include "VocBase/voc-types.h"
 
-#include "MessageCombiner.h"
-#include "MessageFormat.h"
-#include "WorkerState.h"
+#include "Pregel/MessageCombiner.h"
+#include "Pregel/MessageFormat.h"
+#include "Pregel/WorkerState.h"
+#include "Pregel/GraphStore.h"
 
 namespace arangodb {
 namespace pregel {
@@ -45,11 +47,11 @@ class OutgoingCache {
                 MessageCombiner<M>* combiner, IncomingCache<M>* cache);
   ~OutgoingCache();
 
-  void sendMessageTo(std::string const& toValue, M const& data);
+  void appendMessage(prgl_shard_t shard, std::string const& key, M const& data);
   void clear();
   size_t sendMessageCount() const { return _sendMessages; }
 
-  void sendMessages();
+  void flushMessages();
 
  private:
   WorkerState* _state;
@@ -59,7 +61,7 @@ class OutgoingCache {
   std::string _baseUrl;
 
   /// @brief two stage map: shard -> vertice -> message
-  std::unordered_map<ShardID, std::unordered_map<std::string, M>> _map;
+  std::unordered_map<prgl_shard_t, std::unordered_map<std::string, M>> _shardMap;
 
   /// @brief current number of vertices stored
   size_t _containedMessages = 0;
