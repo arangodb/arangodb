@@ -30,6 +30,7 @@
 #define BOOST_TEST_INCLUDED
 #include <boost/test/unit_test.hpp>
 
+#include "Basics/fasthash.h"
 #include "Basics/hashes.h"
 #include "Basics/directories.h"
 #include "Basics/Utf8Helper.h"
@@ -80,6 +81,61 @@ struct CHashesSetup {
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_FIXTURE_TEST_SUITE(CHashesTest, CHashesSetup)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test fasthash64
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_fasthash64) {
+  std::string buffer;
+
+  buffer = "";
+  BOOST_CHECK_EQUAL((uint64_t) 5555116246627715051ULL, fasthash64(buffer.c_str(), buffer.size(), 0x12345678));
+
+  buffer = " ";
+  BOOST_CHECK_EQUAL((uint64_t) 4304446254109062897ULL, fasthash64(buffer.c_str(), buffer.size(), 0x12345678));
+  
+  buffer = "abc";
+  BOOST_CHECK_EQUAL((uint64_t) 14147965635343636579ULL, fasthash64(buffer.c_str(), buffer.size(), 0x12345678));
+  
+  buffer = "ABC";
+  BOOST_CHECK_EQUAL((uint64_t) 3265783561331679725ULL, fasthash64(buffer.c_str(), buffer.size(), 0x12345678));
+  
+  buffer = "der kuckuck und der Esel, die hatten einen Streit";
+  BOOST_CHECK_EQUAL((uint64_t) 13782917465498480784ULL, fasthash64(buffer.c_str(), buffer.size(), 0x12345678));
+  
+  buffer = "Fox you have stolen the goose, give she back again";
+  BOOST_CHECK_EQUAL((uint64_t) 5079926258749101985ULL, fasthash64(buffer.c_str(), buffer.size(), 0x12345678));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test fasthash64 unaligned reads
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_fasthash64_unaligned) {
+  std::string buffer;
+
+  buffer = " der kuckuck und der Esel, die hatten einen Streit";
+  BOOST_CHECK_EQUAL((uint64_t) 13782917465498480784ULL, fasthash64(buffer.c_str() + 1, buffer.size() - 1, 0x12345678));
+  
+  buffer = "  der kuckuck und der Esel, die hatten einen Streit";
+  BOOST_CHECK_EQUAL((uint64_t) 13782917465498480784ULL, fasthash64(buffer.c_str() + 2, buffer.size() - 2, 0x12345678));
+  
+  buffer = "   der kuckuck und der Esel, die hatten einen Streit";
+  BOOST_CHECK_EQUAL((uint64_t) 13782917465498480784ULL, fasthash64(buffer.c_str() + 3, buffer.size() - 3, 0x12345678));
+  
+  buffer = "    der kuckuck und der Esel, die hatten einen Streit";
+  BOOST_CHECK_EQUAL((uint64_t) 13782917465498480784ULL, fasthash64(buffer.c_str() + 4, buffer.size() - 4, 0x12345678));
+  
+  buffer = "     der kuckuck und der Esel, die hatten einen Streit";
+  BOOST_CHECK_EQUAL((uint64_t) 13782917465498480784ULL, fasthash64(buffer.c_str() + 5, buffer.size() - 5, 0x12345678));
+  
+  buffer = "      der kuckuck und der Esel, die hatten einen Streit";
+  BOOST_CHECK_EQUAL((uint64_t) 13782917465498480784ULL, fasthash64(buffer.c_str() + 6, buffer.size() - 6, 0x12345678));
+  
+  buffer = "       der kuckuck und der Esel, die hatten einen Streit";
+  BOOST_CHECK_EQUAL((uint64_t) 13782917465498480784ULL, fasthash64(buffer.c_str() + 7, buffer.size() - 7, 0x12345678));
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test fnv64 for simple strings
