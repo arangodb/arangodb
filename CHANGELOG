@@ -20,6 +20,8 @@ v3.1.3 (xxxx-xx-xx)
 * Fixed faulty error message on missing primaru db server when trying
   to change secondary
 
+* Increase timeout a coordinator waits for DBservers to show up to 1h.
+
 v3.1.2 (2016-11-24)
 -------------------
 
