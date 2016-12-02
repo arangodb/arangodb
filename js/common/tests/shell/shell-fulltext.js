@@ -80,6 +80,10 @@ function fulltextCreateSuite () {
     testCreateIndexSimple : function () {
       var idx = c.ensureFulltextIndex("text");
 
+      // don't inspect the result of the following query but make sure it does not fail
+      var result = internal.db._query("RETURN FULLTEXT(" + c.name() + ", 'text', 'foo')").toArray()[0];
+      assertEqual(0, result.length);
+
       var indexes = c.getIndexes();
       for (var i = 0; i < indexes.length; ++i) {
         var index = indexes[i];
@@ -127,6 +131,10 @@ function fulltextCreateSuite () {
 
     testCreateIndexSubstrings : function () {
       var idx = c.ensureFulltextIndex("iam-an-indexed-ATTRIBUTE");
+      
+      // don't inspect the result of the following query but make sure it does not fail
+      var result = internal.db._query("RETURN FULLTEXT(" + c.name() + ", 'iam-an-indexed-ATTRIBUTE', 'foo')").toArray()[0];
+      assertEqual(0, result.length);
 
       var indexes = c.getIndexes();
       for (var i = 0; i < indexes.length; ++i) {
@@ -175,6 +183,10 @@ function fulltextCreateSuite () {
 
     testCreateIndexSubattribute : function () {
       var idx = c.ensureFulltextIndex("a.b.c");
+      
+      // don't inspect the result of the following query but make sure it does not fail
+      var result = internal.db._query("RETURN FULLTEXT(" + c.name() + ", 'a.b.c', 'foo')").toArray()[0];
+      assertEqual(0, result.length);
 
       var indexes = c.getIndexes();
       for (var i = 0; i < indexes.length; ++i) {
