@@ -6,13 +6,13 @@ EOF
 
 HTTP/1.1 202 Accepted
 content-type: text/plain; charset=utf-8
-x-arango-async-id: 148001277316229
+x-arango-async-id: 148067530413917
 
-shell> curl -X PUT --dump - http://localhost:8529/_api/job/148001277316229
+shell> curl -X PUT --dump - http://localhost:8529/_api/job/148067530413917
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">400</span> Bad Request
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-x-arango-<span class="hljs-keyword">async</span>-id: <span class="hljs-number">148001277316229</span>
+x-arango-<span class="hljs-keyword">async</span>-id: <span class="hljs-number">148067530413917</span>
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 

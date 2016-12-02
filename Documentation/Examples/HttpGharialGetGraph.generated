@@ -1,7 +1,7 @@
 shell> curl --dump - http://localhost:8529/_api/gharial/myGraph
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
-etag: _UHcg4ha---
+etag: _UJ6eUtS---
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 { 
@@ -24,7 +24,7 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
     <span class="hljs-string">"numberOfShards"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"smartGraphAttribute"</span> : <span class="hljs-string">""</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/myGraph"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UHcg4ha---"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UJ6eUtS---"</span> 
   }, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }
