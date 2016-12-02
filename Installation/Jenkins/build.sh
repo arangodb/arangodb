@@ -296,7 +296,7 @@ while [ $# -gt 0 ];  do
             ;;
 
         --snap)
-            CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DUSE_SNAPCRAFT=ON -DSNAP_PORT=8533"
+            CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DUSE_SNAPCRAFT=ON -DSNAP_PORT=8529"
             shift
             ;;
 
