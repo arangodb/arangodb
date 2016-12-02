@@ -46,6 +46,8 @@
   db._drop("UnitTestsImportTsv2");
   db._drop("UnitTestsImportVertex");
   db._drop("UnitTestsImportEdge");
+  db._drop("UnitTestsImportIgnore");
+  db._drop("UnitTestsImportUniqueConstraints");
 
   db._create("UnitTestsImportJson1");
   db._create("UnitTestsImportJson2");
@@ -56,6 +58,10 @@
   db._create("UnitTestsImportTsv2");
   db._create("UnitTestsImportVertex");
   db._createEdgeCollection("UnitTestsImportEdge");
+  db._create("UnitTestsImportIgnore");
+  db.UnitTestsImportIgnore.ensureIndex({ type: "hash", fields: [ "value" ], unique: true });
+  db._create("UnitTestsImportUniqueConstraints");
+  db.UnitTestsImportUniqueConstraints.ensureIndex({ type: "hash", fields: [ "value" ], unique: true });
 })();
 
 return {
