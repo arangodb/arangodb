@@ -3925,20 +3925,24 @@ struct GeoIndexInfo{
   operator bool() const { return node; }
   GeoIndexInfo()
     : collectionNode(nullptr)
+    , sortOrFilterNode(nullptr)
     , collection(nullptr)
     , node(nullptr)
     , index(nullptr)
     , range(0)
     , within(false)
     , lessgreaterequal(false)
+    , invalid(false)
     {}
   EnumerateCollectionNode* collectionNode;
+  ExecutionNode* sortOrFilterNode;
   Collection const* collection;
   AstNode const* node;
   std::shared_ptr<arangodb::Index> index;
   double range;
   bool within;
   bool lessgreaterequal;
+  bool invalid; //use it
   std::vector<std::string> longitude;
   std::vector<std::string> latitude;
 };
@@ -4040,7 +4044,7 @@ geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionN
 }
 
 
-bool applyGeoOptimization(bool near, ExecutionPlan* plan, ExecutionNode* node, GeoIndexInfo& info, bool asc){
+bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& info, bool asc){
   auto const& functionArguments = info.node->getMember(0);
   if(functionArguments->numMembers() < 4){
     return false;
@@ -4049,8 +4053,8 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, ExecutionNode* node, G
   std::pair<AstNode*,AstNode*> argPair1 = { functionArguments->getMember(0), functionArguments->getMember(1) };
   std::pair<AstNode*,AstNode*> argPair2 = { functionArguments->getMember(2), functionArguments->getMember(3) };
 
-  auto result1 = geoDistanceFunctionArgCheck(argPair1, node, plan, info);
-  auto result2 = geoDistanceFunctionArgCheck(argPair2, node, plan, info);
+  auto result1 = geoDistanceFunctionArgCheck(argPair1, info.sortOrFilterNode, plan, info);
+  auto result2 = geoDistanceFunctionArgCheck(argPair2, info.sortOrFilterNode, plan, info);
 
   // xor only one argument pair shall have a geoIndex
   if (  ( !result1 && !result2 ) || ( result1 && result2 ) ){
@@ -4094,7 +4098,7 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, ExecutionNode* node, G
   plan->registerNode(inode);
   condition.release();
 
-  plan->unlinkNode(node);
+  plan->unlinkNode(info.sortOrFilterNode);
   plan->replaceNode(cnode,inode);
 
   //signal that plan has been changed
@@ -4148,7 +4152,7 @@ GeoIndexInfo isGeoFilterExpression(AstNode const* node){
     LOG_TOPIC(DEBUG, Logger::DEVEL) << "FOUND WITHIN";
     return first_dist_fun;
   }
-  
+
   auto second_dist_fun = isDistanceFunction(second);
   if (second_dist_fun && true){
     second_dist_fun.within = true;
@@ -4221,34 +4225,35 @@ GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, Exec
 
   switch(type){
     case EN::SORT: {
-      return isDistanceFunction(node);
+      rv = isDistanceFunction(node);
+      rv.sortOrFilterNode = n;
     }
     break;
 
     case EN::FILTER: {
-      return isGeoFilterExpression(node);
+      rv = isGeoFilterExpression(node);
+      rv.sortOrFilterNode = n;
     }
     break;
 
     default:
-      return rv;
+      ;
   }
 
+  return rv;
 };
 
-void checkNodesForGeoOptimization(ExecutionNode::NodeType type, ExecutionPlan* plan, bool& modified){
+void checkNodesForGeoOptimization(ExecutionNode::NodeType type, ExecutionPlan* plan, std::vector<GeoIndexInfo>& infos){
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, EN::SORT, true);
+  plan->findNodesOfType(nodes, type, true);
   for (auto const& n : nodes) {
-    auto geoRequestDescripton = identifyGeoOptimizationCandidate(EN::SORT, plan, n);
-    if(!geoRequestDescripton){
+    auto geoIndexInfo = identifyGeoOptimizationCandidate(type, plan, n);
+    if(!geoIndexInfo){
       continue;
     }
+    infos.push_back(std::move(geoIndexInfo));
     LOG_TOPIC(DEBUG, Logger::DEVEL) << "  FOUND NEAR OR WITHIN";
-    if (applyGeoOptimization(true, plan, n, geoRequestDescripton, true)){
-      modified = true;
-    }
   }
 }
 
@@ -4258,9 +4263,16 @@ void arangodb::aql::optimizeGeoIndexRule(Optimizer* opt,
 
   LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER GEO RULE";
 
+  std::vector<GeoIndexInfo> infos;
+  checkNodesForGeoOptimization(EN::SORT, plan, infos);
+  checkNodesForGeoOptimization(EN::FILTER, plan, infos);
+  
   bool modified = false;
-  checkNodesForGeoOptimization(EN::SORT, plan, modified);
-  checkNodesForGeoOptimization(EN::FILTER, plan, modified);
+  for(auto& info : infos){
+  if (applyGeoOptimization(true, plan, info, true)){
+      modified = true;
+  }
+  }
   opt->addPlan(plan, rule, modified);
 
   LOG_TOPIC(DEBUG, Logger::DEVEL) << "EXIT GEO RULE";
