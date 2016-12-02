@@ -3922,27 +3922,30 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
 
 // GEO RULES //////////////////////////////////////////////////////////////////
 struct GeoIndexInfo{
-  operator bool() const { return node; }
+  operator bool() const { return node && valid; }
+  void invalidate() { valid = false; }
   GeoIndexInfo()
     : collectionNode(nullptr)
-    , sortOrFilterNode(nullptr)
+    , executionNode(nullptr)
     , collection(nullptr)
     , node(nullptr)
     , index(nullptr)
     , range(0)
+    , executionNodeType(EN::ILLEGAL)
     , within(false)
     , lessgreaterequal(false)
-    , invalid(false)
+    , valid(true)
     {}
   EnumerateCollectionNode* collectionNode;
-  ExecutionNode* sortOrFilterNode;
+  ExecutionNode* executionNode;
   Collection const* collection;
   AstNode const* node;
   std::shared_ptr<arangodb::Index> index;
   double range;
+  ExecutionNode::NodeType executionNodeType;
   bool within;
   bool lessgreaterequal;
-  bool invalid; //use it
+  bool valid; //use it
   std::vector<std::string> longitude;
   std::vector<std::string> latitude;
 };
@@ -3977,15 +3980,16 @@ std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan, GeoIndexInfo& 
   return condition;
 }
 
-static boost::optional<GeoIndexInfo>
-geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionNode* ex, ExecutionPlan* plan, GeoIndexInfo info){
+GeoIndexInfo
+geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionPlan* plan, GeoIndexInfo info){
   using SV = std::vector<std::string>;
   LOG_TOPIC(DEBUG, Logger::DEVEL) << "    enter argument check";
   // first and second should be based on the same document - need to provide the document
   // in order to see which collection is bound to it and if that collections supports geo-index
   if( !pair.first->isAttributeAccessForVariable() || !pair.second->isAttributeAccessForVariable()){
     LOG_TOPIC(DEBUG, Logger::DEVEL) << "      not both args are of type attribute access";
-    return boost::none;
+    info.invalidate();
+    return info;
   }
 
   // expect access of the for doc.attribute
@@ -4040,7 +4044,8 @@ geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionN
     }
   }
 
-  return boost::none;
+  info.invalidate();
+  return info;
 }
 
 
@@ -4053,8 +4058,8 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& info, bo
   std::pair<AstNode*,AstNode*> argPair1 = { functionArguments->getMember(0), functionArguments->getMember(1) };
   std::pair<AstNode*,AstNode*> argPair2 = { functionArguments->getMember(2), functionArguments->getMember(3) };
 
-  auto result1 = geoDistanceFunctionArgCheck(argPair1, info.sortOrFilterNode, plan, info);
-  auto result2 = geoDistanceFunctionArgCheck(argPair2, info.sortOrFilterNode, plan, info);
+  auto result1 = geoDistanceFunctionArgCheck(argPair1, plan, info);
+  auto result2 = geoDistanceFunctionArgCheck(argPair2, plan, info);
 
   // xor only one argument pair shall have a geoIndex
   if (  ( !result1 && !result2 ) || ( result1 && result2 ) ){
@@ -4066,10 +4071,10 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& info, bo
   std::pair<AstNode*,AstNode*>* constantPair;
   GeoIndexInfo res;
   if(result1){
-    res = std::move(result1.get());
+    res = std::move(result1);
     constantPair = &argPair2;
   } else {
-    res = std::move(result2.get());
+    res = std::move(result2);
     constantPair = &argPair1;
   }
 
@@ -4098,7 +4103,9 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& info, bo
   plan->registerNode(inode);
   condition.release();
 
-  plan->unlinkNode(info.sortOrFilterNode);
+  if(info.executionNodeType == EN::SORT){
+    plan->unlinkNode(info.executionNode);
+  }
   plan->replaceNode(cnode,inode);
 
   //signal that plan has been changed
@@ -4226,19 +4233,20 @@ GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, Exec
   switch(type){
     case EN::SORT: {
       rv = isDistanceFunction(node);
-      rv.sortOrFilterNode = n;
     }
     break;
 
     case EN::FILTER: {
       rv = isGeoFilterExpression(node);
-      rv.sortOrFilterNode = n;
     }
     break;
 
     default:
-      ;
+      rv.invalidate(); // not required but make sure the result is invalid
   }
+
+  rv.executionNode = n;
+  rv.executionNodeType = type;
 
   return rv;
 };
