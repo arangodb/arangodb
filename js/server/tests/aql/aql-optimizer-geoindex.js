@@ -196,6 +196,7 @@ function optimizerRuleTestSuite() {
 
         queries.forEach(function(query, qindex) {
           var result = AQL_EXECUTE(query[0]);
+          expect(expected[qindex].length).to.be.equal(result.json.length)
           pairs = result.json.map(function(res){
               return [res.lat,res.lon];
           });
