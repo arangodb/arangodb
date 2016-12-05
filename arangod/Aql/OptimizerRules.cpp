@@ -4116,12 +4116,12 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& info){
   return true;
 };
 
-AstNode const* isValueOrRefNode(AstNode const* node){
+AstNode* isValueOrRefNode(AstNode* node){
   //TODO - implement me
   return node;
 }
 
-GeoIndexInfo isDistanceFunction(AstNode const* node, bool inSubCondition){
+GeoIndexInfo isDistanceFunction(AstNode* node, bool inSubCondition){
   // the expression must exist and it must be a function call
   auto rv = GeoIndexInfo{};
   if(node->type != NODE_TYPE_FCALL) {
@@ -4142,17 +4142,17 @@ GeoIndexInfo isDistanceFunction(AstNode const* node, bool inSubCondition){
   return rv;
 }
 
-GeoIndexInfo iterativePreorderWithCondition(AstNode const* root, GeoIndexInfo(*condition)(AstNode const*, bool)){
+GeoIndexInfo iterativePreorderWithCondition(AstNode* root, GeoIndexInfo(*condition)(AstNode*, bool)){
   // returns on first hit
   if (!root){
     return GeoIndexInfo{};
   }
   bool inSubCondition = false;
-  std::vector<AstNode const*> nodestack;
+  std::vector<AstNode*> nodestack;
   nodestack.push_back(root);
 
   while(nodestack.size()){
-    AstNode const* current = nodestack.back();
+    AstNode* current = nodestack.back();
     nodestack.pop_back();
     GeoIndexInfo rv = condition(current,inSubCondition);
     inSubCondition = true; // only false for root
@@ -4169,7 +4169,7 @@ GeoIndexInfo iterativePreorderWithCondition(AstNode const* root, GeoIndexInfo(*c
   return GeoIndexInfo{};
 }
 
-GeoIndexInfo isGeoFilterExpression(AstNode const* node, bool inSubCondition){
+GeoIndexInfo isGeoFilterExpression(AstNode* node, bool inSubCondition){
   // binary compare must be on top
   bool dist_first = true;
   bool lessEqual = true;
@@ -4197,12 +4197,13 @@ GeoIndexInfo isGeoFilterExpression(AstNode const* node, bool inSubCondition){
   }
   //LOG_TOPIC(DEBUG, Logger::DEVEL) << "operator has 2 members";
 
-  auto first = node->getMember(0);
-  auto second = node->getMember(1);
+
+  AstNode* first = node->getMember(0);
+  AstNode* second = node->getMember(1); //FIXME -- const node
 
   node->dump(0);
 
-  auto eval_stuff = [](bool dist_first, bool lessEqual, GeoIndexInfo&& dist_fun, AstNode const* value_node){
+  auto eval_stuff = [](bool dist_first, bool lessEqual, GeoIndexInfo&& dist_fun, AstNode* value_node){
     //LOG_TOPIC(DEBUG, Logger::DEVEL) << "1: " << dist_first;
     //LOG_TOPIC(DEBUG, Logger::DEVEL) << "2: " << (bool)dist_fun;
     //LOG_TOPIC(DEBUG, Logger::DEVEL) << "3: " << (bool)value_node;
@@ -4216,6 +4217,7 @@ GeoIndexInfo isGeoFilterExpression(AstNode const* node, bool inSubCondition){
     }
     return dist_fun;
   };
+
 
   //LOG_TOPIC(DEBUG, Logger::DEVEL) << "frist check";
   rv = eval_stuff(dist_first, lessEqual, isDistanceFunction(first, inSubCondition), isValueOrRefNode(second));
@@ -4238,7 +4240,7 @@ GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, Exec
     case EN::SORT: {
       LOG_TOPIC(DEBUG, Logger::DEVEL) << "found sort node";
       auto node = static_cast<SortNode*>(n);
-      auto const& elements = node->getElements();
+      auto& elements = node->getElements();
 
       // we're looking for "SORT DISTANCE(x,y,a,b) ASC", which has just one sort criterion
       if ( !(elements.size() == 1 && elements[0].second)) {
@@ -4247,7 +4249,7 @@ GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, Exec
       }
 
       //variable of sort expression
-      auto const variable = elements[0].first;
+      auto variable = elements[0].first;
       TRI_ASSERT(variable != nullptr);
 
       //// find the expression that is bound to the variable
@@ -4283,14 +4285,14 @@ GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, Exec
 
   // downcast to calculation node and get expression
   auto cn = static_cast<CalculationNode*>(setter);
-  auto const expression = cn->expression();
+  auto expression = cn->expression();
 
   // the expression must exist and it must have an astNode
   if (expression == nullptr || expression->node() == nullptr){
     // not the right type of node
     return rv;
   }
-  AstNode const* node = expression->node();
+  AstNode* node = expression->nodeForModification();
 
 
   LOG_TOPIC(DEBUG, Logger::DEVEL) << "checking expression of calcaulation";
@@ -4322,7 +4324,7 @@ void checkNodesForGeoOptimization(ExecutionNode::NodeType type, ExecutionPlan* p
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, type, true);
-  for (auto const& n : nodes) {
+  for (auto& n : nodes) {
     auto geoIndexInfo = identifyGeoOptimizationCandidate(type, plan, n);
     if(!geoIndexInfo){
       continue;
