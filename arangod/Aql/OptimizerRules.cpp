@@ -4139,6 +4139,32 @@ GeoIndexInfo isDistanceFunction(AstNode const* node){
   return rv;
 }
 
+GeoIndexInfo iterativePreorderWithCondition(AstNode const* root, GeoIndexInfo(*condition)(AstNode const*)){
+  // returns on first hit
+  if (!root){
+    return GeoIndexInfo{};
+  }
+
+  std::vector<AstNode const*> nodestack;
+  nodestack.push_back(root);
+
+  while(nodestack.size()){
+    AstNode const* current = nodestack.back();
+    nodestack.pop_back();
+    GeoIndexInfo rv = condition(current);
+    if (rv) {
+      return rv;
+    }
+
+    if (current->type == NODE_TYPE_OPERATOR_BINARY_AND || current->type == NODE_TYPE_OPERATOR_NARY_AND ){
+      for (std::size_t i = 0; i < current->numMembers(); ++i){
+        nodestack.push_back(current->getMember(i));
+      }
+    }
+  }
+  return GeoIndexInfo{};
+}
+
 GeoIndexInfo isGeoFilterExpression(AstNode const* node){
   // binary compare must be on top
   bool dist_first = true;
@@ -4268,30 +4294,12 @@ GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, Exec
   //FIXME -- technical debt -- code duplication / not all cases covered
   switch(type){
     case EN::SORT: {
-      //iterate && and find frist candidate - this gets way more complex if we want to check more
-      auto ntype = node->type;
-      if ( ntype == NODE_TYPE_OPERATOR_BINARY_AND || ntype == NODE_TYPE_OPERATOR_NARY_AND){
-        for(std::size_t i = 0; i < node->numMembers(); ++i){
-          rv = isDistanceFunction(node->getMember(i));
-          if(rv) break;
-        }
-      } else {
-        rv = isDistanceFunction(node);
-      }
+      rv = isDistanceFunction(node);
     }
     break;
 
     case EN::FILTER: {
-      //iterate && and find frist candidate - this gets way more complex if we want to check more
-      auto ntype = node->type;
-      if ( ntype == NODE_TYPE_OPERATOR_BINARY_AND || ntype == NODE_TYPE_OPERATOR_NARY_AND){
-        for(std::size_t i = 0; i < node->numMembers(); ++i){
-          rv = isGeoFilterExpression(node->getMember(i));
-          if(rv) break;
-        }
-      } else {
-        rv = isGeoFilterExpression(node);
-      }
+      rv = iterativePreorderWithCondition(node,isGeoFilterExpression);
     }
     break;
 
