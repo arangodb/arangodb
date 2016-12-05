@@ -3919,8 +3919,9 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
 }
 
 
-
+///////////////////////////////////////////////////////////////////////////////
 // GEO RULES //////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 struct GeoIndexInfo{
   operator bool() const { return node && valid; }
   void invalidate() { valid = false; }
@@ -3950,41 +3951,231 @@ struct GeoIndexInfo{
   std::vector<std::string> latitude; // access path to latitude
 };
 
-std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info,
-                                             AstNode* lat, AstNode* lon, bool lessEqual = false, AstNode const* withRange = nullptr){
-  auto ast = plan->getAst();
-  auto varAstNode = ast->createNodeReference(info.collectionNode->outVariable());
+//////////////////////////////////////////////////////////////////////
+//candidate checking
 
-  auto nAryAnd = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
-  nAryAnd->reserve(withRange ? 4 : 2);
-
-  auto latKey = ast->createNodeAttributeAccess(varAstNode, "latitude",8);
-  auto latEq = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, latKey, lat);
-  nAryAnd->addMember(latEq);
-
-  auto lonKey = ast->createNodeAttributeAccess(varAstNode, "longitude",9);
-  auto lonEq = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, lonKey, lon);
-  nAryAnd->addMember(lonEq);
-
-  if(withRange){
-    auto withKey = ast->createNodeAttributeAccess(varAstNode, "within",6);
-    auto withEq = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, withKey, withRange);
-    nAryAnd->addMember(withEq);
-
-    auto lessKey = ast->createNodeAttributeAccess(varAstNode, "lesseq",6);
-    auto lessValue =  ast->createNodeValueBool(lessEqual);
-    auto lessEq  = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, lessKey, lessValue);
-    nAryAnd->addMember(lessEq);
-  }
-
-  auto unAryOr = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_OR, nAryAnd);
-
-  auto condition = std::make_unique<Condition>(ast);
-  condition->andCombine(unAryOr);
-  condition->normalize(plan);
-  return condition;
+AstNode* isValueOrRefNode(AstNode* node){
+  //TODO - implement me
+  return node;
 }
 
+GeoIndexInfo isDistanceFunction(AstNode* node, bool inSubCondition){
+  // the expression must exist and it must be a function call
+  auto rv = GeoIndexInfo{};
+  if(node->type != NODE_TYPE_FCALL) {
+    return rv;
+  }
+
+  //get the ast node of the expression
+  auto func = static_cast<Function const*>(node->getData());
+
+  // we're looking for "DISTANCE()", which is a function call
+  // with an empty parameters array
+  if ( func->externalName != "DISTANCE" || node->numMembers() != 1  ) {
+    return rv;
+  }
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "FOUND DISTANCE FUNCTION";
+  rv.node = node;
+  rv.inSubCondition = inSubCondition;
+  return rv;
+}
+
+GeoIndexInfo isGeoFilterExpression(AstNode* node, bool inSubCondition){
+  // binary compare must be on top
+  bool dist_first = true;
+  bool lessEqual = true;
+  auto rv = GeoIndexInfo{};
+  if(  node->type != NODE_TYPE_OPERATOR_BINARY_GE
+    && node->type != NODE_TYPE_OPERATOR_BINARY_GT
+    && node->type != NODE_TYPE_OPERATOR_BINARY_LE
+    && node->type != NODE_TYPE_OPERATOR_BINARY_LT) {
+
+    //LOG_TOPIC(DEBUG, Logger::DEVEL) << "expression does not contain <,<=,>=,>";
+    return rv;
+  } else {
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_GE || node->type == NODE_TYPE_OPERATOR_BINARY_GT){
+      dist_first = false;
+    }
+  }
+  if (node->type == NODE_TYPE_OPERATOR_BINARY_GT || node->type == NODE_TYPE_OPERATOR_BINARY_LT){
+    lessEqual = false;
+  }
+
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "binary operator found";
+  // binary expression has 2 members
+  if(node->numMembers() != 2){
+    return rv;
+  }
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "operator has 2 members";
+
+
+  AstNode* first = node->getMember(0);
+  AstNode* second = node->getMember(1); //FIXME -- const node
+
+  node->dump(0);
+
+  auto eval_stuff = [](bool dist_first, bool lessEqual, GeoIndexInfo&& dist_fun, AstNode* value_node){
+    //LOG_TOPIC(DEBUG, Logger::DEVEL) << "1: " << dist_first;
+    //LOG_TOPIC(DEBUG, Logger::DEVEL) << "2: " << (bool)dist_fun;
+    //LOG_TOPIC(DEBUG, Logger::DEVEL) << "3: " << (bool)value_node;
+    if (dist_first && dist_fun && value_node){
+      dist_fun.within = true;
+      dist_fun.range = value_node; //FIXME
+      dist_fun.lessgreaterequal = lessEqual;
+      //LOG_TOPIC(DEBUG, Logger::DEVEL) << "FOUND WITHIN";
+    } else {
+      dist_fun.invalidate();
+    }
+    return dist_fun;
+  };
+
+
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "frist check";
+  rv = eval_stuff(dist_first, lessEqual, isDistanceFunction(first, inSubCondition), isValueOrRefNode(second));
+  if (!rv) {
+    //LOG_TOPIC(DEBUG, Logger::DEVEL) << "second check";
+    rv = eval_stuff(dist_first, lessEqual, isDistanceFunction(second, inSubCondition), isValueOrRefNode(first));
+  }
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "result " << (bool) rv;
+
+  return rv;
+}
+
+GeoIndexInfo iterativePreorderWithCondition(AstNode* root, GeoIndexInfo(*condition)(AstNode*, bool)){
+  // returns on first hit
+  if (!root){
+    return GeoIndexInfo{};
+  }
+  bool inSubCondition = false;
+  std::vector<AstNode*> nodestack;
+  nodestack.push_back(root);
+
+  while(nodestack.size()){
+    AstNode* current = nodestack.back();
+    nodestack.pop_back();
+    GeoIndexInfo rv = condition(current,inSubCondition);
+    inSubCondition = true; // only false for root
+    if (rv) {
+      return rv;
+    }
+
+    if (current->type == NODE_TYPE_OPERATOR_BINARY_AND || current->type == NODE_TYPE_OPERATOR_NARY_AND ){
+      for (std::size_t i = 0; i < current->numMembers(); ++i){
+        nodestack.push_back(current->getMember(i));
+      }
+    }
+  }
+  return GeoIndexInfo{};
+}
+
+//checks a single sort or filter node
+GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, ExecutionPlan* plan, ExecutionNode* n){
+  ExecutionNode* setter = nullptr;
+  auto rv = GeoIndexInfo{};
+  //TODO - iterate over elements of conjunction / disjunction
+  LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER IDENTIFY";
+  switch(type){
+    case EN::SORT: {
+      LOG_TOPIC(DEBUG, Logger::DEVEL) << "found sort node";
+      auto node = static_cast<SortNode*>(n);
+      auto& elements = node->getElements();
+
+      // we're looking for "SORT DISTANCE(x,y,a,b) ASC", which has just one sort criterion
+      if ( !(elements.size() == 1 && elements[0].second)) {
+        //test on second makes sure the SORT is ascending
+        return rv;
+      }
+
+      //variable of sort expression
+      auto variable = elements[0].first;
+      TRI_ASSERT(variable != nullptr);
+
+      //// find the expression that is bound to the variable
+      // get the expression node that holds the calculation
+      setter = plan->getVarSetBy(variable->id);
+    }
+    break;
+
+    case EN::FILTER: {
+      LOG_TOPIC(DEBUG, Logger::DEVEL) << "found filter node";
+      auto node = static_cast<FilterNode*>(n);
+
+      // filter nodes always have one input variable
+       auto varsUsedHere = node->getVariablesUsedHere();
+      TRI_ASSERT(varsUsedHere.size() == 1);
+
+      // now check who introduced our variable
+      auto variable = varsUsedHere[0];
+      setter = plan->getVarSetBy(variable->id);
+    }
+    break;
+
+    default:
+      return rv;
+  }
+
+  // common part - extract astNode from setter witch is a calculation node
+  if (setter == nullptr || setter->getType() != EN::CALCULATION) {
+    return rv;
+  }
+  LOG_TOPIC(DEBUG, Logger::DEVEL) << "found setter node for calcuation";
+
+  // downcast to calculation node and get expression
+  auto cn = static_cast<CalculationNode*>(setter);
+  auto expression = cn->expression();
+
+  // the expression must exist and it must have an astNode
+  if (expression == nullptr || expression->node() == nullptr){
+    // not the right type of node
+    return rv;
+  }
+  AstNode* node = expression->nodeForModification();
+
+
+  LOG_TOPIC(DEBUG, Logger::DEVEL) << "checking expression of calcaulation";
+
+  //FIXME -- technical debt -- code duplication / not all cases covered
+  switch(type){
+    case EN::SORT: {
+      rv = isDistanceFunction(node,false);
+    }
+    break;
+
+    case EN::FILTER: {
+      rv = iterativePreorderWithCondition(node,isGeoFilterExpression);
+    }
+    break;
+
+    default:
+      LOG_TOPIC(DEBUG, Logger::DEVEL) << "expression is not valid for geoindex";
+      rv.invalidate(); // not required but make sure the result is invalid
+  }
+
+  rv.executionNode = n;
+  rv.executionNodeType = type;
+
+  return rv;
+};
+
+//checks sort and filter nodes for conditions
+void checkNodesForGeoOptimization(ExecutionNode::NodeType type, ExecutionPlan* plan, std::vector<GeoIndexInfo>& infos){
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, type, true);
+  for (auto& n : nodes) {
+    auto geoIndexInfo = identifyGeoOptimizationCandidate(type, plan, n);
+    if(!geoIndexInfo){
+      continue;
+    }
+    infos.push_back(std::move(geoIndexInfo));
+    //LOG_TOPIC(DEBUG, Logger::DEVEL) << "  FOUND NEAR OR WITHIN";
+  }
+}
+
+//////////////////////////////////////////////////////////////////////
+//modify plan
+
+// should go to candidate checking
 GeoIndexInfo geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionPlan* plan, GeoIndexInfo info){
   using SV = std::vector<std::string>;
   LOG_TOPIC(DEBUG, Logger::DEVEL) << "    enter argument check";
@@ -4051,7 +4242,44 @@ GeoIndexInfo geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pai
   return info;
 }
 
+// builds a condition that can be used with the index interface and
+// contains all parameters required by the GeoIndex 
+std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info,
+                                             AstNode* lat, AstNode* lon, bool lessEqual = false, AstNode const* withRange = nullptr){
+  auto ast = plan->getAst();
+  auto varAstNode = ast->createNodeReference(info.collectionNode->outVariable());
 
+  auto nAryAnd = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+  nAryAnd->reserve(withRange ? 4 : 2);
+
+  auto latKey = ast->createNodeAttributeAccess(varAstNode, "latitude",8);
+  auto latEq = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, latKey, lat);
+  nAryAnd->addMember(latEq);
+
+  auto lonKey = ast->createNodeAttributeAccess(varAstNode, "longitude",9);
+  auto lonEq = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, lonKey, lon);
+  nAryAnd->addMember(lonEq);
+
+  if(withRange){
+    auto withKey = ast->createNodeAttributeAccess(varAstNode, "within",6);
+    auto withEq = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, withKey, withRange);
+    nAryAnd->addMember(withEq);
+
+    auto lessKey = ast->createNodeAttributeAccess(varAstNode, "lesseq",6);
+    auto lessValue =  ast->createNodeValueBool(lessEqual);
+    auto lessEq  = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, lessKey, lessValue);
+    nAryAnd->addMember(lessEq);
+  }
+
+  auto unAryOr = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_OR, nAryAnd);
+
+  auto condition = std::make_unique<Condition>(ast);
+  condition->andCombine(unAryOr);
+  condition->normalize(plan);
+  return condition;
+}
+
+// applys the optimization for a candidate
 bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& info){
 
   // FIXME -- technical debt --  this code should go to the candidate finding /////////////////////
@@ -4115,224 +4343,6 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& info){
   //signal that plan has been changed
   return true;
 };
-
-AstNode* isValueOrRefNode(AstNode* node){
-  //TODO - implement me
-  return node;
-}
-
-GeoIndexInfo isDistanceFunction(AstNode* node, bool inSubCondition){
-  // the expression must exist and it must be a function call
-  auto rv = GeoIndexInfo{};
-  if(node->type != NODE_TYPE_FCALL) {
-    return rv;
-  }
-
-  //get the ast node of the expression
-  auto func = static_cast<Function const*>(node->getData());
-
-  // we're looking for "DISTANCE()", which is a function call
-  // with an empty parameters array
-  if ( func->externalName != "DISTANCE" || node->numMembers() != 1  ) {
-    return rv;
-  }
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "FOUND DISTANCE FUNCTION";
-  rv.node = node;
-  rv.inSubCondition = inSubCondition;
-  return rv;
-}
-
-GeoIndexInfo iterativePreorderWithCondition(AstNode* root, GeoIndexInfo(*condition)(AstNode*, bool)){
-  // returns on first hit
-  if (!root){
-    return GeoIndexInfo{};
-  }
-  bool inSubCondition = false;
-  std::vector<AstNode*> nodestack;
-  nodestack.push_back(root);
-
-  while(nodestack.size()){
-    AstNode* current = nodestack.back();
-    nodestack.pop_back();
-    GeoIndexInfo rv = condition(current,inSubCondition);
-    inSubCondition = true; // only false for root
-    if (rv) {
-      return rv;
-    }
-
-    if (current->type == NODE_TYPE_OPERATOR_BINARY_AND || current->type == NODE_TYPE_OPERATOR_NARY_AND ){
-      for (std::size_t i = 0; i < current->numMembers(); ++i){
-        nodestack.push_back(current->getMember(i));
-      }
-    }
-  }
-  return GeoIndexInfo{};
-}
-
-GeoIndexInfo isGeoFilterExpression(AstNode* node, bool inSubCondition){
-  // binary compare must be on top
-  bool dist_first = true;
-  bool lessEqual = true;
-  auto rv = GeoIndexInfo{};
-  if(  node->type != NODE_TYPE_OPERATOR_BINARY_GE
-    && node->type != NODE_TYPE_OPERATOR_BINARY_GT
-    && node->type != NODE_TYPE_OPERATOR_BINARY_LE
-    && node->type != NODE_TYPE_OPERATOR_BINARY_LT) {
-
-    //LOG_TOPIC(DEBUG, Logger::DEVEL) << "expression does not contain <,<=,>=,>";
-    return rv;
-  } else {
-    if (node->type == NODE_TYPE_OPERATOR_BINARY_GE || node->type == NODE_TYPE_OPERATOR_BINARY_GT){
-      dist_first = false;
-    }
-  }
-  if (node->type == NODE_TYPE_OPERATOR_BINARY_GT || node->type == NODE_TYPE_OPERATOR_BINARY_LT){
-    lessEqual = false;
-  }
-
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "binary operator found";
-  // binary expression has 2 members
-  if(node->numMembers() != 2){
-    return rv;
-  }
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "operator has 2 members";
-
-
-  AstNode* first = node->getMember(0);
-  AstNode* second = node->getMember(1); //FIXME -- const node
-
-  node->dump(0);
-
-  auto eval_stuff = [](bool dist_first, bool lessEqual, GeoIndexInfo&& dist_fun, AstNode* value_node){
-    //LOG_TOPIC(DEBUG, Logger::DEVEL) << "1: " << dist_first;
-    //LOG_TOPIC(DEBUG, Logger::DEVEL) << "2: " << (bool)dist_fun;
-    //LOG_TOPIC(DEBUG, Logger::DEVEL) << "3: " << (bool)value_node;
-    if (dist_first && dist_fun && value_node){
-      dist_fun.within = true;
-      dist_fun.range = value_node; //FIXME
-      dist_fun.lessgreaterequal = lessEqual;
-      //LOG_TOPIC(DEBUG, Logger::DEVEL) << "FOUND WITHIN";
-    } else {
-      dist_fun.invalidate();
-    }
-    return dist_fun;
-  };
-
-
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "frist check";
-  rv = eval_stuff(dist_first, lessEqual, isDistanceFunction(first, inSubCondition), isValueOrRefNode(second));
-  if (!rv) {
-    //LOG_TOPIC(DEBUG, Logger::DEVEL) << "second check";
-    rv = eval_stuff(dist_first, lessEqual, isDistanceFunction(second, inSubCondition), isValueOrRefNode(first));
-  }
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "result " << (bool) rv;
-
-  return rv;
-}
-
-
-GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, ExecutionPlan* plan, ExecutionNode* n){
-  ExecutionNode* setter = nullptr;
-  auto rv = GeoIndexInfo{};
-  //TODO - iterate over elements of conjunction / disjunction
-  LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER IDENTIFY";
-  switch(type){
-    case EN::SORT: {
-      LOG_TOPIC(DEBUG, Logger::DEVEL) << "found sort node";
-      auto node = static_cast<SortNode*>(n);
-      auto& elements = node->getElements();
-
-      // we're looking for "SORT DISTANCE(x,y,a,b) ASC", which has just one sort criterion
-      if ( !(elements.size() == 1 && elements[0].second)) {
-        //test on second makes sure the SORT is ascending
-        return rv;
-      }
-
-      //variable of sort expression
-      auto variable = elements[0].first;
-      TRI_ASSERT(variable != nullptr);
-
-      //// find the expression that is bound to the variable
-      // get the expression node that holds the calculation
-      setter = plan->getVarSetBy(variable->id);
-    }
-    break;
-
-    case EN::FILTER: {
-      LOG_TOPIC(DEBUG, Logger::DEVEL) << "found filter node";
-      auto node = static_cast<FilterNode*>(n);
-
-      // filter nodes always have one input variable
-       auto varsUsedHere = node->getVariablesUsedHere();
-      TRI_ASSERT(varsUsedHere.size() == 1);
-
-      // now check who introduced our variable
-      auto variable = varsUsedHere[0];
-      setter = plan->getVarSetBy(variable->id);
-    }
-    break;
-
-    default:
-      return rv;
-  }
-
-
-  // common part - extract astNode from setter witch is a calculation node
-  if (setter == nullptr || setter->getType() != EN::CALCULATION) {
-    return rv;
-  }
-  LOG_TOPIC(DEBUG, Logger::DEVEL) << "found setter node for calcuation";
-
-  // downcast to calculation node and get expression
-  auto cn = static_cast<CalculationNode*>(setter);
-  auto expression = cn->expression();
-
-  // the expression must exist and it must have an astNode
-  if (expression == nullptr || expression->node() == nullptr){
-    // not the right type of node
-    return rv;
-  }
-  AstNode* node = expression->nodeForModification();
-
-
-  LOG_TOPIC(DEBUG, Logger::DEVEL) << "checking expression of calcaulation";
-
-  //FIXME -- technical debt -- code duplication / not all cases covered
-  switch(type){
-    case EN::SORT: {
-      rv = isDistanceFunction(node,false);
-    }
-    break;
-
-    case EN::FILTER: {
-      rv = iterativePreorderWithCondition(node,isGeoFilterExpression);
-    }
-    break;
-
-    default:
-      LOG_TOPIC(DEBUG, Logger::DEVEL) << "expression is not valid for geoindex";
-      rv.invalidate(); // not required but make sure the result is invalid
-  }
-
-  rv.executionNode = n;
-  rv.executionNodeType = type;
-
-  return rv;
-};
-
-void checkNodesForGeoOptimization(ExecutionNode::NodeType type, ExecutionPlan* plan, std::vector<GeoIndexInfo>& infos){
-  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, type, true);
-  for (auto& n : nodes) {
-    auto geoIndexInfo = identifyGeoOptimizationCandidate(type, plan, n);
-    if(!geoIndexInfo){
-      continue;
-    }
-    infos.push_back(std::move(geoIndexInfo));
-    //LOG_TOPIC(DEBUG, Logger::DEVEL) << "  FOUND NEAR OR WITHIN";
-  }
-}
 
 void arangodb::aql::geoIndexRule(Optimizer* opt,
                                          ExecutionPlan* plan,
