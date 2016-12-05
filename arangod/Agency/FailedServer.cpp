@@ -130,14 +130,23 @@ bool FailedServer::start() {
       auto cdatabase = current.at(database.first)->children();
 
       for (auto const& collptr : database.second->children()) {
-        Node const& collection = *(collptr.second);
+        auto const& collection = *(collptr.second);
         
         if (!cdatabase.find(collptr.first)->second->children().empty()) {
-          Node const& collection = *(collptr.second);
-          Node const& replicationFactor = collection("replicationFactor");
+
+          auto const& collection = *(collptr.second);
+          auto const& replicationFactor = collection("replicationFactor");
+
           if (replicationFactor.slice().getUInt() > 1) {
-            auto available = availableServers();
+
+            bool isClone = false;
+            try { // Clone
+              if(!collection("distributeShardsLike").slice().copyString().empty()) {
+                isClone = true;
+              }
+            } catch (...) {} // Not clone
             
+            auto available = availableServers();
               
             for (auto const& shard : collection("shards").children()) {
 
@@ -167,7 +176,7 @@ bool FailedServer::start() {
                 ++pos;
               }
 
-              if (found && available.size() > 0) {
+              if (found && !available.empty() > 0 && !isClone) {
                 auto randIt = available.begin();
                 std::advance(randIt, std::rand() % available.size());
                 FailedFollower(

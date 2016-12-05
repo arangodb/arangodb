@@ -177,3 +177,23 @@ std::vector<std::string> Job::availableServers() const {
   return ret;
   
 }
+
+std::vector<std::string> Job::clones(Node const& snapshot,
+                                     std::string const& database,
+                                     std::string const& collection) {
+
+  std::vector<std::string> ret;
+  std::string databasePath = planColPrefix + database;
+  try {
+    for (const auto& colptr : snapshot(databasePath).children()) { // databases
+      try {
+        auto const col = *colptr.second;
+        if (col("distributeShardsLike").slice().copyString() == collection) {
+          ret.push_back(colptr.first);
+        }
+      } catch(...) {}
+    }
+  } catch (...) {}
+  return ret;
+  
+}

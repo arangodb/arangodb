@@ -368,7 +368,7 @@ bool Inception::estimateRAFTInterval() {
   auto config = _agent->config();
 
   auto myid = _agent->id();
-  double to = 0.25;
+  auto to = std::chrono::duration<double,std::milli>(1.0); // 
 
   for (size_t i = 0; i < nrep; ++i) {
     for (auto const& peer : config.pool()) {
@@ -383,7 +383,7 @@ bool Inception::estimateRAFTInterval() {
           2.0, true);
       }
     }
-    std::this_thread::sleep_for(std::chrono::duration<double,std::milli>(to));
+    std::this_thread::sleep_for(to);
     to *= 1.01;
   }
 

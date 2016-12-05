@@ -111,6 +111,10 @@ struct Job {
 
   virtual std::vector<std::string> availableServers() const;
 
+  static std::vector<std::string> clones(
+    Node const& snapshot, std::string const& database,
+    std::string const& collection);
+
   Node const _snapshot;
   Agent* _agent;
   std::string _jobId;

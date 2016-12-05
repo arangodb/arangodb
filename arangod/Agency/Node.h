@@ -217,6 +217,9 @@ class Node {
   /// @brief Get string value (throws if type NODE or if conversion fails)
   std::string getString() const;
 
+  /// @brief Get array value
+  Slice getArray() const;
+
  protected:
   /// @brief Add time to live entry
   virtual bool addTimeToLive(long millis);
@@ -231,8 +234,7 @@ class Node {
   Store* _store;           ///< @brief Store
   Children _children;      ///< @brief child nodes
   TimePoint _ttl;          ///< @brief my expiry
-  // Buffer<uint8_t> _value; ///< @brief my value
-  std::vector<Buffer<uint8_t>> _value;  ///< @brief my value
+  std::vector<Buffer<uint8_t>> _value; ///< @brief my value
   mutable Buffer<uint8_t> _vecBuf;
   mutable bool _vecBufDirty;
   bool _isArray;
