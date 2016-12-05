@@ -5,6 +5,8 @@ description: "ArangoDB is a native multi-model database with flexible data model
   SQL-like query language or JavaScript extensions. https://www.arangodb.com"
 summary: ArangoDB3 Server - One Core. One Query Language. Multiple Data Models.
 
+icon: arangodb.png
+
 confinement: strict
 #confinement: devmode
 

@@ -1121,7 +1121,8 @@ function runArangoImp (options, instanceInfo, what) {
     'server.endpoint': instanceInfo.endpoint,
     'file': fs.join(TOP_DIR, what.data),
     'collection': what.coll,
-    'type': what.type
+    'type': what.type,
+    'on-duplicate': what.onDuplicate || 'error'
   };
 
   if (what.skipLines !== undefined) {
@@ -3093,6 +3094,20 @@ const impTodos = [{
   coll: 'UnitTestsImportEdge',
   type: 'json',
   create: 'false'
+}, {
+  id: 'unique',
+  data: makePathUnix('js/common/test-data/import/import-ignore.json'),
+  coll: 'UnitTestsImportIgnore',
+  type: 'json',
+  create: 'false',
+  onDuplicate: 'ignore'
+}, {
+  id: 'unique',
+  data: makePathUnix('js/common/test-data/import/import-unique-constraints.json'),
+  coll: 'UnitTestsImportUniqueConstraints',
+  type: 'json',
+  create: 'false',
+  onDuplicate: 'replace'
 }];
 
 testFuncs.importing = function (options) {

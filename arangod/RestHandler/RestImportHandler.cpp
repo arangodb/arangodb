@@ -959,6 +959,13 @@ int RestImportHandler::performImport(SingleCollectionTransaction& trx,
             ++result._numUpdated;
           } else {
             int errorCode = it.get("errorNum").getNumber<int>();
+
+            if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+              // "not found" can only occur when the original insert did not
+              // succeed because of a unique key constraint violation 
+              // otherwise the document should be there
+              errorCode = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+            }
             makeError(originalPositions[pos], errorCode,
                       babies.slice().at(originalPositions[pos]), result);
             if (complete) {
