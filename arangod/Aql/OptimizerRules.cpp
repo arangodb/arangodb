@@ -4300,7 +4300,7 @@ void checkNodesForGeoOptimization(ExecutionNode::NodeType type, ExecutionPlan* p
   }
 }
 
-void arangodb::aql::optimizeGeoIndexRule(Optimizer* opt,
+void arangodb::aql::geoIndexRule(Optimizer* opt,
                                          ExecutionPlan* plan,
                                          Optimizer::Rule const* rule) {
 

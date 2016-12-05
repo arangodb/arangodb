@@ -486,8 +486,8 @@ void Optimizer::setupRules() {
                patchUpdateStatementsRule_pass9, DoesNotCreateAdditionalPlans, true);
 
   // patch update statements
-  registerRule("geo-index-optimizer", optimizeGeoIndexRule,
-               geoDistanceRule, DoesNotCreateAdditionalPlans, true);
+  registerRule("geo-index-optimizer", geoIndexRule,
+               applyGeoIndexRule, DoesNotCreateAdditionalPlans, true);
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
     // distribute operations in cluster

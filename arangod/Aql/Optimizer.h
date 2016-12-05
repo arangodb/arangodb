@@ -145,6 +145,8 @@ class Optimizer {
     // remove redundant OR conditions
     removeRedundantOrRule_pass6 = 820,
 
+    applyGeoIndexRule = 1060,
+
     useIndexesRule_pass6 = 830,
 
     // try to remove filters covered by index ranges
@@ -192,9 +194,8 @@ class Optimizer {
     removeUnnecessaryRemoteScatterRule_pass10 = 1040,
 
     // recognize that a RemoveNode can be moved to the shards
-    undistributeRemoveAfterEnumCollRule_pass10 = 1050,
+    undistributeRemoveAfterEnumCollRule_pass10 = 1050
 
-    geoDistanceRule = 1060
   };
 
  public:
