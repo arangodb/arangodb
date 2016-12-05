@@ -3940,8 +3940,8 @@ struct GeoIndexInfo{
     {}
   EnumerateCollectionNode* collectionNode; // node that will be replaced by (geo) IndexNode
   ExecutionNode* executionNode; // start node hat is a sort or filter
-  AstNode const* expressionNode; // AstNode that contains the sort/filter condition
-  AstNode const* distanceNode; // AstNode that contains the distance parameters
+  AstNode* expressionNode; // AstNode that contains the sort/filter condition
+  AstNode* distanceNode; // AstNode that contains the distance parameters
   std::shared_ptr<arangodb::Index> index; //pointer to geoindex
   AstNode const* range; // range for within
   ExecutionNode::NodeType executionNodeType; // type of execution node sort or filter
@@ -4285,6 +4285,18 @@ std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan, GeoIndexInfo& 
   return condition;
 }
 
+//replaces the geoCondition with true.
+//void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info){
+void replaceGeoCondition(GeoIndexInfo& info){
+  //auto ast = plan->getAst();
+  //ast->createNodeValueBool(true);
+  if( info.inSubCondition ) {
+    info.expressionNode->clearMembers();
+    info.expressionNode->setValueType(VALUE_TYPE_BOOL);
+    info.expressionNode->setBoolValue(true);
+  }
+}
+
 // applys the optimization for a candidate
 bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& info){
 
@@ -4340,6 +4352,8 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& info){
           condition.get(), false);
   plan->registerNode(inode);
   condition.release();
+
+  //replaceGeoCondition(info);
 
   if(info.executionNodeType == EN::SORT){
     plan->unlinkNode(info.executionNode);
