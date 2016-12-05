@@ -84,9 +84,15 @@ RestStatus RestPregelHandler::execute() {
                       TRI_ERROR_HTTP_FORBIDDEN);
         return RestStatus::DONE;
       }
-      LOG(INFO) << "creating worker";
       w = AlgoRegistry::createWorker(_vocbase, body);
       PregelFeature::instance()->addWorker(w, executionNumber);
+    } else if (suffix[0] == Utils::finishedStartupPath) {
+      Conductor *exe = PregelFeature::instance()->conductor(executionNumber);
+      if (exe) {
+        exe->finishedWorkerStartup(body);
+      } else {
+        LOG(ERR) << "Conductor not found: " << executionNumber;
+      }
     } else if (suffix[0] == Utils::prepareGSSPath) {
       IWorker *w = PregelFeature::instance()->worker(executionNumber);
       if (w) {
@@ -125,12 +131,19 @@ RestStatus RestPregelHandler::execute() {
         exe->finalizeExecution(body);
         PregelFeature::instance()->cleanup(executionNumber);
       }
-    } else if (suffix[0] == Utils::recoveryPath) {
+    } else if (suffix[0] == Utils::startRecoveryPath) {
       IWorker *w = PregelFeature::instance()->worker(executionNumber);
-      if (!w) {
+      if (!w) {// we will need to create a worker in these cicumstances
         w = AlgoRegistry::createWorker(_vocbase, body);
       }
       w->startRecovery(body);
+    } else if (suffix[0] == Utils::finishedRecoveryPath) {
+      Conductor *exe = PregelFeature::instance()->conductor(executionNumber);
+      if (exe) {
+        exe->finishedRecovery(body);
+      } else {
+        LOG(ERR) << "Conductor not found: " << executionNumber;
+      }
     }
     
     VPackSlice result;

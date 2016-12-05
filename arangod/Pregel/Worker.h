@@ -59,6 +59,8 @@ class VertexEntry;
   
 template <typename V, typename E, typename M>
 class VertexContext;
+  
+  
 
 template <typename V, typename E, typename M>
 class Worker : public IWorker {
@@ -92,7 +94,7 @@ class Worker : public IWorker {
   void _executeGlobalStep(RangeIterator<VertexEntry> &vertexIterator);
   void _workerThreadDone(AggregatorUsage *threadAggregators,
                          WorkerStats const& threadStats);
-  
+  void _callConductor(std::string path, VPackSlice message);
  public:
   Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algorithm,
          VPackSlice params);

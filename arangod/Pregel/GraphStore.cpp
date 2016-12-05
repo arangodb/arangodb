@@ -93,7 +93,11 @@ void GraphStore<V, E>::loadShards(WorkerState const& state) {
       // in the same shard index. x in vertexShard2 => E(x) in edgeShard2
       for (auto const& pair2 : edgeMap) {
         std::vector<ShardID> const& edgeShards = pair2.second;
-        TRI_ASSERT(vertexShards.size() == edgeShards.size());
+        
+        if (vertexShards.size() != edgeShards.size()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                         "Collections need to have the same number of shards");
+        }
         _loadVertices(state, vertexShards[i], edgeShards[i]);
         _loadedShards.insert(vertexShards[i]);
       }

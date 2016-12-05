@@ -50,11 +50,16 @@ class MasterContext {
   }
 
   virtual void preApplication(){};
-  virtual void betweenGlobalSuperstep(uint64_t gss){};
+  /// @brief called between supersteps
+  /// @return true to continue the computation
+  virtual bool betweenGlobalSuperstep(uint64_t gss) {return true;};
   virtual void postApplication(){};
 
-  virtual void preCompensation(uint64_t gss) {}
-  virtual void postCompensation(uint64_t gss) {}
+  /// should indicate if compensation is supposed to start by returning true
+  virtual bool preCompensation(uint64_t gss) {return true;}
+  /// should indicate if compensation is finished, by returning false.
+  /// otherwise workers will be called again with the aggregated values
+  virtual bool postCompensation(uint64_t gss) {return false;}
   
  public:
   MasterContext(VPackSlice params){};

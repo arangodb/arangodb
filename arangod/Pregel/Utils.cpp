@@ -36,12 +36,14 @@ using namespace arangodb::pregel;
 
 std::string const Utils::apiPrefix = "/_api/pregel/";
 std::string const Utils::startExecutionPath = "startExecution";
+std::string const Utils::finishedStartupPath = "finishedStartup";
 std::string const Utils::prepareGSSPath = "prepareGSS";
 std::string const Utils::startGSSPath = "startGSS";
 std::string const Utils::finishedGSSPath = "finishedGSS";
 std::string const Utils::messagesPath = "messages";
 std::string const Utils::finalizeExecutionPath = "finalizeExecution";
-std::string const Utils::recoveryPath = "reconfigure";
+std::string const Utils::startRecoveryPath = "startRecovery";
+std::string const Utils::finishedRecoveryPath = "finishedRecovery";
 
 std::string const Utils::executionNumberKey = "exn";
 std::string const Utils::collectionPlanIdMapKey = "collectionPlanIdMap";
@@ -54,7 +56,6 @@ std::string const Utils::algorithmKey = "algorithm";
 std::string const Utils::globalSuperstepKey = "gss";
 std::string const Utils::messagesKey = "msgs";
 std::string const Utils::senderKey = "sender";
-std::string const Utils::doneKey = "done";
 std::string const Utils::recoveryMethodKey = "rmethod";
 std::string const Utils::compensate = "compensate";
 std::string const Utils::rollback = "rollback";

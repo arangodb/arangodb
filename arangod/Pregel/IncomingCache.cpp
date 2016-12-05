@@ -61,7 +61,7 @@ void IncomingCache<M>::parseMessages(VPackSlice incomingMessages) {
   for (VPackSlice current : VPackArrayIterator(incomingMessages)) {
     if (i % 3 == 0) {
       shard = (prgl_shard_t) current.getUInt();
-    } if (i % 3 == 1) {  // TODO support multiple recipients
+    } else if (i % 3 == 1) {  // TODO support multiple recipients
       key = current.copyString();
     } else {
       M newValue;
@@ -99,7 +99,7 @@ void IncomingCache<M>::mergeCache(IncomingCache<M> const& otherCache) {
   for (auto const& pair : otherCache._shardMap) {
     std::unordered_map<std::string, M> &vertexMap = _shardMap[pair.first];
     
-    for (auto const& vertexMessage : vertexMap) {
+    for (auto &vertexMessage : pair.second) {
       auto vmsg = vertexMap.find(vertexMessage.first);
       if (vmsg != vertexMap.end()) {  // got a message for the same vertex
         vmsg->second = _combiner->combine(vmsg->second, vertexMessage.second);

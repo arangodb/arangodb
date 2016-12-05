@@ -96,6 +96,7 @@ void OutgoingCache<M>::flushMessages() {
     package.openObject();
     package.add(Utils::messagesKey, VPackValue(VPackValueType::Array));
     for (auto const& vertexMessagePair : vertexMessageMap) {
+      package.add(VPackValue(shard));
       package.add(VPackValue(vertexMessagePair.first));
       _format->addValue(package, vertexMessagePair.second);
       _sendMessages++;

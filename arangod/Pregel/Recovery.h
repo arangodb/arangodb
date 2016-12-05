@@ -43,19 +43,20 @@ class RecoveryManager {
   Mutex _lock;
   AgencyComm _agency;
   AgencyCallbackRegistry *_agencyCallbackRegistry;//weak
-  double _lastHealthCheck = 0;
   
   std::map<ShardID, std::set<Conductor*>> _listeners;
   std::map<ShardID, ServerID> _primaryServer;
   std::map<ShardID, std::shared_ptr<AgencyCallback>> _agencyCallbacks;
+  
+  void _monitorShard(CollectionID const& cid, ShardID const& shard);
   
  public:
   RecoveryManager(AgencyCallbackRegistry *registry);
   ~RecoveryManager();
 
   void monitorCollections(std::vector<std::shared_ptr<LogicalCollection>> const& collections, Conductor*);
-  void monitorShard(CollectionID const& cid, ShardID const& shard);
   void stopMonitoring(Conductor*);
+  int filterGoodServers(std::vector<ServerID> const& servers, std::set<ServerID> &goodServers);
   //bool allServersAvailable(std::vector<ServerID> const& dbServers);
 };
   

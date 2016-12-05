@@ -54,9 +54,9 @@ IWorker* AlgoRegistry::createWorker(TRI_vocbase_t* vocbase, VPackSlice body) {
   }
   
   VPackSlice userParams = body.get(Utils::userParametersKey);
-  if (algorithm.compareString("sssp") == 0) {
+  if (algorithm.compareString("SSSP") == 0) {
     return createWorker(vocbase, new algos::SSSPAlgorithm(userParams), body);
-  } else if (algorithm.compareString("pagerank") == 0) {
+  } else if (algorithm.compareString("PageRank") == 0) {
     return createWorker(vocbase, new algos::PageRankAlgorithm(userParams), body);
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,

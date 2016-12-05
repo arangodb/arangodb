@@ -34,11 +34,12 @@ namespace arangodb {
 namespace pregel {
 
 class Aggregator {
+  bool _permanent;
   Aggregator(const Aggregator&) = delete;
   Aggregator& operator=(const Aggregator&) = delete;
 
  public:
-  Aggregator() {}
+  Aggregator(bool perm = false) : _permanent(perm) {}
   virtual ~Aggregator() {}
 
   /// @brief Value from superstep S-1 supplied by the conductor
@@ -49,10 +50,12 @@ class Aggregator {
   // virtual void setValue(VPackSlice slice) = 0;
   virtual VPackValue vpackValue() = 0;
 
-  virtual void reset() = 0;
+  virtual void reset() {};
+  virtual bool isPermanent() {return _permanent;}
 };
 
 class FloatMaxAggregator : public Aggregator {
+  float _value, _initial;
  public:
   FloatMaxAggregator(float init) : _value(init), _initial(init) {}
 
@@ -72,10 +75,30 @@ class FloatMaxAggregator : public Aggregator {
   VPackValue vpackValue() override { return VPackValue((double)_value); };
 
   void reset() override { _value = _initial; }
-
- private:
-  float _value, _initial;
 };
+
+template<typename T>
+class ValueAggregator : public Aggregator {
+  static_assert(std::is_arithmetic<T>::value, "Type must be numeric");
+  
+  T _value;
+public:
+  ValueAggregator(T val) : Aggregator(true), _value(val) {}
+  
+  void aggregate(void const* valuePtr) override {
+    _value = *((T*)valuePtr);
+  };
+  void aggregate(VPackSlice slice) override {
+    _value = slice.getNumber<T>();
+  }
+  
+  void const* getValue() const override { return &_value; };
+  /*void setValue(VPackSlice slice) override {
+   _value = (float)slice.getDouble();
+   }*/
+  VPackValue vpackValue() override { return VPackValue(_value); };
+};
+  
 }
 }
 #endif

@@ -1,13 +1,7 @@
 /* jshint strict: false */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief traversal actions
-// /
-// / @file
-// /
 // / DISCLAIMER
-// /
-// / Copyright 2014 ArangoDB GmbH, Cologne, Germany
 // /
 // / Licensed under the Apache License, Version 2.0 (the "License")
 // / you may not use this file except in compliance with the License.
@@ -23,9 +17,8 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Jan Steemann
-// / @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-// / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
+// / @author Simon Grätzer
+// / @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var arangodb = require('@arangodb');
@@ -72,10 +65,10 @@ function post_api_pregel (req, res) {
   
   var params = json.params || {};
   if (json.vertexCollections && json.vertexCollections instanceof Array
-      && json.edgeCollection && typeof json.edgeCollection === 'string') {
+      && json.edgeCollections && typeof json.edgeCollection === 'string') {
     
     var executionNum = db._pregelStart(json.vertexCollections,
-                                       json.edgeCollection,
+                                       json.edgeCollections,
                                        json.algorithm,
                                        params);
     actions.resultOk(req, res, actions.HTTP_OK, executionNum);
@@ -90,9 +83,9 @@ function post_api_pregel (req, res) {
       }
       var edges = graph._edgeCollections();
       if (edges.length > 0) {
-        var edgeCollection = edges[0].name()
+        var edgeCollections = edges.map(e => e.name());
         var executionNum = db._pregelStart(vertexCollections,
-                                           edgeCollection,
+                                           edgeCollections,
                                            json.algorithm,
                                            params);
         actions.resultOk(req, res, actions.HTTP_OK, executionNum);

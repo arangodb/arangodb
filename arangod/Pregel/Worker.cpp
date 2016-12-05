@@ -47,22 +47,40 @@ template <typename V, typename E, typename M>
 Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
                         VPackSlice initConfig)
     : _running(true), _state(vocbase->name(), initConfig), _algorithm(algo) {
+      
   VPackSlice userParams = initConfig.get(Utils::userParametersKey);
   _workerContext.reset(algo->workerContext(userParams));
-  _graphStore.reset(
-      new GraphStore<V, E>(vocbase, _state, algo->inputFormat()));
   _messageFormat.reset(algo->messageFormat());
   _messageCombiner.reset(algo->messageCombiner());
   _readCache.reset(new IncomingCache<M>(_messageFormat.get(), _messageCombiner.get()));
   _writeCache.reset(new IncomingCache<M>(_messageFormat.get(), _messageCombiner.get()));
   _conductorAggregators.reset(new AggregatorUsage(algo));
   _workerAggregators.reset(new AggregatorUsage(algo));
-
-  if (_workerContext) {
-    _workerContext->_conductorAggregators = _conductorAggregators.get();
-    _workerContext->_workerAggregators = _workerAggregators.get();
-    _workerContext->preApplication();
-  }
+  
+  uint64_t vc = initConfig.get(Utils::totalVertexCount).getUInt(),
+      ec = initConfig.get(Utils::totalEdgeCount).getUInt();
+      
+  // initialization of the graphstore might take an undefined amount
+  // of time. Therefore this is performed asynchronous
+  ThreadPool *pool = PregelFeature::instance()->threadPool();
+  pool->enqueue([this, vocbase, vc, ec] {
+    _graphStore.reset(new GraphStore<V, E>(vocbase, _state,
+                                           _algorithm->inputFormat()));
+    if (_workerContext) {
+      _workerContext->_conductorAggregators = _conductorAggregators.get();
+      _workerContext->_workerAggregators = _workerAggregators.get();
+      _workerContext->_vertexCount = vc;
+      _workerContext->_edgeCount = ec;
+      _workerContext->preApplication();
+      
+      VPackBuilder package;
+      package.openObject();
+      package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
+      package.add(Utils::executionNumberKey, VPackValue(_state.executionNumber()));
+      package.close();
+      _callConductor(Utils::finishedStartupPath, package.slice());
+    }
+  });
 }
 
 template <typename V, typename E, typename M>
@@ -145,6 +163,7 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
   size_t delta = total / pool->numThreads();
   size_t start = 0, end = delta;
   _runningThreads = total / delta;//rounds-up unsigned integers
+  unsigned i = 0;
   do {
     pool->enqueue([this, start, end] {
       if (!_running) {
@@ -159,7 +178,11 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
     if (total < delta+end) {// swallow the rest
       end = total;
     }
+    i++;
   } while(start != total);
+  if (i != total / delta) {
+    LOG(ERR) << "FFFFFUUUUU";
+  }
 }
 
 template <typename V, typename E, typename M>
@@ -261,28 +284,18 @@ void Worker<V, E, M>::_workerThreadDone(AggregatorUsage *threadAggregators,
     package.close();
   }
   _superstepStats.serializeValues(package);// add stats
-  if (_superstepStats.activeCount == 0
+  /*if (_superstepStats.activeCount == 0
       && _superstepStats.sendCount == 0
       && _superstepStats.receivedCount == 0) {
     LOG(INFO) << "WE have no active vertices, and did not send messages";
     package.add(Utils::doneKey, VPackValue(true));
-  }
+  }*/
   package.close();
   _superstepStats.reset();// don't forget to reset at the end of the superstep
 
   // TODO ask how to implement message sending without waiting for a response
   // ============ Call Coordinator ============
-  ClusterComm* cc = ClusterComm::instance();
-  std::string baseUrl = Utils::baseUrl(_state.database());
-  CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
-  auto headers =
-      std::make_unique<std::unordered_map<std::string, std::string>>();
-  auto body = std::make_shared<std::string const>(package.toJson());
-  cc->asyncRequest("", coordinatorTransactionID,
-                   "server:" + _state.coordinatorId(), rest::RequestType::POST,
-                   baseUrl + Utils::finishedGSSPath, body, headers, nullptr,
-                   90.0,// timeout + single request
-                   true);
+  _callConductor(Utils::finishedGSSPath, package.slice());
 }
 
 template <typename V, typename E, typename M>
@@ -352,6 +365,22 @@ void Worker<V, E, M>::startRecovery(VPackSlice data) {
   } else if (method.compareString(Utils::rollback) == 0) {
     
   }
+}
+
+template <typename V, typename E, typename M>
+void Worker<V, E, M>::_callConductor(std::string path, VPackSlice message) {
+  
+  ClusterComm* cc = ClusterComm::instance();
+  std::string baseUrl = Utils::baseUrl(_state.database());
+  CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
+  auto headers =
+  std::make_unique<std::unordered_map<std::string, std::string>>();
+  auto body = std::make_shared<std::string const>(message.toJson());
+  cc->asyncRequest("", coordinatorTransactionID,
+                   "server:" + _state.coordinatorId(), rest::RequestType::POST,
+                   baseUrl + path, body, headers, nullptr,
+                   90.0,// timeout + single request
+                   true);
 }
 
 // template types to create

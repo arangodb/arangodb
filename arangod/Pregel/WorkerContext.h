@@ -57,10 +57,7 @@ class WorkerContext {
   virtual void postApplication(){};
   
  public:
-  WorkerContext(VPackSlice params) {
-    _vertexCount = params.get(Utils::totalVertexCount).getUInt();
-    _edgeCount = params.get(Utils::totalEdgeCount).getUInt();
-  };
+  WorkerContext(VPackSlice params) {};
 
   inline uint64_t vertexCount() const { return _vertexCount; }
 

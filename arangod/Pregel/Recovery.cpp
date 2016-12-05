@@ -67,19 +67,23 @@ void RecoveryManager::monitorCollections(std::vector<std::shared_ptr<LogicalColl
   for (auto const& coll : collections) {
     CollectionID cid = coll->cid_as_string();
     std::shared_ptr<std::vector<ShardID>> shards = ClusterInfo::instance()->getShardList(cid);
-    for (ShardID const& shard : *shards.get()) {
+    if (!shards) {
+      continue;
+    }
+    
+    for (ShardID const& shard : *(shards.get())) {
       std::set<Conductor*> &conductors = _listeners[shard];
       if (conductors.find(listener) != conductors.end()) {
         continue;
       }
       conductors.insert(listener);
-      monitorShard(cid, shard);
+      _monitorShard(cid, shard);
     }
   }
 }
 
-void RecoveryManager::monitorShard(CollectionID const& cid, ShardID const& shard) {
-
+void RecoveryManager::_monitorShard(CollectionID const& cid, ShardID const& shard) {
+  
   std::function<bool(VPackSlice const& result)> listener =
   [this](VPackSlice const& result) {
     /*if (result.isObject() && result.length() == (size_t)numberOfShards) {
@@ -131,4 +135,34 @@ void RecoveryManager::monitorShard(CollectionID const& cid, ShardID const& shard
     _agencyCallbacks.emplace(shard, call);
     _agencyCallbackRegistry->registerCallback(call);
   }
+}
+
+int RecoveryManager::filterGoodServers(std::vector<ServerID> const& servers, std::set<ServerID> &goodServers) {
+  
+  AgencyCommResult result = _agency.getValues("Supervision/Health");
+  if (result.successful()) {
+    VPackSlice serversRegistered =
+    result.slice()[0].get(std::vector<std::string>(
+                                                   {AgencyCommManager::path(), "Supervision", "Health"}));
+    
+    if (serversRegistered.isObject()) {
+      
+      for (auto const& res : VPackObjectIterator(serversRegistered)) {
+        VPackSlice serverId = res.key;
+        VPackSlice slice = res.value;
+        if (slice.isObject() && slice.hasKey("Status")) {
+          VPackSlice status = slice.get("Status");
+          if (status.compareString(consensus::Supervision::HEALTH_STATUS_GOOD)) {
+            ServerID name = serverId.copyString();
+            if (std::find(servers.begin(), servers.end(), name) != servers.end()) {
+              goodServers.insert(name);
+            }
+          }
+        }
+      }
+    }
+  } else {
+    return result.errorCode();
+  }
+  return TRI_ERROR_NO_ERROR;
 }

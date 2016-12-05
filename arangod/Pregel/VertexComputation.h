@@ -44,6 +44,7 @@ class VertexContext {
   WorkerContext* _context;
   GraphStore<V, E>* _graphStore;
   const AggregatorUsage* _conductorAggregators;
+  AggregatorUsage* _workerAggregators;
   VertexEntry* _vertexEntry;
 
  public:
@@ -51,6 +52,11 @@ class VertexContext {
   template <typename T>
   inline const T* getAggregatedValue(std::string const& name) {
     return (const T*)_conductorAggregators->getAggregatedValue(name);
+  }
+  
+  template <typename T>
+  inline void aggregate(std::string const& name, const T* valuePtr) {
+    _workerAggregators->aggregate(name, valuePtr);
   }
 
   inline WorkerContext const* context() { return _context; }
@@ -78,16 +84,8 @@ class VertexContext {
 template <typename V, typename E, typename M>
 class VertexComputation : public VertexContext<V, E, M> {
   friend class Worker<V, E, M>;
-  
   OutgoingCache<M>* _outgoing;
-  AggregatorUsage* _workerAggregators;
-  
 public:
-  
-  template <typename T>
-  inline void aggregate(std::string const& name, const T* valuePtr) {
-    _workerAggregators->aggregate(name, valuePtr);
-  }
   
   void sendMessage(Edge<E> const* edge, M const& data) {
     _outgoing->appendMessage(edge->targetShard(), edge->toKey(), data);
@@ -98,8 +96,10 @@ public:
   
 template <typename V, typename E, typename M>
 class VertexCompensate : public VertexContext<V, E, M> {
+  friend class Worker<V, E, M>;
+  
 public:
-  virtual void compensate(std::string const& vertexID, bool inLostPartition) = 0;
+  virtual void compensate(bool inLostPartition) = 0;
 };
   
 }

@@ -54,7 +54,7 @@ class Conductor {
   const uint64_t _executionNumber;
   std::unique_ptr<IAlgorithm> _algorithm;
   VPackBuilder _userParams;
-  Mutex _finishedGSSMutex;  // prevents concurrent calls to finishedGlobalStep
+  Mutex _callbackMutex;  // prevents concurrent calls to finishedGlobalStep
   
   std::vector<std::shared_ptr<LogicalCollection>> _vertexCollections;
   std::vector<std::shared_ptr<LogicalCollection>> _edgeCollections;
@@ -66,18 +66,20 @@ class Conductor {
 
   double _startTimeSecs = 0, _endTimeSecs = 0;
   uint64_t _globalSuperstep = 0;
-  uint32_t _responseCount = 0, _doneCount = 0;
+  std::set<ServerID> _respondedServers;
+  
   WorkerStats _workerStats;
-
   bool _startGlobalStep();
   int _initializeWorkers(std::string const& suffix, VPackSlice additional);
   int _finalizeWorkers();
   int _sendToAllDBServers(std::string const& suffix, VPackSlice const& message);
+  void _ensureCorrectness(VPackSlice body);
 
   // === REST callbacks ===
+  void finishedWorkerStartup(VPackSlice& data);
   void finishedGlobalStep(VPackSlice& data);
   void finishedRecovery(VPackSlice& data);
-
+  
  public:
   Conductor(uint64_t executionNumber, TRI_vocbase_t* vocbase,
             std::vector<std::shared_ptr<LogicalCollection>> const& vertexCollections,

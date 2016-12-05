@@ -58,7 +58,9 @@ const void* AggregatorUsage::getAggregatedValue(std::string const& name) const {
 
 void AggregatorUsage::resetValues() {
   for (auto& it : _values) {
-    it.second->reset();
+    if (!it.second->isPermanent()) {
+      it.second->reset();
+    }
   }
 }
 
