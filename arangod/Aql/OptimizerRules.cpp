@@ -3934,6 +3934,7 @@ struct GeoIndexInfo{
     , within(false)
     , lessgreaterequal(false)
     , valid(true)
+    , inSubCondition(false)
     {}
   EnumerateCollectionNode* collectionNode; // node that will be replaced by (geo) IndexNode
   ExecutionNode* executionNode; // start node hat is a sort or filter
@@ -3944,6 +3945,7 @@ struct GeoIndexInfo{
   bool within; // is this a within lookup
   bool lessgreaterequal; // is this a check for le/ge (true) or lt/gt (false)
   bool valid; // contains this node a valid condition
+  bool inSubCondition;
   std::vector<std::string> longitude; // access path to longitude
   std::vector<std::string> latitude; // access path to latitude
 };
@@ -4119,7 +4121,7 @@ AstNode const* isValueOrRefNode(AstNode const* node){
   return node;
 }
 
-GeoIndexInfo isDistanceFunction(AstNode const* node){
+GeoIndexInfo isDistanceFunction(AstNode const* node, bool inSubCondition){
   // the expression must exist and it must be a function call
   auto rv = GeoIndexInfo{};
   if(node->type != NODE_TYPE_FCALL) {
@@ -4136,22 +4138,24 @@ GeoIndexInfo isDistanceFunction(AstNode const* node){
   }
   //LOG_TOPIC(DEBUG, Logger::DEVEL) << "FOUND DISTANCE FUNCTION";
   rv.node = node;
+  rv.inSubCondition = inSubCondition;
   return rv;
 }
 
-GeoIndexInfo iterativePreorderWithCondition(AstNode const* root, GeoIndexInfo(*condition)(AstNode const*)){
+GeoIndexInfo iterativePreorderWithCondition(AstNode const* root, GeoIndexInfo(*condition)(AstNode const*, bool)){
   // returns on first hit
   if (!root){
     return GeoIndexInfo{};
   }
-
+  bool inSubCondition = false;
   std::vector<AstNode const*> nodestack;
   nodestack.push_back(root);
 
   while(nodestack.size()){
     AstNode const* current = nodestack.back();
     nodestack.pop_back();
-    GeoIndexInfo rv = condition(current);
+    GeoIndexInfo rv = condition(current,inSubCondition);
+    inSubCondition = true; // only false for root
     if (rv) {
       return rv;
     }
@@ -4165,7 +4169,7 @@ GeoIndexInfo iterativePreorderWithCondition(AstNode const* root, GeoIndexInfo(*c
   return GeoIndexInfo{};
 }
 
-GeoIndexInfo isGeoFilterExpression(AstNode const* node){
+GeoIndexInfo isGeoFilterExpression(AstNode const* node, bool inSubCondition){
   // binary compare must be on top
   bool dist_first = true;
   bool lessEqual = true;
@@ -4214,10 +4218,10 @@ GeoIndexInfo isGeoFilterExpression(AstNode const* node){
   };
 
   //LOG_TOPIC(DEBUG, Logger::DEVEL) << "frist check";
-  rv = eval_stuff(dist_first, lessEqual, isDistanceFunction(first), isValueOrRefNode(second));
+  rv = eval_stuff(dist_first, lessEqual, isDistanceFunction(first, inSubCondition), isValueOrRefNode(second));
   if (!rv) {
     //LOG_TOPIC(DEBUG, Logger::DEVEL) << "second check";
-    rv = eval_stuff(dist_first, lessEqual, isDistanceFunction(second), isValueOrRefNode(first));
+    rv = eval_stuff(dist_first, lessEqual, isDistanceFunction(second, inSubCondition), isValueOrRefNode(first));
   }
   //LOG_TOPIC(DEBUG, Logger::DEVEL) << "result " << (bool) rv;
 
@@ -4294,7 +4298,7 @@ GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, Exec
   //FIXME -- technical debt -- code duplication / not all cases covered
   switch(type){
     case EN::SORT: {
-      rv = isDistanceFunction(node);
+      rv = isDistanceFunction(node,false);
     }
     break;
 
