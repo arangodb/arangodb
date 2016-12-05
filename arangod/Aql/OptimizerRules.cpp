@@ -3923,12 +3923,13 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
 // GEO RULES //////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 struct GeoIndexInfo{
-  operator bool() const { return node && valid; }
+  operator bool() const { return distanceNode && valid; }
   void invalidate() { valid = false; }
   GeoIndexInfo()
     : collectionNode(nullptr)
     , executionNode(nullptr)
-    , node(nullptr)
+    , expressionNode(nullptr)
+    , distanceNode(nullptr)
     , index(nullptr)
     , range(nullptr)
     , executionNodeType(EN::ILLEGAL)
@@ -3939,7 +3940,8 @@ struct GeoIndexInfo{
     {}
   EnumerateCollectionNode* collectionNode; // node that will be replaced by (geo) IndexNode
   ExecutionNode* executionNode; // start node hat is a sort or filter
-  AstNode const* node; // AstNode that contains the sort/filter condition
+  AstNode const* expressionNode; // AstNode that contains the sort/filter condition
+  AstNode const* distanceNode; // AstNode that contains the distance parameters
   std::shared_ptr<arangodb::Index> index; //pointer to geoindex
   AstNode const* range; // range for within
   ExecutionNode::NodeType executionNodeType; // type of execution node sort or filter
@@ -3959,23 +3961,24 @@ AstNode* isValueOrRefNode(AstNode* node){
   return node;
 }
 
-GeoIndexInfo isDistanceFunction(AstNode* node, bool inSubCondition){
+GeoIndexInfo isDistanceFunction(AstNode* distanceNode, bool inSubCondition){
   // the expression must exist and it must be a function call
   auto rv = GeoIndexInfo{};
-  if(node->type != NODE_TYPE_FCALL) {
+  if(distanceNode->type != NODE_TYPE_FCALL) {
     return rv;
   }
 
   //get the ast node of the expression
-  auto func = static_cast<Function const*>(node->getData());
+  auto func = static_cast<Function const*>(distanceNode->getData());
 
   // we're looking for "DISTANCE()", which is a function call
   // with an empty parameters array
-  if ( func->externalName != "DISTANCE" || node->numMembers() != 1  ) {
+  if ( func->externalName != "DISTANCE" || distanceNode->numMembers() != 1  ) {
     return rv;
   }
   //LOG_TOPIC(DEBUG, Logger::DEVEL) << "FOUND DISTANCE FUNCTION";
-  rv.node = node;
+  rv.distanceNode = distanceNode;
+  rv.expressionNode = distanceNode;
   rv.inSubCondition = inSubCondition;
   return rv;
 }
@@ -4012,8 +4015,6 @@ GeoIndexInfo isGeoFilterExpression(AstNode* node, bool inSubCondition){
   AstNode* first = node->getMember(0);
   AstNode* second = node->getMember(1); //FIXME -- const node
 
-  node->dump(0);
-
   auto eval_stuff = [](bool dist_first, bool lessEqual, GeoIndexInfo&& dist_fun, AstNode* value_node){
     //LOG_TOPIC(DEBUG, Logger::DEVEL) << "1: " << dist_first;
     //LOG_TOPIC(DEBUG, Logger::DEVEL) << "2: " << (bool)dist_fun;
@@ -4037,6 +4038,11 @@ GeoIndexInfo isGeoFilterExpression(AstNode* node, bool inSubCondition){
     rv = eval_stuff(dist_first, lessEqual, isDistanceFunction(second, inSubCondition), isValueOrRefNode(first));
   }
   //LOG_TOPIC(DEBUG, Logger::DEVEL) << "result " << (bool) rv;
+
+  if(rv){
+    //this must be set after checking if the node contains a distance node.
+    rv.expressionNode = node;
+  }
 
   return rv;
 }
@@ -4283,7 +4289,7 @@ std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan, GeoIndexInfo& 
 bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& info){
 
   // FIXME -- technical debt --  this code should go to the candidate finding /////////////////////
-  auto const& functionArguments = info.node->getMember(0);
+  auto const& functionArguments = info.distanceNode->getMember(0);
   if(functionArguments->numMembers() < 4){
     return false;
   }
