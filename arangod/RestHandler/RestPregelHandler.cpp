@@ -137,6 +137,11 @@ RestStatus RestPregelHandler::execute() {
         w = AlgoRegistry::createWorker(_vocbase, body);
       }
       w->startRecovery(body);
+    } else if (suffix[0] == Utils::continueRecoveryPath) {
+      IWorker *w = PregelFeature::instance()->worker(executionNumber);
+      if (w) {// we will need to create a worker in these cicumstances
+        w->compensateStep(body);
+      }
     } else if (suffix[0] == Utils::finishedRecoveryPath) {
       Conductor *exe = PregelFeature::instance()->conductor(executionNumber);
       if (exe) {

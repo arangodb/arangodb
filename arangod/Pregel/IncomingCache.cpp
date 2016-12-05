@@ -48,13 +48,6 @@ void IncomingCache<M>::clear() {
 
 template <typename M>
 void IncomingCache<M>::parseMessages(VPackSlice incomingMessages) {
-  VPackValueLength length = incomingMessages.length();
-  if (length % 2) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "There must always be an even number of entries in messages");
-  }
-
   prgl_shard_t shard;
   std::string key;
   VPackValueLength i = 0;
@@ -73,6 +66,12 @@ void IncomingCache<M>::parseMessages(VPackSlice incomingMessages) {
       setDirect(shard, key, newValue);
     }
     i++;
+  }
+  
+  if (i % 3 != 0) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+                                   TRI_ERROR_BAD_PARAMETER,
+                                   "There must always be a multiple of 3 entries in messages");
   }
 }
 
