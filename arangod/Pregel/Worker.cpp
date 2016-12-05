@@ -360,8 +360,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice data) {
       return;
     }
     
-    size_t total = _graphStore->vertexCount();
-    auto vertexIterator = _graphStore->vertexIterator(0, total);
+    auto vertexIterator = _graphStore->vertexIterator();
     
     // TODO look if we can avoid instantiating this
     std::unique_ptr<VertexCompensation<V, E, M>>
@@ -409,7 +408,6 @@ void Worker<V, E, M>::_callConductor(std::string path, VPackSlice message) {
                    90.0,// timeout + single request
                    true);
 }
-
 
 
 // template types to create

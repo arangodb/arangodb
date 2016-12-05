@@ -202,6 +202,7 @@ class GraphStore {
   inline size_t vertexCount() {
     return _index.size();
   }
+  RangeIterator<VertexEntry> vertexIterator();
   RangeIterator<VertexEntry> vertexIterator(size_t start, size_t count);
   RangeIterator<Edge<E>> edgeIterator(VertexEntry const* entry);
 

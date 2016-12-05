@@ -107,6 +107,11 @@ void GraphStore<V, E>::loadShards(WorkerState const& state) {
 }
 
 template <typename V, typename E>
+RangeIterator<VertexEntry> GraphStore<V, E>::vertexIterator() {
+  return vertexIterator(0, _index.size());
+}
+
+template <typename V, typename E>
 RangeIterator<VertexEntry> GraphStore<V, E>::vertexIterator(size_t start, size_t end) {
   return RangeIterator<VertexEntry>(_index, start, end);
 }
