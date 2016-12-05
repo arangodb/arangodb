@@ -4052,8 +4052,7 @@ GeoIndexInfo geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pai
 
 bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& info){
 
-  // FIXME - this code should go to the candidate finding /////////////////////
-  // get it running first
+  // FIXME -- technical debt --  this code should go to the candidate finding /////////////////////
   auto const& functionArguments = info.node->getMember(0);
   if(functionArguments->numMembers() < 4){
     return false;
@@ -4088,7 +4087,7 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& info){
   //         << " are geoindexed";
 
   //break; //remove this to make use of the index
-  
+
   // FIXME - END //////////////////////////////////////////////////////////////
 
   std::unique_ptr<Condition> condition;
@@ -4250,7 +4249,7 @@ GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, Exec
   if (setter == nullptr || setter->getType() != EN::CALCULATION) {
     return rv;
   }
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "found setter node for calcuation";
+  LOG_TOPIC(DEBUG, Logger::DEVEL) << "found setter node for calcuation";
 
   // downcast to calculation node and get expression
   auto cn = static_cast<CalculationNode*>(setter);
@@ -4264,19 +4263,40 @@ GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, Exec
   AstNode const* node = expression->node();
 
 
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "checking expression of calcaulation";
+  LOG_TOPIC(DEBUG, Logger::DEVEL) << "checking expression of calcaulation";
+
+  //FIXME -- technical debt -- code duplication / not all cases covered
   switch(type){
     case EN::SORT: {
-      rv = isDistanceFunction(node);
+      //iterate && and find frist candidate - this gets way more complex if we want to check more
+      auto ntype = node->type;
+      if ( ntype == NODE_TYPE_OPERATOR_BINARY_AND || ntype == NODE_TYPE_OPERATOR_NARY_AND){
+        for(std::size_t i = 0; i < node->numMembers(); ++i){
+          rv = isDistanceFunction(node->getMember(i));
+          if(rv) break;
+        }
+      } else {
+        rv = isDistanceFunction(node);
+      }
     }
     break;
 
     case EN::FILTER: {
-      rv = isGeoFilterExpression(node);
+      //iterate && and find frist candidate - this gets way more complex if we want to check more
+      auto ntype = node->type;
+      if ( ntype == NODE_TYPE_OPERATOR_BINARY_AND || ntype == NODE_TYPE_OPERATOR_NARY_AND){
+        for(std::size_t i = 0; i < node->numMembers(); ++i){
+          rv = isGeoFilterExpression(node->getMember(i));
+          if(rv) break;
+        }
+      } else {
+        rv = isGeoFilterExpression(node);
+      }
     }
     break;
 
     default:
+      LOG_TOPIC(DEBUG, Logger::DEVEL) << "expression is not valid for geoindex";
       rv.invalidate(); // not required but make sure the result is invalid
   }
 

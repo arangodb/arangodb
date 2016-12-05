@@ -408,7 +408,7 @@ function optimizerIndexesTestSuite () {
 
       assertEqual("SingletonNode", nodeTypes[0], query);
       assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      
+
       var results = AQL_EXECUTE(query);
       assertEqual([ 12 ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
