@@ -3961,8 +3961,13 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
   // We are NOT allowed to delete the index.
   arangodb::FulltextIndex* fulltextIndex = nullptr;
 
-  std::vector<std::vector<arangodb::basics::AttributeName>> const search(
-      {{arangodb::basics::AttributeName(attributeName, false)}});
+  // split requested attribute name on '.' character to create a proper
+  // vector of AttributeNames
+  std::vector<std::vector<arangodb::basics::AttributeName>> search;
+  search.emplace_back();
+  for (auto const& it : basics::StringUtils::split(attributeName, '.')) {
+    search.back().emplace_back(it, false);
+  }
 
   for (auto const& idx : collection->getIndexes()) {
     if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {

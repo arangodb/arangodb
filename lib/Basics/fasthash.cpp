@@ -35,8 +35,53 @@ static inline uint64_t mix(uint64_t h) {
 
   return h;
 }
-
+  
 uint64_t fasthash64(const void* buf, size_t len, uint64_t seed) {
+#ifdef __arm__
+  // byte-wise hashing to support platforms that don't permit
+  // unaligned accesses of uint64_t values (which is the default
+  // memory access strategy of fasthash64)
+  uint64_t const m = 0x880355f21e6d1965ULL;
+  uint8_t const* pos = (uint8_t const*)buf;
+  uint8_t const* end = pos + len;
+  uint64_t h = seed ^ (len * m);
+  
+  while (pos != end) {
+    len = end - pos;
+    if (len > 8) {
+      len = 8;
+    }
+
+    uint64_t v = 0;
+    switch (len) {
+      case 8:
+        v ^= (uint64_t)pos[7] << 56;
+      case 7:
+        v ^= (uint64_t)pos[6] << 48;
+      case 6:
+        v ^= (uint64_t)pos[5] << 40;
+      case 5:
+        v ^= (uint64_t)pos[4] << 32;
+      case 4:
+        v ^= (uint64_t)pos[3] << 24;
+      case 3:
+        v ^= (uint64_t)pos[2] << 16;
+      case 2:
+        v ^= (uint64_t)pos[1] << 8;
+      case 1:
+        v ^= (uint64_t)pos[0];
+        h ^= mix(v);
+        h *= m;
+    }
+
+    pos += len;
+  }
+
+  return mix(h);
+#else
+  // uint64_t-wise hashing for platforms that allow dereferencing
+  // unaligned pointers to uint64_t memory
+  // this is the original version of fasthash64
   uint64_t const m = 0x880355f21e6d1965ULL;
   uint64_t const* pos = (uint64_t const*)buf;
   uint64_t const* end = pos + (len / 8);
@@ -73,6 +118,7 @@ uint64_t fasthash64(const void* buf, size_t len, uint64_t seed) {
   }
 
   return mix(h);
+#endif
 }
 
 uint32_t fasthash32(const void* buf, size_t len, uint32_t seed) {
