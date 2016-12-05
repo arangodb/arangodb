@@ -110,6 +110,18 @@ PageRankAlgorithm::createComputation(uint64_t gss) const {
   return new PageRankComputation(_threshold);
 }
 
+struct PageRankCompensation : public VertexCompensation<float, float, float> {
+  PageRankCompensation() {}
+  void compensate(bool inLostPartition) override {
+  
+  }
+};
+
+VertexCompensation<float, float, float>*
+PageRankAlgorithm::createCompensation(uint64_t gss) const {
+  return new PageRankCompensation();
+}
+
 Aggregator* PageRankAlgorithm::aggregator(std::string const& name) const {
   if (name == "convergence") {
     return new FloatMaxAggregator(0);

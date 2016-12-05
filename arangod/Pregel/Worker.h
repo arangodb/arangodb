@@ -37,7 +37,6 @@ class RestPregelHandler;
 namespace pregel {
 
 class IWorker {
-
  public:
   virtual ~IWorker(){};
   virtual void prepareGlobalStep(VPackSlice data) = 0;
@@ -45,6 +44,7 @@ class IWorker {
   virtual void receivedMessages(VPackSlice data) = 0;
   virtual void finalizeExecution(VPackSlice data) = 0;
   virtual void startRecovery(VPackSlice data) = 0;
+  virtual void compensateStep(VPackSlice data) = 0;
 };
 
 template <typename V, typename E>
@@ -73,6 +73,11 @@ class Worker : public IWorker {
   std::unique_ptr<Algorithm<V, E, M>> _algorithm;
   std::unique_ptr<WorkerContext> _workerContext;
   Mutex _conductorMutex;// locks callbak methods
+  mutable Mutex _threadMutex;// locks _workerThreadDone
+  
+  // only valid while recovering to determine the offset
+  // where new vertices were inserted
+  size_t _preRecoveryTotal;
  
   std::unique_ptr<GraphStore<V, E>> _graphStore;
   std::unique_ptr<IncomingCache<M>> _readCache, _writeCache;
@@ -83,7 +88,6 @@ class Worker : public IWorker {
   WorkerStats _superstepStats;
   
   size_t _runningThreads;
-  mutable Mutex _threadMutex;
   
   void _swapIncomingCaches() {
     _readCache.swap(_writeCache);
@@ -106,6 +110,7 @@ class Worker : public IWorker {
   void receivedMessages(VPackSlice data) override;
   void finalizeExecution(VPackSlice data) override;
   void startRecovery(VPackSlice data) override;
+  void compensateStep(VPackSlice data) override;
 };
 }
 }

@@ -95,7 +95,7 @@ public:
 };
   
 template <typename V, typename E, typename M>
-class VertexCompensate : public VertexContext<V, E, M> {
+class VertexCompensation : public VertexContext<V, E, M> {
   friend class Worker<V, E, M>;
   
 public:

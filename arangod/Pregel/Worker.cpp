@@ -332,39 +332,66 @@ template <typename V, typename E, typename M>
 void Worker<V, E, M>::startRecovery(VPackSlice data) {
   VPackSlice method = data.get(Utils::recoveryMethodKey);
   if (method.compareString(Utils::compensate) == 0) {
+    
+    _preRecoveryTotal = _graphStore->vertexCount();
     WorkerState nextState(_state.database(), data);
     _graphStore->loadShards(nextState);
     _state = nextState;
-    
-    // TODO start compensate method
-    /*
-    ThreadPool *pool = PregelFeature::instance()->threadPool();
-    pool->enqueue([this, start, end] {
-      if (!_running) {
-        LOG(INFO) << "Execution aborted prematurely.";
-        return;
-      }
-      
-      size_t total = _graphStore->vertexCount();
-      size_t start = 0, end = delta;
-      auto vertexIterator = _graphStore->vertexIterator(start, end);
-      _executeGlobalStep(vertexIterator);
-    });
-    
-    uint64_t gss = _state.globalSuperstep();
-    std::unique_ptr<VertexComputation<V, E, M>>
-    vertexComputation(_algorithm->createComputation(gss));
-    vertexComputation->_gss = gss;
-    vertexComputation->_context = _workerContext.get();
-    vertexComputation->_graphStore = _graphStore.get();
-    vertexComputation->_outgoing = &outCache;
-    vertexComputation->_conductorAggregators = _conductorAggregators.get();
-    vertexComputation->_workerAggregators = &workerAggregator;
-    */
+    compensateStep(data);
     
   } else if (method.compareString(Utils::rollback) == 0) {
     
   }
+}
+
+template <typename V, typename E, typename M>
+void Worker<V, E, M>::compensateStep(VPackSlice data) {
+  _conductorAggregators->resetValues();
+  VPackSlice aggValues = data.get(Utils::aggregatorValuesKey);
+  if (aggValues.isObject()) {
+    _conductorAggregators->aggregateValues(aggValues);
+  }
+  _workerAggregators->resetValues();
+  
+  ThreadPool *pool = PregelFeature::instance()->threadPool();
+  pool->enqueue([this] {
+    if (!_running) {
+      LOG(INFO) << "Compensation aborted prematurely.";
+      return;
+    }
+    
+    size_t total = _graphStore->vertexCount();
+    auto vertexIterator = _graphStore->vertexIterator(0, total);
+    
+    // TODO look if we can avoid instantiating this
+    std::unique_ptr<VertexCompensation<V, E, M>>
+    vCompensate(_algorithm->createCompensation(_state.globalSuperstep()));
+    _initializeVertexContext(vCompensate.get());
+    vCompensate->_workerAggregators = _workerAggregators.get();
+    
+    size_t i = 0;
+    for (VertexEntry *vertexEntry : vertexIterator) {
+      vCompensate->_vertexEntry = vertexEntry;
+      vCompensate->compensate(i < _preRecoveryTotal);
+      i++;
+      if (!_running) {
+        LOG(INFO) << "Execution aborted prematurely.";
+        break;
+      }
+    }
+    VPackBuilder package;
+    package.openObject();
+    package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
+    package.add(Utils::executionNumberKey, VPackValue(_state.executionNumber()));
+    package.add(Utils::globalSuperstepKey, VPackValue(_state.globalSuperstep()));
+    if (_workerAggregators->size() > 0) {// add aggregators
+      package.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
+      _workerAggregators->serializeValues(package);
+      package.close();
+    }
+    package.close();
+    _callConductor(Utils::finishedRecoveryPath, package.slice());
+  });
 }
 
 template <typename V, typename E, typename M>
@@ -382,6 +409,8 @@ void Worker<V, E, M>::_callConductor(std::string path, VPackSlice message) {
                    90.0,// timeout + single request
                    true);
 }
+
+
 
 // template types to create
 template class arangodb::pregel::Worker<int64_t, int64_t, int64_t>;

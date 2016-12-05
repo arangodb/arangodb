@@ -42,6 +42,7 @@ struct PageRankAlgorithm : public SimpleAlgorithm<float, float, float> {
   MessageCombiner<float>* messageCombiner() const override;
   VertexComputation<float, float, float>* createComputation(uint64_t gss)
       const override;
+  VertexCompensation<float, float, float>* createCompensation(uint64_t gss) const override;
   Aggregator* aggregator(std::string const& name) const override;
 };
 }

@@ -84,7 +84,7 @@ struct Algorithm : IAlgorithm {
   virtual MessageFormat<M>* messageFormat() const = 0;
   virtual MessageCombiner<M>* messageCombiner() const = 0;
   virtual VertexComputation<V, E, M>* createComputation(uint64_t gss) const = 0;
-  virtual VertexCompensation<V, E, M>* createCompensation() {
+  virtual VertexCompensation<V, E, M>* createCompensation(uint64_t gss) const {
     return nullptr;
   }
 protected:

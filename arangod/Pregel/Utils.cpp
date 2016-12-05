@@ -43,6 +43,7 @@ std::string const Utils::finishedGSSPath = "finishedGSS";
 std::string const Utils::messagesPath = "messages";
 std::string const Utils::finalizeExecutionPath = "finalizeExecution";
 std::string const Utils::startRecoveryPath = "startRecovery";
+std::string const Utils::continueRecoveryPath = "continueRecovery";
 std::string const Utils::finishedRecoveryPath = "finishedRecovery";
 
 std::string const Utils::executionNumberKey = "exn";
