@@ -48,7 +48,7 @@ GeoIndexIterator::GeoIndexIterator(LogicalCollection* collection,
       _lon(0),
       _near(true),
       _withinRange(0),
-      _withinInverse(false)
+      _withinLessEq(false)
       // lookup will hold the inforamtion if this is a cursor for
       // near/within and the reference point
       //_lookups(trx, node, reference, index->fields()),
@@ -57,11 +57,9 @@ GeoIndexIterator::GeoIndexIterator(LogicalCollection* collection,
     }
 
 void GeoIndexIterator::evaluateCondition() {
-  LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER evaluate Condition";
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER evaluate Condition";
 
   if (_condition) {
-    LOG_TOPIC(DEBUG, Logger::DEVEL) << "The Condition is";
-    _condition->dump(0);
     auto numMembers = _condition->numMembers();
 
     if(numMembers >= 2){
@@ -73,22 +71,24 @@ void GeoIndexIterator::evaluateCondition() {
 
     if (numMembers == 2){ //near
       _near = true;
-    } else if (numMembers == 3) { //within
+      LOG_TOPIC(DEBUG, Logger::DEVEL) << "INDEX CONFIGURED FOR NEAR";
+    } else { //within
       _near = false;
       _withinRange = _condition->getMember(2)->getMember(1)->getDoubleValue();
-    } else {
-      LOG_TOPIC(DEBUG, Logger::DEVEL) << "Invalid Number of arguments";
+      _withinLessEq = _condition->getMember(3)->getMember(1)->getDoubleValue();
+
+      LOG_TOPIC(DEBUG, Logger::DEVEL) << "INDEX CONFIGURED FOR WITHIN  with range " << _withinRange;
     }
 
   } else {
-    LOG_TOPIC(DEBUG, Logger::DEVEL) << "No Condition passed to constructor";
+    LOG(ERR) << "No Condition passed to GeoIndexIterator constructor";
   }
 
-  LOG_TOPIC(DEBUG, Logger::DEVEL) << "EXIT evaluate Condition";
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "EXIT evaluate Condition";
 }
 
 IndexLookupResult GeoIndexIterator::next() {
-  LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER next";
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER next";
   if (!_cursor){
     createCursor(_lat,_lon);
   }
@@ -105,7 +105,7 @@ IndexLookupResult GeoIndexIterator::next() {
 }
 
 void GeoIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t batchSize) {
-  LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER nextBabies";
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER nextBabies " << batchSize;
   if (!_cursor){
     createCursor(_lat,_lon);
   }
@@ -114,19 +114,24 @@ void GeoIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t
   if (batchSize > 0) {
     auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(_cursor,batchSize));
     size_t length = coords ? coords->length : 0;
+    //LOG_TOPIC(DEBUG, Logger::DEVEL) << "length " << length;
     if (!length){
       return;
     }
 
+
     for(std::size_t index = 0; index < length; ++index){
+      //LOG_TOPIC(DEBUG, Logger::DEVEL) << "near " << _near << " max allowed range: " << _withinRange
+      //                                                    << " actual range: "  << GeoIndex_distance(&_coor, &coords->coordinates[index]) ;
       if (_near || GeoIndex_distance(&_coor, &coords->coordinates[index]) <= _withinRange ){
+        //LOG_TOPIC(DEBUG, Logger::DEVEL) << "add above to result" ;
         result.emplace_back(IndexLookupResult(::GeoIndex::toRevision(coords->coordinates[index].data)));
       } else {
         break;
       }
     }
   }
-  LOG_TOPIC(DEBUG, Logger::DEVEL) << "EXIT nextBabies";
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "EXIT nextBabies " << result.size();
 }
 
 ::GeoCursor* GeoIndexIterator::replaceCursor(::GeoCursor* c){

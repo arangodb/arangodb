@@ -76,7 +76,7 @@ class GeoIndexIterator final : public IndexIterator {
   double _lon;
   bool _near;
   double _withinRange;
-  double _withinInverse;
+  double _withinLessEq;
 };
 
 class GeoIndex final : public Index {

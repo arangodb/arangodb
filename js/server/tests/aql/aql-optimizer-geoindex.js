@@ -148,7 +148,7 @@ function optimizerRuleTestSuite() {
           //query                                                         clust  sort   filter
           [ "FOR d IN " + colName + " SORT distance(d.lat,d.lon, 0 ,0 ) ASC LIMIT 1 RETURN d", false, false, false ],
           [ "FOR d IN " + colName + " SORT distance(0, 0, d.lat,d.lon ) ASC LIMIT 1 RETURN d", false, false, false ],
-          //[ "FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d", false, false, false ],
+          [ "FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d", false, false, true ],
         ];
 
         queries.forEach(function(query) {
@@ -185,7 +185,8 @@ function optimizerRuleTestSuite() {
         var queries = [ 
           [ "FOR d IN " + colName + " SORT distance(d.lat,d.lon, 0 ,0 ) ASC LIMIT 5 RETURN d", false, false, false ],
           [ "FOR d IN " + colName + " SORT distance(0, 0, d.lat,d.lon ) ASC LIMIT 5 RETURN d", false, false, false ],
-          [ "FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 2 RETURN d", false, false, false ],
+          [ "FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 111200 RETURN d", false, false, false ],
+//          [ "FOR i IN 1..2 FOR d IN geocol SORT distance(i,2,d.lat,d.lon) ASC LIMIT 5 RETURN d", false, false, false ],
         ];
 
         var expected = [

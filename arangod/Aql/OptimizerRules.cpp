@@ -3929,7 +3929,7 @@ struct GeoIndexInfo{
     , executionNode(nullptr)
     , node(nullptr)
     , index(nullptr)
-    , range(0)
+    , range(nullptr)
     , executionNodeType(EN::ILLEGAL)
     , within(false)
     , lessgreaterequal(false)
@@ -3949,12 +3949,12 @@ struct GeoIndexInfo{
 };
 
 std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info,
-                                             AstNode* lat, AstNode* lon, AstNode* withRange = nullptr){
+                                             AstNode* lat, AstNode* lon, bool lessEqual = false, AstNode const* withRange = nullptr){
   auto ast = plan->getAst();
   auto varAstNode = ast->createNodeReference(info.collectionNode->outVariable());
 
   auto nAryAnd = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
-  nAryAnd->reserve(withRange ? 3 : 2);
+  nAryAnd->reserve(withRange ? 4 : 2);
 
   auto latKey = ast->createNodeAttributeAccess(varAstNode, "latitude",8);
   auto latEq = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, latKey, lat);
@@ -3968,6 +3968,11 @@ std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan, GeoIndexInfo& 
     auto withKey = ast->createNodeAttributeAccess(varAstNode, "within",6);
     auto withEq = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, withKey, withRange);
     nAryAnd->addMember(withEq);
+
+    auto lessKey = ast->createNodeAttributeAccess(varAstNode, "lesseq",6);
+    auto lessValue =  ast->createNodeValueBool(lessEqual);
+    auto lessEq  = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, lessKey, lessValue);
+    nAryAnd->addMember(lessEq);
   }
 
   auto unAryOr = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_OR, nAryAnd);
@@ -3978,8 +3983,7 @@ std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan, GeoIndexInfo& 
   return condition;
 }
 
-GeoIndexInfo
-geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionPlan* plan, GeoIndexInfo info){
+GeoIndexInfo geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionPlan* plan, GeoIndexInfo info){
   using SV = std::vector<std::string>;
   LOG_TOPIC(DEBUG, Logger::DEVEL) << "    enter argument check";
   // first and second should be based on the same document - need to provide the document
@@ -4046,7 +4050,7 @@ geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionP
 }
 
 
-bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& info, bool asc){
+bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& info){
 
   // FIXME - this code should go to the candidate finding /////////////////////
   // get it running first
@@ -4066,7 +4070,7 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& info, bo
     return false;
   }
 
-  LOG_TOPIC(DEBUG, Logger::DEVEL) << "  FOUND DISTANCE RULE WITH ATTRIBUTE ACCESS";
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "  FOUND DISTANCE RULE WITH ATTRIBUTE ACCESS";
 
   std::pair<AstNode*,AstNode*>* constantPair;
   GeoIndexInfo res;
@@ -4078,27 +4082,27 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& info, bo
     constantPair = &argPair1;
   }
 
-  LOG_TOPIC(DEBUG, Logger::DEVEL) << "  attributes: " << res.longitude[0]
-           << ", " << res.longitude
-           << " of collection:" << res.collectionNode->collection()->getName()
-           << " are geoindexed";
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "  attributes: " << res.longitude[0]
+  //         << ", " << res.longitude
+  //         << " of collection:" << res.collectionNode->collection()->getName()
+  //         << " are geoindexed";
 
   //break; //remove this to make use of the index
   
   // FIXME - END //////////////////////////////////////////////////////////////
 
   std::unique_ptr<Condition> condition;
-  if(functionArguments->numMembers() == 4){
-    condition = buildGeoCondition(plan,res, constantPair->first, constantPair->second);
+  if(info.within){
+    condition = buildGeoCondition(plan,res, constantPair->first, constantPair->second, info.lessgreaterequal, info.range);
   } else {
-    condition = buildGeoCondition(plan,res, constantPair->first, constantPair->second, functionArguments->getMember(4));
+    condition = buildGeoCondition(plan,res, constantPair->first, constantPair->second);
   }
 
   auto inode = new IndexNode(
           plan, plan->nextId(), res.collectionNode->vocbase(),
           res.collectionNode->collection(), res.collectionNode->outVariable(),
           std::vector<Transaction::IndexHandle>{Transaction::IndexHandle{res.index}},
-          condition.get(), asc);
+          condition.get(), false);
   plan->registerNode(inode);
   condition.release();
 
@@ -4131,7 +4135,7 @@ GeoIndexInfo isDistanceFunction(AstNode const* node){
   if ( func->externalName != "DISTANCE" || node->numMembers() != 1  ) {
     return rv;
   }
-  LOG_TOPIC(DEBUG, Logger::DEVEL) << "FOUND DISTANCE FUNCTION";
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "FOUND DISTANCE FUNCTION";
   rv.node = node;
   return rv;
 }
@@ -4145,6 +4149,8 @@ GeoIndexInfo isGeoFilterExpression(AstNode const* node){
     && node->type != NODE_TYPE_OPERATOR_BINARY_GT
     && node->type != NODE_TYPE_OPERATOR_BINARY_LE
     && node->type != NODE_TYPE_OPERATOR_BINARY_LT) {
+
+    //LOG_TOPIC(DEBUG, Logger::DEVEL) << "expression does not contain <,<=,>=,>";
     return rv;
   } else {
     if (node->type == NODE_TYPE_OPERATOR_BINARY_GE || node->type == NODE_TYPE_OPERATOR_BINARY_GT){
@@ -4155,30 +4161,40 @@ GeoIndexInfo isGeoFilterExpression(AstNode const* node){
     lessEqual = false;
   }
 
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "binary operator found";
   // binary expression has 2 members
   if(node->numMembers() != 2){
     return rv;
   }
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "operator has 2 members";
 
   auto first = node->getMember(0);
   auto second = node->getMember(1);
 
+  node->dump(0);
+
   auto eval_stuff = [](bool dist_first, bool lessEqual, GeoIndexInfo&& dist_fun, AstNode const* value_node){
-    if (!dist_first && dist_fun && value_node){
+    //LOG_TOPIC(DEBUG, Logger::DEVEL) << "1: " << dist_first;
+    //LOG_TOPIC(DEBUG, Logger::DEVEL) << "2: " << (bool)dist_fun;
+    //LOG_TOPIC(DEBUG, Logger::DEVEL) << "3: " << (bool)value_node;
+    if (dist_first && dist_fun && value_node){
       dist_fun.within = true;
       dist_fun.range = value_node; //FIXME
       dist_fun.lessgreaterequal = lessEqual;
-      LOG_TOPIC(DEBUG, Logger::DEVEL) << "FOUND WITHIN";
+      //LOG_TOPIC(DEBUG, Logger::DEVEL) << "FOUND WITHIN";
     } else {
       dist_fun.invalidate();
     }
     return dist_fun;
   };
 
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "frist check";
   rv = eval_stuff(dist_first, lessEqual, isDistanceFunction(first), isValueOrRefNode(second));
   if (!rv) {
+    //LOG_TOPIC(DEBUG, Logger::DEVEL) << "second check";
     rv = eval_stuff(dist_first, lessEqual, isDistanceFunction(second), isValueOrRefNode(first));
   }
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "result " << (bool) rv;
 
   return rv;
 }
@@ -4188,8 +4204,10 @@ GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, Exec
   ExecutionNode* setter = nullptr;
   auto rv = GeoIndexInfo{};
   //TODO - iterate over elements of conjunction / disjunction
+  LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER IDENTIFY";
   switch(type){
     case EN::SORT: {
+      LOG_TOPIC(DEBUG, Logger::DEVEL) << "found sort node";
       auto node = static_cast<SortNode*>(n);
       auto const& elements = node->getElements();
 
@@ -4210,6 +4228,7 @@ GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, Exec
     break;
 
     case EN::FILTER: {
+      LOG_TOPIC(DEBUG, Logger::DEVEL) << "found filter node";
       auto node = static_cast<FilterNode*>(n);
 
       // filter nodes always have one input variable
@@ -4231,6 +4250,8 @@ GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, Exec
   if (setter == nullptr || setter->getType() != EN::CALCULATION) {
     return rv;
   }
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "found setter node for calcuation";
+
   // downcast to calculation node and get expression
   auto cn = static_cast<CalculationNode*>(setter);
   auto const expression = cn->expression();
@@ -4243,6 +4264,7 @@ GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, Exec
   AstNode const* node = expression->node();
 
 
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "checking expression of calcaulation";
   switch(type){
     case EN::SORT: {
       rv = isDistanceFunction(node);
@@ -4274,7 +4296,7 @@ void checkNodesForGeoOptimization(ExecutionNode::NodeType type, ExecutionPlan* p
       continue;
     }
     infos.push_back(std::move(geoIndexInfo));
-    LOG_TOPIC(DEBUG, Logger::DEVEL) << "  FOUND NEAR OR WITHIN";
+    //LOG_TOPIC(DEBUG, Logger::DEVEL) << "  FOUND NEAR OR WITHIN";
   }
 }
 
@@ -4290,13 +4312,13 @@ void arangodb::aql::optimizeGeoIndexRule(Optimizer* opt,
 
   bool modified = false;
   for(auto& info : infos){
-    if (applyGeoOptimization(true, plan, info, true)){
+    if (applyGeoOptimization(true, plan, info)){
         modified = true;
         break; // break on first replacement - might be relaxed later
     }
   }
   opt->addPlan(plan, rule, modified);
 
-  LOG_TOPIC(DEBUG, Logger::DEVEL) << "EXIT GEO RULE";
+  LOG_TOPIC(DEBUG, Logger::DEVEL) << "EXIT GEO RULE - modified: " << modified;
   LOG_TOPIC(DEBUG, Logger::DEVEL) << "";
 }
