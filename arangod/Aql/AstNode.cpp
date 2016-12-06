@@ -610,14 +610,24 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
   if (subNodes.isArray()) {
     members.reserve(subNodes.length());
 
-    for (auto const& it : VPackArrayIterator(subNodes)) {
-      int type = it.get("typeID").getNumericValue<int>();
-      if (static_cast<AstNodeType>(type) == NODE_TYPE_NOP) {
-        // special handling for nop as it is a singleton
-        addMember(Ast::getNodeNop());
-      } else {
-        addMember(new AstNode(ast, it));
+    try {
+      for (auto const& it : VPackArrayIterator(subNodes)) {
+        int type = it.get("typeID").getNumericValue<int>();
+        if (static_cast<AstNodeType>(type) == NODE_TYPE_NOP) {
+          // special handling for nop as it is a singleton
+          addMember(Ast::getNodeNop());
+        } else {
+          addMember(new AstNode(ast, it));
+        }
       }
+    } catch (...) {
+      // prevent leaks
+      for (auto const& it : members) {
+        if (it->type != NODE_TYPE_NOP) {
+          delete it;
+        }
+      }
+      throw;
     }
   }
 

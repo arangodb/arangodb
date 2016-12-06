@@ -349,6 +349,7 @@ class ClusterInfo {
   int createCollectionCoordinator(std::string const& databaseName,
                                   std::string const& collectionID,
                                   uint64_t numberOfShards,
+                                  uint64_t replicationFactor,
                                   arangodb::velocypack::Slice const& json,
                                   std::string& errorMsg, double timeout);
 

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecutionEngine.h"
+
 #include "Aql/BasicBlocks.h"
 #include "Aql/CalculationBlock.h"
 #include "Aql/ClusterBlocks.h"
@@ -168,6 +169,7 @@ static ExecutionBlock* CreateBlock(
 /// @brief create the engine
 ExecutionEngine::ExecutionEngine(Query* query)
     : _stats(),
+      _itemBlockManager(query->resourceMonitor()),
       _blocks(),
       _root(nullptr),
       _query(query),
@@ -342,31 +344,68 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           id(id),
           nodes(),
           part(p),
-          idOfRemoteNode(idOfRemoteNode) {}
+          idOfRemoteNode(idOfRemoteNode),
+          collection(nullptr),
+          auxiliaryCollections(),
+          populated(false) {
+    }
 
-    Collection* getCollection() const {
-      Collection* collection = nullptr;
-
+    void populate() {
+      // mop: compiler should inline that I suppose :S
+      auto collectionFn = [&](Collection* col) -> void {
+        if (col->isSatellite()) {
+          auxiliaryCollections.emplace(col);
+        } else {
+          collection = col;
+        }
+      };
+      Collection* localCollection = nullptr;
       for (auto en = nodes.rbegin(); en != nodes.rend(); ++en) {
         // find the collection to be used
         if ((*en)->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
-          collection = const_cast<Collection*>(
+          localCollection = const_cast<Collection*>(
               static_cast<EnumerateCollectionNode*>((*en))->collection());
+          collectionFn(localCollection);
         } else if ((*en)->getType() == ExecutionNode::INDEX) {
-          collection = const_cast<Collection*>(
+          localCollection = const_cast<Collection*>(
               static_cast<IndexNode*>((*en))->collection());
+          collectionFn(localCollection);
         } else if ((*en)->getType() == ExecutionNode::INSERT ||
                    (*en)->getType() == ExecutionNode::UPDATE ||
                    (*en)->getType() == ExecutionNode::REPLACE ||
                    (*en)->getType() == ExecutionNode::REMOVE ||
                    (*en)->getType() == ExecutionNode::UPSERT) {
-          collection = const_cast<Collection*>(
+          localCollection = const_cast<Collection*>(
               static_cast<ModificationNode*>((*en))->collection());
+          collectionFn(localCollection);
         }
       }
+      // mop: no non satellite collection found
+      if (collection == nullptr) {
+        // mop: just take the last satellite then
+        collection = localCollection;
+      }
+      // mop: ok we are actually only working with a satellite...
+      // so remove its shardId from the auxiliaryShards again
+      if (collection != nullptr && collection->isSatellite()) {
+        auxiliaryCollections.erase(collection);
+      }
+      populated = true;
+    }
 
+    Collection* getCollection() {
+      if (!populated) {
+        populate();
+      }
       TRI_ASSERT(collection != nullptr);
       return collection;
+    }
+
+    std::unordered_set<Collection*> getAuxiliaryCollections() {
+      if (!populated) {
+        populate();
+      }
+      return auxiliaryCollections;
     }
 
     EngineLocation const location;
@@ -374,6 +413,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     std::vector<ExecutionNode*> nodes;
     arangodb::aql::QueryPart part;  // only relevant for DBserver parts
     size_t idOfRemoteNode;          // id of the remote node
+    Collection* collection;
+    std::unordered_set<Collection*> auxiliaryCollections;
+    bool populated;
     // in the original plan that needs this engine
   };
 
@@ -391,6 +433,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   // query or a dependent one.
 
   std::unordered_map<std::string, std::string> queryIds;
+
+  std::unordered_set<Collection*> auxiliaryCollections;
   // this map allows to find the queries which are the parts of the big
   // query. There are two cases, the first is for the remote queries on
   // the DBservers, for these, the key is:
@@ -434,7 +478,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
   /// @brief generatePlanForOneShard
   void generatePlanForOneShard(VPackBuilder& builder, size_t nr,
-                               EngineInfo const& info, QueryId& connectedId,
+                               EngineInfo* info, QueryId& connectedId,
                                std::string const& shardId, bool verbose) {
     // copy the relevant fragment of the plan for each shard
     // Note that in these parts of the query there are no SubqueryNodes,
@@ -442,7 +486,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     ExecutionPlan plan(query->ast());
 
     ExecutionNode* previous = nullptr;
-    for (ExecutionNode const* current : info.nodes) {
+    for (ExecutionNode const* current : info->nodes) {
       auto clone = current->clone(&plan, false, false);
       // UNNECESSARY, because clone does it: plan.registerNode(clone);
 
@@ -472,34 +516,42 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
   /// @brief distributePlanToShard, send a single plan to one shard
   void distributePlanToShard(arangodb::CoordTransactionID& coordTransactionID,
-                             EngineInfo const& info, Collection* collection,
+                             EngineInfo* info,
                              QueryId& connectedId, std::string const& shardId,
                              VPackSlice const& planSlice) {
-    // inject the current shard id into the collection
-    collection->setCurrentShard(shardId);
-
+    Collection* collection = info->getCollection();
     // create a JSON representation of the plan
     VPackBuilder result;
     result.openObject();
 
     result.add("plan", VPackValue(VPackValueType::Object));
-    
+
     VPackBuilder tmp;
     query->ast()->variables()->toVelocyPack(tmp);
     result.add("variables", tmp.slice());
 
     result.add("collections", VPackValue(VPackValueType::Array));
-    // add the collection
     result.openObject();
-    result.add("name", VPackValue(collection->getName()));
+    result.add("name", VPackValue(shardId));
     result.add("type", VPackValue(TRI_TransactionTypeGetStr(collection->accessType)));
     result.close();
+
+    // mop: this is currently only working for satellites and hardcoded to their structure
+    for (auto auxiliaryCollection: info->getAuxiliaryCollections()) {
+      TRI_ASSERT(auxiliaryCollection->isSatellite());
+      
+      // add the collection
+      result.openObject();
+      result.add("name", VPackValue((*auxiliaryCollection->shardIds())[0]));
+      result.add("type", VPackValue(TRI_TransactionTypeGetStr(collection->accessType)));
+      result.close();
+    }
     result.close(); // collections
-    
+
     result.add(VPackObjectIterator(planSlice));
     result.close(); // plan
 
-    if (info.part == arangodb::aql::PART_MAIN) {
+    if (info->part == arangodb::aql::PART_MAIN) {
       result.add("part", VPackValue("main"));
     } else {
       result.add("part", VPackValue("dependent"));
@@ -521,13 +573,13 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
     auto body = std::make_shared<std::string const>(result.slice().toJson());
 
-    // std::cout << "GENERATED A PLAN FOR THE REMOTE SERVERS: " << *(body.get())
+    //LOG(ERR) << "GENERATED A PLAN FOR THE REMOTE SERVERS: " << *(body.get());
     // << "\n";
 
     auto cc = arangodb::ClusterComm::instance();
 
-    std::string const url("/_db/" + arangodb::basics::StringUtils::urlEncode(
-                                        collection->vocbase->name()) +
+    std::string const url("/_db/"
+                          + arangodb::basics::StringUtils::urlEncode(collection->vocbase->name()) +
                           "/_api/aql/instantiate");
 
     auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
@@ -538,7 +590,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   }
 
   /// @brief aggregateQueryIds, get answers for all shards in a Scatter/Gather
-  void aggregateQueryIds(EngineInfo const& info, arangodb::ClusterComm*& cc,
+  void aggregateQueryIds(EngineInfo* info, arangodb::ClusterComm*& cc,
                          arangodb::CoordTransactionID& coordTransactionID,
                          Collection* collection) {
     // pick up the remote query ids
@@ -568,13 +620,13 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           // res.answer->body() << ", REMOTENODEID: " << info.idOfRemoteNode <<
           // " SHARDID:"  << res.shardID << ", QUERYID: " << queryId << "\n";
           std::string theID =
-              arangodb::basics::StringUtils::itoa(info.idOfRemoteNode) + ":" +
+              arangodb::basics::StringUtils::itoa(info->idOfRemoteNode) + ":" +
               res.shardID;
-          if (info.part == arangodb::aql::PART_MAIN) {
-            queryIds.emplace(theID, queryId + "*");
-          } else {
-            queryIds.emplace(theID, queryId);
+
+          if (info->part == arangodb::aql::PART_MAIN) {
+            queryId += "*";
           }
+          queryIds.emplace(theID, queryId);
         } else {
           error += "DB SERVER ANSWERED WITH ERROR: ";
           error += res.answer->payload().toJson();
@@ -588,7 +640,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       }
     }
 
-    // std::cout << "GOT ALL RESPONSES FROM DB SERVERS: " << nrok << "\n";
+    //LOG(ERR) << "GOT ALL RESPONSES FROM DB SERVERS: " << nrok << "\n";
 
     if (nrok != (int)shardIds->size()) {
       if (errorCode == TRI_ERROR_NO_ERROR) {
@@ -599,9 +651,16 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   }
 
   /// @brief distributePlansToShards, for a single Scatter/Gather block
-  void distributePlansToShards(EngineInfo const& info, QueryId connectedId) {
-    // std::cout << "distributePlansToShards: " << info.id << std::endl;
-    Collection* collection = info.getCollection();
+  void distributePlansToShards(EngineInfo* info, QueryId connectedId) {
+    //LOG(ERR) << "distributePlansToShards: " << info.id;
+    Collection* collection = info->getCollection();
+
+    auto auxiliaryCollections = info->getAuxiliaryCollections();
+    for (auto const& auxiliaryCollection: auxiliaryCollections) {
+      TRI_ASSERT(auxiliaryCollection->shardIds()->size() == 1);
+      auxiliaryCollection->setCurrentShard((*auxiliaryCollection->shardIds())[0]);
+    }
+
     // now send the plan to the remote servers
     arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
     auto cc = arangodb::ClusterComm::instance();
@@ -612,23 +671,27 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     auto shardIds = collection->shardIds();
     for (auto const& shardId : *shardIds) {
       // inject the current shard id into the collection
-      collection->setCurrentShard(shardId);
       VPackBuilder b;
+      collection->setCurrentShard(shardId);
       generatePlanForOneShard(b, nr++, info, connectedId, shardId, true);
 
-      distributePlanToShard(coordTransactionID, info, collection, connectedId,
-                            shardId, b.slice());
+      distributePlanToShard(coordTransactionID, info,
+                            connectedId, shardId,
+                            b.slice());
+    }
+    collection->resetCurrentShard();
+    for (auto const& auxiliaryCollection: auxiliaryCollections) {
+      TRI_ASSERT(auxiliaryCollection->shardIds()->size() == 1);
+      auxiliaryCollection->resetCurrentShard();
     }
 
-    // fix collection
-    collection->resetCurrentShard();
     aggregateQueryIds(info, cc, coordTransactionID, collection);
   }
 
   /// @brief buildEngineCoordinator, for a single piece
-  ExecutionEngine* buildEngineCoordinator(EngineInfo& info) {
+  ExecutionEngine* buildEngineCoordinator(EngineInfo* info) {
     Query* localQuery = query;
-    bool needToClone = info.id > 0;  // use the original for the main part
+    bool needToClone = info->id > 0;  // use the original for the main part
     if (needToClone) {
       // need a new query instance on the coordinator
       localQuery = query->clone(PART_DEPENDENT, false);
@@ -645,7 +708,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
       RemoteNode* remoteNode = nullptr;
 
-      for (auto en = info.nodes.begin(); en != info.nodes.end(); ++en) {
+      for (auto en = info->nodes.begin(); en != info->nodes.end(); ++en) {
         auto const nodeType = (*en)->getType();
 
         if (nodeType == ExecutionNode::REMOTE) {
@@ -687,15 +750,15 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
           // now we'll create a remote node for each shard and add it to the
           // gather node
-          Collection const* collection =
-              static_cast<GatherNode const*>((*en))->collection();
+          auto gatherNode = static_cast<GatherNode const*>(*en);
+          Collection const* collection = gatherNode->collection();
 
           auto shardIds = collection->shardIds();
-
           for (auto const& shardId : *shardIds) {
             std::string theId =
                 arangodb::basics::StringUtils::itoa(remoteNode->id()) + ":" +
                 shardId;
+
             auto it = queryIds.find(theId);
             if (it == queryIds.end()) {
               THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -961,11 +1024,12 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     QueryId id = 0;
 
     for (auto it = engines.rbegin(); it != engines.rend(); ++it) {
-      // std::cout << "Doing engine: " << it->id << " location:"
-      //          << it->location << std::endl;
-      if ((*it).location == COORDINATOR) {
+      EngineInfo* info = &(*it);
+      //LOG(ERR) << "Doing engine: " << it->id << " location:"
+      //          << it->location;
+      if (info->location == COORDINATOR) {
         // create a coordinator-based engine
-        engine = buildEngineCoordinator(*it);
+        engine = buildEngineCoordinator(info);
         TRI_ASSERT(engine != nullptr);
 
         if ((*it).id > 0) {
@@ -996,12 +1060,11 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       } else {
         // create an engine on a remote DB server
         // hand in the previous engine's id
-        distributePlansToShards((*it), id);
+        distributePlansToShards(info, id);
       }
     }
 
     TRI_ASSERT(engine != nullptr);
-
     // return the last created coordinator-based engine
     // this is the local engine that we'll use to run the query
     return engine;
@@ -1103,6 +1166,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
         for (auto& q : inst.get()->queryIds) {
           std::string theId = q.first;
           std::string queryId = q.second;
+
           // std::cout << "queryIds: " << theId << " : " << queryId <<
           // std::endl;
           auto pos = theId.find(':');
@@ -1155,6 +1219,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
           std::string const& shardId = p.first;
           std::string const& queryId = p.second.first;
           bool isTraverserEngine = p.second.second;
+
           // Lock shard on DBserver:
           arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
           auto cc = arangodb::ClusterComm::instance();

@@ -86,10 +86,15 @@ struct Collection {
 
   /// @brief either use the set collection or get one from ClusterInfo:
   std::shared_ptr<arangodb::LogicalCollection> getCollection() const;
-  
+
   /// @brief check smartness of the underlying collection
   bool isSmart() const {
     return getCollection()->isSmart();
+  }
+
+  /// @brief check if collection is a satellite collection
+  bool isSatellite() const {
+    return getCollection()->isSatellite();
   }
 
  private:

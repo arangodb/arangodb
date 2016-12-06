@@ -564,7 +564,6 @@ RestStatus RestAqlHandler::execute() {
   // GeneralRequest::translateMethod(_request->requestType()) << ",
   // " << arangodb::ServerState::instance()->getId() << ": " <<
   // _request->fullUrl() << ": " << _request->body() << "\n\n";
-
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   // extract the sub-request type
@@ -822,7 +821,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
                                                 true)) {
             res = query->engine()->initializeCursor(nullptr, 0);
           } else {
-            items.reset(new AqlItemBlock(querySlice.get("items")));
+            items.reset(new AqlItemBlock(query->resourceMonitor(), querySlice.get("items")));
             res = query->engine()->initializeCursor(items.get(), pos);
           }
         } catch (...) {

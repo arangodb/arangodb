@@ -484,7 +484,7 @@ int ExecutionBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
         TRI_IF_FAILURE("ExecutionBlock::getOrSkipSomeConcatenate") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
-        result = AqlItemBlock::concatenate(collector);
+        result = AqlItemBlock::concatenate(_engine->getQuery()->resourceMonitor(), collector);
       } catch (...) {
         freeCollector();
         throw;

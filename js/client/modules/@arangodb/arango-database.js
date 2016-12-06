@@ -846,6 +846,9 @@ ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, opti
   if (typeof query === 'object' && query !== null && arguments.length === 1) {
     return new ArangoStatement(this, query).execute();
   }
+  if (options === undefined && cursorOptions !== undefined) {
+    options = cursorOptions;
+  }
 
   var data = {
     query: query,

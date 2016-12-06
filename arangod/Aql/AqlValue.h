@@ -474,6 +474,26 @@ struct AqlValue final {
   
   /// @brief destroy, explicit destruction, only when needed
   void destroy();
+  
+  /// @brief returns the size of the dynamic memory allocated for the value
+  size_t memoryUsage() const {
+    auto const t = type();
+    switch (t) {
+      case VPACK_SLICE_POINTER:
+      case VPACK_INLINE:
+        return 0;
+      case VPACK_MANAGED:
+        return _data.buffer->size();
+      case DOCVEC:
+        // no need to count the memory usage for the item blocks in docvec.
+        // these have already been counted elsewhere (in ctors of AqlItemBlock
+        // and AqlItemBlock::setValue)
+        return sizeof(AqlItemBlock*) * _data.docvec->size();
+      case RANGE:
+        return sizeof(Range);
+    }
+    return 0;
+  }
 
   /// @brief create an AqlValue from a vector of AqlItemBlock*s
   static AqlValue CreateFromBlocks(arangodb::Transaction*,

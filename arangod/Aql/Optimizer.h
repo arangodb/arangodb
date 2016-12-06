@@ -191,6 +191,11 @@ class Optimizer {
     // only a SingletonNode and possibly some CalculationNodes as dependencies
     removeUnnecessaryRemoteScatterRule_pass10 = 1040,
 
+    // remove any superflous satellite collection joins...
+    // put it after Scatter rule because we would do
+    // the work twice otherwise
+    removeSatelliteJoinsRule_pass10 = 1045,
+
     // recognize that a RemoveNode can be moved to the shards
     undistributeRemoveAfterEnumCollRule_pass10 = 1050,
 

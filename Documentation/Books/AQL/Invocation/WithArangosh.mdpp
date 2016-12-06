@@ -93,6 +93,22 @@ It is always possible to retrieve statistics for a query with the *getExtra* met
 The meaning of the statistics values is described in [Execution statistics](../ExecutionAndPerformance/QueryStatistics.md).
 You also will find warnings in here; If you're designing queries on the shell be sure to also look at it.
 
+#### Setting a memory limit
+
+To set a memory limit for the query, pass *options* to the *_query* method.
+The memory limit specifies the maximum number of bytes that the query is
+allowed to use:
+
+    @startDocuBlockInline 02_workWithAQL_memoryLimit
+    @EXAMPLE_ARANGOSH_OUTPUT{02_workWithAQL_memoryLimit}
+    |db._query(
+    | 'FOR i IN 1..100000 SORT i RETURN i', {}, {
+    |   options: { memoryLimit: 100000 }
+    }).toArray();
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock 02_workWithAQL_memoryLimit
+
+
 ### with _createStatement (ArangoStatement)
 
 The *_query* method is a shorthand for creating an ArangoStatement object,

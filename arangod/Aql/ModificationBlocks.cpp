@@ -267,6 +267,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
   bool const producesOutput = (ep->_outVariableOld != nullptr);
 
   result.reset(new AqlItemBlock(
+      _engine->getQuery()->resourceMonitor(),
       count,
       getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
@@ -431,6 +432,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
   bool const producesOutput = (ep->_outVariableNew != nullptr);
 
   result.reset(new AqlItemBlock(
+      _engine->getQuery()->resourceMonitor(),
       count,
       getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
@@ -574,6 +576,7 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
   }
 
   result.reset(new AqlItemBlock(
+      _engine->getQuery()->resourceMonitor(),
       count,
       getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
@@ -770,6 +773,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
   std::string errorMessage;
 
   result.reset(new AqlItemBlock(
+      _engine->getQuery()->resourceMonitor(),
       count,
       getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
@@ -1017,6 +1021,7 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
   }
 
   result.reset(new AqlItemBlock(
+      _engine->getQuery()->resourceMonitor(),
       count,
       getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
