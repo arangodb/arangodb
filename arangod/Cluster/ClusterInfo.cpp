@@ -1029,6 +1029,7 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
 int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
                                              std::string const& collectionID,
                                              uint64_t numberOfShards,
+                                             uint64_t replicationFactor,
                                              VPackSlice const& json,
                                              std::string& errorMsg,
                                              double timeout) {
@@ -1074,6 +1075,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   std::shared_ptr<int> dbServerResult = std::make_shared<int>(-1);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
+  auto dbServers = getCurrentDBServers();
   std::function<bool(VPackSlice const& result)> dbServerChanged =
       [=](VPackSlice const& result) {
         if (result.isObject() && result.length() == (size_t)numberOfShards) {
@@ -1081,6 +1083,13 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
           bool tmpHaveError = false;
 
           for (auto const& p : VPackObjectIterator(result)) {
+            if (replicationFactor == 0) {
+              VPackSlice servers = p.value.get("servers");
+              if (!servers.isArray() || servers.length() < dbServers.size()) {
+                return true;
+              }
+            }
+
             if (arangodb::basics::VelocyPackHelper::getBooleanValue(
                     p.value, "error", false)) {
               tmpHaveError = true;
@@ -1149,7 +1158,6 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
 
   // Update our cache:
   loadPlan();
-
   if (numberOfShards == 0) {
     loadCurrent();
     events::CreateCollection(name, TRI_ERROR_NO_ERROR);

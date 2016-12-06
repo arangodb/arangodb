@@ -81,7 +81,7 @@ Exception::~Exception() throw() {}
 /// @brief returns the error message
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string Exception::message() const throw() { return _errorMessage; }
+std::string Exception::message() const { return _errorMessage; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the error code

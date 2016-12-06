@@ -30,8 +30,9 @@ using namespace arangodb::aql;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief create the block
-AqlItemBlock::AqlItemBlock(size_t nrItems, RegisterId nrRegs)
-    : _nrItems(nrItems), _nrRegs(nrRegs) {
+AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, size_t nrItems, RegisterId nrRegs)
+    : _nrItems(nrItems), _nrRegs(nrRegs), _resourceMonitor(resourceMonitor) {
+  TRI_ASSERT(resourceMonitor != nullptr);
   TRI_ASSERT(nrItems > 0);  // empty AqlItemBlocks are not allowed!
 
   if (nrRegs > 0) {
@@ -40,12 +41,21 @@ AqlItemBlock::AqlItemBlock(size_t nrItems, RegisterId nrRegs)
     // query seems unlikely
     TRI_ASSERT(nrRegs <= ExecutionNode::MaxRegisterId);
 
-    _data.resize(nrItems * nrRegs);
+    increaseMemoryUsage(sizeof(AqlValue) * nrItems * nrRegs);
+    try {
+      _data.resize(nrItems * nrRegs);
+    } catch (...) {
+      decreaseMemoryUsage(sizeof(AqlValue) * nrItems * nrRegs);
+      throw;
+    }
   }
 }
 
 /// @brief create the block from VelocyPack, note that this can throw
-AqlItemBlock::AqlItemBlock(VPackSlice const slice) {
+AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, VPackSlice const slice)
+    : _nrItems(0), _nrRegs(0), _resourceMonitor(resourceMonitor) {
+  TRI_ASSERT(resourceMonitor != nullptr);
+
   bool exhausted = VelocyPackHelper::getBooleanValue(slice, "exhausted", false);
 
   if (exhausted) {
@@ -62,7 +72,13 @@ AqlItemBlock::AqlItemBlock(VPackSlice const slice) {
 
   // Initialize the data vector:
   if (_nrRegs > 0) {
-    _data.resize(_nrItems * _nrRegs);
+    increaseMemoryUsage(sizeof(AqlValue) * _nrItems * _nrRegs);
+    try {
+      _data.resize(_nrItems * _nrRegs);
+    } catch (...) {
+      decreaseMemoryUsage(sizeof(AqlValue) * _nrItems * _nrRegs);
+      throw;
+    }
   }
 
   // Now put in the data:
@@ -137,6 +153,7 @@ AqlItemBlock::AqlItemBlock(VPackSlice const slice) {
     }
   } catch (...) {
     destroy();
+    // TODO: rethrow?
   }
 }
 
@@ -151,9 +168,10 @@ void AqlItemBlock::destroy() {
       try {  // can find() really throw???
         auto it2 = _valueCount.find(it);
         if (it2 != _valueCount.end()) {  // if we know it, we are still responsible
-          TRI_ASSERT(it2->second > 0);
+          TRI_ASSERT((*it2).second > 0);
 
-          if (--(it2->second) == 0) {
+          if (--((*it2).second) == 0) {
+            decreaseMemoryUsage(it.memoryUsage());
             it.destroy();
             try {
               _valueCount.erase(it2);
@@ -196,9 +214,10 @@ void AqlItemBlock::shrink(size_t nrItems) {
         auto it = _valueCount.find(a);
 
         if (it != _valueCount.end()) {
-          TRI_ASSERT(it->second > 0);
+          TRI_ASSERT((*it).second > 0);
 
-          if (--it->second == 0) {
+          if (--((*it).second) == 0) {
+            decreaseMemoryUsage(a.memoryUsage());
             a.destroy();
             try {
               _valueCount.erase(it);
@@ -210,6 +229,8 @@ void AqlItemBlock::shrink(size_t nrItems) {
       a.erase();
     }
   }
+    
+  decreaseMemoryUsage(sizeof(AqlValue) * (_nrItems - nrItems) * _nrRegs);
 
   // adjust the size of the block
   _nrItems = nrItems;
@@ -219,6 +240,7 @@ void AqlItemBlock::shrink(size_t nrItems) {
 /// necessary, using the reference count.
 void AqlItemBlock::clearRegisters(
     std::unordered_set<RegisterId> const& toClear) {
+
   for (auto const& reg : toClear) {
     for (size_t i = 0; i < _nrItems; i++) {
       AqlValue& a(_data[_nrRegs * i + reg]);
@@ -227,9 +249,10 @@ void AqlItemBlock::clearRegisters(
         auto it = _valueCount.find(a);
 
         if (it != _valueCount.end()) {
-          TRI_ASSERT(it->second > 0);
+          TRI_ASSERT((*it).second > 0);
 
-          if (--it->second == 0) {
+          if (--((*it).second) == 0) {
+            decreaseMemoryUsage(a.memoryUsage());
             a.destroy();
             try {
               _valueCount.erase(it);
@@ -251,7 +274,7 @@ AqlItemBlock* AqlItemBlock::slice(size_t from, size_t to) const {
   std::unordered_map<AqlValue, AqlValue> cache;
   cache.reserve((to - from) * _nrRegs / 4 + 1);
 
-  auto res = std::make_unique<AqlItemBlock>(to - from, _nrRegs);
+  auto res = std::make_unique<AqlItemBlock>(_resourceMonitor, to - from, _nrRegs);
 
   for (size_t row = from; row < to; row++) {
     for (RegisterId col = 0; col < _nrRegs; col++) {
@@ -289,7 +312,7 @@ AqlItemBlock* AqlItemBlock::slice(
     size_t row, std::unordered_set<RegisterId> const& registers) const {
   std::unordered_map<AqlValue, AqlValue> cache;
 
-  auto res = std::make_unique<AqlItemBlock>(1, _nrRegs);
+  auto res = std::make_unique<AqlItemBlock>(_resourceMonitor, 1, _nrRegs);
 
   for (RegisterId col = 0; col < _nrRegs; col++) {
     if (registers.find(col) == registers.end()) {
@@ -332,7 +355,7 @@ AqlItemBlock* AqlItemBlock::slice(std::vector<size_t> const& chosen, size_t from
   std::unordered_map<AqlValue, AqlValue> cache;
   cache.reserve((to - from) * _nrRegs / 4 + 1);
 
-  auto res = std::make_unique<AqlItemBlock>(to - from, _nrRegs);
+  auto res = std::make_unique<AqlItemBlock>(_resourceMonitor, to - from, _nrRegs);
 
   for (size_t row = from; row < to; row++) {
     for (RegisterId col = 0; col < _nrRegs; col++) {
@@ -374,7 +397,7 @@ AqlItemBlock* AqlItemBlock::steal(std::vector<size_t> const& chosen, size_t from
                                   size_t to) {
   TRI_ASSERT(from < to && to <= chosen.size());
 
-  auto res = std::make_unique<AqlItemBlock>(to - from, _nrRegs);
+  auto res = std::make_unique<AqlItemBlock>(_resourceMonitor, to - from, _nrRegs);
 
   for (size_t row = from; row < to; row++) {
     for (RegisterId col = 0; col < _nrRegs; col++) {
@@ -398,7 +421,7 @@ AqlItemBlock* AqlItemBlock::steal(std::vector<size_t> const& chosen, size_t from
 /// @brief concatenate multiple blocks, note that the new block now owns all
 /// AqlValue pointers in the old blocks, therefore, the latter are all
 /// set to nullptr, just to be sure.
-AqlItemBlock* AqlItemBlock::concatenate(
+AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
     std::vector<AqlItemBlock*> const& blocks) {
   TRI_ASSERT(!blocks.empty());
   
@@ -416,7 +439,7 @@ AqlItemBlock* AqlItemBlock::concatenate(
   TRI_ASSERT(totalSize > 0);
   TRI_ASSERT(nrRegs > 0);
 
-  auto res = std::make_unique<AqlItemBlock>(totalSize, nrRegs);
+  auto res = std::make_unique<AqlItemBlock>(resourceMonitor, totalSize, nrRegs);
 
   size_t pos = 0;
   for (auto& it : blocks) {

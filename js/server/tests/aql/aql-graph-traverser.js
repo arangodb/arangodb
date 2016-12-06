@@ -3226,6 +3226,8 @@ jsunity.run(multiEdgeDirectionSuite);
 jsunity.run(subQuerySuite);
 jsunity.run(optionsSuite);
 jsunity.run(optimizeQuantifierSuite);
-jsunity.run(optimizeNonVertexCentricIndexesSuite);
+if (!isCluster) {
+  jsunity.run(optimizeNonVertexCentricIndexesSuite);
+}
 
 return jsunity.done();

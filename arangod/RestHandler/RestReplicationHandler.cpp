@@ -1761,7 +1761,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
       VPackCollection::merge(parameters, sliceToMerge, false);
   VPackSlice const merged = mergedBuilder.slice();
 
-  int res = ci->createCollectionCoordinator(dbName, newId, numberOfShards,
+  int res = ci->createCollectionCoordinator(dbName, newId, numberOfShards, replicationFactor,
                                             merged, errorMsg, 0.0);
   if (res != TRI_ERROR_NO_ERROR) {
     errorMsg =

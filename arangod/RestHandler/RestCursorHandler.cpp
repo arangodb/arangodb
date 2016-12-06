@@ -315,6 +315,11 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
     options.add("batchSize", VPackValue(1000));
   }
 
+  VPackSlice memoryLimit = slice.get("memoryLimit");
+  if (memoryLimit.isNumber()) {
+    options.add("memoryLimit", memoryLimit);
+  }
+
   bool hasCache = false;
   VPackSlice cache = slice.get("cache");
   if (cache.isBool()) {

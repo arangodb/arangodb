@@ -31,6 +31,7 @@ ERROR_LOCKED,28,"locked","Will be raised when a resource or an operation is lock
 ERROR_DEADLOCK,29,"deadlock detected","Will be raised when a deadlock is detected when accessing collections."
 ERROR_SHUTTING_DOWN,30,"shutdown in progress","Will be raised when a call cannot succeed because a server shutdown is already in progress."
 ERROR_ONLY_ENTERPRISE,31,"only enterprise version","Will be raised when an enterprise-feature is requested from the community edition."
+ERROR_RESOURCE_LIMIT,32,"resource limit exceeded","Will be raised when the resources used by an operation exceed the configured maximum value."
 
 ################################################################################
 ## HTTP error status codes

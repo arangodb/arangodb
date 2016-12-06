@@ -88,7 +88,10 @@ int SingletonBlock::getOrSkipSome(size_t,  // atLeast,
 
   if (!skipping) {
     result = new AqlItemBlock(
-        1, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]);
+      _engine->getQuery()->resourceMonitor(),
+      1, 
+      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]
+    );
 
     try {
       if (_inputRegisterValues != nullptr) {
@@ -290,7 +293,7 @@ int FilterBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
         TRI_IF_FAILURE("FilterBlock::getOrSkipSomeConcatenate") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
-        result = AqlItemBlock::concatenate(collector);
+        result = AqlItemBlock::concatenate(_engine->getQuery()->resourceMonitor(), collector);
       } catch (...) {
         for (auto& x : collector) {
           delete x;
@@ -463,7 +466,7 @@ AqlItemBlock* ReturnBlock::getSome(size_t atLeast, size_t atMost) {
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   RegisterId const registerId = it->second.registerId;
 
-  auto stripped = std::make_unique<AqlItemBlock>(n, 1);
+  auto stripped = std::make_unique<AqlItemBlock>(_engine->getQuery()->resourceMonitor(), n, 1);
 
   for (size_t i = 0; i < n; i++) {
     auto a = res->getValueReference(i, registerId);
