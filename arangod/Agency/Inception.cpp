@@ -55,7 +55,7 @@ void Inception::gossip() {
   auto s = std::chrono::system_clock::now();
   std::chrono::seconds timeout(3600);
   size_t j = 0;
-  bool complete = false;
+  //bool complete = false;
   long waitInterval = 250000;
 
   CONDITION_LOCKER(guard, _cv);
@@ -123,14 +123,14 @@ void Inception::gossip() {
 
     // We're done
     if (config.poolComplete()) {
-      if (complete) {
+//      if (complete) {
         LOG_TOPIC(INFO, Logger::AGENCY) << "Agent pool completed. Stopping "
           "active gossipping. Starting RAFT process.";
         _agent->startConstituent();
         break;
       }
-      complete = true;
-    }
+//      complete = true;
+//    }
 
     // Timed out? :(
     if ((std::chrono::system_clock::now() - s) > timeout) {

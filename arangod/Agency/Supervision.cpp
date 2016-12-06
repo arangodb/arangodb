@@ -550,6 +550,7 @@ bool Supervision::handleJobs() {
   // Do supervision
   shrinkCluster();
   workJobs();
+  enforceReplication();
 
   return true;
 }
@@ -608,6 +609,28 @@ void Supervision::workJobs() {
       UnassumedLeadership(_snapshot, _agent, jobId, creator, _agencyPrefix);
     }
   }
+}
+
+void Supervision::enforceReplication() {
+
+  auto const& plannedDBs = _snapshot(planColPrefix).children();
+
+  for (const auto& db_ : plannedDBs) { // Planned databases
+    auto const& db = *(db_.second);
+    for (const auto& col_ : db.children()) { // Planned collections
+      auto const& col = *(col_.second);
+      auto const& replicationFactor = col("replicationFactor").slice().getUInt();
+      for (auto const& shard_ : col("shards").children()) { // Pl shards
+        auto const& shard = *(shard_.second);
+        if (replicationFactor != shard.slice().length()) {
+          LOG(WARN) << shard.slice().type()
+                    << " target repl(" << replicationFactor
+                    << ") actual repl(" << shard.slice().length() << ")";
+        }
+      }
+    }
+  }
+  
 }
 
 // Shrink cluster if applicable, guarded by caller
@@ -705,7 +728,7 @@ void Supervision::shrinkCluster() {
      **/
     // Find greatest replication factor among all collections
     uint64_t maxReplFact = 1;
-    Node::Children const& databases = _snapshot("/Plan/Collections").children();
+    Node::Children const& databases = _snapshot(planColPrefix).children();
     for (auto const& database : databases) {
       for (auto const& collptr : database.second->children()) {
         uint64_t replFact{0};
