@@ -57,27 +57,20 @@ GeoIndexIterator::GeoIndexIterator(LogicalCollection* collection,
     }
 
 void GeoIndexIterator::evaluateCondition() {
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER evaluate Condition";
-
   if (_condition) {
     auto numMembers = _condition->numMembers();
 
     if(numMembers >= 2){
       _lat = _condition->getMember(0)->getMember(1)->getDoubleValue();
-      LOG_TOPIC(DEBUG, Logger::DEVEL) << "lat: " << _lat;
       _lon = _condition->getMember(1)->getMember(1)->getDoubleValue();
-      LOG_TOPIC(DEBUG, Logger::DEVEL) << "lon: " << _lon;
     }
 
     if (numMembers == 2){ //near
       _near = true;
-      LOG_TOPIC(DEBUG, Logger::DEVEL) << "INDEX CONFIGURED FOR NEAR";
     } else { //within
       _near = false;
       _withinRange = _condition->getMember(2)->getMember(1)->getDoubleValue();
       _withinLessEq = _condition->getMember(3)->getMember(1)->getDoubleValue();
-
-      LOG_TOPIC(DEBUG, Logger::DEVEL) << "INDEX CONFIGURED FOR WITHIN  with range " << _withinRange;
     }
 
   } else {

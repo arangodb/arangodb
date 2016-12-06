@@ -4076,11 +4076,9 @@ GeoIndexInfo iterativePreorderWithCondition(AstNode* root, GeoIndexInfo(*conditi
 GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, ExecutionPlan* plan, ExecutionNode* n){
   ExecutionNode* setter = nullptr;
   auto rv = GeoIndexInfo{};
-  //TODO - iterate over elements of conjunction / disjunction
-  LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER IDENTIFY";
   switch(type){
     case EN::SORT: {
-      LOG_TOPIC(DEBUG, Logger::DEVEL) << "found sort node";
+      //LOG_TOPIC(DEBUG, Logger::DEVEL) << "found sort node";
       auto node = static_cast<SortNode*>(n);
       auto& elements = node->getElements();
 
@@ -4101,7 +4099,7 @@ GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, Exec
     break;
 
     case EN::FILTER: {
-      LOG_TOPIC(DEBUG, Logger::DEVEL) << "found filter node";
+      //LOG_TOPIC(DEBUG, Logger::DEVEL) << "found filter node";
       auto node = static_cast<FilterNode*>(n);
 
       // filter nodes always have one input variable
@@ -4122,7 +4120,7 @@ GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, Exec
   if (setter == nullptr || setter->getType() != EN::CALCULATION) {
     return rv;
   }
-  LOG_TOPIC(DEBUG, Logger::DEVEL) << "found setter node for calcuation";
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "found setter node for calcuation";
 
   // downcast to calculation node and get expression
   auto cn = static_cast<CalculationNode*>(setter);
@@ -4136,7 +4134,7 @@ GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, Exec
   AstNode* node = expression->nodeForModification();
 
 
-  LOG_TOPIC(DEBUG, Logger::DEVEL) << "checking expression of calcaulation";
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "checking expression of calcaulation";
 
   //FIXME -- technical debt -- code duplication / not all cases covered
   switch(type){
@@ -4182,11 +4180,11 @@ void checkNodesForGeoOptimization(ExecutionNode::NodeType type, ExecutionPlan* p
 // should go to candidate checking
 GeoIndexInfo geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionPlan* plan, GeoIndexInfo info){
   using SV = std::vector<std::string>;
-  LOG_TOPIC(DEBUG, Logger::DEVEL) << "    enter argument check";
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "    enter argument check";
   // first and second should be based on the same document - need to provide the document
   // in order to see which collection is bound to it and if that collections supports geo-index
   if( !pair.first->isAttributeAccessForVariable() || !pair.second->isAttributeAccessForVariable()){
-    LOG_TOPIC(DEBUG, Logger::DEVEL) << "      not both args are of type attribute access";
+    //LOG_TOPIC(DEBUG, Logger::DEVEL) << "      not both args are of type attribute access";
     info.invalidate();
     return info;
   }
@@ -4198,14 +4196,14 @@ GeoIndexInfo geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pai
   SV accessPath1{pair.first->getString()};
   SV accessPath2{pair.second->getString()};
 
-  LOG_TOPIC(DEBUG, Logger::DEVEL) << "      got setter";
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "      got setter";
   if(setter1 == setter2){
     if(setter1->getType() == EN::ENUMERATE_COLLECTION){
       auto collNode = reinterpret_cast<EnumerateCollectionNode*>(setter1);
       auto coll = collNode->collection(); //what kind of indexes does it have on what attributes
       auto lcoll = coll->getCollection();
       // TODO - check collection for suitable geo-indexes
-      LOG_TOPIC(DEBUG, Logger::DEVEL) << "        SETTER IS ENUMERATE_COLLECTION: " << coll->getName();
+      //LOG_TOPIC(DEBUG, Logger::DEVEL) << "        SETTER IS ENUMERATE_COLLECTION: " << coll->getName();
       for(auto indexShardPtr : lcoll->getIndexes()){
         // get real index
         arangodb::Index& index = *indexShardPtr.get();
@@ -4216,19 +4214,19 @@ GeoIndexInfo geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pai
           continue;
         }
 
-        /////////////////////////////////////////////////
-        //FIXME -  REMOVE DEBUG CODE LATER
-        auto vecs = std::vector<std::vector<SV>>{index.fieldNames(), std::vector<SV>{accessPath1, accessPath2}};
-        for(auto vec : vecs ){
-          for(auto path : vec){
-            std::cout << "AccessPath VECTOR:  ";
-            for(auto word : path){
-              std::cout << word << " ";
-            }
-            std::cout << std::endl;
-          }
-        }
-        /////////////////////////////////////////////////
+        // /////////////////////////////////////////////////
+        // //FIXME -  REMOVE DEBUG CODE LATER
+        // auto vecs = std::vector<std::vector<SV>>{index.fieldNames(), std::vector<SV>{accessPath1, accessPath2}};
+        // for(auto vec : vecs ){
+        //   for(auto path : vec){
+        //     std::cout << "AccessPath VECTOR:  ";
+        //     for(auto word : path){
+        //       std::cout << word << " ";
+        //     }
+        //     std::cout << std::endl;
+        //   }
+        // }
+        // /////////////////////////////////////////////////
 
         //check access paths of attributes in ast and those in index match
         if( index.fieldNames()[0] == accessPath1 && index.fieldNames()[1] == accessPath2 ){
@@ -4290,14 +4288,12 @@ void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info){
   if( info.expressionParent ) {
     auto ast = plan->getAst();
     auto replacement = ast->createNodeValueBool(true);
-    info.expressionParent->dump(0);
     for(std::size_t i = 0; i < info.expressionParent->numMembers(); ++i){
       if(info.expressionParent->getMember(i) == info.expressionNode){
         info.expressionParent->removeMemberUnchecked(i);
         info.expressionParent->addMember(replacement);
       }
     }
-    info.expressionParent->dump(0);
  }
 
 }
@@ -4375,7 +4371,7 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
                                          ExecutionPlan* plan,
                                          Optimizer::Rule const* rule) {
 
-  LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER GEO RULE";
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER GEO RULE";
 
   std::vector<GeoIndexInfo> infos;
   checkNodesForGeoOptimization(EN::SORT, plan, infos);
@@ -4390,6 +4386,6 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
   }
   opt->addPlan(plan, rule, modified);
 
-  LOG_TOPIC(DEBUG, Logger::DEVEL) << "EXIT GEO RULE - modified: " << modified;
-  LOG_TOPIC(DEBUG, Logger::DEVEL) << "";
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "EXIT GEO RULE - modified: " << modified;
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "";
 }
