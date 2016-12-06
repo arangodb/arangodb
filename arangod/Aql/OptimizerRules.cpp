@@ -3928,6 +3928,7 @@ struct GeoIndexInfo{
   GeoIndexInfo()
     : collectionNode(nullptr)
     , executionNode(nullptr)
+    , expressionParent(nullptr)
     , expressionNode(nullptr)
     , distanceNode(nullptr)
     , index(nullptr)
@@ -3936,10 +3937,10 @@ struct GeoIndexInfo{
     , within(false)
     , lessgreaterequal(false)
     , valid(true)
-    , inSubCondition(false)
     {}
   EnumerateCollectionNode* collectionNode; // node that will be replaced by (geo) IndexNode
   ExecutionNode* executionNode; // start node hat is a sort or filter
+  AstNode* expressionParent; // AstNode that is the parent of the Node
   AstNode* expressionNode; // AstNode that contains the sort/filter condition
   AstNode* distanceNode; // AstNode that contains the distance parameters
   std::shared_ptr<arangodb::Index> index; //pointer to geoindex
@@ -3948,7 +3949,6 @@ struct GeoIndexInfo{
   bool within; // is this a within lookup
   bool lessgreaterequal; // is this a check for le/ge (true) or lt/gt (false)
   bool valid; // contains this node a valid condition
-  bool inSubCondition;
   std::vector<std::string> longitude; // access path to longitude
   std::vector<std::string> latitude; // access path to latitude
 };
@@ -3961,7 +3961,7 @@ AstNode* isValueOrRefNode(AstNode* node){
   return node;
 }
 
-GeoIndexInfo isDistanceFunction(AstNode* distanceNode, bool inSubCondition){
+GeoIndexInfo isDistanceFunction(AstNode* distanceNode, AstNode* expressionParent){
   // the expression must exist and it must be a function call
   auto rv = GeoIndexInfo{};
   if(distanceNode->type != NODE_TYPE_FCALL) {
@@ -3979,11 +3979,11 @@ GeoIndexInfo isDistanceFunction(AstNode* distanceNode, bool inSubCondition){
   //LOG_TOPIC(DEBUG, Logger::DEVEL) << "FOUND DISTANCE FUNCTION";
   rv.distanceNode = distanceNode;
   rv.expressionNode = distanceNode;
-  rv.inSubCondition = inSubCondition;
+  rv.expressionParent = expressionParent;
   return rv;
 }
 
-GeoIndexInfo isGeoFilterExpression(AstNode* node, bool inSubCondition){
+GeoIndexInfo isGeoFilterExpression(AstNode* node, AstNode* expressionParent){
   // binary compare must be on top
   bool dist_first = true;
   bool lessEqual = true;
@@ -4032,10 +4032,10 @@ GeoIndexInfo isGeoFilterExpression(AstNode* node, bool inSubCondition){
 
 
   //LOG_TOPIC(DEBUG, Logger::DEVEL) << "frist check";
-  rv = eval_stuff(dist_first, lessEqual, isDistanceFunction(first, inSubCondition), isValueOrRefNode(second));
+  rv = eval_stuff(dist_first, lessEqual, isDistanceFunction(first, expressionParent), isValueOrRefNode(second));
   if (!rv) {
     //LOG_TOPIC(DEBUG, Logger::DEVEL) << "second check";
-    rv = eval_stuff(dist_first, lessEqual, isDistanceFunction(second, inSubCondition), isValueOrRefNode(first));
+    rv = eval_stuff(dist_first, lessEqual, isDistanceFunction(second, expressionParent), isValueOrRefNode(first));
   }
   //LOG_TOPIC(DEBUG, Logger::DEVEL) << "result " << (bool) rv;
 
@@ -4047,27 +4047,25 @@ GeoIndexInfo isGeoFilterExpression(AstNode* node, bool inSubCondition){
   return rv;
 }
 
-GeoIndexInfo iterativePreorderWithCondition(AstNode* root, GeoIndexInfo(*condition)(AstNode*, bool)){
+GeoIndexInfo iterativePreorderWithCondition(AstNode* root, GeoIndexInfo(*condition)(AstNode*, AstNode*)){
   // returns on first hit
   if (!root){
     return GeoIndexInfo{};
   }
-  bool inSubCondition = false;
-  std::vector<AstNode*> nodestack;
-  nodestack.push_back(root);
+  std::vector<std::pair<AstNode*,AstNode*>> nodestack;
+  nodestack.push_back({root,nullptr});
 
   while(nodestack.size()){
-    AstNode* current = nodestack.back();
+    auto current = nodestack.back();
     nodestack.pop_back();
-    GeoIndexInfo rv = condition(current,inSubCondition);
-    inSubCondition = true; // only false for root
+    GeoIndexInfo rv = condition(current.first,current.second);
     if (rv) {
       return rv;
     }
 
-    if (current->type == NODE_TYPE_OPERATOR_BINARY_AND || current->type == NODE_TYPE_OPERATOR_NARY_AND ){
-      for (std::size_t i = 0; i < current->numMembers(); ++i){
-        nodestack.push_back(current->getMember(i));
+    if (current.first->type == NODE_TYPE_OPERATOR_BINARY_AND || current.first->type == NODE_TYPE_OPERATOR_NARY_AND ){
+      for (std::size_t i = 0; i < current.first->numMembers(); ++i){
+        nodestack.push_back({current.first->getMember(i),current.first});
       }
     }
   }
@@ -4143,12 +4141,12 @@ GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, Exec
   //FIXME -- technical debt -- code duplication / not all cases covered
   switch(type){
     case EN::SORT: {
-      rv = isDistanceFunction(node,false);
+      rv = isDistanceFunction(node,nullptr);
     }
     break;
 
     case EN::FILTER: {
-      rv = iterativePreorderWithCondition(node,isGeoFilterExpression);
+      rv = iterativePreorderWithCondition(node,&isGeoFilterExpression);
     }
     break;
 
@@ -4287,14 +4285,21 @@ std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan, GeoIndexInfo& 
 
 //replaces the geoCondition with true.
 //void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info){
-void replaceGeoCondition(GeoIndexInfo& info){
-  //auto ast = plan->getAst();
-  //ast->createNodeValueBool(true);
-  if( info.inSubCondition ) {
-    info.expressionNode->clearMembers();
-    info.expressionNode->setValueType(VALUE_TYPE_BOOL);
-    info.expressionNode->setBoolValue(true);
-  }
+void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info){
+
+  if( info.expressionParent ) {
+    auto ast = plan->getAst();
+    auto replacement = ast->createNodeValueBool(true);
+    info.expressionParent->dump(0);
+    for(std::size_t i = 0; i < info.expressionParent->numMembers(); ++i){
+      if(info.expressionParent->getMember(i) == info.expressionNode){
+        info.expressionParent->removeMemberUnchecked(i);
+        info.expressionParent->addMember(replacement);
+      }
+    }
+    info.expressionParent->dump(0);
+ }
+
 }
 
 // applys the optimization for a candidate
@@ -4353,9 +4358,11 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& info){
   plan->registerNode(inode);
   condition.release();
 
-  //replaceGeoCondition(info);
+  replaceGeoCondition(plan, info);
 
-  if(info.executionNodeType == EN::SORT){
+  // if executionNode is sort OR a filter without further sub conditions
+  // the node can be unlinked
+  if(  info.executionNodeType == EN::SORT || !info.expressionParent){
     plan->unlinkNode(info.executionNode);
   }
   plan->replaceNode(res.collectionNode,inode);
