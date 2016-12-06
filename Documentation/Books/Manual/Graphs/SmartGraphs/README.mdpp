@@ -1,4 +1,5 @@
-!CHAPTER SmartGraphs
+SmartGraphs
+===========
 
 __This feature is only available in the Enterprise Edition.__
 
@@ -13,7 +14,7 @@ The optimizer is clever enough to identify if we are on a SmartGraph or not.
 The difference is only in the management section: creating and modifying the underlying collections of the graph.
 For a detailed API reference please refer to [SmartGraph Management](../SmartGraphs/Management.md).
 
-!SUBSUBSECTION What makes a graph smart?
+#### What makes a graph smart?
 
 Most graphs have one feature that divides the entire graph into several smaller subgraphs.
 These subgraphs have a large amount of edges that only connect vertices in the same subgraph
@@ -40,13 +41,13 @@ all edges connecting vertices with identical smartAttribute values are stored on
 During query time the query optimizer and the query executor both know for every document exactly where it is stored and can thereby minimize network overhead.
 Everything that can be computed locally will be computed locally.
 
-!SUBSUBSECTION Benefits of SmartGraphs
+#### Benefits of SmartGraphs
 
 Because of the above described guaranteed sharding, the performance of queries that only cover one subgraph have a performance almost equal to an only local computation.
 Queries that cover more than one subgraph require some network overhead. The more subgraphs are touched the more network cost will apply.
 However the overall performance is never worse than the same query on a General Graph.
 
-!SUBSUBSECTION Getting started
+#### Getting started
 
 First of all SmartGraphs *cannot use existing collections*, when switching to SmartGraph from an existing data set you have to import the data into a fresh SmartGraph.
 This switch can be easily achieved with [arangodump](../../Administration/Arangodump.md) and [arangorestore](../../Administration/Arangorestore.md).

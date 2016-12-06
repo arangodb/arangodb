@@ -1,4 +1,5 @@
-!CHAPTER Query View
+Query View
+==========
 
 The query view offers you three different subviews:
 
@@ -6,7 +7,8 @@ The query view offers you three different subviews:
 - Running Queries
 - Slow Query History
 
-!SECTION AQL Query Editor
+AQL Query Editor
+----------------
 
 The web interface offers a AQL Query Editor:
 
@@ -40,7 +42,7 @@ If you are used to work with JSON, you may want to switch the bind parameter
 editor to JSON mode by clicking on the upper right toggle button.  You can then
 edit the bind parameters in raw JSON format.
 
-!SUBSECTION Custom Queries
+### Custom Queries
 
 To save the current query use the *Save* button in the top left corner of
 the editor or use the shortcut (see below).
@@ -64,7 +66,7 @@ For the built-in example queries, there is only *Copy to editor* available.
 To export or import queries to and from JSON you can use the buttons on the
 right-hand side.
 
-!SUBSECTION Result
+### Result
 
 ![Editor Output](images/queryEditorOutput.png)
 
@@ -75,7 +77,7 @@ itself. The result boxes can be dismissed individually, or altogether using the
 *Remove results* button. The toggle button in the top right corner of each box
 switches back and forth between the *Result* and *AQL* query with bind parameters.
 
-!SUBSECTION Spotlight
+### Spotlight
 
 ![Spotlight](images/querySpotlight.png)
 
@@ -84,7 +86,7 @@ AQL functions and collections (filtered by their type) to help you to be more
 productive in writing your queries. Spotlight can be opened by the magic wand icon
 in the toolbar or via shortcut (see below).
 
-!SUBSECTION AQL Editor Shortcuts
+### AQL Editor Shortcuts
 
 - Ctrl / Cmd + Return to execute a query
 - Ctrl / Cmd + Shift + Return to explain a query
@@ -94,14 +96,16 @@ in the toolbar or via shortcut (see below).
 - Ctrl + Cmd + Z to undo last change
 - Ctrl + Cmd + Shift + Z to redo last change
   
-!SECTION Running Queries
+Running Queries
+---------------
 
 ![Running Queries](images/runningQueries.png)
 
 The *Running Queries* tab gives you a compact overview of all running queries.
 By clicking the red minus button, you can abort the execution of a running query.
 
-!SECTION Slow Query History
+Slow Query History
+------------------
 
 ![Slow Queries](images/slowQueries.png)
 

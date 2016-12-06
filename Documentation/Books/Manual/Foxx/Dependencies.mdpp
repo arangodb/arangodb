@@ -1,4 +1,5 @@
-!CHAPTER Dependency management
+Dependency management
+=====================
 
 There are two things commonly called "dependencies" in Foxx:
 
@@ -8,13 +9,14 @@ There are two things commonly called "dependencies" in Foxx:
 
 Let's look at them in more detail:
 
-!SECTION Module dependencies
+Module dependencies
+-------------------
 
 You can use the `node_modules` folder to bundle third-party Foxx-compatible npm and Node.js modules with your Foxx service. Typically this is achieved by adding a `package.json` file to your project specifying npm dependencies using the `dependencies` attribute and installing them with the npm command-line tool.
 
 Make sure to include the actual `node_modules` folder in your Foxx service bundle as ArangoDB will not do anything special to install these dependencies. Also keep in mind that bundling extraneous modules like development dependencies may bloat the file size of your Foxx service bundle.
 
-!SUBSECTION Compatibility caveats
+### Compatibility caveats
 
 Unlike JavaScript in browsers or Node.js, the JavaScript environment in ArangoDB is synchronous. This means any modules that depend on asynchronous behaviour like promises or `setTimeout` will not behave correctly in ArangoDB or Foxx. Additionally unlike Node.js ArangoDB does not support native extensions. All modules have to be implemented in pure JavaScript.
 
@@ -22,7 +24,8 @@ While ArangoDB provides a lot of compatibility code to support modules written f
 
 Also note that these restrictions not only apply on the modules you wish to install but also the dependencies of those modules. As a rule of thumb: modules written to work in Node.js and the browser that do not rely on async behaviour should generally work; modules that rely on network or filesystem I/O or make heavy use of async behaviour most likely will not.
 
-!SECTION Foxx dependencies
+Foxx dependencies
+-----------------
 
 Foxx dependencies can be declared in a [service's manifest](Manifest.md) using the `provides` and `dependencies` fields:
 

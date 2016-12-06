@@ -1,14 +1,16 @@
-!CHAPTER Crypto Module
+Crypto Module
+=============
 
 `const crypto = require('@arangodb/crypto')`
 
 The crypto module provides implementations of various hashing algorithms as well as cryptography related functions.
 
-!SECTION Nonces
+Nonces
+------
 
 These functions deal with cryptographic nonces.
 
-!SUBSECTION createNonce
+### createNonce
 
 `crypto.createNonce(): string`
 
@@ -16,7 +18,7 @@ Creates a cryptographic nonce.
 
 Returns the created nonce.
 
-!SUBSECTION checkAndMarkNonce
+### checkAndMarkNonce
 
 `crypto.checkAndMarkNonce(nonce): void`
 
@@ -30,11 +32,12 @@ Checks and marks a nonce.
 
 Returns nothing.
 
-!SECTION Random values
+Random values
+-------------
 
 The following functions deal with generating random values.
 
-!SUBSECTION rand
+### rand
 
 `crypto.rand(): number`
 
@@ -42,7 +45,7 @@ Generates a random integer that may be positive, negative or even zero.
 
 Returns the generated number.
 
-!SUBSECTION genRandomAlphaNumbers
+### genRandomAlphaNumbers
 
 `crypto.genRandomAlphaNumbers(length): string`
 
@@ -56,7 +59,7 @@ Generates a string of random alpabetical characters and digits.
 
 Returns the generated string.
 
-!SUBSECTION genRandomNumbers
+### genRandomNumbers
 
 `crypto.genRandomNumbers(length): string`
 
@@ -70,7 +73,7 @@ Generates a string of random digits.
 
 Returns the generated string.
 
-!SUBSECTION genRandomSalt
+### genRandomSalt
 
 `crypto.genRandomSalt(length): string`
 
@@ -84,11 +87,12 @@ Generates a string of random (printable) ASCII characters.
 
 Returns the generated string.
 
-!SECTION JSON Web Tokens (JWT)
+JSON Web Tokens (JWT)
+---------------------
 
 These methods implement the JSON Web Token standard.
 
-!SUBSECTION jwtEncode
+### jwtEncode
 
 `crypto.jwtEncode(key, message, algorithm): string`
 
@@ -113,7 +117,7 @@ Generates a JSON Web Token for the given message.
 
 Returns the JSON Web Token.
 
-!SUBSECTION jwtDecode
+### jwtDecode
 
 `crypto.jwtDecode(key, token, noVerify): string | null`
 
@@ -139,11 +143,11 @@ Returns the JSON Web Token.
 
 Returns the decoded JSON message or `null` if no token is provided.
 
-!SUBSECTION jwtAlgorithms
+### jwtAlgorithms
 
 A helper object containing the supported JWT algorithms. Each attribute name corresponds to a JWT `alg` and the value is an object with `sign` and `verify` methods.
 
-!SUBSECTION jwtCanonicalAlgorithmName
+### jwtCanonicalAlgorithmName
 
 `crypto.jwtCanonicalAlgorithmName(name): string`
 
@@ -157,9 +161,10 @@ A helper function that translates a JWT `alg` value found in a JWT header into t
 
 Returns the canonical name for the algorithm.
 
-!SECTION Hashing algorithms
+Hashing algorithms
+------------------
 
-!SUBSECTION md5
+### md5
 
 `crypto.md5(message): string`
 
@@ -173,7 +178,7 @@ Hashes the given message using the MD5 algorithm.
 
 Returns the cryptographic hash.
 
-!SUBSECTION sha1
+### sha1
 
 `crypto.sha1(message): string`
 
@@ -187,7 +192,7 @@ Hashes the given message using the SHA-1 algorithm.
 
 Returns the cryptographic hash.
 
-!SUBSECTION sha224
+### sha224
 
 `crypto.sha224(message): string`
 
@@ -201,7 +206,7 @@ Hashes the given message using the SHA-224 algorithm.
 
 Returns the cryptographic hash.
 
-!SUBSECTION sha256
+### sha256
 
 `crypto.sha256(message): string`
 
@@ -215,7 +220,7 @@ Hashes the given message using the SHA-256 algorithm.
 
 Returns the cryptographic hash.
 
-!SUBSECTION sha384
+### sha384
 
 `crypto.sha384(message): string`
 
@@ -229,7 +234,7 @@ Hashes the given message using the SHA-384 algorithm.
 
 Returns the cryptographic hash.
 
-!SUBSECTION sha512
+### sha512
 
 `crypto.sha512(message): string`
 
@@ -243,9 +248,10 @@ Hashes the given message using the SHA-512 algorithm.
 
 Returns the cryptographic hash.
 
-!SECTION Miscellaneous
+Miscellaneous
+-------------
 
-!SUBSECTION constantEquals
+### constantEquals
 
 `crypto.constantEquals(str1, str2): boolean`
 
@@ -265,7 +271,7 @@ and can help making certain timing attacks harder.
 
 Returns `true` if the strings are equal, `false` otherwise.
 
-!SUBSECTION pbkdf2
+### pbkdf2
 
 `crypto.pbkdf2(salt, password, iterations, keyLength): string`
 
@@ -296,7 +302,7 @@ Generates a PBKDF2-HMAC-SHA1 hash of the given password.
 
 Returns the cryptographic hash.
 
-!SUBSECTION hmac
+### hmac
 
 `crypto.hmac(key, message, algorithm): string`
 

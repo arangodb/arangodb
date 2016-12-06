@@ -1,4 +1,5 @@
-!CHAPTER Dependency injection
+Dependency injection
+====================
 
 There is no equivalent of the `addInjector` method available in ArangoDB 2.x controllers. Most use cases can be solved by simply using plain variables but if you need something more flexible you can also use middleware:
 

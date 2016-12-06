@@ -1,8 +1,10 @@
-!CHAPTER Miscellaneous functions
+Miscellaneous functions
+=======================
 
-!SECTION Control flow functions
+Control flow functions
+----------------------
 
-!SUBSECTION NOT_NULL()
+### NOT_NULL()
 
 `NOT_NULL(alternative, ...) → value`
 
@@ -13,7 +15,7 @@ are *null* themselves. It is also known as `COALESCE()` in SQL.
 - returns **value** (any): first non-null parameter, or *null* if all arguments
   are *null*
 
-!SUBSECTION FIRST_LIST()
+### FIRST_LIST()
 
 Return the first alternative that is an array, and *null* if none of the
 alternatives is an array.
@@ -21,7 +23,7 @@ alternatives is an array.
 - **alternative** (any, *repeatable*): input of arbitrary type
 - returns **list** (list|null): array / list or null
 
-!SUBSECTION FIRST_DOCUMENT()
+### FIRST_DOCUMENT()
 
 `FIRST_DOCUMENT(value) → doc`
 
@@ -31,21 +33,22 @@ alternatives is a document.
 - **alternative** (any, *repeatable*): input of arbitrary type
 - returns **doc** (object|null): document / object or null
 
-!SUBSECTION Ternary operator
+### Ternary operator
 
 For conditional evaluation, check out the
 [ternary operator](../Operators.md#ternary-operator).
 
-!SECTION Database functions
+Database functions
+------------------
 
-!SUBSECTION COLLECTION_COUNT()
+### COLLECTION_COUNT()
 
 `COLLECTION_COUNT(coll) → count`
 
 Determine the amount of documents in a collection. [LENGTH()](#length)
 is preferred.
 
-!SUBSECTION COLLECTIONS()
+### COLLECTIONS()
 
 `COLLECTIONS() → docArray`
 
@@ -54,11 +57,11 @@ Return an array of collections.
 - returns **docArray** (array): each collection as a document with attributes
   *name* and *_id* in an array
 
-!SUBSECTION COUNT()
+### COUNT()
 
 This is an alias for [LENGTH()](#length).
 
-!SUBSECTION CURRENT_USER()
+### CURRENT_USER()
 
 `CURRENT_USER() → userName`
 
@@ -72,7 +75,7 @@ a request context. Otherwise, the return value of this function will be *null*.
 - returns **userName** (string|null): the current user name, or *null* if
   authentication is disabled
 
-!SUBSECTION DOCUMENT()
+### DOCUMENT()
 
 `DOCUMENT(collection, id) → doc`
 
@@ -120,7 +123,7 @@ DOCUMENT("users/john")
 DOCUMENT( [ "users/john", "users/amy" ] )
 ```
 
-!SUBSECTION LENGTH()
+### LENGTH()
 
 `LENGTH(coll) → documentCount`
 
@@ -135,7 +138,8 @@ It calls [COLLECTION_COUNT()](#collectioncount) internally.
 the [number of attribute keys](Document.md#length) of an object / document and
 the [character length](String.md#length) of a string.
 
-!SECTION Hash functions
+Hash functions
+--------------
 
 `HASH(value) → hashNumber`
 
@@ -158,9 +162,10 @@ guaranteed to remain the same in future versions of ArangoDB. The hash values
 should therefore be used only for temporary calculations, e.g. to compare if two
 documents are the same, or for grouping values in queries.
 
-!SECTION Function calling
+Function calling
+----------------
 
-!SUBSECTION APPLY()
+### APPLY()
 
 `APPLY(functionName, arguments) → retVal`
 
@@ -179,7 +184,7 @@ APPLY( "SUBSTRING", [ "this is a test", 0, 7 ] )
 // "this is"
 ```
 
-!SUBSECTION CALL()
+### CALL()
 
 `CALL(funcName, arg1, arg2, ... argN) → retVal`
 
@@ -199,13 +204,14 @@ CALL( "SUBSTRING", "this is a test", 0, 4 )
 // "this"
 ```
 
-!SECTION Internal functions
+Internal functions
+------------------
 
 The following functions are used during development of ArangoDB as a database
 system, primarily for unit testing. They are not intended to be used by end
 users, especially not in production environments.
 
-!SUBSECTION FAIL()
+### FAIL()
 
 `FAIL(reason)`
 
@@ -222,7 +228,7 @@ RETURN 1 == 2 && FAIL("error") ? true : false // false
 RETURN 1 == 1 && FAIL("error") ? true : false // aborted with error
 ```
 
-!SUBSECTION NOOPT()
+### NOOPT()
 
 `NOOPT(expression) → retVal`
 
@@ -244,7 +250,7 @@ NOOPT( RAND() ) // C++ implementation
 V8( RAND() )    // JavaScript implementation
 ```
 
-!SUBSECTION PASSTHRU()
+### PASSTHRU()
 
 `PASSTHRU(value) → retVal`
 
@@ -254,7 +260,7 @@ query optimization.
 - **value** (any): a value of arbitrary type
 - returns **retVal** (any): *value*, without optimizations
 
-!SUBSECTION SLEEP()
+### SLEEP()
 
 `SLEEP(seconds) → null`
 
@@ -268,7 +274,7 @@ SLEEP(1)    // wait 1 second
 SLEEP(0.02) // wait 20 milliseconds
 ```
 
-!SUBSECTION V8()
+### V8()
 
 `V8(expression) → retVal`
 

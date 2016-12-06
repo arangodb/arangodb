@@ -1,10 +1,12 @@
-!CHAPTER Features and Improvements
+Features and Improvements
+=========================
 
 The following list shows in detail which features have been added or improved in
 ArangoDB 3.1. ArangoDB 3.1 also contains several bugfixes that are not listed
 here.
 
-!SECTION SmartGraphs
+SmartGraphs
+-----------
 
 ArangoDB 3.1 adds a first major enterprise only feature called SmartGraphs.
 SmartGraphs form an addition to the already existing graph features and allow to
@@ -19,7 +21,8 @@ In all the above cases SmartGraphs will significantly increase the performance o
 graph operations.
 For more detailed information read [this manual section](../Graphs/SmartGraphs/index.html).
 
-!SECTION Data format
+Data format
+-----------
 
 The format of the revision values stored in the `_rev` attribute of documents
 has been changed in 3.1. Up to 3.0 they were strings containing largish decimal numbers. With 3.1, revision values are still strings, but are actually encoded time stamps of the creation date of the revision of the document. The time stamps are acquired using a hybrid logical clock (HLC) on the DBserver that holds the
@@ -34,7 +37,8 @@ the new time stamps.
 It is highly recommended to backup all your data before loading a database
 directory that was written by ArangoDB <= 3.0 into an ArangoDB >= 3.1.
 
-!SECTION Communication Layer
+Communication Layer
+-------------------
 
 ArangoDB up to 3.0 used [libev](http://software.schmorp.de/pkg/libev.html) for
 the communication layer. ArangoDB starting from 3.1 uses
@@ -46,7 +50,8 @@ a addition to the established http protocol.
 A few options have changed concerning communication, please checkout
 [Incompatible changes in 3.1](./UpgradingChanges31.html).
 
-!SECTION Cluster
+Cluster
+-------
 
 For its internal cluster communication a (bundled version) of curl is now being
 used. This enables asynchronous operation throughout the cluster and should
@@ -55,7 +60,8 @@ improve general performance slightly.
 Authentication is now supported within the cluster.
 
 
-!SECTION Document revisions cache
+Document revisions cache
+------------------------
 
 The ArangoDB server now provides an in-memory cache for frequently accessed 
 document revisions. Documents that are accessed during read/write operations 
@@ -81,9 +87,10 @@ many small collections which all allocate their own chunks but not fully utilize
 because of the low number of documents.
 
 
-!SECTION AQL
+AQL
+---
 
-!SUBSECTION Functions added
+### Functions added
 
 The following AQL functions have been added in 3.1:
 
@@ -99,7 +106,7 @@ The following AQL functions have been added in 3.1:
 - *JSON_PARSE(value)*: converts a JSON-encoded string into a regular object
 
 
-!SUBSECTION Index usage in traversals
+### Index usage in traversals
  
 3.1 allows AQL traversals to use other indexes than just the edge index.
 Traversals with filters on edges can now make use of more specific indexes. For
@@ -113,7 +120,7 @@ may use a hash index on `["_from", "foo"]` instead of the edge index on just
 `["_from"]`.
 
 
-!SUBSECTION Optimizer improvements
+### Optimizer improvements
 
 Make the AQL query optimizer inject filter condition expressions referred to 
 by variables during filter condition aggregation. For example, in the following 
@@ -153,7 +160,7 @@ was used multiple times, the condition was not injected as in the following quer
 (if such index exists).
 
 
-!SUBSECTION Miscellaneous improvements
+### Miscellaneous improvements
 
 The performance of the `[*]` operator was improved for cases in which this operator
 did not use any filters, projections and/or offset/limits.
@@ -164,17 +171,20 @@ loading and locking time for the query in the `loading collections` sub-attribut
 `extra.profile` value of the result. The loading and locking time can also be view in the
 AQL query editor in the web interface.
 
-!SECTION Audit Log
+Audit Log
+---------
 
 Audit logging has been added, see [Auditing](../Auditing/index.html).
 
-!SECTION Client tools
+Client tools
+------------
 
 Added option `--skip-lines` for arangoimp
 This allows skipping the first few lines from the import file in case the CSV or TSV 
 import are used and some initial lines should be skipped from the input.
 
-!SECTION Web Admin Interface
+Web Admin Interface
+-------------------
 
 The usability of the AQL editor significantly improved. In addition to the standard JSON
 output, the AQL Editor is now able to render query results as a graph preview or a table.
@@ -187,7 +197,8 @@ discover and visualize your graphs.
 
 The shard view in cluster mode now displays a progress indicator while moving shards.
 
-!SECTION Authentication
+Authentication
+--------------
 
 Up to ArangoDB 3.0 authentication of client requests was only possible with HTTP basic 
 authentication.
@@ -198,16 +209,17 @@ Starting with 3.1 it is now possible to also use a [JSON Web Tokens](https://jwt
 For details check the HTTP authentication chapter. Both authentication methods are
 valid and will be supported in the near future. Use whatever suits you best.
 
-!SECTION Foxx
+Foxx
+----
 
-!SUBSECTION GraphQL
+### GraphQL
 
 It is now easy to get started with providing GraphQL APIs in Foxx, see [Foxx GraphQL](../Foxx/GraphQL.md).
 
-!SUBSECTION OAuth2
+### OAuth2
 
 Foxx now officially provides a module for implementing OAuth2 clients, see [Foxx OAuth2](../Foxx/OAuth2.md).
 
-!SUBSECTION Per-route middleware
+### Per-route middleware
 
 It's now possible to specify middleware functions for a route when defining a route handler. These middleware functions only apply to the single route and share the route's parameter definitions. Check out the [Foxx Router documentation](../Foxx/Router/README.md) for more information.

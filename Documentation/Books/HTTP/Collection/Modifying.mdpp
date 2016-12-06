@@ -1,4 +1,5 @@
-!CHAPTER Modifying a Collection
+Modifying a Collection
+======================
 
 <!-- js/actions/api-collection.js -->
 @startDocuBlock JSF_put_api_collection_load

@@ -1,4 +1,5 @@
-!CHAPTER Address and ETag of an Edge 
+Address and ETag of an Edge
+===========================
 
 All documents in ArangoDB have a [document handle](../../Manual/Appendix/Glossary.html#document-handle). This handle uniquely identifies 
 a document. Any document can be retrieved using its unique URI:

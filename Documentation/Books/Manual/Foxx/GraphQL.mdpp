@@ -1,4 +1,5 @@
-!CHAPTER Using GraphQL in Foxx
+Using GraphQL in Foxx
+=====================
 
 `const createGraphQLRouter = require('@arangodb/foxx/graphql');`
 
@@ -40,7 +41,8 @@ router.use('/graphql', createGraphQLRouter({
 }));
 ```
 
-!SECTION Creating a router
+Creating a router
+-----------------
 
 `createGraphQLRouter(options): Router`
 
@@ -82,7 +84,8 @@ This returns a new router object with POST and GET routes for serving GraphQL re
 
 If a GraphQL Schema object is passed instead of an options object it will be interpreted as the *schema* option.
 
-!SECTION Generated routes
+Generated routes
+----------------
 
 The router handles GET and POST requests to its root path and accepts the following parameters, which can be provided either as query parameters or as the POST request body:
 

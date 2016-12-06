@@ -1,15 +1,16 @@
-!CHAPTER String functions
+String functions
+================
 
 For string processing, AQL offers the following functions:
 
-!SUBSECTION CHAR_LENGTH()
+### CHAR_LENGTH()
 
 `CHAR_LENGTH(value) → length`
 
 Return the number of characters in *value* (not byte length).
 This is a synonym for [LENGTH()](#length).
 
-!SUBSECTION CONCAT()
+### CONCAT()
 
 `CONCAT(value1, value2, ... valueN) → str`
 
@@ -38,7 +39,7 @@ CONCAT( [ "foo", "bar", "baz" ] ) // "foobarbaz"
 CONCAT( [1, 2, 3] ) // "123"
 ```
 
-!SUBSECTION CONCAT_SEPARATOR()
+### CONCAT_SEPARATOR()
 
 `CONCAT_SEPARATOR(separator, value1, value2, ... valueN) → joinedString`
 
@@ -68,7 +69,7 @@ CONCAT_SEPARATOR("-", [1, 2, 3, null], [4, null, 5])
 // "1-2-3-4-5"
 ```
 
-!SUBSECTION CONTAINS()
+### CONTAINS()
 
 `CONTAINS(text, search, returnIndex) → match`
 
@@ -92,11 +93,11 @@ CONTAINS("foobarbaz", "ba", true) // 3
 CONTAINS("foobarbaz", "horse", true) // -1
 ```
 
-!SUBSECTION COUNT()
+### COUNT()
 
 This is an alias for [LENGTH()](#length).
 
-!SUBSECTION FIND_FIRST()
+### FIND_FIRST()
 
 `FIND_FIRST(text, search, start, end) → position`
 
@@ -118,7 +119,7 @@ FIND_FIRST("foobarbaz", "ba", 4) // 6
 FIND_FIRST("foobarbaz", "ba", 0, 3) // -1
 ```
 
-!SUBSECTION FIND_LAST()
+### FIND_LAST()
 
 `FIND_LAST(text, search, start, end) → position`
 
@@ -140,7 +141,7 @@ FIND_LAST("foobarbaz", "ba", 7) // -1
 FIND_LAST("foobarbaz", "ba", 0, 4) // 3
 ```
 
-!SUBSECTION JSON_PARSE()
+### JSON_PARSE()
 
 `JSON_PARSE(text) → value`
 
@@ -158,7 +159,7 @@ JSON_PARSE("{\\\"a\\\": 1}") // { a : 1 }
 JSON_PARSE("abc") // null
 ```
 
-!SUBSECTION JSON_STRINGIFY()
+### JSON_STRINGIFY()
 
 `JSON_STRINGIFY(value) → text`
 
@@ -175,7 +176,7 @@ JSON_STRINGIFY("abc") // "\"abc\""
 JSON_STRINGIFY("[1, 2, 3]") // "[1,2,3]"
 ```
 
-!SUBSECTION LEFT()
+### LEFT()
 
 `LEFT(value, length) → substring`
 
@@ -191,7 +192,7 @@ LEFT("foobar", 3) // "foo"
 LEFT("foobar", 10) // "foobar"
 ```
 
-!SUBSECTION LENGTH()
+### LENGTH()
 
 `LENGTH(str) → length`
 
@@ -209,7 +210,7 @@ LENGTH("电脑坏了") // 4
 the [number of attribute keys](Document.md#length) of an object / document and
 the [amount of documents](Miscellaneous.md#length) in a collection.
 
-!SUBSECTION LIKE()
+### LIKE()
 
 `LIKE(text, search, caseInsensitive) → bool`
 
@@ -241,7 +242,7 @@ LIKE("FoO bAr BaZ", "fOo%bAz")       // false
 LIKE("FoO bAr BaZ", "fOo%bAz", true) // true
 ```
 
-!SUBSECTION LOWER()
+### LOWER()
 
 `LOWER(value) → lowerCaseString`
 
@@ -252,7 +253,7 @@ All other characters are returned unchanged.
 - returns **lowerCaseString** (string): *value* with upper-case characters converted
   to lower-case characters
 
-!SUBSECTION LTRIM()
+### LTRIM()
 
 `LTRIM(value, chars) → strippedString`
 
@@ -271,7 +272,7 @@ LTRIM("  foo bar  ") // "foo bar  "
 LTRIM("--==[foo-bar]==--", "-=[]") // "foo-bar]==--"
 ```
 
-!SUBSECTION MD5()
+### MD5()
 
 `MD5(text) → hash`
 
@@ -285,7 +286,7 @@ string representation.
 MD5("foobar") // "3858f62230ac3c915f300c664312c63f"
 ```
 
-!SUBSECTION RANDOM_TOKEN()
+### RANDOM_TOKEN()
 
 `RANDOM_TOKEN(length) → randomString`
 
@@ -302,7 +303,7 @@ RANDOM_TOKEN(8) // "zGl09z42"
 RANDOM_TOKEN(8) // "m9w50Ft9"
 ```
 
-!SUBSECTION REGEX_TEST()
+### REGEX_TEST()
 
 `REGEX_TEST(text, search, caseInsensitive) → bool`
 
@@ -368,7 +369,7 @@ REGEX_TEST("the quick brown fox", "^(a|the)\s+(quick|slow).*f.x$") // true
 REGEX_TEST("the\nquick\nbrown\nfox", "^the(\n[a-w]+)+\nfox$") // true
 ```
 
-!SUBSECTION REVERSE()
+### REVERSE()
 
 `REVERSE(value) → reversedString`
 
@@ -383,7 +384,7 @@ REVERSE("foobar") // "raboof"
 REVERSE("电脑坏了") // "了坏脑电"
 ```
 
-!SUBSECTION RIGHT()
+### RIGHT()
 
 `RIGHT(value, length) → substring`
 
@@ -399,7 +400,7 @@ RIGHT("foobar", 3) // "bar"
 RIGHT("foobar", 10) // "foobar"
 ```
 
-!SUBSECTION RTRIM()
+### RTRIM()
 
 `RTRIM(value, chars) → strippedString`
 
@@ -418,7 +419,7 @@ RTRIM("  foo bar  ") // "  foo bar"
 RTRIM("--==[foo-bar]==--", "-=[]") // "--==[foo-bar"
 ```
 
-!SUBSECTION SHA1()
+### SHA1()
 
 `SHA1(text) → hash`
 
@@ -432,7 +433,7 @@ string representation.
 SHA1("foobar") // "8843d7f92416211de9ebb963ff4ce28125932878"
 ```
 
-!SUBSECTION SPLIT()
+### SPLIT()
 
 `SPLIT(value, separator, limit) → strArray`
 
@@ -452,7 +453,7 @@ SPLIT( "foo-bar-baz", "-", 1 ) // [ "foo", "bar-baz" ]
 SPLIT( "foo, bar & baz", [ ", ", " & " ] ) // [ "foo", "bar", "baz" ]
 ```
 
-!SUBSECTION SUBSTITUTE()
+### SUBSTITUTE()
 
 `SUBSTITUTE(value, search, replace, limit) → substitutedString`
 
@@ -524,7 +525,7 @@ SUBSTITUTE("the quick brown foxx", {
 // "the small slow foxx"
 ```
 
-!SUBSECTION SUBSTRING()
+### SUBSTRING()
 
 `SUBSTRING(value, offset, length) → substring`
 
@@ -536,7 +537,7 @@ Return a substring of *value*.
   substring from *offset* to the end of the string
 - returns **substring** (string): a substring of *value*
 
-!SUBSECTION TRIM()
+### TRIM()
 
 `TRIM(value, type) → strippedString`
 
@@ -571,7 +572,7 @@ TRIM("  foobar\t \r\n ") // "foobar"
 TRIM(";foo;bar;baz, ", ",; ") // "foo;bar;baz"
 ```
 
-!SUBSECTION UPPER()
+### UPPER()
 
 `UPPER(value) → upperCaseString`
 

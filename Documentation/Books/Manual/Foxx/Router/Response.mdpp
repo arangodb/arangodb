@@ -1,4 +1,5 @@
-!CHAPTER Response objects
+Response objects
+================
 
 The response object specifies the following properties:
 
@@ -18,7 +19,8 @@ The response object specifies the following properties:
 
   Status code of the response. Defaults to `200` (body set and not an empty string or buffer) or `204` (otherwise) if not changed from `undefined`.
 
-!SECTION attachment
+attachment
+----------
 
 `res.attachment([filename]): this`
 
@@ -36,7 +38,8 @@ Sets the `content-disposition` header to indicate the response is a downloadable
 
 Returns the response object.
 
-!SECTION cookie
+cookie
+------
 
 `res.cookie(name, value, [options]): this`
 
@@ -92,7 +95,8 @@ If a number is passed instead of an options object it will be interpreted as the
 
 Returns the response object.
 
-!SECTION download
+download
+--------
 
 `res.download(path, [filename]): this`
 
@@ -112,7 +116,8 @@ The equivalent of calling `res.attachment(filename).sendFile(path)`.
 
 Returns the response object.
 
-!SECTION getHeader
+getHeader
+---------
 
 `res.getHeader(name): string`
 
@@ -126,7 +131,8 @@ Gets the value of the header with the given name.
 
 Returns the value of the header or `undefined`.
 
-!SECTION json
+json
+----
 
 `res.json(data): this`
 
@@ -140,7 +146,8 @@ Sets the response body to the JSON string value of the given data.
 
 Returns the response object.
 
-!SECTION redirect
+redirect
+--------
 
 `res.redirect([status], path): this`
 
@@ -164,7 +171,8 @@ Redirects the response by setting the response `location` header and status code
 
 Returns the response object.
 
-!SECTION removeHeader
+removeHeader
+------------
 
 `res.removeHeader(name): this`
 
@@ -178,7 +186,8 @@ Removes the header with the given name from the response.
 
 Returns the response object.
 
-!SECTION send
+send
+----
 
 `res.send(data, [type]): this`
 
@@ -212,7 +221,8 @@ Sets the response body to the given data with respect to the response definition
 
 Returns the response object.
 
-!SECTION sendFile
+sendFile
+--------
 
 `res.sendFile(path, [options]): this`
 
@@ -244,7 +254,8 @@ Returns the response object.
 res.sendFile(module.context.fileName('favicon.ico'));
 ```
 
-!SECTION sendStatus
+sendStatus
+----------
 
 `res.sendStatus(status): this`
 
@@ -261,7 +272,8 @@ The response status will be set to the given status code, the response body will
 
 Returns the response object.
 
-!SECTION setHeader / set
+setHeader / set
+---------------
 
 `res.setHeader(name, value): this`
 
@@ -287,7 +299,8 @@ Sets the value of the header with the given name.
 
 Returns the response object.
 
-!SECTION status
+status
+------
 
 `res.status(status): this`
 
@@ -303,7 +316,8 @@ Sets the response status to the given status code.
 
 Returns the response object.
 
-!SECTION throw
+throw
+-----
 
 `res.throw(status, [reason], [options]): void`
 
@@ -345,7 +359,8 @@ If an error is passed instead of an options object it will be interpreted as the
 
 Returns nothing.
 
-!SECTION vary
+vary
+----
 
 `res.vary(names): this`
 
@@ -373,7 +388,8 @@ res.vary('user-agent', 'cookie');
 res.vary(['user-agent', 'cookie']);
 ```
 
-!SECTION write
+write
+-----
 
 `res.write(data): this`
 

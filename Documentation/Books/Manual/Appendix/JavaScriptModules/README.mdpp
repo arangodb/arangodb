@@ -1,10 +1,12 @@
-!CHAPTER JavaScript Modules
+JavaScript Modules
+==================
 
 ArangoDB uses a Node.js compatible module system. You can use the function *require* in order to load a module or library. It returns the exported variables and functions of the module.
 
 The global variables `global`, `process`, `console`, `Buffer`, `__filename` and `__dirname` are available throughout ArangoDB and Foxx.
 
-!SECTION Node compatibility modules
+Node compatibility modules
+--------------------------
 
 ArangoDB supports a number of modules for compatibility with Node.js, including:
 
@@ -70,7 +72,8 @@ The following Node.js modules are not available at all:
 `v8`,
 `zlib`.
 
-!SECTION ArangoDB Specific Modules
+ArangoDB Specific Modules
+-------------------------
 
 There are a large number of ArangoDB-specific modules using the `@arangodb` namespace, mostly for internal use by ArangoDB itself. The following however are noteworthy:
 
@@ -78,7 +81,8 @@ There are a large number of ArangoDB-specific modules using the `@arangodb` name
 
 * [@arangodb/foxx](../../Foxx/README.md) is the namespace providing the various building blocks of the Foxx microservice framework.
 
-!SECTION Bundled NPM Modules
+Bundled NPM Modules
+-------------------
 
 The following [NPM modules](https://www.npmjs.com) are preinstalled:
 

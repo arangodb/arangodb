@@ -1,4 +1,5 @@
-!CHAPTER User management
+User management
+===============
 
 Foxx does not provide any user management out of the box but it is very easy to roll your own solution:
 
@@ -8,7 +9,8 @@ The [auth module](Auth.md) provides utilities for basic password verification an
 
 The following example service demonstrates how user management can be implemented using these basic building blocks.
 
-!SECTION Setting up the collections
+Setting up the collections
+--------------------------
 
 Let's say we want to store sessions and users in collections. We can use the setup script to make sure these collections are created before the service is mounted.
 
@@ -43,7 +45,8 @@ db._collection(users).ensureIndex({
 });
 ```
 
-!SECTION Creating the router
+Creating the router
+-------------------
 
 The following main file demonstrates basic user management:
 

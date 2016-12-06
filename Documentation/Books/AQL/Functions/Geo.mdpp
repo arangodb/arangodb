@@ -1,13 +1,15 @@
-!CHAPTER Geo functions
+Geo functions
+=============
 
-!SECTION Geo index functions
+Geo index functions
+-------------------
 
 AQL offers the following functions to filter data based on
 [geo indexes](../../Manual/Indexing/Geo.html). These functions require the collection to have at
 least one geo index. If no geo index can be found, calling this function will fail
 with an error at runtime. There is no error when explaining the query however.
 
-!SUBSECTION NEAR()
+### NEAR()
 
 `NEAR(coll, latitude, longitude, limit, distanceName) → docArray`
 
@@ -32,7 +34,7 @@ The result documents will contain the distance value in an attribute of that nam
 - returns **docArray** (array): an array of documents, sorted by distance (shortest
   distance first)
 
-!SUBSECTION WITHIN()
+### WITHIN()
 
 `WITHIN(coll, latitude, longitude, radius, distanceName) → docArray`
 
@@ -53,7 +55,7 @@ The result documents will contain the distance value in an attribute of that nam
 - returns **docArray** (array): an array of documents, sorted by distance (shortest
   distance first)
 
-!SUBSECTION WITHIN_RECTANGLE()
+### WITHIN_RECTANGLE()
 
 `WITHIN_RECTANGLE(coll, latitude1, longitude1, latitude2, longitude2) → docArray`
 
@@ -68,14 +70,15 @@ There is no guaranteed order in which the documents are returned.
 - **longitude2** (number): the top-right longitude portion of the search coordinate
 - returns **docArray** (array): an array of documents, in random order
 
-!SECTION Geo utility functions
+Geo utility functions
+---------------------
 
 The following helper functions do **not use any geo index**. On large datasets,
 it is advisable to use them in combination with index-accelerated geo functions
 to limit the number of calls to these non-accelerated functions because of their
 computational costs.
 
-!SUBSECTION DISTANCE()
+### DISTANCE()
 
 `DISTANCE(latitude1, longitude1, latitude2, longitude2) → distance`
 
@@ -100,7 +103,7 @@ FOR doc IN documentSubset // e.g. documents returned by a traversal
   RETURN doc
 ```
 
-!SUBSECTION IS_IN_POLYGON()
+### IS_IN_POLYGON()
 
 Determine whether a coordinate is inside a polygon.
 

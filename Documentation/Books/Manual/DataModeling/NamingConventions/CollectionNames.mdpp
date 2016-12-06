@@ -1,4 +1,5 @@
-!CHAPTER Collection Names
+Collection Names
+================
 
 Users can pick names for their collections as desired, provided the following
 naming constraints are not violated:
