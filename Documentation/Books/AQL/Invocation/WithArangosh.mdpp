@@ -103,7 +103,7 @@ allowed to use:
     @EXAMPLE_ARANGOSH_OUTPUT{02_workWithAQL_memoryLimit}
     |db._query(
     | 'FOR i IN 1..100000 SORT i RETURN i', {}, {
-    |   options: { memoryLimit: 100000 }
+    |   memoryLimit: 100000
     }).toArray();
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 02_workWithAQL_memoryLimit
