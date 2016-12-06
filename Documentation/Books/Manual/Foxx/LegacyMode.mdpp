@@ -1,4 +1,5 @@
-!CHAPTER Legacy compatibility mode for 2.8 services
+Legacy compatibility mode for 2.8 services
+==========================================
 
 ArangoDB 3 continues to support Foxx services written for ArangoDB 2.8 by running them in a special legacy compatibility mode that provides access to some of the modules and APIs no longer provided in 3.0 and beyond.
 
@@ -16,7 +17,8 @@ This [semantic version range](http://semver.org) denotes that the service is kno
 
 Any similar version range the does not include 3.0.0 or greater will have the same effect (e.g. `^2.5.0` will also trigger the legacy compatibility mode, as will `1.2.3`, but `>=2.8.0` will not as it indicates compatibility with *all* versions greater or equal 2.8.0, not just those within the 2.x version range).
 
-!SECTION Features supported in legacy compatibility mode
+Features supported in legacy compatibility mode
+-----------------------------------------------
 
 Legacy compatibility mode supports the old manifest format, specifically:
 

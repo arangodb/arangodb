@@ -1,6 +1,7 @@
-!CHAPTER General Options
+General Options
+===============
 
-!SUBSECTION Database Upgrade 
+### Database Upgrade
 
 `--database.auto-upgrade`
 
@@ -28,7 +29,7 @@ version check on startup. Running the server with a non-matching version number
 in the VERSION file will make the server refuse to start.
 
 
-!SUBSECTION Daemon
+### Daemon
 
 `--daemon`
 
@@ -37,7 +38,7 @@ be set if the pid (process id) file is specified. That is, unless a value to the
 parameter pid-file is given, then the server will report an error and exit.
 
 
-!SUBSECTION Default Language
+### Default Language
 
 `--default-language default-language`
 
@@ -49,7 +50,7 @@ language code with and a two letter country code (ISO-3166). Valid languages are
 The default default-language is set to be the system locale on that platform.
 
 
-!SUBSECTION Supervisor
+### Supervisor
 
 `--supervisor`
 
@@ -85,7 +86,7 @@ start up a new database process:
 ```
 
 
-!SUBSECTION User identity 
+### User identity
 
 `--uid uid`
 
@@ -104,7 +105,7 @@ security. In general, this parameter (and its corresponding relative gid) can
 lower privileges but not raise them.
 
 
-!SUBSECTION Group identity
+### Group identity
 
 `--gid gid`
 
@@ -118,7 +119,7 @@ connections or opening other files (such as recovery files).
 This parameter is related to the parameter uid.
 
 
-!SUBSECTION Process identity 
+### Process identity
 
 `--pid-file filename`
 
@@ -127,7 +128,7 @@ daemon. This parameter must be specified if either the flag *daemon* or
 *supervisor* is set.
 
 
-!SUBSECTION Console
+### Console
 
 `--console`
 
@@ -143,7 +144,7 @@ Note that the server cannot be started in this mode if it is
 already running in this or another mode. 
 
 
-!SUBSECTION Random Generator
+### Random Generator
 
 `--random.generator arg`
 
@@ -160,11 +161,11 @@ algorithm. Algorithm 4 is a combination of the blocking random number
 generator and the Mersenne Twister.
 
 
-!SUBSECTION Enable/disable authentication
+### Enable/disable authentication
 
 @startDocuBlock server_authentication
 
-!SUBSECTION JWT Secret
+### JWT Secret
 
 `--server.jwt-secret secret`
 
@@ -177,7 +178,7 @@ generate a secret.
 In cluster deployments which have authentication enabled a secret must
 be set consistently across all cluster tasks so they can talk to each other.
 
-!SUBSECTION Enable/disable authentication for UNIX domain sockets
+### Enable/disable authentication for UNIX domain sockets
 
 `--server.authentication-unix-sockets value`
 
@@ -193,12 +194,12 @@ The default value is *false*.
 domain sockets.
 
 
-!SUBSECTION Enable/disable authentication for system API requests only
+### Enable/disable authentication for system API requests only
 
 @startDocuBlock serverAuthenticateSystemOnly
 
 
-!SUBSECTION Enable/disable replication applier
+### Enable/disable replication applier
 
 `--database.replication-applier flag`
 
@@ -214,7 +215,7 @@ from the file *REPLICATION-APPLIER-CONFIG* on startup, and use the value of the
 
 The default is *true*.
 
-!SUBSECTION Keep-alive timeout
+### Keep-alive timeout
 
 `--http.keep-alive-timeout`
 
@@ -224,7 +225,7 @@ Idle keep-alive connections will be closed by the server automatically
 when the timeout is reached. A keep-alive-timeout value 0 will disable the keep
 alive feature entirely.
 
-!SUBSECTION Hide Product header
+### Hide Product header
 
 `--http.hide-product-header`
 
@@ -235,7 +236,7 @@ responses.
 The default is *false*.
 
 
-!SUBSECTION Allow method override
+### Allow method override
 
 `--http.allow-method-override`
 
@@ -258,13 +259,13 @@ be used in controlled environments.
 
 The default value for this option is *false*.
 
-!SUBSECTION Server threads
+### Server threads
 
 `--server.threads number`
 
 Specifies the *number* of threads that are spawned to handle requests.
 
-!SUBSECTION Toggling server statistics 
+### Toggling server statistics
 
 `--server.statistics value`
 
@@ -272,7 +273,7 @@ If this option is *value* is *false*, then ArangoDB's statistics gathering
 is turned off. Statistics gathering causes regular CPU activity so using this
 option to turn it off might relieve heavy-loaded instances a bit.
 
-!SUBSECTION Session timeout
+### Session timeout
 
 time to live for server sessions
 `--server.session-timeout value`
@@ -282,13 +283,13 @@ to the web interface (/_admin/aardvark) and related areas.
 
 Sessions are only used when authentication is turned on.
 
-!SUBSECTION Foxx queues 
+### Foxx queues
 @startDocuBlock foxxQueues
 
-!SUBSECTION Foxx queues poll interval
+### Foxx queues poll interval
 @startDocuBlock foxxQueuesPollInterval
 
-!SUBSECTION Directory
+### Directory
 
 `--database.directory directory`
 
@@ -316,19 +317,19 @@ directory as argument.
 ```
 
 
-!SUBSECTION Journal size
+### Journal size
 @startDocuBlock databaseMaximalJournalSize
 
 
-!SUBSECTION Wait for sync
+### Wait for sync
 @startDocuBlock databaseWaitForSync
 
 
-!SUBSECTION Force syncing of properties
+### Force syncing of properties
 @startDocuBlock databaseForceSyncProperties
 
 
-!SUBSECTION Enable/disable AQL query tracking
+### Enable/disable AQL query tracking
 
 `--query.tracking flag`
 
@@ -338,7 +339,7 @@ default. Tracking of queries can be disabled by setting the option to *false*.
 The default is *true*.
 
 
-!SUBSECTION Threshold for slow AQL queries
+### Threshold for slow AQL queries
 
 `--query.slow-threshold value`
 
@@ -351,7 +352,7 @@ setting the option `--query.tracking` to *false*.
 The default value is *10.0*.
 
 
-!SUBSECTION Throw collection not loaded error
+### Throw collection not loaded error
 
 `--database.throw-collection-not-loaded-error flag`
 
@@ -376,7 +377,7 @@ retry for later).
 The default value is *false*.
 
 
-!SUBSECTION AQL Query caching mode
+### AQL Query caching mode
 
 `--query.cache-mode`
 
@@ -389,7 +390,7 @@ Toggles the AQL query cache behavior. Possible values are:
   attribute set to *true*
 
 
-!SUBSECTION AQL Query cache size 
+### AQL Query cache size
 
 `--query.cache-entries`
 
@@ -402,7 +403,7 @@ This option only has an effect if the query cache mode is set to either *on* or
 *demand*.
 
 
-!SUBSECTION Index threads
+### Index threads
 
 `--database.index-threads`
 
@@ -417,7 +418,7 @@ collection in parallel (this also requires the edge index in the collection to
 be split into multiple buckets).
 
 
-!SUBSECTION V8 contexts
+### V8 contexts
 
 `--javascript.v8-contexts number`
 
@@ -428,7 +429,7 @@ will use a substantial amount of memory and requires periodic CPU processing
 time for garbage collection.
 
 
-!SUBSECTION Garbage collection frequency (time-based)
+### Garbage collection frequency (time-based)
 
 `--javascript.gc-frequency frequency`
 
@@ -437,7 +438,7 @@ JavaScript objects. This setting is useful to have the garbage collection still
 work in periods with no or little numbers of requests.
 
 
-!SUBSECTION Garbage collection interval (request-based)
+### Garbage collection interval (request-based)
 
 `--javascript.gc-interval interval`
 
@@ -445,7 +446,7 @@ Specifies the interval (approximately in number of requests) that the garbage
 collection for JavaScript objects will be run in each thread.
 
 
-!SUBSECTION V8 options
+### V8 options
 
 `--javascript.v8-options options`
 

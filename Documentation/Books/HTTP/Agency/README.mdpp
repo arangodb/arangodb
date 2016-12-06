@@ -1,6 +1,7 @@
-!CHAPTER HTTP Interface for Agency feature
+HTTP Interface for Agency feature
+=================================
 
-!SUBSECTION Configuration
+### Configuration
 
 At all times, i.e. regardless of the state of the agents and the current health of the RAFT consensus, one can invoke the configuration API:
 
@@ -47,7 +48,7 @@ This is the actual output of a healthy agency. The configuration of the agency i
 
 The remaining data reflect the variant entities in RAFT, as `term` and `leaderId`, also some debug information on how long the last leadership vote was received from any particular agency member. Low term numbers on a healthy network are an indication of good operation environemnt, while often increasing term numbers indicate, that the network environemnt and stability suggest to raise the RAFT parameters `min ping` and 'max ping' accordingly.
 
-!SUBSECTION Key-Value store APIs
+### Key-Value store APIs
 
 Generally, all document IO to and from the key-value store consists of JSON arrays. The outer Array is an envelope for multiple read or write transactions. The results are arrays are an envelope around the results corresponding to the order of the incoming transactions.
 
@@ -87,7 +88,7 @@ The read access is a complete access to the key-value store indicated by access 
 
 Let's dig in some deeper.
 
-!SUBSECTION Read API
+### Read API
 
 Let's start with the above initialised key-value store in the following. Let us visit the following read operations:
 
@@ -198,7 +199,7 @@ curl -L http://server:port/read -d '[["/a/b/c"],["/a/b/d"],["/a/x/y"],["/y"],["/
 
 ```
 
-!SUBSECTION Write API
+### Write API
 
 The write API must obviously be more versatile and needs a more detailed appreciation. Write operations are arrays of transactions with preconditions, i.e. `[[U,P]]`, where the system tries to apply all updates in the outer array in turn, rejecting those whose precondition is not fulfilled by the current state. It is guaranteed that the transactions in the write request are sequenced adjacent to each other (with no intervention from other write requests). Only the ones with failed preconditions are left out.
 
@@ -328,7 +329,7 @@ appends the string `"Max"` to the end of the list stored in the `"z"` attribute,
 ```
 removes the last entry of the array stored under `"u"`, if the value of `"u"` is not set or not an array.
 
-!SUBSECTION HTTP-headers for write operations
+### HTTP-headers for write operations
 
 `X-ArangoDB-Agency-Mode` with possible values `"waitForCommitted"`, `"waitForSequenced"` and `"noWait"`.
 
@@ -338,7 +339,7 @@ In the last case, `"noWait"`, the operation returns immediately, an empty body i
 
 `X-ArangoDB-Agency-Tag` with an arbitrary UTF-8 string value.
 
-!SUBSECTION Observers
+### Observers
 
 External services to the agency may announce themselves or others to be observers of arbitrary existing or future keys in the key-value-store. The agency must then inform the observing service of any changes to the subtree below the observed key. The notification is done by virtue of POST requests to a required valid URL.
 

@@ -1,4 +1,5 @@
-!CHAPTER Example Setup
+Example Setup
+=============
 
 Setting up a working master-slave replication requires two ArangoDB instances:
 * **master**: this is the instance that all data-modification operations should be directed to
@@ -14,7 +15,8 @@ be replicated to the database *_system* on the slave *tcp://slave.domain.org:853
 On the **master**, nothing special needs to be done, as all write operations will automatically be
 logged in the master's write-ahead log (WAL).
 
-!SECTION All-in-one setup
+All-in-one setup
+----------------
 
 To make the replication copy the initial data from the **master** to the **slave** and start the
 continuous replication on the **slave**, there is an all-in-one command:
@@ -53,7 +55,8 @@ stop the running applier, drop its configuration and do a resynchronization of d
 configuration on the **slave**.
 
 
-!SECTION Initial synchronization
+Initial synchronization
+-----------------------
 
 The initial synchronization and continuous replication applier can also be started separately.
 To start replication on the **slave**, make sure there currently is no replication applier running.
@@ -101,7 +104,8 @@ assume we got the following last log tick:
 }
 ```
 
-!SECTION Initial synchronization from the ArangoShell
+Initial synchronization from the ArangoShell
+--------------------------------------------
 
 The initial synchronization via the *sync* command may take a long time to complete. The shell
 will block until the slave has completed the initial synchronization or until an error occurs.
@@ -133,7 +137,8 @@ print(replication.getSyncResult(id));
 synchronization result otherwise.
 
 
-!SECTION Continuous synchronization
+Continuous synchronization
+--------------------------
 
 When the initial synchronization is finished, the continuous replication applier can be started using
 the last log tick provided by the *sync* command. Before starting it, there is at least one 

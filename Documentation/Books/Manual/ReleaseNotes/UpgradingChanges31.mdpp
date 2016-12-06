@@ -1,9 +1,11 @@
-!CHAPTER Incompatible changes in ArangoDB 3.1
+Incompatible changes in ArangoDB 3.1
+====================================
 
 It is recommended to check the following list of incompatible changes **before**
 upgrading to ArangoDB 3.1, and adjust any client programs if necessary.
 
-!SECTION Communication Layer
+Communication Layer
+-------------------
 
 The internal commication layer is now based on Boost ASIO. A few options
 regarding threads and communication have been changed.
@@ -22,7 +24,8 @@ been removed:
 * `--server.show-backends`
 * `--server.thread-affinity`
 
-!SECTION AQL
+AQL
+---
  
 The behavior of the AQL array comparison operators has changed for empty arrays:
 
@@ -44,7 +47,8 @@ The behavior of the AQL array comparison operators has changed for empty arrays:
   * `[1, 2] NONE == 1` will return `false`
   * `[2, 2] NONE == 1` will return `true`
 
-!SECTION Data format changes
+Data format changes
+-------------------
 
 The attribute `maximalSize` has been renamed to `journalSize` in collection
 meta-data files ("parameter.json"). Files containing the `maximalSize` attribute 
@@ -71,9 +75,10 @@ way to upgrade.
 The change also affects the return format of `_rev` values and other revision
 values in HTTP APIs (see below).
 
-!SECTION HTTP API changes
+HTTP API changes
+----------------
 
-!SUBSECTION APIs added
+### APIs added
 
 The following HTTP REST APIs have been added for online loglevel adjustment of
 the server:
@@ -81,7 +86,7 @@ the server:
 * GET `/_admin/log/level` returns the current loglevel settings
 * PUT `/_admin/log/level` modifies the current loglevel settings
 
-!SUBSECTION APIs changed
+### APIs changed
 
 * the following REST APIs that return revision ids now make use of the new revision
   id format introduced in 3.1. All revision ids returned will be strings as in 3.0, but
@@ -121,7 +126,8 @@ the server:
   `loading collections`. The attribute will only be set if profiling was enabled for
   the query.
 
-!SECTION Foxx Testing
+Foxx Testing
+------------
 
 The QUnit interface to Mocha has been removed. This affects the behaviour of the `suite`, `test`, `before`, `after`, `beforeEach` and `afterEach` functions in Foxx test suites. The `suite` and `test` functions are now provided by the TDD interface. The `before`, `after`, `beforeEach` and `afterEach` functions are now provided by the BDD interface.
 

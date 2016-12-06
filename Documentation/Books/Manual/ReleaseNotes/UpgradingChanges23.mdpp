@@ -1,12 +1,14 @@
-!CHAPTER Incompatible changes in ArangoDB 2.3
+Incompatible changes in ArangoDB 2.3
+====================================
 
 It is recommended to check the following list of incompatible changes **before** 
 upgrading to ArangoDB 2.3, and adjust any client programs if necessary.
 
 
-!SECTION Configuration file changes
+Configuration file changes
+--------------------------
 
-!SUBSECTION Threads and contexts
+### Threads and contexts
 
 The number of server threads specified is now the minimum of threads
 started. There are situation in which threads are waiting for results of
@@ -36,7 +38,7 @@ files, please review if the default number of server threads is okay in your
 environment. Additionally you should verify that the number of V8 contexts
 created (as specified in option `--javascript.v8-contexts`) is okay.
 
-!SUBSECTION Syslog
+### Syslog
 
 The command-line option `--log.syslog` was used in previous versions of
 ArangoDB to turn logging to syslog on or off: when setting to a non-empty
@@ -63,9 +65,10 @@ This behavior turned out to be unintuitive and was changed in 2.3 as follows:
   id, because they'll be added by syslog automatically.
 
 
-!SECTION AQL
+AQL
+---
 
-!SUBSECTION AQL queries throw less exceptions
+### AQL queries throw less exceptions
 
 ArangoDB 2.3 contains a completely rewritten AQL query optimizer and execution 
 engine. This means that AQL queries will be executed with a different engine than
@@ -105,7 +108,7 @@ Here is a summary of changes:
   receive invalid arguments will then return `null`.
 
 
-!SUBSECTION Nested FOR loop execution order
+### Nested FOR loop execution order
 
 The query optimizer in 2.3 may permute the order of nested `FOR` loops in AQL queries,
 provided that exchanging the loops will not alter a query result. However, a change
@@ -113,7 +116,7 @@ in the order of returned values is allowed because no sort order is guaranteed b
 (and was never) unless an explicit `SORT` statement is used in a query.
 
 
-!SUBSECTION Changed return values of ArangoQueryCursor.getExtra()
+### Changed return values of ArangoQueryCursor.getExtra()
 
 The return value of `ArangoQueryCursor.getExtra()` has been changed in ArangoDB 2.3.
 It now contains a `stats` attribute with statistics about the query previously executed.
@@ -171,7 +174,7 @@ arangosh> stmt = db._createStatement("FOR i IN mycollection REMOVE i IN mycollec
 }
 ```
 
-!SUBSECTION Changed return values in HTTP method `POST /_api/cursor`
+### Changed return values in HTTP method `POST /_api/cursor`
 
 The previously mentioned change also leads to the statistics being returned in the
 HTTP REST API method `POST /_api/cursor`. Previously, the return value contained
@@ -219,7 +222,7 @@ The result in ArangoDB 2.3 will also contain a `warnings` attribute with the arr
 warnings that happened during query execution.
 
 
-!SUBSECTION Changed return values in ArangoStatement.explain()
+### Changed return values in ArangoStatement.explain()
 
 The return value of `ArangoStatement.explain()` has changed significantly in 
 ArangoDB 2.3. The new return value structure is not compatible with the structure
@@ -239,7 +242,7 @@ containing the abstract syntax tree of the statement. This extra attribute can
 safely be ignored by client programs.
 
 
-!SUBSECTION Variables not updatable in queries
+### Variables not updatable in queries
 
 Previous versions of ArangoDB allowed the modification of variables inside AQL 
 queries, e.g.
@@ -258,14 +261,14 @@ updating variables in queries that run on different nodes in a cluster would lik
 non-deterministic behavior because queries are not executed linearly.
 
 
-!SUBSECTION Changed return value of `TO_BOOL`
+### Changed return value of `TO_BOOL`
 
 The AQL function `TO_BOOL` now always returns *true* if its argument is a array or an object.
 In previous versions of ArangoDB, the function returned *false* for empty arrays or for
 objects without attributes.
 
 
-!SUBSECTION Changed return value of `TO_NUMBER`
+### Changed return value of `TO_NUMBER`
 
 The AQL function `TO_NUMBER` now returns *null* if its argument is an object or an
 array with more than one member. In previous version of ArangoDB, the return
@@ -273,7 +276,7 @@ value in these cases was 0. `TO_NUMBER` will return 0 for empty array, and the n
 equivalent of the array member's value for arrays with a single member.
 
 
-!SUBSECTION New AQL keywords
+### New AQL keywords
 
 The following keywords have been added to AQL in ArangoDB 2.3:
 
@@ -287,9 +290,10 @@ should be enclosed in backticks to indicate the usage of a literal attribute
 name. 
 
 
-!SECTION Removed features
+Removed features
+----------------
 
-!SUBSECTION Bitarray indexes
+### Bitarray indexes
   
 Bitarray indexes were only half-way documented and integrated in previous versions 
 of ArangoDB so their benefit was limited. The support for bitarray indexes has
@@ -306,12 +310,13 @@ Future versions of ArangoDB may automatically remove such index definitions so t
 warnings will eventually disappear.
 
 
-!SUBSECTION Other removed features
+### Other removed features
 
 The HTTP REST API method at `POST /_admin/modules/flush` has been removed. 
 
 
-!SECTION Known issues
+Known issues
+------------
 
 In ArangoDB 2.3.0, AQL queries containing filter conditions with an IN expression 
 will not yet use an index:

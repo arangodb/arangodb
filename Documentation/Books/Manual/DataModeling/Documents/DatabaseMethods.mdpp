@@ -1,6 +1,7 @@
-!CHAPTER Database Methods
+Database Methods
+================
 
-!SUBSECTION Document
+### Document
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
@@ -44,7 +45,7 @@ Returns the document:
 
 
 
-!SUBSECTION Exists
+### Exists
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
@@ -70,14 +71,14 @@ request is performed.
 As before. Instead of *object* a *document-handle* can be passed as
 first argument.
 
-!SUBSUBSECTION Changes in 3.0 from 2.8:
+#### Changes in 3.0 from 2.8:
 
 In the case of a revision mismatch *_exists* now throws an error instead
 of simply returning *false*. This is to make it possible to tell the
 difference between a revision mismatch and a non-existing document.
 
 
-!SUBSECTION Replace
+### Replace
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
@@ -147,12 +148,12 @@ Create and replace a document:
     @endDocuBlock documentsDocumentReplace
 
 
-!SUBSUBSECTION Changes in 3.0 from 2.8:
+#### Changes in 3.0 from 2.8:
 
 The options *silent*, *returnNew* and *returnOld* are new.
 
 
-!SUBSECTION Update
+### Update
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 `db._update(selector, data)`
@@ -232,12 +233,12 @@ Create and update a document:
     @endDocuBlock documentDocumentUpdate
 
 
-!SUBSUBSECTION Changes in 3.0 from 2.8:
+#### Changes in 3.0 from 2.8:
 
 The options *silent*, *returnNew* and *returnOld* are new.
 
 
-!SUBSECTION Remove
+### Remove
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
@@ -328,7 +329,7 @@ Remove a document using new signature:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock documentsCollectionRemoveSignature
 
-!SUBSUBSECTION Changes in 3.0 from 2.8:
+#### Changes in 3.0 from 2.8:
 
 The method now returns not only *true* but information about the removed
 document(s). The options *silent* and *returnOld* are new.

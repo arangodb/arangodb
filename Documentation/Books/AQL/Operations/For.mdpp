@@ -1,4 +1,5 @@
-!CHAPTER FOR
+FOR
+===
 
 
 The *FOR* keyword can be to iterate over all elements of an array.

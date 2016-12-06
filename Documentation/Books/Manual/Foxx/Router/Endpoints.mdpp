@@ -1,10 +1,12 @@
-!CHAPTER Endpoints
+Endpoints
+=========
 
 Endpoints are returned by the `use`, `all` and HTTP verb (e.g. `get`, `post`) methods of [routers](./README.md) as well as the `use` method of the [service context](../Context.md). They can be used to attach metadata to mounted routes, middleware and child routers that affects how requests and responses are processed or provides API documentation.
 
 Endpoints should only be used to invoke the following methods. Endpoint methods can be chained together (each method returns the endpoint itself).
 
-!SECTION header
+header
+------
 
 `endpoint.header(name, [schema], [description]): this`
 
@@ -38,7 +40,8 @@ router.get(/* ... */)
 .header('arangoVersion', joi.number().min(30000).default(30000));
 ```
 
-!SECTION pathParam
+pathParam
+---------
 
 `endpoint.pathParam(name, [schema], [description]): this`
 
@@ -71,7 +74,8 @@ router.get('/some/:num/here', /* ... */)
 .pathParam('num', joi.number().required());
 ```
 
-!SECTION queryParam
+queryParam
+----------
 
 `endpoint.queryParam(name, [schema], [description]): this`
 
@@ -104,7 +108,8 @@ router.get(/* ... */)
 .queryParam('num', joi.number().required());
 ```
 
-!SECTION body
+body
+----
 
 `endpoint.body([model], [mimes], [description]): this`
 
@@ -162,7 +167,8 @@ router.post('/expects/some/plaintext', /* ... */)
 .body(['text/plain'], 'This body will be a string.');
 ```
 
-!SECTION response
+response
+--------
 
 `endpoint.response([status], [model], [mimes], [description]): this`
 
@@ -247,7 +253,8 @@ router.put(function (req, res) {
 .response(201, SomeModel, 'Something amazing happened.');
 ```
 
-!SECTION error
+error
+-----
 
 `endpoint.error(status, [description]): this`
 
@@ -279,7 +286,8 @@ router.get(function (req, res) {
 .error(403, 'Indicates that a validation has failed.');
 ```
 
-!SECTION summary
+summary
+-------
 
 `endpoint.summary(summary): this`
 
@@ -304,7 +312,8 @@ router.get(/* ... */)
 .summary('List all discombobulated doodads')
 ```
 
-!SECTION description
+description
+-----------
 
 `endpoint.description(description): this`
 
@@ -336,7 +345,8 @@ router.post(/* ... */)
 `)
 ```
 
-!SECTION deprecated
+deprecated
+----------
 
 `endpoint.deprecated([deprecated]): this`
 

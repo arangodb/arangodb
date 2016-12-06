@@ -1,4 +1,5 @@
-!CHAPTER High-level operations
+High-level operations
+=====================
 
 The following high-level operations are described here after:
 

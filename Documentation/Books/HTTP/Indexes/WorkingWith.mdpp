@@ -1,4 +1,5 @@
-!CHAPTER Working with Indexes using HTTP
+Working with Indexes using HTTP
+===============================
 
 <!-- js/actions/api-index.js -->
 @startDocuBlock JSF_get_api_reads_index

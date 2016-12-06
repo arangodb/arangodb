@@ -1,4 +1,5 @@
-!CHAPTER Date functions
+Date functions
+==============
 
 AQL offers functionality to work with dates. Dates are no data types of their own in
 AQL (neither are they in JSON, which is usually used as format to ship data into and
@@ -41,9 +42,10 @@ most certainly not be of any help for such dates, but you can still use language
 constructs like [SORT](../Operations/Sort.md) (which also supports sorting of arrays)
 and [indexes](../../Manual/Indexing/index.html) like skiplists.
 
-!SECTION Current date and time
+Current date and time
+---------------------
 
-!SUBSECTION DATE_NOW()
+### DATE_NOW()
 
 `DATE_NOW() → timestamp`
 
@@ -57,7 +59,8 @@ Note that this function is evaluated on every invocation and may return
 different values when invoked multiple times in the same query. Assign it
 to a variable to use the exact same timestamp multiple times.
 
-!SECTION Conversion
+Conversion
+----------
 
 *DATE_TIMESTAMP()* and *DATE_ISO8601()* can be used to convert ISO 8601 date time
 strings to numeric timestamps and numeric timestamps to ISO 8601 date time strings.
@@ -101,7 +104,7 @@ DATE_ISO8601(1399472349522)
 
 The above functions are all equivalent and will return *"2014-05-07T14:19:09.522Z"*.
 
-!SUBSECTION DATE_ISO8601()
+### DATE_ISO8601()
 
 `DATE_ISO8601(date) → dateString`
 
@@ -126,7 +129,7 @@ date components separately. All parameters after *day* are optional.
 - **milliseconds** (number, *optional*): 0..999
 - returns **dateString**: date and time expressed according to ISO 8601, in Zulu time
 
-!SUBSECTION DATE_TIMESTAMP()
+### DATE_TIMESTAMP()
 
 `DATE_TIMESTAMP(date) → timestamp`
 
@@ -161,7 +164,7 @@ DATE_TIMESTAMP(2016, 2, 32) // returns 1456963200000, which is March 3rd, 2016
 DATE_TIMESTAMP(1970, 1, 1, 26) // returns 93600000, which is January 2nd, 1970, at 2 a.m.
 ```
 
-!SUBSECTION IS_DATESTRING()
+### IS_DATESTRING()
 
 `IS_DATESTRING(value) → bool`
 
@@ -174,9 +177,10 @@ Check if an arbitrary string is suitable for interpretation as date time string.
   *false* for all non-string values, even if some of them may be usable in date
   functions.
 
-!SECTION Processing
+Processing
+----------
 
-!SUBSECTION DATE_DAYOFWEEK()
+### DATE_DAYOFWEEK()
 
 `DATE_DAYOFWEEK(date) → weekdayNumber`
 
@@ -192,7 +196,7 @@ Return the weekday number of *date*.
   - 5 – Friday
   - 6 – Saturday
 
-!SUBSECTION DATE_YEAR()
+### DATE_YEAR()
 
 `DATE_YEAR(date) → year`
 
@@ -201,7 +205,7 @@ Return the year of *date*.
 - **date** (number|string): numeric timestamp or ISO 8601 date time string
 - returns **year** (number): the year part of *date* as a number
 
-!SUBSECTION DATE_MONTH()
+### DATE_MONTH()
 
 `DATE_MONTH(date) → month`
 
@@ -210,7 +214,7 @@ Return the month of *date*.
 - **date** (number|string): numeric timestamp or ISO 8601 date time string
 - returns **month** (number): the month part of *date* as a number
 
-!SUBSECTION DATE_DAY()
+### DATE_DAY()
 
 `DATE_DAY(date) → day`
 
@@ -219,7 +223,7 @@ Return the day of *date*.
 - **date** (number|string): numeric timestamp or ISO 8601 date time string
 - returns **day** (number): the day part of *date* as a number
 
-!SUBSECTION DATE_HOUR()
+### DATE_HOUR()
 
 Return the hour of *date*.
 
@@ -228,7 +232,7 @@ Return the hour of *date*.
 - **date** (number|string): numeric timestamp or ISO 8601 date time string
 - returns **hour** (number): the hour part of *date* as a number
 
-!SUBSECTION DATE_MINUTE()
+### DATE_MINUTE()
 
 `DATE_MINUTE(date) → minute`
 
@@ -237,7 +241,7 @@ Return the minute of *date*.
 - **date** (number|string): numeric timestamp or ISO 8601 date time string
 - returns **minute** (number): the minute part of *date* as a number
 
-!SUBSECTION DATE_SECOND()
+### DATE_SECOND()
 
 `DATE_SECOND(date) → second`
 
@@ -246,14 +250,14 @@ Return the second of *date*.
 - **date** (number|string): numeric timestamp or ISO 8601 date time string
 - returns **second** (number): the seconds part of *date* as a number
 
-!SUBSECTION DATE_MILLISECOND()
+### DATE_MILLISECOND()
 
 `DATE_MILLISECOND(date) → millisecond`
 
 - **date** (number|string): numeric timestamp or ISO 8601 date time string
 - returns **millisecond** (number): the milliseconds part of *date* as a number
 
-!SUBSECTION DATE_DAYOFYEAR()
+### DATE_DAYOFYEAR()
 
 `DATE_DAYOFYEAR(date) → dayOfYear`
 
@@ -263,7 +267,7 @@ Return the day of year of *date*.
 - returns **dayOfYear** (number): the day of year number of *date*.
   The return values range from 1 to 365, or 366 in a leap year respectively.
 
-!SUBSECTION DATE_ISOWEEK()
+### DATE_ISOWEEK()
 
 `DATE_ISOWEEK(date) → weekDate`
 
@@ -276,7 +280,7 @@ Return the week date of *date* according to ISO 8601.
   the next year, and the first days in January may be part of the previous year's
   last week.
 
-!SUBSECTION DATE_LEAPYEAR()
+### DATE_LEAPYEAR()
 
 `DATE_LEAPYEAR(date) → leapYear`
 
@@ -285,7 +289,7 @@ Return whether *date* is in a leap year.
 - **date** (number|string): numeric timestamp or ISO 8601 date time string
 - returns **leapYear** (bool): *true* if *date* is in a leap year, *false* otherwise
 
-!SUBSECTION DATE_QUARTER()
+### DATE_QUARTER()
 
 `DATE_QUARTER(date) → quarter`
 
@@ -298,7 +302,7 @@ Return which quarter *date* belongs to.
   - 3 – July, August, September
   - 4 – October, November, December
 
-!SUBSECTION DATE_DAYS_IN_MONTH()
+### DATE_DAYS_IN_MONTH()
 
 Return the number of days in the month of *date*.
 
@@ -307,7 +311,7 @@ Return the number of days in the month of *date*.
 - **date** (number|string): numeric timestamp or ISO 8601 date time string
 - returns **daysInMonth** (number): the number of days in *date*'s month (28..31)
 
-!SUBSECTION DATE_FORMAT()
+### DATE_FORMAT()
 
 `DATE_FORMAT(date, format) → str`
 
@@ -379,9 +383,10 @@ DATE_FORMAT("2016", "%%l = %l") // "%l = 1" (2016 is a leap year)
 DATE_FORMAT("2016-03-01", "%xxx%") // "063", trailing % ignored
 ```
 
-!SECTION Comparison and calculation
+Comparison and calculation
+--------------------------
 
-!SUBSECTION DATE_ADD()
+### DATE_ADD()
 
 `DATE_ADD(date, amount, unit) → isoDate`
 
@@ -444,7 +449,7 @@ DATE_ADD("2000-01-01", "PT30M44.4S" // add 30 minutes, 44 seconds and 400 ms
 DATE_ADD("2000-01-01", "P1Y2M3W4DT5H6M7.89S" // add a bit of everything
 ```
 
-!SUBSECTION DATE_SUBTRACT()
+### DATE_SUBTRACT()
 
 `DATE_SUBTRACT(date, amount, unit) → isoDate`
 
@@ -503,7 +508,7 @@ DATE_SUBTRACT(DATE_NOW(), "P4D") // four days ago
 DATE_SUBTRACT(DATE_NOW(), "PT1H3M") // 1 hour and 30 minutes ago
 ```
 
-!SUBSECTION DATE_DIFF()
+### DATE_DIFF()
 
 `DATE_DIFF(date1, date2, unit, asFloat) → diff`
 
@@ -527,7 +532,7 @@ with decimal places.
 - returns **diff** (number): the calculated difference as number in *unit*.
   The value will be negative if *date2* is before *date1*.
 
-!SUBSECTION DATE_COMPARE()
+### DATE_COMPARE()
 
 `DATE_COMPARE(date1, date2, unitRangeStart, unitRangeEnd) → bool`
 
@@ -614,7 +619,8 @@ FOR user IN users
     RETURN user
 ```
 
-!SECTION Working with dates and indices
+Working with dates and indices
+------------------------------
 
 There are two recommended ways to store timestamps in ArangoDB:
   - as string with [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) UTC timestamp
@@ -641,7 +647,8 @@ skiplist indices:
 
 The first and the last timestamp in the array are excluded from the result by the `FILTER`.
 
-!SECTION Limitations
+Limitations
+-----------
 
 Note that dates before the year 1583 aren't allowed by the
 [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) standard by default, because

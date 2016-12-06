@@ -1,4 +1,5 @@
-!CHAPTER Header Session Transport
+Header Session Transport
+========================
 
 `const headerTransport = require('@arangodb/foxx/sessions/transports/header');`
 
@@ -14,7 +15,8 @@ const sessions = sessionsMiddleware({
 module.context.use(sessions);
 ```
 
-!SECTION Creating a transport
+Creating a transport
+--------------------
 
 `headerTransport([options]): Transport`
 
