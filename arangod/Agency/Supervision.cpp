@@ -623,7 +623,7 @@ void Supervision::enforceReplication() {
       for (auto const& shard_ : col("shards").children()) { // Pl shards
         auto const& shard = *(shard_.second);
         if (replicationFactor != shard.slice().length()) {
-          LOG(WARN) << shard.slice().type()
+          LOG(WARN) << shard.slice().typeName()
                     << " target repl(" << replicationFactor
                     << ") actual repl(" << shard.slice().length() << ")";
         }
