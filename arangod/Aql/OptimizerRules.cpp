@@ -4149,7 +4149,7 @@ GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, Exec
     break;
 
     default:
-      LOG_TOPIC(DEBUG, Logger::DEVEL) << "expression is not valid for geoindex";
+      //LOG_TOPIC(DEBUG, Logger::DEVEL) << "expression is not valid for geoindex";
       rv.invalidate(); // not required but make sure the result is invalid
   }
 
@@ -4169,6 +4169,7 @@ void checkNodesForGeoOptimization(ExecutionNode::NodeType type, ExecutionPlan* p
     if(!geoIndexInfo){
       continue;
     }
+    //LOG_TOPIC(DEBUG, Logger::DEVEL) << "ADDING Candidate";
     infos.push_back(std::move(geoIndexInfo));
     //LOG_TOPIC(DEBUG, Logger::DEVEL) << "  FOUND NEAR OR WITHIN";
   }
@@ -4204,6 +4205,7 @@ GeoIndexInfo geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pai
       auto lcoll = coll->getCollection();
       // TODO - check collection for suitable geo-indexes
       //LOG_TOPIC(DEBUG, Logger::DEVEL) << "        SETTER IS ENUMERATE_COLLECTION: " << coll->getName();
+      //LOG_TOPIC(DEBUG, Logger::DEVEL) << "        COLLECTION - number of indexes: " << lcoll->getIndexes().size();
       for(auto indexShardPtr : lcoll->getIndexes()){
         // get real index
         arangodb::Index& index = *indexShardPtr.get();
@@ -4211,8 +4213,11 @@ GeoIndexInfo geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pai
         // check if current index is a geo-index
         if(  index.type() != arangodb::Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX
           && index.type() != arangodb::Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX){
+          //LOG_TOPIC(DEBUG, Logger::DEVEL) << "Index type not of Geo: " << (int) index.type();
           continue;
         }
+
+        //LOG_TOPIC(DEBUG, Logger::DEVEL) << "Index is a GeoIndex" << coll->getName();
 
         // /////////////////////////////////////////////////
         // //FIXME -  REMOVE DEBUG CODE LATER
@@ -4300,18 +4305,22 @@ void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info){
 
 // applys the optimization for a candidate
 bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& info){
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER applyGeoOptimization";
 
   // FIXME -- technical debt --  this code should go to the candidate finding /////////////////////
   auto const& functionArguments = info.distanceNode->getMember(0);
   if(functionArguments->numMembers() < 4){
     return false;
   }
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "distance function has 4 arguments";
 
   std::pair<AstNode*,AstNode*> argPair1 = { functionArguments->getMember(0), functionArguments->getMember(1) };
   std::pair<AstNode*,AstNode*> argPair2 = { functionArguments->getMember(2), functionArguments->getMember(3) };
 
   auto result1 = geoDistanceFunctionArgCheck(argPair1, plan, info);
   auto result2 = geoDistanceFunctionArgCheck(argPair2, plan, info);
+
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "result1: " << result1 << "result2" << result2;
 
   // xor only one argument pair shall have a geoIndex
   if (  ( !result1 && !result2 ) || ( result1 && result2 ) ){
@@ -4386,6 +4395,6 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
   }
   opt->addPlan(plan, rule, modified);
 
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "EXIT GEO RULE - modified: " << modified;
+  LOG_TOPIC(DEBUG, Logger::DEVEL) << "EXIT GEO RULE - modified: " << modified;
   //LOG_TOPIC(DEBUG, Logger::DEVEL) << "";
 }
