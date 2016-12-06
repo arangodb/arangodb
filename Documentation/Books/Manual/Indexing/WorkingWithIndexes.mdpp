@@ -1,6 +1,8 @@
-!CHAPTER Working with Indexes
+Working with Indexes
+====================
 
-!SECTION Index Identifiers and Handles 
+Index Identifiers and Handles
+-----------------------------
 
 An *index handle* uniquely identifies an index in the database. It is a string and 
 consists of the collection name and an *index identifier* separated by a `/`. The 
@@ -30,9 +32,10 @@ Because the index handle is unique within the database, you can leave out the
 db._index("demo/362549736");
 ```
 
-!SECTION Collection Methods
+Collection Methods
+------------------
 
-!SUBSECTION Listing all indexes of a collection
+### Listing all indexes of a collection
 <!-- arangod/V8Server/v8-vocindex.cpp -->
 
 
@@ -56,7 +59,7 @@ Note that `_key` implicitly has an index assigned to it.
     @endDocuBlock collectionGetIndexes
 
 
-!SUBSECTION Creating an index
+### Creating an index
 Indexes should be created using the general method *ensureIndex*. This
 method obsoletes the specialized index-specific methods *ensureHashIndex*,
 *ensureSkiplist*, *ensureUniqueConstraint* etc.
@@ -106,7 +109,7 @@ object existed before the call is indicated in the return attribute
 
 
 
-!SUBSECTION Dropping an index
+### Dropping an index
 <!-- arangod/V8Server/v8-vocindex.cpp -->
 
 
@@ -137,9 +140,10 @@ Same as above. Instead of an index an index handle can be given.
 
 
 
-!SECTION Database Methods
+Database Methods
+----------------
 
-!SUBSECTION Fetching an index by handle
+### Fetching an index by handle
 <!-- js/server/modules/@arangodb/arango-database.js -->
 
 
@@ -161,7 +165,7 @@ Returns the index with *index-handle* or null if no such index exists.
     @endDocuBlock IndexHandle
 
 
-!SUBSECTION Dropping an index
+### Dropping an index
 <!-- js/server/modules/@arangodb/arango-database.js -->
 
 
@@ -190,7 +194,7 @@ Drops the index with *index-handle*.
     @endDocuBlock dropIndex
 
 
-!SUBSECTION Revalidating whether an index is used
+### Revalidating whether an index is used
 <!-- js/server/modules/@arangodb/arango-database.js -->
 
 

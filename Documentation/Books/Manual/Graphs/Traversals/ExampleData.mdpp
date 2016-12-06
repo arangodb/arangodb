@@ -1,4 +1,5 @@
-!CHAPTER Example Data
+Example Data
+============
 
 The following examples all use a vertex collection *v* and an [edge collection](../../Appendix/Glossary.md#edge-collection) *e*. The vertex
 collection *v* contains continents, countries, and capitals. The edge collection *e* 

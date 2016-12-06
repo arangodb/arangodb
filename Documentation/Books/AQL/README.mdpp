@@ -1,4 +1,5 @@
-!CHAPTER Introduction 
+Introduction
+============
 
 The ArangoDB query language (AQL) can be used to retrieve and modify data that 
 are stored in ArangoDB. The general workflow when executing a query is as follows:

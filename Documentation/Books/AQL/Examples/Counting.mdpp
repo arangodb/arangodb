@@ -1,6 +1,8 @@
-!CHAPTER Counting
+Counting
+========
 
-!SECTION Amount of documents in a collection
+Amount of documents in a collection
+-----------------------------------
 
 To return the count of documents that currently exist in a collection,
 you can call the [LENGTH() function](../Functions/Array.md#length):

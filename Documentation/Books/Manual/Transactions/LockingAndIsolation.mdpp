@@ -1,4 +1,5 @@
-!CHAPTER Locking and Isolation 
+Locking and Isolation
+=====================
 
 All collections specified in the *collections* attribute are locked in the
 requested mode (read or write) at transaction start. Locking of multiple collections
@@ -18,7 +19,7 @@ other transactions. Additionally, reads inside a transaction are repeatable.
 Note that the above is true only for all collections that are declared in the 
 *collections* attribute of the transaction.
 
-!SUBSECTION Lazily adding collections
+### Lazily adding collections
 
 There might be situations when declaring all collections a priori is not possible,
 for example, because further collections are determined by a dynamic AQL query 
@@ -107,7 +108,7 @@ edges connected to it. `FOR v IN ANY DOCUMENT("users/not_linked") ...` will fail
 even without edges, as it is always considered to be a read access to the *users*
 collection.
 
-!SUBSECTION Deadlocks and Deadlock detection
+### Deadlocks and Deadlock detection
 
 A deadlock is a situation in which two or more concurrent operations (user transactions
 or AQL queries) try to access the same resources (collections, documents) and need to 

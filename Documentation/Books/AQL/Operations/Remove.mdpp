@@ -1,5 +1,6 @@
 
-!CHAPTER REMOVE
+REMOVE
+======
 
 The *REMOVE* keyword can be used to remove documents from a collection. On a
 single server, the document removal is executed transactionally in an 
@@ -49,7 +50,7 @@ FOR u IN users
   REMOVE { _key: u._key } IN backup
 ```
 
-!SUBSECTION Setting query options
+### Setting query options
 
 *options* can be used to suppress query errors that may occur when trying to
 remove non-existing documents. For example, the following query will fail if one
@@ -76,7 +77,7 @@ FOR i IN 1..1000
   REMOVE { _key: CONCAT('test', i) } IN users OPTIONS { waitForSync: true }
 ```
 
-!SUBSECTION Returning the removed documents
+### Returning the removed documents
 
 The removed documents can also be returned by the query. In this case, the `REMOVE` 
 statement must be followed by a `RETURN` statement (intermediate `LET` statements

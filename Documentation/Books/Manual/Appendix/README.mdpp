@@ -1,4 +1,5 @@
-!CHAPTER Appendix
+Appendix
+========
 
 - [References](References/README.md): Brief overviews over interfaces and objects
   - [db](References/DBObject.md): the `db` object

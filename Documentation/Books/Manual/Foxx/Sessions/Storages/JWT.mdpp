@@ -1,4 +1,5 @@
-!CHAPTER JWT Session Storage
+JWT Session Storage
+===================
 
 `const jwtStorage = require('@arangodb/foxx/sessions/storages/jwt');`
 
@@ -16,7 +17,8 @@ const sessions = sessionsMiddleware({
 module.context.use(sessions);
 ```
 
-!SECTION Creating a storage
+Creating a storage
+------------------
 
 `jwtStorage(options): Storage`
 

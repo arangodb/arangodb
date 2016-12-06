@@ -1,4 +1,5 @@
-!CHAPTER Creating and Deleting Collections
+Creating and Deleting Collections
+=================================
 
 
 <!-- js/actions/api-collection.js -->

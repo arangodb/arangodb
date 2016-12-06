@@ -1,4 +1,5 @@
-!CHAPTER Linux
+Linux
+=====
 
 - Visit the official [ArangoDB install page](https://www.arangodb.com/install)
   and download the correct package for your Linux distribution. You can find
@@ -28,11 +29,13 @@ To stop the server you can use the following command:
 The exact commands depend on your Linux distribution.
 You may require root privileges to execute these commands.
 
-!SECTION Linux Mint
+Linux Mint
+----------
 
 Please use the corresponding Ubuntu or Debian packages.
 
-!SECTION Unattended Installation
+Unattended Installation
+-----------------------
 
 Debian based package will ask for a password during installation.
 For unattended installation, you can set the password using the
@@ -54,7 +57,8 @@ ARANGODB_DEFAULT_ROOT_PASSWORD=NEWPASSWORD arango-secure-installation
 
 The command should be executed after the installation.
 
-!SECTION Non-Standard Installation
+Non-Standard Installation
+-------------------------
 
 If you compiled ArangoDB from source and did not use any installation
 package – or using non-default locations and/or multiple ArangoDB

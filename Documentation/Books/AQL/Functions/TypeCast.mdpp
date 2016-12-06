@@ -1,4 +1,5 @@
-!CHAPTER Type cast functions
+Type cast functions
+===================
 
 Some operators expect their operands to have a certain data type. For example,
 logical operators expect their operands to be boolean values, and the arithmetic
@@ -13,7 +14,7 @@ Each of the these functions takes an operand of any data type and returns a resu
 value with the type corresponding to the function name. For example, *TO_NUMBER()*
 will return a numeric value.
 
-!SUBSECTION TO_BOOL()
+### TO_BOOL()
 
 `TO_BOOL(value) → bool`
 
@@ -41,7 +42,7 @@ not not 1 // true
 
 `TO_BOOL()` is preferred however, because it states the intention clearer.
 
-!SUBSECTION TO_NUMBER()
+### TO_NUMBER()
 
 `TO_NUMBER(value) → number`
 
@@ -76,7 +77,7 @@ Take an input *value* of any type and convert it into a numeric value.
 -{} // 0
     ```
 
-!SUBSECTION TO_STRING()
+### TO_STRING()
 
 `TO_STRING(value) → str`
 
@@ -103,7 +104,7 @@ TO_STRING( [1, 2, 3] ) // "[1,2,3]"
 TO_STRING( { foo: "bar", baz: null } ) // "{\"foo\":\"bar\",\"baz\":null}"
 ```
 
-!SUBSECTION TO_ARRAY()
+### TO_ARRAY()
 
 `TO_ARRAY(value) → array`
 
@@ -128,13 +129,14 @@ TO_ARRAY([1, 2, "foo"]) // [1, 2, "foo"]
 TO_ARRAY({foo: 1, bar: 2, baz: [3, 4, 5]}) // [1, 2, [3, 4, 5]]
 ```
 
-!SUBSECTION TO_LIST()
+### TO_LIST()
 
 `TO_LIST(value) → array`
 
 This is an alias for [TO_ARRAY()](#toarray).
 
-!CHAPTER Type check functions
+Type check functions
+====================
 
 AQL also offers functions to check the data type of a value at runtime. The
 following type check functions are available. Each of these functions takes an
