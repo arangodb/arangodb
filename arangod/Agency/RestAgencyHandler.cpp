@@ -406,6 +406,7 @@ inline RestStatus RestAgencyHandler::handleRead() {
         return RestStatus::DONE;
 
       } else {
+        TRI_ASSERT(ret.redirect != _agent->id());
         redirectRequest(ret.redirect);
       }
       return RestStatus::DONE;
