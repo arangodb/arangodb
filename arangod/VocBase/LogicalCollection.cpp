@@ -453,18 +453,21 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
     auto replicationFactorSlice = info.get("replicationFactor");
     if (!replicationFactorSlice.isNone()) {
       bool isError = true;
-      if (replicationFactorSlice.isString() && replicationFactorSlice.copyString() == "satellite") {
-        _replicationFactor = 0;
-        _numberOfShards = 1;
-        _distributeShardsLike = "";
-        isError = false;
-      } else if (replicationFactorSlice.isNumber()) {
+      if (replicationFactorSlice.isNumber()) {
         _replicationFactor = replicationFactorSlice.getNumber<size_t>();
         // mop: only allow satellite collections to be created explicitly
         if (_replicationFactor > 0 || _replicationFactor <= 10) {
           isError = false;
         }
       }
+#ifdef USE_ENTERPRISE
+      else if (replicationFactorSlice.isString() && replicationFactorSlice.copyString() == "satellite") {
+        _replicationFactor = 0;
+        _numberOfShards = 1;
+        _distributeShardsLike = "";
+        isError = false;
+      }
+#endif
       if (isError) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
             "invalid replicationFactor");
