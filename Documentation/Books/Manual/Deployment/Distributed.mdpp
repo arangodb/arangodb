@@ -1,4 +1,5 @@
-!SECTION Launching an ArangoDB cluster on multiple machines
+Launching an ArangoDB cluster on multiple machines
+--------------------------------------------------
 
 Essentially, one can use the method from [the previous
 section](Local.md) to start an ArangoDB cluster on multiple machines as

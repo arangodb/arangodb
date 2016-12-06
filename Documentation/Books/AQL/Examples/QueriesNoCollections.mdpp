@@ -1,4 +1,5 @@
-!CHAPTER Queries without collections
+Queries without collections
+===========================
 
 
 Following is a query that returns a string value. The result string is contained in an array

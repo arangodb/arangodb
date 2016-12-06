@@ -1,4 +1,5 @@
-!CHAPTER Manifest files
+Manifest files
+==============
 
 Every service comes with a `manifest.json` file providing metadata. The following fields are allowed in manifests:
 

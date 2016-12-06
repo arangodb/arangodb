@@ -1,4 +1,5 @@
-!CHAPTER Passing parameters to transactions
+Passing parameters to transactions
+==================================
 
 Arbitrary parameters can be passed to transactions by setting the *params* 
 attribute when declaring the transaction. This feature is handy to re-use the

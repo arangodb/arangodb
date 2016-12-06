@@ -1,4 +1,5 @@
-!CHAPTER Smart Graph Management
+Smart Graph Management
+======================
 
 This chapter describes the JavaScript interface for [creating and modifying SmartGraphs](../README.md).
 At first you have to note that every SmartGraph is a specialized version of a General Graph, which means all of the General Graph functionality is available on a SmartGraph as well.
@@ -10,7 +11,8 @@ To generally understand the concept of this module please read the chapter about
 In the following we will only describe the overloaded functionality.
 Everything else works identical in both modules.
 
-!SECTION Create a graph
+Create a graph
+--------------
 
 Also SmartGraphs require edge relations to be created, the format of the relations is identical.
 The only difference is that all collections used within the relations to create a new SmartGraph cannot exist yet. They have to be created by the Graph in order to enforce the correct sharding.
@@ -75,7 +77,8 @@ Create a graph with edge definitions and orphan collections:
     ] ]
 
 
-!SECTION Modify a graph definition during runtime
+Modify a graph definition during runtime
+----------------------------------------
 
 After you have created a SmartGraph its definition is also not immutable.
 You can still add or remove relations.
@@ -87,7 +90,7 @@ Than after some time you decide to add it again, it can be used.
 This is because the enforced sharding is still applied to this vertex collection, hence it is suitable to be added again.
 
 
-!SUBSUBSECTION Remove a vertex collection
+#### Remove a vertex collection
 
 
 

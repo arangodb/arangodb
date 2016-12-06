@@ -1,4 +1,5 @@
-!CHAPTER Fulltext queries 
+Fulltext queries
+================
 
 ArangoDB allows to run queries on text contained in document attributes.  To use
 this, a [fulltext index](../../Glossary.md#fulltext-index) must be defined for the attribute of the collection that
@@ -10,7 +11,7 @@ fulltext index.
 
 When a fulltext index exists, it can be queried using a fulltext query.
 
-!SUBSECTION Fulltext
+### Fulltext
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 
 
@@ -50,7 +51,7 @@ way for executing fulltext queries is to use an AQL query using the *FULLTEXT*
     @endDocuBlock collectionFulltext
 
 
-!SUBSECTION Fulltext Syntax:
+### Fulltext Syntax:
 
 In the simplest form, a fulltext query contains just the sought word. If
 multiple search words are given in a query, they should be separated by commas.

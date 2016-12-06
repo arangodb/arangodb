@@ -1,11 +1,13 @@
-!CHAPTER Mac OS X
+Mac OS X
+========
 
 The preferred method for installing ArangoDB under Mac OS X is
 [homebrew](#homebrew). However, in case you are not using homebrew, we
 provide a [command-line app](#commandline-app) or [graphical
 app](#graphical-app) which contains all the executables.
 
-!SECTION Homebrew
+Homebrew
+--------
 
 If you are using [homebrew](http://brew.sh/),
 then you can install the ArangoDB using *brew* as follows:
@@ -42,20 +44,22 @@ also need to update homebrew:
 
     brew update
 
-!SUBSECTION Known issues
+### Known issues
 
 - Performance - the LLVM delivered as of Mac OS X El Capitan builds slow binaries. Use GCC instead,
   until this issue has been fixed by Apple.
 - the Commandline argument parsing doesn't accept blanks in filenames; the CLI version below does.
 
-!SECTION Graphical App
+Graphical App
+-------------
 In case you are not using homebrew, we also provide a graphical app. You can
 download it from [here](https://www.arangodb.com/download).
 
 Choose *Mac OS X*. Download and install the application *ArangoDB* in
 your application folder.
 
-!SECTION Command-Line App
+Command-Line App
+----------------
 In case you are not using homebrew, we also provide a command-line app. You can
 download it from [here](https://www.arangodb.com/download).
 

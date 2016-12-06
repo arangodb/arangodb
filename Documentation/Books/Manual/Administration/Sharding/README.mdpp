@@ -1,4 +1,5 @@
-!CHAPTER Sharding
+Sharding
+========
 
 ArangoDB is organizing its collection data in shards. Sharding
 allows to use multiple machines to run a cluster of ArangoDB

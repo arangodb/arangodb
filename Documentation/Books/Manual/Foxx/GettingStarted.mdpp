@@ -1,4 +1,5 @@
-!CHAPTER Getting Started
+Getting Started
+===============
 
 We're going to start with an empty folder. This will be the root folder of our services. You can name it something clever but for the course of this guide we'll assume it's called the name of your service: `getting-started`.
 
@@ -61,7 +62,8 @@ These methods take an optional path (if omitted, it defaults to `"/"`) as well a
 
 The object returned by the router's methods provides additional methods to attach metadata and validation to the route. We're using `summary` and `description` to document what the route does -- these aren't strictly necessary but give us some nice auto-generated documentation. The `response` method lets us additionally document the response content type and what the response body will represent.
 
-!SECTION Try it out
+Try it out
+----------
 
 At this point you can upload the service folder as a zip archive from the web interface using the *Services* tab.
 
@@ -91,7 +93,8 @@ Click the *Try it out!* button to send a request to the route and you should see
 
 Congratulations! You have just created, installed and used your first Foxx service.
 
-!SECTION Parameter validation
+Parameter validation
+--------------------
 
 Let's add another route that provides a more personalized greeting:
 
@@ -152,7 +155,8 @@ The `body` method works the same way as the `response` method except the schema 
 
 <!-- TODO [Screenshot of the API docs after a request with an array of numbers] -->
 
-!SECTION Creating collections
+Creating collections
+--------------------
 
 The real power of Foxx comes from interacting with the database itself. In order to be able to use a collection from within our service, we should first make sure that the collection actually exists. The right place to create collections your service is going to use is in [a *setup* script](Scripts.md), which Foxx will execute for you when installing or updating the service.
 
@@ -195,7 +199,8 @@ Go back to the web interface and update the service with our new code, then chec
 
 <!-- TODO [Screenshot of the Collections tab with "myFoxxCollection" in the list] -->
 
-!SECTION Accessing collections
+Accessing collections
+---------------------
 
 Let's expand our service by adding a few more routes to our `index.js`:
 
@@ -276,7 +281,8 @@ router.post('/entries', function (req, res) {
 .description('Store a single entry or multiple entries in the "myFoxxCollection" collection.');
 ```
 
-!SECTION Writing database queries
+Writing database queries
+------------------------
 
 Storing and retrieving entries is fine, but right now we have to memorize each key when we create an entry. Let's add a route that gives us a list of the keys of all entries so we can use those to look an entry up in detail.
 
@@ -317,7 +323,8 @@ const keys = db._query(
 );
 ```
 
-!SECTION Next steps
+Next steps
+----------
 
 You now know how to create a Foxx service from scratch, how to handle user input and how to access the database from within your Foxx service to store, retrieve and query data you store inside ArangoDB. This should allow you to build meaningful APIs for your own applications but there are many more things you can do with Foxx:
 

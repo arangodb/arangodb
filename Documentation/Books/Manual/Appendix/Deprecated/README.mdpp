@@ -1,1 +1,2 @@
-!CHAPTER Deprecated
+Deprecated
+==========

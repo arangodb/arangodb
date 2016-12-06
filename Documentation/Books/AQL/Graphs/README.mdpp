@@ -1,4 +1,5 @@
-!CHAPTER Graphs in AQL
+Graphs in AQL
+=============
 
 There are multiple ways to work with [graphs in ArangoDB](../../Manual/Graphs/index.html),
 as well as different ways to query your graphs using AQL.

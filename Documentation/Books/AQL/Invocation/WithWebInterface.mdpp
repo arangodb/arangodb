@@ -1,4 +1,5 @@
-!CHAPTER AQL with ArangoDB Web Interface
+AQL with ArangoDB Web Interface
+===============================
 
 
 In the ArangoDB Web Interface the AQL Editor tab allows to execute ad-hoc AQL

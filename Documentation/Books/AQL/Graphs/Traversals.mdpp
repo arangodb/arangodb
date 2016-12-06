@@ -1,6 +1,8 @@
-!CHAPTER Graph traversals in AQL
+Graph traversals in AQL
+=======================
 
-!SECTION General query idea
+General query idea
+------------------
 
 A traversal starts at one specific document (*startVertex*) and follows all
 edges connected to this document. For all documents (*vertices*) that are
@@ -20,7 +22,7 @@ set with three items:
   is the *startVertex* and the last is the visited vertex, and the n-th element
   in *edges* connects the n-th element with the (n+1)-th element in *vertices*.
 
-!SUBSECTION Example execution
+### Example execution
 
 Let's take a look at a simple example to explain how it works.
 This is the graph that we are going to traverse:
@@ -79,13 +81,14 @@ has returned the following paths:
 6. **A** → **G** → **J**
 
 
-!SECTION Syntax
+Syntax
+------
 
 Now let's see how we can write a query that follows this schema.
 You have two options here, you can either use a named graph or a set of edge
 collections (anonymous graph).
 
-!SUBSECTION Working with named graphs
+### Working with named graphs
 
 ```
 FOR vertex[, edge[, path]]
@@ -148,7 +151,7 @@ FOR vertex[, edge[, path]]
       return all paths from *min* depth to *max* depth for one vertex at depth 1.
       Than for the next vertex at depth 1 and so on.
 
-!SUBSECTION Working with collection sets
+### Working with collection sets
 
 ```
 FOR vertex[, edge[, path]]
@@ -165,7 +168,7 @@ If the same edge collection is specified multiple times, it will behave as if it
 were specified only once. Specifying the same edge collection is only allowed when
 the collections do not have conflicting traversal directions. 
 
-!SUBSECTION Traversing in mixed directions
+### Traversing in mixed directions
 
 For traversals with a list of edge collections you can optionally specify the
 direction for some of the edge collections. Say for example you have three edge
@@ -184,7 +187,8 @@ All collections in the list that do not specify their own direction will use the
 direction defined after `IN`. This allows to use a different direction for each
 collection in your traversal.
 
-!SECTION Using filters and the explainer to extrapolate the costs
+Using filters and the explainer to extrapolate the costs
+--------------------------------------------------------
 
 All three variables emitted by the traversals might as well be used in filter
 statements. For some of these filter statements the optimizer can detect that it
@@ -197,7 +201,7 @@ with a length greater than *max* will never be computed.
 In the current state, `AND` combined filters can be optimized, but `OR`
 combined filters cannot.
 
-!SUBSECTION Filtering on paths
+### Filtering on paths
 
 Filtering on paths allows for the most powerful filtering and may have the
 highest impact on performance. Using the path variable you can filter on
@@ -205,7 +209,7 @@ specific iteration depths. You can filter for absolute positions in the path
 by specifying a positive number (which then qualifies for the optimizations),
 or relative positions to the end of the path by specifying a negative number.
 
-!SUBSUBSECTION Filtering edges on the path
+#### Filtering edges on the path
 
 ```js
 FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
@@ -216,7 +220,7 @@ FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
 will filter all paths where the start edge (index 0) has the attribute
 *theTruth* equal to *true*. The resulting paths will be up to 5 items long.
 
-!SUBSECTION Filtering vertices on the path
+### Filtering vertices on the path
 
 Similar to filtering the edges on the path you can also filter the vertices:
 
@@ -226,7 +230,7 @@ FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
   RETURN p
 ```
 
-!SUBSUBSECTION Combining several filters
+#### Combining several filters
 
 And of course you can combine these filters in any way you like: 
 
@@ -247,7 +251,7 @@ the attribute *theFalse* equal to *false*. The resulting paths will be up to
 depth 2. This is because for all results in depth 1 the second edge does not
 exist and hence cannot fulfill the condition here.
 
-!SUBSUBSECTION Filter on the entire path
+#### Filter on the entire path
 
 With the help of array comparison operators filters can also be defined
 on the entire path, like ALL edges should have theTruth == true:
@@ -281,7 +285,7 @@ It is guaranteed that at least one, but potentially more edges fulfill the condi
 All of the above filters can be defined on vertices in the exact same way.
 
 
-!SUBSECTION Examples
+### Examples
 
 We will create a simple symmetric traversal demonstration graph:
 
@@ -326,7 +330,7 @@ are right behind the fork:
 As you can see, we can express this in two ways: with or without *max* parameter
 in the expression.
 
-!SUBSECTION Filter examples
+### Filter examples
 
 Now let's start to add some filters. We want to cut of the branch on the right
 side of the graph, we may filter in two ways:
@@ -358,7 +362,8 @@ We also may combine several filters, for instance to filter out the right branch
 
 As you can see, combining two `FILTER` statements with an `AND` has the same result.
 
-!SECTION Comparing OUTBOUND / INBOUND / ANY
+Comparing OUTBOUND / INBOUND / ANY
+----------------------------------
 
 All our previous examples traversed the graph in *OUTBOUND* edge direction.
 You may however want to also traverse in reverse direction (*INBOUND*) or
@@ -385,7 +390,8 @@ have edges in other directions and they will be traversed.
 if it walks from **E** to **F**, it will continue to walk from **F** to **E**
 using the same edge once again. Due to this we will see duplicate nodes in the result.
 
-!SECTION Use the AQL explainer for optimizations
+Use the AQL explainer for optimizations
+---------------------------------------
 
 Now let's have a look what the optimizer does behind the curtain and inspect
 traversal queries using [the explainer](../ExecutionAndPerformance/Optimizer.md):

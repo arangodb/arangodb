@@ -1,4 +1,5 @@
-!CHAPTER Bind parameters
+Bind parameters
+===============
 
 AQL supports the usage of bind parameters, thus allowing to separate the query
 text from literal values used in the query. It is good practice to separate the

@@ -1,4 +1,5 @@
-!CHAPTER Handling Indexes
+Handling Indexes
+================
 
 This is an introduction to ArangoDB's interface for indexes in general.  
 There are special sections for 
@@ -13,3 +14,4 @@ There are special sections for
  - [Persistent Indexes](Persistent.md)
  - [Fulltext Indexes](Fulltext.md)
  - [Geo-spatial Indexes](Geo.md)
+ - [Vertex-centric Indexes](VertexCentric.md)

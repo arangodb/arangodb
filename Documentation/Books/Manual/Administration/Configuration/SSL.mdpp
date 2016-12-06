@@ -1,6 +1,8 @@
-!CHAPTER SSL Configuration
+SSL Configuration
+=================
 
-!SECTION SSL Endpoints
+SSL Endpoints
+-------------
 
 Given a hostname:
 
@@ -17,7 +19,7 @@ Given an IPv6 address:
 **Note**: If you are using SSL-encrypted endpoints, you must also supply the
 path to a server certificate using the `--ssl.keyfile` option.
 
-!SUBSECTION Keyfile
+### Keyfile
 
 `--ssl.keyfile filename`
 
@@ -68,7 +70,7 @@ following commands should create a valid keyfile:
 For further information please check the manuals of the tools you use to create
 the certificate.
 
-!SUBSECTION CA File
+### CA File
 
 `--ssl.cafile filename`
 
@@ -80,7 +82,7 @@ connect without specific certificates.
 
 The certificates in *filename* must be PEM formatted.
 
-!SUBSECTION SSL protocol
+### SSL protocol
 
 `--ssl.protocol value`
 
@@ -97,7 +99,7 @@ The default *value* is 4 (i.e. TLSv1). If available, set it to 5 (i.e. TLSv1.2),
 because lower protocol versions are known to be vulnerable to POODLE attack
 variants.
 
-!SUBSECTION SSL cache
+### SSL cache
 
 `--ssl.session-cache value`
 
@@ -106,7 +108,7 @@ Set to true if SSL session caching should be used.
 *value* has a default value of *false* (i.e. no caching).
 
 
-!SUBSECTION SSL peer certificate
+### SSL peer certificate
 
 __This feature is available in the Enterprise Edition.__
 
@@ -114,7 +116,7 @@ __This feature is available in the Enterprise Edition.__
 
 Require a peer certificate from the client before connecting.
 
-!SUBSECTION SSL options
+### SSL options
 
 `--ssl.options value`
 
@@ -140,7 +142,7 @@ retrieved by the following shell command:
 A description of the options can be found online in the
 [OpenSSL documentation](http://www.openssl.org/docs/ssl/SSL_CTX_set_options.html)
 
-!SUBSECTION SSL cipher
+### SSL cipher
 
 `--ssl.cipher-list cipher-list`
 

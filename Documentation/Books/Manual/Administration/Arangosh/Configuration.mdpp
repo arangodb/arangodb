@@ -1,4 +1,5 @@
-!CHAPTER ArangoDB Shell Configuration
+ArangoDB Shell Configuration
+============================
 
 _arangosh_ will look for a user-defined startup script named *.arangosh.rc* in the
 user's home directory on startup. The home directory will likely be `/home/<username>/`

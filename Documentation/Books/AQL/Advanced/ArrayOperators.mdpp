@@ -1,7 +1,9 @@
-!CHAPTER Array Operators 
+Array Operators
+===============
 
 
-!SECTION Array expansion
+Array expansion
+---------------
 
 In order to access a named attribute from all elements in an array easily, AQL
 offers the shortcut operator <i>[\*]</i> for array variable expansion.
@@ -69,7 +71,8 @@ FOR u IN users
   RETURN { name: u.name, friends: (FOR f IN u.friends RETURN f.name) }
 ```
 
-!SECTION Array contraction
+Array contraction
+-----------------
 
 In order to collapse (or flatten) results in nested arrays, AQL provides the <i>[\*\*]</i> 
 operator. It works similar to the <i>[\*]</i> operator, but additionally collapses nested
@@ -149,7 +152,8 @@ Note that the elements are not de-duplicated. For a flat array with only unique
 elements, a combination of [UNIQUE()](../Functions/Array.md#unique) and
 [FLATTEN()](../Functions/Array.md#flatten) is advisable.
 
-!SECTION Inline expressions
+Inline expressions
+------------------
 
 It is possible to filter elements while iterating over an array, to limit the amount
 of returned elements and to create a projection using the current array element.
@@ -214,7 +218,7 @@ older than 40 years are returned per user:
 ]
 ```
 
-!SUBSECTION Inline filter
+### Inline filter
 
 To return only the names of friends that have an *age* value
 higher than the user herself, an inline *FILTER* can be used:
@@ -228,7 +232,7 @@ The pseudo-variable *CURRENT* can be used to access the current array element.
 The *FILTER* condition can refer to *CURRENT* or any variables valid in the
 outer scope.
 
-!SUBSECTION Inline limit
+### Inline limit
 
 The number of elements returned can be restricted with *LIMIT*. It works the same
 as the [limit operation](../Operations/Limit.md). *LIMIT* must come after *FILTER*
@@ -267,7 +271,7 @@ per user:
 ]
 ```
 
-!SUBSECTION Inline projection
+### Inline projection
 
 To return a projection of the current element, use *RETURN*. If a *FILTER* is
 also present, *RETURN* must come later.

@@ -101,6 +101,22 @@ else
     exit 1
 fi
 
+
+GITSHA=`git log -n1 --pretty='%h'`
+if git describe --exact-match --tags ${GITSHA}; then
+    GITARGS=`git describe --exact-match --tags ${GITSHA}`
+    echo "I'm on tag: ${GITARGS}"
+else
+    GITARGS=`git branch --no-color| grep '^\*' | sed "s;\* *;;"`
+    if echo $GITARGS |grep -q ' '; then
+        GITARGS=devel
+    fi
+    echo "I'm on Branch: ${GITARGS}"
+fi
+(cd enterprise; git checkout master; git fetch --tags; git pull --all; git checkout ${GITARGS} )
+
+
+
 VERSION_MAJOR=`echo $VERSION | awk -F. '{print $1}'`
 VERSION_MINOR=`echo $VERSION | awk -F. '{print $2}'`
 VERSION_REVISION=`echo $VERSION | awk -F. '{print $3}'`
