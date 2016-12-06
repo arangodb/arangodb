@@ -54,7 +54,6 @@ void Inception::gossip() {
   auto s = std::chrono::system_clock::now();
   std::chrono::seconds timeout(3600);
   size_t j = 0;
-  bool complete = false;
   long waitInterval = 250000;
 
   CONDITION_LOCKER(guard, _cv);
@@ -100,6 +99,7 @@ void Inception::gossip() {
     }
     
     // pool entries
+    bool complete = true;
     for (auto const& pair : config.pool()) {
       if (pair.second != config.endpoint()) {
         {
@@ -108,6 +108,7 @@ void Inception::gossip() {
             continue;
           }
         }
+        complete = false;
         std::string clientid = config.id() + std::to_string(j++);
         auto hf =
           std::make_unique<std::unordered_map<std::string, std::string>>();
@@ -536,9 +537,7 @@ void Inception::run() {
   
   // 3. Else gossip
   config = _agent->config();
-  if (!_agent->ready() && !config.poolComplete()) {
-    gossip();
-  }
+  gossip();
 
   // 4. If still incomplete bail out :(
   config = _agent->config();
