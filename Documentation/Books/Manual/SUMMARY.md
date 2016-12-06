@@ -162,6 +162,7 @@
     * [Synchronous Replication](Administration/Replication/Synchronous/README.md)
       * [Implementation](Administration/Replication/Synchronous/Implementation.md)
       * [Configuration](Administration/Replication/Synchronous/Configuration.md)
+    * [Satellite Collections](Administration/Replication/Synchronous/Satellites/README.md)
   * [Sharding](Administration/Sharding/README.md)
 #    * [Authentication](Administration/Sharding/Authentication.md)
 #    * [Firewall setup](Administration/Sharding/FirewallSetup.md)

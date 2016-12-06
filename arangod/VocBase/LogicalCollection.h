@@ -240,6 +240,7 @@ class LogicalCollection {
 
   // SECTION: Replication
   int replicationFactor() const;
+  bool isSatellite() const;
 
 
   // SECTION: Sharding
@@ -540,7 +541,7 @@ class LogicalCollection {
   std::vector<std::shared_ptr<arangodb::Index>> _indexes;
 
   // SECTION: Replication
-  size_t const _replicationFactor;
+  size_t _replicationFactor;
 
   // SECTION: Sharding
   size_t _numberOfShards;

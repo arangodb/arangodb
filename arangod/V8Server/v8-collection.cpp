@@ -1176,7 +1176,7 @@ static void JS_PropertiesVocbaseCol(
           TRI_V8_THROW_EXCEPTION_PARAMETER(
               "indexBuckets must be a two-power between 1 and 1024");
         }
-        
+
         int res = info->update(slice, false);
 
         if (res != TRI_ERROR_NO_ERROR) {
@@ -1217,9 +1217,15 @@ static void JS_PropertiesVocbaseCol(
       TRI_GET_GLOBAL_STRING(KeyOptionsKey);
       result->Set(KeyOptionsKey, TRI_VPackToV8(isolate, keyOpts)->ToObject());
     }
-    result->Set(
-        TRI_V8_ASCII_STRING("replicationFactor"),
-        v8::Number::New(isolate, static_cast<double>(c->replicationFactor())));
+    if (c->isSatellite()) {
+      result->Set(
+          TRI_V8_ASCII_STRING("replicationFactor"),
+          TRI_V8_STD_STRING(std::string("satellite")));
+    } else {
+      result->Set(
+          TRI_V8_ASCII_STRING("replicationFactor"),
+          v8::Number::New(isolate, static_cast<double>(c->replicationFactor())));
+    }
     std::string shardsLike = c->distributeShardsLike();
     if (!shardsLike.empty()) {
       CollectionNameResolver resolver(c->vocbase());

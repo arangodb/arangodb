@@ -472,6 +472,7 @@ function createLocalCollections (plannedCollections, planVersion,
     var payload = { error: error.error,
       errorNum: error.errorNum,
       errorMessage: error.errorMessage,
+      satellite: collInfo.replicationFactor === 0,
       indexes: collInfo.indexes,
       servers: [ ourselves ],
     planVersion: planVersion };

@@ -138,7 +138,13 @@ to the [naming conventions](../NamingConventions/README.md).
 
   If a server fails, this is detected automatically and one of the
   servers holding copies take over, usually without an error being
-  reported. 
+  reported.
+
+  When using the *Enterprise* version of ArangoDB the replicationFactor
+  may be set to "satellite" making the collection locally joinable
+  on every database server. This reduces the number of network hops
+  dramatically when using joins in AQL at the costs of reduced write
+  performance on these collections.
 
 `db._create(collection-name, properties, type)`
 

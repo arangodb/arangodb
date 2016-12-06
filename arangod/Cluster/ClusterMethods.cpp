@@ -2059,6 +2059,11 @@ std::unordered_map<std::string, std::vector<std::string>> distributeShards(
     random_shuffle(dbServers.begin(), dbServers.end());
   }
 
+  // mop: distribute satellite collections on all servers
+  if (replicationFactor == 0) {
+    replicationFactor = dbServers.size();
+  }
+
   // fetch a unique id for each shard to create
   uint64_t const id = ci->uniqid(numberOfShards);
 
