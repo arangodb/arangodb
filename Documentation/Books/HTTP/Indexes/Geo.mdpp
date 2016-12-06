@@ -1,4 +1,5 @@
-!CHAPTER Working with Geo Indexes
+Working with Geo Indexes
+========================
 
 <!-- js/actions/api-index.js -->
 @startDocuBlock JSF_post_api_index_geo

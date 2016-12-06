@@ -3102,7 +3102,7 @@ AstNode* Ast::createNode(AstNodeType type) {
     _query->addNode(node);
   } catch (...) {
     delete node;
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    throw;
   }
 
   return node;

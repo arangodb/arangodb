@@ -1,4 +1,5 @@
-!CHAPTER Importing Headers and Values
+Importing Headers and Values
+============================
 
 When using this type of import, the attribute names of the documents to be
 imported are specified separate from the actual document value data.  The first
@@ -34,7 +35,8 @@ also contain an attribute *details* which is an array of details about errors th
 occurred on the server side during the import. This array might be empty if no
 errors occurred.
 
-!SECTION Importing into Edge Collections
+Importing into Edge Collections
+-------------------------------
 
 Please note that when importing documents into an
 [edge collection](../../Manual/Appendix/Glossary.html#edge-collection), 

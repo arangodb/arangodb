@@ -1,4 +1,5 @@
-!CHAPTER Graphs
+Graphs
+======
 
 The *Graphs* tab provides a viewer facility for graph data stored in ArangoDB.
 It allows browsing ArangoDB graphs stored in the *_graphs* system collection or

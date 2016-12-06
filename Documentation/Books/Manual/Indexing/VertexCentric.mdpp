@@ -1,6 +1,8 @@
-!CHAPTER Vertex Centric Indexes
+Vertex Centric Indexes
+======================
 
-!SECTION Introduction to Vertex Centric Indexes
+Introduction to Vertex Centric Indexes
+--------------------------------------
 
 In ArangoDB there are special indices designed to speed up graph operations,
 especially if the graph contains supernodes (vertices that have an exceptionally
@@ -8,7 +10,8 @@ high amount of connected edges).
 These indices are called vertex centric indexes and can be used in addition
 to the existing edge index.
 
-!SECTION Motivation
+Motivation
+----------
 
 The idea of this index is to index a combination of a vertex, the direction and any arbitrary
 set of other attributes on the edges.
@@ -25,7 +28,8 @@ but still it has to walk through this list and check if all of them have the att
 Using a vertex-centric index would allow ArangoDB to find all edges for the vertex having the attribute `type == "friend"`
 in the same time and can save the iteration to verify the condition.
 
-!SECTION Index creation
+Index creation
+--------------
 
 A vertex-centric can be either of the following types:
 
@@ -49,7 +53,8 @@ This can be created with the following way:
 
 All options that are supported by the respective indexes are supported by the vertex-centric index as well.
 
-!SECTION Index usage
+Index usage
+-----------
 
 The AQL optimizer can decide to use a vertex-centric whenever suitable, however it is not guaranteed that this
 index is used, the optimizer may estimate that an other index is assumed to be better.

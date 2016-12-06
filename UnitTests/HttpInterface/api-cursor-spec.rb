@@ -61,6 +61,18 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(404)
         doc.parsed_response['errorNum'].should eq(1600)
       end
+      
+      it "returns an error if memory limit is violated" do
+        cmd = api
+        body = "{ \"query\" : \"FOR i IN 1..100000 SORT i RETURN i\", \"memoryLimit\" : 100000 }"
+        doc = ArangoDB.log_post("#{prefix}-memory-limit", cmd, :body => body)
+        
+        doc.code.should eq(500)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(500)
+        doc.parsed_response['errorNum'].should eq(32)
+      end
 
     end
 
@@ -583,6 +595,21 @@ describe ArangoDB do
         doc.parsed_response['id'].should be_nil
         doc.parsed_response['hasMore'].should eq(false)
         doc.parsed_response['result'].should eq(values)
+        doc.parsed_response['cached'].should eq(false)
+      end
+      
+      it "creates a query that survives memory limit constraints" do
+        cmd = api
+        body = "{ \"query\" : \"FOR i IN 1..10000 SORT i RETURN i\", \"memoryLimit\" : 10000000, \"batchSize\": 10 }"
+        doc = ArangoDB.log_post("#{prefix}-memory-limit-ok", cmd, :body => body)
+        
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['id'].should_not be_nil
+        doc.parsed_response['hasMore'].should eq(true)
+        doc.parsed_response['result'].length.should eq(10)
         doc.parsed_response['cached'].should eq(false)
       end
 

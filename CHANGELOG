@@ -1,7 +1,12 @@
 devel
 -----
 
-* Added convenience function to create vertex-centric indexes.
+* added optional memory limit for AQL queries:
+
+      db._query("FOR i IN 1..100000 SORT i RETURN i", {}, { options: { memoryLimit: 100000 } });
+
+
+* added convenience function to create vertex-centric indexes.
 Usage: `db.collection.ensureVertexCentricIndex("label", {type: "hash", direction: "outbound"})`
 That will create an index that can be used on OUTBOUND with filtering on the
 edge attribute `label`.

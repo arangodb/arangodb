@@ -39,7 +39,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WorkMonitor.h"
 #include "Basics/fasthash.h"
-#include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Utils/Transaction.h"
@@ -58,9 +57,6 @@ using namespace arangodb::aql;
 namespace {
 static std::atomic<TRI_voc_tick_t> NextQueryId(1);
 }
-
-/// @brief empty string singleton
-static char const* EmptyString = "";
 
 /// @brief names of query phases / states
 static std::string StateNames[] = {
@@ -143,6 +139,8 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
              std::shared_ptr<VPackBuilder> bindParameters,
              std::shared_ptr<VPackBuilder> options, QueryPart part)
     : _id(0),
+      _resourceMonitor(),
+      _resources(&_resourceMonitor),
       _vocbase(vocbase),
       _executor(nullptr),
       _context(nullptr),
@@ -152,8 +150,6 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
       _bindParameters(bindParameters),
       _options(options),
       _collections(vocbase),
-      _strings(),
-      _shortStringStorage(1024),
       _ast(nullptr),
       _profile(nullptr),
       _state(INVALID_STATE),
@@ -202,6 +198,8 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
     }
   }
   TRI_ASSERT(_vocbase != nullptr);
+        
+  _resourceMonitor.setMemoryLimit(memoryLimit());
 }
 
 /// @brief creates a query from VelocyPack
@@ -209,6 +207,8 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
              std::shared_ptr<VPackBuilder> const queryStruct,
              std::shared_ptr<VPackBuilder> options, QueryPart part)
     : _id(0),
+      _resourceMonitor(),
+      _resources(&_resourceMonitor),
       _vocbase(vocbase),
       _executor(nullptr),
       _context(nullptr),
@@ -218,8 +218,6 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
       _bindParameters(nullptr),
       _options(options),
       _collections(vocbase),
-      _strings(),
-      _shortStringStorage(1024),
       _ast(nullptr),
       _profile(nullptr),
       _state(INVALID_STATE),
@@ -234,6 +232,7 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
       _contextOwnedByExterior(contextOwnedByExterior),
       _killed(false),
       _isModificationQuery(false) {
+
   LOG_TOPIC(DEBUG, Logger::QUERIES)
       << TRI_microtime() - _startTime << " "
       << "Query::Query queryStruct: " << queryStruct->slice().toJson()
@@ -243,6 +242,8 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
         << "options: " << options->slice().toJson();
   }
   TRI_ASSERT(_vocbase != nullptr);
+  
+  _resourceMonitor.setMemoryLimit(memoryLimit());
 }
 
 /// @brief destroys a query
@@ -281,14 +282,6 @@ Query::~Query() {
   delete _ast;
   _ast = nullptr;
 
-  // free strings
-  for (auto& it : _strings) {
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, const_cast<char*>(it));
-  }
-  // free nodes
-  for (auto& it : _nodes) {
-    delete it;
-  }
   for (auto& it : _graphs) {
     delete it.second;
   }
@@ -304,6 +297,9 @@ Query* Query::clone(QueryPart part, bool withPlan) {
   auto clone =
       std::make_unique<Query>(false, _vocbase, _queryString, _queryLength,
                               std::shared_ptr<VPackBuilder>(), _options, part);
+
+  clone->_resourceMonitor = _resourceMonitor;
+  clone->_resourceMonitor.clear();
 
   if (_plan != nullptr) {
     if (withPlan) {
@@ -337,9 +333,6 @@ Query* Query::clone(QueryPart part, bool withPlan) {
 
   return clone.release();
 }
-
-/// @brief add a node to the list of nodes
-void Query::addNode(AstNode* node) { _nodes.emplace_back(node); }
 
 void Query::setExecutionTime() {
   if (_engine != nullptr) {
@@ -1093,73 +1086,6 @@ Executor* Query::executor() {
   return _executor;
 }
 
-/// @brief register a string
-/// the string is freed when the query is destroyed
-char* Query::registerString(char const* p, size_t length) {
-  if (p == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  if (length == 0) {
-    // optimization for the empty string
-    return const_cast<char*>(EmptyString);
-  }
-
-  if (length < ShortStringStorage::MaxStringLength) {
-    return _shortStringStorage.registerString(p, length);
-  }
-
-  char* copy = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, p, length);
-
-  if (copy == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  try {
-    _strings.emplace_back(copy);
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  return copy;
-}
-
-/// @brief register a string
-/// the string is freed when the query is destroyed
-char* Query::registerString(std::string const& p) {
-  return registerString(p.c_str(), p.length());
-}
-
-/// @brief register a potentially UTF-8-escaped string
-/// the string is freed when the query is destroyed
-char* Query::registerEscapedString(char const* p, size_t length,
-                                   size_t& outLength) {
-  if (p == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  if (length == 0) {
-    // optimization for the empty string
-    outLength = 0;
-    return const_cast<char*>(EmptyString);
-  }
-
-  char* copy = TRI_UnescapeUtf8String(TRI_UNKNOWN_MEM_ZONE, p, length,
-                                      &outLength, false);
-
-  if (copy == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  try {
-    _strings.emplace_back(copy);
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  return copy;
-}
-
 /// @brief enter a V8 context
 void Query::enterContext() {
   if (!_contextOwnedByExterior) {
@@ -1293,8 +1219,6 @@ void Query::init() {
 
   TRI_ASSERT(_ast == nullptr);
   _ast = new Ast(this);
-  _nodes.reserve(32);
-  _strings.reserve(32);
 }
 
 /// @brief log a query

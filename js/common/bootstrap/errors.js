@@ -39,6 +39,7 @@
     "ERROR_DEADLOCK"               : { "code" : 29, "message" : "deadlock detected" },
     "ERROR_SHUTTING_DOWN"          : { "code" : 30, "message" : "shutdown in progress" },
     "ERROR_ONLY_ENTERPRISE"        : { "code" : 31, "message" : "only enterprise version" },
+    "ERROR_RESOURCE_LIMIT"         : { "code" : 32, "message" : "resource limit exceeded" },
     "ERROR_HTTP_BAD_PARAMETER"     : { "code" : 400, "message" : "bad parameter" },
     "ERROR_HTTP_UNAUTHORIZED"      : { "code" : 401, "message" : "unauthorized" },
     "ERROR_HTTP_FORBIDDEN"         : { "code" : 403, "message" : "forbidden" },

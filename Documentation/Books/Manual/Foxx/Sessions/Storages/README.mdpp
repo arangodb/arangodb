@@ -1,4 +1,5 @@
-!CHAPTER Session Storages
+Session Storages
+================
 
 Session storages are used by the sessions middleware to persist sessions across requests. Session storages must implement the `fromClient` and `forClient` methods and can optionally implement the `new` method.
 
@@ -16,7 +17,8 @@ The built-in session storages generally provide the following attributes:
 
   Arbitrary data to persisted in the session.
 
-!SECTION new
+new
+---
 
 `storage.new(): Session`
 
@@ -34,7 +36,8 @@ new() {
 }
 ```
 
-!SECTION fromClient
+fromClient
+----------
 
 `storage.fromClient(sid): Session | null`
 
@@ -56,7 +59,8 @@ fromClient(sid) {
 }
 ```
 
-!SECTION forClient
+forClient
+---------
 
 `storage.forClient(session): string | null`
 

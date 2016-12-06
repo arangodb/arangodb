@@ -1,4 +1,5 @@
-!CHAPTER Database-to-Endpoint Mapping
+Database-to-Endpoint Mapping
+============================
 
 If a [database name](../../Manual/Appendix/Glossary.html#database-name) is present in the
 URI as above, ArangoDB will consult the database-to-endpoint mapping for the current

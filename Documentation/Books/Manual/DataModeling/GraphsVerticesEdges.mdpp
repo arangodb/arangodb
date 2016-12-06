@@ -1,4 +1,5 @@
-!CHAPTER Graphs, Vertices & Edges
+Graphs, Vertices & Edges
+========================
 
 Graphs, vertices & edges are defined in the [Graphs](../Graphs/README.md) chapter in details.
 

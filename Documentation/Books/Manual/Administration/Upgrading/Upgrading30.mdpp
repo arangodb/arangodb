@@ -1,11 +1,13 @@
-!CHAPTER Upgrading to ArangoDB 3.0
+Upgrading to ArangoDB 3.0
+=========================
 
 Please read the following sections if you upgrade from a previous
 version to ArangoDB 3.0. Please be sure that you have checked the list
 of [changes in 3.0](../../ReleaseNotes/UpgradingChanges30.md) before
 upgrading.
 
-!SECTION Migrating databases and collections from ArangoDB 2.8 to 3.0 
+Migrating databases and collections from ArangoDB 2.8 to 3.0
+------------------------------------------------------------
 
 ArangoDB 3.0 does not provide an automatic update mechanism for database
 directories created with the 2.x branches of ArangoDB.
@@ -64,7 +66,8 @@ and restore it with the 3.0 version of `arangorestore`.
 After that the 3.0 instance of ArangoDB will contain the databases and collections 
 that were present in the 2.8 instance.
 
-!SECTION Adjusting authentication info
+Adjusting authentication info
+-----------------------------
 
 Authentication information was stored per database in ArangoDB 2.8, meaning there 
 could be different users and access credentials per database. In 3.0, the users are
@@ -109,7 +112,8 @@ require("@arangodb/users").remove("myuser");
 require("@arangodb/users").all();
 ```
 
-!SECTION Foxx applications
+Foxx applications
+-----------------
 
 The dump/restore procedure described above will not export and re-import Foxx applications.
 In order to move these from 2.8 to 3.0, Foxx applications should be exported as zip files 

@@ -1,12 +1,14 @@
-!CHAPTER Incompatible changes in ArangoDB 2.8
+Incompatible changes in ArangoDB 2.8
+====================================
 
 It is recommended to check the following list of incompatible changes **before**
 upgrading to ArangoDB 2.8, and adjust any client programs if necessary.
 
 
-!SECTION AQL
+AQL
+---
 
-!SUBSECTION Keywords added
+### Keywords added
 
 The following AQL keywords were added in ArangoDB 2.8:
 
@@ -28,7 +30,7 @@ FOR doc IN `OUTBOUND`
   RETURN doc.`any`
 ```
 
-!SUBSECTION Changed behavior
+### Changed behavior
 
 The AQL functions `NEAR` and `WITHIN` now have stricter validations
 for their input parameters `limit`, `radius` and `distance`. They may now throw
@@ -87,7 +89,7 @@ The following types of queries won't change:
     LET values = [ { names: [ "foo", "bar" ] }, { names: [ "baz" ] } ] RETURN values[*].names[**]
 
 
-!SUBSECTION Deadlock handling
+### Deadlock handling
 
 Client applications should be prepared to handle error 29 (`deadlock detected`)
 that ArangoDB may now throw when it detects a deadlock across multiple transactions.
@@ -98,7 +100,7 @@ The error can only occur for AQL queries or user transactions that involve
 more than a single collection.
 
 
-!SUBSECTION Optimizer
+### Optimizer
 
 The AQL execution node type `IndexRangeNode` was replaced with a new more capable
 execution node type `IndexNode`. That means in execution plan explain output there
@@ -116,7 +118,8 @@ This affects explain output that can be retrieved via `require("org/arangodb/aql
 `db._explain(query)`, and the HTTP query explain API.
 
 
-!SECTION HTTP API
+HTTP API
+--------
 
 When a server-side operation got canceled due to an explicit client cancel request 
 via HTTP `DELETE /_api/job`, previous versions of ArangoDB returned an HTTP status
@@ -130,9 +133,10 @@ Therefore ArangoDB will return HTTP status code 410 (gone) for canceled operatio
 from version 2.8 on.
 
 
-!SECTION Foxx
+Foxx
+----
 
-!SUBSECTION Model and Repository
+### Model and Repository
 
 Due to compatibility issues the Model and Repository types are no longer implemented as ES2015 classes.
 
@@ -146,7 +150,7 @@ var MyModel = Foxx.Model.extend({
 });
 ```
 
-!SUBSECTION Module resolution
+### Module resolution
 
 The behavior of the JavaScript module resolution used by the `require` function has
 been modified to improve compatibility with modules written for Node.js.
@@ -169,7 +173,7 @@ modules (e.g. a local file `chai.js` would cause problems when trying to load th
 For more information see the [blog announcement of this change](https://www.arangodb.com/2015/11/foxx-module-resolution-will-change-in-2-8/)
 and the [upgrade guide](../Administration/Upgrading/Upgrading28.md#upgrading-foxx-apps-generated-by-arangodb-27-and-earlier).
 
-!SUBSECTION Module `org/arangodb/request`
+### Module `org/arangodb/request`
 
 The module now always returns response bodies, even for error responses. In versions
 prior to 2.8 the module would silently drop response bodies if the response header
@@ -185,7 +189,7 @@ let response = request({
 });
 ```
 
-!SUBSECTION Garbage collection
+### Garbage collection
 
 The V8 garbage collection strategy was slightly adjusted so that it eventually
 happens in all V8 contexts that hold V8 external objects (references to ArangoDB
@@ -197,7 +201,8 @@ In this context the default value for the JavaScript garbage collection frequenc
 (`--javascript.gc-frequency`) was also increased from 10 seconds to 15 seconds, 
 as less internal operations in ArangoDB are carried out in JavaScript.
 
-!SECTION Client tools
+Client tools
+------------
 
 arangodump will now fail by default when trying to dump edges that
 refer to already dropped collections. This can be circumvented by 

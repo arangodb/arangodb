@@ -1,9 +1,11 @@
-!CHAPTER Incompatible changes in ArangoDB 3.0
+Incompatible changes in ArangoDB 3.0
+====================================
 
 It is recommended to check the following list of incompatible changes **before**
 upgrading to ArangoDB 3.0, and adjust any client programs if necessary.
 
-!SECTION Build system
+Build system
+------------
 
 Building ArangoDB 3.0 from source now requires CMake.
 
@@ -46,7 +48,8 @@ use
 build/bin/arangod <options>
 ```
 
-!SECTION Datafiles and datafile names
+Datafiles and datafile names
+----------------------------
 
 ArangoDB 3.0 uses a new VelocyPack-based format for storing data in WAL logfiles
 and collection datafiles. The file format is not compatible with the files used
@@ -58,7 +61,8 @@ id component at the end. The new pattern is `collection-<id>-<random>`, where `<
 is the collection id and `<random>` is a random number. Previous versions of ArangoDB 
 used a pattern `collection-<id>` without the random number.
 
-!SECTION User Management
+User Management
+---------------
 
 Unlike ArangoDB 2.x, ArangoDB 3.0 users are now separated from databases, and you can 
 grant one or more database permissions to a user.
@@ -69,7 +73,8 @@ If you want to mimic the behavior of ArangoDB, you should name your users like
 Users that can access the *_system* database are allowed to manage users and
 permissions for all databases.
 
-!SECTION Edges and edges attributes
+Edges and edges attributes
+--------------------------
 
 In ArangoDB prior to 3.0 the attributes `_from` and `_to` of edges were treated
 specially when loading or storing edges. That special handling led to these attributes
@@ -91,7 +96,8 @@ by the drop operation now. Also note that renaming the collection referenced in
 `_from` and `_to` in ArangoDB 2.8 also relinked the edges. In 3.0 the edges are NOT
 automatically relinked to the new collection anymore.
 
-!SECTION Documents
+Documents
+---------
 
 Documents (in contrast to edges) cannot contain the attributes `_from` or `_to` on the
 main level in ArangoDB 3.0. These attributes will be automatically removed when saving
@@ -101,9 +107,10 @@ documents.
 The `_from` and `_to` attributes will of course be preserved and are still required when 
 saving edges.
 
-!SECTION AQL
+AQL
+---
 
-!SUBSECTION Edges handling
+### Edges handling
 
 When updating or replacing edges via AQL, any modifications to the `_from` and `_to`
 attributes of edges were ignored by previous versions of ArangoDB, without signaling
@@ -120,7 +127,7 @@ operation, it is now required to specify values for the `_from` and `_to` attrib
 as `REPLACE` requires the entire new document to be specified. If either `_from` or `_to`
 are missing from the replacement document, an `REPLACE` operation will fail.
 
-!SUBSUBSECTION Graph functions
+#### Graph functions
 
 In version 3.0 all former graph related functions have been removed from AQL to
 be replaced by [native AQL constructs](../../AQL/Graphs/index.html).
@@ -163,7 +170,7 @@ are covered in [Migrating GRAPH_* Measurements from 2.8 or earlier to 3.0](https
 
 are covered in [Migrating anonymous graph functions from 2.8 or earlier to 3.0](https://docs.arangodb.com/3/cookbook/AQL/MigratingEdgeFunctionsTo3.html)
 
-!SUBSECTION Typecasting functions
+### Typecasting functions
 
 The type casting applied by the `TO_NUMBER()` AQL function has changed as follows:
 - string values that do not contain a valid numeric value are now converted to the number
@@ -212,7 +219,7 @@ e.g. `CONCAT([1, 2, 3, [ 4, 5, 6 ]])` produced `1,2,3,4,5,6`. Now this will prod
 `[1,2,3,[4,5,6]]`. To flatten array members on the top level, you can now use
 the more explicit `CONCAT(FLATTEN([1, 2, 3, [4, 5, 6]], 1))`.
 
-!SUBSECTION Arithmetic operators
+### Arithmetic operators
 
 As the arithmetic operations in AQL implicitly convert their operands to numeric values using 
 `TO_NUMBER()`, their casting behavior has also changed as described above.
@@ -223,7 +230,7 @@ Some examples of the changed behavior:
 - `[ 1, 2 ] + 1` produces `1`. In previous versions this produced `null`.
 - `1 + "foo" + 1´ produces `2` now. In previous version this produced `1`.
 
-!SUBSECTION Attribute names and parameters
+### Attribute names and parameters
 
 Previous versions of ArangoDB had some trouble with attribute names that contained the dot
 symbol (`.`). Some code parts in AQL used the dot symbol to split an attribute name into
@@ -250,7 +257,7 @@ sub-attributes, ArangoDB 3.0 allows specifying the attribute name parts as an ar
 e.g. `@name` = `[ "a", "b" ]`, which will be resolved to the sub-attribute access `doc.a.b` 
 when the query is executed.
 
-!SUBSECTION Keywords
+### Keywords
 
 `LIKE` is now a keyword in AQL. Using `LIKE` in either case as an attribute or collection 
 name in AQL queries now requires quoting.
@@ -259,7 +266,7 @@ name in AQL queries now requires quoting.
 `SHORTEST_PATH` is now a keyword in AQL. Using `SHORTEST_PATH` in either case as an attribute or collection 
 name in AQL queries now requires quoting.
 
-!SUBSECTION Subqueries
+### Subqueries
 
 Queries that contain subqueries that contain data-modification operations such as `INSERT`, 
 `UPDATE`, `REPLACE`, `UPSERT` or `REMOVE` will now refuse to execute if the collection
@@ -290,7 +297,7 @@ FOR doc IN myCollection
 
 and to modify data in different collection via subqueries.
 
-!SUBSECTION Other changes
+### Other changes
 
 The AQL optimizer rule "merge-traversal-filter" that already existed in 3.0 was renamed to 
 "optimize-traversals". This should be of no relevance to client applications except if 
@@ -302,7 +309,8 @@ that were not loaded from the database. As some of the function internals have c
 "correct" ordering will not appear anymore, and still no result order is guaranteed by
 these functions unless the `sort` parameter is specified (for the `ATTRIBUTES()` function).
 
-!SECTION Upgraded V8 version
+Upgraded V8 version
+-------------------
 
 The V8 engine that is used inside ArangoDB to execute JavaScript code has been upgraded from
 version 4.3.61 to 5.0.71.39. The new version should be mostly compatible to the old version,
@@ -351,11 +359,12 @@ extracting slices. This change may increase the cost of creating Buffers with
 short contents or when peeking into existing Buffers, but was required for
 safer memory management and to prevent leaks.
 
-!SECTION JavaScript API changes
+JavaScript API changes
+----------------------
 
 The following incompatible changes have been made to the JavaScript API in ArangoDB 3.0:
 
-!SUBSECTION Foxx
+### Foxx
 
 The Foxx framework has been completely rewritten for 3.0 with a new, simpler and more 
 familiar API. To make Foxx services developed for 2.8 or earlier ArangoDB versions run in 3.0, the service's manifest file needs to be edited.
@@ -364,7 +373,7 @@ To enable the legacy mode for a Foxx service, add `"engines": {"arangodb": "^2.8
 (or similar version ranges that exclude 3.0 and up) to the service manifest file
 (named "manifest.json", located in the service's base directory).
 
-!SUBSECTION Require
+### Require
 
 Modules shipped with ArangoDB can now be required using the pattern `@arangodb/<module>`
 instead of `org/arangodb/<module>`, e.g.
@@ -386,13 +395,13 @@ transpiled into JavaScript on-the-fly. This support is gone with ArangoDB
 3.0. To run any CoffeeScript source files, they must be converted to JavaScript
 by the client application.
 
-!SUBSECTION Response object
+### Response object
 
 The `@arangodb/request` response object now stores the parsed JSON response
 body in a property `json` instead of `body` when the request was made using the
 `json` option. The `body` instead contains the response body as a string.
 
-!SUBSECTION Edges API
+### Edges API
 
 When completely replacing an edge via a collection's `replace()` function the replacing 
 edge data now needs to contain the `_from` and `_to` attributes for the new edge. Previous
@@ -420,15 +429,15 @@ ids will now make the edge ids unique before returning the connected edges. This
 desired anyway, as results will be returned only once per distinct input edge id. However, 
 it may break client applications that rely on the old behavior.
 
-!SUBSECTION Databases API
+### Databases API
 
 The `_listDatabases()` function of the `db` object has been renamed to `_databases()`, making it 
 consistent with the `_collections()` function. Also the `_listEndpoints()` function has been 
 renamed to `_endpoints()`.
 
-!SUBSECTION Collection API
+### Collection API
 
-!SUBSUBSECTION Example matching
+#### Example matching
 
 The collection function `byExampleHash()` and `byExampleSkiplist()` have been removed in 3.0.
 Their functionality is provided by collection's `byExample()` function, which will automatically
@@ -438,7 +447,7 @@ The collection function `byConditionSkiplist()` has been removed in 3.0. The sam
 can be achieved by issuing an AQL query with the target condition, which will automatically use
 a suitable index if present.
 
-!SUBSUBSECTION Revision id handling
+#### Revision id handling
 
 The `exists()` method of a collection now throws an exception when the specified document
 exists but its revision id does not match the revision id specified. Previous versions of
@@ -485,7 +494,7 @@ db.myCollection.exists({ _key: "test", _rev: "1234" });
 JavaScript exception: ArangoError 1200: conflict
 ```
 
-!SUBSUBSECTION Cap constraints
+#### Cap constraints
 
 The cap constraints feature has been removed. This change has led to the removal of the
 collection operations `first()` and `last()`, which were internally based on data from 
@@ -495,19 +504,19 @@ As cap constraints have been removed in ArangoDB 3.0 it is not possible to creat
 index of type "cap" with a collection's `ensureIndex()` function. The dedicated function
 `ensureCapConstraint()` has also been removed from the collection API.
 
-!SUBSUBSECTION Graph Blueprints JS Module
+#### Graph Blueprints JS Module
 
 The deprecated module `graph-blueprints` has been deleted.
 All it's features are covered by the `general-graph` module.
 
-!SUBSUBSECTION General Graph Fluent AQL interface
+#### General Graph Fluent AQL interface
 
 The fluent interface has been removed from ArangoDB.
 It's features were completely overlapping with ["aqb"](https://github.com/arangodb/aqbjs)
 which comes pre installed as well.
 Please switch to AQB instead.
 
-!SUBSUBSECTION Undocumented APIs
+#### Undocumented APIs
 
 The undocumented functions `BY_EXAMPLE_HASH()` and `BY_EXAMPLE_SKIPLIST()`,
 `BY_CONDITION_SKIPLIST`, `CPP_NEIGHBORS` and `CPP_SHORTEST_PATH` have been removed.
@@ -515,13 +524,14 @@ These functions were always hidden and not intended to be part of
 the public JavaScript API for collections.
 
 
-!SECTION HTTP API changes
+HTTP API changes
+----------------
 
-!SUBSECTION CRUD operations
+### CRUD operations
 
 The following incompatible changes have been made to the HTTP API in ArangoDB 3.0:
 
-!SUBSUBSECTION General
+#### General
 
 The HTTP insert operations for single documents and edges (POST `/_api/document`) do 
 not support the URL parameter "createCollection" anymore. In previous versions of
@@ -543,7 +553,7 @@ by ArangoDB 3.0 anymore.
 Additionally the CRUD operations APIs do not return an attribute "error" in the
 response body with an attribute value of "false" in case an operation succeeded.
 
-!SUBSUBSECTION Revision id handling
+#### Revision id handling
 
 The operations for updating, replacing and removing documents can optionally check the
 revision number of the document to be updated, replaced or removed so the caller can
@@ -579,7 +589,7 @@ documents please use the `If-Match` HTTP header as described above. When no revi
 check if required the HTTP header can be omitted, and the operations will work on the
 current revision of the document, regardless of its revision id.
 
-!SUBSECTION All documents API
+### All documents API
 
 The HTTP API for retrieving the ids, keys or URLs of all documents from a collection
 was previously located at GET `/_api/document?collection=...`. This API was moved to
@@ -597,9 +607,9 @@ The result format of this API has also changed slightly. In previous versions ca
 the API returned a JSON object with a `documents` attribute. As the functionality is
 based on AQL internally in 3.0, the API now returns a JSON object with a `result` attribute.
 
-!SUBSECTION Edges API
+### Edges API
 
-!SUBSUBSECTION CRUD operations
+#### CRUD operations
 
 The API for documents and edges have been unified in ArangoDB 3.0. The CRUD operations 
 for documents and edges are now handled by the same endpoint at `/_api/document`. For 
@@ -639,14 +649,14 @@ curl -X POST \
      "http://127.0.0.1:8529/_api/edge?collection=e&from=myVertexCollection/1&to=myVertexCollection/2" 
 ```
 
-!SUBSUBSECTION Querying connected edges
+#### Querying connected edges
 
 The REST API for querying connected edges at GET `/_api/edges/<collection>` will now
 make the edge ids unique before returning the connected edges. This is probably desired anyway
 as results will now be returned only once per distinct input edge id. However, it may break 
 client applications that rely on the old behavior.
 
-!SUBSUBSECTION Graph API
+#### Graph API
 
 Some data-modification operations in the named graphs API at `/_api/gharial` now return either
 HTTP 202 (Accepted) or HTTP 201 (Created) if the operation succeeds. Which status code is returned
@@ -656,7 +666,7 @@ of these operations return HTTP 200 regardless of the `waitForSync` value.
 The deprecated graph API `/_api/graph` has been removed.
 All it's features can be replaced using `/_api/gharial` and AQL instead.
 
-!SUBSECTION Simple queries API
+### Simple queries API
 
 The REST routes PUT `/_api/simple/first` and `/_api/simple/last` have been removed
 entirely. These APIs were responsible for returning the first-inserted and
@@ -665,21 +675,21 @@ internally, which have been removed in 3.0.
 
 Calling one of these endpoints in 3.0 will result in an HTTP 404 error.
 
-!SUBSECTION Indexes API
+### Indexes API
 
 It is not supported in 3.0 to create an index with type `cap` (cap constraint) in 
 3.0 as the cap constraints feature has bee removed. Calling the index creation
 endpoint HTTP API POST `/_api/index?collection=...` with an index type `cap` will 
 therefore result in an HTTP 400 error.
 
-!SUBSECTION Log entries API
+### Log entries API
 
 The REST route HTTP GET `/_admin/log` is now accessible from within all databases. In
 previous versions of ArangoDB, this route was accessible from within the `_system`
 database only, and an HTTP 403 (Forbidden) was thrown by the server for any access
 from within another database.
 
-!SUBSECTION Figures API
+### Figures API
 
 The REST route HTTP GET `/_api/collection/<collection>/figures` will not return the 
 following result attributes as they became meaningless in 3.0:
@@ -691,7 +701,7 @@ following result attributes as they became meaningless in 3.0:
 - attributes.count
 - attributes.size
 
-!SUBSECTION Databases and Collections APIs
+### Databases and Collections APIs
 
 When creating a database via the API POST `/_api/database`, ArangoDB will now always
 return the HTTP status code 202 (created) if the operation succeeds. Previous versions
@@ -743,7 +753,7 @@ This result structure was redundant, and therefore has been simplified to just
 
 in ArangoDB 3.0.
 
-!SUBSECTION Replication APIs
+### Replication APIs
 
 The URL parameter "failOnUnknown" was removed from the REST API GET `/_api/replication/dump`.
 This parameter controlled whether dumping or replicating edges should fail if one
@@ -774,14 +784,14 @@ the following aspects:
 
 The same is true for the collection-specific changes API GET `/_api/replication/dump`.
 
-!SUBSECTION User management APIs
+### User management APIs
 
 The REST API endpoint POST `/_api/user` for adding new users now requires the request to
 contain a JSON object with an attribute named `user`, containing the name of the user to
 be created. Previous versions of ArangoDB also checked this attribute, but additionally 
 looked for an attribute `username` if the `user` attribute did not exist. 
 
-!SUBSECTION Undocumented APIs
+### Undocumented APIs
 
 The following undocumented HTTP REST endpoints have been removed from ArangoDB's REST
 API:
@@ -796,11 +806,11 @@ API:
 - `/_api/structure`: an older unfinished and unpromoted API for data format and type 
   checks, superseded by Foxx applications.
 
-!SUBSECTION Administration APIs
+### Administration APIs
 
 - `/_admin/shutdown` now needs to be called with the HTTP DELETE method
 
-!SUBSECTION Handling of CORS requests
+### Handling of CORS requests
 
 It can now be controlled in detail for which origin hosts CORS (Cross-origin resource 
 sharing) requests with credentials will be allowed. ArangoDB 3.0 provides the startup
@@ -844,7 +854,8 @@ test or development setup:
 Setting this option will lead to the ArangoDB server responding with an 
 `Access-Control-Allow-Credentials: true` HTTP header to all incoming CORS requests.
 
-!SECTION Command-line options
+Command-line options
+--------------------
 
 Quite a few startup options in ArangoDB 2 were double negations (like
 `--server.disable-authentication false`). In ArangoDB 3 these are now expressed as 
@@ -853,7 +864,7 @@ server and its client tools have being unified. For example, the logger options 
 now the same for the server and the client tools. Additionally many options have
 been moved into more appropriate topic sections.
 
-!SUBSECTION Renamed options
+### Renamed options
 
 The following options have been available before 3.0 and have changed their name 
 in 3.0:
@@ -917,7 +928,7 @@ in 3.0:
 - `--check-version` has been renamed to `--database.check-version`.
 - `--temp-path` has been renamed to `--temp.path`.
 
-!SUBSECTION Log verbosity, topics and output files
+### Log verbosity, topics and output files
 
 Logging now supports log topics. You can control these by specifying a log
 topic in front of a log level or an output. For example
@@ -970,7 +981,7 @@ for the more general option `--log.output requests=file://...`.
 The old option `--log.performance` is still available in 3.0. It is now a shortcut
 for the more general option `--log.level performance=trace`.
 
-!SUBSECTION Removed options for logging
+### Removed options for logging
 
 The options `--log.content-filter` and `--log.source-filter` have been removed. They
 have most been used during ArangoDB's internal development.
@@ -979,7 +990,7 @@ The syslog-related options `--log.application` and `--log.facility` have been re
 They are superseded by the more general `--log.output` option which can also handle 
 syslog targets.
 
-!SUBSECTION Removed other options
+### Removed other options
 
 The option `--server.default-api-compatibility` was present in earlier version of
 ArangoDB to control various aspects of the server behavior, e.g. HTTP return codes
@@ -992,7 +1003,7 @@ in 3.0 because the changes in server behavior controlled by this option were cha
 even before ArangoDB 2.0. This should have left enough time for client applications
 to adapt to the new behavior, making the option superfluous in 3.0.
 
-!SUBSECTION Thread options
+### Thread options
 
 The options `--server.threads` and `--scheduler.threads` now have a default value of 
 `0`. When `--server.threads` is set to `0` on startup, the suitable number of
@@ -1016,7 +1027,8 @@ specified.
 Setting these options explicitly to non-zero values may be beneficial in environments
 that have few resources (processing time, maximum thread count, available memory). 
 
-!SECTION Authentication
+Authentication
+--------------
 
 The default value for `--server.authentication` is now `true` in the configuration
 files shipped with ArangoDB. This means the server will be started with authentication 
@@ -1037,13 +1049,15 @@ overkill in a development environment. To turn off authentication, the option
 `--server.authentication` can be set to `false` in ArangoDB's configuration file or
 on the command-line.
 
-!SECTION Web Admin Interface
+Web Admin Interface
+-------------------
 
 The JavaScript shell has been removed from ArangoDB's web interface. The functionality
 the shell provided is still fully available in the ArangoShell (arangosh) binary shipped
 with ArangoDB.
 
-!SECTION ArangoShell and client tools
+ArangoShell and client tools
+----------------------------
 
 The ArangoShell (arangosh) and the other client tools bundled with ArangoDB can only
 connect to an ArangoDB server of version 3.0 or higher. They will not connect to an
@@ -1057,7 +1071,7 @@ The preferred name for the template string generator function `aqlQuery` is now
 `aql` and is automatically available in arangosh. Elsewhere, it can be loaded
 like `const aql = require('@arangodb').aql`.
 
-!SUBSECTION Command-line options added
+### Command-line options added
 
 All client tools in 3.0 provide an option `--server.max-packet-size` for controlling
 the maximum size of HTTP packets to be handled by the client tools. The default value
@@ -1065,7 +1079,7 @@ is 128 MB, as in previous versions of ArangoDB. In contrast to previous versions
 which the value was hard-coded, the option is now configurable. It can be increased to
 make the client tools handle very large HTTP result messages sent by the server. 
 
-!SUBSECTION Command-line options changed
+### Command-line options changed
 
 For all client tools, the option `--server.disable-authentication` was renamed to
 `--server.authentication`. Note that the meaning of the option `--server.authentication` 
@@ -1077,12 +1091,13 @@ the option is unchanged.
 The command-line option `--quiet` was removed from all client tools except arangosh 
 because it had no effect in them.
 
-!SUBSECTION Arangobench
+### Arangobench
 
 In order to make its purpose more apparent the former `arangob` client tool has 
 been renamed to `arangobench` in 3.0.
 
-!SECTION Miscellaneous changes
+Miscellaneous changes
+---------------------
 
 The checksum calculation algorithm for the `collection.checksum()` method and its
 corresponding REST API GET `/_api/collection/<collection</checksum` has changed in 3.0. 

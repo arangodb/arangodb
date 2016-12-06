@@ -67,6 +67,9 @@
 /// - 31: @LIT{only enterprise version}
 ///   Will be raised when an enterprise-feature is requested from the community
 ///   edition.
+/// - 32: @LIT{resource limit exceeded}
+///   Will be raised when the resources used by an operation exceed the
+///   configured maximum value.
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 401: @LIT{unauthorized}
@@ -951,6 +954,17 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ONLY_ENTERPRISE                                         (31)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 32: ERROR_RESOURCE_LIMIT
+///
+/// resource limit exceeded
+///
+/// Will be raised when the resources used by an operation exceed the
+/// configured maximum value.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_RESOURCE_LIMIT                                          (32)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER

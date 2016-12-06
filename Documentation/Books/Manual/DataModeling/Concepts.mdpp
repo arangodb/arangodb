@@ -1,6 +1,8 @@
-!CHAPTER Concepts
+Concepts
+========
 
-!SECTION Database Interaction
+Database Interaction
+--------------------
 
 ArangoDB is a database that serves documents to clients. These documents are
 transported using [JSON](https://en.wikipedia.org/wiki/JSON) via a TCP connection,
@@ -16,7 +18,8 @@ programming languages. All these tools use the HTTP interface of the server and
 remove the necessity to roll own low-level code for basic communication in most
 cases.
 
-!SECTION Data model
+Data model
+----------
 
 The documents you can store in ArangoDB closely follow the JSON format,
 although they are stored in a binary format called [VelocyPack](https://github.com/arangodb/velocypack#readme).
@@ -54,7 +57,8 @@ database *_system* is special, because it cannot be removed. Database users
 are managed in this database, and their credentials are valid for all databases
 of a server instance.
 
-!SECTION Data Retrieval
+Data Retrieval
+--------------
 
 **Queries** are used to filter documents based on certain criteria, to compute
 new data, as well as to manipulate or delete existing documents. Queries can be

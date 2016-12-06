@@ -1,4 +1,5 @@
-!CHAPTER Edges, Identifiers, Handles
+Edges, Identifiers, Handles
+===========================
 
 This is an introduction to ArangoDB's interface for edges.
 Edges may be [used in graphs](../README.md).
@@ -28,7 +29,8 @@ must be specified when a collection is created and cannot be changed afterwards.
 To change edge endpoints you would need to remove old document/edge and insert new one.
 Other fields can be updated as in default collection.
 
-!SECTION Working with Edges
+Working with Edges
+------------------
 
 Edges are normal [documents](../../DataModeling/Documents/DocumentMethods.md)
 that always contain a `_from` and a `_to` attribute.

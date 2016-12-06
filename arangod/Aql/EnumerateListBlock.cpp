@@ -121,8 +121,10 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
 
       // create the result
       res.reset(new AqlItemBlock(
-          toSend,
-          getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+        _engine->getQuery()->resourceMonitor(),
+        toSend,
+        getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()])
+      );
 
       inheritRegisters(cur, res.get(), _pos);
 
