@@ -29,7 +29,7 @@
 namespace arangodb {
 namespace aql {
 
-class ResourceMonitor;
+struct ResourceMonitor;
 
 class ShortStringStorage {
  public:

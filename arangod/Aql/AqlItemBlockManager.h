@@ -31,7 +31,7 @@ namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
-class ResourceMonitor;
+struct ResourceMonitor;
 
 class AqlItemBlockManager {
  public:

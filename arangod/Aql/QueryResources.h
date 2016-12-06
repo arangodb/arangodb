@@ -31,7 +31,7 @@ namespace arangodb {
 namespace aql {
 
 struct AstNode;
-class ResourceMonitor;
+struct ResourceMonitor;
 
 class QueryResources {
  public:
