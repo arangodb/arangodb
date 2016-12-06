@@ -168,6 +168,7 @@ static ExecutionBlock* CreateBlock(
 /// @brief create the engine
 ExecutionEngine::ExecutionEngine(Query* query)
     : _stats(),
+      _itemBlockManager(query->resourceMonitor()),
       _blocks(),
       _root(nullptr),
       _query(query),

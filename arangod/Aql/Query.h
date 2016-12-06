@@ -31,8 +31,9 @@
 #include "Aql/BindParameters.h"
 #include "Aql/Collections.h"
 #include "Aql/Graphs.h"
+#include "Aql/QueryResources.h"
 #include "Aql/QueryResultV8.h"
-#include "Aql/ShortStringStorage.h"
+#include "Aql/ResourceUsage.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "V8Server/V8Context.h"
@@ -125,6 +126,11 @@ class Query {
     init();
   }
 
+  void increaseMemoryUsage(size_t value) { _resourceMonitor.increaseMemoryUsage(value); }
+  void decreaseMemoryUsage(size_t value) { _resourceMonitor.decreaseMemoryUsage(value); }
+  
+  ResourceMonitor* resourceMonitor() { return &_resourceMonitor; }
+
   /// @brief return the start timestamp of the query
   double startTime () const { return _startTime; }
 
@@ -160,9 +166,6 @@ class Query {
   /// @brief getter for _ast
   Ast* ast() const { return _ast; }
 
-  /// @brief add a node to the list of nodes
-  void addNode(AstNode*);
-
   /// @brief should we return verbose plans?
   bool verbosePlans() const { return getBooleanOption("verbosePlans", false); }
 
@@ -178,6 +181,32 @@ class Query {
   /// @brief maximum number of plans to produce
   size_t maxNumberOfPlans() const {
     double value = getNumericOption("maxNumberOfPlans", 0.0);
+    if (value > 0.0) {
+      return static_cast<size_t>(value);
+    }
+    return 0;
+  }
+
+  /// @brief add a node to the list of nodes
+  void addNode(AstNode* node) { _resources.addNode(node); }
+
+  /// @brief register a string
+  /// the string is freed when the query is destroyed
+  char* registerString(char const* p, size_t length) { return _resources.registerString(p, length); }
+
+  /// @brief register a string
+  /// the string is freed when the query is destroyed
+  char* registerString(std::string const& value) { return _resources.registerString(value); }
+
+  /// @brief register a potentially UTF-8-escaped string
+  /// the string is freed when the query is destroyed
+  char* registerEscapedString(char const* p, size_t length, size_t& outLength) { 
+    return _resources.registerEscapedString(p, length, outLength); 
+  }
+  
+  /// @brief memory limit for query
+  size_t memoryLimit() const {
+    double value = getNumericOption("memoryLimit", 0.0);
     if (value > 0.0) {
       return static_cast<size_t>(value);
     }
@@ -228,18 +257,6 @@ class Query {
 
   /// @brief get v8 executor
   Executor* executor();
-
-  /// @brief register a string
-  /// the string is freed when the query is destroyed
-  char* registerString(char const*, size_t);
-
-  /// @brief register a string
-  /// the string is freed when the query is destroyed
-  char* registerString(std::string const&);
-
-  /// @brief register a potentially UTF-8-escaped string
-  /// the string is freed when the query is destroyed
-  char* registerEscapedString(char const*, size_t, size_t&);
 
   /// @brief return the engine, if prepared
   ExecutionEngine* engine() { return _engine; }
@@ -348,9 +365,12 @@ class Query {
  private:
   /// @brief query id
   TRI_voc_tick_t _id;
-
-  /// @brief all nodes created in the AST - will be used for freeing them later
-  std::vector<AstNode*> _nodes;
+  
+  /// @brief current resources and limits used by query
+  ResourceMonitor _resourceMonitor;
+  
+  /// @brief resources used by query
+  QueryResources _resources;
 
   /// @brief pointer to vocbase the query runs in
   TRI_vocbase_t* _vocbase;
@@ -363,7 +383,7 @@ class Query {
 
   /// @brief warnings collected during execution
   std::unordered_map<std::string, Graph*> _graphs;
-
+  
   /// @brief the actual query string
   char const* _queryString;
 
@@ -381,14 +401,7 @@ class Query {
 
   /// @brief collections used in the query
   Collections _collections;
-
-  /// @brief strings created in the query - used for easy memory deallocation
-  std::vector<char const*> _strings;
-
-  /// @brief short string storage. uses less memory allocations for short
-  /// strings
-  ShortStringStorage _shortStringStorage;
-
+  
   /// @brief _ast, we need an ast to manage the memory for AstNodes, even
   /// if we do not have a parser, because AstNodes occur in plans and engines
   Ast* _ast;

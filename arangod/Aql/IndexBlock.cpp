@@ -522,9 +522,11 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
 
     if (toSend > 0) {
       // automatically freed should we throw
-      res.reset(new AqlItemBlock(
-          toSend,
-          getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+      res.reset(
+        new AqlItemBlock(_engine->getQuery()->resourceMonitor(),
+        toSend,
+        getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()])
+      );
 
       TRI_ASSERT(curRegs <= res->getNrRegs());
 

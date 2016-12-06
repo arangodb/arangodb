@@ -284,7 +284,10 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
   size_t nrRegs = example->getNrRegs();
 
   auto res = std::make_unique<AqlItemBlock>(
-      toSend, static_cast<arangodb::aql::RegisterId>(nrRegs));
+    _engine->getQuery()->resourceMonitor(), 
+    toSend, 
+    static_cast<arangodb::aql::RegisterId>(nrRegs)
+  );
   // automatically deleted if things go wrong
 
   for (size_t i = 0; i < toSend; i++) {
@@ -901,8 +904,7 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
         }
       }
 
-      std::unique_ptr<AqlItemBlock> more(
-          _buffer.at(n)->slice(chosen, 0, chosen.size()));
+      std::unique_ptr<AqlItemBlock> more(_buffer.at(n)->slice(chosen, 0, chosen.size()));
       collector.emplace_back(more.get());
       more.release();  // do not delete it!
     }
@@ -917,7 +919,7 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
       collector.clear();
     } else if (!collector.empty()) {
       try {
-        result = AqlItemBlock::concatenate(collector);
+        result = AqlItemBlock::concatenate(_engine->getQuery()->resourceMonitor(), collector);
       } catch (...) {
         freeCollector();
         throw;
@@ -1422,7 +1424,7 @@ AqlItemBlock* RemoteBlock::getSome(size_t atLeast, size_t atMost) {
     return nullptr;
   }
 
-  auto r = new arangodb::aql::AqlItemBlock(responseBody);
+  auto r = new arangodb::aql::AqlItemBlock(_engine->getQuery()->resourceMonitor(), responseBody);
   traceGetSomeEnd(r);
   return r;
 

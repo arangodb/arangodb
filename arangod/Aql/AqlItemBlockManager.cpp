@@ -27,7 +27,8 @@
 using namespace arangodb::aql;
 
 /// @brief create the manager
-AqlItemBlockManager::AqlItemBlockManager() : _last(nullptr) {}
+AqlItemBlockManager::AqlItemBlockManager(ResourceMonitor* resourceMonitor) 
+    : _resourceMonitor(resourceMonitor), _last(nullptr) {}
 
 /// @brief destroy the manager
 AqlItemBlockManager::~AqlItemBlockManager() { delete _last; }
@@ -45,7 +46,7 @@ AqlItemBlock* AqlItemBlockManager::requestBlock(size_t nrItems,
     return block;
   }
 
-  return new AqlItemBlock(nrItems, nrRegs);
+  return new AqlItemBlock(_resourceMonitor, nrItems, nrRegs);
 }
 
 /// @brief return a block to the manager

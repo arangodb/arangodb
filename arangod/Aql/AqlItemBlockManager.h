@@ -31,11 +31,12 @@ namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
+class ResourceMonitor;
 
 class AqlItemBlockManager {
  public:
   /// @brief create the manager
-  AqlItemBlockManager();
+  explicit AqlItemBlockManager(ResourceMonitor*);
 
   /// @brief destroy the manager
   ~AqlItemBlockManager();
@@ -48,6 +49,8 @@ class AqlItemBlockManager {
   void returnBlock(AqlItemBlock*&);
 
  private:
+  ResourceMonitor* _resourceMonitor;
+
   /// @brief last block handed back to the manager
   /// this is the block that may be recycled
   AqlItemBlock* _last;

@@ -34,6 +34,12 @@ shall be used. If set to *false*, then any query cache lookup will be skipped
 for the query. If set to *true*, it will lead to the query cache being checked
 for the query if the query cache mode is either *on* or *demand*.
 
+@RESTBODYPARAM{memoryLimit,integer,optional,int64}
+the maximum number of memory (measured in bytes) that the query is allowed to 
+use. If set, then the query will fail with error "resource limit exceeded" in
+case it allocates too much memory. A value of *0* indicates that there is no
+memory limit.
+
 @RESTBODYPARAM{bindVars,array,optional,object}
 key/value pairs representing the bind parameters.
 

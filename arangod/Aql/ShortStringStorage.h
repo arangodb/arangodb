@@ -29,12 +29,14 @@
 namespace arangodb {
 namespace aql {
 
+class ResourceMonitor;
+
 class ShortStringStorage {
  public:
   ShortStringStorage(ShortStringStorage const&) = delete;
   ShortStringStorage& operator=(ShortStringStorage const&) = delete;
 
-  explicit ShortStringStorage(size_t);
+  ShortStringStorage(ResourceMonitor*, size_t);
 
   ~ShortStringStorage();
 
@@ -49,6 +51,8 @@ class ShortStringStorage {
   static size_t const MaxStringLength;
 
  private:
+  ResourceMonitor* _resourceMonitor;
+
   /// @brief already allocated string blocks
   std::vector<char*> _blocks;
 

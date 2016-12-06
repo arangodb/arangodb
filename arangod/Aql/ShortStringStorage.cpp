@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShortStringStorage.h"
+#include "Aql/ResourceUsage.h"
 #include "Basics/Exceptions.h"
 
 using namespace arangodb::aql;
@@ -30,14 +31,15 @@ using namespace arangodb::aql;
 size_t const ShortStringStorage::MaxStringLength = 127;
 
 /// @brief create a short string storage instance
-ShortStringStorage::ShortStringStorage(size_t blockSize)
-    : _blocks(), _blockSize(blockSize), _current(nullptr), _end(nullptr) {
+ShortStringStorage::ShortStringStorage(ResourceMonitor* resourceMonitor, size_t blockSize)
+    : _resourceMonitor(resourceMonitor), _blocks(), _blockSize(blockSize), _current(nullptr), _end(nullptr) {
   TRI_ASSERT(blockSize >= 64);
 }
 
 /// @brief destroy a short string storage instance
 ShortStringStorage::~ShortStringStorage() {
   for (auto& it : _blocks) {
+    _resourceMonitor->decreaseMemoryUsage(_blockSize);
     delete[] it;
   }
 }
@@ -57,6 +59,7 @@ char* ShortStringStorage::registerString(char const* p, size_t length) {
 
   char* position = _current;
   memcpy(static_cast<void*>(position), p, length);
+  // add NUL byte at the end
   _current[length] = '\0';
   _current += length + 1;
 
@@ -68,11 +71,18 @@ void ShortStringStorage::allocateBlock() {
   char* buffer = new char[_blockSize];
 
   try {
-    _blocks.emplace_back(buffer);
+    _resourceMonitor->increaseMemoryUsage(_blockSize);
+    try {
+      _blocks.emplace_back(buffer);
+    } catch (...) {
+      // rollback
+      _resourceMonitor->decreaseMemoryUsage(_blockSize);
+      throw;
+    }
     _current = buffer;
     _end = _current + _blockSize;
   } catch (...) {
     delete[] buffer;
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    throw;
   }
 }
