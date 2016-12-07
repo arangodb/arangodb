@@ -16,11 +16,10 @@ done
 
 ./Installation/Jenkins/build.sh \
     standard \
-    --rpath \
     --parallel 25 \
     --package DEB \
     $SNAP \
-    --xcArm arm-linux-gnueabihf \
+    --xcArm /usr/bin/arm-linux-gnueabihf \
     --buildDir build-${EP}deb \
     --targetDir /var/tmp/ \
     --noopt \
