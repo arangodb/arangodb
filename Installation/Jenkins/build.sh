@@ -323,14 +323,14 @@ while [ $# -gt 0 ];  do
             CLEAN_IT=1
             shift
             ;;
-        --cxArmV8)
+        --xcArmV8)
             ARMV8=1
-            CXGCC=1
+            XCGCC=1
             shift
             ;;
-        --cxArmV7)
+        --xcArmV7)
             ARMV7=1
-            CXGCC=1
+            XCGCC=1
             shift
             ;;
 
@@ -388,7 +388,7 @@ elif [ "$CLANG36" == 1 ]; then
     CC=/usr/bin/clang-3.6
     CXX=/usr/bin/clang++-3.6
     CXXFLAGS="${CXXFLAGS} -std=c++11"
-elif [ "${CXGCC}" = 1 ]; then
+elif [ "${XCGCC}" = 1 ]; then
     USE_JEMALLOC=0
     if [ "${ARMV8}" = 1 ]; then
         export TOOL_PREFIX=aarch64-linux-gnu
@@ -397,7 +397,7 @@ elif [ "${CXGCC}" = 1 ]; then
         export TOOL_PREFIX=aarch64-linux-gnu
         BUILD_DIR="${BUILD_DIR}-ARMV7"
     else
-        echo "Unknown CX-Compiler!"
+        echo "Unknown XC-Compiler!"
         exit 1;
     fi
 
@@ -527,7 +527,7 @@ if test -n "${ENTERPRISE_GIT_URL}" ; then
     if test ! -d enterprise; then
         git clone ${ENTERPRISE_GIT_URL} enterprise
     fi
-    (cd enterprise; git checkout master; git fetch --tags; git pull --all; git checkout ${GITARGS} )
+    (cd enterprise; git checkout master; git fetch --tags; git pull --all; git checkout ${GITARGS}; git pull )
 fi
 
 
