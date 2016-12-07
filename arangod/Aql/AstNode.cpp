@@ -187,61 +187,6 @@ std::unordered_map<int, std::string const> const AstNode::ValueTypeNames{
 
 namespace {
 
-/// @brief resolve an attribute access
-static AstNode const* ResolveAttribute(AstNode const* node) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS);
-
-  std::vector<std::string> attributeNames;
-
-  while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    attributeNames.emplace_back(node->getString());
-    node = node->getMember(0);
-  }
-
-  size_t which = attributeNames.size();
-  TRI_ASSERT(which > 0);
-
-  while (which > 0) {
-    TRI_ASSERT(node->type == NODE_TYPE_VALUE || node->type == NODE_TYPE_ARRAY ||
-               node->type == NODE_TYPE_OBJECT);
-
-    bool found = false;
-
-    if (node->type == NODE_TYPE_OBJECT) {
-      TRI_ASSERT(which > 0);
-      std::string const& attributeName = attributeNames[which - 1];
-      --which;
-
-      size_t const n = node->numMembers();
-      for (size_t i = 0; i < n; ++i) {
-        auto member = node->getMember(i);
-
-        if (member->type == NODE_TYPE_OBJECT_ELEMENT && 
-            member->getString() == attributeName) {
-          // found the attribute
-          node = member->getMember(0);
-          if (which == 0) {
-            // we found what we looked for
-            return node;
-          } 
-          // we found the correct attribute but there is now an attribute
-          // access on the result
-          found = true;
-          break;
-        }
-      }
-    }
-
-    if (!found) {
-      break;
-    }
-  }
-
-  // attribute not found or non-array
-  return Ast::createNodeValueNull();
-}
-
 /// @brief get the node type for inter-node comparisons
 static VPackValueType GetNodeCompareType(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
@@ -276,10 +221,10 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
   TRI_ASSERT(rhs != nullptr);
 
   if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    lhs = ResolveAttribute(lhs);
+    lhs = Ast::resolveConstAttributeAccess(lhs);
   }
   if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    rhs = ResolveAttribute(rhs);
+    rhs = Ast::resolveConstAttributeAccess(rhs);
   }
 
   auto lType = GetNodeCompareType(lhs);
@@ -419,6 +364,7 @@ AstNode::AstNode(bool v, AstNodeValueType valueType)
   value.value._bool = v;
   TRI_ASSERT(flags == 0);
   TRI_ASSERT(computedValue == nullptr);
+  setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
 }
 
 /// @brief create an int node, with defining a value
@@ -428,6 +374,7 @@ AstNode::AstNode(int64_t v, AstNodeValueType valueType)
   value.value._int = v;
   TRI_ASSERT(flags == 0);
   TRI_ASSERT(computedValue == nullptr);
+  setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
 }
 
 /// @brief create a string node, with defining a value
@@ -437,6 +384,7 @@ AstNode::AstNode(char const* v, size_t length, AstNodeValueType valueType)
   setStringValue(v, length);
   TRI_ASSERT(flags == 0);
   TRI_ASSERT(computedValue == nullptr);
+  setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
 }
 
 /// @brief create the node from VPack
