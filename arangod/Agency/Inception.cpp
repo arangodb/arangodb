@@ -479,6 +479,9 @@ void Inception::run() {
       LOG_TOPIC(INFO, Logger::AGENCY) << "Activating agent.";
       _agent->ready(true);
     } else {
+        LOG_TOPIC(FATAL, Logger::AGENCY)
+          << "Unable to restart with persisted pool. Fatal exit.";
+        FATAL_ERROR_EXIT();
       // FATAL ERROR
     }
     return;
