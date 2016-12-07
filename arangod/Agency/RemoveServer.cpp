@@ -286,7 +286,7 @@ bool RemoveServer::start() {
 
 bool RemoveServer::scheduleAddFollowers() {
 
-  std::vector<std::string> servers = availableServers();
+  std::vector<std::string> servers = availableServers(_snapshot);
 
   // Minimum 1 DB server must remain
   if (servers.size() == 1) {
