@@ -1,11 +1,37 @@
-v3.0.13 (XXXX-XX-XX)
---------------------
+v3.1.4 (XXXX-XX-XX)
+-------------------
 
-* fixed issue #2210
+* fixed issue #2211
+
+* fixed issue #2204
 
 
-v3.0.12 (2016-11-23)
---------------------
+v3.1.3 (2016-12-02)
+-------------------
+
+* fix a traversal bug when using skiplist indexes:
+  if we have a skiplist of ["a", "unused", "_from"] and a traversal like:
+  FOR v,e,p IN OUTBOUND @start @@edges
+    FILTER p.edges[0].a == 'foo'
+    RETURN v
+  And the above index applied on "a" is considered better than EdgeIndex, than
+  the executor got into undefined behaviour.
+
+* fix endless loop when trying to create a collection with replicationFactor: -1
+
+
+v3.1.2 (2016-11-24)
+-------------------
+
+* added support for descriptions field in Foxx dependencies
+
+* (Enterprise only) fixed a bug in the statistic report for SmartGraph traversals.
+Now they state correctly how many documents were fetched from the index and how many
+have been filtered.
+
+
+v3.1.1 (2016-11-15)
+-------------------
 
 * fixed issue #2176
 
@@ -310,12 +336,26 @@ v3.1.alpha2 (2016-09-01)
   as well as out-of-sequence problems when using the BDD before/after functions.
 
 
-v3.0.12 (XXXX-XX-XX)
+v3.0.13 (XXXX-XX-XX)
 --------------------
+
+* fixed issue #2210
+
+
+v3.0.12 (2016-11-23)
+--------------------
+
+* fixed issue #2176
+
+* fixed issue #2168
 
 * fixed issues #2149, #2159
 
 * fixed error reporting for issue #2158
+
+* fixed assembly linkage bug in CRC4 module
+
+* added support for descriptions field in Foxx dependencies
 
 
 v3.0.11 (2016-11-08)
