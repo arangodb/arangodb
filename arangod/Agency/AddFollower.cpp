@@ -73,6 +73,30 @@ bool AddFollower::create() {
   TRI_ASSERT(current[0].isString());
 #endif
 
+  std::string planPath =
+    planColPrefix + _database + "/" + _collection + "/shards";
+  
+  auto const& myClones = clones(_snapshot, _database, _collection);
+  if (!myClones.empty()) {
+    
+    size_t sub = 0;
+    auto myshards = _snapshot(planPath).children();
+    auto mpos = std::distance(myshards.begin(), myshards.find(_shard));
+    
+    // Deal with my clones
+    for (auto const& collection : myClones) {
+      auto othershards = _snapshot(
+        planColPrefix + _database + "/" + collection + "/shards").children();
+      auto opos = othershards.begin();
+      std::advance(opos, mpos);
+      auto const& shard = opos->first;
+
+      AddFollower(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
+                  _jobId, _agencyPrefix, _database, collection, shard,
+                  _newFollower);
+    }
+  }
+  
   _jb = std::make_shared<Builder>();
   _jb->openArray();
   _jb->openObject();

@@ -73,15 +73,13 @@ bool FailedFollower::create() {
   if (!myClones.empty()) {
 
     size_t sub = 0;
-    auto myshards = _snapshot(
-      planColPrefix + _database + "/" + _collection + "/shards").children();
+    auto myshards = _snapshot(planPath).children();
     auto mpos = std::distance(myshards.begin(), myshards.find(_shard));
 
     // Deal with my clones
     for (auto const& collection : myClones) {
-      auto othershards =
-        _snapshot(planColPrefix + _database + "/" + collection + "/shards")
-        .children();
+      auto othershards = _snapshot(
+        planColPrefix + _database + "/" + collection + "/shards").children();
       auto opos = othershards.begin();
       std::advance(opos, mpos);
       auto const& shard = opos->first;
