@@ -1,7 +1,7 @@
 shell> curl --dump - http://localhost:8529/_api/gharial/social/edge/relation/aliceAndBob
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
-etag: <span class="hljs-number">8534</span>
+etag: <span class="hljs-number">8536</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 { 
@@ -11,7 +11,7 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndBob"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/bob"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"8534"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"8536"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span> 
   }, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 

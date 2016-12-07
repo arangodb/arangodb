@@ -12,7 +12,7 @@ matches the fulltext search phrase *query*, optionally capped to *limit* results
 
 **Note**: the *FULLTEXT()* function requires the collection *coll* to have a
 fulltext index on *attribute*. If no fulltext index is available, this function
-will fail with an error.
+will fail with an error at runtime. It doesn't fail when explaining the query however.
 
 - **coll** (collection): a collection
 - **attribute** (string): the attribute name of the attribute to search in

@@ -7,12 +7,12 @@ arangosh&gt; arango.GET(<span class="hljs-string">"/echo"</span>)
     <span class="hljs-string">"protocol"</span> : <span class="hljs-string">"http"</span>, 
     <span class="hljs-string">"server"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">58578</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">11245</span> 
     }, 
     <span class="hljs-string">"client"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">53907</span>, 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"147859757773671"</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">35698</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"147989754861293"</span> 
     }, 
     <span class="hljs-string">"internals"</span> : { 
     }, 
