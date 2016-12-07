@@ -548,6 +548,7 @@ bool Supervision::handleJobs() {
   }
 
   // Do supervision
+  
   shrinkCluster();
   workJobs();
   enforceReplication();
@@ -614,18 +615,36 @@ void Supervision::workJobs() {
 void Supervision::enforceReplication() {
 
   auto const& plannedDBs = _snapshot(planColPrefix).children();
+  auto available = Job::availableServers(_snapshot);
 
   for (const auto& db_ : plannedDBs) { // Planned databases
     auto const& db = *(db_.second);
     for (const auto& col_ : db.children()) { // Planned collections
       auto const& col = *(col_.second);
       auto const& replicationFactor = col("replicationFactor").slice().getUInt();
-      for (auto const& shard_ : col("shards").children()) { // Pl shards
-        auto const& shard = *(shard_.second);
-        if (replicationFactor != shard.slice().length()) {
-          LOG(WARN) << shard.slice().typeName()
-                    << " target repl(" << replicationFactor
-                    << ") actual repl(" << shard.slice().length() << ")";
+      
+      bool clone = false;
+      try {
+        clone = !col("distributeShardsLike").slice().copyString().empty();
+      } catch (...) {}
+
+      if (!clone) {
+        for (auto const& shard_ : col("shards").children()) { // Pl shards
+          auto const& shard = *(shard_.second);
+
+          // Enough DBServer to 
+          if (replicationFactor > shard.slice().length() &&
+              available.size() >= replicationFactor) {
+            for (auto const& i : VPackArrayIterator(shard.slice())) {
+              available.erase(
+                std::remove(
+                  available.begin(), available.end(), i.copyString()),
+                available.end());
+            }
+            AddFollower(
+              _snapshot, _agent, std::to_string(_jobId++), "supervision",
+              _agencyPrefix, db_.first, col_.first, shard_.first, available.back());
+          }
         }
       }
     }

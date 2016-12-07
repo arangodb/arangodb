@@ -146,7 +146,7 @@ bool FailedServer::start() {
               }
             } catch (...) {} // Not clone
             
-            auto available = availableServers();
+            auto available = availableServers(_snapshot);
               
             for (auto const& shard : collection("shards").children()) {
 
