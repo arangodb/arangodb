@@ -1,4 +1,5 @@
-!CHAPTER Request objects
+Request objects
+===============
 
 The request object specifies the following properties:
 
@@ -138,7 +139,8 @@ The request object specifies the following properties:
 
   Note that this value does not guarantee whether the request was made from inside a browser or whether AJAX was used and is merely a convention established by JavaScript frameworks like jQuery.
 
-!SECTION accepts
+accepts
+-------
 
 `req.accepts(types): string | false`
 
@@ -170,7 +172,8 @@ if (req.accepts(['json', 'html']) === 'html') {
 }
 ```
 
-!SECTION cookie
+cookie
+------
 
 `req.cookie(name, options): string | null`
 
@@ -200,7 +203,8 @@ If a string is passed instead of an options object it will be interpreted as the
 
 Returns the value of the cookie or `null` if the cookie is not set or its signature is invalid.
 
-!SECTION get / header
+get / header
+------------
 
 `req.get(name): string`
 
@@ -216,7 +220,8 @@ Gets the value of a header by name. You can validate request headers using the [
 
 Returns the header value.
 
-!SECTION is
+is
+--
 
 `req.is(types): string`
 
@@ -237,7 +242,8 @@ if (type === false) { // no match
 }
 ```
 
-!SECTION json
+json
+----
 
 `req.json(): any`
 
@@ -247,7 +253,8 @@ It is generally more useful to define a [request body on the endpoint](Endpoints
 
 Returns `undefined` if the request body is empty. May throw a `SyntaxError` if the body could not be parsed.
 
-!SECTION makeAbsolute
+makeAbsolute
+------------
 
 `req.makeAbsolute(path, [query]): string`
 
@@ -265,7 +272,8 @@ Resolves the given path relative to the `req.context.service`'s mount path to a 
 
 Returns the formatted absolute URL.
 
-!SECTION params
+params
+------
 
 `req.param(name): any`
 
@@ -281,7 +289,8 @@ It's probably better style to use the `req.pathParams` or `req.queryParams` obje
 
 Returns the (validated) value of the parameter.
 
-!SECTION range
+range
+-----
 
 `req.range([size]): Ranges | number`
 
@@ -306,7 +315,8 @@ console.log(ranges); // [{start: 40, end: 80}]
 console.log(ranges.type); // "bytes"
 ```
 
-!SECTION reverse
+reverse
+-------
 
 `req.reverse(name, [params]): string`
 

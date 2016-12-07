@@ -1,13 +1,15 @@
-!CHAPTER Graph Management
+Graph Management
+================
 
 This chapter describes the javascript interface for [creating and modifying named graphs](../README.md).
 In order to create a non empty graph the functionality to create edge definitions has to be introduced first:
 
-!SECTION Edge Definitions
+Edge Definitions
+----------------
 
 An edge definition is always a directed relation of a graph. Each graph can have arbitrary many relations defined within the edge definitions array.
 
-!SUBSECTION Initialize the list
+### Initialize the list
 
 
 
@@ -37,7 +39,7 @@ This function is the entry point for the management and will return the correct 
 
 
 
-!SUBSECTION Extend the list
+### Extend the list
 
 
 
@@ -69,7 +71,7 @@ this function can be used to add more definitions to the initial list.
 
 
 
-!SUBSUBSECTION Relation
+#### Relation
 
 Define a directed relation.
 
@@ -110,7 +112,8 @@ to any collection in *toVertexCollections*.
     @endDocuBlock generalGraphRelationDefinitionSingle
 
 
-!SECTION Create a graph
+Create a graph
+--------------
 
 After having introduced edge definitions a graph can be created.
 
@@ -174,7 +177,7 @@ Create a graph with edge definitions and orphan collections:
 
 
 
-!SUBSUBSECTION Complete Example to create a graph
+#### Complete Example to create a graph
 
 Example Call:
 
@@ -224,7 +227,7 @@ alternative call:
 
 
 
-!SUBSECTION List available graphs
+### List available graphs
 
 
 
@@ -246,7 +249,7 @@ Lists all graph names stored in this database.
     @endDocuBlock generalGraphList
 
 
-!SUBSECTION Load a graph
+### Load a graph
 
 
 
@@ -279,7 +282,7 @@ Get a graph:
 
 
 
-!SUBSECTION Remove a graph
+### Remove a graph
 
 
 
@@ -331,12 +334,13 @@ Drop a graph and keep collections:
 
 
 
-!SECTION Modify a graph definition during runtime
+Modify a graph definition during runtime
+----------------------------------------
 
 After you have created an graph its definition is not immutable.
 You can still add, delete or modify edge definitions and vertex collections.
 
-!SUBSECTION Extend the edge definitions
+### Extend the edge definitions
 
 
 
@@ -372,7 +376,7 @@ graph with different *from* and/or *to* collections an error is thrown.
 
 
 
-!SUBSECTION Modify an edge definition
+### Modify an edge definition
 
 
 
@@ -411,7 +415,7 @@ definition will be modified, too.
 
 
 
-!SUBSECTION Delete an edge definition
+### Delete an edge definition
 
 
 
@@ -466,14 +470,14 @@ Remove an edge definition and drop the edge collection:
 
 
 
-!SUBSECTION Extend vertex Collections
+### Extend vertex Collections
 
 Each graph can have an arbitrary amount of vertex collections, which are not part of any edge definition of the graph.
 These collections are called orphan collections.
 If the graph is extended with an edge definition using one of the orphans,
 it will be removed from the set of orphan collection automatically.
 
-!SUBSUBSECTION Add a vertex collection
+#### Add a vertex collection
 
 
 
@@ -508,7 +512,7 @@ definition of the graph, an error will be thrown.
 
 
 
-!SUBSUBSECTION Get the orphaned collections
+#### Get the orphaned collections
 
 
 
@@ -536,7 +540,7 @@ Returns all vertex collections of the graph that are not used in any edge defini
 
 
 
-!SUBSUBSECTION Remove a vertex collection
+#### Remove a vertex collection
 
 
 
@@ -577,9 +581,10 @@ Optionally the collection can be deleted, if it is not used in any other graph.
 
 
 
-!SECTION Maniuplating Vertices
+Maniuplating Vertices
+---------------------
 
-!SUBSECTION Save a vertex
+### Save a vertex
 
 
 
@@ -607,7 +612,7 @@ Create a new vertex in vertexCollectionName
 
 
 
-!SUBSECTION Replace a vertex
+### Replace a vertex
 
 
 
@@ -638,7 +643,7 @@ Replaces the data of a vertex in collection vertexCollectionName
 
 
 
-!SUBSECTION Update a vertex
+### Update a vertex
 
 
 
@@ -668,7 +673,7 @@ Updates the data of a vertex in collection vertexCollectionName
 
 
 
-!SUBSECTION Remove a vertex
+### Remove a vertex
 
 
 
@@ -703,9 +708,10 @@ Additionally removes all ingoing and outgoing edges of the vertex recursively
 
 
 
-!SECTION Manipulating Edges
+Manipulating Edges
+------------------
 
-!SUBSECTION Save a new edge
+### Save a new edge
 
 
 
@@ -750,7 +756,7 @@ the edge will not be stored.
     @endDocuBlock generalGraphEdgeCollectionSave2
 
 
-!SUBSECTION Replace an edge
+### Replace an edge
 
 
 
@@ -781,7 +787,7 @@ Replaces the data of an edge in collection edgeCollectionName. Note that `_from`
 
 
 
-!SUBSECTION Update an edge
+### Update an edge
 
 
 
@@ -812,7 +818,7 @@ Updates the data of an edge in collection edgeCollectionName
 
 
 
-!SUBSECTION Remove an edge
+### Remove an edge
 
 
 
@@ -846,7 +852,7 @@ If this edge is used as a vertex by another edge, the other edge will be removed
 
 
 
-!SUBSECTION Connect edges
+### Connect edges
 
 
 

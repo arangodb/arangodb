@@ -1,6 +1,7 @@
-!SECTION Launching ArangoDB's standalone "agency"
+Launching ArangoDB's standalone "agency"
+----------------------------------------
 
-!SUBSECTION Multiple ArangoDB instances can be deployed as a fault-tolerant distributed state machine.
+### Multiple ArangoDB instances can be deployed as a fault-tolerant distributed state machine.
 
 What is a fault-tolerant state machine in the first place?
 
@@ -10,7 +11,7 @@ Consensus is the keyword here and its realisation on a network proves to be far 
 
 At ArangoDB, we decided to implement Raft as it is arguably the easier to understand and thus implement. In simple terms, Raft guarantees that a linear stream of transactions, is replicated in realtime among a group of machines through an elected leader, who in turn must have access to and project leadership upon an overall majority of participating instances. In ArangoDB we like to call the entirety of the components of the replicated transaction log, that is the machines and the ArangoDB instances, which constitute the replicated log, the agency.
 
-!SUBSECTION Startup 
+### Startup
 
 The agency must consists of an odd number of agents in order to be able to establish an overall majority and some means for the agents to be able to find one another at startup. 
 
@@ -30,7 +31,7 @@ The below commands start up a 3-host agency on one physical/logical box with por
 
 The parameter `agency.endpoint` is the key ingredient for the second and third instances to find the first instance and thus form a complete agency. Please refer to the the shell-script `scripts/startStandaloneAgency.sh` on github or in the source directory.
 
-!SUBSECTION Key-value-store API
+### Key-value-store API
 
 The agency should be up and running within a couple of seconds, during which the instances have gossiped their way into knowing the other agents and elected a leader. The public API can be checked for the state of the configuration:
 
@@ -75,11 +76,11 @@ curl -s localhost:8529/_api/agency/config
 
 To highlight some details in the above output look for `"term"` and `"leaderId"`. Both are key information about the current state of the Raft algorithm. You may have noted that the first election term has established a random leader for the agency, who is in charge of replication of the state machine and for all external read and write requests until such time that the process gets isolated from the other two subsequenctly losing its leadership.
 
-!SUBSECTION Read and Write APIs
+### Read and Write APIs
 
 Generally, all read and write accesses are transactions moreover any read and write access may consist of multiple such transactions formulated as arrays of arrays in JSON documents.
 
-!SUBSECTION Read transaction
+### Read transaction
 
 An agency started from scratch will deal with the simplest query as follows:
 ```
@@ -150,7 +151,7 @@ The word transaction means here that it is guaranteed that all aggregations happ
 
 Btw, the same transaction on the virgin key-value store would produce `[{},{}]`
 
-!SUBSECTION Write API:
+### Write API:
 
 The write API must unfortunately be a little more complex. Multiple roads lead to Rome:
 

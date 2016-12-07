@@ -1,13 +1,15 @@
-!CHAPTER Features and Improvements
+Features and Improvements
+=========================
 
 The following list shows in detail which features have been added or improved in
 ArangoDB 2.8. ArangoDB 2.8 also contains several bugfixes that are not listed
 here. For a list of bugfixes, please consult the
 [CHANGELOG](https://github.com/arangodb/arangodb/blob/devel/CHANGELOG).
 
-!SECTION AQL improvements
+AQL improvements
+----------------
 
-!SUBSECTION AQL Graph Traversals / Pattern Matching
+### AQL Graph Traversals / Pattern Matching
 
 AQL offers a new feature to traverse over a graph without writing JavaScript functions
 but with all the other features you know from AQL. For this purpose, a special version of 
@@ -52,7 +54,7 @@ As an example take the query above and assume there are edges that do not have `
 If in the first edge step there is such a non-friend edge the second steps will never
 be computed for these edges as they cannot fulfill the filter condition.
 
-!SUBSECTION Array Indexes
+### Array Indexes
 
 Hash indexes and skiplist indexes can now optionally be defined for array values 
 so that they index individual array members instead of the entire array value.
@@ -117,7 +119,7 @@ comparison operators (`==`, `!=`, `>`, `>=`, `<`, `<=`) currently do not use arr
 indexes.
 
 
-!SUBSECTION Optimizer improvements
+### Optimizer improvements
 
 The AQL query optimizer can now use indexes if multiple filter conditions on attributes of
 the same collection are combined with logical ORs, and if the usage of indexes would completely
@@ -165,7 +167,7 @@ FOR doc IN collection
 ```
 
 
-!SUBSECTION AQL functions added
+### AQL functions added
 
 The following AQL functions have been added in 2.8:
 
@@ -186,7 +188,7 @@ The following AQL functions have been added in 2.8:
   non-string values, even if some of them may be usable in date functions.
 
 
-!SUBSECTION Miscellaneous improvements
+### Miscellaneous improvements
 
 * the ArangoShell now provides the convenience function `db._explain(query)` for retrieving 
   a human-readable explanation of AQL queries. This function is a shorthand for
@@ -212,7 +214,8 @@ The following AQL functions have been added in 2.8:
 * the AQL editor in the web interface now supports using bind parameters
 
 
-!SECTION Deadlock detection
+Deadlock detection
+------------------
 
 ArangoDB 2.8 now has an automatic deadlock detection for transactions.
 
@@ -233,7 +236,8 @@ should be aware of the potential of deadlocks and should handle the error 29
 retrying the operation.
 
 
-!SECTION Replication
+Replication
+-----------
 
 The following improvements for replication have been made in 2.8 (note: most of them
 have been backported to ArangoDB 2.7 as well):
@@ -307,7 +311,8 @@ have been backported to ArangoDB 2.7 as well):
   at the bottom of the page
 
 
-!SECTION Web Admin Interface
+Web Admin Interface
+-------------------
 
 The following improvements have been made for the web admin interface:
 
@@ -335,7 +340,8 @@ The following improvements have been made for the web admin interface:
   until later if there are still references pointing to data in the collection.
 
 
-!SECTION Foxx improvements
+Foxx improvements
+-----------------
 
 * the module resolution used by `require` now behaves more like in node.js
 
@@ -344,7 +350,8 @@ The following improvements have been made for the web admin interface:
   re-enabled by explicitly setting the option `returnBodyOnError` to `false`
 
 
-!SECTION Miscellaneous changes
+Miscellaneous changes
+---------------------
 
 The startup option `--server.hide-product-header` can be used to make the server 
 not send the HTTP response header `"Server: ArangoDB"` in its HTTP responses. This

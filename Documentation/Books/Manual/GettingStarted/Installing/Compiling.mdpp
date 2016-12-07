@@ -1,4 +1,5 @@
-!CHAPTER Compiling ArangoDB from scratch
+Compiling ArangoDB from scratch
+===============================
 
 The following sections describe how to compile and build the ArangoDB from
 scratch. ArangoDB will compile on most Linux and Mac OS X systems. We assume

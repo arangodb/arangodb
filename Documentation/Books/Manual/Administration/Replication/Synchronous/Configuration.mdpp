@@ -1,10 +1,11 @@
-!CHAPTER Configuration
+Configuration
+=============
 
-!SUBSECTION Requirements
+### Requirements
 
 Synchronous replication requires an operational ArangoDB cluster.
 
-!SUBSECTION Enabling synchronous replication
+### Enabling synchronous replication
 
 Synchronous replication can be enabled per collection. When creating you can specify the number of replicas using *replicationFactor*. The default is `1` which effectively *disables* synchronous replication.
 

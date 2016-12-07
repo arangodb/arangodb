@@ -1,4 +1,5 @@
-!CHAPTER The "collection" Object
+The "collection" Object
+=======================
 
 The following methods exist on the collection object (returned by *db.name*):
 

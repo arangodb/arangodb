@@ -1,4 +1,5 @@
-!CHAPTER The request context
+The request context
+===================
 
 When defining a route on a controller the controller would return an object called *request context*. Routers return a similar object called *endpoint*. Routers also return endpoints when mounting child routers or middleware, as does the `use` method of the service context.
 

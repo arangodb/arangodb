@@ -1,4 +1,5 @@
-!CHAPTER HTTP Interface for Edges 
+HTTP Interface for Edges
+========================
 
 This is an introduction to ArangoDB's [REST interface for edges](../../Manual/Graphs/Edges/index.html).
 

@@ -1,4 +1,5 @@
-!CHAPTER Asynchronous replication
+Asynchronous replication
+========================
 
 Asynchronous replication works by logging every data modification on a *master* and replaying these events on a number of *slaves*.
 
@@ -24,7 +25,7 @@ can reconnect to the master database and transfer the remaining changes. This wi
 happen automatically provided slaves are configured appropriately.
 
 
-!SUBSUBSECTION Replication lag
+#### Replication lag
 
 In this setup, write operations are applied first in the master database, and applied 
 in the slave database(s) afterwards. 
@@ -47,7 +48,7 @@ on the slave(s). At point in time t1, the state of data on the master and slave(
 is consistent again (provided no new data modifications happened on the master in
 between). Thus, the replication will lead to an *eventually consistent* state of data.
 
-!SUBSUBSECTION Replication configuration
+#### Replication configuration
 
 The replication is turned off by default. In order to create a master-slave setup,
 the so-called *replication applier* needs to be enabled on the slave databases.
@@ -60,6 +61,6 @@ with the master (and then stop), or to perform an ongoing replication of changes
 resume replication on slave restart, the *autoStart* attribute of the replication 
 applier must be set to *true*. 
 
-!SUBSUBSECTION Replication overhead
+#### Replication overhead
 
 As the master servers are logging any write operation in the write-ahead-log anyway replication doesn't cause any extra overhead on the master. However it will of course cause some overhead for the master to serve incoming read requests of the slaves. Returning the requested data is however a trivial task for the master and should not result in a notable performance degration in production.

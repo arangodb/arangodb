@@ -40,7 +40,7 @@ config_t::config_t()
       _compactionStepSize(1000),
       _supervisionGracePeriod(15.0),
       _cmdLineTimings(false),
-      _version(0),
+      _version(1),
       _startup("origin"),
       _lock()
       {}
@@ -60,7 +60,7 @@ config_t::config_t(size_t as, size_t ps, double minp, double maxp,
       _compactionStepSize(c),
       _supervisionGracePeriod(p),
       _cmdLineTimings(t),
-      _version(0),
+      _version(1),
       _startup("origin"),     
       _lock() {}
 

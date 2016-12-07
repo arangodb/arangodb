@@ -1,4 +1,5 @@
-!CHAPTER Routers
+Routers
+=======
 
 `const createRouter = require('@arangodb/foxx/router');`
 
@@ -8,13 +9,15 @@ Routers need to be mounted using the `use` method of a [service context](../Cont
 
 You can pass routers between services mounted in the same database [as dependencies](../Dependencies.md). You can even nest routers within each other.
 
-!SECTION Creating a router
+Creating a router
+-----------------
 
 `createRouter(): Router`
 
 This returns a new, clean router object that has not yet been mounted in the service and can be exported like any other object.
 
-!SECTION Request handlers
+Request handlers
+----------------
 
 `router.get([path], [...middleware], handler, [name]): Endpoint`
 
@@ -114,7 +117,8 @@ router.get(counting, counting, counting, function (req, res) {
 });
 ```
 
-!SECTION Mounting child routers and middleware
+Mounting child routers and middleware
+-------------------------------------
 
 `router.use([path], middleware, [name]): Endpoint`
 

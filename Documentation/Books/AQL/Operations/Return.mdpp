@@ -1,4 +1,5 @@
-!CHAPTER RETURN 
+RETURN
+======
 
 The *RETURN* statement can be used to produce the result of a query.
 It is mandatory to specify a *RETURN* statement at the end of each block in a
@@ -103,7 +104,7 @@ FOR u IN users
 ]
 ```
 
-!SUBSECTION RETURN DISTINCT
+### RETURN DISTINCT
 
 Since ArangoDB 2.7, *RETURN* can optionally be followed by the *DISTINCT* keyword.
 The *DISTINCT* keyword will ensure uniqueness of the values returned by the

@@ -1,4 +1,5 @@
-!CHAPTER Coming from SQL
+Coming from SQL
+===============
 
 If you worked with a relational database management system (RDBMS) such as MySQL,
 MariaDB or PostgreSQL, you will be familiar with its query language, a dialect
@@ -14,7 +15,7 @@ To get started with AQL, have a look at our detailed
 [comparison of SQL and AQL](https://arangodb.com/why-arangodb/sql-aql-comparison/).
 It will also help you to translate SQL queries to AQL when migrating to ArangoDB.
 
-!SUBSECTION How do browse vectors translate into document queries?
+### How do browse vectors translate into document queries?
 
 In traditional SQL you may either fetch all columns of a table row by row, using
 `SELECT * FROM table`, or select a subset of the columns. The list of table
@@ -30,7 +31,7 @@ AQL is thus a little bit more complex than plain SQL at first, but offers much
 more flexibility in the long run. It lets you handle arbitrarily structured
 documents in convenient ways, mostly leaned on the syntax used in JavaScript.
 
-!SUBSUBSECTION Composing the documents to be returned
+#### Composing the documents to be returned
 
 The AQL `RETURN` statement returns one item per document it is handed. You can
 return the whole document, or just parts of it. Given that *oneDocument* is

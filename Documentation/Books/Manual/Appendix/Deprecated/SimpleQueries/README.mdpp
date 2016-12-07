@@ -1,4 +1,5 @@
-!CHAPTER Simple Queries
+Simple Queries
+==============
 
 Simple queries can be used if the query condition is straight forward, i.e., a
 document reference, all documents, a query-by-example, or a simple geo query. In

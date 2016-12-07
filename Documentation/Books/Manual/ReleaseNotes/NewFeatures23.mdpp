@@ -1,12 +1,14 @@
-!CHAPTER Features and Improvements
+Features and Improvements
+=========================
 
 The following list shows in detail which features have been added or improved in
 ArangoDB 2.3. ArangoDB 2.3 also contains several bugfixes that are not listed
 here.
 
-!SECTION AQL improvements
+AQL improvements
+----------------
 
-!SUBSECTION Framework improvements
+### Framework improvements
 
 AQL queries are now sent through a query optimizer framework before execution. 
 The query optimizer framework will first convert the internal representation of
@@ -36,9 +38,9 @@ optimizer was designed to be extensible in order to add more optimizations
 in the future.
 
 
-!SUBSECTION Language improvements
+### Language improvements
 
-!SUBSUBSECTION Alternative operator syntax
+#### Alternative operator syntax
 
 ArangoDB 2.3 allows to use the following alternative forms for the 
 logical operators:
@@ -53,7 +55,7 @@ migration from SQL. The old syntax is still fully supported and will be:
 - `!`: negation
 
 
-!SUBSUBSECTION `NOT IN` operator
+#### `NOT IN` operator
 AQL now has a dedicated `NOT IN` operator.
 
 Previously, a `NOT IN` was only achievable by writing a negated `IN` condition:
@@ -66,7 +68,7 @@ the more intuitive variant:
     FOR i IN ... FILTER i NOT IN [ 23, 42 ] ...
 
 
-!SUBSUBSECTION Improvements of built-in functions
+#### Improvements of built-in functions
 
 The following AQL string functions have been added:
 
@@ -100,7 +102,7 @@ array arguments, e.g.:
     CONCAT_SEPARATOR(", ", [ 'foo', 'bar', 'baz'])
 
 
-!SUBSUBSECTION AQL queries throw less exceptions
+#### AQL queries throw less exceptions
 
 In previous versions of ArangoDB, AQL queries aborted with an exception in many
 situations and threw a runtime exception. For example, exceptions were thrown when 
@@ -152,9 +154,10 @@ Here is a summary of changes:
   receive invalid arguments will then return `null`.
 
 
-!SECTION Performance improvements
+Performance improvements
+------------------------
 
-!SUBSECTION Non-unique hash indexes
+### Non-unique hash indexes
 
 The performance of insertion into *non-unique* hash indexes has been improved
 significantly. This fixes performance problems in case attributes were indexes
@@ -166,7 +169,7 @@ The insertion time now scales linearly with the number of documents regardless
 of the cardinality of the indexed attribute.
 
 
-!SUBSECTION Reverse iteration over skiplist indexes
+### Reverse iteration over skiplist indexes
 
 AQL queries can now use a sorted skiplist index for reverse iteration. This
 allows several queries to run faster than in previous versions of ArangoDB.
@@ -186,7 +189,7 @@ if the AQL query does not contain a `FILTER` statement. This optimization was
 not available in previous versions of ArangoDB.
 
 
-!SUBSECTION Added basic support for handling binary data in Foxx
+### Added basic support for handling binary data in Foxx
 
 Buffer objects can now be used when setting the response body of any Foxx action.
 This allows Foxx actions to return binary data.
@@ -232,14 +235,14 @@ fs.write(filename, new Buffer("some binary data"));  // saves (binary) contents 
 arbitrary file into a Buffer object.
 
 
-!SUBSECTION Web interface
+### Web interface
 
 Batch document removal and move functionality has been added to the web interface,
 making it easier to work with multiple documents at once. Additionally, basic 
 JSON import and export tools have been added.
 
 
-!SUBSECTION Command-line options added
+### Command-line options added
 
 The command-line option `--javascript.v8-contexts` was added to arangod to 
 provide better control over the number of V8 contexts created in arangod.
@@ -269,34 +272,36 @@ parsing CSV files. The escape character for literal quotes is still the
 double quote character.
 
 
-!SECTION Miscellaneous improvements
+Miscellaneous improvements
+--------------------------
 
 ArangoDB's built-in HTTP server now supports HTTP pipelining.
 
 The ArangoShell tutorial from the arangodb.com website is now integrated into
 the ArangoDB shell.
 
-!SECTION Powerful Foxx Enhancements
+Powerful Foxx Enhancements
+--------------------------
 
 With the new **job queue** feature you can run async jobs to communicate with external services, **Foxx queries** make writing complex AQL queries much easier and **Foxx sessions** will handle the authentication and session hassle for you.
 
-!SUBSECTION Foxx Queries
+### Foxx Queries
 
 Writing long AQL queries in JavaScript can quickly become unwieldy. As of 2.3 ArangoDB bundles the [ArangoDB Query Builder](https://npmjs.org/package/aqb) module that provides a JavaScript API for writing complex AQL queries without string concatenation. All built-in functions that accept AQL strings now support query builder instances directly. Additionally Foxx provides a method `Foxx.createQuery` for creating parametrized queries that can return Foxx models or apply arbitrary transformations to the query results.
 
-!SUBSECTION Foxx Sessions
+### Foxx Sessions
 
 The session functionality in Foxx has been completely rewritten. The old `activateAuthentication` API is still supported but may be deprecated in the future. The new `activateSessions` API supports cookies or configurable headers, provides optional JSON Web Token and cryptographic signing support and uses the new sessions Foxx app.
 
 ArangoDB 2.3 provides Foxx apps for user management and salted hash-based authentication which can be replaced with or supplemented by alternative implementations. For an example app using both the built-in authentication and OAuth2 see the [Foxx Sessions Example app](https://github.com/arangodb/foxx-sessions-example).
 
-!SUBSECTION Foxx Queues
+### Foxx Queues
 
 Foxx now provides async workers via the Foxx Queues API. Jobs enqueued in a job queue will be executed asynchronously outside of the request/response cycle of Foxx controllers and can be used to communicate with external services or perform tasks that take a long time to complete or may require multiple attempts.
 
 Jobs can be scheduled in advance or set to be executed immediately, the number of retry attempts, the retry delay as well as success and failure handlers can be defined for each job individually. Job types that integrate various external services for transactional e-mails, logging and user tracking can be found in the Foxx app registry.
 
-!SUBSECTION Misc
+### Misc
 
 The request and response objects in Foxx controllers now provide methods for reading and writing raw cookies and signed cookies.
 

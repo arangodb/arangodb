@@ -1,6 +1,8 @@
-!CHAPTER Common Errors
+Common Errors
+=============
 
-!SECTION String concatenation
+String concatenation
+--------------------
 
 In AQL, strings must be concatenated using the [CONCAT()](Functions/String.md#concat)
 function. Joining them together with the `+` operator is not supported. Especially

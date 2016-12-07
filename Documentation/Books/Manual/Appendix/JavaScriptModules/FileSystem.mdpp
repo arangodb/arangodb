@@ -1,13 +1,15 @@
-!CHAPTER Filesystem Module
+Filesystem Module
+=================
 
 `require('fs')`
 
 The implementation tries to follow the CommonJS specification where possible.
 [Filesystem/A/0](http://wiki.commonjs.org/wiki/Filesystem/A/0).
 
-!SECTION Single File Directory Manipulation
+Single File Directory Manipulation
+----------------------------------
 
-!SUBSUBSECTION exists
+#### exists
 
 
 checks if a file of any type or directory exists
@@ -17,7 +19,7 @@ Returns true if a file (of any type) or a directory exists at a given
 path. If the file is a broken symbolic link, returns false.
 
 
-!SUBSUBSECTION isFile
+#### isFile
 
 
 tests if path is a file
@@ -26,7 +28,7 @@ tests if path is a file
 Returns true if the *path* points to a file.
 
 
-!SUBSUBSECTION isDirectory
+#### isDirectory
 
 
 tests if path is a directory
@@ -35,7 +37,7 @@ tests if path is a directory
 Returns true if the *path* points to a directory.
 
 
-!SUBSUBSECTION size
+#### size
 
 
 gets the size of a file
@@ -44,7 +46,7 @@ gets the size of a file
 Returns the size of the file specified by *path*.
 
 
-!SUBSUBSECTION mtime
+#### mtime
 
 
 gets the last modification time of a file
@@ -54,17 +56,17 @@ Returns the last modification date of the specified file. The date is
 returned as a Unix timestamp (number of seconds elapsed since January 1 1970).
 
 
-!SUBSUBSECTION pathSeparator
+#### pathSeparator
 `fs.pathSeparator`
 
 If you want to combine two paths you can use fs.pathSeparator instead of */* or *\\*.
 
-!SUBSUBSECTION join
+#### join
 `fs.join(path, filename)`
 
 The function returns the combination of the path and filename, e.g. fs.join(Hello/World, foo.bar) would return Hello/World/foo.bar.
 
-!SUBSUBSECTION getTempFile
+#### getTempFile
 
 
 returns the name for a (new) temporary file
@@ -77,7 +79,7 @@ process can create a file of the same name.
 **Note**: The directory *directory* must exist.
 
 
-!SUBSUBSECTION getTempPath
+#### getTempPath
 
 
 returns the temporary directory
@@ -87,7 +89,7 @@ Returns the absolute path of the temporary directory
 
 
 
-!SUBSUBSECTION makeAbsolute
+#### makeAbsolute
 
 
 makes a given path absolute
@@ -97,7 +99,7 @@ Returns the given string if it is an absolute path, otherwise an
 absolute path to the same location is returned.
 
 
-!SUBSUBSECTION chmod
+#### chmod
 
 
 sets file permissions of specified files (non windows only)
@@ -106,7 +108,7 @@ sets file permissions of specified files (non windows only)
 Returns true on success.
 
 
-!SUBSUBSECTION list
+#### list
 
 
 returns the directory listing
@@ -120,7 +122,7 @@ traversed (or path is not a directory).
 return ["a", "b"], not ["x/a", "x/b"].
 
 
-!SUBSUBSECTION listTree
+#### listTree
 
 
 returns the directory tree
@@ -133,7 +135,7 @@ symbolic links to directories. The first path is always *""*, the path
 relative to itself.
 
 
-!SUBSUBSECTION makeDirectory
+#### makeDirectory
 
 
 creates a directory
@@ -142,7 +144,7 @@ creates a directory
 Creates the directory specified by *path*.
 
 
-!SUBSUBSECTION makeDirectoryRecursive
+#### makeDirectoryRecursive
 
 
 creates a directory
@@ -151,7 +153,7 @@ creates a directory
 Creates the directory hierarchy specified by *path*.
 
 
-!SUBSUBSECTION remove
+#### remove
 
 
 removes a file
@@ -162,7 +164,7 @@ path corresponds to anything that is not a file or a symbolic link. If
 "path" refers to a symbolic link, removes the symbolic link.
 
 
-!SUBSUBSECTION removeDirectory
+#### removeDirectory
 
 
 removes an empty directory
@@ -173,7 +175,7 @@ an empty directory.
 
 
 
-!SUBSUBSECTION removeDirectoryRecursive
+#### removeDirectoryRecursive
 
 
 removes a directory
@@ -183,9 +185,10 @@ Removes a directory with all subelements. Throws an exception if the path
 is not a directory.
 
 
-!SECTION File IO
+File IO
+-------
 
-!SUBSUBSECTION read
+#### read
 
 
 reads in a file
@@ -195,7 +198,7 @@ Reads in a file and returns the content as string. Please note that the
 file content must be encoded in UTF-8.
 
 
-!SUBSUBSECTION read64
+#### read64
 
 
 reads in a file as base64
@@ -205,7 +208,7 @@ Reads in a file and returns the content as string. The file content is
 Base64 encoded.
 
 
-!SUBSUBSECTION readBuffer
+#### readBuffer
 
 
 reads in a file
@@ -214,7 +217,7 @@ reads in a file
 Reads in a file and returns its content in a Buffer object.
 
 
-!SUBSUBSECTION readFileSync
+#### readFileSync
 `fs.readFileSync(filename, encoding)`
 
 Reads the contents of the file specified in `filename`. If `encoding` is specified,
@@ -229,27 +232,28 @@ the file contents will be returned as a string. Supported encodings are:
 If no `encoding` is specified, the file contents will be returned in a Buffer
 object.
 
-!SUBSUBSECTION write
+#### write
 `fs.write(filename, content)`
 
 Writes the content into a file. Content can be a string or a Buffer
 object.  If the file already exists, it is truncated.
 
-!SUBSUBSECTION writeFileSync
+#### writeFileSync
 `fs.writeFileSync(filename, content)`
 
 This is an alias for `fs.write(filename, content)`.
 
-!SUBSUBSECTION append
+#### append
 `fs.append(filename, content)`
 
 Writes the content into a file. Content can be a string or a Buffer
 object.  If the file already exists, the content is appended at the
 end.
 
-!SECTION Recursive Manipulation
+Recursive Manipulation
+----------------------
 
-!SUBSUBSECTION copyRecursive
+#### copyRecursive
 
 
 copies a directory structure
@@ -262,7 +266,7 @@ Exceptions will be thrown on:
  - specifying a directory as source and destination
 
 
-!SUBSUBSECTION CopyFile
+#### CopyFile
 
 
 copies a file into a target file
@@ -274,7 +278,7 @@ the
 specified filename.
 
 
-!SUBSUBSECTION move
+#### move
 
 
 renames a file
@@ -286,9 +290,10 @@ exception. Likewise, specifying a directory as source and destination will
 fail.
 
 
-!SECTION ZIP
+ZIP
+---
 
-!SUBSUBSECTION unzipFile
+#### unzipFile
 
 
 unzips a file
@@ -301,7 +306,7 @@ to *true*.
 Returns *true* if the file was unzipped successfully.
 
 
-!SUBSUBSECTION zipFile
+#### zipFile
 
 
 zips a file

@@ -1,4 +1,5 @@
-!CHAPTER HTTP tasks Interface
+HTTP tasks Interface
+====================
 
 Following you have ArangoDB's HTTP Interface for Tasks.
 
