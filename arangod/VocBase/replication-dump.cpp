@@ -398,7 +398,6 @@ static int SliceifyMarker(TRI_replication_dump_t* dump,
         builder.add("rev", slice.get(StaticStrings::RevString));
       }
       // convert 2300 markers to 2301 markers for edges
-      Append(dump, ",\"type\":");
       if (type == TRI_DF_MARKER_VPACK_DOCUMENT && isEdgeCollection) {
         builder.add("type", VPackValue(2301));
       } else {
@@ -553,6 +552,7 @@ static int DumpCollection(TRI_replication_dump_t* dump,
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
+      LOG(ERR) << "got error during dump dump of collection '" << collection->name() << "': " << TRI_errno_string(res);
       THROW_ARANGO_EXCEPTION(res);
     }
 
