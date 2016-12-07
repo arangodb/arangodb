@@ -542,7 +542,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       
       // add the collection
       result.openObject();
-      result.add("name", VPackValue((*auxiliaryCollection->shardIds())[0]));
+      auto auxiliaryShards = auxiliaryCollection->shardIds();
+      result.add("name", VPackValue((*auxiliaryShards)[0]));
       result.add("type", VPackValue(TRI_TransactionTypeGetStr(collection->accessType)));
       result.close();
     }
