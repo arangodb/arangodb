@@ -137,7 +137,7 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_ASSERT(cursors != nullptr);
 
   bool busy;
-  auto cursor = cursors->find(cursorId, busy);
+  auto cursor = cursors->find(cursorId, Cursor::CURSOR_VPACK, busy);
 
   if (cursor == nullptr) {
     if (busy) {

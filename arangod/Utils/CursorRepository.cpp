@@ -140,7 +140,7 @@ ExportCursor* CursorRepository::createFromExport(arangodb::CollectionExport* ex,
 /// @brief remove a cursor by id
 ////////////////////////////////////////////////////////////////////////////////
 
-bool CursorRepository::remove(CursorId id) {
+bool CursorRepository::remove(CursorId id, Cursor::CursorType type) {
   arangodb::Cursor* cursor = nullptr;
 
   {
@@ -156,6 +156,11 @@ bool CursorRepository::remove(CursorId id) {
 
     if (cursor->isDeleted()) {
       // already deleted
+      return false;
+    }
+
+    if (cursor->type() != type) {
+      // wrong type
       return false;
     }
 
@@ -181,7 +186,7 @@ bool CursorRepository::remove(CursorId id) {
 /// it must be returned later using release()
 ////////////////////////////////////////////////////////////////////////////////
 
-Cursor* CursorRepository::find(CursorId id, bool& busy) {
+Cursor* CursorRepository::find(CursorId id, Cursor::CursorType type, bool& busy) {
   arangodb::Cursor* cursor = nullptr;
   busy = false;
 
@@ -198,6 +203,11 @@ Cursor* CursorRepository::find(CursorId id, bool& busy) {
 
     if (cursor->isDeleted()) {
       // already deleted
+      return nullptr;
+    }
+
+    if (cursor->type() != type) {
+      // wrong cursor type
       return nullptr;
     }
 
