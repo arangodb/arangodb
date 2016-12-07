@@ -22,11 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EnumerateCollectionBlock.h"
+
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Collection.h"
 #include "Aql/CollectionScanner.h"
 #include "Aql/ExecutionEngine.h"
 #include "Basics/Exceptions.h"
+#include "Cluster/FollowerInfo.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
@@ -114,6 +116,33 @@ int EnumerateCollectionBlock::initialize() {
   DEBUG_BEGIN_BLOCK();  
   auto ep = static_cast<EnumerateCollectionNode const*>(_exeNode);
   _mustStoreResult = ep->isVarUsedLater(ep->_outVariable);
+
+  if (_collection->isSatellite()) {
+    auto logicalCollection = _collection->getCollection();
+    auto cid = logicalCollection->planId();
+    auto dbName = logicalCollection->dbName();
+    auto collectionInfoCurrent = ClusterInfo::instance()->getCollectionCurrent(dbName, std::to_string(cid));
+
+    bool inSync = false;
+    unsigned long waitInterval = 10000;
+    double startTime = TRI_microtime();
+    double endTime = startTime + 60.0;
+
+    while (!inSync) {
+      auto followers = collectionInfoCurrent->servers(_collection->getName());
+      inSync = std::find(followers.begin(), followers.end(), ServerState::instance()->getId()) != followers.end();
+      if (!inSync) {
+        usleep(waitInterval);
+      }
+      if (TRI_microtime() > endTime) {
+        break;
+      }
+    }
+
+    if (!inSync) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC, "collection " + _collection->name);
+    }
+  }
 
   return ExecutionBlock::initialize();
 

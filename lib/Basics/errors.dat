@@ -189,6 +189,7 @@ ERROR_CLUSTER_ONLY_ON_DBSERVER,1477,"this operation is only valid on a DBserver 
 ERROR_CLUSTER_BACKEND_UNAVAILABLE,1478,"A cluster backend which was required for the operation could not be reached","Will be raised if a required db server can't be reached."
 ERROR_CLUSTER_UNKNOWN_CALLBACK_ENDPOINT,1479,"An endpoint couldn't be found","An endpoint couldn't be found"
 ERROR_CLUSTER_AGENCY_STRUCTURE_INVALID,1480,"Invalid agency structure","The structure in the agency is invalid"
+ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,1481,"collection is out of sync","Will be raised if a collection needed during query execution is out of sync. This currently can only happen when using satellite collections"
 
 ################################################################################
 ## ArangoDB query errors

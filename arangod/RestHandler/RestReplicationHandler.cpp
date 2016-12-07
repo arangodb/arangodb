@@ -29,6 +29,7 @@
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/FollowerInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "GeneralServer/GeneralServer.h"
 #include "Indexes/EdgeIndex.h"

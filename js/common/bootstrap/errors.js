@@ -153,6 +153,7 @@
     "ERROR_CLUSTER_BACKEND_UNAVAILABLE" : { "code" : 1478, "message" : "A cluster backend which was required for the operation could not be reached" },
     "ERROR_CLUSTER_UNKNOWN_CALLBACK_ENDPOINT" : { "code" : 1479, "message" : "An endpoint couldn't be found" },
     "ERROR_CLUSTER_AGENCY_STRUCTURE_INVALID" : { "code" : 1480, "message" : "Invalid agency structure" },
+    "ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC" : { "code" : 1481, "message" : "collection is out of sync" },
     "ERROR_QUERY_KILLED"           : { "code" : 1500, "message" : "query killed" },
     "ERROR_QUERY_PARSE"            : { "code" : 1501, "message" : "%s" },
     "ERROR_QUERY_EMPTY"            : { "code" : 1502, "message" : "query is empty" },

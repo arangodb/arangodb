@@ -365,6 +365,9 @@
 ///   An endpoint couldn't be found
 /// - 1480: @LIT{Invalid agency structure}
 ///   The structure in the agency is invalid
+/// - 1481: @LIT{collection is out of sync}
+///   Will be raised if a collection needed during query execution is out of
+///   sync. This currently can only happen when using satellite collections
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -2158,6 +2161,17 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_AGENCY_STRUCTURE_INVALID                        (1480)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1481: ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC
+///
+/// collection is out of sync
+///
+/// Will be raised if a collection needed during query execution is out of
+/// sync. This currently can only happen when using satellite collections
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC                      (1481)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED

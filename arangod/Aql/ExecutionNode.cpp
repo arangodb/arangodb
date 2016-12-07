@@ -1171,7 +1171,6 @@ void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& nodes,
   nodes.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(nodes);
   nodes.add("random", VPackValue(_random));
-  nodes.add("satellite", VPackValue(_collection->isSatellite()));
 
   // And close it:
   nodes.close();

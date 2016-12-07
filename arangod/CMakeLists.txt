@@ -182,6 +182,7 @@ SET(ARANGOD_SOURCES
   Cluster/ClusterInfo.cpp
   Cluster/ClusterMethods.cpp
   Cluster/ClusterTraverser.cpp
+  Cluster/FollowerInfo.cpp
   Cluster/DBServerAgencySync.cpp
   Cluster/HeartbeatThread.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
