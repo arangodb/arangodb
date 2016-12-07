@@ -537,7 +537,7 @@ static int DumpCollection(TRI_replication_dump_t* dump,
   bool bufferFull = false;
 
   auto callback = [&dump, &lastFoundTick, &databaseId, &collectionId,
-                   &withTicks, &isEdgeCollection, &bufferFull, &useVpp](
+                   &withTicks, &isEdgeCollection, &bufferFull, &useVpp, &collection](
       TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker) {
     // note the last tick we processed
     lastFoundTick = foundTick;
