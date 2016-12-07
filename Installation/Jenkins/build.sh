@@ -376,7 +376,8 @@ elif [ "$CLANG36" == 1 ]; then
     CXXFLAGS="${CXXFLAGS} -std=c++11"
 elif [ "${XCGCC}" = 1 ]; then
     USE_JEMALLOC=0
-    BUILD_DIR="${BUILD_DIR}-${TOOL_PREFIX}"
+    
+    BUILD_DIR="${BUILD_DIR}-`basename ${TOOL_PREFIX}`"
 
     # tell cmake we're cross compiling:
     CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCROSS_COMPILING=true -DCMAKE_SYSTEM_NAME=Linux"
