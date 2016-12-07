@@ -34,53 +34,109 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 
 template <typename M>
-IncomingCache<M>::~IncomingCache() {
-  LOG(INFO) << "~IncomingCache";
-  _shardMap.clear();
-}
-
-template <typename M>
-void IncomingCache<M>::clear() {
-  MUTEX_LOCKER(guard, _writeLock);
-  _receivedMessageCount = 0;
-  _shardMap.clear();
-}
-
-template <typename M>
-void IncomingCache<M>::parseMessages(VPackSlice incomingMessages) {
+void InCache<M>::parseMessages(VPackSlice incomingMessages) {
   prgl_shard_t shard;
   std::string key;
   VPackValueLength i = 0;
   for (VPackSlice current : VPackArrayIterator(incomingMessages)) {
     if (i % 3 == 0) {
-      shard = (prgl_shard_t) current.getUInt();
+      shard = (prgl_shard_t)current.getUInt();
     } else if (i % 3 == 1) {  // TODO support multiple recipients
       key = current.copyString();
     } else {
-      M newValue;
-      bool sucess = _format->unwrapValue(current, newValue);
-      if (!sucess) {
-        LOG(WARN) << "Invalid message format supplied";
-        continue;
+      if (current.isArray()) {
+        for (VPackSlice val : VPackArrayIterator(current)) {
+          M newValue;
+          _format->unwrapValue(val, newValue);
+          setDirect(shard, key, newValue);
+        }
+      } else {
+        M newValue;
+        _format->unwrapValue(current, newValue);
+        setDirect(shard, key, newValue);
       }
-      setDirect(shard, key, newValue);
     }
     i++;
   }
-  
+
   if (i % 3 != 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-                                   TRI_ERROR_BAD_PARAMETER,
-                                   "There must always be a multiple of 3 entries in messages");
+        TRI_ERROR_BAD_PARAMETER,
+        "There must always be a multiple of 3 entries in messages");
+  }
+}
+
+// ================== ArrayIncomingCache ==================
+
+template <typename M>
+void ArrayInCache<M>::clear() {
+  MUTEX_LOCKER(guard, this->_writeLock);
+  this->_receivedMessageCount = 0;
+  _shardMap.clear();
+}
+
+template <typename M>
+void ArrayInCache<M>::setDirect(prgl_shard_t shard, std::string const& key,
+                                M const& newValue) {
+  MUTEX_LOCKER(guard, this->_writeLock);
+
+  this->_receivedMessageCount++;
+  std::unordered_map<std::string, std::vector<M>>& vertexMap = _shardMap[shard];
+  vertexMap[key].push_back(newValue);
+}
+
+template <typename M>
+void ArrayInCache<M>::mergeCache(InCache<M> const* otherCache) {
+  MUTEX_LOCKER(guard, this->_writeLock);
+
+  ArrayInCache<M>* other = (ArrayInCache<M>*)otherCache;
+  this->_receivedMessageCount += other->_receivedMessageCount;
+
+  // cannot call setDirect since it locks
+  for (auto const& pair : other->_shardMap) {
+    std::unordered_map<std::string, std::vector<M>>& vertexMap =
+        _shardMap[pair.first];
+    for (auto& vertexMessage : pair.second) {
+      std::vector<M>& a = vertexMap[vertexMessage.first];
+      std::vector<M> const& b = vertexMessage.second;
+      a.insert(a.end(), b.begin(), b.end());
+    }
   }
 }
 
 template <typename M>
-void IncomingCache<M>::setDirect(prgl_shard_t shard, std::string const& key, M const& newValue) {
-  MUTEX_LOCKER(guard, _writeLock);
-  
-  _receivedMessageCount++;
-  std::unordered_map<std::string, M> &vertexMap = _shardMap[shard];
+MessageIterator<M> ArrayInCache<M>::getMessages(prgl_shard_t shard,
+                                                std::string const& key) {
+  std::unordered_map<std::string, std::vector<M>> const& vertexMap =
+      _shardMap[shard];
+  auto vmsg = vertexMap.find(key);
+  if (vmsg != vertexMap.end()) {
+    LOG(INFO) << "Got a message for " << key;
+
+    M const* ptr = vmsg->second.data();
+    return MessageIterator<M>(ptr, vmsg->second.size());
+  } else {
+    LOG(INFO) << "No message for " << key;
+    return MessageIterator<M>();
+  }
+}
+
+// ================== CombiningIncomingCache ==================
+
+template <typename M>
+void CombiningInCache<M>::clear() {
+  MUTEX_LOCKER(guard, this->_writeLock);
+  this->_receivedMessageCount = 0;
+  _shardMap.clear();
+}
+
+template <typename M>
+void CombiningInCache<M>::setDirect(prgl_shard_t shard, std::string const& key,
+                                    M const& newValue) {
+  MUTEX_LOCKER(guard, this->_writeLock);
+
+  this->_receivedMessageCount++;
+  std::unordered_map<std::string, M>& vertexMap = _shardMap[shard];
   auto vmsg = vertexMap.find(key);
   if (vmsg != vertexMap.end()) {  // got a message for the same vertex
     vmsg->second = _combiner->combine(vmsg->second, newValue);
@@ -90,15 +146,17 @@ void IncomingCache<M>::setDirect(prgl_shard_t shard, std::string const& key, M c
 }
 
 template <typename M>
-void IncomingCache<M>::mergeCache(IncomingCache<M> const& otherCache) {
-  MUTEX_LOCKER(guard, _writeLock);
-  _receivedMessageCount += otherCache._receivedMessageCount;
-  
+void CombiningInCache<M>::mergeCache(InCache<M> const* otherCache) {
+  MUTEX_LOCKER(guard, this->_writeLock);
+
+  CombiningInCache<M>* other = (CombiningInCache<M>*)otherCache;
+  this->_receivedMessageCount += other->_receivedMessageCount;
+
   // cannot call setDirect since it locks
-  for (auto const& pair : otherCache._shardMap) {
-    std::unordered_map<std::string, M> &vertexMap = _shardMap[pair.first];
-    
-    for (auto &vertexMessage : pair.second) {
+  for (auto const& pair : other->_shardMap) {
+    std::unordered_map<std::string, M>& vertexMap = _shardMap[pair.first];
+
+    for (auto& vertexMessage : pair.second) {
       auto vmsg = vertexMap.find(vertexMessage.first);
       if (vmsg != vertexMap.end()) {  // got a message for the same vertex
         vmsg->second = _combiner->combine(vmsg->second, vertexMessage.second);
@@ -110,8 +168,9 @@ void IncomingCache<M>::mergeCache(IncomingCache<M> const& otherCache) {
 }
 
 template <typename M>
-MessageIterator<M> IncomingCache<M>::getMessages(prgl_shard_t shard, std::string const& key) {
-  std::unordered_map<std::string, M> const& vertexMap = _shardMap[shard];
+MessageIterator<M> CombiningInCache<M>::getMessages(prgl_shard_t shard,
+                                                    std::string const& key) {
+  std::unordered_map<std::string, M> const& vertexMap(_shardMap[shard]);
   auto vmsg = vertexMap.find(key);
   if (vmsg != vertexMap.end()) {
     LOG(INFO) << "Got a message for " << key;
@@ -123,5 +182,9 @@ MessageIterator<M> IncomingCache<M>::getMessages(prgl_shard_t shard, std::string
 }
 
 // template types to create
-template class arangodb::pregel::IncomingCache<int64_t>;
-template class arangodb::pregel::IncomingCache<float>;
+template class arangodb::pregel::InCache<int64_t>;
+template class arangodb::pregel::InCache<float>;
+template class arangodb::pregel::ArrayInCache<int64_t>;
+template class arangodb::pregel::ArrayInCache<float>;
+template class arangodb::pregel::CombiningInCache<int64_t>;
+template class arangodb::pregel::CombiningInCache<float>;

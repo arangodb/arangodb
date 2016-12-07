@@ -21,15 +21,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PregelFeature.h"
-#include "Cluster/ClusterInfo.h"
-#include "Pregel/Conductor.h"
-#include "Pregel/Worker.h"
-#include "Pregel/Recovery.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ThreadPool.h"
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
-
+#include "Cluster/ClusterInfo.h"
+#include "Pregel/Conductor.h"
+#include "Pregel/Recovery.h"
+#include "Pregel/Worker.h"
 
 using namespace arangodb::pregel;
 
@@ -63,12 +62,12 @@ void PregelFeature::start() {
 
   const size_t threadNum = TRI_numberProcessors();
   _threadPool.reset(new basics::ThreadPool(threadNum, "Pregel"));
-  
+
   ClusterFeature* cluster =
-  application_features::ApplicationServer::getFeature<ClusterFeature>(
-                                                                      "Cluster");
+      application_features::ApplicationServer::getFeature<ClusterFeature>(
+          "Cluster");
   if (cluster != nullptr) {
-    AgencyCallbackRegistry *registry = cluster->agencyCallbackRegistry();
+    AgencyCallbackRegistry* registry = cluster->agencyCallbackRegistry();
     if (registry != nullptr) {
       _recoveryManager.reset(new RecoveryManager(registry));
     }
@@ -90,8 +89,7 @@ Conductor* PregelFeature::conductor(uint64_t executionNumber) {
   return it != _conductors.end() ? it->second : nullptr;
 }
 
-void PregelFeature::addWorker(IWorker* const worker,
-                              uint64_t executionNumber) {
+void PregelFeature::addWorker(IWorker* const worker, uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   _workers[executionNumber] = worker;
 }
@@ -127,4 +125,3 @@ void PregelFeature::cleanupAll() {
   }
   _workers.clear();
 }
-

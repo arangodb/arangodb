@@ -105,4 +105,3 @@ void AggregatorUsage::serializeValues(VPackBuilder& b) const {
 }
 
 size_t AggregatorUsage::size() { return _values.size(); }
-

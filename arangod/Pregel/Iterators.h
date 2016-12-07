@@ -28,6 +28,10 @@ namespace pregel {
 
 template <typename M>
 class MessageIterator {
+  M const* _data;
+  size_t _current = 0;
+  const size_t _size = 1;
+  
  public:
   MessageIterator() : _data(nullptr), _current(0), _size(0) {}
 
@@ -35,6 +39,7 @@ class MessageIterator {
   typedef const MessageIterator<M> const_iterator;
 
   explicit MessageIterator(M const* data) : _data(data), _size(data ? 1 : 0) {}
+  explicit MessageIterator(M const* data, size_t s) : _data(data), _size(s) {}
 
   iterator begin() { return MessageIterator(_data); }
   const_iterator begin() const { return MessageIterator(_data); }
@@ -68,11 +73,6 @@ class MessageIterator {
   }
 
   size_t size() const { return _size; }
-
- private:
-  M const* _data;
-  size_t _current = 0;
-  const size_t _size = 1;
 };
   
   

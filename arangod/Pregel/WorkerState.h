@@ -45,9 +45,9 @@ class WorkerState {
  public:
   WorkerState(DatabaseID dbname, VPackSlice params);
 
-  inline uint64_t executionNumber() { return _executionNumber; }
+  inline uint64_t executionNumber() const { return _executionNumber; }
 
-  inline uint64_t globalSuperstep() { return _globalSuperstep; }
+  inline uint64_t globalSuperstep() const { return _globalSuperstep; }
 
   inline std::string const& coordinatorId() const { return _coordinatorId; }
 

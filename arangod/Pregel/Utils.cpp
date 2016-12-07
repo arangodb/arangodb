@@ -26,6 +26,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
+
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
@@ -40,6 +41,7 @@ std::string const Utils::finishedStartupPath = "finishedStartup";
 std::string const Utils::prepareGSSPath = "prepareGSS";
 std::string const Utils::startGSSPath = "startGSS";
 std::string const Utils::finishedGSSPath = "finishedGSS";
+std::string const Utils::cancelGSSPath = "cancelGSS";
 std::string const Utils::messagesPath = "messages";
 std::string const Utils::finalizeExecutionPath = "finalizeExecution";
 std::string const Utils::startRecoveryPath = "startRecovery";
@@ -70,23 +72,20 @@ std::string const Utils::superstepRuntimeKey = "superstepRuntime";
 std::string const Utils::totalVertexCount = "vertexCount";
 std::string const Utils::totalEdgeCount = "edgeCount";
 
-
 std::string const Utils::userParametersKey = "userparams";
 
 std::string Utils::baseUrl(std::string dbName) {
   return "/_db/" + basics::StringUtils::urlEncode(dbName) + Utils::apiPrefix;
 }
 
-std::string Utils::collectionFromToValue(std::string const& graphKey) {
-  std::size_t pos = graphKey.find('/');
-  return graphKey.substr(0, pos);
-}
-
-std::string Utils::vertexKeyFromToValue(std::string const& graphKey) {
-  std::size_t pos = graphKey.find('/');
-  return graphKey.substr(
-      pos + 1, graphKey.length() - pos -
-                   1);  // if pos == -1 (npos) the entire string is returned
+void Utils::printResponses(std::vector<ClusterCommRequest> const& requests) {
+  for (auto const& req : requests) {
+    auto& res = req.result;
+    if (res.status == CL_COMM_RECEIVED &&
+        res.answer_code != rest::ResponseCode::OK) {
+      LOG(ERR) << req.destination << ": " << res.answer->payload().toJson();
+    }
+  }
 }
 
 int64_t Utils::countDocuments(TRI_vocbase_t* vocbase,
@@ -119,8 +118,7 @@ std::shared_ptr<LogicalCollection> Utils::resolveCollection(
   return std::shared_ptr<LogicalCollection>();
 }
 
-void Utils::resolveShard(LogicalCollection* info,
-                         std::string const& shardKey,
+void Utils::resolveShard(LogicalCollection* info, std::string const& shardKey,
                          std::string const& vertexKey,
                          std::string& responsibleShard) {
   ClusterInfo* ci = ClusterInfo::instance();
@@ -129,7 +127,7 @@ void Utils::resolveShard(LogicalCollection* info,
   partial.openObject();
   partial.add(shardKey, VPackValue(vertexKey));
   partial.close();
-//  LOG(INFO) << "Partial doc: " << partial.toJson();
+  //  LOG(INFO) << "Partial doc: " << partial.toJson();
   int res =
       ci->getResponsibleShard(info, partial.slice(), true, responsibleShard,
                               usesDefaultShardingAttributes);

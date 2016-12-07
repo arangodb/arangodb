@@ -28,7 +28,8 @@
 using namespace arangodb;
 using namespace arangodb::pregel;
 
-IAlgorithm* AlgoRegistry::createAlgorithm(std::string const& algorithm, VPackSlice userParams) {
+IAlgorithm* AlgoRegistry::createAlgorithm(std::string const& algorithm,
+                                          VPackSlice userParams) {
   if (algorithm == "sssp") {
     return new algos::SSSPAlgorithm(userParams);
   } else if (algorithm == "pagerank") {
@@ -41,8 +42,8 @@ IAlgorithm* AlgoRegistry::createAlgorithm(std::string const& algorithm, VPackSli
 }
 
 template <typename V, typename E, typename M>
-IWorker* AlgoRegistry::createWorker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
-                               VPackSlice body) {
+IWorker* AlgoRegistry::createWorker(TRI_vocbase_t* vocbase,
+                                    Algorithm<V, E, M>* algo, VPackSlice body) {
   return new Worker<V, E, M>(vocbase, algo, body);
 }
 
@@ -52,12 +53,13 @@ IWorker* AlgoRegistry::createWorker(TRI_vocbase_t* vocbase, VPackSlice body) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Supplied bad parameters to worker");
   }
-  
+
   VPackSlice userParams = body.get(Utils::userParametersKey);
   if (algorithm.compareString("SSSP") == 0) {
     return createWorker(vocbase, new algos::SSSPAlgorithm(userParams), body);
   } else if (algorithm.compareString("PageRank") == 0) {
-    return createWorker(vocbase, new algos::PageRankAlgorithm(userParams), body);
+    return createWorker(vocbase, new algos::PageRankAlgorithm(userParams),
+                        body);
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Unsupported Algorithm");

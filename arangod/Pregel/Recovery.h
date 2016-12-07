@@ -56,7 +56,7 @@ class RecoveryManager {
 
   void monitorCollections(std::vector<std::shared_ptr<LogicalCollection>> const& collections, Conductor*);
   void stopMonitoring(Conductor*);
-  int filterGoodServers(std::vector<ServerID> const& servers, std::set<ServerID> &goodServers);
+  int filterGoodServers(std::vector<ServerID> const& servers, std::vector<ServerID> &goodServers);
   //bool allServersAvailable(std::vector<ServerID> const& dbServers);
 };
   

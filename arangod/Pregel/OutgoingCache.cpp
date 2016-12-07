@@ -37,57 +37,50 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 
 template <typename M>
-OutgoingCache<M>::OutgoingCache(WorkerState* state, MessageFormat<M>* format,
-                                MessageCombiner<M>* combiner,
-                                IncomingCache<M>* cache)
-    : _state(state), _format(format), _combiner(combiner), _localCache(cache) {
+OutCache<M>::OutCache(WorkerState* state, InCache<M>* cache)
+    : _state(state), _format(cache->format()), _localCache(cache) {
   _baseUrl = Utils::baseUrl(_state->database());
 }
 
+// ================= ArrayOutCache ==================
+
 template <typename M>
-OutgoingCache<M>::~OutgoingCache() {
+ArrayOutCache<M>::~ArrayOutCache() {
   clear();
 }
 
 template <typename M>
-void OutgoingCache<M>::clear() {
+void ArrayOutCache<M>::clear() {
   _shardMap.clear();
-  _containedMessages = 0;
+  this->_containedMessages = 0;
 }
 
 template <typename M>
-void OutgoingCache<M>::appendMessage(prgl_shard_t shard, std::string const& key, M const& data) {
-
-  if (_state->isLocalVertexShard(shard)) {
-    _localCache->setDirect(shard, key, data);
-    LOG(INFO) << "Worker: Got messages for myself " << key << " <- "
-              << data;
-    _sendMessages++;
+void ArrayOutCache<M>::appendMessage(prgl_shard_t shard, std::string const& key,
+                                     M const& data) {
+  if (this->_state->isLocalVertexShard(shard)) {
+    this->_localCache->setDirect(shard, key, data);
+    LOG(INFO) << "Worker: Got messages for myself " << key << " <- " << data;
+    this->_sendMessages++;
   } else {
-    // std::unordered_shardMap<std::string, VPackBuilder*> vertexMap =;
-    std::unordered_map<std::string, M>& vertexMap = _shardMap[shard];
-    auto it = vertexMap.find(key);
-    if (it != vertexMap.end()) {  // more than one message
-      vertexMap[key] = _combiner->combine(vertexMap[key], data);
-    } else {  // first message for this vertex
-      vertexMap.emplace(key, data);
-    }
-    _containedMessages++;
-    
-    if (_containedMessages > 1000) {
+    _shardMap[shard][key].push_back(data);
+
+    this->_containedMessages++;
+    if (this->_containedMessages > 1000) {
       flushMessages();
     }
   }
 }
 
 template <typename M>
-void OutgoingCache<M>::flushMessages() {
+void ArrayOutCache<M>::flushMessages() {
   LOG(INFO) << "Beginning to send messages to other machines";
 
   std::vector<ClusterCommRequest> requests;
   for (auto const& it : _shardMap) {
     prgl_shard_t shard = it.first;
-    std::unordered_map<std::string, M> const& vertexMessageMap = it.second;
+    std::unordered_map<std::string, std::vector<M>> const& vertexMessageMap =
+        it.second;
     if (vertexMessageMap.size() == 0) {
       continue;
     }
@@ -96,23 +89,27 @@ void OutgoingCache<M>::flushMessages() {
     package.openObject();
     package.add(Utils::messagesKey, VPackValue(VPackValueType::Array));
     for (auto const& vertexMessagePair : vertexMessageMap) {
+      package.add(VPackValue(VPackValueType::Array));
       package.add(VPackValue(shard));
       package.add(VPackValue(vertexMessagePair.first));
-      _format->addValue(package, vertexMessagePair.second);
-      _sendMessages++;
+      for (M const& val : vertexMessagePair.second) {
+        this->_format->addValue(package, val);
+        this->_sendMessages++;
+      }
+      package.close();
     }
     package.close();
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     package.add(Utils::executionNumberKey,
-                VPackValue(_state->executionNumber()));
+                VPackValue(this->_state->executionNumber()));
     package.add(Utils::globalSuperstepKey,
-                VPackValue(_state->globalSuperstep()));
+                VPackValue(this->_state->globalSuperstep()));
     package.close();
     // add a request
-    ShardID const& shardId = _state->globalShardIDs()[shard];
+    ShardID const& shardId = this->_state->globalShardIDs()[shard];
     auto body = std::make_shared<std::string>(package.toJson());
     requests.emplace_back("shard:" + shardId, rest::RequestType::POST,
-                          _baseUrl + Utils::messagesPath, body);
+                          this->_baseUrl + Utils::messagesPath, body);
 
     LOG(INFO) << "Worker: Sending data to other Shard: " << shardId
               << ". Message: " << package.toJson();
@@ -130,6 +127,97 @@ void OutgoingCache<M>::flushMessages() {
   this->clear();
 }
 
+// ================= CombiningOutCache ==================
+
+template <typename M>
+CombiningOutCache<M>::CombiningOutCache(WorkerState* state,
+                                        CombiningInCache<M>* cache)
+    : OutCache<M>(state, cache), _combiner(cache->combiner()) {}
+
+template <typename M>
+CombiningOutCache<M>::~CombiningOutCache() {
+  clear();
+}
+
+template <typename M>
+void CombiningOutCache<M>::clear() {
+  _shardMap.clear();
+  this->_containedMessages = 0;
+}
+
+template <typename M>
+void CombiningOutCache<M>::appendMessage(prgl_shard_t shard,
+                                         std::string const& key,
+                                         M const& data) {
+  if (this->_state->isLocalVertexShard(shard)) {
+    this->_localCache->setDirect(shard, key, data);
+    LOG(INFO) << "Worker: Got messages for myself " << key << " <- " << data;
+    this->_sendMessages++;
+  } else {
+    // std::unordered_shardMap<std::string, VPackBuilder*> vertexMap =;
+    std::unordered_map<std::string, M>& vertexMap = _shardMap[shard];
+    auto it = vertexMap.find(key);
+    if (it != vertexMap.end()) {  // more than one message
+      vertexMap[key] = _combiner->combine(vertexMap[key], data);
+    } else {  // first message for this vertex
+      vertexMap.emplace(key, data);
+    }
+
+    this->_containedMessages++;
+    if (this->_containedMessages > 1000) {
+      flushMessages();
+    }
+  }
+}
+
+template <typename M>
+void CombiningOutCache<M>::flushMessages() {
+  LOG(INFO) << "Beginning to send messages to other machines";
+
+  std::vector<ClusterCommRequest> requests;
+  for (auto const& it : _shardMap) {
+    prgl_shard_t shard = it.first;
+    std::unordered_map<std::string, M> const& vertexMessageMap = it.second;
+    if (vertexMessageMap.size() == 0) {
+      continue;
+    }
+
+    VPackBuilder package;
+    package.openObject();
+    package.add(Utils::messagesKey, VPackValue(VPackValueType::Array));
+    for (auto const& vertexMessagePair : vertexMessageMap) {
+      package.add(VPackValue(shard));
+      package.add(VPackValue(vertexMessagePair.first));
+      this->_format->addValue(package, vertexMessagePair.second);
+      this->_sendMessages++;
+    }
+    package.close();
+    package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
+    package.add(Utils::executionNumberKey,
+                VPackValue(this->_state->executionNumber()));
+    package.add(Utils::globalSuperstepKey,
+                VPackValue(this->_state->globalSuperstep()));
+    package.close();
+    // add a request
+    ShardID const& shardId = this->_state->globalShardIDs()[shard];
+    auto body = std::make_shared<std::string>(package.toJson());
+    requests.emplace_back("shard:" + shardId, rest::RequestType::POST,
+                          this->_baseUrl + Utils::messagesPath, body);
+
+    LOG(INFO) << "Worker: Sending data to other Shard: " << shardId
+              << ". Message: " << package.toJson();
+  }
+  size_t nrDone = 0;
+  ClusterComm::instance()->performRequests(requests, 180, nrDone,
+                                           LogTopic("Pregel message transfer"));
+  Utils::printResponses(requests);
+  this->clear();
+}
+
 // template types to create
-template class arangodb::pregel::OutgoingCache<int64_t>;
-template class arangodb::pregel::OutgoingCache<float>;
+template class arangodb::pregel::OutCache<int64_t>;
+template class arangodb::pregel::OutCache<float>;
+template class arangodb::pregel::ArrayOutCache<int64_t>;
+template class arangodb::pregel::ArrayOutCache<float>;
+template class arangodb::pregel::CombiningOutCache<int64_t>;
+template class arangodb::pregel::CombiningOutCache<float>;

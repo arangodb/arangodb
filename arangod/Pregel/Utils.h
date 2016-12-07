@@ -25,6 +25,7 @@
 
 #include <cstdint>
 #include "Basics/Common.h"
+#include "Cluster/ClusterComm.h"
 
 struct TRI_vocbase_t;
 
@@ -80,8 +81,7 @@ class Utils {
   static std::string const userParametersKey;
 
   static std::string baseUrl(std::string dbName);
-  static std::string collectionFromToValue(std::string const& graphKey);
-  static std::string vertexKeyFromToValue(std::string const& graphKey);
+  static void printResponses(std::vector<ClusterCommRequest> const& requests);
 
   static int64_t countDocuments(TRI_vocbase_t* vocbase,
                                 std::string const& collection);

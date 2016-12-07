@@ -35,18 +35,14 @@ namespace pregel {
 template <typename M>
 struct MessageFormat {
   virtual ~MessageFormat() {}
-  virtual bool unwrapValue(VPackSlice body, M& value) const = 0;
+  virtual void unwrapValue(VPackSlice body, M& value) const = 0;
   virtual void addValue(VPackBuilder& arrayBuilder, M const& val) const = 0;
 };
   
 struct IntegerMessageFormat : public MessageFormat<int64_t> {
   IntegerMessageFormat() {}
-  bool unwrapValue(VPackSlice s, int64_t& value) const override {
-    if (s.isInteger()) {
-      value = s.getInt();
-      return true;
-    }
-    return false;
+  void unwrapValue(VPackSlice s, int64_t& value) const override {
+    value = s.getInt();
   }
   void addValue(VPackBuilder& arrayBuilder, int64_t const& val) const override {
     arrayBuilder.add(VPackValue(val));
@@ -55,12 +51,8 @@ struct IntegerMessageFormat : public MessageFormat<int64_t> {
 
 struct FloatMessageFormat : public MessageFormat<float> {
   FloatMessageFormat() {}
-  bool unwrapValue(VPackSlice s, float& value) const override {
-    if (s.isDouble()) {
-      value = (float)s.getDouble();
-      return true;
-    }
-    return false;
+  void unwrapValue(VPackSlice s, float& value) const override {
+    value = (float)s.getDouble();
   }
   void addValue(VPackBuilder& arrayBuilder, float const& val) const override {
     arrayBuilder.add(VPackValue(val));

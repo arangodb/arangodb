@@ -22,22 +22,22 @@
 
 #include "GraphStore.h"
 
+#include <algorithm>
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterInfo.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/Index.h"
+#include "Pregel/WorkerState.h"
 #include "Utils.h"
-#include "Utils/OperationCursor.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/ExplicitTransaction.h"
+#include "Utils/OperationCursor.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/Transaction.h"
-#include "Utils/CollectionNameResolver.h"
 #include "VocBase/EdgeCollectionInfo.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
-#include "Pregel/WorkerState.h"
-#include <algorithm>
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -46,11 +46,12 @@ template <typename V, typename E>
 GraphStore<V, E>::GraphStore(TRI_vocbase_t* vb, WorkerState const& state,
                              GraphFormat<V, E>* graphFormat)
     : _vocbaseGuard(vb), _graphFormat(graphFormat) {
-//  _edgeCollection = ClusterInfo::instance()->getCollection(
-//      vb->name(), state->edgeCollectionPlanId());
-  
+  //  _edgeCollection = ClusterInfo::instance()->getCollection(
+  //      vb->name(), state->edgeCollectionPlanId());
+
   loadShards(state);
-  LOG(INFO) << "Loaded " << _index.size() << "vertices and " << _edges.size() << " edges";
+  LOG(INFO) << "Loaded " << _index.size() << "vertices and " << _edges.size()
+            << " edges";
 }
 
 template <typename V, typename E>
@@ -60,43 +61,44 @@ GraphStore<V, E>::~GraphStore() {
 
 template <typename V, typename E>
 void GraphStore<V, E>::loadShards(WorkerState const& state) {
-  
   std::vector<std::string> readColls, writeColls;
-  for (auto shard : state.localVertexShardIDs() ) {
+  for (auto shard : state.localVertexShardIDs()) {
     readColls.push_back(shard);
   }
-  for (auto shard : state.localEdgeShardIDs() ) {
+  for (auto shard : state.localEdgeShardIDs()) {
     readColls.push_back(shard);
   }
   double lockTimeout =
-  (double)(TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT / 1000000ULL);
-  _transaction = new ExplicitTransaction(StandaloneTransactionContext::Create(_vocbaseGuard.vocbase()),
-                                         readColls, writeColls,
-                                         lockTimeout, false, false);
+      (double)(TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT / 1000000ULL);
+  _transaction = new ExplicitTransaction(
+      StandaloneTransactionContext::Create(_vocbaseGuard.vocbase()), readColls,
+      writeColls, lockTimeout, false, false);
   int res = _transaction->begin();
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  
-  std::map<CollectionID, std::vector<ShardID>> const& vertexMap = state.vertexCollectionShards();
-  std::map<CollectionID, std::vector<ShardID>> const& edgeMap = state.edgeCollectionShards();
+
+  std::map<CollectionID, std::vector<ShardID>> const& vertexMap =
+      state.vertexCollectionShards();
+  std::map<CollectionID, std::vector<ShardID>> const& edgeMap =
+      state.edgeCollectionShards();
   for (auto const& pair : vertexMap) {
     std::vector<ShardID> const& vertexShards = pair.second;
     for (size_t i = 0; i < vertexShards.size(); i++) {
-      
       // we might have already loaded these shards
       if (_loadedShards.find(vertexShards[i]) != _loadedShards.end()) {
         continue;
       }
-      
+
       // distributeshardslike should cause the edges for a vertex to be
       // in the same shard index. x in vertexShard2 => E(x) in edgeShard2
       for (auto const& pair2 : edgeMap) {
         std::vector<ShardID> const& edgeShards = pair2.second;
-        
+
         if (vertexShards.size() != edgeShards.size()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                         "Collections need to have the same number of shards");
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_BAD_PARAMETER,
+              "Collections need to have the same number of shards");
         }
         _loadVertices(state, vertexShards[i], edgeShards[i]);
         _loadedShards.insert(vertexShards[i]);
@@ -112,7 +114,8 @@ RangeIterator<VertexEntry> GraphStore<V, E>::vertexIterator() {
 }
 
 template <typename V, typename E>
-RangeIterator<VertexEntry> GraphStore<V, E>::vertexIterator(size_t start, size_t end) {
+RangeIterator<VertexEntry> GraphStore<V, E>::vertexIterator(size_t start,
+                                                            size_t end) {
   return RangeIterator<VertexEntry>(_index, start, end);
 }
 
@@ -135,7 +138,8 @@ void GraphStore<V, E>::replaceVertexData(VertexEntry const* entry, void* data,
 }
 
 template <typename V, typename E>
-RangeIterator<Edge<E>> GraphStore<V, E>::edgeIterator(VertexEntry const* entry) {
+RangeIterator<Edge<E>> GraphStore<V, E>::edgeIterator(
+    VertexEntry const* entry) {
   size_t end = entry->_edgeDataOffset + entry->_edgeCount;
   return RangeIterator<Edge<E>>(_edges, entry->_edgeDataOffset, end);
 }
@@ -157,7 +161,6 @@ template <typename V, typename E>
 void GraphStore<V, E>::_loadVertices(WorkerState const& state,
                                      ShardID const& vertexShard,
                                      ShardID const& edgeShard) {
-  
   //_graphFormat->willUseCollection(vocbase, vertexShard, false);
   bool storeData = _graphFormat->storesVertexData();
 
@@ -197,7 +200,7 @@ void GraphStore<V, E>::_loadVertices(WorkerState const& state,
 
         LOG(INFO) << "Loaded Vertex: " << document.toJson();
         std::string key = document.get(StaticStrings::KeyString).copyString();
-        
+
         VertexEntry entry(sourceShard, key);
         if (storeData) {
           V vertexData;
@@ -210,7 +213,7 @@ void GraphStore<V, E>::_loadVertices(WorkerState const& state,
             LOG(ERR) << "Could not load vertex " << document.toJson();
           }
         }
-        
+
         std::string documentId = _transaction->extractIdString(document);
         _loadEdges(state, edgeShard, entry, documentId);
         _index.push_back(entry);
@@ -224,16 +227,9 @@ void GraphStore<V, E>::_loadEdges(WorkerState const& state,
                                   ShardID const& edgeShard,
                                   VertexEntry& vertexEntry,
                                   std::string const& documentID) {
-  //_graphFormat->willUseCollection(vocbase, edgeShard, true);
   const bool storeData = _graphFormat->storesEdgeData();
-//  std::string const& _from = vertexEntry.vertexID();
-//  const std::string _key = Utils::vertexKeyFromToValue(_from);
-  
-  /*ShardID shard;
-  Utils::resolveShard(_edgeCollection.get(), Utils::edgeShardingKey,
-                      _key, shard);*/
 
-  //Transaction* trx = readTransaction(shard);
+  // Transaction* trx = readTransaction(shard);
   traverser::EdgeCollectionInfo info(_transaction, edgeShard, TRI_EDGE_OUT,
                                      StaticStrings::FromString, 0);
 
@@ -248,7 +244,7 @@ void GraphStore<V, E>::_loadEdges(WorkerState const& state,
   LogicalCollection* collection = cursor->collection();
   std::vector<IndexLookupResult> result;
   result.reserve(1000);
-  
+
   while (cursor->hasMore()) {
     if (vertexEntry._edgeCount == 0) {
       vertexEntry._edgeDataOffset = _edges.size();
@@ -265,32 +261,34 @@ void GraphStore<V, E>::_loadEdges(WorkerState const& state,
 
         // ====== actual loading ======
         vertexEntry._edgeCount += 1;
-        
+
         LOG(INFO) << "Loaded Edge: " << document.toJson();
-        std::string toValue = document.get(StaticStrings::ToString).copyString();
-        
+        std::string toValue =
+            document.get(StaticStrings::ToString).copyString();
+
         std::size_t pos = toValue.find('/');
         std::string collectionName = toValue.substr(0, pos);
         std::string _key = toValue.substr(pos + 1, toValue.length() - pos - 1);
-        
-        LOG(INFO) << "Adding outgoing messages for " << collectionName << "/" << _key;
-        
-        auto collInfo = Utils::resolveCollection(state.database(),
-                                                 collectionName,
-                                                 state.collectionPlanIdMap());
+
+        LOG(INFO) << "Adding outgoing messages for " << collectionName << "/"
+                  << _key;
+
+        auto collInfo = Utils::resolveCollection(
+            state.database(), collectionName, state.collectionPlanIdMap());
 
         ShardID responsibleShard;
-        Utils::resolveShard(collInfo.get(), StaticStrings::KeyString, _key, responsibleShard);
+        Utils::resolveShard(collInfo.get(), StaticStrings::KeyString, _key,
+                            responsibleShard);
         prgl_shard_t source = (prgl_shard_t)state.shardId(edgeShard);
         prgl_shard_t target = (prgl_shard_t)state.shardId(responsibleShard);
         if (source == (prgl_shard_t)-1 || target == (prgl_shard_t)-1) {
           LOG(ERR) << "Unknown shard";
           continue;
         }
-        
+
         Edge<E> edge(source, target, _key);
         if (storeData) {
-          //size_t size =
+          // size_t size =
           _graphFormat->copyEdgeData(document, edge.data(), sizeof(E));
           // TODO store size value at some point
         }
@@ -307,8 +305,9 @@ void GraphStore<V, E>::_loadEdges(WorkerState const& state,
 }
 
 /*template <typename V, typename E>
-SingleCollectionTransaction* GraphStore<V, E>::writeTransaction(ShardID const& shard) {
-  
+SingleCollectionTransaction* GraphStore<V, E>::writeTransaction(ShardID const&
+shard) {
+
   auto it = _transactions.find(shard);
   if (it != _transactions.end()) {
     return it->second;
@@ -328,50 +327,47 @@ SingleCollectionTransaction* GraphStore<V, E>::writeTransaction(ShardID const& s
 }*/
 
 template <typename V, typename E>
-void GraphStore<V,E>::storeResults(WorkerState const& state) {
-  
+void GraphStore<V, E>::storeResults(WorkerState const& state) {
   std::vector<std::string> readColls, writeColls;
-  for (auto shard : state.localVertexShardIDs() ) {
+  for (auto shard : state.localVertexShardIDs()) {
     writeColls.push_back(shard);
   }
-  for (auto shard : state.localEdgeShardIDs() ) {
+  for (auto shard : state.localEdgeShardIDs()) {
     writeColls.push_back(shard);
   }
-  //for (auto shard : state.localEdgeShardIDs() ) {
+  // for (auto shard : state.localEdgeShardIDs() ) {
   //  writeColls.push_back(shard);
   //}
   double lockTimeout =
-  (double)(TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT / 1000000ULL);
-  _transaction = new ExplicitTransaction(StandaloneTransactionContext::Create(_vocbaseGuard.vocbase()),
-                                         readColls, writeColls,
-                                         lockTimeout, false, false);
+      (double)(TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT / 1000000ULL);
+  _transaction = new ExplicitTransaction(
+      StandaloneTransactionContext::Create(_vocbaseGuard.vocbase()), readColls,
+      writeColls, lockTimeout, false, false);
   int res = _transaction->begin();
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  
+
   OperationOptions options;
   for (VertexEntry const& vertexEntry : _index) {
-    
     ShardID const& shard = state.globalShardIDs()[vertexEntry.shard()];
     void* data = mutableVertexData(&vertexEntry);
-    
+
     VPackBuilder b;
     b.openObject();
     b.add(StaticStrings::KeyString, VPackValue(vertexEntry.key()));
     _graphFormat->buildVertexDocument(b, data, sizeof(V));
     b.close();
-    
+
     OperationResult result = _transaction->update(shard, b.slice(), options);
     if (result.code != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(result.code);
     }
-    
+
     // TODO loop over edges
   }
   _cleanupTransactions();
 }
-
 
 template class arangodb::pregel::GraphStore<int64_t, int64_t>;
 template class arangodb::pregel::GraphStore<float, float>;

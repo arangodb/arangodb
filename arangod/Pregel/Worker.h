@@ -41,6 +41,7 @@ class IWorker {
   virtual ~IWorker(){};
   virtual void prepareGlobalStep(VPackSlice data) = 0;
   virtual void startGlobalStep(VPackSlice data) = 0;  // called by coordinator
+  virtual void cancelGlobalStep(VPackSlice data) = 0;  // called by coordinator
   virtual void receivedMessages(VPackSlice data) = 0;
   virtual void finalizeExecution(VPackSlice data) = 0;
   virtual void startRecovery(VPackSlice data) = 0;
@@ -51,7 +52,7 @@ template <typename V, typename E>
 class GraphStore;
 
 template <typename M>
-class IncomingCache;
+class InCache;
   
 template <typename T>
 class RangeIterator;
@@ -80,7 +81,7 @@ class Worker : public IWorker {
   size_t _preRecoveryTotal;
  
   std::unique_ptr<GraphStore<V, E>> _graphStore;
-  std::unique_ptr<IncomingCache<M>> _readCache, _writeCache;
+  std::unique_ptr<InCache<M>> _readCache, _writeCache;
   std::unique_ptr<AggregatorUsage> _conductorAggregators;
   std::unique_ptr<AggregatorUsage> _workerAggregators;
   std::unique_ptr<MessageFormat<M>> _messageFormat;
@@ -107,6 +108,7 @@ class Worker : public IWorker {
   // ====== called by rest handler =====
   void prepareGlobalStep(VPackSlice data) override;
   void startGlobalStep(VPackSlice data) override;
+  void cancelGlobalStep(VPackSlice data) override;
   void receivedMessages(VPackSlice data) override;
   void finalizeExecution(VPackSlice data) override;
   void startRecovery(VPackSlice data) override;

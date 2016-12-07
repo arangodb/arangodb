@@ -20,10 +20,10 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Pregel/Algorithm.h"
+#include "Pregel/Conductor.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/AlgoRegistry.h"
-#include "Pregel/Conductor.h"
+#include "Pregel/Algorithm.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Recovery.h"
 #include "Pregel/Utils.h"
@@ -58,9 +58,7 @@ Conductor::Conductor(
   LOG(INFO) << "constructed conductor";
 }
 
-Conductor::~Conductor() {
-  this->cancel();
-}
+Conductor::~Conductor() { this->cancel(); }
 
 void Conductor::start(std::string const& algoName, VPackSlice userConfig) {
   if (!userConfig.isObject()) {
@@ -69,7 +67,7 @@ void Conductor::start(std::string const& algoName, VPackSlice userConfig) {
   } else {
     _userParams.add(userConfig);
   }
-  
+
   _startTimeSecs = TRI_microtime();
   _globalSuperstep = 0;
   _state = ExecutionState::RUNNING;
@@ -79,7 +77,7 @@ void Conductor::start(std::string const& algoName, VPackSlice userConfig) {
                                    "Algorithm not found");
   }
   _aggregatorUsage.reset(new AggregatorUsage(_algorithm.get()));
-  
+
   int res = _initializeWorkers(Utils::startExecutionPath, VPackSlice());
   if (res != TRI_ERROR_NO_ERROR) {
     _state = ExecutionState::CANCELED;
@@ -109,7 +107,7 @@ bool Conductor::_startGlobalStep() {
   int res = _sendToAllDBServers(Utils::prepareGSSPath, b.slice());
   if (res == TRI_ERROR_NO_ERROR) {
     // start vertex level operations, does not get a response
-    _sendToAllDBServers(Utils::startGSSPath, b.slice());// call me maybe
+    _sendToAllDBServers(Utils::startGSSPath, b.slice());  // call me maybe
     LOG(INFO) << "Conductor started new gss " << _globalSuperstep;
     return true;
   } else {
@@ -121,15 +119,6 @@ bool Conductor::_startGlobalStep() {
 }
 
 
-static void printResults(std::vector<ClusterCommRequest> const& requests) {
-  for (auto const& req : requests) {
-    auto& res = req.result;
-    if (res.status == CL_COMM_RECEIVED
-        && res.answer_code != rest::ResponseCode::OK) {
-      LOG(ERR) << req.destination << ": " << res.answer->payload().toJson();
-    }
-  }
-}
 
 // ============ Conductor callbacks ===============
 void Conductor::finishedWorkerStartup(VPackSlice& data) {
@@ -139,14 +128,15 @@ void Conductor::finishedWorkerStartup(VPackSlice& data) {
     return;
   }
   _ensureCorrectness(data);
+  if (_respondedServers.size() != _dbServers.size()) {
+    return;
+  }
   
-  if (_respondedServers.size() == _dbServers.size()) {
-    if (_startGlobalStep()) {
-      // listens for changing primary DBServers on each collection shard
-      RecoveryManager *mngr = PregelFeature::instance()->recoveryManager();
-      if (mngr) {
-        mngr->monitorCollections(_vertexCollections, this);
-      }
+  if (_startGlobalStep()) {
+    // listens for changing primary DBServers on each collection shard
+    RecoveryManager* mngr = PregelFeature::instance()->recoveryManager();
+    if (mngr) {
+      mngr->monitorCollections(_vertexCollections, this);
     }
   }
 }
@@ -160,50 +150,51 @@ void Conductor::finishedGlobalStep(VPackSlice& data) {
     return;
   }
   _ensureCorrectness(data);
-  
+
   // collect worker information
   VPackSlice workerValues = data.get(Utils::aggregatorValuesKey);
   if (workerValues.isObject()) {
     _aggregatorUsage->aggregateValues(workerValues);
   }
   _workerStats.accumulate(data);
+  if (_respondedServers.size() != _dbServers.size()) {
+    return;
+  }
   
-  if (_respondedServers.size() == _dbServers.size()) {
-    LOG(INFO) << "Finished gss " << _globalSuperstep;
-    _globalSuperstep++;
-    
-    // workers are done if all messages were processed and no active vertices
-    // are left to process
-    bool workersDone = _workerStats.sendCount == _workerStats.receivedCount
-    && _workerStats.activeCount == 0;
-    bool proceed = !workersDone && _state == ExecutionState::RUNNING
-                                && _globalSuperstep <= 100;
-    if (_masterContext) {// ask algorithm to evaluate aggregated values
-      proceed = proceed && _masterContext->betweenGlobalSuperstep(_globalSuperstep);
-    }
-    
-    if (proceed) {// trigger next superstep
-      _startGlobalStep();
-    } else if (_state == ExecutionState::RUNNING
-               || _state == ExecutionState::CANCELED) {
-    
-      if (_state == ExecutionState::CANCELED) {
-        LOG(WARN) << "Execution was canceled, results will be discarded.";
-      } else {
-        _state = ExecutionState::DONE;
-      }
-      
-      // stop monitoring shards
-      RecoveryManager *mngr = PregelFeature::instance()->recoveryManager();
-      if (mngr) {
-        mngr->stopMonitoring(this);
-      }
-      // tells workers to store / discard results
-      _finalizeWorkers();
-    
+  LOG(INFO) << "Finished gss " << _globalSuperstep;
+  _globalSuperstep++;
+
+  // workers are done if all messages were processed and no active vertices
+  // are left to process
+  bool workersDone = _workerStats.sendCount == _workerStats.receivedCount &&
+                     _workerStats.activeCount == 0;
+  bool proceed = !workersDone && _state == ExecutionState::RUNNING &&
+                 _globalSuperstep <= 100;
+  if (_masterContext) {  // ask algorithm to evaluate aggregated values
+    proceed =
+        proceed && _masterContext->betweenGlobalSuperstep(_globalSuperstep);
+  }
+
+  if (proceed) {  // trigger next superstep
+    _startGlobalStep();
+  } else if (_state == ExecutionState::RUNNING ||
+             _state == ExecutionState::CANCELED) {
+    if (_state == ExecutionState::CANCELED) {
+      LOG(WARN) << "Execution was canceled, results will be discarded.";
     } else {
-      LOG(INFO) << "No further action taken after receiving all responses";
+      _state = ExecutionState::DONE;
     }
+
+    // stop monitoring shards
+    RecoveryManager* mngr = PregelFeature::instance()->recoveryManager();
+    if (mngr) {
+      mngr->stopMonitoring(this);
+    }
+    // tells workers to store / discard results
+    _finalizeWorkers();
+
+  } else {
+    LOG(INFO) << "No further action taken after receiving all responses";
   }
 }
 
@@ -214,54 +205,65 @@ void Conductor::finishedRecovery(VPackSlice& data) {
     return;
   }
   _ensureCorrectness(data);
+
+  if (_respondedServers.size() != _dbServers.size()) {
+    return;
+  }
   
-  if (_respondedServers.size() == _dbServers.size()) {
     
-    if (_algorithm->supportsCompensation()) {
-      bool proceed = false;
-      if (_masterContext) {
-        proceed = proceed || _masterContext->postCompensation(_globalSuperstep);
-      }
-      if (proceed) {
-        VPackBuilder b;
-        b.openObject();
-        b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
-        b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-        if (_aggregatorUsage->size() > 0) {
-          b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
-          _aggregatorUsage->serializeValues(b);
-          b.close();
-        }
+  if (_algorithm->supportsCompensation()) {
+    bool proceed = false;
+    if (_masterContext) {
+      proceed = proceed || _masterContext->postCompensation(_globalSuperstep);
+    }
+    if (proceed) {
+      VPackBuilder b;
+      b.openObject();
+      b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+      b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
+      if (_aggregatorUsage->size() > 0) {
+        b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
+        _aggregatorUsage->serializeValues(b);
         b.close();
-        
-        // reset values which are calculated during the superstep
-        _aggregatorUsage->resetValues();
-        _workerStats.activeCount = 0;
-        
-        // first allow all workers to run worker level operations
-        int res = _sendToAllDBServers(Utils::startRecoveryPath, b.slice());
-        if (res != TRI_ERROR_NO_ERROR) {
-          cancel();
-          LOG(INFO) << "Recovery failed";
-        }
-      } else {
-        _startGlobalStep();
+      }
+      b.close();
+
+      // reset values which are calculated during the superstep
+      _aggregatorUsage->resetValues();
+      _workerStats.activeCount = 0;
+
+      // first allow all workers to run worker level operations
+      int res = _sendToAllDBServers(Utils::startRecoveryPath, b.slice());
+      if (res != TRI_ERROR_NO_ERROR) {
+        cancel();
+        LOG(INFO) << "Recovery failed";
       }
     } else {
-      LOG(ERR) << "Recovery not supported";
+      _startGlobalStep();
     }
+  } else {
+    LOG(ERR) << "Recovery not supported";
   }
 }
 
 void Conductor::cancel() {
-  _state = ExecutionState::CANCELED;
   
+  if (_state == ExecutionState::RUNNING || _state == ExecutionState::RECOVERING) {
+    VPackBuilder b;
+    b.openObject();
+    b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+    b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
+    b.close();
+    _sendToAllDBServers(Utils::cancelGSSPath, b.slice());
+  }
+  
+  _state = ExecutionState::CANCELED;
   // stop monitoring shards
-  RecoveryManager *mngr = PregelFeature::instance()->recoveryManager();
+  RecoveryManager* mngr = PregelFeature::instance()->recoveryManager();
   if (mngr) {
     mngr->stopMonitoring(this);
   }
-  
+
   // tell workers to discard results
   /*int res = _finalizeWorkers();
   // we do not expect to reach all workers after a failed recovery
@@ -276,37 +278,38 @@ void Conductor::startRecovery() {
     LOG(INFO) << "Execution is already in the recovery state";
     return;
   }
-  
+
   // we lost a DBServer, we need to reconfigure all remainging servers
   // so they load the data for the lost machine
   _state = ExecutionState::RECOVERING;
-  
-  basics::ThreadPool *pool = PregelFeature::instance()->threadPool();
+
+  basics::ThreadPool* pool = PregelFeature::instance()->threadPool();
   pool->enqueue([this] {
     // let's wait for a final state in the cluster
-    usleep(15 * 1000000);
-    std::set<ServerID> goodServers;
-    int res = PregelFeature::instance()->recoveryManager()->filterGoodServers(_dbServers, goodServers);
+    usleep(2 * 15 * 1000000);
+    std::vector<ServerID> goodServers;
+    int res = PregelFeature::instance()->recoveryManager()->filterGoodServers(
+        _dbServers, goodServers);
     if (res != TRI_ERROR_NO_ERROR) {
       LOG(ERR) << "Recovery proceedings failed";
       cancel();
       return;
     }
     
-    // wait for all remaining servers to get back to us
-    while (_respondedServers.size() < goodServers.size()) {
-      usleep(5 * 1000000);// don't busy wait.
-      if (_state != ExecutionState::RECOVERING) {
-        LOG(WARN) << "Recovery proceedings aborted";
-        return;// something changed the state
-      }
-    }
+    VPackBuilder b;
+    b.openObject();
+    b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+    b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
+    b.close();
+    _dbServers = goodServers;
+    _sendToAllDBServers(Utils::cancelGSSPath, b.slice());
+
     
     if (_algorithm->supportsCompensation()) {
       if (_masterContext) {
         _masterContext->preCompensation(_globalSuperstep);
       }
-      
+
       VPackBuilder b;
       b.openObject();
       b.add(Utils::recoveryMethodKey, VPackValue(Utils::compensate));
@@ -318,13 +321,13 @@ void Conductor::startRecovery() {
       b.close();
       _aggregatorUsage->resetValues();
       _workerStats.activeCount = 0;
-      
+
       // initialize workers will reconfigure the workers and set the
       // _dbServers list to the new primary DBServers
       int res = _initializeWorkers(Utils::startRecoveryPath, b.slice());
       if (res != TRI_ERROR_NO_ERROR) {
         cancel();
-        LOG(ERR) << "Recovery proceedings failed";
+        LOG(ERR) << "Compensation failed";
       }
     } else {
       LOG(ERR) << "Recovery not supported";
@@ -333,45 +336,50 @@ void Conductor::startRecovery() {
   });
 }
 
-static void resolveShards(LogicalCollection const* collection,
-                          std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>> &serverMap,
-                          std::vector<ShardID> &allShards) {
-  
+static void resolveShards(
+    LogicalCollection const* collection,
+    std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>>& serverMap,
+    std::vector<ShardID>& allShards) {
   ClusterInfo* ci = ClusterInfo::instance();
   std::shared_ptr<std::vector<ShardID>> shardIDs =
-  ci->getShardList(collection->cid_as_string());
+      ci->getShardList(collection->cid_as_string());
   allShards.insert(allShards.end(), shardIDs->begin(), shardIDs->end());
-  
+
   for (auto const& shard : *shardIDs) {
     std::shared_ptr<std::vector<ServerID>> servers =
-    ci->getResponsibleServer(shard);
+        ci->getResponsibleServer(shard);
     if (servers->size() > 0) {
       serverMap[(*servers)[0]][collection->name()].push_back(shard);
     }
   }
 }
 
-/// should cause workers to start a new execution or begin with recovery proceedings
-int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice additional) {
+/// should cause workers to start a new execution or begin with recovery
+/// proceedings
+int Conductor::_initializeWorkers(std::string const& suffix,
+                                  VPackSlice additional) {
   int64_t vertexCount = 0, edgeCount = 0;
   std::map<CollectionID, std::string> collectionPlanIdMap;
-  std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>> vertexMap, edgeMap;
+  std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>> vertexMap,
+      edgeMap;
   std::vector<ShardID> allShardIDs;
-  
+
   // resolve plan id's and shards on the servers
-  for (auto &collection : _vertexCollections) {
-    collectionPlanIdMap.emplace(collection->name(), collection->planId_as_string());
+  for (auto& collection : _vertexCollections) {
+    collectionPlanIdMap.emplace(collection->name(),
+                                collection->planId_as_string());
     int64_t cc =
-    Utils::countDocuments(_vocbaseGuard.vocbase(), collection->name());
+        Utils::countDocuments(_vocbaseGuard.vocbase(), collection->name());
     if (cc > 0) {
       vertexCount += cc;
       resolveShards(collection.get(), vertexMap, allShardIDs);
     }
   }
-  for (auto &collection : _edgeCollections) {
-    collectionPlanIdMap.emplace(collection->name(), collection->planId_as_string());
+  for (auto& collection : _edgeCollections) {
+    collectionPlanIdMap.emplace(collection->name(),
+                                collection->planId_as_string());
     int64_t cc =
-    Utils::countDocuments(_vocbaseGuard.vocbase(), collection->name());
+        Utils::countDocuments(_vocbaseGuard.vocbase(), collection->name());
     if (cc > 0) {
       edgeCount += cc;
       resolveShards(collection.get(), edgeMap, allShardIDs);
@@ -383,24 +391,26 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
   }
   LOG(INFO) << vertexCount << " vertices, " << edgeCount << " edges";
 
-  
   // Need to do this here, because we need the counts
-  if (_masterContext && _masterContext->_vertexCount == 0 ) {
+  if (_masterContext && _masterContext->_vertexCount == 0) {
     _masterContext->_vertexCount = vertexCount;
     _masterContext->_edgeCount = edgeCount;
     _masterContext->_aggregators = _aggregatorUsage.get();
     _masterContext->preApplication();
   }
-  
-  std::string const path = Utils::baseUrl(_vocbaseGuard.vocbase()->name()) + suffix;
+
+  std::string const path =
+      Utils::baseUrl(_vocbaseGuard.vocbase()->name()) + suffix;
   std::string coordinatorId = ServerState::instance()->getId();
   LOG(INFO) << "My id: " << coordinatorId;
   std::vector<ClusterCommRequest> requests;
   for (auto const& it : vertexMap) {
     ServerID const& server = it.first;
-    std::map<CollectionID, std::vector<ShardID>> const& vertexShardMap = it.second;
-    std::map<CollectionID, std::vector<ShardID>> const& edgeShardMap = edgeMap[it.first];
-    
+    std::map<CollectionID, std::vector<ShardID>> const& vertexShardMap =
+        it.second;
+    std::map<CollectionID, std::vector<ShardID>> const& edgeShardMap =
+        edgeMap[it.first];
+
     VPackBuilder b;
     b.openObject();
     b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
@@ -442,15 +452,17 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
     }
     b.close();
     b.close();
-    
+
     auto body = std::make_shared<std::string const>(b.toJson());
-    requests.emplace_back("server:" + server, rest::RequestType::POST, path, body);
+    requests.emplace_back("server:" + server, rest::RequestType::POST, path,
+                          body);
   }
-  
+
   ClusterComm* cc = ClusterComm::instance();
   size_t nrDone = 0;
-  size_t nrGood = cc->performRequests(requests, 5.0 * 60.0, nrDone, LogTopic("Pregel Conductor"));
-  printResults(requests);
+  size_t nrGood = cc->performRequests(requests, 5.0 * 60.0, nrDone,
+                                      LogTopic("Pregel Conductor"));
+  Utils::printResponses(requests);
   return nrGood == requests.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
 }
 
@@ -460,7 +472,7 @@ int Conductor::_finalizeWorkers() {
   if (_masterContext) {
     _masterContext->postApplication();
   }
-  
+
   VPackBuilder b;
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
@@ -468,16 +480,17 @@ int Conductor::_finalizeWorkers() {
   b.add(Utils::storeResultsKey, VPackValue(storeResults));
   b.close();
   int res = _sendToAllDBServers(Utils::finalizeExecutionPath, b.slice());
-  
+
   LOG(INFO) << "Done. We did " << _globalSuperstep << " rounds";
   LOG(INFO) << "Send: " << _workerStats.sendCount
-  << " Received: " << _workerStats.receivedCount;
+            << " Received: " << _workerStats.receivedCount;
   LOG(INFO) << "Worker Runtime: " << _workerStats.superstepRuntimeSecs << "s";
   LOG(INFO) << "Total Runtime: " << totalRuntimeSecs() << "s";
   return res;
 }
 
-int Conductor::_sendToAllDBServers(std::string const& suffix, VPackSlice const& message) {
+int Conductor::_sendToAllDBServers(std::string const& suffix,
+                                   VPackSlice const& message) {
   _respondedServers.clear();
 
   ClusterComm* cc = ClusterComm::instance();
@@ -498,7 +511,7 @@ int Conductor::_sendToAllDBServers(std::string const& suffix, VPackSlice const& 
   size_t nrGood = cc->performRequests(requests, 5.0 * 60.0, nrDone,
                                       LogTopic("Pregel Conductor"));
   LOG(INFO) << "Send messages to " << nrDone << " servers";
-  printResults(requests);
+  Utils::printResponses(requests);
 
   return nrGood == requests.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
 }

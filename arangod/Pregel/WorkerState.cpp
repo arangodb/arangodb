@@ -22,7 +22,6 @@
 
 #include "WorkerState.h"
 #include "Algorithm.h"
-#include "IncomingCache.h"
 #include "Utils.h"
 
 using namespace arangodb;
@@ -56,7 +55,7 @@ WorkerState::WorkerState(DatabaseID dbname, VPackSlice params)
     }
     _vertexCollectionShards.emplace(pair.key.copyString(), shards);
   }
-      
+
   for (auto const& pair : VPackObjectIterator(edgeShardMap)) {
     std::vector<ShardID> shards;
     for (VPackSlice shardSlice : VPackArrayIterator(pair.value)) {
@@ -66,7 +65,7 @@ WorkerState::WorkerState(DatabaseID dbname, VPackSlice params)
     }
     _edgeCollectionShards.emplace(pair.key.copyString(), shards);
   }
-      
+
   for (VPackSlice shard : VPackArrayIterator(globalShards)) {
     _globalShardIDs.push_back(shard.copyString());
   }

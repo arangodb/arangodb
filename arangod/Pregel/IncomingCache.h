@@ -30,10 +30,10 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 
+#include "Pregel/GraphStore.h"
+#include "Pregel/Iterators.h"
 #include "Pregel/MessageCombiner.h"
 #include "Pregel/MessageFormat.h"
-#include "Pregel/Iterators.h"
-#include "Pregel/GraphStore.h"
 
 namespace arangodb {
 namespace pregel {
@@ -42,32 +42,66 @@ namespace pregel {
 cases. For example threaded
 processing */
 template <typename M>
-class IncomingCache {
+class InCache {
+ protected:
+  mutable Mutex _writeLock;
+  size_t _receivedMessageCount = 0;
+  MessageFormat<M> const* _format;
+
+  InCache(MessageFormat<M> const* format)
+      : _receivedMessageCount(0), _format(format) {}
+
  public:
-  IncomingCache(MessageFormat<M> const* format, MessageCombiner<M> const* combiner)
-      : _receivedMessageCount(0), _format(format), _combiner(combiner) {}
-  ~IncomingCache();
-
+  virtual ~InCache() {};
+  
+  MessageFormat<M> const* format() const {return _format;}
   void parseMessages(VPackSlice messages);
-  /// @brief get messages for vertex id. (Don't use keys from _from or _to
-  /// directly, they contain the collection name)
-  MessageIterator<M> getMessages(prgl_shard_t shard, std::string const& key);
-  void clear();
 
+  /// clear cache
+  virtual void clear() = 0;
   /// @brief internal method to direclty set the messages for a vertex. Only
   /// valid with already combined messages
-  void setDirect(prgl_shard_t shard, std::string const& vertexId, M const& data);
-  void mergeCache(IncomingCache<M> const& otherCache);
+  virtual void setDirect(prgl_shard_t shard, std::string const& vertexId,
+                         M const& data) = 0;
+  virtual void mergeCache(InCache<M> const* otherCache) = 0;
+  /// @brief get messages for vertex id. (Don't use keys from _from or _to
+  /// directly, they contain the collection name)
+  virtual MessageIterator<M> getMessages(prgl_shard_t shard, std::string const& key) = 0;
 
-  size_t receivedMessageCount() { return _receivedMessageCount; }
+  size_t receivedMessageCount() const { return _receivedMessageCount; }
+};
 
- private:
-  mutable Mutex _writeLock;
-  std::unordered_map<prgl_shard_t, std::unordered_map<std::string, M>> _shardMap;
-  size_t _receivedMessageCount = 0;
+template <typename M>
+class ArrayInCache : public InCache<M> {
+  std::map<prgl_shard_t, std::unordered_map<std::string, std::vector<M>>> _shardMap;
 
-  MessageFormat<M> const* _format;
+ public:
+  ArrayInCache(MessageFormat<M> const* format) : InCache<M>(format) {}
+
+  void clear() override;
+  void setDirect(prgl_shard_t shard, std::string const& vertexId,
+                 M const& data) override;
+  void mergeCache(InCache<M> const* otherCache) override;
+  MessageIterator<M> getMessages(prgl_shard_t shard, std::string const& key) override;
+};
+
+template <typename M>
+class CombiningInCache : public InCache<M> {
   MessageCombiner<M> const* _combiner;
+  std::map<prgl_shard_t, std::unordered_map<std::string, M>> _shardMap;
+
+ public:
+  CombiningInCache(MessageFormat<M> const* format,
+                   MessageCombiner<M> const* combiner)
+  : InCache<M>(format), _combiner(combiner) {}
+  
+  MessageCombiner<M> const* combiner() const {return _combiner;}
+
+  void clear() override;
+  void setDirect(prgl_shard_t shard, std::string const& vertexId,
+                 M const& data) override;
+  void mergeCache(InCache<M> const* otherCache) override;
+  MessageIterator<M> getMessages(prgl_shard_t shard, std::string const& key) override;
 };
 }
 }

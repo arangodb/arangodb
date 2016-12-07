@@ -38,35 +38,69 @@ namespace pregel {
  cases. For example threaded
  processing */
 template <typename M>
-class IncomingCache;
+class InCache;
 
 template <typename M>
-class OutgoingCache {
- public:
-  OutgoingCache(WorkerState* state, MessageFormat<M>* format,
-                MessageCombiner<M>* combiner, IncomingCache<M>* cache);
-  ~OutgoingCache();
+class CombiningInCache;
 
-  void appendMessage(prgl_shard_t shard, std::string const& key, M const& data);
-  void clear();
-  size_t sendMessageCount() const { return _sendMessages; }
-
-  void flushMessages();
-
- private:
-  WorkerState* _state;
-  MessageFormat<M>* _format;
-  MessageCombiner<M>* _combiner;
-  IncomingCache<M>* _localCache;
+template <typename M>
+class ArrayInCache;
+  
+template <typename M>
+class OutCache {
+protected:
+  WorkerState const* _state;
+  MessageFormat<M> const* _format;
+  InCache<M>* _localCache;
   std::string _baseUrl;
-
-  /// @brief two stage map: shard -> vertice -> message
-  std::unordered_map<prgl_shard_t, std::unordered_map<std::string, M>> _shardMap;
-
+  
   /// @brief current number of vertices stored
   size_t _containedMessages = 0;
   size_t _sendMessages = 0;
+  
+ public:
+  OutCache(WorkerState* state, InCache<M>* cache);
+  virtual ~OutCache() {};
+  
+  size_t sendMessageCount() const { return _sendMessages; }
+
+  virtual void clear() = 0;
+  virtual void appendMessage(prgl_shard_t shard, std::string const& key, M const& data) = 0;
+  virtual void flushMessages() = 0;
 };
+  
+template <typename M>
+class ArrayOutCache : public OutCache<M> {
+  /// @brief two stage map: shard -> vertice -> message
+  std::unordered_map<prgl_shard_t,
+  std::unordered_map<std::string, std::vector<M>>> _shardMap;
+  
+public:
+  ArrayOutCache(WorkerState* state, InCache<M>* cache)
+  : OutCache<M>(state, cache) {}
+  ~ArrayOutCache();
+  
+  void clear() override;
+  void appendMessage(prgl_shard_t shard, std::string const& key, M const& data) override;
+  void flushMessages() override;
+};
+  
+template <typename M>
+class CombiningOutCache : public OutCache<M> {
+  MessageCombiner<M> const* _combiner;
+  
+  /// @brief two stage map: shard -> vertice -> message
+  std::unordered_map<prgl_shard_t, std::unordered_map<std::string, M>> _shardMap;
+  
+public:
+  CombiningOutCache(WorkerState* state, CombiningInCache<M>* cache);
+  ~CombiningOutCache();
+  
+  void clear() override;
+  void appendMessage(prgl_shard_t shard, std::string const& key, M const& data) override;
+  void flushMessages() override;
+};
+  
 }
 }
 #endif

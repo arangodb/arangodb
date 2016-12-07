@@ -84,7 +84,7 @@ class VertexContext {
 template <typename V, typename E, typename M>
 class VertexComputation : public VertexContext<V, E, M> {
   friend class Worker<V, E, M>;
-  OutgoingCache<M>* _outgoing;
+  OutCache<M>* _outgoing;
 public:
   
   void sendMessage(Edge<E> const* edge, M const& data) {

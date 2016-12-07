@@ -125,6 +125,11 @@ RestStatus RestPregelHandler::execute() {
       } else {
         LOG(ERR) << "Conductor not found: " << executionNumber;
       }
+    } else if (suffix[0] == Utils::cancelGSSPath) {
+      IWorker *exe = PregelFeature::instance()->worker(executionNumber);
+      if (exe) {
+        exe->cancelGlobalStep(body);
+      }
     } else if (suffix[0] == Utils::finalizeExecutionPath) {
       IWorker *exe = PregelFeature::instance()->worker(executionNumber);
       if (exe) {

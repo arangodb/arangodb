@@ -33,7 +33,7 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/Transaction.h"
-#include "Vocbase/vocbase.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
