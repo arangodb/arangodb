@@ -641,9 +641,11 @@ void Supervision::enforceReplication() {
                   available.begin(), available.end(), i.copyString()),
                 available.end());
             }
+            auto randIt = available.begin();
+            std::advance(randIt, std::rand() % available.size());
             AddFollower(
               _snapshot, _agent, std::to_string(_jobId++), "supervision",
-              _agencyPrefix, db_.first, col_.first, shard_.first, available.back());
+              _agencyPrefix, db_.first, col_.first, shard_.first, *randIt);
           }
         }
       }
