@@ -145,7 +145,7 @@ class Optimizer {
     // remove redundant OR conditions
     removeRedundantOrRule_pass6 = 820,
 
-    applyGeoIndexRule = 1060,
+    applyGeoIndexRule = 825,
 
     useIndexesRule_pass6 = 830,
 

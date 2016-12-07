@@ -4201,6 +4201,7 @@ GeoIndexInfo geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pai
   if(setter1 == setter2){
     if(setter1->getType() == EN::ENUMERATE_COLLECTION){
       auto collNode = reinterpret_cast<EnumerateCollectionNode*>(setter1);
+
       auto coll = collNode->collection(); //what kind of indexes does it have on what attributes
       auto lcoll = coll->getCollection();
       // TODO - check collection for suitable geo-indexes
@@ -4337,6 +4338,35 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& info){
   } else {
     res = std::move(result2);
     constantPair = &argPair1;
+  }
+
+  // We are not allowed to be a inner loop
+  if(res.collectionNode->isInInnerLoop()){
+    return false;
+  }
+
+  //// this works only as long as we just use lists of ExecutionNodes
+  // avoid other constructs between sort/filter and enumerate collection
+  ExecutionNode* current = res.executionNode->getFirstDependency();
+  ExecutionNode* end = res.collectionNode;
+  while(current != end){
+    if(  current->getType() == EN::SORT
+      || current->getType() == EN::COLLECT
+      || current->getType() == EN::FILTER
+      || current->getType() == EN::ENUMERATE_COLLECTION
+      || current->getType() == EN::INDEX
+      ){
+      return false;
+    }
+    current = current->getFirstDependency();
+  }
+
+  // avoid sorts above index node
+  while(current != plan->root()){
+    if(current->getType() == EN::SORT){
+      return false;
+    }
+    current = current->getFirstDependency();
   }
 
   //LOG_TOPIC(DEBUG, Logger::DEVEL) << "  attributes: " << res.longitude[0]
