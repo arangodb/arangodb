@@ -323,13 +323,9 @@ while [ $# -gt 0 ];  do
             CLEAN_IT=1
             shift
             ;;
-        --xcArmV8)
-            ARMV8=1
-            XCGCC=1
+        --xcArm)
             shift
-            ;;
-        --xcArmV7)
-            ARMV7=1
+            TOOL_PREFIX=$1
             XCGCC=1
             shift
             ;;
@@ -390,18 +386,18 @@ elif [ "$CLANG36" == 1 ]; then
     CXXFLAGS="${CXXFLAGS} -std=c++11"
 elif [ "${XCGCC}" = 1 ]; then
     USE_JEMALLOC=0
-    if [ "${ARMV8}" = 1 ]; then
-        export TOOL_PREFIX=aarch64-linux-gnu
-        BUILD_DIR="${BUILD_DIR}-ARMV8"
-    elif [ "${ARMV7}" = 1 ]; then
-        export TOOL_PREFIX=aarch64-linux-gnu
-        BUILD_DIR="${BUILD_DIR}-ARMV7"
-    else
-        echo "Unknown XC-Compiler!"
-        exit 1;
-    fi
+    BUILD_DIR="${BUILD_DIR}-${TOOL_PREFIX}"
 
-    CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCROSS_COMPILING=true" # -DCMAKE_LIBRARY_ARCHITECTURE=${TOOL_PREFIX} "
+    # tell cmake we're cross compiling:
+    CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCROSS_COMPILING=true -DCMAKE_SYSTEM_NAME=Linux"
+    # -DCMAKE_LIBRARY_ARCHITECTURE=${TOOL_PREFIX} "
+    # these options would be evaluated using TRY_RUN(), which obviously doesn't work:
+    CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DHAVE_POLL_FINE_EXITCODE=0"
+    CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DHAVE_GLIBC_STRERROR_R=0"
+    CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DHAVE_GLIBC_STRERROR_R__TRYRUN_OUTPUT=TRUE"
+    CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DHAVE_POSIX_STRERROR_R=1"
+    CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DHAVE_POSIX_STRERROR_R__TRYRUN_OUTPUT=FALSE"
+    
     export CXX=$TOOL_PREFIX-g++
     export AR=$TOOL_PREFIX-ar
     export RANLIB=$TOOL_PREFIX-ranlib
@@ -409,12 +405,8 @@ elif [ "${XCGCC}" = 1 ]; then
     export LD=$TOOL_PREFIX-g++
     export LINK=$TOOL_PREFIX-g++
     export STRIP=$TOOL_PREFIX-strip
-
     # we need ARM LD:
     GOLD=0;
-
-    # tell cmake we're cross compiling:
-    CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCROSS_COMPILING=true"
 
     # V8's mksnapshot won't work - ignore it:
     MAKE_PARAMS="${MAKE_PARAMS} -i"
@@ -470,8 +462,10 @@ if [ -z "${MSVC}" ]; then
         if [ ! -f ${STRIP} ] ; then
             STRIP=`which strip`
         fi
-        CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCMAKE_STRIP=${STRIP}"
         export STRIP
+    fi
+    if test -n "${STRIP}"; then
+        CONFIGURE_OPTIONS="${CONFIGURE_OPTIONS} -DCMAKE_STRIP=${STRIP}"
     fi
 fi
 
