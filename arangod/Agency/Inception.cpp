@@ -228,7 +228,11 @@ bool Inception::restartingActiveAgent() {
               if (theirActive != myActive) {
                 LOG_TOPIC(FATAL, Logger::AGENCY)
                   << "Assumed active RAFT peer and I disagree on active "
-                     "membership. Administrative intervention needed.";
+                     "membership:";
+                LOG_TOPIC(FATAL, Logger::AGENCY)
+                  << "Their active list is " << theirActive;  
+                LOG_TOPIC(FATAL, Logger::AGENCY)
+                  << "My active list is " << myActive;  
                 FATAL_ERROR_EXIT();
                 return false;
               } else {
