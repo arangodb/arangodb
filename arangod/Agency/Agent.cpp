@@ -644,6 +644,12 @@ void Agent::run() {
 
     // Leader working only
     if (leading()) {
+      // Really leading?
+      if (challengeLeadership()) {
+	_constituent.candidate();
+      }
+
+      // Don't panic
       _appendCV.wait(1000);
 
       // Append entries to followers
@@ -855,6 +861,8 @@ void Agent::notifyInactive() const {
     out.add("id", VPackValue(id()));
     out.add("active", _config.activeToBuilder()->slice());
     out.add("pool", _config.poolToBuilder()->slice());
+    out.add("min ping", VPackValue(_config.minPing()));
+    out.add("max ping", VPackValue(_config.maxPing()));
     out.close();
 
     for (auto const& p : pool) {
@@ -897,6 +905,12 @@ void Agent::notify(query_t const& message) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_ACTIVE);
   }
   if (!slice.hasKey("pool") || !slice.get("pool").isObject()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL);
+  }
+  if (!slice.hasKey("min ping") || !slice.get("min ping").isNumber()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL);
+  }
+  if (!slice.hasKey("max ping") || !slice.get("max ping").isNumber()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL);
   }
 

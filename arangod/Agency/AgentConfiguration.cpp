@@ -40,7 +40,7 @@ config_t::config_t()
       _compactionStepSize(1000),
       _supervisionGracePeriod(15.0),
       _cmdLineTimings(false),
-      _version(1),
+      _version(0),
       _startup("origin"),
       _lock()
       {}
@@ -60,7 +60,7 @@ config_t::config_t(size_t as, size_t ps, double minp, double maxp,
       _compactionStepSize(c),
       _supervisionGracePeriod(p),
       _cmdLineTimings(t),
-      _version(1),
+      _version(0),
       _startup("origin"),     
       _lock() {}
 
@@ -345,13 +345,15 @@ void config_t::update(query_t const& message) {
   VPackSlice slice = message->slice();
   std::map<std::string, std::string> pool;
   bool changed = false;
-  for (auto const& p : VPackObjectIterator(slice.get("pool"))) {
+  for (auto const& p : VPackObjectIterator(slice.get(poolStr))) {
     pool[p.key.copyString()] = p.value.copyString();
   }
   std::vector<std::string> active;
-  for (auto const& a : VPackArrayIterator(slice.get("active"))) {
+  for (auto const& a : VPackArrayIterator(slice.get(activeStr))) {
     active.push_back(a.copyString());
   }
+  double minPing = slice.get(minPingStr).getDouble();
+  double maxPing = slice.get(maxPingStr).getDouble();
   WRITE_LOCKER(writeLocker, _lock);
   if (pool != _pool) {
     _pool = pool;
@@ -359,6 +361,14 @@ void config_t::update(query_t const& message) {
   }
   if (active != _active) {
     _active = active;
+    changed=true;
+  }
+  if (minPing != _minPing) {
+    _minPing = minPing;
+    changed=true;
+  }
+  if (maxPing != _maxPing) {
+    _maxPing = maxPing;
     changed=true;
   }
   if (changed) {
