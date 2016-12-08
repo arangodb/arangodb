@@ -131,7 +131,7 @@ void SortBlock::doSorting() {
 
     while (count < sum) {
       size_t sizeNext = (std::min)(sum - count, DefaultBatchSize());
-      AqlItemBlock* next = new AqlItemBlock(sizeNext, nrregs);
+      AqlItemBlock* next = new AqlItemBlock(_engine->getQuery()->resourceMonitor(), sizeNext, nrregs);
 
       try {
         TRI_IF_FAILURE("SortBlock::doSortingInner") {

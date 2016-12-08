@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Range.h"
+#include "Aql/ResourceUsage.h"
 #include "Aql/types.h"
 
 namespace arangodb {
@@ -54,16 +55,31 @@ class AqlItemBlock {
   friend class AqlItemBlockManager;
 
  public:
-  /// @brief create the block
-  AqlItemBlock(size_t nrItems, RegisterId nrRegs);
+  AqlItemBlock() = delete;
+  AqlItemBlock(AqlItemBlock const&) = delete;
+  AqlItemBlock& operator=(AqlItemBlock const&) = delete;
 
-  explicit AqlItemBlock(arangodb::velocypack::Slice const);
+  /// @brief create the block
+  AqlItemBlock(ResourceMonitor*, size_t nrItems, RegisterId nrRegs);
+
+  AqlItemBlock(ResourceMonitor*, arangodb::velocypack::Slice const);
 
   /// @brief destroy the block
-  ~AqlItemBlock() { destroy(); }
+  ~AqlItemBlock() { 
+    destroy(); 
+    decreaseMemoryUsage(sizeof(AqlValue) * _nrItems * _nrRegs);
+  }
 
  private:
   void destroy();
+
+  inline void increaseMemoryUsage(size_t value) {
+    _resourceMonitor->increaseMemoryUsage(value);
+  }
+  
+  inline void decreaseMemoryUsage(size_t value) {
+    _resourceMonitor->decreaseMemoryUsage(value);
+  }
 
  public:
   /// @brief getValue, get the value of a register
@@ -85,7 +101,9 @@ class AqlItemBlock {
 
     // First update the reference count, if this fails, the value is empty
     if (value.requiresDestruction()) {
-      ++_valueCount[value];
+      if (++_valueCount[value] == 1) {
+        increaseMemoryUsage(value.memoryUsage());
+      }
     }
 
     _data[index * _nrRegs + varNr] = value;
@@ -103,6 +121,7 @@ class AqlItemBlock {
 
       if (it != _valueCount.end()) {
         if (--(it->second) == 0) {
+          decreaseMemoryUsage(element.memoryUsage());
           try {
             _valueCount.erase(it);
             element.destroy();
@@ -126,6 +145,7 @@ class AqlItemBlock {
 
       if (it != _valueCount.end()) {
         if (--(it->second) == 0) {
+          decreaseMemoryUsage(element.memoryUsage());
           try {
             _valueCount.erase(it);
           } catch (...) {
@@ -146,6 +166,11 @@ class AqlItemBlock {
       }
     }
 
+    for (auto const& it : _valueCount) {
+      if (it.second > 0) {
+        decreaseMemoryUsage(it.first.memoryUsage());
+      }
+    }
     _valueCount.clear();
   }
   
@@ -153,7 +178,6 @@ class AqlItemBlock {
     TRI_ASSERT(currentRow > 0);
 
     if (_data[currentRow * _nrRegs + col].isEmpty()) {
-//        setValue(currentRow, i, _data[i]);
       // First update the reference count, if this fails, the value is empty
       if (_data[col].requiresDestruction()) {
         ++_valueCount[_data[col]];
@@ -167,7 +191,6 @@ class AqlItemBlock {
 
     for (RegisterId i = 0; i < curRegs; i++) {
       if (_data[currentRow * _nrRegs + i].isEmpty()) {
-//        setValue(currentRow, i, _data[i]);
         // First update the reference count, if this fails, the value is empty
         if (_data[i].requiresDestruction()) {
           ++_valueCount[_data[i]];
@@ -194,7 +217,9 @@ class AqlItemBlock {
   /// might be deleted at any time!
   void steal(AqlValue const& value) {
     if (value.requiresDestruction()) {
-      _valueCount.erase(value);
+      if (_valueCount.erase(value)) {
+        decreaseMemoryUsage(value.memoryUsage());
+      }
     }
   }
 
@@ -233,7 +258,7 @@ class AqlItemBlock {
   /// @brief concatenate multiple blocks, note that the new block now owns all
   /// AqlValue pointers in the old blocks, therefore, the latter are all
   /// set to nullptr, just to be sure.
-  static AqlItemBlock* concatenate(std::vector<AqlItemBlock*> const& blocks);
+  static AqlItemBlock* concatenate(ResourceMonitor*, std::vector<AqlItemBlock*> const& blocks);
 
   /// @brief toJson, transfer a whole AqlItemBlock to Json, the result can
   /// be used to recreate the AqlItemBlock via the Json constructor
@@ -258,6 +283,9 @@ class AqlItemBlock {
 
   /// @brief _nrRegs, number of rows
   RegisterId _nrRegs;
+
+  /// @brief resources manager for this item block
+  ResourceMonitor* _resourceMonitor;
 };
 
 }  // namespace arangodb::aql

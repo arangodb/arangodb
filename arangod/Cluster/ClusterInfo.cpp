@@ -1029,6 +1029,7 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
 int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
                                              std::string const& collectionID,
                                              uint64_t numberOfShards,
+                                             uint64_t replicationFactor,
                                              VPackSlice const& json,
                                              std::string& errorMsg,
                                              double timeout) {
@@ -1074,6 +1075,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   std::shared_ptr<int> dbServerResult = std::make_shared<int>(-1);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
+  auto dbServers = getCurrentDBServers();
   std::function<bool(VPackSlice const& result)> dbServerChanged =
       [=](VPackSlice const& result) {
         if (result.isObject() && result.length() == (size_t)numberOfShards) {
@@ -1081,6 +1083,13 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
           bool tmpHaveError = false;
 
           for (auto const& p : VPackObjectIterator(result)) {
+            if (replicationFactor == 0) {
+              VPackSlice servers = p.value.get("servers");
+              if (!servers.isArray() || servers.length() < dbServers.size()) {
+                return true;
+              }
+            }
+
             if (arangodb::basics::VelocyPackHelper::getBooleanValue(
                     p.value, "error", false)) {
               tmpHaveError = true;
@@ -1149,7 +1158,6 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
 
   // Update our cache:
   loadPlan();
-
   if (numberOfShards == 0) {
     loadCurrent();
     events::CreateCollection(name, TRI_ERROR_NO_ERROR);
@@ -2552,227 +2560,4 @@ std::shared_ptr<VPackBuilder> ClusterInfo::getCurrent() {
   }
   READ_LOCKER(readLocker, _currentProt.lock);
   return _current;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get information about current followers of a shard.
-////////////////////////////////////////////////////////////////////////////////
-
-std::shared_ptr<std::vector<ServerID> const> FollowerInfo::get() {
-  MUTEX_LOCKER(locker, _mutex);
-  return _followers;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief change JSON under
-/// Current/Collection/<DB-name>/<Collection-ID>/<shard-ID>
-/// to add or remove a serverID, if add flag is true, the entry is added
-/// (if it is not yet there), otherwise the entry is removed (if it was
-/// there).
-////////////////////////////////////////////////////////////////////////////////
-
-static VPackBuilder newShardEntry(VPackSlice oldValue, ServerID const& sid,
-                                  bool add) {
-  VPackBuilder newValue;
-  VPackSlice servers;
-  {
-    VPackObjectBuilder b(&newValue);
-    // Now need to find the `servers` attribute, which is a list:
-    for (auto const& it : VPackObjectIterator(oldValue)) {
-      if (it.key.isEqualString("servers")) {
-        servers = it.value;
-      } else {
-        newValue.add(it.key);
-        newValue.add(it.value);
-      }
-    }
-    newValue.add(VPackValue("servers"));
-    if (servers.isArray() && servers.length() > 0) {
-      VPackArrayBuilder bb(&newValue);
-      newValue.add(servers[0]);
-      VPackArrayIterator it(servers);
-      bool done = false;
-      for (++it; it.valid(); ++it) {
-        if ((*it).isEqualString(sid)) {
-          if (add) {
-            newValue.add(*it);
-            done = true;
-          }
-        } else {
-          newValue.add(*it);
-        }
-      }
-      if (add && !done) {
-        newValue.add(VPackValue(sid));
-      }
-    } else {
-      VPackArrayBuilder bb(&newValue);
-      newValue.add(VPackValue(ServerState::instance()->getId()));
-      if (add) {
-        newValue.add(VPackValue(sid));
-      }
-    }
-  }
-  return newValue;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a follower to a shard, this is only done by the server side
-/// of the "get-in-sync" capabilities. This reports to the agency under
-/// `/Current` but in asynchronous "fire-and-forget" way.
-////////////////////////////////////////////////////////////////////////////////
-
-void FollowerInfo::add(ServerID const& sid) {
-  MUTEX_LOCKER(locker, _mutex);
-
-  // Fully copy the vector:
-  auto v = std::make_shared<std::vector<ServerID>>(*_followers);
-  v->push_back(sid);  // add a single entry
-  _followers = v;     // will cast to std::vector<ServerID> const
-  // Now tell the agency, path is
-  //   Current/Collections/<dbName>/<collectionID>/<shardID>
-  std::string path = "Current/Collections/";
-  path += _docColl->vocbase()->name();
-  path += "/";
-  path += std::to_string(_docColl->planId());
-  path += "/";
-  path += _docColl->name();
-  AgencyComm ac;
-  double startTime = TRI_microtime();
-  bool success = false;
-  do {
-    AgencyCommResult res = ac.getValues(path);
-
-    if (res.successful()) {
-      velocypack::Slice currentEntry =
-          res.slice()[0].get(std::vector<std::string>(
-              {AgencyCommManager::path(), "Current", "Collections",
-               _docColl->vocbase()->name(), std::to_string(_docColl->planId()),
-               _docColl->name()}));
-
-      if (!currentEntry.isObject()) {
-        LOG_TOPIC(ERR, Logger::CLUSTER)
-            << "FollowerInfo::add, did not find object in " << path;
-        if (!currentEntry.isNone()) {
-          LOG_TOPIC(ERR, Logger::CLUSTER) << "Found: " << currentEntry.toJson();
-        }
-      } else {
-        auto newValue = newShardEntry(currentEntry, sid, true);
-        std::string key = "Current/Collections/" + _docColl->vocbase()->name() +
-                          "/" + std::to_string(_docColl->planId()) + "/" +
-                          _docColl->name();
-        AgencyWriteTransaction trx;
-        trx.preconditions.push_back(AgencyPrecondition(
-            key, AgencyPrecondition::Type::VALUE, currentEntry));
-        trx.operations.push_back(AgencyOperation(
-            key, AgencyValueOperationType::SET, newValue.slice()));
-        trx.operations.push_back(AgencyOperation(
-            "Current/Version", AgencySimpleOperationType::INCREMENT_OP));
-        AgencyCommResult res2 = ac.sendTransactionWithFailover(trx);
-        if (res2.successful()) {
-          success = true;
-          break;  //
-        } else {
-          LOG_TOPIC(WARN, Logger::CLUSTER)
-              << "FollowerInfo::add, could not cas key " << path;
-        }
-      }
-    } else {
-      LOG_TOPIC(ERR, Logger::CLUSTER) << "FollowerInfo::add, could not read "
-                                      << path << " in agency.";
-    }
-    usleep(500000);
-  } while (TRI_microtime() < startTime + 30);
-  if (!success) {
-    LOG_TOPIC(ERR, Logger::CLUSTER)
-        << "FollowerInfo::add, timeout in agency operation for key " << path;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove a follower from a shard, this is only done by the
-/// server if a synchronous replication request fails. This reports to
-/// the agency under `/Current` but in asynchronous "fire-and-forget"
-/// way. The method fails silently, if the follower information has
-/// since been dropped (see `dropFollowerInfo` below).
-////////////////////////////////////////////////////////////////////////////////
-
-void FollowerInfo::remove(ServerID const& sid) {
-  MUTEX_LOCKER(locker, _mutex);
-
-  auto v = std::make_shared<std::vector<ServerID>>();
-  v->reserve(_followers->size() - 1);
-  for (auto const& i : *_followers) {
-    if (i != sid) {
-      v->push_back(i);
-    }
-  }
-  _followers = v;  // will cast to std::vector<ServerID> const
-  // Now tell the agency, path is
-  //   Current/Collections/<dbName>/<collectionID>/<shardID>
-  std::string path = "Current/Collections/";
-  path += _docColl->vocbase()->name();
-  path += "/";
-  path += std::to_string(_docColl->planId());
-  path += "/";
-  path += _docColl->name();
-  AgencyComm ac;
-  double startTime = TRI_microtime();
-  bool success = false;
-  do {
-    AgencyCommResult res = ac.getValues(path);
-    if (res.successful()) {
-      velocypack::Slice currentEntry =
-          res.slice()[0].get(std::vector<std::string>(
-              {AgencyCommManager::path(), "Current", "Collections",
-               _docColl->vocbase()->name(), std::to_string(_docColl->planId()),
-               _docColl->name()}));
-
-      if (!currentEntry.isObject()) {
-        LOG_TOPIC(ERR, Logger::CLUSTER)
-            << "FollowerInfo::remove, did not find object in " << path;
-        if (!currentEntry.isNone()) {
-          LOG_TOPIC(ERR, Logger::CLUSTER) << "Found: " << currentEntry.toJson();
-        }
-      } else {
-        auto newValue = newShardEntry(currentEntry, sid, false);
-        std::string key = "Current/Collections/" + _docColl->vocbase()->name() +
-                          "/" + std::to_string(_docColl->planId()) + "/" +
-                          _docColl->name();
-        AgencyWriteTransaction trx;
-        trx.preconditions.push_back(AgencyPrecondition(
-            key, AgencyPrecondition::Type::VALUE, currentEntry));
-        trx.operations.push_back(AgencyOperation(
-            key, AgencyValueOperationType::SET, newValue.slice()));
-        trx.operations.push_back(AgencyOperation(
-            "Current/Version", AgencySimpleOperationType::INCREMENT_OP));
-        AgencyCommResult res2 = ac.sendTransactionWithFailover(trx);
-        if (res2.successful()) {
-          success = true;
-          break;  //
-        } else {
-          LOG_TOPIC(WARN, Logger::CLUSTER)
-              << "FollowerInfo::remove, could not cas key " << path;
-        }
-      }
-    } else {
-      LOG_TOPIC(ERR, Logger::CLUSTER) << "FollowerInfo::remove, could not read "
-                                      << path << " in agency.";
-    }
-    usleep(500000);
-  } while (TRI_microtime() < startTime + 30);
-  if (!success) {
-    LOG_TOPIC(ERR, Logger::CLUSTER)
-        << "FollowerInfo::remove, timeout in agency operation for key " << path;
-  }
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief clear follower list, no changes in agency necesary
-//////////////////////////////////////////////////////////////////////////////
-
-void FollowerInfo::clear() {
-  MUTEX_LOCKER(locker, _mutex);
-  auto v = std::make_shared<std::vector<ServerID>>();
-  _followers = v;  // will cast to std::vector<ServerID> const
 }

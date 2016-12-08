@@ -705,7 +705,7 @@ std::unique_ptr<LogicalCollection> CreateCollectionCoordinator(LogicalCollection
   std::string errorMsg;
   int myerrno = ci->createCollectionCoordinator(
       parameters->dbName(), parameters->cid_as_string(),
-      parameters->numberOfShards(), velocy.slice(), errorMsg, 240.0);
+      parameters->numberOfShards(), parameters->replicationFactor(), velocy.slice(), errorMsg, 240.0);
 
   if (myerrno != TRI_ERROR_NO_ERROR) {
     if (errorMsg.empty()) {

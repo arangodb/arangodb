@@ -67,6 +67,9 @@
 /// - 31: @LIT{only enterprise version}
 ///   Will be raised when an enterprise-feature is requested from the community
 ///   edition.
+/// - 32: @LIT{resource limit exceeded}
+///   Will be raised when the resources used by an operation exceed the
+///   configured maximum value.
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 401: @LIT{unauthorized}
@@ -362,6 +365,9 @@
 ///   An endpoint couldn't be found
 /// - 1480: @LIT{Invalid agency structure}
 ///   The structure in the agency is invalid
+/// - 1481: @LIT{collection is out of sync}
+///   Will be raised if a collection needed during query execution is out of
+///   sync. This currently can only happen when using satellite collections
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -951,6 +957,17 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ONLY_ENTERPRISE                                         (31)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 32: ERROR_RESOURCE_LIMIT
+///
+/// resource limit exceeded
+///
+/// Will be raised when the resources used by an operation exceed the
+/// configured maximum value.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_RESOURCE_LIMIT                                          (32)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER
@@ -2144,6 +2161,17 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_AGENCY_STRUCTURE_INVALID                        (1480)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1481: ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC
+///
+/// collection is out of sync
+///
+/// Will be raised if a collection needed during query execution is out of
+/// sync. This currently can only happen when using satellite collections
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC                      (1481)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED

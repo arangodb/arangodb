@@ -66,7 +66,30 @@ bool FailedFollower::create() {
       << "Todo: failed Follower for " + _shard + " from " + _from + " to " + _to;
 
   std::string path = _agencyPrefix + toDoPrefix + _jobId;
+  std::string planPath =
+    planColPrefix + _database + "/" + _collection + "/shards";
+  
+  auto const& myClones = clones(_snapshot, _database, _collection);
+  if (!myClones.empty()) {
 
+    size_t sub = 0;
+    auto myshards = _snapshot(planPath).children();
+    auto mpos = std::distance(myshards.begin(), myshards.find(_shard));
+
+    // Deal with my clones
+    for (auto const& collection : myClones) {
+      auto othershards = _snapshot(
+        planColPrefix + _database + "/" + collection + "/shards").children();
+      auto opos = othershards.begin();
+      std::advance(opos, mpos);
+      auto const& shard = opos->first;
+
+      FailedFollower(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
+                     _jobId, _agencyPrefix, _database, collection, shard,
+                     _from, _to);
+    }
+  }
+   
   _jb = std::make_shared<Builder>();
   _jb->openArray();
   _jb->openObject();
@@ -182,16 +205,10 @@ bool FailedFollower::start() {
 
   pending.close();
 
-  // Precondition
-  // --- Check that Current servers are as we expect
- 
+  // Preconditions
   pending.openObject();
-  /* pending.add(_agencyPrefix + curPath, VPackValue(VPackValueType::Object));
-  pending.add("old", current.slice());
-  pending.close();
-  */
   
-  // --- Check if shard is not blocked
+  // --- Check if shard is not blocked by other job
   pending.add(_agencyPrefix + blockedShardsPrefix + _shard,
               VPackValue(VPackValueType::Object));
   pending.add("oldEmpty", VPackValue(true));

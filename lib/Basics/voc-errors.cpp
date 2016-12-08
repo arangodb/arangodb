@@ -35,6 +35,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_DEADLOCK, "deadlock detected");
   REG_ERROR(ERROR_SHUTTING_DOWN, "shutdown in progress");
   REG_ERROR(ERROR_ONLY_ENTERPRISE, "only enterprise version");
+  REG_ERROR(ERROR_RESOURCE_LIMIT, "resource limit exceeded");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_HTTP_UNAUTHORIZED, "unauthorized");
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");
@@ -148,6 +149,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_CLUSTER_BACKEND_UNAVAILABLE, "A cluster backend which was required for the operation could not be reached");
   REG_ERROR(ERROR_CLUSTER_UNKNOWN_CALLBACK_ENDPOINT, "An endpoint couldn't be found");
   REG_ERROR(ERROR_CLUSTER_AGENCY_STRUCTURE_INVALID, "Invalid agency structure");
+  REG_ERROR(ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC, "collection is out of sync");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");

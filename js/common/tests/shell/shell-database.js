@@ -33,7 +33,6 @@ var internal = require("internal");
 var arangodb = require("@arangodb");
 var ERRORS = arangodb.errors;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: database methods
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,6 +93,35 @@ function DatabaseSuite () {
     testIsSystem : function () {
       assertTrue(typeof internal.db._isSystem() === "boolean");
       assertTrue(internal.db._isSystem());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test _query function
+////////////////////////////////////////////////////////////////////////////////
+
+    testQueryMemoryLimit : function () {
+      try {
+        internal.db._query("FOR i IN 1..100000 SORT i RETURN i", {}, { memoryLimit: 100000 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test _query function
+////////////////////////////////////////////////////////////////////////////////
+
+    testQueryMemoryLimitSufficient : function () {
+      assertEqual(10000, internal.db._query("FOR i IN 1..10000 RETURN i", {}, { memoryLimit: 100000 }).toArray().length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test _query function
+////////////////////////////////////////////////////////////////////////////////
+
+    testQueryMemoryLimitUnbounded : function () {
+      assertEqual(10000, internal.db._query("FOR i IN 1..10000 SORT i RETURN i", {}, { memoryLimit: 0 }).toArray().length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -308,7 +308,8 @@ void ClusterFeature::prepare() {
       LOG(INFO) << "Waiting for DBservers to show up...";
       ci->loadCurrentDBServers();
       std::vector<ServerID> DBServers = ci->getCurrentDBServers();
-      if (DBServers.size() > 1 || TRI_microtime() - start > 30.0) {
+      if (DBServers.size() >= 1 &&
+          (DBServers.size() > 1 || TRI_microtime() - start > 15.0)) {
         LOG(INFO) << "Found " << DBServers.size() << " DBservers.";
         break;
       }

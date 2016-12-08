@@ -1634,6 +1634,7 @@ void Ast::validateAndOptimize() {
   struct TraversalContext {
     std::unordered_set<std::string> writeCollectionsSeen;
     std::unordered_map<std::string, int64_t> collectionsFirstSeen;
+    std::unordered_map<Variable const*, AstNode const*> variableDefinitions;
     int64_t stopOptimizationRequests = 0;
     int64_t nestingLevel = 0;
     bool isInFilter = false;
@@ -1769,7 +1770,7 @@ void Ast::validateAndOptimize() {
     
     // attribute access
     if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      return this->optimizeAttributeAccess(node);
+      return this->optimizeAttributeAccess(node, static_cast<TraversalContext*>(data)->variableDefinitions);
     }
 
     // passthru node
@@ -1813,6 +1814,22 @@ void Ast::validateAndOptimize() {
 
     // LET
     if (node->type == NODE_TYPE_LET) {
+      // remember variable assignments
+      TRI_ASSERT(node->numMembers() == 2);
+      auto context = static_cast<TraversalContext*>(data);
+      Variable const* variable = static_cast<Variable const*>(node->getMember(0)->getData());
+      AstNode const* definition = node->getMember(1);
+      // recursively process assignments so we can track LET a = b LET c = b
+      
+      while (definition->type == NODE_TYPE_REFERENCE) {
+        auto it = context->variableDefinitions.find(static_cast<Variable const*>(definition->getData()));
+        if (it == context->variableDefinitions.end()) {
+          break;
+        }
+        definition = (*it).second;
+      }
+      
+      context->variableDefinitions.emplace(variable, definition);
       return this->optimizeLet(node);
     }
 
@@ -2669,12 +2686,21 @@ AstNode* Ast::optimizeTernaryOperator(AstNode* node) {
 }
 
 /// @brief optimizes an attribute access
-AstNode* Ast::optimizeAttributeAccess(AstNode* node) {
+AstNode* Ast::optimizeAttributeAccess(AstNode* node, std::unordered_map<Variable const*, AstNode const*> const& variableDefinitions) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS);
   TRI_ASSERT(node->numMembers() == 1);
 
-  AstNode* what = node->getMember(0);
+  AstNode const* what = node->getMember(0);
+
+  if (what->type == NODE_TYPE_REFERENCE) {
+    // check if the access value is a variable and if it is an alias
+    auto it = variableDefinitions.find(static_cast<Variable const*>(what->getData()));
+
+    if (it != variableDefinitions.end()) {
+      what = (*it).second;
+    }
+  }
 
   if (!what->isConstant()) {
     return node;
@@ -2689,6 +2715,7 @@ AstNode* Ast::optimizeAttributeAccess(AstNode* node) {
 
     for (size_t i = 0; i < n; ++i) {
       AstNode const* member = what->getMember(0);
+
       if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
           member->getStringLength() == length &&
           memcmp(name, member->getStringValue(), length) == 0) {
@@ -2942,6 +2969,8 @@ AstNode* Ast::nodeFromVPack(VPackSlice const& slice, bool copyStringValues) {
     for (auto const& it : VPackArrayIterator(slice)) {
       node->addMember(nodeFromVPack(it, copyStringValues)); 
     }
+    
+    node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
 
     return node;
   }
@@ -2963,10 +2992,67 @@ AstNode* Ast::nodeFromVPack(VPackSlice const& slice, bool copyStringValues) {
       node->addMember(createNodeObjectElement(
           attributeName, static_cast<size_t>(nameLength), nodeFromVPack(it.value, copyStringValues)));
     }
+    
+    node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
 
     return node;
   }
 
+  return createNodeValueNull();
+}
+
+/// @brief resolve an attribute access
+AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS);
+
+  std::vector<std::string> attributeNames;
+
+  while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    attributeNames.emplace_back(node->getString());
+    node = node->getMember(0);
+  }
+
+  size_t which = attributeNames.size();
+  TRI_ASSERT(which > 0);
+
+  while (which > 0) {
+    TRI_ASSERT(node->type == NODE_TYPE_VALUE || node->type == NODE_TYPE_ARRAY ||
+               node->type == NODE_TYPE_OBJECT);
+
+    bool found = false;
+
+    if (node->type == NODE_TYPE_OBJECT) {
+      TRI_ASSERT(which > 0);
+      std::string const& attributeName = attributeNames[which - 1];
+      --which;
+
+      size_t const n = node->numMembers();
+      for (size_t i = 0; i < n; ++i) {
+        auto member = node->getMember(i);
+
+        if (member->type == NODE_TYPE_OBJECT_ELEMENT && 
+            member->getString() == attributeName) {
+          // found the attribute
+          node = member->getMember(0);
+          if (which == 0) {
+            // we found what we looked for
+            return node;
+          } 
+          // we found the correct attribute but there is now an attribute
+          // access on the result
+          found = true;
+          break;
+        }
+      }
+    }
+
+    if (!found) {
+      break;
+    }
+  }
+
+  // attribute not found or non-array
   return createNodeValueNull();
 }
 
@@ -3102,7 +3188,7 @@ AstNode* Ast::createNode(AstNodeType type) {
     _query->addNode(node);
   } catch (...) {
     delete node;
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    throw;
   }
 
   return node;

@@ -280,9 +280,11 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
 
       if (isTotalAggregation && _currentGroup.groupLength == 0) {
         // total aggregation, but have not yet emitted a group
-        res.reset(new AqlItemBlock(1, getPlanNode()
-                                          ->getRegisterPlan()
-                                          ->nrRegs[getPlanNode()->getDepth()]));
+        res.reset(new AqlItemBlock(
+          _engine->getQuery()->resourceMonitor(),
+          1, 
+          getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()])
+        );
         emitGroup(nullptr, res.get(), skipped);
         result = res.release();
       }
@@ -298,8 +300,10 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
 
   if (!skipping) {
     res.reset(new AqlItemBlock(
-        atMost,
-        getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+      _engine->getQuery()->resourceMonitor(),
+      atMost,
+      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()])
+    );
 
     TRI_ASSERT(cur->getNrRegs() <= res->getNrRegs());
     inheritRegisters(cur, res.get(), _pos);
@@ -637,7 +641,7 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
   auto buildResult = [&](AqlItemBlock const* src) {
     auto nrRegs = en->getRegisterPlan()->nrRegs[en->getDepth()];
 
-    auto result = std::make_unique<AqlItemBlock>(allGroups.size(), nrRegs);
+    auto result = std::make_unique<AqlItemBlock>(_engine->getQuery()->resourceMonitor(), allGroups.size(), nrRegs);
 
     if (src != nullptr) {
       inheritRegisters(src, result.get(), 0);

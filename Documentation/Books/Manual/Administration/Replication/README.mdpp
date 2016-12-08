@@ -13,6 +13,14 @@ Synchronous replication only works in in a cluster and is typically used for mis
 
 Synchronous replication is organized in a way that every shard has a leader and r-1 followers. The number of followers can be controlled using the `replicationFactor` whenever you create a collection, the `replicationFactor` is the total number of copies being kept, that is, it is one plus the number of followers.
 
+### Satellite collections
+
+Satellite collections are synchronously replicated collections having a dynamic replicationFactor.
+They will replicate all data to all database servers allowing the database servers to join data
+locally instead of doing heavy network operations.
+
+Satellite collections are an enterprise only feature.
+
 ### Asynchronous replication
 
 In ArangoDB any write operation will be logged to the write-ahead log. When using Asynchronous replication slaves will connect to a master and apply all the events from the log in the same order locally. After that, they will have the same state of data as the master database.

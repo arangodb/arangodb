@@ -31,6 +31,7 @@ ERROR_LOCKED,28,"locked","Will be raised when a resource or an operation is lock
 ERROR_DEADLOCK,29,"deadlock detected","Will be raised when a deadlock is detected when accessing collections."
 ERROR_SHUTTING_DOWN,30,"shutdown in progress","Will be raised when a call cannot succeed because a server shutdown is already in progress."
 ERROR_ONLY_ENTERPRISE,31,"only enterprise version","Will be raised when an enterprise-feature is requested from the community edition."
+ERROR_RESOURCE_LIMIT,32,"resource limit exceeded","Will be raised when the resources used by an operation exceed the configured maximum value."
 
 ################################################################################
 ## HTTP error status codes
@@ -188,6 +189,7 @@ ERROR_CLUSTER_ONLY_ON_DBSERVER,1477,"this operation is only valid on a DBserver 
 ERROR_CLUSTER_BACKEND_UNAVAILABLE,1478,"A cluster backend which was required for the operation could not be reached","Will be raised if a required db server can't be reached."
 ERROR_CLUSTER_UNKNOWN_CALLBACK_ENDPOINT,1479,"An endpoint couldn't be found","An endpoint couldn't be found"
 ERROR_CLUSTER_AGENCY_STRUCTURE_INVALID,1480,"Invalid agency structure","The structure in the agency is invalid"
+ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,1481,"collection is out of sync","Will be raised if a collection needed during query execution is out of sync. This currently can only happen when using satellite collections"
 
 ################################################################################
 ## ArangoDB query errors

@@ -23,6 +23,7 @@
 
 #include "AqlTransaction.h"
 #include "CollectionNameResolver.h"
+#include "Logger/Logger.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -89,7 +90,6 @@ LogicalCollection* AqlTransaction::documentCollection(TRI_voc_cid_t cid) {
 
 int AqlTransaction::lockCollections() {
   auto trx = getInternals();
-
   for (auto& trxCollection : trx->_collections) {
     int res = TRI_LockCollectionTransaction(trxCollection,
                                             trxCollection->_accessType, 0);

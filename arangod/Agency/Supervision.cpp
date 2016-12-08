@@ -548,8 +548,10 @@ bool Supervision::handleJobs() {
   }
 
   // Do supervision
+  
   shrinkCluster();
   workJobs();
+  enforceReplication();
 
   return true;
 }
@@ -608,6 +610,48 @@ void Supervision::workJobs() {
       UnassumedLeadership(_snapshot, _agent, jobId, creator, _agencyPrefix);
     }
   }
+}
+
+void Supervision::enforceReplication() {
+
+  auto const& plannedDBs = _snapshot(planColPrefix).children();
+  auto available = Job::availableServers(_snapshot);
+
+  for (const auto& db_ : plannedDBs) { // Planned databases
+    auto const& db = *(db_.second);
+    for (const auto& col_ : db.children()) { // Planned collections
+      auto const& col = *(col_.second);
+      auto const& replicationFactor = col("replicationFactor").slice().getUInt();
+      
+      bool clone = false;
+      try {
+        clone = !col("distributeShardsLike").slice().copyString().empty();
+      } catch (...) {}
+
+      if (!clone) {
+        for (auto const& shard_ : col("shards").children()) { // Pl shards
+          auto const& shard = *(shard_.second);
+
+          // Enough DBServer to 
+          if (replicationFactor > shard.slice().length() &&
+              available.size() >= replicationFactor) {
+            for (auto const& i : VPackArrayIterator(shard.slice())) {
+              available.erase(
+                std::remove(
+                  available.begin(), available.end(), i.copyString()),
+                available.end());
+            }
+            auto randIt = available.begin();
+            std::advance(randIt, std::rand() % available.size());
+            AddFollower(
+              _snapshot, _agent, std::to_string(_jobId++), "supervision",
+              _agencyPrefix, db_.first, col_.first, shard_.first, *randIt);
+          }
+        }
+      }
+    }
+  }
+  
 }
 
 // Shrink cluster if applicable, guarded by caller
@@ -705,7 +749,7 @@ void Supervision::shrinkCluster() {
      **/
     // Find greatest replication factor among all collections
     uint64_t maxReplFact = 1;
-    Node::Children const& databases = _snapshot("/Plan/Collections").children();
+    Node::Children const& databases = _snapshot(planColPrefix).children();
     for (auto const& database : databases) {
       for (auto const& collptr : database.second->children()) {
         uint64_t replFact{0};

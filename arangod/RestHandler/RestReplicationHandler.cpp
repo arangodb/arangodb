@@ -29,6 +29,7 @@
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/FollowerInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "GeneralServer/GeneralServer.h"
 #include "Indexes/EdgeIndex.h"
@@ -1761,7 +1762,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
       VPackCollection::merge(parameters, sliceToMerge, false);
   VPackSlice const merged = mergedBuilder.slice();
 
-  int res = ci->createCollectionCoordinator(dbName, newId, numberOfShards,
+  int res = ci->createCollectionCoordinator(dbName, newId, numberOfShards, replicationFactor,
                                             merged, errorMsg, 0.0);
   if (res != TRI_ERROR_NO_ERROR) {
     errorMsg =

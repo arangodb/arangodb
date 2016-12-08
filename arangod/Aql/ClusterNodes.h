@@ -183,6 +183,9 @@ class ScatterNode : public ExecutionNode {
   /// @brief return the collection
   Collection const* collection() const { return _collection; }
 
+  /// @brief set collection
+  void setCollection(Collection const* collection) { _collection = collection; }
+
  private:
   /// @brief the underlying database
   TRI_vocbase_t* _vocbase;
@@ -302,7 +305,8 @@ class GatherNode : public ExecutionNode {
  public:
   GatherNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
              Collection const* collection)
-      : ExecutionNode(plan, id), _vocbase(vocbase), _collection(collection) {}
+      : ExecutionNode(plan, id), _vocbase(vocbase), _collection(collection),
+        _auxiliaryCollections() {}
 
   GatherNode(ExecutionPlan*, arangodb::velocypack::Slice const& base,
              SortElementVector const& elements);
@@ -357,6 +361,18 @@ class GatherNode : public ExecutionNode {
   /// @brief return the collection
   Collection const* collection() const { return _collection; }
 
+  void setCollection(Collection const* collection) { _collection = collection; }
+
+  std::unordered_set<Collection const*> auxiliaryCollections() const {
+    return _auxiliaryCollections;
+  }
+
+  void addAuxiliaryCollection(Collection const* auxiliaryCollection) {
+    _auxiliaryCollections.emplace(auxiliaryCollection);
+  }
+
+  bool hasAuxiliaryCollections() const { return !_auxiliaryCollections.empty(); }
+
  private:
   /// @brief pairs, consisting of variable and sort direction
   /// (true = ascending | false = descending)
@@ -367,6 +383,9 @@ class GatherNode : public ExecutionNode {
 
   /// @brief the underlying collection
   Collection const* _collection;
+
+  /// @brief (optional) auxiliary collections (satellites)
+  std::unordered_set<Collection const*> _auxiliaryCollections;
 };
 
 }  // namespace arangodb::aql

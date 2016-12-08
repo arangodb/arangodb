@@ -53,6 +53,30 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       _hasV8Expression(false) {
     
   _mmdr.reset(new ManagedDocumentResult(transaction()));
+ 
+  if (_condition != nullptr) {
+    // fix const attribute accesses, e.g. { "a": 1 }.a 
+    for (size_t i = 0; i < _condition->numMembers(); ++i) {
+      auto andCond = _condition->getMemberUnchecked(i);
+      for (size_t j = 0; j < andCond->numMembers(); ++j) {
+        auto leaf = andCond->getMemberUnchecked(j);
+
+        // We only support binary conditions
+        TRI_ASSERT(leaf->numMembers() == 2);
+        AstNode* lhs = leaf->getMember(0);
+        AstNode* rhs = leaf->getMember(1);
+
+        if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && lhs->isConstant()) {
+          lhs = const_cast<AstNode*>(Ast::resolveConstAttributeAccess(lhs));
+          leaf->changeMember(0, lhs);
+        }
+        if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && rhs->isConstant()) {
+          rhs = const_cast<AstNode*>(Ast::resolveConstAttributeAccess(rhs));
+          leaf->changeMember(1, rhs);
+        }
+      }
+    }
+  }
 }
 
 IndexBlock::~IndexBlock() {
@@ -126,7 +150,7 @@ int IndexBlock::initialize() {
 
   auto en = static_cast<IndexNode const*>(getPlanNode());
   auto ast = en->_plan->getAst();
-
+  
   // instantiate expressions:
   auto instantiateExpression =
       [&](size_t i, size_t j, size_t k, AstNode* a) -> void {
@@ -176,8 +200,8 @@ int IndexBlock::initialize() {
 
       // We only support binary conditions
       TRI_ASSERT(leaf->numMembers() == 2);
-      auto lhs = leaf->getMember(0);
-      auto rhs = leaf->getMember(1);
+      AstNode* lhs = leaf->getMember(0);
+      AstNode* rhs = leaf->getMember(1);
 
       if (lhs->isAttributeAccessForVariable(outVariable, false)) {
         // Index is responsible for the left side, check if right side has to be
@@ -522,9 +546,11 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
 
     if (toSend > 0) {
       // automatically freed should we throw
-      res.reset(new AqlItemBlock(
-          toSend,
-          getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+      res.reset(
+        new AqlItemBlock(_engine->getQuery()->resourceMonitor(),
+        toSend,
+        getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()])
+      );
 
       TRI_ASSERT(curRegs <= res->getNrRegs());
 
