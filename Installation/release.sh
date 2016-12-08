@@ -78,8 +78,9 @@ while [ "$#" -gt 0 ];  do
     esac
 done
 
-if [ -d ${ENTERPRISE_SRC_DIR} ];  then
+if [ ! -d ${ENTERPRISE_SRC_DIR} ];  then
     echo "enterprise directory missing"
+    exit 1
 fi
 
 if echo ${VERSION} | grep -q -- '-'; then
