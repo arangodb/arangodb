@@ -1031,47 +1031,52 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   }
 
   query_t out = std::make_shared<Builder>();
-  out->openObject();
-  if (!isCallback) {
+  {  
+    VPackObjectBuilder b(out.get());
+    
     std::vector<std::string> gossipPeers = _config.gossipPeers();
     if (!gossipPeers.empty()) {
       try {
         _config.eraseFromGossipPeers(endpoint);
       } catch (std::exception const& e) {
-        LOG_TOPIC(ERR, Logger::AGENCY) << __FILE__ << ":" << __LINE__ << " "
-                                       << e.what();
+        LOG_TOPIC(ERR, Logger::AGENCY)
+          << __FILE__ << ":" << __LINE__ << " " << e.what();
       }
     }
-
+    
     size_t counter = 0;
     for (auto const& i : incoming) {
-      if (++counter >
-          _config.poolSize()) {  /// more data than pool size: fatal!
+      
+      /// more data than pool size: fatal!
+      if (++counter > _config.poolSize()) {
         LOG_TOPIC(FATAL, Logger::AGENCY)
-            << "Too many peers for poolsize: " << counter << ">"
-            << _config.poolSize();
+          << "Too many peers in pool: " << counter << ">" << _config.poolSize();
         FATAL_ERROR_EXIT();
       }
-
+      
+      /// disagreement over pool membership: fatal!
       if (!_config.addToPool(i)) {
         LOG_TOPIC(FATAL, Logger::AGENCY) << "Discrepancy in agent pool!";
         FATAL_ERROR_EXIT();
       }
+      
     }
-
-    // bool send = false;
-    std::map<std::string, std::string> pool = _config.pool();
-
-    out->add("endpoint", VPackValue(_config.endpoint()));
-    out->add("id", VPackValue(_config.id()));
-    out->add("pool", VPackValue(VPackValueType::Object));
-    for (auto const& i : pool) {
-      out->add(i.first, VPackValue(i.second));
+    
+    if (!isCallback) { // no gain in callback to a callback.
+      std::map<std::string, std::string> pool = _config.pool();
+      
+      out->add("endpoint", VPackValue(_config.endpoint()));
+      out->add("id", VPackValue(_config.id()));
+      out->add(VPackValue("pool"));
+      {
+        VPackObjectBuilder bb(out.get());
+        for (auto const& i : pool) {
+          out->add(i.first, VPackValue(i.second));
+        }
+      }
     }
-    out->close();
   }
-  out->close();
-
+  
   LOG_TOPIC(TRACE, Logger::AGENCY) << "Answering with gossip "
                                    << out->slice().toJson();
   return out;

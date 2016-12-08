@@ -210,7 +210,7 @@ bool Inception::restartingActiveAgent() {
             if (!theirLeaderId.empty()) {
               LOG_TOPIC(INFO, Logger::AGENCY) <<
                 "Found active RAFTing agency lead by " << theirLeaderId <<
-                "Finishing startup sequence.";
+                ". Finishing startup sequence.";
               auto agency = std::make_shared<Builder>();
               agency->openObject();
               agency->add("term", theirConfig.get("term"));
