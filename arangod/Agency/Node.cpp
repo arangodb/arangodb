@@ -1,3 +1,4 @@
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -781,3 +782,15 @@ std::string Node::getString() const {
   }
   return slice().copyString();
 }
+
+Slice Node::getArray() const {
+  if (type() == NODE) {
+    throw StoreException("Must not convert NODE type to array");
+  }
+  if (!_isArray) {
+    throw StoreException("Not an array type");
+  }
+  rebuildVecBuf();
+  return Slice(_vecBuf.data());
+}
+

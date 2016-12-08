@@ -109,7 +109,12 @@ struct Job {
 
   virtual bool start() = 0;
 
-  virtual std::vector<std::string> availableServers() const;
+  static std::vector<std::string> availableServers(
+    const arangodb::consensus::Node&);
+
+  static std::vector<std::string> clones(
+    Node const& snapshot, std::string const& database,
+    std::string const& collection);
 
   Node const _snapshot;
   Agent* _agent;

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,27 +18,31 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt
+/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AddFollower.h"
+#include "FailedFollower.h"
 
 #include "Agency/Agent.h"
 #include "Agency/Job.h"
 
 using namespace arangodb::consensus;
 
-AddFollower::AddFollower(Node const& snapshot, Agent* agent,
-                         std::string const& jobId, std::string const& creator,
-                         std::string const& prefix, std::string const& database,
-                         std::string const& collection,
-                         std::string const& shard,
-                         std::initializer_list<std::string> const& newFollower)
-    : Job(snapshot, agent, jobId, creator, prefix),
+FailedFollower::FailedFollower(Node const& snapshot, Agent* agent,
+                               std::string const& jobId,
+                               std::string const& creator,
+                               std::string const& agencyPrefix,
+                               std::string const& database,
+                               std::string const& collection,
+                               std::string const& shard,
+                               std::string const& from,
+                               std::string const& to)
+    : Job(snapshot, agent, jobId, creator, agencyPrefix),
       _database(database),
       _collection(collection),
       _shard(shard),
-      _newFollower(newFollower) {
+      _from(from),
+      _to(to) {
   try {
     JOB_STATUS js = status();
 
@@ -49,67 +54,28 @@ AddFollower::AddFollower(Node const& snapshot, Agent* agent,
       }
     }
   } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << __FILE__ << __LINE__;
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
     finish("Shards/" + _shard, false, e.what());
   }
 }
 
-AddFollower::AddFollower(Node const& snapshot, Agent* agent,
-                         std::string const& jobId, std::string const& creator,
-                         std::string const& prefix, std::string const& database,
-                         std::string const& collection,
-                         std::string const& shard,
-                         std::vector<std::string> const& newFollower)
-    : Job(snapshot, agent, jobId, creator, prefix),
-      _database(database),
-      _collection(collection),
-      _shard(shard),
-      _newFollower(newFollower) {
-  try {
-    JOB_STATUS js = status();
+FailedFollower::~FailedFollower() {}
 
-    if (js == TODO) {
-      start();
-    } else if (js == NOTFOUND) {
-      if (create()) {
-        start();
-      }
-    }
-  } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << __FILE__ << __LINE__;
-    finish("Shards/" + _shard, false, e.what());
-  }
-}
+bool FailedFollower::create() {
+  LOG_TOPIC(INFO, Logger::AGENCY)
+      << "Todo: failed Follower for " + _shard + " from " + _from + " to " + _to;
 
-AddFollower::~AddFollower() {}
-
-bool AddFollower::create() {
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Todo: AddFollower " << _newFollower
-                                  << " to shard " + _shard;
-
-  std::string path, now(timepointToString(std::chrono::system_clock::now()));
-
-  // DBservers
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  std::string curPath =
-    curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
-
-  Slice current = _snapshot(curPath).slice();
-
-  TRI_ASSERT(current.isArray());
-  TRI_ASSERT(current[0].isString());
-#endif
-
+  std::string path = _agencyPrefix + toDoPrefix + _jobId;
   std::string planPath =
     planColPrefix + _database + "/" + _collection + "/shards";
   
   auto const& myClones = clones(_snapshot, _database, _collection);
   if (!myClones.empty()) {
-    
+
     size_t sub = 0;
     auto myshards = _snapshot(planPath).children();
     auto mpos = std::distance(myshards.begin(), myshards.find(_shard));
-    
+
     // Deal with my clones
     for (auto const& collection : myClones) {
       auto othershards = _snapshot(
@@ -118,35 +84,38 @@ bool AddFollower::create() {
       std::advance(opos, mpos);
       auto const& shard = opos->first;
 
-      AddFollower(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                  _jobId, _agencyPrefix, _database, collection, shard,
-                  _newFollower);
+      FailedFollower(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
+                     _jobId, _agencyPrefix, _database, collection, shard,
+                     _from, _to);
     }
   }
-  
+   
   _jb = std::make_shared<Builder>();
   _jb->openArray();
   _jb->openObject();
 
-  path = _agencyPrefix + toDoPrefix + _jobId;
-
+  // Todo entry
   _jb->add(path, VPackValue(VPackValueType::Object));
   _jb->add("creator", VPackValue(_creator));
-  _jb->add("type", VPackValue("addFollower"));
+  _jb->add("type", VPackValue("failedFollower"));
   _jb->add("database", VPackValue(_database));
   _jb->add("collection", VPackValue(_collection));
   _jb->add("shard", VPackValue(_shard));
-  _jb->add(VPackValue("newFollower"));
-  {
-    VPackArrayBuilder b(_jb.get());
-    for (auto const& i : _newFollower) {
-      _jb->add(VPackValue(i));
-    }
-  }
+  _jb->add("fromServer", VPackValue(_from));
+  _jb->add("toServer", VPackValue(_to));
+  _jb->add("isLeader", VPackValue(false));
   _jb->add("jobId", VPackValue(_jobId));
-  _jb->add("timeCreated", VPackValue(now));
-
+  _jb->add("timeCreated",
+           VPackValue(timepointToString(std::chrono::system_clock::now())));
   _jb->close();
+
+  // Add shard to /arango/Target/FailedServers/<server> array
+  path = _agencyPrefix + failedServersPrefix + "/" + _from;
+  _jb->add(path, VPackValue(VPackValueType::Object));
+  _jb->add("op", VPackValue("push"));
+  _jb->add("new", VPackValue(_shard));
+  _jb->close();
+  
   _jb->close();
   _jb->close();
 
@@ -160,35 +129,16 @@ bool AddFollower::create() {
   return false;
 }
 
-bool AddFollower::start() {
+bool FailedFollower::start() {
+
   // DBservers
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
   std::string curPath =
       curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
 
-  Slice current = _snapshot(curPath).slice();
-  Slice planned = _snapshot(planPath).slice();
+  Node const& current = _snapshot(curPath);
 
-  TRI_ASSERT(current.isArray());
-  TRI_ASSERT(planned.isArray());
-
-  for (auto const& srv : VPackArrayIterator(current)) {
-    TRI_ASSERT(srv.isString());
-    if (srv.copyString() == _newFollower.front()) {
-      finish("Shards/" + _shard, false,
-             "newFollower must not be already holding the shard.");
-      return false;
-    }
-  }
-  for (auto const& srv : VPackArrayIterator(planned)) {
-    TRI_ASSERT(srv.isString());
-    if (srv.copyString() == _newFollower.front()) {
-      finish("Shards/" + _shard, false,
-             "newFollower must not be planned for shard already.");
-      return false;
-    }
-  }
 
   // Copy todo to pending
   Builder todo, pending;
@@ -199,19 +149,21 @@ bool AddFollower::start() {
     try {
       _snapshot(toDoPrefix + _jobId).toBuilder(todo);
     } catch (std::exception const&) {
-      LOG_TOPIC(INFO, Logger::AGENCY) << "Failed to get key " + toDoPrefix +
-                                             _jobId + " from agency snapshot";
+      LOG_TOPIC(INFO, Logger::AGENCY)
+        << "Failed to get key " + toDoPrefix + _jobId + " from agency snapshot";
       return false;
     }
   } else {
-    todo.add(_jb->slice()[0].valueAt(0));
+    todo.add(_jb->slice().get(_agencyPrefix + toDoPrefix + _jobId).valueAt(0));
   }
   todo.close();
 
-  // Enter pending, remove todo, block toserver
+  
+  // Transaction
   pending.openArray();
 
-  // --- Add pending
+  // Apply
+  // --- Add pending entry
   pending.openObject();
   pending.add(_agencyPrefix + pendingPrefix + _jobId,
               VPackValue(VPackValueType::Object));
@@ -222,26 +174,28 @@ bool AddFollower::start() {
   }
   pending.close();
 
-  // --- Delete todo
+  // --- Remove todo entry
   pending.add(_agencyPrefix + toDoPrefix + _jobId,
               VPackValue(VPackValueType::Object));
   pending.add("op", VPackValue("delete"));
+  pending.close();
+
+  // --- Add new server to the list
+  pending.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Array));
+  for(const auto& i : VPackArrayIterator(current.slice())) {
+    if (i.copyString() != _from) {
+      pending.add(i);
+    } else {
+      pending.add(VPackValue(_to));
+    }
+  }
+  
   pending.close();
 
   // --- Block shard
   pending.add(_agencyPrefix + blockedShardsPrefix + _shard,
               VPackValue(VPackValueType::Object));
   pending.add("jobId", VPackValue(_jobId));
-  pending.close();
-
-  // --- Plan changes
-  pending.add(_agencyPrefix + planPath, VPackValue(VPackValueType::Array));
-  for (auto const& srv : VPackArrayIterator(planned)) {
-    pending.add(srv);
-  }
-  for (auto const& i : _newFollower) {
-    pending.add(VPackValue(i));
-  }
   pending.close();
 
   // --- Increment Plan/Version
@@ -252,13 +206,9 @@ bool AddFollower::start() {
   pending.close();
 
   // Preconditions
-  // --- Check that Current servers are as we expect
   pending.openObject();
-  pending.add(_agencyPrefix + curPath, VPackValue(VPackValueType::Object));
-  pending.add("old", current);
-  pending.close();
-
-  // --- Check if shard is not blocked
+  
+  // --- Check if shard is not blocked by other job
   pending.add(_agencyPrefix + blockedShardsPrefix + _shard,
               VPackValue(VPackValueType::Object));
   pending.add("oldEmpty", VPackValue(true));
@@ -267,20 +217,21 @@ bool AddFollower::start() {
   pending.close();
   pending.close();
 
-  // Transact to agency
+  // Transact
   write_ret_t res = transact(_agent, pending);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     LOG_TOPIC(INFO, Logger::AGENCY)
-      << "Pending: Addfollower " << _newFollower << " to shard " << _shard;
+      << "Pending: Change followership " + _shard + " from " + _from + " to " + _to;
     return true;
   }
 
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Start precondition failed for " + _jobId;
+  LOG_TOPIC(INFO, Logger::AGENCY)
+      << "Precondition failed for starting job " + _jobId;
   return false;
 }
 
-JOB_STATUS AddFollower::status() {
+JOB_STATUS FailedFollower::status() {
   auto status = exists();
 
   if (status != NOTFOUND) {  // Get job details from agency
@@ -288,12 +239,8 @@ JOB_STATUS AddFollower::status() {
     try {
       _database = _snapshot(pos[status] + _jobId + "/database").getString();
       _collection = _snapshot(pos[status] + _jobId + "/collection").getString();
-      for (auto const& i :
-             VPackArrayIterator(
-               _snapshot(pos[status] + _jobId + "/newFollower").getArray())) {
-        _newFollower.push_back(i.copyString());
-      }
-      _snapshot(pos[status] + _jobId + "/newFollower").getArray();
+      _from = _snapshot(pos[status] + _jobId + "/fromServer").getString();
+      _to = _snapshot(pos[status] + _jobId + "/toServer").getString();
       _shard = _snapshot(pos[status] + _jobId + "/shard").getString();
     } catch (std::exception const& e) {
       std::stringstream err;
@@ -305,15 +252,36 @@ JOB_STATUS AddFollower::status() {
   }
 
   if (status == PENDING) {
-    std::string curPath = curColPrefix + _database + "/" + _collection + "/" +
-                          _shard + "/servers";
+    Node const& job = _snapshot(pendingPrefix + _jobId);
+    std::string database = job("database").toJson(),
+                collection = job("collection").toJson(),
+                shard = job("shard").toJson();
 
-    Slice current = _snapshot(curPath).slice();
-    for (auto const& srv : VPackArrayIterator(current)) {
-      if (srv.copyString() == _newFollower.front()) {
-        if (finish("Shards/" + _shard)) {
-          return FINISHED;
-        }
+    std::string planPath = planColPrefix + database + "/" + collection +
+                           "/shards/" + shard,
+                curPath = curColPrefix + database + "/" + collection + "/" +
+                          shard + "/servers";
+
+    Node const& planned = _snapshot(planPath);
+    Node const& current = _snapshot(curPath);
+
+    if (planned.slice() == current.slice()) {
+
+      // Remove shard from /arango/Target/FailedServers/<server> array
+      Builder del;
+      del.openArray();
+      del.openObject();
+      std::string path = _agencyPrefix + failedServersPrefix + "/" + _from;
+      del.add(path, VPackValue(VPackValueType::Object));
+      del.add("op", VPackValue("erase"));
+      del.add("val", VPackValue(_shard));
+      del.close();
+      del.close();
+      del.close();
+      write_ret_t res = transact(_agent, del);
+  
+      if (finish("Shards/" + shard)) {
+        return FINISHED;
       }
     }
   }

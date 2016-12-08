@@ -117,6 +117,9 @@ class Supervision : public arangodb::Thread {
 
  private:
 
+  /// @brief Check for inconsistencies in replication factor vs dbs entries
+  void enforceReplication();
+
   /// @brief Update agency prefix from agency itself
   bool updateAgencyPrefix(size_t nTries = 10, int intervalSec = 1);
 

@@ -21,8 +21,8 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_ADDFOLLOWER_H
-#define ARANGOD_CONSENSUS_ADDFOLLOWER_H 1
+#ifndef ARANGOD_CONSENSUS_FAILED_FOLLOWER_H
+#define ARANGOD_CONSENSUS_FAILED_FOLLOWER_H 1
 
 #include "Job.h"
 #include "Supervision.h"
@@ -30,43 +30,28 @@
 namespace arangodb {
 namespace consensus {
 
-struct AddFollower : public Job {
-  
-  AddFollower (Node const& snapshot,
-               Agent* agent,
-               std::string const& jobId,
-               std::string const& creator,
-               std::string const& prefix,
-               std::string const& database,
-               std::string const& collection,
-               std::string const& shard,
-               std::initializer_list<std::string> const&);
-
-  
-  AddFollower (Node const& snapshot,
-               Agent* agent,
-               std::string const& jobId,
-               std::string const& creator,
-               std::string const& prefix,
+struct FailedFollower : public Job {
+  FailedFollower(Node const& snapshot, Agent* agent, std::string const& jobId,
+               std::string const& creator, std::string const& agencyPrefix,
                std::string const& database = std::string(),
                std::string const& collection = std::string(),
                std::string const& shard = std::string(),
-               std::vector<std::string> const& newFollowers = {});
+               std::string const& from = std::string(),
+               std::string const& to = std::string());
 
-  
-  virtual ~AddFollower ();
-  
-  virtual JOB_STATUS status () override;
-  virtual bool create () override;
+  virtual ~FailedFollower();
+
+  virtual bool create() override;
   virtual bool start() override;
+  virtual JOB_STATUS status() override;
 
   std::string _database;
   std::string _collection;
   std::string _shard;
-  std::vector<std::string> _newFollower;
-
+  std::string _from;
+  std::string _to;
 };
-
-}}
+}
+}  // namespaces
 
 #endif
