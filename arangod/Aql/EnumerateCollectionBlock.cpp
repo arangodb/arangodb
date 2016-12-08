@@ -123,18 +123,24 @@ int EnumerateCollectionBlock::initialize() {
     auto dbName = logicalCollection->dbName();
     auto collectionInfoCurrent = ClusterInfo::instance()->getCollectionCurrent(dbName, std::to_string(cid));
 
+    double maxWait = _engine->getQuery()->getNumericOption("satelliteSyncWait", 60.0);
     bool inSync = false;
     unsigned long waitInterval = 10000;
     double startTime = TRI_microtime();
-    double endTime = startTime + 60.0;
+    double now = startTime;
+    double endTime = startTime + maxWait;
 
     while (!inSync) {
       auto followers = collectionInfoCurrent->servers(_collection->getName());
       inSync = std::find(followers.begin(), followers.end(), ServerState::instance()->getId()) != followers.end();
       if (!inSync) {
+        if (endTime - now < waitInterval) {
+          waitInterval = endTime - now;
+        }
         usleep(waitInterval);
       }
-      if (TRI_microtime() > endTime) {
+      now = TRI_microtime();
+      if (now > endTime) {
         break;
       }
     }
