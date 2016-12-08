@@ -621,7 +621,12 @@ void Supervision::enforceReplication() {
     auto const& db = *(db_.second);
     for (const auto& col_ : db.children()) { // Planned collections
       auto const& col = *(col_.second);
-      auto const& replicationFactor = col("replicationFactor").slice().getUInt();
+      auto replicationFactor = col("replicationFactor").slice().getUInt();
+
+      // mop: satellites => distribute to every server
+      if (replicationFactor == 0) {
+        replicationFactor = available.size();
+      }
       
       bool clone = false;
       try {
