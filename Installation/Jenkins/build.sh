@@ -576,7 +576,7 @@ if test -n "${TARGET_DIR}";  then
          touch arangosh/.keepme
 
          tar -c -f ${TARFILE_TMP} \
-             VERSION utils scripts etc/relative UnitTests Documentation js \
+             VERSION utils scripts etc/relative etc/testing UnitTests Documentation js \
              lib/Basics/errors.dat \
              3rdParty/.keepme \
              arangod/.keepme \

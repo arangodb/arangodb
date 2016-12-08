@@ -461,6 +461,10 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       // mop: only allow satellite collections to be created explicitly
       if (_replicationFactor > 0 && _replicationFactor <= 10) {
         isError = false;
+#ifdef USE_ENTERPRISE
+      } else if (_replicationFactor == 0) {
+        isError = false;
+#endif
       }
     }
 #ifdef USE_ENTERPRISE
