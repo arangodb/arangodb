@@ -428,7 +428,7 @@ not always have to be an array of objects:
 Now let's do something crazy: for every document in the users collection,
 iterate over all user documents again and return user pairs, e.g. John and Katie.
 We can use a loop inside a loop for this to get the cross product (every possible
-combination of all user records, 3 * 3 = 9). We don't want pairings like *John +
+combination of all user records, 3 \* 3 = 9). We don't want pairings like *John +
 John* however, so let's eliminate them with a filter condition:
 
 ```js
