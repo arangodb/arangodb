@@ -459,7 +459,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
     if (replicationFactorSlice.isNumber()) {
       _replicationFactor = replicationFactorSlice.getNumber<size_t>();
       // mop: only allow satellite collections to be created explicitly
-      if (_replicationFactor > 0 || _replicationFactor <= 10) {
+      if (_replicationFactor > 0 && _replicationFactor <= 10) {
         isError = false;
       }
     }
