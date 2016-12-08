@@ -33,14 +33,26 @@ namespace consensus {
 struct AddFollower : public Job {
   
   AddFollower (Node const& snapshot,
-             Agent* agent,
-             std::string const& jobId,
-             std::string const& creator,
-             std::string const& prefix,
-             std::string const& database = std::string(),
-             std::string const& collection = std::string(),
-             std::string const& shard = std::string(),
-             std::string const& newFollower = std::string());
+               Agent* agent,
+               std::string const& jobId,
+               std::string const& creator,
+               std::string const& prefix,
+               std::string const& database,
+               std::string const& collection,
+               std::string const& shard,
+               std::initializer_list<std::string> const&);
+
+  
+  AddFollower (Node const& snapshot,
+               Agent* agent,
+               std::string const& jobId,
+               std::string const& creator,
+               std::string const& prefix,
+               std::string const& database = std::string(),
+               std::string const& collection = std::string(),
+               std::string const& shard = std::string(),
+               std::vector<std::string> const& newFollowers = {});
+
   
   virtual ~AddFollower ();
   
@@ -51,7 +63,7 @@ struct AddFollower : public Job {
   std::string _database;
   std::string _collection;
   std::string _shard;
-  std::string _newFollower;
+  std::vector<std::string> _newFollower;
 
 };
 

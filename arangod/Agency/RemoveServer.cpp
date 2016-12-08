@@ -355,7 +355,7 @@ bool RemoveServer::scheduleAddFollowers() {
 
         AddFollower(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                     _jobId, _agencyPrefix, database.first, collptr.first,
-                    shard.first, newServer);
+                    shard.first, {newServer});
       }
     }
   }

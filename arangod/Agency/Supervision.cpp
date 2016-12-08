@@ -634,18 +634,29 @@ void Supervision::enforceReplication() {
 
           // Enough DBServer to 
           if (replicationFactor > shard.slice().length() &&
-              available.size() >= replicationFactor) {
+              available.size() > shard.slice().length()) {
             for (auto const& i : VPackArrayIterator(shard.slice())) {
               available.erase(
                 std::remove(
                   available.begin(), available.end(), i.copyString()),
                 available.end());
             }
-            auto randIt = available.begin();
-            std::advance(randIt, std::rand() % available.size());
+
+            size_t optimal = replicationFactor - shard.slice().length();
+            std::vector<std::string> newFollowers;
+            for (size_t i = 0; i < optimal; ++i) {
+              auto randIt = available.begin();
+              std::advance(randIt, std::rand() % available.size());
+              newFollowers.push_back(*randIt);
+              available.erase(randIt);
+              if (available.empty()) {
+                break;
+              }
+            }
+
             AddFollower(
               _snapshot, _agent, std::to_string(_jobId++), "supervision",
-              _agencyPrefix, db_.first, col_.first, shard_.first, *randIt);
+              _agencyPrefix, db_.first, col_.first, shard_.first, newFollowers);
           }
         }
       }
