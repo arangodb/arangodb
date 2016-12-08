@@ -178,29 +178,30 @@ configure_file (
   NEWLINE_STYLE UNIX
 )
 
-# sub directories --------------------------------------------------------------
 
-#if(BUILD_STATIC_EXECUTABLES)
-#  set(CMAKE_EXE_LINKER_FLAGS -static)
-#  set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
-#  set(CMAKE_EXE_LINK_DYNAMIC_C_FLAGS)       # remove -Wl,-Bdynamic
-#  set(CMAKE_EXE_LINK_DYNAMIC_CXX_FLAGS)
-#  set(CMAKE_SHARED_LIBRARY_C_FLAGS)         # remove -fPIC
-#  set(CMAKE_SHARED_LIBRARY_CXX_FLAGS)
-#  set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)    # remove -rdynamic
-#  set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)
-#  # Maybe this works as well, haven't tried yet.
-#  # set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS FALSE)
-#else(BUILD_STATIC_EXECUTABLES)
-#  # Set RPATH to use for installed targets; append linker search path
-#  set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${LOFAR_LIBDIR}")
-#  set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-#endif(BUILD_STATIC_EXECUTABLES) 
+if (MSVC)
+  # so we don't need to ship dll's twice, make it one directory:
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/InstallMacros.cmake)
+  set(CMAKE_INSTALL_FULL_SBINDIR     "${CMAKE_INSTALL_FULL_BINDIR}")
 
+  # other platforms link the file into the binary
+  install(FILES ${ICU_DT}
+    DESTINATION "${INSTALL_ICU_DT_DEST}"
+    RENAME ${ICU_DT_DEST})
 
-#--------------------------------------------------------------------------------
-#get_cmake_property(_variableNames VARIABLES)
-#foreach (_variableName ${_variableNames})
-#    message(STATUS "${_variableName}=${${_variableName}}")
-#endforeach()
-#--------------------------------------------------------------------------------
+  install_readme(README.windows README.windows.txt)
+
+  # install the visual studio runtime:
+  set(CMAKE_INSTALL_UCRT_LIBRARIES 1)
+  include(InstallRequiredSystemLibraries)
+  INSTALL(FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS} DESTINATION ${CMAKE_INSTALL_SBINDIR} COMPONENT Libraries)
+  INSTALL(FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_COMPONENT} DESTINATION ${CMAKE_INSTALL_SBINDIR} COMPONENT Libraries)
+
+  # install openssl
+  if (NOT LIB_EAY_RELEASE_DLL OR NOT SSL_EAY_RELEASE_DLL)
+    message(FATAL_ERROR, "BUNDLE_OPENSSL set but couldn't locate SSL DLLs. Please set LIB_EAY_RELEASE_DLL and SSL_EAY_RELEASE_DLL")
+  endif()
+
+  install (FILES "${LIB_EAY_RELEASE_DLL}" DESTINATION "${CMAKE_INSTALL_BINDIR}/" COMPONENT Libraries)  
+  install (FILES "${SSL_EAY_RELEASE_DLL}" DESTINATION "${CMAKE_INSTALL_BINDIR}/" COMPONENT Libraries)  
+endif()
