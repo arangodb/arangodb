@@ -9,6 +9,8 @@ v3.1.4 (XXXX-XX-XX)
   and either at least two DBservers are there or 15s have passed, before they
   initiate the bootstrap of system collections.
 
+* more robust agency startup from devel
+
 v3.1.3 (2016-12-02)
 -------------------
 

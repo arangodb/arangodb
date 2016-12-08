@@ -303,6 +303,11 @@ bool Constituent::checkLeader(term_t term, std::string id, index_t prevLogIndex,
 /// @brief Vote
 bool Constituent::vote(term_t termOfPeer, std::string id, index_t prevLogIndex,
                        term_t prevLogTerm) {
+
+  if (!_agent->ready()) {
+    return false;
+  }
+
   TRI_ASSERT(_vocbase != nullptr);
   
   LOG_TOPIC(TRACE, Logger::AGENCY)
