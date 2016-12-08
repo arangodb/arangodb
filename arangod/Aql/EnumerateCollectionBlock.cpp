@@ -135,7 +135,7 @@ int EnumerateCollectionBlock::initialize() {
       inSync = std::find(followers.begin(), followers.end(), ServerState::instance()->getId()) != followers.end();
       if (!inSync) {
         if (endTime - now < waitInterval) {
-          waitInterval = endTime - now;
+          waitInterval = static_cast<unsigned long>(endTime - now);
         }
         usleep(waitInterval);
       }

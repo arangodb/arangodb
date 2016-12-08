@@ -24,6 +24,8 @@
 */
 
 #include "fasthash.h"
+  
+static constexpr uint64_t m = 0x880355f21e6d1965ULL;
 
 // Compression function for Merkle-Damgard construction.
 // This function is generated using the framework provided.
@@ -37,9 +39,7 @@ static inline uint64_t mix(uint64_t h) {
 }
 
 uint64_t fasthash64_uint64(uint64_t value, uint64_t seed) {
-  size_t const len = sizeof(uint64_t);
-  uint64_t const m = 0x880355f21e6d1965ULL;
-  uint64_t h = seed ^ (len * m);
+  uint64_t h = seed ^ 4619197404915747624ULL; // this is h = seed ^ (sizeof(uint64_t) * m), but prevents VS warning C4307: integral constant overflow 
   h ^= mix(value);
   h *= m;
 
@@ -51,7 +51,6 @@ uint64_t fasthash64(const void* buf, size_t len, uint64_t seed) {
   // byte-wise hashing to support platforms that don't permit
   // unaligned accesses of uint64_t values (which is the default
   // memory access strategy of fasthash64)
-  uint64_t const m = 0x880355f21e6d1965ULL;
   uint8_t const* pos = (uint8_t const*)buf;
   uint8_t const* end = pos + len;
   uint64_t h = seed ^ (len * m);
@@ -92,7 +91,6 @@ uint64_t fasthash64(const void* buf, size_t len, uint64_t seed) {
   // uint64_t-wise hashing for platforms that allow dereferencing
   // unaligned pointers to uint64_t memory
   // this is the original version of fasthash64
-  uint64_t const m = 0x880355f21e6d1965ULL;
   uint64_t const* pos = (uint64_t const*)buf;
   uint64_t const* end = pos + (len / 8);
   const unsigned char* pos2;
@@ -104,7 +102,7 @@ uint64_t fasthash64(const void* buf, size_t len, uint64_t seed) {
     h ^= mix(v);
     h *= m;
   }
-
+  
   pos2 = (const unsigned char*)pos;
   v = 0;
 

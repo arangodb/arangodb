@@ -2733,7 +2733,7 @@ static void JS_DecodeRev(v8::FunctionCallbackInfo<v8::Value> const& args) {
 #endif
   char buffer[32];
   strftime(buffer, 32, "%Y-%m-%dT%H:%M:%S.000Z", &date);
-  buffer[20] = (millis / 100) + '0';
+  buffer[20] = static_cast<char>(millis / 100) + '0';
   buffer[21] = ((millis / 10) % 10) + '0';
   buffer[22] = (millis % 10) + '0';
   buffer[24] = 0;
@@ -2742,7 +2742,7 @@ static void JS_DecodeRev(v8::FunctionCallbackInfo<v8::Value> const& args) {
   result->Set(TRI_V8_ASCII_STRING("date"),
               TRI_V8_ASCII_STRING(buffer));
   result->Set(TRI_V8_ASCII_STRING("count"),
-              v8::Number::New(isolate, count));
+              v8::Number::New(isolate, static_cast<double>(count)));
 
   TRI_V8_RETURN(result);
   
