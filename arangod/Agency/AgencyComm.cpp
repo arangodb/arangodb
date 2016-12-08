@@ -124,7 +124,6 @@ void AgencyPrecondition::toGeneralBuilder(VPackBuilder& builder) const {
 AgencyOperation::AgencyOperation(std::string const& key)
     : _key(AgencyCommManager::path(key)), _opType() {
   _opType.type = AgencyOperationType::Type::READ;
-  LOG(WARN) << _opType.toString();
 }
 
 AgencyOperation::AgencyOperation(std::string const& key,
