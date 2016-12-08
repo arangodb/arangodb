@@ -101,7 +101,7 @@ bool Validator::validate(uint8_t const* ptr, size_t length, bool isSubPart) cons
         p = ptr + 1;
         len = head - 0x40U;
       }
-      validateBufferLength(length - (p - ptr), len, true);
+      validateBufferLength(length - (p - ptr), length, true);
 
       if (options->validateUtf8Strings && !Utf8Helper::isValidUtf8(p, len)) {
         throw Exception(Exception::InvalidUtf8Sequence);
