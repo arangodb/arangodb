@@ -106,6 +106,9 @@ bool Conductor::_startGlobalStep() {
   // first allow all workers to run worker level operations
   int res = _sendToAllDBServers(Utils::prepareGSSPath, b.slice());
   if (res == TRI_ERROR_NO_ERROR) {
+    if (_masterContext) {
+      _masterContext->preGlobalSuperstep(_globalSuperstep);
+    }
     // start vertex level operations, does not get a response
     _sendToAllDBServers(Utils::startGSSPath, b.slice());  // call me maybe
     LOG(INFO) << "Conductor started new gss " << _globalSuperstep;
@@ -117,8 +120,6 @@ bool Conductor::_startGlobalStep() {
     return false;
   }
 }
-
-
 
 // ============ Conductor callbacks ===============
 void Conductor::finishedWorkerStartup(VPackSlice& data) {
@@ -161,6 +162,11 @@ void Conductor::finishedGlobalStep(VPackSlice& data) {
     return;
   }
   
+  bool proceed = true;
+  if (_masterContext) { // ask algorithm to evaluate aggregated values
+    proceed = _masterContext->postGlobalSuperstep(_globalSuperstep);
+  }
+  
   LOG(INFO) << "Finished gss " << _globalSuperstep;
   _globalSuperstep++;
 
@@ -168,15 +174,11 @@ void Conductor::finishedGlobalStep(VPackSlice& data) {
   // are left to process
   bool workersDone = _workerStats.sendCount == _workerStats.receivedCount &&
                      _workerStats.activeCount == 0;
-  bool proceed = !workersDone && _state == ExecutionState::RUNNING &&
-                 _globalSuperstep <= 100;
-  if (_masterContext) {  // ask algorithm to evaluate aggregated values
-    proceed =
-        proceed && _masterContext->betweenGlobalSuperstep(_globalSuperstep);
-  }
+  // TODO make maxumum configurable
+  proceed = proceed && _globalSuperstep <= 100;
 
-  if (proceed) {  // trigger next superstep
-    _startGlobalStep();
+  if (proceed && !workersDone && _state == ExecutionState::RUNNING) {
+    _startGlobalStep();// trigger next superstep
   } else if (_state == ExecutionState::RUNNING ||
              _state == ExecutionState::CANCELED) {
     if (_state == ExecutionState::CANCELED) {
@@ -193,8 +195,8 @@ void Conductor::finishedGlobalStep(VPackSlice& data) {
     // tells workers to store / discard results
     _finalizeWorkers();
 
-  } else {
-    LOG(INFO) << "No further action taken after receiving all responses";
+  } else {// this prop shouldn't occur,
+    LOG(WARN) << "No further action taken after receiving all responses";
   }
 }
 
@@ -205,7 +207,6 @@ void Conductor::finishedRecovery(VPackSlice& data) {
     return;
   }
   _ensureCorrectness(data);
-
   if (_respondedServers.size() != _dbServers.size()) {
     return;
   }

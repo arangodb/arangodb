@@ -25,6 +25,7 @@
 #include "Pregel/Combiners/FloatSumCombiner.h"
 #include "Pregel/GraphFormat.h"
 #include "Pregel/Iterators.h"
+#include "Pregel/MasterContext.h"
 #include "Pregel/Utils.h"
 #include "Pregel/VertexComputation.h"
 
@@ -69,9 +70,9 @@ MessageCombiner<float>* PageRankAlgorithm::messageCombiner()
   return new FloatSumCombiner();
 }
 
-struct PageRankComputation : public VertexComputation<float, float, float> {
+struct PRComputation : public VertexComputation<float, float, float> {
   float _limit;
-  PageRankComputation(float t) : _limit(t) {}
+  PRComputation(float t) : _limit(t) {}
   void compute(MessageIterator<float> const& messages) override {
     
     float* ptr = mutableVertexData<float>();
@@ -107,11 +108,11 @@ struct PageRankComputation : public VertexComputation<float, float, float> {
 
 VertexComputation<float, float, float>*
 PageRankAlgorithm::createComputation(uint64_t gss) const {
-  return new PageRankComputation(_threshold);
+  return new PRComputation(_threshold);
 }
 
-struct PageRankCompensation : public VertexCompensation<float, float, float> {
-  PageRankCompensation() {}
+struct PRCompensation : public VertexCompensation<float, float, float> {
+  PRCompensation() {}
   void compensate(bool inLostPartition) override {
   
   }
@@ -119,7 +120,7 @@ struct PageRankCompensation : public VertexCompensation<float, float, float> {
 
 VertexCompensation<float, float, float>*
 PageRankAlgorithm::createCompensation(uint64_t gss) const {
-  return new PageRankCompensation();
+  return new PRCompensation();
 }
 
 Aggregator* PageRankAlgorithm::aggregator(std::string const& name) const {
@@ -127,4 +128,18 @@ Aggregator* PageRankAlgorithm::aggregator(std::string const& name) const {
     return new FloatMaxAggregator(0);
   }
   return nullptr;
+}
+
+struct PRMasterContext : public MasterContext {
+  PRMasterContext(VPackSlice params) : MasterContext(params) {};
+  bool postGlobalSuperstep(uint64_t gss) {
+    const float *convergence = getAggregatedValue<float>("convergence");
+    LOG(INFO) << "Current convergence level" << *convergence;
+    return true;
+  }
+};
+
+
+MasterContext* PageRankAlgorithm::masterContext(VPackSlice userParams) const {
+  return new PRMasterContext(userParams);
 }

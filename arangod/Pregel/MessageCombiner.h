@@ -31,14 +31,16 @@ namespace pregel {
 template <class M>
 struct MessageCombiner {
   virtual ~MessageCombiner() {}
-  virtual M combine(M const& firstValue, M const& secondValue) const = 0;
+  virtual void combine(M& firstValue, M const& secondValue) const = 0;
 };
 
 struct IntegerMinCombiner : public MessageCombiner<int64_t> {
   IntegerMinCombiner() {}
-  int64_t combine(int64_t const& firstValue,
+  void combine(int64_t& firstValue,
                   int64_t const& secondValue) const override {
-    return firstValue < secondValue ? firstValue : secondValue;
+    if (firstValue > secondValue) {
+      firstValue = secondValue;
+    }
   };
 };
 }

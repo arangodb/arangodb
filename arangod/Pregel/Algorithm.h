@@ -59,8 +59,8 @@ struct IAlgorithm {
     return nullptr;
   }
   
-  virtual MasterContext* masterContext(VPackSlice userParams) {
-    return new MasterContext(userParams);
+  virtual MasterContext* masterContext(VPackSlice userParams) const {
+    return nullptr;
   }
   
   std::string const& name() const { return _name; }

@@ -29,9 +29,9 @@ namespace pregel {
 
 struct FloatSumCombiner : public MessageCombiner<float> {
   FloatSumCombiner() {}
-  float combine(float const& firstValue,
-                float const& secondValue) const override {
-    return firstValue + secondValue;
+  void combine(float & firstValue,
+               float const& secondValue) const override {
+    firstValue += secondValue;
   };
 };
 }

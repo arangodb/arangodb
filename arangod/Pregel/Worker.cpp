@@ -135,7 +135,7 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data) {
 
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::receivedMessages(VPackSlice data) {
-  LOG(INFO) << "Worker received some messages: " << data.toJson();
+  //LOG(INFO) << "Worker received some messages: " << data.toJson();
 
   VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
   VPackSlice messageSlice = data.get(Utils::messagesKey);
@@ -249,9 +249,9 @@ void Worker<V, E, M>::_executeGlobalStep(
       vertexComputation->compute(messages);
       if (vertexEntry->active()) {
         activeCount++;
-      } else {
+      }/* else {
         LOG(INFO) << vertexEntry->key() << " vertex has halted";
-      }
+      }*/
     }
     // TODO delete read messages immediatly
     // technically messages to non-existing vertices trigger

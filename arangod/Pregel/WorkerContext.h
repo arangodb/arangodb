@@ -25,9 +25,9 @@
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
-#include "AggregatorUsage.h"
+#include "Pregel/AggregatorUsage.h"
 #include "Basics/Common.h"
-#include "Utils.h"
+#include "Pregel/Utils.h"
 
 namespace arangodb {
 namespace pregel {
@@ -48,7 +48,7 @@ class WorkerContext {
 
   template <typename T>
   inline const T* getAggregatedValue(std::string const& name) {
-    return _conductorAggregators->getAggregatedValue(name);
+    return (T*)_conductorAggregators->getAggregatedValue(name);
   }
 
   virtual void preApplication(){};

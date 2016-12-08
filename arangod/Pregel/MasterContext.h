@@ -46,13 +46,17 @@ class MasterContext {
 
   template <typename T>
   inline const T* getAggregatedValue(std::string const& name) {
-    return _aggregators->getAggregatedValue(name);
+    return (const T*)_aggregators->getAggregatedValue(name);
   }
 
   virtual void preApplication(){};
-  /// @brief called between supersteps
+  
+  /// @brief called before supersteps
   /// @return true to continue the computation
-  virtual bool betweenGlobalSuperstep(uint64_t gss) {return true;};
+  virtual bool preGlobalSuperstep(uint64_t gss) {return true;};
+  /// @brief called after supersteps
+  /// @return true to continue the computation
+  virtual bool postGlobalSuperstep(uint64_t gss) {return true;};
   virtual void postApplication(){};
 
   /// should indicate if compensation is supposed to start by returning true

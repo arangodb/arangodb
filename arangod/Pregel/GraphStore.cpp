@@ -198,7 +198,7 @@ void GraphStore<V, E>::_loadVertices(WorkerState const& state,
           document = document.resolveExternal();
         }
 
-        LOG(INFO) << "Loaded Vertex: " << document.toJson();
+        //LOG(INFO) << "Loaded Vertex: " << document.toJson();
         std::string key = document.get(StaticStrings::KeyString).copyString();
 
         VertexEntry entry(sourceShard, key);
@@ -262,16 +262,13 @@ void GraphStore<V, E>::_loadEdges(WorkerState const& state,
         // ====== actual loading ======
         vertexEntry._edgeCount += 1;
 
-        LOG(INFO) << "Loaded Edge: " << document.toJson();
+        //LOG(INFO) << "Loaded Edge: " << document.toJson();
         std::string toValue =
             document.get(StaticStrings::ToString).copyString();
 
         std::size_t pos = toValue.find('/');
         std::string collectionName = toValue.substr(0, pos);
         std::string _key = toValue.substr(pos + 1, toValue.length() - pos - 1);
-
-        LOG(INFO) << "Adding outgoing messages for " << collectionName << "/"
-                  << _key;
 
         auto collInfo = Utils::resolveCollection(
             state.database(), collectionName, state.collectionPlanIdMap());

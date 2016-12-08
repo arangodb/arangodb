@@ -139,7 +139,7 @@ void CombiningInCache<M>::setDirect(prgl_shard_t shard, std::string const& key,
   std::unordered_map<std::string, M>& vertexMap = _shardMap[shard];
   auto vmsg = vertexMap.find(key);
   if (vmsg != vertexMap.end()) {  // got a message for the same vertex
-    vmsg->second = _combiner->combine(vmsg->second, newValue);
+    _combiner->combine(vmsg->second, newValue);
   } else {
     vertexMap.insert(std::make_pair(key, newValue));
   }
@@ -159,7 +159,7 @@ void CombiningInCache<M>::mergeCache(InCache<M> const* otherCache) {
     for (auto& vertexMessage : pair.second) {
       auto vmsg = vertexMap.find(vertexMessage.first);
       if (vmsg != vertexMap.end()) {  // got a message for the same vertex
-        vmsg->second = _combiner->combine(vmsg->second, vertexMessage.second);
+        _combiner->combine(vmsg->second, vertexMessage.second);
       } else {
         vertexMap.insert(vertexMessage);
       }
