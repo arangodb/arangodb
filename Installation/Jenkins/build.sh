@@ -564,18 +564,26 @@ if test -n "${TARGET_DIR}";  then
         ${PACKAGE_MAKE} copy_packages
         ${PACKAGE_MAKE} clean_packages
     else
+        # we re-use a generic cpack tarball:
+        ${PACKAGE_MAKE} TGZ_package
+        PKG_NAME=`grep CPACK_PACKAGE_FILE_NAME CPackConfig.cmake  |sed -e 's;".$;;' -e 's;.*";;'`
+
+        
         TARFILE=arangodb-`uname`${TAR_SUFFIX}.tar.gz
         TARFILE_TMP=`pwd`/arangodb.tar.$$
+        trap "rm -rf ${TARFILE_TMP}" EXIT
 
         mkdir -p ${dir}
-        trap "rm -rf ${TARFILE_TMP}" EXIT
+
+        cp -a ${SOURCE_DIR}/_CPack_Packages/*/TGZ/${PKG_NAME}/* ${dir}
+        rm -rf ${dir}/share/arangodb3/js
 
         (cd ${SOURCE_DIR}
 
          touch 3rdParty/.keepme
          touch arangod/.keepme
          touch arangosh/.keepme
-
+                               
          tar -c -f ${TARFILE_TMP} \
              VERSION utils scripts etc/relative etc/testing UnitTests Documentation js \
              lib/Basics/errors.dat \
