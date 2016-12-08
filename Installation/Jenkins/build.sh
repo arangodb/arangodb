@@ -514,6 +514,7 @@ if test -n "${ENTERPRISE_GIT_URL}" ; then
             GITARGS=devel
         fi
         echo "I'm on Branch: ${GITARGS}"
+        FINAL_PULL="git pull"
     fi
     # clean up if we're commanded to:
     if test -d enterprise -a ${CLEAN_IT} -eq 1; then
@@ -522,7 +523,7 @@ if test -n "${ENTERPRISE_GIT_URL}" ; then
     if test ! -d enterprise; then
         git clone ${ENTERPRISE_GIT_URL} enterprise
     fi
-    (cd enterprise; git checkout master; git fetch --tags; git pull --all; git checkout ${GITARGS}; git pull )
+    (cd enterprise; git checkout master; git fetch --tags; git pull --all; git checkout ${GITARGS}; ${FINAL_PULL} )
 fi
 
 
