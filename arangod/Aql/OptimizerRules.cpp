@@ -4349,7 +4349,7 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& info){
   // avoid other constructs between sort/filter and enumerate collection
   ExecutionNode* current = res.executionNode->getFirstDependency();
   ExecutionNode* end = res.collectionNode;
-  while(current != end){
+  while(current != end && current != nullptr){
     if(  current->getType() == EN::SORT
       || current->getType() == EN::COLLECT
       || current->getType() == EN::FILTER
@@ -4362,7 +4362,7 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& info){
   }
 
   // avoid sorts above index node
-  while(current != plan->root()){
+  while(current != plan->root() && current != nullptr){
     if(current->getType() == EN::SORT){
       return false;
     }
@@ -4425,6 +4425,6 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
   }
   opt->addPlan(plan, rule, modified);
 
-  LOG_TOPIC(DEBUG, Logger::DEVEL) << "EXIT GEO RULE - modified: " << modified;
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "EXIT GEO RULE - modified: " << modified;
   //LOG_TOPIC(DEBUG, Logger::DEVEL) << "";
 }
