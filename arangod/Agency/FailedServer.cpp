@@ -176,7 +176,7 @@ bool FailedServer::start() {
                 ++pos;
               }
 
-              if (found && !available.empty() > 0 && !isClone) {
+              if (found && !available.empty() && !isClone) {
                 auto randIt = available.begin();
                 std::advance(randIt, std::rand() % available.size());
                 FailedFollower(
