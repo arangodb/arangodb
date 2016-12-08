@@ -60,7 +60,7 @@ int AqlTransaction::processCollectionNormal(aql::Collection* collection) {
 
   arangodb::LogicalCollection const* col =
       this->resolver()->getCollectionStruct(collection->getName());
-  if (col == nullptr) {
+  /*if (col == nullptr) {
     auto startTime = TRI_microtime();
     auto endTime = startTime + 60.0;
     do {
@@ -71,6 +71,7 @@ int AqlTransaction::processCollectionNormal(aql::Collection* collection) {
       col = this->resolver()->getCollectionStruct(collection->getName());
     } while (col == nullptr);
   }
+  */
   if (col != nullptr) {
     cid = col->cid();
   }
