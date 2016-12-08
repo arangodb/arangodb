@@ -607,11 +607,11 @@ describe ArangoDB do
         cmd = "/_api/export/#{id}"
         doc = ArangoDB.log_put("#{prefix}-create-wrong-api", cmd)
         
-        doc.code.should eq(404)
+        doc.code.should eq(501)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['code'].should eq(404)
-        doc.parsed_response['errorNum'].should eq(1600)
+        doc.parsed_response['code'].should eq(501)
+        doc.parsed_response['errorNum'].should eq(1470)
       end
 
     end
