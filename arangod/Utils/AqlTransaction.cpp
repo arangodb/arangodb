@@ -56,10 +56,21 @@ int AqlTransaction::processCollectionCoordinator(aql::Collection*  collection) {
 /// @brief add a regular collection to the transaction
 
 int AqlTransaction::processCollectionNormal(aql::Collection* collection) {
-  arangodb::LogicalCollection const* col =
-      this->resolver()->getCollectionStruct(collection->getName());
   TRI_voc_cid_t cid = 0;
 
+  arangodb::LogicalCollection const* col =
+      this->resolver()->getCollectionStruct(collection->getName());
+  if (col == nullptr) {
+    auto startTime = TRI_microtime();
+    auto endTime = startTime + 60.0;
+    do {
+      usleep(10000);
+      if (TRI_microtime() > endTime) {
+        break;
+      }
+      col = this->resolver()->getCollectionStruct(collection->getName());
+    } while (col == nullptr);
+  }
   if (col != nullptr) {
     cid = col->cid();
   }
