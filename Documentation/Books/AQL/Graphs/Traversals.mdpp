@@ -284,6 +284,18 @@ FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
 It is guaranteed that at least one, but potentially more edges fulfill the condition.
 All of the above filters can be defined on vertices in the exact same way.
 
+### Filtering on the path vs. filtering on vertices or edges
+Filtering on the path influences the Iteration on your graph. If certain conditions 
+aren't met, the traversal may stop continuing along this path.
+
+In contrast filters on vertex or edge only express whether you're interestet in the actual value of these
+documents. Thus, it influences the list of returned documents (if you return v or e) similar 
+as specifying a non-null `min` value. If you specify a min value of 2, the traversal over the first
+two nodes of these paths has to be executed - you just won't see them in your result array. 
+
+Similar are filters on vertices or edges - the traverser has to walk along these nodes, since 
+you may be interested in documents further down the path. 
+
 
 ### Examples
 
