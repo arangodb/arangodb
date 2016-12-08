@@ -27,6 +27,8 @@
 #define LIB_BASICS_FASTHASH_H 1
 #include "Basics/Common.h"
 
+uint64_t fasthash64_uint64(uint64_t value, uint64_t seed);
+
 /**
  * fasthash32 - 32-bit implementation of fasthash
  * @buf:  data buffer

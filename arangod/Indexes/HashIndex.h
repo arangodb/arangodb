@@ -237,7 +237,7 @@ class HashIndex final : public PathBasedIndex {
       }
 
       TRI_voc_rid_t revisionId = element->revisionId();
-      return fasthash64(&revisionId, sizeof(revisionId), hash);
+      return fasthash64_uint64(revisionId, hash);
     }
   };
 
