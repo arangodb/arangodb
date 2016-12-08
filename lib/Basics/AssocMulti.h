@@ -30,7 +30,7 @@
 // #define TRI_CHECK_MULTI_POINTER_HASH 1
 
 #include "Basics/Common.h"
-#include "Basics/memory-map.h"
+#include "Basics/IndexBucket.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/prime-numbers.h"
@@ -144,22 +144,12 @@ class AssocMulti {
   typedef std::function<bool(UserData*, Element const&, Element const&)>
       IsEqualElementElementFuncType;
   typedef std::function<bool(Element&)> CallbackElementFuncType;
-
+  
  private:
   typedef Entry<Element, IndexType, useHashCache> EntryType;
-
-  struct Bucket {
-    IndexType _nrAlloc;       // the size of the table
-    IndexType _nrUsed;        // the number of used entries
-    IndexType _nrCollisions;  // the number of entries that have
-                              // a key that was previously in the table
-    EntryType* _table;        // the table itself
-
-    Bucket() : _nrAlloc(0), _nrUsed(0), _nrCollisions(0), _table(nullptr) {}
-    // Intentionally no destructor, the AssocMulti class takes
-    // care of freeing the tables!
-  };
-
+  
+  typedef arangodb::basics::IndexBucket<EntryType, IndexType, SIZE_MAX> Bucket;
+  
   std::vector<Bucket> _buckets;
   size_t _bucketsMask;
 
@@ -222,44 +212,21 @@ class AssocMulti {
     }
     numberBuckets = nr;
     _bucketsMask = nr - 1;
-
-    _buckets.reserve(numberBuckets);
+    
+    _buckets.resize(numberBuckets);
 
     try {
       for (size_t j = 0; j < numberBuckets; j++) {
-        _buckets.emplace_back();
-        Bucket& b = _buckets.back();
-        b._nrAlloc = initialSize;
-        b._table = nullptr;
-
-        // may fail...
-        b._table = new EntryType[b._nrAlloc]();
-
-#ifdef __linux__
-        if (b._nrAlloc > 1000000) {
-          uintptr_t mem = reinterpret_cast<uintptr_t>(b._table);
-          uintptr_t pageSize = getpagesize();
-          mem = (mem / pageSize) * pageSize;
-          void* memptr = reinterpret_cast<void*>(mem);
-          TRI_MMFileAdvise(memptr, b._nrAlloc * sizeof(EntryType),
-                           TRI_MADVISE_RANDOM);
-        }
-#endif
+        _buckets[j].allocate(_initialSize);
       }
     } catch (...) {
-      for (auto& b : _buckets) {
-        delete[] b._table;
-        b._table = nullptr;
-        b._nrAlloc = 0;
-      }
+      _buckets.clear();
       throw;
     }
   }
 
   ~AssocMulti() {
-    for (auto& b : _buckets) {
-      delete[] b._table;
-    }
+    _buckets.clear();
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -268,11 +235,8 @@ class AssocMulti {
 
   size_t memoryUsage() const {
     size_t res = 0;
-    // size_t count = 0;
     for (auto& b : _buckets) {
-      res += static_cast<size_t>(b._nrAlloc) * sizeof(EntryType);
-      // std::cout << "Bucket: " << count++ << " _nrAlloc=" << b._nrAlloc
-      //          << " _nrUsed=" << b._nrUsed << std::endl;
+      res += b.memoryUsage();
     }
     return res;
   }
@@ -534,42 +498,12 @@ class AssocMulti {
     }
     return res.load();
   }
-  
+
   void truncate(CallbackElementFuncType callback) {
-    std::vector<EntryType*> empty;
-    empty.reserve(_buckets.size());
-    
-    try {
-      for (size_t i = 0; i < _buckets.size(); ++i) {
-        auto newBucket = new EntryType[static_cast<size_t>(_initialSize)]();
-        try {
-          // shouldn't fail as enough space was reserved above, but let's be paranoid
-          empty.emplace_back(newBucket);
-        } catch (...) {
-          delete[] newBucket;
-          throw;
-        }
-      }
-      
-      size_t i = 0;
-      for (auto& b : _buckets) {
-        invokeOnAllElements(callback, b);
-
-        // now bucket is empty
-        delete[] b._table;
-        b._table = empty[i];
-        b._nrAlloc = _initialSize;
-        b._nrUsed = 0;
-
-        empty[i] = nullptr; // pass ownership
-        ++i;
-      }
-    } catch (...) {
-      // prevent leaks
-      for (auto& it : empty) {
-        delete[] it;
-      }
-      throw;
+    for (auto& b : _buckets) {
+      invokeOnAllElements(callback, b);
+      b.deallocate();
+      b.allocate(_initialSize);
     }
   }
 
@@ -1209,84 +1143,68 @@ class AssocMulti {
   /// @brief resize the array, internal method
   //////////////////////////////////////////////////////////////////////////////
 
-  void resizeInternal(UserData* userData, Bucket& b, size_t size) {
+  void resizeInternal(UserData* userData, Bucket& b, size_t targetSize) {
     std::string const cb(_contextCallback());
 
-    LOG(TRACE) << "resizing hash " << cb << ", target size: " << size;
+    LOG(TRACE) << "resizing hash " << cb << ", target size: " << targetSize;
 
     LOG_TOPIC(TRACE, Logger::PERFORMANCE) <<
-        "hash-resize " << cb << ", target size: " << size;
+        "hash-resize " << cb << ", target size: " << targetSize;
 
     double start = TRI_microtime();
+    
+    targetSize = TRI_NearPrime(targetSize);
+    
+    Bucket copy;
+    copy.allocate(targetSize);
 
-    EntryType* oldTable = b._table;
-    IndexType oldAlloc = b._nrAlloc;
-
-    b._nrAlloc =
-        static_cast<IndexType>(TRI_NearPrime(static_cast<uint64_t>(size)));
-
-    try {
-      b._table = new EntryType[b._nrAlloc]();
-#ifdef __linux__
-      if (b._nrAlloc > 1000000) {
-        uintptr_t mem = reinterpret_cast<uintptr_t>(b._table);
-        uintptr_t pageSize = getpagesize();
-        mem = (mem / pageSize) * pageSize;
-        void* memptr = reinterpret_cast<void*>(mem);
-        TRI_MMFileAdvise(memptr, b._nrAlloc * sizeof(EntryType),
-                         TRI_MADVISE_RANDOM);
-      }
-#endif
-    } catch (...) {
-      b._nrAlloc = oldAlloc;
-      b._table = oldTable;
-      throw;
-    }
-
-    b._nrUsed = 0;
-    b._nrCollisions = 0;
 #ifdef TRI_INTERNAL_STATS
     _nrResizes++;
 #endif
 
     // table is already clear by allocate, copy old data
-    IndexType j;
-    for (j = 0; j < oldAlloc; j++) {
-      if (oldTable[j].value && oldTable[j].prev == INVALID_INDEX) {
-        // This is a "first" one in its doubly linked list:
-        uint64_t hashByKey;
-        if (useHashCache) {
-          hashByKey = oldTable[j].readHashCache();
-        } else {
-          hashByKey = _hashElement(userData, oldTable[j].value, true);
-        }
-        IndexType insertPosition =
-            insertFirst(userData, b, oldTable[j].value, hashByKey);
-        // Now walk to the end of the list:
-        IndexType k = j;
-        while (oldTable[k].next != INVALID_INDEX) {
-          k = oldTable[k].next;
-        }
-        // Now insert all of them backwards, not repeating k:
-        while (k != j) {
-          uint64_t hashByElm;
+    if (b._nrUsed > 0) {
+      EntryType* oldTable = b._table;
+      IndexType const oldAlloc = b._nrAlloc;
+      TRI_ASSERT(oldAlloc > 0);
+
+      for (IndexType j = 0; j < oldAlloc; j++) {
+        if (oldTable[j].value && oldTable[j].prev == INVALID_INDEX) {
+          // This is a "first" one in its doubly linked list:
+          uint64_t hashByKey;
           if (useHashCache) {
-            hashByElm = oldTable[k].readHashCache();
+            hashByKey = oldTable[j].readHashCache();
           } else {
-            hashByElm = _hashElement(userData, oldTable[k].value, false);
+            hashByKey = _hashElement(userData, oldTable[j].value, true);
           }
-          insertFurther(userData, b, oldTable[k].value, hashByKey, hashByElm,
-                        insertPosition);
-          k = oldTable[k].prev;
+          IndexType insertPosition =
+              insertFirst(userData, copy, oldTable[j].value, hashByKey);
+          // Now walk to the end of the list:
+          IndexType k = j;
+          while (oldTable[k].next != INVALID_INDEX) {
+            k = oldTable[k].next;
+          }
+          // Now insert all of them backwards, not repeating k:
+          while (k != j) {
+            uint64_t hashByElm;
+            if (useHashCache) {
+              hashByElm = oldTable[k].readHashCache();
+            } else {
+              hashByElm = _hashElement(userData, oldTable[k].value, false);
+            }
+            insertFurther(userData, copy, oldTable[k].value, hashByKey, hashByElm,
+                          insertPosition);
+            k = oldTable[k].prev;
+          }
         }
       }
     }
-
-    delete[] oldTable;
+    
+    b = std::move(copy);
 
     LOG(TRACE) << "resizing hash " << cb << " done";
 
-    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::FIXED(TRI_microtime() - start) << " s, hash-resize, " << cb << ", target size: " << size;
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::FIXED(TRI_microtime() - start) << " s, hash-resize, " << cb << ", target size: " << targetSize;
   }
 
 #ifdef TRI_CHECK_MULTI_POINTER_HASH

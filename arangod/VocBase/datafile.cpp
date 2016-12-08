@@ -144,104 +144,6 @@ static bool CheckCrcMarker(TRI_df_marker_t const* marker, char const* end) {
 
 }
 
-/// @brief creates a new datafile
-///
-/// returns the file descriptor or -1 if the file cannot be created
-static int CreateDatafile(std::string const& filename, TRI_voc_size_t maximalSize) {
-  TRI_ERRORBUF;
-
-  // open the file
-  int fd = TRI_CREATE(filename.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC | TRI_NOATIME,
-                      S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
-
-  TRI_IF_FAILURE("CreateDatafile1") {
-    // intentionally fail
-    TRI_CLOSE(fd);
-    fd = -1;
-    errno = ENOSPC;
-  }
-
-  if (fd < 0) {
-    if (errno == ENOSPC) {
-      TRI_set_errno(TRI_ERROR_ARANGO_FILESYSTEM_FULL);
-      LOG(ERR) << "cannot create datafile '" << filename << "': " << TRI_last_error();
-    } else {
-      TRI_SYSTEM_ERROR();
-
-      TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG(ERR) << "cannot create datafile '" << filename << "': " << TRI_GET_ERRORBUF;
-    }
-    return -1;
-  }
-
-  // no fallocate present, or at least pretend it's not there...
-  int res = TRI_ERROR_NOT_IMPLEMENTED;
-
-#ifdef __linux__
-#ifdef FALLOC_FL_ZERO_RANGE
-  // try fallocate
-  res = fallocate(fd, FALLOC_FL_ZERO_RANGE, 0, maximalSize);
-#endif
-#endif
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    // either fallocate failed or it is not there...
-
-    // fill file with zeros from FileNullBuffer
-    size_t writeSize = TRI_GetNullBufferSizeFiles();
-    size_t written = 0;
-    while (written < maximalSize) {
-      if (writeSize + written > maximalSize) {
-        writeSize = maximalSize - written;
-      }
-
-      ssize_t writeResult =
-          TRI_WRITE(fd, TRI_GetNullBufferFiles(), static_cast<TRI_write_t>(writeSize));
-
-      TRI_IF_FAILURE("CreateDatafile2") {
-        // intentionally fail
-        writeResult = -1;
-        errno = ENOSPC;
-      }
-
-      if (writeResult < 0) {
-        if (errno == ENOSPC) {
-          TRI_set_errno(TRI_ERROR_ARANGO_FILESYSTEM_FULL);
-          LOG(ERR) << "cannot create datafile '" << filename << "': " << TRI_last_error();
-        } else {
-          TRI_SYSTEM_ERROR();
-          TRI_set_errno(TRI_ERROR_SYS_ERROR);
-          LOG(ERR) << "cannot create datafile '" << filename << "': " << TRI_GET_ERRORBUF;
-        }
-
-        TRI_CLOSE(fd);
-        TRI_UnlinkFile(filename.c_str());
-
-        return -1;
-      }
-
-      written += static_cast<size_t>(writeResult);
-    }
-  }
-
-  // go back to offset 0
-  TRI_lseek_t offset = TRI_LSEEK(fd, (TRI_lseek_t)0, SEEK_SET);
-
-  if (offset == (TRI_lseek_t)-1) {
-    TRI_SYSTEM_ERROR();
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    TRI_CLOSE(fd);
-
-    // remove empty file
-    TRI_UnlinkFile(filename.c_str());
-
-    LOG(ERR) << "cannot seek in datafile '" << filename << "': '" << TRI_GET_ERRORBUF << "'";
-    return -1;
-  }
-
-  return fd;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the numeric part from a filename
 /// the filename must look like this: /.*type-abc\.ending$/, where abc is
@@ -292,8 +194,8 @@ static TRI_datafile_t* CreateAnonymousDatafile(TRI_voc_fid_t fid,
   // memory map the data
   void* data;
   void* mmHandle;
-  ssize_t res = TRI_MMFile(nullptr, maximalSize, PROT_WRITE | PROT_READ, flags,
-                           fd, &mmHandle, 0, &data);
+  int res = TRI_MMFile(nullptr, maximalSize, PROT_WRITE | PROT_READ, flags,
+                       fd, &mmHandle, 0, &data);
 
 #ifdef MAP_ANONYMOUS
 // nothing to do
@@ -327,7 +229,7 @@ static TRI_datafile_t* CreatePhysicalDatafile(std::string const& filename,
                                               TRI_voc_size_t maximalSize) {
   TRI_ASSERT(!filename.empty());
 
-  int fd = CreateDatafile(filename, maximalSize);
+  int fd = TRI_CreateDatafile(filename, maximalSize);
 
   if (fd < 0) {
     // an error occurred
@@ -342,8 +244,8 @@ static TRI_datafile_t* CreatePhysicalDatafile(std::string const& filename,
   // try populating the mapping already
   flags |= MAP_POPULATE;
 #endif
-  ssize_t res = TRI_MMFile(0, maximalSize, PROT_WRITE | PROT_READ, flags, fd,
-                           &mmHandle, 0, &data);
+  int res = TRI_MMFile(0, maximalSize, PROT_WRITE | PROT_READ, flags, fd,
+                       &mmHandle, 0, &data);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
