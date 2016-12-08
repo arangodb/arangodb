@@ -1,4 +1,4 @@
-/* global describe, beforeEach, afterEach, it*/
+/* global describe, beforeEach, afterEach, it, instanceInfo */
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///

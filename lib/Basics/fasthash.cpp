@@ -35,6 +35,16 @@ static inline uint64_t mix(uint64_t h) {
 
   return h;
 }
+
+uint64_t fasthash64_uint64(uint64_t value, uint64_t seed) {
+  size_t const len = sizeof(uint64_t);
+  uint64_t const m = 0x880355f21e6d1965ULL;
+  uint64_t h = seed ^ (len * m);
+  h ^= mix(value);
+  h *= m;
+
+  return mix(h);
+}
   
 uint64_t fasthash64(const void* buf, size_t len, uint64_t seed) {
 #ifdef __arm__

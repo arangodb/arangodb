@@ -86,6 +86,38 @@ BOOST_FIXTURE_TEST_SUITE(CHashesTest, CHashesSetup)
 /// @brief test fasthash64
 ////////////////////////////////////////////////////////////////////////////////
 
+BOOST_AUTO_TEST_CASE (tst_fasthash64_uint64) {
+  uint64_t value;
+
+  value = 0;
+  BOOST_CHECK_EQUAL((uint64_t) 606939172421154273ULL, fasthash64(&value, sizeof(value), 0x12345678));
+  BOOST_CHECK_EQUAL((uint64_t) 606939172421154273ULL, fasthash64_uint64(value, 0x12345678));
+  
+  value = 1;
+  BOOST_CHECK_EQUAL((uint64_t) 2986466439906256014ULL, fasthash64(&value, sizeof(value), 0x12345678));
+  BOOST_CHECK_EQUAL((uint64_t) 2986466439906256014ULL, fasthash64_uint64(value, 0x12345678));
+  
+  value = 123456;
+  BOOST_CHECK_EQUAL((uint64_t) 10846706210321519612ULL, fasthash64(&value, sizeof(value), 0x12345678));
+  BOOST_CHECK_EQUAL((uint64_t) 10846706210321519612ULL, fasthash64_uint64(value, 0x12345678));
+  
+  value = 123456789012345ULL;
+  BOOST_CHECK_EQUAL((uint64_t) 11872028338155052138ULL, fasthash64(&value, sizeof(value), 0x12345678));
+  BOOST_CHECK_EQUAL((uint64_t) 11872028338155052138ULL, fasthash64_uint64(value, 0x12345678));
+  
+  value = 0xffffff000000ULL;
+  BOOST_CHECK_EQUAL((uint64_t) 5064027312035038651ULL, fasthash64(&value, sizeof(value), 0x12345678));
+  BOOST_CHECK_EQUAL((uint64_t) 5064027312035038651ULL, fasthash64_uint64(value, 0x12345678));
+  
+  value = 0xffffffffffffULL;
+  BOOST_CHECK_EQUAL((uint64_t) 12472603196990564371ULL, fasthash64(&value, sizeof(value), 0x12345678));
+  BOOST_CHECK_EQUAL((uint64_t) 12472603196990564371ULL, fasthash64_uint64(value, 0x12345678));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test fasthash64
+////////////////////////////////////////////////////////////////////////////////
+
 BOOST_AUTO_TEST_CASE (tst_fasthash64) {
   std::string buffer;
 
