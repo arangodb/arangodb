@@ -17,6 +17,8 @@ v3.1.4 (XXXX-XX-XX)
 
 * agency's Node has new method getArray
 
+* agency RAFT timing estimates more conservative in waitForSync scenario
+
 v3.1.3 (2016-12-02)
 -------------------
 
