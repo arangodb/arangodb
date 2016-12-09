@@ -575,16 +575,15 @@ if test -n "${TARGET_DIR}";  then
 
         mkdir -p ${dir}
 
-        cp -a ${SOURCE_DIR}/_CPack_Packages/*/TGZ/${PKG_NAME}/* ${dir}
-        rm -rf ${dir}/share/arangodb3/js
-
+        (cd _CPack_Packages/*/TGZ/${PKG_NAME}/; rm -rf ${dir}/share/arangodb3/js; tar -c -f ${TARFILE_TMP} *)
+        
         (cd ${SOURCE_DIR}
 
          touch 3rdParty/.keepme
          touch arangod/.keepme
          touch arangosh/.keepme
                                
-         tar -c -f ${TARFILE_TMP} \
+         tar -u -f ${TARFILE_TMP} \
              VERSION utils scripts etc/relative etc/testing UnitTests Documentation js \
              lib/Basics/errors.dat \
              3rdParty/.keepme \
