@@ -100,9 +100,9 @@ bool AddFollower::create() {
   TRI_ASSERT(current[0].isString());
 #endif
 
-  size_t sub = 0;
   auto const& myClones = clones(_snapshot, _database, _collection, _shard);
   if (!myClones.empty()) {
+    size_t sub = 0;
     for (auto const& clone : myClones) {
       AddFollower(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                   _jobId, _agencyPrefix, _database, clone.collection,

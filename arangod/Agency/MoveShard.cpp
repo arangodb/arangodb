@@ -75,6 +75,24 @@ bool MoveShard::create() {
   _jb->openArray();
   _jb->openObject();
 
+  // Lookup from server
+  if (_from.find("DBServer") == 0) {
+    try {
+      _from = uuidLookup(_snapshot, _from);
+    } catch (...) {
+      LOG_TOPIC(ERR, Logger::AGENCY) <<
+        "MoveShard: From server " << _from << " does not exist";
+    }
+  }
+  if (_to.find("DBServer") == 0) {
+    try {
+      _to = uuidLookup(_snapshot, _to);
+    } catch (...) {
+      LOG_TOPIC(ERR, Logger::AGENCY) <<
+        "MoveShard: To server " << _to << " does not exist";
+    }
+  }
+
   if (_from == _to) {
     path = _agencyPrefix + failedPrefix + _jobId;
     _jb->add("timeFinished", VPackValue(now));

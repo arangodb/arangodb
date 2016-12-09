@@ -95,10 +95,11 @@ function MovingShardsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function getCleanedOutServers() {
-    var coordEndpoint = global.ArangoClusterInfo.getServerEndpoint("Coordinator001");
+    var coordEndpoint = global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
     var request = require("@arangodb/request");
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
+    
     var res = request({ method: "GET",
                         url: url + "/_admin/cluster/numberOfServers"});
     var body = res.body;
@@ -178,7 +179,7 @@ function MovingShardsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function cleanOutServer(id) {
-    var coordEndpoint = global.ArangoClusterInfo.getServerEndpoint("Coordinator001");
+    var coordEndpoint = global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
     var request = require("@arangodb/request");
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
@@ -193,7 +194,7 @@ function MovingShardsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function shrinkCluster(toNum) {
-    var coordEndpoint = global.ArangoClusterInfo.getServerEndpoint("Coordinator001");
+    var coordEndpoint = global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
     var request = require("@arangodb/request");
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
@@ -208,7 +209,7 @@ function MovingShardsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function resetCleanedOutServers() {
-    var coordEndpoint = global.ArangoClusterInfo.getServerEndpoint("Coordinator001");
+    var coordEndpoint = global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
     var request = require("@arangodb/request");
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
@@ -232,7 +233,7 @@ function MovingShardsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function moveShard(database, collection, shard, fromServer, toServer) {
-    var coordEndpoint = global.ArangoClusterInfo.getServerEndpoint("Coordinator001");
+    var coordEndpoint = global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
     var request = require("@arangodb/request");
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
@@ -278,7 +279,7 @@ function MovingShardsSuite () {
   function findServerNotOnList(list) {
     var count = 1;
     var str = "" + count;
-    var pad = "000";
+    var pad = "0000";
     var ans = pad.substring(0, pad.length - str.length) + str;
 
     var name = "DBServer" + ans;
@@ -353,13 +354,13 @@ function MovingShardsSuite () {
     testShrinkNoReplication : function() {
       assertTrue(waitForSynchronousReplication("_system"));
       shrinkCluster(4);
-      assertTrue(testServerEmpty("DBServer005", true));
+      assertTrue(testServerEmpty("DBServer0005", true));
       assertTrue(waitForSupervision());
       shrinkCluster(3);
-      assertTrue(testServerEmpty("DBServer004", true));
+      assertTrue(testServerEmpty("DBServer0004", true));
       assertTrue(waitForSupervision());
       shrinkCluster(2);
-      assertTrue(testServerEmpty("DBServer003", true));
+      assertTrue(testServerEmpty("DBServer0003", true));
       assertTrue(waitForSupervision());
     },
     

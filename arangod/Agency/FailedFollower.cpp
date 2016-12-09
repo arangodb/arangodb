@@ -65,13 +65,9 @@ bool FailedFollower::create() {
   LOG_TOPIC(INFO, Logger::AGENCY)
       << "Todo: failed Follower for " + _shard + " from " + _from + " to " + _to;
 
-  std::string path = _agencyPrefix + toDoPrefix + _jobId;
-  std::string planPath =
-    planColPrefix + _database + "/" + _collection + "/shards";
-
-  size_t sub = 0;
   auto const& myClones = clones(_snapshot, _database, _collection, _shard);
   if (!myClones.empty()) {
+    size_t sub = 0;
     for (auto const& clone : myClones) {
       FailedFollower(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                      _jobId, _agencyPrefix, _database, clone.collection,
@@ -84,6 +80,8 @@ bool FailedFollower::create() {
   _jb->openObject();
 
   // Todo entry
+  std::string path = _agencyPrefix + toDoPrefix + _jobId;
+
   _jb->add(path, VPackValue(VPackValueType::Object));
   _jb->add("creator", VPackValue(_creator));
   _jb->add("type", VPackValue("failedFollower"));
