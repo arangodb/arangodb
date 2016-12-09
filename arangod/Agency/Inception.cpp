@@ -318,13 +318,13 @@ bool Inception::estimateRAFTInterval() {
 
   using namespace std::chrono;
   LOG_TOPIC(INFO, Logger::AGENCY) << "Estimating RAFT timeouts ...";
-  size_t nrep = 25;
+  size_t nrep = 10;
     
   std::string path("/_api/agency/config");
   auto config = _agent->config();
 
   auto myid = _agent->id();
-  auto to = duration<double,std::milli>(1.0); // 
+  auto to = duration<double,std::milli>(10.0); // 
 
   for (size_t i = 0; i < nrep; ++i) {
     for (auto const& peer : config.pool()) {
@@ -340,7 +340,6 @@ bool Inception::estimateRAFTInterval() {
       }
     }
     std::this_thread::sleep_for(to);
-    to *= 1.01;
   }
 
   auto s = system_clock::now();
@@ -449,6 +448,9 @@ bool Inception::estimateRAFTInterval() {
         std::ceil((1. / precision)*(.3 + precision * (maxmean + 3.*maxstdev)));
       if (config.waitForSync()) {
         mn *= 4.;
+      }
+      if (mn > 2.0) {
+        mn = 2.0;
       }
       mx = 5. * mn;
       
