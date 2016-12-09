@@ -166,7 +166,8 @@ struct IndexBucket {
     TRI_ASSERT(_mmHandle == nullptr); 
 
     void* data;
-    int res = TRI_MMFile(nullptr, totalSize, PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_POPULATE, _file, &_mmHandle, 0, &data);
+    int flags = MAP_SHARED;
+    int res = TRI_MMFile(nullptr, totalSize, PROT_WRITE | PROT_READ, flags, _file, &_mmHandle, 0, &data);
     
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
