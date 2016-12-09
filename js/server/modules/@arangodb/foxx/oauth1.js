@@ -206,13 +206,13 @@ module.exports = function oauth1 (cfg) {
       }
       return parse(res.body);
     },
-    createSignedRequest (method, url, query, oauth_token, oauth_token_secret) {
+    createSignedRequest (method, url, parameters, oauth_token, oauth_token_secret) {
       assert(oauth_token, 'No Access Token specified');
       assert(oauth_token_secret, 'No Token Secret specified');
       return createRequest(
         method,
         url,
-        Object.assign({oauth_token}, query),
+        Object.assign({oauth_token}, parameters),
         oauth_token_secret
       );
     }
