@@ -93,6 +93,13 @@ struct JobCallback {
 };
 
 struct Job {
+
+  struct shard_t {
+    std::string collection;
+    std::string shard;
+    shard_t (std::string const& c, std::string const& s) :
+      collection(c), shard(s) {}
+  };
   
   Job(Node const& snapshot, Agent* agent, std::string const& jobId,
       std::string const& creator, std::string const& agencyPrefix);
@@ -112,9 +119,9 @@ struct Job {
   static std::vector<std::string> availableServers(
     const arangodb::consensus::Node&);
 
-  static std::vector<std::string> clones(
-    Node const& snapshot, std::string const& database,
-    std::string const& collection);
+  static std::vector<shard_t> clones(
+    Node const& snap, std::string const& db, std::string const& col,
+    std::string const& shrd);
 
   Node const _snapshot;
   Agent* _agent;
