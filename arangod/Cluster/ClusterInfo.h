@@ -348,6 +348,7 @@ class ClusterInfo {
   int createCollectionCoordinator(std::string const& databaseName,
                                   std::string const& collectionID,
                                   uint64_t numberOfShards,
+                                  uint64_t replicationFactor,
                                   arangodb::velocypack::Slice const& json,
                                   std::string& errorMsg, double timeout);
 
@@ -646,53 +647,6 @@ class ClusterInfo {
   
   arangodb::Mutex _failedServersMutex;  
   std::vector<std::string> _failedServers;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a class to track followers that are in sync for a shard
-////////////////////////////////////////////////////////////////////////////////
-
-class FollowerInfo {
-  std::shared_ptr<std::vector<ServerID> const> _followers;
-  Mutex                                        _mutex;
-  arangodb::LogicalCollection*                 _docColl;
-
- public:
-
-  explicit FollowerInfo(arangodb::LogicalCollection* d)
-    : _followers(new std::vector<ServerID>()), _docColl(d) { }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get information about current followers of a shard.
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::shared_ptr<std::vector<ServerID> const> get();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief add a follower to a shard, this is only done by the server side
-  /// of the "get-in-sync" capabilities. This reports to the agency under
-  /// `/Current` but in asynchronous "fire-and-forget" way. The method
-  /// fails silently, if the follower information has since been dropped
-  /// (see `dropFollowerInfo` below).
-  //////////////////////////////////////////////////////////////////////////////
-
-  void add(ServerID const& s);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief remove a follower from a shard, this is only done by the
-  /// server if a synchronous replication request fails. This reports to
-  /// the agency under `/Current` but in an asynchronous "fire-and-forget"
-  /// way.
-  //////////////////////////////////////////////////////////////////////////////
-
-  void remove(ServerID const& s);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief clear follower list, no changes in agency necesary
-  //////////////////////////////////////////////////////////////////////////////
-
-  void clear();
-
 };
 
 }  // end namespace arangodb

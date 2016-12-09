@@ -7,7 +7,6 @@ endif()
 if(SNAPCRAFT_FOUND)
   set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}_${ARANGODB_PACKAGE_ARCHITECTURE}")
   set(SNAPCRAFT_TEMPLATE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Installation/Ubuntu")
-  set(CPACK_PACKAGE_TGZ "${CMAKE_BINARY_DIR}/${CPACK_PACKAGE_FILE_NAME}.tar.gz")
   set(SNAPCRAFT_SOURCE_DIR "${CMAKE_BINARY_DIR}/_CPack_Packages/SNAP")
 
   message(STATUS "Create snap package")
@@ -35,16 +34,11 @@ if(SNAPCRAFT_FOUND)
     DESTINATION "${SNAPCRAFT_SOURCE_DIR}/"
   )
 
-  add_custom_target(snap_TGZ
-    COMMENT "create TGZ-package"
-    COMMAND ${CMAKE_CPACK_COMMAND} -G TGZ
-  )
-
   add_custom_target(snap
     COMMENT "create snap-package"
     COMMAND ${SNAP_EXE} snap
     COMMAND cp *.snap ${PROJECT_BINARY_DIR}
-    DEPENDS snap_TGZ
+    DEPENDS TGZ_package
     WORKING_DIRECTORY ${SNAPCRAFT_SOURCE_DIR}
   )
 

@@ -564,7 +564,6 @@ RestStatus RestAqlHandler::execute() {
   // GeneralRequest::translateMethod(_request->requestType()) << ",
   // " << arangodb::ServerState::instance()->getId() << ": " <<
   // _request->fullUrl() << ": " << _request->body() << "\n\n";
-
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   // extract the sub-request type

@@ -1153,7 +1153,11 @@ EnumerateCollectionNode::EnumerateCollectionNode(
       _collection(plan->getAst()->query()->collections()->get(
           base.get("collection").copyString())),
       _outVariable(varFromVPack(plan->getAst(), base, "outVariable")),
-      _random(base.get("random").getBoolean()) {}
+      _random(base.get("random").getBoolean()) {
+  TRI_ASSERT(_vocbase != nullptr);
+  TRI_ASSERT(_collection != nullptr);
+  TRI_ASSERT(_outVariable != nullptr);
+}
 
 /// @brief toVelocyPack, for EnumerateCollectionNode
 void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& nodes,

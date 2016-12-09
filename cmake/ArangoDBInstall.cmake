@@ -171,3 +171,31 @@ configure_file (
   "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/directories.h"
   NEWLINE_STYLE UNIX
 )
+
+
+if (MSVC)
+  # so we don't need to ship dll's twice, make it one directory:
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/InstallMacros.cmake)
+  set(CMAKE_INSTALL_FULL_SBINDIR     "${CMAKE_INSTALL_FULL_BINDIR}")
+
+  # other platforms link the file into the binary
+  install(FILES ${ICU_DT}
+    DESTINATION "${INSTALL_ICU_DT_DEST}"
+    RENAME ${ICU_DT_DEST})
+
+  install_readme(README.windows README.windows.txt)
+
+  # install the visual studio runtime:
+  set(CMAKE_INSTALL_UCRT_LIBRARIES 1)
+  include(InstallRequiredSystemLibraries)
+  INSTALL(FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS} DESTINATION ${CMAKE_INSTALL_SBINDIR} COMPONENT Libraries)
+  INSTALL(FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_COMPONENT} DESTINATION ${CMAKE_INSTALL_SBINDIR} COMPONENT Libraries)
+
+  # install openssl
+  if (NOT LIB_EAY_RELEASE_DLL OR NOT SSL_EAY_RELEASE_DLL)
+    message(FATAL_ERROR, "BUNDLE_OPENSSL set but couldn't locate SSL DLLs. Please set LIB_EAY_RELEASE_DLL and SSL_EAY_RELEASE_DLL")
+  endif()
+
+  install (FILES "${LIB_EAY_RELEASE_DLL}" DESTINATION "${CMAKE_INSTALL_BINDIR}/" COMPONENT Libraries)  
+  install (FILES "${SSL_EAY_RELEASE_DLL}" DESTINATION "${CMAKE_INSTALL_BINDIR}/" COMPONENT Libraries)  
+endif()

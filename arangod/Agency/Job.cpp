@@ -143,12 +143,12 @@ bool Job::finish(std::string const& type, bool success,
 }
 
 
-std::vector<std::string> Job::availableServers() const {
+std::vector<std::string> Job::availableServers(Node const& snapshot) {
 
   std::vector<std::string> ret;
 
   // Get servers from plan
-  Node::Children const& dbservers = _snapshot(plannedServers).children();
+  Node::Children const& dbservers = snapshot(plannedServers).children();
   for (auto const& srv : dbservers) {
     ret.push_back(srv.first);
   }
@@ -156,7 +156,7 @@ std::vector<std::string> Job::availableServers() const {
   // Remove cleaned servers from ist
   try {
     for (auto const& srv :
-           VPackArrayIterator(_snapshot(cleanedPrefix).slice())) {
+           VPackArrayIterator(snapshot(cleanedPrefix).slice())) {
       ret.erase(
         std::remove(ret.begin(), ret.end(), srv.copyString()),
         ret.end());
@@ -167,12 +167,47 @@ std::vector<std::string> Job::availableServers() const {
   // Remove failed servers from list
   try {
     for (auto const& srv :
-           VPackArrayIterator(_snapshot(failedServersPrefix).slice())) {
+           VPackArrayIterator(snapshot(failedServersPrefix).slice())) {
       ret.erase(
         std::remove(ret.begin(), ret.end(), srv.copyString()),
         ret.end());
     }
   } catch (...) {}
+  
+  return ret;
+  
+}
+
+std::vector<Job::shard_t> Job::clones(
+  Node const& snapshot, std::string const& database,
+  std::string const& collection, std::string const& shard) {
+
+  std::vector<shard_t> ret;
+
+  std::string databasePath = planColPrefix + database,
+    planPath = databasePath + "/" + collection + "/shards";
+
+  auto myshards = snapshot(planPath).children();
+  auto steps = std::distance(myshards.begin(), myshards.find(shard));
+
+  for (const auto& colptr : snapshot(databasePath).children()) { // collections
+
+    auto const col = *colptr.second;
+    auto const otherCollection = colptr.first;
+
+    try {
+      std::string const& prototype =
+        col("distributeShardsLike").slice().copyString();
+      if (otherCollection != collection && prototype == collection) {
+        auto othershards = col("shards").children();
+        auto opos = othershards.begin();
+        std::advance(opos, steps);
+        auto const& otherShard = opos->first;
+        ret.push_back(shard_t(otherCollection, otherShard));
+      }
+    } catch(...) {}
+    
+  }
   
   return ret;
   

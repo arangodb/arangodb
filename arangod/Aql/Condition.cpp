@@ -722,14 +722,20 @@ void Condition::optimize(ExecutionPlan* plan) {
       auto operand = andNode->getMemberUnchecked(j);
 
       if (operand->isComparisonOperator()) {
-        auto lhs = operand->getMember(0);
-        auto rhs = operand->getMember(1);
+        AstNode const* lhs = operand->getMember(0);
+        AstNode const* rhs = operand->getMember(1);
 
         if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+          if (lhs->isConstant()) {
+            lhs = Ast::resolveConstAttributeAccess(lhs);
+          }
           storeAttributeAccess(varAccess, variableUsage, lhs, j, ATTRIBUTE_LEFT);
         }
         if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
             rhs->type == NODE_TYPE_EXPANSION) {
+          if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && rhs->isConstant()) {
+            rhs = Ast::resolveConstAttributeAccess(rhs);
+          }
           storeAttributeAccess(varAccess, variableUsage, rhs, j, ATTRIBUTE_RIGHT);
         }
       }

@@ -17,6 +17,12 @@ The number of documents to skip in the query (optional).
 The maximal amount of documents to return. The *skip*
 is applied before the *limit* restriction. (optional)
 
+@RESTBODYPARAM{batchSize,integer,optional,int64}
+maximum number of result documents to be transferred from
+the server to the client in one roundtrip. If this attribute is
+not set, a server-controlled default value will be used. A *batchSize* value of
+*0* is disallowed.
+
 @RESTDESCRIPTION
 
 This will find all documents matching a given example.

@@ -73,6 +73,12 @@ If set to *true*, then the additional query profiling information will be return
 in the sub-attribute *profile* of the *extra* return attribute if the query result
 is not served from the query cache.
 
+@RESTSTRUCT{satelliteSyncWait,JSF_post_api_cursor_opts,boolean,optional,}
+This *enterprise* parameter allows to configure how long a DBServer will have time
+to bring the satellite collections involved in the query into sync.
+The default value is *60.0* (seconds). When the max time has been reached the query
+will be stopped.
+
 @RESTDESCRIPTION
 The query details include the query string plus optional query options and
 bind parameters. These values need to be passed in a JSON representation in

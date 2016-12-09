@@ -34,6 +34,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/HashIndex.h"

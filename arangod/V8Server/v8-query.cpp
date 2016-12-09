@@ -394,7 +394,7 @@ static void JS_ChecksumCollection(
     if (withData) {
       // with data
       uint64_t const n = slice.length() ^ 0xf00ba44ba5;
-      uint64_t seed = fasthash64(&n, sizeof(n), 0xdeadf054);
+      uint64_t seed = fasthash64_uint64(n, 0xdeadf054);
 
       for (auto const& it : VPackObjectIterator(slice, false)) {
         // loop over all attributes, but exclude _rev, _id and _key

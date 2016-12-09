@@ -412,6 +412,9 @@ class Ast {
 
   /// @brief create an AST node from vpack
   AstNode* nodeFromVPack(arangodb::velocypack::Slice const&, bool);
+  
+  /// @brief resolve an attribute access
+  static AstNode const* resolveConstAttributeAccess(AstNode const*);
 
   /// @brief traverse the AST using a depth-first visitor
   static AstNode* traverseAndModify(AstNode*,
@@ -457,7 +460,7 @@ class Ast {
   AstNode* optimizeTernaryOperator(AstNode*);
 
   /// @brief optimizes an attribute access
-  AstNode* optimizeAttributeAccess(AstNode*);
+  AstNode* optimizeAttributeAccess(AstNode*, std::unordered_map<Variable const*, AstNode const*> const&);
 
   /// @brief optimizes a call to a built-in function
   AstNode* optimizeFunctionCall(AstNode*);

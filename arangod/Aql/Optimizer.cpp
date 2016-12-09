@@ -512,5 +512,11 @@ void Optimizer::setupRules() {
     registerRule("undistribute-remove-after-enum-coll",
                  undistributeRemoveAfterEnumCollRule,
                  undistributeRemoveAfterEnumCollRule_pass10, DoesNotCreateAdditionalPlans, true);
+
+#ifdef USE_ENTERPRISE
+    registerRule("remove-satellite-joins",
+                 removeSatelliteJoinsRule,
+                 removeSatelliteJoinsRule_pass10, DoesNotCreateAdditionalPlans, true);
+#endif
   }
 }

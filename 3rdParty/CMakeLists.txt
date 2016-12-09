@@ -98,10 +98,6 @@ set(CMAKE_USE_LIBSSH2 OFF CACHE type BOOL)
 set(CMAKE_USE_OPENSSL ON CACHE type BOOL)
 # mop: super important...if this is off curl will not handle request timeouts < 1000ms
 set(ENABLE_THREADED_RESOLVER ON CACHE type BOOL)
-# bugfix for HAVE_POSIX_STRERROR_R define on cross compiling. 
-if (CROSS_COMPILING)
- add_definitions("-DHAVE_POSIX_STRERROR_R=1")
-endif()
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-7.50.3)
 
 ################################################################################
