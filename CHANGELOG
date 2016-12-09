@@ -17,8 +17,10 @@ v3.1.4 (2016-12-08)
 
 * agency's Node has new method getArray
 
-* agency RAFT timing estimates more conservative in waitForSync scenario
-
+* agency RAFT timing estimates more conservative in waitForSync
+  scenario
+  
+* agency RAFT timing estimates capped at maximum 2.0/10.0 for low/high
 
 v3.1.3 (2016-12-02)
 -------------------
