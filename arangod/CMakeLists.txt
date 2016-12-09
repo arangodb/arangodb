@@ -186,7 +186,6 @@ SET(ARANGOD_SOURCES
   Cluster/DBServerAgencySync.cpp
   Cluster/HeartbeatThread.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
-  Cluster/RestShardHandler.cpp
   Cluster/ServerState.cpp
   Cluster/TraverserEngine.cpp
   Cluster/TraverserEngineRegistry.cpp

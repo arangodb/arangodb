@@ -33,7 +33,6 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/RestAgencyCallbacksHandler.h"
-#include "Cluster/RestShardHandler.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
@@ -238,7 +237,7 @@ void GeneralServerFeature::prepare() {
 }
 
 void GeneralServerFeature::start() {
-  _jobManager.reset(new AsyncJobManager(ClusterCommRestCallback));
+  _jobManager.reset(new AsyncJobManager);
 
   JOB_MANAGER = _jobManager.get();
 
@@ -400,9 +399,6 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::UPLOAD_PATH,
       RestHandlerCreator<RestUploadHandler>::createNoData);
-
-  _handlerFactory->addPrefixHandler(
-      "/_api/shard-comm", RestHandlerCreator<RestShardHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       "/_api/aql",

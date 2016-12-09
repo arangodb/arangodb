@@ -40,7 +40,7 @@ namespace consensus {
 enum JOB_STATUS { TODO, PENDING, FINISHED, FAILED, NOTFOUND };
 const std::vector<std::string> pos({"/Target/ToDo/", "/Target/Pending/",
                                     "/Target/Finished/", "/Target/Failed/"});
-
+static std::string const mapUniqueToShortID = "/Target/MapUniqueToShortID/";
 static std::string const pendingPrefix = "/Target/Pending/";
 static std::string const failedPrefix = "/Target/Failed/";
 static std::string const finishedPrefix = "/Target/Finished/";
@@ -122,6 +122,8 @@ struct Job {
   static std::vector<shard_t> clones(
     Node const& snap, std::string const& db, std::string const& col,
     std::string const& shrd);
+
+  static std::string uuidLookup(Node const& snap, std::string const& shortID);
 
   Node const _snapshot;
   Agent* _agent;

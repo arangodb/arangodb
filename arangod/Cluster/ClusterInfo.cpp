@@ -1990,6 +1990,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::string const prefixServers = "Current/ServersRegistered";
+static std::string const mapUniqueToShortId = "Target/MapUniqueToShortID";
 
 void ClusterInfo::loadServers() {
   ++_serversProt.wantedVersion;  // Indicate that after *NOW* somebody has to
@@ -2002,23 +2003,43 @@ void ClusterInfo::loadServers() {
     return;
   }
 
-  // Now contact the agency:
-  AgencyCommResult result = _agency.getValues(prefixServers);
-
+  AgencyCommResult result = _agency.sendTransactionWithFailover(
+    AgencyReadTransaction({AgencyCommManager::path(prefixServers),
+          AgencyCommManager::path(mapUniqueToShortId)}));
+  
+  
   if (result.successful()) {
     velocypack::Slice serversRegistered =
-        result.slice()[0].get(std::vector<std::string>(
-            {AgencyCommManager::path(), "Current", "ServersRegistered"}));
+      result.slice()[0].get(
+        std::vector<std::string>(
+          {AgencyCommManager::path(), "Current", "ServersRegistered"}));
 
-    if (serversRegistered.isObject()) {
+    velocypack::Slice serversAliases =
+      result.slice()[0].get(
+        std::vector<std::string>(
+          {AgencyCommManager::path(), "Target", "MapUniqueToShortID"}));
+  
+  if (serversRegistered.isObject()) {
       decltype(_servers) newServers;
+      decltype(_serverAliases) newAliases;
 
+      size_t i = 0;
       for (auto const& res : VPackObjectIterator(serversRegistered)) {
         velocypack::Slice slice = res.value;
+
         if (slice.isObject() && slice.hasKey("endpoint")) {
           std::string server =
+            arangodb::basics::VelocyPackHelper::getStringValue(
+              slice, "endpoint", "");
+          
+          velocypack::Slice aslice;
+          try {
+            aslice = serversAliases.valueAt(i++);
+            std::string alias =
               arangodb::basics::VelocyPackHelper::getStringValue(
-                  slice, "endpoint", "");
+                aslice, "ShortName", "");
+            newAliases.emplace(std::make_pair(alias, res.key.copyString()));
+          } catch (...) {}
           newServers.emplace(std::make_pair(res.key.copyString(), server));
         }
       }
@@ -2027,6 +2048,7 @@ void ClusterInfo::loadServers() {
       {
         WRITE_LOCKER(writeLocker, _serversProt.lock);
         _servers.swap(newServers);
+        _serverAliases.swap(newAliases);
         _serversProt.doneVersion = storedVersion;
         _serversProt.isValid = true;  // will never be reset to false
       }
@@ -2056,17 +2078,29 @@ std::string ClusterInfo::getServerEndpoint(ServerID const& serverID) {
     tries++;
   }
 
+  std::string serverID_ = serverID;
+  
   while (true) {
     {
       READ_LOCKER(readLocker, _serversProt.lock);
+
+      // _serversAliases is a map-type <Alias, ServerID>
+      auto ita = _serverAliases.find(serverID_);
+      
+      if (ita != _serverAliases.end()) {
+        serverID_ = (*ita).second;
+      }
+      
       // _servers is a map-type <ServerId, std::string>
-      auto it = _servers.find(serverID);
+      auto it = _servers.find(serverID_);
 
       if (it != _servers.end()) {
         return (*it).second;
       }
     }
 
+    
+    
     if (++tries >= 2) {
       break;
     }

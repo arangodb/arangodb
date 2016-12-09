@@ -560,6 +560,8 @@ class ClusterInfo {
   // The servers, first all, we only need Current here:
   std::unordered_map<ServerID, std::string>
       _servers;  // from Current/ServersRegistered
+  std::unordered_map<ServerID, std::string>
+      _serverAliases;  // from Current/ServersRegistered
   ProtectionData _serversProt;
 
   // The DBServers, also from Current:

@@ -212,3 +212,14 @@ std::vector<Job::shard_t> Job::clones(
   return ret;
   
 }
+
+std::string Job::uuidLookup (Node const& snapshot, std::string const& shortID) {
+  for (auto const& uuid : snapshot(mapUniqueToShortID).children()) {
+    if ((*uuid.second)("ShortName").getString() == shortID) {
+      return uuid.first;
+    }
+  }
+  return std::string();
+}
+
+

@@ -373,7 +373,7 @@ void AgencyCommManager::initialize(std::string const& prefix) {
   MANAGER.reset(new AgencyCommManager(prefix));
 }
 
-void AgencyCommManager::shutdown() { MANAGER.release(); }
+void AgencyCommManager::shutdown() { MANAGER.reset(); }
 
 std::string AgencyCommManager::path() {
   if (MANAGER == nullptr) {
