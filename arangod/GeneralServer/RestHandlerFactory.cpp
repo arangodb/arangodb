@@ -98,8 +98,7 @@ RestHandler* RestHandlerFactory::createHandler(
   if (_maintenanceMode.load()) {
     if ((!ServerState::instance()->isCoordinator() &&
          path.find("/_api/agency/agency-callbacks") == std::string::npos) ||
-        (path != "/_api/shard-comm" &&
-         path.find("/_api/agency/agency-callbacks") == std::string::npos &&
+        (path.find("/_api/agency/agency-callbacks") == std::string::npos &&
          path.find("/_api/aql") == std::string::npos)) {
       LOG(DEBUG) << "Maintenance mode: refused path: " << path;
       return new MaintenanceHandler(request.release(), response.release());
