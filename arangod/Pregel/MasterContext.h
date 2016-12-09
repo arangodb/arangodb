@@ -36,7 +36,7 @@ class MasterContext {
   friend class Conductor;
 
   uint64_t _vertexCount, _edgeCount;
-  const AggregatorUsage* _aggregators;
+  AggregatorUsage* _aggregators;
 
  protected:
   template <typename T>

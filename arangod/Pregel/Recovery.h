@@ -45,7 +45,7 @@ class RecoveryManager {
   AgencyCallbackRegistry *_agencyCallbackRegistry;//weak
   
   std::map<ShardID, std::set<Conductor*>> _listeners;
-  std::map<ShardID, ServerID> _primaryServer;
+  std::map<ShardID, ServerID> _primaryServers;
   std::map<ShardID, std::shared_ptr<AgencyCallback>> _agencyCallbacks;
   
   void _monitorShard(CollectionID const& cid, ShardID const& shard);

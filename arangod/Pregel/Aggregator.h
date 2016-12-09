@@ -99,6 +99,28 @@ public:
   VPackValue vpackValue() override { return VPackValue(_value); };
 };
   
+template<typename T>
+class SumAggregator : public Aggregator {
+  static_assert(std::is_arithmetic<T>::value, "Type must be numeric");
+  
+  T _value;
+public:
+  SumAggregator(T val) : Aggregator(true), _value(val) {}
+  
+  void aggregate(void const* valuePtr) override {
+    _value += *((T*)valuePtr);
+  };
+  void aggregate(VPackSlice slice) override {
+    _value += slice.getNumber<T>();
+  }
+  
+  void const* getValue() const override { return &_value; };
+  /*void setValue(VPackSlice slice) override {
+   _value = (float)slice.getDouble();
+   }*/
+  VPackValue vpackValue() override { return VPackValue(_value); };
+};
+  
 }
 }
 #endif

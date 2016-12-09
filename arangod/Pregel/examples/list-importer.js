@@ -12,16 +12,17 @@ var graph_module = require("@arangodb/general-graph");
 var fs = require('fs');
 
 module.exports = function (gname, filename) {
-  var vColl = gname+"_nodes", eColl = gname+"_edges";
+  var vColl = gname+"_vertices", eColl = gname+"_edges";
   
   var graph;
   var exists = graph_module._list().indexOf(gname) != -1;
   if (!exists) {
     graph = graph_module._create(gname);
-    db._create(vColl, {numberOfShards: 4});
+    db._create(vColl, {numberOfShards: 2, replicationFactor:2});
     graph._addVertexCollection(vColl);
     db._createEdgeCollection(eColl, {
-                             numberOfShards: 4,
+                             numberOfShards: 2,
+                             replicationFactor: 2,
                              shardKeys:["_vertex"],
                              distributeShardsLike:vColl});
     

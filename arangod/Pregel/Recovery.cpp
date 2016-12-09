@@ -87,38 +87,31 @@ void RecoveryManager::monitorCollections(
 void RecoveryManager::_monitorShard(CollectionID const& cid,
                                     ShardID const& shard) {
   std::function<bool(VPackSlice const& result)> listener =
-      [this](VPackSlice const& result) {
-        /*if (result.isObject() && result.length() == (size_t)numberOfShards) {
-         std::string tmpMsg = "";
-         bool tmpHaveError = false;
+      [this, shard](VPackSlice const& result) {
+        
+        auto const& conductors = _listeners.find(shard);
+        if (conductors == _listeners.end()) {
+          return false;
+        }
 
-         for (auto const& p : VPackObjectIterator(result)) {
-         if (arangodb::basics::VelocyPackHelper::getBooleanValue(
-         p.value, "error", false)) {
-         tmpHaveError = true;
-         tmpMsg += " shardID:" + p.key.copyString() + ":";
-         tmpMsg += arangodb::basics::VelocyPackHelper::getStringValue(
-         p.value, "errorMessage", "");
-         if (p.value.hasKey("errorNum")) {
-         VPackSlice const errorNum = p.value.get("errorNum");
-         if (errorNum.isNumber()) {
-         tmpMsg += " (errNum=";
-         tmpMsg += basics::StringUtils::itoa(
-         errorNum.getNumericValue<uint32_t>());
-         tmpMsg += ")";
-         }
-         }
-         }
-         }
-         if (tmpHaveError) {
-         *errMsg = "Error in creation of collection:" + tmpMsg;
-         *dbServerResult = TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION;
-         return true;
-         }
-         *dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, *errMsg);
-         }*/
-
-        // PregelFeature::instance()->notifyConductors();
+        if (result.isArray()) {
+          
+          if (result.length() > 0) {
+            ServerID nextPrimary = result.at(0).copyString();
+            auto const& currentPrimary = _primaryServers.find(shard);
+            if (currentPrimary != _primaryServers.end()
+                && currentPrimary->second != nextPrimary) {
+              _primaryServers[shard] = nextPrimary;
+              for (Conductor *cc : conductors->second) {
+                cc->startRecovery();
+              }
+            }
+          } else {
+            for (Conductor *cc : conductors->second) {
+              cc->cancel();
+            }
+          }
+        }
 
         LOG(INFO) << result.toString();
         return true;
@@ -131,7 +124,7 @@ void RecoveryManager::_monitorShard(CollectionID const& cid,
   std::shared_ptr<std::vector<ServerID>> servers =
       ClusterInfo::instance()->getResponsibleServer(shard);
   if (servers->size() > 0) {
-    _primaryServer[shard] = servers->at(0);
+    _primaryServers[shard] = servers->at(0);
 
     auto call =
         std::make_shared<AgencyCallback>(_agency, path, listener, true, false);
