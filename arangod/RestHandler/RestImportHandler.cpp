@@ -276,7 +276,7 @@ int RestImportHandler::handleSingleDocument(SingleCollectionTransaction& trx,
 
 bool RestImportHandler::createFromJson(std::string const& type) {
   if (_request == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request");
   }
 
   RestImportResult result;
@@ -319,7 +319,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
     linewise = true;
 
     if (_response == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response");
     }
 
     // auto detect import type by peeking at first non-whitespace character
@@ -328,7 +328,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
     HttpRequest* req = dynamic_cast<HttpRequest*>(_request.get());
 
     if (req == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
     }
 
     std::string const& body = req->body();
@@ -388,7 +388,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
     HttpRequest* req = dynamic_cast<HttpRequest*>(_request.get());
 
     if (req == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
     }
 
     // each line is a separate JSON document
@@ -529,7 +529,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
 bool RestImportHandler::createFromVPack(std::string const& type) {
   if (_request == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request");
   }
 
   RestImportResult result;
@@ -637,7 +637,7 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
 
 bool RestImportHandler::createFromKeyValueList() {
   if (_request == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request");
   }
 
   RestImportResult result;
@@ -679,7 +679,7 @@ bool RestImportHandler::createFromKeyValueList() {
   HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
 
   if (httpRequest == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
   }
 
   std::string const& bodyStr = httpRequest->body();

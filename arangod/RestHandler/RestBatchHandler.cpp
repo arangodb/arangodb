@@ -72,7 +72,7 @@ RestStatus RestBatchHandler::executeHttp() {
 
   if (httpResponse == nullptr) {
     std::cout << "please fix this for vpack" << std::endl;
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
   }
 
   HttpRequest const* httpRequest =
@@ -80,7 +80,7 @@ RestStatus RestBatchHandler::executeHttp() {
 
   if (httpRequest == nullptr) {
     std::cout << "please fix this for vpack" << std::endl;
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
   }
 
   // extract the request type
@@ -290,7 +290,7 @@ bool RestBatchHandler::getBoundaryBody(std::string* result) {
   HttpRequest const* req = dynamic_cast<HttpRequest const*>(_request.get());
 
   if (req == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
   }
 
   std::string const& bodyStr = req->body();

@@ -4010,7 +4010,7 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
       TRI_QueryFulltextIndex(fulltextIndex->internals(), ft);
 
   if (queryResult == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
   
   TRI_ASSERT(trx->hasDitch(cid));

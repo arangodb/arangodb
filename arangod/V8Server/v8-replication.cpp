@@ -433,7 +433,7 @@ static void JS_ConfigureApplierReplication(
   }
 
   if (vocbase->replicationApplier() == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find replicationApplier");
   }
 
   if (args.Length() == 0) {
@@ -702,7 +702,7 @@ static void JS_StartApplierReplication(
   }
 
   if (vocbase->replicationApplier() == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find replicationApplier");
   }
 
   if (args.Length() > 2) {
@@ -753,7 +753,7 @@ static void JS_ShutdownApplierReplication(
   }
 
   if (vocbase->replicationApplier() == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find replicationApplier");
   }
 
   int res = vocbase->replicationApplier()->shutdown();
@@ -786,7 +786,7 @@ static void JS_StateApplierReplication(
   }
 
   if (vocbase->replicationApplier() == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find replicationApplier");
   }
 
   std::shared_ptr<VPackBuilder> builder = vocbase->replicationApplier()->toVelocyPack();
@@ -817,7 +817,7 @@ static void JS_ForgetApplierReplication(
   }
 
   if (vocbase->replicationApplier() == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find replicationApplier");
   }
 
   int res = vocbase->replicationApplier()->forget();

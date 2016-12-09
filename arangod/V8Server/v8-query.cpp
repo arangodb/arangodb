@@ -111,7 +111,7 @@ static void EdgesQuery(TRI_edge_direction_e direction,
         return "FILTER doc._from " + op + " @value || doc._to " + op + " @value";
     }
 
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid edge index direction");
   };
 
   arangodb::LogicalCollection const* collection =

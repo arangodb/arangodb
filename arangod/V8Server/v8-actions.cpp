@@ -407,7 +407,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
     if (rest::ContentType::JSON == request->contentType()) {
       auto httpreq = dynamic_cast<HttpRequest*>(request);
       if (httpreq == nullptr) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
       }
       std::string const& body = httpreq->body();
       req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(body));
@@ -516,7 +516,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
     HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(request);
     if (httpRequest == nullptr) {
       // maybe we can just continue
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
     } else {
       for (auto& it : httpRequest->cookieValues()) {
         cookiesObject->ForceSet(TRI_V8_STD_STRING(it.first),
@@ -832,7 +832,7 @@ static TRI_action_result_t ExecuteActionVocbase(
   v8::TryCatch tryCatch;
 
   if (response == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response");
   }
 
   TRI_GET_GLOBALS();

@@ -60,7 +60,7 @@ static AstNode* createGlobalCondition(Ast* ast, AstNode const* condition) {
       type = NODE_TYPE_OPERATOR_BINARY_NIN;
       break;
     default:
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unsupported operator type");
   }
   auto quantifier = condition->getMemberUnchecked(2);
   TRI_ASSERT(quantifier->type == NODE_TYPE_QUANTIFIER);
@@ -69,7 +69,7 @@ static AstNode* createGlobalCondition(Ast* ast, AstNode const* condition) {
   if (val == Quantifier::NONE) {
     auto it = Ast::NegatedOperators.find(type);
     if (it == Ast::NegatedOperators.end()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unsupported operator type");
     }
     type = it->second;
   }

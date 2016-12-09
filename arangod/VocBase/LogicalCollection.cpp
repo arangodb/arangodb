@@ -244,7 +244,7 @@ static std::shared_ptr<Index> PrepareIndexFromSlice(VPackSlice info,
   
   switch (type) {
     case arangodb::Index::TRI_IDX_TYPE_UNKNOWN: {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid index type");
     }
     case arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX: {
       if (!isClusterConstructor) {

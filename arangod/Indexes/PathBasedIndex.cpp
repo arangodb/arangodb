@@ -23,6 +23,7 @@
 
 #include "PathBasedIndex.h"
 #include "Aql/AstNode.h"
+#include "Basics/FixedSizeAllocator.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
 
@@ -53,7 +54,7 @@ arangodb::aql::AstNode const* PathBasedIndex::PermutationState::getValue()
 /// @brief create the index
 PathBasedIndex::PathBasedIndex(TRI_idx_iid_t iid,
                                arangodb::LogicalCollection* collection,
-                               VPackSlice const& info, bool allowPartialIndex)
+                               VPackSlice const& info, size_t baseSize, bool allowPartialIndex)
     : Index(iid, collection, info),
       _useExpansion(false),
       _allowPartialIndex(allowPartialIndex) {
@@ -69,10 +70,14 @@ PathBasedIndex::PathBasedIndex(TRI_idx_iid_t iid,
       break;
     }
   }
+  
+  _allocator.reset(new FixedSizeAllocator(baseSize + sizeof(IndexElementValue) * numPaths()));
 }
 
 /// @brief destroy the index
-PathBasedIndex::~PathBasedIndex() {}
+PathBasedIndex::~PathBasedIndex() {
+  _allocator->deallocateAll();
+}
 
 /// @brief whether or not the index is implicitly unique
 /// this can be the case if the index is not declared as unique, but contains a 
@@ -121,14 +126,16 @@ int PathBasedIndex::fillElement(std::vector<T*>& elements,
     if (slices.size() == n) {
       // if shapes.size() != n, then the value is not inserted into the index
       // because of index sparsity!
-      T* element = T::create(revisionId, slices);
+      T* element = static_cast<T*>(_allocator->allocate());
+      TRI_ASSERT(element != nullptr);
+      element = T::initialize(element, revisionId, slices);
 
       if (element == nullptr) {
         return TRI_ERROR_OUT_OF_MEMORY;
       }
       TRI_IF_FAILURE("FillElementOOM") {
         // clean up manually
-        element->free();
+        _allocator->deallocate(element);
         return TRI_ERROR_OUT_OF_MEMORY;
       }
 
@@ -139,7 +146,7 @@ int PathBasedIndex::fillElement(std::vector<T*>& elements,
 
         elements.emplace_back(element);
       } catch (...) {
-        element->free();
+        _allocator->deallocate(element);
         return TRI_ERROR_OUT_OF_MEMORY;
       }
     }
@@ -155,14 +162,16 @@ int PathBasedIndex::fillElement(std::vector<T*>& elements,
 
       for (auto& info : toInsert) {
         TRI_ASSERT(info.size() == n);
-        T* element = T::create(revisionId, info);
+        T* element = static_cast<T*>(_allocator->allocate());
+        TRI_ASSERT(element != nullptr);
+        element = T::initialize(element, revisionId, info);
 
         if (element == nullptr) {
           return TRI_ERROR_OUT_OF_MEMORY;
         }
         TRI_IF_FAILURE("FillElementOOM") {
           // clean up manually
-          element->free();
+          _allocator->deallocate(element);
           return TRI_ERROR_OUT_OF_MEMORY;
         }
 
@@ -173,7 +182,7 @@ int PathBasedIndex::fillElement(std::vector<T*>& elements,
 
           elements.emplace_back(element);
         } catch (...) {
-          element->free();
+          _allocator->deallocate(element);
           return TRI_ERROR_OUT_OF_MEMORY;
         }
       }

@@ -699,7 +699,7 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
   // FIXME - generalize for VPP
   HttpResponse* responseToSend = dynamic_cast<HttpResponse*>(response);
   if (responseToSend == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
   }
 
   // First take apart the header to get the coordinatorID:
