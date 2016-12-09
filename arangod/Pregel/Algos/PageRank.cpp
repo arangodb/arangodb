@@ -126,16 +126,16 @@ struct PRCompensation : public VertexCompensation<float, float, float> {
         aggregate("totalrank", mutableVertexData<float>());
       } else if (*step == 1) {
         
-        const float *scale;
         float *data = mutableVertexData<float>();
         if (inLostPartition) {
-          scale = getAggregatedValue<float>("scale1");
+          *data = 1.0f / context()->vertexCount();
         } else {
-          scale = getAggregatedValue<float>("scale2");
+          const float *scale = getAggregatedValue<float>("scale");
+          if (scale && *scale != 0) {
+            *data *= *scale;
+          }
         }
-        if (scale && *scale != 0) {
-          *data = *scale;
-        }
+        
       }
     }
   }
@@ -155,7 +155,7 @@ Aggregator* PageRankAlgorithm::aggregator(std::string const& name) const {
     return new SumAggregator<float>(0);
   } else if (name == "step") {
     return new ValueAggregator<uint32_t>(0);
-  } else if (name == "scale1" || name == "scale2") {
+  } else if (name == "scale") {
     return new ValueAggregator<float>(-1);
   }
   return nullptr;
@@ -182,10 +182,8 @@ struct PRMasterContext : public MasterContext {
       const float* totalrank = getAggregatedValue<float>("totalrank");
       const uint32_t* nonfailedCount = getAggregatedValue<uint32_t>("nonfailedCount");
       if (totalrank && *totalrank != 0 && nonfailedCount && *nonfailedCount != 0) {
-        float scale1 = 1.0f / this->vertexCount();
-        float scale2 = ((*nonfailedCount) * 1.0f) / (this->vertexCount() * (*totalrank));
-        aggregate("scale1", &scale1);
-        aggregate("scale2", &scale2);
+        float scale = ((*nonfailedCount) * 1.0f) / (this->vertexCount() * (*totalrank));
+        aggregate("scale", &scale);
         return true;
       }
     }

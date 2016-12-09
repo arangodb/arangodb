@@ -88,6 +88,7 @@ void RecoveryManager::_monitorShard(CollectionID const& cid,
                                     ShardID const& shard) {
   std::function<bool(VPackSlice const& result)> listener =
       [this, shard](VPackSlice const& result) {
+        MUTEX_LOCKER(guard, _lock);// we are editing _primaryServers
         
         auto const& conductors = _listeners.find(shard);
         if (conductors == _listeners.end()) {
