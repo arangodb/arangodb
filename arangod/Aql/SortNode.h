@@ -53,7 +53,7 @@ class SortNode : public ExecutionNode {
  public:
   SortNode(ExecutionPlan* plan, size_t id, SortElementVector const& elements,
            bool stable)
-      : ExecutionNode(plan, id), _elements(elements), _stable(stable) {}
+      : ExecutionNode(plan, id), _reinsertInCluster(true), _elements(elements), _stable(stable) {}
 
   SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
            SortElementVector const& elements, bool stable);

@@ -4417,8 +4417,8 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& info){
 
   // if executionNode is sort OR a filter without further sub conditions
   // the node can be unlinked
-  if(  info.executionNodeType == EN::SORT || !info.expressionParent){
-    if (!arangodb::ServerState::instance()->isCoordinator()) {
+  if(!info.expressionParent){
+    if (!arangodb::ServerState::instance()->isCoordinator() || info.executionNodeType == EN::FILTER) {
       plan->unlinkNode(info.executionNode);
     } else if (info.executionNodeType == EN::SORT){
       //make sure sort is not reinserted in cluster
