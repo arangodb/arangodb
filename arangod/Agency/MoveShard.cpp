@@ -76,7 +76,7 @@ bool MoveShard::create() {
   _jb->openObject();
 
   // Lookup from server
-  if (_from.find("DBServer") == 0) {
+  if (_from.compare("DBServer") == 0) {
     try {
       _from = uuidLookup(_snapshot, _from);
     } catch (...) {
@@ -84,7 +84,7 @@ bool MoveShard::create() {
         "MoveShard: From server " << _from << " does not exist";
     }
   }
-  if (_to.find("DBServer") == 0) {
+  if (_to.compare("DBServer") == 0) {
     try {
       _to = uuidLookup(_snapshot, _to);
     } catch (...) {
