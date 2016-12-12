@@ -25,6 +25,9 @@
 #include "Aql/ExecutionNode.h"
 #include "Basics/VelocyPackHelper.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::aql;
 
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
@@ -90,9 +93,13 @@ AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, VPackSlice const sl
   madeHere.emplace_back();  // an empty AqlValue
   madeHere.emplace_back();  // another empty AqlValue, indices start w. 2
 
+  VPackArrayIterator dataIterator(data);
+  VPackArrayIterator rawIterator(raw);
+
   try {
-    size_t posInRaw = 2;
-    size_t posInData = 0;
+    // skip the first two records
+    rawIterator.next();
+    rawIterator.next();
     int64_t emptyRun = 0;
 
     for (RegisterId column = 0; column < _nrRegs; column++) {
@@ -100,7 +107,8 @@ AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, VPackSlice const sl
         if (emptyRun > 0) {
           emptyRun--;
         } else {
-          VPackSlice dataEntry = data.at(posInData++);
+          VPackSlice dataEntry = dataIterator.value();
+          dataIterator.next();
           if (!dataEntry.isNumber()) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                            "data must contain only numbers");
@@ -110,15 +118,18 @@ AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, VPackSlice const sl
             // empty, do nothing here
           } else if (n == -1) {
             // empty run:
-            VPackSlice runLength = data.at(posInData++);
+            VPackSlice runLength = dataIterator.value();
+            dataIterator.next();
             TRI_ASSERT(runLength.isNumber());
             emptyRun = runLength.getNumericValue<int64_t>();
             emptyRun--;
           } else if (n == -2) {
             // a range
-            VPackSlice lowBound = data.at(posInData++);
-            VPackSlice highBound = data.at(posInData++);
-            
+            VPackSlice lowBound = dataIterator.value();
+            dataIterator.next();
+            VPackSlice highBound = dataIterator.value();
+            dataIterator.next();
+             
             int64_t low =
                 VelocyPackHelper::getNumericValue<int64_t>(lowBound, 0);
             int64_t high =
@@ -132,7 +143,8 @@ AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, VPackSlice const sl
             }
           } else if (n == 1) {
             // a VelocyPack value
-            AqlValue a(raw.at(posInRaw++));
+            AqlValue a(rawIterator.value());
+            rawIterator.next();
             try {
               setValue(i, column, a);  // if this throws, a is destroyed again
             } catch (...) {
@@ -472,25 +484,29 @@ AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
 ///             numbers. The AqlItemBlock is stored columnwise, starting
 ///             from the first column (top to bottom) and going right.
 ///             Each entry found is encoded in the following way:
-///               0.0  means a single empty entry
-///               -1.0 followed by a positive integer N (encoded as number)
-///                      means a run of that many empty entries
-///               -2.0 followed by two numbers LOW and HIGH means a range
-///                      and LOW and HIGH are the boundaries (inclusive)
-///               1.0 means a JSON entry at the "next" position in "raw"
-///                      the "next" position starts with 2 and is increased
-///                      by one for every 1.0 found in data
-///               integer values >= 2.0 mean a JSON entry, in this
+///               0  means a single empty entry
+///               -1 followed by a positive integer N (encoded as number)
+///                    means a run of that many empty entries
+///               -2 followed by two numbers LOW and HIGH means a range
+///                    and LOW and HIGH are the boundaries (inclusive)
+///               1 means a JSON entry at the "next" position in "raw"
+///                    the "next" position starts with 2 and is increased
+///                    by one for every 1 found in data
+///               integer values >= 2 mean a JSON entry, in this
 ///                      case the "raw" list contains an entry in the
 ///                      corresponding position
 ///  "raw":     List of actual values, positions 0 and 1 are always null
 ///                      such that actual indices start at 2
 void AqlItemBlock::toVelocyPack(arangodb::Transaction* trx,
                                 VPackBuilder& result) const {
-  VPackBuilder data;
+  VPackOptions options(VPackOptions::Defaults);
+  options.buildUnindexedArrays = true;
+  options.buildUnindexedObjects = true;
+
+  VPackBuilder data(&options);
   data.openArray();
 
-  VPackBuilder raw;
+  VPackBuilder raw(&options);
   raw.openArray();
   // Two nulls in the beginning such that indices start with 2
   raw.add(VPackValue(VPackValueType::Null));
@@ -500,7 +516,7 @@ void AqlItemBlock::toVelocyPack(arangodb::Transaction* trx,
 
   size_t emptyCount = 0;  // here we count runs of empty AqlValues
 
-  auto commitEmpties = [&]() {  // this commits an empty run to the data
+  auto commitEmpties = [&data, &emptyCount]() {  // this commits an empty run to the data
     if (emptyCount > 0) {
       if (emptyCount == 1) {
         data.add(VPackValue(0));
