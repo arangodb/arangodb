@@ -49,7 +49,8 @@ function optimizerRuleTestSuite() {
   // quickly disable tests here
   var enabled = {
     basics : true,
-    sort   : true
+    removeNodes : true,
+    sorted : true
   }
 
   var ruleName = "use-geoindex";
@@ -111,6 +112,34 @@ function optimizerRuleTestSuite() {
     assertEqual(node.type, type, "check whether this node is of type "+type);
   };
 
+  var geodistance = function(latitude1, longitude1, latitude2, longitude2) {
+    //if (TYPEWEIGHT(latitude1) !== TYPEWEIGHT_NUMBER ||
+    //  TYPEWEIGHT(longitude1) !== TYPEWEIGHT_NUMBER ||
+    //  TYPEWEIGHT(latitude2) !== TYPEWEIGHT_NUMBER ||
+    //  TYPEWEIGHT(longitude2) !== TYPEWEIGHT_NUMBER) {
+    //  WARN('DISTANCE', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    //  return null;
+    //}
+
+    //var p1 = AQL_TO_NUMBER(latitude1) * (Math.PI / 180.0);
+    //var p2 = AQL_TO_NUMBER(latitude2) * (Math.PI / 180.0);
+    //var d1 = AQL_TO_NUMBER(latitude2 - latitude1) * (Math.PI / 180.0);
+    //var d2 = AQL_TO_NUMBER(longitude2 - longitude1) * (Math.PI / 180.0);
+
+    var p1 = (latitude1) * (Math.PI / 180.0);
+    var p2 = (latitude2) * (Math.PI / 180.0);
+    var d1 = (latitude2 - latitude1) * (Math.PI / 180.0);
+    var d2 = (longitude2 - longitude1) * (Math.PI / 180.0);
+
+    var a = Math.sin(d1 / 2.0) * Math.sin(d1 / 2.0) +
+            Math.cos(p1) * Math.cos(p2) *
+            Math.sin(d2 / 2.0) * Math.sin(d2 / 2.0);
+    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1.0 - a));
+
+    return (6371e3 * c);
+  }
+
+
   return {
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -144,7 +173,7 @@ function optimizerRuleTestSuite() {
       if(enabled.basics){
         geocol.ensureIndex({ type: "hash", fields: [ "y", "z" ], unique: false });
 
-        var queries = [ 
+        var queries = [
           //query                                                         clust  sort   filter
           [ "FOR d IN " + colName + " SORT distance(d.lat,d.lon, 0 ,0 ) ASC LIMIT 1 RETURN d", false, false, false ],
           [ "FOR d IN " + colName + " SORT distance(0, 0, d.lat,d.lon ) ASC LIMIT 1 RETURN d", false, false, false ],
@@ -181,8 +210,8 @@ function optimizerRuleTestSuite() {
       }
     }, // testRuleBasics
 
-    testRuleSort : function () {
-      if(enabled.sort){
+    testRuleRemoveNodes : function () {
+      if(enabled.removeNodes){
         var queries = [ 
           [ "FOR d IN " + colName + " SORT distance(d.lat,d.lon, 0 ,0 ) ASC LIMIT 5 RETURN d", false, false, false ],
           [ "FOR d IN " + colName + " SORT distance(0, 0, d.lat,d.lon ) ASC LIMIT 5 RETURN d", false, false, false ],
@@ -202,12 +231,24 @@ function optimizerRuleTestSuite() {
           pairs = result.json.map(function(res){
               return [res.lat,res.lon];
           });
-          internal.print(pairs)
+          //internal.print(pairs)
           assertEqual(expected[qindex].sort(),pairs.sort())
           //expect(expected[qindex].sort()).to.be.equal(result.json.sort())
         });
       }
-    } // testRuleSort
+    }, // testRuleSort
+
+    testRuleSorted : function(){
+      if(enabled.sorted){
+        var old=0;
+        var query = "FOR d IN " + colName + " SORT distance(d.lat, d.lon, 0, 0) RETURN distance(d.lat, d.lon, 0, 0)";
+        var result = AQL_EXECUTE(query);
+        distances = result.json.map(d => { return parseFloat(d.toFixed(5))});
+        //internal.print(distances);
+        old=0;
+        distances.forEach(d => { assertTrue( d >= old); old = d; });
+      }
+    } //testSorted
 
   }; // test dictionary (return)
 } // optimizerRuleTestSuite
