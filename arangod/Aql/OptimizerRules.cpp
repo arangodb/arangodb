@@ -2727,6 +2727,7 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
 void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
                                                 ExecutionPlan* plan,
                                                 Optimizer::Rule const* rule) {
+  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER DISTRIBUTE SORT RULE";
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::GATHER, true);
@@ -2782,6 +2783,7 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
           stopSearching = true;
           break;
         case EN::SORT:
+          //LOG_TOPIC(DEBUG, Logger::DEVEL) << "APPLY DISTRIBUTE SORT";
           auto thisSortNode = static_cast<SortNode*>(inspectNode);
 
           // remember our cursor...
@@ -2789,7 +2791,9 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
           // then unlink the filter/calculator from the plan
           plan->unlinkNode(inspectNode);
           // and re-insert into plan in front of the remoteNode
-          plan->insertDependency(rn, inspectNode);
+          if(thisSortNode->_reinsertInCluster){
+            plan->insertDependency(rn, inspectNode);
+          }
           gatherNode->setElements(thisSortNode->getElements());
           modified = true;
           // ready to rumble!
@@ -3922,6 +3926,13 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
 ///////////////////////////////////////////////////////////////////////////////
 // GEO RULES //////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
+//
+// TODO
+//
+// - SORT cond0, cond1, cond2 ( conditions are seperated bu , not &&)
+// - Cluster: scatter gather(with merge)
+// - When filter and sort match on condition it is ok to have them nested
+
 struct GeoIndexInfo{
   operator bool() const { return distanceNode && valid; }
   void invalidate() { valid = false; }
@@ -4047,7 +4058,7 @@ GeoIndexInfo isGeoFilterExpression(AstNode* node, AstNode* expressionParent){
   return rv;
 }
 
-GeoIndexInfo iterativePreorderWithCondition(AstNode* root, GeoIndexInfo(*condition)(AstNode*, AstNode*)){
+GeoIndexInfo iterativePreorderWithCondition(EN::NodeType type, AstNode* root, GeoIndexInfo(*condition)(AstNode*, AstNode*)){
   // returns on first hit
   if (!root){
     return GeoIndexInfo{};
@@ -4063,10 +4074,18 @@ GeoIndexInfo iterativePreorderWithCondition(AstNode* root, GeoIndexInfo(*conditi
       return rv;
     }
 
-    if (current.first->type == NODE_TYPE_OPERATOR_BINARY_AND || current.first->type == NODE_TYPE_OPERATOR_NARY_AND ){
-      for (std::size_t i = 0; i < current.first->numMembers(); ++i){
-        nodestack.push_back({current.first->getMember(i),current.first});
+    if (type == EN::FILTER){
+      if (current.first->type == NODE_TYPE_OPERATOR_BINARY_AND || current.first->type == NODE_TYPE_OPERATOR_NARY_AND ){
+        for (std::size_t i = 0; i < current.first->numMembers(); ++i){
+          nodestack.push_back({current.first->getMember(i),current.first});
+        }
       }
+    } else if (type == EN::SORT) {
+      //if (current.first->type == NODE_TYPE_OPERATOR_){
+      //  for (std::size_t i = 0; i < current.first->numMembers(); ++i){
+      //    nodestack.push_back({current.first->getMember(i),current.first});
+      //  }
+      //}
     }
   }
   return GeoIndexInfo{};
@@ -4139,12 +4158,13 @@ GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, Exec
   //FIXME -- technical debt -- code duplication / not all cases covered
   switch(type){
     case EN::SORT: {
+      // check comma separated parts of condition cond0, cond1, cond2
       rv = isDistanceFunction(node,nullptr);
     }
     break;
 
     case EN::FILTER: {
-      rv = iterativePreorderWithCondition(node,&isGeoFilterExpression);
+      rv = iterativePreorderWithCondition(type, node, &isGeoFilterExpression);
     }
     break;
 
@@ -4398,7 +4418,12 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& info){
   // if executionNode is sort OR a filter without further sub conditions
   // the node can be unlinked
   if(  info.executionNodeType == EN::SORT || !info.expressionParent){
-    plan->unlinkNode(info.executionNode);
+    if (!arangodb::ServerState::instance()->isCoordinator()) {
+      plan->unlinkNode(info.executionNode);
+    } else if (info.executionNodeType == EN::SORT){
+      //make sure sort is not reinserted in cluster
+      static_cast<SortNode*>(info.executionNode)->_reinsertInCluster = false;
+    }
   }
   plan->replaceNode(res.collectionNode,inode);
 
