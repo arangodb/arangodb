@@ -19,7 +19,7 @@ The request object specifies the following properties:
 
 * **body**: `any`
 
-  The processed and validated request body for the current route.
+  The processed and validated request body for the current route. If no body has been defined for the current route, the value will be identical to *rawBody*.
 
   For details on how request bodies can be processed and validated by Foxx see the [body method of the endpoint object](Endpoints.md#body).
 
