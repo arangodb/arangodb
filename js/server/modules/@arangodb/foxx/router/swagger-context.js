@@ -49,6 +49,14 @@ const PARSED_JSON_MIME = (function (mime) {
   ]));
 }(MIME_JSON));
 
+const repeat = (times, value) => {
+  const arr = Array(times);
+  for (let i = 0; i < times; i++) {
+    arr[i] = value;
+  }
+  return arr;
+};
+
 module.exports = exports =
   class SwaggerContext {
     constructor (path) {
@@ -75,6 +83,7 @@ module.exports = exports =
       this._pathParams = new Map();
       this._pathParamNames = [];
       this._pathTokens = tokenize(path, this);
+      this._tags = new Set();
     }
 
     header (...args) {
@@ -262,6 +271,18 @@ module.exports = exports =
       return this;
     }
 
+    tag (...tags) {
+      tags = check(
+        'endpoint.tag',
+        tags,
+        [...repeat(Math.max(1, tags.length), ['tag', 'string'])]
+      );
+      for (const tag of tags) {
+        this._tags.add(tag);
+      }
+      return this;
+    }
+
     deprecated (...args) {
       const [flag] = check(
         'endpoint.summary',
@@ -283,6 +304,9 @@ module.exports = exports =
         }
         for (const response of swaggerObj._responses.entries()) {
           this._responses.set(response[0], response[1]);
+        }
+        for (const tag of swaggerObj._tags) {
+          this._tags.add(tag);
         }
         if (!this._bodyParam && swaggerObj._bodyParam) {
           this._bodyParam = swaggerObj._bodyParam;
@@ -334,6 +358,9 @@ module.exports = exports =
       }
       if (this._summary) {
         operation.summary = this._summary;
+      }
+      if (this._tags) {
+        operation.tags = Array.from(this._tags);
       }
       if (this._bodyParam) {
         operation.consumes = (
