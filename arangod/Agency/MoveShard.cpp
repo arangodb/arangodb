@@ -51,7 +51,7 @@ MoveShard::MoveShard(Node const& snapshot, Agent* agent,
       }
     }
   } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << __FILE__ << __LINE__;
+    LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << ": " << __FILE__ << ":" << __LINE__;
     finish("Shards/" + _shard, false, e.what());
   }
 }
@@ -61,7 +61,7 @@ MoveShard::~MoveShard() {}
 bool MoveShard::create() {
 
   // Lookup from server
-  if (_from.find("DBServer") == 0) {
+  if (_from.compare("DBServer") == 0) {
     try {
       _from = uuidLookup(_snapshot, _from);
     } catch (...) {
@@ -69,7 +69,6 @@ bool MoveShard::create() {
         "MoveShard: From server " << _from << " does not exist";
     }
   }
-  
   // Lookup to Server
   if (_to.find("DBServer") == 0) {
     try {
@@ -256,7 +255,7 @@ bool MoveShard::start() {
     try {
       todo.add(_jb->slice()[0].get(_agencyPrefix + toDoPrefix + _jobId));
     } catch (std::exception const& e) {
-      LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << __FILE__ << __LINE__;
+      LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << ": " << __FILE__ << ":" << __LINE__;
     }
   }
   todo.close();
