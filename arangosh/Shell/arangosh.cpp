@@ -55,7 +55,7 @@ int main(int argc, char* argv[]) {
 
   ApplicationServer server(options, BIN_DIRECTORY);
 
-  int ret;
+  int ret = EXIT_SUCCESS;
 
   server.addFeature(new ClientFeature(&server));
   server.addFeature(new ConfigFeature(&server, name));

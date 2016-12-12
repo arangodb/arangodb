@@ -68,7 +68,7 @@ class RestEngine {
   }
 
  private:
-  int run(std::shared_ptr<rest::RestHandler>, bool synchron);
+  int run(std::shared_ptr<rest::RestHandler>, bool synchronous);
 
  private:
   State _state = State::PREPARE;

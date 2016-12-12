@@ -44,7 +44,7 @@ std::string GeneralRequest::translateVersion(ProtocolVersion version) {
     default: { return "HTTP/1.0"; }
   }
 
-  return "UNKNOWN";  // in order please MSVC
+  TRI_UNREACHABLE;
 }
 
 std::string GeneralRequest::translateMethod(RequestType method) {

@@ -467,9 +467,8 @@ int TRI_CreateRecursiveDirectory(char const* path, long& systemError,
   char* copy;
   char* p;
   char* s;
-  int res;
 
-  res = TRI_ERROR_NO_ERROR;
+  int res = TRI_ERROR_NO_ERROR;
   p = s = copy = TRI_DuplicateString(path);
 
   while (*p != '\0') {
@@ -1295,11 +1294,11 @@ int TRI_VerifyLockFile(char const* filename) {
 
   canLock = errno;
 
-  TRI_CLOSE(fd);
-
   LOG(WARN) << "fcntl on lockfile '" << filename
             << "' failed: " << TRI_errno_string(canLock);
 #endif
+  
+  TRI_CLOSE(fd);
 
   return TRI_ERROR_ARANGO_DATADIR_LOCKED;
 }
@@ -1904,8 +1903,7 @@ bool TRI_CopySymlink(std::string const& srcItem, std::string const& dstItem,
                      std::string& error) {
 #ifndef _WIN32
   char buffer[PATH_MAX];
-  ssize_t rc;
-  rc = readlink(srcItem.c_str(), buffer, sizeof(buffer));
+  ssize_t rc = readlink(srcItem.c_str(), buffer, sizeof(buffer) - 1);
   if (rc == -1) {
     error = std::string("failed to read symlink ") + srcItem + ": " +
             strerror(errno);

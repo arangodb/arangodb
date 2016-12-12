@@ -905,24 +905,22 @@ void V8ShellFeature::initGlobals() {
   TRI_InitV8Shell(_isolate, context);
 
   // pager functions (overwrite existing SYS_OUTPUT from InitV8Utils)
-  if (_console != nullptr) {
-    v8::Local<v8::Value> console = v8::External::New(_isolate, _console);
+  v8::Local<v8::Value> console = v8::External::New(_isolate, _console);
 
-    TRI_AddGlobalVariableVocbase(
-        _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "SYS_OUTPUT"),
-        v8::FunctionTemplate::New(_isolate, JS_PagerOutput, console)
-            ->GetFunction());
+  TRI_AddGlobalVariableVocbase(
+      _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "SYS_OUTPUT"),
+      v8::FunctionTemplate::New(_isolate, JS_PagerOutput, console)
+          ->GetFunction());
 
-    TRI_AddGlobalVariableVocbase(
-        _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "SYS_START_PAGER"),
-        v8::FunctionTemplate::New(_isolate, JS_StartOutputPager, console)
-            ->GetFunction());
+  TRI_AddGlobalVariableVocbase(
+      _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "SYS_START_PAGER"),
+      v8::FunctionTemplate::New(_isolate, JS_StartOutputPager, console)
+          ->GetFunction());
 
-    TRI_AddGlobalVariableVocbase(
-        _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "SYS_STOP_PAGER"),
-        v8::FunctionTemplate::New(_isolate, JS_StopOutputPager, console)
-            ->GetFunction());
-  }
+  TRI_AddGlobalVariableVocbase(
+      _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "SYS_STOP_PAGER"),
+      v8::FunctionTemplate::New(_isolate, JS_StopOutputPager, console)
+          ->GetFunction());
 }
 
 void V8ShellFeature::initMode(ShellFeature::RunMode runMode,

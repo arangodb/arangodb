@@ -219,11 +219,6 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
       // do we need to adjust the root node?
       auto const nodeType = en->getType();
 
-      if (!en->hasParent()) {
-        // yes. found a new root!
-        root = eb.get();
-      }
-
       if (nodeType == ExecutionNode::DISTRIBUTE ||
           nodeType == ExecutionNode::SCATTER ||
           nodeType == ExecutionNode::GATHER) {
@@ -232,6 +227,12 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
       }
 
       engine->addBlock(eb.get());
+      
+      if (!en->hasParent()) {
+        // yes. found a new root!
+        root = eb.get();
+      }
+
       block = eb.release();
     }
 

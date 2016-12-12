@@ -70,7 +70,9 @@ ExecutionStats::ExecutionStats()
       fullCount(-1),
       executionTime(0.0) {}
 
-ExecutionStats::ExecutionStats(VPackSlice const& slice) {
+ExecutionStats::ExecutionStats(VPackSlice const& slice) 
+    : fullCount(-1),
+      executionTime(0.0) {
   if (!slice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "stats is not an object");
@@ -86,9 +88,4 @@ ExecutionStats::ExecutionStats(VPackSlice const& slice) {
   if (slice.hasKey("fullCount")) {
     fullCount = slice.get("fullCount").getNumber<int64_t>();
   }
-  else {
-    fullCount = -1;
-  }
-
-  // intentionally no modification of executionTime
 }

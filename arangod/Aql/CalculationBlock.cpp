@@ -38,7 +38,8 @@ CalculationBlock::CalculationBlock(ExecutionEngine* engine,
       _expression(en->expression()),
       _inVars(),
       _inRegs(),
-      _outReg(ExecutionNode::MaxRegisterId) {
+      _outReg(ExecutionNode::MaxRegisterId),
+      _conditionReg(ExecutionNode::MaxRegisterId) {
   std::unordered_set<Variable const*> inVars;
   _expression->variables(inVars);
 

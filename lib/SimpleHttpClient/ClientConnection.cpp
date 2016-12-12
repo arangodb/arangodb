@@ -55,13 +55,17 @@ using namespace arangodb::httpclient;
 ClientConnection::ClientConnection(Endpoint* endpoint, double requestTimeout,
                                    double connectTimeout, size_t connectRetries)
     : GeneralClientConnection(endpoint, requestTimeout, connectTimeout,
-                              connectRetries) {}
+                              connectRetries) {
+  TRI_invalidatesocket(&_socket);
+}
 
 ClientConnection::ClientConnection(std::unique_ptr<Endpoint>& endpoint,
                                    double requestTimeout, double connectTimeout,
                                    size_t connectRetries)
     : GeneralClientConnection(endpoint, requestTimeout, connectTimeout,
-                              connectRetries) {}
+                              connectRetries) {
+  TRI_invalidatesocket(&_socket);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a client connection

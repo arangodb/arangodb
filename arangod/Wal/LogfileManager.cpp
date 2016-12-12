@@ -2075,8 +2075,7 @@ int LogfileManager::inspectLogfiles() {
     }
 
     bool const wasCollected = (id <= _lastCollectedId);
-    Logfile* logfile =
-        Logfile::openExisting(filename, id, wasCollected, _ignoreLogfileErrors);
+    std::unique_ptr<Logfile> logfile(Logfile::openExisting(filename, id, wasCollected, _ignoreLogfileErrors));
 
     if (logfile == nullptr) {
       // an error happened when opening a logfile
@@ -2097,7 +2096,7 @@ int LogfileManager::inspectLogfiles() {
 
     if (logfile->status() == Logfile::StatusType::OPEN ||
         logfile->status() == Logfile::StatusType::SEALED) {
-      _recoverState->logfilesToProcess.push_back(logfile);
+      _recoverState->logfilesToProcess.push_back(logfile.get());
     }
 
     LOG(TRACE) << "inspecting logfile " << logfile->id() << " ("
@@ -2139,7 +2138,7 @@ int LogfileManager::inspectLogfiles() {
       }
     }
 
-    (*it).second = logfile;
+    (*it).second = logfile.release();
     ++it;
   }
 

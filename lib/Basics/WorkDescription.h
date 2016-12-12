@@ -39,7 +39,7 @@ enum class WorkType { THREAD, HANDLER, AQL_STRING, AQL_ID, CUSTOM };
 
 struct WorkDescription {
   WorkDescription(WorkType type, WorkDescription* prev)
-      : _type(type), _prev(prev) {}
+      : _type(type), _id(0), _prev(prev) {}
 
   WorkType _type;
   uint64_t _id;

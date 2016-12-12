@@ -216,12 +216,6 @@ class Agent : public arangodb::Thread {
   /// @brief Leader ID
   void lastCommitted(arangodb::consensus::index_t);
 
-  /// @brief Vocbase for agency persistence
-  TRI_vocbase_t* _vocbase;
-
-  /// @brief Query registry for agency persistence
-  aql::QueryRegistry* _queryRegistry;
-
   /// @brief Leader election delegate
   Constituent _constituent;
 

@@ -313,8 +313,9 @@ std::string Version::getCompiler() {
   return "gcc [" + std::string(__VERSION__) + "]";
 #elif defined(_MSC_VER)
   return "msvc [" + std::to_string(_MSC_VER) + "]";
-#endif
+#else
   return "unknown";
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

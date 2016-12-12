@@ -205,7 +205,9 @@ struct ClusterCommResult {
   bool sendWasComplete;
 
   ClusterCommResult()
-      : status(CL_COMM_BACKEND_UNAVAILABLE),
+      : coordTransactionID(0),
+        operationID(0),
+        status(CL_COMM_BACKEND_UNAVAILABLE),
         dropped(false),
         single(false),
         answer_code(rest::ResponseCode::PROCESSING),

@@ -44,7 +44,8 @@ GeneralClientConnection::GeneralClientConnection(Endpoint* endpoint,
       _connectRetries(connectRetries),
       _numConnectRetries(0),
       _isConnected(false),
-      _isInterrupted(false) {}
+      _isInterrupted(false) {
+}
 
 GeneralClientConnection::GeneralClientConnection(
     std::unique_ptr<Endpoint>& endpoint, double requestTimeout,

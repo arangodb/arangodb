@@ -348,11 +348,14 @@ static bool IsEmptyString(char const* p, size_t length) {
 
 /// @brief create the node
 AstNode::AstNode(AstNodeType type)
-    : type(type), flags(0), computedValue(nullptr) {}
+    : type(type), flags(0), computedValue(nullptr) {
+  value.length = 0;
+}
 
 /// @brief create a node, with defining a value type
 AstNode::AstNode(AstNodeType type, AstNodeValueType valueType) : AstNode(type) {
   value.type = valueType;
+  value.length = 0;
   TRI_ASSERT(flags == 0);
   TRI_ASSERT(computedValue == nullptr);
 }

@@ -284,6 +284,16 @@ struct TRI_AutoOutOfScope {
   T& m_destructor;
 };
 
+#if defined(_MSC_VER)
+#define TRI_UNREACHABLE __assume(false)
+#elif defined(__GNUC__) || defined(__GNUG__)
+#define TRI_UNREACHABLE __builtin_unreachable()
+#elif defined(__clang__)
+#define TRI_UNREACHABLE __builtin_unreachable()
+#else
+#define TRI_UNREACHABLE TRI_ASSERT(false); std::abort()
+#endif
+
 #define TRI_DEFER_INTERNAL(Destructor, funcname, objname) \
   auto funcname = [&]() { Destructor; };                  \
   TRI_AutoOutOfScope<decltype(funcname)> objname(funcname);

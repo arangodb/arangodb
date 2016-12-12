@@ -583,7 +583,6 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
                   sendRestoreData(cname, buffer.begin(), length, errorMsg);
 
               if (res != TRI_ERROR_NO_ERROR) {
-                TRI_CLOSE(fd);
                 if (errorMsg.empty()) {
                   errorMsg = std::string(TRI_errno_string(res));
                 } else {
@@ -595,6 +594,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
                   std::cerr << errorMsg << std::endl;
                   continue;
                 }
+                TRI_CLOSE(fd);
 
                 return res;
               }
