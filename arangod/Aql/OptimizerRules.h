@@ -125,6 +125,9 @@ void distributeInClusterRule(Optimizer*, ExecutionPlan*,
 #ifdef USE_ENTERPRISE
 void distributeInClusterRuleSmartEdgeCollection(Optimizer*, ExecutionPlan*,
                              Optimizer::Rule const*);
+
+/// @brief remove scatter/gather and remote nodes for satellite collections
+void removeSatelliteJoinsRule(Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 #endif
 
 void distributeFilternCalcToClusterRule(Optimizer*, ExecutionPlan*,

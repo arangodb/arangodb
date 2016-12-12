@@ -46,7 +46,7 @@ RestStatus RestUploadHandler::execute() {
   HttpRequest* request = dynamic_cast<HttpRequest*>(_request.get());
 
   if (request == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
   }
 
   // extract the request type
@@ -152,7 +152,7 @@ bool RestUploadHandler::parseMultiPart(char const*& body, size_t& length) {
   HttpRequest* request = dynamic_cast<HttpRequest*>(_request.get());
 
   if (request == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
   }
 
   std::string const& bodyStr = request->body();

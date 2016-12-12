@@ -40,7 +40,7 @@ namespace consensus {
 enum JOB_STATUS { TODO, PENDING, FINISHED, FAILED, NOTFOUND };
 const std::vector<std::string> pos({"/Target/ToDo/", "/Target/Pending/",
                                     "/Target/Finished/", "/Target/Failed/"});
-
+static std::string const mapUniqueToShortID = "/Target/MapUniqueToShortID/";
 static std::string const pendingPrefix = "/Target/Pending/";
 static std::string const failedPrefix = "/Target/Failed/";
 static std::string const finishedPrefix = "/Target/Finished/";
@@ -93,6 +93,13 @@ struct JobCallback {
 };
 
 struct Job {
+
+  struct shard_t {
+    std::string collection;
+    std::string shard;
+    shard_t (std::string const& c, std::string const& s) :
+      collection(c), shard(s) {}
+  };
   
   Job(Node const& snapshot, Agent* agent, std::string const& jobId,
       std::string const& creator, std::string const& agencyPrefix);
@@ -109,7 +116,14 @@ struct Job {
 
   virtual bool start() = 0;
 
-  virtual std::vector<std::string> availableServers() const;
+  static std::vector<std::string> availableServers(
+    const arangodb::consensus::Node&);
+
+  static std::vector<shard_t> clones(
+    Node const& snap, std::string const& db, std::string const& col,
+    std::string const& shrd);
+
+  static std::string uuidLookup(Node const& snap, std::string const& shortID);
 
   Node const _snapshot;
   Agent* _agent;

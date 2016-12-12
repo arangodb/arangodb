@@ -72,8 +72,8 @@ AsyncJobResult::AsyncJobResult(IdType jobId, Status status,
 
 AsyncJobResult::~AsyncJobResult() {}
 
-AsyncJobManager::AsyncJobManager(callback_fptr callback)
-    : _lock(), _jobs(), _callback(callback) {}
+AsyncJobManager::AsyncJobManager()
+    : _lock(), _jobs() {}
 
 AsyncJobManager::~AsyncJobManager() {
   // remove all results that haven't been fetched
@@ -291,11 +291,5 @@ void AsyncJobManager::finishAsyncJob(RestHandler* handler) {
     }
   }
 
-  if (nullptr != ctx) {
-    if (nullptr != _callback) {
-      _callback(ctx->getCoordinatorHeader(), response.get());
-    }
-
-    delete ctx;
-  }
+  delete ctx;
 }

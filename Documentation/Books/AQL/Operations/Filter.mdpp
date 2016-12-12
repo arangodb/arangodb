@@ -1,9 +1,11 @@
-!CHAPTER FILTER
+FILTER
+======
 
 The *FILTER* statement can be used to restrict the results to elements that
 match an arbitrary logical condition.
 
-!SECTION General syntax
+General syntax
+--------------
 
 ```
 FILTER condition
@@ -41,7 +43,8 @@ elements of *users* will be skipped and not be included in the result produced
 by *RETURN*. You may refer to the chapter [Accessing Data from Collections](../Fundamentals/DocumentData.md)
 for a description of the impact of non-existent or null attributes.
 
-!SECTION Order of operations
+Order of operations
+-------------------
 
 Note that the positions of *FILTER* statements can influence the result of a query.
 There are 16 active users in the [test data](../Examples/README.md#example-data)

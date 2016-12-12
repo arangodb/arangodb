@@ -1,4 +1,5 @@
-!SECTION A Hello World Example for JSON
+A Hello World Example for JSON
+------------------------------
 
 If you change the example slightly, then a JSON object will be delivered.
 
@@ -39,13 +40,14 @@ a browser. Or use *curl* to access the server.
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock JSON_03_routingCleanupJsonHelloWorld
 
-!SECTION Delivering Content
+Delivering Content
+------------------
 
 There are a lot of different ways on how to deliver content. We have already
 seen the simplest one, where static content is delivered. The fun, however,
 starts when delivering dynamic content.
 
-!SUBSECTION Static Content
+### Static Content
 
 You can specify a body and a content-type.
 
@@ -86,7 +88,7 @@ If the content type is *text/plain* then you can use the short-cut
 }
 ```
 
-!SUBSECTION A Simple Action
+### A Simple Action
 
 The simplest dynamic action is:
 
@@ -172,7 +174,7 @@ urlParameters: {
 } 
 ```
 
-!SUBSECTION Action Controller
+### Action Controller
 
 As an alternative to the simple action, you can use controllers. A controller is
 a module, defines the function *get*, *put*, *post*, *delete*, *head*,
@@ -209,7 +211,7 @@ Reload the routing and check http:// 127.0.0.1:8529/hello/echo:
     @endDocuBlock JSON_11_routingCleanupEchoController
 
 
-!SUBSECTION Prefix Action Controller
+### Prefix Action Controller
 
 The controller is selected when the definition is read. There is a more
 flexible, but slower and maybe insecure variant, the prefix controller.
@@ -249,7 +251,7 @@ The definition
 ```
 is a short-cut for a prefix controller definition.
 
-!SUBSECTION Function Action
+### Function Action
 
 You can also store a function directly in the routing table.
 
@@ -275,7 +277,7 @@ You can also store a function directly in the routing table.
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock JSON_12b_fetchroutingEchoFunction
 
-!SUBSECTION Requests and Responses
+### Requests and Responses
 
 The controller must define handler functions which take a request object and
 fill the response object.

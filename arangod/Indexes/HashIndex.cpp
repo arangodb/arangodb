@@ -26,6 +26,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/Exceptions.h"
+#include "Basics/FixedSizeAllocator.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexLookupContext.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
@@ -310,7 +311,7 @@ IndexLookupResult HashIndexIterator::next() {
 
     if (!_buffer.empty()) {
       // found something
-      return IndexLookupResult(_buffer.at(_posInBuffer++)->revisionId());
+      return IndexLookupResult(_buffer[_posInBuffer++]->revisionId());
     }
   }
 }
@@ -346,7 +347,7 @@ void HashIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_
       }
 
       for (size_t i = _posInBuffer; i < atMost + _posInBuffer; ++i) {
-        result.emplace_back(_buffer.at(i)->revisionId());
+        result.emplace_back(_buffer[i]->revisionId());
       }
       _posInBuffer += atMost;
       return;
@@ -405,7 +406,7 @@ IndexLookupResult HashIndexIteratorVPack::next() {
 
     if (!_buffer.empty()) {
       // found something
-      return IndexLookupResult(_buffer.at(_posInBuffer++)->revisionId());
+      return IndexLookupResult(_buffer[_posInBuffer++]->revisionId());
     }
   }
 }
@@ -432,13 +433,6 @@ HashIndex::UniqueArray::UniqueArray(
 
 /// @brief destroy the unique array
 HashIndex::UniqueArray::~UniqueArray() {
-  if (_hashArray != nullptr) {
-    auto cb = [this](HashIndexElement* element) -> bool { 
-      element->free(); return true; 
-    };
-    _hashArray->invokeOnAllElements(cb);
-  }
-
   delete _hashArray;
   delete _hashElement;
   delete _isEqualElElByKey;
@@ -460,13 +454,6 @@ HashIndex::MultiArray::MultiArray(size_t numPaths,
 
 /// @brief destroy the multi array
 HashIndex::MultiArray::~MultiArray() {
-  if (_hashArray != nullptr) {
-    auto cb = [this](HashIndexElement* element) -> bool { 
-      element->free(); return true; 
-    };
-    _hashArray->invokeOnAllElements(cb);
-  }
-
   delete _hashArray;
   delete _hashElement;
   delete _isEqualElElByKey;
@@ -474,7 +461,7 @@ HashIndex::MultiArray::~MultiArray() {
 
 HashIndex::HashIndex(TRI_idx_iid_t iid, LogicalCollection* collection,
                      VPackSlice const& info)
-    : PathBasedIndex(iid, collection, info, false), _uniqueArray(nullptr) {
+    : PathBasedIndex(iid, collection, info, sizeof(TRI_voc_rid_t) + sizeof(uint32_t), false), _uniqueArray(nullptr) {
   uint32_t indexBuckets = 1;
 
   if (collection != nullptr) {
@@ -650,7 +637,7 @@ int HashIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
 
   if (res != TRI_ERROR_NO_ERROR) {
     for (auto& hashElement : elements) {
-      hashElement->free();
+      _allocator->deallocate(hashElement);
     }
     return res;
   }
@@ -668,7 +655,7 @@ int HashIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
     if (result != TRI_ERROR_NO_ERROR) {
       res = result;
     }
-    hashElement->free();
+    _allocator->deallocate(hashElement);
   }
 
   return res;
@@ -686,10 +673,11 @@ int HashIndex::batchInsert(arangodb::Transaction* trx,
   
 int HashIndex::unload() {
   if (_unique) {
-    _uniqueArray->_hashArray->truncate([](HashIndexElement* element) -> bool { element->free(); return true; });
+    _uniqueArray->_hashArray->truncate([](HashIndexElement*) -> bool { return true; });
   } else {
-    _multiArray->_hashArray->truncate([](HashIndexElement* element) -> bool { element->free(); return true; });
+    _multiArray->_hashArray->truncate([](HashIndexElement*) -> bool { return true; });
   }
+  _allocator->deallocateAll();
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -751,7 +739,7 @@ int HashIndex::insertUnique(arangodb::Transaction* trx, TRI_voc_rid_t revisionId
   if (res != TRI_ERROR_NO_ERROR) {
     for (auto& it : elements) {
       // free all elements to prevent leak
-      it->free();
+      _allocator->deallocate(it);
     }
 
     return res;
@@ -775,7 +763,7 @@ int HashIndex::insertUnique(arangodb::Transaction* trx, TRI_voc_rid_t revisionId
     if (res != TRI_ERROR_NO_ERROR) {
       for (size_t j = i; j < n; ++j) {
         // Free all elements that are not yet in the index
-        elements[j]->free();
+        _allocator->deallocate(elements[j]);
       }
       // Already indexed elements will be removed by the rollback
       break;
@@ -796,7 +784,7 @@ int HashIndex::batchInsertUnique(arangodb::Transaction* trx,
     if (res != TRI_ERROR_NO_ERROR) {
       for (auto& it : elements) {
         // free all elements to prevent leak
-        it->free();
+        _allocator->deallocate(it);
       }
       return res;
     }
@@ -823,7 +811,7 @@ int HashIndex::batchInsertUnique(arangodb::Transaction* trx,
   if (res != TRI_ERROR_NO_ERROR) {
     for (auto& it : elements) {
       // free all elements to prevent leak
-      it->free();
+      _allocator->deallocate(it);
     }
   } 
 
@@ -837,7 +825,7 @@ int HashIndex::insertMulti(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
 
   if (res != TRI_ERROR_NO_ERROR) {
     for (auto& hashElement : elements) {
-      hashElement->free();
+      _allocator->deallocate(hashElement);
     }
     return res;
   }
@@ -855,7 +843,7 @@ int HashIndex::insertMulti(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
 
     if (found != nullptr) {
       // already got the exact same index entry. now free our local element...
-      element->free();
+      _allocator->deallocate(element);
     }
   };
 
@@ -875,7 +863,7 @@ int HashIndex::insertMulti(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
     if (res != TRI_ERROR_NO_ERROR) {
       for (size_t j = i; j < n; ++j) {
         // Free all elements that are not yet in the index
-        elements[j]->free();
+        _allocator->deallocate(elements[j]);
       }
       for (size_t j = 0; j < i; ++j) {
         // Remove all already indexed elements and free them
@@ -903,7 +891,7 @@ int HashIndex::batchInsertMulti(arangodb::Transaction* trx,
       // Filling the elements failed for some reason. Assume loading as failed
       for (auto& el : elements) {
         // Free all elements that are not yet in the index
-        el->free();
+        _allocator->deallocate(el);
       }
       return res;
     }
@@ -943,7 +931,7 @@ int HashIndex::removeUniqueElement(arangodb::Transaction* trx,
     }
     return TRI_ERROR_INTERNAL;
   }
-  old->free();
+  _allocator->deallocate(old);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -963,7 +951,7 @@ int HashIndex::removeMultiElement(arangodb::Transaction* trx,
     }
     return TRI_ERROR_INTERNAL;
   }
-  old->free();
+  _allocator->deallocate(old);
 
   return TRI_ERROR_NO_ERROR;
 }

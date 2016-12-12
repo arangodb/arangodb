@@ -1,3 +1,4 @@
+
 /* jshint strict: false, sub: true */
 /* global print, arango */
 'use strict';
@@ -1115,7 +1116,8 @@ function runArangoImp (options, instanceInfo, what) {
     'server.endpoint': instanceInfo.endpoint,
     'file': fs.join(TOP_DIR, what.data),
     'collection': what.coll,
-    'type': what.type
+    'type': what.type,
+    'on-duplicate': what.onDuplicate || 'error'
   };
 
   if (what.skipLines !== undefined) {
@@ -1465,6 +1467,8 @@ function startInstanceAgency (instanceInfo, protocol, options, addArgs, rootDir)
     instanceArgs['server.endpoint'] = protocol + '://127.0.0.1:' + port;
     instanceArgs['agency.my-address'] = protocol + '://127.0.0.1:' + port;
     instanceArgs['agency.supervision-grace-period'] = '5';
+    //instanceArgs['agency.election-timeout-min'] = '0.5';
+    //instanceArgs['agency.election-timeout-max'] = '4.0';
     
 
     if (i === N - 1) {
@@ -3077,6 +3081,20 @@ const impTodos = [{
   coll: 'UnitTestsImportEdge',
   type: 'json',
   create: 'false'
+}, {
+  id: 'unique',
+  data: makePathUnix('js/common/test-data/import/import-ignore.json'),
+  coll: 'UnitTestsImportIgnore',
+  type: 'json',
+  create: 'false',
+  onDuplicate: 'ignore'
+}, {
+  id: 'unique',
+  data: makePathUnix('js/common/test-data/import/import-unique-constraints.json'),
+  coll: 'UnitTestsImportUniqueConstraints',
+  type: 'json',
+  create: 'false',
+  onDuplicate: 'replace'
 }];
 
 testFuncs.importing = function (options) {
@@ -3231,6 +3249,7 @@ const recoveryTests = [
   'drop-collections',
   'collections-reuse',
   'collections-different-attributes',
+  'indexes-after-flush',
   'indexes-hash',
   'indexes-rocksdb',
   'indexes-rocksdb-nosync',

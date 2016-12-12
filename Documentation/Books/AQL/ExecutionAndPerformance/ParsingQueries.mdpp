@@ -1,4 +1,5 @@
-!CHAPTER Parsing queries
+Parsing queries
+===============
     
 Clients can use ArangoDB to check if a given AQL query is syntactically valid. ArangoDB provides
 an [HTTP REST API](../../HTTP/AqlQuery/index.html) for this. 

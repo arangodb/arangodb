@@ -1,4 +1,5 @@
-!CHAPTER Error handling
+Error handling
+==============
 
 The `errorResponse` method provided by controller request contexts has no equivalent in router endpoints. If you want to handle specific error types with specific status codes you need to catch them explicitly, either in the route or in a middleware:
 

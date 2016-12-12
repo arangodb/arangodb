@@ -1,4 +1,5 @@
-!CHAPTER Index Utilization
+Index Utilization
+=================
 
 In most cases ArangoDB will use a single index per collection in a given query. AQL queries can
 use more than one index per collection when multiple FILTER conditions are combined with a 
@@ -30,7 +31,8 @@ correct results, regardless of whether or which index is used to satisfy FILTER 
 unsure about whether using an index will violate the policy, it will not make use of the index.
 
 
-!SECTION Troubleshooting
+Troubleshooting
+---------------
 
 When in doubt about whether and which indexes will be used for executing a given AQL query,
 click the *Explain* button in the web interface in the *Queries* view or use

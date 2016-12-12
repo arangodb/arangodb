@@ -468,14 +468,14 @@ class Slice {
     if (!isExternal()) {
       throw Exception(Exception::InvalidValueType, "Expecting type External");
     }
-    return extractValue<char const*>();
+    return extractPointer();
   }
   
   // returns the Slice managed by an External or the Slice itself if it's not
   // an External
   Slice resolveExternal() const {
     if (*_start == 0x1d) {
-      return Slice(extractValue<char const*>());
+      return Slice(extractPointer());
     }
     return *this;
   }
@@ -485,7 +485,7 @@ class Slice {
   Slice resolveExternals() const {
     char const* current = reinterpret_cast<char const*>(_start);
     while (*current == 0x1d) {
-      current = Slice(current).extractValue<char const*>();
+      current = Slice(current).extractPointer();
     }
     return Slice(current);
   }
@@ -908,15 +908,14 @@ class Slice {
   }
 #endif
 
-  // extracts a value from the slice and converts it into a
-  // built-in type
-  template <typename T>
-  T extractValue() const {
+  // extracts a pointer from the slice and converts it into a
+  // built-in pointer type
+  char const* extractPointer() const {
     union {
-      T value;
-      char binary[sizeof(T)];
+      char const* value;
+      char binary[sizeof(char const*)];
     };
-    memcpy(&binary[0], _start + 1, sizeof(T));
+    memcpy(&binary[0], _start + 1, sizeof(char const*));
     return value;
   }
 };

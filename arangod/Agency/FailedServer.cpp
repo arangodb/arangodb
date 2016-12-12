@@ -25,6 +25,7 @@
 
 #include "Agency/Agent.h"
 #include "Agency/FailedLeader.h"
+#include "Agency/FailedFollower.h"
 #include "Agency/Job.h"
 #include "Agency/UnassumedLeadership.h"
 
@@ -129,33 +130,67 @@ bool FailedServer::start() {
       auto cdatabase = current.at(database.first)->children();
 
       for (auto const& collptr : database.second->children()) {
-        Node const& collection = *(collptr.second);
+        auto const& collection = *(collptr.second);
         
         if (!cdatabase.find(collptr.first)->second->children().empty()) {
-          Node const& collection = *(collptr.second);
-          Node const& replicationFactor = collection("replicationFactor");
+
+          auto const& collection = *(collptr.second);
+          auto const& replicationFactor = collection("replicationFactor");
+
           if (replicationFactor.slice().getUInt() > 1) {
-            for (auto const& shard : collection("shards").children()) {
-              VPackArrayIterator dbsit(shard.second->slice());
-              
-              // Only proceed if leader and create job
-              if ((*dbsit.begin()).copyString() != _server) {
-                continue;
+
+            bool isClone = false;
+            try { // Clone
+              if(!collection("distributeShardsLike").slice().copyString().empty()) {
+                isClone = true;
               }
+            } catch (...) {} // Not clone
+            
+            auto available = availableServers(_snapshot);
               
-              FailedLeader(
+            for (auto const& shard : collection("shards").children()) {
+
+              size_t pos = 0;
+              bool found = false;
+              
+              for (auto const& it : VPackArrayIterator(shard.second->slice())) {
+
+                auto dbs = it.copyString();
+
+                available.erase(
+                  std::remove(available.begin(), available.end(), dbs),
+                  available.end());
+
+                if (dbs == _server) {
+                  if (pos == 0) {
+                    FailedLeader(
+                      _snapshot, _agent, _jobId + "-" + std::to_string(sub++),
+                      _jobId, _agencyPrefix, database.first, collptr.first,
+                      shard.first, _server, shard.second->slice()[1].copyString());
+                    continue;
+                  } else {
+                    found = true;
+                  }
+                }
+                
+                ++pos;
+              }
+
+              if (found && !available.empty() && !isClone) {
+                auto randIt = available.begin();
+                std::advance(randIt, std::rand() % available.size());
+                FailedFollower(
                   _snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                   _jobId, _agencyPrefix, database.first, collptr.first,
-                  shard.first, _server, shard.second->slice()[1].copyString());
+                  shard.first, _server, *randIt);
+              }
             }
           }
-
         } else {
           for (auto const& shard : collection("shards").children()) {
-            UnassumedLeadership(_snapshot, _agent,
-                                _jobId + "-" + std::to_string(sub++), _jobId,
-                                _agencyPrefix, database.first, collptr.first,
-                                shard.first, _server);
+            UnassumedLeadership(
+              _snapshot, _agent, _jobId + "-" + std::to_string(sub++), _jobId,
+              _agencyPrefix, database.first, collptr.first, shard.first, _server);
           }
         }
       }

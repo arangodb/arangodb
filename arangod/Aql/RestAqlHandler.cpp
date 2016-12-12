@@ -499,7 +499,7 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
         auto block = static_cast<BlockWithClients*>(query->engine()->root());
         if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
             block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected node type");
         }
         number = block->remainingForShard(shardId);
       }
@@ -516,7 +516,7 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
         auto block = static_cast<BlockWithClients*>(query->engine()->root());
         if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
             block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected node type");
         }
         hasMore = block->hasMoreForShard(shardId);
       }
@@ -564,7 +564,6 @@ RestStatus RestAqlHandler::execute() {
   // GeneralRequest::translateMethod(_request->requestType()) << ",
   // " << arangodb::ServerState::instance()->getId() << ": " <<
   // _request->fullUrl() << ": " << _request->body() << "\n\n";
-
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   // extract the sub-request type
@@ -720,7 +719,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           auto block = static_cast<BlockWithClients*>(query->engine()->root());
           if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
               block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected node type");
           }
           items.reset(block->getSomeForShard(atLeast, atMost, shardId));
         }
@@ -756,7 +755,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
                 static_cast<BlockWithClients*>(query->engine()->root());
             if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
                 block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected node type");
             }
             skipped = block->skipSomeForShard(atLeast, atMost, shardId);
           }
@@ -784,7 +783,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
                 static_cast<BlockWithClients*>(query->engine()->root());
             if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
                 block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected node type");
             }
             exhausted = block->skipForShard(number, shardId);
           }
@@ -822,7 +821,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
                                                 true)) {
             res = query->engine()->initializeCursor(nullptr, 0);
           } else {
-            items.reset(new AqlItemBlock(querySlice.get("items")));
+            items.reset(new AqlItemBlock(query->resourceMonitor(), querySlice.get("items")));
             res = query->engine()->initializeCursor(items.get(), pos);
           }
         } catch (...) {

@@ -88,6 +88,7 @@ SET(ARANGOD_SOURCES
   Agency/AgentConfiguration.cpp
   Agency/CleanOutServer.cpp
   Agency/Constituent.cpp
+  Agency/FailedFollower.cpp
   Agency/FailedLeader.cpp
   Agency/FailedServer.cpp
   Agency/GossipCallback.cpp
@@ -155,6 +156,7 @@ SET(ARANGOD_SOURCES
   Aql/QueryCache.cpp
   Aql/QueryList.cpp
   Aql/QueryRegistry.cpp
+  Aql/QueryResources.cpp
   Aql/Range.cpp
   Aql/RestAqlHandler.cpp
   Aql/Scopes.cpp
@@ -180,10 +182,10 @@ SET(ARANGOD_SOURCES
   Cluster/ClusterInfo.cpp
   Cluster/ClusterMethods.cpp
   Cluster/ClusterTraverser.cpp
+  Cluster/FollowerInfo.cpp
   Cluster/DBServerAgencySync.cpp
   Cluster/HeartbeatThread.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
-  Cluster/RestShardHandler.cpp
   Cluster/ServerState.cpp
   Cluster/TraverserEngine.cpp
   Cluster/TraverserEngineRegistry.cpp

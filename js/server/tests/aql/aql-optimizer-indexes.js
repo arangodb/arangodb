@@ -55,6 +55,29 @@ function optimizerIndexesTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test same results for const access queries
+////////////////////////////////////////////////////////////////////////////////
+
+    testSameResultsConstAccess : function () {
+      var bind = { doc : { key: "test1" } };
+      var q1 = `RETURN (FOR item IN UnitTestsCollection FILTER (@doc.key == item._key) LIMIT 1 RETURN item)[0]`; 
+      var q2 = `LET doc = @doc RETURN (FOR item IN UnitTestsCollection FILTER (doc.key == item._key) LIMIT 1 RETURN item)[0]`; 
+      var q3 = `LET doc = { key: "test1" } RETURN (FOR item IN UnitTestsCollection FILTER (doc.key == item._key) LIMIT 1 RETURN item)[0]`;
+      
+      var results = AQL_EXECUTE(q1, bind);
+      assertEqual(1, results.json.length);
+      assertEqual("test1", results.json[0]._key);
+      
+      results = AQL_EXECUTE(q2, bind);
+      assertEqual(1, results.json.length);
+      assertEqual("test1", results.json[0]._key);
+      
+      results = AQL_EXECUTE(q3);
+      assertEqual(1, results.json.length);
+      assertEqual("test1", results.json[0]._key);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test _id
 ////////////////////////////////////////////////////////////////////////////////
 

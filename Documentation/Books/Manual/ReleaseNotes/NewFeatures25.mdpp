@@ -1,11 +1,13 @@
-!CHAPTER Features and Improvements
+Features and Improvements
+=========================
 
 The following list shows in detail which features have been added or improved in
 ArangoDB 2.5. ArangoDB 2.5 also contains several bugfixes that are not listed
 here. For a list of bugfixes, please consult the [CHANGELOG](https://github.com/arangodb/arangodb/blob/devel/CHANGELOG).
 
 
-!SECTION V8 version upgrade
+V8 version upgrade
+------------------
 
 The built-in version of V8 has been upgraded from 3.29.54 to 3.31.74.1.
 This allows activating additional ES6 (also dubbed *Harmony* or *ES.next*) features 
@@ -24,9 +26,10 @@ The following additional ES6 features become available in ArangoDB 2.5 by defaul
 * additional string methods (such as `startsWith`, `repeat` etc.) 
 
 
-!SECTION Index improvements
+Index improvements
+------------------
 
-!SUBSECTION Sparse hash and skiplist indexes
+### Sparse hash and skiplist indexes
 
 Hash and skiplist indexes can optionally be made sparse. Sparse indexes exclude documents
 in which at least one of the index attributes is either not set or has a value of `null`.
@@ -113,7 +116,7 @@ Sparse skiplist indexes can be used for sorting if the optimizer can safely dete
 index range does not include `null` for any of the index attributes. 
 
 
-!SUBSECTION Selectivity estimates
+### Selectivity estimates
 
 Indexes of type `primary`, `edge` and `hash` now provide selectivity estimates. These 
 will be used by the AQL query optimizer when deciding about index usage. Using selectivity
@@ -138,9 +141,10 @@ Currently the following index types can provide selectivity estimates:
 No selectivity estimates will be provided for indexes when running in cluster mode.
 
 
-!SECTION AQL Optimizer improvements
+AQL Optimizer improvements
+--------------------------
 
-!SUBSECTION Sort removal
+### Sort removal
 
 The AQL optimizer rule "use-index-for-sort" will now remove sorts also in case a non-sorted
 index (e.g. a hash index) is used for only equality lookups and all sort attributes are covered 
@@ -167,7 +171,7 @@ be optimized away:
       RETURN doc
 
 
-!SUBSECTION Constant attribute propagation
+### Constant attribute propagation
 
 The new AQL optimizer rule `propagate-constant-attributes` will look for attributes that are
 equality-compared to a constant value, and will propagate the comparison value into other
@@ -184,7 +188,7 @@ following query:
         RETURN 1
 
 
-!SUBSECTION Interleaved processing 
+### Interleaved processing
 
 The optimizer will now inspect AQL data-modification queries and detect if the query's 
 data-modification part can run in lockstep with the data retrieval part of the query, 
@@ -198,7 +202,7 @@ safely detect that the data-modification part of the query will not modify data 
 by the retrieval part.
 
 
-!SUBSECTION Query execution statistics
+### Query execution statistics
 
 The `filtered` attribute was added to AQL query execution statistics. The value of this
 attribute indicates how many documents were filtered by `FilterNode`s in the AQL query.
@@ -207,9 +211,10 @@ from the index. The `filtered` value will not include the work done by `IndexRan
 but only the work performed by `FilterNode`s.
 
 
-!SECTION Language improvements
+Language improvements
+---------------------
 
-!SUBSECTION Dynamic attribute names in AQL object literals
+### Dynamic attribute names in AQL object literals
   
 This change allows using arbitrary expressions to construct attribute names in object
 literals specified in AQL queries. To disambiguate expressions and other unquoted 
@@ -220,7 +225,7 @@ Example:
     FOR i IN 1..100
       RETURN { [ CONCAT('value-of-', i) ] : i }
 
-!SUBSECTION AQL functions
+### AQL functions
 
 The following AQL functions were added in 2.5:
 
@@ -228,13 +233,14 @@ The following AQL functions were added in 2.5:
 * `SHA1(value)`: generates an SHA1 hash of `value`
 * `RANDOM_TOKEN(length)`: generates a random string value of the specified length
 
-!SECTION Simplify Foxx usage
+Simplify Foxx usage
+-------------------
 
 Thanks to our user feedback we learned that Foxx is a powerful, yet rather complicated concept.
 With 2.5 we made it less complicated while keeping all its strength.
 That includes a rewrite of the documentation as well as some code changes as follows:
 
-!SUBSECTION Moved Foxx applications to a different folder.
+### Moved Foxx applications to a different folder.
 
 Until 2.4 foxx apps were stored in the following folder structure:
 `<app-path>/databases/<dbname>/<appname>:<appversion>`.
@@ -243,13 +249,13 @@ Also the path on filesystem and the app's access URL had no relation to one anot
 Now the path on filesystem is identical to the URL (except the appended APP):
 `<app-path>/_db/<dbname>/<mointpoint>/APP`
 
-!SUBSECTION Rewrite of Foxx routing
+### Rewrite of Foxx routing
 
 The routing of Foxx has been exposed to major internal changes we adjusted because of user feedback.
 This allows us to set the development mode per mountpoint without having to change paths and hold
 apps at separate locations.
 
-!SUBSECTION Foxx Development mode
+### Foxx Development mode
 
 The development mode used until 2.4 is gone. It has been replaced by a much more mature version.
 This includes the deprecation of the javascript.dev-app-path parameter, which is useless since 2.5.
@@ -263,7 +269,7 @@ This change has also made the startup options `--javascript.frontend-development
 `--javascript.dev-app-path` obsolete. The former option will not have any effect when set, and the
 latter option is only read and used during the upgrade to 2.5 and does not have any effects later.
 
-!SUBSECTION Foxx install process
+### Foxx install process
 
 Installing Foxx apps has been a two step process: import them into ArangoDB and mount them at a
 specific mountpoint. These operations have been joined together. You can install an app at one
@@ -273,7 +279,7 @@ simplified to just:
 * install: get your Foxx app up and running
 * uninstall: shut it down and erase it from disk
 
-!SUBSECTION Foxx error output
+### Foxx error output
 
 Until 2.4 the errors produced by Foxx were not optimal. Often, the error message was just
 `unable to parse manifest` and contained only an internal stack trace.
@@ -292,13 +298,13 @@ and are safe to be exposed to third party users.
 In development mode the messages above will contain the stacktrace (if available), making it easier for
 your in-house devs to track down errors in the application.
 
-!SUBSECTION Foxx console
+### Foxx console
 
 We added a `console` object to Foxx apps. All Foxx apps now have a console object implementing
 the familiar Console API in their global scope, which can be used to log diagnostic
 messages to the database. This console also allows to read the error output of one specific foxx.
 
-!SUBSECTION Foxx requests
+### Foxx requests
 We added `org/arangodb/request` module, which provides a simple API for making HTTP requests
 to external services. This is enables Foxx to be directly part of a micro service architecture.
 

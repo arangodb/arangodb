@@ -81,7 +81,7 @@ Exception::~Exception() throw() {}
 /// @brief returns the error message
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string Exception::message() const throw() { return _errorMessage; }
+std::string Exception::message() const { return _errorMessage; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the error code
@@ -108,6 +108,8 @@ char const* Exception::what() const throw() { return _errorMessage.c_str(); }
 void Exception::appendLocation () {
   if (_code == TRI_ERROR_INTERNAL) {
     _errorMessage += std::string(" (exception location: ") + _file + ":" + std::to_string(_line) + "). Please report this error to arangodb.com";
+  } else if (_code == TRI_ERROR_OUT_OF_MEMORY) {
+    _errorMessage += std::string(" (exception location: ") + _file + ":" + std::to_string(_line) + ").";
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

@@ -313,6 +313,7 @@ static int StringifyMarker(TRI_replication_dump_t* dump,
 
     default: {
       TRI_ASSERT(false);
+      LOG(ERR) << "got invalid marker of type " << static_cast<int>(type); 
       return TRI_ERROR_INTERNAL;
     }
   }
@@ -397,7 +398,6 @@ static int SliceifyMarker(TRI_replication_dump_t* dump,
         builder.add("rev", slice.get(StaticStrings::RevString));
       }
       // convert 2300 markers to 2301 markers for edges
-      Append(dump, ",\"type\":");
       if (type == TRI_DF_MARKER_VPACK_DOCUMENT && isEdgeCollection) {
         builder.add("type", VPackValue(2301));
       } else {
@@ -436,6 +436,7 @@ static int SliceifyMarker(TRI_replication_dump_t* dump,
 
     default: {
       TRI_ASSERT(false);
+      LOG(ERR) << "got invalid marker of type " << static_cast<int>(type); 
       return TRI_ERROR_INTERNAL;
     }
   }
@@ -536,7 +537,8 @@ static int DumpCollection(TRI_replication_dump_t* dump,
   bool bufferFull = false;
 
   auto callback = [&dump, &lastFoundTick, &databaseId, &collectionId,
-                   &withTicks, &isEdgeCollection, &bufferFull, &useVpp](
+                   &withTicks, &isEdgeCollection, &bufferFull, &useVpp,
+                   &collection](
       TRI_voc_tick_t foundTick, TRI_df_marker_t const* marker) {
     // note the last tick we processed
     lastFoundTick = foundTick;
@@ -551,6 +553,7 @@ static int DumpCollection(TRI_replication_dump_t* dump,
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
+      LOG(ERR) << "got error during dump dump of collection '" << collection->name() << "': " << TRI_errno_string(res);
       THROW_ARANGO_EXCEPTION(res);
     }
 
@@ -582,8 +585,13 @@ static int DumpCollection(TRI_replication_dump_t* dump,
 
     return TRI_ERROR_NO_ERROR;
   } catch (basics::Exception const& ex) {
+    LOG(ERR) << "caught exception during dump of collection '" << collection->name() << "': " << ex.what();
     return ex.code();
+  } catch (std::exception const& ex) {
+    LOG(ERR) << "caught exception during dump of collection '" << collection->name() << "': " << ex.what();
+    return TRI_ERROR_INTERNAL;
   } catch (...) {
+    LOG(ERR) << "caught unknown exception during dump of collection '" << collection->name() << "'";
     return TRI_ERROR_INTERNAL;
   }
 }
@@ -789,8 +797,13 @@ int TRI_DumpLogReplication(
       Append(dump, "]");
     }
   } catch (arangodb::basics::Exception const& ex) {
+    LOG(ERR) << "caught exception while dumping replication log: " << ex.what();
     res = ex.code();
+  } catch (std::exception const& ex) {
+    LOG(ERR) << "caught exception while dumping replication log: " << ex.what();
+    res = TRI_ERROR_INTERNAL;
   } catch (...) {
+    LOG(ERR) << "caught unknown exception while dumping replication log";
     res = TRI_ERROR_INTERNAL;
   }
 
@@ -958,8 +971,13 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
     dump->_slices.push_back(std::move(buffer));
 
   } catch (arangodb::basics::Exception const& ex) {
+    LOG(ERR) << "caught exception while determining open transactions: " << ex.what();
     res = ex.code();
+  } catch (std::exception const& ex) {
+    LOG(ERR) << "caught exception while determining open transactions: " << ex.what();
+    res = TRI_ERROR_INTERNAL;
   } catch (...) {
+    LOG(ERR) << "caught unknown exception while determining open transactions";
     res = TRI_ERROR_INTERNAL;
   }
 

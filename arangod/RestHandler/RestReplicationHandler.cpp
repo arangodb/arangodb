@@ -29,6 +29,7 @@
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/FollowerInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "GeneralServer/GeneralServer.h"
 #include "Indexes/EdgeIndex.h"
@@ -743,7 +744,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
     useVpp = true;
   }
   if (_request == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request");
   }
 
   // First check the DBserver component of the body json:
@@ -782,7 +783,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   if (!useVpp) {
     HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
     if (httpRequest == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
     }
 
     // Send a synchronous request to that shard using ClusterComm:
@@ -832,7 +833,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   if (!useVpp) {
     HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
     if (_response == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
     }
     httpResponse->body().swap(&(res->result->getBody()));
   } else {
@@ -1013,7 +1014,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
             dynamic_cast<HttpResponse*>(_response.get());
 
         if (httpResponse == nullptr) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
         }
 
         if (length > 0) {
@@ -1085,7 +1086,7 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
 
     HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
     if (_response == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
     }
 
     _response->setContentType(rest::ContentType::DUMP);
@@ -1761,7 +1762,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
       VPackCollection::merge(parameters, sliceToMerge, false);
   VPackSlice const merged = mergedBuilder.slice();
 
-  int res = ci->createCollectionCoordinator(dbName, newId, numberOfShards,
+  int res = ci->createCollectionCoordinator(dbName, newId, numberOfShards, replicationFactor,
                                             merged, errorMsg, 0.0);
   if (res != TRI_ERROR_NO_ERROR) {
     errorMsg =
@@ -2131,7 +2132,7 @@ int RestReplicationHandler::processRestoreDataBatch(
 
   HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
   if (httpRequest == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
   }
 
   std::string const& bodyStr = httpRequest->body();
@@ -2465,12 +2466,12 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
   VPackBuilder builder;
 
   if (_request == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
   }
 
   HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
   if (httpRequest == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
   }
 
   std::string const& bodyStr = httpRequest->body();
@@ -3098,7 +3099,7 @@ void RestReplicationHandler::handleCommandDump() {
   auto response = dynamic_cast<HttpResponse*>(_response.get());
 
   if (response == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
   }
 
   response->setContentType(rest::ContentType::DUMP);

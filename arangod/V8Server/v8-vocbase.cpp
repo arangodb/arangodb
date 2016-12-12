@@ -286,7 +286,7 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (params.IsEmpty()) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to decode function parameters");
   }
 
   bool embed = false;
@@ -375,7 +375,7 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   } catch (std::exception const& ex) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "caught unknown exception during transaction");
   }
 
   res = trx.commit();
@@ -2044,7 +2044,7 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find database");
   }
 
   if (vocbase->isDropped()) {
@@ -2270,7 +2270,7 @@ static void CreateDatabaseCoordinator(
   }
 
   if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find database");
   }
 
   // now run upgrade and copy users into context
@@ -2733,7 +2733,7 @@ static void JS_DecodeRev(v8::FunctionCallbackInfo<v8::Value> const& args) {
 #endif
   char buffer[32];
   strftime(buffer, 32, "%Y-%m-%dT%H:%M:%S.000Z", &date);
-  buffer[20] = (millis / 100) + '0';
+  buffer[20] = static_cast<char>(millis / 100) + '0';
   buffer[21] = ((millis / 10) % 10) + '0';
   buffer[22] = (millis % 10) + '0';
   buffer[24] = 0;
@@ -2742,7 +2742,7 @@ static void JS_DecodeRev(v8::FunctionCallbackInfo<v8::Value> const& args) {
   result->Set(TRI_V8_ASCII_STRING("date"),
               TRI_V8_ASCII_STRING(buffer));
   result->Set(TRI_V8_ASCII_STRING("count"),
-              v8::Number::New(isolate, count));
+              v8::Number::New(isolate, static_cast<double>(count)));
 
   TRI_V8_RETURN(result);
   

@@ -28,6 +28,7 @@
 #include "velocypack/Validator.h"
 #include "velocypack/Exception.h"
 #include "velocypack/Slice.h"
+#include "velocypack/Utf8Helper.h"
 #include "velocypack/ValueType.h"
 
 using namespace arangodb::velocypack;
@@ -88,11 +89,23 @@ bool Validator::validate(uint8_t const* ptr, size_t length, bool isSubPart) cons
     }
     
     case ValueType::String: {
+      uint8_t const* p;
+      ValueLength len;
       if (head == 0xbfU) {
         // long UTF-8 string. must be at least 9 bytes long so we
         // can read the entire string length safely
         validateBufferLength(1 + 8, length, true);
-      } 
+        p = ptr + 1 + 8;
+        len = readInteger<ValueLength>(p, 8);
+      } else {
+        p = ptr + 1;
+        len = head - 0x40U;
+      }
+      validateBufferLength(length - (p - ptr), length, true);
+
+      if (options->validateUtf8Strings && !Utf8Helper::isValidUtf8(p, len)) {
+        throw Exception(Exception::InvalidUtf8Sequence);
+      }
       break;
     }
 

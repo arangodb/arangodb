@@ -28,6 +28,7 @@
 #include "Agency/AddFollower.h"
 #include "Agency/Agent.h"
 #include "Agency/CleanOutServer.h"
+#include "Agency/FailedFollower.h"
 #include "Agency/FailedLeader.h"
 #include "Agency/FailedServer.h"
 #include "Agency/Job.h"
@@ -461,7 +462,7 @@ void Supervision::run() {
           }
         }
       }
-      _cv.wait(1000000 * _frequency);
+      _cv.wait(static_cast<uint64_t>(1000000 * _frequency));
     }
   }
   if (shutdown) {
@@ -547,8 +548,10 @@ bool Supervision::handleJobs() {
   }
 
   // Do supervision
+  
   shrinkCluster();
   workJobs();
+  enforceReplication();
 
   return true;
 }
@@ -576,6 +579,8 @@ void Supervision::workJobs() {
       MoveShard(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "failedLeader") {
       FailedLeader(_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "failedFollower") {
+      FailedFollower(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "unassumedLeadership") {
       UnassumedLeadership(_snapshot, _agent, jobId, creator, _agencyPrefix);
     }
@@ -599,10 +604,70 @@ void Supervision::workJobs() {
       MoveShard(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "failedLeader") {
       FailedLeader(_snapshot, _agent, jobId, creator, _agencyPrefix);
+    } else if (jobType == "failedFollower") {
+      FailedLeader(_snapshot, _agent, jobId, creator, _agencyPrefix);
     } else if (jobType == "unassumedLeadership") {
       UnassumedLeadership(_snapshot, _agent, jobId, creator, _agencyPrefix);
     }
   }
+}
+
+void Supervision::enforceReplication() {
+
+  auto const& plannedDBs = _snapshot(planColPrefix).children();
+  auto available = Job::availableServers(_snapshot);
+
+  for (const auto& db_ : plannedDBs) { // Planned databases
+    auto const& db = *(db_.second);
+    for (const auto& col_ : db.children()) { // Planned collections
+      auto const& col = *(col_.second);
+      auto replicationFactor = col("replicationFactor").slice().getUInt();
+
+      // mop: satellites => distribute to every server
+      if (replicationFactor == 0) {
+        replicationFactor = available.size();
+      }
+      
+      bool clone = false;
+      try {
+        clone = !col("distributeShardsLike").slice().copyString().empty();
+      } catch (...) {}
+
+      if (!clone) {
+        for (auto const& shard_ : col("shards").children()) { // Pl shards
+          auto const& shard = *(shard_.second);
+
+          // Enough DBServer to 
+          if (replicationFactor > shard.slice().length() &&
+              available.size() > shard.slice().length()) {
+            for (auto const& i : VPackArrayIterator(shard.slice())) {
+              available.erase(
+                std::remove(
+                  available.begin(), available.end(), i.copyString()),
+                available.end());
+            }
+
+            size_t optimal = replicationFactor - shard.slice().length();
+            std::vector<std::string> newFollowers;
+            for (size_t i = 0; i < optimal; ++i) {
+              auto randIt = available.begin();
+              std::advance(randIt, std::rand() % available.size());
+              newFollowers.push_back(*randIt);
+              available.erase(randIt);
+              if (available.empty()) {
+                break;
+              }
+            }
+
+            AddFollower(
+              _snapshot, _agent, std::to_string(_jobId++), "supervision",
+              _agencyPrefix, db_.first, col_.first, shard_.first, newFollowers);
+          }
+        }
+      }
+    }
+  }
+  
 }
 
 // Shrink cluster if applicable, guarded by caller
@@ -700,7 +765,7 @@ void Supervision::shrinkCluster() {
      **/
     // Find greatest replication factor among all collections
     uint64_t maxReplFact = 1;
-    Node::Children const& databases = _snapshot("/Plan/Collections").children();
+    Node::Children const& databases = _snapshot(planColPrefix).children();
     for (auto const& database : databases) {
       for (auto const& collptr : database.second->children()) {
         uint64_t replFact{0};

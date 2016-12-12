@@ -76,7 +76,7 @@ void InitDatabaseFeature::prepare() {
     std::string env = "ARANGODB_DEFAULT_ROOT_PASSWORD";
     char const* password = getenv(env.c_str());
 
-    if (password != nullptr && *password != '\0') {
+    if (password != nullptr) {
       env += "=";
       putenv(const_cast<char*>(env.c_str()));
       _password = password;

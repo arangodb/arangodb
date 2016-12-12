@@ -158,7 +158,7 @@ if [ "$GOSSIP_MODE" = "0" ]; then
    GOSSIP_PEERS=" --agency.endpoint $TRANSPORT://localhost:$BASE"
 fi
 
-rm -rf agency
+#rm -rf agency
 mkdir -p agency
 PIDS=""
 
@@ -170,10 +170,22 @@ count=1
 for aid in "${aaid[@]}"; do
 
   port=$(( $BASE + $aid ))
-  if [ "$GOSSIP_MODE" = 2 ]; then
+
+  if [ "$GOSSIP_MODE" = "2" ]; then
     nport=$(( $BASE + $(( $(( $aid + 1 )) % 3 ))))
     GOSSIP_PEERS=" --agency.endpoint $TRANSPORT://localhost:$nport"
   fi
+
+  if [ "$GOSSIP_MODE" = "3" ]; then
+    GOSSIP_PEERS=""
+    for id in "${aaid[@]}"; do
+      if [ ! "$id" = "$aid" ]; then
+        nport=$(( $BASE + $(( $id )) ))
+        GOSSIP_PEERS+=" --agency.endpoint $TRANSPORT://localhost:$nport"
+      fi
+    done
+  fi
+  
   printf "    starting agent %s " "$aid"
   build/bin/arangod \
     -c none \

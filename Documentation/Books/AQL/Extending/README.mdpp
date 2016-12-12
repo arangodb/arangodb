@@ -1,4 +1,5 @@
-!CHAPTER Extending AQL with User Functions
+Extending AQL with User Functions
+=================================
 
 AQL comes with a [built-in set of functions](../Functions/README.md), but it is
 not a fully-featured programming language.
@@ -12,9 +13,10 @@ all user defined functions (**UDF**) have to be put into separate namespaces.
 Invoking a UDF is then possible by referring to the fully-qualified function name,
 which includes the namespace, too; see [Conventions](Conventions.md).
 
-!SECTION Technical Details
+Technical Details
+-----------------
 
-!SUBSECTION Known Limitations
+### Known Limitations
 
 **UDFs have some implications you should be aware of. Otherwise they can
 introduce serious effects on the performance of your queries and the resource
@@ -44,7 +46,7 @@ To overcome these mentioned limitations, you may want to
 and
 [the number of available server threads](../../Manual/Administration/Configuration/GeneralArangod.html#server-threads).
 
-!SUBSECTION Deployment Details
+### Deployment Details
 
 Internally, UDFs are stored in a system collection named `_aqlfunctions`
 of the selected database. When an AQL statement refers to such a UDF,

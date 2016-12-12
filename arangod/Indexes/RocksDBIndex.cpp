@@ -25,6 +25,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/FixedSizeAllocator.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexLookupContext.h"
@@ -206,7 +207,7 @@ IndexLookupResult RocksDBIterator::next() {
 RocksDBIndex::RocksDBIndex(TRI_idx_iid_t iid,
                            arangodb::LogicalCollection* collection,
                            arangodb::velocypack::Slice const& info)
-    : PathBasedIndex(iid, collection, info, true),
+    : PathBasedIndex(iid, collection, info, 0, true),
       _db(RocksDBFeature::instance()->db()) {}
 
 /// @brief destroy the index
@@ -246,7 +247,7 @@ int RocksDBIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
   // make sure we clean up before we leave this method
   auto cleanup = [this, &elements] {
     for (auto& it : elements) {
-      it->free();
+      _allocator->deallocate(it);
     }
   };
 
@@ -402,7 +403,7 @@ int RocksDBIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
   // make sure we clean up before we leave this method
   auto cleanup = [this, &elements] {
     for (auto& it : elements) {
-      it->free();
+      _allocator->deallocate(it);
     }
   };
 

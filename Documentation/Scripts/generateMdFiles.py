@@ -2,7 +2,7 @@ import sys
 import re
 import os
 import json
-import MarkdownPP
+#import MarkdownPP
 
 ################################################################################
 ### @brief length of the swagger definition namespace
@@ -390,7 +390,8 @@ def walk_on_files(inDirPath, outDirPath):
                 _mkdir_recursive(os.path.join(outDirPath, root))
                 mdpp = open(inFileFull, "r")
                 md = open(outFileFull, "w")
-                MarkdownPP.MarkdownPP(input=mdpp, output=md, modules=MarkdownPP.modules.keys())
+                #MarkdownPP.MarkdownPP(input=mdpp, output=md, modules=MarkdownPP.modules.keys())
+                md.write(mdpp.read())
                 mdpp.close()
                 md.close()
                 findStartCode(md, outFileFull)

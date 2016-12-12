@@ -139,9 +139,17 @@ void TRI_SystemFreeZ(void*, char const*, int);
 void TRI_SystemFree(void*);
 #endif
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 void TRI_AllowMemoryFailures();
+#else
+static inline void TRI_AllowMemoryFailures() {}
+#endif
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 void TRI_DisallowMemoryFailures();
+#else
+static inline void TRI_DisallowMemoryFailures() {}
+#endif
 
 /// @brief initialize memory subsystem
 void TRI_InitializeMemory(void);

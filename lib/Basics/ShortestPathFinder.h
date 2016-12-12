@@ -402,10 +402,9 @@ class PriorityQueue {
 template <typename VertexId, typename Path>
 class PathFinder {
  protected:
-  PathFinder() {
-  }
-public:
+  PathFinder() {}
 
+ public:
   virtual ~PathFinder() {}
 
   virtual bool shortestPath(VertexId const& start, VertexId const& target, Path& result,

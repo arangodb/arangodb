@@ -379,7 +379,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
   }
   std::string prefix("Communicator(" + std::to_string(rip->_ticketId) +
                      ") // ");
-  LOG_TOPIC(TRACE, Logger::REQUESTS)
+  LOG_TOPIC(TRACE, Logger::COMMUNICATION)
       << prefix << "Curl rc is : " << rc << " after "
       << Logger::FIXED(TRI_microtime() - rip->_startTime) << " s";
   if (strlen(rip->_errorBuffer) != 0) {

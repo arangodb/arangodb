@@ -1,4 +1,5 @@
-!CHAPTER Geo Queries
+Geo Queries
+===========
 
 The ArangoDB allows to select documents based on geographic coordinates. In
 order for this to work, a geo-spatial index must be defined.  This index will
@@ -35,19 +36,19 @@ It is possible to define more than one geo-spatial index per collection.  In
 this case you must give a hint using the *geo* operator which of indexes
 should be used in a query.
 
-!SUBSECTION Near 
+### Near
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 @startDocuBlock collectionNear
 
-!SUBSECTION Within
+### Within
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 @startDocuBlock collectionWithin
 
-!SUBSECTION Geo
+### Geo
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 @startDocuBlock collectionGeo
 
-!SUBSECTION Related topics
+### Related topics
 
 Other ArangoDB geographic features are described in: 
 - [AQL Geo functions](../../../AQL/Functions/Geo.html)

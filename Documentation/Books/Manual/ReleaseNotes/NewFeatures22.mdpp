@@ -1,12 +1,14 @@
-!CHAPTER Features and Improvements
+Features and Improvements
+=========================
 
 The following list shows in detail which features have been added or improved in
 ArangoDB 2.2.  ArangoDB 2.2 also contains several bugfixes that are not listed
 here.
 
-!SECTION AQL improvements
+AQL improvements
+----------------
 
-!SUBSECTION Data modification AQL queries
+### Data modification AQL queries
 
 Up to including version 2.1, AQL supported data retrieval operations only.
 Starting with ArangoDB version 2.2, AQL also supports the following 
@@ -42,7 +44,7 @@ And this query removes documents from collection *backup*:
 For more information on data-modification queries, please refer to
 [Data modification queries](../../AQL/DataQueries.html#data-modification-queries).
 
-!SUBSECTION Updatable variables
+### Updatable variables
 
 Previously, the value of a variable assigned in an AQL query with the `LET` keyword 
 was not updatable in an AQL query. This prevented statements like the following from 
@@ -54,7 +56,7 @@ being executable:
       LET sum = sum + v.value
       RETURN { year: v.year, value: v.value, sum: sum }
 
-!SUBSECTION Other AQL improvements
+### Other AQL improvements
 
 * added AQL TRANSLATE function
 
@@ -67,7 +69,8 @@ being executable:
       RETURN TRANSLATE("foobar", lookup, "not contained!")
 
 
-!SECTION Write-ahead log
+Write-ahead log
+---------------
 
 All write operations in an ArangoDB server will now be automatically logged
 in the server's write-ahead log. The write-ahead log is a set of append-only 
@@ -102,7 +105,8 @@ is still available in ArangoDB 2.2 to ensure API compatibility, starting, stoppi
 or configuring it will have no effect.
 
 
-!SECTION Performance improvements
+Performance improvements
+------------------------
 
 * Removed sorting of attribute names when in collection shaper
 
@@ -131,7 +135,8 @@ or configuring it will have no effect.
   constructing very large buffers for large results.
 
 
-!SECTION Miscellaneous improvements
+Miscellaneous improvements
+--------------------------
 
 * Added `insert` method as an alias for `save`. Documents can now be inserted into
   a collection using either method:
@@ -199,9 +204,10 @@ or configuring it will have no effect.
       db.test.save({ foo: String(new Date()) });
 
 
-!SECTION Removed features
+Removed features
+----------------
 
-!SUBSECTION MRuby integration for arangod
+### MRuby integration for arangod
 
 ArangoDB had an experimental MRuby integration in some of the publish builds.
 This wasn't continuously developed, and so it has been removed in ArangoDB 2.2.
@@ -217,7 +223,7 @@ Specifying these startup options will do nothing in ArangoDB 2.2, so using these
 options should be avoided from now on as they might be removed in a future version
 of ArangoDB.
 
-!SUBSECTION Removed startup options
+### Removed startup options
 
 The following startup options have been removed in ArangoDB 2.2. Specifying them
 in the server's configuration file will not produce an error to make migration
@@ -235,12 +241,13 @@ effect and might fully be removed in a future version of ArangoDB:
 
 <!-- Michaels new features for graph -->
 
-!SECTION Multi Collection Graphs
+Multi Collection Graphs
+-----------------------
 ArangoDB is a multi model database with native graph support.
 In version 2.2 the features for graphs have been improved by integration of a new graph module.
 All graphs created with the old module are automatically migrated into the new module but can still be used by the old module.
 
-!SUBSECTION New graph module
+### New graph module
 Up to including version 2.1, ArangoDB offered a module for graphs and graph operations.
 This module allowed you to use exactly one edge collection together with one vertex collection in a graph.
 With ArangoDB version 2.2 this graph module is deprecated and a new graph module is offered.
@@ -251,7 +258,7 @@ Furthermore if a vertex is removed from one of the collections all connected edg
 The layout of the graph can be modified at runtime by adding or removing collections and changing the definitions for edge collections.
 All operations on the graph level are transactional by default.
 
-!SUBSECTION Graphs in AQL
+### Graphs in AQL
 Multi collection graphs have been added to AQL as well.
 Basic functionality (getting vertices, edges, neighbors) can be executed using the entire graph.
 Also more advanced features like shortest path calculations, characteristic factors of the graph or traversals have been integrated into AQL.

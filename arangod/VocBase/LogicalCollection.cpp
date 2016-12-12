@@ -34,6 +34,7 @@
 #include "Aql/QueryCache.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/FulltextIndex.h"
@@ -243,7 +244,7 @@ static std::shared_ptr<Index> PrepareIndexFromSlice(VPackSlice info,
   
   switch (type) {
     case arangodb::Index::TRI_IDX_TYPE_UNKNOWN: {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid index type");
     }
     case arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX: {
       if (!isClusterConstructor) {
@@ -381,7 +382,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _version(ReadNumericValue<uint32_t>(info, "version", currentVersion())),
       _indexBuckets(ReadNumericValue<uint32_t>(
           info, "indexBuckets", DatabaseFeature::defaultIndexBuckets())),
-      _replicationFactor(ReadNumericValue<size_t>(info, "replicationFactor", 1)),
+      _replicationFactor(1),
       _numberOfShards(ReadNumericValue<size_t>(info, "numberOfShards", 1)),
       _allowUserKeys(ReadBooleanValue(info, "allowUserKeys", true)),
       _shardIds(new ShardMap()),
@@ -412,7 +413,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
                          "with the --database.auto-upgrade option.");
 
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, errorMsg);
-  } 
+  }
+
 
   if (_isVolatile && _waitForSync) {
     // Illegal collection configuration
@@ -427,10 +429,59 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
   }
 
   VPackSlice shardKeysSlice = info.get("shardKeys");
-
+ 
   bool const isCluster = ServerState::instance()->isRunningInCluster();
+  // Cluster only tests
+  if (ServerState::instance()->isCoordinator()) {
+    if ( (_numberOfShards == 0 && !_isSmart) || _numberOfShards > 1000) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "invalid number of shards");
+    }
 
-  if (shardKeysSlice.isNone()) {
+    VPackSlice keyGenSlice = info.get("keyOptions");
+    if (keyGenSlice.isObject()) {
+      keyGenSlice = keyGenSlice.get("type");
+      if (keyGenSlice.isString()) {
+        StringRef tmp(keyGenSlice);
+        if (!tmp.empty() && tmp != "traditional") {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNSUPPORTED,
+                                         "non-traditional key generators are "
+                                         "not supported for sharded "
+                                         "collections");
+        }
+      }
+    }
+  }
+
+  auto replicationFactorSlice = info.get("replicationFactor");
+  if (!replicationFactorSlice.isNone()) {
+    bool isError = true;
+    if (replicationFactorSlice.isNumber()) {
+      _replicationFactor = replicationFactorSlice.getNumber<size_t>();
+      // mop: only allow satellite collections to be created explicitly
+      if (_replicationFactor > 0 && _replicationFactor <= 10) {
+        isError = false;
+#ifdef USE_ENTERPRISE
+      } else if (_replicationFactor == 0) {
+        isError = false;
+#endif
+      }
+    }
+#ifdef USE_ENTERPRISE
+    else if (replicationFactorSlice.isString() && replicationFactorSlice.copyString() == "satellite") {
+      _replicationFactor = 0;
+      _numberOfShards = 1;
+      _distributeShardsLike = "";
+      isError = false;
+    }
+#endif
+    if (isError) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+          "invalid replicationFactor");
+    }
+  }
+
+  if (shardKeysSlice.isNone() || isSatellite()) {
     // Use default.
     _shardKeys.emplace_back(StaticStrings::KeyString);
   } else {
@@ -470,32 +521,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
   }
 
 
-  // Cluster only tests
-  if (ServerState::instance()->isCoordinator()) {
-    if ( (_numberOfShards == 0 && !_isSmart) || _numberOfShards > 1000) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "invalid number of shards");
-    }
-
-    VPackSlice keyGenSlice = info.get("keyOptions");
-    if (keyGenSlice.isObject()) {
-      keyGenSlice = keyGenSlice.get("type");
-      if (keyGenSlice.isString()) {
-        StringRef tmp(keyGenSlice);
-        if (!tmp.empty() && tmp != "traditional") {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNSUPPORTED,
-                                         "non-traditional key generators are "
-                                         "not supported for sharded "
-                                         "collections");
-        }
-      }
-    }
-
-    if (_replicationFactor == 0 || _replicationFactor > 10) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "invalid replicationFactor");
-    }
-  }
 
   _keyGenerator.reset(KeyGenerator::factory(info.get("keyOptions")));
 
@@ -3579,3 +3604,8 @@ bool LogicalCollection::skipForAqlWrite(arangodb::velocypack::Slice document,
   return false;
 }
 #endif
+
+bool LogicalCollection::isSatellite() const {
+  return _replicationFactor == 0;
+}
+

@@ -1,4 +1,5 @@
-!BOOK ArangoDB VERSION_NUMBER HTTP API Documentation
+ArangoDB VERSION_NUMBER HTTP API Documentation
+==============================================
 
 Welcome to the ArangoDB HTTP API documentation! This documentation is
 for API developers. As a user or administrator of ArangoDB you should

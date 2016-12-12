@@ -140,9 +140,9 @@ struct HashIndexElement {
   static uint64_t hash(std::vector<std::pair<arangodb::velocypack::Slice, uint32_t>> const& values);
   
   /// @brief allocate a new index element from a vector of slices
-  static HashIndexElement* create(TRI_voc_rid_t revisionId, std::vector<std::pair<arangodb::velocypack::Slice, uint32_t>> const& values);
-  
-  void free();
+  static HashIndexElement* initialize(HashIndexElement* memory, 
+                                      TRI_voc_rid_t revisionId, 
+                                      std::vector<std::pair<arangodb::velocypack::Slice, uint32_t>> const& values);
   
  private:
   inline IndexElementValue* subObject(size_t position) {
@@ -188,9 +188,9 @@ struct SkiplistIndexElement {
   arangodb::velocypack::Slice slice(IndexLookupContext* context, size_t position) const;
   
   /// @brief allocate a new index element from a vector of slices
-  static SkiplistIndexElement* create(TRI_voc_rid_t revisionId, std::vector<std::pair<arangodb::velocypack::Slice, uint32_t>> const& values);
-  
-  void free();
+  static SkiplistIndexElement* initialize(SkiplistIndexElement* element,
+                                          TRI_voc_rid_t revisionId, 
+                                          std::vector<std::pair<arangodb::velocypack::Slice, uint32_t>> const& values);
   
  private:
   inline IndexElementValue* subObject(size_t position) {

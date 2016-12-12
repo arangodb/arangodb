@@ -1,4 +1,5 @@
-!CHAPTER The AQL query result cache
+The AQL query result cache
+==========================
 
 AQL provides an optional query result cache.
 
@@ -10,7 +11,8 @@ The query cache is transparent so users do not need to manually invalidate
 results in it if underlying collection data are modified. 
 
 
-!SECTION Modes
+Modes
+-----
 
 The cache can be operated in the following modes:
 
@@ -23,7 +25,8 @@ The cache can be operated in the following modes:
 The mode can be set at server startup and later changed at runtime.
 
 
-!SECTION Query eligibility
+Query eligibility
+-----------------
 
 The query cache will consider two queries identical if they have exactly the
 same query string. Any deviation in terms of whitespace, capitalization etc.
@@ -62,7 +65,8 @@ The query cache considers all user-defined AQL functions to be non-deterministic
 as it has no insight into these functions.
 
 
-!SECTION Cache invalidation
+Cache invalidation
+------------------
 
 The query cache results are fully or partially invalidated automatically if
 queries modify the data of collections that were used during the computation of
@@ -90,7 +94,8 @@ Modifying data in other collections than the named two will not lead to this
 query result being removed from the cache.
 
 
-!SECTION Performance considerations
+Performance considerations
+--------------------------
 
 The query cache is organized as a hash table, so looking up whether a query result
 is present in the cache is relatively fast. Still, the query string and the bind
@@ -117,7 +122,8 @@ most of the query time is spent on copying the result from the cache to the clie
 then the cache will not provide much benefit.
 
 
-!SECTION Global configuration
+Global configuration
+--------------------
 
 The query cache can be configured at server start using the configuration parameter
 `--query.cache-mode`. This will set the cache mode according to the descriptions
@@ -141,7 +147,8 @@ require("@arangodb/aql/cache").properties({ maxResults: 200 });
 ```
 
 
-!SECTION Per-query configuration
+Per-query configuration
+-----------------------
 
 When a query is sent to the server for execution and the cache is set to `on` or `demand`,
 the query executor will look into the query's `cache` attribute. If the query cache mode is
@@ -177,7 +184,8 @@ if the result was retrieved from the query cache, and `false` otherwise. Clients
 this attribute to check if a specific query was served from the cache or not.
 
 
-!SECTION Restrictions
+Restrictions
+------------
 
 Query results that are returned from the query cache do not contain any execution statistics,
 meaning their *extra.stats* attribute will not be present. Additionally, query results returned

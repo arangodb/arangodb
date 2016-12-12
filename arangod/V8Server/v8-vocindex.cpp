@@ -599,7 +599,7 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
             VPackSlice f = flds.at(i);
             if (!f.isString()) {
               // index attributes must be strings
-              TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+              TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "index field names should be strings");
             }
             indexKeys.emplace(f.copyString());
           }
@@ -705,7 +705,7 @@ std::unique_ptr<LogicalCollection> CreateCollectionCoordinator(LogicalCollection
   std::string errorMsg;
   int myerrno = ci->createCollectionCoordinator(
       parameters->dbName(), parameters->cid_as_string(),
-      parameters->numberOfShards(), velocy.slice(), errorMsg, 240.0);
+      parameters->numberOfShards(), parameters->replicationFactor(), velocy.slice(), errorMsg, 240.0);
 
   if (myerrno != TRI_ERROR_NO_ERROR) {
     if (errorMsg.empty()) {

@@ -64,7 +64,7 @@ static uint64_t HashElementEdge(void*, SimpleIndexElement const& element, bool b
   }
 
   TRI_voc_rid_t revisionId = element.revisionId();
-  return fasthash64(&revisionId, sizeof(revisionId), 0x56781234);
+  return fasthash64_uint64(revisionId, 0x56781234);
 }
 
 /// @brief checks if key and element match
@@ -150,7 +150,7 @@ IndexLookupResult EdgeIndexIterator::next() {
     } else {
       _lastElement = _buffer.back();
       // found something
-      return IndexLookupResult(_buffer.at(_posInBuffer++).revisionId());
+      return IndexLookupResult(_buffer[_posInBuffer++].revisionId());
     }
 
     // found no result. now go to next lookup value in _keys

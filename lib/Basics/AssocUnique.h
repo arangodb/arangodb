@@ -32,9 +32,9 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/IndexBucket.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/gcd.h"
-#include "Basics/memory-map.h"
 #include "Basics/prime-numbers.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
@@ -78,14 +78,9 @@ class AssocUnique {
 
   typedef std::function<bool(Element&)> CallbackElementFuncType;
 
+  typedef arangodb::basics::IndexBucket<Element, uint64_t, SIZE_MAX> Bucket;
+
  private:
-  struct Bucket {
-    uint64_t _nrAlloc;  // the size of the table
-    uint64_t _nrUsed;   // the number of used entries
-
-    Element* _table;  // the table itself, aligned to a cache line boundary
-  };
-
   std::vector<Bucket> _buckets;
   size_t _bucketsMask;
 
@@ -123,30 +118,20 @@ class AssocUnique {
     numberBuckets = nr;
     _bucketsMask = nr - 1;
 
+    _buckets.resize(numberBuckets);
+
     try {
       for (size_t j = 0; j < numberBuckets; j++) {
-        _buckets.emplace_back();
-        Bucket& b = _buckets.back();
-        b._nrAlloc = initialSize();
-        b._table = nullptr;
-
-        // may fail...
-        b._table = new Element[static_cast<size_t>(b._nrAlloc)]();
+        _buckets[j].allocate(initialSize());
       }
     } catch (...) {
-      for (auto& b : _buckets) {
-        delete[] b._table;
-        b._table = nullptr;
-        b._nrAlloc = 0;
-      }
+      _buckets.clear();
       throw;
     }
   }
 
   ~AssocUnique() {
-    for (auto& b : _buckets) {
-      delete[] b._table;
-    }
+    _buckets.clear();
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -174,7 +159,13 @@ class AssocUnique {
 
   void resizeInternal(UserData* userData, Bucket& b, uint64_t targetSize,
                       bool allowShrink) {
-    if (b._nrAlloc >= targetSize && !allowShrink) {
+    if (b._nrAlloc > targetSize && !allowShrink) {
+      return;
+    }
+    if (allowShrink && 
+        b._nrAlloc >= targetSize && 
+        b._nrAlloc < 1.25 * targetSize) {
+      // no need to shrink
       return;
     }
 
@@ -192,31 +183,19 @@ class AssocUnique {
           "hash-resize " << cb << ", target size: " << targetSize;
     }
 
-    Element* oldTable = b._table;
-    uint64_t oldAlloc = b._nrAlloc;
-
     TRI_ASSERT(targetSize > 0);
 
     targetSize = TRI_NearPrime(targetSize);
 
-    // This might throw, is catched outside
-    b._table = new Element[static_cast<size_t>(targetSize)]();
-
-    b._nrAlloc = targetSize;
-
-#ifdef __linux__
-    if (b._nrAlloc > 1000000) {
-      uintptr_t mem = reinterpret_cast<uintptr_t>(b._table);
-      uintptr_t pageSize = getpagesize();
-      mem = (mem / pageSize) * pageSize;
-      void* memptr = reinterpret_cast<void*>(mem);
-      TRI_MMFileAdvise(memptr, b._nrAlloc * sizeof(Element),
-                       TRI_MADVISE_RANDOM);
-    }
-#endif
+    Bucket copy;
+    copy.allocate(targetSize);
 
     if (b._nrUsed > 0) {
-      uint64_t const n = b._nrAlloc;
+      Element* oldTable = b._table;
+      uint64_t const oldAlloc = b._nrAlloc;
+      TRI_ASSERT(oldAlloc > 0);
+
+      uint64_t const n = copy._nrAlloc;
       TRI_ASSERT(n > 0);
 
       for (uint64_t j = 0; j < oldAlloc; j++) {
@@ -226,19 +205,20 @@ class AssocUnique {
           uint64_t i, k;
           i = k = _hashElement(userData, element) % n;
 
-          for (; i < n && b._table[i]; ++i)
+          for (; i < n && copy._table[i]; ++i)
             ;
           if (i == n) {
-            for (i = 0; i < k && b._table[i]; ++i)
+            for (i = 0; i < k && copy._table[i]; ++i)
               ;
           }
 
-          b._table[i] = element;
+          copy._table[i] = element;
+          ++copy._nrUsed;
         }
       }
     }
 
-    delete[] oldTable;
+    b = std::move(copy);
 
     LOG(TRACE) << "resizing hash " << cb << " done";
 
@@ -269,14 +249,14 @@ class AssocUnique {
       UserData* userData, BucketPosition& position, uint64_t const step,
       BucketPosition const& initial) const {
     Element found;
-    Bucket b = _buckets[position.bucketId];
+    Bucket const* b = &_buckets[position.bucketId];
     do {
-      found = b._table[position.position];
+      found = b->_table[position.position];
       position.position += step;
-      while (position.position >= b._nrAlloc) {
-        position.position -= b._nrAlloc;
+      while (position.position >= b->_nrAlloc) {
+        position.position -= b->_nrAlloc;
         position.bucketId = (position.bucketId + 1) % _buckets.size();
-        b = _buckets[position.bucketId];
+        b = &_buckets[position.bucketId];
       }
       if (position == initial) {
         // We are done. Return the last element we have in hand
@@ -322,42 +302,10 @@ class AssocUnique {
 
  public:
   void truncate(CallbackElementFuncType callback) {
-    std::vector<Element*> empty;
-    empty.reserve(_buckets.size());
-   
-    try {
-      uint64_t const nrAlloc = initialSize(); 
-
-      for (size_t i = 0; i < _buckets.size(); ++i) {
-        auto newBucket = new Element[static_cast<size_t>(nrAlloc)]();
-        try {
-          // shouldn't fail as enough space was reserved above, but let's be paranoid
-          empty.emplace_back(newBucket);
-        } catch (...) {
-          delete[] newBucket;
-          throw;
-        }
-      }
-
-      size_t i = 0;
-      for (auto& b : _buckets) {
-        invokeOnAllElements(callback, b);
-
-        // now bucket is empty
-        delete[] b._table;
-        b._table = empty[i];
-        b._nrAlloc = initialSize();
-        b._nrUsed = 0;
-        
-        empty[i] = nullptr; // pass ownership
-        ++i;
-      }
-    } catch (...) {
-      // prevent leaks
-      for (auto& it : empty) {
-        delete[] it;
-      }
-      throw;
+    for (auto& b : _buckets) {
+      invokeOnAllElements(callback, b);
+      b.deallocate();
+      b.allocate(initialSize());
     }
   }
 
@@ -383,11 +331,11 @@ class AssocUnique {
   //////////////////////////////////////////////////////////////////////////////
 
   size_t memoryUsage() const {
-    size_t sum = 0;
+    size_t res = 0;
     for (auto& b : _buckets) {
-      sum += static_cast<size_t>(b._nrAlloc * sizeof(Element));
+      res += b.memoryUsage();
     }
-    return sum;
+    return res;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -915,15 +863,17 @@ class AssocUnique {
   /// @brief a method to iterate over all elements in a bucket. this method
   /// can NOT be used for deleting elements
   bool invokeOnAllElements(CallbackElementFuncType const& callback, Bucket& b) {
-    for (size_t i = 0; i < b._nrAlloc; ++i) {
-      if (!b._table[i] || b._nrUsed == 0) {
-        continue;
-      }
-      if (!b._table[i]) {
-        continue;
-      }
-      if (!callback(b._table[i])) {
-        return false;
+    if (b._nrUsed > 0) {
+      for (size_t i = 0; i < b._nrAlloc; ++i) {
+        if (!b._table[i]) {
+          continue;
+        }
+        if (!callback(b._table[i])) {
+          return false;
+        }
+        if (b._nrUsed == 0) {
+          break;
+        }
       }
     }
     return true;
@@ -1047,10 +997,10 @@ class AssocUnique {
       position.position = _buckets[position.bucketId]._nrAlloc - 1;
     }
 
-    Bucket b = _buckets[position.bucketId];
+    Bucket const* b = &_buckets[position.bucketId];
     Element found;
     do {
-      found = b._table[position.position];
+      found = b->_table[position.position];
 
       if (position.position == 0) {
         if (position.bucketId == 0) {
@@ -1060,8 +1010,8 @@ class AssocUnique {
         }
 
         --position.bucketId;
-        b = _buckets[position.bucketId];
-        position.position = b._nrAlloc - 1;
+        b = &_buckets[position.bucketId];
+        position.position = b->_nrAlloc - 1;
       } else {
         --position.position;
       }

@@ -60,7 +60,7 @@
 
         <div class="pure-table-row <%= disabled %>" node="<%= id %>">
 
-          <div class="pure-u-9-24 left"><%= name %><i class="fa fa-bar-chart"></i></div>
+          <div class="pure-u-9-24 left"><%= node.ShortName %><i class="fa fa-bar-chart"></i></div>
           <div class="pure-u-8-24 left"><%= node.Endpoint %></div>
 
           <% var formatted = (node.LastHeartbeatAcked).substr(11, 18).slice(0, -1); %> 
@@ -138,7 +138,7 @@
 
         <div class="pure-table-row <%= disabled %>" id="<%= id %>">
 
-          <div class="pure-u-9-24 left"><%= name %></div>
+          <div class="pure-u-9-24 left"><%= node.ShortName %></div>
           <div class="pure-u-8-24 left"><%= node.Endpoint %></div>
 
           <% var formatted = (node.LastHeartbeatAcked).substr(11, 18).slice(0, -1); %> 

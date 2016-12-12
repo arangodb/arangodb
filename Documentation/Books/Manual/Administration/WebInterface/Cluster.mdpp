@@ -1,4 +1,5 @@
-!CHAPTER Cluster
+Cluster
+=======
 
 The cluster section displays statistics about the general cluster performance.
 
@@ -14,9 +15,10 @@ Statistics:
  - HTTP (bytes)
  - Average request time (seconds)
 
-!SECTION Nodes
+Nodes
+-----
  
-!SUBSECTION Overview
+### Overview
 
 The overview shows available and missing coordinators and database servers.
 
@@ -34,7 +36,7 @@ Information (Coordinator / Database servers):
 - Status
 - Health
 
-!SUBSECTION Shards
+### Shards
 
 The shard section displays all available sharded collections.
 

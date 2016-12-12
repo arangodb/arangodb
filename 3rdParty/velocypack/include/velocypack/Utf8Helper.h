@@ -1,8 +1,9 @@
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Library to build up VPack documents.
+///
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,33 +19,24 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Max Neunhoeffer
 /// @author Jan Steemann
+/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_REST_SHARD_HANDLER_H
-#define ARANGOD_CLUSTER_REST_SHARD_HANDLER_H 1
+#ifndef VELOCYPACK_UTF8HELPER_H
+#define VELOCYPACK_UTF8HELPER_H 1
 
-#include "Basics/Common.h"
-#include "RestHandler/RestBaseHandler.h"
+#include "velocypack/velocypack-common.h"
 
 namespace arangodb {
-namespace rest {
-class Dispatcher;
-}
+namespace velocypack {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shard control request handler
-////////////////////////////////////////////////////////////////////////////////
-
-class RestShardHandler : public RestBaseHandler {
- public:
-  explicit RestShardHandler(GeneralRequest*, GeneralResponse*);
-
- public:
-  char const* name() const override final { return "RestShardHandler"; }
-  bool isDirect() const override;
-  RestStatus execute() override;
+struct Utf8Helper {
+  static bool isValidUtf8(uint8_t const* p, ValueLength len);
 };
+
+}
 }
 
 #endif

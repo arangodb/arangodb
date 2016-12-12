@@ -207,13 +207,9 @@ void SocketTask::completedWriteBuffer() {
   if (_writeBufferStatistics != nullptr) {
     _writeBufferStatistics->_writeEnd = TRI_StatisticsTime();
 #ifdef DEBUG_STATISTICS
-<<<<<<< HEAD
     LOG_TOPIC(TRACE, Logger::REQUESTS)
       << "SocketTask::addWriteBuffer - Statistics release: "
       << _writeBufferStatistics->to_string();
-=======
-        _writeBufferStatistics->trace_log();
->>>>>>> origin/devel
 #endif
     TRI_ReleaseRequestStatistics(_writeBufferStatistics);
     _writeBufferStatistics = nullptr;

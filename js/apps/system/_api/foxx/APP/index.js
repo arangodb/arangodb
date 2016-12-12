@@ -8,6 +8,7 @@ const semver = require('semver');
 const actions = require('@arangodb/actions');
 const ArangoError = require('@arangodb').ArangoError;
 const errors = require('@arangodb').errors;
+const swaggerJson = require('@arangodb/foxx/legacy/swagger').swaggerJson;
 const fm = require('@arangodb/foxx/manager');
 const fmu = require('@arangodb/foxx/manager-utils');
 const createRouter = require('@arangodb/foxx/router');
@@ -399,4 +400,15 @@ instanceRouter.get('/readme', (req, res) => {
 .summary(`Service README`)
 .description(dd`
   Fetches the service's README or README.md file's contents if any.
+`);
+
+instanceRouter.get('/swagger', (req, res) => {
+  swaggerJson(req, res, {
+    mount: req.service.mount
+  });
+})
+.response(200, joi.object(), `Service Swagger description.`)
+.summary(`Swagger description`)
+.description(dd`
+  Fetches the Swagger API description for the service at the given mount path.
 `);

@@ -34,6 +34,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/HashIndex.h"
@@ -648,7 +649,7 @@ DocumentDitch* Transaction::orderDitch(TRI_voc_cid_t cid) {
   TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(_trx, cid, TRI_TRANSACTION_READ);
 
   if (trxCollection == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);    
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to determine transaction collection");    
   }
 
   TRI_ASSERT(trxCollection->_collection != nullptr);

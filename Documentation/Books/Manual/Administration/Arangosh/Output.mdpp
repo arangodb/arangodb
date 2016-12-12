@@ -1,4 +1,5 @@
-!CHAPTER ArangoDB Shell Output
+ArangoDB Shell Output
+=====================
 
 By default, the ArangoDB shell uses a pretty printer when JSON documents are
 printed. This ensures documents are printed in a human-readable way:

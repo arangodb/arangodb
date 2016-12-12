@@ -85,7 +85,7 @@ FulltextIndex::FulltextIndex(TRI_idx_iid_t iid,
   _sparse = true;
   if (_fields.size() != 1) {
     // We need exactly 1 attribute
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "fulltext index definition should have exactly one attribute");
   }
   auto& attribute = _fields[0];
   _attr.reserve(attribute.size());

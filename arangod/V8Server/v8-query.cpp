@@ -111,7 +111,7 @@ static void EdgesQuery(TRI_edge_direction_e direction,
         return "FILTER doc._from " + op + " @value || doc._to " + op + " @value";
     }
 
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid edge index direction");
   };
 
   arangodb::LogicalCollection const* collection =
@@ -394,7 +394,7 @@ static void JS_ChecksumCollection(
     if (withData) {
       // with data
       uint64_t const n = slice.length() ^ 0xf00ba44ba5;
-      uint64_t seed = fasthash64(&n, sizeof(n), 0xdeadf054);
+      uint64_t seed = fasthash64_uint64(n, 0xdeadf054);
 
       for (auto const& it : VPackObjectIterator(slice, false)) {
         // loop over all attributes, but exclude _rev, _id and _key

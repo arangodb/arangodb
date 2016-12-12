@@ -1,10 +1,12 @@
-!CHAPTER Incompatible changes in ArangoDB 2.7
+Incompatible changes in ArangoDB 2.7
+====================================
 
 It is recommended to check the following list of incompatible changes **before** 
 upgrading to ArangoDB 2.7, and adjust any client programs if necessary.
 
 
-!SECTION AQL changes
+AQL changes
+-----------
 
 `DISTINCT` is now a keyword in AQL. 
 
@@ -27,13 +29,14 @@ can be fixed by using the usual combination of `FOR`, `FILTER` and `LIMIT`, e.g.
       RETURN doc
 ```
 
-!SECTION Foxx changes
+Foxx changes
+------------
 
-!SUBSECTION Bundling and compilation
+### Bundling and compilation
 
 The `assets` property is no longer supported in Foxx manifests and is scheduled to be removed in a future version of ArangoDB. The `files` property can still be used to serve static assets but it is recommended to use separate tooling to compile and bundle your assets.
 
-!SUBSECTION Manifest scripts
+### Manifest scripts
 
 The properties `setup` and `teardown` have been moved into the `scripts` property map:
 
@@ -59,11 +62,11 @@ The properties `setup` and `teardown` have been moved into the `scripts` propert
 }
 ```
 
-!SUBSECTION Foxx Queues
+### Foxx Queues
 
 Function-based Foxx Queue job types are no longer supported. To learn about how you can use the new script-based job types [follow the updated recipe in the cookbook](https://docs.arangodb.com/2.8/cookbook/FoxxQueues.html).
 
-!SUBSECTION Foxx Sessions
+### Foxx Sessions
 
 The `jwt` and `type` options have been removed from the `activateSessions` API.
 
@@ -94,7 +97,7 @@ ctrl.activateSessions({
 });
 ```
 
-!SUBSECTION Request module
+### Request module
 
 The module `org/arangodb/request` uses an internal library function for sending HTTP
 requests. This library functionally unconditionally set an HTTP header `Accept-Encoding: gzip`
@@ -110,7 +113,8 @@ can be added here if required by passing it via a `headers` sub-attribute in the
 third parameter (`options`) to this function. 
 
 
-!SECTION arangodump / backups
+arangodump / backups
+--------------------
 
 The filenames in dumps created by arangodump now contain not only the name of the dumped 
 collection, but also an additional 32-digit hash value. This is done to prevent overwriting 
@@ -140,7 +144,8 @@ In 2.7, the filenames will be:
 * `Test_0cbc6611f5540bd0809a388dc95a615b.data.json` (data for collection *Test*)
 
 
-!SECTION Starting / stopping
+Starting / stopping
+-------------------
 
 When starting arangod, the server will now drop the process privileges to the 
 specified values in options `--server.uid` and `--server.gid` instantly after 
@@ -166,7 +171,8 @@ The goal of this change is to prevent arangod from running out of available
 file descriptors for socket connections and datafiles.
 
 
-!SECTION Connection handling
+Connection handling
+-------------------
 
 arangod will now actually close lingering client connections when idle for at least 
 the duration specified in the `--server.keep-alive-timeout` startup option.
@@ -180,9 +186,10 @@ being idle for a long time may be closed by the OS or firewalls anyway -
 client applications should be aware of that and try to reconnect).
 
 
-!SECTION Option changes
+Option changes
+--------------
 
-!SUBSECTION Configure options removed
+### Configure options removed
 
 The following options for `configure` have been removed because they were unused
 or exotic:
@@ -190,7 +197,7 @@ or exotic:
 * `--enable-timings`
 * `--enable-figures`
 
-!SUBSECTION Startup options added
+### Startup options added
 
 The following configuration options have been added in 2.7:
 
@@ -200,9 +207,10 @@ The following configuration options have been added in 2.7:
   Possible values are `on`, `off` and `demand`. The default value is `off`
 
 
-!SECTION Miscellaneous changes
+Miscellaneous changes
+---------------------
 
-!SUBSECTION Simple queries
+### Simple queries
 
 Many simple queries provide a `skip()` function that can be used to skip over a certain number
 of documents in the result. This function allowed specifying negative offsets in previous versions
@@ -214,12 +222,12 @@ negative skip values.
 
 Negative skip values were deprecated in ArangoDB 2.6.
 
-!SUBSECTION Tasks API
+### Tasks API
 
 The undocumented function `addJob()` has been removed from the `org/arangodb/tasks` module in
 ArangoDB 2.7. 
 
-!SUBSECTION Runtime endpoints manipulation API
+### Runtime endpoints manipulation API
 
 The following HTTP REST API methods for runtime manipulation of server endpoints have been
 removed in ArangoDB 2.7:

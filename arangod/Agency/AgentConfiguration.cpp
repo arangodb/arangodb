@@ -239,6 +239,8 @@ void config_t::eraseFromGossipPeers(std::string const& endpoint) {
 bool config_t::addToPool(std::pair<std::string, std::string> const& i) {
   WRITE_LOCKER(readLocker, _lock);
   if (_pool.find(i.first) == _pool.end()) {
+    LOG_TOPIC(INFO, Logger::AGENCY)
+      << "Adding " << i.first << "(" << i.second << ") to agent pool";
     _pool[i.first] = i.second;
     ++_version;
   } else {
@@ -253,12 +255,12 @@ bool config_t::swapActiveMember(
   std::string const& failed, std::string const& repl) {
   try {
     WRITE_LOCKER(writeLocker, _lock);
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Replacing " << failed << " with " << repl;
     std::replace (_active.begin(), _active.end(), failed, repl);
     ++_version;
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCY)
-      << "Replacing " << failed << " with " << repl
-      << "failed miserably: " << e.what();
+      << "Replacing " << failed << " with " << repl << "failed : " << e.what();
     return false;
   }
 
@@ -343,13 +345,15 @@ void config_t::update(query_t const& message) {
   VPackSlice slice = message->slice();
   std::map<std::string, std::string> pool;
   bool changed = false;
-  for (auto const& p : VPackObjectIterator(slice.get("pool"))) {
+  for (auto const& p : VPackObjectIterator(slice.get(poolStr))) {
     pool[p.key.copyString()] = p.value.copyString();
   }
   std::vector<std::string> active;
-  for (auto const& a : VPackArrayIterator(slice.get("active"))) {
+  for (auto const& a : VPackArrayIterator(slice.get(activeStr))) {
     active.push_back(a.copyString());
   }
+  double minPing = slice.get(minPingStr).getDouble();
+  double maxPing = slice.get(maxPingStr).getDouble();
   WRITE_LOCKER(writeLocker, _lock);
   if (pool != _pool) {
     _pool = pool;
@@ -357,6 +361,14 @@ void config_t::update(query_t const& message) {
   }
   if (active != _active) {
     _active = active;
+    changed=true;
+  }
+  if (minPing != _minPing) {
+    _minPing = minPing;
+    changed=true;
+  }
+  if (maxPing != _maxPing) {
+    _maxPing = maxPing;
     changed=true;
   }
   if (changed) {

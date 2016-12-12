@@ -1,4 +1,5 @@
-!CHAPTER Arangoimp
+Arangoimp
+=========
 
 This manual describes the ArangoDB importer _arangoimp_, which can be used for
 bulk imports.
@@ -16,9 +17,10 @@ Let's assume for the following examples you want to import user data into an
 existing collection named "users" on the server.
 
 
-!SECTION Importing Data into an ArangoDB Database
+Importing Data into an ArangoDB Database
+----------------------------------------
 
-!SUBSECTION Importing JSON-encoded Data
+### Importing JSON-encoded Data
 
 Let's further assume the import at hand is encoded in JSON. We'll be using these
 example user records to import:
@@ -91,7 +93,7 @@ collection in the default database (*_system*). To specify a different database,
 use the *--server.database* option when invoking _arangoimp_. 
 
 
-!SUBSECTION JSON input file formats
+### JSON input file formats
 
 **Note**: *arangoimp* supports two formats when importing JSON data from 
 a file. The first format (also used above) requires the input file to contain one 
@@ -135,7 +137,7 @@ Please also note that you may need to increase the value of *--batch-size* if
 a single document inside the input file is bigger than the value of *--batch-size*.
 
 
-!SUBSECTION Importing CSV Data
+### Importing CSV Data
 
 _arangoimp_ also offers the possibility to import data from CSV files. This
 comes handy when the data at hand is in CSV format already and you don't want to
@@ -219,7 +221,7 @@ start of lines or between field values will not be ignored, so please make sure
 that there is no extra whitespace in front of values or between them.
 
 
-!SUBSECTION Importing TSV Data
+### Importing TSV Data
 
 You may also import tab-separated values (TSV) from a file. This format is very
 simple: every line in the file represents a data record. There is no quoting or
@@ -237,7 +239,7 @@ An example command line to execute the TSV import is:
     > arangoimp --file "data.tsv" --type tsv --collection "users" 
 
 
-!SUBSECTION Importing into an Edge Collection
+### Importing into an Edge Collection
 
 arangoimp can also be used to import data into an existing edge collection.
 The import data must, for each edge to import, contain at least the *_from* and
@@ -256,7 +258,7 @@ the *--create-collection* flag will not work because arangoimp will always try t
 create a regular document collection if the target collection does not exist.
 
 
-!SUBSECTION Updating existing documents
+### Updating existing documents
 
 By default, arangoimp will try to insert all documents from the import file into the
 specified collection. In case the import file contains documents that are already present
@@ -307,7 +309,7 @@ and do not already exist with the specified *_key*. Documents that are already p
 in the target collection (identified by *_key* attribute) will instead be updated/replaced.
 
 
-!SUBSECTION Arangoimp result output
+### Arangoimp result output
 
 An _arangoimp_ import run will print out the final results on the command line.
 It will show the
@@ -334,7 +336,7 @@ _arangoimp_ will also print out details about warnings and errors that happened 
 server-side (if any).
 
 
-!SUBSECTION Attribute Naming and Special Attributes
+### Attribute Naming and Special Attributes
 
 Attributes whose names start with an underscore are treated in a special way by 
 ArangoDB:
