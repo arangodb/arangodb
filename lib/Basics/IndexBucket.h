@@ -134,7 +134,7 @@ struct IndexBucket {
       }
 #endif
 
-      _nrAlloc = numberElements;
+      _nrAlloc = static_cast<IndexType>(numberElements);
     } catch (...) {
       deallocateTempfile();
       TRI_ASSERT(_file == -1);
