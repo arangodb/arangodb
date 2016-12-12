@@ -60,6 +60,9 @@ class Utils {
   static std::string const vertexShardsKey;
   static std::string const edgeShardsKey;
   static std::string const globalShardListKey;
+  static std::string const totalVertexCount;
+  static std::string const totalEdgeCount;
+  static std::string const asyncMode;
 
   static std::string const globalSuperstepKey;
   static std::string const messagesKey;
@@ -74,8 +77,7 @@ class Utils {
   static std::string const receivedCountKey;
   static std::string const sendCountKey;
   static std::string const superstepRuntimeKey;
-  static std::string const totalVertexCount;
-  static std::string const totalEdgeCount;
+ 
 
   // User parameters
   static std::string const userParametersKey;

@@ -81,13 +81,13 @@ class Worker : public IWorker {
   size_t _preRecoveryTotal;
  
   std::unique_ptr<GraphStore<V, E>> _graphStore;
-  std::unique_ptr<InCache<M>> _readCache, _writeCache;
+  std::unique_ptr<InCache<M>> _readCache, _writeCache, _nextPhase;
   std::unique_ptr<AggregatorUsage> _conductorAggregators;
   std::unique_ptr<AggregatorUsage> _workerAggregators;
   std::unique_ptr<MessageFormat<M>> _messageFormat;
   std::unique_ptr<MessageCombiner<M>> _messageCombiner;
-  WorkerStats _superstepStats;
   
+  WorkerStats _superstepStats;
   size_t _runningThreads;
   
   void _swapIncomingCaches() {

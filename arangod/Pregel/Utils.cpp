@@ -53,6 +53,9 @@ std::string const Utils::collectionPlanIdMapKey = "collectionPlanIdMap";
 std::string const Utils::vertexShardsKey = "vertexShards";
 std::string const Utils::edgeShardsKey = "edgeShards";
 std::string const Utils::globalShardListKey = "globalShardList";
+std::string const Utils::totalVertexCount = "vertexCount";
+std::string const Utils::totalEdgeCount = "edgeCount";
+std::string const Utils::asyncMode = "async";
 
 std::string const Utils::coordinatorIdKey = "coordinatorId";
 std::string const Utils::algorithmKey = "algorithm";
@@ -69,8 +72,7 @@ std::string const Utils::activeCountKey = "activeCount";
 std::string const Utils::receivedCountKey = "receivedCount";
 std::string const Utils::sendCountKey = "sendCount";
 std::string const Utils::superstepRuntimeKey = "superstepRuntime";
-std::string const Utils::totalVertexCount = "vertexCount";
-std::string const Utils::totalEdgeCount = "edgeCount";
+
 
 std::string const Utils::userParametersKey = "userparams";
 

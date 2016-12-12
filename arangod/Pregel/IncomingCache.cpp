@@ -69,19 +69,12 @@ void InCache<M>::parseMessages(VPackSlice incomingMessages) {
 // ================== ArrayIncomingCache ==================
 
 template <typename M>
-void ArrayInCache<M>::clear() {
-  MUTEX_LOCKER(guard, this->_writeLock);
-  this->_receivedMessageCount = 0;
-  _shardMap.clear();
-}
-
-template <typename M>
 void ArrayInCache<M>::setDirect(prgl_shard_t shard, std::string const& key,
                                 M const& newValue) {
   MUTEX_LOCKER(guard, this->_writeLock);
 
   this->_receivedMessageCount++;
-  std::unordered_map<std::string, std::vector<M>>& vertexMap = _shardMap[shard];
+  HMap& vertexMap = _shardMap[shard];
   vertexMap[key].push_back(newValue);
 }
 
@@ -94,8 +87,7 @@ void ArrayInCache<M>::mergeCache(InCache<M> const* otherCache) {
 
   // cannot call setDirect since it locks
   for (auto const& pair : other->_shardMap) {
-    std::unordered_map<std::string, std::vector<M>>& vertexMap =
-        _shardMap[pair.first];
+    HMap &vertexMap = _shardMap[pair.first];
     for (auto& vertexMessage : pair.second) {
       std::vector<M>& a = vertexMap[vertexMessage.first];
       std::vector<M> const& b = vertexMessage.second;
@@ -107,8 +99,7 @@ void ArrayInCache<M>::mergeCache(InCache<M> const* otherCache) {
 template <typename M>
 MessageIterator<M> ArrayInCache<M>::getMessages(prgl_shard_t shard,
                                                 std::string const& key) {
-  std::unordered_map<std::string, std::vector<M>> const& vertexMap =
-      _shardMap[shard];
+  HMap const& vertexMap = _shardMap[shard];
   auto vmsg = vertexMap.find(key);
   if (vmsg != vertexMap.end()) {
     LOG(INFO) << "Got a message for " << key;
@@ -121,14 +112,22 @@ MessageIterator<M> ArrayInCache<M>::getMessages(prgl_shard_t shard,
   }
 }
 
-// ================== CombiningIncomingCache ==================
-
 template <typename M>
-void CombiningInCache<M>::clear() {
+void ArrayInCache<M>::clear() {
   MUTEX_LOCKER(guard, this->_writeLock);
   this->_receivedMessageCount = 0;
   _shardMap.clear();
 }
+
+
+template <typename M>
+void ArrayInCache<M>::erase(prgl_shard_t shard, std::string const& key) {
+  MUTEX_LOCKER(guard, this->_writeLock);
+  HMap& vertexMap(_shardMap[shard]);
+  vertexMap.erase(key);
+}
+
+// ================== CombiningIncomingCache ==================
 
 template <typename M>
 void CombiningInCache<M>::setDirect(prgl_shard_t shard, std::string const& key,
@@ -136,7 +135,7 @@ void CombiningInCache<M>::setDirect(prgl_shard_t shard, std::string const& key,
   MUTEX_LOCKER(guard, this->_writeLock);
 
   this->_receivedMessageCount++;
-  std::unordered_map<std::string, M>& vertexMap = _shardMap[shard];
+  HMap& vertexMap = _shardMap[shard];
   auto vmsg = vertexMap.find(key);
   if (vmsg != vertexMap.end()) {  // got a message for the same vertex
     _combiner->combine(vmsg->second, newValue);
@@ -154,7 +153,7 @@ void CombiningInCache<M>::mergeCache(InCache<M> const* otherCache) {
 
   // cannot call setDirect since it locks
   for (auto const& pair : other->_shardMap) {
-    std::unordered_map<std::string, M>& vertexMap = _shardMap[pair.first];
+    HMap& vertexMap = _shardMap[pair.first];
 
     for (auto& vertexMessage : pair.second) {
       auto vmsg = vertexMap.find(vertexMessage.first);
@@ -170,7 +169,7 @@ void CombiningInCache<M>::mergeCache(InCache<M> const* otherCache) {
 template <typename M>
 MessageIterator<M> CombiningInCache<M>::getMessages(prgl_shard_t shard,
                                                     std::string const& key) {
-  std::unordered_map<std::string, M> const& vertexMap(_shardMap[shard]);
+  HMap const& vertexMap(_shardMap[shard]);
   auto vmsg = vertexMap.find(key);
   if (vmsg != vertexMap.end()) {
     LOG(INFO) << "Got a message for " << key;
@@ -179,6 +178,20 @@ MessageIterator<M> CombiningInCache<M>::getMessages(prgl_shard_t shard,
     LOG(INFO) << "No message for " << key;
     return MessageIterator<M>();
   }
+}
+
+template <typename M>
+void CombiningInCache<M>::clear() {
+  MUTEX_LOCKER(guard, this->_writeLock);
+  this->_receivedMessageCount = 0;
+  _shardMap.clear();
+}
+
+template <typename M>
+void CombiningInCache<M>::erase(prgl_shard_t shard, std::string const& key) {
+  MUTEX_LOCKER(guard, this->_writeLock);
+  HMap& vertexMap(_shardMap[shard]);
+  vertexMap.erase(key);
 }
 
 // template types to create

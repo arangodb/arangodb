@@ -48,6 +48,8 @@ class WorkerState {
   inline uint64_t executionNumber() const { return _executionNumber; }
 
   inline uint64_t globalSuperstep() const { return _globalSuperstep; }
+  
+  inline bool asynchronousMode() const {return _asynchronousMode;}
 
   inline std::string const& coordinatorId() const { return _coordinatorId; }
 
@@ -95,6 +97,7 @@ class WorkerState {
  private:
   uint64_t _executionNumber = 0;
   uint64_t _globalSuperstep = 0;
+  bool _asynchronousMode = false;
   // uint64_t _numWorkerThreads = 1;
 
   std::string _coordinatorId;
@@ -102,7 +105,6 @@ class WorkerState {
   
   std::vector<ShardID> _globalShardIDs;
   std::vector<ShardID> _localVertexShardIDs, _localEdgeShardIDs;
-  
   
   std::map<CollectionID, std::vector<ShardID>> _vertexCollectionShards, _edgeCollectionShards;
   std::map<std::string, std::string> _collectionPlanIdMap;

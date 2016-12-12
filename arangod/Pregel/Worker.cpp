@@ -127,6 +127,7 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data) {
     _conductorAggregators->aggregateValues(aggValues);
   }
   _workerAggregators->resetValues();
+  _superstepStats.reset();  // don't forget to reset before the superstep
   // execute context
   if (_workerContext != nullptr) {
     _workerContext->preGlobalSuperstep(gss);
@@ -273,7 +274,6 @@ void Worker<V, E, M>::_executeGlobalStep(
   WorkerStats stats;
   stats.activeCount = activeCount;
   stats.sendCount = outCache->sendMessageCount();
-  ;
   stats.superstepRuntimeSecs = TRI_microtime() - start;
   _workerThreadDone(vertexComputation->_workerAggregators, stats);
 }
@@ -315,14 +315,7 @@ void Worker<V, E, M>::_workerThreadDone(AggregatorUsage* threadAggregators,
     package.close();
   }
   _superstepStats.serializeValues(package);  // add stats
-  /*if (_superstepStats.activeCount == 0
-      && _superstepStats.sendCount == 0
-      && _superstepStats.receivedCount == 0) {
-    LOG(INFO) << "WE have no active vertices, and did not send messages";
-    package.add(Utils::doneKey, VPackValue(true));
-  }*/
   package.close();
-  _superstepStats.reset();  // don't forget to reset at the end of the superstep
 
   // TODO ask how to implement message sending without waiting for a response
   // ============ Call Coordinator ============

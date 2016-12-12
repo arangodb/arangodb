@@ -53,7 +53,7 @@ class MessageIterator {
     it._current = it._size;
     return it;
   }
-  const M* operator*() const { return _data; }
+  const M* operator*() const { return _data + _current; }
 
   // prefix ++
   MessageIterator& operator++() {

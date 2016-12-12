@@ -53,16 +53,20 @@ protected:
   MessageFormat<M> const* _format;
   InCache<M>* _localCache;
   std::string _baseUrl;
+  uint32_t _batchSize = 1000;
   
   /// @brief current number of vertices stored
   size_t _containedMessages = 0;
   size_t _sendMessages = 0;
+  bool shouldFlushCache();
   
  public:
   OutCache(WorkerState* state, InCache<M>* cache);
   virtual ~OutCache() {};
   
   size_t sendMessageCount() const { return _sendMessages; }
+  uint32_t batchSize() const {return _batchSize;}
+  void setBatchSize(uint32_t bs) {_batchSize = bs;}
 
   virtual void clear() = 0;
   virtual void appendMessage(prgl_shard_t shard, std::string const& key, M const& data) = 0;
