@@ -25,6 +25,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/FixedSizeAllocator.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexLookupContext.h"
@@ -715,12 +716,12 @@ void SkiplistIterator2::initNextInterval() {
 SkiplistIndex::SkiplistIndex(TRI_idx_iid_t iid,
                              arangodb::LogicalCollection* collection,
                              VPackSlice const& info)
-    : PathBasedIndex(iid, collection, info, true),
+    : PathBasedIndex(iid, collection, info, sizeof(TRI_voc_rid_t), true),
       CmpElmElm(this),
       CmpKeyElm(this),
       _skiplistIndex(nullptr) {
   _skiplistIndex =
-      new TRI_Skiplist(CmpElmElm, CmpKeyElm, [this](SkiplistIndexElement* element) { element->free(); }, _unique, _useExpansion);
+      new TRI_Skiplist(CmpElmElm, CmpKeyElm, [this](SkiplistIndexElement* element) { _allocator->deallocate(element); }, _unique, _useExpansion);
 }
 
 /// @brief destroy the skiplist index
@@ -761,7 +762,7 @@ int SkiplistIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
   if (res != TRI_ERROR_NO_ERROR) {
     for (auto& element : elements) {
       // free all elements to prevent leak
-      element->free();
+      _allocator->deallocate(element);
     }
     return res;
   }
@@ -779,7 +780,7 @@ int SkiplistIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
     if (res != TRI_ERROR_NO_ERROR) {
       // Note: this element is freed already
       for (size_t j = i; j < count; ++j) {
-        elements[j]->free();
+        _allocator->deallocate(elements[j]);
       }
       for (size_t j = 0; j < i; ++j) {
         _skiplistIndex->remove(&context, elements[j]);
@@ -812,7 +813,7 @@ int SkiplistIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
   if (res != TRI_ERROR_NO_ERROR) {
     for (auto& element : elements) {
       // free all elements to prevent leak
-      element->free();
+      _allocator->deallocate(element);
     }
     return res;
   }
@@ -833,7 +834,7 @@ int SkiplistIndex::remove(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
       res = result;
     }
     
-    elements[i]->free();
+    _allocator->deallocate(elements[i]);
   }
 
   return res;

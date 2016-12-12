@@ -52,7 +52,7 @@ template <typename T>
 static inline T NumericValue(VPackSlice const& slice, char const* attribute) {
   if (!slice.isObject()) {
     LOG(ERR) << "invalid value type when looking for attribute '" << attribute << "': expecting object";
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid attribute value: expecting object");
   }
   VPackSlice v = slice.get(attribute);
   if (v.isString()) {
@@ -63,7 +63,7 @@ static inline T NumericValue(VPackSlice const& slice, char const* attribute) {
   }
   
   LOG(ERR) << "invalid value for attribute '" << attribute << "'";
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid attribute value");
 }
 
 /// @brief creates the recover state

@@ -35,26 +35,13 @@ HashIndexElement::HashIndexElement(TRI_voc_rid_t revisionId, std::vector<std::pa
   }
 }
 
-HashIndexElement* HashIndexElement::create(TRI_voc_rid_t revisionId, std::vector<std::pair<arangodb::velocypack::Slice, uint32_t>> const& values) {
+HashIndexElement* HashIndexElement::initialize(HashIndexElement* element, 
+                                               TRI_voc_rid_t revisionId, 
+                                               std::vector<std::pair<arangodb::velocypack::Slice, uint32_t>> const& values) {
   TRI_ASSERT(!values.empty());
-  void* space = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, baseMemoryUsage(values.size()), false);
-
-  if (space == nullptr) {
-    return nullptr;
-  }
-
-  try {
-    return new (space) HashIndexElement(revisionId, values);
-  } catch (...) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, space);
-    return nullptr;
-  }
+  return new (element) HashIndexElement(revisionId, values);
 }
 
-void HashIndexElement::free() {
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, this);
-}
-  
 /// @brief velocypack sub-object (for indexes, as part of IndexElement, 
 /// if offset is non-zero, then it is an offset into the VelocyPack data in
 /// the datafile or WAL file. If offset is 0, then data contains the actual data
@@ -126,26 +113,13 @@ SkiplistIndexElement::SkiplistIndexElement(TRI_voc_rid_t revisionId, std::vector
   }
 }
 
-SkiplistIndexElement* SkiplistIndexElement::create(TRI_voc_rid_t revisionId, std::vector<std::pair<arangodb::velocypack::Slice, uint32_t>> const& values) {
+SkiplistIndexElement* SkiplistIndexElement::initialize(SkiplistIndexElement* element,
+                                                       TRI_voc_rid_t revisionId, 
+                                                       std::vector<std::pair<arangodb::velocypack::Slice, uint32_t>> const& values) {
   TRI_ASSERT(!values.empty());
-  void* space = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, baseMemoryUsage(values.size()), false);
-
-  if (space == nullptr) {
-    return nullptr;
-  }
-
-  try {
-    return new (space) SkiplistIndexElement(revisionId, values);
-  } catch (...) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, space);
-    return nullptr;
-  }
+  return new (element) SkiplistIndexElement(revisionId, values);
 }
 
-void SkiplistIndexElement::free() {
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, this);
-}
-  
 /// @brief velocypack sub-object (for indexes, as part of IndexElement, 
 /// if offset is non-zero, then it is an offset into the VelocyPack data in
 /// the datafile or WAL file. If offset is 0, then data contains the actual data

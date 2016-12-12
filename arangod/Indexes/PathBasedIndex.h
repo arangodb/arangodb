@@ -34,6 +34,8 @@ namespace aql {
 enum AstNodeType : uint32_t;
 }
 
+class FixedSizeAllocator;
+
 class PathBasedIndex : public Index {
  protected:
   struct PermutationState {
@@ -61,7 +63,7 @@ class PathBasedIndex : public Index {
   PathBasedIndex() = delete;
 
   PathBasedIndex(TRI_idx_iid_t, arangodb::LogicalCollection*,
-                 arangodb::velocypack::Slice const&, bool allowPartialIndex);
+                 arangodb::velocypack::Slice const&, size_t baseSize, bool allowPartialIndex);
 
   ~PathBasedIndex();
 
@@ -105,6 +107,8 @@ class PathBasedIndex : public Index {
                         std::vector<std::pair<VPackSlice, uint32_t>>& sliceStack);
 
  protected:
+  std::unique_ptr<FixedSizeAllocator> _allocator;
+
   /// @brief the attribute paths
   std::vector<std::vector<std::string>> _paths;
 

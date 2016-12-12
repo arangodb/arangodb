@@ -36,6 +36,10 @@ const validation = require('@arangodb/foxx/router/validation');
 const $_ROUTES = Symbol.for('@@routes'); // routes and child routers
 const $_MIDDLEWARE = Symbol.for('@@middleware'); // middleware
 
+function ucFirst (str) {
+  return str[0].toUpperCase() + str.slice(1);
+}
+
 module.exports =
   class Tree {
     constructor (context, router) {
@@ -135,11 +139,16 @@ module.exports =
 
     buildSwaggerPaths () {
       const paths = {};
+      const ids = new Set();
       for (const route of this.flatten()) {
         const parts = [];
         const swagger = new SwaggerContext();
         let i = 0;
+        const names = [];
         for (const item of route) {
+          if (item.name) {
+            names.push(item.name);
+          }
           if (item.router) {
             swagger._merge(item, true);
           } else {
@@ -164,10 +173,28 @@ module.exports =
         }
         const pathItem = paths[path];
         const operation = swagger._buildOperation();
+        if (names.length) {
+          operation.operationId = names
+          .map((name, i) => (i ? ucFirst(name) : name))
+          .join('');
+        }
         for (let method of swagger._methods) {
           method = method.toLowerCase();
           if (!pathItem[method]) {
-            pathItem[method] = operation;
+            if (operation.operationId && swagger._methods.length > 1) {
+              const op = Object.assign({}, operation);
+              pathItem[method] = op;
+              if (ids.has(op.operationId)) {
+                let i = 2;
+                while (ids.has(op.operationId + i)) {
+                  i++;
+                }
+                op.operationId += i;
+              }
+              ids.add(op.operationId);
+            } else {
+              pathItem[method] = operation;
+            }
           }
         }
       }

@@ -286,7 +286,7 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (params.IsEmpty()) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to decode function parameters");
   }
 
   bool embed = false;
@@ -375,7 +375,7 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   } catch (std::exception const& ex) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "caught unknown exception during transaction");
   }
 
   res = trx.commit();
@@ -2044,7 +2044,7 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find database");
   }
 
   if (vocbase->isDropped()) {
@@ -2270,7 +2270,7 @@ static void CreateDatabaseCoordinator(
   }
 
   if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find database");
   }
 
   // now run upgrade and copy users into context

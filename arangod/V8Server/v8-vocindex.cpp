@@ -599,7 +599,7 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
             VPackSlice f = flds.at(i);
             if (!f.isString()) {
               // index attributes must be strings
-              TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+              TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "index field names should be strings");
             }
             indexKeys.emplace(f.copyString());
           }

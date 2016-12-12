@@ -84,7 +84,7 @@ V8Expression* Executor::generateExpression(AstNode const* node) {
   v8::Handle<v8::Script> compiled = v8::Script::Compile(
       TRI_V8_STD_STRING((*_buffer)), TRI_V8_ASCII_STRING("--script--"));
 
-  if (! compiled.IsEmpty()) {
+  if (!compiled.IsEmpty()) {
     v8::Handle<v8::Value> func(compiled->Run());
 
     // exit early if an error occurred
@@ -108,7 +108,7 @@ V8Expression* Executor::generateExpression(AstNode const* node) {
     HandleV8Error(tryCatch, empty,  _buffer, true);
     
     // well we're almost sure we never reach this since the above call should throw:
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to compile AQL script code");
   }
 }
 
@@ -133,7 +133,7 @@ int Executor::executeExpression(Query* query, AstNode const* node,
   v8::Handle<v8::Script> compiled = v8::Script::Compile(
       TRI_V8_STD_STRING((*_buffer)), TRI_V8_ASCII_STRING("--script--"));
 
-  if (! compiled.IsEmpty()) {
+  if (!compiled.IsEmpty()) {
 
     v8::Handle<v8::Value> func(compiled->Run());
 
@@ -175,7 +175,7 @@ int Executor::executeExpression(Query* query, AstNode const* node,
     HandleV8Error(tryCatch, empty, _buffer, true);
 
     // well we're almost sure we never reach this since the above call should throw:
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to compile AQL script code");
   }
 }
 

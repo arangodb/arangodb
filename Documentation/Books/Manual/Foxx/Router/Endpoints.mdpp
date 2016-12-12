@@ -115,6 +115,8 @@ body
 
 Defines the request body recognized by the endpoint. There can only be one request body definition per endpoint. The definition will also be shown in the route details in the API documentation.
 
+In the absence of a request body definition, the request object's *body* property will be initialized to the unprocessed *rawBody* buffer.
+
 If the endpoint is a child router, all routes of that router will use this body definition unless overridden. If the endpoint is a middleware, the request body will only be parsed once (i.e. the MIME types of the route matching the same request will be ignored but the body will still be validated again).
 
 **Arguments**
