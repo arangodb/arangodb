@@ -2004,8 +2004,8 @@ void ClusterInfo::loadServers() {
   }
 
   AgencyCommResult result = _agency.sendTransactionWithFailover(
-    AgencyReadTransaction({AgencyCommManager::path(prefixServers),
-          AgencyCommManager::path(mapUniqueToShortId)}));
+    AgencyReadTransaction(std::vector<std::string>({AgencyCommManager::path(prefixServers),
+          AgencyCommManager::path(mapUniqueToShortId)})));
   
   
   if (result.successful()) {
