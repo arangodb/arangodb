@@ -122,7 +122,7 @@ JOB_STATUS CleanOutServer::status() {
 bool CleanOutServer::create() {  // Only through shrink cluster
 
   // Lookup server
-  if (_server.find("DBServer") == 0) {
+  if (_server.compare("DBServer") == 0) {
     try {
       _server = uuidLookup(_snapshot, _server);
     } catch (...) {
