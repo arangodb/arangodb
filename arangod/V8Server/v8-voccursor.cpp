@@ -101,9 +101,10 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::move(result), static_cast<size_t>(batchSize), nullptr, ttl, true);
 
     TRI_ASSERT(cursor != nullptr);
+    auto id = cursor->id();
     cursors->release(cursor);
 
-    auto result = V8TickId(isolate, cursor->id());
+    auto result = V8TickId(isolate, id);
     TRI_V8_RETURN(result);
   } catch (...) {
     TRI_V8_THROW_EXCEPTION_MEMORY();

@@ -1560,6 +1560,7 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex(TRI_fts_index_t* const ftx,
 
   if (result == nullptr) {
     // if we haven't found anything...
+    TRI_ReadUnlockReadWriteLock(&idx->_lock);
     return TRI_CreateResultFulltextIndex(0);
   }
 
