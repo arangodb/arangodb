@@ -50,7 +50,7 @@ MoveShard::MoveShard(Node const& snapshot, Agent* agent,
       }
     }
   } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << __FILE__ << __LINE__;
+    LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << ": " << __FILE__ << ":" << __LINE__;
     finish("Shards/" + _shard, false, e.what());
   }
 }
@@ -232,7 +232,7 @@ bool MoveShard::start() {
     try {
       todo.add(_jb->slice()[0].get(_agencyPrefix + toDoPrefix + _jobId));
     } catch (std::exception const& e) {
-      LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << __FILE__ << __LINE__;
+      LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << ": " << __FILE__ << ":" << __LINE__;
     }
   }
   todo.close();
