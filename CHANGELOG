@@ -26,12 +26,38 @@ edge attribute `label`.
 * process.stdout.isTTY now returns `true` in arangosh and when running arangod with the `--console` flag
 
 
-v3.1.4 (XXXX-XX-XX)
+v3.1.5 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #2217
+
+* Foxx router.get/post/etc handler argument can no longer accidentally omitted
+* fixed issue #2217
+
+
+v3.1.4 (2016-12-08)
 -------------------
 
 * fixed issue #2211
 
 * fixed issue #2204
+
+* at cluster start, coordinators wait until at least one DBserver is there,
+  and either at least two DBservers are there or 15s have passed, before they
+  initiate the bootstrap of system collections.
+
+* more robust agency startup from devel
+
+* supervision's AddFollower adds many followers at once
+
+* supervision has new FailedFollower job
+
+* agency's Node has new method getArray
+
+* agency RAFT timing estimates more conservative in waitForSync
+  scenario
+  
+* agency RAFT timing estimates capped at maximum 2.0/10.0 for low/high
 
 
 v3.1.3 (2016-12-02)

@@ -694,7 +694,6 @@ function getIndexesSuite() {
   };
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: return value of getIndexes for an edge collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -712,7 +711,7 @@ function getIndexesEdgesSuite() {
 
     setUp : function () {
       internal.db._drop(cn);
-      collection = internal.db._createEdgeCollection(cn, { waitForSync : false });
+      collection = internal.db._createEdgeCollection(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1049,6 +1048,73 @@ function getIndexesEdgesSuite() {
   };
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: test multi-index rollback
+////////////////////////////////////////////////////////////////////////////////
+
+function multiIndexRollbackSuite() {
+  'use strict';
+  var cn = "UnitTestsCollectionIdx";
+  var collection = null;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      internal.db._drop(cn);
+      collection = internal.db._createEdgeCollection(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      collection.drop();
+      collection = null;
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test rollback on index insertion
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexRollback: function () {
+      collection.ensureIndex({ type: "hash", fields: ["_from", "_to", "link"], unique: true });
+      collection.ensureIndex({ type: "hash", fields: ["_to", "ext"], unique: true, sparse: true });
+      
+      var res = collection.getIndexes();
+
+      assertEqual(4, res.length);
+      assertEqual("primary", res[0].type);
+      assertEqual("edge", res[1].type);
+      assertEqual("hash", res[2].type);
+      assertEqual("hash", res[3].type);
+
+      var docs = [
+        {"_from": "fromC/a", "_to": "toC/1", "link": "one"},
+        {"_from": "fromC/b", "_to": "toC/1", "link": "two"}, 
+        {"_from": "fromC/c", "_to": "toC/1", "link": "one"}
+      ];
+
+      collection.insert(docs);
+      assertEqual(3, collection.count());
+
+      try {
+        internal.db._query('FOR doc IN [ {_from: "fromC/a", _to: "toC/1", link: "one", ext: 2337789}, {_from: "fromC/b", _to: "toC/1", link: "two", ext: 2337799}, {_from: "fromC/c", _to: "toC/1", link: "one", ext: 2337789} ] UPSERT {_from: doc._from, _to: doc._to, link: doc.link} INSERT { _from: doc._from, _to: doc._to, link: doc.link, ext: doc.ext} UPDATE {ext: doc.ext} IN ' + collection.name());
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+
+      res = internal.db._query("FOR doc IN " + collection.name() + " FILTER doc._to == 'toC/1' RETURN doc._from").toArray();
+      assertEqual(3, res.length);
+    }
+
+  };
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
@@ -1057,6 +1123,7 @@ function getIndexesEdgesSuite() {
 jsunity.run(indexSuite);
 jsunity.run(getIndexesSuite);
 jsunity.run(getIndexesEdgesSuite);
+jsunity.run(multiIndexRollbackSuite);
 
 return jsunity.done();
 
