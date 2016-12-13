@@ -3086,11 +3086,10 @@ int LogicalCollection::updateDocument(
   res = insertSecondaryIndexes(trx, newRevisionId, newDoc, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    removeRevision(newRevisionId, false);
-
     // rollback
     deleteSecondaryIndexes(trx, newRevisionId, newDoc, true);
     insertSecondaryIndexes(trx, oldRevisionId, oldDoc, true);
+    removeRevision(newRevisionId, false);
 
     return res;
   }
@@ -3204,7 +3203,7 @@ int LogicalCollection::insertSecondaryIndexes(
       }
     }
   }
-
+    
   return result;
 }
 
@@ -3240,7 +3239,7 @@ int LogicalCollection::deleteSecondaryIndexes(
       result = res;
     }
   }
-
+  
   return result;
 }
 
