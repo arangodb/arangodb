@@ -66,13 +66,17 @@ size_t Collection::count() const {
   if (numDocuments == UNINITIALIZED) {
     if (arangodb::ServerState::instance()->isCoordinator()) {
       // cluster case
-      uint64_t result;
+      std::vector<std::pair<std::string, uint64_t>> result;
       int res = arangodb::countOnCoordinator(vocbase->name(), name, result);
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             res, "could not determine number of documents in collection");
       }
-      numDocuments = static_cast<int64_t>(result);
+      uint64_t count = 0;
+      for (auto const& it : result) {
+        count += it.second;
+      }
+      numDocuments = static_cast<int64_t>(count);
     } else {
       // local case
       // cache the result

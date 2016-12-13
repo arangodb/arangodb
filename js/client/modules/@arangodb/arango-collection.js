@@ -605,9 +605,13 @@ ArangoCollection.prototype.ensureIndex = function (data) {
 // / @brief gets the number of documents
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.count = function () {
-  var requestResult = this._database._connection.GET(this._baseurl('count'));
-
+ArangoCollection.prototype.count = function (details) {
+  var requestResult;
+  if (details) {
+    requestResult = this._database._connection.GET(this._baseurl('count') + '?details=true');
+  } else {
+    requestResult = this._database._connection.GET(this._baseurl('count'));
+  }
   arangosh.checkRequestResult(requestResult);
 
   return requestResult.count;
