@@ -1041,11 +1041,14 @@ void LogicalCollection::drop() {
   engine->dropCollection(_vocbase, this);
   _isDeleted = true;
 
-  // save some memory by freeing the revisions cache and indexes
-  _keyGenerator.reset();
-  _revisionsCache.reset(); 
+  // save some memory by freeing the indexes
   _indexes.clear();
-  _physical.reset();
+  try {
+    // close collection. this will also invalidate the revisions cache
+    _physical->close();
+  } catch (...) {
+    // don't throw from here... dropping should succeed
+  }
 }
 
 void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
