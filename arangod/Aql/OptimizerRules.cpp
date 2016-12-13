@@ -4437,17 +4437,40 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
 
   //LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER GEO RULE";
 
-  std::vector<GeoIndexInfo> infos;
-  checkNodesForGeoOptimization(EN::SORT, plan, infos);
-  checkNodesForGeoOptimization(EN::FILTER, plan, infos);
+  std::vector<GeoIndexInfo> filter_info;
+  std::vector<GeoIndexInfo> sort_info;
+  checkNodesForGeoOptimization(EN::FILTER, plan, filter_info);
+  checkNodesForGeoOptimization(EN::SORT, plan, sort_info);
 
   bool modified = false;
-  for(auto& info : infos){
+  GeoIndexInfo filter_applyed;
+  for(auto& info : filter_info){
     if (applyGeoOptimization(true, plan, info)){
         modified = true;
+        filter_applyed = info;
         break; // break on first replacement - might be relaxed later
     }
   }
+
+  if (!modified){
+    for(auto& info : sort_info){
+      if (applyGeoOptimization(true, plan, info)){
+          modified = true;
+          filter_applyed = info;
+          break; // break on first replacement - might be relaxed later
+      }
+    }
+  } else {
+    // find sort that matches filter used and delete sort node if it has only one condition
+    // check - memory to unlinked collection node should still be valid - see distributeSortToClusterRule
+    // both nodes must have matching collection and access path to args there may be no additional sort
+    // between the sort filter and index(collection)
+ 
+    // implement
+
+    LOG_TOPIC(DEBUG, Logger::DEVEL) << "GEO RULE - check for sort: " << modified;
+  }
+
   opt->addPlan(plan, rule, modified);
 
   //LOG_TOPIC(DEBUG, Logger::DEVEL) << "EXIT GEO RULE - modified: " << modified;
