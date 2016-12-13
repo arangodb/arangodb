@@ -174,11 +174,13 @@ function optimizerRuleTestSuite() {
         geocol.ensureIndex({ type: "hash", fields: [ "y", "z" ], unique: false });
 
         var queries = [
-          //query                                                         clust  sort   filter
-          [ "FOR d IN " + colName + " SORT distance(d.lat,d.lon, 0 ,0 ) ASC LIMIT 1 RETURN d", false, false, false ],
-          [ "FOR d IN " + colName + " SORT distance(0, 0, d.lat,d.lon ) ASC LIMIT 1 RETURN d", false, false, false ],
-          [ "FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d", false, false, false ],
-          [ "FOR i in 1..2 FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 1 && i > 1 LIMIT 1 RETURN d", false, false, true ],
+          //query                                                         clust  sort   filter index
+          [ "FOR d IN " + colName + " SORT distance(d.lat,d.lon, 0 ,0 ) ASC LIMIT 1 RETURN d", false, false, false, true ],
+          [ "FOR d IN " + colName + " SORT distance(0, 0, d.lat,d.lon ) ASC LIMIT 1 RETURN d", false, false, false, true ],
+          [ "FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d", false, false, false, true ],
+          [ "FOR d IN " + colName + " SORT distance(0, 0, d.lat, d.lon) FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d", false, false, false, true ],
+          [ "FOR d IN " + colName + " SORT distance(0, 0, d.lat, d.lon) FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d", false, false, false, true ],
+          [ "FOR i in 1..2 FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 1 && i > 1 LIMIT 1 RETURN d", false, false, true, false ],
         ];
 
         queries.forEach(function(query) {
@@ -204,6 +206,12 @@ function optimizerRuleTestSuite() {
             hasFilterNode(result);
           } else {
             hasNoFilterNode(result);
+          }
+
+          if (query[4]) {
+            hasIndexNode(result);
+          } else {
+            hasNoIndexNode(result);
           }
 
         });
