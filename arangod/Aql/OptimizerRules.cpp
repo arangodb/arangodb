@@ -4384,6 +4384,7 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& first, G
   plan->registerNode(inode);
   condition.release();
 
+  plan->replaceNode(first.collectionNode,inode);
   replaceGeoCondition(plan, first);
   replaceGeoCondition(plan, second);
 
@@ -4402,7 +4403,6 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& first, G
   };
 
   unlinkNode(first);
-  plan->replaceNode(first.collectionNode,inode);
   unlinkNode(second);
 
   //signal that plan has been changed

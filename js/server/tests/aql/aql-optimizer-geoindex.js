@@ -81,35 +81,35 @@ function optimizerRuleTestSuite() {
     }
     return 0;
   };
-  var hasSortNode = function (plan) {
-    assertEqual(findExecutionNodes(plan, "SortNode").length, 1, "Has SortNode");
+  var hasSortNode = function (plan,query) {
+    assertEqual(findExecutionNodes(plan, "SortNode").length, 1, query.string + " Has SortNode ");
   };
-  var hasNoSortNode = function (plan) {
-    assertEqual(findExecutionNodes(plan, "SortNode").length, 0, "Has no SortNode");
+  var hasNoSortNode = function (plan,query) {
+    assertEqual(findExecutionNodes(plan, "SortNode").length, 0, query.string + " Has no SortNode");
   };
-  var hasFilterNode = function (plan) {
-    assertEqual(findExecutionNodes(plan, "FilterNode").length, 1, "Has FilterNode");
+  var hasFilterNode = function (plan,query) {
+    assertEqual(findExecutionNodes(plan, "FilterNode").length, 1, query.string + " Has FilterNode");
   };
-  var hasNoFilterNode = function (plan) {
-    assertEqual(findExecutionNodes(plan, "FilterNode").length, 0, "Has no FilterNode");
+  var hasNoFilterNode = function (plan,query) {
+    assertEqual(findExecutionNodes(plan, "FilterNode").length, 0, query.string + " Has no FilterNode");
   };
-  var hasNoIndexNode = function (plan) {
-    assertEqual(findExecutionNodes(plan, "IndexNode").length, 0, "Has no IndexNode");
+  var hasNoIndexNode = function (plan,query) {
+    assertEqual(findExecutionNodes(plan, "IndexNode").length, 0, query.string + " Has no IndexNode");
   };
-  var hasNoResultsNode = function (plan) {
-    assertEqual(findExecutionNodes(plan, "NoResultsNode").length, 1, "Has NoResultsNode");
+  var hasNoResultsNode = function (plan,query) {
+    assertEqual(findExecutionNodes(plan, "NoResultsNode").length, 1, query.string + " Has NoResultsNode");
   };
-  var hasCalculationNodes = function (plan, countXPect) {
+  var hasCalculationNodes = function (plan,query, countXPect) {
     assertEqual(findExecutionNodes(plan, "CalculationNode").length,
                 countXPect, "Has " + countXPect +  " CalculationNode");
   };
-  var hasIndexNode = function (plan) {
-    var rn = findExecutionNodes(plan, "IndexNode");
-    assertEqual(rn.length, 1, "Has IndexNode");
+  var hasIndexNode = function (plan,query) {
+    var rn = findExecutionNodes(plan,"IndexNode");
+    assertEqual(rn.length, 1, query.string + "Has IndexNode");
     return;
   };
   var isNodeType = function(node, type) {
-    assertEqual(node.type, type, "check whether this node is of type "+type);
+    assertEqual(node.type, type, query.string + " check whether this node is of type "+type);
   };
 
   var geodistance = function(latitude1, longitude1, latitude2, longitude2) {
@@ -175,16 +175,46 @@ function optimizerRuleTestSuite() {
 
         var queries = [
           //query                                                         clust  sort   filter index
-          [ "FOR d IN " + colName + " SORT distance(d.lat,d.lon, 0 ,0 ) ASC LIMIT 1 RETURN d", false, false, false, true ],
-          [ "FOR d IN " + colName + " SORT distance(0, 0, d.lat,d.lon ) ASC LIMIT 1 RETURN d", false, false, false, true ],
-          [ "FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d", false, false, false, true ],
-          [ "FOR d IN " + colName + " SORT distance(0, 0, d.lat, d.lon) FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d", false, false, false, true ],
-          [ "FOR d IN " + colName + " SORT distance(0, 0, d.lat, d.lon) FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d", false, false, false, true ],
-          [ "FOR i in 1..2 FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 1 && i > 1 LIMIT 1 RETURN d", false, false, true, false ],
+          { string  : "FOR d IN " + colName + " SORT distance(d.lat,d.lon, 0 ,0 ) ASC LIMIT 1 RETURN d"
+          , cluster : false
+          , sort    : false
+          , filter  : false
+          , index   : true
+          },
+          { string  : "FOR d IN " + colName + " SORT distance(0, 0, d.lat,d.lon ) ASC LIMIT 1 RETURN d"
+          , cluster : false
+          , sort    : false
+          , filter  : false
+          , index   : true
+          },
+          { string  : "FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d"
+          , cluster : false
+          , sort    : false
+          , filter  : false
+          , index   : true
+          },
+          { string  : "FOR d IN " + colName + " SORT distance(0, 0, d.lat, d.lon) FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d"
+          , cluster : false
+          , sort    : false
+          , filter  : false
+          , index   : true
+          },
+          { string  : "FOR d IN " + colName + " SORT distance(0, 0, d.lat, d.lon) FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d"
+          , cluster : false
+          , sort    : false
+          , filter  : false
+          , index   : true
+          },
+          { string  : "FOR i in 1..2 FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 1 && i > 1 LIMIT 1 RETURN d"
+          , cluster : false
+          , sort    : false
+          , filter  : true
+          , index   : false
+          },
         ];
 
         queries.forEach(function(query) {
-          var result = AQL_EXPLAIN(query[0]);
+          var result = AQL_EXPLAIN(query.string);
 
           // //optimized on cluster
           // if (query[1]) {
@@ -195,23 +225,23 @@ function optimizerRuleTestSuite() {
           // }
 
           //sort nodes
-          if (query[2]) {
-            hasSortNode(result);
+          if (query.sort) {
+            hasSortNode(result,query);
           } else {
-            hasNoSortNode(result);
+            hasNoSortNode(result,query);
           }
 
           //filter nodes
-          if (query[3]) {
-            hasFilterNode(result);
+          if (query.filter) {
+            hasFilterNode(result,query);
           } else {
-            hasNoFilterNode(result);
+            hasNoFilterNode(result,query);
           }
 
-          if (query[4]) {
-            hasIndexNode(result);
+          if (query.index){
+            hasIndexNode(result,query);
           } else {
-            hasNoIndexNode(result);
+            hasNoIndexNode(result,query);
           }
 
         });
