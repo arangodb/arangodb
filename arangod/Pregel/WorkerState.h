@@ -23,8 +23,8 @@
 #ifndef ARANGODB_PREGEL_WORKER_STATE_H
 #define ARANGODB_PREGEL_WORKER_STATE_H 1
 
-#include <algorithm>
 #include <velocypack/velocypack-aliases.h>
+#include <algorithm>
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 
@@ -48,25 +48,30 @@ class WorkerState {
   inline uint64_t executionNumber() const { return _executionNumber; }
 
   inline uint64_t globalSuperstep() const { return _globalSuperstep; }
-  
-  inline bool asynchronousMode() const {return _asynchronousMode;}
+
+  inline uint64_t localSuperstep() const { return _localSuperstep; }
+
+  inline bool asynchronousMode() const { return _asynchronousMode; }
 
   inline std::string const& coordinatorId() const { return _coordinatorId; }
 
   inline std::string const& database() const { return _database; }
 
-  inline std::map<CollectionID, std::vector<ShardID>> const& vertexCollectionShards() const {
+  inline std::map<CollectionID, std::vector<ShardID>> const&
+  vertexCollectionShards() const {
     return _vertexCollectionShards;
   }
 
-  inline std::map<CollectionID, std::vector<ShardID>> const& edgeCollectionShards() const {
+  inline std::map<CollectionID, std::vector<ShardID>> const&
+  edgeCollectionShards() const {
     return _edgeCollectionShards;
   }
 
-  inline std::map<CollectionID, std::string> const& collectionPlanIdMap() const {
+  inline std::map<CollectionID, std::string> const& collectionPlanIdMap()
+      const {
     return _collectionPlanIdMap;
   };
-  
+
   // same content on every worker, has to stay equal!!!!
   inline std::vector<ShardID> const& globalShardIDs() const {
     return _globalShardIDs;
@@ -83,30 +88,33 @@ class WorkerState {
     return _localEdgeShardIDs;
   };
   inline size_t shardId(ShardID const& responsibleShard) const {
-    auto it = std::find(_globalShardIDs.begin(), _globalShardIDs.end(), responsibleShard);
-    return it != _globalShardIDs.end() ? it - _globalShardIDs.begin() : (uint16_t)-1;
+    auto it = std::find(_globalShardIDs.begin(), _globalShardIDs.end(),
+                        responsibleShard);
+    return it != _globalShardIDs.end() ? it - _globalShardIDs.begin()
+                                       : (uint16_t)-1;
   }
   // index in globalShardIDs
   inline bool isLocalVertexShard(size_t shardIndex) const {
     // TODO cache this? prob small
     ShardID const& shard = _globalShardIDs[shardIndex];
-    return std::find(_localVertexShardIDs.begin(), _localVertexShardIDs.end(), shard)
-            != _localVertexShardIDs.end();
+    return std::find(_localVertexShardIDs.begin(), _localVertexShardIDs.end(),
+                     shard) != _localVertexShardIDs.end();
   }
-  
+
  private:
   uint64_t _executionNumber = 0;
   uint64_t _globalSuperstep = 0;
+  uint64_t _localSuperstep = 0;
   bool _asynchronousMode = false;
-  // uint64_t _numWorkerThreads = 1;
 
   std::string _coordinatorId;
   std::string _database;
-  
+
   std::vector<ShardID> _globalShardIDs;
   std::vector<ShardID> _localVertexShardIDs, _localEdgeShardIDs;
-  
-  std::map<CollectionID, std::vector<ShardID>> _vertexCollectionShards, _edgeCollectionShards;
+
+  std::map<CollectionID, std::vector<ShardID>> _vertexCollectionShards,
+      _edgeCollectionShards;
   std::map<std::string, std::string> _collectionPlanIdMap;
 };
 }

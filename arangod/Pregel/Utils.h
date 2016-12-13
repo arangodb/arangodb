@@ -45,7 +45,7 @@ class Utils {
   static std::string const finishedStartupPath;
   static std::string const prepareGSSPath;
   static std::string const startGSSPath;
-  static std::string const finishedGSSPath;
+  static std::string const finishedWorkerStepPath;
   static std::string const cancelGSSPath;
   static std::string const messagesPath;
   static std::string const finalizeExecutionPath;
@@ -63,6 +63,7 @@ class Utils {
   static std::string const totalVertexCount;
   static std::string const totalEdgeCount;
   static std::string const asyncMode;
+  static std::string const gssDone;
 
   static std::string const globalSuperstepKey;
   static std::string const messagesKey;
@@ -70,14 +71,13 @@ class Utils {
   static std::string const recoveryMethodKey;
   static std::string const compensate;
   static std::string const rollback;
-  
+
   static std::string const storeResultsKey;
   static std::string const aggregatorValuesKey;
   static std::string const activeCountKey;
   static std::string const receivedCountKey;
   static std::string const sendCountKey;
   static std::string const superstepRuntimeKey;
- 
 
   // User parameters
   static std::string const userParametersKey;
@@ -88,11 +88,9 @@ class Utils {
   static int64_t countDocuments(TRI_vocbase_t* vocbase,
                                 std::string const& collection);
   static std::shared_ptr<LogicalCollection> resolveCollection(
-                                                              std::string const& database,
-                                                              std::string const& collectionName,
+      std::string const& database, std::string const& collectionName,
       std::map<std::string, std::string> const& collectionPlanIdMap);
-  static void resolveShard(LogicalCollection* info,
-                           std::string const& shardKey,
+  static void resolveShard(LogicalCollection* info, std::string const& shardKey,
                            std::string const& vertexKey,
                            std::string& responsibleShard);
 };

@@ -40,7 +40,7 @@ std::string const Utils::startExecutionPath = "startExecution";
 std::string const Utils::finishedStartupPath = "finishedStartup";
 std::string const Utils::prepareGSSPath = "prepareGSS";
 std::string const Utils::startGSSPath = "startGSS";
-std::string const Utils::finishedGSSPath = "finishedGSS";
+std::string const Utils::finishedWorkerStepPath = "finishedStep";
 std::string const Utils::cancelGSSPath = "cancelGSS";
 std::string const Utils::messagesPath = "messages";
 std::string const Utils::finalizeExecutionPath = "finalizeExecution";
@@ -56,6 +56,7 @@ std::string const Utils::globalShardListKey = "globalShardList";
 std::string const Utils::totalVertexCount = "vertexCount";
 std::string const Utils::totalEdgeCount = "edgeCount";
 std::string const Utils::asyncMode = "async";
+std::string const Utils::gssDone = "gssDone";
 
 std::string const Utils::coordinatorIdKey = "coordinatorId";
 std::string const Utils::algorithmKey = "algorithm";
@@ -72,7 +73,6 @@ std::string const Utils::activeCountKey = "activeCount";
 std::string const Utils::receivedCountKey = "receivedCount";
 std::string const Utils::sendCountKey = "sendCount";
 std::string const Utils::superstepRuntimeKey = "superstepRuntime";
-
 
 std::string const Utils::userParametersKey = "userparams";
 

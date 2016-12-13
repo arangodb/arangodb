@@ -23,23 +23,23 @@
 #ifndef ARANGODB_PREGEL_STATISTICS_H
 #define ARANGODB_PREGEL_STATISTICS_H 1
 
-#include <velocypack/Slice.h>
 #include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 #include "Pregel/Utils.h"
 
 namespace arangodb {
 namespace pregel {
 
-
 struct WorkerStats {
   size_t activeCount = 0;
   size_t sendCount = 0;
   size_t receivedCount = 0;
-  double superstepRuntimeSecs= 0;
+  double superstepRuntimeSecs = 0;
 
   WorkerStats() {}
-  WorkerStats(size_t a, size_t s, size_t r) : activeCount(a), sendCount(s), receivedCount(r) {}
+  WorkerStats(size_t a, size_t s, size_t r)
+      : activeCount(a), sendCount(s), receivedCount(r) {}
 
   void accumulate(WorkerStats const& other) {
     activeCount += other.activeCount;
@@ -47,7 +47,7 @@ struct WorkerStats {
     receivedCount += other.receivedCount;
     superstepRuntimeSecs += other.superstepRuntimeSecs;
   }
-  
+
   void accumulate(VPackSlice statValues) {
     VPackSlice p = statValues.get(Utils::activeCountKey);
     if (p.isInteger()) {
@@ -73,12 +73,16 @@ struct WorkerStats {
     b.add(Utils::receivedCountKey, VPackValue(receivedCount));
     b.add(Utils::superstepRuntimeKey, VPackValue(superstepRuntimeSecs));
   }
-  
+
   void reset() {
     activeCount = 0;
     sendCount = 0;
     receivedCount = 0;
     superstepRuntimeSecs = 0;
+  }
+  
+  bool isDone() {
+    return activeCount == 0 && sendCount == receivedCount;
   }
 };
 }

@@ -35,6 +35,7 @@ WorkerState::WorkerState(DatabaseID dbname, VPackSlice params)
   VPackSlice execNum = params.get(Utils::executionNumberKey);
   VPackSlice collectionPlanIdMap = params.get(Utils::collectionPlanIdMapKey);
   VPackSlice globalShards = params.get(Utils::globalShardListKey);
+  //VPackSlice userParams = params.get(Utils::userParametersKey);
   if (!coordID.isString() || !edgeShardMap.isObject() ||
       !vertexShardMap.isObject() || !execNum.isInteger() ||
       !collectionPlanIdMap.isObject() || !globalShards.isArray()) {

@@ -23,56 +23,57 @@
 #ifndef ARANGODB_PREGEL_RECOVERY_H
 #define ARANGODB_PREGEL_RECOVERY_H 1
 
-#include "Basics/Mutex.h"
-#include "Cluster/ClusterInfo.h"
-#include "Agency/AgencyComm.h"
-#include "Agency/AgencyCallbackRegistry.h"
 #include <velocypack/velocypack-aliases.h>
 #include <velocypack/vpack.h>
-
+#include "Agency/AgencyCallbackRegistry.h"
+#include "Agency/AgencyComm.h"
+#include "Basics/Mutex.h"
+#include "Cluster/ClusterInfo.h"
 
 namespace arangodb {
 namespace pregel {
 
-template<typename V, typename E>
+template <typename V, typename E>
 class GraphStore;
 class Conductor;
-  
+
 class RecoveryManager {
-  
   Mutex _lock;
   AgencyComm _agency;
-  AgencyCallbackRegistry *_agencyCallbackRegistry;//weak
-  
+  AgencyCallbackRegistry* _agencyCallbackRegistry;  // weak
+
   std::map<ShardID, std::set<Conductor*>> _listeners;
   std::map<ShardID, ServerID> _primaryServers;
   std::map<ShardID, std::shared_ptr<AgencyCallback>> _agencyCallbacks;
-  
+
   void _monitorShard(CollectionID const& cid, ShardID const& shard);
-  
+
  public:
-  RecoveryManager(AgencyCallbackRegistry *registry);
+  RecoveryManager(AgencyCallbackRegistry* registry);
   ~RecoveryManager();
 
-  void monitorCollections(std::vector<std::shared_ptr<LogicalCollection>> const& collections, Conductor*);
+  void monitorCollections(
+      std::vector<std::shared_ptr<LogicalCollection>> const& collections,
+      Conductor*);
   void stopMonitoring(Conductor*);
-  int filterGoodServers(std::vector<ServerID> const& servers, std::vector<ServerID> &goodServers);
-  //bool allServersAvailable(std::vector<ServerID> const& dbServers);
+  int filterGoodServers(std::vector<ServerID> const& servers,
+                        std::vector<ServerID>& goodServers);
+  // bool allServersAvailable(std::vector<ServerID> const& dbServers);
 };
-  
+
 class RecoveryWorker {
   friend class RestPregelHandler;
-  
+
   std::map<ShardID, ServerID> _secondaries;
-  ServerID const* secondaryForShard(ShardID const& shard) {return nullptr;}
-  
-  //receivedBackupData(VPackSlice slice);
-  
-public:
-  template<typename V, typename E>
-  void replicateGraphData(GraphStore<V,E> *graphStore) {}
-  
-  void reloadPlanData() {_secondaries.clear();}
+  ServerID const* secondaryForShard(ShardID const& shard) { return nullptr; }
+
+  // receivedBackupData(VPackSlice slice);
+
+ public:
+  template <typename V, typename E>
+  void replicateGraphData(GraphStore<V, E>* graphStore) {}
+
+  void reloadPlanData() { _secondaries.clear(); }
 };
 }
 }

@@ -36,6 +36,10 @@ struct PageRankAlgorithm : public SimpleAlgorithm<float, float, float> {
   
  public:
   PageRankAlgorithm(arangodb::velocypack::Slice params);
+  
+  bool supportsAsyncMode() const override { return true; }
+  bool supportsCompensation() const override { return true; }
+  MasterContext* masterContext(VPackSlice userParams) const override;
 
   GraphFormat<float, float>* inputFormat() const override;
   MessageFormat<float>* messageFormat() const override;
@@ -44,8 +48,6 @@ struct PageRankAlgorithm : public SimpleAlgorithm<float, float, float> {
       const override;
   VertexCompensation<float, float, float>* createCompensation(uint64_t gss) const override;
   Aggregator* aggregator(std::string const& name) const override;
-  
-  MasterContext* masterContext(VPackSlice userParams) const override;
 };
 }
 }

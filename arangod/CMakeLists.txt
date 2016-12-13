@@ -360,7 +360,7 @@ SET(ARANGOD_SOURCES
   Wal/Slot.cpp
   Wal/Slots.cpp
   Wal/SynchronizerThread.cpp
-  Pregel/AggregatorUsage.cpp
+  Pregel/AggregatorHandler.cpp
   Pregel/AlgoRegistry.cpp
   Pregel/Algos/SSSP.cpp
   Pregel/Algos/PageRank.cpp
@@ -396,6 +396,7 @@ target_link_libraries(${BIN_ARANGOD}
   ${SYSTEM_LIBRARIES}
   boost_boost
   boost_system
+  libcuckoo
 )
 
 install(

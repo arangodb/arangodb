@@ -88,27 +88,26 @@ void RecoveryManager::_monitorShard(CollectionID const& cid,
                                     ShardID const& shard) {
   std::function<bool(VPackSlice const& result)> listener =
       [this, shard](VPackSlice const& result) {
-        MUTEX_LOCKER(guard, _lock);// we are editing _primaryServers
-        
+        MUTEX_LOCKER(guard, _lock);  // we are editing _primaryServers
+
         auto const& conductors = _listeners.find(shard);
         if (conductors == _listeners.end()) {
           return false;
         }
 
         if (result.isArray()) {
-          
           if (result.length() > 0) {
             ServerID nextPrimary = result.at(0).copyString();
             auto const& currentPrimary = _primaryServers.find(shard);
-            if (currentPrimary != _primaryServers.end()
-                && currentPrimary->second != nextPrimary) {
+            if (currentPrimary != _primaryServers.end() &&
+                currentPrimary->second != nextPrimary) {
               _primaryServers[shard] = nextPrimary;
-              for (Conductor *cc : conductors->second) {
+              for (Conductor* cc : conductors->second) {
                 cc->startRecovery();
               }
             }
           } else {
-            for (Conductor *cc : conductors->second) {
+            for (Conductor* cc : conductors->second) {
               cc->cancel();
             }
           }

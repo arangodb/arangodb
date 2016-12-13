@@ -25,11 +25,11 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
-#include "Pregel/AggregatorUsage.h"
+#include "Pregel/AggregatorHandler.h"
 #include "Pregel/Algorithm.h"
+#include "Pregel/Statistics.h"
 #include "Pregel/WorkerContext.h"
 #include "Pregel/WorkerState.h"
-#include "Pregel/Statistics.h"
 
 struct TRI_vocbase_t;
 namespace arangodb {
@@ -40,7 +40,7 @@ class IWorker {
  public:
   virtual ~IWorker(){};
   virtual void prepareGlobalStep(VPackSlice data) = 0;
-  virtual void startGlobalStep(VPackSlice data) = 0;  // called by coordinator
+  virtual void startGlobalStep(VPackSlice data) = 0;   // called by coordinator
   virtual void cancelGlobalStep(VPackSlice data) = 0;  // called by coordinator
   virtual void receivedMessages(VPackSlice data) = 0;
   virtual void finalizeExecution(VPackSlice data) = 0;
@@ -53,58 +53,62 @@ class GraphStore;
 
 template <typename M>
 class InCache;
-  
+
 template <typename T>
 class RangeIterator;
 class VertexEntry;
-  
+
 template <typename V, typename E, typename M>
 class VertexContext;
-  
-  
 
 template <typename V, typename E, typename M>
 class Worker : public IWorker {
-  //friend class arangodb::RestPregelHandler;
-  
+  // friend class arangodb::RestPregelHandler;
+
   bool _running = true;
   WorkerState _state;
   WorkerStats _workerStats;
   uint64_t _expectedGSS = 0;
   std::unique_ptr<Algorithm<V, E, M>> _algorithm;
   std::unique_ptr<WorkerContext> _workerContext;
-  Mutex _conductorMutex;// locks callbak methods
-  mutable Mutex _threadMutex;// locks _workerThreadDone
-  
+  Mutex _conductorMutex;       // locks callbak methods
+  mutable Mutex _threadMutex;  // locks _workerThreadDone
+
   // only valid while recovering to determine the offset
   // where new vertices were inserted
   size_t _preRecoveryTotal;
- 
+
+  std::unique_ptr<AggregatorHandler> _conductorAggregators;
+  std::unique_ptr<AggregatorHandler> _workerAggregators;
   std::unique_ptr<GraphStore<V, E>> _graphStore;
-  std::unique_ptr<InCache<M>> _readCache, _writeCache, _nextPhase;
-  std::unique_ptr<AggregatorUsage> _conductorAggregators;
-  std::unique_ptr<AggregatorUsage> _workerAggregators;
   std::unique_ptr<MessageFormat<M>> _messageFormat;
   std::unique_ptr<MessageCombiner<M>> _messageCombiner;
-  
+  // from previous or current superstep
+  std::unique_ptr<InCache<M>> _readCache;
+  // for the current or next superstep
+  std::unique_ptr<InCache<M>> _writeCache;
+  // intended for the next superstep phase
+  std::unique_ptr<InCache<M>> _nextPhase;
+
   WorkerStats _superstepStats;
   size_t _runningThreads;
-  
+
   void _swapIncomingCaches() {
     _readCache.swap(_writeCache);
     _writeCache->clear();
   }
-  
-  void _initializeVertexContext(VertexContext<V, E, M> *ctx);
-  void _executeGlobalStep(RangeIterator<VertexEntry> &vertexIterator);
-  void _workerThreadDone(AggregatorUsage *threadAggregators,
+
+  void _initializeVertexContext(VertexContext<V, E, M>* ctx);
+  void _executeGlobalStep(RangeIterator<VertexEntry>& vertexIterator);
+  void _workerThreadDone(AggregatorHandler* threadAggregators,
                          WorkerStats const& threadStats);
   void _callConductor(std::string path, VPackSlice message);
+
  public:
   Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algorithm,
          VPackSlice params);
   ~Worker();
-  
+
   // ====== called by rest handler =====
   void prepareGlobalStep(VPackSlice data) override;
   void startGlobalStep(VPackSlice data) override;

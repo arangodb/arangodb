@@ -44,7 +44,6 @@ processing */
 template <typename M>
 class InCache {
  protected:
-  
   mutable Mutex _writeLock;
   size_t _receivedMessageCount = 0;
   MessageFormat<M> const* _format;
@@ -53,12 +52,12 @@ class InCache {
       : _receivedMessageCount(0), _format(format) {}
 
  public:
-  virtual ~InCache() {};
-  
-  MessageFormat<M> const* format() const {return _format;}
+  virtual ~InCache(){};
+
+  MessageFormat<M> const* format() const { return _format; }
   void parseMessages(VPackSlice messages);
   size_t receivedMessageCount() const { return _receivedMessageCount; }
-  
+
   /// @brief internal method to direclty set the messages for a vertex. Only
   /// valid with already combined messages
   virtual void setDirect(prgl_shard_t shard, std::string const& vertexId,
@@ -66,7 +65,8 @@ class InCache {
   virtual void mergeCache(InCache<M> const* otherCache) = 0;
   /// @brief get messages for vertex id. (Don't use keys from _from or _to
   /// directly, they contain the collection name)
-  virtual MessageIterator<M> getMessages(prgl_shard_t shard, std::string const& key) = 0;
+  virtual MessageIterator<M> getMessages(prgl_shard_t shard,
+                                         std::string const& key) = 0;
   /// clear cache
   virtual void clear() = 0;
   virtual void erase(prgl_shard_t shard, std::string const& key) = 0;
@@ -83,7 +83,8 @@ class ArrayInCache : public InCache<M> {
   void setDirect(prgl_shard_t shard, std::string const& vertexId,
                  M const& data) override;
   void mergeCache(InCache<M> const* otherCache) override;
-  MessageIterator<M> getMessages(prgl_shard_t shard, std::string const& key) override;
+  MessageIterator<M> getMessages(prgl_shard_t shard,
+                                 std::string const& key) override;
   void clear() override;
   void erase(prgl_shard_t shard, std::string const& key) override;
 };
@@ -91,21 +92,22 @@ class ArrayInCache : public InCache<M> {
 template <typename M>
 class CombiningInCache : public InCache<M> {
   typedef std::unordered_map<std::string, M> HMap;
-  
+
   MessageCombiner<M> const* _combiner;
   std::map<prgl_shard_t, HMap> _shardMap;
 
  public:
   CombiningInCache(MessageFormat<M> const* format,
                    MessageCombiner<M> const* combiner)
-  : InCache<M>(format), _combiner(combiner) {}
-  
-  MessageCombiner<M> const* combiner() const {return _combiner;}
+      : InCache<M>(format), _combiner(combiner) {}
+
+  MessageCombiner<M> const* combiner() const { return _combiner; }
 
   void setDirect(prgl_shard_t shard, std::string const& vertexId,
                  M const& data) override;
   void mergeCache(InCache<M> const* otherCache) override;
-  MessageIterator<M> getMessages(prgl_shard_t shard, std::string const& key) override;
+  MessageIterator<M> getMessages(prgl_shard_t shard,
+                                 std::string const& key) override;
   void clear() override;
   void erase(prgl_shard_t shard, std::string const& key) override;
 };

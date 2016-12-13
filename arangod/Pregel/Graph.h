@@ -27,7 +27,7 @@ namespace arangodb {
 namespace pregel {
 
 typedef uint16_t prgl_shard_t;
-  
+
 /// @brief header entry for the edge file
 template <typename E>
 class Edge {
@@ -35,15 +35,11 @@ class Edge {
   prgl_shard_t _targetShard;
   std::string _toKey;
   E _data;
-  
+
  public:
   // EdgeEntry() : _nextEntryOffset(0), _dataSize(0), _vertexIDSize(0) {}
-  Edge(prgl_shard_t source,
-       prgl_shard_t target,
-       std::string const& key)
-  : _sourceShard(source),
-    _targetShard(target),
-    _toKey(key) {}
+  Edge(prgl_shard_t source, prgl_shard_t target, std::string const& key)
+      : _sourceShard(source), _targetShard(target), _toKey(key) {}
 
   // size_t getSize() { return sizeof(EdgeEntry) + _vertexIDSize + _dataSize; }
   std::string const& toKey() const { return _toKey; }
@@ -51,19 +47,15 @@ class Edge {
   inline E* data() {
     return &_data;  // static_cast<E>(this + sizeof(EdgeEntry) + _vertexIDSize);
   }
-  inline prgl_shard_t sourceShard() const {
-    return _sourceShard;
-  }
-  inline prgl_shard_t targetShard() const {
-    return _targetShard;
-  }
+  inline prgl_shard_t sourceShard() const { return _sourceShard; }
+  inline prgl_shard_t targetShard() const { return _targetShard; }
 };
 
 class VertexEntry {
   template <typename V, typename E>
   friend class GraphStore;
 
-  const prgl_shard_t _shard;// TODO optimize and remove
+  const prgl_shard_t _shard;  // TODO optimize and remove
   const std::string _key;
   size_t _vertexDataOffset;  // size_t vertexID length
   size_t _edgeDataOffset;
@@ -85,14 +77,14 @@ class VertexEntry {
   inline size_t getSize() { return sizeof(VertexEntry); }
   inline bool active() const { return _active; }
   inline void setActive(bool bb) { _active = bb; }
-  
-  inline prgl_shard_t shard() const {return _shard;}
+
+  inline prgl_shard_t shard() const { return _shard; }
   inline std::string const& key() const { return _key; };
   /*std::string const& key() const {
     return std::string(_key, _keySize);
   };*/
 };
-  
+
 // unused right now
 /*class LinkedListIterator {
  private:

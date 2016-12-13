@@ -38,7 +38,7 @@ struct MessageFormat {
   virtual void unwrapValue(VPackSlice body, M& value) const = 0;
   virtual void addValue(VPackBuilder& arrayBuilder, M const& val) const = 0;
 };
-  
+
 struct IntegerMessageFormat : public MessageFormat<int64_t> {
   IntegerMessageFormat() {}
   void unwrapValue(VPackSlice s, int64_t& value) const override {
@@ -58,7 +58,7 @@ struct FloatMessageFormat : public MessageFormat<float> {
     arrayBuilder.add(VPackValue(val));
   }
 };
-  
+
 /*
  template <typename M>
  struct NumberMessageFormat : public MessageFormat<M> {

@@ -31,7 +31,7 @@ class MessageIterator {
   M const* _data;
   size_t _current = 0;
   const size_t _size = 1;
-  
+
  public:
   MessageIterator() : _data(nullptr), _current(0), _size(0) {}
 
@@ -74,22 +74,21 @@ class MessageIterator {
 
   size_t size() const { return _size; }
 };
-  
-  
+
 template <typename T>
 class RangeIterator {
-private:
+ private:
   // void *_begin, *_end, *_current;
   std::vector<T>& _vector;
   size_t _begin, _end, _current;
-  
-public:
+
+ public:
   typedef RangeIterator<T> iterator;
   typedef const RangeIterator<T> const_iterator;
-  
+
   RangeIterator(std::vector<T>& v, size_t begin, size_t end)
-  : _vector(v), _begin(begin), _end(end), _current(begin) {}
-  
+      : _vector(v), _begin(begin), _end(end), _current(begin) {}
+
   iterator begin() { return RangeIterator(_vector, _begin, _end); }
   const_iterator begin() const { return RangeIterator(_vector, _begin, _end); }
   iterator end() {
@@ -102,31 +101,31 @@ public:
     it._current = it._end;
     return it;
   }
-  
+
   // prefix ++
   RangeIterator& operator++() {
     _current++;
     return *this;
   }
-  
+
   // postfix ++
   RangeIterator<T>& operator++(int) {
     RangeIterator<T> result(*this);
     ++(*this);
     return result;
   }
-  
+
   T* operator*() const {
     T* el = _vector.data();
     return _current != _end ? el + _current : nullptr;
   }
-  
+
   bool operator!=(RangeIterator<T> const& other) const {
     return _current != other._current;
   }
-  
+
   size_t size() const { return _end - _begin; }
-  
+
   /*EdgeIterator(void* beginPtr, void* endPtr)
    : _begin(beginPtr), _end(endPtr), _current(_begin) {}
    iterator begin() { return EdgeIterator(_begin, _end); }
@@ -141,19 +140,18 @@ public:
    it._current = it._end;
    return it;
    }
-   
+
    // prefix ++
    EdgeIterator<E>& operator++() {
    EdgeEntry<E>* entry = static_cast<EdgeEntry<E>>(_current);
    _current += entry->getSize();
    return *this;
    }
-   
+
    EdgeEntry<E>* operator*() const {
    return _current != _end ? static_cast<EdgeEntry<E>>(_current) : nullptr;
    }*/
 };
-  
 }
 }
 #endif

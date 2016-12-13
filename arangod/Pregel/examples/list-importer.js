@@ -51,7 +51,7 @@ module.exports = function (gname, filename) {
       
       graph[eColl].save(vColl+"/"+parts[0],
                         vColl+"/"+parts[1],
-                        {_vertex:parts[0], value:-1});
+                        {_vertex:parts[0]});
     }
   });
 };

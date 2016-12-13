@@ -25,9 +25,9 @@
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
-#include "AggregatorUsage.h"
 #include "Basics/Common.h"
-#include "Utils.h"
+#include "Pregel/AggregatorHandler.h"
+#include "Pregel/Utils.h"
 
 namespace arangodb {
 namespace pregel {
@@ -36,7 +36,7 @@ class MasterContext {
   friend class Conductor;
 
   uint64_t _vertexCount, _edgeCount;
-  AggregatorUsage* _aggregators;
+  AggregatorHandler* _aggregators;
 
  protected:
   template <typename T>
@@ -50,21 +50,21 @@ class MasterContext {
   }
 
   virtual void preApplication(){};
-  
+
   /// @brief called before supersteps
   /// @return true to continue the computation
-  virtual bool preGlobalSuperstep(uint64_t gss) {return true;};
+  virtual bool preGlobalSuperstep(uint64_t gss) { return true; };
   /// @brief called after supersteps
   /// @return true to continue the computation
-  virtual bool postGlobalSuperstep(uint64_t gss) {return true;};
+  virtual bool postGlobalSuperstep(uint64_t gss) { return true; };
   virtual void postApplication(){};
 
   /// should indicate if compensation is supposed to start by returning true
-  virtual bool preCompensation(uint64_t gss) {return true;}
+  virtual bool preCompensation(uint64_t gss) { return true; }
   /// should indicate if compensation is finished, by returning false.
   /// otherwise workers will be called again with the aggregated values
-  virtual bool postCompensation(uint64_t gss) {return false;}
-  
+  virtual bool postCompensation(uint64_t gss) { return false; }
+
  public:
   MasterContext(VPackSlice params){};
 

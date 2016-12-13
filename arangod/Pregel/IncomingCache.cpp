@@ -30,6 +30,9 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+//#include <libcuckoo/city_hasher.hh>
+//#include <libcuckoo/cuckoohash_map.hh>
+
 using namespace arangodb;
 using namespace arangodb::pregel;
 
@@ -87,7 +90,7 @@ void ArrayInCache<M>::mergeCache(InCache<M> const* otherCache) {
 
   // cannot call setDirect since it locks
   for (auto const& pair : other->_shardMap) {
-    HMap &vertexMap = _shardMap[pair.first];
+    HMap& vertexMap = _shardMap[pair.first];
     for (auto& vertexMessage : pair.second) {
       std::vector<M>& a = vertexMap[vertexMessage.first];
       std::vector<M> const& b = vertexMessage.second;
@@ -119,7 +122,6 @@ void ArrayInCache<M>::clear() {
   _shardMap.clear();
 }
 
-
 template <typename M>
 void ArrayInCache<M>::erase(prgl_shard_t shard, std::string const& key) {
   MUTEX_LOCKER(guard, this->_writeLock);
@@ -133,6 +135,19 @@ template <typename M>
 void CombiningInCache<M>::setDirect(prgl_shard_t shard, std::string const& key,
                                     M const& newValue) {
   MUTEX_LOCKER(guard, this->_writeLock);
+
+  /*cuckoohash_map<int, std::string, CityHasher<int>> Table;
+  for (int i = 0; i < 100; i++) {
+    Table[i] = "hello"+std::to_string(i);
+  }
+  for (int i = 0; i < 101; i++) {
+    std::string out;
+    if (Table.find(i, out)) {
+      LOG(INFO) << i << "  " << out;
+    } else {
+      LOG(INFO) << i << "  NOT FOUND";
+    }
+  }*/
 
   this->_receivedMessageCount++;
   HMap& vertexMap = _shardMap[shard];

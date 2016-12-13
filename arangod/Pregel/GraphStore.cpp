@@ -43,16 +43,8 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 
 template <typename V, typename E>
-GraphStore<V, E>::GraphStore(TRI_vocbase_t* vb, WorkerState const& state,
-                             GraphFormat<V, E>* graphFormat)
-    : _vocbaseGuard(vb), _graphFormat(graphFormat) {
-  //  _edgeCollection = ClusterInfo::instance()->getCollection(
-  //      vb->name(), state->edgeCollectionPlanId());
-
-  loadShards(state);
-  LOG(INFO) << "Loaded " << _index.size() << "vertices and " << _edges.size()
-            << " edges";
-}
+GraphStore<V, E>::GraphStore(TRI_vocbase_t* vb, GraphFormat<V, E>* graphFormat)
+    : _vocbaseGuard(vb), _graphFormat(graphFormat) {}
 
 template <typename V, typename E>
 GraphStore<V, E>::~GraphStore() {
@@ -61,22 +53,7 @@ GraphStore<V, E>::~GraphStore() {
 
 template <typename V, typename E>
 void GraphStore<V, E>::loadShards(WorkerState const& state) {
-  std::vector<std::string> readColls, writeColls;
-  for (auto shard : state.localVertexShardIDs()) {
-    readColls.push_back(shard);
-  }
-  for (auto shard : state.localEdgeShardIDs()) {
-    readColls.push_back(shard);
-  }
-  double lockTimeout =
-      (double)(TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT / 1000000ULL);
-  _transaction = new ExplicitTransaction(
-      StandaloneTransactionContext::Create(_vocbaseGuard.vocbase()), readColls,
-      writeColls, lockTimeout, false, false);
-  int res = _transaction->begin();
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
+  _createReadTransaction(state);
 
   std::map<CollectionID, std::vector<ShardID>> const& vertexMap =
       state.vertexCollectionShards();
@@ -106,6 +83,50 @@ void GraphStore<V, E>::loadShards(WorkerState const& state) {
     }
   }
   _cleanupTransactions();
+}
+
+template <typename V, typename E>
+void GraphStore<V, E>::loadDocument(WorkerState const& state,
+                                    ShardID const& shard,
+                                    std::string const& _key) {
+  /*if (_readTrx == nullptr) {
+   _createReadTransaction(state);
+  }
+
+  prgl_shard_t sourceShard = (prgl_shard_t)state.shardId(shard);
+  bool storeData = _graphFormat->storesVertexData();
+
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add(StaticStrings::KeyString, VPackValue(_key));
+  builder.close();
+
+  OperationOptions options;
+  options.ignoreRevs = false;
+
+  TRI_voc_cid_t cid = _readTrx->addCollectionAtRuntime(shard);
+  _readTrx->orderDitch(cid);  // will throw when it fails
+  OperationResult opResult = _readTrx->document(shard, builder.slice(),
+  options);
+  if (!opResult.successful()) {
+    _cleanupTransactions();
+    THROW_ARANGO_EXCEPTION(opResult.code);
+  }
+
+
+  VertexEntry entry(sourceShard, _key);
+  if (storeData) {
+    V vertexData;
+    size_t size =
+    _graphFormat->copyVertexData(opResult.slice(), &vertexData, sizeof(V));
+    if (size > 0) {
+      entry._vertexDataOffset = _vertexData.size();
+      _vertexData.push_back(vertexData);
+    }
+  }
+  std::string documentId = _readTrx->extractIdString(opResult.slice());
+  _loadEdges(state, edgeShard, entry, documentId);
+  _index.push_back(entry);*/
 }
 
 template <typename V, typename E>
@@ -145,15 +166,35 @@ RangeIterator<Edge<E>> GraphStore<V, E>::edgeIterator(
 }
 
 template <typename V, typename E>
+void GraphStore<V, E>::_createReadTransaction(WorkerState const& state) {
+  std::vector<std::string> readColls, writeColls;
+  for (auto shard : state.localVertexShardIDs()) {
+    readColls.push_back(shard);
+  }
+  for (auto shard : state.localEdgeShardIDs()) {
+    readColls.push_back(shard);
+  }
+  double lockTimeout =
+      (double)(TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT / 1000000ULL);
+  _readTrx = new ExplicitTransaction(
+      StandaloneTransactionContext::Create(_vocbaseGuard.vocbase()), readColls,
+      writeColls, lockTimeout, false, false);
+  int res = _readTrx->begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+}
+
+template <typename V, typename E>
 void GraphStore<V, E>::_cleanupTransactions() {
-  if (_transaction) {
-    if (_transaction->getStatus() == TRI_TRANSACTION_RUNNING) {
-      if (_transaction->commit() != TRI_ERROR_NO_ERROR) {
+  if (_readTrx) {
+    if (_readTrx->getStatus() == TRI_TRANSACTION_RUNNING) {
+      if (_readTrx->commit() != TRI_ERROR_NO_ERROR) {
         LOG(WARN) << "Pregel worker: Failed to commit on a read transaction";
       }
     }
-    delete _transaction;
-    _transaction = nullptr;
+    delete _readTrx;
+    _readTrx = nullptr;
   }
 }
 
@@ -164,18 +205,18 @@ void GraphStore<V, E>::_loadVertices(WorkerState const& state,
   //_graphFormat->willUseCollection(vocbase, vertexShard, false);
   bool storeData = _graphFormat->storesVertexData();
 
-  TRI_voc_cid_t cid = _transaction->addCollectionAtRuntime(vertexShard);
-  _transaction->orderDitch(cid);  // will throw when it fails
+  TRI_voc_cid_t cid = _readTrx->addCollectionAtRuntime(vertexShard);
+  _readTrx->orderDitch(cid);  // will throw when it fails
   prgl_shard_t sourceShard = (prgl_shard_t)state.shardId(vertexShard);
 
-  /*int res = _transaction->lockRead();
+  /*int res = _readTrx->lockRead();
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up vertices '%s'",
                                   vertexShard.c_str());
   }*/
 
-  ManagedDocumentResult mmdr(_transaction);
-  std::unique_ptr<OperationCursor> cursor = _transaction->indexScan(
+  ManagedDocumentResult mmdr(_readTrx);
+  std::unique_ptr<OperationCursor> cursor = _readTrx->indexScan(
       vertexShard, Transaction::CursorType::ALL, Transaction::IndexHandle(), {},
       &mmdr, 0, UINT64_MAX, 1000, false);
 
@@ -192,13 +233,13 @@ void GraphStore<V, E>::_loadVertices(WorkerState const& state,
     cursor->getMoreMptr(result, 1000);
     for (auto const& element : result) {
       TRI_voc_rid_t revisionId = element.revisionId();
-      if (collection->readRevision(_transaction, mmdr, revisionId)) {
+      if (collection->readRevision(_readTrx, mmdr, revisionId)) {
         VPackSlice document(mmdr.vpack());
         if (document.isExternal()) {
           document = document.resolveExternal();
         }
 
-        //LOG(INFO) << "Loaded Vertex: " << document.toJson();
+        // LOG(INFO) << "Loaded Vertex: " << document.toJson();
         std::string key = document.get(StaticStrings::KeyString).copyString();
 
         VertexEntry entry(sourceShard, key);
@@ -214,7 +255,7 @@ void GraphStore<V, E>::_loadVertices(WorkerState const& state,
           }
         }
 
-        std::string documentId = _transaction->extractIdString(document);
+        std::string documentId = _readTrx->extractIdString(document);
         _loadEdges(state, edgeShard, entry, documentId);
         _index.push_back(entry);
       }
@@ -230,10 +271,10 @@ void GraphStore<V, E>::_loadEdges(WorkerState const& state,
   const bool storeData = _graphFormat->storesEdgeData();
 
   // Transaction* trx = readTransaction(shard);
-  traverser::EdgeCollectionInfo info(_transaction, edgeShard, TRI_EDGE_OUT,
+  traverser::EdgeCollectionInfo info(_readTrx, edgeShard, TRI_EDGE_OUT,
                                      StaticStrings::FromString, 0);
 
-  ManagedDocumentResult mmdr(_transaction);
+  ManagedDocumentResult mmdr(_readTrx);
   auto cursor = info.getEdges(documentID, &mmdr);
   if (cursor->failed()) {
     THROW_ARANGO_EXCEPTION_FORMAT(cursor->code,
@@ -253,7 +294,7 @@ void GraphStore<V, E>::_loadEdges(WorkerState const& state,
     cursor->getMoreMptr(result, 1000);
     for (auto const& element : result) {
       TRI_voc_rid_t revisionId = element.revisionId();
-      if (collection->readRevision(_transaction, mmdr, revisionId)) {
+      if (collection->readRevision(_readTrx, mmdr, revisionId)) {
         VPackSlice document(mmdr.vpack());
         if (document.isExternal()) {
           document = document.resolveExternal();
@@ -262,7 +303,7 @@ void GraphStore<V, E>::_loadEdges(WorkerState const& state,
         // ====== actual loading ======
         vertexEntry._edgeCount += 1;
 
-        //LOG(INFO) << "Loaded Edge: " << document.toJson();
+        // LOG(INFO) << "Loaded Edge: " << document.toJson();
         std::string toValue =
             document.get(StaticStrings::ToString).copyString();
 
@@ -301,28 +342,6 @@ void GraphStore<V, E>::_loadEdges(WorkerState const& state,
   }*/
 }
 
-/*template <typename V, typename E>
-SingleCollectionTransaction* GraphStore<V, E>::writeTransaction(ShardID const&
-shard) {
-
-  auto it = _transactions.find(shard);
-  if (it != _transactions.end()) {
-    return it->second;
-  } else {
-    auto trx = std::make_unique<SingleCollectionTransaction>(
-                                                             StandaloneTransactionContext::Create(_vocbaseGuard.vocbase()),
-                                                             shard,
-                                                             TRI_TRANSACTION_WRITE);
-    int res = trx->begin();
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION_FORMAT(res, "during transaction of shard '%s'",
-                                    shard.c_str());
-    }
-    _transactions[shard] = trx.get();
-    return trx.release();
-  }
-}*/
-
 template <typename V, typename E>
 void GraphStore<V, E>::storeResults(WorkerState const& state) {
   std::vector<std::string> readColls, writeColls;
@@ -337,10 +356,10 @@ void GraphStore<V, E>::storeResults(WorkerState const& state) {
   //}
   double lockTimeout =
       (double)(TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT / 1000000ULL);
-  _transaction = new ExplicitTransaction(
+  ExplicitTransaction writeTrx(
       StandaloneTransactionContext::Create(_vocbaseGuard.vocbase()), readColls,
       writeColls, lockTimeout, false, false);
-  int res = _transaction->begin();
+  int res = writeTrx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -356,14 +375,17 @@ void GraphStore<V, E>::storeResults(WorkerState const& state) {
     _graphFormat->buildVertexDocument(b, data, sizeof(V));
     b.close();
 
-    OperationResult result = _transaction->update(shard, b.slice(), options);
+    OperationResult result = writeTrx.update(shard, b.slice(), options);
     if (result.code != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(result.code);
     }
 
     // TODO loop over edges
   }
-  _cleanupTransactions();
+  res = writeTrx.finish(res);
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 }
 
 template class arangodb::pregel::GraphStore<int64_t, int64_t>;

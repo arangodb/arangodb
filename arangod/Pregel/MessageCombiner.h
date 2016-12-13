@@ -36,8 +36,7 @@ struct MessageCombiner {
 
 struct IntegerMinCombiner : public MessageCombiner<int64_t> {
   IntegerMinCombiner() {}
-  void combine(int64_t& firstValue,
-                  int64_t const& secondValue) const override {
+  void combine(int64_t& firstValue, int64_t const& secondValue) const override {
     if (firstValue > secondValue) {
       firstValue = secondValue;
     }

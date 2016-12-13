@@ -25,8 +25,8 @@
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
-#include "Pregel/AggregatorUsage.h"
 #include "Basics/Common.h"
+#include "Pregel/AggregatorHandler.h"
 #include "Pregel/Utils.h"
 
 namespace arangodb {
@@ -37,8 +37,8 @@ class WorkerContext {
   friend class Worker;
 
   uint64_t _vertexCount, _edgeCount;
-  const AggregatorUsage* _conductorAggregators;
-  AggregatorUsage* _workerAggregators;
+  const AggregatorHandler* _conductorAggregators;
+  AggregatorHandler* _workerAggregators;
 
  protected:
   template <typename T>
@@ -55,9 +55,9 @@ class WorkerContext {
   virtual void preGlobalSuperstep(uint64_t gss){};
   virtual void postGlobalSuperstep(uint64_t gss){};
   virtual void postApplication(){};
-  
+
  public:
-  WorkerContext(VPackSlice params) {};
+  WorkerContext(VPackSlice params){};
 
   inline uint64_t vertexCount() const { return _vertexCount; }
 

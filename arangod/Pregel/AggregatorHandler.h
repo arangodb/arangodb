@@ -20,31 +20,32 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_AGGRGS_USAGE_H
-#define ARANGODB_PREGEL_AGGRGS_USAGE_H 1
+#ifndef ARANGODB_PREGEL_AGGREGATOR_HANDLER_H
+#define ARANGODB_PREGEL_AGGREGATOR_HANDLER_H 1
 
-#include <velocypack/vpack.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 #include <functional>
 #include <map>
 
 namespace arangodb {
 namespace pregel {
-  
+
 struct IAlgorithm;
 class Aggregator;
 
-class AggregatorUsage {
+class AggregatorHandler {
   const IAlgorithm* _create;
   std::map<std::string, Aggregator*> _values;
 
  public:
-  AggregatorUsage(const IAlgorithm* c) : _create(c) {}
-  ~AggregatorUsage();
+  AggregatorHandler(const IAlgorithm* c) : _create(c) {}
+  ~AggregatorHandler();
   void aggregate(std::string const& name, const void* valuePtr);
   const void* getAggregatedValue(std::string const& name) const;
   void resetValues();
-  void aggregateValues(AggregatorUsage const& workerValues);
+  void aggregateValues(AggregatorHandler const& workerValues);
   void aggregateValues(VPackSlice workerValues);
   void serializeValues(VPackBuilder& b) const;
   size_t size();

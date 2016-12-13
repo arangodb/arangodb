@@ -31,11 +31,14 @@ struct TRI_vocbase_t;
 namespace arangodb {
 namespace pregel {
 struct AlgoRegistry {
-  static IAlgorithm* createAlgorithm(std::string const& algorithm, VPackSlice userParams);
+  static IAlgorithm* createAlgorithm(std::string const& algorithm,
+                                     VPackSlice userParams);
   static IWorker* createWorker(TRI_vocbase_t* vocbase, VPackSlice body);
-private:
+
+ private:
   template <typename V, typename E, typename M>
-  static IWorker* createWorker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo, VPackSlice body);
+  static IWorker* createWorker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
+                               VPackSlice body);
 };
 }
 }

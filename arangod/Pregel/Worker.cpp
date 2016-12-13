@@ -47,12 +47,15 @@ template <typename V, typename E, typename M>
 Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
                         VPackSlice initConfig)
     : _running(true), _state(vocbase->name(), initConfig), _algorithm(algo) {
+  
   VPackSlice userParams = initConfig.get(Utils::userParametersKey);
   _workerContext.reset(algo->workerContext(userParams));
   _messageFormat.reset(algo->messageFormat());
   _messageCombiner.reset(algo->messageCombiner());
-  _conductorAggregators.reset(new AggregatorUsage(algo));
-  _workerAggregators.reset(new AggregatorUsage(algo));
+  _conductorAggregators.reset(new AggregatorHandler(algo));
+  _workerAggregators.reset(new AggregatorHandler(algo));
+  _graphStore.reset(new GraphStore<V, E>(vocbase, _algorithm->inputFormat()));
+
   if (_messageCombiner) {
     _readCache.reset(
         new CombiningInCache<M>(_messageFormat.get(), _messageCombiner.get()));
@@ -70,24 +73,24 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
   // of time. Therefore this is performed asynchronous
   ThreadPool* pool = PregelFeature::instance()->threadPool();
   pool->enqueue([this, vocbase, vc, ec] {
-    _graphStore.reset(
-        new GraphStore<V, E>(vocbase, _state, _algorithm->inputFormat()));
+    _graphStore->loadShards(this->_state);
+
+    // execute the user defined startup code
     if (_workerContext) {
       _workerContext->_conductorAggregators = _conductorAggregators.get();
       _workerContext->_workerAggregators = _workerAggregators.get();
       _workerContext->_vertexCount = vc;
       _workerContext->_edgeCount = ec;
       _workerContext->preApplication();
-
-      VPackBuilder package;
-      package.openObject();
-      package.add(Utils::senderKey,
-                  VPackValue(ServerState::instance()->getId()));
-      package.add(Utils::executionNumberKey,
-                  VPackValue(_state.executionNumber()));
-      package.close();
-      _callConductor(Utils::finishedStartupPath, package.slice());
     }
+
+    VPackBuilder package;
+    package.openObject();
+    package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
+    package.add(Utils::executionNumberKey,
+                VPackValue(_state.executionNumber()));
+    package.close();
+    _callConductor(Utils::finishedStartupPath, package.slice());
   });
 }
 
@@ -120,13 +123,13 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data) {
   // clean up message caches, intialize gss
   _state._globalSuperstep = gss;
   _swapIncomingCaches();  // write cache becomes the readable cache
-  // parse aggregated values from conductor
+  _workerAggregators->resetValues();
   _conductorAggregators->resetValues();
+  // parse aggregated values from conductor
   VPackSlice aggValues = data.get(Utils::aggregatorValuesKey);
   if (aggValues.isObject()) {
     _conductorAggregators->aggregateValues(aggValues);
   }
-  _workerAggregators->resetValues();
   _superstepStats.reset();  // don't forget to reset before the superstep
   // execute context
   if (_workerContext != nullptr) {
@@ -136,7 +139,7 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data) {
 
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::receivedMessages(VPackSlice data) {
-  //LOG(INFO) << "Worker received some messages: " << data.toJson();
+  // LOG(INFO) << "Worker received some messages: " << data.toJson();
 
   VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
   VPackSlice messageSlice = data.get(Utils::messagesKey);
@@ -231,7 +234,7 @@ void Worker<V, E, M>::_executeGlobalStep(
     outCache.reset(new ArrayOutCache<M>(&_state, inCache.get()));
   }
 
-  AggregatorUsage workerAggregator(_algorithm.get());
+  AggregatorHandler workerAggregator(_algorithm.get());
 
   // TODO look if we can avoid instantiating this
   std::unique_ptr<VertexComputation<V, E, M>> vertexComputation(
@@ -250,9 +253,9 @@ void Worker<V, E, M>::_executeGlobalStep(
       vertexComputation->compute(messages);
       if (vertexEntry->active()) {
         activeCount++;
-      }/* else {
-        LOG(INFO) << vertexEntry->key() << " vertex has halted";
-      }*/
+      } /* else {
+         LOG(INFO) << vertexEntry->key() << " vertex has halted";
+       }*/
     }
     // TODO delete read messages immediatly
     // technically messages to non-existing vertices trigger
@@ -280,7 +283,7 @@ void Worker<V, E, M>::_executeGlobalStep(
 
 // called at the end of a worker thread, needs mutex
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::_workerThreadDone(AggregatorUsage* threadAggregators,
+void Worker<V, E, M>::_workerThreadDone(AggregatorHandler* threadAggregators,
                                         WorkerStats const& threadStats) {
   MUTEX_LOCKER(guard, _threadMutex);  // only one thread at a time
 
@@ -314,18 +317,22 @@ void Worker<V, E, M>::_workerThreadDone(AggregatorUsage* threadAggregators,
     _workerAggregators->serializeValues(package);
     package.close();
   }
-  _superstepStats.serializeValues(package);  // add stats
+  if (_superstepStats.isDone()) {
+    _superstepStats.serializeValues(package);  // add stats
+    package.add(Utils::gssDone, VPackValue(true));
+  }
   package.close();
-
+  _workerAggregators->resetValues();
+  
   // TODO ask how to implement message sending without waiting for a response
   // ============ Call Coordinator ============
-  _callConductor(Utils::finishedGSSPath, package.slice());
+  _callConductor(Utils::finishedWorkerStepPath, package.slice());
 }
 
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::finalizeExecution(VPackSlice body) {
   // Only expect serial calls from the conductor.
-  //Lock to prevent malicous activity
+  // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _conductorMutex);
   _running = false;
 
@@ -356,7 +363,7 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice body) {
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::startRecovery(VPackSlice data) {
   MUTEX_LOCKER(guard, _conductorMutex);
-  
+
   _running = true;
   VPackSlice method = data.get(Utils::recoveryMethodKey);
   if (method.compareString(Utils::compensate) == 0) {
@@ -372,8 +379,8 @@ void Worker<V, E, M>::startRecovery(VPackSlice data) {
 
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::compensateStep(VPackSlice data) {
-   MUTEX_LOCKER(guard, _conductorMutex);
-  
+  MUTEX_LOCKER(guard, _conductorMutex);
+
   _conductorAggregators->resetValues();
   VPackSlice aggValues = data.get(Utils::aggregatorValuesKey);
   if (aggValues.isObject()) {

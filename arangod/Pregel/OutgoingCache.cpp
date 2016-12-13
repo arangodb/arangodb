@@ -60,7 +60,7 @@ void ArrayOutCache<M>::appendMessage(prgl_shard_t shard, std::string const& key,
                                      M const& data) {
   if (this->_state->isLocalVertexShard(shard)) {
     this->_localCache->setDirect(shard, key, data);
-    //LOG(INFO) << "Worker: Got messages for myself " << key << " <- " << data;
+    // LOG(INFO) << "Worker: Got messages for myself " << key << " <- " << data;
     this->_sendMessages++;
   } else {
     _shardMap[shard][key].push_back(data);
@@ -149,17 +149,17 @@ void CombiningOutCache<M>::appendMessage(prgl_shard_t shard,
                                          M const& data) {
   if (this->_state->isLocalVertexShard(shard)) {
     this->_localCache->setDirect(shard, key, data);
-    //LOG(INFO) << "Worker: Got messages for myself " << key << " <- " << data;
+    // LOG(INFO) << "Worker: Got messages for myself " << key << " <- " << data;
     this->_sendMessages++;
   } else {
     std::unordered_map<std::string, M>& vertexMap = _shardMap[shard];
     auto it = vertexMap.find(key);
     if (it != vertexMap.end()) {  // more than one message
-     _combiner->combine(vertexMap[key], data);
+      _combiner->combine(vertexMap[key], data);
     } else {  // first message for this vertex
       vertexMap.emplace(key, data);
     }
-    
+
     if (this->_containedMessages++ > this->_batchSize) {
       flushMessages();
     }
@@ -181,7 +181,7 @@ void CombiningOutCache<M>::flushMessages() {
     VPackOptions options = VPackOptions::Defaults;
     options.buildUnindexedArrays = true;
     options.buildUnindexedObjects = true;
-    
+
     VPackBuilder package(&options);
     package.openObject();
     package.add(Utils::messagesKey, VPackValue(VPackValueType::Array));

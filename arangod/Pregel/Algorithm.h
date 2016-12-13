@@ -30,9 +30,9 @@
 
 #include "Basics/Common.h"
 #include "GraphFormat.h"
+#include "MasterContext.h"
 #include "MessageCombiner.h"
 #include "MessageFormat.h"
-#include "MasterContext.h"
 #include "WorkerContext.h"
 
 namespace arangodb {
@@ -40,7 +40,7 @@ namespace pregel {
 
 template <typename V, typename E, typename M>
 class VertexComputation;
-  
+
 template <typename V, typename E, typename M>
 class VertexCompensation;
 
@@ -48,30 +48,29 @@ class Aggregator;
 
 struct IAlgorithm {
   virtual ~IAlgorithm() {}
-  
+
   // virtual bool isFixpointAlgorithm() const {return false;}
-  // virtual bool preserveTransactions() const { return false; }
-  virtual bool supportsCompensation() const {
-    return false;
-  }
-  
+
+  virtual bool supportsAsyncMode() const { return false; }
+
+  virtual bool supportsCompensation() const { return false; }
+
   virtual Aggregator* aggregator(std::string const& name) const {
     return nullptr;
   }
-  
+
   virtual MasterContext* masterContext(VPackSlice userParams) const {
     return nullptr;
   }
-  
+
   std::string const& name() const { return _name; }
-  
-protected:
+
+ protected:
   IAlgorithm(std::string const& name) : _name(name){};
-  
-private:
+
+ private:
   std::string _name;
 };
-
 
 // specify serialization, whatever
 template <typename V, typename E, typename M>
@@ -87,7 +86,8 @@ struct Algorithm : IAlgorithm {
   virtual VertexCompensation<V, E, M>* createCompensation(uint64_t gss) const {
     return nullptr;
   }
-protected:
+
+ protected:
   Algorithm(std::string const& name) : IAlgorithm(name){};
 };
 

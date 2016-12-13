@@ -57,10 +57,10 @@ class PregelFeature final : public application_features::ApplicationFeature {
 
   void cleanup(uint64_t executionNumber);
   void cleanupAll();
-  
-  basics::ThreadPool* threadPool() {return _threadPool.get();}
-  RecoveryManager* recoveryManager() {return _recoveryManager.get();}
-  
+
+  basics::ThreadPool* threadPool() { return _threadPool.get(); }
+  RecoveryManager* recoveryManager() { return _recoveryManager.get(); }
+
  private:
   Mutex _mutex;
   std::unique_ptr<RecoveryManager> _recoveryManager;

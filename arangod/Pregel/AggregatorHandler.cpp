@@ -20,21 +20,22 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Pregel/AggregatorUsage.h"
+#include "Pregel/AggregatorHandler.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
 
-AggregatorUsage::~AggregatorUsage() {
+AggregatorHandler::~AggregatorHandler() {
   for (auto const& it : _values) {
     delete it.second;
   }
   _values.clear();
 }
 
-void AggregatorUsage::aggregate(std::string const& name, const void* valuePtr) {
+void AggregatorHandler::aggregate(std::string const& name,
+                                  const void* valuePtr) {
   auto it = _values.find(name);
   if (it != _values.end()) {
     it->second->aggregate(valuePtr);
@@ -48,7 +49,8 @@ void AggregatorUsage::aggregate(std::string const& name, const void* valuePtr) {
   }
 }
 
-const void* AggregatorUsage::getAggregatedValue(std::string const& name) const {
+const void* AggregatorHandler::getAggregatedValue(
+    std::string const& name) const {
   auto const& it = _values.find(name);
   if (it != _values.end()) {
     return it->second->getValue();
@@ -56,7 +58,7 @@ const void* AggregatorUsage::getAggregatedValue(std::string const& name) const {
   return nullptr;
 }
 
-void AggregatorUsage::resetValues() {
+void AggregatorHandler::resetValues() {
   for (auto& it : _values) {
     if (!it.second->isPermanent()) {
       it.second->reset();
@@ -64,7 +66,7 @@ void AggregatorUsage::resetValues() {
   }
 }
 
-void AggregatorUsage::aggregateValues(AggregatorUsage const& workerValues) {
+void AggregatorHandler::aggregateValues(AggregatorHandler const& workerValues) {
   for (auto const& pair : workerValues._values) {
     std::string const& name = pair.first;
     auto my = _values.find(name);
@@ -81,7 +83,7 @@ void AggregatorUsage::aggregateValues(AggregatorUsage const& workerValues) {
   }
 }
 
-void AggregatorUsage::aggregateValues(VPackSlice workerValues) {
+void AggregatorHandler::aggregateValues(VPackSlice workerValues) {
   for (auto const& keyValue : VPackObjectIterator(workerValues)) {
     std::string name = keyValue.key.copyString();
     auto const& it = _values.find(name);
@@ -98,10 +100,10 @@ void AggregatorUsage::aggregateValues(VPackSlice workerValues) {
   }
 }
 
-void AggregatorUsage::serializeValues(VPackBuilder& b) const {
+void AggregatorHandler::serializeValues(VPackBuilder& b) const {
   for (auto const& pair : _values) {
     b.add(pair.first, pair.second->vpackValue());
   }
 }
 
-size_t AggregatorUsage::size() { return _values.size(); }
+size_t AggregatorHandler::size() { return _values.size(); }

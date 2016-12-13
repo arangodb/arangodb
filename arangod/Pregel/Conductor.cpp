@@ -67,7 +67,7 @@ void Conductor::start(std::string const& algoName, VPackSlice userConfig) {
   } else {
     _userParams.add(userConfig);
   }
-
+  
   _startTimeSecs = TRI_microtime();
   _globalSuperstep = 0;
   _state = ExecutionState::RUNNING;
@@ -76,7 +76,11 @@ void Conductor::start(std::string const& algoName, VPackSlice userConfig) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Algorithm not found");
   }
-  _aggregatorUsage.reset(new AggregatorUsage(_algorithm.get()));
+  _aggregators.reset(new AggregatorHandler(_algorithm.get()));
+  // configure the async mode as optional
+  VPackSlice async = _userParams.slice().get("async");
+  _asyncMode = _algorithm->supportsAsyncMode();
+  _asyncMode = _asyncMode && (async.isNone() || async.getBoolean());
 
   int res = _initializeWorkers(Utils::startExecutionPath, VPackSlice());
   if (res != TRI_ERROR_NO_ERROR) {
@@ -92,15 +96,15 @@ bool Conductor::_startGlobalStep() {
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
   b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-  if (_aggregatorUsage->size() > 0) {
+  if (_aggregators->size() > 0) {
     b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
-    _aggregatorUsage->serializeValues(b);
+    _aggregators->serializeValues(b);
     b.close();
   }
   b.close();
 
   // reset values which are calculated during the superstep
-  _aggregatorUsage->resetValues();
+  _aggregators->resetValues();
   _workerStats.activeCount = 0;
 
   // first allow all workers to run worker level operations
@@ -128,11 +132,11 @@ void Conductor::finishedWorkerStartup(VPackSlice& data) {
     LOG(WARN) << "We are not in a state where we expect a response";
     return;
   }
-  _ensureCorrectness(data);
+  _ensureUniqueResponse(data);
   if (_respondedServers.size() != _dbServers.size()) {
     return;
   }
-  
+
   if (_startGlobalStep()) {
     // listens for changing primary DBServers on each collection shard
     RecoveryManager* mngr = PregelFeature::instance()->recoveryManager();
@@ -142,31 +146,38 @@ void Conductor::finishedWorkerStartup(VPackSlice& data) {
   }
 }
 
-void Conductor::finishedGlobalStep(VPackSlice& data) {
+void Conductor::finishedWorkerStep(VPackSlice& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
-
+  // this method can be called multiple times in a superstep depending on
+  // whether we are in the async mode
   uint64_t gss = data.get(Utils::globalSuperstepKey).getUInt();
-  if (gss != _globalSuperstep) {
+  if (gss != _globalSuperstep ||
+      !(_state == ExecutionState::RUNNING ||
+        _state == ExecutionState::CANCELED)) {
     LOG(WARN) << "Conductor did received a callback from the wrong superstep";
     return;
   }
-  _ensureCorrectness(data);
-
-  // collect worker information
-  VPackSlice workerValues = data.get(Utils::aggregatorValuesKey);
-  if (workerValues.isObject()) {
-    _aggregatorUsage->aggregateValues(workerValues);
+  VPackSlice slice = data.get(Utils::gssDone);
+  bool gssDone = slice.isBool() && slice.getBool();
+  if (!_asyncMode || gssDone) {
+    _ensureUniqueResponse(data);
+    
+    // collect worker information
+    slice = data.get(Utils::aggregatorValuesKey);
+    if (slice.isObject()) {
+      _aggregators->aggregateValues(slice);
+    }
+    _workerStats.accumulate(data);
   }
-  _workerStats.accumulate(data);
+  
   if (_respondedServers.size() != _dbServers.size()) {
     return;
   }
-  
   bool proceed = true;
-  if (_masterContext) { // ask algorithm to evaluate aggregated values
+  if (_masterContext) {  // ask algorithm to evaluate aggregated values
     proceed = _masterContext->postGlobalSuperstep(_globalSuperstep);
   }
-  
+
   LOG(INFO) << "Finished gss " << _globalSuperstep;
   _globalSuperstep++;
 
@@ -178,7 +189,7 @@ void Conductor::finishedGlobalStep(VPackSlice& data) {
   proceed = proceed && _globalSuperstep <= 100;
 
   if (proceed && !workersDone && _state == ExecutionState::RUNNING) {
-    _startGlobalStep();// trigger next superstep
+    _startGlobalStep();  // trigger next superstep
   } else if (_state == ExecutionState::RUNNING ||
              _state == ExecutionState::CANCELED) {
     if (_state == ExecutionState::CANCELED) {
@@ -195,7 +206,7 @@ void Conductor::finishedGlobalStep(VPackSlice& data) {
     // tells workers to store / discard results
     _finalizeWorkers();
 
-  } else {// this prop shouldn't occur,
+  } else {  // this prop shouldn't occur,
     LOG(WARN) << "No further action taken after receiving all responses";
   }
 }
@@ -206,12 +217,11 @@ void Conductor::finishedRecovery(VPackSlice& data) {
     LOG(WARN) << "We are not in a state where we expect a recovery response";
     return;
   }
-  _ensureCorrectness(data);
+  _ensureUniqueResponse(data);
   if (_respondedServers.size() != _dbServers.size()) {
     return;
   }
-  
-    
+
   if (_algorithm->supportsCompensation()) {
     bool proceed = false;
     if (_masterContext) {
@@ -222,15 +232,15 @@ void Conductor::finishedRecovery(VPackSlice& data) {
       b.openObject();
       b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
       b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-      if (_aggregatorUsage->size() > 0) {
+      if (_aggregators->size() > 0) {
         b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
-        _aggregatorUsage->serializeValues(b);
+        _aggregators->serializeValues(b);
         b.close();
       }
       b.close();
 
       // reset values which are calculated during the superstep
-      _aggregatorUsage->resetValues();
+      _aggregators->resetValues();
       _workerStats.activeCount = 0;
 
       // first allow all workers to run worker level operations
@@ -248,8 +258,10 @@ void Conductor::finishedRecovery(VPackSlice& data) {
 }
 
 void Conductor::cancel() {
-  
-  if (_state == ExecutionState::RUNNING || _state == ExecutionState::RECOVERING) {
+  if (_state == ExecutionState::RUNNING ||
+      _state == ExecutionState::RECOVERING) {
+    _state = ExecutionState::CANCELED;
+    
     VPackBuilder b;
     b.openObject();
     b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
@@ -257,7 +269,6 @@ void Conductor::cancel() {
     b.close();
     _sendToAllDBServers(Utils::cancelGSSPath, b.slice());
   }
-  
   _state = ExecutionState::CANCELED;
   // stop monitoring shards
   RecoveryManager* mngr = PregelFeature::instance()->recoveryManager();
@@ -296,7 +307,7 @@ void Conductor::startRecovery() {
       cancel();
       return;
     }
-    
+
     VPackBuilder b;
     b.openObject();
     b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
@@ -304,8 +315,9 @@ void Conductor::startRecovery() {
     b.close();
     _dbServers = goodServers;
     _sendToAllDBServers(Utils::cancelGSSPath, b.slice());
+    usleep(5 * 1000000);// workers may need a little bit
 
-    
+    // Let's try recovery
     if (_algorithm->supportsCompensation()) {
       if (_masterContext) {
         _masterContext->preCompensation(_globalSuperstep);
@@ -314,13 +326,13 @@ void Conductor::startRecovery() {
       VPackBuilder b;
       b.openObject();
       b.add(Utils::recoveryMethodKey, VPackValue(Utils::compensate));
-      if (_aggregatorUsage->size() > 0) {
+      if (_aggregators->size() > 0) {
         b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
-        _aggregatorUsage->serializeValues(b);
+        _aggregators->serializeValues(b);
         b.close();
       }
       b.close();
-      _aggregatorUsage->resetValues();
+      _aggregators->resetValues();
       _workerStats.activeCount = 0;
 
       // initialize workers will reconfigure the workers and set the
@@ -396,7 +408,7 @@ int Conductor::_initializeWorkers(std::string const& suffix,
   if (_masterContext && _masterContext->_vertexCount == 0) {
     _masterContext->_vertexCount = vertexCount;
     _masterContext->_edgeCount = edgeCount;
-    _masterContext->_aggregators = _aggregatorUsage.get();
+    _masterContext->_aggregators = _aggregators.get();
     _masterContext->preApplication();
   }
 
@@ -517,7 +529,7 @@ int Conductor::_sendToAllDBServers(std::string const& suffix,
   return nrGood == requests.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
 }
 
-void Conductor::_ensureCorrectness(VPackSlice body) {
+void Conductor::_ensureUniqueResponse(VPackSlice body) {
   // check if this the only time we received this
   ServerID sender = body.get(Utils::senderKey).copyString();
   if (_respondedServers.find(sender) != _respondedServers.end()) {

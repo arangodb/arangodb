@@ -37,7 +37,7 @@ namespace arangodb {
 class Transaction;
 class LogicalCollection;
 namespace pregel {
-  
+
 class WorkerState;
 template <typename V, typename E>
 struct GraphFormat;
@@ -47,11 +47,10 @@ struct GraphFormat;
 ////////////////////////////////////////////////////////////////////////////////
 template <typename V, typename E>
 class GraphStore {
-  
   VocbaseGuard _vocbaseGuard;
   const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
-  Transaction *_transaction;// temporary transaction
-  
+  Transaction* _readTrx;  // temporary transaction
+
   // int _indexFd, _vertexFd, _edgeFd;
   // void *_indexMapping, *_vertexMapping, *_edgeMapping;
   // size_t _indexSize, _vertexSize, _edgeSize;
@@ -65,25 +64,23 @@ class GraphStore {
   std::set<ShardID> _loadedShards;
   size_t _localVerticeCount;
   size_t _localEdgeCount;
-  
+
+  void _createReadTransaction(WorkerState const& state);
   void _cleanupTransactions();
-  void _loadVertices(WorkerState const& state,
-                     ShardID const& vertexShard,
+  void _loadVertices(WorkerState const& state, ShardID const& vertexShard,
                      ShardID const& edgeShard);
-  void _loadEdges(WorkerState const& state,
-                  ShardID const& shard,
-                  VertexEntry& vertexEntry,
-                  std::string const& documentID);
+  void _loadEdges(WorkerState const& state, ShardID const& shard,
+                  VertexEntry& vertexEntry, std::string const& documentID);
 
  public:
-  GraphStore(TRI_vocbase_t* vocbase, WorkerState const& state,
-             GraphFormat<V, E>* graphFormat);
+  GraphStore(TRI_vocbase_t* vocbase, GraphFormat<V, E>* graphFormat);
   ~GraphStore();
 
   void loadShards(WorkerState const& state);
-  inline size_t vertexCount() {
-    return _index.size();
-  }
+  void loadDocument(WorkerState const& state, ShardID const& shard,
+                    std::string const& _key);
+
+  inline size_t vertexCount() { return _index.size(); }
   RangeIterator<VertexEntry> vertexIterator();
   RangeIterator<VertexEntry> vertexIterator(size_t start, size_t count);
   RangeIterator<Edge<E>> edgeIterator(VertexEntry const* entry);
@@ -91,7 +88,7 @@ class GraphStore {
   void* mutableVertexData(VertexEntry const* entry);
   V copyVertexData(VertexEntry const* entry);
   void replaceVertexData(VertexEntry const* entry, void* data, size_t size);
-  
+
   /// Write results to database
   void storeResults(WorkerState const& state);
 };

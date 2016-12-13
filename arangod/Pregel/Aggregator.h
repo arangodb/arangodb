@@ -50,12 +50,13 @@ class Aggregator {
   // virtual void setValue(VPackSlice slice) = 0;
   virtual VPackValue vpackValue() = 0;
 
-  virtual void reset() {};
-  virtual bool isPermanent() {return _permanent;}
+  virtual void reset(){};
+  bool isPermanent() { return _permanent; }
 };
 
 class FloatMaxAggregator : public Aggregator {
   float _value, _initial;
+
  public:
   FloatMaxAggregator(float init) : _value(init), _initial(init) {}
 
@@ -77,50 +78,43 @@ class FloatMaxAggregator : public Aggregator {
   void reset() override { _value = _initial; }
 };
 
-template<typename T>
+template <typename T>
 class ValueAggregator : public Aggregator {
   static_assert(std::is_arithmetic<T>::value, "Type must be numeric");
-  
+
   T _value;
-public:
+
+ public:
   ValueAggregator(T val) : Aggregator(true), _value(val) {}
-  
-  void aggregate(void const* valuePtr) override {
-    _value = *((T*)valuePtr);
-  };
-  void aggregate(VPackSlice slice) override {
-    _value = slice.getNumber<T>();
-  }
-  
+
+  void aggregate(void const* valuePtr) override { _value = *((T*)valuePtr); };
+  void aggregate(VPackSlice slice) override { _value = slice.getNumber<T>(); }
+
   void const* getValue() const override { return &_value; };
   /*void setValue(VPackSlice slice) override {
    _value = (float)slice.getDouble();
    }*/
   VPackValue vpackValue() override { return VPackValue(_value); };
 };
-  
-template<typename T>
+
+template <typename T>
 class SumAggregator : public Aggregator {
   static_assert(std::is_arithmetic<T>::value, "Type must be numeric");
-  
+
   T _value;
-public:
+
+ public:
   SumAggregator(T val) : Aggregator(true), _value(val) {}
-  
-  void aggregate(void const* valuePtr) override {
-    _value += *((T*)valuePtr);
-  };
-  void aggregate(VPackSlice slice) override {
-    _value += slice.getNumber<T>();
-  }
-  
+
+  void aggregate(void const* valuePtr) override { _value += *((T*)valuePtr); };
+  void aggregate(VPackSlice slice) override { _value += slice.getNumber<T>(); }
+
   void const* getValue() const override { return &_value; };
   /*void setValue(VPackSlice slice) override {
    _value = (float)slice.getDouble();
    }*/
   VPackValue vpackValue() override { return VPackValue(_value); };
 };
-  
 }
 }
 #endif
