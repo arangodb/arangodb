@@ -503,9 +503,6 @@ void AqlItemBlock::toVelocyPack(arangodb::Transaction* trx,
   options.buildUnindexedArrays = true;
   options.buildUnindexedObjects = true;
 
-  VPackBuilder data(&options);
-  data.openArray();
-
   VPackBuilder raw(&options);
   raw.openArray();
   // Two nulls in the beginning such that indices start with 2
@@ -513,16 +510,22 @@ void AqlItemBlock::toVelocyPack(arangodb::Transaction* trx,
   raw.add(VPackValue(VPackValueType::Null));
 
   std::unordered_map<AqlValue, size_t> table;  // remember duplicates
+  
+  result.add("nrItems", VPackValue(_nrItems));
+  result.add("nrRegs", VPackValue(_nrRegs));
+  result.add("error", VPackValue(false));
+  result.add("exhausted", VPackValue(false));
+  result.add("data", VPackValue(VPackValueType::Array));
 
   size_t emptyCount = 0;  // here we count runs of empty AqlValues
 
-  auto commitEmpties = [&data, &emptyCount]() {  // this commits an empty run to the data
+  auto commitEmpties = [&result, &emptyCount]() {  // this commits an empty run to the result
     if (emptyCount > 0) {
       if (emptyCount == 1) {
-        data.add(VPackValue(0));
+        result.add(VPackValue(0));
       } else {
-        data.add(VPackValue(-1));
-        data.add(VPackValue(emptyCount));
+        result.add(VPackValue(-1));
+        result.add(VPackValue(emptyCount));
       }
       emptyCount = 0;
     }
@@ -537,32 +540,27 @@ void AqlItemBlock::toVelocyPack(arangodb::Transaction* trx,
       } else {
         commitEmpties();
         if (a.isRange()) {
-          data.add(VPackValue(-2));
-          data.add(VPackValue(a.range()->_low));
-          data.add(VPackValue(a.range()->_high));
+          result.add(VPackValue(-2));
+          result.add(VPackValue(a.range()->_low));
+          result.add(VPackValue(a.range()->_high));
         } else {
           auto it = table.find(a);
 
           if (it == table.end()) {
             a.toVelocyPack(trx, raw, false);
-            data.add(VPackValue(1));
+            result.add(VPackValue(1));
             table.emplace(a, pos++);
           } else {
-            data.add(VPackValue(it->second));
+            result.add(VPackValue(it->second));
           }
         }
       }
     }
   }
   commitEmpties();
+  
+  result.close(); // closes "data"
 
   raw.close();
-  data.close();
-
-  result.add("nrItems", VPackValue(_nrItems));
-  result.add("nrRegs", VPackValue(_nrRegs));
-  result.add("data", data.slice());
   result.add("raw", raw.slice());
-  result.add("error", VPackValue(false));
-  result.add("exhausted", VPackValue(false));
 }
