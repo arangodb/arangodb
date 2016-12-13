@@ -50,6 +50,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
       _posInPaths(0),
       _opts(nullptr),
       _traverser(nullptr),
+      _reg(ExecutionNode::MaxRegisterId),
       _useRegister(false),
       _usedConstant(false),
       _vertexVar(nullptr),
@@ -57,7 +58,8 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
       _edgeVar(nullptr),
       _edgeReg(0),
       _pathVar(nullptr),
-      _pathReg(0) {
+      _pathReg(0),
+      _engines(nullptr) {
   auto const& registerPlan = ep->getRegisterPlan()->varInfo;
   ep->getConditionVariables(_inVars);
   for (auto const& v : _inVars) {

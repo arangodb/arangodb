@@ -29,7 +29,8 @@
 using namespace arangodb::aql;
 
 /// @brief constructor
-CollectOptions::CollectOptions(VPackSlice const& slice) {
+CollectOptions::CollectOptions(VPackSlice const& slice) 
+    : method(COLLECT_METHOD_UNDEFINED) {
   VPackSlice v = slice.get("collectOptions");
   if (v.isObject()) {
     v = v.get("method");

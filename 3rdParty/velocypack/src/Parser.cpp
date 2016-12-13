@@ -79,7 +79,7 @@ ValueLength Parser::parseInternal(bool multi) {
       ++_pos;
     }
     if (!multi && _pos != _size) {
-      consume();  // to get error reporting right
+      consume();  // to get error reporting right. return value intentionally not checked
       throw Exception(Exception::ParseError, "Expecting EOF");
     }
   } while (multi && _pos < _size);
@@ -471,7 +471,8 @@ void Parser::parseObject() {
   int i = skipWhiteSpace("Expecting item or '}'");
   if (i == '}') {
     // empty object
-    consume();  // the closing ']'
+    consume();  // the closing '}'. return value intentionally not checked
+
     if (_nesting != 0 || !options->keepTopLevelOpen) {
       // only close if we've not been asked to keep top level open
       _b->close();
@@ -559,7 +560,7 @@ void Parser::parseObject() {
 }
 
 void Parser::parseJson() {
-  skipWhiteSpace("Expecting item");
+  skipWhiteSpace("Expecting item"); // return value intentionally not checked
 
   int i = consume();
   if (i < 0) {

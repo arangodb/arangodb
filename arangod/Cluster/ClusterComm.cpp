@@ -547,6 +547,7 @@ ClusterCommResult const ClusterComm::enquire(Ticket const ticketId) {
 
   ClusterCommResult res;
   res.operationID = ticketId;
+  // does res.coordTransactionID need to be set here too? 
   res.status = CL_COMM_DROPPED;
   return res;
 }
@@ -592,6 +593,7 @@ ClusterCommResult const ClusterComm::wait(
     // Nothing known about this operation, return with failure:
     ClusterCommResult res;
     res.operationID = ticketId;
+    // does res.coordTransactionID need to be set here too? 
     res.status = CL_COMM_DROPPED;
     // tell Dispatcher that we are back in business
     return res;

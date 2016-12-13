@@ -69,6 +69,7 @@ SslClientConnection::SslClientConnection(Endpoint* endpoint,
       _ssl(nullptr),
       _ctx(nullptr) {
 
+  TRI_invalidatesocket(&_socket);
   init(sslProtocol);
 }
 
@@ -82,6 +83,7 @@ SslClientConnection::SslClientConnection(std::unique_ptr<Endpoint>& endpoint,
       _ssl(nullptr),
       _ctx(nullptr) {
 
+  TRI_invalidatesocket(&_socket);
   init(sslProtocol);
 }
 

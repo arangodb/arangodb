@@ -137,10 +137,6 @@ class VppCommTask : public GeneralCommTask {
 
   std::string _authenticatedUser;
   AuthenticationFeature* _authentication;
-  // user
-  // authenticated or not
-  // database aus url
-  bool _authenticationEnabled;
 };
 }
 }

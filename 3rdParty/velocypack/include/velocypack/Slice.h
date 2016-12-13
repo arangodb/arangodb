@@ -336,7 +336,11 @@ class Slice {
     if (h <= 0x05) {  // No offset table or length, need to compute:
       ValueLength firstSubOffset = findDataOffset(h);
       Slice first(_start + firstSubOffset);
-      return (end - firstSubOffset) / first.byteSize();
+      ValueLength s = first.byteSize();
+      if (s == 0) {
+        throw Exception(Exception::InternalError);
+      }
+      return (end - firstSubOffset) / s;
     } else if (offsetSize < 8) {
       return readIntegerNonEmpty<ValueLength>(_start + offsetSize + 1, offsetSize);
     }

@@ -72,10 +72,10 @@ VppCommTask::VppCommTask(EventLoop loop, GeneralServer* server,
   _readBuffer.reserve(
       _bufferLength);  // ATTENTION <- this is required so we do not
                        // lose information during a resize
-    auto agent = std::make_unique<RequestStatisticsAgent>(true);
-    agent->acquire();
-    MUTEX_LOCKER(lock, _agentsMutex);
-    _agents.emplace(std::make_pair(0UL, std::move(agent)));
+  auto agent = std::make_unique<RequestStatisticsAgent>(true);
+  agent->acquire();
+  MUTEX_LOCKER(lock, _agentsMutex);
+  _agents.emplace(std::make_pair(0UL, std::move(agent)));
 }
 
 void VppCommTask::addResponse(VppResponse* response) {

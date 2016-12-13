@@ -81,7 +81,8 @@ Expression::Expression(Ast* ast, AstNode* node)
       _isDeterministic(false),
       _hasDeterminedAttributes(false),
       _built(false),
-      _attributes() {
+      _attributes(),
+      _expressionContext(nullptr) {
   TRI_ASSERT(_ast != nullptr);
   TRI_ASSERT(_executor != nullptr);
   TRI_ASSERT(_node != nullptr);

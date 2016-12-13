@@ -259,6 +259,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan,
                              VPackSlice const& slice)
     : _id(slice.get("id").getNumericValue<size_t>()),
       _estimatedCost(0.0),
+      _estimatedNrItems(0),
       _estimatedCostSet(false),
       _depth(slice.get("depth").getNumericValue<int>()),
       _varUsageValid(true),

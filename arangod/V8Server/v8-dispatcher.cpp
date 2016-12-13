@@ -206,7 +206,9 @@ V8Task::V8Task(std::string const& id, std::string const& name,
       _created(TRI_microtime()),
       _vocbaseGuard(new VocbaseGuard(vocbase)),
       _command(command),
-      _allowUseDatabase(allowUseDatabase) {}
+      _allowUseDatabase(allowUseDatabase),
+      _offset(0),
+      _interval(0) {}
 
 void V8Task::setOffset(double offset) {
   _offset = std::chrono::microseconds(static_cast<long long>(offset * 1000000));

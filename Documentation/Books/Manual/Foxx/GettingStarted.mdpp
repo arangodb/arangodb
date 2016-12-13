@@ -338,4 +338,4 @@ You now know how to create a Foxx service from scratch, how to handle user input
 
 * Tired of reinventing the wheel? Learn about [dependencies](Dependencies.md).
 
-<!-- TODO * Everything broken? You can [write tests] (Testing.md) to make sure your logic remains sound. -->
+* Everything broken? You can [write tests] (Testing.md) to make sure your logic remains sound.

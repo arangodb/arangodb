@@ -35,14 +35,34 @@ namespace arangodb {
 
 struct OperationResult {
 
-  OperationResult() {
-  }
-
+  OperationResult() 
+      : code(TRI_ERROR_NO_ERROR), wasSynchronous(false) {}
+  
   explicit OperationResult(int code) 
       : buffer(std::make_shared<VPackBuffer<uint8_t>>()), customTypeHandler(), code(code), wasSynchronous(false) { 
     if (code != TRI_ERROR_NO_ERROR) {
       errorMessage = TRI_errno_string(code);
     }
+  }
+  
+  OperationResult(OperationResult&& other)
+      : buffer(std::move(other.buffer)),
+        customTypeHandler(std::move(other.customTypeHandler)),
+        errorMessage(std::move(other.errorMessage)),
+        code(other.code),
+        wasSynchronous(other.wasSynchronous),
+        countErrorCodes(std::move(other.countErrorCodes)) {}
+  
+  OperationResult& operator=(OperationResult&& other) {
+    if (this != &other) {
+      buffer = std::move(other.buffer);
+      customTypeHandler = std::move(other.customTypeHandler);
+      errorMessage = std::move(other.errorMessage);
+      code = other.code;
+      wasSynchronous = other.wasSynchronous;
+      countErrorCodes = std::move(other.countErrorCodes);
+    }
+    return *this;
   }
 
   OperationResult(int code, std::string const& message) 

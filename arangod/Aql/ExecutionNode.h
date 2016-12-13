@@ -330,13 +330,15 @@ class ExecutionNode {
   /// @brief remove all dependencies for the given node
   void removeDependencies() {
     for (auto& x : _dependencies) {
-      for (auto it = x->_parents.begin(); it != x->_parents.end(); ++it) {
+      for (auto it = x->_parents.begin(); it != x->_parents.end(); /* no hoisting */) {
         if (*it == this) {
           try {
-            x->_parents.erase(it);
+            it = x->_parents.erase(it);
           } catch (...) {
           }
           break;
+        } else {
+          ++it;
         }
       }
     }

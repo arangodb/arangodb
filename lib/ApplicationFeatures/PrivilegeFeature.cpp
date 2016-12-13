@@ -40,7 +40,8 @@ using namespace arangodb::options;
 
 PrivilegeFeature::PrivilegeFeature(
     application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "Privilege") {
+    : ApplicationFeature(server, "Privilege"),
+      _numericUid(0), _numericGid(0) {
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");

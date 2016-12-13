@@ -205,8 +205,22 @@ class VelocyPackHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   template <typename T>
-  static T getNumericValue(VPackSlice const& slice, T defaultValue) {
+  static typename std::enable_if<std::is_signed<T>::value, T>::type getNumericValue(VPackSlice const& slice, T defaultValue) {
     if (slice.isNumber()) {
+      return slice.getNumber<T>();
+    }
+    return defaultValue;
+  }
+  
+  template <typename T>
+  static typename std::enable_if<std::is_unsigned<T>::value, T>::type getNumericValue(VPackSlice const& slice, T defaultValue) {
+    if (slice.isNumber()) {
+      if (slice.isInt() && slice.getInt() < 0) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot assign negative value to unsigned type");
+      }
+      if (slice.isDouble() && slice.getDouble() < 0.0) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot assign negative value to unsigned type");
+      }
       return slice.getNumber<T>();
     }
     return defaultValue;

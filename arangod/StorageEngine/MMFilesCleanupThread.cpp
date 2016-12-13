@@ -97,8 +97,9 @@ void MMFilesCleanupThread::run() {
           // the collection pointer outside the lock is ok
 
           // maybe cleanup indexes, unload the collection or some datafiles
+          
           // clean indexes?
-          if (iterations % cleanupIndexIterations() == 0) {
+          if (iterations % cleanupIndexIterations() == 0 && status != TRI_VOC_COL_STATUS_DELETED) {
             collection->cleanupIndexes();
           }
 
@@ -161,6 +162,8 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
 
   while (true) {
     auto ditches = collection->ditches();
+
+    TRI_ASSERT(ditches != nullptr);
 
     // check and remove all callback elements at the beginning of the list
     auto callback = [&](arangodb::Ditch const* ditch) -> bool {

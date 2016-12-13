@@ -154,6 +154,7 @@ AqlValue AqlValue::at(arangodb::Transaction* trx,
   switch (type()) {
     case VPACK_SLICE_POINTER:
       doCopy = false;
+    // fall-through intentional
     case VPACK_INLINE:
     // fall-through intentional
     case VPACK_MANAGED: {
@@ -228,6 +229,7 @@ AqlValue AqlValue::getKeyAttribute(arangodb::Transaction* trx,
   mustDestroy = false;
   switch (type()) {
     case VPACK_SLICE_POINTER:
+    // fall-through intentional
       doCopy = false;
     case VPACK_INLINE:
     // fall-through intentional
@@ -265,6 +267,7 @@ AqlValue AqlValue::getIdAttribute(arangodb::Transaction* trx,
   switch (type()) {
     case VPACK_SLICE_POINTER:
       doCopy = false;
+    // fall-through intentional
     case VPACK_INLINE:
     // fall-through intentional
     case VPACK_MANAGED: {
@@ -306,6 +309,7 @@ AqlValue AqlValue::getFromAttribute(arangodb::Transaction* trx,
   switch (type()) {
     case VPACK_SLICE_POINTER:
       doCopy = false;
+    // fall-through intentional
     case VPACK_INLINE:
     // fall-through intentional
     case VPACK_MANAGED: {
@@ -342,6 +346,7 @@ AqlValue AqlValue::getToAttribute(arangodb::Transaction* trx,
   switch (type()) {
     case VPACK_SLICE_POINTER:
       doCopy = false;
+    // fall-through intentional
     case VPACK_INLINE:
     // fall-through intentional
     case VPACK_MANAGED: {
@@ -379,6 +384,7 @@ AqlValue AqlValue::get(arangodb::Transaction* trx,
   switch (type()) {
     case VPACK_SLICE_POINTER:
       doCopy = false;
+    // fall-through intentional
     case VPACK_INLINE:
     // fall-through intentional
     case VPACK_MANAGED: {

@@ -499,8 +499,7 @@ int DatabaseFeature::createDatabaseCoordinator(TRI_voc_tick_t id,
     delete oldLists;
   }
 
-  result = vocbase.get();
-  vocbase.release();
+  result = vocbase.release();
   events::CreateDatabase(name, TRI_ERROR_NO_ERROR);
   return TRI_ERROR_NO_ERROR;
 }
@@ -702,6 +701,7 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool writeMarker,
 
         if (!vocbase->markAsDropped()) {
           // deleted by someone else?
+          delete newLists;
           events::DropDatabase(name, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
           return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
         }

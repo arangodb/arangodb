@@ -255,6 +255,9 @@ void Validator::validateUnindexedArray(uint8_t const* ptr, size_t length) const 
   
   validate(p, length - (p - ptr), true);
   ValueLength itemSize = Slice(p).byteSize();
+  if (itemSize == 0) {
+    throw Exception(Exception::ValidatorInvalidLength, "Array itemSize value is invalid");
+  }
   ValueLength nrItems = (byteSize - (p - ptr)) / itemSize; 
 
   if (nrItems == 0) {

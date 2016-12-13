@@ -485,9 +485,7 @@ std::unordered_map<std::string, std::string> getForwardableRequestHeaders(
     ++it;
   }
 
-  if (request != nullptr) {
-    result["content-length"] = StringUtils::itoa(request->contentLength());
-  }
+  result["content-length"] = StringUtils::itoa(request->contentLength());
 
   return result;
 }

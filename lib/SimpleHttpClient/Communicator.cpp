@@ -127,7 +127,7 @@ std::atomic_uint_fast64_t NEXT_TICKET_ID(static_cast<uint64_t>(0));
 std::vector<char> urlDotSeparators{'/', '#', '?'};
 }
 
-Communicator::Communicator() : _curl(nullptr) {
+Communicator::Communicator() : _curl(nullptr), _mc(CURLM_OK) {
   curl_global_init(CURL_GLOBAL_ALL);
   _curl = curl_multi_init();
 
@@ -151,6 +151,7 @@ Communicator::Communicator() : _curl(nullptr) {
 #endif
 
   _wakeup.events = CURL_WAIT_POLLIN | CURL_WAIT_POLLPRI;
+  // TODO: does _wakeup.revents has to be initialized here?
 }
 
 Communicator::~Communicator() {

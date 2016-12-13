@@ -1294,7 +1294,11 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  VPackBuilder builder;
+  VPackOptions options(VPackOptions::Defaults);
+  options.buildUnindexedArrays = true;
+  options.buildUnindexedObjects = true;
+
+  VPackBuilder builder(&options);
   builder.openObject();
 
   if (items == nullptr) {

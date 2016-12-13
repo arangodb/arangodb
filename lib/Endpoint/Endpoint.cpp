@@ -329,7 +329,7 @@ std::string const Endpoint::defaultEndpoint(TransportType type) {
     }
   }
 
-  return "";  // silence GCC
+  TRI_UNREACHABLE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
