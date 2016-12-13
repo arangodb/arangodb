@@ -464,14 +464,20 @@ void EdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
 /// @brief return a VelocyPack representation of the index figures
 void EdgeIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   Index::toVelocyPackFigures(builder);
-  builder.add("buckets", VPackValue(_numBuckets));
+  builder.add("from", VPackValue(VPackValueType::Object));
+  _edgesFrom->appendToVelocyPack(builder);
+  builder.close();
+  builder.add("to", VPackValue(VPackValueType::Object));
+  _edgesTo->appendToVelocyPack(builder);
+  builder.close();
+  //builder.add("buckets", VPackValue(_numBuckets));
 }
 
 int EdgeIndex::insert(arangodb::Transaction* trx, TRI_voc_rid_t revisionId,
                       VPackSlice const& doc, bool isRollback) {
   SimpleIndexElement fromElement(buildFromElement(revisionId, doc));
   SimpleIndexElement toElement(buildToElement(revisionId, doc));
-
+    
   ManagedDocumentResult result(trx); 
   IndexLookupContext context(trx, _collection, &result, 1); 
   _edgesFrom->insert(&context, fromElement, true, isRollback);
