@@ -3924,14 +3924,12 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
 
 
 ///////////////////////////////////////////////////////////////////////////////
-// GEO RULES //////////////////////////////////////////////////////////////////
+// GEO RULE ///////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 //
-// TODO
+// Description of what this Rule tries to achieve:
+// https://docs.google.com/document/d/1G57UP08ZFywUXKi5cLvEIKpZP-AUKGwG9oAnFOX8LLo
 //
-// - SORT cond0, cond1, cond2 ( conditions are seperated bu , not &&)
-// - Cluster: scatter gather(with merge)
-// - When filter and sort match on condition it is ok to have them nested
 
 struct GeoIndexInfo{
   operator bool() const { return distanceNode && valid; }
@@ -3939,6 +3937,7 @@ struct GeoIndexInfo{
   GeoIndexInfo()
     : collectionNode(nullptr)
     , executionNode(nullptr)
+    , indexNode(nullptr)
     , expressionParent(nullptr)
     , expressionNode(nullptr)
     , distanceNode(nullptr)
@@ -3952,6 +3951,7 @@ struct GeoIndexInfo{
     {}
   EnumerateCollectionNode* collectionNode; // node that will be replaced by (geo) IndexNode
   ExecutionNode* executionNode; // start node hat is a sort or filter
+  IndexNode* indexNode; // AstNode that is the parent of the Node
   AstNode* expressionParent; // AstNode that is the parent of the Node
   AstNode* expressionNode; // AstNode that contains the sort/filter condition
   AstNode* distanceNode; // AstNode that contains the distance parameters
@@ -4026,7 +4026,7 @@ GeoIndexInfo isGeoFilterExpression(AstNode* node, AstNode* expressionParent){
 
 
   AstNode* first = node->getMember(0);
-  AstNode* second = node->getMember(1); //FIXME -- const node
+  AstNode* second = node->getMember(1);
 
   auto eval_stuff = [](bool dist_first, bool lessEqual, GeoIndexInfo&& dist_fun, AstNode* value_node){
     //LOG_TOPIC(DEBUG, Logger::DEVEL) << "1: " << dist_first;
@@ -4034,7 +4034,7 @@ GeoIndexInfo isGeoFilterExpression(AstNode* node, AstNode* expressionParent){
     //LOG_TOPIC(DEBUG, Logger::DEVEL) << "3: " << (bool)value_node;
     if (dist_first && dist_fun && value_node){
       dist_fun.within = true;
-      dist_fun.range = value_node; //FIXME
+      dist_fun.range = value_node;
       dist_fun.lessgreaterequal = lessEqual;
       //LOG_TOPIC(DEBUG, Logger::DEVEL) << "FOUND WITHIN";
     } else {
@@ -4083,11 +4083,7 @@ GeoIndexInfo iterativePreorderWithCondition(EN::NodeType type, AstNode* root, Ge
         }
       }
     } else if (type == EN::SORT) {
-      //if (current.first->type == NODE_TYPE_OPERATOR_){
-      //  for (std::size_t i = 0; i < current.first->numMembers(); ++i){
-      //    nodestack.push_back({current.first->getMember(i),current.first});
-      //  }
-      //}
+      // must be the only sort condition
     }
   }
   return GeoIndexInfo{};
@@ -4472,7 +4468,7 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
     // check - memory to unlinked collection node should still be valid - see distributeSortToClusterRule
     // both nodes must have matching collection and access path to args there may be no additional sort
     // between the sort filter and index(collection)
- 
+
     // implement
 
     LOG_TOPIC(DEBUG, Logger::DEVEL) << "GEO RULE - check for sort: " << modified;
