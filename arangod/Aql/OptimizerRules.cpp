@@ -3950,7 +3950,7 @@ struct GeoIndexInfo{
     , constantPair{nullptr,nullptr}
     {}
   EnumerateCollectionNode* collectionNode; // node that will be replaced by (geo) IndexNode
-  ExecutionNode* executionNode; // start node hat is a sort or filter
+  ExecutionNode* executionNode; // start node that is a sort or filter
   IndexNode* indexNode; // AstNode that is the parent of the Node
   AstNode* expressionParent; // AstNode that is the parent of the Node
   AstNode* expressionNode; // AstNode that contains the sort/filter condition
@@ -4089,6 +4089,119 @@ GeoIndexInfo iterativePreorderWithCondition(EN::NodeType type, AstNode* root, Ge
   return GeoIndexInfo{};
 }
 
+GeoIndexInfo geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionPlan* plan, GeoIndexInfo info){
+  using SV = std::vector<std::string>;
+  // LOG_TOPIC(DEBUG, Logger::DEVEL) << "    enter argument check";
+  // first and second should be based on the same document - need to provide the document
+  // in order to see which collection is bound to it and if that collections supports geo-index
+  if( !pair.first->isAttributeAccessForVariable() || !pair.second->isAttributeAccessForVariable()){
+    // LOG_TOPIC(DEBUG, Logger::DEVEL) << "      not both args are of type attribute access";
+    info.invalidate();
+    return info;
+  }
+
+  // expect access of the for doc.attribute
+  // TODO: more complex access path have to be added: loop until REFERENCE TYPE IS FOUND
+  auto setter1 = plan->getVarSetBy(static_cast<Variable const*>(pair.first->getMember(0)->getData())->id);
+  auto setter2 = plan->getVarSetBy(static_cast<Variable const*>(pair.second->getMember(0)->getData())->id);
+  SV accessPath1{pair.first->getString()};
+  SV accessPath2{pair.second->getString()};
+
+  // LOG_TOPIC(DEBUG, Logger::DEVEL) << "      got setter";
+  if(setter1 == setter2){
+    if(setter1->getType() == EN::ENUMERATE_COLLECTION){
+      auto collNode = reinterpret_cast<EnumerateCollectionNode*>(setter1);
+
+      auto coll = collNode->collection(); //what kind of indexes does it have on what attributes
+      auto lcoll = coll->getCollection();
+      // TODO - check collection for suitable geo-indexes
+      // LOG_TOPIC(DEBUG, Logger::DEVEL) << "        SETTER IS ENUMERATE_COLLECTION: " << coll->getName();
+      // LOG_TOPIC(DEBUG, Logger::DEVEL) << "        COLLECTION - number of indexes: " << lcoll->getIndexes().size();
+      for(auto indexShardPtr : lcoll->getIndexes()){
+        // get real index
+        arangodb::Index& index = *indexShardPtr.get();
+
+        // check if current index is a geo-index
+        if(  index.type() != arangodb::Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX
+          && index.type() != arangodb::Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX){
+          // LOG_TOPIC(DEBUG, Logger::DEVEL) << "Index type not of Geo: " << (int) index.type();
+          continue;
+        }
+
+        // LOG_TOPIC(DEBUG, Logger::DEVEL) << "Index is a GeoIndex" << coll->getName();
+
+        //  /////////////////////////////////////////////////
+        //  //FIXME -  REMOVE DEBUG CODE LATER
+        //  auto vecs = std::vector<std::vector<SV>>{index.fieldNames(), std::vector<SV>{accessPath1, accessPath2}};
+        //  for(auto vec : vecs ){
+        //    for(auto path : vec){
+        //      std::cout << "AccessPath VECTOR:  ";
+        //      for(auto word : path){
+        //        std::cout << word << " ";
+        //      }
+        //      std::cout << std::endl;
+        //    }
+        //  }
+        //  /////////////////////////////////////////////////
+
+        //check access paths of attributes in ast and those in index match
+        if( index.fieldNames()[0] == accessPath1 && index.fieldNames()[1] == accessPath2 ){
+          info.collectionNode = collNode;
+          info.index = indexShardPtr;
+          info.longitude = std::move(accessPath1);
+          info.latitude = std::move(accessPath2);
+          return info;
+        }
+      }
+    }
+  }
+
+  info.invalidate();
+  return info;
+}
+
+bool checkDistanceArguments(GeoIndexInfo& info, ExecutionPlan* plan){
+  if(!info){
+    return false;
+  }
+  // LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER applyGeoOptimization";
+
+  auto const& functionArguments = info.distanceNode->getMember(0);
+  if(functionArguments->numMembers() < 4){
+    return false;
+  }
+
+  // LOG_TOPIC(DEBUG, Logger::DEVEL) << "distance function has 4 arguments";
+
+  std::pair<AstNode*,AstNode*> argPair1 = { functionArguments->getMember(0), functionArguments->getMember(1) };
+  std::pair<AstNode*,AstNode*> argPair2 = { functionArguments->getMember(2), functionArguments->getMember(3) };
+
+  GeoIndexInfo result1 = geoDistanceFunctionArgCheck(argPair1, plan, info /*copy*/);
+  GeoIndexInfo result2 = geoDistanceFunctionArgCheck(argPair2, plan, info /*copy*/);
+  //info now conatins access path to collection
+
+  // LOG_TOPIC(DEBUG, Logger::DEVEL) << "result1: " << result1 << "result2" << result2;
+
+  // xor only one argument pair shall have a geoIndex
+  if (  ( !result1 && !result2 ) || ( result1 && result2 ) ){
+    info.invalidate();
+    return false;
+  }
+
+  // LOG_TOPIC(DEBUG, Logger::DEVEL) << "  FOUND DISTANCE RULE WITH ATTRIBUTE ACCESS";
+
+  GeoIndexInfo res;
+  if(result1){
+    info = std::move(result1);
+    info.constantPair = std::move(argPair2);
+  } else {
+    info = std::move(result2);
+    info.constantPair = std::move(argPair1);
+  }
+
+  return true;
+}
+
 //checks a single sort or filter node
 GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, ExecutionPlan* plan, ExecutionNode* n){
   ExecutionNode* setter = nullptr;
@@ -4174,136 +4287,10 @@ GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, Exec
   rv.executionNode = n;
   rv.executionNodeType = type;
 
+  checkDistanceArguments(rv, plan);
+
   return rv;
 };
-
-GeoIndexInfo geoDistanceFunctionArgCheck(std::pair<AstNode*,AstNode*> const& pair, ExecutionPlan* plan, GeoIndexInfo info){
-  using SV = std::vector<std::string>;
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "    enter argument check";
-  // first and second should be based on the same document - need to provide the document
-  // in order to see which collection is bound to it and if that collections supports geo-index
-  if( !pair.first->isAttributeAccessForVariable() || !pair.second->isAttributeAccessForVariable()){
-    //LOG_TOPIC(DEBUG, Logger::DEVEL) << "      not both args are of type attribute access";
-    info.invalidate();
-    return info;
-  }
-
-  // expect access of the for doc.attribute
-  // TODO: more complex access path have to be added: loop until REFERENCE TYPE IS FOUND
-  auto setter1 = plan->getVarSetBy(static_cast<Variable const*>(pair.first->getMember(0)->getData())->id);
-  auto setter2 = plan->getVarSetBy(static_cast<Variable const*>(pair.second->getMember(0)->getData())->id);
-  SV accessPath1{pair.first->getString()};
-  SV accessPath2{pair.second->getString()};
-
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "      got setter";
-  if(setter1 == setter2){
-    if(setter1->getType() == EN::ENUMERATE_COLLECTION){
-      auto collNode = reinterpret_cast<EnumerateCollectionNode*>(setter1);
-
-      auto coll = collNode->collection(); //what kind of indexes does it have on what attributes
-      auto lcoll = coll->getCollection();
-      // TODO - check collection for suitable geo-indexes
-      //LOG_TOPIC(DEBUG, Logger::DEVEL) << "        SETTER IS ENUMERATE_COLLECTION: " << coll->getName();
-      //LOG_TOPIC(DEBUG, Logger::DEVEL) << "        COLLECTION - number of indexes: " << lcoll->getIndexes().size();
-      for(auto indexShardPtr : lcoll->getIndexes()){
-        // get real index
-        arangodb::Index& index = *indexShardPtr.get();
-
-        // check if current index is a geo-index
-        if(  index.type() != arangodb::Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX
-          && index.type() != arangodb::Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX){
-          //LOG_TOPIC(DEBUG, Logger::DEVEL) << "Index type not of Geo: " << (int) index.type();
-          continue;
-        }
-
-        //LOG_TOPIC(DEBUG, Logger::DEVEL) << "Index is a GeoIndex" << coll->getName();
-
-        // /////////////////////////////////////////////////
-        // //FIXME -  REMOVE DEBUG CODE LATER
-        // auto vecs = std::vector<std::vector<SV>>{index.fieldNames(), std::vector<SV>{accessPath1, accessPath2}};
-        // for(auto vec : vecs ){
-        //   for(auto path : vec){
-        //     std::cout << "AccessPath VECTOR:  ";
-        //     for(auto word : path){
-        //       std::cout << word << " ";
-        //     }
-        //     std::cout << std::endl;
-        //   }
-        // }
-        // /////////////////////////////////////////////////
-
-        //check access paths of attributes in ast and those in index match
-        if( index.fieldNames()[0] == accessPath1 && index.fieldNames()[1] == accessPath2 ){
-          info.collectionNode = collNode;
-          info.index = indexShardPtr;
-          info.longitude = std::move(accessPath1);
-          info.latitude = std::move(accessPath2);
-          return info;
-        }
-      }
-    }
-  }
-
-  info.invalidate();
-  return info;
-}
-
-bool checkDistanceArguments(GeoIndexInfo& info, ExecutionPlan* plan){
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER applyGeoOptimization";
-
-  auto const& functionArguments = info.distanceNode->getMember(0);
-  if(functionArguments->numMembers() < 4){
-    return false;
-  }
-
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "distance function has 4 arguments";
-
-  std::pair<AstNode*,AstNode*> argPair1 = { functionArguments->getMember(0), functionArguments->getMember(1) };
-  std::pair<AstNode*,AstNode*> argPair2 = { functionArguments->getMember(2), functionArguments->getMember(3) };
-
-  GeoIndexInfo result1 = geoDistanceFunctionArgCheck(argPair1, plan, info /*copy*/);
-  GeoIndexInfo result2 = geoDistanceFunctionArgCheck(argPair2, plan, info /*copy*/);
-  //info now conatins access path to collection
-
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "result1: " << result1 << "result2" << result2;
-
-  // xor only one argument pair shall have a geoIndex
-  if (  ( !result1 && !result2 ) || ( result1 && result2 ) ){
-    info.invalidate();
-    return false;
-  }
-
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "  FOUND DISTANCE RULE WITH ATTRIBUTE ACCESS";
-
-  GeoIndexInfo res;
-  if(result1){
-    info = std::move(result1);
-    info.constantPair = std::move(argPair2);
-  } else {
-    info = std::move(result2);
-    info.constantPair = std::move(argPair1);
-  }
-
-  return true;
-}
-
-//checks sort and filter nodes for conditions
-void checkNodesForGeoOptimization(ExecutionNode::NodeType type, ExecutionPlan* plan, std::vector<GeoIndexInfo>& infos){
-  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, type, true);
-  for (auto& n : nodes) {
-    auto geoIndexInfo = identifyGeoOptimizationCandidate(type, plan, n);
-    if(!geoIndexInfo){
-      continue;
-    }
-    //LOG_TOPIC(DEBUG, Logger::DEVEL) << "ADDING Candidate";
-    if(checkDistanceArguments(geoIndexInfo, plan)){
-      infos.push_back(std::move(geoIndexInfo));
-    }
-    //LOG_TOPIC(DEBUG, Logger::DEVEL) << "  FOUND NEAR OR WITHIN";
-  }
-}
 
 //////////////////////////////////////////////////////////////////////
 //modify plan
@@ -4348,11 +4335,9 @@ std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan, GeoIndexInfo& 
   return condition;
 }
 
-//replaces the geoCondition with true.
-//void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info){
 void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info){
 
-  if( info.expressionParent ) {
+  if( info.expressionParent && info.executionNodeType == EN::FILTER) {
     auto ast = plan->getAst();
     auto replacement = ast->createNodeValueBool(true);
     for(std::size_t i = 0; i < info.expressionParent->numMembers(); ++i){
@@ -4366,69 +4351,59 @@ void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info){
 }
 
 // applys the optimization for a candidate
-bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& info){
-  // We are not allowed to be a inner loop
-  if(info.collectionNode->isInInnerLoop()){
+bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& first, GeoIndexInfo& second){
+  if(!first && !second){
     return false;
   }
 
-  //// this works only as long as we just use lists of ExecutionNodes
-  // avoid other constructs between sort/filter and enumerate collection
-  ExecutionNode* current = info.executionNode->getFirstDependency();
-  ExecutionNode* end = info.collectionNode;
-  while(current != end && current != nullptr){
-    if(  current->getType() == EN::SORT
-      || current->getType() == EN::COLLECT
-      || current->getType() == EN::FILTER
-      || current->getType() == EN::ENUMERATE_COLLECTION
-      || current->getType() == EN::INDEX
-      ){
-      return false;
-    }
-    current = current->getFirstDependency();
+  // LOG_TOPIC(DEBUG, Logger::DEVEL) << "GEO INDEX APPLY ";
+
+  if(!first){
+    first = std::move(second);
+    second.invalidate();
   }
 
-  // avoid sorts above index node
-  while(current != plan->root() && current != nullptr){
-    if(current->getType() == EN::SORT){
-      return false;
-    }
-    current = current->getFirstDependency();
+  // We are not allowed to be a inner loop
+  if(first.collectionNode->isInInnerLoop()){
+    return false;
   }
 
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "  attributes: " << res.longitude[0]
-  //         << ", " << res.longitude
-  //         << " of collection:" << res.collectionNode->collection()->getName()
-  //         << " are geoindexed";
-
-  //break; //remove this to make use of the index
-
-  // FIXME - END //////////////////////////////////////////////////////////////
+ // //LOG_TOPIC(DEBUG, Logger::DEVEL) << "  attributes: " << res.longitude[0]
+ // //         << ", " << res.longitude
+ // //         << " of collection:" << res.collectionNode->collection()->getName()
+ // //         << " are geoindexed";
 
   std::unique_ptr<Condition> condition;
-  condition = buildGeoCondition(plan,info);
+  condition = buildGeoCondition(plan,first);
 
   auto inode = new IndexNode(
-          plan, plan->nextId(), info.collectionNode->vocbase(),
-          info.collectionNode->collection(), info.collectionNode->outVariable(),
-          std::vector<Transaction::IndexHandle>{Transaction::IndexHandle{info.index}},
+          plan, plan->nextId(), first.collectionNode->vocbase(),
+          first.collectionNode->collection(), first.collectionNode->outVariable(),
+          std::vector<Transaction::IndexHandle>{Transaction::IndexHandle{first.index}},
           condition.get(), false);
   plan->registerNode(inode);
   condition.release();
 
-  replaceGeoCondition(plan, info);
+  replaceGeoCondition(plan, first);
+  replaceGeoCondition(plan, second);
 
   // if executionNode is sort OR a filter without further sub conditions
   // the node can be unlinked
-  if(!info.expressionParent){
-    if (!arangodb::ServerState::instance()->isCoordinator() || info.executionNodeType == EN::FILTER) {
-      plan->unlinkNode(info.executionNode);
-    } else if (info.executionNodeType == EN::SORT){
-      //make sure sort is not reinserted in cluster
-      static_cast<SortNode*>(info.executionNode)->_reinsertInCluster = false;
+  auto unlinkNode = [&](GeoIndexInfo& info){
+    if(info && !info.expressionParent){
+      // LOG_TOPIC(DEBUG, Logger::DEVEL) << "info vaid and not expressionParent";
+      if (!arangodb::ServerState::instance()->isCoordinator() || info.executionNodeType == EN::FILTER) {
+        plan->unlinkNode(info.executionNode);
+      } else if (info.executionNodeType == EN::SORT){
+        //make sure sort is not reinserted in cluster
+        static_cast<SortNode*>(info.executionNode)->_reinsertInCluster = false;
+      }
     }
-  }
-  plan->replaceNode(info.collectionNode,inode);
+  };
+
+  unlinkNode(first);
+  plan->replaceNode(first.collectionNode,inode);
+  unlinkNode(second);
 
   //signal that plan has been changed
   return true;
@@ -4440,40 +4415,74 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
 
   //LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER GEO RULE";
 
-  std::vector<GeoIndexInfo> filter_info;
-  std::vector<GeoIndexInfo> sort_info;
-  checkNodesForGeoOptimization(EN::FILTER, plan, filter_info);
-  checkNodesForGeoOptimization(EN::SORT, plan, sort_info);
-
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> nodes{a};
   bool modified = false;
-  GeoIndexInfo filter_applyed;
-  for(auto& info : filter_info){
-    if (applyGeoOptimization(true, plan, info)){
-        modified = true;
-        filter_applyed = info;
-        break; // break on first replacement - might be relaxed later
-    }
-  }
+  //inspect each return node and work upwards to SingletonNode
+  plan->findEndNodes(nodes, true);
+  for (auto& node : nodes) {
+    GeoIndexInfo sortInfo{};
+    GeoIndexInfo filterInfo{};
+    auto current = node;
 
-  if (!modified){
-    for(auto& info : sort_info){
-      if (applyGeoOptimization(true, plan, info)){
-          modified = true;
-          filter_applyed = info;
-          break; // break on first replacement - might be relaxed later
+    while (current){
+      switch(current->getType()) {
+        case EN::SORT:{
+            // LOG_TOPIC(DEBUG, Logger::DEVEL) << "hit sort";
+            sortInfo = identifyGeoOptimizationCandidate(EN::SORT, plan, current);
+            // if(sortInfo){
+            //  LOG_TOPIC(DEBUG, Logger::DEVEL) << "sort valid";
+            // }
+          }
+          break ;
+        case EN::FILTER:{
+
+            // LOG_TOPIC(DEBUG, Logger::DEVEL) << "hit filter";
+            filterInfo = identifyGeoOptimizationCandidate(EN::FILTER, plan, current);
+            // if(filterInfo){
+            //   LOG_TOPIC(DEBUG, Logger::DEVEL) << "filter valid";
+            //}
+          }
+          break;
+        case EN::ENUMERATE_COLLECTION:{
+            EnumerateCollectionNode* collnode = static_cast<EnumerateCollectionNode*>(current);
+            // if(sortInfo){
+            //   LOG_TOPIC(DEBUG, Logger::DEVEL) << "sortInfo valid collection:" << sortInfo.collectionNode;
+            // }
+            // if(filterInfo){
+            //   LOG_TOPIC(DEBUG, Logger::DEVEL) << "filterInfo valid collection:" << filterInfo.collectionNode;
+            // }
+            if( (sortInfo   && sortInfo.collectionNode!= collnode)
+              ||(filterInfo && filterInfo.collectionNode != collnode)
+              ){
+              // LOG_TOPIC(DEBUG, Logger::DEVEL) << "invalidating ...";
+              filterInfo.invalidate();
+              sortInfo.invalidate();
+              break;
+            }
+            if (/* filter and sort match && */ applyGeoOptimization(true, plan, filterInfo, sortInfo)){
+              modified = true;
+              filterInfo.invalidate();
+              sortInfo.invalidate();
+            }
+          }
+          break;
+
+        case EN::INDEX:
+        case EN::COLLECT:{
+            filterInfo.invalidate();
+            sortInfo.invalidate();
+            break;
+          }
+
+        default:{} //skip - do nothing
+          break;
       }
+
+      current = current->getFirstDependency(); //inspect next node
     }
-  } else {
-    // find sort that matches filter used and delete sort node if it has only one condition
-    // check - memory to unlinked collection node should still be valid - see distributeSortToClusterRule
-    // both nodes must have matching collection and access path to args there may be no additional sort
-    // between the sort filter and index(collection)
 
-    // implement
-
-    LOG_TOPIC(DEBUG, Logger::DEVEL) << "GEO RULE - check for sort: " << modified;
   }
-
   opt->addPlan(plan, rule, modified);
 
   //LOG_TOPIC(DEBUG, Logger::DEVEL) << "EXIT GEO RULE - modified: " << modified;
