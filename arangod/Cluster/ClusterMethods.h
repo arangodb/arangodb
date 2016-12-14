@@ -76,11 +76,11 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
                          std::shared_ptr<arangodb::velocypack::Builder>&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief counts number of documents in a coordinator
+/// @brief counts number of documents in a coordinator, by shard
 ////////////////////////////////////////////////////////////////////////////////
 
 int countOnCoordinator(std::string const& dbname, std::string const& collname,
-                       uint64_t& result);
+                       std::vector<std::pair<std::string, uint64_t>>& result);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a document in a coordinator

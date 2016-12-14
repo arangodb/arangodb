@@ -1,6 +1,29 @@
 devel
 -----
 
+* added optional detail flag for db.<collection>.count()
+  setting the flag to `true` will make the count operation returned the per-shard
+  counts for the collection:
+
+      db._create("test", { numberOfShards: 10 }); 
+      for (i = 0; i < 1000; ++i) { 
+        db.test.insert({value: i}); 
+      }
+      db.test.count(true);
+
+      { 
+	"s100058" : 99, 
+	"s100057" : 103, 
+	"s100056" : 100, 
+	"s100050" : 94, 
+	"s100055" : 90, 
+	"s100054" : 122, 
+	"s100051" : 109, 
+	"s100059" : 99, 
+	"s100053" : 95, 
+	"s100052" : 89 
+      }
+
 * added optional memory limit for AQL queries:
 
       db._query("FOR i IN 1..100000 SORT i RETURN i", {}, { options: { memoryLimit: 100000 } });

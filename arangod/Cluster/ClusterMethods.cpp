@@ -686,16 +686,16 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief counts number of documents in a coordinator
+/// @brief counts number of documents in a coordinator, by shard
 ////////////////////////////////////////////////////////////////////////////////
 
 int countOnCoordinator(std::string const& dbname, std::string const& collname,
-                       uint64_t& result) {
+                       std::vector<std::pair<std::string, uint64_t>>& result) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
 
-  result = 0;
+  result.clear();
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
@@ -727,9 +727,8 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
 
         if (answer.isObject()) {
           // add to the total
-          result +=
-              arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(
-                  answer, "count", 0);
+          result.emplace_back(res.shardID, arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(
+                  answer, "count", 0));
         } else {
           return TRI_ERROR_INTERNAL;
         }

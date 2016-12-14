@@ -270,6 +270,10 @@ ArangoDatabase.prototype._collections = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._collection = function (id) {
+  if (typeof id !== 'number' && 
+      this[id] && this[id] instanceof this._collectionConstructor) {
+    return this[id];
+  }
   var url;
 
   if (typeof id === 'number') {

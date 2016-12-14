@@ -45,7 +45,7 @@ function databasePrefix (req, url) {
 // / @brief collection representation
 // //////////////////////////////////////////////////////////////////////////////
 
-function collectionRepresentation (collection, showProperties, showCount, showFigures) {
+function collectionRepresentation(collection, showProperties, showCount, showFigures) {
   var result = {};
 
   result.id = collection._id;
@@ -70,7 +70,8 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
   }
 
   if (showCount) {
-    result.count = collection.count();
+    // show either the count value as a number or the detailed shard counts
+    result.count = collection.count(showCount === 'details');
   }
 
   if (showFigures) {
@@ -378,7 +379,12 @@ function get_api_collection (req, res) {
     // /_api/collection/<identifier>/count
     // .............................................................................
     else if (sub === 'count') {
-      result = collectionRepresentation(collection, true, true, false);
+      // show either the count value as a number or the detailed shard counts
+      if (req.parameters.details === 'true') {
+        result = collectionRepresentation(collection, true, 'details', false);
+      } else {
+        result = collectionRepresentation(collection, true, true, false);
+      }
       headers = {
         location: databasePrefix(req, '/_api/collection/' + collection.name() + '/count')
       };

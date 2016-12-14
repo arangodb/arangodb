@@ -2771,8 +2771,13 @@ static void JS_CountVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  if (args.Length() != 0) {
+  if (args.Length() > 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("count()");
+  }
+
+  bool details = false;
+  if (args.Length() == 1 && ServerState::instance()->isCoordinator()) {
+    details = TRI_ObjectToBoolean(args[0]);
   }
     
   TRI_vocbase_t* vocbase = col->vocbase();
@@ -2791,8 +2796,7 @@ static void JS_CountVocbaseCol(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  OperationResult opResult = trx.count(collectionName);
-  
+  OperationResult opResult = trx.count(collectionName, !details);
   res = trx.finish(opResult.code);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -2800,9 +2804,14 @@ static void JS_CountVocbaseCol(
   }
 
   VPackSlice s = opResult.slice();
-  TRI_ASSERT(s.isNumber());
-
-  TRI_V8_RETURN(v8::Number::New(isolate, static_cast<double>(s.getNumber<double>())));
+  if (details) {
+    TRI_ASSERT(s.isObject());
+    v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, s);
+    TRI_V8_RETURN(result);
+  } else {
+    TRI_ASSERT(s.isNumber());
+    TRI_V8_RETURN(v8::Number::New(isolate, static_cast<double>(s.getNumber<double>())));
+  }
   TRI_V8_TRY_CATCH_END
 }
 
