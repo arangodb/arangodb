@@ -41,8 +41,11 @@ describe('Shard distribution', function () {
   });
   it('should properly distribute a collection', function() {
     internal.db._create('distributionTest', {replicationFactor: 2, numberOfShards: 16});
-    let distribution = JSON.parse(download(coordinator.url + '/_admin/cluster/shardDistribution').body).results;
-
+    internal.print(coordinator.url + '/_admin/cluster/shardDistribution');
+    var d = download(coordinator.url + '/_admin/cluster/shardDistribution');
+    require('internal').print(d);
+    let distribution = JSON.parse(d.body).results;
+    
     let leaders = Object.keys(distribution.distributionTest.Current).reduce((current, shardKey) => {
       let shard = distribution.distributionTest.Current[shardKey];
       if (current.indexOf(shard.leader) === -1) {
@@ -54,7 +57,11 @@ describe('Shard distribution', function () {
   });
   it('should properly distribute a collection with full replication factor', function() {
     internal.db._create('distributionTest', {replicationFactor: dbServerCount, numberOfShards: 16});
-    let distribution = JSON.parse(download(coordinator.url + '/_admin/cluster/shardDistribution').body).results;
+    internal.print(coordinator.url + '/_admin/cluster/shardDistribution');
+    var d = download(coordinator.url + '/_admin/cluster/shardDistribution');
+    internal.print(d);
+    
+    let distribution = JSON.parse(d.body).results;
 
     let leaders = Object.keys(distribution.distributionTest.Current).reduce((current, shardKey) => {
       let shard = distribution.distributionTest.Current[shardKey];

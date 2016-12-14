@@ -32,12 +32,14 @@
 
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterInfo.h"
 
 #include "Logger/Logger.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 
 using namespace arangodb;
@@ -349,6 +351,15 @@ std::string ServerState::roleToAgencyKey(ServerState::RoleEnum role) {
   return "INVALID_CLUSTER_ROLE";
 }
 
+void mkdir (std::string const& path) {
+  if (!TRI_IsDirectory(path.c_str())) {
+    if (!arangodb::basics::FileUtils::createDirectory(path)) {
+      LOG(FATAL) << "Couldn't create file directory " << path << " UUID";
+      FATAL_ERROR_EXIT();
+    }
+  }
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief create an id for a specified role
 //////////////////////////////////////////////////////////////////////////////
@@ -368,6 +379,7 @@ std::string ServerState::createIdForRole(AgencyComm comm,
     application_features::ApplicationServer::getFeature<DatabasePathFeature>(
       "DatabasePath");
   TRI_ASSERT(dbpath != nullptr);
+
   auto filePath = dbpath->directory() + "/UUID";
   std::ifstream ifs(filePath);
   std::string id;
@@ -378,6 +390,7 @@ std::string ServerState::createIdForRole(AgencyComm comm,
     LOG_TOPIC(INFO, Logger::CLUSTER)
       << "Restarting with persisted UUID " << id;
   } else {
+    mkdir (dbpath->directory());
     std::ofstream ofs(filePath);
     id = RoleStr.at(role) + "-" + to_string(boost::uuids::random_generator()());
     ofs << id << std::endl;

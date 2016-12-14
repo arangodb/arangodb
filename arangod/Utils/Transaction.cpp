@@ -2797,11 +2797,11 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
 /// @brief count the number of documents in a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-OperationResult Transaction::count(std::string const& collectionName) {
+OperationResult Transaction::count(std::string const& collectionName, bool aggregate) {
   TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
 
   if (ServerState::isCoordinator(_serverRole)) {
-    return countCoordinator(collectionName);
+    return countCoordinator(collectionName, aggregate);
   }
 
   return countLocal(collectionName);
@@ -2812,18 +2812,16 @@ OperationResult Transaction::count(std::string const& collectionName) {
 //////////////////////////////////////////////////////////////////////////////
 
 #ifndef USE_ENTERPRISE
-OperationResult Transaction::countCoordinator(std::string const& collectionName) {
-  uint64_t count = 0;
+OperationResult Transaction::countCoordinator(std::string const& collectionName, 
+                                              bool aggregate) {
+  std::vector<std::pair<std::string, uint64_t>> count;
   int res = arangodb::countOnCoordinator(_vocbase->name(), collectionName, count);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);
   }
 
-  VPackBuilder resultBuilder;
-  resultBuilder.add(VPackValue(count));
-
-  return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR, false);
+  return buildCountResult(count, aggregate);
 }
 #endif
 
@@ -3597,6 +3595,25 @@ int Transaction::resolveId(char const* handle, size_t length,
   outLength = length - (key - handle);
 
   return TRI_ERROR_NO_ERROR;
+}
+  
+OperationResult Transaction::buildCountResult(std::vector<std::pair<std::string, uint64_t>> const& count, bool aggregate) {
+  VPackBuilder resultBuilder;
+
+  if (aggregate) {
+    uint64_t result = 0;
+    for (auto const& it : count) {
+      result += it.second;
+    }
+    resultBuilder.add(VPackValue(result));
+  } else {
+    resultBuilder.openObject();
+    for (auto const& it : count) {
+      resultBuilder.add(it.first, VPackValue(it.second));
+    }
+    resultBuilder.close();
+  }
+  return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR, false);
 }
 
 //////////////////////////////////////////////////////////////////////////////

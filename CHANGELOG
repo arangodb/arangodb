@@ -1,6 +1,29 @@
 devel
 -----
 
+* added optional detail flag for db.<collection>.count()
+  setting the flag to `true` will make the count operation returned the per-shard
+  counts for the collection:
+
+      db._create("test", { numberOfShards: 10 }); 
+      for (i = 0; i < 1000; ++i) { 
+        db.test.insert({value: i}); 
+      }
+      db.test.count(true);
+
+      { 
+	"s100058" : 99, 
+	"s100057" : 103, 
+	"s100056" : 100, 
+	"s100050" : 94, 
+	"s100055" : 90, 
+	"s100054" : 122, 
+	"s100051" : 109, 
+	"s100059" : 99, 
+	"s100053" : 95, 
+	"s100052" : 89 
+      }
+
 * added optional memory limit for AQL queries:
 
       db._query("FOR i IN 1..100000 SORT i RETURN i", {}, { options: { memoryLimit: 100000 } });
@@ -26,12 +49,38 @@ edge attribute `label`.
 * process.stdout.isTTY now returns `true` in arangosh and when running arangod with the `--console` flag
 
 
-v3.1.4 (XXXX-XX-XX)
+v3.1.5 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #2217
+
+* Foxx router.get/post/etc handler argument can no longer accidentally omitted
+* fixed issue #2217
+
+
+v3.1.4 (2016-12-08)
 -------------------
 
 * fixed issue #2211
 
 * fixed issue #2204
+
+* at cluster start, coordinators wait until at least one DBserver is there,
+  and either at least two DBservers are there or 15s have passed, before they
+  initiate the bootstrap of system collections.
+
+* more robust agency startup from devel
+
+* supervision's AddFollower adds many followers at once
+
+* supervision has new FailedFollower job
+
+* agency's Node has new method getArray
+
+* agency RAFT timing estimates more conservative in waitForSync
+  scenario
+  
+* agency RAFT timing estimates capped at maximum 2.0/10.0 for low/high
 
 
 v3.1.3 (2016-12-02)

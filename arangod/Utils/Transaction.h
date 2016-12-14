@@ -557,7 +557,7 @@ class Transaction {
   /// @brief count the number of documents in a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  OperationResult count(std::string const& collectionName);
+  OperationResult count(std::string const& collectionName, bool aggregate);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Gets the best fitting index for an AQL condition.
@@ -756,10 +756,12 @@ class Transaction {
   OperationResult truncateLocal(std::string const& collectionName,
                                 OperationOptions& options);
   
-  OperationResult countCoordinator(std::string const& collectionName);
+  OperationResult countCoordinator(std::string const& collectionName, bool aggregate);
   OperationResult countLocal(std::string const& collectionName);
   
  protected:
+
+  static OperationResult buildCountResult(std::vector<std::pair<std::string, uint64_t>> const& count, bool aggregate);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the transaction collection for a document collection
