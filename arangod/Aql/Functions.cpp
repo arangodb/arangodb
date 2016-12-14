@@ -212,7 +212,7 @@ static AqlValue ExtractFunctionParameterValue(
     // parameter out of range
     return AqlValue();
   }
-  return parameters.at(position);
+  return parameters[position];
 }
 
 /// @brief extra a collection name from an AqlValue
@@ -1109,6 +1109,8 @@ AqlValue Functions::Contains(arangodb::aql::Query* query,
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
   AqlValue search = ExtractFunctionParameterValue(trx, parameters, 1);
   AqlValue returnIndex = ExtractFunctionParameterValue(trx, parameters, 2);
+  
+  bool const willReturnIndex = returnIndex.toBoolean();
 
   int result = -1; // default is "not found"
   {
@@ -1126,28 +1128,34 @@ AqlValue Functions::Contains(arangodb::aql::Query* query,
       char const* found = static_cast<char const*>(memmem(buffer->c_str(), valueLength, buffer->c_str() + searchOffset, searchLength));
 
       if (found != nullptr) {
-        // find offset into string
-        int bytePosition = static_cast<int>(found - buffer->c_str());
-        char const* p = buffer->c_str();
-        int pos = 0;
-        while (pos < bytePosition) {
-          unsigned char c = static_cast<unsigned char>(*p);
-          if (c < 128) {
-            ++pos;
-          } else if (c < 224) {
-            pos += 2;
-          } else if (c < 240) {
-            pos += 3;
-          } else if (c < 248) {
-            pos += 4;
+        if (willReturnIndex) {
+          // find offset into string
+          int bytePosition = static_cast<int>(found - buffer->c_str());
+          char const* p = buffer->c_str();
+          int pos = 0;
+          while (pos < bytePosition) {
+            unsigned char c = static_cast<unsigned char>(*p);
+            if (c < 128) {
+              ++pos;
+            } else if (c < 224) {
+              pos += 2;
+            } else if (c < 240) {
+              pos += 3;
+            } else if (c < 248) {
+              pos += 4;
+            }
           }
+          result = pos;
+        } else {
+          // fake result position, but it does not matter as it will
+          // only be compared to -1 later
+          result = 0;
         }
-        result = pos;
       }
     }
   }
 
-  if (returnIndex.toBoolean()) {
+  if (willReturnIndex) {
     // return numeric value
     return NumberValue(trx, result);
   }
