@@ -4384,7 +4384,10 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& first, G
   plan->registerNode(inode);
   condition.release();
 
+  LOG_TOPIC(DEBUG, Logger::DEVEL) << "replacing node, type: " << first.collectionNode->getType()
+                                  << " with type: " << inode->getType();
   plan->replaceNode(first.collectionNode,inode);
+
   replaceGeoCondition(plan, first);
   replaceGeoCondition(plan, second);
 
@@ -4406,6 +4409,7 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& first, G
   unlinkNode(second);
 
   //signal that plan has been changed
+  LOG_TOPIC(DEBUG, Logger::DEVEL) << "plan modified";
   return true;
 };
 
@@ -4460,7 +4464,7 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
               sortInfo.invalidate();
               break;
             }
-            if (/* filter and sort match && */ applyGeoOptimization(true, plan, filterInfo, sortInfo)){
+            if (applyGeoOptimization(true, plan, filterInfo, sortInfo)){
               modified = true;
               filterInfo.invalidate();
               sortInfo.invalidate();
@@ -4485,6 +4489,6 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
   }
   opt->addPlan(plan, rule, modified);
 
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "EXIT GEO RULE - modified: " << modified;
+  LOG_TOPIC(DEBUG, Logger::DEVEL) << "EXIT GEO RULE - modified: " << modified;
   //LOG_TOPIC(DEBUG, Logger::DEVEL) << "";
 }
