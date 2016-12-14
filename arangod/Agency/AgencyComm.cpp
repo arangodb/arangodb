@@ -480,23 +480,23 @@ void AgencyCommManager::release(
 }
 
 void AgencyCommManager::failed(
-    std::unique_ptr<httpclient::GeneralClientConnection> connection,
-    std::string const& endpoint) {
+  std::unique_ptr<httpclient::GeneralClientConnection> connection,
+  std::string const& endpoint) {
   MUTEX_LOCKER(locker, _lock);
-
+  
   if (_endpoints.front() == endpoint) {
     LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
-        << "failed agency connection '" << connection.get()
-        << "', active endpoint " << endpoint << "'";
-
-    switchCurrentEndpoint();
-    _unusedConnections[endpoint].clear();
+      << "failed agency connection '" << connection.get()
+      << "', active endpoint " << endpoint << "'";
+    
   } else {
     LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
-        << "failed agency connection '" << connection.get()
-        << "', inactive endpoint " << endpoint << "'";
+      << "failed agency connection '" << connection.get()
+      << "', inactive endpoint " << endpoint << "'";
   }
   
+    switchCurrentEndpoint();
+    _unusedConnections[endpoint].clear();
 }
 
 std::string AgencyCommManager::redirect(
