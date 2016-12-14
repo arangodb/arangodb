@@ -438,17 +438,18 @@ std::unique_ptr<GeneralClientConnection> AgencyCommManager::acquire(
 
   MUTEX_LOCKER(locker, _lock);
 
-  if(endpoint.empty()) {
-    endpoint = _endpoints.front();
-  }
-  
   if (_endpoints.empty()) {
     return nullptr;
-  } else if (!_unusedConnections[endpoint].empty()) {
-    connection.reset(_unusedConnections[endpoint].back().release());
-    _unusedConnections[endpoint].pop_back();
   } else {
-    connection = createNewConnection();
+    if(endpoint.empty()) {
+      endpoint = _endpoints.front();
+    }
+    if (!_unusedConnections[endpoint].empty()) {
+      connection.reset(_unusedConnections[endpoint].back().release());
+      _unusedConnections[endpoint].pop_back();
+    } else {
+      connection = createNewConnection();
+    }
   }
   
   LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
@@ -495,8 +496,9 @@ void AgencyCommManager::failed(
       << "', inactive endpoint " << endpoint << "'";
   }
   
-    switchCurrentEndpoint();
-    _unusedConnections[endpoint].clear();
+  switchCurrentEndpoint();
+  _unusedConnections[endpoint].clear();
+  
 }
 
 std::string AgencyCommManager::redirect(
@@ -536,6 +538,7 @@ std::string AgencyCommManager::redirect(
     return "";
   }
 
+  // TODO: What is this good for
   if (endpoint != _endpoints.front()) {
     LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
         << "ignoring an agency redirect to '" << specification
@@ -1219,7 +1222,6 @@ AgencyCommResult AgencyComm::sendWithFailover(
       std::string red = AgencyCommManager::MANAGER->redirect(
         std::move(connection), endpoint, result._location, url);
       connection = AgencyCommManager::MANAGER->acquire(red);
-      AgencyCommManager::MANAGER->release(std::move(connection), red);
       continue;
     }
 
