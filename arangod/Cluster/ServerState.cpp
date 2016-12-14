@@ -354,7 +354,7 @@ std::string ServerState::roleToAgencyKey(ServerState::RoleEnum role) {
 void mkdir (std::string const& path) {
   if (!TRI_IsDirectory(path.c_str())) {
     if (!arangodb::basics::FileUtils::createDirectory(path)) {
-      LOG(FATAL) << "Couldn't create file directory " << path << " UUID";
+      LOG(FATAL) << "Couldn't create file directory " << path << " (UUID)";
       FATAL_ERROR_EXIT();
     }
   }

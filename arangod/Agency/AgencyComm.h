@@ -432,9 +432,9 @@ class AgencyCommManager {
   void failed(std::unique_ptr<httpclient::GeneralClientConnection>,
               std::string const& endpoint);
 
-  void redirect(std::unique_ptr<httpclient::GeneralClientConnection>,
-                std::string const& endpoint, std::string const& location,
-                std::string& url);
+  std::string redirect(std::unique_ptr<httpclient::GeneralClientConnection>,
+                       std::string const& endpoint, std::string const& location,
+                       std::string& url);
 
   void addEndpoint(std::string const&);
   std::string endpointsString() const;
@@ -455,8 +455,9 @@ class AgencyCommManager {
 
   std::deque<std::string> _endpoints;
 
-  std::vector<std::unique_ptr<httpclient::GeneralClientConnection>>
-      _unusedConnections;
+  std::map<std::string,
+           std::vector<std::unique_ptr<httpclient::GeneralClientConnection>>>
+  _unusedConnections;
 };
 
 // -----------------------------------------------------------------------------

@@ -426,6 +426,9 @@ bool AgencyCommManager::start() {
 void AgencyCommManager::stop() {
   MUTEX_LOCKER(locker, _lock);
 
+  for (auto& i : _unusedConnections) {
+    i.second.clear();
+  }
   _unusedConnections.clear();
 }
 
@@ -435,22 +438,25 @@ std::unique_ptr<GeneralClientConnection> AgencyCommManager::acquire(
 
   MUTEX_LOCKER(locker, _lock);
 
+  if(endpoint.empty()) {
+    endpoint = _endpoints.front();
+  }
+  
   if (_endpoints.empty()) {
     return nullptr;
-  } else if (!_unusedConnections.empty()) {
-    connection.reset(_unusedConnections.back().release());
-    _unusedConnections.pop_back();
+  } else if (!_unusedConnections[endpoint].empty()) {
+    connection.reset(_unusedConnections[endpoint].back().release());
+    _unusedConnections[endpoint].pop_back();
   } else {
     connection = createNewConnection();
   }
-
-  endpoint = _endpoints.front();
-
-  LOG_TOPIC(TRACE, Logger::AGENCYCOMM) << "acquiring agency connection '"
-                                       << connection.get() << "' for endpoint '"
-                                       << endpoint << "'";
-
+  
+  LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
+    << "acquiring agency connection '" << connection.get() << "' for endpoint '"
+    << endpoint << "'";
+  
   return connection;
+  
 }
 
 void AgencyCommManager::release(
@@ -460,15 +466,17 @@ void AgencyCommManager::release(
 
   if (_endpoints.front() == endpoint) {
     LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
-        << "releasing agency connection '" << connection.get()
-        << "', active endpoint '" << endpoint << "'";
-
-    _unusedConnections.emplace_back(std::move(connection));
+      << "releasing agency connection '" << connection.get()
+      << "', active endpoint '" << endpoint << "'";
+    
   } else {
     LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
-        << "releasing agency connection '" << connection.get()
-        << "', inactive endpoint '" << endpoint << "'";
+      << "releasing agency connection '" << connection.get()
+      << "', inactive endpoint '" << endpoint << "'";
   }
+  
+  _unusedConnections[endpoint].emplace_back(std::move(connection));
+  
 }
 
 void AgencyCommManager::failed(
@@ -482,15 +490,16 @@ void AgencyCommManager::failed(
         << "', active endpoint " << endpoint << "'";
 
     switchCurrentEndpoint();
-    _unusedConnections.clear();
+    _unusedConnections[endpoint].clear();
   } else {
     LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
         << "failed agency connection '" << connection.get()
         << "', inactive endpoint " << endpoint << "'";
   }
+  
 }
 
-void AgencyCommManager::redirect(
+std::string AgencyCommManager::redirect(
     std::unique_ptr<httpclient::GeneralClientConnection> connection,
     std::string const& endpoint, std::string const& location,
     std::string& url) {
@@ -510,7 +519,7 @@ void AgencyCommManager::redirect(
   // invalid location header
   if (delim == std::string::npos) {
     failed(std::move(connection), endpoint);
-    return;
+    return "";
   }
 
   std::string rest = specification.substr(delim);
@@ -522,16 +531,16 @@ void AgencyCommManager::redirect(
 
   if (endpoint == specification) {
     LOG_TOPIC(WARN, Logger::AGENCYCOMM)
-        << "got an agency redirect back to the old agency '" << endpoint << "'";
+      << "got an agency redirect back to the old agency '" << endpoint << "'";
     failed(std::move(connection), endpoint);
-    return;
+    return "";
   }
 
   if (endpoint != _endpoints.front()) {
     LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
         << "ignoring an agency redirect to '" << specification
         << "' from inactive endpoint '" << endpoint << "'";
-    return;
+    return "";
   }
 
   url = rest;
@@ -543,11 +552,12 @@ void AgencyCommManager::redirect(
     }
   }
 
-  LOG_TOPIC(WARN, Logger::AGENCYCOMM) << "got a agency redirect from '"
+  LOG_TOPIC(WARN, Logger::AGENCYCOMM) << "got an agency redirect from '"
                                       << endpoint << "' to '" << specification
                                       << "'";
 
   _endpoints.push_front(specification);
+  return specification;
 }
 
 void AgencyCommManager::addEndpoint(std::string const& endpoint) {
@@ -593,7 +603,7 @@ AgencyCommManager::createNewConnection() {
   }
 
   std::unique_ptr<Endpoint> endpoint(
-      Endpoint::clientFactory(_endpoints.front()));
+    Endpoint::clientFactory(_endpoints.front()));
 
   return std::unique_ptr<GeneralClientConnection>(
       GeneralClientConnection::factory(endpoint,
@@ -1206,9 +1216,10 @@ AgencyCommResult AgencyComm::sendWithFailover(
     // in this case we have to pick it up and use the new location returned
     if (result._statusCode ==
         (int)arangodb::rest::ResponseCode::TEMPORARY_REDIRECT) {
-      AgencyCommManager::MANAGER->redirect(std::move(connection), endpoint,
-                                           result._location, url);
-      connection = AgencyCommManager::MANAGER->acquire(endpoint);
+      std::string red = AgencyCommManager::MANAGER->redirect(
+        std::move(connection), endpoint, result._location, url);
+      connection = AgencyCommManager::MANAGER->acquire(red);
+      AgencyCommManager::MANAGER->release(std::move(connection), red);
       continue;
     }
 
@@ -1224,10 +1235,10 @@ AgencyCommResult AgencyComm::sendWithFailover(
 
   if (!result.successful() && result.httpCode() != 412) {
     LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
-        << "Unsuccessful AgencyComm: "
-        << "errorCode: " << result.errorCode()
-        << " errorMessage: " << result.errorMessage()
-        << " errorDetails: " << result.errorDetails();
+      << "Unsuccessful AgencyComm: "
+      << "errorCode: " << result.errorCode()
+      << " errorMessage: " << result.errorMessage()
+      << " errorDetails: " << result.errorDetails();
   }
 
   return result;
