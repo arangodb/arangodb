@@ -85,11 +85,15 @@ class VertexContext {
 template <typename V, typename E, typename M>
 class VertexComputation : public VertexContext<V, E, M> {
   friend class Worker<V, E, M>;
-  OutCache<M>* _outgoing;
+  OutCache<M>* _cache;
 
  public:
   void sendMessage(Edge<E> const* edge, M const& data) {
-    _outgoing->appendMessage(edge->targetShard(), edge->toKey(), data);
+    _cache->appendMessage(edge->targetShard(), edge->toKey(), data);
+  }
+  
+  void enterNextPhase() {
+    _cache->setNextPhase(true);
   }
 
   virtual void compute(MessageIterator<M> const& messages) = 0;

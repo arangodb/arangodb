@@ -372,7 +372,7 @@ SET(ARANGOD_SOURCES
   Pregel/Utils.cpp
   Pregel/Recovery.cpp
   Pregel/Worker.cpp
-  Pregel/WorkerState.cpp
+  Pregel/WorkerConfig.cpp
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}
 )
 

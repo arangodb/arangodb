@@ -38,7 +38,7 @@ class Transaction;
 class LogicalCollection;
 namespace pregel {
 
-class WorkerState;
+class WorkerConfig;
 template <typename V, typename E>
 struct GraphFormat;
 
@@ -65,19 +65,19 @@ class GraphStore {
   size_t _localVerticeCount;
   size_t _localEdgeCount;
 
-  void _createReadTransaction(WorkerState const& state);
+  void _createReadTransaction(WorkerConfig const& state);
   void _cleanupTransactions();
-  void _loadVertices(WorkerState const& state, ShardID const& vertexShard,
+  void _loadVertices(WorkerConfig const& state, ShardID const& vertexShard,
                      ShardID const& edgeShard);
-  void _loadEdges(WorkerState const& state, ShardID const& shard,
+  void _loadEdges(WorkerConfig const& state, ShardID const& shard,
                   VertexEntry& vertexEntry, std::string const& documentID);
 
  public:
   GraphStore(TRI_vocbase_t* vocbase, GraphFormat<V, E>* graphFormat);
   ~GraphStore();
 
-  void loadShards(WorkerState const& state);
-  void loadDocument(WorkerState const& state, ShardID const& shard,
+  void loadShards(WorkerConfig const& state);
+  void loadDocument(WorkerConfig const& state, ShardID const& shard,
                     std::string const& _key);
 
   inline size_t vertexCount() { return _index.size(); }
@@ -90,7 +90,7 @@ class GraphStore {
   void replaceVertexData(VertexEntry const* entry, void* data, size_t size);
 
   /// Write results to database
-  void storeResults(WorkerState const& state);
+  void storeResults(WorkerConfig const& state);
 };
 }
 }

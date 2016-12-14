@@ -157,22 +157,24 @@ void Conductor::finishedWorkerStep(VPackSlice& data) {
     LOG(WARN) << "Conductor did received a callback from the wrong superstep";
     return;
   }
-  VPackSlice slice = data.get(Utils::gssDone);
-  bool gssDone = slice.isBool() && slice.getBool();
-  if (!_asyncMode || gssDone) {
+  
+  WorkerStats stats(data);
+  if (!_asyncMode || stats.allMessagesProcessed()) {
     _ensureUniqueResponse(data);
     
     // collect worker information
-    slice = data.get(Utils::aggregatorValuesKey);
+    VPackSlice slice = data.get(Utils::aggregatorValuesKey);
     if (slice.isObject()) {
       _aggregators->aggregateValues(slice);
     }
-    _workerStats.accumulate(data);
+    _workerStats.accumulate(stats);
   }
   
+  // wait for the last worker to respond
   if (_respondedServers.size() != _dbServers.size()) {
     return;
   }
+  
   bool proceed = true;
   if (_masterContext) {  // ask algorithm to evaluate aggregated values
     proceed = _masterContext->postGlobalSuperstep(_globalSuperstep);
@@ -183,8 +185,7 @@ void Conductor::finishedWorkerStep(VPackSlice& data) {
 
   // workers are done if all messages were processed and no active vertices
   // are left to process
-  bool workersDone = _workerStats.sendCount == _workerStats.receivedCount &&
-                     _workerStats.activeCount == 0;
+  bool workersDone = _workerStats.isDone();
   // TODO make maxumum configurable
   proceed = proceed && _globalSuperstep <= 100;
 
@@ -433,6 +434,7 @@ int Conductor::_initializeWorkers(std::string const& suffix,
     b.add(Utils::coordinatorIdKey, VPackValue(coordinatorId));
     b.add(Utils::totalVertexCount, VPackValue(vertexCount));
     b.add(Utils::totalEdgeCount, VPackValue(edgeCount));
+    b.add(Utils::asyncMode, VPackValue(_asyncMode));
     b.add(Utils::vertexShardsKey, VPackValue(VPackValueType::Object));
     if (additional.isObject()) {
       b.add(additional);

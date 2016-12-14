@@ -20,14 +20,14 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "WorkerState.h"
+#include "WorkerConfig.h"
 #include "Algorithm.h"
 #include "Utils.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
 
-WorkerState::WorkerState(DatabaseID dbname, VPackSlice params)
+WorkerConfig::WorkerConfig(DatabaseID dbname, VPackSlice params)
     : _database(dbname) {
   VPackSlice coordID = params.get(Utils::coordinatorIdKey);
   VPackSlice vertexShardMap = params.get(Utils::vertexShardsKey);
@@ -35,6 +35,7 @@ WorkerState::WorkerState(DatabaseID dbname, VPackSlice params)
   VPackSlice execNum = params.get(Utils::executionNumberKey);
   VPackSlice collectionPlanIdMap = params.get(Utils::collectionPlanIdMapKey);
   VPackSlice globalShards = params.get(Utils::globalShardListKey);
+  VPackSlice async = params.get(Utils::asyncMode);
   //VPackSlice userParams = params.get(Utils::userParametersKey);
   if (!coordID.isString() || !edgeShardMap.isObject() ||
       !vertexShardMap.isObject() || !execNum.isInteger() ||
@@ -44,6 +45,7 @@ WorkerState::WorkerState(DatabaseID dbname, VPackSlice params)
   }
   _executionNumber = execNum.getUInt();
   _coordinatorId = coordID.copyString();
+  _asynchronousMode = async.getBool();
   //_vertexCollectionName = vertexCollName.copyString();
   //_vertexCollectionPlanId = vertexCollPlanId.copyString();
 

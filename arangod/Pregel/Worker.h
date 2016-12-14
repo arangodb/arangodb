@@ -29,7 +29,7 @@
 #include "Pregel/Algorithm.h"
 #include "Pregel/Statistics.h"
 #include "Pregel/WorkerContext.h"
-#include "Pregel/WorkerState.h"
+#include "Pregel/WorkerConfig.h"
 
 struct TRI_vocbase_t;
 namespace arangodb {
@@ -64,15 +64,24 @@ class VertexContext;
 template <typename V, typename E, typename M>
 class Worker : public IWorker {
   // friend class arangodb::RestPregelHandler;
-
-  bool _running = true;
-  WorkerState _state;
+  
+  enum WorkerState {
+    DEFAULT,// only initial
+    IDLE,// do nothing
+    PREPARING,// before starting GSS
+    COMPUTING,// during a superstep
+    RECOVERING,// during recovery
+    DONE// after calling finished
+  };
+  
+  WorkerState _state = WorkerState::DEFAULT;
+  WorkerConfig _config;
   WorkerStats _workerStats;
   uint64_t _expectedGSS = 0;
   std::unique_ptr<Algorithm<V, E, M>> _algorithm;
   std::unique_ptr<WorkerContext> _workerContext;
-  Mutex _conductorMutex;       // locks callbak methods
-  mutable Mutex _threadMutex;  // locks _workerThreadDone
+  Mutex _commandMutex;       // locks callbak methods
+  mutable Mutex _threadMutex;// locks _workerThreadDone
 
   // only valid while recovering to determine the offset
   // where new vertices were inserted
@@ -84,24 +93,19 @@ class Worker : public IWorker {
   std::unique_ptr<MessageFormat<M>> _messageFormat;
   std::unique_ptr<MessageCombiner<M>> _messageCombiner;
   // from previous or current superstep
-  std::unique_ptr<InCache<M>> _readCache;
+  InCache<M> *_readCache = nullptr;
   // for the current or next superstep
-  std::unique_ptr<InCache<M>> _writeCache;
+  InCache<M> *_writeCache = nullptr;
   // intended for the next superstep phase
-  std::unique_ptr<InCache<M>> _nextPhase;
+  InCache<M> *_nextPhase = nullptr;
 
   WorkerStats _superstepStats;
   size_t _runningThreads;
-
-  void _swapIncomingCaches() {
-    _readCache.swap(_writeCache);
-    _writeCache->clear();
-  }
-
   void _initializeVertexContext(VertexContext<V, E, M>* ctx);
-  void _executeGlobalStep(RangeIterator<VertexEntry>& vertexIterator);
-  void _workerThreadDone(AggregatorHandler* threadAggregators,
-                         WorkerStats const& threadStats);
+  void _startProcessing();
+  void _processVertices(RangeIterator<VertexEntry>& vertexIterator);
+  void _finishedProcessing(AggregatorHandler* threadAggregators,
+                           WorkerStats const& threadStats);
   void _callConductor(std::string path, VPackSlice message);
 
  public:

@@ -38,6 +38,9 @@ struct WorkerStats {
   double superstepRuntimeSecs = 0;
 
   WorkerStats() {}
+  WorkerStats(VPackSlice statValues) {
+    accumulate(statValues);
+  }
   WorkerStats(size_t a, size_t s, size_t r)
       : activeCount(a), sendCount(s), receivedCount(r) {}
 
@@ -79,6 +82,10 @@ struct WorkerStats {
     sendCount = 0;
     receivedCount = 0;
     superstepRuntimeSecs = 0;
+  }
+  
+  bool allMessagesProcessed() {
+    return sendCount == receivedCount;
   }
   
   bool isDone() {

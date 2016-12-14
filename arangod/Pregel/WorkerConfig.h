@@ -20,8 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_WORKER_STATE_H
-#define ARANGODB_PREGEL_WORKER_STATE_H 1
+#ifndef ARANGODB_PREGEL_WORKER_CONFIG_H
+#define ARANGODB_PREGEL_WORKER_CONFIG_H 1
 
 #include <velocypack/velocypack-aliases.h>
 #include <algorithm>
@@ -38,12 +38,12 @@ class Worker;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief carry common parameters
 ////////////////////////////////////////////////////////////////////////////////
-class WorkerState {
+class WorkerConfig {
   template <typename V, typename E, typename M>
   friend class Worker;
 
  public:
-  WorkerState(DatabaseID dbname, VPackSlice params);
+  WorkerConfig(DatabaseID dbname, VPackSlice params);
 
   inline uint64_t executionNumber() const { return _executionNumber; }
 

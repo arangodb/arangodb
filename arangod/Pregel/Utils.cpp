@@ -56,7 +56,6 @@ std::string const Utils::globalShardListKey = "globalShardList";
 std::string const Utils::totalVertexCount = "vertexCount";
 std::string const Utils::totalEdgeCount = "edgeCount";
 std::string const Utils::asyncMode = "async";
-std::string const Utils::gssDone = "gssDone";
 
 std::string const Utils::coordinatorIdKey = "coordinatorId";
 std::string const Utils::algorithmKey = "algorithm";

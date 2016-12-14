@@ -27,7 +27,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/Index.h"
-#include "Pregel/WorkerState.h"
+#include "Pregel/WorkerConfig.h"
 #include "Utils.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExplicitTransaction.h"
@@ -52,7 +52,7 @@ GraphStore<V, E>::~GraphStore() {
 }
 
 template <typename V, typename E>
-void GraphStore<V, E>::loadShards(WorkerState const& state) {
+void GraphStore<V, E>::loadShards(WorkerConfig const& state) {
   _createReadTransaction(state);
 
   std::map<CollectionID, std::vector<ShardID>> const& vertexMap =
@@ -86,7 +86,7 @@ void GraphStore<V, E>::loadShards(WorkerState const& state) {
 }
 
 template <typename V, typename E>
-void GraphStore<V, E>::loadDocument(WorkerState const& state,
+void GraphStore<V, E>::loadDocument(WorkerConfig const& state,
                                     ShardID const& shard,
                                     std::string const& _key) {
   /*if (_readTrx == nullptr) {
@@ -166,7 +166,7 @@ RangeIterator<Edge<E>> GraphStore<V, E>::edgeIterator(
 }
 
 template <typename V, typename E>
-void GraphStore<V, E>::_createReadTransaction(WorkerState const& state) {
+void GraphStore<V, E>::_createReadTransaction(WorkerConfig const& state) {
   std::vector<std::string> readColls, writeColls;
   for (auto shard : state.localVertexShardIDs()) {
     readColls.push_back(shard);
@@ -199,7 +199,7 @@ void GraphStore<V, E>::_cleanupTransactions() {
 }
 
 template <typename V, typename E>
-void GraphStore<V, E>::_loadVertices(WorkerState const& state,
+void GraphStore<V, E>::_loadVertices(WorkerConfig const& state,
                                      ShardID const& vertexShard,
                                      ShardID const& edgeShard) {
   //_graphFormat->willUseCollection(vocbase, vertexShard, false);
@@ -264,7 +264,7 @@ void GraphStore<V, E>::_loadVertices(WorkerState const& state,
 }
 
 template <typename V, typename E>
-void GraphStore<V, E>::_loadEdges(WorkerState const& state,
+void GraphStore<V, E>::_loadEdges(WorkerConfig const& state,
                                   ShardID const& edgeShard,
                                   VertexEntry& vertexEntry,
                                   std::string const& documentID) {
@@ -343,7 +343,7 @@ void GraphStore<V, E>::_loadEdges(WorkerState const& state,
 }
 
 template <typename V, typename E>
-void GraphStore<V, E>::storeResults(WorkerState const& state) {
+void GraphStore<V, E>::storeResults(WorkerConfig const& state) {
   std::vector<std::string> readColls, writeColls;
   for (auto shard : state.localVertexShardIDs()) {
     writeColls.push_back(shard);

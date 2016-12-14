@@ -30,7 +30,7 @@
 #include "Pregel/GraphStore.h"
 #include "Pregel/MessageCombiner.h"
 #include "Pregel/MessageFormat.h"
-#include "Pregel/WorkerState.h"
+#include "Pregel/WorkerConfig.h"
 
 namespace arangodb {
 namespace pregel {
@@ -49,11 +49,12 @@ class ArrayInCache;
 template <typename M>
 class OutCache {
  protected:
-  WorkerState const* _state;
+  WorkerConfig const* _state;
   MessageFormat<M> const* _format;
   InCache<M>* _localCache;
   std::string _baseUrl;
   uint32_t _batchSize = 1000;
+  bool _nextPhase = false;
 
   /// @brief current number of vertices stored
   size_t _containedMessages = 0;
@@ -61,12 +62,13 @@ class OutCache {
   bool shouldFlushCache();
 
  public:
-  OutCache(WorkerState* state, InCache<M>* cache);
+  OutCache(WorkerConfig* state, InCache<M>* cache);
   virtual ~OutCache(){};
 
   size_t sendMessageCount() const { return _sendMessages; }
   uint32_t batchSize() const { return _batchSize; }
   void setBatchSize(uint32_t bs) { _batchSize = bs; }
+  void setNextPhase(bool np) { _nextPhase = np; }
 
   virtual void clear() = 0;
   virtual void appendMessage(prgl_shard_t shard, std::string const& key,
@@ -82,7 +84,7 @@ class ArrayOutCache : public OutCache<M> {
       _shardMap;
 
  public:
-  ArrayOutCache(WorkerState* state, InCache<M>* cache)
+  ArrayOutCache(WorkerConfig* state, InCache<M>* cache)
       : OutCache<M>(state, cache) {}
   ~ArrayOutCache();
 
@@ -101,7 +103,7 @@ class CombiningOutCache : public OutCache<M> {
       _shardMap;
 
  public:
-  CombiningOutCache(WorkerState* state, CombiningInCache<M>* cache);
+  CombiningOutCache(WorkerConfig* state, CombiningInCache<M>* cache);
   ~CombiningOutCache();
 
   void clear() override;

@@ -28,7 +28,7 @@
 #include "Pregel/Conductor.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Utils.h"
-#include "Pregel/WorkerState.h"
+#include "Pregel/WorkerConfig.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -106,7 +106,7 @@ void RecoveryManager::_monitorShard(CollectionID const& cid,
                 cc->startRecovery();
               }
             }
-          } else {
+          } else {// what a terrible failure
             for (Conductor* cc : conductors->second) {
               cc->cancel();
             }

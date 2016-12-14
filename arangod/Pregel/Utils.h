@@ -63,7 +63,6 @@ class Utils {
   static std::string const totalVertexCount;
   static std::string const totalEdgeCount;
   static std::string const asyncMode;
-  static std::string const gssDone;
 
   static std::string const globalSuperstepKey;
   static std::string const messagesKey;

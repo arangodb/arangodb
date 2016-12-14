@@ -23,7 +23,7 @@
 #include "OutgoingCache.h"
 #include "IncomingCache.h"
 #include "Utils.h"
-#include "WorkerState.h"
+#include "WorkerConfig.h"
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
@@ -37,7 +37,7 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 
 template <typename M>
-OutCache<M>::OutCache(WorkerState* state, InCache<M>* cache)
+OutCache<M>::OutCache(WorkerConfig* state, InCache<M>* cache)
     : _state(state), _format(cache->format()), _localCache(cache) {
   _baseUrl = Utils::baseUrl(_state->database());
 }
@@ -73,6 +73,10 @@ void ArrayOutCache<M>::appendMessage(prgl_shard_t shard, std::string const& key,
 template <typename M>
 void ArrayOutCache<M>::flushMessages() {
   LOG(INFO) << "Beginning to send messages to other machines";
+  uint64_t gss = this->_state->globalSuperstep();
+  if (this->_nextPhase) {
+    gss += 1;
+  }
 
   std::vector<ClusterCommRequest> requests;
   for (auto const& it : _shardMap) {
@@ -100,8 +104,7 @@ void ArrayOutCache<M>::flushMessages() {
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     package.add(Utils::executionNumberKey,
                 VPackValue(this->_state->executionNumber()));
-    package.add(Utils::globalSuperstepKey,
-                VPackValue(this->_state->globalSuperstep()));
+    package.add(Utils::globalSuperstepKey, VPackValue(gss));
     package.close();
     // add a request
     ShardID const& shardId = this->_state->globalShardIDs()[shard];
@@ -128,7 +131,7 @@ void ArrayOutCache<M>::flushMessages() {
 // ================= CombiningOutCache ==================
 
 template <typename M>
-CombiningOutCache<M>::CombiningOutCache(WorkerState* state,
+CombiningOutCache<M>::CombiningOutCache(WorkerConfig* state,
                                         CombiningInCache<M>* cache)
     : OutCache<M>(state, cache), _combiner(cache->combiner()) {}
 
@@ -169,7 +172,11 @@ void CombiningOutCache<M>::appendMessage(prgl_shard_t shard,
 template <typename M>
 void CombiningOutCache<M>::flushMessages() {
   LOG(INFO) << "Beginning to send messages to other machines";
-
+  uint64_t gss = this->_state->globalSuperstep();
+  if (this->_nextPhase) {
+    gss += 1;
+  }
+  
   std::vector<ClusterCommRequest> requests;
   for (auto const& it : _shardMap) {
     prgl_shard_t shard = it.first;
@@ -195,8 +202,7 @@ void CombiningOutCache<M>::flushMessages() {
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     package.add(Utils::executionNumberKey,
                 VPackValue(this->_state->executionNumber()));
-    package.add(Utils::globalSuperstepKey,
-                VPackValue(this->_state->globalSuperstep()));
+    package.add(Utils::globalSuperstepKey, VPackValue(gss));
     package.close();
     // add a request
     ShardID const& shardId = this->_state->globalShardIDs()[shard];
