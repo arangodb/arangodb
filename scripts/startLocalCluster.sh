@@ -177,6 +177,7 @@ fi
 echo Starting agency ... 
 for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
     port=$(( $BASE + $aid ))
+    AGENCY_ENDPOINTS+="--cluster.agency-endpoint $TRANSPORT://localhost:$port "
     ${BUILD}/bin/arangod \
         -c none \
         --agency.activate true \
@@ -221,7 +222,7 @@ start() {
     ${BUILD}/bin/arangod \
        -c none \
        --database.directory cluster/data$PORT \
-       --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
+       $AGENCY_ENDPOINTS \
        --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
        --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
        --cluster.my-role $ROLE \
@@ -233,6 +234,7 @@ start() {
        --javascript.module-directory ./enterprise/js \
        --javascript.app-path cluster/apps$PORT \
        --log.force-direct true \
+       --log.thread true \
         $LOG_LEVEL_CLUSTER \
         $AUTHENTICATION \
         $SSLKEYFILE \
@@ -252,7 +254,7 @@ startTerminal() {
     $XTERM $XTERMOPTIONS -e ${BUILD}/bin/arangod \
         -c none \
         --database.directory cluster/data$PORT \
-        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
+        $AGENCY_ENDPOINTS \
         --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
         --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
         --cluster.my-role $ROLE \
@@ -281,7 +283,7 @@ startDebugger() {
     ${BUILD}/bin/arangod \
       -c none \
       --database.directory cluster/data$PORT \
-      --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
+      $AGENCY_ENDPOINTS \
       --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
       --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
       --cluster.my-role $ROLE \
@@ -310,7 +312,7 @@ startRR() {
     $XTERM $XTERMOPTIONS -e rr ${BUILD}/bin/arangod \
         -c none \
         --database.directory cluster/data$PORT \
-        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
+        $AGENCY_ENDPOINTS \
         --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
         --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
         --cluster.my-role $ROLE \
@@ -395,7 +397,7 @@ if [ "$SECONDARIES" == "1" ] ; then
         ${BUILD}/bin/arangod \
             -c none \
             --database.directory cluster/data$PORT \
-            --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
+            $AGENCY_ENDPOINTS \
             --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
             --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
             --cluster.my-id $CLUSTER_ID \

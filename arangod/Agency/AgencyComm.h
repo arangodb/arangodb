@@ -441,6 +441,11 @@ class AgencyCommManager {
   std::vector<std::string> endpoints() const;
 
  private:
+
+  // caller must hold _lock
+  void failedNonLocking(std::unique_ptr<httpclient::GeneralClientConnection>,
+              std::string const& endpoint);
+
   // caller must hold _lock
   std::unique_ptr<httpclient::GeneralClientConnection> createNewConnection();
 

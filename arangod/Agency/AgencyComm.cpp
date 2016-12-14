@@ -484,6 +484,14 @@ void AgencyCommManager::failed(
   std::unique_ptr<httpclient::GeneralClientConnection> connection,
   std::string const& endpoint) {
   MUTEX_LOCKER(locker, _lock);
+  failedNonLocking(std::move(connection), endpoint);
+
+}
+
+
+void AgencyCommManager::failedNonLocking(
+  std::unique_ptr<httpclient::GeneralClientConnection> connection,
+  std::string const& endpoint) {
   
   if (_endpoints.front() == endpoint) {
     LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
@@ -500,6 +508,8 @@ void AgencyCommManager::failed(
   _unusedConnections[endpoint].clear();
   
 }
+
+
 
 std::string AgencyCommManager::redirect(
     std::unique_ptr<httpclient::GeneralClientConnection> connection,
@@ -520,7 +530,7 @@ std::string AgencyCommManager::redirect(
 
   // invalid location header
   if (delim == std::string::npos) {
-    failed(std::move(connection), endpoint);
+    failedNonLocking(std::move(connection), endpoint);
     return "";
   }
 
@@ -534,7 +544,7 @@ std::string AgencyCommManager::redirect(
   if (endpoint == specification) {
     LOG_TOPIC(WARN, Logger::AGENCYCOMM)
       << "got an agency redirect back to the old agency '" << endpoint << "'";
-    failed(std::move(connection), endpoint);
+    failedNonLocking(std::move(connection), endpoint);
     return "";
   }
 
@@ -560,6 +570,7 @@ std::string AgencyCommManager::redirect(
                                       << "'";
 
   _endpoints.push_front(specification);
+  LOG(WARN) << __FILE__ << __LINE__;
   return specification;
 }
 
@@ -1219,9 +1230,9 @@ AgencyCommResult AgencyComm::sendWithFailover(
     // in this case we have to pick it up and use the new location returned
     if (result._statusCode ==
         (int)arangodb::rest::ResponseCode::TEMPORARY_REDIRECT) {
-      std::string red = AgencyCommManager::MANAGER->redirect(
+      endpoint = AgencyCommManager::MANAGER->redirect(
         std::move(connection), endpoint, result._location, url);
-      connection = AgencyCommManager::MANAGER->acquire(red);
+      connection = AgencyCommManager::MANAGER->acquire(endpoint);
       continue;
     }
 
