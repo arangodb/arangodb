@@ -754,6 +754,8 @@ class Transaction {
   
  protected:
 
+  static OperationResult buildCountResult(std::vector<std::pair<std::string, uint64_t>> const& count, bool aggregate);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the transaction collection for a document collection
   //////////////////////////////////////////////////////////////////////////////

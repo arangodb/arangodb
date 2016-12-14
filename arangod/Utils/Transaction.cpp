@@ -2821,22 +2821,7 @@ OperationResult Transaction::countCoordinator(std::string const& collectionName,
     return OperationResult(res);
   }
 
-  VPackBuilder resultBuilder;
-  if (aggregate) {
-    uint64_t result = 0;
-    for (auto const& it : count) {
-      result += it.second;
-    }
-    resultBuilder.add(VPackValue(result));
-  } else {
-    resultBuilder.openObject();
-    for (auto const& it : count) {
-      resultBuilder.add(it.first, VPackValue(it.second));
-    }
-    resultBuilder.close();
-  }
-
-  return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR, false);
+  return buildCountResult(count, aggregate);
 }
 #endif
 
@@ -3610,6 +3595,25 @@ int Transaction::resolveId(char const* handle, size_t length,
   outLength = length - (key - handle);
 
   return TRI_ERROR_NO_ERROR;
+}
+  
+OperationResult Transaction::buildCountResult(std::vector<std::pair<std::string, uint64_t>> const& count, bool aggregate) {
+  VPackBuilder resultBuilder;
+
+  if (aggregate) {
+    uint64_t result = 0;
+    for (auto const& it : count) {
+      result += it.second;
+    }
+    resultBuilder.add(VPackValue(result));
+  } else {
+    resultBuilder.openObject();
+    for (auto const& it : count) {
+      resultBuilder.add(it.first, VPackValue(it.second));
+    }
+    resultBuilder.close();
+  }
+  return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR, false);
 }
 
 //////////////////////////////////////////////////////////////////////////////
