@@ -1219,9 +1219,9 @@ AgencyCommResult AgencyComm::sendWithFailover(
     // in this case we have to pick it up and use the new location returned
     if (result._statusCode ==
         (int)arangodb::rest::ResponseCode::TEMPORARY_REDIRECT) {
-      std::string red = AgencyCommManager::MANAGER->redirect(
+      endpoint = AgencyCommManager::MANAGER->redirect(
         std::move(connection), endpoint, result._location, url);
-      connection = AgencyCommManager::MANAGER->acquire(red);
+      connection = AgencyCommManager::MANAGER->acquire(endpoint);
       continue;
     }
 
