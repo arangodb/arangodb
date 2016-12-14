@@ -51,6 +51,8 @@
 #include <tuple>
 #include <iostream>
 
+#include <velocypack/Builder.h>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
@@ -4384,9 +4386,18 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& first, G
   plan->registerNode(inode);
   condition.release();
 
+  arangodb::velocypack::Builder builder;
+  bool withFigures = false;
+  plan->root()->toVelocyPack(builder, withFigures);
+  std::cout << builder.toString();
+  builder.clear();
+
   LOG_TOPIC(DEBUG, Logger::DEVEL) << "replacing node, type: " << first.collectionNode->getType()
                                   << " with type: " << inode->getType();
   plan->replaceNode(first.collectionNode,inode);
+  
+  plan->root()->toVelocyPack(builder, withFigures);
+  std::cout << builder.toString();
 
   replaceGeoCondition(plan, first);
   replaceGeoCondition(plan, second);
