@@ -247,7 +247,11 @@ function main(argv) {
 
   UnitTest.unitTestPrettyPrintResults(r);
 
-  return r.crashed ? -1 : 0;
+  return r.status;
 }
 
-main(ARGUMENTS);
+let result = main(ARGUMENTS);
+if (!result) {
+  // force an error in the console
+  throw 'peng!';
+}

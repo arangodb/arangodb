@@ -432,15 +432,20 @@ class AgencyCommManager {
   void failed(std::unique_ptr<httpclient::GeneralClientConnection>,
               std::string const& endpoint);
 
-  void redirect(std::unique_ptr<httpclient::GeneralClientConnection>,
-                std::string const& endpoint, std::string const& location,
-                std::string& url);
+  std::string redirect(std::unique_ptr<httpclient::GeneralClientConnection>,
+                       std::string const& endpoint, std::string const& location,
+                       std::string& url);
 
   void addEndpoint(std::string const&);
   std::string endpointsString() const;
   std::vector<std::string> endpoints() const;
 
  private:
+
+  // caller must hold _lock
+  void failedNonLocking(std::unique_ptr<httpclient::GeneralClientConnection>,
+              std::string const& endpoint);
+
   // caller must hold _lock
   std::unique_ptr<httpclient::GeneralClientConnection> createNewConnection();
 
@@ -455,8 +460,9 @@ class AgencyCommManager {
 
   std::deque<std::string> _endpoints;
 
-  std::vector<std::unique_ptr<httpclient::GeneralClientConnection>>
-      _unusedConnections;
+  std::map<std::string,
+           std::vector<std::unique_ptr<httpclient::GeneralClientConnection>>>
+  _unusedConnections;
 };
 
 // -----------------------------------------------------------------------------
