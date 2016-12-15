@@ -509,7 +509,13 @@ void AgencyCommManager::failedNonLocking(
   
 }
 
-
+template<class T>
+inline std::ostream& operator<<(std::ostream& o, std::deque<T> const& d) {
+  for (const auto& i : d) {
+    o << i << " ";
+  }
+  return o;
+}
 
 std::string AgencyCommManager::redirect(
     std::unique_ptr<httpclient::GeneralClientConnection> connection,
@@ -560,7 +566,7 @@ std::string AgencyCommManager::redirect(
   url = rest;
   
   _endpoints.erase(
-    std::remove(_endpoints.begin(), _endpoints.end(), endpoint),
+    std::remove(_endpoints.begin(), _endpoints.end(), specification),
     _endpoints.end());
   
   LOG_TOPIC(WARN, Logger::AGENCYCOMM)
@@ -568,7 +574,7 @@ std::string AgencyCommManager::redirect(
     << "' to '" << specification << "'";
   
   _endpoints.push_front(specification);
-  
+
   return specification;
   
 }
