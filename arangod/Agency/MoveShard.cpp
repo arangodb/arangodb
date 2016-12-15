@@ -61,7 +61,7 @@ MoveShard::~MoveShard() {}
 bool MoveShard::create() {
 
   // Lookup from server
-  if (_from.compare("DBServer") == 0) {
+  if (_from.find("DBServer") == 0) {
     try {
       _from = uuidLookup(_snapshot, _from);
     } catch (...) {
@@ -70,7 +70,7 @@ bool MoveShard::create() {
     }
   }
   // Lookup to Server
-  if (_to.compare("DBServer") == 0) {
+  if (_to.find("DBServer") == 0) {
     try {
       _to = uuidLookup(_snapshot, _to);
     } catch (...) {
@@ -143,7 +143,7 @@ bool MoveShard::create() {
 bool MoveShard::start() {
   
   // Lookup from server
-  if (_from.compare("DBServer") == 0) {
+  if (_from.find("DBServer") == 0) {
     try {
       _from = uuidLookup(_snapshot, _from);
     } catch (...) {
@@ -153,7 +153,7 @@ bool MoveShard::start() {
   }
   
   // Lookup to Server
-  if (_to.compare("DBServer") == 0) {
+  if (_to.find("DBServer") == 0) {
     try {
       _to = uuidLookup(_snapshot, _to);
     } catch (...) {
@@ -380,7 +380,7 @@ JOB_STATUS MoveShard::status() {
         _snapshot(pos[status] + _jobId + "/shards").slice()[0].copyString();
 
       // Lookup from server
-      if (_from.compare("DBServer") == 0) {
+      if (_from.find("DBServer") == 0) {
         try {
           _from = uuidLookup(_snapshot, _from);
         } catch (...) {
@@ -390,7 +390,7 @@ JOB_STATUS MoveShard::status() {
       }
       
       // Lookup to Server
-      if (_to.compare("DBServer") == 0) {
+      if (_to.find("DBServer") == 0) {
         try {
           _to = uuidLookup(_snapshot, _to);
         } catch (...) {
