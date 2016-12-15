@@ -26,6 +26,8 @@
 #include "Agency/Agent.h"
 #include "Agency/Job.h"
 
+static std::string const DBServer = "DBServer";
+
 using namespace arangodb::consensus;
 
 MoveShard::MoveShard(Node const& snapshot, Agent* agent,
@@ -61,7 +63,7 @@ MoveShard::~MoveShard() {}
 bool MoveShard::create() {
 
   // Lookup from server
-  if (_from.find("DBServer") == 0) {
+  if (_from.compare(0, DBServer.length(), DBServer) == 0) {
     try {
       _from = uuidLookup(_snapshot, _from);
     } catch (...) {
@@ -70,7 +72,7 @@ bool MoveShard::create() {
     }
   }
   // Lookup to Server
-  if (_to.find("DBServer") == 0) {
+  if (_to.compare(0, DBServer.length(), DBServer) == 0) {
     try {
       _to = uuidLookup(_snapshot, _to);
     } catch (...) {
@@ -143,7 +145,7 @@ bool MoveShard::create() {
 bool MoveShard::start() {
   
   // Lookup from server
-  if (_from.find("DBServer") == 0) {
+  if (_from.compare(0, DBServer.length(), DBServer) == 0) {
     try {
       _from = uuidLookup(_snapshot, _from);
     } catch (...) {
@@ -153,7 +155,7 @@ bool MoveShard::start() {
   }
   
   // Lookup to Server
-  if (_to.find("DBServer") == 0) {
+  if (_to.compare(0, DBServer.length(), DBServer) == 0) {
     try {
       _to = uuidLookup(_snapshot, _to);
     } catch (...) {
@@ -380,7 +382,7 @@ JOB_STATUS MoveShard::status() {
         _snapshot(pos[status] + _jobId + "/shards").slice()[0].copyString();
 
       // Lookup from server
-      if (_from.find("DBServer") == 0) {
+      if (_from.compare(0, DBServer.length(), DBServer) == 0) {
         try {
           _from = uuidLookup(_snapshot, _from);
         } catch (...) {
@@ -390,7 +392,7 @@ JOB_STATUS MoveShard::status() {
       }
       
       // Lookup to Server
-      if (_to.find("DBServer") == 0) {
+      if (_to.compare(0, DBServer.length(), DBServer) == 0) {
         try {
           _to = uuidLookup(_snapshot, _to);
         } catch (...) {
