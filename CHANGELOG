@@ -1,6 +1,8 @@
 v3.1.5 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #2218
+
 * fixed issue #2217
 
 * Foxx router.get/post/etc handler argument can no longer accidentally omitted
