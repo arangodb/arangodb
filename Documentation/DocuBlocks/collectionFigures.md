@@ -28,28 +28,19 @@ memory.
 * *compactors.count*: The number of compactor files.
 * *compactors.fileSize*: The total filesize of the compactor files
   (in bytes).
-* *shapefiles.count*: The number of shape files. This value is
-  deprecated and kept for compatibility reasons only. The value will always
-  be 0 since ArangoDB 2.0 and higher.
-* *shapefiles.fileSize*: The total filesize of the shape files. This
-  value is deprecated and kept for compatibility reasons only. The value will
-  always be 0 in ArangoDB 2.0 and higher.
-* *shapes.count*: The total number of shapes used in the collection.
-  This includes shapes that are not in use anymore. Shapes that are contained
-  in the write-ahead log only are not reported in this figure.
-* *shapes.size*: The total size of all shapes (in bytes). This includes
-  shapes that are not in use anymore. Shapes that are contained in the
-  write-ahead log only are not reported in this figure.
-* *attributes.count*: The total number of attributes used in the
-  collection. Note: the value includes data of attributes that are not in use
-  anymore. Attributes that are contained in the write-ahead log only are
-  not reported in this figure.
-* *attributes.size*: The total size of the attribute data (in bytes).
-  Note: the value includes data of attributes that are not in use anymore.
-  Attributes that are contained in the write-ahead log only are not 
-  reported in this figure.
+* *readCache.count*: The number of revisions of this collection stored
+  in the document revisions cache.
+* *readCache.size*: The memory used for storing the revisions 
+  of this collection in the document revisions cache (in bytes). This 
+  figure does not include the document data but only mappings from
+  document revision ids to cache entry locations.
+* *revisions.count*: The number of revisions of this collection managed
+  by the storage engine.
+* *revisions.size*: The memory used for storing the revisions 
+  of this collection in the storage engine (in bytes). This figure
+  does not include the document data but only mappings from
+  document revision ids to storage engine datafile positions.
 * *indexes.count*: The total number of indexes defined for the
-  collection, including the pre-defined indexes (e.g. primary index).
 * *indexes.size*: The total memory allocated for indexes in bytes.
 * *maxTick*: The tick of the last marker that was stored in a journal
   of the collection. This might be 0 if the collection does not yet have

@@ -66,7 +66,7 @@ HttpCommTask::HttpCommTask(EventLoop loop, GeneralServer* server,
   _protocol = "http";
   connectionStatisticsAgentSetHttp();  // this agent is inherited form
                                        // sockettask or task
-  auto agent = std::unique_ptr<RequestStatisticsAgent>(new RequestStatisticsAgent(true));
+  auto agent = std::make_unique<RequestStatisticsAgent>(true);
   agent->acquire();
   MUTEX_LOCKER(lock, _agentsMutex);
   _agents.emplace(std::make_pair(1UL, std::move(agent)));
