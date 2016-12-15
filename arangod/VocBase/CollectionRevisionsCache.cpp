@@ -92,9 +92,24 @@ void CollectionRevisionsCache::clear() {
   _readCache.clear();
 }
 
+size_t CollectionRevisionsCache::size() {
+  READ_LOCKER(locker, _lock);
+  return _revisions.size();
+}
+
+size_t CollectionRevisionsCache::memoryUsage() {
+  READ_LOCKER(locker, _lock);
+  return _revisions.memoryUsage();
+}
+
+size_t CollectionRevisionsCache::chunksMemoryUsage() {
+  READ_LOCKER(locker, _lock);
+  return _readCache.chunksMemoryUsage();
+}
+
 void CollectionRevisionsCache::sizeHint(int64_t hint) {
   if (hint > 256) {
-    _revisions.resize(nullptr, static_cast<size_t>(hint * 1.1));
+    _revisions.resize(nullptr, static_cast<size_t>(hint));
   }
 }
   

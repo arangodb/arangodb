@@ -457,7 +457,7 @@ class LogfileManager final : public application_features::ApplicationFeature {
   std::string _databasePath;
 
   // state during recovery
-  RecoverState* _recoverState;
+  std::unique_ptr<RecoverState> _recoverState;
 
   bool _allowOversizeEntries = true;
   bool _useMLock = false;

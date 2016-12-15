@@ -472,6 +472,16 @@ static void StartExternalProcess(TRI_external_t* external, bool usePipes) {
   external->_status = TRI_EXT_RUNNING;
 }
 #endif
+      
+void TRI_LogProcessInfoSelf(char const* message) {
+  TRI_process_info_t info = TRI_ProcessInfoSelf();
+
+  if (message == nullptr) {
+    message = "";
+  }
+  
+  LOG_TOPIC(TRACE, Logger::MEMORY) << message << "virtualSize: " << info._virtualSize << ", residentSize: " << info._residentSize << ", numberThreads: " << info._numberThreads;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts usec and sec into seconds
