@@ -9,7 +9,7 @@ namespace arangodb {
 class HttpRequest;
 
 namespace rest {
-class HttpCommTask : public GeneralCommTask {
+class HttpCommTask final : public GeneralCommTask {
  public:
   static size_t const MaximalHeaderSize;
   static size_t const MaximalBodySize;

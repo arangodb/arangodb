@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
 #include "Basics/StringUtils.h"
+#include "Basics/process-utils.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ArgumentParser.h"
 
@@ -532,6 +533,7 @@ void ApplicationServer::start() {
       feature->start();
       feature->state(FeatureState::STARTED);
       reportFeatureProgress(_state, feature->name());
+      
     } catch (std::exception const& ex) {
       LOG(ERR) << "caught exception during start of feature '" << feature->name()
                << "': " << ex.what() << ". shutting down";

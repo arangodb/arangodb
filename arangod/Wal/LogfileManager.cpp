@@ -86,7 +86,6 @@ static inline uint32_t MaxSlots() { return 1024 * 1024 * 16; }
 // create the logfile manager
 LogfileManager::LogfileManager(ApplicationServer* server)
     : ApplicationFeature(server, "LogfileManager"),
-      _recoverState(nullptr),
       _allowWrites(false),  // start in read-only mode
       _hasFoundLastTick(false),
       _inRecovery(true),
@@ -130,7 +129,6 @@ LogfileManager::~LogfileManager() {
 
   _barriers.clear();
 
-  delete _recoverState;
   delete _slots;
 
   for (auto& it : _logfiles) {
@@ -297,7 +295,7 @@ void LogfileManager::start() {
   
   // initialize some objects
   _slots = new Slots(this, _numberOfSlots, 0);
-  _recoverState = new RecoverState(_ignoreRecoveryErrors);
+  _recoverState.reset(new RecoverState(_ignoreRecoveryErrors));
 
   TRI_ASSERT(!_allowWrites);
 
@@ -404,6 +402,9 @@ bool LogfileManager::open() {
 
   // remove usage locks for databases and collections
   _recoverState->releaseResources();
+
+  // not needed anymore
+  _recoverState.reset();
 
   // write the current state into the shutdown file
   writeShutdownInfo(false);
@@ -2107,7 +2108,7 @@ int LogfileManager::inspectLogfiles() {
 
     // update the tick statistics
     if (!TRI_IterateDatafile(df, &RecoverState::InitialScanMarker,
-                             static_cast<void*>(_recoverState))) {
+                             static_cast<void*>(_recoverState.get()))) {
       std::string const logfileName = logfile->filename();
       LOG(WARN) << "WAL inspection failed when scanning logfile '"
                 << logfileName << "'";

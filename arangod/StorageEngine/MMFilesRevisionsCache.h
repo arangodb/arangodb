@@ -41,6 +41,9 @@ class MMFilesRevisionsCache {
   
  public:
   void sizeHint(int64_t hint);
+  size_t size();
+  size_t capacity();
+  size_t memoryUsage();
   void clear();
   MMFilesDocumentPosition lookup(TRI_voc_rid_t revisionId) const;
   void insert(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal, bool shouldLock);

@@ -99,40 +99,25 @@ The number of compactor files.
 @RESTSTRUCT{fileSize,collection_figures_compactors,integer,required,int64}
 The total filesize of all compactor files (in bytes).
 
-@RESTSTRUCT{shapefiles,collection_figures,object,required,collection_figures_shapefiles}
-**deprecated**
+@RESTSTRUCT{readcache,collection_figures,object,required,collection_figures_readcache}
 
-@RESTSTRUCT{count,collection_figures_shapefiles,integer,required,int64}
-The number of shape files. This value is deprecated and kept for compatibility reasons only.
-The value will always be 0 since ArangoDB 2.0 and higher.
+@RESTSTRUCT{count,collection_figures_readcache,integer,required,int64}
+The number of revisions of this collection stored in the document revisions cache.
 
-@RESTSTRUCT{fileSize,collection_figures_shapefiles,integer,required,int64}
-The total filesize of the shape files. This value is deprecated and kept
-for compatibility reasons only. The value will always be 0 in ArangoDB 2.0 and higher.
+@RESTSTRUCT{size,collection_figures_readcache,integer,required,int64}
+The memory used for storing the revisions of this collection in the document 
+revisions cache (in bytes). This figure does not include the document data but 
+only mappings from document revision ids to cache entry locations.
 
-@RESTSTRUCT{shapes,collection_figures,object,required,collection_figures_shapes}
-@RESTSTRUCT{count,collection_figures_shapes,integer,required,int64}
-The total number of shapes used in the collection. This includes shapes
-that are not in use anymore. Shapes that are contained
-in the write-ahead log only are not reported in this figure.
+@RESTSTRUCT{revisions,collection_figures,object,required,collection_figures_revisions}
 
-@RESTSTRUCT{size,collection_figures_shapes,integer,required,int64}
-The total size of all shapes (in bytes). This includes
-shapes that are not in use anymore. Shapes that are contained in the
-write-ahead log only are not reported in this figure.
+@RESTSTRUCT{count,collection_figures_revisions,integer,required,int64}
+The number of revisions of this collection managed by the storage engine.
 
-@RESTSTRUCT{attributes,collection_figures,object,required,collection_figures_attributes}
-@RESTSTRUCT{count,collection_figures_attributes,integer,required,int64}
-The total number of attributes used in the
-collection. Note: the value includes data of attributes that are not in use
-anymore. Attributes that are contained in the write-ahead log only are
-not reported in this figure.
-
-@RESTSTRUCT{size,collection_figures_attributes,integer,required,int64}
-The total size of the attribute data (in bytes).
-Note: the value includes data of attributes that are not in use anymore.
-Attributes that are contained in the write-ahead log only are not
-reported in this figure.
+@RESTSTRUCT{size,collection_figures_revisions,integer,required,int64}
+The memory used for storing the revisions of this collection in the storage 
+engine (in bytes). This figure does not include the document data but only mappings 
+from document revision ids to storage engine datafile positions.
 
 @RESTSTRUCT{indexes,collection_figures,object,required,collection_figures_indexes}
 @RESTSTRUCT{count,collection_figures_indexes,integer,required,int64}

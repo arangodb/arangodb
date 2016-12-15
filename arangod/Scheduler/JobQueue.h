@@ -49,7 +49,7 @@ class JobQueue {
   void start();
   void beginShutdown();
 
-  int64_t queueSize(size_t i) { return _queuesSize[i]; }
+  int64_t queueSize(size_t i) const { return _queuesSize[i]; }
 
   bool queue(size_t i, std::unique_ptr<Job> job) {
     if (i >= SYSTEM_QUEUE_SIZE) {

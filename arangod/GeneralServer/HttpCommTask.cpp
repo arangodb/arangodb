@@ -66,6 +66,7 @@ HttpCommTask::HttpCommTask(EventLoop loop, GeneralServer* server,
   _protocol = "http";
 
   connectionStatisticsAgentSetHttp();
+  
   auto agent = std::make_unique<RequestStatisticsAgent>(true);
   agent->acquire();
   MUTEX_LOCKER(lock, _agentsMutex);
