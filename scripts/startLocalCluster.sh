@@ -234,7 +234,6 @@ start() {
        --javascript.module-directory ./enterprise/js \
        --javascript.app-path cluster/apps$PORT \
        --log.force-direct true \
-       --log.thread true \
         $LOG_LEVEL_CLUSTER \
         $AUTHENTICATION \
         $SSLKEYFILE \
