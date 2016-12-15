@@ -253,5 +253,5 @@ function main(argv) {
 let result = main(ARGUMENTS);
 if (!result) {
   // force an error in the console
-  throw 'peng';
+  throw 'peng!';
 }
