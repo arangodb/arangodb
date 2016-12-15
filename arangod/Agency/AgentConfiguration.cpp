@@ -352,8 +352,8 @@ void config_t::update(query_t const& message) {
   for (auto const& a : VPackArrayIterator(slice.get(activeStr))) {
     active.push_back(a.copyString());
   }
-  double minPing = slice.get(minPingStr).getDouble();
-  double maxPing = slice.get(maxPingStr).getDouble();
+  double minPing = slice.get(minPingStr).getNumber<double>();
+  double maxPing = slice.get(maxPingStr).getNumber<double>();
   WRITE_LOCKER(writeLocker, _lock);
   if (pool != _pool) {
     _pool = pool;
@@ -395,14 +395,14 @@ void config_t::override(VPackSlice const& conf) {
   }
 
   if (conf.hasKey(minPingStr) && conf.get(minPingStr).isDouble()) {
-    _minPing = conf.get(minPingStr).getDouble();
+    _minPing = conf.get(minPingStr).getNumber<double>();
   } else {
     LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override " << minPingStr
                                    << " from " << conf.toJson();
   }
 
   if (conf.hasKey(maxPingStr) && conf.get(maxPingStr).isDouble()) {
-    _maxPing = conf.get(maxPingStr).getDouble();
+    _maxPing = conf.get(maxPingStr).getNumber<double>();
   } else {
     LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override " << maxPingStr
                                    << " from " << conf.toJson();
@@ -446,7 +446,7 @@ void config_t::override(VPackSlice const& conf) {
 
   if (conf.hasKey(supervisionFrequencyStr) &&
       conf.get(supervisionFrequencyStr).isDouble()) {
-    _supervisionFrequency = conf.get(supervisionFrequencyStr).getDouble();
+    _supervisionFrequency = conf.get(supervisionFrequencyStr).getNumber<double>();
   } else {
     LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override "
                                    << supervisionFrequencyStr << " from "
@@ -589,7 +589,7 @@ bool config_t::merge(VPackSlice const& conf) {
   ss << "Min RAFT interval: ";
   if (_minPing == 0) {  // Command line beats persistence
     if (conf.hasKey(minPingStr)) {
-      _minPing = conf.get(minPingStr).getDouble();
+      _minPing = conf.get(minPingStr).getNumber<double>();
       ss << _minPing << " (persisted)";
     } else {
       _minPing = 0.5;
@@ -605,7 +605,7 @@ bool config_t::merge(VPackSlice const& conf) {
   ss << "Max RAFT interval: ";
   if (_maxPing == 0) {  // Command line beats persistence
     if (conf.hasKey(maxPingStr)) {
-      _maxPing = conf.get(maxPingStr).getDouble();
+      _maxPing = conf.get(maxPingStr).getNumber<double>();
       ss << _maxPing << " (persisted)";
     } else {
       _maxPing = 2.5;
@@ -637,7 +637,7 @@ bool config_t::merge(VPackSlice const& conf) {
   ss << "Supervision interval [s]: ";
   if (_supervisionFrequency == 0) {  // Command line beats persistence
     if (conf.hasKey(supervisionFrequencyStr)) {
-      _supervisionFrequency = conf.get(supervisionFrequencyStr).getDouble();
+      _supervisionFrequency = conf.get(supervisionFrequencyStr).getNumber<double>();
       ss << _supervisionFrequency << " (persisted)";
     } else {
       _supervisionFrequency = 2.5;

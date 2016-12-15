@@ -8,7 +8,7 @@ for (const localName of documentCollections) {
   if (!db._collection(qualifiedName)) {
     db._createDocumentCollection(qualifiedName);
   } else if (module.context.isProduction) {
-    console.warn(`collection <%= '$' %>{qualifiedName} already exists. Leaving it untouched.`)
+    console.debug(`collection <%= '$' %>{qualifiedName} already exists. Leaving it untouched.`)
   }
 }
 
@@ -17,6 +17,6 @@ for (const localName of edgeCollections) {
   if (!db._collection(qualifiedName)) {
     db._createEdgeCollection(qualifiedName);
   } else if (module.context.isProduction) {
-    console.warn(`collection <%= '$' %>{qualifiedName} already exists. Leaving it untouched.`)
+    console.debug(`collection <%= '$' %>{qualifiedName} already exists. Leaving it untouched.`)
   }
 }

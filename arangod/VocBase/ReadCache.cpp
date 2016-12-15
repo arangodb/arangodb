@@ -39,7 +39,9 @@ uint8_t* ReadCachePosition::vpack() noexcept {
 
 ReadCache::ReadCache(RevisionCacheChunkAllocator* allocator, CollectionRevisionsCache* collectionCache) 
         : _allocator(allocator), _collectionCache(collectionCache), 
-          _writeChunk(nullptr) {}
+          _writeChunk(nullptr) {
+  TRI_ASSERT(_allocator != nullptr);
+}
 
 ReadCache::~ReadCache() {
   try {
@@ -47,6 +49,10 @@ ReadCache::~ReadCache() {
   } catch (...) {
     // ignore any errors because of destructor
   }
+}
+
+size_t ReadCache::chunksMemoryUsage() {
+  return _allocator->totalAllocated();
 }
 
 // clear all chunks currently in use. this is a fast-path deletion without checks

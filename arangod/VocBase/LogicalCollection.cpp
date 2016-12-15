@@ -23,6 +23,7 @@
 
 #include "LogicalCollection.h"
 
+#include "Aql/QueryCache.h"
 #include "Basics/Barrier.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
@@ -31,7 +32,7 @@
 #include "Basics/ThreadPool.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Aql/QueryCache.h"
+#include "Basics/process-utils.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
@@ -1227,7 +1228,7 @@ std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() {
     }
   } else {
     builder->openObject();
-
+   
     // add index information
     size_t sizeIndexes = getPhysical()->memory();
     size_t numIndexes = 0;
@@ -1235,7 +1236,7 @@ std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() {
       sizeIndexes += static_cast<size_t>(idx->memory());
       ++numIndexes;
     }
-
+    
     builder->add("indexes", VPackValue(VPackValueType::Object));
     builder->add("count", VPackValue(numIndexes));
     builder->add("size", VPackValue(sizeIndexes));
@@ -1259,6 +1260,9 @@ std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() {
     }
 
     if (lastCompactionStatus != nullptr) {
+      if (lastCompactionStamp == 0.0) {
+        lastCompactionStamp = TRI_microtime();
+      }
       struct tm tb;
       time_t tt = static_cast<time_t>(lastCompactionStamp);
       TRI_gmtime(tt, &tb);
@@ -1269,6 +1273,13 @@ std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() {
     builder->add("message", VPackValue(lastCompactionStatus));
     builder->add("time", VPackValue(&lastCompactionStampString[0]));
     builder->close(); // compactionStatus
+    
+    if (_revisionsCache) { 
+      builder->add("readCache", VPackValue(VPackValueType::Object));
+      builder->add("count", VPackValue(_revisionsCache->size()));
+      builder->add("size", VPackValue(_revisionsCache->memoryUsage()));
+      builder->close(); // readCache
+    }
 
     // add engine-specific figures
     getPhysical()->figures(builder);

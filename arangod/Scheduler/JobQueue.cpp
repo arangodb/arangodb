@@ -31,7 +31,7 @@
 using namespace arangodb;
 
 namespace {
-class JobQueueThread : public Thread {
+class JobQueueThread final : public Thread {
  public:
   JobQueueThread(JobQueue* server, boost::asio::io_service* ioService)
       : Thread("JobQueueThread"), _jobQueue(server), _ioService(ioService) {}

@@ -69,8 +69,23 @@ MMFilesDocumentPosition MMFilesRevisionsCache::lookup(TRI_voc_rid_t revisionId) 
 void MMFilesRevisionsCache::sizeHint(int64_t hint) {
   WRITE_LOCKER(locker, _lock);
   if (hint > 256) {
-    _positions.resize(nullptr, static_cast<size_t>(hint * 1.1));
+    _positions.resize(nullptr, static_cast<size_t>(hint));
   }
+}
+
+size_t MMFilesRevisionsCache::size() {
+  READ_LOCKER(locker, _lock);
+  return _positions.size();
+}
+
+size_t MMFilesRevisionsCache::capacity() {
+  READ_LOCKER(locker, _lock);
+  return _positions.capacity();
+}
+
+size_t MMFilesRevisionsCache::memoryUsage() {
+  READ_LOCKER(locker, _lock);
+  return _positions.memoryUsage();
 }
 
 void MMFilesRevisionsCache::clear() {

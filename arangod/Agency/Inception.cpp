@@ -301,8 +301,8 @@ void Inception::reportIn(query_t const& query) {
   MUTEX_LOCKER(lock, _mLock);
   _measurements.push_back(
     std::vector<double>(
-      {slice.get("mean").getDouble(), slice.get("stdev").getDouble(),
-          slice.get("max").getDouble(), slice.get("min").getDouble()} ));
+      {slice.get("mean").getNumber<double>(), slice.get("stdev").getNumber<double>(),
+          slice.get("max").getNumber<double>(), slice.get("min").getNumber<double>()} ));
 
 }
 

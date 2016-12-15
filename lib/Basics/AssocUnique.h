@@ -349,6 +349,14 @@ class AssocUnique {
     }
     return sum;
   }
+  
+  size_t capacity() const {
+    size_t sum = 0;
+    for (auto& b : _buckets) {
+      sum += static_cast<size_t>(b._nrAlloc);
+    }
+    return sum;
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief resizes the hash table

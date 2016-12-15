@@ -81,7 +81,7 @@ bool MoveShard::create() {
     }
   }
 
-  LOG_TOPIC(INFO, Logger::AGENCY)
+  LOG_TOPIC(DEBUG, Logger::AGENCY)
     << "Todo: Move shard " + _shard + " from " + _from + " to " << _to;
   
   std::string path, now(timepointToString(std::chrono::system_clock::now()));
@@ -249,8 +249,8 @@ bool MoveShard::start() {
     try {
       _snapshot(toDoPrefix + _jobId).toBuilder(todo);
     } catch (std::exception const&) {
-      LOG_TOPIC(INFO, Logger::AGENCY) << "Failed to get key " + toDoPrefix +
-                                             _jobId + " from agency snapshot";
+      LOG_TOPIC(INFO, Logger::AGENCY)
+        << "Failed to get key " + toDoPrefix + _jobId + " from agency snapshot";
       return false;
     }
   } else {
@@ -358,7 +358,7 @@ bool MoveShard::start() {
   write_ret_t res = transact(_agent, pending);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    LOG_TOPIC(INFO, Logger::AGENCY)
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
         << "Pending: Move shard " + _shard + " from " + _from + " to " + _to;
     return true;
   }

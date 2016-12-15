@@ -28,6 +28,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/process-utils.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
@@ -312,7 +313,6 @@ int64_t MMFilesCollection::initialCount() const {
 
 void MMFilesCollection::updateCount(int64_t count) {
   _initialCount = count;
-  _revisionsCache.sizeHint(count);
 }
   
 /// @brief closes an open collection
@@ -898,6 +898,11 @@ void MMFilesCollection::figures(std::shared_ptr<arangodb::velocypack::Builder>& 
   builder->add("count", VPackValue(_compactors.size()));
   builder->add("fileSize", VPackValue(sizeCompactors));
   builder->close(); // compactors
+  
+  builder->add("revisions", VPackValue(VPackValueType::Object));
+  builder->add("count", VPackValue(_revisionsCache.size()));
+  builder->add("size", VPackValue(_revisionsCache.memoryUsage()));
+  builder->close(); // revisions
 }
 
 /// @brief iterate over a vector of datafiles and pick those with a specific
@@ -1075,6 +1080,7 @@ int MMFilesCollection::iterateMarkersOnLoad(arangodb::Transaction* trx) {
   OpenIteratorState openState(_logicalCollection, trx);
 
   if (_initialCount != -1) {
+    _revisionsCache.sizeHint(_initialCount);
     _logicalCollection->sizeHint(trx, _initialCount);
     openState._initialCount = _initialCount;
   }
@@ -1085,7 +1091,7 @@ int MMFilesCollection::iterateMarkersOnLoad(arangodb::Transaction* trx) {
   };
 
   iterateDatafiles(cb);
-
+    
   LOG(TRACE) << "found " << openState._documents << " document markers, " 
              << openState._deletions << " deletion markers for collection '" << _logicalCollection->name() << "'";
   
