@@ -103,7 +103,7 @@ JOB_STATUS CleanOutServer::status() {
       write_ret_t res = transact(_agent, reportTrx);
 
       if (res.accepted && res.indices.size() == 1 && res.indices[0] != 0) {
-        LOG_TOPIC(INFO, Logger::AGENCY) << "Have reported " << _server
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Have reported " << _server
                                         << " in /Target/CleanedServers";
       } else {
         LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to report " << _server
@@ -131,7 +131,7 @@ bool CleanOutServer::create() {  // Only through shrink cluster
     }
   }
 
-  LOG_TOPIC(INFO, Logger::AGENCY)
+  LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Todo: Clean out server " + _server + " for shrinkage";
 
   std::string path = _agencyPrefix + toDoPrefix + _jobId;
@@ -228,7 +228,7 @@ bool CleanOutServer::start() {
   write_ret_t res = transact(_agent, pending);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    LOG_TOPIC(INFO, Logger::AGENCY) << "Pending: Clean out server " + _server;
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Pending: Clean out server " + _server;
 
     // Check if we can get things done in the first place
     if (!checkFeasibility()) {

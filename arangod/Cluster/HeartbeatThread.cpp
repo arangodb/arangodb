@@ -195,7 +195,7 @@ void HeartbeatThread::runDBServer() {
              AgencyCommManager::path("Current/Version"),
              AgencyCommManager::path("Sync/Commands", _myId)}));
 
-        AgencyCommResult result = _agency.sendTransactionWithFailover(trx);
+        AgencyCommResult result = _agency.sendTransactionWithFailover(trx, 1.0);
         if (!result.successful()) {
           LOG_TOPIC(WARN, Logger::HEARTBEAT)
               << "Heartbeat: Could not read from agency!";
@@ -348,7 +348,7 @@ void HeartbeatThread::runCoordinator() {
            AgencyCommManager::path("Sync/Commands", _myId),
            AgencyCommManager::path("Sync/UserVersion"),
            AgencyCommManager::path("Target/FailedServers")}));
-      AgencyCommResult result = _agency.sendTransactionWithFailover(trx);
+      AgencyCommResult result = _agency.sendTransactionWithFailover(trx, 1.0);
 
       if (!result.successful()) {
         LOG_TOPIC(WARN, Logger::HEARTBEAT)
