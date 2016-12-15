@@ -36,7 +36,13 @@
 /// @brief use padding for pointers in binary data
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef __arm__
+// must properly align memory on ARM architecture to prevent
+// unaligned memory accesses
+#define FULLTEXT_PADDING 1
+#else
 #undef FULLTEXT_PADDING
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum length of an indexed word in bytes
@@ -210,6 +216,7 @@ void DumpNode(const node_t* const node, uint32_t level) {
 
 static inline size_t Padding(uint32_t numEntries) {
 #ifdef FULLTEXT_PADDING
+  size_t const PAD = 8;
   size_t offset = sizeof(uint8_t) +                    // numAllocated
                   sizeof(uint8_t) +                    // numUsed
                   (sizeof(node_char_t) * numEntries);  // followerKeys
