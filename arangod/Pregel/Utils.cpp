@@ -98,7 +98,7 @@ int64_t Utils::countDocuments(TRI_vocbase_t* vocbase,
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  OperationResult opResult = trx.count(collection);
+  OperationResult opResult = trx.count(collection, true);
   res = trx.finish(opResult.code);
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);

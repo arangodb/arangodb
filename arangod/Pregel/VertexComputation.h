@@ -86,6 +86,7 @@ template <typename V, typename E, typename M>
 class VertexComputation : public VertexContext<V, E, M> {
   friend class Worker<V, E, M>;
   OutCache<M>* _cache;
+  bool _nextPhase = false;
 
  public:
   void sendMessage(Edge<E> const* edge, M const& data) {
@@ -93,7 +94,11 @@ class VertexComputation : public VertexContext<V, E, M> {
   }
   
   void enterNextPhase() {
-    _cache->setNextPhase(true);
+    if (!_nextPhase) {
+      _nextPhase = true;
+      _cache->flushMessages();
+      _cache->setNextPhase(true);
+    }
   }
 
   virtual void compute(MessageIterator<M> const& messages) = 0;

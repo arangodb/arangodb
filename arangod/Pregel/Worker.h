@@ -98,6 +98,7 @@ class Worker : public IWorker {
   InCache<M> *_writeCache = nullptr;
   // intended for the next superstep phase
   InCache<M> *_nextPhase = nullptr;
+  bool _requestedNextGSS = true;
 
   WorkerStats _superstepStats;
   size_t _runningThreads;

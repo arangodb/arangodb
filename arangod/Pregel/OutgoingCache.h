@@ -54,7 +54,7 @@ class OutCache {
   InCache<M>* _localCache;
   std::string _baseUrl;
   uint32_t _batchSize = 1000;
-  bool _nextPhase = false;
+  uint64_t _gss;
 
   /// @brief current number of vertices stored
   size_t _containedMessages = 0;
@@ -68,7 +68,7 @@ class OutCache {
   size_t sendMessageCount() const { return _sendMessages; }
   uint32_t batchSize() const { return _batchSize; }
   void setBatchSize(uint32_t bs) { _batchSize = bs; }
-  void setNextPhase(bool np) { _nextPhase = np; }
+  void sendNextGSS(bool np);
 
   virtual void clear() = 0;
   virtual void appendMessage(prgl_shard_t shard, std::string const& key,

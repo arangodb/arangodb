@@ -40,6 +40,12 @@ template <typename M>
 OutCache<M>::OutCache(WorkerConfig* state, InCache<M>* cache)
     : _state(state), _format(cache->format()), _localCache(cache) {
   _baseUrl = Utils::baseUrl(_state->database());
+  _gss = _state->globalSuperstep();
+}
+
+template <typename M>
+void OutCache<M>::sendNextGSS(bool np) {
+  _gss = _state->globalSuperstep() + (np ? 1 : 0);
 }
 
 // ================= ArrayOutCache ==================
@@ -73,11 +79,7 @@ void ArrayOutCache<M>::appendMessage(prgl_shard_t shard, std::string const& key,
 template <typename M>
 void ArrayOutCache<M>::flushMessages() {
   LOG(INFO) << "Beginning to send messages to other machines";
-  uint64_t gss = this->_state->globalSuperstep();
-  if (this->_nextPhase) {
-    gss += 1;
-  }
-
+  
   std::vector<ClusterCommRequest> requests;
   for (auto const& it : _shardMap) {
     prgl_shard_t shard = it.first;
@@ -104,7 +106,7 @@ void ArrayOutCache<M>::flushMessages() {
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     package.add(Utils::executionNumberKey,
                 VPackValue(this->_state->executionNumber()));
-    package.add(Utils::globalSuperstepKey, VPackValue(gss));
+    package.add(Utils::globalSuperstepKey, VPackValue(this->_gss));
     package.close();
     // add a request
     ShardID const& shardId = this->_state->globalShardIDs()[shard];
@@ -172,11 +174,7 @@ void CombiningOutCache<M>::appendMessage(prgl_shard_t shard,
 template <typename M>
 void CombiningOutCache<M>::flushMessages() {
   LOG(INFO) << "Beginning to send messages to other machines";
-  uint64_t gss = this->_state->globalSuperstep();
-  if (this->_nextPhase) {
-    gss += 1;
-  }
-  
+
   std::vector<ClusterCommRequest> requests;
   for (auto const& it : _shardMap) {
     prgl_shard_t shard = it.first;
@@ -202,7 +200,7 @@ void CombiningOutCache<M>::flushMessages() {
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     package.add(Utils::executionNumberKey,
                 VPackValue(this->_state->executionNumber()));
-    package.add(Utils::globalSuperstepKey, VPackValue(gss));
+    package.add(Utils::globalSuperstepKey, VPackValue(this->_gss));
     package.close();
     // add a request
     ShardID const& shardId = this->_state->globalShardIDs()[shard];

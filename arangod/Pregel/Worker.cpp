@@ -101,10 +101,10 @@ Worker<V, E, M>::~Worker() {
     delete _readCache;
   }
   if (_writeCache) {
-    delete _readCache;
+    delete _writeCache;
   }
   if (_nextPhase) {
-    delete _readCache;
+    delete _nextPhase;
   }
 }
 
@@ -113,6 +113,9 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _commandMutex);
+  if (_state != WorkerState::IDLE) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Cannot start a gss when the worker is not idle");
+  }
   _state = WorkerState::PREPARING;// stop any running step
 
   LOG(INFO) << "Prepare GSS: " << data.toJson();
@@ -141,12 +144,16 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data) {
   
   // write cache becomes the readable cache
   if (_config.asynchronousMode()) {
+    TRI_ASSERT(_readCache->receivedMessageCount() == 0);
+    TRI_ASSERT(_writeCache->receivedMessageCount() == 0);
     std::swap(_readCache, _nextPhase);
     _writeCache->clear();
   } else {
+    TRI_ASSERT(_writeCache->receivedMessageCount() == 0);
     std::swap(_readCache, _writeCache);
     _writeCache->clear();
   }
+  _requestedNextGSS = false;// only relevant for async
   
   // execute context
   if (_workerContext != nullptr) {
@@ -160,10 +167,6 @@ void Worker<V, E, M>::receivedMessages(VPackSlice data) {
 
   VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
   VPackSlice messageSlice = data.get(Utils::messagesKey);
-  if (!gssSlice.isInteger() || !messageSlice.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "Bad parameters in body");
-  }
   uint64_t gss = gssSlice.getUInt();
   if (gss == _config._globalSuperstep) {
     // handles locking for us
@@ -173,7 +176,8 @@ void Worker<V, E, M>::receivedMessages(VPackSlice data) {
     if (_config.asynchronousMode() && _state == WorkerState::IDLE) {
       MUTEX_LOCKER(guard, _commandMutex);
       // only modify cache pointers in the mutex
-      if (_writeCache->receivedMessageCount() > 0) {
+      if (_state == WorkerState::IDLE
+          &&_writeCache->receivedMessageCount() > 0) {
         std::swap(_readCache, _writeCache);
         _startProcessing();
       }
@@ -193,6 +197,9 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _commandMutex);
+  if (_state != WorkerState::PREPARING) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Cannot start a gss when the worker is not prepared");
+  }
 
   LOG(INFO) << "Starting GSS: " << data.toJson();
   VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
@@ -201,7 +208,7 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Wrong GSS");
   }
   LOG(INFO) << "Worker starts new gss: " << gss;
-  _startProcessing();
+  _startProcessing();// sets _state = COMPUTING;
 }
 
 template <typename V, typename E, typename M>
@@ -284,6 +291,9 @@ void Worker<V, E, M>::_processVertices(
   _initializeVertexContext(vertexComputation.get());
   vertexComputation->_workerAggregators = &workerAggregator;
   vertexComputation->_cache = outCache.get();
+  if (_config.asynchronousMode()) {
+    outCache->sendNextGSS(_requestedNextGSS);
+  }
 
   size_t activeCount = 0;
   for (VertexEntry* vertexEntry : vertexIterator) {
@@ -310,6 +320,11 @@ void Worker<V, E, M>::_processVertices(
   }
   // ==================== send messages to other shards ====================
   outCache->flushMessages();
+  if (!_requestedNextGSS && vertexComputation->_nextPhase) {
+    MUTEX_LOCKER(guard2, _commandMutex);
+    _requestedNextGSS = true;
+  }
+  
   // merge thread local messages, _writeCache does locking
   _writeCache->mergeCache(inCache.get());
   // TODO ask how to implement message sending without waiting for a response
@@ -370,7 +385,6 @@ void Worker<V, E, M>::_finishedProcessing(AggregatorHandler* threadAggregators,
   // TODO ask how to implement message sending without waiting for a response
   // ============ Call Coordinator ============
   _callConductor(Utils::finishedWorkerStepPath, package.slice());
-  
   
   if (_config.asynchronousMode()) {
     std::swap(_readCache, _writeCache);
