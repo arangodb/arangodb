@@ -445,12 +445,12 @@ bool Inception::estimateRAFTInterval() {
 
       double precision = 1.0e-2;
       mn = precision *
-        std::ceil((1. / precision)*(.5 + precision * (maxmean + 3.*maxstdev)));
+        std::ceil((1. / precision)*(1. + precision * (maxmean + 3.*maxstdev)));
       if (config.waitForSync()) {
         mn *= 4.;
       }
-      if (mn > 2.0) {
-        mn = 2.0;
+      if (mn > 5.0) {
+        mn = 5.0;
       }
       mx = 5. * mn;
       

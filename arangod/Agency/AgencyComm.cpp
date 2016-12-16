@@ -45,6 +45,8 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
+#include <thread>
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::httpclient;
@@ -367,7 +369,7 @@ VPackSlice AgencyCommResult::slice() const { return _vpack->slice(); }
 std::unique_ptr<AgencyCommManager> AgencyCommManager::MANAGER;
 
 AgencyConnectionOptions
-AgencyCommManager::CONNECTION_OPTIONS (1.0, 5.0, 5.0, 10);
+AgencyCommManager::CONNECTION_OPTIONS (2.0, 15.0, 15.0, 5);
 
 void AgencyCommManager::initialize(std::string const& prefix) {
   MANAGER.reset(new AgencyCommManager(prefix));
@@ -1181,53 +1183,65 @@ bool AgencyComm::unlock(std::string const& key, VPackSlice const& slice,
 AgencyCommResult AgencyComm::sendWithFailover(
     arangodb::rest::RequestType method, double const timeout,
     std::string const& initialUrl, std::string const& body) {
+
   std::string endpoint;
   std::unique_ptr<GeneralClientConnection> connection =
-      AgencyCommManager::MANAGER->acquire(endpoint);
+    AgencyCommManager::MANAGER->acquire(endpoint);
 
   AgencyCommResult result;
   std::string url = initialUrl;
 
+  std::chrono::duration<double> waitInterval (.25); // seconds
+  auto timeOut = std::chrono::steady_clock::now() +
+    std::chrono::duration<double>(timeout);
+  double conTimeout = 1.0;
+  
   for (uint64_t tries = 0; tries < MAX_TRIES; ++tries) {
+
+    auto waitUntil = std::chrono::steady_clock::now() + waitInterval;
+    if (waitInterval.count() < 5.0) { 
+      waitInterval *= 2;
+    }
+    
     if (connection == nullptr) {
       AgencyCommResult result(400, "No endpoints for agency found.");
       LOG_TOPIC(ERR, Logger::AGENCYCOMM) << result._message;
       return result;
     }
-
+    
     if (1 < tries) {
       LOG_TOPIC(WARN, Logger::AGENCYCOMM)
-          << "Retrying agency communication at '" << endpoint
-          << "', tries: " << tries;
+        << "Retrying agency communication at '" << endpoint
+        << "', tries: " << tries;
     }
-
+    
     // try to send; if we fail completely, do not retry
     try {
-      result = send(connection.get(), method, timeout, url, body);
+      result = send(connection.get(), method, conTimeout, url, body);
     } catch (...) {
       AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
-
+      
       result = AgencyCommResult(0, "could not send request to agency");
       result._connected = false;
-
+      
       break;
     }
-
+    
     // got a result, we are done
     if (result.successful()) {
       AgencyCommManager::MANAGER->release(std::move(connection), endpoint);
       break;
     }
-
+    
     // break on a watch timeout (drop connection)
     if (result._statusCode == 0) {
       AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
-
+      
       connection = AgencyCommManager::MANAGER->acquire(endpoint);
       continue;
-
+      
     }
-
+    
     // sometimes the agency will return a 307 (temporary redirect)
     // in this case we have to pick it up and use the new location returned
     if (result._statusCode ==
@@ -1237,15 +1251,27 @@ AgencyCommResult AgencyComm::sendWithFailover(
       connection = AgencyCommManager::MANAGER->acquire(endpoint);
       continue;
     }
-
+    
     // do not retry on client errors
     if (result._statusCode >= 400 && result._statusCode <= 499) {
       AgencyCommManager::MANAGER->release(std::move(connection), endpoint);
       break;
     }
-
+    
     AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
     connection = AgencyCommManager::MANAGER->acquire(endpoint);
+
+    if (std::chrono::steady_clock::now() < timeOut) {
+      std::this_thread::sleep_for(waitUntil-std::chrono::steady_clock::now());
+    } else {
+      LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
+        << "Unsuccessful AgencyComm: Timeout"
+        << "errorCode: " << result.errorCode()
+        << " errorMessage: " << result.errorMessage()
+        << " errorDetails: " << result.errorDetails();
+      return result;
+    }
+    
   }
 
   if (!result.successful() && result.httpCode() != 412) {
