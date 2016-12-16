@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/FeatureCacheFeature.h"
 
 struct TRI_vocbase_t;
 
@@ -44,7 +45,7 @@ class DatabaseGuard {
   explicit DatabaseGuard(TRI_voc_tick_t id)
       : _vocbase(nullptr) {
     
-    auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+    auto databaseFeature = FeatureCacheFeature::instance()->databaseFeature();
     _vocbase = databaseFeature->useDatabase(id);
 
     if (_vocbase == nullptr) {
@@ -59,7 +60,7 @@ class DatabaseGuard {
   explicit DatabaseGuard(std::string const& name)
       : _vocbase(nullptr) {
       
-    auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+    auto databaseFeature = FeatureCacheFeature::instance()->databaseFeature();
     _vocbase = databaseFeature->useDatabase(name);
 
     if (_vocbase == nullptr) {

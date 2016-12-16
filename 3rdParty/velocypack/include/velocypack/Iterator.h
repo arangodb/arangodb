@@ -180,10 +180,10 @@ class ObjectIterator {
 
   ObjectIterator() = delete;
 
-  ObjectIterator(Slice const& slice, bool allowRandomIteration = false)
+  explicit ObjectIterator(Slice const& slice, bool allowRandomIteration = false)
       : _slice(slice), _size(_slice.length()), _position(0), _current(nullptr),
         _allowRandomIteration(allowRandomIteration) {
-    if (slice.type() != ValueType::Object) {
+    if (!slice.isObject()) {
       throw Exception(Exception::InvalidValueType, "Expecting Object slice");
     }
 
@@ -195,7 +195,6 @@ class ObjectIterator {
         _current = slice.begin() + slice.findDataOffset(h);
       }
     }
-
   }
 
   ObjectIterator(ObjectIterator const& other)

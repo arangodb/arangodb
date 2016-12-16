@@ -34,6 +34,7 @@
 #include "Endpoint/ConnectionInfo.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
+#include "RestServer/FeatureCacheFeature.h"
 #include "Ssl/SslInterface.h"
 #include "Utils/Events.h"
 #include "VocBase/AuthInfo.h"
@@ -51,9 +52,7 @@ VocbaseContext::VocbaseContext(GeneralRequest* request, TRI_vocbase_t* vocbase)
     _vocbase(vocbase),
     _authentication(nullptr) {
   TRI_ASSERT(_vocbase != nullptr);
-  _authentication =
-      application_features::ApplicationServer::getFeature<AuthenticationFeature>(
-          "Authentication");
+  _authentication = FeatureCacheFeature::instance()->authenticationFeature();
   TRI_ASSERT(_authentication != nullptr);
 }
 
