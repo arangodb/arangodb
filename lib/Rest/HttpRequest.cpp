@@ -476,7 +476,7 @@ void HttpRequest::setValues(char* buffer, char* end) {
         *(key - 2) = '\0';
         setArrayValue(keyBegin, key - keyBegin - 2, valueBegin);
       } else {
-        _values[std::string(keyBegin, key - keyBegin)] = valueBegin;
+        _values[std::string(keyBegin, key - keyBegin)] = std::string(valueBegin, value - valueBegin);
       }
 
       keyBegin = key = buffer + 1;
@@ -535,7 +535,7 @@ void HttpRequest::setValues(char* buffer, char* end) {
       *(key - 2) = '\0';
       setArrayValue(keyBegin, key - keyBegin - 2, valueBegin);
     } else {
-      _values[std::string(keyBegin, key - keyBegin)] = valueBegin;
+      _values[std::string(keyBegin, key - keyBegin)] = std::string(valueBegin, value - valueBegin);
     }
   }
 }
@@ -742,21 +742,19 @@ VPackSlice HttpRequest::payload(VPackOptions const* options) {
   // check options for nullptr?
 
   if (_contentType == ContentType::JSON) {
-    if (body().length() > 0) {
+    if (!_body.empty()) {
       if (_vpackBuilder == nullptr) {
         VPackParser parser(options);
-        parser.parse(body());
+        parser.parse(_body);
         _vpackBuilder = parser.steal();
-        return VPackSlice(_vpackBuilder->slice());
-      } else {
-        return VPackSlice(_vpackBuilder->slice());
       }
+      return VPackSlice(_vpackBuilder->slice());
     }
     return VPackSlice::noneSlice();  // no body
   } else /*VPACK*/ {
     VPackValidator validator;
-    validator.validate(body().c_str(), body().length());
-    return VPackSlice(body().c_str());
+    validator.validate(_body.c_str(), _body.length());
+    return VPackSlice(_body.c_str());
   }
 }
 

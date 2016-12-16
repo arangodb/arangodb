@@ -54,6 +54,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/EndpointFeature.h"
+#include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/FrontendFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
@@ -130,6 +131,7 @@ static int runServer(int argc, char** argv) {
   server.addFeature(new DatabasePathFeature(&server));
   server.addFeature(new EndpointFeature(&server));
   server.addFeature(new EngineSelectorFeature(&server));
+  server.addFeature(new FeatureCacheFeature(&server));
   server.addFeature(new FileDescriptorsFeature(&server));
   server.addFeature(new FoxxQueuesFeature(&server));
   server.addFeature(new FrontendFeature(&server));

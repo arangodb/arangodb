@@ -1298,7 +1298,7 @@ void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder) {
 /// open object which will remain open. also excludes _from and _to
 void TRI_SanitizeObjectWithEdges(VPackSlice const slice, VPackBuilder& builder) {
   TRI_ASSERT(slice.isObject());
-  VPackObjectIterator it(slice);
+  VPackObjectIterator it(slice, true);
   while (it.valid()) {
     StringRef key(it.key());
     if (key.empty() || key[0] != '_' ||

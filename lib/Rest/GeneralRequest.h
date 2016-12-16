@@ -175,9 +175,7 @@ class GeneralRequest {
 
   std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtr(
       arangodb::velocypack::Options const* options) {
-    auto rv = std::make_shared<VPackBuilder>();
-    rv->add(payload(options));
-    return rv;
+    return std::make_shared<VPackBuilder>(payload(options), options);
   };
 
   ContentType contentType() const { return _contentType; }
