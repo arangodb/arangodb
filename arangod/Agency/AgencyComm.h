@@ -233,6 +233,7 @@ class AgencyCommResult {
   std::string const location() const { return _location; }
 
   std::string const body() const { return _body; }
+  std::string const& bodyRef() const { return _body; }
 
   void clear();
 
