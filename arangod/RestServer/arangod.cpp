@@ -112,8 +112,7 @@ static int runServer(int argc, char** argv) {
       "Agency",        "Authentication",
       "Cluster",       "Daemon",
       "Dispatcher",    "FoxxQueues",
-      "FeatureCache",  "GeneralServer", 
-      "LoggerBufferFeature",
+      "GeneralServer", "LoggerBufferFeature",
       "Server",        "Scheduler",
       "SslServer",     "Statistics",
       "Supervisor"};

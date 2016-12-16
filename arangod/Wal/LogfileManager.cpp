@@ -112,6 +112,7 @@ LogfileManager::LogfileManager(ApplicationServer* server)
   requiresElevatedPrivileges(false);
   startsAfter("DatabasePath");
   startsAfter("EngineSelector");
+  startsAfter("FeatureCache");
   startsAfter("RevisionCache");
 
   for (auto const& it : EngineSelectorFeature::availableEngines()) {

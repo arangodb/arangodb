@@ -44,7 +44,7 @@ void FeatureCacheFeature::prepare() {
           "Authentication");
   _databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>(
           "Database");
-  
+ 
   TRI_ASSERT(Instance == nullptr);
   Instance = this;
 }
@@ -52,5 +52,5 @@ void FeatureCacheFeature::prepare() {
 void FeatureCacheFeature::unprepare() {
   _authenticationFeature = nullptr;
   _databaseFeature = nullptr;
-  Instance = nullptr;
+  // do not reset instance
 }
