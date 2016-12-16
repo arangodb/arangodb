@@ -367,7 +367,7 @@ VPackSlice AgencyCommResult::slice() const { return _vpack->slice(); }
 std::unique_ptr<AgencyCommManager> AgencyCommManager::MANAGER;
 
 AgencyConnectionOptions
-AgencyCommManager::CONNECTION_OPTIONS (15.0, 120.0, 120.0, 10);
+AgencyCommManager::CONNECTION_OPTIONS (1.0, 5.0, 5.0, 10);
 
 void AgencyCommManager::initialize(std::string const& prefix) {
   MANAGER.reset(new AgencyCommManager(prefix));
@@ -678,7 +678,7 @@ std::string AgencyComm::version() {
   AgencyCommResult result =
       sendWithFailover(arangodb::rest::RequestType::GET,
                        AgencyCommManager::CONNECTION_OPTIONS._requestTimeout,
-                       "/_api/version", "", false);
+                       "/_api/version", "");
 
   if (result.successful()) {
     return result._body;
@@ -752,7 +752,7 @@ AgencyCommResult AgencyComm::getValues(std::string const& key) {
   AgencyCommResult result =
       sendWithFailover(arangodb::rest::RequestType::POST,
                        AgencyCommManager::CONNECTION_OPTIONS._requestTimeout,
-                       url, builder.toJson(), false);
+                       url, builder.toJson());
 
   if (!result.successful()) {
     return result;
@@ -997,7 +997,7 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
       arangodb::rest::RequestType::POST,
       (timeout == 0.0 ? AgencyCommManager::CONNECTION_OPTIONS._requestTimeout
                       : timeout),
-      url, builder.slice().toJson(), false);
+      url, builder.slice().toJson());
 
   try {
     result.setVPack(VPackParser::fromJson(result.body().c_str()));
@@ -1180,7 +1180,7 @@ bool AgencyComm::unlock(std::string const& key, VPackSlice const& slice,
 
 AgencyCommResult AgencyComm::sendWithFailover(
     arangodb::rest::RequestType method, double const timeout,
-    std::string const& initialUrl, std::string const& body, bool isWatch) {
+    std::string const& initialUrl, std::string const& body) {
   std::string endpoint;
   std::unique_ptr<GeneralClientConnection> connection =
       AgencyCommManager::MANAGER->acquire(endpoint);
@@ -1223,12 +1223,9 @@ AgencyCommResult AgencyComm::sendWithFailover(
     if (result._statusCode == 0) {
       AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
 
-      if (isWatch) {
-        break;
-      } else {
-        connection = AgencyCommManager::MANAGER->acquire(endpoint);
-        continue;
-      }
+      connection = AgencyCommManager::MANAGER->acquire(endpoint);
+      continue;
+
     }
 
     // sometimes the agency will return a 307 (temporary redirect)
