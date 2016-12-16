@@ -7,16 +7,16 @@ shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/gharial/
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
+etag: _UOaq0A6---
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: _UL7brqS---
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"edge"</span> : { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndBob"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"aliceAndBob"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UL7brqS---"</span>, 
-    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_UL7brqK---"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UOaq0A6---"</span>, 
+    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_UOaq0Ay--B"</span> 
   }, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span> 
 }

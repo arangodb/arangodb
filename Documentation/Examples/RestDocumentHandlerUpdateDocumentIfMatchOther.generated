@@ -1,17 +1,17 @@
-shell> curl -X PUT --header 'If-Match: "_UL7cPoe---"' --data-binary @- --dump - http://localhost:8529/_api/document/products/9896 &lt;&lt;EOF
+shell> curl -X PUT --header 'If-Match: "_UOarUYi--_"' --data-binary @- --dump - http://localhost:8529/_api/document/products/9894 &lt;&lt;EOF
 {"other":"content"}
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">412</span> Precondition Failed
-etag: <span class="hljs-string">"_UL7cPoa---"</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+etag: <span class="hljs-string">"_UOarUYi---"</span>
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">412</span>, 
   <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1200</span>, 
   <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"precondition failed"</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/9896"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9896"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UL7cPoa---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/9894"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9894"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UOarUYi---"</span> 
 }
