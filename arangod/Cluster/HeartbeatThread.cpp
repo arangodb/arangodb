@@ -169,7 +169,7 @@ void HeartbeatThread::runDBServer() {
   // we check Current/Version every few heartbeats:
   int const currentCountStart = 1;  // set to 1 by Max to speed up discovery
   int currentCount = currentCountStart;
-  size_t hearbeats = 0;
+//  size_t hearbeats = 0;
 
   while (!isStopping()) {
     try {
