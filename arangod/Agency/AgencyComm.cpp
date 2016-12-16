@@ -1220,11 +1220,9 @@ AgencyCommResult AgencyComm::sendWithFailover(
       result = send(connection.get(), method, conTimeout, url, body);
     } catch (...) {
       AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
+      connection = AgencyCommManager::MANAGER->acquire(endpoint);
       
-      result = AgencyCommResult(0, "could not send request to agency");
-      result._connected = false;
-      
-      break;
+      continue;
     }
     
     // got a result, we are done
