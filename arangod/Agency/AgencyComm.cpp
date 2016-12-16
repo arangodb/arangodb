@@ -297,7 +297,7 @@ int AgencyCommResult::httpCode() const { return _statusCode; }
 int AgencyCommResult::errorCode() const {
   try {
     std::shared_ptr<VPackBuilder> bodyBuilder =
-        VPackParser::fromJson(_body.c_str());
+        VPackParser::fromJson(_body);
     VPackSlice body = bodyBuilder->slice();
     if (!body.isObject()) {
       return 0;
@@ -322,7 +322,7 @@ std::string AgencyCommResult::errorMessage() const {
 
   try {
     std::shared_ptr<VPackBuilder> bodyBuilder =
-        VPackParser::fromJson(_body.c_str());
+        VPackParser::fromJson(_body);
 
     VPackSlice body = bodyBuilder->slice();
     if (!body.isObject()) {
@@ -759,7 +759,7 @@ AgencyCommResult AgencyComm::getValues(std::string const& key) {
   }
 
   try {
-    result.setVPack(VPackParser::fromJson(result.body().c_str()));
+    result.setVPack(VPackParser::fromJson(result.bodyRef()));
 
     if (!result.slice().isArray()) {
       result._statusCode = 500;
@@ -774,7 +774,7 @@ AgencyCommResult AgencyComm::getValues(std::string const& key) {
     result._body.clear();
     result._statusCode = 200;
 
-  } catch (std::exception& e) {
+  } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Error transforming result. "
                                        << e.what();
     result.clear();
@@ -1000,7 +1000,7 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
       url, builder.slice().toJson());
 
   try {
-    result.setVPack(VPackParser::fromJson(result.body().c_str()));
+    result.setVPack(VPackParser::fromJson(result.bodyRef()));
 
     if (!transaction.validate(result)) {
       result._statusCode = 500;
@@ -1009,7 +1009,7 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
     
     result._body.clear();
 
-  } catch (std::exception& e) {
+  } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Error transforming result. "
                                        << e.what();
     result.clear();

@@ -305,9 +305,14 @@ function MovingShardsSuite () {
           Object.keys(state.Pending).length === 0) {
         return true;
       }
-      console.info("Waiting for supervision jobs to finish:",
-                   "ToDo jobs:", Object.keys(state.ToDo).length,
-                   "Pending jobs:", Object.keys(state.Pending).length);
+      if (state.error) {
+        console.warn("Waiting for supervision jobs to finish:",
+                     "Currently no agency communication possible.");
+      } else {
+        console.info("Waiting for supervision jobs to finish:",
+                     "ToDo jobs:", Object.keys(state.ToDo).length,
+                     "Pending jobs:", Object.keys(state.Pending).length);
+      }
       wait(1.0);
     }
     return false;
