@@ -40,12 +40,12 @@ template <typename M>
 OutCache<M>::OutCache(WorkerConfig* state, InCache<M>* cache)
     : _state(state), _format(cache->format()), _localCache(cache) {
   _baseUrl = Utils::baseUrl(_state->database());
-  _gss = _state->globalSuperstep();
 }
 
 template <typename M>
-void OutCache<M>::sendNextGSS(bool np) {
-  _gss = _state->globalSuperstep() + (np ? 1 : 0);
+OutCache<M>::OutCache(WorkerConfig* state, InCache<M>* cache, InCache<M>* nextGSS)
+  : _state(state), _format(cache->format()), _localCache(cache), _localCacheNextGSS(nextGSS) {
+  _baseUrl = Utils::baseUrl(_state->database());
 }
 
 // ================= ArrayOutCache ==================
@@ -65,9 +65,13 @@ template <typename M>
 void ArrayOutCache<M>::appendMessage(prgl_shard_t shard, std::string const& key,
                                      M const& data) {
   if (this->_state->isLocalVertexShard(shard)) {
-    this->_localCache->setDirect(shard, key, data);
-    // LOG(INFO) << "Worker: Got messages for myself " << key << " <- " << data;
-    this->_sendMessages++;
+    if (this->_sendToNextGSS) {
+      this->_localCacheNextGSS->setDirect(shard, key, data);
+      this->_sendCountNextGSS++;
+    } else {
+      this->_localCache->setDirect(shard, key, data);
+      this->_sendCount++;
+    }
   } else {
     _shardMap[shard][key].push_back(data);
     if (this->_containedMessages++ > this->_batchSize) {
@@ -79,6 +83,10 @@ void ArrayOutCache<M>::appendMessage(prgl_shard_t shard, std::string const& key,
 template <typename M>
 void ArrayOutCache<M>::flushMessages() {
   LOG(INFO) << "Beginning to send messages to other machines";
+  uint64_t gss = this->_state->globalSuperstep();
+  if (this->_sendToNextGSS) {
+    gss += 1;
+  }
   
   std::vector<ClusterCommRequest> requests;
   for (auto const& it : _shardMap) {
@@ -98,7 +106,11 @@ void ArrayOutCache<M>::flushMessages() {
       package.add(VPackValue(vertexMessagePair.first));
       for (M const& val : vertexMessagePair.second) {
         this->_format->addValue(package, val);
-        this->_sendMessages++;
+        if (this->_sendToNextGSS) {
+          this->_sendCountNextGSS++;
+        } else {
+          this->_sendCount++;
+        }
       }
       package.close();
     }
@@ -106,7 +118,7 @@ void ArrayOutCache<M>::flushMessages() {
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     package.add(Utils::executionNumberKey,
                 VPackValue(this->_state->executionNumber()));
-    package.add(Utils::globalSuperstepKey, VPackValue(this->_gss));
+    package.add(Utils::globalSuperstepKey, VPackValue(gss));
     package.close();
     // add a request
     ShardID const& shardId = this->_state->globalShardIDs()[shard];
@@ -138,6 +150,12 @@ CombiningOutCache<M>::CombiningOutCache(WorkerConfig* state,
     : OutCache<M>(state, cache), _combiner(cache->combiner()) {}
 
 template <typename M>
+CombiningOutCache<M>::CombiningOutCache(WorkerConfig* state,
+                                        CombiningInCache<M>* cache,
+                                        InCache<M> *nextPhase)
+: OutCache<M>(state, cache, nextPhase), _combiner(cache->combiner()) {}
+
+template <typename M>
 CombiningOutCache<M>::~CombiningOutCache() {
   clear();
 }
@@ -153,9 +171,13 @@ void CombiningOutCache<M>::appendMessage(prgl_shard_t shard,
                                          std::string const& key,
                                          M const& data) {
   if (this->_state->isLocalVertexShard(shard)) {
-    this->_localCache->setDirect(shard, key, data);
-    // LOG(INFO) << "Worker: Got messages for myself " << key << " <- " << data;
-    this->_sendMessages++;
+    if (this->_sendToNextGSS) {
+      this->_localCacheNextGSS->setDirect(shard, key, data);
+      this->_sendCountNextGSS++;
+    } else {
+      this->_localCache->setDirect(shard, key, data);
+      this->_sendCount++;
+    }
   } else {
     std::unordered_map<std::string, M>& vertexMap = _shardMap[shard];
     auto it = vertexMap.find(key);
@@ -174,6 +196,10 @@ void CombiningOutCache<M>::appendMessage(prgl_shard_t shard,
 template <typename M>
 void CombiningOutCache<M>::flushMessages() {
   LOG(INFO) << "Beginning to send messages to other machines";
+  uint64_t gss = this->_state->globalSuperstep();
+  if (this->_sendToNextGSS) {
+    gss += 1;
+  }
 
   std::vector<ClusterCommRequest> requests;
   for (auto const& it : _shardMap) {
@@ -194,13 +220,17 @@ void CombiningOutCache<M>::flushMessages() {
       package.add(VPackValue(shard));
       package.add(VPackValue(vertexMessagePair.first));
       this->_format->addValue(package, vertexMessagePair.second);
-      this->_sendMessages++;
+      if (this->_sendToNextGSS) {
+        this->_sendCountNextGSS++;
+      } else {
+        this->_sendCount++;
+      }
     }
     package.close();
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     package.add(Utils::executionNumberKey,
                 VPackValue(this->_state->executionNumber()));
-    package.add(Utils::globalSuperstepKey, VPackValue(this->_gss));
+    package.add(Utils::globalSuperstepKey, VPackValue(gss));
     package.close();
     // add a request
     ShardID const& shardId = this->_state->globalShardIDs()[shard];

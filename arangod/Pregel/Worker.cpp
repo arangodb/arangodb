@@ -55,6 +55,7 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
   _conductorAggregators.reset(new AggregatorHandler(algo));
   _workerAggregators.reset(new AggregatorHandler(algo));
   _graphStore.reset(new GraphStore<V, E>(vocbase, _algorithm->inputFormat()));
+  _nextGSSSendMessageCount = 0;
   if (_messageCombiner) {
     _readCache = new CombiningInCache<M>(_messageFormat.get(), _messageCombiner.get());
     _writeCache =
@@ -93,19 +94,16 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
   });
 }
 
+/*template <typename M>
+GSSContext::~GSSContext() {}*/
+
 template <typename V, typename E, typename M>
 Worker<V, E, M>::~Worker() {
   LOG(INFO) << "Called ~Worker()";
   _state = WorkerState::DONE;
-  if (_readCache) {
-    delete _readCache;
-  }
-  if (_writeCache) {
-    delete _writeCache;
-  }
-  if (_nextPhase) {
-    delete _nextPhase;
-  }
+  delete _readCache;
+  delete _writeCache;
+  delete _writeCacheNextGSS;
 }
 
 template <typename V, typename E, typename M>
@@ -146,14 +144,14 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data) {
   if (_config.asynchronousMode()) {
     TRI_ASSERT(_readCache->receivedMessageCount() == 0);
     TRI_ASSERT(_writeCache->receivedMessageCount() == 0);
-    std::swap(_readCache, _nextPhase);
+    std::swap(_readCache, _writeCacheNextGSS);
     _writeCache->clear();
+    _requestedNextGSS = false;// only relevant for async
   } else {
     TRI_ASSERT(_writeCache->receivedMessageCount() == 0);
     std::swap(_readCache, _writeCache);
     _writeCache->clear();
   }
-  _requestedNextGSS = false;// only relevant for async
   
   // execute context
   if (_workerContext != nullptr) {
@@ -164,6 +162,9 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data) {
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::receivedMessages(VPackSlice data) {
   // LOG(INFO) << "Worker received some messages: " << data.toJson();
+  if (_state != WorkerState::COMPUTING) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Cannot receive messages while computng");
+  }
 
   VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
   VPackSlice messageSlice = data.get(Utils::messagesKey);
@@ -183,7 +184,7 @@ void Worker<V, E, M>::receivedMessages(VPackSlice data) {
       }
     }
   } else if (_config.asynchronousMode() && gss == _config._globalSuperstep+1) {
-    _nextPhase->parseMessages(messageSlice);
+    _writeCacheNextGSS->parseMessages(messageSlice);
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Superstep out of sync");
@@ -265,21 +266,24 @@ void Worker<V, E, M>::_processVertices(
 
   // thread local caches
   std::unique_ptr<InCache<M>> inCache;
-  std::unique_ptr<OutCache<M>> outCache, nextOutCache;
+  std::unique_ptr<OutCache<M>> outCache;
   if (_messageCombiner) {
     inCache.reset(
         new CombiningInCache<M>(_messageFormat.get(), _messageCombiner.get()));
-    outCache.reset(
-        new CombiningOutCache<M>(&_config, (CombiningInCache<M>*)inCache.get()));
     if (_config.asynchronousMode()) {
-      nextOutCache.reset(new CombiningOutCache<M>(&_config,
-                                                  (CombiningInCache<M>*)inCache.get()));
+      outCache.reset(new CombiningOutCache<M>(&_config,
+                                              (CombiningInCache<M>*)inCache.get(),
+                                              _writeCacheNextGSS));
+    } else {
+      outCache.reset(new CombiningOutCache<M>(&_config,
+                                              (CombiningInCache<M>*)inCache.get()));
     }
   } else {
     inCache.reset(new ArrayInCache<M>(_messageFormat.get()));
-    outCache.reset(new ArrayOutCache<M>(&_config, inCache.get()));
     if (_config.asynchronousMode()) {
-      nextOutCache.reset(new ArrayOutCache<M>(&_config, inCache.get()));
+      outCache.reset(new ArrayOutCache<M>(&_config, inCache.get(), _writeCacheNextGSS));
+    } else {
+       outCache.reset(new ArrayOutCache<M>(&_config, inCache.get()));
     }
   }
 
@@ -292,7 +296,7 @@ void Worker<V, E, M>::_processVertices(
   vertexComputation->_workerAggregators = &workerAggregator;
   vertexComputation->_cache = outCache.get();
   if (_config.asynchronousMode()) {
-    outCache->sendNextGSS(_requestedNextGSS);
+    outCache->sendToNextGSS(_requestedNextGSS);
   }
 
   size_t activeCount = 0;
@@ -321,8 +325,8 @@ void Worker<V, E, M>::_processVertices(
   // ==================== send messages to other shards ====================
   outCache->flushMessages();
   if (!_requestedNextGSS && vertexComputation->_nextPhase) {
-    MUTEX_LOCKER(guard2, _commandMutex);
     _requestedNextGSS = true;
+    _nextGSSSendMessageCount += outCache->sendCountNextGSS();
   }
   
   // merge thread local messages, _writeCache does locking
@@ -333,7 +337,7 @@ void Worker<V, E, M>::_processVertices(
 
   WorkerStats stats;
   stats.activeCount = activeCount;
-  stats.sendCount = outCache->sendMessageCount();
+  stats.sendCount = outCache->sendCount();
   stats.superstepRuntimeSecs = TRI_microtime() - start;
   _finishedProcessing(vertexComputation->_workerAggregators, stats);
 }

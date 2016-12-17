@@ -23,6 +23,7 @@
 #ifndef ARANGODB_PREGEL_WORKER_H
 #define ARANGODB_PREGEL_WORKER_H 1
 
+#include <atomic>
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Pregel/AggregatorHandler.h"
@@ -47,7 +48,7 @@ class IWorker {
   virtual void startRecovery(VPackSlice data) = 0;
   virtual void compensateStep(VPackSlice data) = 0;
 };
-
+  
 template <typename V, typename E>
 class GraphStore;
 
@@ -86,19 +87,22 @@ class Worker : public IWorker {
   // only valid while recovering to determine the offset
   // where new vertices were inserted
   size_t _preRecoveryTotal;
+  /// During async mode this should keep track of the send messages
 
   std::unique_ptr<AggregatorHandler> _conductorAggregators;
   std::unique_ptr<AggregatorHandler> _workerAggregators;
   std::unique_ptr<GraphStore<V, E>> _graphStore;
   std::unique_ptr<MessageFormat<M>> _messageFormat;
   std::unique_ptr<MessageCombiner<M>> _messageCombiner;
+  
   // from previous or current superstep
   InCache<M> *_readCache = nullptr;
   // for the current or next superstep
   InCache<M> *_writeCache = nullptr;
   // intended for the next superstep phase
-  InCache<M> *_nextPhase = nullptr;
-  bool _requestedNextGSS = true;
+  InCache<M> *_writeCacheNextGSS = nullptr;
+  std::atomic<uint32_t> _nextGSSSendMessageCount;
+  std::atomic<bool> _requestedNextGSS;
 
   WorkerStats _superstepStats;
   size_t _runningThreads;
