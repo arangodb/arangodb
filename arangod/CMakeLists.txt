@@ -257,6 +257,7 @@ SET(ARANGOD_SOURCES
   RestServer/DatabaseFeature.cpp
   RestServer/DatabasePathFeature.cpp
   RestServer/EndpointFeature.cpp
+  RestServer/FeatureCacheFeature.cpp
   RestServer/FileDescriptorsFeature.cpp
   RestServer/FrontendFeature.cpp
   RestServer/InitDatabaseFeature.cpp

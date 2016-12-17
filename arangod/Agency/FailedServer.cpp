@@ -55,19 +55,19 @@ FailedServer::~FailedServer() {}
 
 bool FailedServer::start() {
   LOG_TOPIC(INFO, Logger::AGENCY)
-      << "Trying to start FailedServer job" + _jobId + " for server " + _server;
+      << "Start FailedServer job" + _jobId + " for server " + _server;
 
   // Copy todo to pending
   Builder todo, pending;
-
+  
   // Get todo entry
   todo.openArray();
   if (_jb == nullptr) {
     try {
       _snapshot(toDoPrefix + _jobId).toBuilder(todo);
     } catch (std::exception const&) {
-      LOG_TOPIC(INFO, Logger::AGENCY) << "Failed to get key " + toDoPrefix +
-                                             _jobId + " from agency snapshot";
+      LOG_TOPIC(INFO, Logger::AGENCY)
+        << "Failed to get key " + toDoPrefix + _jobId + " from agency snapshot";
       return false;
     }
   } else {
@@ -118,7 +118,7 @@ bool FailedServer::start() {
   write_ret_t res = transact(_agent, pending);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    LOG_TOPIC(INFO, Logger::AGENCY)
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Pending job for failed DB Server " << _server;
 
     auto const& databases = _snapshot("/Plan/Collections").children();
@@ -206,7 +206,7 @@ bool FailedServer::start() {
 }
 
 bool FailedServer::create() {
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Todo: DB Server " + _server + " failed.";
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Todo: Handle failed db server " + _server;
 
   std::string path = _agencyPrefix + toDoPrefix + _jobId;
 

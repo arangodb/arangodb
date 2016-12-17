@@ -50,8 +50,10 @@ SocketTask::SocketTask(arangodb::EventLoop loop,
       _readBuffer(TRI_UNKNOWN_MEM_ZONE, READ_BLOCK_SIZE + 1, false),
       _peer(std::move(socket)),
       _keepAliveTimeout(static_cast<long>(keepAliveTimeout * 1000)),
-      _useKeepAliveTimeout(static_cast<long>(keepAliveTimeout * 1000) > 0),
       _keepAliveTimer(_peer->_ioService, _keepAliveTimeout),
+      _useKeepAliveTimer(keepAliveTimeout > 0.0),
+      _keepAliveTimerActive(false),
+      _closeRequested(false),
       _abandoned(false) {
   ConnectionStatisticsAgent::acquire();
   connectionStatisticsAgentSetStart();
@@ -71,11 +73,13 @@ SocketTask::SocketTask(arangodb::EventLoop loop,
 
 SocketTask::~SocketTask() {
   boost::system::error_code err;
-  _keepAliveTimer.cancel(err);
+  if (_keepAliveTimerActive) {
+    _keepAliveTimer.cancel(err);
+  }
 
   if (err) {
     LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to cancel _keepAliveTimer";
-  }
+  } 
 }
 
 void SocketTask::start() {
@@ -278,6 +282,7 @@ void SocketTask::closeStream() {
 
   _closeRequested = false;
   _keepAliveTimer.cancel();
+  _keepAliveTimerActive = false;
 }
 
 // -----------------------------------------------------------------------------
@@ -289,7 +294,7 @@ void SocketTask::addToReadBuffer(char const* data, std::size_t len) {
 }
 
 void SocketTask::resetKeepAlive() {
-  if (_useKeepAliveTimeout) {
+  if (_useKeepAliveTimer) {
     boost::system::error_code err;
     _keepAliveTimer.expires_from_now(_keepAliveTimeout, err);
 
@@ -298,6 +303,7 @@ void SocketTask::resetKeepAlive() {
       return;
     }
 
+    _keepAliveTimerActive = true;
     auto self = shared_from_this();
 
     _keepAliveTimer.async_wait(
@@ -314,9 +320,10 @@ void SocketTask::resetKeepAlive() {
 }
 
 void SocketTask::cancelKeepAlive() {
-  if (_useKeepAliveTimeout) {
+  if (_useKeepAliveTimer && _keepAliveTimerActive) {
     boost::system::error_code err;
     _keepAliveTimer.cancel(err);
+    _keepAliveTimerActive = false;
   }
 }
 

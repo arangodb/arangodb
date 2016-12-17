@@ -70,6 +70,7 @@
 #include "RestHandler/WorkMonitorHandler.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/EndpointFeature.h"
+#include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
@@ -183,9 +184,7 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 }
 
 static TRI_vocbase_t* LookupDatabaseFromRequest(GeneralRequest* request) {
-  auto databaseFeature =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
+  auto databaseFeature = FeatureCacheFeature::instance()->databaseFeature();
 
   // get database name from request
   std::string const& dbName = request->databaseName();
@@ -208,8 +207,7 @@ static TRI_vocbase_t* LookupDatabaseFromRequest(GeneralRequest* request) {
 }
 
 static bool SetRequestContext(GeneralRequest* request, void* data) {
-  auto authentication = application_features::ApplicationServer::getFeature<
-      AuthenticationFeature>("Authentication");
+  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
   TRI_ASSERT(authentication != nullptr);
   TRI_vocbase_t* vocbase = LookupDatabaseFromRequest(request);
 
@@ -254,8 +252,7 @@ void GeneralServerFeature::start() {
 
   // populate the authentication cache. otherwise no one can access the new
   // database
-  auto authentication = application_features::ApplicationServer::getFeature<
-      AuthenticationFeature>("Authentication");
+  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
   TRI_ASSERT(authentication != nullptr);
   if (authentication->isEnabled()) {
     authentication->authInfo()->outdate();

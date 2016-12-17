@@ -61,7 +61,7 @@ FailedLeader::~FailedLeader() {}
 
 bool FailedLeader::create() {
   LOG_TOPIC(INFO, Logger::AGENCY)
-      << "Todo: failed Leader for " + _shard + " from " + _from + " to " + _to;
+      << "Handle failed Leader for " + _shard + " from " + _from + " to " + _to;
 
   std::string path = _agencyPrefix + toDoPrefix + _jobId;
 
@@ -114,10 +114,9 @@ bool FailedLeader::start() {
   Node const& current = _snapshot(curPath);
 
   if (current.slice().length() == 1) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to change leadership for shard " +
-                                          _shard + " from " + _from + " to " +
-                                          _to + ". No in-sync followers:" +
-                                          current.slice().toJson();
+    LOG_TOPIC(ERR, Logger::AGENCY)
+      << "Failed to change leadership for shard " + _shard + " from " + _from 
+      +  " to " + _to + ". No in-sync followers:" + current.slice().toJson();
     return false;
   }
 
@@ -130,15 +129,15 @@ bool FailedLeader::start() {
     try {
       _snapshot(toDoPrefix + _jobId).toBuilder(todo);
     } catch (std::exception const&) {
-      LOG_TOPIC(INFO, Logger::AGENCY) << "Failed to get key " + toDoPrefix +
-                                             _jobId + " from agency snapshot";
+      LOG_TOPIC(INFO, Logger::AGENCY)
+        << "Failed to get key " + toDoPrefix + _jobId + " from agency snapshot";
       return false;
     }
   } else {
     todo.add(_jb->slice().get(_agencyPrefix + toDoPrefix + _jobId).valueAt(0));
   }
   todo.close();
-
+  
   // Transaction
   pending.openArray();
 
@@ -201,11 +200,11 @@ bool FailedLeader::start() {
   write_ret_t res = transact(_agent, pending);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    LOG_TOPIC(INFO, Logger::AGENCY) << "Pending: Change leadership " + _shard +
-                                           " from " + _from + " to " + _to;
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "Pending: Change leadership " + _shard + " from " + _from + " to " + _to;
     return true;
   }
-
+  
   LOG_TOPIC(INFO, Logger::AGENCY)
       << "Precondition failed for starting job " + _jobId;
   return false;

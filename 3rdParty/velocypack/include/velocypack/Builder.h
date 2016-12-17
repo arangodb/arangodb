@@ -143,6 +143,11 @@ class Builder {
       throw Exception(Exception::InternalError, "Options cannot be a nullptr");
     }
   }
+  
+  explicit Builder(Slice const& slice, Options const* options = &Options::Defaults)
+      : Builder(options) {
+    add(slice);
+  }
 
   explicit Builder(Options const* options = &Options::Defaults)
       : _buffer(new Buffer<uint8_t>()),
@@ -156,7 +161,7 @@ class Builder {
       throw Exception(Exception::InternalError, "Options cannot be a nullptr");
     }
   }
-
+  
   explicit Builder(Buffer<uint8_t>& buffer,
                    Options const* options = &Options::Defaults)
       : _pos(buffer.size()), _keyWritten(false), options(options) {

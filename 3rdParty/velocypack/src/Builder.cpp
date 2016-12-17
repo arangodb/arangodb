@@ -31,6 +31,7 @@
 #include "velocypack/Dumper.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Sink.h"
+#include "velocypack/StringRef.h"
 
 using namespace arangodb::velocypack;
   
@@ -840,13 +841,14 @@ uint8_t* Builder::set(ValuePair const& pair) {
 
 void Builder::checkAttributeUniqueness(Slice const& obj) const {
   VELOCYPACK_ASSERT(options->checkAttributeUniqueness == true);
-  ValueLength const n = obj.length();
 
   if (obj.isSorted()) {
     // object attributes are sorted
     Slice previous = obj.keyAt(0);
     ValueLength len;
     char const* p = previous.getString(len);
+  
+    ValueLength const n = obj.length();
 
     // compare each two adjacent attribute names
     for (ValueLength i = 1; i < n; ++i) {
@@ -866,17 +868,17 @@ void Builder::checkAttributeUniqueness(Slice const& obj) const {
       p = q;
     }
   } else {
-    std::unordered_set<std::string> keys;
+    std::unordered_set<StringRef> keys;
+    ObjectIterator it(obj, true);
 
-    for (ValueLength i = 0; i < n; ++i) {
-      // note: keyAt() already translates integer attributes
-      Slice key = obj.keyAt(i);
-      // keyAt() guarantees a string as returned type
+    while (it.valid()) {
+      Slice const key = it.key(true);
+      // key() guarantees a string as returned type
       VELOCYPACK_ASSERT(key.isString());
-
-      if (!keys.emplace(key.copyString()).second) {
+      if (!keys.emplace(StringRef(key)).second) {
         throw Exception(Exception::DuplicateAttributeName);
       }
+      it.next();
     }
   }
 }

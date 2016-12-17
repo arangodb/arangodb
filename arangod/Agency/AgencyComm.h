@@ -233,6 +233,7 @@ class AgencyCommResult {
   std::string const location() const { return _location; }
 
   std::string const body() const { return _body; }
+  std::string const& bodyRef() const { return _body; }
 
   void clear();
 
@@ -541,8 +542,7 @@ class AgencyComm {
   bool unlock(std::string const&, arangodb::velocypack::Slice const&, double);
 
   AgencyCommResult sendWithFailover(arangodb::rest::RequestType, double,
-                                    std::string const&, std::string const&,
-                                    bool);
+                                    std::string const&, std::string const&);
 
   AgencyCommResult send(httpclient::GeneralClientConnection*, rest::RequestType,
                         double, std::string const&, std::string const&);

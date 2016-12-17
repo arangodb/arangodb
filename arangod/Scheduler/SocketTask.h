@@ -101,10 +101,10 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
 
   std::unique_ptr<Socket> _peer;
   boost::posix_time::milliseconds _keepAliveTimeout;
-  bool _useKeepAliveTimeout;
   boost::asio::deadline_timer _keepAliveTimer;
-
-  bool _closeRequested = false;
+  bool const _useKeepAliveTimer;
+  bool _keepAliveTimerActive;
+  bool _closeRequested;
   std::atomic_bool _abandoned;
 
  private:
