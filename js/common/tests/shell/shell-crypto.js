@@ -322,20 +322,25 @@ function CryptoSuite () {
 
     testPbkdf2 : function () {
       var data = [
-        [ 'secret', '', 10, 16, '7ae85791509c581fbda11a945893d623' ],
-        [ 'secret', '', 10, 16, '7ae85791509c581fbda11a945893d623' ],
-        [ 'secret', '', 10, 16, '7ae85791509c581fbda11a945893d623' ],
-        [ 'secret', ' ', 10, 16, '539e069417a0148aa8673d206b57f345' ],
-        [ 'secret', 'arangodb', 10, 16, 'cd55a9a823ba8a788060c2353440092f' ],
-        [ 'secret', 'Arangodb', 10, 16, '9af0cdc4ab37b4a17120f9796941046d' ],
-        [ 'secret', 'Arangodb', 10, 32, '9af0cdc4ab37b4a17120f9796941046d34c5260035189c297df5c07f9f7748a6' ],
-        [ 'secret', 'Arangodb', 100, 16, 'e9afe4e0f3d6fb5dddbe98046be214f7' ],
-        [ 'secret', 'ArangoDB is a database', 10, 16, '9a6a9c9f7bc553f9ee41e95f22a9600f' ],
-        [ 'SECRET', 'ArangoDB is a database', 10, 16, '9a56ce2d622a09678bcc7fbb1f01d47c' ]
+        [ 'secret', '', 10, 16, 'sha1', '7ae85791509c581fbda11a945893d623' ],
+        [ 'secret', '', 10, 16, null, '7ae85791509c581fbda11a945893d623' ],
+        [ 'secret', '', 10, 16, undefined, '7ae85791509c581fbda11a945893d623' ],
+        [ 'secret', ' ', 10, 16, undefined, '539e069417a0148aa8673d206b57f345' ],
+        [ 'secret', 'arangodb', 10, 16, undefined, 'cd55a9a823ba8a788060c2353440092f' ],
+        [ 'secret', 'Arangodb', 10, 16, undefined, '9af0cdc4ab37b4a17120f9796941046d' ],
+        [ 'secret', 'Arangodb', 10, 32, undefined, '9af0cdc4ab37b4a17120f9796941046d34c5260035189c297df5c07f9f7748a6' ],
+        [ 'secret', 'Arangodb', 100, 16, undefined, 'e9afe4e0f3d6fb5dddbe98046be214f7' ],
+        [ 'secret', 'ArangoDB is a database', 10, 16, undefined, '9a6a9c9f7bc553f9ee41e95f22a9600f' ],
+        [ 'SECRET', 'ArangoDB is a database', 10, 16, undefined, '9a56ce2d622a09678bcc7fbb1f01d47c' ],
+        [ 'secret', 'ArangoDB is a database', 10, 16, 'sha224', 'eb22c5bd06658b6c1b3e592c67d4264a' ],
+        [ 'secret', 'ArangoDB is a database', 10, 16, 'sha256', '4af8fad53d19ac984c0d1a8c128d5391' ],
+        [ 'secret', 'ArangoDB is a database', 10, 16, 'sha384', '9684202a2d1c1ed248724d248c866f11' ],
+        [ 'secret', 'ArangoDB is a database', 10, 16, 'sha512', '5818089d14f7366e0656ec851d55a140' ],
+        [ 'secret', 'ArangoDB is a database', 10, 16, 'md5', 'b4a63e5a9c02d76cb40aa37fd34c0a4f' ]
       ];
 
       data.forEach(function (value) {
-        assertEqual(value[4], crypto.pbkdf2(value[0], value[1], value[2], value[3]));
+        assertEqual(value[5], crypto.pbkdf2(value[0], value[1], value[2], value[3], value[4]));
       });
     },
 
