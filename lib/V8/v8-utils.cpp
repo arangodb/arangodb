@@ -3101,13 +3101,13 @@ static void JS_DebugCanUseFailAt(
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief computes the PBKDF2 HMAC SHA1 derived key
 ///
-/// @FUN{internal.PBKDF2(@FA{salt}, @FA{password}, @FA{iterations},
+/// @FUN{internal.PBKDF2HS1(@FA{salt}, @FA{password}, @FA{iterations},
 /// @FA{keyLength})}
 ///
 /// Computes the PBKDF2 HMAC SHA1 derived key for the @FA{password}.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_PBKDF2(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_PBKDF2HS1(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
@@ -3124,8 +3124,62 @@ static void JS_PBKDF2(v8::FunctionCallbackInfo<v8::Value> const& args) {
   int keyLength = (int)TRI_ObjectToInt64(args[3]);
 
   std::string result =
-      SslInterface::sslPBKDF2(salt.c_str(), salt.size(), password.c_str(),
+      SslInterface::sslPBKDF2HS1(salt.c_str(), salt.size(), password.c_str(),
                               password.size(), iterations, keyLength);
+  TRI_V8_RETURN_STD_STRING(result);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief computes the PBKDF2 HMAC derived key
+///
+/// @FUN{internal.PBKDF2(@FA{salt}, @FA{password}, @FA{iterations},
+/// @FA{keyLength}, @FA{algorithm})}
+///
+/// Computes the PBKDF2 HMAC derived key for the @FA{password}.
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_PBKDF2(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  // extract arguments
+  if (args.Length() < 4 || !args[0]->IsString() || !args[1]->IsString() ||
+      !args[2]->IsNumber() || !args[3]->IsNumber()) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "PBKDF2_SHA(<salt>, <password>, <iterations>, <keyLength>, <algorithm>)");
+  }
+
+  SslInterface::Algorithm al = SslInterface::Algorithm::ALGORITHM_SHA1;
+  if (args.Length() > 4 && !args[4]->IsUndefined()) {
+    std::string algorithm = TRI_ObjectToString(isolate, args[4]);
+    StringUtils::tolowerInPlace(&algorithm);
+
+    if (algorithm == "sha1") {
+      al = SslInterface::Algorithm::ALGORITHM_SHA1;
+    } else if (algorithm == "sha512") {
+      al = SslInterface::Algorithm::ALGORITHM_SHA512;
+    } else if (algorithm == "sha384") {
+      al = SslInterface::Algorithm::ALGORITHM_SHA384;
+    } else if (algorithm == "sha256") {
+      al = SslInterface::Algorithm::ALGORITHM_SHA256;
+    } else if (algorithm == "sha224") {
+      al = SslInterface::Algorithm::ALGORITHM_SHA224;
+    } else if (algorithm == "md5") {
+      al = SslInterface::Algorithm::ALGORITHM_MD5;
+    } else {
+      TRI_V8_THROW_EXCEPTION_PARAMETER("invalid value for <algorithm>");
+    }
+  }
+
+  std::string salt = TRI_ObjectToString(isolate, args[0]);
+  std::string password = TRI_ObjectToString(isolate, args[1]);
+  int iterations = (int)TRI_ObjectToInt64(args[2]);
+  int keyLength = (int)TRI_ObjectToInt64(args[3]);
+
+  std::string result =
+      SslInterface::sslPBKDF2(salt.c_str(), salt.size(), password.c_str(),
+                              password.size(), iterations, keyLength, al);
   TRI_V8_RETURN_STD_STRING(result);
   TRI_V8_TRY_CATCH_END
 }
@@ -4475,6 +4529,8 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                TRI_V8_ASCII_STRING("SYS_PARSE"), JS_Parse);
   TRI_AddGlobalFunctionVocbase(
       isolate, context, TRI_V8_ASCII_STRING("SYS_PARSE_FILE"), JS_ParseFile);
+  TRI_AddGlobalFunctionVocbase(isolate, context,
+                               TRI_V8_ASCII_STRING("SYS_PBKDF2HS1"), JS_PBKDF2HS1);
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_PBKDF2"), JS_PBKDF2);
   TRI_AddGlobalFunctionVocbase(isolate, context,

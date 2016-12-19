@@ -157,11 +157,18 @@ void sslBASE64(char const* inputStr, size_t const length, char*& outputStr,
 void sslBASE64(char const* inputStr, char*& outputStr, size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
+/// @brief PBKDF2HS1
+//////////////////////////////////////////////////////////////////////////
+
+std::string sslPBKDF2HS1(char const* salt, size_t saltLength, char const* pass,
+                      size_t passLength, int iter, int keyLength);
+
+//////////////////////////////////////////////////////////////////////////
 /// @brief PBKDF2
 //////////////////////////////////////////////////////////////////////////
 
 std::string sslPBKDF2(char const* salt, size_t saltLength, char const* pass,
-                      size_t passLength, int iter, int keyLength);
+                      size_t passLength, int iter, int keyLength, Algorithm algorithm);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief HMAC
