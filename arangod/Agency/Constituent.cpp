@@ -115,7 +115,6 @@ void Constituent::termNoLock(term_t t) {
                                      << " term " << t;
 
     _cast = false;
-    _votedFor = "";
     Builder body;
     body.add(VPackValue(VPackValueType::Object));
     std::ostringstream i_str;
