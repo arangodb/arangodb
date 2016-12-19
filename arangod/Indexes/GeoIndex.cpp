@@ -106,12 +106,12 @@ void GeoIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t
   result.clear();
   if (batchSize > 0) {
     auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(_cursor,batchSize));
+
     size_t length = coords ? coords->length : 0;
     //LOG_TOPIC(DEBUG, Logger::DEVEL) << "length " << length;
-    if (!length){
+    if (!length) {
       return;
     }
-
 
     for(std::size_t index = 0; index < length; ++index){
       //LOG_TOPIC(DEBUG, Logger::DEVEL) << "near " << _near << " max allowed range: " << _withinRange

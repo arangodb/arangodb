@@ -180,4 +180,16 @@ friend class GeoIndexIterator;
 };
 }
 
+namespace std {
+template <>
+class default_delete<GeoCoordinates> {
+ public:
+  void operator()(GeoCoordinates* result) {
+    if (result != nullptr) {
+      GeoIndex_CoordinatesFree(result);
+    }
+  }
+};
+}
+
 #endif
