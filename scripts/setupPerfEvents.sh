@@ -65,6 +65,10 @@ main(){
   addEvent handleRequest handleRequest@HttpServer.cpp
   addEvent handleWrite handleWrite@SocketTask.cpp
 
+  echo "work in LogicalCollection"
+  addEvent logicalInsertDocument insertDocument@LogicalCollection.cpp
+  addEvent logicalInsert insert@LogicalCollection.cpp
+
   addEvent tcp_sendmsg
   addEvent tcp_recvmsg
 
