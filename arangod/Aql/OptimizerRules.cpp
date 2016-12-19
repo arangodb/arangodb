@@ -4306,6 +4306,27 @@ void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info){
     plan->registerNode(newNode);
     plan->replaceNode(info.setter, newNode);
 
+    bool done = false;
+    ast->traverseAndModify(newNode->expression()->nodeForModification(),[&done](AstNode* node, void* data){
+      if(done){
+        return node;
+      }
+      if(node->type == NODE_TYPE_OPERATOR_BINARY_AND){
+        for(std::size_t i = 0; i < node->numMembers(); i++){
+          if(isGeoFilterExpression(node->getMemberUnchecked(i),node)){
+            done = true;
+            return node->getMemberUnchecked(i ? 0 : 1);
+          }
+        }
+      }
+      return node;
+    },
+    nullptr);
+
+    if(done){
+      return;
+    }
+
     auto replaceInfo = iterativePreorderWithCondition(EN::FILTER, newNode->expression()->nodeForModification(), &isGeoFilterExpression);
     if(newNode->expression()->nodeForModification() == replaceInfo.expressionParent){
       if(replaceInfo.expressionParent->type == NODE_TYPE_OPERATOR_BINARY_AND){
@@ -4317,6 +4338,7 @@ void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info){
         }
       }
     }
+
     //else {
     //  // COULD BE IMPROVED
     //  if(replaceInfo.expressionParent->type == NODE_TYPE_OPERATOR_BINARY_AND){
