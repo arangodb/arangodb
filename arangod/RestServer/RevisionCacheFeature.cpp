@@ -50,10 +50,10 @@ RevisionCacheFeature::RevisionCacheFeature(ApplicationServer* server)
   requiresElevatedPrivileges(false);
   startsAfter("WorkMonitor");
 
-  if (TRI_PhysicalMemory > 1024 * 1024 * 1024) {
+  if (TRI_PhysicalMemory >= 2147483648ULL) { // 2 GB
     // reset target size to a fraction of the available memory
-    _targetSize = TRI_PhysicalMemory - (1024 * 1024 * 1024);
-    _targetSize *= 0.4; // 40 %
+    _targetSize = TRI_PhysicalMemory - 1073741824ULL; // 1 GB
+    _targetSize *= 0.4; // 40 % or RAM
   }
 }
 
