@@ -60,14 +60,10 @@ Supervision::Supervision()
 Supervision::~Supervision() { shutdown(); };
 
 void Supervision::wakeUp() {
-  {
-    MUTEX_LOCKER(locker, _lock);
-    updateSnapshot();
-    upgradeAgency();
-  }
-    
-  CONDITION_LOCKER(guard, _cv);
-  _cv.signal();
+
+  updateSnapshot();
+  upgradeAgency();
+
 }
 
 static std::string const syncPrefix = "/Sync/ServerStates/";
@@ -441,6 +437,12 @@ void Supervision::run() {
     }
 
     while (!this->isStopping()) {
+
+      // Get bunch of job IDs from agency for future jobs
+      if (_jobId == 0 || _jobId == _jobIdMax) {
+        getUniqueIds();  // cannot fail but only hang
+      }
+
       {
         MUTEX_LOCKER(locker, _lock);
 
@@ -542,11 +544,6 @@ void Supervision::handleShutdown() {
 
 // Guarded by caller 
 bool Supervision::handleJobs() {
-  // Get bunch of job IDs from agency for future jobs
-  if (_jobId == 0 || _jobId == _jobIdMax) {
-    getUniqueIds();  // cannot fail but only hang
-  }
-
   // Do supervision
   
   shrinkCluster();
@@ -882,10 +879,9 @@ void Supervision::getUniqueIds() {
   // is initialized by some other server...
   while (!this->isStopping()) {
     try {
-      latestId = std::stoul(_agent->readDB()
-                                .get(_agencyPrefix + "/Sync/LatestID")
-                                .slice()
-                                .toJson());
+      MUTEX_LOCKER(locker, _lock);
+      latestId = std::stoul(
+        _agent->readDB().get(_agencyPrefix + "/Sync/LatestID").slice().toJson());
     } catch (...) {
       std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
