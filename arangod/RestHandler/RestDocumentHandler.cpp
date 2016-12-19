@@ -202,7 +202,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   // check for an etag
   bool isValidRevision;
   TRI_voc_rid_t const ifNoneRid =
-      extractRevision("if-none-match", nullptr, isValidRevision);
+      extractRevision("if-none-match", isValidRevision);
   if (!isValidRevision) {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER, "invalid revision number");
@@ -213,7 +213,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   options.ignoreRevs = true;
 
   TRI_voc_rid_t const ifRid =
-      extractRevision("if-match", nullptr, isValidRevision);
+      extractRevision("if-match", isValidRevision);
   if (!isValidRevision) {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER, "invalid revision number");
@@ -392,7 +392,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   if (!isArrayCase) {
     TRI_voc_rid_t revision = 0;
     bool isValidRevision;
-    revision = extractRevision("if-match", nullptr, isValidRevision);
+    revision = extractRevision("if-match", isValidRevision);
     if (!isValidRevision) {
       generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER, "invalid revision number");
@@ -498,7 +498,7 @@ bool RestDocumentHandler::deleteDocument() {
   TRI_voc_rid_t revision = 0;
   if (suffixes.size() == 2) {
     bool isValidRevision = false;
-    revision = extractRevision("if-match", nullptr, isValidRevision);
+    revision = extractRevision("if-match", isValidRevision);
     if (!isValidRevision) {
       generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER, "invalid revision number");
