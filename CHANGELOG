@@ -2,7 +2,7 @@ v3.1.5 (2016-12-16)
 -------------------
 
 * lowered default value of `--database.revision-cache-target-size` from 75% of
-  RAM to about 30% of RAM
+  RAM to less than 40% of RAM
 
 * fixed issue #2218
 
