@@ -4343,7 +4343,7 @@ void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info){
     auto ast = plan->getAst();
     CalculationNode* newNode = nullptr;
     Expression* expr = new Expression(ast, static_cast<CalculationNode*>(info.setter)->expression()->nodeForModification()->clone(ast));
-    
+ 
     try {
       newNode = new CalculationNode(plan, plan->nextId(), expr, static_cast<CalculationNode*>(info.setter)->outVariable());
     } catch (...) {
@@ -4353,7 +4353,7 @@ void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info){
 
     plan->registerNode(newNode);
     plan->replaceNode(info.setter, newNode);
-    
+
     auto replaceInfo = iterativePreorderWithCondition(EN::FILTER, newNode->expression()->nodeForModification(), &isGeoFilterExpression);
 
     auto replacement = ast->createNodeValueBool(true);
@@ -4381,10 +4381,11 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& first, G
   }
 
   // We are not allowed to be a inner loop
-  if(first.collectionNode->isInInnerLoop()){
+  if(first.collectionNode->isInInnerLoop() && first.executionNodeType == EN::SORT){
     return false;
   }
 
+ LOG_TOPIC(DEBUG, Logger::DEVEL) << "NO INNER LOOP";
  // //LOG_TOPIC(DEBUG, Logger::DEVEL) << "  attributes: " << res.longitude[0]
  // //         << ", " << res.longitude
  // //         << " of collection:" << res.collectionNode->collection()->getName()
@@ -4515,11 +4516,8 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
     }
 
   }
-  //if (modified){
-  //  opt->addPlan(newPlan, rule, modified);
-  //} else {
-    opt->addPlan(plan, rule, modified);
-  //}
+
+  opt->addPlan(plan, rule, modified);
 
   LOG_TOPIC(DEBUG, Logger::DEVEL) << "EXIT GEO RULE - modified: " << modified;
   //LOG_TOPIC(DEBUG, Logger::DEVEL) << "";

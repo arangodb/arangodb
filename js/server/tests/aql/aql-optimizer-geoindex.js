@@ -209,7 +209,7 @@ function optimizerRuleTestSuite() {
           , cluster : false
           , sort    : false
           , filter  : true
-          , index   : false
+          , index   : true
           },
         ];
 
