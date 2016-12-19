@@ -176,6 +176,11 @@ void Constituent::followNoLock(term_t t) {
 /// Become leader
 void Constituent::lead(term_t term,
                        std::map<std::string, bool> const& votes) {
+
+
+  // we need to rebuild spear_head and read_db
+  _agent->prepareLead();
+
   {
     MUTEX_LOCKER(guard, _castLock);
 
@@ -200,7 +205,7 @@ void Constituent::lead(term_t term,
   }
 
   // give some debug output _id never is changed after
-  if (!votes.empty()) {
+/*  if (!votes.empty()) {
     std::stringstream ss;
     ss << _id << ": Converted to leader in term " << _term << " with votes: ";
 
@@ -209,11 +214,7 @@ void Constituent::lead(term_t term,
     }
 
     LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
-  }
-
-  // we need to rebuild spear_head and read_db
-  _agent->prepareLead();
-
+    }*/
 
   // we need to start work as leader
   _agent->lead();
