@@ -83,6 +83,9 @@ class Agent : public arangodb::Thread {
   /// @brief Pick up leadership tasks
   bool lead();
 
+  /// @brief Prepare leadership
+  bool prepareLead();
+
   /// @brief Load persistent state
   bool load();
 

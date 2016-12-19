@@ -210,8 +210,13 @@ void Constituent::lead(term_t term,
     LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
   }
 
-  // we need to rebuild spear_head and read_db;
+  // we need to rebuild spear_head and read_db
+  _agent->prepareLead();
+
+
+  // we need to start work as leader
   _agent->lead();
+  
 }
 
 /// Become candidate
@@ -564,7 +569,7 @@ void Constituent::run() {
           // in the beginning, pure random
           if (_lastHeartbeatSeen > 0.0) {
             double now = TRI_microtime();
-            randWait -= static_cast<int64_t>(M * (now - _lastHeartbeatSeen));
+            randWait -= static_cast<int64_t>(M * (_lastHeartbeatSeen-now));
           }
         }
        
