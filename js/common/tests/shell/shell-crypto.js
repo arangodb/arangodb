@@ -296,6 +296,64 @@ function CryptoSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test hotp
+////////////////////////////////////////////////////////////////////////////////
+
+    testHotp : function () {
+      var data = [
+        [ "secret", undefined, "814628" ],
+        [ "secret", 0, "814628" ],
+        [ "secret", 1, "533881"],
+        [ "secret", 2, "720111" ],
+        [ "secret", 3, "282621" ],
+        [ "secret", 42, "852786" ],
+        [ "SECRET", 12345678, "208658" ]
+      ];
+
+      data.forEach(function (value) {
+        assertEqual(value[2], crypto.hotpGenerate(value[0], value[1]));
+      });
+
+      data.forEach(function (value) {
+        var result = crypto.hotpVerify(value[2], value[0], value[1], 0);
+        assertNotEqual(result, null);
+        assertEqual(result.delta, 0);
+      });
+
+      data.forEach(function (value) {
+        var result = crypto.hotpVerify(value[2], value[0], (value[1] || 0) - 1, 0);
+        assertEqual(result, null);
+      });
+
+      data.forEach(function (value) {
+        var result = crypto.hotpVerify(value[2], value[0], (value[1] || 0) + 1, 0);
+        assertEqual(result, null);
+      });
+
+      data.forEach(function (value) {
+        var result = crypto.hotpVerify(value[2], value[0], (value[1] || 0) - 20, 19);
+        assertEqual(result, null);
+      });
+
+      data.forEach(function (value) {
+        var result = crypto.hotpVerify(value[2], value[0], (value[1] || 0) + 20, 19);
+        assertEqual(result, null);
+      });
+
+      data.forEach(function (value) {
+        var result = crypto.hotpVerify(value[2], value[0], (value[1] || 0) - 20, 20);
+        assertNotEqual(result, null);
+        assertEqual(result.delta, 20);
+      });
+
+      data.forEach(function (value) {
+        var result = crypto.hotpVerify(value[2], value[0], (value[1] || 0) + 20, 20);
+        assertNotEqual(result, null);
+        assertEqual(result.delta, -20);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test pbkdf2, invalid values
 ////////////////////////////////////////////////////////////////////////////////
 

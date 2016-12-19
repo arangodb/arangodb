@@ -274,3 +274,52 @@ exports.jwtDecode = function (key, token, noVerify) {
 
   return JSON.parse(messageSeg);
 };
+
+function numToUInt64LE (value) {
+  const bytes = Array(8);
+  for (let i = 8; i > 0; i--) {
+    bytes[i - 1] = value & 255;
+    value = value >> 8;
+  }
+  return new Buffer(bytes);
+}
+
+function hotpTruncateHS1 (hmacResult) {
+  // See https://tools.ietf.org/html/rfc4226#section-5.4
+  const offset = hmacResult[19] & 0xf;
+  const binCode = (
+    (hmacResult[offset] & 0x7f) << 24 |
+    (hmacResult[offset + 1] & 0xff) << 16 |
+    (hmacResult[offset + 2] & 0xff) << 8 |
+    (hmacResult[offset + 3] & 0xff)
+  );
+  return binCode % Math.pow(10, 6);
+}
+
+exports.hotpGenerate = function (key, counter = 0) {
+  const hotpCounter = numToUInt64LE(counter);
+  const hash = new Buffer(exports.hmac(key, hotpCounter, 'sha1'), 'hex');
+  const truncated = String(hotpTruncateHS1(hash));
+  return Array(7 - truncated.length).join('0') + truncated;
+};
+
+exports.hotpVerify = function (token, key, counter = 0, window = 50) {
+  for (let c = counter - window; c <= counter + window; c++) {
+    if (exports.hotpGenerate(key, c) === token) {
+      return {delta: c - counter};
+    }
+  }
+  return null;
+};
+
+exports.totpGenerate = function (key, step = 30) {
+  const seconds = Date.now() / 1000;
+  const counter = Math.floor(seconds / step);
+  return exports.hotpGenerate(key, counter);
+};
+
+exports.totpVerify = function (token, key, step = 30, window = 6) {
+  const seconds = Date.now() / 1000;
+  const counter = Math.floor(seconds / step);
+  return exports.hotpVerify(key, token, counter, window);
+};
