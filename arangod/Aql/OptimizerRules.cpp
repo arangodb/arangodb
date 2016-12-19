@@ -4307,7 +4307,26 @@ void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info){
     plan->replaceNode(info.setter, newNode);
 
     auto replaceInfo = iterativePreorderWithCondition(EN::FILTER, newNode->expression()->nodeForModification(), &isGeoFilterExpression);
+    if(newNode->expression()->nodeForModification() == replaceInfo.expressionParent){
+      if(replaceInfo.expressionParent->type == NODE_TYPE_OPERATOR_BINARY_AND){
+        for(std::size_t i = 0; i < replaceInfo.expressionParent->numMembers(); ++i){
+          if(replaceInfo.expressionParent->getMember(i) != replaceInfo.expressionNode){
+            newNode->expression()->replaceNode(replaceInfo.expressionParent->getMember(i));
+            return;
+          }
+        }
+      }
+    }
+    //else {
+    //  // COULD BE IMPROVED
+    //  if(replaceInfo.expressionParent->type == NODE_TYPE_OPERATOR_BINARY_AND){
+    //    // delete ast node - we would need the parent of expression parent to delete the node
+    //    // we do not have it available here so we just replace the the node with true
+    //    return;
+    //  }
+    //}
 
+    //fallback
     auto replacement = ast->createNodeValueBool(true);
     for(std::size_t i = 0; i < replaceInfo.expressionParent->numMembers(); ++i){
       if(replaceInfo.expressionParent->getMember(i) == replaceInfo.expressionNode){
