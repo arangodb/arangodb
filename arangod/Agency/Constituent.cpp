@@ -41,6 +41,7 @@
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
+#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::consensus;
@@ -374,9 +375,14 @@ bool Constituent::vote(term_t termOfPeer, std::string id, index_t prevLogIndex,
 
 /// @brief Call to election
 void Constituent::callElection() {
+
+  using namespace std::chrono;
+  auto timeout = steady_clock::now() +
+    duration<double>(_agent->config().minPing());
+  
   std::map<std::string, bool> votes;
-  std::vector<std::string> active =
-      _agent->config().active();  // Get copy of active
+  std::vector<std::string> active = _agent->config().active();
+  CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
 
   votes[_id] = true;  // vote for myself
 
@@ -384,7 +390,7 @@ void Constituent::callElection() {
   {
     MUTEX_LOCKER(locker, _castLock);
     this->termNoLock(_term + 1);  // raise my term
-    _cast = true;
+    _cast     = true;
     _votedFor = _id;
     savedTerm = _term;
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to NO_LEADER"
@@ -400,78 +406,58 @@ void Constituent::callElection() {
        << "&candidateId=" << _id << "&prevLogIndex=" << _agent->lastLog().index
        << "&prevLogTerm=" << _agent->lastLog().term;
 
-  double minPing = _agent->config().minPing();
-
-  double respTimeout = 0.9 * minPing;
-  double initTimeout = 0.5 * minPing;
-
   // Ask everyone for their vote
   for (auto const& i : active) {
     if (i != _id) {
       auto headerFields =
           std::make_unique<std::unordered_map<std::string, std::string>>();
       operationIDs[i] = ClusterComm::instance()->asyncRequest(
-        "1", 1, _agent->config().poolAt(i),
+        "", coordinatorTransactionID, _agent->config().poolAt(i),
         rest::RequestType::GET, path.str(),
         std::make_shared<std::string>(body), headerFields,
-        nullptr, respTimeout, true, initTimeout);
+        nullptr, 0.9 * _agent->config().minPing(), true);
     }
   }
 
-  // Wait randomized timeout
-  std::this_thread::sleep_for(sleepFor(initTimeout, respTimeout));
+  // Collect ballots. I vote for myself.
+  size_t yea = 1, nea = 0, majority = size() / 2 + 1; 
+  while (true) {
 
-  // Collect votes
-  for (const auto& i : active) {
-    if (i != _id) {
-      ClusterCommResult res =
-          arangodb::ClusterComm::instance()->enquire(operationIDs[i]);
-      if (res.status == CL_COMM_SENT) {  // Request successfully sent
-        res = ClusterComm::instance()->wait("1", 1, operationIDs[i], "1");
-        std::shared_ptr<Builder> body = res.result->getBodyVelocyPack();
-        if (body->isEmpty()) {  // body empty
-          continue;
+    auto res = ClusterComm::instance()->wait(
+      "", coordinatorTransactionID, 0, "",
+      duration<double>(steady_clock::now()-timeout).count());
+
+    if (res.status == CL_COMM_SENT) {
+      auto body = res.result->getBodyVelocyPack();
+      VPackSlice slc = body->slice();
+
+      // Got ballot
+      if (slc.isObject() && slc.hasKey("term") && slc.hasKey("voteGranted")) {
+
+        // Follow right away?
+        term_t t = slc.get("term").getUInt();
+        if (t > _term) {
+          follow(t);
+          break;
+        }
+
+        // Check result and counts
+        if(slc.get("voteGranted").getBool()) { // majority in favour
+          if (++yea >= majority) {
+            lead(savedTerm, votes);
+            break;
+          }
         } else {
-          if (body->slice().isObject()) {  // body
-            VPackSlice slc = body->slice();
-            if (slc.hasKey("term") && slc.hasKey("voteGranted")) {  // OK
-              term_t t = slc.get("term").getUInt();
-              if (t > _term) {  // follow?
-                follow(t);
-                break;
-              }
-              votes[i] = slc.get("voteGranted").getBool();  // Get vote
-            }
+          if (++nea >= majority) {              // majority against
+            follow(_term);
+            break;
           }
         }
-      } else {  // Request failed
-        votes[i] = false;
+
       }
     }
   }
 
-  // Count votes
-  size_t yea = 0;
-  for (auto const& i : votes) {
-    if (i.second) {
-      ++yea;
-    }
-  }
-
-  {
-    MUTEX_LOCKER(locker, _castLock);
-    if (savedTerm != _term) {
-      followNoLock(_term);
-      return;
-    }
-  }
-
-  // Evaluate election results
-  if (yea > size() / 2) {
-    lead(savedTerm, votes);
-  } else {
-    follow(_term);
-  }
 }
 
 void Constituent::update(std::string const& leaderID, term_t t) {
