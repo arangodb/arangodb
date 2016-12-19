@@ -8,24 +8,26 @@
 # document operations. Run this script with sudo when the ArangoDB
 # process is already running:
 #
-#   ./setupPerfEvents.sh
+#   sudo ./setupPerfEvents.sh
 #
 # Now you are able to recrod the event with:
 #
-#   sudo perf record -e "probe_arangod:*" -aR sleep 60
+#   sudo perf record -e "probe_arangod:*" -aR
 #
-# The above command will get sample data for 60 seconds. A file "perf.data" is
-# written to the current directory. Dump the events in this file with:
+# The above command will get sample data indefinitely, hit Ctrl-C when
+# the measurement is finished. A file "perf.data" is written to the
+# current directory. Dump the events in this file with:
 #
 #   sudo perf script > perf.history
 #
 # This logs the times when individual threads hit the events.
 # Use the program perfanalyis.cpp in this directory in the following way:
+# (for compilation instructions see at the top of perfanalysis.cpp)
 #
-#   sudo ./perfanalyis < perf.history > perf.statistics
+#   ./scripts/perfanalyis < perf.history > perf.statistics
 #
 # This will group enter and exit events of functions together, compute the time
-# spent and sort by function. When finised remove all events with:
+# spent and sort by function. When finished remove all events with:
 #
 #   sudo perf probe -d "probe_arangod:*"
 #
