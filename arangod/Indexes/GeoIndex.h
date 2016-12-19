@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "GeoIndex/GeoIndex.h"
 #include "Indexes/Index.h"
+#include "Indexes/IndexIterator.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -37,8 +38,49 @@
 static_assert(sizeof(GeoCoordinate::data) >= sizeof(TRI_voc_rid_t), "invalid size of GeoCoordinate.data");
 
 namespace arangodb {
+class GeoIndex;
+
+class GeoIndexIterator final : public IndexIterator {
+ public:
+
+/// @brief Construct an GeoIndexIterator based on Ast Conditions
+  GeoIndexIterator(LogicalCollection* collection, arangodb::Transaction* trx, 
+                    ManagedDocumentResult* mmdr,
+                    GeoIndex const* index,
+                    arangodb::aql::AstNode const*,
+                    arangodb::aql::Variable const*);
+
+  ~GeoIndexIterator() {
+    replaceCursor(nullptr);
+  };
+
+  char const* typeName() const override { return "geo-index-iterator"; }
+
+  IndexLookupResult next() override;
+
+  void nextBabies(std::vector<IndexLookupResult>&, size_t) override;
+
+  void reset() override;
+
+ private:
+  ::GeoCursor* replaceCursor(::GeoCursor* c);
+  ::GeoCursor* createCursor(double lat, double lon);
+  void evaluateCondition(); //called in constructor
+
+  GeoIndex const* _index;
+  ::GeoCursor* _cursor;
+  ::GeoCoordinate _coor;
+  arangodb::aql::AstNode const* _condition;
+  arangodb::aql::Variable const* _variable;
+  double _lat;
+  double _lon;
+  bool _near;
+  double _withinRange;
+  double _withinLessEq;
+};
 
 class GeoIndex final : public Index {
+friend class GeoIndexIterator;
  public:
   GeoIndex() = delete;
 
@@ -65,6 +107,12 @@ class GeoIndex final : public Index {
 
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
+  
+  IndexIterator* iteratorForCondition(arangodb::Transaction*,
+                                      ManagedDocumentResult*,
+                                      arangodb::aql::AstNode const*,
+                                      arangodb::aql::Variable const*,
+                                      bool) const override;
   
   bool allowExpansion() const override { return false; }
   
