@@ -41,6 +41,7 @@ class VertexContext {
   friend class Worker<V, E, M>;
 
   uint64_t _gss = 0;
+  uint64_t _lss = 0;
   WorkerContext* _context;
   GraphStore<V, E>* _graphStore;
   const AggregatorHandler* _conductorAggregators;
@@ -80,6 +81,7 @@ class VertexContext {
   void voteActive() { _vertexEntry->setActive(true); }
 
   inline uint64_t globalSuperstep() const { return _gss; }
+  inline uint64_t localSuperstep() const { return _lss; }
 };
 
 template <typename V, typename E, typename M>

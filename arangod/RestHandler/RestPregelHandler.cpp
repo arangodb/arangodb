@@ -70,6 +70,7 @@ RestStatus RestPregelHandler::execute() {
       return RestStatus::DONE;
     }
     
+    VPackBuilder result;
     uint64_t executionNumber = sExecutionNum.getUInt();
     if (suffix.size() != 1) {
       LOG(ERR) << "Invalid suffix";
@@ -96,7 +97,7 @@ RestStatus RestPregelHandler::execute() {
     } else if (suffix[0] == Utils::prepareGSSPath) {
       IWorker *w = PregelFeature::instance()->worker(executionNumber);
       if (w) {
-        w->prepareGlobalStep(body);
+        w->prepareGlobalStep(body, result);
       } else {
         LOG(ERR) << "Invalid execution number, worker does not exist.";
         generateError(rest::ResponseCode::NOT_FOUND,
@@ -156,8 +157,7 @@ RestStatus RestPregelHandler::execute() {
       }
     }
     
-    VPackSlice result;
-    generateResult(rest::ResponseCode::OK, result);
+    generateResult(rest::ResponseCode::OK, result.slice());
     
   } catch (std::exception const &e) {
     LOG(ERR) << e.what();

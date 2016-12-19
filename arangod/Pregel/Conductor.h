@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterComm.h"
 #include "Pregel/Statistics.h"
 #include "VocBase/vocbase.h"
 
@@ -72,12 +73,14 @@ class Conductor {
   std::set<ServerID> _respondedServers;
   bool _asyncMode = false;
   /// persistent tracking of active vertices, send messages, runtimes
-  WorkerStats _workerStats;
+  StatsManager _statistics;
   
   bool _startGlobalStep();
   int _initializeWorkers(std::string const& suffix, VPackSlice additional);
   int _finalizeWorkers();
   int _sendToAllDBServers(std::string const& suffix, VPackSlice const& message);
+  int _sendToAllDBServers(std::string const& suffix, VPackSlice const& message,
+                                   std::vector<ClusterCommRequest> &requests);
   void _ensureUniqueResponse(VPackSlice body);
 
   // === REST callbacks ===
@@ -97,7 +100,7 @@ class Conductor {
   void startRecovery();
 
   ExecutionState getState() const { return _state; }
-  WorkerStats workerStats() const { return _workerStats; }
+  StatsManager workerStats() const { return _statistics; }
   uint64_t globalSuperstep() const { return _globalSuperstep; }
   double totalRuntimeSecs() {
     return _endTimeSecs == 0 ? TRI_microtime() - _startTimeSecs

@@ -35,6 +35,8 @@ namespace algos {
 struct SSSPAlgorithm : public SimpleAlgorithm<int64_t, int64_t, int64_t> {
  public:
   SSSPAlgorithm(VPackSlice userParams) : SimpleAlgorithm("SSSP", userParams) {}
+  
+  bool supportsAsyncMode() const override { return true; }
 
   GraphFormat<int64_t, int64_t>* inputFormat() const override;
   MessageFormat<int64_t>* messageFormat() const override;

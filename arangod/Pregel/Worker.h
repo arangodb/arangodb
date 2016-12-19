@@ -40,7 +40,7 @@ namespace pregel {
 class IWorker {
  public:
   virtual ~IWorker(){};
-  virtual void prepareGlobalStep(VPackSlice data) = 0;
+  virtual void prepareGlobalStep(VPackSlice data, VPackBuilder &response) = 0;
   virtual void startGlobalStep(VPackSlice data) = 0;   // called by coordinator
   virtual void cancelGlobalStep(VPackSlice data) = 0;  // called by coordinator
   virtual void receivedMessages(VPackSlice data) = 0;
@@ -81,7 +81,7 @@ class Worker : public IWorker {
   uint64_t _expectedGSS = 0;
   std::unique_ptr<Algorithm<V, E, M>> _algorithm;
   std::unique_ptr<WorkerContext> _workerContext;
-  Mutex _commandMutex;       // locks callbak methods
+  mutable Mutex _commandMutex;       // locks callbak methods
   mutable Mutex _threadMutex;// locks _workerThreadDone
 
   // only valid while recovering to determine the offset
@@ -111,6 +111,7 @@ class Worker : public IWorker {
   void _processVertices(RangeIterator<VertexEntry>& vertexIterator);
   void _finishedProcessing(AggregatorHandler* threadAggregators,
                            WorkerStats const& threadStats);
+  void _continueAsync();
   void _callConductor(std::string path, VPackSlice message);
 
  public:
@@ -119,7 +120,7 @@ class Worker : public IWorker {
   ~Worker();
 
   // ====== called by rest handler =====
-  void prepareGlobalStep(VPackSlice data) override;
+  void prepareGlobalStep(VPackSlice data, VPackBuilder &response) override;
   void startGlobalStep(VPackSlice data) override;
   void cancelGlobalStep(VPackSlice data) override;
   void receivedMessages(VPackSlice data) override;

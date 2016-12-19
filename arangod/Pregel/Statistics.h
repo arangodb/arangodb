@@ -92,6 +92,64 @@ struct WorkerStats {
     return activeCount == 0 && sendCount == receivedCount;
   }
 };
+
+struct StatsManager {
+
+  void accumulate(VPackSlice data) {
+    VPackSlice sender = data.get(Utils::senderKey);
+    if (sender.isString()) {
+      _serverStats[sender.copyString()].accumulate(data);
+    }
+  }
+  
+  void serializeValues(VPackBuilder &b) {
+    WorkerStats stats;
+    for (auto const& pair : _serverStats) {
+      stats.accumulate(pair.second);
+    }
+    stats.serializeValues(b);
+  }
+
+  bool allMessagesProcessed() {
+    uint64_t send = 0, received = 0;
+    for (auto const& pair : _serverStats) {
+      send += pair.second.sendCount;
+      received += pair.second.receivedCount;
+    }
+    return send == received;
+  }
+
+  /// tests for convergence
+  bool executionFinished() {
+    uint64_t send = 0, received = 0;
+    for (auto const& pair : _serverStats) {
+      send += pair.second.sendCount;
+      received += pair.second.receivedCount;
+      if (pair.second.activeCount > 0) {
+        return false;
+      }
+    }
+    return send == received;
+  }
+
+  void resetActiveCount() {
+    for (auto &pair : _serverStats) {
+      pair.second.activeCount = 0;
+    }
+  }
+
+  void reset() {
+    _serverStats.clear();
+  }
+  
+  size_t clientCount() {
+    return _serverStats.size();
+  }
+
+  private:
+  std::map<std::string, WorkerStats> _serverStats;
+};
+  
 }
 }
 #endif

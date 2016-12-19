@@ -35,13 +35,15 @@ var API = '/_api/control_pregel';
 // //////////////////////////////////////////////////////////////////////////////
 var startExecution = function(algo, options) {
   
-  var first = options.vertexCollections && options.vertexCollections instanceof Array
+  var first = options && options.vertexCollections && options.vertexCollections instanceof Array
   && options.edgeCollection && options.edgeCollections instanceof Array;
-  var second = typeof options.graphName === 'string' && typeof options.algorithm === 'string';
+  var second = options && typeof options.graphName === 'string';
   var third = typeof options === 'string' && typeof algo === 'string';
   
-  if (!first && !second && !third) {
+  if (!first && !second && !third || typeof algo !== 'string') {
     throw "Invalid parameters, either {vertexCollections:['',..], edgeCollection: ''} or {graphName:'<graph>'} or graph name";
+  } else if (second) {
+    options.algorithm = algo;
   } else if (third) {
     options = {graphName:options, algorithm:algo};
   }

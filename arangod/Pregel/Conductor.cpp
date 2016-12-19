@@ -92,7 +92,57 @@ void Conductor::start(std::string const& algoName, VPackSlice userConfig) {
 // only called by the conductor, is protected by the
 // mutex locked in finishedGlobalStep
 bool Conductor::_startGlobalStep() {
+  // send prepare GSS notice
   VPackBuilder b;
+  b.openObject();
+  b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+  b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
+  b.close();
+
+  // we are explicitly expecting an response containing the aggregated
+  // values as well as the count of active vertices
+  std::vector<ClusterCommRequest> requests;
+  int res = _sendToAllDBServers(Utils::prepareGSSPath, b.slice(), requests);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(INFO) << "Seems there is at least one worker out of order";
+    Utils::printResponses(requests);
+    // TODO, in case a worker needs more than 5 minutes to do calculations
+    // this will be triggered as well
+    return false;
+  }
+  /// collect the aggregators
+  _aggregators->resetValues();
+  _statistics.resetActiveCount();
+  for (auto const& req : requests) {
+    VPackSlice payload = req.result.answer->payload();
+    VPackSlice slice = payload.get(Utils::aggregatorValuesKey);
+    if (slice.isObject()) {
+      _aggregators->aggregateValues(slice);
+    }
+    _statistics.accumulate(payload);
+  }
+
+  // workers are done if all messages were processed and no active vertices
+  // are left to process
+  bool proceed = true;
+  if (_masterContext) {  // ask algorithm to evaluate aggregated values
+    proceed = _masterContext->postGlobalSuperstep(_globalSuperstep);
+  }
+  
+  // TODO make maximum configurable
+  bool done = _globalSuperstep != 0 && _statistics.executionFinished();
+  if (!proceed || done || _globalSuperstep >= 100) {
+    _state = ExecutionState::DONE;
+    // tells workers to store / discard results
+   _finalizeWorkers();
+   return false;
+  }
+  if (_masterContext) {
+    _masterContext->preGlobalSuperstep(_globalSuperstep);
+  }
+
+  b.clear();
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
   b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
@@ -103,26 +153,10 @@ bool Conductor::_startGlobalStep() {
   }
   b.close();
 
-  // reset values which are calculated during the superstep
-  _aggregators->resetValues();
-  _workerStats.activeCount = 0;
-
-  // first allow all workers to run worker level operations
-  int res = _sendToAllDBServers(Utils::prepareGSSPath, b.slice());
-  if (res == TRI_ERROR_NO_ERROR) {
-    if (_masterContext) {
-      _masterContext->preGlobalSuperstep(_globalSuperstep);
-    }
-    // start vertex level operations, does not get a response
-    _sendToAllDBServers(Utils::startGSSPath, b.slice());  // call me maybe
-    LOG(INFO) << "Conductor started new gss " << _globalSuperstep;
-    return true;
-  } else {
-    LOG(INFO) << "Seems there is at least one worker out of order";
-    // TODO, in case a worker needs more than 5 minutes to do calculations
-    // this will be triggered as well
-    return false;
-  }
+  // start vertex level operations, does not get a response
+  _sendToAllDBServers(Utils::startGSSPath, b.slice());// call me maybe
+  LOG(INFO) << "Conductor started new gss " << _globalSuperstep;
+  return true;
 }
 
 // ============ Conductor callbacks ===============
@@ -158,55 +192,27 @@ void Conductor::finishedWorkerStep(VPackSlice& data) {
     return;
   }
   
-  WorkerStats stats(data);
-  if (!_asyncMode || stats.allMessagesProcessed()) {
+  _statistics.accumulate(data);
+  if (!_asyncMode) {
     _ensureUniqueResponse(data);
-    
-    // collect worker information
-    VPackSlice slice = data.get(Utils::aggregatorValuesKey);
-    if (slice.isObject()) {
-      _aggregators->aggregateValues(slice);
+    // wait for the last worker to respond
+    if (_respondedServers.size() != _dbServers.size()) {
+      return;
     }
-    _workerStats.accumulate(stats);
-  }
-  
-  // wait for the last worker to respond
-  if (_respondedServers.size() != _dbServers.size()) {
+  } else if (_statistics.clientCount() < _dbServers.size()
+             || !_statistics.allMessagesProcessed()) {
     return;
-  }
-  
-  bool proceed = true;
-  if (_masterContext) {  // ask algorithm to evaluate aggregated values
-    proceed = _masterContext->postGlobalSuperstep(_globalSuperstep);
   }
 
   LOG(INFO) << "Finished gss " << _globalSuperstep;
   _globalSuperstep++;
 
-  // workers are done if all messages were processed and no active vertices
-  // are left to process
-  bool workersDone = _workerStats.isDone();
-  // TODO make maxumum configurable
-  proceed = proceed && _globalSuperstep <= 100;
-
-  if (proceed && !workersDone && _state == ExecutionState::RUNNING) {
+  if (_state == ExecutionState::RUNNING) {
     _startGlobalStep();  // trigger next superstep
-  } else if (_state == ExecutionState::RUNNING ||
-             _state == ExecutionState::CANCELED) {
-    if (_state == ExecutionState::CANCELED) {
-      LOG(WARN) << "Execution was canceled, results will be discarded.";
-    } else {
-      _state = ExecutionState::DONE;
-    }
-
-    // stop monitoring shards
-    RecoveryManager* mngr = PregelFeature::instance()->recoveryManager();
-    if (mngr) {
-      mngr->stopMonitoring(this);
-    }
+  } else if (_state == ExecutionState::CANCELED) {
+    LOG(WARN) << "Execution was canceled, results will be discarded.";
     // tells workers to store / discard results
     _finalizeWorkers();
-
   } else {  // this prop shouldn't occur,
     LOG(WARN) << "No further action taken after receiving all responses";
   }
@@ -242,8 +248,6 @@ void Conductor::finishedRecovery(VPackSlice& data) {
 
       // reset values which are calculated during the superstep
       _aggregators->resetValues();
-      _workerStats.activeCount = 0;
-
       // first allow all workers to run worker level operations
       int res = _sendToAllDBServers(Utils::startRecoveryPath, b.slice());
       if (res != TRI_ERROR_NO_ERROR) {
@@ -276,13 +280,6 @@ void Conductor::cancel() {
   if (mngr) {
     mngr->stopMonitoring(this);
   }
-
-  // tell workers to discard results
-  /*int res = _finalizeWorkers();
-  // we do not expect to reach all workers after a failed recovery
-  if (res != TRI_ERROR_NO_ERROR && before != ExecutionState::RECOVERING) {
-    LOG(ERR) << "Could not reach all workers to cancel execution";
-  }*/
 }
 
 void Conductor::startRecovery() {
@@ -295,6 +292,7 @@ void Conductor::startRecovery() {
   // we lost a DBServer, we need to reconfigure all remainging servers
   // so they load the data for the lost machine
   _state = ExecutionState::RECOVERING;
+  _statistics.reset();
 
   basics::ThreadPool* pool = PregelFeature::instance()->threadPool();
   pool->enqueue([this] {
@@ -334,7 +332,6 @@ void Conductor::startRecovery() {
       }
       b.close();
       _aggregators->resetValues();
-      _workerStats.activeCount = 0;
 
       // initialize workers will reconfigure the workers and set the
       // _dbServers list to the new primary DBServers
@@ -487,6 +484,11 @@ int Conductor::_finalizeWorkers() {
   if (_masterContext) {
     _masterContext->postApplication();
   }
+  // stop monitoring shards
+  RecoveryManager* mngr = PregelFeature::instance()->recoveryManager();
+  if (mngr) {
+    mngr->stopMonitoring(this);
+  }
 
   VPackBuilder b;
   b.openObject();
@@ -496,16 +498,26 @@ int Conductor::_finalizeWorkers() {
   b.close();
   int res = _sendToAllDBServers(Utils::finalizeExecutionPath, b.slice());
 
+  b.clear();
+  b.openObject();
+  _statistics.serializeValues(b);
+  b.close();
+  
   LOG(INFO) << "Done. We did " << _globalSuperstep << " rounds";
-  LOG(INFO) << "Send: " << _workerStats.sendCount
-            << " Received: " << _workerStats.receivedCount;
-  LOG(INFO) << "Worker Runtime: " << _workerStats.superstepRuntimeSecs << "s";
   LOG(INFO) << "Total Runtime: " << totalRuntimeSecs() << "s";
+  LOG(INFO) << "Stats: " << b.toString();
   return res;
 }
 
 int Conductor::_sendToAllDBServers(std::string const& suffix,
                                    VPackSlice const& message) {
+  std::vector<ClusterCommRequest> requests;
+  return _sendToAllDBServers(suffix, message, requests);
+}
+
+int Conductor::_sendToAllDBServers(std::string const& suffix,
+                                   VPackSlice const& message,
+                                   std::vector<ClusterCommRequest> &requests) {
   _respondedServers.clear();
 
   ClusterComm* cc = ClusterComm::instance();
@@ -516,7 +528,6 @@ int Conductor::_sendToAllDBServers(std::string const& suffix,
 
   std::string base = Utils::baseUrl(_vocbaseGuard.vocbase()->name());
   auto body = std::make_shared<std::string const>(message.toJson());
-  std::vector<ClusterCommRequest> requests;
   for (auto const& server : _dbServers) {
     requests.emplace_back("server:" + server, rest::RequestType::POST,
                           base + suffix, body);

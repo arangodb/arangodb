@@ -190,7 +190,6 @@ MessageIterator<M> CombiningInCache<M>::getMessages(prgl_shard_t shard,
     LOG(INFO) << "Got a message for " << key;
     return MessageIterator<M>(&vmsg->second);
   } else {
-    LOG(INFO) << "No message for " << key;
     return MessageIterator<M>();
   }
 }
