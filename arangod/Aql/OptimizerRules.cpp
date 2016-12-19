@@ -3941,7 +3941,6 @@ struct GeoIndexInfo{
     , executionNode(nullptr)
     , indexNode(nullptr)
     , setter(nullptr)
-    , setterClone(nullptr)
     , expressionParent(nullptr)
     , expressionNode(nullptr)
     , distanceNode(nullptr)
@@ -3956,8 +3955,7 @@ struct GeoIndexInfo{
   EnumerateCollectionNode* collectionNode; // node that will be replaced by (geo) IndexNode
   ExecutionNode* executionNode; // start node that is a sort or filter
   IndexNode* indexNode; // AstNode that is the parent of the Node
-  ExecutionNode* setter; // node that has contains the condition for filter or sort
-  ExecutionNode* setterClone;
+  CalculationNode* setter; // node that has contains the condition for filter or sort
   AstNode* expressionParent; // AstNode that is the parent of the Node
   AstNode* expressionNode; // AstNode that contains the sort/filter condition
   AstNode* distanceNode; // AstNode that contains the distance parameters
@@ -4257,14 +4255,7 @@ GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, Exec
     return rv;
   }
 
-  //clone setter here
-  auto setterClone = setter->clone(plan,true,true);
-
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "found setter node for calcuation";
-
-  // downcast to calculation node and get expression
-  auto cn = static_cast<CalculationNode*>(setterClone);
-  auto expression = cn->expression();
+  auto expression = static_cast<CalculationNode*>(setter)->expression();
 
   // the expression must exist and it must have an astNode
   if (expression == nullptr || expression->node() == nullptr){
@@ -4296,8 +4287,7 @@ GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, Exec
 
   rv.executionNode = n;
   rv.executionNodeType = type;
-  rv.setter = setter;
-  rv.setterClone = setterClone;
+  rv.setter = static_cast<CalculationNode*>(setter);
 
   checkDistanceArguments(rv, plan);
 
@@ -4349,16 +4339,31 @@ std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan, GeoIndexInfo& 
 
 void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info){
   if( info.expressionParent && info.executionNodeType == EN::FILTER) {
+
     auto ast = plan->getAst();
+    CalculationNode* newNode = nullptr;
+    Expression* expr = new Expression(ast, static_cast<CalculationNode*>(info.setter)->expression()->nodeForModification()->clone(ast));
+    
+    try {
+      newNode = new CalculationNode(plan, plan->nextId(), expr, static_cast<CalculationNode*>(info.setter)->outVariable());
+    } catch (...) {
+      delete expr;
+      throw;
+    }
+
+    plan->registerNode(newNode);
+    plan->replaceNode(info.setter, newNode);
+    
+    auto replaceInfo = iterativePreorderWithCondition(EN::FILTER, newNode->expression()->nodeForModification(), &isGeoFilterExpression);
+
     auto replacement = ast->createNodeValueBool(true);
-    for(std::size_t i = 0; i < info.expressionParent->numMembers(); ++i){
-      if(info.expressionParent->getMember(i) == info.expressionNode){
-        info.expressionParent->removeMemberUnchecked(i);
-        info.expressionParent->addMember(replacement);
+    for(std::size_t i = 0; i < replaceInfo.expressionParent->numMembers(); ++i){
+      if(replaceInfo.expressionParent->getMember(i) == replaceInfo.expressionNode){
+        replaceInfo.expressionParent->removeMemberUnchecked(i);
+        replaceInfo.expressionParent->addMember(replacement);
       }
     }
-    info.setterClone->setId(1000);
-    plan->replaceNode(info.setter,info.setterClone); 
+
   }
 }
 
@@ -4445,7 +4450,7 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
   bool modified = false;
   //inspect each return node and work upwards to SingletonNode
   plan->findEndNodes(nodes, true);
-  ExecutionPlan* newPlan = nullptr;
+  //ExecutionPlan* newPlan = nullptr;
   for (auto& node : nodes) {
     GeoIndexInfo sortInfo{};
     GeoIndexInfo filterInfo{};
@@ -4486,8 +4491,8 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
               sortInfo.invalidate();
               break;
             }
-            newPlan = plan->clone();
-            if (applyGeoOptimization(true, newPlan, filterInfo, sortInfo)){
+            //newPlan = plan->clone();
+            if (applyGeoOptimization(true, plan, filterInfo, sortInfo)){
               modified = true;
               filterInfo.invalidate();
               sortInfo.invalidate();
@@ -4510,11 +4515,11 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
     }
 
   }
-  if (modified){
-    opt->addPlan(newPlan, rule, modified);
-  } else {
+  //if (modified){
+  //  opt->addPlan(newPlan, rule, modified);
+  //} else {
     opt->addPlan(plan, rule, modified);
-  }
+  //}
 
   LOG_TOPIC(DEBUG, Logger::DEVEL) << "EXIT GEO RULE - modified: " << modified;
   //LOG_TOPIC(DEBUG, Logger::DEVEL) << "";
