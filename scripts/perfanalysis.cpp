@@ -1,5 +1,5 @@
 // Compile with
-//   g++ perfanalysis.cpp -o perfanalyis -std=c++11 -Wall -O3
+//   g++ perfanalysis.cpp -o perfanalyis -std=c++14 -Wall -O3
 
 #include <algorithm>
 #include <iostream>
