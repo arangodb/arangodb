@@ -1991,19 +1991,14 @@ typedef struct {
   GeoFix dist;
 } hpot;  // pot for putting on the heap
 
-bool hpotcompare(hpot a, hpot b) { return (a.dist > b.dist); }
+static bool hpotcompare(hpot const& a, hpot const& b) { return (a.dist > b.dist); }
 
 typedef struct {
   int slot;
   double snmd;
 } hslot;  // pot for putting on the heap
 
-bool hslotcompare(hslot a, hslot b) {
-  if (a.snmd > b.snmd)
-    return true;
-  else
-    return false;
-}
+static bool hslotcompare(hslot const& a, hslot const& b) { return (a.snmd > b.snmd); }
 
 typedef struct {
   GeoIx* Ix; /* GeoIndex          */
@@ -2098,7 +2093,7 @@ GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count) {
         }
         if (gcr->slotheap.size() != 0) {
           slox = gcr->slotheap.front().slot;
-          gcr->slotsnmd = GeoSNMD(&gcr->gd, (gcr->Ix)->gc + slox);
+          gcr->slotsnmd = gcr->slotheap.front().snmd;
         }
       } else {
         hp.pot = pot.LorLeaf;
@@ -2118,7 +2113,7 @@ GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count) {
     } else {
       if (gcr->slotheap.size() == 0) break;  // that's all there is
       slox = gcr->slotheap.front().slot;
-      tsnmd = GeoSNMD(&gcr->gd, (gcr->Ix)->gc + slox);
+      tsnmd = gcr->slotheap.front().snmd;
       r = GeoResultsGrow(gr);
       if (r == -1) {
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, gr->snmd);
@@ -2134,7 +2129,7 @@ GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count) {
       gcr->slotheap.pop_back();
       if (gcr->slotheap.size() != 0) {
         slox = gcr->slotheap.front().slot;
-        gcr->slotsnmd = GeoSNMD(&gcr->gd, (gcr->Ix)->gc + slox);
+        gcr->slotsnmd = gcr->slotheap.front().snmd;
       }
     }
   }
