@@ -32,7 +32,7 @@ using namespace arangodb::aql;
 
 SortNode::SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
                    SortElementVector const& elements, bool stable)
-    : ExecutionNode(plan, base), _elements(elements), _stable(stable) {}
+    : ExecutionNode(plan, base), _reinsertInCluster(true),  _elements(elements), _stable(stable){}
 
 /// @brief toVelocyPack, for SortNode
 void SortNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {

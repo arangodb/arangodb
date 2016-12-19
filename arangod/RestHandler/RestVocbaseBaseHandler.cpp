@@ -568,7 +568,6 @@ void RestVocbaseBaseHandler::generateTransactionError(
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
-                                                      char const* parameter,
                                                       bool& isValid) {
   isValid = true;
   bool found;
@@ -601,20 +600,6 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
     isValid = (rid != 0);
 
     return rid;
-  }
-
-  if (parameter != nullptr) {
-    std::string const& etag2 = _request->value(parameter, found);
-
-    if (found) {
-      TRI_voc_rid_t rid = 0;
-
-      bool isOld;
-      rid = TRI_StringToRidWithCheck(etag2, isOld, false);
-      isValid = (rid != 0);
-
-      return rid;
-    }
   }
 
   return 0;
