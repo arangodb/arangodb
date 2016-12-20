@@ -487,20 +487,12 @@ void TRI_datafile_t::dontNeed() {
   TRI_MMFileAdvise(_data, _maximalSize, TRI_MADVISE_DONTNEED);
 }
 
-void TRI_datafile_t::readOnly() {
-  int res = TRI_ProtectMMFile(_data, _maximalSize, PROT_READ, _fd);
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    _state = TRI_DF_STATE_READ;
-  }
+bool TRI_datafile_t::readOnly() {
+  return (TRI_ProtectMMFile(_data, _maximalSize, PROT_READ, _fd) == TRI_ERROR_NO_ERROR);
 }
 
-void TRI_datafile_t::readWrite() {
-  int res = TRI_ProtectMMFile(_data, _maximalSize, PROT_READ | PROT_WRITE, _fd);
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    _state = TRI_DF_STATE_WRITE;
-  }
+bool TRI_datafile_t::readWrite() {
+  return (TRI_ProtectMMFile(_data, _maximalSize, PROT_READ | PROT_WRITE, _fd) == TRI_ERROR_NO_ERROR);
 }
 
 int TRI_datafile_t::lockInMemory() {
@@ -857,7 +849,10 @@ bool TRI_datafile_t::tryRepair(std::string const& path) {
   }
 
   // set to read/write access
-  datafile->readWrite();
+  if (!datafile->readWrite()) {
+    LOG(ERR) << "unable to change file protection for datafile '" << datafile->getName() << "'";
+    return false;
+  }
 
   return datafile->tryRepair();
 }
@@ -1731,10 +1726,12 @@ TRI_datafile_t* TRI_datafile_t::open(std::string const& filename, bool ignoreFai
 
   // change to read-write if no footer has been found
   if (!datafile->_isSealed) {
-    datafile->readWrite();
-  } else {
-    datafile->readOnly();
-  }
+    if (!datafile->readWrite()) {
+      LOG(ERR) << "unable to change file protection for datafile '" << datafile->getName() << "'. please check file permissions and mount options.";
+      return nullptr;
+    }
+    datafile->_state = TRI_DF_STATE_WRITE; 
+  } 
 
   // Advise on sequential use:
   datafile->sequentialAccess();
@@ -1857,7 +1854,7 @@ TRI_datafile_t* TRI_datafile_t::openHelper(std::string const& filename, bool ign
   }
 
   // map datafile into memory
-  res = TRI_MMFile(0, size, PROT_WRITE | PROT_READ, MAP_SHARED, fd, &mmHandle, 0, &data);
+  res = TRI_MMFile(0, size, PROT_READ, MAP_SHARED, fd, &mmHandle, 0, &data);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);

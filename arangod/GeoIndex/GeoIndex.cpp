@@ -1006,10 +1006,13 @@ int GeoPotJunk(GeoDetailedPoint* gd, int pot) {
 /* found, and then the differences squared returned.   */
 /* =================================================== */
 double GeoSNMD(GeoDetailedPoint* gd, GeoCoordinate* c) {
+  double const lat = c->latitude * M_PI / 180.0;
+  double const lon = c->longitude * M_PI / 180.0;
+  double const latCos = cos(lat);
   double x, y, z;
-  z = sin(c->latitude * M_PI / 180.0);
-  x = cos(c->latitude * M_PI / 180.0) * cos(c->longitude * M_PI / 180.0);
-  y = cos(c->latitude * M_PI / 180.0) * sin(c->longitude * M_PI / 180.0);
+  z = sin(lat);
+  x = latCos * cos(lon);
+  y = latCos * sin(lon);
   return (x - gd->x) * (x - gd->x) + (y - gd->y) * (y - gd->y) +
          (z - gd->z) * (z - gd->z);
 }
@@ -2024,13 +2027,10 @@ GeoFix makedist(GeoPot* pot, GeoDetailedPoint* gd) {
 }
 
 GeoCursor* GeoIndex_NewCursor(GeoIdx* gi, GeoCoordinate* c) {
-  GeoIx* gix;
-  hpot hp;
   if (c->longitude < -180.0) return nullptr;
   if (c->longitude > 180.0) return nullptr;
   if (c->latitude < -90.0) return nullptr;
   if (c->latitude > 90.0) return nullptr;
-  gix = (GeoIx*)gi;
   GeoCr* gcr = nullptr;
 
   try {
@@ -2041,19 +2041,21 @@ GeoCursor* GeoIndex_NewCursor(GeoIdx* gi, GeoCoordinate* c) {
   if (gcr == nullptr) {
     return (GeoCursor*)gcr;
   }
+  
+  GeoIx* gix = (GeoIx*)gi;
   gcr->Ix = gix;
 
-  std::vector<hpot>* p = new (&gcr->potheap) std::vector<hpot>();
-  std::vector<hslot>* q = new (&gcr->slotheap) std::vector<hslot>();
-  (void)p;  // avoid compiler warnings - I just want to call
-  (void)q;  // the constructors and have no use for p,q.
   GeoMkDetail(gix, &(gcr->gd), c);
+  hpot hp;
   hp.pot = 1;
   hp.dist = makedist(gix->pots + 1, &(gcr->gd));
   gcr->potsnmd = GeoFixtoSNMD(hp.dist);
   gcr->slotsnmd = 20.0;
   gcr->potheap.push_back(hp);
-  std::push_heap(gcr->potheap.begin(), gcr->potheap.end(), hpotcompare);
+  // not necessary here because potheap only contains one element
+  //std::push_heap(gcr->potheap.begin(), gcr->potheap.end(), hpotcompare);
+  TRI_ASSERT(gcr->potheap.size() == 1);
+
   // cppcheck-suppress *
   return (GeoCursor*)gcr;
 }
@@ -2070,6 +2072,7 @@ GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count) {
   hslot hs;
   hpot hp;
   gcr = (GeoCr*)gc;
+
   gr = GeoResultsCons(count);
   if (gr == NULL) return NULL;
   while (gr->pointsct < count) {
@@ -2082,6 +2085,7 @@ GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count) {
       gcr->potheap.pop_back();
       if (pot.LorLeaf == 0) {
         // leaf pot - put all the points into the points heap
+        gcr->slotheap.reserve(gcr->slotheap.size() + pot.RorPoints);
         for (i = 0; i < pot.RorPoints; i++) {
           j = pot.points[i];
           ct = ((gcr->Ix)->gc + j);
@@ -2138,11 +2142,7 @@ GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count) {
 }
 
 void GeoIndex_CursorFree(GeoCursor* gc) {
-  if (gc == nullptr) {
-    return;
-  }
-  GeoCr* cr = reinterpret_cast<GeoCr*>(gc);
-  delete cr;
+  delete reinterpret_cast<GeoCr*>(gc);
 }
 
 /* =================================================== */
