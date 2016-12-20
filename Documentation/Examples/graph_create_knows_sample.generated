@@ -5,70 +5,70 @@ arangosh&gt; db.persons.toArray()
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/bob"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UOascd----"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UPtzLEe--_"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charlie"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/charlie"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UOascd---_"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UPtzLEe--A"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charlie"</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"dave"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/dave"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UOascd---A"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UPtzLEe--B"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Dave"</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"eve"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/eve"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UOascd---B"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UPtzLEe--C"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Eve"</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UOascc6---"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UPtzLEe---"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
   } 
 ]
 arangosh&gt; db.knows.toArray();
 [ 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"28151"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/28151"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/bob"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/dave"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UOascdC---"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"28148"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/28148"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"28146"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/28146"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/bob"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/charlie"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UOascd---D"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UPtzLEi---"</span> 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"28157"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/28157"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"28155"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/28155"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/eve"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/bob"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UOascdC--A"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UPtzLEi--B"</span> 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"28144"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/28144"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/alice"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/bob"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UOascd---C"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"28154"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/28154"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"28152"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/28152"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/eve"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/alice"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UOascdC--_"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UPtzLEi--A"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"28149"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/28149"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/bob"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/dave"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UPtzLEi--_"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"28142"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/28142"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/alice"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/bob"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UPtzLEe--D"</span> 
   } 
 ]
 arangosh&gt; examples.dropGraph(<span class="hljs-string">"knows_graph"</span>);

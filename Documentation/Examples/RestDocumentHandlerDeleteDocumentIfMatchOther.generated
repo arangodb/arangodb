@@ -1,8 +1,8 @@
-shell> curl -X DELETE --header 'If-Match: "_UOarUNq--_"' --dump - http://localhost:8529/_api/document/products/9709
+shell> curl -X DELETE --header 'If-Match: "_UPtyFF6--_"' --dump - http://localhost:8529/_api/document/products/9709
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">412</span> Precondition Failed
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: <span class="hljs-string">"_UOarUNq---"</span>
+etag: <span class="hljs-string">"_UPtyFF6---"</span>
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
@@ -11,5 +11,5 @@ etag: <span class="hljs-string">"_UOarUNq---"</span>
   <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"precondition failed"</span>, 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/9709"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9709"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UOarUNq---"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UPtyFF6---"</span> 
 }
