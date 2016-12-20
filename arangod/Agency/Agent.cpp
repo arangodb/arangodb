@@ -908,9 +908,6 @@ void Agent::lead() {
   agency->close();
   write(agency);
 
-  // Wake up supervision
-  _supervision.wakeUp();
-
   // Notify inactive pool
   notifyInactive();
 
