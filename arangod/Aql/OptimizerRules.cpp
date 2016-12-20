@@ -51,8 +51,6 @@
 #include <tuple>
 #include <iostream>
 
-#include <velocypack/Builder.h>
-
 using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;

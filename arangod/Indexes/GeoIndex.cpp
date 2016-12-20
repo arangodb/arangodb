@@ -67,7 +67,7 @@ void GeoIndexIterator::evaluateCondition() {
     } else { //within
       _near = false;
       _withinRange = _condition->getMember(2)->getMember(1)->getDoubleValue();
-      _withinLessEq = _condition->getMember(3)->getMember(1)->getDoubleValue();
+      _withinLessEq = _condition->getMember(3)->getMember(1)->getBoolValue();
     }
   } else {
     LOG(ERR) << "No condition passed to GeoIndexIterator constructor";
@@ -81,7 +81,11 @@ IndexLookupResult GeoIndexIterator::next() {
 
   auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(_cursor, 1));
   if (coords && coords->length) {
-    if (_near || GeoIndex_distance(&_coor, &coords->coordinates[0]) <= _withinRange) {
+    if (  _near
+       || (!_withinLessEq && GeoIndex_distance(&_coor, &coords->coordinates[0]) < _withinRange)
+       || ( _withinLessEq && GeoIndex_distance(&_coor, &coords->coordinates[0]) <= _withinRange)
+       )
+    {
       auto revision = ::GeoIndex::toRevision(coords->coordinates[0].data);
       return IndexLookupResult{revision};
     }
@@ -105,7 +109,11 @@ void GeoIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t
     }
 
     for (std::size_t index = 0; index < length; ++index) {
-      if (_near || GeoIndex_distance(&_coor, &coords->coordinates[index]) <= _withinRange) {
+      if (  _near
+         || (!_withinLessEq && GeoIndex_distance(&_coor, &coords->coordinates[0]) < _withinRange)
+         || ( _withinLessEq && GeoIndex_distance(&_coor, &coords->coordinates[0]) <= _withinRange)
+         )
+      {
         result.emplace_back(IndexLookupResult(::GeoIndex::toRevision(coords->coordinates[index].data)));
       } else {
         break;
