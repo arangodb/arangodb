@@ -2,19 +2,49 @@
 //   g++ perfanalysis.cpp -o perfanalyis -std=c++14 -Wall -O3
 
 #include <algorithm>
+#include <cstring>
 #include <iostream>
-#include <regex>
-#include <sstream>
-#include <stdexcept>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <memory>
 
 using namespace std;
 
+struct StrTok {
+  string& s;
+  size_t pos;
+  bool done;
+  
+  void advance() {
+    while (pos < s.size() && s[pos] == ' ') {
+      ++pos;
+    }
+    done = pos >= s.size();
+  }
+
+  StrTok(string& t) : s(t), pos(0), done(false) {
+    advance();
+  }
+
+  const char* get() {
+    if (done) {
+      return nullptr;
+    }
+    auto p = s.find(' ', pos);
+    if (p == string::npos) {
+      done = true;
+      return s.c_str() + pos;
+    }
+    s[p] = 0;
+    auto ret = s.c_str() + pos;
+    pos = p + 1;
+    advance();
+    return ret;
+  }
+};
+
 struct Event {
-  static const regex re;
   string threadName;
   int tid;
   string cpu;
@@ -25,21 +55,36 @@ struct Event {
   bool isRet;
 
   Event(string& line) : isRet(false) {
-    std::smatch match_obj;
-    if(!std::regex_search(line, match_obj, re)){
-      throw std::logic_error("could not parse line");
-    }
-
-    threadName = match_obj[1];
-    tid = std::stoi(match_obj[2]);
-    cpu = match_obj[3];
-    startTime = std::stod(match_obj[4]);
-    duration = 0;
-    name = match_obj[6];
-    inbrackets = match_obj[7];
-    if (match_obj[9].length() > 0) {
-      isRet = true;
-      name.erase(name.end() - 3, name.end());  // remove Ret suffix form name
+    StrTok tok(line);
+    const char* p = tok.get();
+    const char* q;
+    if (p != nullptr) {
+      threadName = p;
+      p = tok.get();
+      tid = strtol(p, nullptr, 10);
+      p = tok.get();
+      cpu = p;
+      p = tok.get();
+      startTime = strtod(p, nullptr);
+      p = tok.get();
+      name = p;
+      name.pop_back();
+      q = tok.get();
+      if (strcmp(q, "cs:") == 0) {
+        return;
+      }
+      if (name.compare(0, 14, "probe_arangod:") == 0) {
+        name = name.substr(14);
+      }
+      auto l = name.size();
+      if (l >= 3 && name[l-1] == 't' && name[l-2] == 'e' && 
+          name[l-3] == 'R') {
+        isRet = true;
+        name.pop_back();
+        name.pop_back();
+        name.pop_back();
+      }
+      inbrackets = q;
     }
   }
 
@@ -62,46 +107,33 @@ struct Event {
   }
 };
 
-// sample output:
-// arangod 32636 [005] 16678249.324973: probe_arangod:insertLocalRet: (14a7f60 <- 14a78d6)
-// process tid   core  timepoint        scope:name                          frame
-const regex Event::re(
-    R"_(\s*(\S+))_"                                  // name 1
-    R"_(\s+(\d+))_"                                  // tid  2
-    R"_(\s+\[(\d+)\])_"                              // cup  3
-    R"_(\s+(\d+\.\d+):)_"                            // time 4
-    R"_(\s+([^: ]+):([^: ]+):)_"                     // scope:func 5:6
-    R"_(\s+\(([0-9a-f]+)(\s+<-\s+([0-9a-f]+))?\))_"  // (start -> stop) 7 -> 9
-    ,
-    std::regex_constants::ECMAScript | std::regex_constants::optimize);
-
 int main(int /*argc*/, char* /*argv*/ []) {
   unordered_map<string, unique_ptr<Event>> table;
   vector<unique_ptr<Event>> list;
 
   string line;
   while (getline(cin, line)) {
-    auto event = std::make_unique<Event>(line);
+    auto event = make_unique<Event>(line);
     if (!event->empty()) {
       string id = event->id();
       // insert to table if it is not a function return
       if (!event->isRet) {
         auto it = table.find(id);
         if (it != table.end()) {
-          cout << "Alarm, double event found:\n" << line << std::endl;
+          cout << "Alarm, double event found:\n" << line << endl;
         } else {
-          table.insert(make_pair(id, std::move(event)));
+          table.insert(make_pair(id, move(event)));
         }
       // update duration in table
       } else {
         auto it = table.find(id);
         if (it == table.end()) {
-          cout << "Return for unknown event found:\n" << line << std::endl;
+          cout << "Return for unknown event found:\n" << line << endl;
         } else {
-          unique_ptr<Event> ev = std::move(it->second);
+          unique_ptr<Event> ev = move(it->second);
           table.erase(it);
           ev->duration = event->startTime - ev->startTime;
-          list.push_back(std::move(ev));
+          list.push_back(move(ev));
         }
       }
     }
@@ -113,8 +145,47 @@ int main(int /*argc*/, char* /*argv*/ []) {
   sort(list.begin(), list.end(),
        [](unique_ptr<Event>const& a, unique_ptr<Event>const& b) -> bool { return *a < *b; });
   cout << "Events sorted by name and time:\n";
-  for (auto& e : list) {
+  string current;
+  size_t startPos = 0;
+  bool bootstrap = true;
+  auto printStats = [&](size_t i) -> void {
+    cout << "Statistics in microseconds for " << current << ":\n"
+      << "  Number of calls: " << i - startPos << "\n"
+      << "  Minimal time   : " 
+      << static_cast<uint64_t>(list[startPos]->duration * 1000000.0) << "\n";
+    size_t pos = (i - startPos) / 2 + startPos;
+    cout << "  50%ile         : " 
+      << static_cast<uint64_t>(list[pos]->duration * 1000000.0) << "\n";
+    pos = ((i - startPos) * 90) / 100 + startPos;
+    cout << "  90%ile         : " 
+      << static_cast<uint64_t>(list[pos]->duration * 1000000.0) << "\n";
+    pos = ((i - startPos) * 99) / 100 + startPos;
+    cout << "  99%ile         : " 
+      << static_cast<uint64_t>(list[pos]->duration * 1000000.0) << "\n";
+    pos = ((i - startPos) * 999) / 1000 + startPos;
+    cout << "  99.9%ile       : " 
+      << static_cast<uint64_t>(list[pos]->duration * 1000000.0) << "\n";
+    cout << "  Maximal time   : " 
+      << static_cast<uint64_t>(list[i-1]->duration * 1000000.0) << "\n";
+    size_t j = (i-startPos > 30) ? i-30 : startPos;
+    cout << "  Top " << i-j << " times   :";
+    while (j < i) {
+      cout << " " << static_cast<uint64_t>(list[j++]->duration * 1000000.0);
+    }
+    cout << "\n" << endl;
+  };
+  for (size_t i = 0; i < list.size(); ++i) {
+    unique_ptr<Event>& e = list[i];
+    if (e->name != current) {
+      if (!bootstrap) {
+        printStats(i);
+      }
+      bootstrap = false;
+      startPos = i;
+      current = e->name;
+    }
     cout << e->pretty() << "\n";
   }
+  printStats(list.size());
   return 0;
 }
