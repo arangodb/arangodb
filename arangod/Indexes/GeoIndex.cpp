@@ -21,12 +21,13 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "GeoIndex.h"
+
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
-#include "GeoIndex.h"
 #include "Indexes/GeoIndex.h"
 #include "Logger/Logger.h"
 #include "VocBase/transaction.h"
@@ -44,51 +45,43 @@ GeoIndexIterator::GeoIndexIterator(LogicalCollection* collection,
       _coor(),
       _condition(cond),
       _variable(var),
-      _lat(0),
-      _lon(0),
+      _lat(0.0),
+      _lon(0.0),
       _near(true),
-      _withinRange(0),
-      _withinLessEq(false)
-      // lookup will hold the inforamtion if this is a cursor for
-      // near/within and the reference point
-      //_lookups(trx, node, reference, index->fields()),
-    {
-      evaluateCondition();
-    }
+      _withinRange(0.0),
+      _withinLessEq(false) {
+  evaluateCondition();
+}
 
 void GeoIndexIterator::evaluateCondition() {
   if (_condition) {
     auto numMembers = _condition->numMembers();
 
-    if(numMembers >= 2){
+    if (numMembers >= 2) {
       _lat = _condition->getMember(0)->getMember(1)->getDoubleValue();
       _lon = _condition->getMember(1)->getMember(1)->getDoubleValue();
     }
 
-    if (numMembers == 2){ //near
+    if (numMembers == 2) { //near
       _near = true;
     } else { //within
       _near = false;
       _withinRange = _condition->getMember(2)->getMember(1)->getDoubleValue();
       _withinLessEq = _condition->getMember(3)->getMember(1)->getDoubleValue();
     }
-
   } else {
-    LOG(ERR) << "No Condition passed to GeoIndexIterator constructor";
+    LOG(ERR) << "No condition passed to GeoIndexIterator constructor";
   }
-
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "EXIT evaluate Condition";
 }
 
 IndexLookupResult GeoIndexIterator::next() {
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER next";
-  if (!_cursor){
-    createCursor(_lat,_lon);
+  if (!_cursor) {
+    createCursor(_lat, _lon);
   }
 
-  auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(_cursor,1));
-  if(coords && coords->length){
-    if(_near || GeoIndex_distance(&_coor, &coords->coordinates[0]) <= _withinRange ){
+  auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(_cursor, 1));
+  if (coords && coords->length) {
+    if (_near || GeoIndex_distance(&_coor, &coords->coordinates[0]) <= _withinRange) {
       auto revision = ::GeoIndex::toRevision(coords->coordinates[0].data);
       return IndexLookupResult{revision};
     }
@@ -98,8 +91,7 @@ IndexLookupResult GeoIndexIterator::next() {
 }
 
 void GeoIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t batchSize) {
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER nextBabies " << batchSize;
-  if (!_cursor){
+  if (!_cursor) { 
     createCursor(_lat,_lon);
   }
 
@@ -108,36 +100,30 @@ void GeoIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t
     auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(_cursor,batchSize));
 
     size_t length = coords ? coords->length : 0;
-    //LOG_TOPIC(DEBUG, Logger::DEVEL) << "length " << length;
     if (!length) {
       return;
     }
 
-    for(std::size_t index = 0; index < length; ++index){
-      //LOG_TOPIC(DEBUG, Logger::DEVEL) << "near " << _near << " max allowed range: " << _withinRange
-      //                                                    << " actual range: "  << GeoIndex_distance(&_coor, &coords->coordinates[index]) ;
-      if (_near || GeoIndex_distance(&_coor, &coords->coordinates[index]) <= _withinRange ){
-        //LOG_TOPIC(DEBUG, Logger::DEVEL) << "add above to result" ;
+    for (std::size_t index = 0; index < length; ++index) {
+      if (_near || GeoIndex_distance(&_coor, &coords->coordinates[index]) <= _withinRange) {
         result.emplace_back(IndexLookupResult(::GeoIndex::toRevision(coords->coordinates[index].data)));
       } else {
         break;
       }
     }
   }
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "EXIT nextBabies " << result.size();
 }
 
-::GeoCursor* GeoIndexIterator::replaceCursor(::GeoCursor* c){
-  if(_cursor){
+void GeoIndexIterator::replaceCursor(::GeoCursor* c) {
+  if (_cursor) {
     ::GeoIndex_CursorFree(_cursor);
   }
- _cursor = c;
- return _cursor;
+  _cursor = c;
 }
 
-::GeoCursor* GeoIndexIterator::createCursor(double lat, double lon){
+void GeoIndexIterator::createCursor(double lat, double lon) {
   _coor = GeoCoordinate{lat, lon, 0};
-  return replaceCursor(::GeoIndex_NewCursor(_index->_geoIndex, &_coor));
+  replaceCursor(::GeoIndex_NewCursor(_index->_geoIndex, &_coor));
 }
 
 /// @brief creates an IndexIterator for the given Condition
@@ -151,7 +137,6 @@ IndexIterator* GeoIndex::iteratorForCondition(
   }
   return new GeoIndexIterator(_collection, trx, mmdr, this, node, reference);
 }
-
 
 void GeoIndexIterator::reset() {
   replaceCursor(nullptr);
