@@ -59,11 +59,6 @@ Supervision::Supervision()
 
 Supervision::~Supervision() { shutdown(); };
 
-void Supervision::wakeUp() {
-    updateSnapshot();
-    upgradeAgency();
-}
-
 static std::string const syncPrefix = "/Sync/ServerStates/";
 static std::string const healthPrefix = "/Supervision/Health/";
 static std::string const planDBServersPrefix = "/Plan/DBServers";
@@ -425,9 +420,11 @@ void Supervision::run() {
         MUTEX_LOCKER(locker, _lock);
 
         updateSnapshot();
+
         // mop: always do health checks so shutdown is able to detect if a server
         // failed otherwise
         if (_agent->leading()) {
+          upgradeAgency();
           doChecks();
         }
 

@@ -562,7 +562,7 @@ void Constituent::run() {
           // in the beginning, pure random
           if (_lastHeartbeatSeen > 0.0) {
             double now = TRI_microtime();
-            randWait -= static_cast<int64_t>(M * (now - _lastHeartbeatSeen));
+            randWait += static_cast<int64_t>(M * (now-_lastHeartbeatSeen));
           }
         }
        

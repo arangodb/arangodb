@@ -105,9 +105,6 @@ class Supervision : public arangodb::Thread {
   /// @brief Begin thread shutdown
   void beginShutdown() override final;
 
-  /// @brief Wake up to task
-  void wakeUp();
-
   /// @brief Upgrade agency
   void upgradeAgency();
 

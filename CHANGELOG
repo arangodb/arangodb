@@ -1,3 +1,7 @@
+v3.1.6 (2016-12-20)
+
+* agency constituent/agent bug fixes in race conditions picking up leadership
+
 v3.1.5 (2016-12-16)
 -------------------
 
@@ -11,7 +15,6 @@ v3.1.5 (2016-12-16)
 * Foxx router.get/post/etc handler argument can no longer accidentally omitted
 
 * fixed issue #2223
-
 
 v3.1.4 (2016-12-08)
 -------------------

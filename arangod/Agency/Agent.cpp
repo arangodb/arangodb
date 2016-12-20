@@ -312,7 +312,7 @@ void Agent::sendAppendEntriesRPC() {
   
   for (auto const& followerId : _config.active()) {
 
-    if (followerId != myid) {
+    if (followerId != myid && leading()) {
 
       term_t t(0);
 
@@ -370,6 +370,11 @@ void Agent::sendAppendEntriesRPC() {
           << highest << " to follower " << followerId;
       }
 
+      // Really leading?
+      if (challengeLeadership()) {
+        _constituent.candidate();
+      }
+      
       // Send request
       auto headerFields =
         std::make_unique<std::unordered_map<std::string, std::string>>();
@@ -644,16 +649,12 @@ void Agent::run() {
 
     // Leader working only
     if (leading()) {
-      // Really leading?
-      if (challengeLeadership()) {
-	_constituent.candidate();
-      }
-
-      // Don't panic
-      _appendCV.wait(1000);
 
       // Append entries to followers
       sendAppendEntriesRPC();
+
+      // Don't panic
+      _appendCV.wait(1000);
 
       // Detect faulty agent and replace
       // if possible and only if not already activating
@@ -819,8 +820,6 @@ void Agent::prepareLead() {
 
 /// Becoming leader
 void Agent::lead() {
-  // Key value stores
-  rebuildDBs();
 
   // Wake up run
   {
@@ -848,9 +847,6 @@ void Agent::lead() {
   agency->close();
   agency->close();
   write(agency);
-
-  // Wake up supervision
-  _supervision.wakeUp();
 
   // Notify inactive pool
   notifyInactive();
