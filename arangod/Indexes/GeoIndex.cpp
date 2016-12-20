@@ -110,8 +110,8 @@ void GeoIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t
 
     for (std::size_t index = 0; index < length; ++index) {
       if (  _near
-         || (!_withinLessEq && GeoIndex_distance(&_coor, &coords->coordinates[0]) < _withinRange)
-         || ( _withinLessEq && GeoIndex_distance(&_coor, &coords->coordinates[0]) <= _withinRange)
+         || (!_withinLessEq && GeoIndex_distance(&_coor, &coords->coordinates[index]) < _withinRange)
+         || ( _withinLessEq && GeoIndex_distance(&_coor, &coords->coordinates[index]) <= _withinRange)
          )
       {
         result.emplace_back(IndexLookupResult(::GeoIndex::toRevision(coords->coordinates[index].data)));
