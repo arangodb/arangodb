@@ -48,6 +48,7 @@ GeoIndexIterator::GeoIndexIterator(LogicalCollection* collection,
       _lat(0.0),
       _lon(0.0),
       _near(true),
+      _done(false),
       _withinRange(0.0),
       _withinLessEq(false) {
   evaluateCondition();
@@ -96,12 +97,25 @@ IndexLookupResult GeoIndexIterator::next() {
 
 void GeoIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t batchSize) {
   if (!_cursor) { 
-    createCursor(_lat,_lon);
+    createCursor(_lat, _lon);
+    
+    if (!_cursor) {
+      // actually validate that we got a valid cursor
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
   }
 
+  TRI_ASSERT(_cursor != nullptr);
+
   result.clear();
+
+  if (_done) {
+    // we already know that no further results will be returned by the index
+    return;
+  }
+
   if (batchSize > 0) {
-    auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(_cursor,batchSize));
+    auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(_cursor, batchSize));
 
     size_t length = coords ? coords->length : 0;
     if (!length) {
@@ -110,15 +124,19 @@ void GeoIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t
 
     for (std::size_t index = 0; index < length; ++index) {
       if (  _near
-         || (!_withinLessEq && GeoIndex_distance(&_coor, &coords->coordinates[index]) < _withinRange)
-         || ( _withinLessEq && GeoIndex_distance(&_coor, &coords->coordinates[index]) <= _withinRange)
-         )
-      {
+         || (!_withinLessEq && coords->distances[index] < _withinRange)
+         || ( _withinLessEq && coords->distances[index] <= _withinRange)
+         ) {
         result.emplace_back(IndexLookupResult(::GeoIndex::toRevision(coords->coordinates[index].data)));
       } else {
         break;
       }
     }
+  }
+
+  if (result.size() < batchSize) {
+    // already done
+    _done = true;
   }
 }
 
@@ -127,6 +145,7 @@ void GeoIndexIterator::replaceCursor(::GeoCursor* c) {
     ::GeoIndex_CursorFree(_cursor);
   }
   _cursor = c;
+  _done = false;
 }
 
 void GeoIndexIterator::createCursor(double lat, double lon) {
