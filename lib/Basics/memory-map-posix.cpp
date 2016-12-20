@@ -128,10 +128,12 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
     LOG_TOPIC(DEBUG, Logger::MMAP) << "out of memory in mmap";
 
     return TRI_ERROR_OUT_OF_MEMORY_MMAP;
-  } else {
-    LOG_TOPIC(WARN, Logger::MMAP) << "memory-mapping failed for range " << Logger::RANGE(*result, numOfBytesToInitialize) << ", file-descriptor " << fileDescriptor << ", flags: " << flagify(flags);
-  }
-
+  } 
+   
+  // preserve errno value while we're logging
+  int tmp = errno; 
+  LOG_TOPIC(WARN, Logger::MMAP) << "memory-mapping failed for range " << Logger::RANGE(*result, numOfBytesToInitialize) << ", file-descriptor " << fileDescriptor << ", flags: " << flagify(flags);
+  errno = tmp;
   return TRI_ERROR_SYS_ERROR;
 }
 

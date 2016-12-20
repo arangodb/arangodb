@@ -235,8 +235,8 @@ struct TRI_datafile_t {
   void randomAccess();
   void willNeed();
   void dontNeed();
-  void readOnly();
-  void readWrite();
+  bool readOnly();
+  bool readWrite();
   
   int lockInMemory();
   int unlockFromMemory();
