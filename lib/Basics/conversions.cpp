@@ -112,7 +112,7 @@ int32_t TRI_Int32String(char const* str) {
 /// @brief convert to int32 from string with given length
 ////////////////////////////////////////////////////////////////////////////////
 
-int32_t TRI_Int32String2(char const* str, size_t length) {
+int32_t TRI_Int32String(char const* str, size_t length) {
   char tmp[1024];
 
   if (str[length] != '\0') {
