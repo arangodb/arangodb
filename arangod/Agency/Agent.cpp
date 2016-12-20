@@ -863,7 +863,7 @@ void Agent::beginShutdown() {
 }
 
 
-bool Agent::prepareLead() {
+void Agent::prepareLead() {
 
   // Key value stores
   rebuildDBs();
@@ -876,12 +876,10 @@ bool Agent::prepareLead() {
     }
   }
 
-  return true;
-  
 }
 
 /// Becoming leader
-bool Agent::lead() {
+void Agent::lead() {
 
   // Wake up run
   {
@@ -916,7 +914,6 @@ bool Agent::lead() {
   // Notify inactive pool
   notifyInactive();
 
-  return true;
 }
 
 // Notify inactive pool members of configuration change()

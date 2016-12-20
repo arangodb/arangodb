@@ -177,7 +177,6 @@ void Constituent::followNoLock(term_t t) {
 void Constituent::lead(term_t term,
                        std::map<std::string, bool> const& votes) {
 
-
   // we need to rebuild spear_head and read_db
   _agent->prepareLead();
 
@@ -384,7 +383,7 @@ void Constituent::callElection() {
   std::map<std::string, bool> votes;
   std::vector<std::string> active = _agent->config().active();
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
-
+  
   votes[_id] = true;  // vote for myself
 
   term_t savedTerm;
@@ -421,7 +420,11 @@ void Constituent::callElection() {
   }
 
   // Collect ballots. I vote for myself.
-  size_t yea = 1, nea = 0, majority = size() / 2 + 1; 
+  size_t yea = 1;
+  size_t nea = 0;
+  size_t majority = size() / 2 + 1;
+  bool   leading = false;
+  
   while (true) {
 
     auto res = ClusterComm::instance()->wait(
@@ -431,34 +434,63 @@ void Constituent::callElection() {
     if (res.status == CL_COMM_SENT) {
       auto body = res.result->getBodyVelocyPack();
       VPackSlice slc = body->slice();
-
+      
       // Got ballot
       if (slc.isObject() && slc.hasKey("term") && slc.hasKey("voteGranted")) {
-
+        
         // Follow right away?
         term_t t = slc.get("term").getUInt();
         if (t > _term) {
           follow(t);
           break;
         }
-
+        
         // Check result and counts
-        if(slc.get("voteGranted").getBool()) { // majority in favour
+        if(slc.get("voteGranted").getBool()) { // majority in favour?
           if (++yea >= majority) {
+            //if (!leading) {
             lead(savedTerm, votes);
             break;
+            //leading = true;
+            //} 
           }
         } else {
-          if (++nea >= majority) {              // majority against
+          if (++nea >= majority) {              // No: majority against?
             follow(_term);
             break;
           }
         }
-
+        
+      } else {
+        if (++nea >= majority) {                // Invalid: majority against?
+          follow(_term);
+          break;
+        }
+      }
+    } else {
+      if (++nea >= majority) {                  // Network: majority against?
+        follow(_term);
+        break;
       }
     }
+
+    if (steady_clock::now() >= timeout) {       // Timeout. 
+      if (yea >= majority) {
+        if (!leading) {
+          lead(savedTerm, votes);
+          leading = true;
+        } 
+      } else {
+        follow(_term);        
+      }
+      break;
+    }
+    
   }
 
+  // Clean up
+  ClusterComm::instance()->drop("", coordinatorTransactionID, 0, "");
+  
 }
 
 void Constituent::update(std::string const& leaderID, term_t t) {
@@ -556,7 +588,7 @@ void Constituent::run() {
           // in the beginning, pure random
           if (_lastHeartbeatSeen > 0.0) {
             double now = TRI_microtime();
-            randWait -= static_cast<int64_t>(M * (_lastHeartbeatSeen-now));
+            randWait += static_cast<int64_t>(M * (now-_lastHeartbeatSeen));
           }
         }
        
