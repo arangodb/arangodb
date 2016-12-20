@@ -487,6 +487,22 @@ void TRI_datafile_t::dontNeed() {
   TRI_MMFileAdvise(_data, _maximalSize, TRI_MADVISE_DONTNEED);
 }
 
+void TRI_datafile_t::readOnly() {
+  int res = TRI_ProtectMMFile(_data, _maximalSize, PROT_READ, _fd);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    _state = TRI_DF_STATE_READ;
+  }
+}
+
+void TRI_datafile_t::readWrite() {
+  int res = TRI_ProtectMMFile(_data, _maximalSize, PROT_READ | PROT_WRITE, _fd);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    _state = TRI_DF_STATE_WRITE;
+  }
+}
+
 int TRI_datafile_t::lockInMemory() {
   TRI_ASSERT(!_lockedInMemory);
   int res = TRI_MMFileLock(_data, _initSize);
@@ -788,7 +804,10 @@ int TRI_datafile_t::seal() {
   // everything is now synced
   _synced = _written;
 
-  TRI_ProtectMMFile(_data, _maximalSize, PROT_READ, _fd);
+  // intentionally ignore return value of protection here because this call
+  // would only restrict further file accesses (which is not required
+  // for ArangoDB to work) 
+  readOnly();
 
   // seal datafile
   if (ok) {
@@ -817,16 +836,13 @@ int TRI_datafile_t::truncate(std::string const& path, TRI_voc_size_t position) {
   // this function must not be called for non-physical datafiles
   TRI_ASSERT(!path.empty());
 
-  TRI_datafile_t* datafile = TRI_datafile_t::openHelper(path, true);
+  std::unique_ptr<TRI_datafile_t> datafile(TRI_datafile_t::openHelper(path, true));
 
   if (datafile == nullptr) {
     return TRI_ERROR_ARANGO_DATAFILE_UNREADABLE;
   }
 
-  int res = datafile->truncateAndSeal(position);
-  delete datafile;
-
-  return res;
+  return datafile->truncateAndSeal(position);
 }
 
 /// @brief try to repair a datafile
@@ -841,12 +857,9 @@ bool TRI_datafile_t::tryRepair(std::string const& path) {
   }
 
   // set to read/write access
-  TRI_ProtectMMFile(datafile->_data, datafile->maximalSize(),
-                    PROT_READ | PROT_WRITE, datafile->fd());
+  datafile->readWrite();
 
-  bool result = datafile->tryRepair();
-
-  return result;
+  return datafile->tryRepair();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1169,6 +1182,7 @@ int TRI_datafile_t::truncateAndSeal(TRI_voc_size_t position) {
 bool TRI_datafile_t::check(bool ignoreFailures) {
   // this function must not be called for non-physical datafiles
   TRI_ASSERT(isPhysical());
+  LOG(TRACE) << "checking markers in datafile '" << getName() << "'";
 
   char const* ptr = _data;
   char const* end = _data + _currentSize;
@@ -1717,8 +1731,9 @@ TRI_datafile_t* TRI_datafile_t::open(std::string const& filename, bool ignoreFai
 
   // change to read-write if no footer has been found
   if (!datafile->_isSealed) {
-    datafile->_state = TRI_DF_STATE_WRITE;
-    TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ | PROT_WRITE, datafile->_fd);
+    datafile->readWrite();
+  } else {
+    datafile->readOnly();
   }
 
   // Advise on sequential use:
@@ -1842,7 +1857,7 @@ TRI_datafile_t* TRI_datafile_t::openHelper(std::string const& filename, bool ign
   }
 
   // map datafile into memory
-  res = TRI_MMFile(0, size, PROT_READ, MAP_SHARED, fd, &mmHandle, 0, &data);
+  res = TRI_MMFile(0, size, PROT_WRITE | PROT_READ, MAP_SHARED, fd, &mmHandle, 0, &data);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
