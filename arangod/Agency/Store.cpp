@@ -434,6 +434,8 @@ std::vector<bool> Store::read(query_t const& queries, query_t& result) const {
   return success;
 }
 
+bool showHidden = false;
+
 /// Read single query into ret
 bool Store::read(VPackSlice const& query, Builder& ret) const {
   bool success = true;
@@ -442,7 +444,9 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
   std::list<std::string> query_strs;
   if (query.isArray()) {
     for (auto const& sub_query : VPackArrayIterator(query)) {
-      query_strs.push_back(sub_query.copyString());
+      std::string subqstr = sub_query.copyString();
+      query_strs.push_back(subqstr);
+      showHidden |= (subqstr.find("/.") != std::string::npos);
     }
   } else {
     return false;
@@ -479,7 +483,7 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
   }
 
   // Into result builder
-  copy.toBuilder(ret);
+  copy.toBuilder(ret, showHidden);
 
   return success;
 }
