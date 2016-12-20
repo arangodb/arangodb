@@ -421,12 +421,22 @@ void Constituent::callElection() {
 
   // Collect ballots. I vote for myself.
   size_t yea = 1;
-  size_t nea = 0;
+  size_t nay = 0;
   size_t majority = size() / 2 + 1;
-  bool   leading = false;
   
+  // We collect votes, we leave the following loop when one of the following
+  // conditions is met:
+  //   (1) A majority of nay votes have been received
+  //   (2) A majority of yea votes (including ourselves) have been received
+  //   (3) At least yyy time has passed, in this case we give up without
+  //       a conclusive vote.
   while (true) {
 
+    if (steady_clock::now() >= timeout) {       // Timeout. 
+      follow(_term);        
+      break;
+    }
+    
     auto res = ClusterComm::instance()->wait(
       "", coordinatorTransactionID, 0, "",
       duration<double>(steady_clock::now()-timeout).count());
@@ -448,44 +458,20 @@ void Constituent::callElection() {
         // Check result and counts
         if(slc.get("voteGranted").getBool()) { // majority in favour?
           if (++yea >= majority) {
-            //if (!leading) {
             lead(savedTerm, votes);
             break;
-            //leading = true;
-            //} 
           }
-        } else {
-          if (++nea >= majority) {              // No: majority against?
-            follow(_term);
-            break;
-          }
+          // Vote is counted as yea, continue loop
+          continue;
         }
-        
-      } else {
-        if (++nea >= majority) {                // Invalid: majority against?
-          follow(_term);
-          break;
-        }
-      }
-    } else {
-      if (++nea >= majority) {                  // Network: majority against?
-        follow(_term);
-        break;
       }
     }
-
-    if (steady_clock::now() >= timeout) {       // Timeout. 
-      if (yea >= majority) {
-        if (!leading) {
-          lead(savedTerm, votes);
-          leading = true;
-        } 
-      } else {
-        follow(_term);        
-      }
+    // Count the vote as a nay
+    if (++nay >= majority) {                  // Network: majority against?
+      follow(_term);
       break;
     }
-    
+
   }
 
   // Clean up
