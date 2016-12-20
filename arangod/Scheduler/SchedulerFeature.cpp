@@ -84,6 +84,7 @@ void SchedulerFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions>) {
   if (_nrServerThreads == 0) {
     _nrServerThreads = TRI_numberProcessors();
+    LOG(DEBUG) << "Detected number of processors: " << _nrServerThreads;
   }
 
   if (_queueSize < 128) {

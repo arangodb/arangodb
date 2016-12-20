@@ -198,7 +198,7 @@ int32_t Version::getNumericServerVersion() {
   }
 
   TRI_ASSERT(*p == '.');
-  int32_t major = TRI_Int32String2(apiVersion, (p - apiVersion));
+  int32_t major = TRI_Int32String(apiVersion, (p - apiVersion));
 
   apiVersion = ++p;
 
@@ -208,7 +208,7 @@ int32_t Version::getNumericServerVersion() {
   }
 
   TRI_ASSERT((*p == '.' || *p == '-' || *p == '\0') && p != apiVersion);
-  int32_t minor = TRI_Int32String2(apiVersion, (p - apiVersion));
+  int32_t minor = TRI_Int32String(apiVersion, (p - apiVersion));
 
   return (int32_t)(minor * 100L + major * 10000L);
 }

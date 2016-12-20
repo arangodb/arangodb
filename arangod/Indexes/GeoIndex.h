@@ -45,14 +45,14 @@ class GeoIndexIterator final : public IndexIterator {
 
 /// @brief Construct an GeoIndexIterator based on Ast Conditions
   GeoIndexIterator(LogicalCollection* collection, arangodb::Transaction* trx, 
-                    ManagedDocumentResult* mmdr,
-                    GeoIndex const* index,
-                    arangodb::aql::AstNode const*,
-                    arangodb::aql::Variable const*);
+                   ManagedDocumentResult* mmdr,
+                   GeoIndex const* index,
+                   arangodb::aql::AstNode const*,
+                   arangodb::aql::Variable const*);
 
   ~GeoIndexIterator() {
     replaceCursor(nullptr);
-  };
+  }
 
   char const* typeName() const override { return "geo-index-iterator"; }
 
@@ -63,8 +63,8 @@ class GeoIndexIterator final : public IndexIterator {
   void reset() override;
 
  private:
-  ::GeoCursor* replaceCursor(::GeoCursor* c);
-  ::GeoCursor* createCursor(double lat, double lon);
+  void replaceCursor(::GeoCursor* c);
+  void createCursor(double lat, double lon);
   void evaluateCondition(); //called in constructor
 
   GeoIndex const* _index;
@@ -75,8 +75,9 @@ class GeoIndexIterator final : public IndexIterator {
   double _lat;
   double _lon;
   bool _near;
-  double _withinRange;
-  double _withinLessEq;
+  bool _inclusive;
+  bool _done;
+  double _radius;
 };
 
 class GeoIndex final : public Index {
