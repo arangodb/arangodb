@@ -1765,7 +1765,10 @@ TRI_datafile_t* TRI_datafile_t::open(std::string const& filename, bool ignoreFai
   // change to read-write if no footer has been found
   if (!datafile->_isSealed) {
     datafile->_state = TRI_DF_STATE_WRITE;
-    TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ | PROT_WRITE, datafile->_fd);
+    if (TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ | PROT_WRITE, datafile->_fd) != TRI_ERROR_NO_ERROR) {
+      LOG(ERR) << "unable to change file protection for datafile '" << datafile->getName() << "'. please check file permissions and mount options.";
+      return nullptr;
+    }
   }
 
   // Advise on sequential use:

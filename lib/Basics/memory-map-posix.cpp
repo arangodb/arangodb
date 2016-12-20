@@ -32,6 +32,34 @@
 
 using namespace arangodb;
 
+namespace {
+static std::string flagify(int flags) {
+  std::string result;
+
+  int const remain = flags & (PROT_READ | PROT_WRITE | PROT_EXEC);
+
+  if (remain & PROT_READ) {
+    result.append("read");
+  }
+
+  if (remain & PROT_WRITE) {
+    if (!result.empty()) {
+      result.push_back(',');
+    }
+    result.append("write");
+  }
+
+  if (remain & PROT_EXEC) {
+    if (!result.empty()) {
+      result.push_back(',');
+    }
+    result.append("exec");
+  }
+
+  return result;
+}
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // @brief flush memory mapped file to disk
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,7 +117,7 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
                  fileDescriptor, offsetRetyped);
 
   if (*result != MAP_FAILED) {
-    LOG_TOPIC(DEBUG, Logger::MMAP) << "memory-mapped range " << Logger::RANGE(*result, numOfBytesToInitialize) << ", file-descriptor " << fileDescriptor;
+    LOG_TOPIC(DEBUG, Logger::MMAP) << "memory-mapped range " << Logger::RANGE(*result, numOfBytesToInitialize) << ", file-descriptor " << fileDescriptor << ", flags: " << flagify(flags);
 
     return TRI_ERROR_NO_ERROR;
   }
@@ -140,10 +168,15 @@ int TRI_ProtectMMFile(void* memoryAddress, size_t numOfBytesToProtect,
   int res = mprotect(memoryAddress, numOfBytesToProtect, flags);
 
   if (res == 0) {
-    LOG_TOPIC(TRACE, Logger::MMAP) << "memory-protecting range " << Logger::RANGE(memoryAddress, numOfBytesToProtect) << ", file-descriptor " << fileDescriptor;
+    LOG_TOPIC(TRACE, Logger::MMAP) << "memory-protecting range " << Logger::RANGE(memoryAddress, numOfBytesToProtect) << ", file-descriptor " << fileDescriptor << ", flags: " << flagify(flags);
 
     return TRI_ERROR_NO_ERROR;
   }
+
+  // preserve errno value while we're logging
+  int tmp = errno; 
+  LOG_TOPIC(WARN, Logger::MMAP) << "memory-protecting failed for range " << Logger::RANGE(memoryAddress, numOfBytesToProtect) << ", file-descriptor " << fileDescriptor << ", flags: " << flagify(flags);
+  errno = tmp;
 
   return TRI_ERROR_SYS_ERROR;
 }

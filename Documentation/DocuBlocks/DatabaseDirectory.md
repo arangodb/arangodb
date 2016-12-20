@@ -10,7 +10,12 @@ make sure the directory is actually writable by the arangod process.
 You should further not use a database directory which is provided by a
 network filesystem such as NFS. The reason is that networked filesystems
 might cause inconsistencies when there are multiple parallel readers or
-writers or they lack features required by arangod (e.g. flock()).
+writers or they lack features required by arangod (e.g. flock()). 
+
+Additionally errors have been reported for some filesystems mounted
+with mount option NOEXEC. To be on the safe side, ArangoDB's database 
+directory should reside in a filesystem that has not been mounted with 
+the NOEXEC option.
 
 `directory`
 
