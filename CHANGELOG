@@ -1,6 +1,12 @@
 v3.1.6 (2016-12-20)
 
-* agency constituent/agent bug fixes in race conditions picking up leadership
+* agency constituent/agent bug fixes in race conditions picking up
+  leadership
+
+* supervision does not need waking up anymore as it is running
+  regardless
+
+* agents challenge their leadership more rigorously
 
 v3.1.5 (2016-12-16)
 -------------------
