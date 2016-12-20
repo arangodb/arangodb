@@ -174,8 +174,7 @@ void Constituent::followNoLock(term_t t) {
 }
 
 /// Become leader
-void Constituent::lead(term_t term,
-                       std::map<std::string, bool> const& votes) {
+void Constituent::lead(term_t term) {
 
   // we need to rebuild spear_head and read_db
   _agent->prepareLead();
@@ -202,18 +201,6 @@ void Constituent::lead(term_t term,
       << ", setting _leaderID to " << _id;
     _leaderID = _id;
   }
-
-  // give some debug output _id never is changed after
-/*  if (!votes.empty()) {
-    std::stringstream ss;
-    ss << _id << ": Converted to leader in term " << _term << " with votes: ";
-
-    for (auto const& vote : votes) {
-      ss << vote.second << " ";
-    }
-
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
-    }*/
 
   // we need to start work as leader
   _agent->lead();
@@ -380,12 +367,9 @@ void Constituent::callElection() {
   auto timeout = steady_clock::now() +
     duration<double>(_agent->config().minPing());
   
-  std::map<std::string, bool> votes;
   std::vector<std::string> active = _agent->config().active();
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
   
-  votes[_id] = true;  // vote for myself
-
   term_t savedTerm;
   {
     MUTEX_LOCKER(locker, _castLock);
@@ -458,7 +442,7 @@ void Constituent::callElection() {
         // Check result and counts
         if(slc.get("voteGranted").getBool()) { // majority in favour?
           if (++yea >= majority) {
-            lead(savedTerm, votes);
+            lead(savedTerm);
             break;
           }
           // Vote is counted as yea, continue loop
@@ -473,6 +457,10 @@ void Constituent::callElection() {
     }
 
   }
+
+  LOG_TOPIC(DEBUG, Logger::AGENCY)
+    << "Election: Have received " << yea << " yeas and " << nay << " nays, the "
+    << (yea >= majority ? "yeas" : "nays") << " have it.";
 
   // Clean up
   ClusterComm::instance()->drop("", coordinatorTransactionID, 0, "");
