@@ -2727,7 +2727,6 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
 void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
                                                 ExecutionPlan* plan,
                                                 Optimizer::Rule const* rule) {
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER DISTRIBUTE SORT RULE";
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::GATHER, true);
@@ -2783,7 +2782,6 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
           stopSearching = true;
           break;
         case EN::SORT:
-          //LOG_TOPIC(DEBUG, Logger::DEVEL) << "APPLY DISTRIBUTE SORT";
           auto thisSortNode = static_cast<SortNode*>(inspectNode);
 
           // remember our cursor...
@@ -4008,16 +4006,15 @@ GeoIndexInfo isGeoFilterExpression(AstNode* node, AstNode* expressionParent){
     && node->type != NODE_TYPE_OPERATOR_BINARY_LT) {
 
     return rv;
-  } else {
-    if (node->type == NODE_TYPE_OPERATOR_BINARY_GE || node->type == NODE_TYPE_OPERATOR_BINARY_GT){
-      dist_first = false;
-    }
+  } 
+  if (node->type == NODE_TYPE_OPERATOR_BINARY_GE || node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
+    dist_first = false;
   }
-  if (node->type == NODE_TYPE_OPERATOR_BINARY_GT || node->type == NODE_TYPE_OPERATOR_BINARY_LT){
+  if (node->type == NODE_TYPE_OPERATOR_BINARY_GT || node->type == NODE_TYPE_OPERATOR_BINARY_LT) {
     lessEqual = false;
   }
 
-  if(node->numMembers() != 2){
+  if (node->numMembers() != 2){
     return rv;
   }
 
@@ -4025,7 +4022,7 @@ GeoIndexInfo isGeoFilterExpression(AstNode* node, AstNode* expressionParent){
   AstNode* second = node->getMember(1);
 
   auto eval_stuff = [](bool dist_first, bool lessEqual, GeoIndexInfo&& dist_fun, AstNode* value_node){
-    if (dist_first && dist_fun && value_node){
+    if (dist_first && dist_fun && value_node) {
       dist_fun.within = true;
       dist_fun.range = value_node;
       dist_fun.lessgreaterequal = lessEqual;
@@ -4034,7 +4031,6 @@ GeoIndexInfo isGeoFilterExpression(AstNode* node, AstNode* expressionParent){
     }
     return dist_fun;
   };
-
 
   rv = eval_stuff(dist_first, lessEqual, isDistanceFunction(first, expressionParent), isValueOrRefNode(second));
   if (!rv) {
@@ -4055,7 +4051,7 @@ GeoIndexInfo iterativePreorderWithCondition(EN::NodeType type, AstNode* root, Ge
     return GeoIndexInfo{};
   }
   std::vector<std::pair<AstNode*,AstNode*>> nodestack;
-  nodestack.push_back({root,nullptr});
+  nodestack.push_back({root, nullptr});
 
   while(nodestack.size()){
     auto current = nodestack.back();
@@ -4249,47 +4245,39 @@ GeoIndexInfo identifyGeoOptimizationCandidate(ExecutionNode::NodeType type, Exec
 
 // builds a condition that can be used with the index interface and
 // contains all parameters required by the GeoIndex 
-std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info,
-                                             bool lessEqual = false, AstNode const* withRange = nullptr){
-
+std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info) {
   AstNode* lat = info.constantPair.first;
   AstNode* lon = info.constantPair.second;
   auto ast = plan->getAst();
   auto varAstNode = ast->createNodeReference(info.collectionNode->outVariable());
 
-  auto nAryAnd = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
-  nAryAnd->reserve(withRange ? 4 : 2);
-
-  auto latKey = ast->createNodeAttributeAccess(varAstNode, "latitude",8);
-  auto latEq = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, latKey, lat);
-  nAryAnd->addMember(latEq);
-
-  auto lonKey = ast->createNodeAttributeAccess(varAstNode, "longitude",9);
-  auto lonEq = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, lonKey, lon);
-  nAryAnd->addMember(lonEq);
-
-  if(info.within){
-    auto withKey = ast->createNodeAttributeAccess(varAstNode, "within",6);
-    auto withEq = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, withKey, info.range);
-    nAryAnd->addMember(withEq);
-
-    auto lessKey = ast->createNodeAttributeAccess(varAstNode, "lesseq",6);
+  auto args = ast->createNodeArray(info.within ? 4 : 3);
+  args->addMember(varAstNode); // collection
+  args->addMember(lat); // latitude
+  args->addMember(lon); // longitude
+  
+  AstNode* cond = nullptr;
+  if (info.within) {
+    // WITHIN
+    args->addMember(info.range);
     auto lessValue =  ast->createNodeValueBool(info.lessgreaterequal);
-    auto lessEq  = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, lessKey, lessValue);
-    nAryAnd->addMember(lessEq);
+    args->addMember(lessValue);
+    cond = ast->createNodeFunctionCall("WITHIN", args);
+  } else {
+    // NEAR
+    cond = ast->createNodeFunctionCall("NEAR", args);
   }
 
-  auto unAryOr = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_OR, nAryAnd);
-
+  TRI_ASSERT(cond != nullptr);
+  
   auto condition = std::make_unique<Condition>(ast);
-  condition->andCombine(unAryOr);
+  condition->andCombine(cond);
   condition->normalize(plan);
   return condition;
 }
 
 void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info){
-  if( info.expressionParent && info.executionNodeType == EN::FILTER) {
-
+  if (info.expressionParent && info.executionNodeType == EN::FILTER) {
     auto ast = plan->getAst();
     CalculationNode* newNode = nullptr;
     Expression* expr = new Expression(ast, static_cast<CalculationNode*>(info.setter)->expression()->nodeForModification()->clone(ast));
@@ -4305,13 +4293,13 @@ void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info){
     plan->replaceNode(info.setter, newNode);
 
     bool done = false;
-    ast->traverseAndModify(newNode->expression()->nodeForModification(),[&done](AstNode* node, void* data){
-      if(done){
+    ast->traverseAndModify(newNode->expression()->nodeForModification(),[&done](AstNode* node, void* data) {
+      if (done) {
         return node;
       }
-      if(node->type == NODE_TYPE_OPERATOR_BINARY_AND){
-        for(std::size_t i = 0; i < node->numMembers(); i++){
-          if(isGeoFilterExpression(node->getMemberUnchecked(i),node)){
+      if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
+        for (std::size_t i = 0; i < node->numMembers(); i++){
+          if (isGeoFilterExpression(node->getMemberUnchecked(i),node)) {
             done = true;
             return node->getMemberUnchecked(i ? 0 : 1);
           }
@@ -4326,10 +4314,10 @@ void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info){
     }
 
     auto replaceInfo = iterativePreorderWithCondition(EN::FILTER, newNode->expression()->nodeForModification(), &isGeoFilterExpression);
-    if(newNode->expression()->nodeForModification() == replaceInfo.expressionParent){
-      if(replaceInfo.expressionParent->type == NODE_TYPE_OPERATOR_BINARY_AND){
-        for(std::size_t i = 0; i < replaceInfo.expressionParent->numMembers(); ++i){
-          if(replaceInfo.expressionParent->getMember(i) != replaceInfo.expressionNode){
+    if (newNode->expression()->nodeForModification() == replaceInfo.expressionParent) {
+      if (replaceInfo.expressionParent->type == NODE_TYPE_OPERATOR_BINARY_AND){
+        for (std::size_t i = 0; i < replaceInfo.expressionParent->numMembers(); ++i) {
+          if (replaceInfo.expressionParent->getMember(i) != replaceInfo.expressionNode) {
             newNode->expression()->replaceNode(replaceInfo.expressionParent->getMember(i));
             return;
           }
@@ -4348,34 +4336,32 @@ void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info){
 
     //fallback
     auto replacement = ast->createNodeValueBool(true);
-    for(std::size_t i = 0; i < replaceInfo.expressionParent->numMembers(); ++i){
-      if(replaceInfo.expressionParent->getMember(i) == replaceInfo.expressionNode){
+    for (std::size_t i = 0; i < replaceInfo.expressionParent->numMembers(); ++i) {
+      if (replaceInfo.expressionParent->getMember(i) == replaceInfo.expressionNode) {
         replaceInfo.expressionParent->removeMemberUnchecked(i);
         replaceInfo.expressionParent->addMember(replacement);
       }
     }
-
   }
 }
 
 // applys the optimization for a candidate
-bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& first, GeoIndexInfo& second){
-  if(!first && !second){
+bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& first, GeoIndexInfo& second) {
+  if (!first && !second) {
     return false;
   }
 
-  if(!first){
+  if (!first) {
     first = std::move(second);
     second.invalidate();
   }
 
   // We are not allowed to be a inner loop
-  if(first.collectionNode->isInInnerLoop() && first.executionNodeType == EN::SORT){
+  if (first.collectionNode->isInInnerLoop() && first.executionNodeType == EN::SORT) {
     return false;
   }
 
-  std::unique_ptr<Condition> condition;
-  condition = buildGeoCondition(plan,first);
+  std::unique_ptr<Condition> condition(buildGeoCondition(plan, first));
 
   auto inode = new IndexNode(
           plan, plan->nextId(), first.collectionNode->vocbase(),
@@ -4392,11 +4378,11 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& first, G
 
   // if executionNode is sort OR a filter without further sub conditions
   // the node can be unlinked
-  auto unlinkNode = [&](GeoIndexInfo& info){
-    if(info && !info.expressionParent){
+  auto unlinkNode = [&](GeoIndexInfo& info) {
+    if (info && !info.expressionParent) {
       if (!arangodb::ServerState::instance()->isCoordinator() || info.executionNodeType == EN::FILTER) {
         plan->unlinkNode(info.executionNode);
-      } else if (info.executionNodeType == EN::SORT){
+      } else if (info.executionNodeType == EN::SORT) {
         //make sure sort is not reinserted in cluster
         static_cast<SortNode*>(info.executionNode)->_reinsertInCluster = false;
       }
@@ -4408,13 +4394,11 @@ bool applyGeoOptimization(bool near, ExecutionPlan* plan, GeoIndexInfo& first, G
 
   //signal that plan has been changed
   return true;
-};
+}
 
 void arangodb::aql::geoIndexRule(Optimizer* opt,
                                  ExecutionPlan* plan,
                                  Optimizer::Rule const* rule) {
-
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER GEO RULE";
 
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
@@ -4427,42 +4411,44 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
     GeoIndexInfo filterInfo{};
     auto current = node;
 
-    while (current){
+    while (current) {
       switch(current->getType()) {
         case EN::SORT:{
-            sortInfo = identifyGeoOptimizationCandidate(EN::SORT, plan, current);
-          }
-          break ;
-        case EN::FILTER:{
-            filterInfo = identifyGeoOptimizationCandidate(EN::FILTER, plan, current);
-          }
+          sortInfo = identifyGeoOptimizationCandidate(EN::SORT, plan, current);
           break;
-        case EN::ENUMERATE_COLLECTION:{
-            EnumerateCollectionNode* collnode = static_cast<EnumerateCollectionNode*>(current);
-            if( (sortInfo   && sortInfo.collectionNode!= collnode)
-              ||(filterInfo && filterInfo.collectionNode != collnode)
-              ){
-              filterInfo.invalidate();
-              sortInfo.invalidate();
-              break;
-            }
-            if (applyGeoOptimization(true, plan, filterInfo, sortInfo)){
-              modified = true;
-              filterInfo.invalidate();
-              sortInfo.invalidate();
-            }
-          }
+        }
+        case EN::FILTER: {
+          filterInfo = identifyGeoOptimizationCandidate(EN::FILTER, plan, current);
           break;
-
-        case EN::INDEX:
-        case EN::COLLECT:{
+        }
+        case EN::ENUMERATE_COLLECTION: {
+          EnumerateCollectionNode* collnode = static_cast<EnumerateCollectionNode*>(current);
+          if( (sortInfo   && sortInfo.collectionNode!= collnode)
+            ||(filterInfo && filterInfo.collectionNode != collnode)
+            ){
             filterInfo.invalidate();
             sortInfo.invalidate();
             break;
           }
-
-        default:{} //skip - do nothing
+          if (applyGeoOptimization(true, plan, filterInfo, sortInfo)){
+            modified = true;
+            filterInfo.invalidate();
+            sortInfo.invalidate();
+          }
           break;
+        }
+
+        case EN::INDEX:
+        case EN::COLLECT:{
+          filterInfo.invalidate();
+          sortInfo.invalidate();
+          break;
+        }
+
+        default: {
+          //skip - do nothing
+          break;
+        }
       }
 
       current = current->getFirstDependency(); //inspect next node
@@ -4470,5 +4456,4 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
   }
 
   opt->addPlan(plan, rule, modified);
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "EXIT GEO RULE - modified: " << modified;
 }
