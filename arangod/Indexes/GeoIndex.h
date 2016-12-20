@@ -75,9 +75,9 @@ class GeoIndexIterator final : public IndexIterator {
   double _lat;
   double _lon;
   bool _near;
+  bool _inclusive;
   bool _done;
-  double _withinRange;
-  bool _withinLessEq;
+  double _radius;
 };
 
 class GeoIndex final : public Index {

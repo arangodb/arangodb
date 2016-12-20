@@ -876,17 +876,17 @@ AstNode* Ast::createNodeValueString(char const* value, size_t length) {
 
 /// @brief create an AST array node
 AstNode* Ast::createNodeArray() {
-  AstNode* node = createNode(NODE_TYPE_ARRAY);
-
-  return node;
+  return createNode(NODE_TYPE_ARRAY);
 }
 
 /// @brief create an AST array node
 AstNode* Ast::createNodeArray(size_t size) {
-  AstNode* node = createNode(NODE_TYPE_ARRAY);
+  AstNode* node = createNodeArray();
 
   TRI_ASSERT(node != nullptr);
-  node->reserve(size);
+  if (size > 0 ) {
+    node->reserve(size);
+  }
 
   return node;
 }

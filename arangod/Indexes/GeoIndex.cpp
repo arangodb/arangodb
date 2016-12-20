@@ -33,6 +33,8 @@
 #include "VocBase/transaction.h"
 
 using namespace arangodb;
+using namespace arangodb::aql;
+
 GeoIndexIterator::GeoIndexIterator(LogicalCollection* collection,
                                      arangodb::Transaction* trx,
                                      ManagedDocumentResult* mmdr,
@@ -48,9 +50,9 @@ GeoIndexIterator::GeoIndexIterator(LogicalCollection* collection,
       _lat(0.0),
       _lon(0.0),
       _near(true),
+      _inclusive(false),
       _done(false),
-      _withinRange(0.0),
-      _withinLessEq(false) {
+      _radius(0.0) {
   evaluateCondition();
 }
 
@@ -58,17 +60,27 @@ void GeoIndexIterator::evaluateCondition() {
   if (_condition) {
     auto numMembers = _condition->numMembers();
 
-    if (numMembers >= 2) {
-      _lat = _condition->getMember(0)->getMember(1)->getDoubleValue();
-      _lon = _condition->getMember(1)->getMember(1)->getDoubleValue();
-    }
+    TRI_ASSERT(numMembers == 1); // should only be an FCALL
+    auto fcall = _condition->getMember(0);
+    TRI_ASSERT(fcall->type == NODE_TYPE_FCALL);
+    TRI_ASSERT(fcall->numMembers() == 1);
+    auto args = fcall->getMember(0);
 
-    if (numMembers == 2) { //near
+    numMembers = args->numMembers();
+    TRI_ASSERT(numMembers >= 3);
+
+    _lat = args->getMember(1)->getDoubleValue();
+    _lon = args->getMember(2)->getDoubleValue();
+
+    if (numMembers == 3) { 
+      // NEAR
       _near = true;
-    } else { //within
+    } else {
+      // WITHIN
+      TRI_ASSERT(numMembers == 5);
       _near = false;
-      _withinRange = _condition->getMember(2)->getMember(1)->getDoubleValue();
-      _withinLessEq = _condition->getMember(3)->getMember(1)->getBoolValue();
+      _radius = args->getMember(3)->getDoubleValue();
+      _inclusive = args->getMember(4)->getBoolValue();
     }
   } else {
     LOG(ERR) << "No condition passed to GeoIndexIterator constructor";
@@ -83,8 +95,8 @@ IndexLookupResult GeoIndexIterator::next() {
   auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(_cursor, 1));
   if (coords && coords->length) {
     if (  _near
-       || (!_withinLessEq && GeoIndex_distance(&_coor, &coords->coordinates[0]) < _withinRange)
-       || ( _withinLessEq && GeoIndex_distance(&_coor, &coords->coordinates[0]) <= _withinRange)
+       || (!_inclusive && coords->distances[0] < _radius)
+       || ( _inclusive && coords->distances[0] <= _radius)
        )
     {
       auto revision = ::GeoIndex::toRevision(coords->coordinates[0].data);
@@ -117,20 +129,31 @@ void GeoIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t
   if (batchSize > 0) {
     auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(_cursor, batchSize));
 
-    size_t length = coords ? coords->length : 0;
+    size_t const length = coords ? coords->length : 0;
     if (!length) {
       return;
     }
 
-    for (std::size_t index = 0; index < length; ++index) {
-      if (  _near
-         || (!_withinLessEq && coords->distances[index] < _withinRange)
-         || ( _withinLessEq && coords->distances[index] <= _withinRange)
-         ) {
-        result.emplace_back(IndexLookupResult(::GeoIndex::toRevision(coords->coordinates[index].data)));
-      } else {
-        break;
+    // determine which documents to return...
+    size_t numDocs = length;
+    if (!_near) {
+      // WITHIN
+      // only return those documents that are within the specified radius
+      TRI_ASSERT(numDocs > 0);
+      // scan backwards because documents with higher distances are more interesting
+      // this can be improved to use a binary search if block size is increased in the future
+      while ((_inclusive && coords->distances[numDocs - 1] > _radius) ||
+            (!_inclusive && coords->distances[numDocs - 1] >= _radius)) {
+        // document is outside the specified radius!
+        --numDocs;
+        if (numDocs == 0) {
+          break;
+        }
       }
+    }
+      
+    for (size_t i = 0; i < numDocs; ++i) {
+      result.emplace_back(IndexLookupResult(::GeoIndex::toRevision(coords->coordinates[i].data)));
     }
   }
 

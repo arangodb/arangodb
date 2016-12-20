@@ -61,6 +61,9 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       for (size_t j = 0; j < andCond->numMembers(); ++j) {
         auto leaf = andCond->getMemberUnchecked(j);
 
+        if (leaf->numMembers() != 2) {
+          continue;
+        }
         // We only support binary conditions
         TRI_ASSERT(leaf->numMembers() == 2);
         AstNode* lhs = leaf->getMember(0);
@@ -197,6 +200,10 @@ int IndexBlock::initialize() {
     auto andCond = _condition->getMemberUnchecked(i);
     for (size_t j = 0; j < andCond->numMembers(); ++j) {
       auto leaf = andCond->getMemberUnchecked(j);
+
+      if (leaf->numMembers() != 2) {
+        continue;
+      }
 
       // We only support binary conditions
       TRI_ASSERT(leaf->numMembers() == 2);
