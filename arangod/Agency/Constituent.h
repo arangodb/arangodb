@@ -115,8 +115,7 @@ class Constituent : public Thread {
   void candidate();
 
   // Become leader
-  void lead(term_t,
-            std::map<std::string, bool> const& = std::map<std::string, bool>());
+  void lead(term_t);
 
   // Call for vote (by leader or candidates after timeout)
   void callElection();

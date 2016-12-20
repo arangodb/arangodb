@@ -802,8 +802,23 @@ void Agent::beginShutdown() {
   }
 }
 
+void Agent::prepareLead() {
+
+  // Key value stores
+  rebuildDBs();
+  
+  // Reset last acknowledged
+  {
+    MUTEX_LOCKER(mutexLocker, _ioLock);
+    for (auto const& i : _config.active()) {
+      _lastAcked[i] = system_clock::now();
+    }
+  }
+
+}
+
 /// Becoming leader
-bool Agent::lead() {
+void Agent::lead() {
   // Key value stores
   rebuildDBs();
 
@@ -813,17 +828,12 @@ bool Agent::lead() {
     guard.broadcast();
   }
 
+  // Agency configuration
   term_t myterm;
-  // Reset last acknowledged
   {
     MUTEX_LOCKER(mutexLocker, _ioLock);
-    for (auto const& i : _config.active()) {
-      _lastAcked[i] = system_clock::now();
-    }
     myterm = _constituent.term();
   }
-
-  // Agency configuration
   auto agency = std::make_shared<Builder>();
   agency->openArray();
   agency->openArray();
@@ -845,7 +855,6 @@ bool Agent::lead() {
   // Notify inactive pool
   notifyInactive();
 
-  return true;
 }
 
 // Notify inactive pool members of configuration change()

@@ -60,14 +60,8 @@ Supervision::Supervision()
 Supervision::~Supervision() { shutdown(); };
 
 void Supervision::wakeUp() {
-  {
-    MUTEX_LOCKER(locker, _lock);
     updateSnapshot();
     upgradeAgency();
-  }
-    
-  CONDITION_LOCKER(guard, _cv);
-  _cv.signal();
 }
 
 static std::string const syncPrefix = "/Sync/ServerStates/";
