@@ -269,6 +269,11 @@ void HeartbeatThread::runDBServer() {
       double remain = interval - (TRI_microtime() - start);
       // mop: execute at least once
       do {
+        
+        if (isStopping()) {
+          break;
+        }
+        
         LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Entering update loop";
 
         bool wasNotified;
