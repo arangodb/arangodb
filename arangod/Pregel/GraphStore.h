@@ -75,6 +75,9 @@ class GraphStore {
  public:
   GraphStore(TRI_vocbase_t* vocbase, GraphFormat<V, E>* graphFormat);
   ~GraphStore();
+  
+  size_t localVerticeCount() const { return _localVerticeCount; }
+  size_t localEdgeCount() const { return _localEdgeCount; }
 
   void loadShards(WorkerConfig const& state);
   void loadDocument(WorkerConfig const& state, ShardID const& shard,

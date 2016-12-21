@@ -53,8 +53,8 @@ std::string const Utils::collectionPlanIdMapKey = "collectionPlanIdMap";
 std::string const Utils::vertexShardsKey = "vertexShards";
 std::string const Utils::edgeShardsKey = "edgeShards";
 std::string const Utils::globalShardListKey = "globalShardList";
-std::string const Utils::totalVertexCount = "vertexCount";
-std::string const Utils::totalEdgeCount = "edgeCount";
+std::string const Utils::vertexCount = "vertexCount";
+std::string const Utils::edgeCount = "edgeCount";
 std::string const Utils::asyncMode = "async";
 
 std::string const Utils::coordinatorIdKey = "coordinatorId";
@@ -88,25 +88,6 @@ void Utils::printResponses(std::vector<ClusterCommRequest> const& requests) {
                << req.destination << ". Payload: " << res.answer->payload().toJson();
     }
   }
-}
-
-int64_t Utils::countDocuments(TRI_vocbase_t* vocbase,
-                              CollectionID const& collection) {
-  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(vocbase),
-                                  collection, TRI_TRANSACTION_READ);
-
-  int res = trx.begin();
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-  OperationResult opResult = trx.count(collection, true);
-  res = trx.finish(opResult.code);
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-  VPackSlice s = opResult.slice();
-  TRI_ASSERT(s.isNumber());
-  return s.getInt();
 }
 
 std::shared_ptr<LogicalCollection> Utils::resolveCollection(

@@ -37,12 +37,15 @@ class RestPregelHandler;
 namespace pregel {
 
 enum ExecutionState {
-  DEFAULT,    // before calling start
+  DEFAULT = 0,    // before calling start
   RUNNING,    // during normal operation
   DONE,       // after everyting is done
-  CANCELED,   // after an error or manual canceling
+  CANCELED,   // after an terminal error or manual canceling
+  IN_ERROR,   // after an error which should allow recovery
   RECOVERING  // during recovery
 };
+static const char* ExecutionStateNames[] = { "none", "running", "done",
+  "canceled", "in error", "recovering" };
 
 class MasterContext;
 class AggregatorHandler;

@@ -258,6 +258,7 @@ void GraphStore<V, E>::_loadVertices(WorkerConfig const& state,
         std::string documentId = _readTrx->extractIdString(document);
         _loadEdges(state, edgeShard, entry, documentId);
         _index.push_back(entry);
+        _localVertexCount++;
       }
     }
   }
@@ -331,6 +332,7 @@ void GraphStore<V, E>::_loadEdges(WorkerConfig const& state,
           // TODO store size value at some point
         }
         _edges.push_back(edge);
+        _localEdgeCount++;
       }
     }
   }

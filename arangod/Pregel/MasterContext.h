@@ -35,7 +35,8 @@ namespace pregel {
 class MasterContext {
   friend class Conductor;
 
-  uint64_t _vertexCount, _edgeCount;
+  uint64_t _vertexCount = 0;
+  uint64_t _edgeCount = 0;
   AggregatorHandler* _aggregators;
 
  protected:

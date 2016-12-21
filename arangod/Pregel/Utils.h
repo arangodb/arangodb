@@ -60,8 +60,8 @@ class Utils {
   static std::string const vertexShardsKey;
   static std::string const edgeShardsKey;
   static std::string const globalShardListKey;
-  static std::string const totalVertexCount;
-  static std::string const totalEdgeCount;
+  static std::string const vertexCount;
+  static std::string const edgeCount;
   static std::string const asyncMode;
 
   static std::string const globalSuperstepKey;

@@ -105,10 +105,10 @@ bool Conductor::_startGlobalStep() {
   int res = _sendToAllDBServers(Utils::prepareGSSPath, b.slice(), requests);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    _state = ExecutionState::IN_ERROR;
     LOG(INFO) << "Seems there is at least one worker out of order";
     Utils::printResponses(requests);
-    // TODO, in case a worker needs more than 5 minutes to do calculations
-    // this will be triggered as well
+    // the recovery mechanisms should take care of this
     return false;
   }
   /// collect the aggregators
@@ -154,9 +154,15 @@ bool Conductor::_startGlobalStep() {
   b.close();
 
   // start vertex level operations, does not get a response
-  _sendToAllDBServers(Utils::startGSSPath, b.slice());// call me maybe
-  LOG(INFO) << "Conductor started new gss " << _globalSuperstep;
-  return true;
+  res = _sendToAllDBServers(Utils::startGSSPath, b.slice());// call me maybe
+  if (res != TRI_ERROR_NO_ERROR) {
+    _state = ExecutionState::IN_ERROR;
+    LOG(INFO) << "Conductor could not start GSS " << _globalSuperstep;
+    // the recovery mechanisms should take care od this
+  } else {
+    LOG(INFO) << "Conductor started new gss " << _globalSuperstep;
+  }
+  return res != TRI_ERROR_NO_ERROR;
 }
 
 // ============ Conductor callbacks ===============
@@ -167,8 +173,20 @@ void Conductor::finishedWorkerStartup(VPackSlice& data) {
     return;
   }
   _ensureUniqueResponse(data);
+  if (_masterContext) {
+    _masterContext->_vertexCount += data.get(Utils::vertexCount).getUInt();
+    _masterContext->_edgeCount += data.get(Utils::edgeCount).getUInt();
+  }
   if (_respondedServers.size() != _dbServers.size()) {
     return;
+  }
+  
+  // Need to do this here, because we need the counts
+  if (_masterContext) {
+    _masterContext->_aggregators = _aggregators.get();
+    _masterContext->preApplication();
+    LOG(INFO) << _masterContext->_vertexCount << " vertices, "
+    << _masterContext->_edgeCount << " edges";
   }
 
   _computationStartTimeSecs = TRI_microtime();
@@ -285,8 +303,8 @@ void Conductor::cancel() {
 
 void Conductor::startRecovery() {
   MUTEX_LOCKER(guard, _callbackMutex);
-  if (_state != ExecutionState::RUNNING) {
-    LOG(INFO) << "Execution is already in the recovery state";
+  if (_state != ExecutionState::RUNNING && _state !=  ExecutionState::IN_ERROR) {
+    LOG(INFO) << "Execution is not recoverable";
     return;
   }
 
@@ -370,7 +388,7 @@ static void resolveShards(
 /// proceedings
 int Conductor::_initializeWorkers(std::string const& suffix,
                                   VPackSlice additional) {
-  int64_t vertexCount = 0, edgeCount = 0;
+  //int64_t vertexCount = 0, edgeCount = 0;
   std::map<CollectionID, std::string> collectionPlanIdMap;
   std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>> vertexMap,
       edgeMap;
@@ -380,37 +398,18 @@ int Conductor::_initializeWorkers(std::string const& suffix,
   for (auto& collection : _vertexCollections) {
     collectionPlanIdMap.emplace(collection->name(),
                                 collection->planId_as_string());
-    int64_t cc =
-        Utils::countDocuments(_vocbaseGuard.vocbase(), collection->name());
-    if (cc > 0) {
-      vertexCount += cc;
       resolveShards(collection.get(), vertexMap, allShardIDs);
-    }
   }
   for (auto& collection : _edgeCollections) {
     collectionPlanIdMap.emplace(collection->name(),
                                 collection->planId_as_string());
-    int64_t cc =
-        Utils::countDocuments(_vocbaseGuard.vocbase(), collection->name());
-    if (cc > 0) {
-      edgeCount += cc;
-      resolveShards(collection.get(), edgeMap, allShardIDs);
-    }
+    resolveShards(collection.get(), edgeMap, allShardIDs);
   }
   _dbServers.clear();
   for (auto const& pair : vertexMap) {
     _dbServers.push_back(pair.first);
   }
-  LOG(INFO) << vertexCount << " vertices, " << edgeCount << " edges";
-
-  // Need to do this here, because we need the counts
-  if (_masterContext && _masterContext->_vertexCount == 0) {
-    _masterContext->_vertexCount = vertexCount;
-    _masterContext->_edgeCount = edgeCount;
-    _masterContext->_aggregators = _aggregators.get();
-    _masterContext->preApplication();
-  }
-
+ 
   std::string const path =
       Utils::baseUrl(_vocbaseGuard.vocbase()->name()) + suffix;
   std::string coordinatorId = ServerState::instance()->getId();
@@ -430,8 +429,6 @@ int Conductor::_initializeWorkers(std::string const& suffix,
     b.add(Utils::algorithmKey, VPackValue(_algorithm->name()));
     b.add(Utils::userParametersKey, _userParams.slice());
     b.add(Utils::coordinatorIdKey, VPackValue(coordinatorId));
-    b.add(Utils::totalVertexCount, VPackValue(vertexCount));
-    b.add(Utils::totalEdgeCount, VPackValue(edgeCount));
     b.add(Utils::asyncMode, VPackValue(_asyncMode));
     b.add(Utils::vertexShardsKey, VPackValue(VPackValueType::Object));
     if (additional.isObject()) {
@@ -467,8 +464,8 @@ int Conductor::_initializeWorkers(std::string const& suffix,
     b.close();
 
     auto body = std::make_shared<std::string const>(b.toJson());
-    requests.emplace_back("server:" + server, rest::RequestType::POST, path,
-                          body);
+    requests.emplace_back("server:" + server, rest::RequestType::POST,
+                          path, body);
   }
 
   ClusterComm* cc = ClusterComm::instance();

@@ -72,13 +72,10 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
     }
   }
 
-  uint64_t vc = initConfig.get(Utils::totalVertexCount).getUInt(),
-           ec = initConfig.get(Utils::totalEdgeCount).getUInt();
-
   // initialization of the graphstore might take an undefined amount
   // of time. Therefore this is performed asynchronous
   ThreadPool* pool = PregelFeature::instance()->threadPool();
-  pool->enqueue([this, vocbase, vc, ec] {
+  pool->enqueue([this, vocbase] {
     _graphStore->loadShards(this->_config);
     _state = WorkerState::IDLE;
 
@@ -86,16 +83,13 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
     if (_workerContext) {
       _workerContext->_conductorAggregators = _conductorAggregators.get();
       _workerContext->_workerAggregators = _workerAggregators.get();
-      _workerContext->_vertexCount = vc;
-      _workerContext->_edgeCount = ec;
-      _workerContext->preApplication();
     }
-
     VPackBuilder package;
     package.openObject();
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    package.add(Utils::executionNumberKey,
-                VPackValue(_config.executionNumber()));
+    package.add(Utils::executionNumberKey, VPackValue(_config.executionNumber()));
+    package.add(Utils::vertexCount, VPackValue(_graphStore->localVerticeCount()));
+    package.add(Utils::edgeCount, VPackValue(_graphStore->localEdgeCount()));
     package.close();
     _callConductor(Utils::finishedStartupPath, package.slice());
   });
@@ -134,6 +128,12 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data, VPackBuilder &response)
         TRI_ERROR_BAD_PARAMETER,
         "Seems like this worker missed a gss, expected %u. Data = %s ",
         _expectedGSS, data.toJson().c_str());
+  }
+
+  if (_workerContext && gss == 0 && _config.localSuperstep() == 0) {
+    _workerContext->_vertexCount = data.get(Utils::vertexCount).getUInt();
+    _workerContext->_edgeCount = data.get(Utils::edgeCount).getUInt();
+    _workerContext->preApplication();
   }
   
   // make us ready to receive messages

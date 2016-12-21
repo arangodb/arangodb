@@ -1969,10 +1969,10 @@ static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!c) {
     TRI_V8_THROW_EXCEPTION_USAGE("Execution number is invalid");
   }
+  
   VPackBuilder result;
   result.openObject();
-  result.add("running", VPackValue(c->getState() == pregel::ExecutionState::RUNNING,
-                                   VPackValueType::Bool));
+  result.add("state", VPackValue(pregel::ExecutionStateNames[c->getState()]));
   result.add("gss", VPackValue(c->globalSuperstep()));
   result.add("totalRuntime", VPackValue(c->totalRuntimeSecs()));
   c->workerStats().serializeValues(result);
