@@ -172,8 +172,8 @@ std::vector<check_t> Supervision::checkDBServers() {
     if (good) {
       
       report->add(
-          "LastHeartbeatAcked",
-          VPackValue(timepointToString(std::chrono::system_clock::now())));
+        "LastHeartbeatAcked",
+        VPackValue(timepointToString(std::chrono::system_clock::now())));
       report->add("Status", VPackValue(Supervision::HEALTH_STATUS_GOOD));
       
       std::string failedServerPath = failedServersPrefix + "/" + serverID;
@@ -194,12 +194,12 @@ std::vector<check_t> Supervision::checkDBServers() {
       
       std::chrono::seconds t{0};
       t = std::chrono::duration_cast<std::chrono::seconds>(
-          std::chrono::system_clock::now() -
-          stringToTimepoint(lastHeartbeatAcked));
-
+        std::chrono::system_clock::now() -
+        stringToTimepoint(lastHeartbeatAcked));
+      
       auto secondsSinceLeader = std::chrono::duration<double>(
         std::chrono::system_clock::now() - _agent->leaderSince()).count();
-
+      
       // Failed servers are considered only after having taken on leadership
       // for at least grace period
       if (t.count() > _gracePeriod && secondsSinceLeader > _gracePeriod) {
@@ -629,13 +629,22 @@ void Supervision::enforceReplication() {
         clone = !col("distributeShardsLike").slice().copyString().empty();
       } catch (...) {}
 
+      auto const& failed = _snapshot("failedServersPrefix").children();
+
       if (!clone) {
         for (auto const& shard_ : col("shards").children()) { // Pl shards
           auto const& shard = *(shard_.second);
 
-          // Enough DBServer to 
-          if (replicationFactor > shard.slice().length() &&
-              available.size() > shard.slice().length()) {
+          size_t actualReplicationFactor = shard.slice().length();
+          for (const auto& i : VPackArrayIterator(shard.slice())) {
+            if (failed.find(i.copyString())!=failed.end()) {
+              --actualReplicationFactor;
+            }
+          }
+
+          if (actualReplicationFactor > 0 && // Need at least one survived
+              replicationFactor > actualReplicationFactor && // Planned higher
+              available.size() > shard.slice().length()) { // Any servers available
             for (auto const& i : VPackArrayIterator(shard.slice())) {
               available.erase(
                 std::remove(
