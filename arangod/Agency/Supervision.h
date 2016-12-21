@@ -30,6 +30,8 @@
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 
+#include <chrono>
+
 namespace arangodb {
 namespace consensus {
 
@@ -180,6 +182,7 @@ class Supervision : public arangodb::Thread {
   std::string serverHealth(std::string const&);
 
   static std::string _agencyPrefix;
+
 };
 
 inline std::string timepointToString(Supervision::TimePoint const& t) {

@@ -59,7 +59,7 @@ HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
                                  boost::asio::io_service* ioService)
     : Thread("Heartbeat"),
       _agencyCallbackRegistry(agencyCallbackRegistry),
-      _statusLock(),
+      _statusLock(std::make_shared<Mutex>()),
       _agency(),
       _condition(),
       _myId(ServerState::instance()->getId()),
@@ -71,9 +71,11 @@ HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
       _currentPlanVersion(0),
       _ready(false),
       _currentVersions(0, 0),
-      _desiredVersions(0, 0),
+      _desiredVersions(std::make_shared<AgencyVersions>(0, 0)),
       _wasNotified(false),
-      _strand(new boost::asio::io_service::strand(*ioService)) {}
+      _strand(new boost::asio::io_service::strand(*ioService)) {
+  
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a heartbeat thread
@@ -126,32 +128,36 @@ void HeartbeatThread::runDBServer() {
   // convert timeout to seconds
   double const interval = (double)_interval / 1000.0 / 1000.0;
 
+  
+
   std::function<bool(VPackSlice const& result)> updatePlan =
-      [&](VPackSlice const& result) {
-        if (!result.isNumber()) {
-          LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Plan Version is not a number! "
-                                            << result.toJson();
-          return false;
-        }
-        uint64_t version = result.getNumber<uint64_t>();
+    [=](VPackSlice const& result) {
 
-        bool doSync = false;
-        {
-          MUTEX_LOCKER(mutexLocker, _statusLock);
-          if (version > _desiredVersions.plan) {
-            _desiredVersions.plan = version;
-            LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
-                << "Desired Current Version is now " << _desiredVersions.plan;
-            doSync = true;
-          }
-        }
-
-        if (doSync) {
-          syncDBServerStatusQuo();
-        }
-
-        return true;
-      };
+    if (!result.isNumber()) {
+      LOG_TOPIC(ERR, Logger::HEARTBEAT)
+      << "Plan Version is not a number! " << result.toJson();
+      return false;
+    }
+    
+    uint64_t version = result.getNumber<uint64_t>();
+    bool doSync = false;
+    
+    {
+      MUTEX_LOCKER(mutexLocker, *_statusLock);
+      if (version > _desiredVersions->plan) {
+        _desiredVersions->plan = version;
+        LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
+          << "Desired Current Version is now " << _desiredVersions->plan;
+        doSync = true;
+      }
+    }
+    
+    if (doSync) {
+      syncDBServerStatusQuo();
+    }
+    
+    return true;
+  };
 
   auto planAgencyCallback = std::make_shared<AgencyCallback>(
       _agency, "Plan/Version", updatePlan, true);
@@ -169,9 +175,10 @@ void HeartbeatThread::runDBServer() {
   // we check Current/Version every few heartbeats:
   int const currentCountStart = 1;  // set to 1 by Max to speed up discovery
   int currentCount = currentCountStart;
-//  size_t hearbeats = 0;
+
 
   while (!isStopping()) {
+
     try {
       LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sending heartbeat to agency";
 
@@ -191,16 +198,28 @@ void HeartbeatThread::runDBServer() {
         LOG_TOPIC(TRACE, Logger::HEARTBEAT)
             << "Looking at Sync/Commands/" + _myId;
 
-        AgencyReadTransaction trx(std::vector<std::string>(
-            {AgencyCommManager::path("Shutdown"),
-             AgencyCommManager::path("Current/Version"),
-             AgencyCommManager::path("Sync/Commands", _myId)}));
-
+        AgencyReadTransaction trx(
+          std::vector<std::string>({
+              AgencyCommManager::path("Shutdown"),
+                AgencyCommManager::path("Current/Version"),
+                AgencyCommManager::path("Sync/Commands", _myId),
+                "/.agency"}));
+        
         AgencyCommResult result = _agency.sendTransactionWithFailover(trx, 1.0);
         if (!result.successful()) {
           LOG_TOPIC(WARN, Logger::HEARTBEAT)
               << "Heartbeat: Could not read from agency!";
         } else {
+
+          VPackSlice agentPool =
+            result.slice()[0].get(
+              std::vector<std::string>({".agency","pool"}));
+          if (agentPool.isObject()) {
+            _agency.updateEndpoints(agentPool);
+          } else {
+            LOG(ERR) << "Cannot find an agency poersisted in RAFT 8|";
+          }
+          
           VPackSlice shutdownSlice =
               result.slice()[0].get(std::vector<std::string>(
                   {AgencyCommManager::path(), "Shutdown"}));
@@ -230,9 +249,9 @@ void HeartbeatThread::runDBServer() {
                   << "Current/Version in agency is 0.";
             } else {
               {
-                MUTEX_LOCKER(mutexLocker, _statusLock);
-                if (currentVersion > _desiredVersions.current) {
-                  _desiredVersions.current = currentVersion;
+                MUTEX_LOCKER(mutexLocker, *_statusLock);
+                if (currentVersion > _desiredVersions->current) {
+                  _desiredVersions->current = currentVersion;
                   LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
                       << "Found greater Current/Version in agency.";
                 }
@@ -250,6 +269,11 @@ void HeartbeatThread::runDBServer() {
       double remain = interval - (TRI_microtime() - start);
       // mop: execute at least once
       do {
+        
+        if (isStopping()) {
+          break;
+        }
+        
         LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Entering update loop";
 
         bool wasNotified;
@@ -291,7 +315,7 @@ void HeartbeatThread::runDBServer() {
   while (++count < 3000) {
     bool isInPlanChange;
     {
-      MUTEX_LOCKER(mutexLocker, _statusLock);
+      MUTEX_LOCKER(mutexLocker, *_statusLock);
       isInPlanChange = _isDispatchingChange;
     }
     if (!isInPlanChange) {
@@ -519,7 +543,7 @@ void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
   LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Dispatched job returned!";
   bool doSleep = false;
   {
-    MUTEX_LOCKER(mutexLocker, _statusLock);
+    MUTEX_LOCKER(mutexLocker, *_statusLock);
     if (result.success) {
       LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
           << "Sync request successful. Now have Plan " << result.planVersion
@@ -665,23 +689,23 @@ bool HeartbeatThread::syncDBServerStatusQuo() {
   bool becauseOfPlan = false;
   bool becauseOfCurrent = false;
   {
-    MUTEX_LOCKER(mutexLocker, _statusLock);
+    MUTEX_LOCKER(mutexLocker, *_statusLock);
     // mop: only dispatch one at a time
     if (_isDispatchingChange) {
       return false;
     }
 
-    if (_desiredVersions.plan > _currentVersions.plan) {
+    if (_desiredVersions->plan > _currentVersions.plan) {
       LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
           << "Plan version " << _currentVersions.plan
-          << " is lower than desired version " << _desiredVersions.plan;
+          << " is lower than desired version " << _desiredVersions->plan;
       _isDispatchingChange = true;
       becauseOfPlan = true;
     }
-    if (_desiredVersions.current > _currentVersions.current) {
+    if (_desiredVersions->current > _currentVersions.current) {
       LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
           << "Current version " << _currentVersions.current
-          << " is lower than desired version " << _desiredVersions.current;
+          << " is lower than desired version " << _desiredVersions->current;
       _isDispatchingChange = true;
       becauseOfCurrent = true;
     }
@@ -710,7 +734,7 @@ bool HeartbeatThread::syncDBServerStatusQuo() {
       job.work();
     });
 
-    MUTEX_LOCKER(mutexLocker, _statusLock);
+    MUTEX_LOCKER(mutexLocker, *_statusLock);
     _isDispatchingChange = false;
   }
 

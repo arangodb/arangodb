@@ -184,11 +184,17 @@ class Agent : public arangodb::Thread {
   /// @brief Report measured round trips to inception
   void reportMeasurement(query_t const&);
 
-  /// @brief Inception thread still done?
+  /// @brief Are we ready for RAFT?
   bool ready() const;
+
+  /// @brief Set readyness for RAFT
   void ready(bool b);
 
+  /// @brief Reset RAFT timeout intervals
   void resetRAFTTimes(double, double);
+
+  /// @brief Get start time of leadership
+  TimePoint const& leaderSince() const;
 
   /// @brief State reads persisted state and prepares the agent
   friend class State;
@@ -269,10 +275,17 @@ class Agent : public arangodb::Thread {
   /// @brief Next compaction after
   arangodb::consensus::index_t _nextCompationAfter;
 
+  /// @brief Inception thread getting an agent up to join RAFT from cmd or persistence
   std::unique_ptr<Inception> _inception;
+
+  /// @brief Activator thread for the leader to wake up a sleeping agent from pool
   std::unique_ptr<AgentActivator> _activator;
 
+  /// @brief Agent is ready for RAFT
   std::atomic<bool> _ready;
+
+  /// @brief Keep track of when I last took on leadership
+  TimePoint _leaderSince;
   
 };
 }

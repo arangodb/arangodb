@@ -1180,6 +1180,23 @@ bool AgencyComm::unlock(std::string const& key, VPackSlice const& slice,
   return false;
 }
 
+
+void AgencyComm::updateEndpoints(arangodb::velocypack::Slice const& current) {
+
+  auto stored = AgencyCommManager::MANAGER->endpoints();
+
+  for (const auto& i : VPackObjectIterator(current)) {
+    auto const endpoint = Endpoint::unifiedForm(i.value.copyString());
+    if (std::find(stored.begin(), stored.end(), endpoint) == stored.end()) {
+      LOG_TOPIC(INFO, Logger::CLUSTER)
+        << "Adding endpoint " << endpoint << " to agent pool";
+      AgencyCommManager::MANAGER->addEndpoint(endpoint);
+    }
+  }
+  
+}
+
+
 AgencyCommResult AgencyComm::sendWithFailover(
     arangodb::rest::RequestType method, double const timeout,
     std::string const& initialUrl, std::string const& body) {
@@ -1187,7 +1204,8 @@ AgencyCommResult AgencyComm::sendWithFailover(
   std::string endpoint;
   std::unique_ptr<GeneralClientConnection> connection =
     AgencyCommManager::MANAGER->acquire(endpoint);
-
+  
+  
   AgencyCommResult result;
   std::string url = initialUrl;
 
@@ -1198,6 +1216,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
   
   for (uint64_t tries = 0; tries < MAX_TRIES; ++tries) {
 
+    // Raise waits to a maximum 10 seconds
     auto waitUntil = std::chrono::steady_clock::now() + waitInterval;
     if (waitInterval.count() < 5.0) { 
       waitInterval *= 2;
@@ -1255,10 +1274,12 @@ AgencyCommResult AgencyComm::sendWithFailover(
       AgencyCommManager::MANAGER->release(std::move(connection), endpoint);
       break;
     }
-    
+
+    // here we have failed and want to try next endpoint
     AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
     connection = AgencyCommManager::MANAGER->acquire(endpoint);
 
+    // timeout exit startegy
     if (std::chrono::steady_clock::now() < timeOut) {
       std::this_thread::sleep_for(waitUntil-std::chrono::steady_clock::now());
     } else {
@@ -1272,6 +1293,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
     
   }
 
+  // other error
   if (!result.successful() && result.httpCode() != 412) {
     LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
       << "Unsuccessful AgencyComm: "
