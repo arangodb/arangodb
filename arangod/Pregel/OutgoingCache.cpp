@@ -101,9 +101,9 @@ void ArrayOutCache<M>::flushMessages() {
     package.openObject();
     package.add(Utils::messagesKey, VPackValue(VPackValueType::Array));
     for (auto const& vertexMessagePair : vertexMessageMap) {
-      package.add(VPackValue(VPackValueType::Array));
       package.add(VPackValue(shard));
       package.add(VPackValue(vertexMessagePair.first));
+      package.add(VPackValue(VPackValueType::Array));
       for (M const& val : vertexMessagePair.second) {
         this->_format->addValue(package, val);
         if (this->_sendToNextGSS) {
