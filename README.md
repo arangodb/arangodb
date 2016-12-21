@@ -128,12 +128,12 @@ issue tracker for reporting them:
 
 You can use the Google group for improvements, feature requests, comments:
 
-[http://www.arangodb.com/community](https://www.arangodb.com/community)
+[https://www.arangodb.com/community](https://www.arangodb.com/community)
 
 StackOverflow is great for questions about AQL, usage scenarios etc.
 
-[http://stackoverflow.com/questions/tagged/arangodb](http://stackoverflow.com/questions/tagged/arangodb)
+[https://stackoverflow.com/questions/tagged/arangodb](https://stackoverflow.com/questions/tagged/arangodb)
 
 To chat with the community and the developers we offer a Slack chat:
 
-[http://slack.arangodb.com/](http://slack.arangodb.com/)
+[https://slack.arangodb.com/](https://slack.arangodb.com/)
