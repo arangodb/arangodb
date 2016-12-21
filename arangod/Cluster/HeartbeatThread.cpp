@@ -208,7 +208,6 @@ void HeartbeatThread::runDBServer() {
           VPackSlice agentPool =
             result.slice()[0].get(
               std::vector<std::string>({".agency","pool"}));
-          
           if (agentPool.isObject()) {
             _agency.updateEndpoints(agentPool);
           } else {

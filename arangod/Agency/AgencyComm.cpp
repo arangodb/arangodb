@@ -1185,9 +1185,10 @@ void AgencyComm::updateEndpoints(arangodb::velocypack::Slice const& current) {
 
   auto stored = AgencyCommManager::MANAGER->endpoints();
   for (const auto& i : VPackObjectIterator(current)) {
-    auto const endpoint = i.value.copyString();
-    if (std::find(stored.begin(), stored.end(), endpoint) != stored.end()) {
-      LOG(INFO) << "Adding endpoint " << endpoint << " to agent pool";
+    auto const endpoint = Endpoint::unifiedForm(i.value.copyString());
+    if (std::find(stored.begin(), stored.end(), endpoint) == stored.end()) {
+      LOG_TOPIC(INFO, Logger::CLUSTER) << "Adding endpoint "
+                                       << endpoint << " to agent pool";
       AgencyCommManager::MANAGER->addEndpoint(endpoint);
     }
   }
