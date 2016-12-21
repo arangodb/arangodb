@@ -21,17 +21,20 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "GeoIndex.h"
+
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
-#include "GeoIndex.h"
 #include "Indexes/GeoIndex.h"
 #include "Logger/Logger.h"
 #include "VocBase/transaction.h"
 
 using namespace arangodb;
+using namespace arangodb::aql;
+
 GeoIndexIterator::GeoIndexIterator(LogicalCollection* collection,
                                      arangodb::Transaction* trx,
                                      ManagedDocumentResult* mmdr,
@@ -44,51 +47,58 @@ GeoIndexIterator::GeoIndexIterator(LogicalCollection* collection,
       _coor(),
       _condition(cond),
       _variable(var),
-      _lat(0),
-      _lon(0),
+      _lat(0.0),
+      _lon(0.0),
       _near(true),
-      _withinRange(0),
-      _withinLessEq(false)
-      // lookup will hold the inforamtion if this is a cursor for
-      // near/within and the reference point
-      //_lookups(trx, node, reference, index->fields()),
-    {
-      evaluateCondition();
-    }
+      _inclusive(false),
+      _done(false),
+      _radius(0.0) {
+  evaluateCondition();
+}
 
 void GeoIndexIterator::evaluateCondition() {
   if (_condition) {
     auto numMembers = _condition->numMembers();
 
-    if(numMembers >= 2){
-      _lat = _condition->getMember(0)->getMember(1)->getDoubleValue();
-      _lon = _condition->getMember(1)->getMember(1)->getDoubleValue();
-    }
+    TRI_ASSERT(numMembers == 1); // should only be an FCALL
+    auto fcall = _condition->getMember(0);
+    TRI_ASSERT(fcall->type == NODE_TYPE_FCALL);
+    TRI_ASSERT(fcall->numMembers() == 1);
+    auto args = fcall->getMember(0);
 
-    if (numMembers == 2){ //near
+    numMembers = args->numMembers();
+    TRI_ASSERT(numMembers >= 3);
+
+    _lat = args->getMember(1)->getDoubleValue();
+    _lon = args->getMember(2)->getDoubleValue();
+
+    if (numMembers == 3) { 
+      // NEAR
       _near = true;
-    } else { //within
+    } else {
+      // WITHIN
+      TRI_ASSERT(numMembers == 5);
       _near = false;
-      _withinRange = _condition->getMember(2)->getMember(1)->getDoubleValue();
-      _withinLessEq = _condition->getMember(3)->getMember(1)->getDoubleValue();
+      _radius = args->getMember(3)->getDoubleValue();
+      _inclusive = args->getMember(4)->getBoolValue();
     }
-
   } else {
-    LOG(ERR) << "No Condition passed to GeoIndexIterator constructor";
+    LOG(ERR) << "No condition passed to GeoIndexIterator constructor";
   }
-
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "EXIT evaluate Condition";
 }
 
 IndexLookupResult GeoIndexIterator::next() {
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER next";
-  if (!_cursor){
-    createCursor(_lat,_lon);
+  if (!_cursor) {
+    createCursor(_lat, _lon);
   }
 
-  auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(_cursor,1));
-  if(coords && coords->length){
-    if(_near || GeoIndex_distance(&_coor, &coords->coordinates[0]) <= _withinRange ){
+  auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(_cursor, 1));
+  if (coords && coords->length) {
+    if (  _near
+       || (!_inclusive && coords->distances[0] < _radius)
+       || ( _inclusive && coords->distances[0] <= _radius)
+       )
+    {
       auto revision = ::GeoIndex::toRevision(coords->coordinates[0].data);
       return IndexLookupResult{revision};
     }
@@ -98,46 +108,72 @@ IndexLookupResult GeoIndexIterator::next() {
 }
 
 void GeoIndexIterator::nextBabies(std::vector<IndexLookupResult>& result, size_t batchSize) {
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "ENTER nextBabies " << batchSize;
-  if (!_cursor){
-    createCursor(_lat,_lon);
+  if (!_cursor) { 
+    createCursor(_lat, _lon);
+    
+    if (!_cursor) {
+      // actually validate that we got a valid cursor
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
   }
 
+  TRI_ASSERT(_cursor != nullptr);
+
   result.clear();
+
+  if (_done) {
+    // we already know that no further results will be returned by the index
+    return;
+  }
+
   if (batchSize > 0) {
-    auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(_cursor,batchSize));
-    size_t length = coords ? coords->length : 0;
-    //LOG_TOPIC(DEBUG, Logger::DEVEL) << "length " << length;
-    if (!length){
+    auto coords = std::unique_ptr<GeoCoordinates>(::GeoIndex_ReadCursor(_cursor, batchSize));
+
+    size_t const length = coords ? coords->length : 0;
+    if (!length) {
       return;
     }
 
-
-    for(std::size_t index = 0; index < length; ++index){
-      //LOG_TOPIC(DEBUG, Logger::DEVEL) << "near " << _near << " max allowed range: " << _withinRange
-      //                                                    << " actual range: "  << GeoIndex_distance(&_coor, &coords->coordinates[index]) ;
-      if (_near || GeoIndex_distance(&_coor, &coords->coordinates[index]) <= _withinRange ){
-        //LOG_TOPIC(DEBUG, Logger::DEVEL) << "add above to result" ;
-        result.emplace_back(IndexLookupResult(::GeoIndex::toRevision(coords->coordinates[index].data)));
-      } else {
-        break;
+    // determine which documents to return...
+    size_t numDocs = length;
+    if (!_near) {
+      // WITHIN
+      // only return those documents that are within the specified radius
+      TRI_ASSERT(numDocs > 0);
+      // scan backwards because documents with higher distances are more interesting
+      // this can be improved to use a binary search if block size is increased in the future
+      while ((_inclusive && coords->distances[numDocs - 1] > _radius) ||
+            (!_inclusive && coords->distances[numDocs - 1] >= _radius)) {
+        // document is outside the specified radius!
+        --numDocs;
+        if (numDocs == 0) {
+          break;
+        }
       }
     }
+      
+    for (size_t i = 0; i < numDocs; ++i) {
+      result.emplace_back(IndexLookupResult(::GeoIndex::toRevision(coords->coordinates[i].data)));
+    }
   }
-  //LOG_TOPIC(DEBUG, Logger::DEVEL) << "EXIT nextBabies " << result.size();
+
+  if (result.size() < batchSize) {
+    // already done
+    _done = true;
+  }
 }
 
-::GeoCursor* GeoIndexIterator::replaceCursor(::GeoCursor* c){
-  if(_cursor){
+void GeoIndexIterator::replaceCursor(::GeoCursor* c) {
+  if (_cursor) {
     ::GeoIndex_CursorFree(_cursor);
   }
- _cursor = c;
- return _cursor;
+  _cursor = c;
+  _done = false;
 }
 
-::GeoCursor* GeoIndexIterator::createCursor(double lat, double lon){
+void GeoIndexIterator::createCursor(double lat, double lon) {
   _coor = GeoCoordinate{lat, lon, 0};
-  return replaceCursor(::GeoIndex_NewCursor(_index->_geoIndex, &_coor));
+  replaceCursor(::GeoIndex_NewCursor(_index->_geoIndex, &_coor));
 }
 
 /// @brief creates an IndexIterator for the given Condition
@@ -151,7 +187,6 @@ IndexIterator* GeoIndex::iteratorForCondition(
   }
   return new GeoIndexIterator(_collection, trx, mmdr, this, node, reference);
 }
-
 
 void GeoIndexIterator::reset() {
   replaceCursor(nullptr);

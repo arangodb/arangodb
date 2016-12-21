@@ -30,6 +30,8 @@
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 
+#include <chrono>
+
 namespace arangodb {
 namespace consensus {
 
@@ -104,9 +106,6 @@ class Supervision : public arangodb::Thread {
 
   /// @brief Begin thread shutdown
   void beginShutdown() override final;
-
-  /// @brief Wake up to task
-  void wakeUp();
 
   /// @brief Upgrade agency
   void upgradeAgency();
@@ -183,6 +182,7 @@ class Supervision : public arangodb::Thread {
   std::string serverHealth(std::string const&);
 
   static std::string _agencyPrefix;
+
 };
 
 inline std::string timepointToString(Supervision::TimePoint const& t) {

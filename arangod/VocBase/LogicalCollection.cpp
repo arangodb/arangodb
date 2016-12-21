@@ -539,6 +539,10 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       }
     }
   }
+  
+  if (_indexes.empty()) {
+    createInitialIndexes();
+  }
 
   auto indexesSlice = info.get("indexes");
   if (indexesSlice.isArray()) {
@@ -553,6 +557,11 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
 
       auto idx = PrepareIndexFromSlice(v, false, this, true);
 
+      if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX || 
+          idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
+        continue;
+      }
+
       if (isCluster) {
         addIndexCoordinator(idx, false);
       } else {
@@ -560,10 +569,15 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       }
     }
   }
-
-  if (_indexes.empty()) {
-    createInitialIndexes();
+  
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+    LOG(ERR) << "got invalid indexes for collection '" << _name << "'";
+    for (auto const& it : _indexes) {
+      LOG(ERR) << "- " << it.get();
+    }
   }
+#endif
 
   if (!ServerState::instance()->isCoordinator() && isPhysical) {
     // If we are not in the coordinator we need a path
@@ -881,6 +895,16 @@ LogicalCollection::getIndexes() const {
 // or it's indexes are freed the pointer returned will get invalidated.
 arangodb::PrimaryIndex* LogicalCollection::primaryIndex() const {
   TRI_ASSERT(!_indexes.empty());
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+    LOG(ERR) << "got invalid indexes for collection '" << _name << "'";
+    for (auto const& it : _indexes) {
+      LOG(ERR) << "- " << it.get();
+    }
+  }
+#endif
+
   TRI_ASSERT(_indexes[0]->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
   // the primary index must be the index at position #0
   return static_cast<arangodb::PrimaryIndex*>(_indexes[0].get());
@@ -1406,7 +1430,7 @@ int LogicalCollection::openWorker(bool ignoreErrors) {
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG(DEBUG) << "cannot open '" << _path << "', check failed";
-      return TRI_ERROR_INTERNAL;
+      return res;
     }
 
     LOG_TOPIC(TRACE, Logger::PERFORMANCE)

@@ -41,6 +41,7 @@
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
+#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::consensus;
@@ -173,8 +174,11 @@ void Constituent::followNoLock(term_t t) {
 }
 
 /// Become leader
-void Constituent::lead(term_t term,
-                       std::map<std::string, bool> const& votes) {
+void Constituent::lead(term_t term) {
+
+  // we need to rebuild spear_head and read_db
+  _agent->prepareLead();
+
   {
     MUTEX_LOCKER(guard, _castLock);
 
@@ -198,20 +202,9 @@ void Constituent::lead(term_t term,
     _leaderID = _id;
   }
 
-  // give some debug output _id never is changed after
-  if (!votes.empty()) {
-    std::stringstream ss;
-    ss << _id << ": Converted to leader in term " << _term << " with votes: ";
-
-    for (auto const& vote : votes) {
-      ss << vote.second << " ";
-    }
-
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
-  }
-
-  // we need to rebuild spear_head and read_db;
+  // we need to start work as leader
   _agent->lead();
+  
 }
 
 /// Become candidate
@@ -369,17 +362,19 @@ bool Constituent::vote(term_t termOfPeer, std::string id, index_t prevLogIndex,
 
 /// @brief Call to election
 void Constituent::callElection() {
-  std::map<std::string, bool> votes;
-  std::vector<std::string> active =
-      _agent->config().active();  // Get copy of active
 
-  votes[_id] = true;  // vote for myself
-
+  using namespace std::chrono;
+  auto timeout = steady_clock::now() +
+    duration<double>(_agent->config().minPing());
+  
+  std::vector<std::string> active = _agent->config().active();
+  CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
+  
   term_t savedTerm;
   {
     MUTEX_LOCKER(locker, _castLock);
     this->termNoLock(_term + 1);  // raise my term
-    _cast = true;
+    _cast     = true;
     _votedFor = _id;
     savedTerm = _term;
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to NO_LEADER"
@@ -395,78 +390,81 @@ void Constituent::callElection() {
        << "&candidateId=" << _id << "&prevLogIndex=" << _agent->lastLog().index
        << "&prevLogTerm=" << _agent->lastLog().term;
 
-  double minPing = _agent->config().minPing();
-
-  double respTimeout = 0.9 * minPing;
-  double initTimeout = 0.5 * minPing;
-
   // Ask everyone for their vote
   for (auto const& i : active) {
     if (i != _id) {
       auto headerFields =
           std::make_unique<std::unordered_map<std::string, std::string>>();
       operationIDs[i] = ClusterComm::instance()->asyncRequest(
-        "1", 1, _agent->config().poolAt(i),
+        "", coordinatorTransactionID, _agent->config().poolAt(i),
         rest::RequestType::GET, path.str(),
         std::make_shared<std::string>(body), headerFields,
-        nullptr, respTimeout, true, initTimeout);
+        nullptr, 0.9 * _agent->config().minPing(), true);
     }
   }
 
-  // Wait randomized timeout
-  std::this_thread::sleep_for(sleepFor(initTimeout, respTimeout));
+  // Collect ballots. I vote for myself.
+  size_t yea = 1;
+  size_t nay = 0;
+  size_t majority = size() / 2 + 1;
+  
+  // We collect votes, we leave the following loop when one of the following
+  // conditions is met:
+  //   (1) A majority of nay votes have been received
+  //   (2) A majority of yea votes (including ourselves) have been received
+  //   (3) At least yyy time has passed, in this case we give up without
+  //       a conclusive vote.
+  while (true) {
 
-  // Collect votes
-  for (const auto& i : active) {
-    if (i != _id) {
-      ClusterCommResult res =
-          arangodb::ClusterComm::instance()->enquire(operationIDs[i]);
-      if (res.status == CL_COMM_SENT) {  // Request successfully sent
-        res = ClusterComm::instance()->wait("1", 1, operationIDs[i], "1");
-        std::shared_ptr<Builder> body = res.result->getBodyVelocyPack();
-        if (body->isEmpty()) {  // body empty
-          continue;
-        } else {
-          if (body->slice().isObject()) {  // body
-            VPackSlice slc = body->slice();
-            if (slc.hasKey("term") && slc.hasKey("voteGranted")) {  // OK
-              term_t t = slc.get("term").getUInt();
-              if (t > _term) {  // follow?
-                follow(t);
-                break;
-              }
-              votes[i] = slc.get("voteGranted").getBool();  // Get vote
-            }
-          }
+    if (steady_clock::now() >= timeout) {       // Timeout. 
+      follow(_term);        
+      break;
+    }
+    
+    auto res = ClusterComm::instance()->wait(
+      "", coordinatorTransactionID, 0, "",
+      duration<double>(steady_clock::now()-timeout).count());
+
+    if (res.status == CL_COMM_SENT) {
+      auto body = res.result->getBodyVelocyPack();
+      VPackSlice slc = body->slice();
+      
+      // Got ballot
+      if (slc.isObject() && slc.hasKey("term") && slc.hasKey("voteGranted")) {
+        
+        // Follow right away?
+        term_t t = slc.get("term").getUInt();
+        if (t > _term) {
+          follow(t);
+          break;
         }
-      } else {  // Request failed
-        votes[i] = false;
+        
+        // Check result and counts
+        if(slc.get("voteGranted").getBool()) { // majority in favour?
+          if (++yea >= majority) {
+            lead(savedTerm);
+            break;
+          }
+          // Vote is counted as yea, continue loop
+          continue;
+        }
       }
     }
-  }
-
-  // Count votes
-  size_t yea = 0;
-  for (auto const& i : votes) {
-    if (i.second) {
-      ++yea;
+    // Count the vote as a nay
+    if (++nay >= majority) {                  // Network: majority against?
+      follow(_term);
+      break;
     }
+
   }
 
-  {
-    MUTEX_LOCKER(locker, _castLock);
-    if (savedTerm != _term) {
-      followNoLock(_term);
-      return;
-    }
-  }
+  LOG_TOPIC(DEBUG, Logger::AGENCY)
+    << "Election: Have received " << yea << " yeas and " << nay << " nays, the "
+    << (yea >= majority ? "yeas" : "nays") << " have it.";
 
-  // Evaluate election results
-  if (yea > size() / 2) {
-    lead(savedTerm, votes);
-  } else {
-    follow(_term);
-  }
+  // Clean up
+  ClusterComm::instance()->drop("", coordinatorTransactionID, 0, "");
+  
 }
 
 void Constituent::update(std::string const& leaderID, term_t t) {
@@ -564,7 +562,7 @@ void Constituent::run() {
           // in the beginning, pure random
           if (_lastHeartbeatSeen > 0.0) {
             double now = TRI_microtime();
-            randWait -= static_cast<int64_t>(M * (now - _lastHeartbeatSeen));
+            randWait += static_cast<int64_t>(M * (now-_lastHeartbeatSeen));
           }
         }
        

@@ -106,7 +106,7 @@ const Router = module.exports =
         [['path', 'string'], ...repeat(Math.max(1, args.length - 2), ['handler', 'function']), ['name', 'string']],
         [['path', 'string'], ...repeat(Math.max(1, args.length - 1), ['handler', 'function'])],
         [...repeat(Math.max(1, args.length - 1), ['handler', 'function']), ['name', 'string']],
-        repeat(Math.max(1, args.length - 1), ['handler', 'function'])
+        repeat(Math.max(1, args.length), ['handler', 'function'])
       );
       const path = argv.path;
       const handler = argv.handler;
@@ -130,7 +130,7 @@ ALL_METHODS.forEach(function (method) {
       [['path', 'string'], ...repeat(Math.max(1, args.length - 2), ['handler', 'function']), ['name', 'string']],
       [['path', 'string'], ...repeat(Math.max(1, args.length - 1), ['handler', 'function'])],
       [...repeat(Math.max(1, args.length - 1), ['handler', 'function']), ['name', 'string']],
-      repeat(Math.max(1, args.length - 1), ['handler', 'function'])
+      repeat(Math.max(1, args.length), ['handler', 'function'])
     );
     const path = argv.path;
     const handler = argv.handler;

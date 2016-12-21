@@ -70,6 +70,7 @@ class Expression {
   /// @brief replace the root node
   inline void replaceNode (AstNode* node) {
     _node = node;
+    invalidate();
   }
 
   /// @brief get the underlying AST node

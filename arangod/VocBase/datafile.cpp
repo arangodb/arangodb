@@ -487,6 +487,14 @@ void TRI_datafile_t::dontNeed() {
   TRI_MMFileAdvise(_data, _maximalSize, TRI_MADVISE_DONTNEED);
 }
 
+bool TRI_datafile_t::readOnly() {
+  return (TRI_ProtectMMFile(_data, _maximalSize, PROT_READ, _fd) == TRI_ERROR_NO_ERROR);
+}
+
+bool TRI_datafile_t::readWrite() {
+  return (TRI_ProtectMMFile(_data, _maximalSize, PROT_READ | PROT_WRITE, _fd) == TRI_ERROR_NO_ERROR);
+}
+
 int TRI_datafile_t::lockInMemory() {
   TRI_ASSERT(!_lockedInMemory);
   int res = TRI_MMFileLock(_data, _initSize);
@@ -788,7 +796,10 @@ int TRI_datafile_t::seal() {
   // everything is now synced
   _synced = _written;
 
-  TRI_ProtectMMFile(_data, _maximalSize, PROT_READ, _fd);
+  // intentionally ignore return value of protection here because this call
+  // would only restrict further file accesses (which is not required
+  // for ArangoDB to work) 
+  readOnly();
 
   // seal datafile
   if (ok) {
@@ -817,16 +828,13 @@ int TRI_datafile_t::truncate(std::string const& path, TRI_voc_size_t position) {
   // this function must not be called for non-physical datafiles
   TRI_ASSERT(!path.empty());
 
-  TRI_datafile_t* datafile = TRI_datafile_t::openHelper(path, true);
+  std::unique_ptr<TRI_datafile_t> datafile(TRI_datafile_t::openHelper(path, true));
 
   if (datafile == nullptr) {
     return TRI_ERROR_ARANGO_DATAFILE_UNREADABLE;
   }
 
-  int res = datafile->truncateAndSeal(position);
-  delete datafile;
-
-  return res;
+  return datafile->truncateAndSeal(position);
 }
 
 /// @brief try to repair a datafile
@@ -841,12 +849,12 @@ bool TRI_datafile_t::tryRepair(std::string const& path) {
   }
 
   // set to read/write access
-  TRI_ProtectMMFile(datafile->_data, datafile->maximalSize(),
-                    PROT_READ | PROT_WRITE, datafile->fd());
+  if (!datafile->readWrite()) {
+    LOG(ERR) << "unable to change file protection for datafile '" << datafile->getName() << "'";
+    return false;
+  }
 
-  bool result = datafile->tryRepair();
-
-  return result;
+  return datafile->tryRepair();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1169,6 +1177,7 @@ int TRI_datafile_t::truncateAndSeal(TRI_voc_size_t position) {
 bool TRI_datafile_t::check(bool ignoreFailures) {
   // this function must not be called for non-physical datafiles
   TRI_ASSERT(isPhysical());
+  LOG(TRACE) << "checking markers in datafile '" << getName() << "'";
 
   char const* ptr = _data;
   char const* end = _data + _currentSize;
@@ -1316,35 +1325,37 @@ bool TRI_datafile_t::check(bool ignoreFailures) {
           }
         }
 
-        if (ignoreFailures) {
-          return fix(currentSize);
+        if (!ignoreFailures) {
+          _lastError = TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
+          _currentSize = currentSize;
+          _next = _data + _currentSize;
+          _state = TRI_DF_STATE_OPEN_ERROR;
+
+          LOG(WARN) << "crc mismatch found in datafile '" << getName() << "' of size "
+                    << _maximalSize << ", at position " << currentSize;
+
+          LOG(WARN) << "crc mismatch found inside marker of type '" << TRI_NameMarkerDatafile(marker) 
+                    << "' and size " << size
+                    << ". expected crc: " << CalculateCrcValue(marker) << ", actual crc: " << marker->getCrc();
+
+          if (lastGood != nullptr) {
+            LOG(INFO) << "last good marker found at: " << hexValue(static_cast<uint64_t>(static_cast<uintptr_t>(lastGood - _data)));
+          }
+          printMarker(marker, size, _data, end); 
+
+          if (nextMarkerOk) {
+            LOG(INFO) << "data directly following this marker looks ok so repairing the marker manually may recover it...";
+            LOG(INFO) << "to truncate the file at this marker, please restart the server with the parameter '--wal.ignore-logfile-errors true' if the error happening during WAL recovery, or with parameter '--database.ignore-datafile-errors true' if it happened after WAL recovery";
+          } else {
+            LOG(WARN) << "data directly following this marker cannot be analyzed";
+          }
+
+          return false;
         }
-         
-        _lastError = TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
-        _currentSize = currentSize;
-        _next = _data + _currentSize;
-        _state = TRI_DF_STATE_OPEN_ERROR;
-
-        LOG(WARN) << "crc mismatch found in datafile '" << getName() << "' of size "
-                  << _maximalSize << ", at position " << currentSize;
-
-        LOG(WARN) << "crc mismatch found inside marker of type '" << TRI_NameMarkerDatafile(marker) 
-                  << "' and size " << size
-                  << ". expected crc: " << CalculateCrcValue(marker) << ", actual crc: " << marker->getCrc();
-
-        if (lastGood != nullptr) {
-          LOG(INFO) << "last good marker found at: " << hexValue(static_cast<uint64_t>(static_cast<uintptr_t>(lastGood - _data)));
-        }
-        printMarker(marker, size, _data, end); 
-
-        if (nextMarkerOk) {
-          LOG(INFO) << "data directly following this marker looks ok so repairing the marker may recover it";
-          LOG(INFO) << "please restart the server with the parameter '--wal.ignore-logfile-errors true' to repair the marker";
-        } else {
-          LOG(WARN) << "data directly following this marker cannot be analyzed";
-        }
-
-        return false;
+       
+        // ignore failures...   
+        // truncate
+        return fix(currentSize);
       }
     }
 
@@ -1715,9 +1726,12 @@ TRI_datafile_t* TRI_datafile_t::open(std::string const& filename, bool ignoreFai
 
   // change to read-write if no footer has been found
   if (!datafile->_isSealed) {
-    datafile->_state = TRI_DF_STATE_WRITE;
-    TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ | PROT_WRITE, datafile->_fd);
-  }
+    if (!datafile->readWrite()) {
+      LOG(ERR) << "unable to change file protection for datafile '" << datafile->getName() << "'. please check file permissions and mount options.";
+      return nullptr;
+    }
+    datafile->_state = TRI_DF_STATE_WRITE; 
+  } 
 
   // Advise on sequential use:
   datafile->sequentialAccess();

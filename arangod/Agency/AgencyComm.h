@@ -522,6 +522,8 @@ class AgencyComm {
 
   bool unregisterCallback(std::string const& key, std::string const& endpoint);
 
+  void updateEndpoints(arangodb::velocypack::Slice const&);
+
   bool lockRead(std::string const&, double, double);
 
   bool lockWrite(std::string const&, double, double);

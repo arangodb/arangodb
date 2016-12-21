@@ -169,9 +169,10 @@ void HeartbeatThread::runDBServer() {
   // we check Current/Version every few heartbeats:
   int const currentCountStart = 1;  // set to 1 by Max to speed up discovery
   int currentCount = currentCountStart;
-//  size_t hearbeats = 0;
+
 
   while (!isStopping()) {
+
     try {
       LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sending heartbeat to agency";
 
@@ -191,16 +192,28 @@ void HeartbeatThread::runDBServer() {
         LOG_TOPIC(TRACE, Logger::HEARTBEAT)
             << "Looking at Sync/Commands/" + _myId;
 
-        AgencyReadTransaction trx(std::vector<std::string>(
-            {AgencyCommManager::path("Shutdown"),
-             AgencyCommManager::path("Current/Version"),
-             AgencyCommManager::path("Sync/Commands", _myId)}));
-
+        AgencyReadTransaction trx(
+          std::vector<std::string>({
+              AgencyCommManager::path("Shutdown"),
+                AgencyCommManager::path("Current/Version"),
+                AgencyCommManager::path("Sync/Commands", _myId),
+                "/.agency"}));
+        
         AgencyCommResult result = _agency.sendTransactionWithFailover(trx, 1.0);
         if (!result.successful()) {
           LOG_TOPIC(WARN, Logger::HEARTBEAT)
               << "Heartbeat: Could not read from agency!";
         } else {
+
+          VPackSlice agentPool =
+            result.slice()[0].get(
+              std::vector<std::string>({".agency","pool"}));
+          if (agentPool.isObject()) {
+            _agency.updateEndpoints(agentPool);
+          } else {
+            LOG(ERR) << "Cannot find an agency poersisted in RAFT 8|";
+          }
+          
           VPackSlice shutdownSlice =
               result.slice()[0].get(std::vector<std::string>(
                   {AgencyCommManager::path(), "Shutdown"}));

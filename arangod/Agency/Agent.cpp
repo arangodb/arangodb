@@ -312,7 +312,7 @@ void Agent::sendAppendEntriesRPC() {
   
   for (auto const& followerId : _config.active()) {
 
-    if (followerId != myid) {
+    if (followerId != myid && leading()) {
 
       term_t t(0);
 
@@ -370,6 +370,11 @@ void Agent::sendAppendEntriesRPC() {
           << highest << " to follower " << followerId;
       }
 
+      // Really leading?
+      if (challengeLeadership()) {
+        _constituent.candidate();
+      }
+      
       // Send request
       auto headerFields =
         std::make_unique<std::unordered_map<std::string, std::string>>();
@@ -705,16 +710,11 @@ void Agent::run() {
     // Leader working only
     if (leading()) {
 
-      // Really leading?
-      if (challengeLeadership()) {
-        _constituent.candidate();
-      }
+      // Append entries to followers
+      sendAppendEntriesRPC();
 
       // Don't panic
       _appendCV.wait(1000);
-
-      // Append entries to followers
-      sendAppendEntriesRPC();
 
       // Detect faulty agent and replace
       // if possible and only if not already activating
@@ -862,10 +862,25 @@ void Agent::beginShutdown() {
   }
 }
 
-/// Becoming leader
-bool Agent::lead() {
+
+void Agent::prepareLead() {
+
   // Key value stores
   rebuildDBs();
+  
+  // Reset last acknowledged
+  {
+    MUTEX_LOCKER(mutexLocker, _ioLock);
+    for (auto const& i : _config.active()) {
+      _lastAcked[i] = system_clock::now();
+    }
+    _leaderSince = system_clock::now();
+  }
+
+}
+
+/// Becoming leader
+void Agent::lead() {
 
   // Wake up run
   {
@@ -873,17 +888,12 @@ bool Agent::lead() {
     guard.broadcast();
   }
 
+  // Agency configuration
   term_t myterm;
-  // Reset last acknowledged
   {
     MUTEX_LOCKER(mutexLocker, _ioLock);
-    for (auto const& i : _config.active()) {
-      _lastAcked[i] = system_clock::now();
-    }
     myterm = _constituent.term();
   }
-
-  // Agency configuration
   auto agency = std::make_shared<Builder>();
   agency->openArray();
   agency->openArray();
@@ -899,13 +909,14 @@ bool Agent::lead() {
   agency->close();
   write(agency);
 
-  // Wake up supervision
-  _supervision.wakeUp();
-
   // Notify inactive pool
   notifyInactive();
 
-  return true;
+}
+
+// When did we take on leader ship?
+TimePoint const& Agent::leaderSince() const {
+  return _leaderSince;
 }
 
 // Notify inactive pool members of configuration change()

@@ -59,17 +59,6 @@ Supervision::Supervision()
 
 Supervision::~Supervision() { shutdown(); };
 
-void Supervision::wakeUp() {
-  {
-    MUTEX_LOCKER(locker, _lock);
-    updateSnapshot();
-    upgradeAgency();
-  }
-    
-  CONDITION_LOCKER(guard, _cv);
-  _cv.signal();
-}
-
 static std::string const syncPrefix = "/Sync/ServerStates/";
 static std::string const healthPrefix = "/Supervision/Health/";
 static std::string const planDBServersPrefix = "/Plan/DBServers";
@@ -208,7 +197,12 @@ std::vector<check_t> Supervision::checkDBServers() {
           std::chrono::system_clock::now() -
           stringToTimepoint(lastHeartbeatAcked));
 
-      if (t.count() > _gracePeriod) {  // Failure
+      auto secondsSinceLeader = std::chrono::duration<double>(
+        std::chrono::system_clock::now() - _agent->leaderSince()).count();
+
+      // Failed servers are considered only after having taken on leadership
+      // for at least grace period
+      if (t.count() > _gracePeriod && secondsSinceLeader > _gracePeriod) {
         if (lastStatus == "BAD") {
           report->add("Status", VPackValue("FAILED"));
           FailedServer fsj(_snapshot, _agent, std::to_string(_jobId++),
@@ -441,6 +435,12 @@ void Supervision::run() {
     }
 
     while (!this->isStopping()) {
+
+      // Get bunch of job IDs from agency for future jobs
+      if (_jobId == 0 || _jobId == _jobIdMax) {
+        getUniqueIds();  // cannot fail but only hang
+      }
+
       {
         MUTEX_LOCKER(locker, _lock);
 
@@ -448,6 +448,7 @@ void Supervision::run() {
         // mop: always do health checks so shutdown is able to detect if a server
         // failed otherwise
         if (_agent->leading()) {
+          upgradeAgency();
           doChecks();
         }
 
@@ -542,11 +543,6 @@ void Supervision::handleShutdown() {
 
 // Guarded by caller 
 bool Supervision::handleJobs() {
-  // Get bunch of job IDs from agency for future jobs
-  if (_jobId == 0 || _jobId == _jobIdMax) {
-    getUniqueIds();  // cannot fail but only hang
-  }
-
   // Do supervision
   
   shrinkCluster();
@@ -882,10 +878,9 @@ void Supervision::getUniqueIds() {
   // is initialized by some other server...
   while (!this->isStopping()) {
     try {
-      latestId = std::stoul(_agent->readDB()
-                                .get(_agencyPrefix + "/Sync/LatestID")
-                                .slice()
-                                .toJson());
+      MUTEX_LOCKER(locker, _lock);
+      latestId = std::stoul(
+        _agent->readDB().get(_agencyPrefix + "/Sync/LatestID").slice().toJson());
     } catch (...) {
       std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;

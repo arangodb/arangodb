@@ -1180,6 +1180,22 @@ bool AgencyComm::unlock(std::string const& key, VPackSlice const& slice,
   return false;
 }
 
+
+void AgencyComm::updateEndpoints(arangodb::velocypack::Slice const& current) {
+
+  auto stored = AgencyCommManager::MANAGER->endpoints();
+  for (const auto& i : VPackObjectIterator(current)) {
+    auto const endpoint = Endpoint::unifiedForm(i.value.copyString());
+    if (std::find(stored.begin(), stored.end(), endpoint) == stored.end()) {
+      LOG_TOPIC(INFO, Logger::CLUSTER) << "Adding endpoint "
+                                       << endpoint << " to agent pool";
+      AgencyCommManager::MANAGER->addEndpoint(endpoint);
+    }
+  }
+  
+}
+
+
 AgencyCommResult AgencyComm::sendWithFailover(
     arangodb::rest::RequestType method, double const timeout,
     std::string const& initialUrl, std::string const& body) {
