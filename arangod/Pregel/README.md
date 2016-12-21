@@ -59,3 +59,7 @@ cat edges.csv | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | awk '!seen[$0]++' > v
 Make CSV file with arango compatible edges
 
 cat edges.csv | awk -F" " '{print "profiles/" $1 "\tprofiles/" $2 "\t" $1}' >> edges.csv
+
+
+arangoimp --file twitter-vertices.csv --type csv --collection twitter_v --overwrite true --convert false --server.endpoint http+tcp://127.0.0.1:8530
+arangoimp --file arango-twitter-edges.csv --type csv --collection twitter_e --overwrite true --convert false --separator "\t" --server.endpoint http+tcp://127.0.0.1:8530

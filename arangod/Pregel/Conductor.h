@@ -66,7 +66,7 @@ class Conductor {
   std::unique_ptr<AggregatorHandler> _aggregators;
   std::unique_ptr<MasterContext> _masterContext;
   /// some tracking info
-  double _startTimeSecs = 0, _endTimeSecs = 0;
+  double _startTimeSecs = 0, _computationStartTimeSecs, _endTimeSecs = 0;
   uint64_t _globalSuperstep = 0;
   /// tracks the servers which responded, only used for stages where we expect an
   /// unique response, not necessarily during the async mode

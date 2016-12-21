@@ -171,6 +171,7 @@ void Conductor::finishedWorkerStartup(VPackSlice& data) {
     return;
   }
 
+  _computationStartTimeSecs = TRI_microtime();
   if (_startGlobalStep()) {
     // listens for changing primary DBServers on each collection shard
     RecoveryManager* mngr = PregelFeature::instance()->recoveryManager();
@@ -479,7 +480,7 @@ int Conductor::_initializeWorkers(std::string const& suffix,
 }
 
 int Conductor::_finalizeWorkers() {
-  _endTimeSecs = TRI_microtime();
+  double now = TRI_microtime();
   bool storeResults = _state == ExecutionState::DONE;
   if (_masterContext) {
     _masterContext->postApplication();
@@ -496,7 +497,9 @@ int Conductor::_finalizeWorkers() {
   b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
   b.add(Utils::storeResultsKey, VPackValue(storeResults));
   b.close();
+  LOG(INFO) << "Finalizing workers";
   int res = _sendToAllDBServers(Utils::finalizeExecutionPath, b.slice());
+  _endTimeSecs = TRI_microtime();
 
   b.clear();
   b.openObject();
@@ -504,7 +507,9 @@ int Conductor::_finalizeWorkers() {
   b.close();
   
   LOG(INFO) << "Done. We did " << _globalSuperstep << " rounds";
-  LOG(INFO) << "Total Runtime: " << totalRuntimeSecs() << "s";
+  LOG(INFO) << "Startup Time: " << _computationStartTimeSecs - _startTimeSecs << "s";
+  LOG(INFO) << "Computation Time: " << now - _computationStartTimeSecs << "s";
+  LOG(INFO) << "Total: " << totalRuntimeSecs() << "s";
   LOG(INFO) << "Stats: " << b.toString();
   return res;
 }

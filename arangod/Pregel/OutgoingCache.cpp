@@ -238,8 +238,8 @@ void CombiningOutCache<M>::flushMessages() {
     requests.emplace_back("shard:" + shardId, rest::RequestType::POST,
                           this->_baseUrl + Utils::messagesPath, body);
 
-    LOG(INFO) << "Worker: Sending data to other Shard: " << shardId
-              << ". Message: " << package.toJson();
+    LOG(INFO) << "Worker: Sending data to other Shard: " << shardId;
+    //          << ". Message: " << package.toJson();
   }
   size_t nrDone = 0;
   ClusterComm::instance()->performRequests(requests, 180, nrDone,

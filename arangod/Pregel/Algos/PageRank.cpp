@@ -113,8 +113,6 @@ PageRankAlgorithm::createComputation(uint64_t gss) const {
 
 struct PRCompensation : public VertexCompensation<float, float, float> {
   
-  
-  
   PRCompensation() {}
   void compensate(bool inLostPartition) override {
     

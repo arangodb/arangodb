@@ -187,7 +187,6 @@ MessageIterator<M> CombiningInCache<M>::getMessages(prgl_shard_t shard,
   HMap const& vertexMap(_shardMap[shard]);
   auto vmsg = vertexMap.find(key);
   if (vmsg != vertexMap.end()) {
-    LOG(INFO) << "Got a message for " << key;
     return MessageIterator<M>(&vmsg->second);
   } else {
     return MessageIterator<M>();

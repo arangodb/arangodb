@@ -136,15 +136,6 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data, VPackBuilder &response)
         _expectedGSS, data.toJson().c_str());
   }
   
-  // respons with info which allows the conductor to decide whether 
-  // to start the next GSS or end the execution
-  response.openObject();
-  response.add(Utils::activeCountKey, VPackValue(_superstepStats.activeCount));
-  response.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
-  _workerAggregators->serializeValues(response);
-  response.close();
-  response.close();
-
   // make us ready to receive messages
   _config._globalSuperstep = gss;
   // write cache becomes the readable cache
@@ -161,6 +152,17 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data, VPackBuilder &response)
     std::swap(_readCache, _writeCache);
     _config._localSuperstep = gss;
   }
+  
+  // responds with info which allows the conductor to decide whether
+  // to start the next GSS or end the execution
+  response.openObject();
+  response.add(Utils::activeCountKey, VPackValue(_superstepStats.activeCount));
+  response.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
+  _workerAggregators->serializeValues(response);
+  response.close();
+  response.close();
+  
+  LOG(INFO) << "Worker sent a response";
 }
 
 template <typename V, typename E, typename M>
@@ -255,7 +257,7 @@ void Worker<V, E, M>::_startProcessing() {
     i++;
   } while (start != total);
   if (i != total / delta) {
-    LOG(ERR) << "FFFFFUUUUU";
+    LOG(ERR) << "What a terrible failure";
   }
 }
 
@@ -356,33 +358,37 @@ void Worker<V, E, M>::_processVertices(
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_finishedProcessing(AggregatorHandler* threadAggregators,
                                           WorkerStats const& threadStats) {
-  MUTEX_LOCKER(guard, _threadMutex);  // only one thread at a time
   
-  // merge the thread local stats and aggregators
-  _workerAggregators->aggregateValues(*threadAggregators);
-  _superstepStats.accumulate(threadStats);
-  _runningThreads--;
-  if (_runningThreads > 0) {// should work like a join operation
-    return;// there are still threads running
+  {// only one thread at a time
+    MUTEX_LOCKER(guard, _threadMutex);
+    // merge the thread local stats and aggregators
+    _workerAggregators->aggregateValues(*threadAggregators);
+    _superstepStats.accumulate(threadStats);
+    _runningThreads--;
+    if (_runningThreads > 0) {// should work like a join operation
+      return;// there are still threads running
+    }
   }
-  // only locak this after there are no more processing threads
-  MUTEX_LOCKER(guard2, _commandMutex);
-  _state = WorkerState::IDLE;
   
-  // ==================== Track statistics =================================
-  // the stats we want to keep should be final. At this point we can only be
-  // sure of the
-  // messages we have received in total from the last superstep, and the
-  // messages we have send in
-  // the current superstep. Other workers are likely not finished yet, and might
-  // still send stuff
-  _superstepStats.receivedCount = _readCache->receivedMessageCount();
-  _readCache->clear();  // no need to keep old messages around
-  _expectedGSS = _config._globalSuperstep + 1;
-  _config._localSuperstep++;
-  // don't forget to reset before the superstep
-  if (_config.asynchronousMode()) {
-    _continueAsync();
+  {// only locak this after there are no more processing threads
+    MUTEX_LOCKER(guard, _commandMutex);
+    _state = WorkerState::IDLE;
+    
+    // ==================== Track statistics =================================
+    // the stats we want to keep should be final. At this point we can only be
+    // sure of the
+    // messages we have received in total from the last superstep, and the
+    // messages we have send in
+    // the current superstep. Other workers are likely not finished yet, and might
+    // still send stuff
+    _superstepStats.receivedCount = _readCache->receivedMessageCount();
+    _readCache->clear();  // no need to keep old messages around
+    _expectedGSS = _config._globalSuperstep + 1;
+    _config._localSuperstep++;
+    // don't forget to reset before the superstep
+    if (_config.asynchronousMode()) {
+      _continueAsync();
+    }
   }
 
   // notify the conductor that we are done.
