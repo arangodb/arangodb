@@ -874,6 +874,7 @@ void Agent::prepareLead() {
     for (auto const& i : _config.active()) {
       _lastAcked[i] = system_clock::now();
     }
+    _leaderSince = system_clock::now();
   }
 
 }
@@ -911,6 +912,11 @@ void Agent::lead() {
   // Notify inactive pool
   notifyInactive();
 
+}
+
+// When did we take on leader ship?
+TimePoint const& Agent::leaderSince() const {
+  return _leaderSince;
 }
 
 // Notify inactive pool members of configuration change()

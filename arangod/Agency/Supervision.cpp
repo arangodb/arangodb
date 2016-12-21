@@ -197,7 +197,12 @@ std::vector<check_t> Supervision::checkDBServers() {
           std::chrono::system_clock::now() -
           stringToTimepoint(lastHeartbeatAcked));
 
-      if (t.count() > _gracePeriod) {  // Failure
+      auto secondsSinceLeader = std::chrono::duration<double>(
+        std::chrono::system_clock::now() - _agent->leaderSince()).count();
+
+      // Failed servers are considered only after having taken on leadership
+      // for at least grace period
+      if (t.count() > _gracePeriod && secondsSinceLeader > _gracePeriod) {
         if (lastStatus == "BAD") {
           report->add("Status", VPackValue("FAILED"));
           FailedServer fsj(_snapshot, _agent, std::to_string(_jobId++),
