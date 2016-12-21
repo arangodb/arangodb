@@ -65,6 +65,12 @@ main(){
   echo "work in LogicalCollection"
   addEvent logicalInsert insert@LogicalCollection.cpp
 
+  echo "work in HttpCommTask and GeneralCommTask"
+  addEvent processRequest processRequest@HttpCommTask.cpp
+  addEvent executeRequest executeRequest@GeneralCommTask.cpp
+  addEvent handleRequest handleRequest@GeneralCommTask.cpp
+  addEvent handleRequestDirectly handleRequestDirectly@GeneralCommTask.cpp
+
   echo Done.
 }
 
