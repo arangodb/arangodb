@@ -44,11 +44,18 @@ FOR doc IN alt_edges
 INSERT {_vertex:SUBSTRING(doc._from,FIND_FIRST(doc._from,"/")+1), 
 _from:doc._from,
 _to:doc._to} IN edges
-
-
-
   LET values = (
      FOR s IN vertices
       RETURN s.result
   )
   RETURN SUM(values)
+
+
+# AWK Scripts
+
+Make CSV file with ID’s unique
+cat edges.csv | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | awk '!seen[$0]++' > vertices.csv
+
+Make CSV file with arango compatible edges
+
+cat edges.csv | awk -F" " '{print "profiles/" $1 "\tprofiles/" $2 "\t" $1}' >> edges.csv

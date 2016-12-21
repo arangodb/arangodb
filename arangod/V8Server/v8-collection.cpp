@@ -1927,9 +1927,9 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                        "Cannot use pregel on system collection");
         }
         std::vector<std::string> eKeys = coll->shardKeys();
-        if (eKeys.size() != 1 || eKeys[0] != "_vertex") {
+        if (eKeys.size() != 1 || eKeys[0] != "vertex") {
           TRI_V8_THROW_EXCEPTION_USAGE(
-                                       "Edge collection needs to be sharded after '_vertex', or use "
+                                       "Edge collection needs to be sharded after 'vertex', or use "
                                        "smart graphs");
         }
         eColls.push_back(coll);

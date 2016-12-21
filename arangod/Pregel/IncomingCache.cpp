@@ -38,7 +38,7 @@ using namespace arangodb::pregel;
 
 template <typename M>
 void InCache<M>::parseMessages(VPackSlice incomingMessages) {
-  prgl_shard_t shard;
+  prgl_shard_t shard = 0;
   std::string key;
   VPackValueLength i = 0;
   for (VPackSlice current : VPackArrayIterator(incomingMessages)) {

@@ -20,9 +20,9 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "WorkerConfig.h"
-#include "Algorithm.h"
-#include "Utils.h"
+#include "Pregel/WorkerConfig.h"
+#include "Pregel/Algorithm.h"
+#include "Pregel/Utils.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
