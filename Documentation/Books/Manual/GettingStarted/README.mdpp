@@ -191,7 +191,7 @@ quote marks around the collection name.
 
 If you run above query, there will be an empty array as result because we did
 not specify what to return using a `RETURN` keyword. It is optional in
-modification queries, but mandatory in data access queries. Even with `RESULT`,
+modification queries, but mandatory in data access queries. Even with `RETURN`,
 the return value can still be an empty array, e.g. if the specified document
 was not found. Despite the empty result, the above query still created a new
 user document. You can verify this with the document browser.
