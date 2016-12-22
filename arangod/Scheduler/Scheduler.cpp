@@ -307,7 +307,7 @@ void Scheduler::rebalanceThreads() {
 
   if (working >= high) {
     if (_nrRunning < _nrMaximal + _nrBlocked &&
-        _nrRunning < _nrRealMaximal) {   // added by Max 22.12.2016
+        _nrRunning < _nrRealMaximum) {   // added by Max 22.12.2016
       // otherwise we exceed the total maximum
       startNewThread();
       return;
