@@ -217,7 +217,7 @@ void HeartbeatThread::runDBServer() {
           if (agentPool.isObject()) {
             _agency.updateEndpoints(agentPool);
           } else {
-            LOG(ERR) << "Cannot find an agency poersisted in RAFT 8|";
+            LOG(DEBUG) << "Cannot find an agency persisted in RAFT 8|";
           }
           
           VPackSlice shutdownSlice =
