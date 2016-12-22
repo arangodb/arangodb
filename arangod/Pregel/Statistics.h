@@ -32,29 +32,23 @@ namespace arangodb {
 namespace pregel {
 
 struct WorkerStats {
-  size_t activeCount = 0;
   size_t sendCount = 0;
   size_t receivedCount = 0;
   double superstepRuntimeSecs = 0;
 
   WorkerStats() {}
   WorkerStats(VPackSlice statValues) { accumulate(statValues); }
-  WorkerStats(size_t a, size_t s, size_t r)
-      : activeCount(a), sendCount(s), receivedCount(r) {}
+  WorkerStats(size_t s, size_t r)
+      : sendCount(s), receivedCount(r) {}
 
   void accumulate(WorkerStats const& other) {
-    activeCount += other.activeCount;
     sendCount += other.sendCount;
     receivedCount += other.receivedCount;
     superstepRuntimeSecs += other.superstepRuntimeSecs;
   }
 
   void accumulate(VPackSlice statValues) {
-    VPackSlice p = statValues.get(Utils::activeCountKey);
-    if (p.isInteger()) {
-      activeCount += p.getUInt();
-    }
-    p = statValues.get(Utils::sendCountKey);
+    VPackSlice p = statValues.get(Utils::sendCountKey);
     if (p.isInteger()) {
       sendCount += p.getUInt();
     }
@@ -69,29 +63,30 @@ struct WorkerStats {
   }
 
   void serializeValues(VPackBuilder& b) const {
-    b.add(Utils::activeCountKey, VPackValue(activeCount));
     b.add(Utils::sendCountKey, VPackValue(sendCount));
     b.add(Utils::receivedCountKey, VPackValue(receivedCount));
     b.add(Utils::superstepRuntimeKey, VPackValue(superstepRuntimeSecs));
   }
-
-  void reset() {
-    activeCount = 0;
+  
+  void resetTracking() {
     sendCount = 0;
     receivedCount = 0;
     superstepRuntimeSecs = 0;
   }
 
   bool allMessagesProcessed() { return sendCount == receivedCount; }
-
-  bool isDone() { return activeCount == 0 && sendCount == receivedCount; }
 };
 
 struct StatsManager {
   void accumulate(VPackSlice data) {
     VPackSlice sender = data.get(Utils::senderKey);
     if (sender.isString()) {
-      _serverStats[sender.copyString()].accumulate(data);
+      std::string server = sender.copyString();
+      _serverStats[server].accumulate(data);
+      VPackSlice active = data.get(Utils::activeCountKey);
+      if (active.isInteger()) {
+        _activeStats[server] += active.getUInt();
+      }
     }
   }
 
@@ -118,7 +113,7 @@ struct StatsManager {
     for (auto const& pair : _serverStats) {
       send += pair.second.sendCount;
       received += pair.second.receivedCount;
-      if (pair.second.activeCount > 0) {
+      if (_activeStats[pair.first] > 0) {
         return false;
       }
     }
@@ -126,8 +121,8 @@ struct StatsManager {
   }
 
   void resetActiveCount() {
-    for (auto& pair : _serverStats) {
-      pair.second.activeCount = 0;
+    for (auto& pair : _activeStats) {
+      pair.second = 0;
     }
   }
 
@@ -136,6 +131,7 @@ struct StatsManager {
   size_t clientCount() { return _serverStats.size(); }
 
  private:
+  std::map<std::string, uint64_t> _activeStats;
   std::map<std::string, WorkerStats> _serverStats;
 };
 }

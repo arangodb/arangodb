@@ -26,6 +26,7 @@
 #include <atomic>
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
+#include "Basics/ReadWriteLock.h"
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/Statistics.h"
@@ -77,17 +78,19 @@ class Worker : public IWorker {
 
   WorkerState _state = WorkerState::DEFAULT;
   WorkerConfig _config;
-  WorkerStats _workerStats;
   uint64_t _expectedGSS = 0;
   std::unique_ptr<Algorithm<V, E, M>> _algorithm;
   std::unique_ptr<WorkerContext> _workerContext;
-  mutable Mutex _commandMutex;  // locks callbak methods
-  mutable Mutex _threadMutex;   // locks _workerThreadDone
+  // locks modifying member vars
+  mutable Mutex _commandMutex;
+  // locks _workerThreadDone
+  mutable Mutex _threadMutex;
+  // locks swapping
+  mutable arangodb::basics::ReadWriteLock _cacheRWLock;
 
   // only valid while recovering to determine the offset
   // where new vertices were inserted
   size_t _preRecoveryTotal;
-  /// During async mode this should keep track of the send messages
 
   std::unique_ptr<AggregatorHandler> _conductorAggregators;
   std::unique_ptr<AggregatorHandler> _workerAggregators;
@@ -101,16 +104,20 @@ class Worker : public IWorker {
   InCache<M>* _writeCache = nullptr;
   // intended for the next superstep phase
   InCache<M>* _writeCacheNextGSS = nullptr;
+  /// During async mode this should keep track of the send messages
   std::atomic<uint64_t> _nextGSSSendMessageCount;
+  /// if the worker has started sendng messages to the next GSS
   std::atomic<bool> _requestedNextGSS;
 
   WorkerStats _superstepStats;
-  size_t _runningThreads;
+  uint64_t _activeCount = 0;
+  size_t _runningThreads = 0;
   void _initializeVertexContext(VertexContext<V, E, M>* ctx);
   void _startProcessing();
   void _processVertices(RangeIterator<VertexEntry>& vertexIterator);
   void _finishedProcessing(AggregatorHandler* threadAggregators,
-                           WorkerStats const& threadStats);
+                           WorkerStats const& threadStats,
+                           uint64_t activeCount);
   void _continueAsync();
   void _callConductor(std::string path, VPackSlice message);
 

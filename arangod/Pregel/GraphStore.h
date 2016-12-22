@@ -62,8 +62,8 @@ class GraphStore {
   std::vector<Edge<E>> _edges;
 
   std::set<ShardID> _loadedShards;
-  size_t _localVerticeCount;
-  size_t _localEdgeCount;
+  size_t _localVerticeCount = 0;
+  size_t _localEdgeCount = 0;
 
   void _createReadTransaction(WorkerConfig const& state);
   void _cleanupTransactions();

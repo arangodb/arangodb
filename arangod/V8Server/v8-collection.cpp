@@ -1987,7 +1987,7 @@ static void JS_PregelCancel(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   // check the arguments
   uint32_t const argLength = args.Length();
-  if (argLength != 1 || args[0]->IsNumber() || args[0]->IsString()) {
+  if (argLength != 1 || !(args[0]->IsNumber() || args[0]->IsString())) {
     // TODO extend this for named graphs, use the Graph class
     TRI_V8_THROW_EXCEPTION_USAGE("_pregelStatus(<executionNum>]");
   }

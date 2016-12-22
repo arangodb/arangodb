@@ -30,7 +30,9 @@
 #include "Pregel/VertexComputation.h"
 #include "Pregel/WorkerConfig.h"
 
+#include "Basics/ReadLocker.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/WriteLocker.h"
 #include "Basics/ThreadPool.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
@@ -41,6 +43,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+using namespace arangodb::basics;
 using namespace arangodb::pregel;
 
 template <typename V, typename E, typename M>
@@ -146,6 +149,7 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data,
   if (_config.asynchronousMode()) {
     TRI_ASSERT(_readCache->receivedMessageCount() == 0);
     TRI_ASSERT(_writeCache->receivedMessageCount() == 0);
+    WriteLocker<ReadWriteLock> guard(&_cacheRWLock);
     std::swap(_readCache, _writeCacheNextGSS);
     _writeCache->clear();
     _requestedNextGSS = false;  // only relevant for async
@@ -153,6 +157,7 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data,
     _nextGSSSendMessageCount = 0;
   } else {
     TRI_ASSERT(_readCache->receivedMessageCount() == 0);
+    WriteLocker<ReadWriteLock> guard(&_cacheRWLock);
     std::swap(_readCache, _writeCache);
     _config._localSuperstep = gss;
   }
@@ -160,7 +165,8 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data,
   // responds with info which allows the conductor to decide whether
   // to start the next GSS or end the execution
   response.openObject();
-  response.add(Utils::activeCountKey, VPackValue(_superstepStats.activeCount));
+  response.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
+  response.add(Utils::activeCountKey, VPackValue(_activeCount));
   response.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
   _workerAggregators->serializeValues(response);
   response.close();
@@ -175,8 +181,13 @@ void Worker<V, E, M>::receivedMessages(VPackSlice data) {
   VPackSlice messageSlice = data.get(Utils::messagesKey);
   uint64_t gss = gssSlice.getUInt();
   if (gss == _config._globalSuperstep) {
-    // handles locking for us
-    _writeCache->parseMessages(messageSlice);
+    
+    {// make sure the pointer is not changed while
+     // parsing messages
+      ReadLocker<ReadWriteLock> guard(&_cacheRWLock);
+      // handles locking for us
+      _writeCache->parseMessages(messageSlice);
+    }
 
     // Trigger the processing of vertices
     if (_config.asynchronousMode() && _state == WorkerState::IDLE) {
@@ -185,6 +196,7 @@ void Worker<V, E, M>::receivedMessages(VPackSlice data) {
     }
   } else if (_config.asynchronousMode() &&
              gss == _config._globalSuperstep + 1) {
+    ReadLocker<ReadWriteLock> guard(&_cacheRWLock);
     _writeCacheNextGSS->parseMessages(messageSlice);
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -237,8 +249,7 @@ void Worker<V, E, M>::cancelGlobalStep(VPackSlice data) {
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_startProcessing() {
   _state = WorkerState::COMPUTING;
-  // reset outdated values
-  _superstepStats.reset();
+  _activeCount = 0;//
 
   ThreadPool* pool = PregelFeature::instance()->threadPool();
   size_t total = _graphStore->vertexCount();
@@ -354,16 +365,18 @@ void Worker<V, E, M>::_processVertices(
   LOG(INFO) << "Finished executing vertex programs.";
 
   WorkerStats stats;
-  stats.activeCount = activeCount;
   stats.sendCount = outCache->sendCount();
   stats.superstepRuntimeSecs = TRI_microtime() - start;
-  _finishedProcessing(vertexComputation->_workerAggregators, stats);
+  _finishedProcessing(vertexComputation->_workerAggregators,
+                      stats,
+                      activeCount);
 }
 
 // called at the end of a worker thread, needs mutex
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_finishedProcessing(AggregatorHandler* threadAggregators,
-                                          WorkerStats const& threadStats) {
+                                          WorkerStats const& threadStats,
+                                          uint64_t activeCount) {
   {  // only one thread at a time
     MUTEX_LOCKER(guard, _threadMutex);
     // merge the thread local stats and aggregators
@@ -374,7 +387,8 @@ void Worker<V, E, M>::_finishedProcessing(AggregatorHandler* threadAggregators,
       return;                   // there are still threads running
     }
   }
-
+  
+  VPackBuilder package;
   {  // only lock after there are no more processing threads
     MUTEX_LOCKER(guard, _commandMutex);
     _state = WorkerState::IDLE;
@@ -386,27 +400,31 @@ void Worker<V, E, M>::_finishedProcessing(AggregatorHandler* threadAggregators,
     // messages we have send in
     // the current superstep. Other workers are likely not finished yet, and
     // might still send stuff
-    _superstepStats.receivedCount = _readCache->receivedMessageCount();
-    _readCache->clear();  // no need to keep old messages around
     _expectedGSS = _config._globalSuperstep + 1;
     _config._localSuperstep++;
-    // don't forget to reset before the superstep
+    _superstepStats.receivedCount = _readCache->receivedMessageCount();
+    _activeCount += activeCount;
+    _readCache->clear();  // no need to keep old messages around
+    
+    package.openObject();
+    package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
+    package.add(Utils::executionNumberKey, VPackValue(_config.executionNumber()));
+    package.add(Utils::globalSuperstepKey, VPackValue(_config.globalSuperstep()));
+    _superstepStats.serializeValues(package);
+    package.close();
+    
+    // reset message counts & stuff, after sending them to the conductor
+    // don't reset the active count, because the conductor will ask about
+    // it later
+    _superstepStats.resetTracking();
     if (_config.asynchronousMode()) {
       _continueAsync();
     }
   }
 
-  // notify the conductor that we are done.
-  VPackBuilder package;
-  package.openObject();
-  package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-  package.add(Utils::executionNumberKey, VPackValue(_config.executionNumber()));
-  package.add(Utils::globalSuperstepKey, VPackValue(_config.globalSuperstep()));
-  _superstepStats.serializeValues(package);  // add stats
-  package.close();
-
   // TODO ask how to implement message sending without waiting for a response
-  // ============ Call Coordinator ============
+  // call this without locking, to avoid a race condition. The conductor
+  // might immdediatly call us back
   _callConductor(Utils::finishedWorkerStepPath, package.slice());
 }
 
@@ -516,7 +534,10 @@ void Worker<V, E, M>::compensateStep(VPackSlice data) {
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_continueAsync() {
   if (_state == WorkerState::IDLE && _writeCache->receivedMessageCount() > 0) {
-    std::swap(_readCache, _writeCache);
+    {// swap these pointers atomically
+      WriteLocker<ReadWriteLock> guard(&_cacheRWLock);
+      std::swap(_readCache, _writeCache);
+    }
     // overwrite conductor values with local values
     _conductorAggregators->resetValues();
     _conductorAggregators->aggregateValues(*_workerAggregators.get());
