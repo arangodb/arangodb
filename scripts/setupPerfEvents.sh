@@ -37,7 +37,13 @@
 #
 #
 
+export VERBOSE=0
+
 main(){
+  if [ "$1" == "-v" ] ; then
+    export VERBOSE=1
+    shift
+  fi
   local ARANGOD_EXECUTABLE=${1-build/bin/arangod}
 
   #delete all existing events
@@ -46,17 +52,23 @@ main(){
   echo "Adding events, this takes a few seconds..."
 
   echo "Single document operations..."
-  addEvent insertLocal
-  addEvent removeLocal
-  addEvent modifyLocal
-  addEvent documentLocal
+  addEvent insertLocal insertLocal@Transaction.cpp
+  addEvent removeLocal removeLocal@Transaction.cpp
+  addEvent modifyLocal modifyLocal@Transaction.cpp
+  addEvent documentLocal documentLocal@Transaction.cpp
 
   echo "Single document operations on coordinator..."
-  addEvent insertCoordinator
-  addEvent removeCoordinator
-  addEvent updateCoordinator
-  addEvent replaceCoordinator
-  addEvent documentCoordinator
+  addEvent insertCoordinator insertCoordinator@Transaction.cpp
+  addEvent removeCoordinator removeCoordinator@Transaction.cpp
+  addEvent updateCoordinator updateCoordinator@Transaction.cpp
+  addEvent replaceCoordinator replaceCoordinator@Transaction.cpp
+  addEvent documentCoordinator documentCoordinator@Transaction.cpp
+  # For the enterprise version:
+  addEvent insertCoordinator insertCoordinator@TransactionEE.cpp
+  addEvent removeCoordinator removeCoordinator@TransactionEE.cpp
+  addEvent updateCoordinator updateCoordinator@TransactionEE.cpp
+  addEvent replaceCoordinator replaceCoordinator@TransactionEE.cpp
+  addEvent documentCoordinator documentCoordinator@TransactionEE.cpp
 
   echo "work method in RestDocumentHandler"
   addEvent executeRestReadDocument readDocument@RestDocumentHandler.cpp
@@ -65,16 +77,48 @@ main(){
   echo "work in LogicalCollection"
   addEvent logicalInsert insert@LogicalCollection.cpp
 
+  echo "work in HttpCommTask and GeneralCommTask"
+  addEvent processRequest processRequest@HttpCommTask.cpp
+  addEvent executeRequest executeRequest@GeneralCommTask.cpp
+  addEvent handleRequest handleRequest@GeneralCommTask.cpp
+  addEvent handleRequestDirectly handleRequestDirectly@GeneralCommTask.cpp
+
+  echo "trace R/W locks"
+  addEvent TRI_ReadLockReadWriteLock TRI_ReadLockReadWriteLock@locks-posix.cpp
+  addEvent TRI_WriteLockReadWriteLock TRI_WriteLockReadWriteLock@locks-posix.cpp
+  addEvent TRI_ReadUnlockReadWriteLock TRI_ReadUnlockReadWriteLock@locks-posix.cpp
+  addEvent TRI_WriteUnlockReadWriteLock TRI_WriteUnlockReadWriteLock@locks-posix.cpp
+
+  echo "Some probes in the storage engine:"
+  addEvent insertLocalPoint1 LogicalCollection.cpp:2050 noRet
+  addEvent insertLocalPoint2 LogicalCollection.cpp:2053 noRet
+  addEvent insertLocalPoint3 LogicalCollection.cpp:2062 noRet
+
+  echo "Mutexes"
+  addEvent MutexLock lock@Mutex.cpp
   echo Done.
 }
 
 addEvent() {
   local name="$1"
   local func="${2-"${name}"}"
+  local withRet="${3-1}"
 
   echo "setting up $name for function: $func"
-  perf probe -x $ARANGOD_EXECUTABLE -a $name=$func 2> /dev/null             #enter function
-  perf probe -x $ARANGOD_EXECUTABLE -a ${name}Ret=$func%return 2> /dev/null #return form function
+  if [ "$VERBOSE" == "1" ] ; then
+    perf probe -x $ARANGOD_EXECUTABLE -a $name=$func                #enter function
+    if [ "$withRet" == 1 ]; then
+        perf probe -x $ARANGOD_EXECUTABLE -a ${name}Ret=$func%return    #return form function
+    fi
+  else
+    perf probe -x $ARANGOD_EXECUTABLE -a $name=$func 2> /dev/null             #enter function
+    if [ "$withRet" == 1 ]; then
+        perf probe -x $ARANGOD_EXECUTABLE -a ${name}Ret=$func%return 2> /dev/null #return form function
+    fi
+  fi
+  if [ "$?" != "0" ] ; then
+    echo ERROR!
+  fi
 }
 
 main "$@"
