@@ -47,16 +47,17 @@ void InCache<M>::parseMessages(VPackSlice incomingMessages) {
     } else if (i % 3 == 1) {  // TODO support multiple recipients
       key = current.copyString();
     } else {
+      MUTEX_LOCKER(guard, this->_writeLock);
       if (current.isArray()) {
         for (VPackSlice val : VPackArrayIterator(current)) {
           M newValue;
           _format->unwrapValue(val, newValue);
-          setDirect(shard, key, newValue);
+          _set(shard, key, newValue);
         }
       } else {
         M newValue;
         _format->unwrapValue(current, newValue);
-        setDirect(shard, key, newValue);
+        _set(shard, key, newValue);
       }
     }
     i++;
@@ -69,13 +70,18 @@ void InCache<M>::parseMessages(VPackSlice incomingMessages) {
   }
 }
 
+template <typename M>
+void InCache<M>::setDirect(prgl_shard_t shard, std::string const& vertexId,
+                           M const& data) {
+  MUTEX_LOCKER(guard, this->_writeLock);
+  this->_set(shard, vertexId, data);
+}
+
 // ================== ArrayIncomingCache ==================
 
 template <typename M>
-void ArrayInCache<M>::setDirect(prgl_shard_t shard, std::string const& key,
-                                M const& newValue) {
-  MUTEX_LOCKER(guard, this->_writeLock);
-
+void ArrayInCache<M>::_set(prgl_shard_t shard, std::string const& key,
+                           M const& newValue) {
   this->_receivedMessageCount++;
   HMap& vertexMap = _shardMap[shard];
   vertexMap[key].push_back(newValue);
@@ -132,10 +138,8 @@ void ArrayInCache<M>::erase(prgl_shard_t shard, std::string const& key) {
 // ================== CombiningIncomingCache ==================
 
 template <typename M>
-void CombiningInCache<M>::setDirect(prgl_shard_t shard, std::string const& key,
-                                    M const& newValue) {
-  MUTEX_LOCKER(guard, this->_writeLock);
-
+void CombiningInCache<M>::_set(prgl_shard_t shard, std::string const& key,
+                               M const& newValue) {
   /*cuckoohash_map<int, std::string, CityHasher<int>> Table;
   for (int i = 0; i < 100; i++) {
     Table[i] = "hello"+std::to_string(i);

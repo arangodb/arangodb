@@ -48,6 +48,7 @@ GraphStore<V, E>::GraphStore(TRI_vocbase_t* vb, GraphFormat<V, E>* graphFormat)
 
 template <typename V, typename E>
 GraphStore<V, E>::~GraphStore() {
+  _destroyed = true;
   _cleanupTransactions();
 }
 
@@ -258,7 +259,7 @@ void GraphStore<V, E>::_loadVertices(WorkerConfig const& state,
         std::string documentId = _readTrx->extractIdString(document);
         _loadEdges(state, edgeShard, entry, documentId);
         _index.push_back(entry);
-        _localVertexCount++;
+        _localVerticeCount++;
       }
     }
   }
@@ -368,6 +369,10 @@ void GraphStore<V, E>::storeResults(WorkerConfig const& state) {
 
   OperationOptions options;
   for (VertexEntry const& vertexEntry : _index) {
+    if (_destroyed) {
+      break;
+    }
+
     ShardID const& shard = state.globalShardIDs()[vertexEntry.shard()];
     void* data = mutableVertexData(&vertexEntry);
 

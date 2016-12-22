@@ -67,7 +67,7 @@ void Conductor::start(std::string const& algoName, VPackSlice userConfig) {
   } else {
     _userParams.add(userConfig);
   }
-  
+
   _startTimeSecs = TRI_microtime();
   _globalSuperstep = 0;
   _state = ExecutionState::RUNNING;
@@ -97,6 +97,8 @@ bool Conductor::_startGlobalStep() {
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
   b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
+  b.add(Utils::vertexCount, VPackValue(_totalVerticesCount));
+  b.add(Utils::edgeCount, VPackValue(_totalEdgesCount));
   b.close();
 
   // we are explicitly expecting an response containing the aggregated
@@ -129,14 +131,14 @@ bool Conductor::_startGlobalStep() {
   if (_masterContext) {  // ask algorithm to evaluate aggregated values
     proceed = _masterContext->postGlobalSuperstep(_globalSuperstep);
   }
-  
+
   // TODO make maximum configurable
   bool done = _globalSuperstep != 0 && _statistics.executionFinished();
   if (!proceed || done || _globalSuperstep >= 100) {
     _state = ExecutionState::DONE;
     // tells workers to store / discard results
-   _finalizeWorkers();
-   return false;
+    _finalizeWorkers();
+    return false;
   }
   if (_masterContext) {
     _masterContext->preGlobalSuperstep(_globalSuperstep);
@@ -154,7 +156,7 @@ bool Conductor::_startGlobalStep() {
   b.close();
 
   // start vertex level operations, does not get a response
-  res = _sendToAllDBServers(Utils::startGSSPath, b.slice());// call me maybe
+  res = _sendToAllDBServers(Utils::startGSSPath, b.slice());  // call me maybe
   if (res != TRI_ERROR_NO_ERROR) {
     _state = ExecutionState::IN_ERROR;
     LOG(INFO) << "Conductor could not start GSS " << _globalSuperstep;
@@ -173,20 +175,19 @@ void Conductor::finishedWorkerStartup(VPackSlice& data) {
     return;
   }
   _ensureUniqueResponse(data);
-  if (_masterContext) {
-    _masterContext->_vertexCount += data.get(Utils::vertexCount).getUInt();
-    _masterContext->_edgeCount += data.get(Utils::edgeCount).getUInt();
-  }
+  _totalVerticesCount += data.get(Utils::vertexCount).getUInt();
+  _totalEdgesCount += data.get(Utils::edgeCount).getUInt();
   if (_respondedServers.size() != _dbServers.size()) {
     return;
   }
-  
-  // Need to do this here, because we need the counts
+
+  LOG(INFO) << _totalVerticesCount << " vertices, "
+  << _totalEdgesCount << " edges";
   if (_masterContext) {
+    _masterContext->_vertexCount = _totalVerticesCount;
+    _masterContext->_edgeCount = _totalEdgesCount;
     _masterContext->_aggregators = _aggregators.get();
     _masterContext->preApplication();
-    LOG(INFO) << _masterContext->_vertexCount << " vertices, "
-    << _masterContext->_edgeCount << " edges";
   }
 
   _computationStartTimeSecs = TRI_microtime();
@@ -210,7 +211,7 @@ void Conductor::finishedWorkerStep(VPackSlice& data) {
     LOG(WARN) << "Conductor did received a callback from the wrong superstep";
     return;
   }
-  
+
   _statistics.accumulate(data);
   if (!_asyncMode) {
     _ensureUniqueResponse(data);
@@ -218,8 +219,8 @@ void Conductor::finishedWorkerStep(VPackSlice& data) {
     if (_respondedServers.size() != _dbServers.size()) {
       return;
     }
-  } else if (_statistics.clientCount() < _dbServers.size()
-             || !_statistics.allMessagesProcessed()) {
+  } else if (_statistics.clientCount() < _dbServers.size() ||
+             !_statistics.allMessagesProcessed()) {
     return;
   }
 
@@ -285,7 +286,7 @@ void Conductor::cancel() {
   if (_state == ExecutionState::RUNNING ||
       _state == ExecutionState::RECOVERING) {
     _state = ExecutionState::CANCELED;
-    
+
     VPackBuilder b;
     b.openObject();
     b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
@@ -303,7 +304,7 @@ void Conductor::cancel() {
 
 void Conductor::startRecovery() {
   MUTEX_LOCKER(guard, _callbackMutex);
-  if (_state != ExecutionState::RUNNING && _state !=  ExecutionState::IN_ERROR) {
+  if (_state != ExecutionState::RUNNING && _state != ExecutionState::IN_ERROR) {
     LOG(INFO) << "Execution is not recoverable";
     return;
   }
@@ -333,7 +334,7 @@ void Conductor::startRecovery() {
     b.close();
     _dbServers = goodServers;
     _sendToAllDBServers(Utils::cancelGSSPath, b.slice());
-    usleep(5 * 1000000);// workers may need a little bit
+    usleep(5 * 1000000);  // workers may need a little bit
 
     // Let's try recovery
     if (_algorithm->supportsCompensation()) {
@@ -388,7 +389,7 @@ static void resolveShards(
 /// proceedings
 int Conductor::_initializeWorkers(std::string const& suffix,
                                   VPackSlice additional) {
-  //int64_t vertexCount = 0, edgeCount = 0;
+  // int64_t vertexCount = 0, edgeCount = 0;
   std::map<CollectionID, std::string> collectionPlanIdMap;
   std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>> vertexMap,
       edgeMap;
@@ -398,7 +399,7 @@ int Conductor::_initializeWorkers(std::string const& suffix,
   for (auto& collection : _vertexCollections) {
     collectionPlanIdMap.emplace(collection->name(),
                                 collection->planId_as_string());
-      resolveShards(collection.get(), vertexMap, allShardIDs);
+    resolveShards(collection.get(), vertexMap, allShardIDs);
   }
   for (auto& collection : _edgeCollections) {
     collectionPlanIdMap.emplace(collection->name(),
@@ -409,7 +410,7 @@ int Conductor::_initializeWorkers(std::string const& suffix,
   for (auto const& pair : vertexMap) {
     _dbServers.push_back(pair.first);
   }
- 
+
   std::string const path =
       Utils::baseUrl(_vocbaseGuard.vocbase()->name()) + suffix;
   std::string coordinatorId = ServerState::instance()->getId();
@@ -464,8 +465,8 @@ int Conductor::_initializeWorkers(std::string const& suffix,
     b.close();
 
     auto body = std::make_shared<std::string const>(b.toJson());
-    requests.emplace_back("server:" + server, rest::RequestType::POST,
-                          path, body);
+    requests.emplace_back("server:" + server, rest::RequestType::POST, path,
+                          body);
   }
 
   ClusterComm* cc = ClusterComm::instance();
@@ -502,9 +503,10 @@ int Conductor::_finalizeWorkers() {
   b.openObject();
   _statistics.serializeValues(b);
   b.close();
-  
+
   LOG(INFO) << "Done. We did " << _globalSuperstep << " rounds";
-  LOG(INFO) << "Startup Time: " << _computationStartTimeSecs - _startTimeSecs << "s";
+  LOG(INFO) << "Startup Time: " << _computationStartTimeSecs - _startTimeSecs
+            << "s";
   LOG(INFO) << "Computation Time: " << now - _computationStartTimeSecs << "s";
   LOG(INFO) << "Total: " << totalRuntimeSecs() << "s";
   LOG(INFO) << "Stats: " << b.toString();
@@ -519,7 +521,7 @@ int Conductor::_sendToAllDBServers(std::string const& suffix,
 
 int Conductor::_sendToAllDBServers(std::string const& suffix,
                                    VPackSlice const& message,
-                                   std::vector<ClusterCommRequest> &requests) {
+                                   std::vector<ClusterCommRequest>& requests) {
   _respondedServers.clear();
 
   ClusterComm* cc = ClusterComm::instance();

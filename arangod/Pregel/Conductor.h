@@ -27,8 +27,8 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterInfo.h"
 #include "Pregel/Statistics.h"
 #include "VocBase/vocbase.h"
 
@@ -37,15 +37,15 @@ class RestPregelHandler;
 namespace pregel {
 
 enum ExecutionState {
-  DEFAULT = 0,    // before calling start
-  RUNNING,    // during normal operation
-  DONE,       // after everyting is done
-  CANCELED,   // after an terminal error or manual canceling
-  IN_ERROR,   // after an error which should allow recovery
-  RECOVERING  // during recovery
+  DEFAULT = 0,  // before calling start
+  RUNNING,      // during normal operation
+  DONE,         // after everyting is done
+  CANCELED,     // after an terminal error or manual canceling
+  IN_ERROR,     // after an error which should allow recovery
+  RECOVERING    // during recovery
 };
-static const char* ExecutionStateNames[] = { "none", "running", "done",
-  "canceled", "in error", "recovering" };
+static const char* ExecutionStateNames[] = {
+    "none", "running", "done", "canceled", "in error", "recovering"};
 
 class MasterContext;
 class AggregatorHandler;
@@ -68,22 +68,27 @@ class Conductor {
   // initialized on startup
   std::unique_ptr<AggregatorHandler> _aggregators;
   std::unique_ptr<MasterContext> _masterContext;
-  /// some tracking info
-  double _startTimeSecs = 0, _computationStartTimeSecs, _endTimeSecs = 0;
-  uint64_t _globalSuperstep = 0;
-  /// tracks the servers which responded, only used for stages where we expect an
+  /// tracks the servers which responded, only used for stages where we expect
+  /// an
   /// unique response, not necessarily during the async mode
   std::set<ServerID> _respondedServers;
+  uint64_t _globalSuperstep = 0;
+  /// determines whether we support async execution
   bool _asyncMode = false;
   /// persistent tracking of active vertices, send messages, runtimes
   StatsManager _statistics;
-  
+  /// Current number of vertices
+  uint64_t _totalVerticesCount = 0;
+  uint64_t _totalEdgesCount = 0;
+  /// some tracking info
+  double _startTimeSecs = 0, _computationStartTimeSecs, _endTimeSecs = 0;
+
   bool _startGlobalStep();
   int _initializeWorkers(std::string const& suffix, VPackSlice additional);
   int _finalizeWorkers();
   int _sendToAllDBServers(std::string const& suffix, VPackSlice const& message);
   int _sendToAllDBServers(std::string const& suffix, VPackSlice const& message,
-                                   std::vector<ClusterCommRequest> &requests);
+                          std::vector<ClusterCommRequest>& requests);
   void _ensureUniqueResponse(VPackSlice body);
 
   // === REST callbacks ===

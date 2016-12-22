@@ -84,8 +84,8 @@ void Utils::printResponses(std::vector<ClusterCommRequest> const& requests) {
     auto& res = req.result;
     if (res.status == CL_COMM_RECEIVED &&
         res.answer_code != rest::ResponseCode::OK) {
-      LOG(ERR) << "Error sending request to "
-               << req.destination << ". Payload: " << res.answer->payload().toJson();
+      LOG(ERR) << "Error sending request to " << req.destination
+               << ". Payload: " << res.answer->payload().toJson();
     }
   }
 }

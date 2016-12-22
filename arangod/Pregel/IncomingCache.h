@@ -47,9 +47,14 @@ class InCache {
   mutable Mutex _writeLock;
   size_t _receivedMessageCount = 0;
   MessageFormat<M> const* _format;
+  // bool _enableLocking = false;
+  // mutable std::vector<Mutex> _locks;
 
   InCache(MessageFormat<M> const* format)
       : _receivedMessageCount(0), _format(format) {}
+
+  virtual void _set(prgl_shard_t shard, std::string const& vertexId,
+                    M const& data) = 0;
 
  public:
   virtual ~InCache(){};
@@ -60,8 +65,8 @@ class InCache {
 
   /// @brief internal method to direclty set the messages for a vertex. Only
   /// valid with already combined messages
-  virtual void setDirect(prgl_shard_t shard, std::string const& vertexId,
-                         M const& data) = 0;
+  void setDirect(prgl_shard_t shard, std::string const& vertexId,
+                 M const& data);
   virtual void mergeCache(InCache<M> const* otherCache) = 0;
   /// @brief get messages for vertex id. (Don't use keys from _from or _to
   /// directly, they contain the collection name)
@@ -77,11 +82,13 @@ class ArrayInCache : public InCache<M> {
   typedef std::unordered_map<std::string, std::vector<M>> HMap;
   std::map<prgl_shard_t, HMap> _shardMap;
 
+ protected:
+  void _set(prgl_shard_t shard, std::string const& vertexId,
+            M const& data) override;
+
  public:
   ArrayInCache(MessageFormat<M> const* format) : InCache<M>(format) {}
 
-  void setDirect(prgl_shard_t shard, std::string const& vertexId,
-                 M const& data) override;
   void mergeCache(InCache<M> const* otherCache) override;
   MessageIterator<M> getMessages(prgl_shard_t shard,
                                  std::string const& key) override;
@@ -96,6 +103,10 @@ class CombiningInCache : public InCache<M> {
   MessageCombiner<M> const* _combiner;
   std::map<prgl_shard_t, HMap> _shardMap;
 
+ protected:
+  void _set(prgl_shard_t shard, std::string const& vertexId,
+            M const& data) override;
+
  public:
   CombiningInCache(MessageFormat<M> const* format,
                    MessageCombiner<M> const* combiner)
@@ -103,8 +114,6 @@ class CombiningInCache : public InCache<M> {
 
   MessageCombiner<M> const* combiner() const { return _combiner; }
 
-  void setDirect(prgl_shard_t shard, std::string const& vertexId,
-                 M const& data) override;
   void mergeCache(InCache<M> const* otherCache) override;
   MessageIterator<M> getMessages(prgl_shard_t shard,
                                  std::string const& key) override;

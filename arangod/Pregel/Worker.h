@@ -29,8 +29,8 @@
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/Statistics.h"
-#include "Pregel/WorkerContext.h"
 #include "Pregel/WorkerConfig.h"
+#include "Pregel/WorkerContext.h"
 
 struct TRI_vocbase_t;
 namespace arangodb {
@@ -40,7 +40,7 @@ namespace pregel {
 class IWorker {
  public:
   virtual ~IWorker(){};
-  virtual void prepareGlobalStep(VPackSlice data, VPackBuilder &response) = 0;
+  virtual void prepareGlobalStep(VPackSlice data, VPackBuilder& response) = 0;
   virtual void startGlobalStep(VPackSlice data) = 0;   // called by coordinator
   virtual void cancelGlobalStep(VPackSlice data) = 0;  // called by coordinator
   virtual void receivedMessages(VPackSlice data) = 0;
@@ -48,7 +48,7 @@ class IWorker {
   virtual void startRecovery(VPackSlice data) = 0;
   virtual void compensateStep(VPackSlice data) = 0;
 };
-  
+
 template <typename V, typename E>
 class GraphStore;
 
@@ -65,24 +65,24 @@ class VertexContext;
 template <typename V, typename E, typename M>
 class Worker : public IWorker {
   // friend class arangodb::RestPregelHandler;
-  
+
   enum WorkerState {
-    DEFAULT,// only initial
-    IDLE,// do nothing
-    PREPARING,// before starting GSS
-    COMPUTING,// during a superstep
-    RECOVERING,// during recovery
-    DONE// after calling finished
+    DEFAULT,     // only initial
+    IDLE,        // do nothing
+    PREPARING,   // before starting GSS
+    COMPUTING,   // during a superstep
+    RECOVERING,  // during recovery
+    DONE         // after calling finished
   };
-  
+
   WorkerState _state = WorkerState::DEFAULT;
   WorkerConfig _config;
   WorkerStats _workerStats;
   uint64_t _expectedGSS = 0;
   std::unique_ptr<Algorithm<V, E, M>> _algorithm;
   std::unique_ptr<WorkerContext> _workerContext;
-  mutable Mutex _commandMutex;       // locks callbak methods
-  mutable Mutex _threadMutex;// locks _workerThreadDone
+  mutable Mutex _commandMutex;  // locks callbak methods
+  mutable Mutex _threadMutex;   // locks _workerThreadDone
 
   // only valid while recovering to determine the offset
   // where new vertices were inserted
@@ -94,14 +94,14 @@ class Worker : public IWorker {
   std::unique_ptr<GraphStore<V, E>> _graphStore;
   std::unique_ptr<MessageFormat<M>> _messageFormat;
   std::unique_ptr<MessageCombiner<M>> _messageCombiner;
-  
+
   // from previous or current superstep
-  InCache<M> *_readCache = nullptr;
+  InCache<M>* _readCache = nullptr;
   // for the current or next superstep
-  InCache<M> *_writeCache = nullptr;
+  InCache<M>* _writeCache = nullptr;
   // intended for the next superstep phase
-  InCache<M> *_writeCacheNextGSS = nullptr;
-  std::atomic<uint32_t> _nextGSSSendMessageCount;
+  InCache<M>* _writeCacheNextGSS = nullptr;
+  std::atomic<uint64_t> _nextGSSSendMessageCount;
   std::atomic<bool> _requestedNextGSS;
 
   WorkerStats _superstepStats;
@@ -120,7 +120,7 @@ class Worker : public IWorker {
   ~Worker();
 
   // ====== called by rest handler =====
-  void prepareGlobalStep(VPackSlice data, VPackBuilder &response) override;
+  void prepareGlobalStep(VPackSlice data, VPackBuilder& response) override;
   void startGlobalStep(VPackSlice data) override;
   void cancelGlobalStep(VPackSlice data) override;
   void receivedMessages(VPackSlice data) override;

@@ -38,9 +38,7 @@ struct WorkerStats {
   double superstepRuntimeSecs = 0;
 
   WorkerStats() {}
-  WorkerStats(VPackSlice statValues) {
-    accumulate(statValues);
-  }
+  WorkerStats(VPackSlice statValues) { accumulate(statValues); }
   WorkerStats(size_t a, size_t s, size_t r)
       : activeCount(a), sendCount(s), receivedCount(r) {}
 
@@ -83,26 +81,21 @@ struct WorkerStats {
     receivedCount = 0;
     superstepRuntimeSecs = 0;
   }
-  
-  bool allMessagesProcessed() {
-    return sendCount == receivedCount;
-  }
-  
-  bool isDone() {
-    return activeCount == 0 && sendCount == receivedCount;
-  }
+
+  bool allMessagesProcessed() { return sendCount == receivedCount; }
+
+  bool isDone() { return activeCount == 0 && sendCount == receivedCount; }
 };
 
 struct StatsManager {
-
   void accumulate(VPackSlice data) {
     VPackSlice sender = data.get(Utils::senderKey);
     if (sender.isString()) {
       _serverStats[sender.copyString()].accumulate(data);
     }
   }
-  
-  void serializeValues(VPackBuilder &b) {
+
+  void serializeValues(VPackBuilder& b) {
     WorkerStats stats;
     for (auto const& pair : _serverStats) {
       stats.accumulate(pair.second);
@@ -133,23 +126,18 @@ struct StatsManager {
   }
 
   void resetActiveCount() {
-    for (auto &pair : _serverStats) {
+    for (auto& pair : _serverStats) {
       pair.second.activeCount = 0;
     }
   }
 
-  void reset() {
-    _serverStats.clear();
-  }
-  
-  size_t clientCount() {
-    return _serverStats.size();
-  }
+  void reset() { _serverStats.clear(); }
 
-  private:
+  size_t clientCount() { return _serverStats.size(); }
+
+ private:
   std::map<std::string, WorkerStats> _serverStats;
 };
-  
 }
 }
 #endif

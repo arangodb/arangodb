@@ -36,7 +36,7 @@ WorkerConfig::WorkerConfig(DatabaseID dbname, VPackSlice params)
   VPackSlice collectionPlanIdMap = params.get(Utils::collectionPlanIdMapKey);
   VPackSlice globalShards = params.get(Utils::globalShardListKey);
   VPackSlice async = params.get(Utils::asyncMode);
-  //VPackSlice userParams = params.get(Utils::userParametersKey);
+  // VPackSlice userParams = params.get(Utils::userParametersKey);
   if (!coordID.isString() || !edgeShardMap.isObject() ||
       !vertexShardMap.isObject() || !execNum.isInteger() ||
       !collectionPlanIdMap.isObject() || !globalShards.isArray()) {

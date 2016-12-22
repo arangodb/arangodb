@@ -106,7 +106,7 @@ void RecoveryManager::_monitorShard(CollectionID const& cid,
                 cc->startRecovery();
               }
             }
-          } else {// what a terrible failure
+          } else {  // what a terrible failure
             for (Conductor* cc : conductors->second) {
               cc->cancel();
             }

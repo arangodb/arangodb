@@ -47,7 +47,6 @@ template <typename V, typename E, typename M>
 Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
                         VPackSlice initConfig)
     : _config(vocbase->name(), initConfig), _algorithm(algo) {
-  
   VPackSlice userParams = initConfig.get(Utils::userParametersKey);
   _workerContext.reset(algo->workerContext(userParams));
   _messageFormat.reset(algo->messageFormat());
@@ -57,12 +56,13 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
   _graphStore.reset(new GraphStore<V, E>(vocbase, _algorithm->inputFormat()));
   _nextGSSSendMessageCount = 0;
   if (_messageCombiner) {
-    _readCache = new CombiningInCache<M>(_messageFormat.get(), _messageCombiner.get());
+    _readCache =
+        new CombiningInCache<M>(_messageFormat.get(), _messageCombiner.get());
     _writeCache =
         new CombiningInCache<M>(_messageFormat.get(), _messageCombiner.get());
     if (_config.asynchronousMode()) {
-      _writeCacheNextGSS = new CombiningInCache<M>(_messageFormat.get(),
-                                                   _messageCombiner.get());
+      _writeCacheNextGSS =
+          new CombiningInCache<M>(_messageFormat.get(), _messageCombiner.get());
     }
   } else {
     _readCache = new ArrayInCache<M>(_messageFormat.get());
@@ -87,8 +87,10 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
     VPackBuilder package;
     package.openObject();
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    package.add(Utils::executionNumberKey, VPackValue(_config.executionNumber()));
-    package.add(Utils::vertexCount, VPackValue(_graphStore->localVerticeCount()));
+    package.add(Utils::executionNumberKey,
+                VPackValue(_config.executionNumber()));
+    package.add(Utils::vertexCount,
+                VPackValue(_graphStore->localVerticeCount()));
     package.add(Utils::edgeCount, VPackValue(_graphStore->localEdgeCount()));
     package.close();
     _callConductor(Utils::finishedStartupPath, package.slice());
@@ -108,14 +110,16 @@ Worker<V, E, M>::~Worker() {
 }
 
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::prepareGlobalStep(VPackSlice data, VPackBuilder &response) {
+void Worker<V, E, M>::prepareGlobalStep(VPackSlice data,
+                                        VPackBuilder& response) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _commandMutex);
   if (_state != WorkerState::IDLE) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Cannot start a gss when the worker is not idle");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "Cannot start a gss when the worker is not idle");
   }
-  _state = WorkerState::PREPARING;// stop any running step
+  _state = WorkerState::PREPARING;  // stop any running step
   LOG(INFO) << "Prepare GSS: " << data.toJson();
   VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
   if (!gssSlice.isInteger()) {
@@ -135,7 +139,7 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data, VPackBuilder &response)
     _workerContext->_edgeCount = data.get(Utils::edgeCount).getUInt();
     _workerContext->preApplication();
   }
-  
+
   // make us ready to receive messages
   _config._globalSuperstep = gss;
   // write cache becomes the readable cache
@@ -144,7 +148,7 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data, VPackBuilder &response)
     TRI_ASSERT(_writeCache->receivedMessageCount() == 0);
     std::swap(_readCache, _writeCacheNextGSS);
     _writeCache->clear();
-    _requestedNextGSS = false;// only relevant for async
+    _requestedNextGSS = false;  // only relevant for async
     _superstepStats.sendCount = _nextGSSSendMessageCount;
     _nextGSSSendMessageCount = 0;
   } else {
@@ -152,7 +156,7 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data, VPackBuilder &response)
     std::swap(_readCache, _writeCache);
     _config._localSuperstep = gss;
   }
-  
+
   // responds with info which allows the conductor to decide whether
   // to start the next GSS or end the execution
   response.openObject();
@@ -161,26 +165,26 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice data, VPackBuilder &response)
   _workerAggregators->serializeValues(response);
   response.close();
   response.close();
-  
+
   LOG(INFO) << "Worker sent a response";
 }
 
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::receivedMessages(VPackSlice data) {
-
   VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
   VPackSlice messageSlice = data.get(Utils::messagesKey);
   uint64_t gss = gssSlice.getUInt();
   if (gss == _config._globalSuperstep) {
     // handles locking for us
     _writeCache->parseMessages(messageSlice);
-    
+
     // Trigger the processing of vertices
     if (_config.asynchronousMode() && _state == WorkerState::IDLE) {
       MUTEX_LOCKER(guard, _commandMutex);
       _continueAsync();
     }
-  } else if (_config.asynchronousMode() && gss == _config._globalSuperstep+1) {
+  } else if (_config.asynchronousMode() &&
+             gss == _config._globalSuperstep + 1) {
     _writeCacheNextGSS->parseMessages(messageSlice);
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -196,7 +200,9 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
   // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _commandMutex);
   if (_state != WorkerState::PREPARING) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Cannot start a gss when the worker is not prepared");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "Cannot start a gss when the worker is not prepared");
   }
   LOG(INFO) << "Starting GSS: " << data.toJson();
   VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
@@ -218,7 +224,7 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice data) {
   }
 
   LOG(INFO) << "Worker starts new gss: " << gss;
-  _startProcessing();// sets _state = COMPUTING;
+  _startProcessing();  // sets _state = COMPUTING;
 }
 
 template <typename V, typename E, typename M>
@@ -233,7 +239,7 @@ void Worker<V, E, M>::_startProcessing() {
   _state = WorkerState::COMPUTING;
   // reset outdated values
   _superstepStats.reset();
-  
+
   ThreadPool* pool = PregelFeature::instance()->threadPool();
   size_t total = _graphStore->vertexCount();
   size_t delta = total / pool->numThreads();
@@ -283,19 +289,19 @@ void Worker<V, E, M>::_processVertices(
     inCache.reset(
         new CombiningInCache<M>(_messageFormat.get(), _messageCombiner.get()));
     if (_config.asynchronousMode()) {
-      outCache.reset(new CombiningOutCache<M>(&_config,
-                                              (CombiningInCache<M>*)inCache.get(),
-                                              _writeCacheNextGSS));
+      outCache.reset(new CombiningOutCache<M>(
+          &_config, (CombiningInCache<M>*)inCache.get(), _writeCacheNextGSS));
     } else {
-      outCache.reset(new CombiningOutCache<M>(&_config,
-                                              (CombiningInCache<M>*)inCache.get()));
+      outCache.reset(new CombiningOutCache<M>(
+          &_config, (CombiningInCache<M>*)inCache.get()));
     }
   } else {
     inCache.reset(new ArrayInCache<M>(_messageFormat.get()));
     if (_config.asynchronousMode()) {
-      outCache.reset(new ArrayOutCache<M>(&_config, inCache.get(), _writeCacheNextGSS));
+      outCache.reset(
+          new ArrayOutCache<M>(&_config, inCache.get(), _writeCacheNextGSS));
     } else {
-       outCache.reset(new ArrayOutCache<M>(&_config, inCache.get()));
+      outCache.reset(new ArrayOutCache<M>(&_config, inCache.get()));
     }
   }
 
@@ -340,7 +346,7 @@ void Worker<V, E, M>::_processVertices(
     _requestedNextGSS = true;
     _nextGSSSendMessageCount += outCache->sendCountNextGSS();
   }
-  
+
   // merge thread local messages, _writeCache does locking
   _writeCache->mergeCache(inCache.get());
   // TODO ask how to implement message sending without waiting for a response
@@ -358,29 +364,28 @@ void Worker<V, E, M>::_processVertices(
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_finishedProcessing(AggregatorHandler* threadAggregators,
                                           WorkerStats const& threadStats) {
-  
-  {// only one thread at a time
+  {  // only one thread at a time
     MUTEX_LOCKER(guard, _threadMutex);
     // merge the thread local stats and aggregators
     _workerAggregators->aggregateValues(*threadAggregators);
     _superstepStats.accumulate(threadStats);
     _runningThreads--;
-    if (_runningThreads > 0) {// should work like a join operation
-      return;// there are still threads running
+    if (_runningThreads > 0) {  // should work like a join operation
+      return;                   // there are still threads running
     }
   }
-  
-  {// only locak this after there are no more processing threads
+
+  {  // only lock after there are no more processing threads
     MUTEX_LOCKER(guard, _commandMutex);
     _state = WorkerState::IDLE;
-    
+
     // ==================== Track statistics =================================
     // the stats we want to keep should be final. At this point we can only be
     // sure of the
     // messages we have received in total from the last superstep, and the
     // messages we have send in
-    // the current superstep. Other workers are likely not finished yet, and might
-    // still send stuff
+    // the current superstep. Other workers are likely not finished yet, and
+    // might still send stuff
     _superstepStats.receivedCount = _readCache->receivedMessageCount();
     _readCache->clear();  // no need to keep old messages around
     _expectedGSS = _config._globalSuperstep + 1;
@@ -399,11 +404,10 @@ void Worker<V, E, M>::_finishedProcessing(AggregatorHandler* threadAggregators,
   package.add(Utils::globalSuperstepKey, VPackValue(_config.globalSuperstep()));
   _superstepStats.serializeValues(package);  // add stats
   package.close();
-  
+
   // TODO ask how to implement message sending without waiting for a response
   // ============ Call Coordinator ============
   _callConductor(Utils::finishedWorkerStepPath, package.slice());
-  
 }
 
 template <typename V, typename E, typename M>

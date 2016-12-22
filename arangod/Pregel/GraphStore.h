@@ -71,11 +71,12 @@ class GraphStore {
                      ShardID const& edgeShard);
   void _loadEdges(WorkerConfig const& state, ShardID const& shard,
                   VertexEntry& vertexEntry, std::string const& documentID);
+  bool _destroyed = false;
 
  public:
   GraphStore(TRI_vocbase_t* vocbase, GraphFormat<V, E>* graphFormat);
   ~GraphStore();
-  
+
   size_t localVerticeCount() const { return _localVerticeCount; }
   size_t localEdgeCount() const { return _localEdgeCount; }
 

@@ -20,7 +20,6 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #ifndef ARANGODB_PREGEL_MMAP_H
 #define ARANGODB_PREGEL_MMAP_H 1
 
@@ -32,39 +31,39 @@ namespace pregel {
 
 /// Portable read-only memory mapping (Windows and Linux)
 /** Filesize limited by size_t, usually 2^32 or 2^64 */
-class MemoryMapped
-{
-public:
+class MemoryMapped {
+ public:
   /// tweak performance
-  enum CacheHint
-  {
-    Normal,         ///< good overall performance
-    SequentialScan, ///< read file only once with few seeks
-    RandomAccess    ///< jump around
+  enum CacheHint {
+    Normal,          ///< good overall performance
+    SequentialScan,  ///< read file only once with few seeks
+    RandomAccess     ///< jump around
   };
 
   /// how much should be mappend
-  enum MapRange
-  {
-    WholeFile = 0   ///< everything ... be careful when file is larger than memory
+  enum MapRange {
+    WholeFile =
+        0  ///< everything ... be careful when file is larger than memory
   };
 
   /// do nothing, must use open()
   MemoryMapped();
   /// open file, mappedBytes = 0 maps the whole file
-  MemoryMapped(const std::string& filename, size_t mappedBytes = WholeFile, CacheHint hint = Normal);
+  MemoryMapped(const std::string& filename, size_t mappedBytes = WholeFile,
+               CacheHint hint = Normal);
   /// close file (see close() )
   ~MemoryMapped();
 
   /// open file, mappedBytes = 0 maps the whole file
-  bool open(const std::string& filename, size_t mappedBytes = WholeFile, CacheHint hint = Normal);
+  bool open(const std::string& filename, size_t mappedBytes = WholeFile,
+            CacheHint hint = Normal);
   /// close file
   void close();
 
   /// access position, no range checking (faster)
   unsigned char operator[](size_t offset) const;
   /// access position, including range checking
-  unsigned char at        (size_t offset) const;
+  unsigned char at(size_t offset) const;
 
   /// raw access
   const unsigned char* getData() const;
@@ -75,12 +74,13 @@ public:
   /// get file size
   uint64_t size() const;
   /// get number of actually mapped bytes
-  size_t   mappedSize() const;
+  size_t mappedSize() const;
 
-  /// replace mapping by a new one of the same file, offset MUST be a multiple of the page size
+  /// replace mapping by a new one of the same file, offset MUST be a multiple
+  /// of the page size
   bool remap(uint64_t offset, size_t mappedBytes);
 
-private:
+ private:
   /// don't copy object
   MemoryMapped(const MemoryMapped&);
   /// don't copy object
@@ -88,26 +88,26 @@ private:
 
   /// get OS page size (for remap)
   static int getpagesize();
-  
-  std::string _filename;  // underlying filename
-  TRI_voc_fid_t const _fid;  // datafile identifier
-  TRI_df_state_e _state;  // state of the datafile (READ or WRITE)
-  int _fd;                // underlying file descriptor
 
- #ifdef _MSC_VER
+  std::string _filename;     // underlying filename
+  TRI_voc_fid_t const _fid;  // datafile identifier
+  TRI_df_state_e _state;     // state of the datafile (READ or WRITE)
+  int _fd;                   // underlying file descriptor
+
+#ifdef _MSC_VER
   void* _mmHandle;  // underlying memory map object handle (windows only)
 #endif
-  
+
   TRI_voc_size_t _initSize;     // initial size of the datafile (constant)
   TRI_voc_size_t _maximalSize;  // maximal size of the datafile (adjusted
   // (=reduced) at runtime)
   TRI_voc_size_t _currentSize;  // current size of the datafile
   TRI_voc_size_t _footerSize;   // size of the final footer
-  
+
   char* _data;  // start of the data array
   char* _next;  // end of the current data
 };
-  
-}}
+}
+}
 
 #endif

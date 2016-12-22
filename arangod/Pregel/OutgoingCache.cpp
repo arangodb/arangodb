@@ -43,8 +43,12 @@ OutCache<M>::OutCache(WorkerConfig* state, InCache<M>* cache)
 }
 
 template <typename M>
-OutCache<M>::OutCache(WorkerConfig* state, InCache<M>* cache, InCache<M>* nextGSS)
-  : _state(state), _format(cache->format()), _localCache(cache), _localCacheNextGSS(nextGSS) {
+OutCache<M>::OutCache(WorkerConfig* state, InCache<M>* cache,
+                      InCache<M>* nextGSS)
+    : _state(state),
+      _format(cache->format()),
+      _localCache(cache),
+      _localCacheNextGSS(nextGSS) {
   _baseUrl = Utils::baseUrl(_state->database());
 }
 
@@ -87,7 +91,10 @@ void ArrayOutCache<M>::flushMessages() {
   if (this->_sendToNextGSS) {
     gss += 1;
   }
-  
+  VPackOptions options = VPackOptions::Defaults;
+  options.buildUnindexedArrays = true;
+  options.buildUnindexedObjects = true;
+
   std::vector<ClusterCommRequest> requests;
   for (auto const& it : _shardMap) {
     prgl_shard_t shard = it.first;
@@ -98,7 +105,7 @@ void ArrayOutCache<M>::flushMessages() {
     }
 
     VPackBuilder package;
-    package.openObject();
+    package.openObject(&options);
     package.add(Utils::messagesKey, VPackValue(VPackValueType::Array));
     for (auto const& vertexMessagePair : vertexMessageMap) {
       package.add(VPackValue(shard));
@@ -152,8 +159,8 @@ CombiningOutCache<M>::CombiningOutCache(WorkerConfig* state,
 template <typename M>
 CombiningOutCache<M>::CombiningOutCache(WorkerConfig* state,
                                         CombiningInCache<M>* cache,
-                                        InCache<M> *nextPhase)
-: OutCache<M>(state, cache, nextPhase), _combiner(cache->combiner()) {}
+                                        InCache<M>* nextPhase)
+    : OutCache<M>(state, cache, nextPhase), _combiner(cache->combiner()) {}
 
 template <typename M>
 CombiningOutCache<M>::~CombiningOutCache() {
@@ -200,6 +207,9 @@ void CombiningOutCache<M>::flushMessages() {
   if (this->_sendToNextGSS) {
     gss += 1;
   }
+  VPackOptions options = VPackOptions::Defaults;
+  options.buildUnindexedArrays = true;
+  options.buildUnindexedObjects = true;
 
   std::vector<ClusterCommRequest> requests;
   for (auto const& it : _shardMap) {
@@ -208,10 +218,6 @@ void CombiningOutCache<M>::flushMessages() {
     if (vertexMessageMap.size() == 0) {
       continue;
     }
-
-    VPackOptions options = VPackOptions::Defaults;
-    options.buildUnindexedArrays = true;
-    options.buildUnindexedObjects = true;
 
     VPackBuilder package(&options);
     package.openObject();

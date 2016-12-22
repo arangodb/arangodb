@@ -94,7 +94,7 @@ class VertexComputation : public VertexContext<V, E, M> {
   void sendMessage(Edge<E> const* edge, M const& data) {
     _cache->appendMessage(edge->targetShard(), edge->toKey(), data);
   }
-  
+
   void enterNextPhase() {
     if (!_nextPhase) {
       _nextPhase = true;
