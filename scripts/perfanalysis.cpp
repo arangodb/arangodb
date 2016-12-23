@@ -138,10 +138,10 @@ int main(int /*argc*/, char* /*argv*/ []) {
       }
     }
   }
-  cout << "Unreturned events:\n";
-  for (auto& p : table) {
-    cout << p.second->pretty() << "\n";
-  }
+  //cout << "Unreturned events:\n";
+  //for (auto& p : table) {
+  //  cout << p.second->pretty() << "\n";
+  //}
   sort(list.begin(), list.end(),
        [](unique_ptr<Event>const& a, unique_ptr<Event>const& b) -> bool { return *a < *b; });
   cout << "Events sorted by name and time:\n";

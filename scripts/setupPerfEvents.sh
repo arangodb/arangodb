@@ -90,9 +90,13 @@ main(){
   addEvent TRI_WriteUnlockReadWriteLock TRI_WriteUnlockReadWriteLock@locks-posix.cpp
 
   echo "Some probes in the storage engine:"
-  addEvent insertLocalPoint1 LogicalCollection.cpp:2050 noRet
-  addEvent insertLocalPoint2 LogicalCollection.cpp:2053 noRet
-  addEvent insertLocalPoint3 LogicalCollection.cpp:2062 noRet
+  addEvent insertLocalLine1994 LogicalCollection.cpp:1994 noRet
+  addEvent insertLocalLine2013 LogicalCollection.cpp:2013 noRet
+  addEvent insertLocalLine2028 LogicalCollection.cpp:2028 noRet
+  addEvent insertLocalLine2046 LogicalCollection.cpp:2046 noRet
+  addEvent insertLocalLine2050 LogicalCollection.cpp:2050 noRet
+  addEvent insertLocalLine2053 LogicalCollection.cpp:2053 noRet
+  addEvent insertLocalLine2062 LogicalCollection.cpp:2062 noRet
 
   echo "Mutexes"
   addEvent MutexLock lock@Mutex.cpp
