@@ -319,11 +319,8 @@ bool Constituent::vote(term_t termOfPeer, std::string id, index_t prevLogIndex,
 
     _cast = false;
     _votedFor = "";
-  } else if (termOfPeer == _term) {
-    if (_role != FOLLOWER) {
-      followNoLock(_term);
-    }
-  } else {  // termOfPeer < _term, simply ignore and do not vote:
+  } else if (termOfPeer < _term) {
+    // termOfPeer < _term, simply ignore and do not vote:
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "ignoring RequestVoteRPC with old term " << termOfPeer
       << ", we are already at term " << _term;
