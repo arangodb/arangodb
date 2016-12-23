@@ -437,7 +437,7 @@ void Supervision::run() {
     while (!this->isStopping()) {
 
       // Get bunch of job IDs from agency for future jobs
-      if (_jobId == 0 || _jobId == _jobIdMax) {
+      if (_agent->leading() && (_jobId == 0 || _jobId == _jobIdMax)) {
         getUniqueIds();  // cannot fail but only hang
       }
 
@@ -675,6 +675,8 @@ void Supervision::enforceReplication() {
               _snapshot, _agent, std::to_string(_jobId++), "supervision",
               _agencyPrefix, db_.first, col_.first, shard_.first, newFollowers);
 
+          } else if () {
+            
           }
         }
       }
