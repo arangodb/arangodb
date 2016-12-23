@@ -445,6 +445,8 @@ std::unique_ptr<GeneralClientConnection> AgencyCommManager::acquire(
   } else {
     if(endpoint.empty()) {
       endpoint = _endpoints.front();
+      LOG_TOPIC(DEBUG, Logger::AGENCYCOMM) << "Using endpoint " << endpoint
+        << " for agency communication, full selection:";
     }
     if (!_unusedConnections[endpoint].empty()) {
       connection.reset(_unusedConnections[endpoint].back().release());
@@ -1214,14 +1216,31 @@ AgencyCommResult AgencyComm::sendWithFailover(
     std::chrono::duration<double>(timeout);
   double conTimeout = 1.0;
   
-  for (uint64_t tries = 0; tries < MAX_TRIES; ++tries) {
+  int tries = 0;
+  while (true) {  // will be left by timeout eventually
 
     // Raise waits to a maximum 10 seconds
     auto waitUntil = std::chrono::steady_clock::now() + waitInterval;
-    if (waitInterval.count() < 5.0) { 
-      waitInterval *= 2;
+    
+    // timeout exit startegy
+    if (std::chrono::steady_clock::now() < timeOut) {
+      if (tries > 0) {
+        std::this_thread::sleep_for(waitUntil-std::chrono::steady_clock::now());
+        if (waitInterval.count() < 5.0) { 
+          waitInterval *= 2;
+        }
+      }
+    } else {
+      LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
+        << "Unsuccessful AgencyComm: Timeout"
+        << "errorCode: " << result.errorCode()
+        << " errorMessage: " << result.errorMessage()
+        << " errorDetails: " << result.errorDetails();
+      return result;
     }
     
+    ++tries;
+
     if (connection == nullptr) {
       AgencyCommResult result(400, "No endpoints for agency found.");
       LOG_TOPIC(ERR, Logger::AGENCYCOMM) << result._message;
@@ -1280,19 +1299,6 @@ AgencyCommResult AgencyComm::sendWithFailover(
     AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
     endpoint.clear();
     connection = AgencyCommManager::MANAGER->acquire(endpoint);
-
-    // timeout exit startegy
-    if (std::chrono::steady_clock::now() < timeOut) {
-      std::this_thread::sleep_for(waitUntil-std::chrono::steady_clock::now());
-    } else {
-      LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
-        << "Unsuccessful AgencyComm: Timeout"
-        << "errorCode: " << result.errorCode()
-        << " errorMessage: " << result.errorMessage()
-        << " errorDetails: " << result.errorDetails();
-      return result;
-    }
-    
   }
 
   // other error
