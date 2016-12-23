@@ -120,7 +120,7 @@ int main(int /*argc*/, char* /*argv*/ []) {
       if (!event->isRet) {
         auto it = table.find(id);
         if (it != table.end()) {
-          cout << "Alarm, double event found:\n" << line << endl;
+          //cout << "Alarm, double event found:\n" << line << endl;
         } else {
           table.insert(make_pair(id, move(event)));
         }

@@ -84,10 +84,10 @@ main(){
   addEvent handleRequestDirectly handleRequestDirectly@GeneralCommTask.cpp
 
   echo "trace R/W locks"
-  addEvent TRI_ReadLockReadWriteLock TRI_ReadLockReadWriteLock@locks-posix.cpp
-  addEvent TRI_WriteLockReadWriteLock TRI_WriteLockReadWriteLock@locks-posix.cpp
-  addEvent TRI_ReadUnlockReadWriteLock TRI_ReadUnlockReadWriteLock@locks-posix.cpp
-  addEvent TRI_WriteUnlockReadWriteLock TRI_WriteUnlockReadWriteLock@locks-posix.cpp
+  #addEvent TRI_ReadLockReadWriteLock TRI_ReadLockReadWriteLock@locks-posix.cpp
+  #addEvent TRI_WriteLockReadWriteLock TRI_WriteLockReadWriteLock@locks-posix.cpp
+  #addEvent TRI_ReadUnlockReadWriteLock TRI_ReadUnlockReadWriteLock@locks-posix.cpp
+  #addEvent TRI_WriteUnlockReadWriteLock TRI_WriteUnlockReadWriteLock@locks-posix.cpp
 
   echo "Some probes in the storage engine:"
   addEvent insertLocalLine1994 LogicalCollection.cpp:1994 noRet
@@ -99,7 +99,7 @@ main(){
   addEvent insertLocalLine2062 LogicalCollection.cpp:2062 noRet
 
   echo "Mutexes"
-  addEvent MutexLock lock@Mutex.cpp
+  #addEvent MutexLock lock@Mutex.cpp
   echo Done.
 }
 
