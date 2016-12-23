@@ -445,6 +445,11 @@ std::unique_ptr<GeneralClientConnection> AgencyCommManager::acquire(
   } else {
     if(endpoint.empty()) {
       endpoint = _endpoints.front();
+      LOG_TOPIC(INFO, Logger::AGENCYCOMM) << "Using endpoint " << endpoint
+        << " for agency communication, full selection:";
+      for (auto const& e : _endpoints) {
+        LOG_TOPIC(INFO, Logger::AGENCYCOMM) << "endpoint: " << e;
+      }
     }
     if (!_unusedConnections[endpoint].empty()) {
       connection.reset(_unusedConnections[endpoint].back().release());
