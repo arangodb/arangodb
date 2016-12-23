@@ -168,9 +168,10 @@ void Constituent::followNoLock(term_t t) {
     _leaderID = NO_LEADER;
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Setting _leaderID to NO_LEADER.";
   } else {
-    LOG_TOPIC(INFO, Logger::AGENCY) << _id << ": following " << _leaderID << " in term " << t ;
+    LOG_TOPIC(INFO, Logger::AGENCY)
+      << _id << ": following " << _leaderID << " in term " << t ;
   }
-
+  
   CONDITION_LOCKER(guard, _cv);
   _cv.signal();
 }

@@ -1239,6 +1239,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
       result = send(connection.get(), method, conTimeout, url, body);
     } catch (...) {
       AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
+      endpoint.clear();
       connection = AgencyCommManager::MANAGER->acquire(endpoint);
       
       continue;
@@ -1253,7 +1254,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
     // break on a watch timeout (drop connection)
     if (result._statusCode == 0) {
       AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
-      
+      endpoint.clear();
       connection = AgencyCommManager::MANAGER->acquire(endpoint);
       continue;
       
@@ -1277,6 +1278,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
 
     // here we have failed and want to try next endpoint
     AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
+    endpoint.clear();
     connection = AgencyCommManager::MANAGER->acquire(endpoint);
 
     // timeout exit startegy
