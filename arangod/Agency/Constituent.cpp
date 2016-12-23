@@ -23,9 +23,9 @@
 
 #include "Constituent.h"
 
+#include <thread>
 #include <chrono>
 #include <iomanip>
-#include <thread>
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -112,8 +112,8 @@ void Constituent::termNoLock(term_t t) {
   _term = t;
 
   if (tmp != t) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << _id << ": " << roleStr[_role]
-                                     << " term " << t;
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << _id << ": changing term, current role:"
+      << roleStr[_role] << " new term " << t;
 
     _cast = false;
     Builder body;
@@ -167,8 +167,11 @@ void Constituent::followNoLock(term_t t) {
   if (_leaderID == _id) {
     _leaderID = NO_LEADER;
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Setting _leaderID to NO_LEADER.";
+  } else {
+    LOG_TOPIC(INFO, Logger::AGENCY)
+      << _id << ": following " << _leaderID << " in term " << t ;
   }
-
+  
   CONDITION_LOCKER(guard, _cv);
   _cv.signal();
 }
@@ -197,14 +200,13 @@ void Constituent::lead(term_t term) {
     // I'm the leader
     _role = LEADER;
 
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _role to LEADER in term " << _term
-      << ", setting _leaderID to " << _id;
+    LOG_TOPIC(INFO, Logger::AGENCY) << _id << ": leading in term " << _term;
     _leaderID = _id;
   }
 
-  // we need to rebuild spear_head and read_db;
+  // we need to start work as leader
   _agent->lead();
-
+  
 }
 
 /// Become candidate
@@ -218,8 +220,7 @@ void Constituent::candidate() {
 
   if (_role != CANDIDATE) {
     _role = CANDIDATE;
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _role to CANDIDATE in term "
-      << _term;
+    LOG_TOPIC(INFO, Logger::AGENCY) << _id << ": candidating in term " << _term;
   }
 }
 
@@ -299,7 +300,7 @@ bool Constituent::vote(term_t termOfPeer, std::string id, index_t prevLogIndex,
   if (!_agent->ready()) {
     return false;
   }
-
+  
   TRI_ASSERT(_vocbase != nullptr);
   
   LOG_TOPIC(TRACE, Logger::AGENCY)
@@ -318,11 +319,8 @@ bool Constituent::vote(term_t termOfPeer, std::string id, index_t prevLogIndex,
 
     _cast = false;
     _votedFor = "";
-  } else if (termOfPeer == _term) {
-    if (_role != FOLLOWER) {
-      followNoLock(_term);
-    }
-  } else {  // termOfPeer < _term, simply ignore and do not vote:
+  } else if (termOfPeer < _term) {
+    // termOfPeer < _term, simply ignore and do not vote:
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "ignoring RequestVoteRPC with old term " << termOfPeer
       << ", we are already at term " << _term;
@@ -347,7 +345,8 @@ bool Constituent::vote(term_t termOfPeer, std::string id, index_t prevLogIndex,
   if (prevLogTerm > myLastLogEntry.term ||
       (prevLogTerm == myLastLogEntry.term &&
        prevLogIndex >= myLastLogEntry.index)) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "voting for " << id;
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "voting for " << id << " in term "
+      << _term;
     _cast = true;
     _votedFor = id;
     return true;
@@ -369,12 +368,12 @@ void Constituent::callElection() {
   
   std::vector<std::string> active = _agent->config().active();
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
-
+  
   term_t savedTerm;
   {
     MUTEX_LOCKER(locker, _castLock);
     this->termNoLock(_term + 1);  // raise my term
-    _cast = true;
+    _cast     = true;
     _votedFor = _id;
     savedTerm = _term;
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to NO_LEADER"
@@ -394,7 +393,7 @@ void Constituent::callElection() {
   for (auto const& i : active) {
     if (i != _id) {
       auto headerFields =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
+          std::make_unique<std::unordered_map<std::string, std::string>>();
       operationIDs[i] = ClusterComm::instance()->asyncRequest(
         "", coordinatorTransactionID, _agent->config().poolAt(i),
         rest::RequestType::GET, path.str(),
