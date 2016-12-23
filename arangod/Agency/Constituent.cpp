@@ -112,8 +112,8 @@ void Constituent::termNoLock(term_t t) {
   _term = t;
 
   if (tmp != t) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << _id << ": " << roleStr[_role]
-                                     << " term " << t;
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << _id << ": changing term, current role:"
+      << roleStr[_role] << " new term " << t;
 
     _cast = false;
     Builder body;

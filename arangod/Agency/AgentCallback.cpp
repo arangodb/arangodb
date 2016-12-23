@@ -50,7 +50,7 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
       << TRI_microtime() - _startTime << ")";
   } else {
     LOG_TOPIC(DEBUG, Logger::AGENCY) 
-      << "Got callback from AppendEntriesRPC: "
+      << "Got bad callback from AppendEntriesRPC: "
       << "comm_status(" << res->status
       << "), last(" << _last << "), follower("
       << _slaveID << "), time("
