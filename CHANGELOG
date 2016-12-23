@@ -1,3 +1,8 @@
+v3.1.7 (XXXX-XX-XX)
+-------------------
+
+* fixed one too many elections in RAFT
+
 v3.1.6 (2016-12-20)
 -------------------
 

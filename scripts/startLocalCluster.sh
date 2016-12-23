@@ -218,7 +218,9 @@ start() {
     ${BUILD}/bin/arangod \
        -c none \
        --database.directory cluster/data$PORT \
-       --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
+       --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4001 \
+       --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4002 \
+       --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4003 \
        --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
        --server.endpoint $TRANSPORT://127.0.0.1:$PORT \
        --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
@@ -249,7 +251,9 @@ startTerminal() {
     $XTERM $XTERMOPTIONS -e ${BUILD}/bin/arangod \
         -c none \
         --database.directory cluster/data$PORT \
-        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
+        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4001 \
+        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4002 \
+        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4003 \ \
         --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
         --server.endpoint $TRANSPORT://127.0.0.1:$PORT \
         --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
@@ -279,7 +283,9 @@ startDebugger() {
     ${BUILD}/bin/arangod \
       -c none \
       --database.directory cluster/data$PORT \
-      --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
+      --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4001 \
+      --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4002 \
+      --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4003 \ \
       --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
       --server.endpoint $TRANSPORT://127.0.0.1:$PORT \
       --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
@@ -309,7 +315,9 @@ startRR() {
     $XTERM $XTERMOPTIONS -e rr ${BUILD}/bin/arangod \
         -c none \
         --database.directory cluster/data$PORT \
-        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
+        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4001 \
+        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4002 \
+        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4003 \ \
         --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
         --server.endpoint $TRANSPORT://127.0.0.1:$PORT \
         --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
@@ -395,7 +403,9 @@ if [ "$SECONDARIES" == "1" ] ; then
         ${BUILD}/bin/arangod \
             -c none \
             --database.directory cluster/data$PORT \
-            --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
+            --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4001 \
+            --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4002 \
+            --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4003 \ \
             --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
             --server.endpoint $TRANSPORT://127.0.0.1:$PORT \
             --cluster.my-id $CLUSTER_ID \

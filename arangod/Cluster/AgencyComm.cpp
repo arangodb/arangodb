@@ -1654,7 +1654,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
     while (true) {
       try {
         result =
-          send(agencyEndpoint->_connection, method, timeout, realUrl, body);
+          send(agencyEndpoint->_connection, method, 2.0, realUrl, body);
       } catch (...) {
         result._connected = false;
         result._statusCode = 0;
