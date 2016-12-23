@@ -345,7 +345,8 @@ bool Constituent::vote(term_t termOfPeer, std::string id, index_t prevLogIndex,
   if (prevLogTerm > myLastLogEntry.term ||
       (prevLogTerm == myLastLogEntry.term &&
        prevLogIndex >= myLastLogEntry.index)) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "voting for " << id;
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "voting for " << id << " in term "
+      << _term;
     _cast = true;
     _votedFor = id;
     return true;
