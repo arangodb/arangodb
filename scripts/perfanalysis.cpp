@@ -1,5 +1,5 @@
 // Compile with
-//   g++ perfanalysis.cpp -o perfanalyis -std=c++14 -Wall -O3
+//   g++ perfanalysis.cpp -o perfanalysis -std=c++14 -Wall -O3
 
 #include <algorithm>
 #include <cstring>
@@ -120,7 +120,7 @@ int main(int /*argc*/, char* /*argv*/ []) {
       if (!event->isRet) {
         auto it = table.find(id);
         if (it != table.end()) {
-          cout << "Alarm, double event found:\n" << line << endl;
+          //cout << "Alarm, double event found:\n" << line << endl;
         } else {
           table.insert(make_pair(id, move(event)));
         }
@@ -138,10 +138,10 @@ int main(int /*argc*/, char* /*argv*/ []) {
       }
     }
   }
-  cout << "Unreturned events:\n";
-  for (auto& p : table) {
-    cout << p.second->pretty() << "\n";
-  }
+  //cout << "Unreturned events:\n";
+  //for (auto& p : table) {
+  //  cout << p.second->pretty() << "\n";
+  //}
   sort(list.begin(), list.end(),
        [](unique_ptr<Event>const& a, unique_ptr<Event>const& b) -> bool { return *a < *b; });
   cout << "Events sorted by name and time:\n";

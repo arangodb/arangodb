@@ -437,7 +437,7 @@ void Supervision::run() {
     while (!this->isStopping()) {
 
       // Get bunch of job IDs from agency for future jobs
-      if (_jobId == 0 || _jobId == _jobIdMax) {
+      if (_agent->leading() && (_jobId == 0 || _jobId == _jobIdMax)) {
         getUniqueIds();  // cannot fail but only hang
       }
 
@@ -916,9 +916,6 @@ void Supervision::getUniqueIds() {
     auto result = transact(_agent, uniq);
 
     if (!result.accepted || result.indices.empty()) {
-      LOG_TOPIC(DEBUG, Logger::AGENCY) << "We have lost agency leadership. "
-                                          "Stopping any supervision processing "
-                                       << __FILE__ << __LINE__;
       return;
     }
 

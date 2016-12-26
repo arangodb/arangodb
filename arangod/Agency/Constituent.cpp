@@ -112,8 +112,8 @@ void Constituent::termNoLock(term_t t) {
   _term = t;
 
   if (tmp != t) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << _id << ": " << roleStr[_role]
-                                     << " term " << t;
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << _id << ": changing term, current role:"
+      << roleStr[_role] << " new term " << t;
 
     _cast = false;
     Builder body;
@@ -167,8 +167,11 @@ void Constituent::followNoLock(term_t t) {
   if (_leaderID == _id) {
     _leaderID = NO_LEADER;
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Setting _leaderID to NO_LEADER.";
+  } else {
+    LOG_TOPIC(INFO, Logger::AGENCY)
+      << _id << ": following " << _leaderID << " in term " << t ;
   }
-
+  
   CONDITION_LOCKER(guard, _cv);
   _cv.signal();
 }
@@ -197,8 +200,7 @@ void Constituent::lead(term_t term) {
     // I'm the leader
     _role = LEADER;
 
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _role to LEADER in term " << _term
-      << ", setting _leaderID to " << _id;
+    LOG_TOPIC(INFO, Logger::AGENCY) << _id << ": leading in term " << _term;
     _leaderID = _id;
   }
 
@@ -218,8 +220,7 @@ void Constituent::candidate() {
 
   if (_role != CANDIDATE) {
     _role = CANDIDATE;
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _role to CANDIDATE in term "
-      << _term;
+    LOG_TOPIC(INFO, Logger::AGENCY) << _id << ": candidating in term " << _term;
   }
 }
 
@@ -318,11 +319,8 @@ bool Constituent::vote(term_t termOfPeer, std::string id, index_t prevLogIndex,
 
     _cast = false;
     _votedFor = "";
-  } else if (termOfPeer == _term) {
-    if (_role != FOLLOWER) {
-      followNoLock(_term);
-    }
-  } else {  // termOfPeer < _term, simply ignore and do not vote:
+  } else if (termOfPeer < _term) {
+    // termOfPeer < _term, simply ignore and do not vote:
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "ignoring RequestVoteRPC with old term " << termOfPeer
       << ", we are already at term " << _term;
@@ -347,7 +345,8 @@ bool Constituent::vote(term_t termOfPeer, std::string id, index_t prevLogIndex,
   if (prevLogTerm > myLastLogEntry.term ||
       (prevLogTerm == myLastLogEntry.term &&
        prevLogIndex >= myLastLogEntry.index)) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "voting for " << id;
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "voting for " << id << " in term "
+      << _term;
     _cast = true;
     _votedFor = id;
     return true;

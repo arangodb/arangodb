@@ -189,6 +189,8 @@ bool Agent::waitFor(index_t index, double timeout) {
 
   // We should never get here
   TRI_ASSERT(false);
+
+  return false;
 }
 
 //  AgentCallback reports id of follower and its highest processed index
@@ -367,7 +369,8 @@ void Agent::sendAppendEntriesRPC() {
       if (unconfirmed.size() > 1) {
         LOG_TOPIC(TRACE, Logger::AGENCY)
           << "Appending " << unconfirmed.size() - 1 << " entries up to index "
-          << highest << " to follower " << followerId;
+          << highest << " to follower " << followerId << ". Message: "
+          << builder.toJson();
       }
 
       // Really leading?

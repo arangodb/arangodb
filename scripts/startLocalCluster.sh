@@ -202,6 +202,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --server.threads 16 \
         --log.file cluster/$port.log \
         --log.force-direct true \
+        --log.level agency=DEBUG \
         $LOG_LEVEL_AGENCY \
         $AUTHENTICATION \
         $SSLKEYFILE \
