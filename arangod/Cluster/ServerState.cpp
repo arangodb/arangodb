@@ -22,11 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ServerState.h"
+#include "Agency/AgencyComm.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
-#include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
 
 #include <iomanip>
@@ -254,7 +254,7 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role) {
     found = false;
   } else {
     VPackSlice idSlice = result.slice()[0].get(std::vector<std::string>(
-          {comm.prefix(), "Target", "MapLocalToID", localInfoEncoded}));
+          {AgencyCommManager::path(), "Target", "MapLocalToID", localInfoEncoded}));
     if (!idSlice.isString()) {
       found = false;
     } else {
@@ -279,7 +279,7 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role) {
     found = false;
   } else {
     VPackSlice plan = result.slice()[0].get(std::vector<std::string>(
-          { comm.prefix(), "Plan", agencyKey, id }));
+          { AgencyCommManager::path(), "Plan", agencyKey, id }));
     if (!plan.isString()) {
       found = false;
     } else {
@@ -362,7 +362,7 @@ std::string ServerState::createIdForRole(
       FATAL_ERROR_EXIT();
     }
     VPackSlice servers = result.slice()[0].get(std::vector<std::string>(
-          {comm.prefix(), "Plan", agencyKey}));
+          {AgencyCommManager::path(), "Plan", agencyKey}));
     if (!servers.isObject()) {
       LOG(FATAL) << "Plan/" << agencyKey << " in agency is no object. "
           << "Agency not initialized?";
@@ -807,7 +807,7 @@ ServerState::RoleEnum ServerState::checkCoordinatorsList(
   AgencyCommResult result = comm.getValues(key);
 
   if (!result.successful()) {
-    std::string const endpoints = AgencyComm::getEndpointsString();
+    std::string const endpoints = AgencyCommManager::MANAGER->endpointsString();
 
     LOG_TOPIC(TRACE, Logger::CLUSTER)
       << "Could not fetch configuration from agency endpoints ("
@@ -818,7 +818,7 @@ ServerState::RoleEnum ServerState::checkCoordinatorsList(
   }
 
   VPackSlice coordinators = result.slice()[0].get(std::vector<std::string>(
-        {comm.prefix(), "Plan", "Coordinators"}));
+        {AgencyCommManager::path(), "Plan", "Coordinators"}));
   if (!coordinators.isObject()) {
     LOG_TOPIC(TRACE, Logger::CLUSTER)
       << "Got an invalid JSON response for Plan/Coordinators";
@@ -852,7 +852,7 @@ int ServerState::lookupLocalInfoToId(std::string const& localInfo,
     AgencyCommResult result = comm.getValues(key);
 
     if (!result.successful()) {
-      std::string const endpoints = AgencyComm::getEndpointsString();
+      std::string const endpoints = AgencyCommManager::MANAGER->endpointsString();
 
       LOG_TOPIC(DEBUG, Logger::STARTUP)
           << "Could not fetch configuration from agency endpoints ("
@@ -860,7 +860,7 @@ int ServerState::lookupLocalInfoToId(std::string const& localInfo,
           << ", message: " << result.errorMessage() << ", key: " << key;
     } else {
       VPackSlice slice = result.slice()[0].get(std::vector<std::string>(
-            {comm.prefix(), "Target", "MapLocalToID"}));
+            {AgencyCommManager::path(), "Target", "MapLocalToID"}));
 
       if (!slice.isObject()) {
         LOG_TOPIC(DEBUG, Logger::STARTUP) << "Target/MapLocalToID corrupt: "
@@ -903,7 +903,7 @@ ServerState::RoleEnum ServerState::checkServersList(std::string const& id) {
   AgencyCommResult result = comm.getValues(key);
 
   if (!result.successful()) {
-    std::string const endpoints = AgencyComm::getEndpointsString();
+    std::string const endpoints = AgencyCommManager::MANAGER->endpointsString();
 
     LOG_TOPIC(TRACE, Logger::CLUSTER)
       << "Could not fetch configuration from agency endpoints (" << endpoints
@@ -916,7 +916,7 @@ ServerState::RoleEnum ServerState::checkServersList(std::string const& id) {
   ServerState::RoleEnum role = ServerState::ROLE_UNDEFINED;
 
   VPackSlice dbservers = result.slice()[0].get(std::vector<std::string>(
-        {comm.prefix(), "Plan", "DBServers"}));
+        {AgencyCommManager::path(), "Plan", "DBServers"}));
   if (!dbservers.isObject()) {
     LOG_TOPIC(TRACE, Logger::CLUSTER)
       << "Got an invalid JSON response for Plan/DBServers";
@@ -1002,7 +1002,7 @@ bool ServerState::storeRole(RoleEnum role) {
         myId, AgencyValueOperationType::SET, builder.slice());
       AgencyOperation incrementVersion(
         "Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
-      AgencyPrecondition precondition(myId, AgencyPrecondition::EMPTY, true);
+      AgencyPrecondition precondition(myId, AgencyPrecondition::Type::EMPTY, true);
       AgencyWriteTransaction trx({addMe, incrementVersion}, precondition);
       
       // register server

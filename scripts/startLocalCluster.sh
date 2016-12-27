@@ -222,7 +222,7 @@ start() {
        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4002 \
        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4003 \
        --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
-       --server.endpoint $TRANSPORT://127.0.0.1:$PORT \
+       --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
        --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
        --cluster.my-role $ROLE \
        --log.file cluster/$PORT.log \
@@ -255,7 +255,7 @@ startTerminal() {
         --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4002 \
         --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4003 \ \
         --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
-        --server.endpoint $TRANSPORT://127.0.0.1:$PORT \
+        --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
         --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
         --cluster.my-role $ROLE \
         --log.file cluster/$PORT.log \
@@ -287,7 +287,7 @@ startDebugger() {
       --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4002 \
       --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4003 \ \
       --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
-      --server.endpoint $TRANSPORT://127.0.0.1:$PORT \
+      --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
       --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
       --cluster.my-role $ROLE \
       --log.file cluster/$PORT.log \
@@ -319,7 +319,7 @@ startRR() {
         --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4002 \
         --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4003 \ \
         --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
-        --server.endpoint $TRANSPORT://127.0.0.1:$PORT \
+        --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
         --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
         --cluster.my-role $ROLE \
         --log.file cluster/$PORT.log \
@@ -407,7 +407,7 @@ if [ "$SECONDARIES" == "1" ] ; then
             --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4002 \
             --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4003 \ \
             --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
-            --server.endpoint $TRANSPORT://127.0.0.1:$PORT \
+            --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
             --cluster.my-id $CLUSTER_ID \
             --log.file cluster/$PORT.log \
             --server.statistics true \

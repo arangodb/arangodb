@@ -23,7 +23,7 @@
 #include "RestServer/BootstrapFeature.h"
 
 #include "Aql/QueryList.h"
-#include "Cluster/AgencyComm.h"
+#include "Agency/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/RestHandlerFactory.h"
@@ -72,7 +72,7 @@ static void raceForClusterBootstrap() {
       continue;
     }
     VPackSlice value = result.slice()[0].get(
-        std::vector<std::string>({agency.prefix(), "Bootstrap"}));
+        std::vector<std::string>({AgencyCommManager::path(), "Bootstrap"}));
     if (value.isString()) {
       // key was found and is a string
       if (value.copyString().find("done") != std::string::npos) {

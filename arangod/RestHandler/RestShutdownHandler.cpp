@@ -24,7 +24,7 @@
 #include "RestShutdownHandler.h"
 
 #include "Rest/HttpRequest.h"
-#include "Cluster/AgencyComm.h"
+#include "Agency/AgencyComm.h"
 #include "Cluster/ClusterFeature.h"
 
 #include <velocypack/Builder.h>

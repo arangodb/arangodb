@@ -396,7 +396,7 @@ void Supervision::run() {
     CONDITION_LOCKER(guard, _cv);
     TRI_ASSERT(_agent != nullptr);
 
-    // Get agency prefix after cluster init
+    // Get AgencyCommManager::path after cluster init
     uint64_t jobId = 0;
     {
       MUTEX_LOCKER(locker, _lock);
@@ -404,7 +404,7 @@ void Supervision::run() {
     }
     
     if (jobId == 0) {
-      // We need the agency prefix to work, but it is only initialized by
+      // We need the AgencyCommManager::path to work, but it is only initialized by
       // some other server in the cluster. Since the supervision does not
       // make sense at all without other ArangoDB servers, we wait pretty
       // long here before giving up:
@@ -826,7 +826,7 @@ bool Supervision::start(Agent* agent) {
   return start();
 }
 
-// Get agency prefix fron agency
+// Get AgencyCommManager::path fron agency
 bool Supervision::updateAgencyPrefix(size_t nTries, int intervalSec) {
   // Try nTries to get agency's prefix in intervals
   while (!this->isStopping()) {

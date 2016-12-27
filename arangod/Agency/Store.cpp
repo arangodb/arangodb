@@ -233,6 +233,9 @@ std::vector<bool> Store::apply(
           std::string oper = j.value.get("op").copyString();
           if (!(oper == "observe" || oper == "unobserve")) {
             std::string uri = j.key.copyString();
+            if (!uri.empty() && uri.at(0)!='/') {
+              uri = std::string("/") + uri;
+            }
             while (true) {
               // TODO: Check if not a special lock will help
               {

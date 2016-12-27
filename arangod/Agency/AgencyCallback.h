@@ -24,15 +24,16 @@
 #ifndef ARANGODB_CLUSTER_AGENCYCALLBACK_H
 #define ARANGODB_CLUSTER_AGENCYCALLBACK_H
 
-#include "Basics/ConditionVariable.h"
-#include "Basics/Mutex.h"
+#include "Basics/Common.h"
 
 #include <functional>
 #include <memory>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Cluster/AgencyComm.h"
+#include "Agency/AgencyComm.h"
+#include "Basics/ConditionVariable.h"
+#include "Basics/Mutex.h"
 
 namespace arangodb {
 

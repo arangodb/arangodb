@@ -24,8 +24,8 @@
 #ifndef ARANGOD_CLUSTER_CLUSTER_METHODS_H
 #define ARANGOD_CLUSTER_CLUSTER_METHODS_H 1
 
+#include "Agency/AgencyComm.h"
 #include "Basics/Common.h"
-#include "Cluster/AgencyComm.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Rest/HttpResponse.h"
 #include "VocBase/LogicalCollection.h"
