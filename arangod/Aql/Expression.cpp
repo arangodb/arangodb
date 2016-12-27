@@ -861,7 +861,8 @@ AqlValue Expression::executeSimpleExpressionFCall(
 
   size_t const n = member->numMembers();
 
-  VPackFunctionParameters parameters;
+  SmallVector<AqlValue>::allocator_type::arena_type arena;
+  VPackFunctionParameters parameters{arena};
   std::vector<bool> destroyParameters;
   parameters.reserve(n);
   destroyParameters.reserve(n);

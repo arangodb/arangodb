@@ -86,7 +86,7 @@ static AqlValue NumberValue(arangodb::Transaction* trx, double value, bool nulli
 }
 
 /// @brief validate the number of parameters
-static void ValidateParameters(std::vector<AqlValue> const& parameters,
+static void ValidateParameters(VPackFunctionParameters const& parameters,
                                char const* function, int minParams, int maxParams) {
   if (parameters.size() < static_cast<size_t>(minParams) || 
       parameters.size() > static_cast<size_t>(maxParams)) {
@@ -95,7 +95,7 @@ static void ValidateParameters(std::vector<AqlValue> const& parameters,
   }
 }
 
-static void ValidateParameters(std::vector<AqlValue> const& parameters,
+static void ValidateParameters(VPackFunctionParameters const& parameters,
                                char const* function, int minParams) {
   return ValidateParameters(parameters, function, minParams, static_cast<int>(Function::MaxArguments));
 }
