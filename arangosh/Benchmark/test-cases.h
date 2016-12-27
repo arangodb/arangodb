@@ -217,11 +217,7 @@ struct DocumentCrudWriteReadTest : public BenchmarkOperation {
       for (uint64_t i = 1; i <= n; ++i) {
         TRI_AppendStringStringBuffer(buffer, ",\"value");
         TRI_AppendUInt64StringBuffer(buffer, i);
-        if (mod == 0) {
-          TRI_AppendStringStringBuffer(buffer, "\":true");
-        } else {
-          TRI_AppendStringStringBuffer(buffer, "\":false");
-        }
+        TRI_AppendStringStringBuffer(buffer, "\":true");
       }
 
       TRI_AppendCharStringBuffer(buffer, '}');
