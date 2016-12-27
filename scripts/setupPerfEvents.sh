@@ -88,6 +88,8 @@ main(){
   #addEvent TRI_WriteLockReadWriteLock TRI_WriteLockReadWriteLock@locks-posix.cpp
   #addEvent TRI_ReadUnlockReadWriteLock TRI_ReadUnlockReadWriteLock@locks-posix.cpp
   #addEvent TRI_WriteUnlockReadWriteLock TRI_WriteUnlockReadWriteLock@locks-posix.cpp
+  #addEvent TRI_TryWriteLockReadWriteLock TRI_TryWriteLockReadWriteLock@locks-posix.cpp
+  addEvent beginWriteTimed beginWriteTimed@LogicalCollection.cpp
 
   echo "Some probes in the storage engine:"
   addEvent insertLocalLine1994 LogicalCollection.cpp:1994 noRet
