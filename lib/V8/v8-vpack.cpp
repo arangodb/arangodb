@@ -409,7 +409,7 @@ static int V8ToVPack(BuilderContext& context,
           v8::Handle<v8::Function> toJson =
               v8::Handle<v8::Function>::Cast(func);
 
-          v8::Handle<v8::Value> args;
+          v8::Handle<v8::Value> args[] = {};
           v8::Handle<v8::Value> converted = toJson->Call(o, 0, &args);
 
           if (!converted.IsEmpty()) {
