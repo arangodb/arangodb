@@ -1345,8 +1345,12 @@ LogicalCollection* MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase, std
 
   if (filename.substr(filename.size() - 4, 4) == ".tmp") {
     // we got a tmp file. Now try saving the original file
-    arangodb::basics::VelocyPackHelper::velocyPackToFile(filename.substr(0, filename.size() - 4),
-                                                         slice, true);
+    std::string const original(filename.substr(0, filename.size() - 4));
+    bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(original, slice, true);
+    
+    if (!ok) {
+      LOG(ERR) << "cannot store collection parameters in file '" << original << "'";
+    }
   }
 
   // fiddle "isSystem" value, which is not contained in the JSON file
