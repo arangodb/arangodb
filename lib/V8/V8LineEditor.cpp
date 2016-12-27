@@ -318,7 +318,7 @@ class V8Completer : public Completer {
         v8::Handle<v8::Value> args[] = {};
 
         try {
-          v8::Handle<v8::Value> cpls = func->Call(current, 0, &args);
+          v8::Handle<v8::Value> cpls = func->Call(current, 0, args);
 
           if (cpls->IsArray()) {
             properties = v8::Handle<v8::Array>::Cast(cpls);
