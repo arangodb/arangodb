@@ -1281,7 +1281,7 @@ AqlValue Expression::executeSimpleExpressionTernary(
     position = 2;
   }
 
-  return executeSimpleExpression(node->getMember(position), trx, mustDestroy, true);
+  return executeSimpleExpression(node->getMemberUnchecked(position), trx, mustDestroy, true);
 }
 
 /// @brief execute an expression of type SIMPLE with EXPANSION
