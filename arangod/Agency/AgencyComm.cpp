@@ -369,7 +369,7 @@ VPackSlice AgencyCommResult::slice() const { return _vpack->slice(); }
 std::unique_ptr<AgencyCommManager> AgencyCommManager::MANAGER;
 
 AgencyConnectionOptions
-AgencyCommManager::CONNECTION_OPTIONS (2.0, 15.0, 15.0, 5);
+AgencyCommManager::CONNECTION_OPTIONS (15.0, 120.0, 120.0, 5);
 
 void AgencyCommManager::initialize(std::string const& prefix) {
   MANAGER.reset(new AgencyCommManager(prefix));
