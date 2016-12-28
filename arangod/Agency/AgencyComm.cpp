@@ -1355,7 +1355,7 @@ AgencyCommResult AgencyComm::send(
 
   if (response == nullptr) {
     result._message = "could not send request to agency";
-    LOG_TOPIC(TRACE, Logger::AGENCYCOMM) << "sending request to agency failed";
+    LOG_TOPIC(TRACE, Logger::AGENCYCOMM) << "could not send request to agency";
 
     return result;
   }

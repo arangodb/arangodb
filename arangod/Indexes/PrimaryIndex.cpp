@@ -464,7 +464,7 @@ IndexIterator* PrimaryIndex::iteratorForSlice(
   // lease builder, but immediately pass it to the unique_ptr so we don't leak  
   TransactionBuilderLeaser builder(trx);
   std::unique_ptr<VPackBuilder> keys(builder.steal());
-  builder->add(searchValues);
+  keys->add(searchValues);
   return new PrimaryIndexIterator(_collection, trx, mmdr, this, keys);
 }
 

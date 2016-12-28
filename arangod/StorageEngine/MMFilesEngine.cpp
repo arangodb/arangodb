@@ -139,7 +139,7 @@ void MMFilesEngine::validateOptions(std::shared_ptr<options::ProgramOptions>) {
 // preparation phase for storage engine. can be used for internal setup.
 // the storage engine must not start any threads here or write any files
 void MMFilesEngine::prepare() {
-  TRI_ASSERT(EngineSelectorFeature::ENGINE = this);
+  TRI_ASSERT(EngineSelectorFeature::ENGINE == this);
 
   // get base path from DatabaseServerFeature 
   auto databasePathFeature = application_features::ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
@@ -152,7 +152,7 @@ void MMFilesEngine::prepare() {
 
 // initialize engine
 void MMFilesEngine::start() {
-  TRI_ASSERT(EngineSelectorFeature::ENGINE = this);
+  TRI_ASSERT(EngineSelectorFeature::ENGINE == this);
   
   // test if the "databases" directory is present and writable
   verifyDirectories();
@@ -176,12 +176,12 @@ void MMFilesEngine::start() {
 // shutdown threads etc. it is guaranteed that there will be no read and
 // write requests to the storage engine after this call
 void MMFilesEngine::stop() {
-  TRI_ASSERT(EngineSelectorFeature::ENGINE = this);
+  TRI_ASSERT(EngineSelectorFeature::ENGINE == this);
 }
 
 // create storage-engine specific collection
 PhysicalCollection* MMFilesEngine::createPhysicalCollection(LogicalCollection* collection) {
-  TRI_ASSERT(EngineSelectorFeature::ENGINE = this);
+  TRI_ASSERT(EngineSelectorFeature::ENGINE == this);
   return new MMFilesCollection(collection);
 }
 
@@ -1345,8 +1345,12 @@ LogicalCollection* MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase, std
 
   if (filename.substr(filename.size() - 4, 4) == ".tmp") {
     // we got a tmp file. Now try saving the original file
-    arangodb::basics::VelocyPackHelper::velocyPackToFile(filename.substr(0, filename.size() - 4),
-                                                         slice, true);
+    std::string const original(filename.substr(0, filename.size() - 4));
+    bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(original, slice, true);
+    
+    if (!ok) {
+      LOG(ERR) << "cannot store collection parameters in file '" << original << "'";
+    }
   }
 
   // fiddle "isSystem" value, which is not contained in the JSON file
