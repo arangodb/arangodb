@@ -1212,6 +1212,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
   std::string url = initialUrl;
 
   std::chrono::duration<double> waitInterval (.25); // seconds
+  auto started = std::chrono::steady_clock::now();
   auto timeOut = std::chrono::steady_clock::now() +
     std::chrono::duration<double>(timeout);
   double conTimeout = 1.0;
@@ -1250,7 +1251,11 @@ AgencyCommResult AgencyComm::sendWithFailover(
     if (1 < tries) {
       LOG_TOPIC(WARN, Logger::AGENCYCOMM)
         << "Retrying agency communication at '" << endpoint
-        << "', tries: " << tries;
+        << "', tries: " << tries << " ("
+        << 1.e-2 * (
+          std::round(
+            1.e+2 * std::chrono::duration<double>(
+              std::chrono::steady_clock::now() - started).count())) << "s)";
     }
     
     // try to send; if we fail completely, do not retry
@@ -1260,7 +1265,6 @@ AgencyCommResult AgencyComm::sendWithFailover(
       AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
       endpoint.clear();
       connection = AgencyCommManager::MANAGER->acquire(endpoint);
-      
       continue;
     }
     
@@ -1276,7 +1280,6 @@ AgencyCommResult AgencyComm::sendWithFailover(
       endpoint.clear();
       connection = AgencyCommManager::MANAGER->acquire(endpoint);
       continue;
-      
     }
     
     // sometimes the agency will return a 307 (temporary redirect)
