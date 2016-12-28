@@ -2109,7 +2109,7 @@ std::string ClusterInfo::getServerEndpoint(ServerID const& serverID) {
     loadServers();
   }
 
-  return std::string("");
+  return std::string();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2144,7 +2144,7 @@ std::string ClusterInfo::getServerName(std::string const& endpoint) {
     loadServers();
   }
 
-  return std::string("");
+  return std::string();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
