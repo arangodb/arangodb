@@ -61,7 +61,7 @@ uint64_t AqlValue::hash(arangodb::Transaction* trx, uint64_t seed) const {
 }
 
 /// @brief whether or not the value contains a none value
-bool AqlValue::isNone() const {
+bool AqlValue::isNone() const noexcept {
   AqlValueType t = type();
   if (t == DOCVEC || t == RANGE) {
     return false;
@@ -71,7 +71,7 @@ bool AqlValue::isNone() const {
 }
 
 /// @brief whether or not the value is a null value
-bool AqlValue::isNull(bool emptyIsNull) const {
+bool AqlValue::isNull(bool emptyIsNull) const noexcept {
   AqlValueType t = type();
   if (t == DOCVEC || t == RANGE) {
     return false;
@@ -82,7 +82,7 @@ bool AqlValue::isNull(bool emptyIsNull) const {
 }
 
 /// @brief whether or not the value is a boolean value
-bool AqlValue::isBoolean() const {
+bool AqlValue::isBoolean() const noexcept {
   AqlValueType t = type();
   if (t == DOCVEC || t == RANGE) {
     return false;
@@ -91,7 +91,7 @@ bool AqlValue::isBoolean() const {
 }
 
 /// @brief whether or not the value is a number
-bool AqlValue::isNumber() const {
+bool AqlValue::isNumber() const noexcept {
   AqlValueType t = type();
   if (t == DOCVEC || t == RANGE) {
     return false;
@@ -100,7 +100,7 @@ bool AqlValue::isNumber() const {
 }
 
 /// @brief whether or not the value is a string
-bool AqlValue::isString() const {
+bool AqlValue::isString() const noexcept {
   AqlValueType t = type();
   if (t == DOCVEC || t == RANGE) {
     return false;
@@ -109,7 +109,7 @@ bool AqlValue::isString() const {
 }
 
 /// @brief whether or not the value is an object
-bool AqlValue::isObject() const {
+bool AqlValue::isObject() const noexcept {
   AqlValueType t = type();
   if (t == RANGE || t == DOCVEC) {
     return false;
@@ -119,7 +119,7 @@ bool AqlValue::isObject() const {
 
 /// @brief whether or not the value is an array (note: this treats ranges
 /// as arrays, too!)
-bool AqlValue::isArray() const {
+bool AqlValue::isArray() const noexcept {
   AqlValueType t = type();
   if (t == RANGE || t == DOCVEC) {
     return true;

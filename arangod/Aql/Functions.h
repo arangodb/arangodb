@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_FUNCTIONS_H 1
 
 #include "Basics/Common.h"
+#include "Basics/SmallVector.h"
 #include "Aql/AqlValue.h"
 
 namespace arangodb {
@@ -40,7 +41,7 @@ class Query;
 
 typedef std::function<bool()> ExecutionCondition;
 
-typedef std::vector<AqlValue> VPackFunctionParameters;
+typedef SmallVector<AqlValue> VPackFunctionParameters;
 
 typedef std::function<AqlValue(arangodb::aql::Query*, arangodb::Transaction*,
                                 VPackFunctionParameters const&)>

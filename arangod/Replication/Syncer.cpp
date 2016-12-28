@@ -593,16 +593,8 @@ int Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
   TRI_voc_cid_t const cid = getCid(slice);
   std::string cnameString = getCName(slice);
 
-  // TODO
-  // Backwards compatibility. old check to nullptr, new is empty string
-  // Other api does not know yet.
-  char const* cname = nullptr;
-  if (!cnameString.empty()) {
-    cname = cnameString.c_str();
-  }
-
   try {
-    CollectionGuard guard(_vocbase, cid, std::string(cname));
+    CollectionGuard guard(_vocbase, cid, cnameString);
 
     if (guard.collection() == nullptr) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;

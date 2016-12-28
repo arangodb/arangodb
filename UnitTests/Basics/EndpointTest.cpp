@@ -128,9 +128,9 @@ BOOST_AUTO_TEST_CASE (EndpointSpecification) {
   Endpoint* e;
 
   CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", specification, "http+tcp://127.0.0.1:8529");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", specification, "http+tcp://localhost:8529");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", specification, "http+tcp://127.0.0.1:8529");
   CHECK_ENDPOINT_FEATURE(client, "SSL://127.0.0.5", specification, "http+ssl://127.0.0.5:8529");
-  CHECK_ENDPOINT_FEATURE(client, "httP@ssl://localhost:4635", specification, "http+ssl://localhost:4635");
+  CHECK_ENDPOINT_FEATURE(client, "httP@ssl://localhost:4635", specification, "http+ssl://127.0.0.1:4635");
 
 #ifndef _WIN32
   CHECK_ENDPOINT_SERVER_FEATURE(server, "unix:///path/to/socket", specification, "http+unix:///path/to/socket");
@@ -380,13 +380,13 @@ BOOST_AUTO_TEST_CASE (EndpointHost) {
   Endpoint* e;
 
   CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", host, "127.0.0.1");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", host, "localhost");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", host, "127.0.0.1");
   CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org", host, "www.arangodb.org");
   CHECK_ENDPOINT_FEATURE(client, "tcp://arangodb.org", host, "arangodb.org");
   CHECK_ENDPOINT_FEATURE(client, "tcp://DE.triagens.ArangoDB.org", host, "de.triagens.arangodb.org");
   CHECK_ENDPOINT_FEATURE(client, "tcp://192.168.173.13:8529", host, "192.168.173.13");
   CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:8529", host, "127.0.0.1");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:8529", host, "localhost");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:8529", host, "127.0.0.1");
   CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org:8529", host, "www.arangodb.org");
   CHECK_ENDPOINT_FEATURE(client, "tcp://arangodb.org:8529", host, "arangodb.org");
   CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]", host, "127.0.0.1");
@@ -398,12 +398,12 @@ BOOST_AUTO_TEST_CASE (EndpointHost) {
   CHECK_ENDPOINT_FEATURE(client, "http@tcp://[::]:8529", host, "::");
   
   CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1", host, "127.0.0.1");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", host, "localhost");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", host, "127.0.0.1");
   CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org", host, "www.arangodb.org");
   CHECK_ENDPOINT_FEATURE(client, "ssl://arangodb.org", host, "arangodb.org");
   CHECK_ENDPOINT_FEATURE(client, "ssl://DE.triagens.ArangoDB.org", host, "de.triagens.arangodb.org");
   CHECK_ENDPOINT_FEATURE(client, "ssl://192.168.173.13:8529", host, "192.168.173.13");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:8529", host, "localhost");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:8529", host, "127.0.0.1");
   CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org:8529", host, "www.arangodb.org");
   CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]", host, "127.0.0.1");
   CHECK_ENDPOINT_FEATURE(client, "ssl://[::]", host, "::");
@@ -428,7 +428,7 @@ BOOST_AUTO_TEST_CASE (EndpointHostString) {
   Endpoint* e;
 
   CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", hostAndPort, "127.0.0.1:8529");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", hostAndPort, "localhost:8529");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", hostAndPort, "127.0.0.1:8529");
   CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org", hostAndPort, "www.arangodb.org:8529");
   CHECK_ENDPOINT_FEATURE(client, "tcp://arangodb.org", hostAndPort, "arangodb.org:8529");
   CHECK_ENDPOINT_FEATURE(client, "tcp://DE.triagens.ArangoDB.org", hostAndPort, "de.triagens.arangodb.org:8529");
@@ -436,8 +436,8 @@ BOOST_AUTO_TEST_CASE (EndpointHostString) {
   CHECK_ENDPOINT_FEATURE(client, "tcp://192.168.173.13:678", hostAndPort, "192.168.173.13:678");
   CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:8529", hostAndPort, "127.0.0.1:8529");
   CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:44", hostAndPort, "127.0.0.1:44");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:8529", hostAndPort, "localhost:8529");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:65535", hostAndPort, "localhost:65535");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:8529", hostAndPort, "127.0.0.1:8529");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:65535", hostAndPort, "127.0.0.1:65535");
   CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org:8529", hostAndPort, "www.arangodb.org:8529");
   CHECK_ENDPOINT_FEATURE(client, "tcp://arangodb.org:8529", hostAndPort, "arangodb.org:8529");
   CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]", hostAndPort, "[127.0.0.1]:8529");
@@ -455,14 +455,14 @@ BOOST_AUTO_TEST_CASE (EndpointHostString) {
   CHECK_ENDPOINT_FEATURE(client, "http@tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:777", hostAndPort, "[2001:0db8:0000:0000:0000:ff00:0042:8329]:777");
   
   CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1", hostAndPort, "127.0.0.1:8529");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", hostAndPort, "localhost:8529");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", hostAndPort, "127.0.0.1:8529");
   CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org", hostAndPort, "www.arangodb.org:8529");
   CHECK_ENDPOINT_FEATURE(client, "ssl://arangodb.org", hostAndPort, "arangodb.org:8529");
   CHECK_ENDPOINT_FEATURE(client, "ssl://DE.triagens.ArangoDB.org", hostAndPort, "de.triagens.arangodb.org:8529");
   CHECK_ENDPOINT_FEATURE(client, "ssl://192.168.173.13:8529", hostAndPort, "192.168.173.13:8529");
   CHECK_ENDPOINT_FEATURE(client, "ssl://192.168.173.13:1234", hostAndPort, "192.168.173.13:1234");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:8529", hostAndPort, "localhost:8529");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:5", hostAndPort, "localhost:5");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:8529", hostAndPort, "127.0.0.1:8529");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:5", hostAndPort, "127.0.0.1:5");
   CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org:8529", hostAndPort, "www.arangodb.org:8529");
   CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org:12345", hostAndPort, "www.arangodb.org:12345");
   CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]", hostAndPort, "[127.0.0.1]:8529");

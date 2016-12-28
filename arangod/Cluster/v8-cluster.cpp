@@ -298,6 +298,67 @@ static void JS_LockReadAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief read transaction to the agency
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_InterfaceAgency(std::string const& interface,
+                               v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() < 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("read([[...]])");
+  }
+
+  VPackBuilder builder;
+  int res = TRI_V8ToVPackSimple(isolate, builder, args[0]);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert query to JSON");
+  }
+
+  AgencyComm comm;
+  AgencyCommResult result =
+    comm.sendWithFailover(
+      arangodb::rest::RequestType::POST,
+      AgencyCommManager::CONNECTION_OPTIONS._requestTimeout,
+      std::string("/_api/agency/") + interface, builder.toJson());
+
+  if (!result.successful()) {
+    THROW_AGENCY_EXCEPTION(result);
+  }
+
+  try {
+    result.setVPack(VPackParser::fromJson(result.bodyRef()));
+    result._body.clear();
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::AGENCYCOMM)
+      << "Error transforming result. " << e.what();
+    result.clear();
+  } catch (...) {
+    LOG_TOPIC(ERR, Logger::AGENCYCOMM)
+      << "Error transforming result. Out of memory";
+    result.clear();
+  }
+  
+  auto l = TRI_VPackToV8(isolate, result.slice());
+
+  TRI_V8_RETURN(l);
+  TRI_V8_TRY_CATCH_END
+
+}
+static void JS_ReadAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  JS_InterfaceAgency("read", args);
+}
+static void JS_WriteAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  JS_InterfaceAgency("write", args);
+}
+static void JS_TransactAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  JS_InterfaceAgency("transact", args);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief acquires a write-lock in the agency
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2031,6 +2092,10 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
 
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(2);
+
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("read"), JS_ReadAgency);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("write"), JS_WriteAgency);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("transact"), JS_TransactAgency);
 
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("cas"), JS_CasAgency);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("createDirectory"),
