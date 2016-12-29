@@ -106,7 +106,7 @@ class MMFilesDocumentPosition {
   // the _fid value is set, and to a datafile otherwise
   inline bool pointsToWal() const noexcept {
     // check whether the WAL bit is set
-    return ((_fid & arangodb::DatafileHelper::WalFileBitmask()) == 1);
+    return ((_fid & arangodb::DatafileHelper::WalFileBitmask()) != 0);
   }
 
   inline operator bool() const noexcept {

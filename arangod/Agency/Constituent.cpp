@@ -382,7 +382,6 @@ void Constituent::callElection() {
   }
 
   std::string body;
-  std::map<std::string, OperationID> operationIDs;
   std::stringstream path;
 
   path << "/_api/agency_priv/requestVote?term=" << savedTerm
@@ -393,8 +392,8 @@ void Constituent::callElection() {
   for (auto const& i : active) {
     if (i != _id) {
       auto headerFields =
-          std::make_unique<std::unordered_map<std::string, std::string>>();
-      operationIDs[i] = ClusterComm::instance()->asyncRequest(
+        std::make_unique<std::unordered_map<std::string, std::string>>();
+      ClusterComm::instance()->asyncRequest(
         "", coordinatorTransactionID, _agent->config().poolAt(i),
         rest::RequestType::GET, path.str(),
         std::make_shared<std::string>(body), headerFields,

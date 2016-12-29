@@ -184,8 +184,6 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
                                    "uniqueEdges: 'global' is not supported, "
                                    "due to unpredictable results. Use 'path' "
                                    "or 'none' instead");
-    uniqueEdges =
-        arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL;
   } else {
     uniqueEdges =
         arangodb::traverser::TraverserOptions::UniquenessLevel::PATH;

@@ -861,8 +861,15 @@ AqlValue Expression::executeSimpleExpressionFCall(
 
   size_t const n = member->numMembers();
 
-  VPackFunctionParameters parameters;
-  std::vector<bool> destroyParameters;
+  // use stack-based allocation for the first few function call
+  // parameters. this saves a few heap allocations per function
+  // call invocation 
+  SmallVector<AqlValue>::allocator_type::arena_type arena;
+  VPackFunctionParameters parameters{arena};
+ 
+  // same here
+  SmallVector<int, 64>::allocator_type::arena_type arena2;
+  SmallVector<int, 64> destroyParameters{arena2};
   parameters.reserve(n);
   destroyParameters.reserve(n);
 
@@ -872,12 +879,12 @@ AqlValue Expression::executeSimpleExpressionFCall(
 
       if (arg->type == NODE_TYPE_COLLECTION) {
         parameters.emplace_back(arg->getStringValue(), arg->getStringLength());
-        destroyParameters.push_back(true);
+        destroyParameters.push_back(1);
       } else {
         bool localMustDestroy;
         AqlValue a = executeSimpleExpression(arg, trx, localMustDestroy, false);
         parameters.emplace_back(a);
-        destroyParameters.push_back(localMustDestroy);
+        destroyParameters.push_back(localMustDestroy ? 1 : 0);
       }
     }
 
@@ -1274,7 +1281,7 @@ AqlValue Expression::executeSimpleExpressionTernary(
     position = 2;
   }
 
-  return executeSimpleExpression(node->getMember(position), trx, mustDestroy, true);
+  return executeSimpleExpression(node->getMemberUnchecked(position), trx, mustDestroy, true);
 }
 
 /// @brief execute an expression of type SIMPLE with EXPANSION

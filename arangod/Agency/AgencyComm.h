@@ -536,14 +536,14 @@ class AgencyComm {
 
   bool ensureStructureInitialized();
 
+  AgencyCommResult sendWithFailover(arangodb::rest::RequestType, double,
+                                    std::string const&, std::string const&);
+
  private:
   bool lock(std::string const&, double, double,
             arangodb::velocypack::Slice const&);
 
   bool unlock(std::string const&, arangodb::velocypack::Slice const&, double);
-
-  AgencyCommResult sendWithFailover(arangodb::rest::RequestType, double,
-                                    std::string const&, std::string const&);
 
   AgencyCommResult send(httpclient::GeneralClientConnection*, rest::RequestType,
                         double, std::string const&, std::string const&);

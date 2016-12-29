@@ -256,8 +256,7 @@ std::vector<check_t> Supervision::checkCoordinators() {
   std::string currentFoxxmaster;
   try {
     currentFoxxmaster = _snapshot(foxxmaster).getString();
-  } catch (...) {
-  }
+  } catch (...) {}
 
   std::string goodServerId;
   bool foxxmasterOk = false;
@@ -671,10 +670,10 @@ void Supervision::enforceReplication() {
               }
             }
 
-            AddFollower(
+            /*AddFollower(
               _snapshot, _agent, std::to_string(_jobId++), "supervision",
               _agencyPrefix, db_.first, col_.first, shard_.first, newFollowers);
-
+            */
           }
         }
       }

@@ -51,57 +51,13 @@ main(){
 
   echo "Adding events, this takes a few seconds..."
 
-  echo "Single document operations..."
-  addEvent insertLocal insertLocal@Transaction.cpp
-  addEvent removeLocal removeLocal@Transaction.cpp
-  addEvent modifyLocal modifyLocal@Transaction.cpp
-  addEvent documentLocal documentLocal@Transaction.cpp
-
-  echo "Single document operations on coordinator..."
-  addEvent insertCoordinator insertCoordinator@Transaction.cpp
-  addEvent removeCoordinator removeCoordinator@Transaction.cpp
-  addEvent updateCoordinator updateCoordinator@Transaction.cpp
-  addEvent replaceCoordinator replaceCoordinator@Transaction.cpp
-  addEvent documentCoordinator documentCoordinator@Transaction.cpp
-  # For the enterprise version:
-  addEvent insertCoordinator insertCoordinator@TransactionEE.cpp
-  addEvent removeCoordinator removeCoordinator@TransactionEE.cpp
-  addEvent updateCoordinator updateCoordinator@TransactionEE.cpp
-  addEvent replaceCoordinator replaceCoordinator@TransactionEE.cpp
-  addEvent documentCoordinator documentCoordinator@TransactionEE.cpp
-
-  echo "work method in RestDocumentHandler"
-  addEvent executeRestReadDocument readDocument@RestDocumentHandler.cpp
-  addEvent executeRestInsertDocument createDocument@RestDocumentHandler.cpp
-
   echo "work in LogicalCollection"
   addEvent logicalInsert insert@LogicalCollection.cpp
 
-  echo "work in HttpCommTask and GeneralCommTask"
-  addEvent processRequest processRequest@HttpCommTask.cpp
-  addEvent executeRequest executeRequest@GeneralCommTask.cpp
-  addEvent handleRequest handleRequest@GeneralCommTask.cpp
-  addEvent handleRequestDirectly handleRequestDirectly@GeneralCommTask.cpp
-
-  echo "trace R/W locks"
-  #addEvent TRI_ReadLockReadWriteLock TRI_ReadLockReadWriteLock@locks-posix.cpp
-  #addEvent TRI_WriteLockReadWriteLock TRI_WriteLockReadWriteLock@locks-posix.cpp
-  #addEvent TRI_ReadUnlockReadWriteLock TRI_ReadUnlockReadWriteLock@locks-posix.cpp
-  #addEvent TRI_WriteUnlockReadWriteLock TRI_WriteUnlockReadWriteLock@locks-posix.cpp
-  #addEvent TRI_TryWriteLockReadWriteLock TRI_TryWriteLockReadWriteLock@locks-posix.cpp
-  addEvent beginWriteTimed beginWriteTimed@LogicalCollection.cpp
-
   echo "Some probes in the storage engine:"
-  addEvent insertLocalLine1994 LogicalCollection.cpp:1994 noRet
-  addEvent insertLocalLine2013 LogicalCollection.cpp:2013 noRet
-  addEvent insertLocalLine2028 LogicalCollection.cpp:2028 noRet
-  addEvent insertLocalLine2046 LogicalCollection.cpp:2046 noRet
+  addEvent insertLocalLine2047 LogicalCollection.cpp:2047 noRet
   addEvent insertLocalLine2050 LogicalCollection.cpp:2050 noRet
-  addEvent insertLocalLine2053 LogicalCollection.cpp:2053 noRet
-  addEvent insertLocalLine2062 LogicalCollection.cpp:2062 noRet
 
-  echo "Mutexes"
-  #addEvent MutexLock lock@Mutex.cpp
   echo Done.
 }
 

@@ -2108,7 +2108,7 @@ static void ListDatabasesCoordinator(
         headers["Authentication"] = TRI_ObjectToString(args[2]);
         auto res = cc->syncRequest(
             "", 0, "server:" + sid, arangodb::rest::RequestType::GET,
-            "/_api/database/user", std::string(""), headers, 0.0);
+            "/_api/database/user", std::string(), headers, 0.0);
 
         if (res->status == CL_COMM_SENT) {
           // We got an array back as JSON, let's parse it and build a v8

@@ -229,7 +229,7 @@ std::string Utf8Helper::toLowerCase(std::string const& src) {
                        utf8len);
 
   if (utf8 == nullptr) {
-    return std::string("");
+    return std::string();
   }
 
   std::string result(utf8, utf8len);
@@ -310,7 +310,7 @@ std::string Utf8Helper::toUpperCase(std::string const& src) {
   char* utf8 = toupper(TRI_UNKNOWN_MEM_ZONE, src.c_str(), (int32_t)src.length(),
                        utf8len);
   if (utf8 == nullptr) {
-    return std::string("");
+    return std::string();
   }
 
   std::string result(utf8, utf8len);

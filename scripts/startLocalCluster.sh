@@ -145,8 +145,6 @@ if [ ! -z "$INTERACTIVE_MODE" ] ; then
     fi
 fi
 
-MINP=0.5
-MAXP=2.5
 SFRE=5.0
 COMP=1000
 BASE=4001
@@ -182,8 +180,6 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         -c none \
         --agency.activate true \
         --agency.compaction-step-size $COMP \
-        --agency.election-timeout-min $MINP \
-        --agency.election-timeout-max $MAXP \
         --agency.endpoint $TRANSPORT://localhost:$BASE \
         --agency.my-address $TRANSPORT://localhost:$port \
         --agency.pool-size $NRAGENTS \
@@ -202,8 +198,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --server.threads 16 \
         --log.file cluster/$port.log \
         --log.force-direct true \
-        --log.level agency=DEBUG \
-        $LOG_LEVEL_AGENCY \
+        --log.level agency=$LOG_LEVEL_AGENCY \
         $AUTHENTICATION \
         $SSLKEYFILE \
         > cluster/$port.stdout 2>&1 &
@@ -237,7 +232,7 @@ start() {
        --javascript.module-directory ./enterprise/js \
        --javascript.app-path cluster/apps$PORT \
        --log.force-direct true \
-        $LOG_LEVEL_CLUSTER \
+       --log.level cluster=$LOG_LEVEL_CLUSTER \
         $AUTHENTICATION \
         $SSLKEYFILE \
        > cluster/$PORT.stdout 2>&1 &

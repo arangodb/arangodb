@@ -54,7 +54,7 @@ namespace {
   }
 
   // returns number of bytes required to store the value in 2s-complement
-  static inline uint8_t intLength(int64_t value) {
+  static inline uint8_t intLength(int64_t value) noexcept {
     if (value >= -0x80 && value <= 0x7f) {
       // shortcut for the common case
       return 1;
@@ -130,7 +130,7 @@ struct AqlValue final {
   }
   
   // construct from mptr, not copying!
-  AqlValue(uint8_t const* pointer, AqlValueFromManagedDocument const&) {
+  AqlValue(uint8_t const* pointer, AqlValueFromManagedDocument const&) noexcept {
     setPointer<true>(pointer);
     TRI_ASSERT(!VPackSlice(_data.pointer).isExternal());
   }
@@ -150,7 +150,7 @@ struct AqlValue final {
   }
   
   // construct from docvec, taking over its ownership
-  explicit AqlValue(std::vector<AqlItemBlock*>* docvec) {
+  explicit AqlValue(std::vector<AqlItemBlock*>* docvec) noexcept {
     TRI_ASSERT(docvec != nullptr);
     _data.docvec = docvec;
     setType(AqlValueType::DOCVEC);
@@ -185,7 +185,7 @@ struct AqlValue final {
   }
   
   // construct from an int64 value
-  explicit AqlValue(int64_t value) {
+  explicit AqlValue(int64_t value) noexcept {
     if (value >= 0 && value <= 9) {
       // a smallint
       _data.internal[0] = static_cast<uint8_t>(0x30U + value);
@@ -214,7 +214,7 @@ struct AqlValue final {
   }
   
   // construct from a uint64 value
-  explicit AqlValue(uint64_t value) {
+  explicit AqlValue(uint64_t value) noexcept {
     if (value <= 9) {
       // a smallint
       _data.internal[0] = static_cast<uint8_t>(0x30U + value);
@@ -368,26 +368,26 @@ struct AqlValue final {
   uint64_t hash(arangodb::Transaction*, uint64_t seed = 0xdeadbeef) const;
 
   /// @brief whether or not the value contains a none value
-  bool isNone() const;
+  bool isNone() const noexcept;
   
   /// @brief whether or not the value contains a null value
-  bool isNull(bool emptyIsNull) const;
+  bool isNull(bool emptyIsNull) const noexcept;
 
   /// @brief whether or not the value contains a boolean value
-  bool isBoolean() const;
+  bool isBoolean() const noexcept;
 
   /// @brief whether or not the value is a number
-  bool isNumber() const;
+  bool isNumber() const noexcept;
   
   /// @brief whether or not the value is a string
-  bool isString() const;
+  bool isString() const noexcept;
   
   /// @brief whether or not the value is an object
-  bool isObject() const;
+  bool isObject() const noexcept;
   
   /// @brief whether or not the value is an array (note: this treats ranges
   /// as arrays, too!)
-  bool isArray() const;
+  bool isArray() const noexcept;
   
   /// @brief get the (array) length (note: this treats ranges as arrays, too!)
   size_t length() const;
@@ -476,7 +476,7 @@ struct AqlValue final {
   void destroy();
   
   /// @brief returns the size of the dynamic memory allocated for the value
-  size_t memoryUsage() const {
+  size_t memoryUsage() const noexcept {
     auto const t = type();
     switch (t) {
       case VPACK_SLICE_POINTER:
@@ -543,7 +543,7 @@ struct AqlValue final {
   }
 
   template<bool isManagedDocument>
-  inline void setPointer(uint8_t const* pointer) {
+  inline void setPointer(uint8_t const* pointer) noexcept {
     _data.pointer = pointer;
     // we use the byte at (size - 2) to distinguish between data pointing to database
     // documents (size[-2] == 1) and other data(size[-2] == 0)
