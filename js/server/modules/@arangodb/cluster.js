@@ -488,7 +488,13 @@ function createLocalCollections (plannedCollections, planVersion,
                   collInfo.planId + '/' + shard);
     global.ArangoAgency.set('Current/Collections/' + database + '/' +
     collInfo.planId + '/' + shard,
-      payload);
+    payload);
+
+    /*var envelope = {};
+    envelope['/arango/Current/Collections/' + database + '/' +
+             collInfo.planId + '/' + shard] = payload;
+    gobal.ArangoAgency.write([[envelope, inccv]])
+    */
     console.debug('creating Current/Collections/' + database + '/' +
                   collInfo.planId + '/' + shard + ' done.');
   };
@@ -498,7 +504,7 @@ function createLocalCollections (plannedCollections, planVersion,
   var db = require('internal').db;
   db._useDatabase('_system');
 
-  var migrate = writeLocked => {
+  var migrate = function() {
     var localDatabases = getLocalDatabases();
     var database;
     var i;
@@ -569,9 +575,7 @@ function createLocalCollections (plannedCollections, planVersion,
                       }
 
                       if (isLeader) {
-                        writeLocked({ part: 'Current' },
-                          createCollectionAgency,
-                          [ database, shard, collInfo, error ]);
+                        createCollectionAgency(database, shard, collInfo, error);
                         didWrite = true;
                       }
                     } else {
@@ -596,9 +600,7 @@ function createLocalCollections (plannedCollections, planVersion,
                           db._collection(shard).load();
                         }
                         if (isLeader) {
-                          writeLocked({ part: 'Current' },
-                            createCollectionAgency,
-                            [ database, shard, collInfo, error ]);
+                          createCollectionAgency(database, shard, collInfo, error);
                           didWrite = true;
                         }
                       }
@@ -627,9 +629,7 @@ function createLocalCollections (plannedCollections, planVersion,
                           errorMessage: err3.errorMessage };
                         }
                         if (isLeader) {
-                          writeLocked({ part: 'Current' },
-                            createCollectionAgency,
-                            [ database, shard, collInfo, error ]);
+                          createCollectionAgency(database, shard, collInfo, error);
                           didWrite = true;
                         }
                       }
@@ -638,9 +638,7 @@ function createLocalCollections (plannedCollections, planVersion,
                     if (error.error) {
                       if (takeOverResponsibility && !didWrite) {
                         if (isLeader) {
-                          writeLocked({ part: 'Current' },
-                            takeOver,
-                            [ database, shard, collInfo, error ]);
+                          takeOver(database, shard, collInfo, error);
                         }
                       }
                       continue; // No point to look for properties and
@@ -678,9 +676,7 @@ function createLocalCollections (plannedCollections, planVersion,
                           changed = true;
                         }
                         if (changed && isLeader) {
-                          writeLocked({ part: 'Current' },
-                            createCollectionAgency,
-                            [ database, shard, collInfo, error ]);
+                          createCollectionAgency(database, shard, collInfo, error);
                           didWrite = true;
                         }
                       }
@@ -718,18 +714,14 @@ function createLocalCollections (plannedCollections, planVersion,
                         }
                       }
                       if (changed2 && isLeader) {
-                        writeLocked({ part: 'Current' },
-                          createCollectionAgency,
-                          [ database, shard, collInfo, error ]);
+                        createCollectionAgency(database, shard, collInfo, error);
                         didWrite = true;
                       }
                     }
 
                     if ((takeOverResponsibility && !didWrite && isLeader) ||
                       (!didWrite && isLeader && !wasLeader)) {
-                      writeLocked({ part: 'Current' },
-                        takeOver,
-                        [ database, shard, collInfo, error ]);
+                      takeOver(database, shard, collInfo, error);
                     }
                   }
                 }
@@ -749,20 +741,8 @@ function createLocalCollections (plannedCollections, planVersion,
     }
   };
 
-  if (takeOverResponsibility) {
-    // mop: if this is a complete takeover we need a global lock because
-    // otherwise the coordinator might fetch results which are only partly
-    // migrated
-    var fakeLock = (lockInfo, cb, args) => {
-      if (!lockInfo || lockInfo.part !== 'Current') {
-        throw new Error('Invalid lockInfo ' + JSON.stringify(lockInfo));
-      }
-      return cb(...args);
-    };
-    writeLocked({ part: 'Current' }, migrate, [fakeLock]);
-  } else {
-    migrate(writeLocked);
-  }
+  migrate();
+
 }
 
 function leaderResign (database, collId, shardName, ourselves) {
