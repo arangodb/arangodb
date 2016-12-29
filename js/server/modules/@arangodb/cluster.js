@@ -369,7 +369,7 @@ function dropLocalDatabases (plannedDatabases) {
       var envelope = {};
       envelope['/arango/Current/Databases/' + payload.name + '/' + ourselves] =
         {"op":"delete"};
-      gloabl.ArangoAgency.write([[envelope, inccv]]);
+      global.ArangoAgency.write([[envelope, inccv]]);
     } catch (err) {
       // ignore errors
     }
