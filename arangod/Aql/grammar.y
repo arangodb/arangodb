@@ -1220,6 +1220,9 @@ operator_ternary:
     expression T_QUESTION expression T_COLON expression {
       $$ = parser->ast()->createNodeTernaryOperator($1, $3, $5);
     }
+  | expression T_QUESTION T_COLON expression {
+      $$ = parser->ast()->createNodeTernaryOperator($1, $1, $4);
+    }
   ;
 
 optional_function_call_arguments: 

@@ -227,7 +227,7 @@ std::string Version::getBoostVersion() {
 #ifdef ARANGODB_BOOST_VERSION
   return std::string(ARANGODB_BOOST_VERSION);
 #else
-  return std::string("");
+  return std::string();
 #endif
 }
 
@@ -239,7 +239,7 @@ std::string Version::getV8Version() {
 #ifdef ARANGODB_V8_VERSION
   return std::string(ARANGODB_V8_VERSION);
 #else
-  return std::string("");
+  return std::string();
 #endif
 }
 
@@ -253,7 +253,7 @@ std::string Version::getOpenSSLVersion() {
 #elif defined(ARANGODB_OPENSSL_VERSION)
   return std::string(ARANGODB_OPENSSL_VERSION);
 #else
-  return std::string("");
+  return std::string();
 #endif
 }
 
@@ -265,7 +265,7 @@ std::string Version::getLibevVersion() {
 #ifdef ARANGODB_LIBEV_VERSION
   return std::string(ARANGODB_LIBEV_VERSION);
 #else
-  return std::string("");
+  return std::string();
 #endif
 }
 
@@ -285,7 +285,7 @@ std::string Version::getZLibVersion() {
 #ifdef ARANGODB_ZLIB_VERSION
   return std::string(ARANGODB_ZLIB_VERSION);
 #else
-  return std::string("");
+  return std::string();
 #endif
 }
 
@@ -358,7 +358,7 @@ std::string Version::getBuildRepository() {
 #ifdef HAVE_ARANGODB_BUILD_REPOSITORY
   return std::string(ARANGODB_BUILD_REPOSITORY);
 #else
-  return std::string("");
+  return std::string();
 #endif
 }
 
