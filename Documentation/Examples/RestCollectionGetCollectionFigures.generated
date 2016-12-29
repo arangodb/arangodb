@@ -27,7 +27,7 @@ location: <span class="hljs-regexp">/_db/</span>_system/_api/collection/products
     <span class="hljs-string">"uncollectedLogfileEntries"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"compactionStatus"</span> : { 
       <span class="hljs-string">"message"</span> : <span class="hljs-string">"skipped compaction because collection has no datafiles"</span>, 
-      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2016-12-29T09:52:21Z"</span> 
+      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2016-12-29T12:01:08Z"</span> 
     }, 
     <span class="hljs-string">"readCache"</span> : { 
       <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 

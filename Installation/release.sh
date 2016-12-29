@@ -211,6 +211,7 @@ if [ "$TAG" == "1" ];  then
 
     git commit -m "release version $VERSION" -a
     git push
+    git fetch --tags
 
     if test "${FORCE_TAG}" == 0; then
         git tag "v$VERSION"
@@ -223,6 +224,7 @@ if [ "$TAG" == "1" ];  then
     cd ${ENTERPRISE_SRC_DIR}
     git commit --allow-empty -m "release version $VERSION enterprise" -a
     git push
+    git fetch --tags
 
     if test "${FORCE_TAG}" == 0; then
         git tag "v$VERSION"

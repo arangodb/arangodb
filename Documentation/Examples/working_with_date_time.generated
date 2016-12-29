@@ -1,5 +1,5 @@
 arangosh&gt; db._create(<span class="hljs-string">"exampleTime"</span>);
-[ArangoCollection <span class="hljs-number">29318</span>, <span class="hljs-string">"exampleTime"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
+[ArangoCollection <span class="hljs-number">29321</span>, <span class="hljs-string">"exampleTime"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
 arangosh&gt; <span class="hljs-keyword">var</span> timestamps = [<span class="hljs-string">"2014-05-07T14:19:09.522"</span>,<span class="hljs-string">"2014-05-07T21:19:09.522"</span>,<span class="hljs-string">"2014-05-08T04:19:09.522"</span>,<span class="hljs-string">"2014-05-08T11:19:09.522"</span>,<span class="hljs-string">"2014-05-08T18:19:09.522"</span>];
 arangosh&gt; <span class="hljs-keyword">for</span> (i = <span class="hljs-number">0</span>; i &lt; <span class="hljs-number">5</span>; i++) db.exampleTime.save({value:i, ts: timestamps[i]})
 arangosh&gt; db._query(<span class="hljs-string">"FOR d IN exampleTime FILTER d.ts &gt; '2014-05-07T14:19:09.522' and d.ts &lt; '2014-05-08T18:19:09.522' RETURN d"</span>).toArray()
@@ -7,22 +7,22 @@ arangosh&gt; db._query(<span class="hljs-string">"FOR d IN exampleTime FILTER d.
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"29328"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"exampleTime/29328"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_USm-AHK--_"</span>, 
-    <span class="hljs-string">"ts"</span> : <span class="hljs-string">"2014-05-08T04:19:09.522"</span>, 
-    <span class="hljs-string">"value"</span> : <span class="hljs-number">2</span> 
-  }, 
-  { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"29325"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"exampleTime/29325"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_USm-AHK---"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_USnz5Ci---"</span>, 
     <span class="hljs-string">"ts"</span> : <span class="hljs-string">"2014-05-07T21:19:09.522"</span>, 
     <span class="hljs-string">"value"</span> : <span class="hljs-number">1</span> 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"29331"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"exampleTime/29331"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_USm-AHK--A"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"29334"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"exampleTime/29334"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_USnz5Ci--A"</span>, 
     <span class="hljs-string">"ts"</span> : <span class="hljs-string">"2014-05-08T11:19:09.522"</span>, 
     <span class="hljs-string">"value"</span> : <span class="hljs-number">3</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"29331"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"exampleTime/29331"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_USnz5Ci--_"</span>, 
+    <span class="hljs-string">"ts"</span> : <span class="hljs-string">"2014-05-08T04:19:09.522"</span>, 
+    <span class="hljs-string">"value"</span> : <span class="hljs-number">2</span> 
   } 
 ]
