@@ -22,6 +22,10 @@ installed as:
 
 You can start the server by running the command `/usr/local/sbin/arangod &`.
 
+Configuration file is located at
+
+    /usr/local/etc/arangodb3/arangod.conf
+
 The ArangoDB shell will be installed as:
 
     /usr/local/bin/arangosh
@@ -49,6 +53,11 @@ also need to update homebrew:
 - Performance - the LLVM delivered as of Mac OS X El Capitan builds slow binaries. Use GCC instead,
   until this issue has been fixed by Apple.
 - the Commandline argument parsing doesn't accept blanks in filenames; the CLI version below does.
+- if you need to change server endpoint while starting homebrew version, you can edit arangod.conf 
+  file and uncomment line with endpoint needed, e.g.:
+      
+      [server]
+      endpoint = tcp://0.0.0.0:8529
 
 Graphical App
 -------------
