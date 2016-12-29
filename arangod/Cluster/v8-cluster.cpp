@@ -311,7 +311,7 @@ static void JS_InterfaceAgency(std::string const& interface,
   }
 
   VPackBuilder builder;
-  int res = TRI_V8ToVPackSimple(isolate, builder, args[0]);
+  int res = TRI_V8ToVPack(isolate, builder, args[0], false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert query to JSON");
@@ -538,7 +538,7 @@ static void JS_EndpointsAgency(
   std::sort(endpoints.begin(), endpoints.end());
   endpoints.assign(endpoints.begin(),
                    std::unique(endpoints.begin(), endpoints.end()));
-
+  
   v8::Handle<v8::Array> l = v8::Array::New(isolate);
 
   for (size_t i = 0; i < endpoints.size(); ++i) {
