@@ -27,6 +27,7 @@
 #include <algorithm>
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
+#include "Pregel/Graph.h"
 
 namespace arangodb {
 class SingleCollectionTransaction;
@@ -52,6 +53,8 @@ class WorkerConfig {
   inline uint64_t localSuperstep() const { return _localSuperstep; }
 
   inline bool asynchronousMode() const { return _asynchronousMode; }
+  
+  inline bool lazyLoading() const { return _lazyLoading; }
 
   inline std::string const& coordinatorId() const { return _coordinatorId; }
 
@@ -100,12 +103,17 @@ class WorkerConfig {
     return std::find(_localVertexShardIDs.begin(), _localVertexShardIDs.end(),
                      shard) != _localVertexShardIDs.end();
   }
+  
+  PregelKey convertToPregelKey(std::string const& documentID) const;
 
  private:
   uint64_t _executionNumber = 0;
   uint64_t _globalSuperstep = 0;
   uint64_t _localSuperstep = 0;
+  
   bool _asynchronousMode = false;
+  /// load vertices on a lazy basis
+  bool _lazyLoading = false;
 
   std::string _coordinatorId;
   std::string _database;

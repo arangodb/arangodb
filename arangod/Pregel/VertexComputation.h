@@ -20,14 +20,18 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cstddef>
-#include "Basics/Common.h"
-#include "GraphStore.h"
-#include "OutgoingCache.h"
-#include "WorkerContext.h"
-
 #ifndef ARANGODB_PREGEL_COMPUTATION_H
 #define ARANGODB_PREGEL_COMPUTATION_H 1
+
+#include <cstddef>
+#include <algorithm>
+#include "Basics/Common.h"
+#include "Pregel/Graph.h"
+#include "Pregel/GraphStore.h"
+#include "Pregel/OutgoingCache.h"
+#include "Pregel/WorkerContext.h"
+#include "Pregel/WorkerConfig.h"
+
 
 namespace arangodb {
 namespace pregel {
@@ -47,6 +51,7 @@ class VertexContext {
   const AggregatorHandler* _conductorAggregators;
   AggregatorHandler* _workerAggregators;
   VertexEntry* _vertexEntry;
+  WorkerConfig* _workerConfig;
 
  public:
   template <typename T>
@@ -61,12 +66,11 @@ class VertexContext {
 
   inline WorkerContext const* context() { return _context; }
 
-  template <typename T>
-  T* mutableVertexData() {
-    return (T*)_graphStore->mutableVertexData(_vertexEntry);
+  V* mutableVertexData() {
+    return (V*)_graphStore->mutableVertexData(_vertexEntry);
   }
 
-  V vertexData() { return _graphStore->copyVertexData(_vertexEntry); }
+  V vertexData() { return *((V*)_graphStore->mutableVertexData(_vertexEntry)); }
 
   RangeIterator<Edge<E>> getEdges() {
     return _graphStore->edgeIterator(_vertexEntry);
@@ -82,6 +86,9 @@ class VertexContext {
 
   inline uint64_t globalSuperstep() const { return _gss; }
   inline uint64_t localSuperstep() const { return _lss; }
+  
+  prgl_shard_t shard() const { return _vertexEntry->shard(); }
+  std::string const& key() const { return _vertexEntry->key(); }
 };
 
 template <typename V, typename E, typename M>

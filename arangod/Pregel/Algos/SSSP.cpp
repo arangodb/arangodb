@@ -34,12 +34,12 @@ struct SSSPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
   void compute(MessageIterator<int64_t> const& messages) override {
     int64_t tmp = vertexData();
     for (const int64_t* msg : messages) {
-      if (tmp < 0 || *msg < tmp) {
+      if (*msg < tmp) {
         tmp = *msg;
       };
     }
-    int64_t* state = mutableVertexData<int64_t>();
-    if (tmp >= 0 && (localSuperstep() == 0 || tmp != *state)) {
+    int64_t* state = mutableVertexData();
+    if (tmp < *state) {
       *state = tmp;  // update state
 
       RangeIterator<Edge<int64_t>> edges = getEdges();
@@ -54,7 +54,7 @@ struct SSSPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
 
 GraphFormat<int64_t, int64_t>* SSSPAlgorithm::inputFormat()
     const {
-  return new IntegerGraphFormat(_sourceField, _resultField, -1, 1);
+  return new IntegerGraphFormat(_sourceField, _resultField, INT64_MAX, 1);
 }
 
 MessageFormat<int64_t>* SSSPAlgorithm::messageFormat() const {
@@ -67,6 +67,6 @@ MessageCombiner<int64_t>* SSSPAlgorithm::messageCombiner()
 }
 
 VertexComputation<int64_t, int64_t, int64_t>*
-SSSPAlgorithm::createComputation(uint64_t gss) const {
+SSSPAlgorithm::createComputation(WorkerConfig const* config) const {
   return new SSSPComputation();
 }

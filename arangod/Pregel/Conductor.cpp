@@ -81,6 +81,9 @@ void Conductor::start(std::string const& algoName, VPackSlice userConfig) {
   VPackSlice async = _userParams.slice().get("async");
   _asyncMode = _algorithm->supportsAsyncMode();
   _asyncMode = _asyncMode && (async.isNone() || async.getBoolean());
+  VPackSlice lazy = _userParams.slice().get("lazyLoading");
+  _lazyLoading = _algorithm->supportsLazyLoading();
+  _lazyLoading = _lazyLoading && (lazy.isNone() || lazy.getBoolean());
 
   int res = _initializeWorkers(Utils::startExecutionPath, VPackSlice());
   if (res != TRI_ERROR_NO_ERROR) {

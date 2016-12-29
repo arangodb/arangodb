@@ -20,33 +20,31 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_PAGERANK_H
-#define ARANGODB_PREGEL_ALGOS_PAGERANK_H 1
+#ifndef ARANGODB_PREGEL_ALGOS_ShoPath_H
+#define ARANGODB_PREGEL_ALGOS_ShoPath_H 1
 
 #include "Pregel/Algorithm.h"
-#include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace pregel {
 namespace algos {
 
-/// PageRank
-struct PageRankAlgorithm : public SimpleAlgorithm<float, float, float> {
-  float _threshold;
-  
+/// Single Source Shortest Path. Uses integer attribute 'value', the source
+/// should have
+/// the value == 0, all others -1 or an undefined value
+struct ShortestPathAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
+  std::string _sourceDocId, _targetDocId;
  public:
-  PageRankAlgorithm(arangodb::velocypack::Slice params);
+  ShortestPathAlgorithm(VPackSlice userParams);
   
-  bool supportsAsyncMode() const override { return true; }
-  bool supportsCompensation() const override { return true; }
-  MasterContext* masterContext(VPackSlice userParams) const override;
+  bool supportsAsyncMode() const override { return false; }
+  bool supportsLazyLoading() const override { return true; }
 
-  GraphFormat<float, float>* inputFormat() const override;
-  MessageFormat<float>* messageFormat() const override;
-  MessageCombiner<float>* messageCombiner() const override;
-  VertexComputation<float, float, float>* createComputation(WorkerConfig const*)
-      const override;
-  VertexCompensation<float, float, float>* createCompensation(WorkerConfig const*) const override;
+  GraphFormat<int64_t, int64_t>* inputFormat() const override;
+  MessageFormat<int64_t>* messageFormat() const override;
+  MessageCombiner<int64_t>* messageCombiner() const override;
+  VertexComputation<int64_t, int64_t, int64_t>*
+  createComputation(WorkerConfig const* config) const override;
   Aggregator* aggregator(std::string const& name) const override;
 };
 }

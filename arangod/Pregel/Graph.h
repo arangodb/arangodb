@@ -27,7 +27,15 @@ namespace arangodb {
 namespace pregel {
 
 typedef uint16_t prgl_shard_t;
-
+struct PregelKey {
+  prgl_shard_t shard;
+  std::string key;
+  
+  inline bool operator==(const PregelKey& rhs) {
+    return shard == rhs.shard && key == rhs.key;
+  }
+};
+  
 /// @brief header entry for the edge file
 template <typename E>
 class Edge {
@@ -55,9 +63,9 @@ class VertexEntry {
   template <typename V, typename E>
   friend class GraphStore;
 
-  const prgl_shard_t _shard;  // TODO optimize and remove
+  const prgl_shard_t _shard;
   const std::string _key;
-  size_t _vertexDataOffset;  // size_t vertexID length
+  size_t _vertexDataOffset;
   size_t _edgeDataOffset;
   size_t _edgeCount;
   bool _active = true;

@@ -49,8 +49,9 @@ struct PageRankGraphFormat : public FloatGraphFormat {
   PageRankGraphFormat(std::string const& s, std::string const& r)
       : FloatGraphFormat(s, r, 0, 0) {}
   bool storesEdgeData() const override { return false; }
-  size_t copyVertexData(arangodb::velocypack::Slice document, void* targetPtr,
-                        size_t maxSize) override {
+  size_t copyVertexData(std::string const& documentId,
+                        arangodb::velocypack::Slice document,
+                        void* targetPtr, size_t maxSize) override {
     *((float*)targetPtr) = _vDefault;
     return sizeof(float);
   }
@@ -75,7 +76,7 @@ struct PRComputation : public VertexComputation<float, float, float> {
   PRComputation(float t) : _limit(t) {}
   void compute(MessageIterator<float> const& messages) override {
     
-    float* ptr = mutableVertexData<float>();
+    float* ptr = mutableVertexData();
     float copy = *ptr;
     // TODO do initialization in GraphFormat?
     if (globalSuperstep() == 0 && *ptr == 0) {
@@ -107,7 +108,7 @@ struct PRComputation : public VertexComputation<float, float, float> {
 };
 
 VertexComputation<float, float, float>*
-PageRankAlgorithm::createComputation(uint64_t gss) const {
+PageRankAlgorithm::createComputation(WorkerConfig const* config) const {
   return new PRComputation(_threshold);
 }
 
@@ -121,10 +122,10 @@ struct PRCompensation : public VertexCompensation<float, float, float> {
       if (*step == 0 && !inLostPartition) {
         uint32_t c = 1;
         aggregate("nonfailedCount", &c);
-        aggregate("totalrank", mutableVertexData<float>());
+        aggregate("totalrank", mutableVertexData());
       } else if (*step == 1) {
         
-        float *data = mutableVertexData<float>();
+        float *data = mutableVertexData();
         if (inLostPartition) {
           *data = 1.0f / context()->vertexCount();
         } else {
@@ -140,7 +141,7 @@ struct PRCompensation : public VertexCompensation<float, float, float> {
 };
 
 VertexCompensation<float, float, float>*
-PageRankAlgorithm::createCompensation(uint64_t gss) const {
+PageRankAlgorithm::createCompensation(WorkerConfig const* config) const {
   return new PRCompensation();
 }
 

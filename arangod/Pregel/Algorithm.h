@@ -45,6 +45,7 @@ template <typename V, typename E, typename M>
 class VertexCompensation;
 
 class Aggregator;
+class WorkerConfig;
 
 struct IAlgorithm {
   virtual ~IAlgorithm() {}
@@ -54,6 +55,8 @@ struct IAlgorithm {
   virtual bool supportsAsyncMode() const { return false; }
 
   virtual bool supportsCompensation() const { return false; }
+  
+  virtual bool supportsLazyLoading() const { return false; }
 
   virtual Aggregator* aggregator(std::string const& name) const {
     return nullptr;
@@ -82,8 +85,8 @@ struct Algorithm : IAlgorithm {
   virtual GraphFormat<V, E>* inputFormat() const = 0;
   virtual MessageFormat<M>* messageFormat() const = 0;
   virtual MessageCombiner<M>* messageCombiner() const = 0;
-  virtual VertexComputation<V, E, M>* createComputation(uint64_t gss) const = 0;
-  virtual VertexCompensation<V, E, M>* createCompensation(uint64_t gss) const {
+  virtual VertexComputation<V, E, M>* createComputation(WorkerConfig const*) const = 0;
+  virtual VertexCompensation<V, E, M>* createCompensation(WorkerConfig const*) const {
     return nullptr;
   }
 

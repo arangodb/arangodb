@@ -88,13 +88,14 @@ void GraphStore<V, E>::loadShards(WorkerConfig const& state) {
 
 template <typename V, typename E>
 void GraphStore<V, E>::loadDocument(WorkerConfig const& state,
-                                    ShardID const& shard,
+                                    ShardID const& vertexShard,
+                                    ShardID const& edgeShard,
                                     std::string const& _key) {
-  /*if (_readTrx == nullptr) {
+  if (_readTrx == nullptr) {
    _createReadTransaction(state);
   }
 
-  prgl_shard_t sourceShard = (prgl_shard_t)state.shardId(shard);
+  prgl_shard_t sourceShard = (prgl_shard_t)state.shardId(vertexShard);
   bool storeData = _graphFormat->storesVertexData();
 
   VPackBuilder builder;
@@ -105,29 +106,28 @@ void GraphStore<V, E>::loadDocument(WorkerConfig const& state,
   OperationOptions options;
   options.ignoreRevs = false;
 
-  TRI_voc_cid_t cid = _readTrx->addCollectionAtRuntime(shard);
+  TRI_voc_cid_t cid = _readTrx->addCollectionAtRuntime(vertexShard);
   _readTrx->orderDitch(cid);  // will throw when it fails
-  OperationResult opResult = _readTrx->document(shard, builder.slice(),
+  OperationResult opResult = _readTrx->document(vertexShard, builder.slice(),
   options);
   if (!opResult.successful()) {
     _cleanupTransactions();
     THROW_ARANGO_EXCEPTION(opResult.code);
   }
 
-
+  std::string documentId = _readTrx->extractIdString(opResult.slice());
   VertexEntry entry(sourceShard, _key);
   if (storeData) {
     V vertexData;
     size_t size =
-    _graphFormat->copyVertexData(opResult.slice(), &vertexData, sizeof(V));
+    _graphFormat->copyVertexData(documentId, opResult.slice(), &vertexData, sizeof(V));
     if (size > 0) {
       entry._vertexDataOffset = _vertexData.size();
       _vertexData.push_back(vertexData);
     }
   }
-  std::string documentId = _readTrx->extractIdString(opResult.slice());
   _loadEdges(state, edgeShard, entry, documentId);
-  _index.push_back(entry);*/
+  _index.push_back(entry);
 }
 
 template <typename V, typename E>
@@ -144,12 +144,6 @@ RangeIterator<VertexEntry> GraphStore<V, E>::vertexIterator(size_t start,
 template <typename V, typename E>
 void* GraphStore<V, E>::mutableVertexData(VertexEntry const* entry) {
   return _vertexData.data() + entry->_vertexDataOffset;
-}
-
-template <typename V, typename E>
-V GraphStore<V, E>::copyVertexData(VertexEntry const* entry) {
-  return _graphFormat->readVertexData(
-      mutableVertexData(entry));  //  _vertexData[entry->_vertexDataOffset];
 }
 
 template <typename V, typename E>
@@ -242,12 +236,13 @@ void GraphStore<V, E>::_loadVertices(WorkerConfig const& state,
 
         // LOG(INFO) << "Loaded Vertex: " << document.toJson();
         std::string key = document.get(StaticStrings::KeyString).copyString();
-
+        std::string documentId = _readTrx->extractIdString(document);
+        
         VertexEntry entry(sourceShard, key);
         if (storeData) {
           V vertexData;
           size_t size =
-              _graphFormat->copyVertexData(document, &vertexData, sizeof(V));
+              _graphFormat->copyVertexData(documentId, document, &vertexData, sizeof(V));
           if (size > 0) {
             entry._vertexDataOffset = _vertexData.size();
             _vertexData.push_back(vertexData);
@@ -255,8 +250,7 @@ void GraphStore<V, E>::_loadVertices(WorkerConfig const& state,
             LOG(ERR) << "Could not load vertex " << document.toJson();
           }
         }
-
-        std::string documentId = _readTrx->extractIdString(document);
+        
         _loadEdges(state, edgeShard, entry, documentId);
         _index.push_back(entry);
         _localVerticeCount++;

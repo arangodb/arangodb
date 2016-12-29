@@ -42,7 +42,7 @@ struct SSSPAlgorithm : public SimpleAlgorithm<int64_t, int64_t, int64_t> {
   MessageFormat<int64_t>* messageFormat() const override;
   MessageCombiner<int64_t>* messageCombiner() const override;
   VertexComputation<int64_t, int64_t, int64_t>*
-  createComputation(uint64_t gss) const override;
+  createComputation(WorkerConfig const*) const override;
 };
 }
 }

@@ -63,10 +63,12 @@ class Utils {
   static std::string const vertexCount;
   static std::string const edgeCount;
   static std::string const asyncMode;
+  static std::string const lazyLoading;
 
   static std::string const globalSuperstepKey;
   static std::string const messagesKey;
   static std::string const senderKey;
+  static std::string const shardIDKey;
   static std::string const recoveryMethodKey;
   static std::string const compensate;
   static std::string const rollback;

@@ -75,6 +75,7 @@ class Conductor {
   uint64_t _globalSuperstep = 0;
   /// determines whether we support async execution
   bool _asyncMode = false;
+  bool _lazyLoading = false;
   /// persistent tracking of active vertices, send messages, runtimes
   StatsManager _statistics;
   /// Current number of vertices

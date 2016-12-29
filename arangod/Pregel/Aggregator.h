@@ -78,6 +78,32 @@ class FloatMaxAggregator : public Aggregator {
   void reset() override { _value = _initial; }
 };
 
+template<typename T>
+class MinAggregator : public Aggregator {
+  static_assert(std::is_arithmetic<T>::value, "Type must be numeric");
+  T _value, _initial;
+  
+public:
+  MinAggregator(T init) : _value(init), _initial(init) {}
+  
+  void aggregate(void const* valuePtr) override {
+    T other = *((T*)valuePtr);
+    if (other < _value) _value = other;
+  };
+  void aggregate(VPackSlice slice) override {
+    T f = slice.getNumber<T>();
+    aggregate(&f);
+  }
+  
+  void const* getValue() const override { return &_value; };
+  /*void setValue(VPackSlice slice) override {
+   _value = (float)slice.getDouble();
+   }*/
+  VPackValue vpackValue() override { return VPackValue(_value); };
+  
+  void reset() override { _value = _initial; }
+};
+
 template <typename T>
 class ValueAggregator : public Aggregator {
   static_assert(std::is_arithmetic<T>::value, "Type must be numeric");

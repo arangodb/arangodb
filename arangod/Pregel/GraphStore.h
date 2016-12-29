@@ -81,7 +81,9 @@ class GraphStore {
   size_t localEdgeCount() const { return _localEdgeCount; }
 
   void loadShards(WorkerConfig const& state);
-  void loadDocument(WorkerConfig const& state, ShardID const& shard,
+  void loadDocument(WorkerConfig const& state,
+                    ShardID const& vertexShard,
+                    ShardID const& edgeShard,
                     std::string const& _key);
 
   inline size_t vertexCount() { return _index.size(); }
@@ -90,7 +92,6 @@ class GraphStore {
   RangeIterator<Edge<E>> edgeIterator(VertexEntry const* entry);
 
   void* mutableVertexData(VertexEntry const* entry);
-  V copyVertexData(VertexEntry const* entry);
   void replaceVertexData(VertexEntry const* entry, void* data, size_t size);
 
   /// Write results to database

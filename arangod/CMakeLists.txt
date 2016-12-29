@@ -364,6 +364,7 @@ SET(ARANGOD_SOURCES
   Pregel/AggregatorHandler.cpp
   Pregel/AlgoRegistry.cpp
   Pregel/Algos/SSSP.cpp
+  Pregel/Algos/ShortestPath.cpp
   Pregel/Algos/PageRank.cpp
   Pregel/Conductor.cpp
   Pregel/GraphStore.cpp

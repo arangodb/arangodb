@@ -41,7 +41,8 @@ struct GraphFormat {
   virtual size_t estimatedVertexSize() const { return sizeof(V); };
   virtual size_t estimatedEdgeSize() const { return sizeof(E); };
 
-  virtual size_t copyVertexData(arangodb::velocypack::Slice document,
+  virtual size_t copyVertexData(std::string const& documentId,
+                                arangodb::velocypack::Slice document,
                                 void* targetPtr, size_t maxSize) = 0;
   virtual size_t copyEdgeData(arangodb::velocypack::Slice edgeDocument,
                               void* targetPtr, size_t maxSize) = 0;
@@ -50,9 +51,6 @@ struct GraphFormat {
                                    const void* targetPtr, size_t size) = 0;
   virtual void buildEdgeDocument(arangodb::velocypack::Builder& b,
                                  const void* targetPtr, size_t size) = 0;
-
-  virtual V readVertexData(const void* ptr) = 0;
-  virtual E readEdgeData(const void* ptr) = 0;
 };
 
 class IntegerGraphFormat : public GraphFormat<int64_t, int64_t> {
@@ -67,18 +65,16 @@ class IntegerGraphFormat : public GraphFormat<int64_t, int64_t> {
         _vDefault(vertexNull),
         _eDefault(edgeNull) {}
 
-  int64_t readVertexData(const void* ptr) override { return *((int64_t*)ptr); }
-  int64_t readEdgeData(const void* ptr) override { return *((int64_t*)ptr); }
-
-  size_t copyVertexData(arangodb::velocypack::Slice document, void* targetPtr,
-                        size_t maxSize) override {
+  size_t copyVertexData(std::string const& documentId,
+                        arangodb::velocypack::Slice document,
+                        void* targetPtr, size_t maxSize) override {
     arangodb::velocypack::Slice val = document.get(_sourceField);
     *((int64_t*)targetPtr) = val.isInteger() ? val.getInt() : _vDefault;
     return sizeof(int64_t);
   }
 
-  size_t copyEdgeData(arangodb::velocypack::Slice document, void* targetPtr,
-                      size_t maxSize) override {
+  size_t copyEdgeData(arangodb::velocypack::Slice document,
+                      void* targetPtr, size_t maxSize) override {
     arangodb::velocypack::Slice val = document.get(_sourceField);
     *((int64_t*)targetPtr) = val.isInteger() ? val.getInt() : _eDefault;
     return sizeof(int64_t);
@@ -86,12 +82,12 @@ class IntegerGraphFormat : public GraphFormat<int64_t, int64_t> {
 
   void buildVertexDocument(arangodb::velocypack::Builder& b,
                            const void* targetPtr, size_t size) override {
-    b.add(_resultField, VPackValue(readVertexData(targetPtr)));
+    b.add(_resultField, VPackValue(*((int64_t*)targetPtr)));
   }
 
   void buildEdgeDocument(arangodb::velocypack::Builder& b,
                          const void* targetPtr, size_t size) override {
-    b.add(_resultField, VPackValue(readEdgeData(targetPtr)));
+    b.add(_resultField, VPackValue(*((int64_t*)targetPtr)));
   }
 };
 
@@ -108,18 +104,19 @@ class FloatGraphFormat : public GraphFormat<float, float> {
         _vDefault(vertexNull),
         _eDefault(edgeNull) {}
 
-  float readVertexData(const void* ptr) override { return *((float*)ptr); }
-  float readEdgeData(const void* ptr) override { return *((float*)ptr); }
+  float readVertexData(const void* ptr) { return *((float*)ptr); }
+  float readEdgeData(const void* ptr) { return *((float*)ptr); }
 
-  size_t copyVertexData(arangodb::velocypack::Slice document, void* targetPtr,
-                        size_t maxSize) override {
+  size_t copyVertexData(std::string const& documentId,
+                        arangodb::velocypack::Slice document,
+                        void* targetPtr, size_t maxSize) override {
     arangodb::velocypack::Slice val = document.get(_sourceField);
     *((float*)targetPtr) = val.isDouble() ? (float)val.getDouble() : _vDefault;
     return sizeof(float);
   }
 
-  size_t copyEdgeData(arangodb::velocypack::Slice document, void* targetPtr,
-                      size_t maxSize) override {
+  size_t copyEdgeData(arangodb::velocypack::Slice document,
+                      void* targetPtr, size_t maxSize) override {
     arangodb::velocypack::Slice val = document.get(_sourceField);
     *((float*)targetPtr) = val.isDouble() ? (float)val.getDouble() : _eDefault;
     return sizeof(float);
