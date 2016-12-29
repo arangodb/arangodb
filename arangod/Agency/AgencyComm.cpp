@@ -1289,6 +1289,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
       endpoint = AgencyCommManager::MANAGER->redirect(
         std::move(connection), endpoint, result._location, url);
       connection = AgencyCommManager::MANAGER->acquire(endpoint);
+      waitInterval = std::chrono::duration<double>(.25);
       continue;
     }
     
