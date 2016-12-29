@@ -406,7 +406,7 @@ function dropLocalDatabases (plannedDatabases) {
         }
         db._dropDatabase(name);
 
-        dropDatabaseAgency([{name:name}]);
+        dropDatabaseAgency({name:name});
 
       }
     }
@@ -446,7 +446,7 @@ function cleanupCurrentDatabases (currentDatabases) {
           // we are entered for a database that we don't have locally
           console.debug("cleaning up entry for unknown database '%s'", name);
 
-          dropDatabaseAgency([{name:name}]);
+          dropDatabaseAgency({name:name});
         }
       }
     }
