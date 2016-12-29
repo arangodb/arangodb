@@ -68,8 +68,8 @@ book-check-markdown-leftovers:
 		find books/$(NAME) -name '*.html' -exec grep '##' {} \; -print; \
 		exit 1; \
 	fi
-	@if test "`find books/$(NAME) -name '*.html' -exec grep '\.md\"' {} \; | grep -v data-filepath | wc -l`" -gt 0; then \
-		find books/$(NAME) -name '*.html' -exec grep '\.md"' {} \; -print | grep -v data-filepath; \
+	@if test "`find books/$(NAME) -name '*.html' -exec grep '\.md\"[ />]' {} \; | grep -v data-filepath | wc -l`" -gt 0; then \
+		find books/$(NAME) -name '*.html' -exec grep '\.md"[ />]' {} \; -print | grep -v data-filepath; \
 		echo "found dangling markdown links; see the list above "; \
 		exit 1; \
 	fi
