@@ -1,10 +1,10 @@
 {
-  "gitbook": "^2.6.7",
+  "gitbook": "^3.2.2",
   "title": "ArangoDB VERSION_NUMBER Documentation",
   "author": "ArangoDB GmbH",
   "description": "Official manual for ArangoDB - the multi-model NoSQL database",
   "language": "en",
-  "plugins":["-search", "-sharing", "toggle-chapters", "addcssjs", "anchorjs", "add-header", "piwik"],
+  "plugins":["-search", "-lunr", "-sharing", "toggle-chapters", "addcssjs", "anchorjs", "piwik", "sitemap-general"],
   "pdf": {
     "fontSize": 12,
     "toc": true,
@@ -26,6 +26,9 @@
     "piwik": {
         "URL": "www.arangodb.com/piwik/",
         "siteId": 12
+    },
+    "sitemap-general": {
+      "prefix": "https://docs.arangodb.com/3.1/Manual/"
     }
   }
 }

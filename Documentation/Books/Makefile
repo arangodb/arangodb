@@ -121,9 +121,9 @@ book-check-markdown-leftovers:
 		echo "${RESET}"; \
 		exit 1; \
 	fi
-	@if test "`find books/$(NAME) -name '*.html' -exec grep '\.md\"' {} \; | grep -v data-filepath | wc -l`" -gt 0; then \
+	@if test "`find books/$(NAME) -name '*.html' -exec grep '\.md\"[ >/]' {} \; | grep -v data-filepath | wc -l`" -gt 0; then \
 		echo "${ERR_COLOR}"; \
-		find books/$(NAME) -name '*.html' -exec grep '\.md"' {} \; -print | grep -v data-filepath; \
+		find books/$(NAME) -name '*.html' -exec grep '\.md"[ >/]' {} \; -print | grep -v data-filepath; \
 		echo "found dangling markdown links; see the list above "; \
 		echo "${RESET}"; \
 		exit 1; \
