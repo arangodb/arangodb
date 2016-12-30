@@ -40,6 +40,8 @@ var _ = require('lodash');
 
 const inccv = {'/arango/Current/Version':{'op':'increment'}};
 const incpv = {'/arango/Plan/Version':{'op':'increment'}};
+const agencyDBs = global.ArangoAgency.prefix() + '/Current/Databases/';
+const agencyCols = global.ArangoAgency.prefix() + '/Current/Collections/';
 
 var endpointToURL = function (endpoint) {
   if (endpoint.substr(0, 6) === 'ssl://') {
@@ -308,7 +310,7 @@ function createLocalDatabases (plannedDatabases, currentDatabases) {
   var ourselves = global.ArangoServerState.id();
   var createDatabaseAgency = function (payload) {
     var envelope = {};
-    envelope['/arango/Current/Databases/' + payload.name + '/' + ourselves] = payload;
+    envelope[agencyDBs + payload.name + '/' + ourselves] = payload;
     global.ArangoAgency.write([[envelope, inccv]]);
   };
 
@@ -367,8 +369,7 @@ function dropLocalDatabases (plannedDatabases) {
     
     try {
       var envelope = {};
-      envelope['/arango/Current/Databases/' + payload.name + '/' + ourselves] =
-        {"op":"delete"};
+      envelope[agencyDBs + payload.name + '/' + ourselves] = {"op":"delete"};
       global.ArangoAgency.write([[envelope, inccv]]);
     } catch (err) {
       // ignore errors
@@ -423,8 +424,7 @@ function cleanupCurrentDatabases (currentDatabases) {
   var dropDatabaseAgency = function (payload) {
     try {
       var envelope = {};
-      envelope['/arango/Current/Databases/' + payload.name + '/' + ourselves] =
-        {"op":"delete"};
+      envelope[agencyDBs + payload.name + '/' + ourselves] = {"op":"delete"};
       global.ArangoAgency.write([[envelope, inccv]]);
     } catch (err) {
       // ignore errors
@@ -472,7 +472,7 @@ function handleDatabaseChanges (plan, current) {
 
 function createLocalCollections (plannedCollections, planVersion,
   currentCollections,
-  takeOverResponsibility, writeLocked) {
+  takeOverResponsibility) {
   var ourselves = global.ArangoServerState.id();
 
   var createCollectionAgency = function (database, shard, collInfo, error) {
@@ -486,20 +486,15 @@ function createLocalCollections (plannedCollections, planVersion,
 
     console.debug('creating Current/Collections/' + database + '/' +
                   collInfo.planId + '/' + shard);
-    global.ArangoAgency.set('Current/Collections/' + database + '/' +
-    collInfo.planId + '/' + shard,
-    payload);
+    global.ArangoAgency.set('Current/Collections/' + database + '/' + collInfo.planId + '/' + shard, payload);
 
-    /*var envelope = {};
-    envelope['/arango/Current/Collections/' + database + '/' +
-             collInfo.planId + '/' + shard] = payload;
-    gobal.ArangoAgency.write([[envelope, inccv]])
-    */
+    var envelope = {};
+    envelope[agencyCols + database + '/' + collInfo.planId + '/' + shard] = payload;
+    //global.ArangoAgency.write([[envelope]]);
+    
     console.debug('creating Current/Collections/' + database + '/' +
                   collInfo.planId + '/' + shard + ' done.');
   };
-
-  var takeOver = createCollectionAgency;
 
   var db = require('internal').db;
   db._useDatabase('_system');
@@ -638,7 +633,7 @@ function createLocalCollections (plannedCollections, planVersion,
                     if (error.error) {
                       if (takeOverResponsibility && !didWrite) {
                         if (isLeader) {
-                          takeOver(database, shard, collInfo, error);
+                          createCollectionAgency(database, shard, collInfo, error);
                         }
                       }
                       continue; // No point to look for properties and
@@ -721,7 +716,7 @@ function createLocalCollections (plannedCollections, planVersion,
 
                     if ((takeOverResponsibility && !didWrite && isLeader) ||
                       (!didWrite && isLeader && !wasLeader)) {
-                      takeOver(database, shard, collInfo, error);
+                      createCollectionAgency(database, shard, collInfo, error);
                     }
                   }
                 }
@@ -780,8 +775,7 @@ function dropLocalCollections (plannedCollections, currentCollections) {
       console.debug('dropping Current/Collections/' + database + '/' +
                     id + '/' + shardID);
       var envelope = {};
-      envelope['/arango/Current/Collections/' + database + '/' + id + '/' + shardID] =
-        {"op":"delete"};
+      envelope[agencyCols + database + '/' + id + '/' + shardID] = {"op":"delete"};
       global.ArangoAgency.write([[envelope, inccv]]);
       console.debug('dropping Current/Collections/' + database + '/' +
                     id + '/' + shardID + ' done.');
@@ -891,8 +885,7 @@ function cleanupCurrentCollections (plannedCollections, currentCollections) {
                     collection + '/' + shardID);
 
       var envelope = {};
-      envelope['/arango/Current/Collections/' + database + '/'
-               + collection + '/' + shardID] = {"op": "delete"};
+      envelope[agencyCols + database + '/' + collection + '/' + shardID] = {"op": "delete"};
       global.ArangoAgency.write([[envelope, inccv]]);
       
       console.debug('cleaning Current/Collections/' + database + '/' +
@@ -1283,8 +1276,7 @@ function synchronizeLocalFollowerCollections (plannedCollections,
 // / @brief handle collection changes
 // //////////////////////////////////////////////////////////////////////////////
 
-function handleCollectionChanges (plan, current, takeOverResponsibility,
-  writeLocked) {
+function handleCollectionChanges (plan, current, takeOverResponsibility) {
   var plannedCollections = plan.Collections;
   var currentCollections = current.Collections;
 
@@ -1292,7 +1284,7 @@ function handleCollectionChanges (plan, current, takeOverResponsibility,
 
   try {
     createLocalCollections(plannedCollections, plan.Version, currentCollections,
-      takeOverResponsibility, writeLocked);
+      takeOverResponsibility);
     dropLocalCollections(plannedCollections, currentCollections);
     cleanupCurrentCollections(plannedCollections, currentCollections);
     if (!synchronizeLocalFollowerCollections(plannedCollections,
@@ -1395,7 +1387,7 @@ function primaryToSecondary () {
 // / @brief change handling trampoline function
 // //////////////////////////////////////////////////////////////////////////////
 
-function handleChanges (plan, current, writeLocked) {
+function handleChanges (plan, current) {
   var changed = false;
   var role = ArangoServerState.role();
   if (role === 'PRIMARY' || role === 'SECONDARY') {
@@ -1445,7 +1437,7 @@ function handleChanges (plan, current, writeLocked) {
   if (role === 'PRIMARY' || role === 'COORDINATOR') {
     // Note: This is only ever called for DBservers (primary and secondary),
     // we keep the coordinator case here just in case...
-    success = handleCollectionChanges(plan, current, changed, writeLocked);
+    success = handleCollectionChanges(plan, current, changed);
   } else {
     success = setupReplication();
   }
@@ -1615,39 +1607,9 @@ var handlePlanChange = function (plan, current) {
     current: current.Version
   };
 
-  // ////////////////////////////////////////////////////////////////////////////
-  // / @brief execute an action under a write-lock
-  // ////////////////////////////////////////////////////////////////////////////
-
-  function writeLocked (lockInfo, cb, args) {
-    var timeout = lockInfo.timeout;
-    if (timeout === undefined) {
-      timeout = 60;
-    }
-    
-    var ttl = lockInfo.ttl;
-    if (ttl === undefined) {
-      ttl = 120;
-    }
-    if (require('internal').coverage || require('internal').valgrind) {
-      ttl *= 10;
-      timeout *= 10;
-    }
-    
-    try {
-      cb.apply(null, args);
-      global.ArangoAgency.increaseVersion(lockInfo.part + '/Version');
-
-      let version = global.ArangoAgency.get(lockInfo.part + '/Version');
-      versions[lockInfo.part.toLowerCase()] = version.arango[lockInfo.part].Version;
-
-    } catch (err) {
-      throw err;
-    }
-  }
 
   try {
-    versions.success = handleChanges(plan, current, writeLocked);
+    versions.success = handleChanges(plan, current);
 
     console.debug('plan change handling successful');
   } catch (err) {
