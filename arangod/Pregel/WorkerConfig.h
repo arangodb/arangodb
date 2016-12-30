@@ -104,8 +104,6 @@ class WorkerConfig {
                      shard) != _localVertexShardIDs.end();
   }
   
-  PregelKey convertToPregelKey(std::string const& documentID) const;
-
  private:
   uint64_t _executionNumber = 0;
   uint64_t _globalSuperstep = 0;

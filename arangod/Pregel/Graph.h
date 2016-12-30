@@ -27,11 +27,14 @@ namespace arangodb {
 namespace pregel {
 
 typedef uint16_t prgl_shard_t;
-struct PregelKey {
+struct PregelID {
   prgl_shard_t shard;
   std::string key;
   
-  inline bool operator==(const PregelKey& rhs) {
+  PregelID() {}
+  PregelID(prgl_shard_t s, std::string const& k) : shard(s), key(k) {}
+  
+  inline bool operator==(const PregelID& rhs) {
     return shard == rhs.shard && key == rhs.key;
   }
 };
@@ -88,6 +91,7 @@ class VertexEntry {
 
   inline prgl_shard_t shard() const { return _shard; }
   inline std::string const& key() const { return _key; };
+  PregelID pregelId() const { return PregelID(_shard, _key); }
   /*std::string const& key() const {
     return std::string(_key, _keySize);
   };*/

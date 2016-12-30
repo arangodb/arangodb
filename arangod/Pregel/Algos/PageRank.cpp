@@ -48,17 +48,21 @@ PageRankAlgorithm::PageRankAlgorithm(arangodb::velocypack::Slice params) : Simpl
 struct PageRankGraphFormat : public FloatGraphFormat {
   PageRankGraphFormat(std::string const& s, std::string const& r)
       : FloatGraphFormat(s, r, 0, 0) {}
-  bool storesEdgeData() const override { return false; }
-  size_t copyVertexData(std::string const& documentId,
+  size_t copyVertexData(VertexEntry const& vertex,
+                        std::string const& documentId,
                         arangodb::velocypack::Slice document,
                         void* targetPtr, size_t maxSize) override {
     *((float*)targetPtr) = _vDefault;
     return sizeof(float);
   }
+  
+  size_t copyEdgeData(arangodb::velocypack::Slice document,
+                      void* targetPtr, size_t maxSize) override {
+    return 0;
+  }
 };
 
-GraphFormat<float, float>* PageRankAlgorithm::inputFormat()
-    const {
+GraphFormat<float, float>* PageRankAlgorithm::inputFormat() {
   return new PageRankGraphFormat(_sourceField, _resultField);
 }
 

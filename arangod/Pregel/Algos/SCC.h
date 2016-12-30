@@ -34,7 +34,7 @@ struct SCCAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
  public:
   SCCAlgorithm() : Algorithm("SCC") {}
 
-  std::shared_ptr<GraphFormat<int64_t, int64_t>> inputFormat() const override;
+  std::shared_ptr<GraphFormat<int64_t, int64_t>> inputFormat() override;
   std::shared_ptr<MessageFormat<int64_t>> messageFormat() const override;
   std::shared_ptr<MessageCombiner<int64_t>> messageCombiner() const override;
   std::shared_ptr<VertexComputation<int64_t, int64_t, int64_t>>

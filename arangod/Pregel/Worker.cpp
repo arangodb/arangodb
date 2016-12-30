@@ -320,7 +320,7 @@ void Worker<V, E, M>::_processVertices(
 
   // TODO look if we can avoid instantiating this
   std::unique_ptr<VertexComputation<V, E, M>> vertexComputation(
-      _algorithm->createComputation(_config.globalSuperstep()));
+      _algorithm->createComputation(&_config));
   _initializeVertexContext(vertexComputation.get());
   vertexComputation->_workerAggregators = &workerAggregator;
   vertexComputation->_cache = outCache.get();
@@ -497,7 +497,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice data) {
 
     // TODO look if we can avoid instantiating this
     std::unique_ptr<VertexCompensation<V, E, M>> vCompensate(
-        _algorithm->createCompensation(_config.globalSuperstep()));
+        _algorithm->createCompensation(&_config));
     _initializeVertexContext(vCompensate.get());
     vCompensate->_workerAggregators = _workerAggregators.get();
 

@@ -52,8 +52,7 @@ struct SSSPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
   }
 };
 
-GraphFormat<int64_t, int64_t>* SSSPAlgorithm::inputFormat()
-    const {
+GraphFormat<int64_t, int64_t>* SSSPAlgorithm::inputFormat() {
   return new IntegerGraphFormat(_sourceField, _resultField, INT64_MAX, 1);
 }
 

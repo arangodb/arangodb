@@ -87,16 +87,15 @@ void GraphStore<V, E>::loadShards(WorkerConfig const& state) {
 }
 
 template <typename V, typename E>
-void GraphStore<V, E>::loadDocument(WorkerConfig const& state,
+void GraphStore<V, E>::loadDocument(WorkerConfig const& config,
                                     ShardID const& vertexShard,
                                     ShardID const& edgeShard,
                                     std::string const& _key) {
   if (_readTrx == nullptr) {
-   _createReadTransaction(state);
+   _createReadTransaction(config);
   }
 
-  prgl_shard_t sourceShard = (prgl_shard_t)state.shardId(vertexShard);
-  bool storeData = _graphFormat->storesVertexData();
+  prgl_shard_t sourceShard = (prgl_shard_t)config.shardId(vertexShard);
 
   VPackBuilder builder;
   builder.openObject();
@@ -117,16 +116,15 @@ void GraphStore<V, E>::loadDocument(WorkerConfig const& state,
 
   std::string documentId = _readTrx->extractIdString(opResult.slice());
   VertexEntry entry(sourceShard, _key);
-  if (storeData) {
-    V vertexData;
-    size_t size =
-    _graphFormat->copyVertexData(documentId, opResult.slice(), &vertexData, sizeof(V));
-    if (size > 0) {
-      entry._vertexDataOffset = _vertexData.size();
-      _vertexData.push_back(vertexData);
-    }
+  V vertexData;
+  size_t size =
+  _graphFormat->copyVertexData(entry, documentId, opResult.slice(),
+                               &vertexData, sizeof(V));
+  if (size > 0) {
+    entry._vertexDataOffset = _vertexData.size();
+    _vertexData.push_back(vertexData);
   }
-  _loadEdges(state, edgeShard, entry, documentId);
+  _loadEdges(config, edgeShard, entry, documentId);
   _index.push_back(entry);
 }
 
@@ -198,8 +196,6 @@ void GraphStore<V, E>::_loadVertices(WorkerConfig const& state,
                                      ShardID const& vertexShard,
                                      ShardID const& edgeShard) {
   //_graphFormat->willUseCollection(vocbase, vertexShard, false);
-  bool storeData = _graphFormat->storesVertexData();
-
   TRI_voc_cid_t cid = _readTrx->addCollectionAtRuntime(vertexShard);
   _readTrx->orderDitch(cid);  // will throw when it fails
   prgl_shard_t sourceShard = (prgl_shard_t)state.shardId(vertexShard);
@@ -239,16 +235,13 @@ void GraphStore<V, E>::_loadVertices(WorkerConfig const& state,
         std::string documentId = _readTrx->extractIdString(document);
         
         VertexEntry entry(sourceShard, key);
-        if (storeData) {
-          V vertexData;
-          size_t size =
-              _graphFormat->copyVertexData(documentId, document, &vertexData, sizeof(V));
-          if (size > 0) {
-            entry._vertexDataOffset = _vertexData.size();
-            _vertexData.push_back(vertexData);
-          } else {
-            LOG(ERR) << "Could not load vertex " << document.toJson();
-          }
+        V vertexData;
+        size_t size =
+            _graphFormat->copyVertexData(entry, documentId, document,
+                                         &vertexData, sizeof(V));
+        if (size > 0) {
+          entry._vertexDataOffset = _vertexData.size();
+          _vertexData.push_back(vertexData);
         }
         
         _loadEdges(state, edgeShard, entry, documentId);
@@ -264,8 +257,6 @@ void GraphStore<V, E>::_loadEdges(WorkerConfig const& state,
                                   ShardID const& edgeShard,
                                   VertexEntry& vertexEntry,
                                   std::string const& documentID) {
-  const bool storeData = _graphFormat->storesEdgeData();
-
   // Transaction* trx = readTransaction(shard);
   traverser::EdgeCollectionInfo info(_readTrx, edgeShard, TRI_EDGE_OUT,
                                      StaticStrings::FromString, 0);
@@ -321,11 +312,9 @@ void GraphStore<V, E>::_loadEdges(WorkerConfig const& state,
         }
 
         Edge<E> edge(source, target, _key);
-        if (storeData) {
           // size_t size =
           _graphFormat->copyEdgeData(document, edge.data(), sizeof(E));
           // TODO store size value at some point
-        }
         _edges.push_back(edge);
         _localEdgeCount++;
       }

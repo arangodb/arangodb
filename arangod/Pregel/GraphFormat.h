@@ -29,6 +29,7 @@
 #include <type_traits>
 
 #include "Basics/Common.h"
+#include "Pregel/Graph.h"
 
 struct TRI_vocbase_t;
 namespace arangodb {
@@ -36,12 +37,11 @@ namespace pregel {
 
 template <typename V, typename E>
 struct GraphFormat {
-  virtual bool storesVertexData() const { return true; }
-  virtual bool storesEdgeData() const { return true; }
   virtual size_t estimatedVertexSize() const { return sizeof(V); };
   virtual size_t estimatedEdgeSize() const { return sizeof(E); };
 
-  virtual size_t copyVertexData(std::string const& documentId,
+  virtual size_t copyVertexData(VertexEntry const& vertex,
+                                std::string const& documentId,
                                 arangodb::velocypack::Slice document,
                                 void* targetPtr, size_t maxSize) = 0;
   virtual size_t copyEdgeData(arangodb::velocypack::Slice edgeDocument,
@@ -65,7 +65,8 @@ class IntegerGraphFormat : public GraphFormat<int64_t, int64_t> {
         _vDefault(vertexNull),
         _eDefault(edgeNull) {}
 
-  size_t copyVertexData(std::string const& documentId,
+  size_t copyVertexData(VertexEntry const& vertex,
+                        std::string const& documentId,
                         arangodb::velocypack::Slice document,
                         void* targetPtr, size_t maxSize) override {
     arangodb::velocypack::Slice val = document.get(_sourceField);
@@ -107,7 +108,8 @@ class FloatGraphFormat : public GraphFormat<float, float> {
   float readVertexData(const void* ptr) { return *((float*)ptr); }
   float readEdgeData(const void* ptr) { return *((float*)ptr); }
 
-  size_t copyVertexData(std::string const& documentId,
+  size_t copyVertexData(VertexEntry const& vertex,
+                        std::string const& documentId,
                         arangodb::velocypack::Slice document,
                         void* targetPtr, size_t maxSize) override {
     arangodb::velocypack::Slice val = document.get(_sourceField);

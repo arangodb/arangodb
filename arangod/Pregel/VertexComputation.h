@@ -89,6 +89,7 @@ class VertexContext {
   
   prgl_shard_t shard() const { return _vertexEntry->shard(); }
   std::string const& key() const { return _vertexEntry->key(); }
+  PregelID pregelId() const { return _vertexEntry->pregelId(); }
 };
 
 template <typename V, typename E, typename M>

@@ -41,7 +41,7 @@ struct PageRankAlgorithm : public SimpleAlgorithm<float, float, float> {
   bool supportsCompensation() const override { return true; }
   MasterContext* masterContext(VPackSlice userParams) const override;
 
-  GraphFormat<float, float>* inputFormat() const override;
+  GraphFormat<float, float>* inputFormat() override;
   MessageFormat<float>* messageFormat() const override;
   MessageCombiner<float>* messageCombiner() const override;
   VertexComputation<float, float, float>* createComputation(WorkerConfig const*)

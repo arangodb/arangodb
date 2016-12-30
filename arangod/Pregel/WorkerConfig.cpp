@@ -77,8 +77,8 @@ WorkerConfig::WorkerConfig(DatabaseID dbname, VPackSlice params)
     _collectionPlanIdMap.emplace(it.key.copyString(), it.value.copyString());
   }
 }
-
-PregelKey WorkerConfig::convertToPregelKey(std::string const& documentID) const {
+/*
+PregelID WorkerConfig::convertToPregelKey(std::string const& documentID) const {
   size_t pos = documentID.find("/");
   if (pos == std::string::npos) {
     return PregelKey();
@@ -92,8 +92,8 @@ PregelKey WorkerConfig::convertToPregelKey(std::string const& documentID) const 
   for (auto const& pair : map) {
     std::vector<ShardID> const& shards = pair.second;
     if (std::find(shards.begin(), shards.end(), shard) != shards.end()) {
-      return PregelKey(key) coll == pair.first;
+      return PregelID(key) coll == pair.first;
     }
   }
   return false;
-}
+}*/
