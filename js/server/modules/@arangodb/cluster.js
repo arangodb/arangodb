@@ -487,10 +487,11 @@ function createLocalCollections (plannedCollections, planVersion,
     console.debug('creating Current/Collections/' + database + '/' +
                   collInfo.planId + '/' + shard);
     global.ArangoAgency.set('Current/Collections/' + database + '/' + collInfo.planId + '/' + shard, payload);
+    global.ArangoAgency.increaseVersion('Current/Version');
 
     var envelope = {};
     envelope[agencyCols + database + '/' + collInfo.planId + '/' + shard] = payload;
-    //global.ArangoAgency.write([[envelope]]);
+    //global.ArangoAgency.write([[envelope, inccv]]);
     
     console.debug('creating Current/Collections/' + database + '/' +
                   collInfo.planId + '/' + shard + ' done.');
