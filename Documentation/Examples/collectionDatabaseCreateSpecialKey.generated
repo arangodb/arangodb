@@ -1,16 +1,16 @@
 arangosh&gt; db._create(<span class="hljs-string">"users"</span>, { keyOptions: { allowUserKeys: <span class="hljs-literal">false</span> } });
-[ArangoCollection <span class="hljs-number">14335</span>, <span class="hljs-string">"users"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
+[ArangoCollection <span class="hljs-number">14353</span>, <span class="hljs-string">"users"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
 arangosh&gt; db.users.save({ name: <span class="hljs-string">"user 1"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/14338"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"14338"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UPtypPO---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/14356"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"14356"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_USnzOw6---"</span> 
 }
 arangosh&gt; db.users.save({ name: <span class="hljs-string">"user 2"</span>, _key: <span class="hljs-string">"myuser"</span> });
 [ArangoError <span class="hljs-number">1222</span>: collection does not allow using user-defined keys]
 arangosh&gt; db.users.save({ name: <span class="hljs-string">"user 3"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/14343"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"14343"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_UPtypPS---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/14361"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"14361"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_USnzOx----"</span> 
 }

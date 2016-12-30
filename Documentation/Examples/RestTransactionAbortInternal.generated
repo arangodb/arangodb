@@ -15,10 +15,10 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
   <span class="hljs-string">"stacktrace"</span> : [ 
     <span class="hljs-string">"ArangoError: unique constraint violated"</span>, 
     <span class="hljs-string">"    at Error (native)"</span>, 
-    <span class="hljs-string">"    at eval (eval at post_api_transaction (/home/steemann/ArangoRelease/js/actions/api-transaction.js:48:16), &lt;anonymous&gt;:3:100)"</span>, 
-    <span class="hljs-string">"    at eval (eval at post_api_transaction (/home/steemann/ArangoRelease/js/actions/api-transaction.js:48:16), &lt;anonymous&gt;:3:123)"</span>, 
-    <span class="hljs-string">"    at post_api_transaction (/home/steemann/ArangoRelease/js/actions/api-transaction.js:48:16)"</span>, 
-    <span class="hljs-string">"    at Function.actions.defineHttp.callback (/home/steemann/ArangoRelease/js/actions/api-transaction.js:64:11)"</span> 
+    <span class="hljs-string">"    at eval (eval at post_api_transaction (/Users/fceller/1_ArangoDB/ArangoDB-3.1/js/actions/api-transaction.js:48:16), &lt;anonymous&gt;:3:100)"</span>, 
+    <span class="hljs-string">"    at eval (eval at post_api_transaction (/Users/fceller/1_ArangoDB/ArangoDB-3.1/js/actions/api-transaction.js:48:16), &lt;anonymous&gt;:3:123)"</span>, 
+    <span class="hljs-string">"    at post_api_transaction (/Users/fceller/1_ArangoDB/ArangoDB-3.1/js/actions/api-transaction.js:48:16)"</span>, 
+    <span class="hljs-string">"    at Function.actions.defineHttp.callback (/Users/fceller/1_ArangoDB/ArangoDB-3.1/js/actions/api-transaction.js:64:11)"</span> 
   ], 
   <span class="hljs-string">"message"</span> : <span class="hljs-string">"unique constraint violated"</span>, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 

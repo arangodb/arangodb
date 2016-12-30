@@ -3,7 +3,7 @@ Mac OS X
 
 The preferred method for installing ArangoDB under Mac OS X is
 [homebrew](#homebrew). However, in case you are not using homebrew, we
-provide a [command-line app](#commandline-app) or [graphical
+provide a [command-line app](#command-line-app) or [graphical
 app](#graphical-app) which contains all the executables.
 
 Homebrew
@@ -58,7 +58,7 @@ download it from [here](https://www.arangodb.com/download).
 Choose *Mac OS X*. Download and install the application *ArangoDB* in
 your application folder.
 
-Command-Line App
+Command line App
 ----------------
 In case you are not using homebrew, we also provide a command-line app. You can
 download it from [here](https://www.arangodb.com/download).

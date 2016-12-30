@@ -1,6 +1,6 @@
 arangosh&gt; db.collection.ensureIndex({ type: <span class="hljs-string">"hash"</span>, fields: [ <span class="hljs-string">"_from"</span>, <span class="hljs-string">"type"</span> ] })
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"collection/15303"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"collection/15318"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"_from"</span>, 
