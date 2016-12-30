@@ -376,7 +376,7 @@ bool Node::handle<SET>(VPackSlice const& slice) {
     VPackSlice ttl_v = slice.get("ttl");
     if (ttl_v.isNumber()) {
       long ttl = 1000l * ((ttl_v.isDouble())
-                              ? static_cast<long>(slice.get("ttl").getDouble())
+                              ? static_cast<long>(slice.get("ttl").getNumber<double>())
                               : static_cast<long>(slice.get("ttl").getInt()));
       addTimeToLive(ttl);
     } else {
@@ -773,7 +773,7 @@ double Node::getDouble() const {
   if (type() == NODE) {
     throw StoreException("Must not convert NODE type to int");
   }
-  return slice().getDouble();
+  return slice().getNumber<double>();
 }
 
 std::string Node::getString() const {
