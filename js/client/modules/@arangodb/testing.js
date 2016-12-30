@@ -141,6 +141,7 @@ const optionsDocumentation = [
 
 const optionsDefaults = {
   'agencySize': 3,
+  'agencyWaitForSync' : false,
   'agencySupervision': true,
   'build': '',
   'buildType': '',
