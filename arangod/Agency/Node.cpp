@@ -759,7 +759,7 @@ uint64_t Node::getUInt() const {
   if (type() == NODE) {
     throw StoreException("Must not convert NODE type to unsigned int");
   }
-  return slice().getNumber<unit64_t>();
+  return slice().getUInt();
 }
 
 bool Node::getBool() const {
