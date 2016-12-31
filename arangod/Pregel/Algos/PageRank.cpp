@@ -40,7 +40,8 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
-PageRankAlgorithm::PageRankAlgorithm(arangodb::velocypack::Slice params) : SimpleAlgorithm("PageRank", params) {
+PageRankAlgorithm::PageRankAlgorithm(arangodb::velocypack::Slice params)
+    : SimpleAlgorithm("PageRank", params) {
   VPackSlice t = params.get("convergenceThreshold");
   _threshold = t.isNumber() ? t.getNumber<float>() : 0.00002f;
 }
@@ -50,14 +51,14 @@ struct PageRankGraphFormat : public FloatGraphFormat {
       : FloatGraphFormat(s, r, 0, 0) {}
   size_t copyVertexData(VertexEntry const& vertex,
                         std::string const& documentId,
-                        arangodb::velocypack::Slice document,
-                        void* targetPtr, size_t maxSize) override {
+                        arangodb::velocypack::Slice document, void* targetPtr,
+                        size_t maxSize) override {
     *((float*)targetPtr) = _vDefault;
     return sizeof(float);
   }
-  
-  size_t copyEdgeData(arangodb::velocypack::Slice document,
-                      void* targetPtr, size_t maxSize) override {
+
+  size_t copyEdgeData(arangodb::velocypack::Slice document, void* targetPtr,
+                      size_t maxSize) override {
     return 0;
   }
 };
@@ -70,8 +71,7 @@ MessageFormat<float>* PageRankAlgorithm::messageFormat() const {
   return new FloatMessageFormat();
 }
 
-MessageCombiner<float>* PageRankAlgorithm::messageCombiner()
-    const {
+MessageCombiner<float>* PageRankAlgorithm::messageCombiner() const {
   return new FloatSumCombiner();
 }
 
@@ -79,7 +79,6 @@ struct PRComputation : public VertexComputation<float, float, float> {
   float _limit;
   PRComputation(float t) : _limit(t) {}
   void compute(MessageIterator<float> const& messages) override {
-    
     float* ptr = mutableVertexData();
     float copy = *ptr;
     // TODO do initialization in GraphFormat?
@@ -94,11 +93,11 @@ struct PRComputation : public VertexComputation<float, float, float> {
     }
     float diff = fabsf(copy - *ptr);
     aggregate("convergence", &diff);
-    const float *val = getAggregatedValue<float>("convergence");
-    if (val) {// if global convergence is available use it
+    const float* val = getAggregatedValue<float>("convergence");
+    if (val) {  // if global convergence is available use it
       diff = *val;
     }
-    
+
     if (globalSuperstep() < 50 && diff > _limit) {
       RangeIterator<Edge<float>> edges = getEdges();
       float val = *ptr / edges.size();
@@ -111,41 +110,37 @@ struct PRComputation : public VertexComputation<float, float, float> {
   }
 };
 
-VertexComputation<float, float, float>*
-PageRankAlgorithm::createComputation(WorkerConfig const* config) const {
+VertexComputation<float, float, float>* PageRankAlgorithm::createComputation(
+    WorkerConfig const* config) const {
   return new PRComputation(_threshold);
 }
 
 struct PRCompensation : public VertexCompensation<float, float, float> {
-  
   PRCompensation() {}
   void compensate(bool inLostPartition) override {
-    
-    const uint32_t *step = getAggregatedValue<uint32_t>("step");
+    const uint32_t* step = getAggregatedValue<uint32_t>("step");
     if (step) {
       if (*step == 0 && !inLostPartition) {
         uint32_t c = 1;
         aggregate("nonfailedCount", &c);
         aggregate("totalrank", mutableVertexData());
       } else if (*step == 1) {
-        
-        float *data = mutableVertexData();
+        float* data = mutableVertexData();
         if (inLostPartition) {
           *data = 1.0f / context()->vertexCount();
         } else {
-          const float *scale = getAggregatedValue<float>("scale");
+          const float* scale = getAggregatedValue<float>("scale");
           if (scale && *scale != 0) {
             *data *= *scale;
           }
         }
-        
       }
     }
   }
 };
 
-VertexCompensation<float, float, float>*
-PageRankAlgorithm::createCompensation(WorkerConfig const* config) const {
+VertexCompensation<float, float, float>* PageRankAlgorithm::createCompensation(
+    WorkerConfig const* config) const {
   return new PRCompensation();
 }
 
@@ -165,27 +160,30 @@ Aggregator* PageRankAlgorithm::aggregator(std::string const& name) const {
 }
 
 struct PRMasterContext : public MasterContext {
-  PRMasterContext(VPackSlice params) : MasterContext(params) {};
+  PRMasterContext(VPackSlice params) : MasterContext(params){};
   bool postGlobalSuperstep(uint64_t gss) {
-    const float *convergence = getAggregatedValue<float>("convergence");
+    const float* convergence = getAggregatedValue<float>("convergence");
     LOG(INFO) << "Current convergence level" << *convergence;
     return true;
   }
-  
+
   int32_t recoveryStep = -1;
-  
+
   bool preCompensation(uint64_t gss) {
     recoveryStep++;
     aggregate("step", &recoveryStep);
     return true;
   }
-  
+
   bool postCompensation(uint64_t gss) {
     if (recoveryStep == 0) {
       const float* totalrank = getAggregatedValue<float>("totalrank");
-      const uint32_t* nonfailedCount = getAggregatedValue<uint32_t>("nonfailedCount");
-      if (totalrank && *totalrank != 0 && nonfailedCount && *nonfailedCount != 0) {
-        float scale = ((*nonfailedCount) * 1.0f) / (this->vertexCount() * (*totalrank));
+      const uint32_t* nonfailedCount =
+          getAggregatedValue<uint32_t>("nonfailedCount");
+      if (totalrank && *totalrank != 0 && nonfailedCount &&
+          *nonfailedCount != 0) {
+        float scale =
+            ((*nonfailedCount) * 1.0f) / (this->vertexCount() * (*totalrank));
         aggregate("scale", &scale);
         return true;
       }
@@ -194,7 +192,6 @@ struct PRMasterContext : public MasterContext {
     return false;
   }
 };
-
 
 MasterContext* PageRankAlgorithm::masterContext(VPackSlice userParams) const {
   return new PRMasterContext(userParams);

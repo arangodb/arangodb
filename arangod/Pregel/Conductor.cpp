@@ -184,8 +184,8 @@ void Conductor::finishedWorkerStartup(VPackSlice& data) {
     return;
   }
 
-  LOG(INFO) << _totalVerticesCount << " vertices, "
-  << _totalEdgesCount << " edges";
+  LOG(INFO) << _totalVerticesCount << " vertices, " << _totalEdgesCount
+            << " edges";
   if (_masterContext) {
     _masterContext->_vertexCount = _totalVerticesCount;
     _masterContext->_edgeCount = _totalEdgesCount;
@@ -434,6 +434,7 @@ int Conductor::_initializeWorkers(std::string const& suffix,
     b.add(Utils::userParametersKey, _userParams.slice());
     b.add(Utils::coordinatorIdKey, VPackValue(coordinatorId));
     b.add(Utils::asyncMode, VPackValue(_asyncMode));
+    b.add(Utils::lazyLoading, VPackValue(_lazyLoading));
     b.add(Utils::vertexShardsKey, VPackValue(VPackValueType::Object));
     if (additional.isObject()) {
       b.add(additional);

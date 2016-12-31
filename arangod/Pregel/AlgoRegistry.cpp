@@ -23,6 +23,7 @@
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Algos/PageRank.h"
 #include "Pregel/Algos/SSSP.h"
+#include "Pregel/Algos/ShortestPath.h"
 #include "Pregel/Utils.h"
 
 using namespace arangodb;
@@ -34,6 +35,8 @@ IAlgorithm* AlgoRegistry::createAlgorithm(std::string const& algorithm,
     return new algos::SSSPAlgorithm(userParams);
   } else if (algorithm == "pagerank") {
     return new algos::PageRankAlgorithm(userParams);
+  } else if (algorithm == "shortestpath") {
+    return new algos::ShortestPathAlgorithm(userParams);
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Unsupported Algorithm");
@@ -59,6 +62,9 @@ IWorker* AlgoRegistry::createWorker(TRI_vocbase_t* vocbase, VPackSlice body) {
     return createWorker(vocbase, new algos::SSSPAlgorithm(userParams), body);
   } else if (algorithm.compareString("PageRank") == 0) {
     return createWorker(vocbase, new algos::PageRankAlgorithm(userParams),
+                        body);
+  } else if (algorithm.compareString("ShortestPath") == 0) {
+    return createWorker(vocbase, new algos::ShortestPathAlgorithm(userParams),
                         body);
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,

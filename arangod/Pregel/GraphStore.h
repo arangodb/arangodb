@@ -81,9 +81,8 @@ class GraphStore {
   size_t localEdgeCount() const { return _localEdgeCount; }
 
   void loadShards(WorkerConfig const& state);
-  void loadDocument(WorkerConfig const& state,
-                    ShardID const& vertexShard,
-                    ShardID const& edgeShard,
+  void loadDocument(WorkerConfig const& config, std::string const& documentID);
+  void loadDocument(WorkerConfig const& config, prgl_shard_t sourceShard,
                     std::string const& _key);
 
   inline size_t vertexCount() { return _index.size(); }

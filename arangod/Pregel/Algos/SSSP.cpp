@@ -60,12 +60,11 @@ MessageFormat<int64_t>* SSSPAlgorithm::messageFormat() const {
   return new IntegerMessageFormat();
 }
 
-MessageCombiner<int64_t>* SSSPAlgorithm::messageCombiner()
-    const {
+MessageCombiner<int64_t>* SSSPAlgorithm::messageCombiner() const {
   return new IntegerMinCombiner();
 }
 
-VertexComputation<int64_t, int64_t, int64_t>*
-SSSPAlgorithm::createComputation(WorkerConfig const* config) const {
+VertexComputation<int64_t, int64_t, int64_t>* SSSPAlgorithm::createComputation(
+    WorkerConfig const* config) const {
   return new SSSPComputation();
 }

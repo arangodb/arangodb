@@ -38,8 +38,7 @@ struct WorkerStats {
 
   WorkerStats() {}
   WorkerStats(VPackSlice statValues) { accumulate(statValues); }
-  WorkerStats(size_t s, size_t r)
-      : sendCount(s), receivedCount(r) {}
+  WorkerStats(size_t s, size_t r) : sendCount(s), receivedCount(r) {}
 
   void accumulate(WorkerStats const& other) {
     sendCount += other.sendCount;
@@ -67,7 +66,7 @@ struct WorkerStats {
     b.add(Utils::receivedCountKey, VPackValue(receivedCount));
     b.add(Utils::superstepRuntimeKey, VPackValue(superstepRuntimeSecs));
   }
-  
+
   void resetTracking() {
     sendCount = 0;
     receivedCount = 0;

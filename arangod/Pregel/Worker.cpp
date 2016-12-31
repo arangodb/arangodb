@@ -30,10 +30,10 @@
 #include "Pregel/VertexComputation.h"
 #include "Pregel/WorkerConfig.h"
 
-#include "Basics/ReadLocker.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/WriteLocker.h"
+#include "Basics/ReadLocker.h"
 #include "Basics/ThreadPool.h"
+#include "Basics/WriteLocker.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/ticks.h"
@@ -79,7 +79,18 @@ Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
   // of time. Therefore this is performed asynchronous
   ThreadPool* pool = PregelFeature::instance()->threadPool();
   pool->enqueue([this, vocbase] {
-    _graphStore->loadShards(this->_config);
+    if (_config.lazyLoading()) {
+      std::vector<std::string> activeSet = _algorithm->initialActiveSet();
+      if (activeSet.size() == 0) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "There needs to be one active vertice");
+      }
+      for (std::string const& documentID : activeSet) {
+        _graphStore->loadDocument(_config, documentID);
+      }
+    } else {
+      _graphStore->loadShards(this->_config);
+    }
     _state = WorkerState::IDLE;
 
     // execute the user defined startup code
@@ -181,9 +192,8 @@ void Worker<V, E, M>::receivedMessages(VPackSlice data) {
   VPackSlice messageSlice = data.get(Utils::messagesKey);
   uint64_t gss = gssSlice.getUInt();
   if (gss == _config._globalSuperstep) {
-    
-    {// make sure the pointer is not changed while
-     // parsing messages
+    {  // make sure the pointer is not changed while
+       // parsing messages
       ReadLocker<ReadWriteLock> guard(&_cacheRWLock);
       // handles locking for us
       _writeCache->parseMessages(messageSlice);
@@ -249,7 +259,7 @@ void Worker<V, E, M>::cancelGlobalStep(VPackSlice data) {
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_startProcessing() {
   _state = WorkerState::COMPUTING;
-  _activeCount = 0;//
+  _activeCount = 0;// active count is only valid after the run
 
   ThreadPool* pool = PregelFeature::instance()->threadPool();
   size_t total = _graphStore->vertexCount();
@@ -367,8 +377,7 @@ void Worker<V, E, M>::_processVertices(
   WorkerStats stats;
   stats.sendCount = outCache->sendCount();
   stats.superstepRuntimeSecs = TRI_microtime() - start;
-  _finishedProcessing(vertexComputation->_workerAggregators,
-                      stats,
+  _finishedProcessing(vertexComputation->_workerAggregators, stats,
                       activeCount);
 }
 
@@ -387,7 +396,18 @@ void Worker<V, E, M>::_finishedProcessing(AggregatorHandler* threadAggregators,
       return;                   // there are still threads running
     }
   }
-  
+
+  if (_config.lazyLoading()) {  // TODO how to improve this?
+    auto vertexIterator = _graphStore->vertexIterator();
+    for (VertexEntry* vertexEntry : vertexIterator) {
+      _readCache->erase(vertexEntry->shard(), vertexEntry->key());
+    }
+    _readCache->forEach(
+        [this](prgl_shard_t shard, std::string const& key, M const&) {
+          _graphStore->loadDocument(_config, shard, key);
+        });
+  }
+
   VPackBuilder package;
   {  // only lock after there are no more processing threads
     MUTEX_LOCKER(guard, _commandMutex);
@@ -405,14 +425,16 @@ void Worker<V, E, M>::_finishedProcessing(AggregatorHandler* threadAggregators,
     _superstepStats.receivedCount = _readCache->receivedMessageCount();
     _activeCount += activeCount;
     _readCache->clear();  // no need to keep old messages around
-    
+
     package.openObject();
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    package.add(Utils::executionNumberKey, VPackValue(_config.executionNumber()));
-    package.add(Utils::globalSuperstepKey, VPackValue(_config.globalSuperstep()));
+    package.add(Utils::executionNumberKey,
+                VPackValue(_config.executionNumber()));
+    package.add(Utils::globalSuperstepKey,
+                VPackValue(_config.globalSuperstep()));
     _superstepStats.serializeValues(package);
     package.close();
-    
+
     // reset message counts & stuff, after sending them to the conductor
     // don't reset the active count, because the conductor will ask about
     // it later
@@ -534,7 +556,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice data) {
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_continueAsync() {
   if (_state == WorkerState::IDLE && _writeCache->receivedMessageCount() > 0) {
-    {// swap these pointers atomically
+    {  // swap these pointers atomically
       WriteLocker<ReadWriteLock> guard(&_cacheRWLock);
       std::swap(_readCache, _writeCache);
     }

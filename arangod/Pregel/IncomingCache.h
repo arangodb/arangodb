@@ -75,6 +75,8 @@ class InCache {
   /// clear cache
   virtual void clear() = 0;
   virtual void erase(prgl_shard_t shard, std::string const& key) = 0;
+  virtual void forEach(std::function<void(prgl_shard_t, std::string const&,
+                                          M const&)> func) = 0;
 };
 
 template <typename M>
@@ -94,6 +96,8 @@ class ArrayInCache : public InCache<M> {
                                  std::string const& key) override;
   void clear() override;
   void erase(prgl_shard_t shard, std::string const& key) override;
+  void forEach(std::function<void(prgl_shard_t shard, std::string const& key,
+                                  M const& val)> func) override;
 };
 
 template <typename M>
@@ -119,6 +123,8 @@ class CombiningInCache : public InCache<M> {
                                  std::string const& key) override;
   void clear() override;
   void erase(prgl_shard_t shard, std::string const& key) override;
+  void forEach(std::function<void(prgl_shard_t, std::string const&,
+                                  M const&)> func) override;
 };
 }
 }

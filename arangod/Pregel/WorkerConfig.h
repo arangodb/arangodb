@@ -53,18 +53,20 @@ class WorkerConfig {
   inline uint64_t localSuperstep() const { return _localSuperstep; }
 
   inline bool asynchronousMode() const { return _asynchronousMode; }
-  
+
   inline bool lazyLoading() const { return _lazyLoading; }
 
   inline std::string const& coordinatorId() const { return _coordinatorId; }
 
   inline std::string const& database() const { return _database; }
 
+  // collection shards on this worker
   inline std::map<CollectionID, std::vector<ShardID>> const&
   vertexCollectionShards() const {
     return _vertexCollectionShards;
   }
 
+  // collection shards on this worker
   inline std::map<CollectionID, std::vector<ShardID>> const&
   edgeCollectionShards() const {
     return _edgeCollectionShards;
@@ -103,12 +105,12 @@ class WorkerConfig {
     return std::find(_localVertexShardIDs.begin(), _localVertexShardIDs.end(),
                      shard) != _localVertexShardIDs.end();
   }
-  
+
  private:
   uint64_t _executionNumber = 0;
   uint64_t _globalSuperstep = 0;
   uint64_t _localSuperstep = 0;
-  
+
   bool _asynchronousMode = false;
   /// load vertices on a lazy basis
   bool _lazyLoading = false;

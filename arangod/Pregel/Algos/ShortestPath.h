@@ -28,27 +28,28 @@
 namespace arangodb {
 namespace pregel {
 namespace algos {
-  
+
 struct SPGraphFormat;
 
 /// Single Source Shortest Path. Uses integer attribute 'value', the source
 /// should have
 /// the value == 0, all others -1 or an undefined value
 struct ShortestPathAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
-  SPGraphFormat *_format;// weak pointer
-  
+  SPGraphFormat* _format;  // weak pointer
+
  public:
   ShortestPathAlgorithm(VPackSlice userParams);
-  
+
   bool supportsAsyncMode() const override { return false; }
   bool supportsLazyLoading() const override { return true; }
 
   GraphFormat<int64_t, int64_t>* inputFormat() override;
   MessageFormat<int64_t>* messageFormat() const override;
   MessageCombiner<int64_t>* messageCombiner() const override;
-  VertexComputation<int64_t, int64_t, int64_t>*
-  createComputation(WorkerConfig const* config) const override;
+  VertexComputation<int64_t, int64_t, int64_t>* createComputation(
+      WorkerConfig const* config) const override;
   Aggregator* aggregator(std::string const& name) const override;
+  std::vector<std::string> initialActiveSet() override;
 };
 }
 }

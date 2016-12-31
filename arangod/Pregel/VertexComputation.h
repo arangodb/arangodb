@@ -23,15 +23,14 @@
 #ifndef ARANGODB_PREGEL_COMPUTATION_H
 #define ARANGODB_PREGEL_COMPUTATION_H 1
 
-#include <cstddef>
 #include <algorithm>
+#include <cstddef>
 #include "Basics/Common.h"
 #include "Pregel/Graph.h"
 #include "Pregel/GraphStore.h"
 #include "Pregel/OutgoingCache.h"
-#include "Pregel/WorkerContext.h"
 #include "Pregel/WorkerConfig.h"
-
+#include "Pregel/WorkerContext.h"
 
 namespace arangodb {
 namespace pregel {
@@ -86,7 +85,7 @@ class VertexContext {
 
   inline uint64_t globalSuperstep() const { return _gss; }
   inline uint64_t localSuperstep() const { return _lss; }
-  
+
   prgl_shard_t shard() const { return _vertexEntry->shard(); }
   std::string const& key() const { return _vertexEntry->key(); }
   PregelID pregelId() const { return _vertexEntry->pregelId(); }

@@ -88,14 +88,33 @@ void GraphStore<V, E>::loadShards(WorkerConfig const& state) {
 
 template <typename V, typename E>
 void GraphStore<V, E>::loadDocument(WorkerConfig const& config,
-                                    ShardID const& vertexShard,
-                                    ShardID const& edgeShard,
+                                    std::string const& documentID) {
+  std::string::size_type pos = documentID.find("/");
+  if (std::string::npos == pos) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
+  }
+  CollectionID collectionName = documentID.substr(0, pos);
+  std::string _key = documentID.substr(pos + 1);
+
+  auto collInfo = Utils::resolveCollection(config.database(), collectionName,
+                                           config.collectionPlanIdMap());
+
+  ShardID responsibleShard;
+  Utils::resolveShard(collInfo.get(), StaticStrings::KeyString, _key,
+                      responsibleShard);
+  prgl_shard_t source = (prgl_shard_t)config.shardId(responsibleShard);
+  loadDocument(config, source, _key);
+}
+
+template <typename V, typename E>
+void GraphStore<V, E>::loadDocument(WorkerConfig const& config,
+                                    prgl_shard_t sourceShard,
                                     std::string const& _key) {
   if (_readTrx == nullptr) {
-   _createReadTransaction(config);
+    _createReadTransaction(config);
   }
 
-  prgl_shard_t sourceShard = (prgl_shard_t)config.shardId(vertexShard);
+  ShardID const& vertexShard = config.globalShardIDs()[sourceShard];
 
   VPackBuilder builder;
   builder.openObject();
@@ -107,8 +126,8 @@ void GraphStore<V, E>::loadDocument(WorkerConfig const& config,
 
   TRI_voc_cid_t cid = _readTrx->addCollectionAtRuntime(vertexShard);
   _readTrx->orderDitch(cid);  // will throw when it fails
-  OperationResult opResult = _readTrx->document(vertexShard, builder.slice(),
-  options);
+  OperationResult opResult =
+      _readTrx->document(vertexShard, builder.slice(), options);
   if (!opResult.successful()) {
     _cleanupTransactions();
     THROW_ARANGO_EXCEPTION(opResult.code);
@@ -117,14 +136,28 @@ void GraphStore<V, E>::loadDocument(WorkerConfig const& config,
   std::string documentId = _readTrx->extractIdString(opResult.slice());
   VertexEntry entry(sourceShard, _key);
   V vertexData;
-  size_t size =
-  _graphFormat->copyVertexData(entry, documentId, opResult.slice(),
-                               &vertexData, sizeof(V));
+  size_t size = _graphFormat->copyVertexData(
+      entry, documentId, opResult.slice(), &vertexData, sizeof(V));
   if (size > 0) {
     entry._vertexDataOffset = _vertexData.size();
     _vertexData.push_back(vertexData);
   }
-  _loadEdges(config, edgeShard, entry, documentId);
+  std::map<CollectionID, std::vector<ShardID>> const& vertexMap =
+      config.vertexCollectionShards();
+  std::map<CollectionID, std::vector<ShardID>> const& edgeMap =
+      config.edgeCollectionShards();
+  for (auto const& pair : vertexMap) {
+    std::vector<ShardID> const& vertexShards = pair.second;
+    auto it = std::find(vertexShards.begin(), vertexShards.end(), vertexShard);
+    if (it != vertexShards.end()) {
+      size_t pos = it - vertexShards.begin();
+
+      for (auto const& pair2 : edgeMap) {
+        std::vector<ShardID> const& edgeShards = pair2.second;
+        _loadEdges(config, edgeShards[pos], entry, documentId);
+      }
+    }
+  }
   _index.push_back(entry);
 }
 
@@ -233,17 +266,16 @@ void GraphStore<V, E>::_loadVertices(WorkerConfig const& state,
         // LOG(INFO) << "Loaded Vertex: " << document.toJson();
         std::string key = document.get(StaticStrings::KeyString).copyString();
         std::string documentId = _readTrx->extractIdString(document);
-        
+
         VertexEntry entry(sourceShard, key);
         V vertexData;
-        size_t size =
-            _graphFormat->copyVertexData(entry, documentId, document,
-                                         &vertexData, sizeof(V));
+        size_t size = _graphFormat->copyVertexData(entry, documentId, document,
+                                                   &vertexData, sizeof(V));
         if (size > 0) {
           entry._vertexDataOffset = _vertexData.size();
           _vertexData.push_back(vertexData);
         }
-        
+
         _loadEdges(state, edgeShard, entry, documentId);
         _index.push_back(entry);
         _localVerticeCount++;
@@ -301,6 +333,7 @@ void GraphStore<V, E>::_loadEdges(WorkerConfig const& state,
         auto collInfo = Utils::resolveCollection(
             state.database(), collectionName, state.collectionPlanIdMap());
 
+        // resolve the shard of the target vertex.
         ShardID responsibleShard;
         Utils::resolveShard(collInfo.get(), StaticStrings::KeyString, _key,
                             responsibleShard);
@@ -312,9 +345,9 @@ void GraphStore<V, E>::_loadEdges(WorkerConfig const& state,
         }
 
         Edge<E> edge(source, target, _key);
-          // size_t size =
-          _graphFormat->copyEdgeData(document, edge.data(), sizeof(E));
-          // TODO store size value at some point
+        // size_t size =
+        _graphFormat->copyEdgeData(document, edge.data(), sizeof(E));
+        // TODO store size value at some point
         _edges.push_back(edge);
         _localEdgeCount++;
       }

@@ -135,6 +135,20 @@ void ArrayInCache<M>::erase(prgl_shard_t shard, std::string const& key) {
   vertexMap.erase(key);
 }
 
+template <typename M>
+void ArrayInCache<M>::forEach(
+    std::function<void(prgl_shard_t, std::string const&, M const&)> func) {
+  for (auto const& pair : _shardMap) {
+    prgl_shard_t shard = pair.first;
+    HMap const& vertexMap = pair.second;
+    for (auto& vertexMsgs : vertexMap) {
+      for (M const& val : vertexMsgs.second) {
+        func(shard, vertexMsgs.first, val);
+      }
+    }
+  }
+}
+
 // ================== CombiningIncomingCache ==================
 
 template <typename M>
@@ -209,6 +223,19 @@ void CombiningInCache<M>::erase(prgl_shard_t shard, std::string const& key) {
   MUTEX_LOCKER(guard, this->_writeLock);
   HMap& vertexMap(_shardMap[shard]);
   vertexMap.erase(key);
+}
+
+template <typename M>
+void CombiningInCache<M>::forEach(
+    std::function<void(prgl_shard_t shard, std::string const& key, M const&)>
+        func) {
+  for (auto const& pair : _shardMap) {
+    prgl_shard_t shard = pair.first;
+    HMap const& vertexMap = pair.second;
+    for (auto& vertexMessage : vertexMap) {
+      func(shard, vertexMessage.first, vertexMessage.second);
+    }
+  }
 }
 
 // template types to create

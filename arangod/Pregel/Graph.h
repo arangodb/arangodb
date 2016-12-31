@@ -30,15 +30,15 @@ typedef uint16_t prgl_shard_t;
 struct PregelID {
   prgl_shard_t shard;
   std::string key;
-  
+
   PregelID() {}
   PregelID(prgl_shard_t s, std::string const& k) : shard(s), key(k) {}
-  
+
   inline bool operator==(const PregelID& rhs) {
     return shard == rhs.shard && key == rhs.key;
   }
 };
-  
+
 /// @brief header entry for the edge file
 template <typename E>
 class Edge {

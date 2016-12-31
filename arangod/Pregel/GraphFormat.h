@@ -67,15 +67,15 @@ class IntegerGraphFormat : public GraphFormat<int64_t, int64_t> {
 
   size_t copyVertexData(VertexEntry const& vertex,
                         std::string const& documentId,
-                        arangodb::velocypack::Slice document,
-                        void* targetPtr, size_t maxSize) override {
+                        arangodb::velocypack::Slice document, void* targetPtr,
+                        size_t maxSize) override {
     arangodb::velocypack::Slice val = document.get(_sourceField);
     *((int64_t*)targetPtr) = val.isInteger() ? val.getInt() : _vDefault;
     return sizeof(int64_t);
   }
 
-  size_t copyEdgeData(arangodb::velocypack::Slice document,
-                      void* targetPtr, size_t maxSize) override {
+  size_t copyEdgeData(arangodb::velocypack::Slice document, void* targetPtr,
+                      size_t maxSize) override {
     arangodb::velocypack::Slice val = document.get(_sourceField);
     *((int64_t*)targetPtr) = val.isInteger() ? val.getInt() : _eDefault;
     return sizeof(int64_t);
@@ -110,15 +110,15 @@ class FloatGraphFormat : public GraphFormat<float, float> {
 
   size_t copyVertexData(VertexEntry const& vertex,
                         std::string const& documentId,
-                        arangodb::velocypack::Slice document,
-                        void* targetPtr, size_t maxSize) override {
+                        arangodb::velocypack::Slice document, void* targetPtr,
+                        size_t maxSize) override {
     arangodb::velocypack::Slice val = document.get(_sourceField);
     *((float*)targetPtr) = val.isDouble() ? (float)val.getDouble() : _vDefault;
     return sizeof(float);
   }
 
-  size_t copyEdgeData(arangodb::velocypack::Slice document,
-                      void* targetPtr, size_t maxSize) override {
+  size_t copyEdgeData(arangodb::velocypack::Slice document, void* targetPtr,
+                      size_t maxSize) override {
     arangodb::velocypack::Slice val = document.get(_sourceField);
     *((float*)targetPtr) = val.isDouble() ? (float)val.getDouble() : _eDefault;
     return sizeof(float);

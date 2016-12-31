@@ -55,7 +55,7 @@ struct IAlgorithm {
   virtual bool supportsAsyncMode() const { return false; }
 
   virtual bool supportsCompensation() const { return false; }
-  
+
   virtual bool supportsLazyLoading() const { return false; }
 
   virtual Aggregator* aggregator(std::string const& name) const {
@@ -85,9 +85,14 @@ struct Algorithm : IAlgorithm {
   virtual GraphFormat<V, E>* inputFormat() = 0;
   virtual MessageFormat<M>* messageFormat() const = 0;
   virtual MessageCombiner<M>* messageCombiner() const = 0;
-  virtual VertexComputation<V, E, M>* createComputation(WorkerConfig const*) const = 0;
-  virtual VertexCompensation<V, E, M>* createCompensation(WorkerConfig const*) const {
+  virtual VertexComputation<V, E, M>* createComputation(
+      WorkerConfig const*) const = 0;
+  virtual VertexCompensation<V, E, M>* createCompensation(
+      WorkerConfig const*) const {
     return nullptr;
+  }
+  virtual std::vector<std::string> initialActiveSet() {
+    return std::vector<std::string>();
   }
 
  protected:

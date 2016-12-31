@@ -46,6 +46,7 @@ WorkerConfig::WorkerConfig(DatabaseID dbname, VPackSlice params)
   _executionNumber = execNum.getUInt();
   _coordinatorId = coordID.copyString();
   _asynchronousMode = async.getBool();
+  _lazyLoading = params.get(Utils::lazyLoading).getBool();
   //_vertexCollectionName = vertexCollName.copyString();
   //_vertexCollectionPlanId = vertexCollPlanId.copyString();
 
@@ -85,7 +86,7 @@ PregelID WorkerConfig::convertToPregelKey(std::string const& documentID) const {
   }
   CollectionID coll = documentID.substr(0, pos);
   std::string key = documentID.substr(pos+1);
-  
+
   ShardID const& shard = _workerConfig->globalShardIDs()[this->shard()];
   std::map<CollectionID, std::vector<ShardID>>
   const& map = _workerConfig->edgeCollectionShards();
