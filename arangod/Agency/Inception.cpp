@@ -218,8 +218,16 @@ bool Inception::restartingActiveAgent() {
             if (!theirLeaderId.empty()) {
               LOG_TOPIC(INFO, Logger::AGENCY) <<
                 "Found active RAFTing agency lead by " << theirLeaderId <<
-                "Finishing startup sequence.";
+                ". Finishing startup sequence.";
 
+              auto const theirLeaderEp =
+                tcc.get(
+                  std::vector<std::string>({"pool", theirLeaderId})).copyString();
+
+              comres = arangodb::ClusterComm::instance()->syncRequest(
+                clientId, 1, theirLeaderEp, rest::RequestType::POST, path,
+                greetstr, std::unordered_map<std::string, std::string>(), 2.0);
+              
               auto agency = std::make_shared<Builder>();
               agency->openObject();
               agency->add("term", theirConfig.get("term"));

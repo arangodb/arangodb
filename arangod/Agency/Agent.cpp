@@ -194,17 +194,17 @@ bool Agent::waitFor(index_t index, double timeout) {
 }
 
 //  AgentCallback reports id of follower and its highest processed index
-void Agent::reportIn(std::string const& id, index_t index, query_t const& in) {
+void Agent::reportIn(std::string const& peerId, index_t index, query_t const& in) {
 
   {
     // Enforce _lastCommitIndex, _readDB and compaction to progress atomically
     MUTEX_LOCKER(mutexLocker, _ioLock);
 
     // Update last acknowledged answer
-    _lastAcked[id] = system_clock::now();
+    _lastAcked[peerId] = system_clock::now();
 
-    if (index > _confirmed[id]) {  // progress this follower?
-      _confirmed[id] = index;
+    if (index > _confirmed[peerId]) {  // progress this follower?
+      _confirmed[peerId] = index;
     }
 
     if (index > _lastCommitIndex) {  // progress last commit?
@@ -240,14 +240,6 @@ void Agent::reportIn(std::string const& id, index_t index, query_t const& in) {
   { // Wake up rest handler
     CONDITION_LOCKER(guard, _waitForCV);
     guard.broadcast();
-  }
-
-  if (in != nullptr) {
-    try {
-      _config.updateEndpoint(id, in->slice().get("endpoint").copyString());
-    } catch (std::exception const& e) {
-      LOG_TOPIC(WARN, Logger::AGENCY) << "Expecting endpoint: " << e.what();
-    }
   }
 
 }
@@ -774,13 +766,23 @@ void Agent::reportActivated(
     myterm = _constituent.term();
   }
 
+  persistConfiguration(myterm);
+
+  // Notify inactive pool
+  notifyInactive();
+
+}
+
+
+void Agent::persistConfiguration(term_t t) {
+
   // Agency configuration
   auto agency = std::make_shared<Builder>();
   agency->openArray();
   agency->openArray();
   agency->openObject();
   agency->add(".agency", VPackValue(VPackValueType::Object));
-  agency->add("term", VPackValue(myterm));
+  agency->add("term", VPackValue(t));
   agency->add("id", VPackValue(id()));
   agency->add("active", _config.activeToBuilder()->slice());
   agency->add("pool", _config.poolToBuilder()->slice());
@@ -788,10 +790,11 @@ void Agent::reportActivated(
   agency->close();
   agency->close();
   agency->close();
-  write(agency);
 
-  // Notify inactive pool
-  notifyInactive();
+  // In case we've lost leadership, no harm will arise as the failed write
+  // prevents bogus agency configuration to be replicated among agents. ***
+  
+  write(agency); 
 
 }
 
@@ -905,20 +908,8 @@ void Agent::lead() {
     MUTEX_LOCKER(mutexLocker, _ioLock);
     myterm = _constituent.term();
   }
-  auto agency = std::make_shared<Builder>();
-  agency->openArray();
-  agency->openArray();
-  agency->openObject();
-  agency->add(".agency", VPackValue(VPackValueType::Object));
-  agency->add("term", VPackValue(myterm));
-  agency->add("id", VPackValue(id()));
-  agency->add("active", _config.activeToBuilder()->slice());
-  agency->add("pool", _config.poolToBuilder()->slice());
-  agency->close();
-  agency->close();
-  agency->close();
-  agency->close();
-  write(agency);
+
+  persistConfiguration(myterm);
 
   // Notify inactive pool
   notifyInactive();
@@ -990,9 +981,13 @@ void Agent::updatePeerEndpoint(query_t const& message) {
       std::string("Cannot deal with UUID: ") + e.what());
   }
 
-  _config.updateEndpoint(uuid, endpoint);
-
+  if (_config.updateEndpoint(uuid, endpoint)) {
+    persistConfiguration(term());
+    notifyInactive();
+  }
+  
 }
+
 
 void Agent::notify(query_t const& message) {
   VPackSlice slice = message->slice();

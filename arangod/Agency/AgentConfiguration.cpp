@@ -342,12 +342,14 @@ query_t config_t::poolToBuilder() const {
 }
 
 
-void config_t::updateEndpoint(std::string const& id, std::string const& ep) {
+bool config_t::updateEndpoint(std::string const& id, std::string const& ep) {
   WRITE_LOCKER(readLocker, _lock);
   if (_pool[id] != ep) {
     _pool[id] = ep;
     ++_version;
+    return true;
   }
+  return false;
 }
 
 

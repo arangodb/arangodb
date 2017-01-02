@@ -195,8 +195,13 @@ struct config_t {
   std::string startup() const;
 
   /// @brief Update an indivdual uuid's endpoint
-  void updateEndpoint(std::string const&, std::string const&);
-  
+  bool updateEndpoint(std::string const&, std::string const&);
+
+private:
+  /// @brief Get replacement for deceased active agent
+  bool swapActiveMemberNoLock(std::string const&, std::string const&);
+
+
 
 };
 }
