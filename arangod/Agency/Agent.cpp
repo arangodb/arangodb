@@ -982,8 +982,10 @@ void Agent::updatePeerEndpoint(query_t const& message) {
   }
 
   if (_config.updateEndpoint(uuid, endpoint)) {
-    persistConfiguration(term());
-    notifyInactive();
+    if (!challengeLeadership()) {
+      persistConfiguration(term());
+      notifyInactive();
+    }
   }
   
 }
