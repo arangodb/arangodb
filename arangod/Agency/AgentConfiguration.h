@@ -193,6 +193,9 @@ struct config_t {
 
   /// @brief
   std::string startup() const;
+
+  /// @brief Update an indivdual uuid's endpoint
+  void updateEndpoint(std::string const&, std::string const&);
   
 
 };

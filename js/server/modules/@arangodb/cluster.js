@@ -40,8 +40,8 @@ var _ = require('lodash');
 
 const inccv = {'/arango/Current/Version':{'op':'increment'}};
 const incpv = {'/arango/Plan/Version':{'op':'increment'}};
-const agencyDBs = global.ArangoAgency.prefix() + '/Current/Databases/';
-const agencyCols = global.ArangoAgency.prefix() + '/Current/Collections/';
+const agencyDBs = '/' + global.ArangoAgency.prefix() + '/Current/Databases/';
+const agencyCols = '/' + global.ArangoAgency.prefix() + '/Current/Collections/';
 
 var endpointToURL = function (endpoint) {
   if (endpoint.substr(0, 6) === 'ssl://') {
@@ -311,7 +311,7 @@ function createLocalDatabases (plannedDatabases, currentDatabases) {
   var createDatabaseAgency = function (payload) {
     var envelope = {};
     envelope[agencyDBs + payload.name + '/' + ourselves] = payload;
-    global.ArangoAgency.write([[envelope, inccv]]);
+    global.ArangoAgency.write([[envelope],[inccv]]);
   };
 
   var db = require('internal').db;
@@ -370,7 +370,7 @@ function dropLocalDatabases (plannedDatabases) {
     try {
       var envelope = {};
       envelope[agencyDBs + payload.name + '/' + ourselves] = {"op":"delete"};
-      global.ArangoAgency.write([[envelope, inccv]]);
+      global.ArangoAgency.write([[envelope],[inccv]]);
     } catch (err) {
       // ignore errors
     }
@@ -425,7 +425,7 @@ function cleanupCurrentDatabases (currentDatabases) {
     try {
       var envelope = {};
       envelope[agencyDBs + payload.name + '/' + ourselves] = {"op":"delete"};
-      global.ArangoAgency.write([[envelope, inccv]]);
+      global.ArangoAgency.write([[envelope],[inccv]]);
     } catch (err) {
       // ignore errors
     }
@@ -470,33 +470,37 @@ function handleDatabaseChanges (plan, current) {
 // / @brief create collections if they exist in the plan but not locally
 // //////////////////////////////////////////////////////////////////////////////
 
-function createLocalCollections (plannedCollections, planVersion,
-  currentCollections,
-  takeOverResponsibility) {
+function createLocalCollections (
+  plannedCollections, planVersion, currentCollections, takeOverResponsibility) {
+
   var ourselves = global.ArangoServerState.id();
 
-  var createCollectionAgency = function (database, shard, collInfo, error) {
-    var payload = { error: error.error,
-      errorNum: error.errorNum,
-      errorMessage: error.errorMessage,
+  var createCollectionAgency = function (database, shard, collInfo, err) {
+
+    var payload = {
+      error: err.error,
+      errorNum: err.errorNum,
+      errorMessage: err.errorMessage,
       satellite: collInfo.replicationFactor === 0,
       indexes: collInfo.indexes,
       servers: [ ourselves ],
-    planVersion: planVersion };
+      planVersion: planVersion };
 
     console.debug('creating Current/Collections/' + database + '/' +
                   collInfo.planId + '/' + shard);
-    global.ArangoAgency.set('Current/Collections/' + database + '/' + collInfo.planId + '/' + shard, payload);
-    global.ArangoAgency.increaseVersion('Current/Version');
-    global.ArangoAgency.increaseVersion('Plan/Version');
 
     var envelope = {};
     envelope[agencyCols + database + '/' + collInfo.planId + '/' + shard] = payload;
-    //global.ArangoAgency.write([[envelope, inccv]]);
+    console.info(envelope);
+    global.ArangoAgency.set('Current/Collections/' + database + '/' +
+                            collInfo.planId + '/' + shard, payload)
+    global.ArangoAgency.write([[inccv]]);
     
     console.debug('creating Current/Collections/' + database + '/' +
                   collInfo.planId + '/' + shard + ' done.');
   };
+
+  var takeOver = createCollectionAgency;
 
   var db = require('internal').db;
   db._useDatabase('_system');
@@ -505,14 +509,14 @@ function createLocalCollections (plannedCollections, planVersion,
     var localDatabases = getLocalDatabases();
     var database;
     var i;
-    
+
     // iterate over all matching databases
     for (database in plannedCollections) {
       if (plannedCollections.hasOwnProperty(database)) {
         if (localDatabases.hasOwnProperty(database)) {
           // switch into other database
           db._useDatabase(database);
-          
+
           try {
             // iterate over collections of database
             var localCollections = getLocalCollections();
@@ -635,7 +639,7 @@ function createLocalCollections (plannedCollections, planVersion,
                     if (error.error) {
                       if (takeOverResponsibility && !didWrite) {
                         if (isLeader) {
-                          createCollectionAgency(database, shard, collInfo, error);
+                          takeOver(database, shard, collInfo, error);
                         }
                       }
                       continue; // No point to look for properties and
@@ -718,7 +722,7 @@ function createLocalCollections (plannedCollections, planVersion,
 
                     if ((takeOverResponsibility && !didWrite && isLeader) ||
                       (!didWrite && isLeader && !wasLeader)) {
-                      createCollectionAgency(database, shard, collInfo, error);
+                      takeOver(database, shard, collInfo, error);
                     }
                   }
                 }
@@ -778,7 +782,7 @@ function dropLocalCollections (plannedCollections, currentCollections) {
                     id + '/' + shardID);
       var envelope = {};
       envelope[agencyCols + database + '/' + id + '/' + shardID] = {"op":"delete"};
-      global.ArangoAgency.write([[envelope, inccv]]);
+      global.ArangoAgency.write([[envelope],[inccv]]);
       console.debug('dropping Current/Collections/' + database + '/' +
                     id + '/' + shardID + ' done.');
     } catch (err) {
@@ -888,7 +892,7 @@ function cleanupCurrentCollections (plannedCollections, currentCollections) {
 
       var envelope = {};
       envelope[agencyCols + database + '/' + collection + '/' + shardID] = {"op": "delete"};
-      global.ArangoAgency.write([[envelope, inccv]]);
+      global.ArangoAgency.write([[envelope],[inccv]]);
       
       console.debug('cleaning Current/Collections/' + database + '/' +
                     collection + '/' + shardID + ' done.');

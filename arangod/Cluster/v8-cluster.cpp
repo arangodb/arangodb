@@ -383,6 +383,9 @@ static void JS_SetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   AgencyComm comm;
   AgencyCommResult result = comm.setValue(key, builder.slice(), ttl);
 
+  LOG(WARN) << key;
+  LOG(WARN) << builder.slice().toJson();
+
   if (!result.successful()) {
     THROW_AGENCY_EXCEPTION(result);
   }

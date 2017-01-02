@@ -196,6 +196,8 @@ class Agent : public arangodb::Thread {
   /// @brief Get start time of leadership
   TimePoint const& leaderSince() const;
 
+  void updatePeerEndpoint(query_t const& message);
+
   /// @brief State reads persisted state and prepares the agent
   friend class State;
 

@@ -161,13 +161,21 @@ bool Inception::restartingActiveAgent() {
 
   using namespace std::chrono;
 
-  auto const  path = pubApiPrefix + "config";
-  auto const  myConfig   = _agent->config();
-  auto const  startTime  = system_clock::now();
-  auto        pool       = myConfig.pool();
-  auto        active     = myConfig.active();
-  auto const& clientId   = myConfig.id();
+  auto const  path      = pubApiPrefix + "config";
+  auto const  myConfig  = _agent->config();
+  auto const  startTime = system_clock::now();
+  auto        pool      = myConfig.pool();
+  auto        active    = myConfig.active();
+  auto const& clientId  = myConfig.id();
+  auto const& clientEp  = myConfig.endpoint();
   auto const majority   = (myConfig.size()+1)/2;
+
+  Builder greeting;
+  {
+    VPackObjectBuilder b(&greeting);
+    greeting.add(clientId, VPackValue(clientEp));
+  }
+  auto const& greetstr = greeting.toJson();
 
   seconds const timeout(3600);
   
@@ -195,7 +203,7 @@ bool Inception::restartingActiveAgent() {
       if (p.first != myConfig.id() && p.first != "") {
         
         auto comres = arangodb::ClusterComm::instance()->syncRequest(
-          clientId, 1, p.second, rest::RequestType::GET, path, std::string(),
+          clientId, 1, p.second, rest::RequestType::POST, path, greetstr,
           std::unordered_map<std::string, std::string>(), 2.0);
         
         if (comres->status == CL_COMM_SENT) {
