@@ -1129,6 +1129,7 @@ AstNode* Condition::transformNode(AstNode* node) {
 
     // create a new n-ary node
     node = _ast->createNode(Ast::NaryOperatorType(old->type));
+    node->reserve(2);
     node->addMember(old->getMember(0));
     node->addMember(old->getMember(1));
   }
@@ -1146,11 +1147,9 @@ AstNode* Condition::transformNode(AstNode* node) {
       auto sub = transformNode(node->getMemberUnchecked(i));
       node->changeMember(i, sub);
 
-      if (sub->type == NODE_TYPE_OPERATOR_NARY_OR ||
-          sub->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+      if (sub->type == NODE_TYPE_OPERATOR_NARY_OR) {
         processChildren = true;
-      } else if (sub->type == NODE_TYPE_OPERATOR_NARY_AND ||
-                 sub->type == NODE_TYPE_OPERATOR_BINARY_AND) {
+      } else if (sub->type == NODE_TYPE_OPERATOR_NARY_AND) {
         mustCollapse = true;
       }
     }
@@ -1169,14 +1168,15 @@ AstNode* Condition::transformNode(AstNode* node) {
       auto newOperator = _ast->createNode(NODE_TYPE_OPERATOR_NARY_OR);
 
       std::vector<PermutationState> permutationStates;
+      permutationStates.reserve(n);
+
       for (size_t i = 0; i < n; ++i) {
         auto sub = node->getMemberUnchecked(i);
 
         if (sub->type == NODE_TYPE_OPERATOR_NARY_OR) {  
-          permutationStates.emplace_back(
-              PermutationState(sub, sub->numMembers()));
+          permutationStates.emplace_back(sub, sub->numMembers());
         } else {
-          permutationStates.emplace_back(PermutationState(sub, 1));
+          permutationStates.emplace_back(sub, 1);
         }
       }
 
@@ -1186,9 +1186,10 @@ AstNode* Condition::transformNode(AstNode* node) {
 
       while (!done) {
         auto andOperator = _ast->createNode(NODE_TYPE_OPERATOR_NARY_AND);
+        andOperator->reserve(numPermutations);
 
         for (size_t i = 0; i < numPermutations; ++i) {
-          auto state = permutationStates[i];
+          auto const& state = permutationStates[i];
           andOperator->addMember(state.getValue()->clone(_ast));
         }
 
