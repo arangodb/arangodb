@@ -603,6 +603,16 @@ void AgencyCommManager::addEndpoint(std::string const& endpoint) {
   }
 }
 
+void AgencyCommManager::removeEndpoint(std::string const& endpoint) {
+  MUTEX_LOCKER(locker, _lock);
+
+  std::string normalized = Endpoint::unifiedForm(endpoint);
+
+  _endpoints.erase(
+    std::remove(_endpoints.begin(), _endpoints.end(), normalized),
+    _endpoints.end());
+}
+
 std::string AgencyCommManager::endpointsString() const {
   return StringUtils::join(endpoints(), ", ");
 }
@@ -1184,9 +1194,9 @@ bool AgencyComm::unlock(std::string const& key, VPackSlice const& slice,
 
 
 void AgencyComm::updateEndpoints(arangodb::velocypack::Slice const& current) {
-
+  
   auto stored = AgencyCommManager::MANAGER->endpoints();
-
+  
   for (const auto& i : VPackObjectIterator(current)) {
     auto const endpoint = Endpoint::unifiedForm(i.value.copyString());
     if (std::find(stored.begin(), stored.end(), endpoint) == stored.end()) {
@@ -1194,6 +1204,14 @@ void AgencyComm::updateEndpoints(arangodb::velocypack::Slice const& current) {
         << "Adding endpoint " << endpoint << " to agent pool";
       AgencyCommManager::MANAGER->addEndpoint(endpoint);
     }
+    stored.erase(
+      std::remove(stored.begin(), stored.end(), endpoint), stored.end());    
+  }
+  
+  for (const auto& i : stored) {
+    LOG_TOPIC(INFO, Logger::CLUSTER)
+      << "Removing endpoint " << i << " from agent pool";
+    AgencyCommManager::MANAGER->removeEndpoint(i);
   }
   
 }

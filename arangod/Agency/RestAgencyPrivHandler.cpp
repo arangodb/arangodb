@@ -84,6 +84,8 @@ RestStatus RestAgencyPrivHandler::execute() {
   try {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
+    result.add("id", VPackValue(_agent->id()));
+    result.add("endpoint", VPackValue(_agent->endpoint()));
     arangodb::velocypack::Options opts;
 
     auto const& suffixes = _request->suffixes();
@@ -162,8 +164,6 @@ RestStatus RestAgencyPrivHandler::execute() {
         query_t query = _request->toVelocyPackBuilderPtr(&options);
         try {
           query_t ret = _agent->gossip(query);
-          result.add("id", ret->slice().get("id"));
-          result.add("endpoint", ret->slice().get("endpoint"));
           result.add("pool", ret->slice().get("pool"));
         } catch (std::exception const& e) {
           return reportBadQuery(e.what());

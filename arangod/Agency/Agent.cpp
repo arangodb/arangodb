@@ -194,7 +194,7 @@ bool Agent::waitFor(index_t index, double timeout) {
 }
 
 //  AgentCallback reports id of follower and its highest processed index
-void Agent::reportIn(std::string const& id, index_t index) {
+void Agent::reportIn(std::string const& id, index_t index, query_t const& in) {
 
   {
     // Enforce _lastCommitIndex, _readDB and compaction to progress atomically
@@ -240,6 +240,14 @@ void Agent::reportIn(std::string const& id, index_t index) {
   { // Wake up rest handler
     CONDITION_LOCKER(guard, _waitForCV);
     guard.broadcast();
+  }
+
+  if (in != nullptr) {
+    try {
+      _config.updateEndpoint(id, in->slice().get("endpoint").copyString());
+    } catch (std::exception const& e) {
+      LOG_TOPIC(WARN, Logger::AGENCY) << "Expecting endpoint: " << e.what();
+    }
   }
 
 }
