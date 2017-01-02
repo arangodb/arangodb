@@ -380,8 +380,8 @@ class LogicalCollection {
   int fillIndex(arangodb::Transaction*, arangodb::Index*,
                 bool skipPersistent = true);
 
-  int beginReadTimed(bool useDeadlockDetector, uint64_t, uint64_t);
-  int beginWriteTimed(bool useDeadlockDetector, uint64_t, uint64_t);
+  int beginReadTimed(bool useDeadlockDetector, double timeout = 0.0);
+  int beginWriteTimed(bool useDeadlockDetector, double timeout = 0.0);
   int endRead(bool useDeadlockDetector);
   int endWrite(bool useDeadlockDetector);
   

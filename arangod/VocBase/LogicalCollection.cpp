@@ -2922,7 +2922,7 @@ int LogicalCollection::endWrite(bool useDeadlockDetector) {
 }
 
 /// @brief read locks a collection, with a timeout (in µseconds)
-int LogicalCollection::beginReadTimed(bool useDeadlockDetector, uint64_t timeout, uint64_t sleepPeriod) {
+int LogicalCollection::beginReadTimed(bool useDeadlockDetector, double timeout) {
   if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
     auto it = arangodb::Transaction::_makeNolockHeaders->find(name());
     if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
@@ -2933,16 +2933,12 @@ int LogicalCollection::beginReadTimed(bool useDeadlockDetector, uint64_t timeout
       return TRI_ERROR_NO_ERROR;
     }
   }
-  uint64_t waited = 0;
-  if (timeout == 0) {
-    // we don't allow looping forever. limit waiting to 15 minutes max.
-    timeout = 15 * 60 * 1000 * 1000;
-  }
 
   // LOCKING-DEBUG
   // std::cout << "BeginReadTimed: " << _name << std::endl;
   int iterations = 0;
   bool wasBlocked = false;
+  double end = 0.0;
 
   while (true) {
     TRY_READ_LOCKER(locker, _idxLock);
@@ -2970,6 +2966,7 @@ int LogicalCollection::beginReadTimed(bool useDeadlockDetector, uint64_t timeout
             return TRI_ERROR_DEADLOCK;
           }
           LOG(TRACE) << "waiting for read-lock on collection '" << name() << "'";
+          // fall-through intentional
         } else if (++iterations >= 5) {
           // periodically check for deadlocks
           TRI_ASSERT(wasBlocked);
@@ -2992,15 +2989,20 @@ int LogicalCollection::beginReadTimed(bool useDeadlockDetector, uint64_t timeout
       }
     }
 
-#ifdef _WIN32
-    usleep((unsigned long)sleepPeriod);
-#else
-    usleep((useconds_t)sleepPeriod);
-#endif
+    if (end == 0.0) {
+      // set end time for lock waiting
+      if (timeout <= 0.0) {
+        timeout = 15.0 * 60.0;
+      }
+      end = TRI_microtime() + timeout;
+      TRI_ASSERT(end > 0.0);
+    }
 
-    waited += sleepPeriod;
+    std::this_thread::yield();
+    
+    TRI_ASSERT(end > 0.0);
 
-    if (waited > timeout) {
+    if (TRI_microtime() > end) {
       if (useDeadlockDetector) {
         _vocbase->_deadlockDetector.unsetReaderBlocked(this);
       }
@@ -3011,7 +3013,7 @@ int LogicalCollection::beginReadTimed(bool useDeadlockDetector, uint64_t timeout
 }
 
 /// @brief write locks a collection, with a timeout
-int LogicalCollection::beginWriteTimed(bool useDeadlockDetector, uint64_t timeout, uint64_t sleepPeriod) {
+int LogicalCollection::beginWriteTimed(bool useDeadlockDetector, double timeout) {
   if (arangodb::Transaction::_makeNolockHeaders != nullptr) {
     auto it = arangodb::Transaction::_makeNolockHeaders->find(name());
     if (it != arangodb::Transaction::_makeNolockHeaders->end()) {
@@ -3022,16 +3024,12 @@ int LogicalCollection::beginWriteTimed(bool useDeadlockDetector, uint64_t timeou
       return TRI_ERROR_NO_ERROR;
     }
   }
-  uint64_t waited = 0;
-  if (timeout == 0) {
-    // we don't allow looping forever. limit waiting to 15 minutes max.
-    timeout = 15 * 60 * 1000 * 1000;
-  }
 
   // LOCKING-DEBUG
   // std::cout << "BeginWriteTimed: " << document->_info._name << std::endl;
   int iterations = 0;
   bool wasBlocked = false;
+  double end = 0.0;
 
   while (true) {
     TRY_WRITE_LOCKER(locker, _idxLock);
@@ -3080,15 +3078,22 @@ int LogicalCollection::beginWriteTimed(bool useDeadlockDetector, uint64_t timeou
       }
     }
 
-#ifdef _WIN32
-    usleep((unsigned long)sleepPeriod);
-#else
-    usleep((useconds_t)sleepPeriod);
-#endif
+    std::this_thread::yield();
+    
+    if (end == 0.0) {
+      // set end time for lock waiting
+      if (timeout <= 0.0) {
+        timeout = 15.0 * 60.0;
+      }
+      end = TRI_microtime() + timeout;
+      TRI_ASSERT(end > 0.0);
+    }
 
-    waited += sleepPeriod;
-
-    if (waited > timeout) {
+    std::this_thread::yield();
+    
+    TRI_ASSERT(end > 0.0);
+    
+    if (TRI_microtime() > end) {
       if (useDeadlockDetector) {
         _vocbase->_deadlockDetector.unsetWriterBlocked(this);
       }
