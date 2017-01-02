@@ -3190,7 +3190,7 @@ struct OrSimplifier {
     }
     catch (...) {
     }
-    return "";
+    return std::string();
   }
 
   bool qualifies(AstNode const* node, std::string& attributeName) const {
@@ -3399,6 +3399,18 @@ struct RemoveRedundantOr {
   CommonNodeFinder finder;
   AstNode const* commonNode = nullptr;
   std::string commonName;
+  
+  bool hasRedundantCondition(AstNode const* node) {
+    try {
+      if (finder.find(node, NODE_TYPE_OPERATOR_BINARY_LT, commonNode,
+                      commonName)) {
+        return hasRedundantConditionWalker(node);
+      } 
+    } catch (...) {
+      // ignore errors and simply return false
+    }
+    return false;
+  }
 
   AstNode* createReplacementNode(Ast* ast) {
     TRI_ASSERT(commonNode != nullptr);
@@ -3408,6 +3420,7 @@ struct RemoveRedundantOr {
                                          bestValue);
   }
 
+ private:
   bool isInclusiveBound(AstNodeType type) {
     return (type == NODE_TYPE_OPERATOR_BINARY_GE ||
             type == NODE_TYPE_OPERATOR_BINARY_LE);
@@ -3429,8 +3442,7 @@ struct RemoveRedundantOr {
   }
 
   // returns false if the existing value is better and true if the input value
-  // is
-  // better
+  // is better
   bool compareBounds(AstNodeType type, AstNode const* value, int lowhigh) {
     int cmp = CompareAstNodes(bestValue, value, true);
 
@@ -3438,14 +3450,6 @@ struct RemoveRedundantOr {
       return (isInclusiveBound(type) ? true : false);
     }
     return (cmp * lowhigh == 1);
-  }
-
-  bool hasRedundantCondition(AstNode const* node) {
-    if (finder.find(node, NODE_TYPE_OPERATOR_BINARY_LT, commonNode,
-                    commonName)) {
-      return hasRedundantConditionWalker(node);
-    }
-    return false;
   }
 
   bool hasRedundantConditionWalker(AstNode const* node) {

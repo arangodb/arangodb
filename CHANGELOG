@@ -49,6 +49,22 @@ edge attribute `label`.
 * process.stdout.isTTY now returns `true` in arangosh and when running arangod with the `--console` flag
 
 
+v3.1.8 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #2238
+
+* fixed issue #2234
+
+
+v3.1.7 (2016-12-29)
+-------------------
+
+* fixed one too many elections in RAFT
+
+* new agency comm backported from devel
+
+
 v3.1.6 (2016-12-20)
 -------------------
 

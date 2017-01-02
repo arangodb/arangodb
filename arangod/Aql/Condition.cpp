@@ -991,54 +991,58 @@ bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
     return node->toString();
   };
 
-  for (size_t i = 0; i < n; ++i) {
-    auto operand = andNode->getMemberUnchecked(i);
+  try {
+    for (size_t i = 0; i < n; ++i) {
+      auto operand = andNode->getMemberUnchecked(i);
 
-    if (operand->isComparisonOperator()) {
-      auto lhs = operand->getMember(0);
-      auto rhs = operand->getMember(1);
+      if (operand->isComparisonOperator()) {
+        auto lhs = operand->getMember(0);
+        auto rhs = operand->getMember(1);
 
-      if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        clearAttributeAccess(result);
+        if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+          clearAttributeAccess(result);
 
-        if (lhs->isAttributeAccessForVariable(result)) {
-          if (rhs->isConstant()) {
-            ConditionPart indexCondition(result.first, result.second, operand,
-                                         ATTRIBUTE_LEFT, nullptr);
+          if (lhs->isAttributeAccessForVariable(result)) {
+            if (rhs->isConstant()) {
+              ConditionPart indexCondition(result.first, result.second, operand,
+                                          ATTRIBUTE_LEFT, nullptr);
 
-            if (me.isCoveredBy(indexCondition, false)) {
+              if (me.isCoveredBy(indexCondition, false)) {
+                return true;
+              }
+            }
+            // non-constant condition
+            else if (me.operatorType == operand->type &&
+                    normalize(me.valueNode) == normalize(rhs)) {
               return true;
             }
-          }
-          // non-constant condition
-          else if (me.operatorType == operand->type &&
-                   normalize(me.valueNode) == normalize(rhs)) {
-            return true;
           }
         }
-      }
 
-      if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-          rhs->type == NODE_TYPE_EXPANSION) {
-        clearAttributeAccess(result);
+        if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+            rhs->type == NODE_TYPE_EXPANSION) {
+          clearAttributeAccess(result);
 
-        if (rhs->isAttributeAccessForVariable(result)) {
-          if (lhs->isConstant()) {
-            ConditionPart indexCondition(result.first, result.second, operand,
-                                         ATTRIBUTE_RIGHT, nullptr);
+          if (rhs->isAttributeAccessForVariable(result)) {
+            if (lhs->isConstant()) {
+              ConditionPart indexCondition(result.first, result.second, operand,
+                                          ATTRIBUTE_RIGHT, nullptr);
 
-            if (me.isCoveredBy(indexCondition, true)) {
+              if (me.isCoveredBy(indexCondition, true)) {
+                return true;
+              }
+            }
+            // non-constant condition
+            else if (me.operatorType == operand->type &&
+                    normalize(me.valueNode) == normalize(lhs)) {
               return true;
             }
-          }
-          // non-constant condition
-          else if (me.operatorType == operand->type &&
-                   normalize(me.valueNode) == normalize(lhs)) {
-            return true;
           }
         }
       }
     }
+  } catch (...) {
+    // simply ignore any errors and return false
   }
 
   return false;
