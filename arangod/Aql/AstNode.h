@@ -639,9 +639,16 @@ struct AstNode {
   /// @brief clone a node, recursively
   AstNode* clone(Ast*) const;
 
-  /// @brief append a JavaScript representation of the node into a string buffer
+  /// @brief append a string representation of the node into a string buffer
+  /// the string representation does not need to be JavaScript-compatible
+  /// except for node types NODE_TYPE_VALUE, NODE_TYPE_ARRAY and NODE_TYPE_OBJECT
+  /// (only for objects that do not contain dynamic attributes)
+  /// note that this may throw and that the caller is responsible for
+  /// catching the error
   void stringify(arangodb::basics::StringBuffer*, bool, bool) const;
 
+  /// note that this may throw and that the caller is responsible for
+  /// catching the error
   std::string toString() const;
 
   /// @brief stringify the value of a node into a string buffer

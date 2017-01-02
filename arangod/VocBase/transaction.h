@@ -49,13 +49,7 @@ struct TRI_vocbase_t;
 /// @brief time (in µs) that is spent waiting for a lock
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT 30000000ULL
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sleep time (in µs) while waiting for lock acquisition
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_TRANSACTION_DEFAULT_SLEEP_DURATION 10000ULL
+#define TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT 30.0
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief transaction type
@@ -128,7 +122,7 @@ struct TRI_transaction_t {
   bool _hasOperations;
   bool _waitForSync;   // whether or not the collection had a synchronous op
   bool _beginWritten;  // whether or not the begin marker was already written
-  uint64_t _timeout;   // timeout for lock acquisition
+  double _timeout;     // timeout for lock acquisition
 };
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -62,19 +62,25 @@ void QueryResources::addNode(AstNode* node) {
 
   if (_nodes.empty()) {
     // reserve some initial space for nodes 
-    capacity = 16;
+    capacity = 64;
   } else {
-    capacity = (std::max)(_nodes.size() + 8, _nodes.capacity());
+    capacity = _nodes.size() + 1;
+    if (capacity > _nodes.capacity()) {
+      capacity *= 2;
+    }
   }
 
   TRI_ASSERT(capacity > _nodes.size());
-  TRI_ASSERT(capacity >= _nodes.capacity());
 
-  // reserve space
-  _resourceMonitor->increaseMemoryUsage((capacity - _nodes.capacity()) * sizeof(AstNode*));
-  _nodes.reserve(capacity);
+  // reserve space for pointers
+  if (capacity > _nodes.capacity()) {
+    _resourceMonitor->increaseMemoryUsage((capacity - _nodes.capacity()) * sizeof(AstNode*));
+    _nodes.reserve(capacity);
+  }
 
+  // may throw
   _resourceMonitor->increaseMemoryUsage(sizeof(AstNode));
+  
   // will not fail
   _nodes.emplace_back(node); 
 }

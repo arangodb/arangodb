@@ -286,10 +286,10 @@ static int LockCollection(TRI_transaction_collection_t* trxCollection,
 
   LogicalCollection* collection = trxCollection->_collection;
   TRI_ASSERT(collection != nullptr);
-  uint64_t timeout = trx->_timeout;
+  double timeout = trx->_timeout;
   if (HasHint(trxCollection->_transaction, TRI_TRANSACTION_HINT_TRY_LOCK)) {
-    // give up if we cannot acquire the lock instantly
-    timeout = 1 * 100;
+    // give up early if we cannot acquire the lock instantly
+    timeout = 0.00000001;
   }
   
   bool const useDeadlockDetector = !IsSingleOperationTransaction(trx);
@@ -297,13 +297,11 @@ static int LockCollection(TRI_transaction_collection_t* trxCollection,
   int res;
   if (type == TRI_TRANSACTION_READ) {
     LOG_TRX(trx, nestingLevel) << "read-locking collection " << trxCollection->_cid;
-    res = collection->beginReadTimed(useDeadlockDetector, timeout,
-                                     TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
+    res = collection->beginReadTimed(useDeadlockDetector, timeout);
   } else {
     LOG_TRX(trx, nestingLevel) << "write-locking collection "
                                << trxCollection->_cid;
-    res = collection->beginWriteTimed(useDeadlockDetector, timeout,
-                                      TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
+    res = collection->beginWriteTimed(useDeadlockDetector, timeout);
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -1263,10 +1261,8 @@ TRI_transaction_t::TRI_transaction_t(TRI_vocbase_t* vocbase, double timeout, boo
       _timeout(TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT) {
   
   if (timeout > 0.0) {
-    _timeout = (uint64_t)(timeout * 1000000.0);
-  } else if (timeout == 0.0) {
-    _timeout = static_cast<uint64_t>(0);
-  }
+    _timeout = timeout;
+  } 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
