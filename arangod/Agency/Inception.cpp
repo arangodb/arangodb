@@ -212,8 +212,8 @@ bool Inception::restartingActiveAgent() {
             auto const  theirConfigVP = comres->result->getBodyVelocyPack();
             auto const& theirConfig   = theirConfigVP->slice();
             auto const& theirLeaderId = theirConfig.get("leaderId").copyString();
-            auto const& theirId       = theirConfig.get("id").copyString();
             auto const& tcc           = theirConfig.get("configuration");
+            auto const& theirId       = tcc.get("id").copyString();            
             
             // Found RAFT with leader
             if (!theirLeaderId.empty()) {
