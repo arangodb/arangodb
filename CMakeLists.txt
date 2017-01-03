@@ -266,16 +266,6 @@ add_definitions("-DARANGODB_BITS=${BITS}")
 ## COMPILER FEATURES
 ################################################################################
 
-if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  set(CMAKE_COMPILER_IS_CLANG 1)
-elseif (CMAKE_CXX_COMPILER_ID MATCHES "AppleClang")
-  set(CMAKE_COMPILER_IS_CLANG 1)
-elseif (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
-  set(CMAKE_COMPILER_IS_INTEL 1)
-elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-  set(CMAKE_COMPILER_IS_INTEL 1)
-endif ()
-
 if (WINDOWS)
   set(BASE_FLAGS     "/D WIN32 /D _WINDOWS /W3 /MP"      CACHE STRING "base flags")
   set(BASE_C_FLAGS   ""                         	 CACHE STRING "base C flags")
