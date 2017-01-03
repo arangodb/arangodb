@@ -193,6 +193,9 @@ class Agent : public arangodb::Thread {
   /// @brief Update a peers endpoint in my configuration
   void updatePeerEndpoint(query_t const& message);
 
+  /// @brief Update a peers endpoint in my configuration
+  void updatePeerEndpoint(std::string const&, std::string const&);
+
   /// @brief State reads persisted state and prepares the agent
   friend class State;
 

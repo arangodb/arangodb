@@ -164,7 +164,6 @@ bool Inception::restartingActiveAgent() {
   auto const  path      = pubApiPrefix + "config";
   auto const  myConfig  = _agent->config();
   auto const  startTime = system_clock::now();
-  auto        pool      = myConfig.pool();
   auto        active    = myConfig.active();
   auto const& clientId  = myConfig.id();
   auto const& clientEp  = myConfig.endpoint();
@@ -178,14 +177,13 @@ bool Inception::restartingActiveAgent() {
   auto const& greetstr = greeting.toJson();
 
   seconds const timeout(3600);
-  
-  CONDITION_LOCKER(guard, _cv);
-  
   long waitInterval(500000);  
   
+  CONDITION_LOCKER(guard, _cv);
+
   active.erase(
     std::remove(active.begin(), active.end(), myConfig.id()), active.end());
-  
+
   while (!this->isStopping() && !_agent->isStopping()) {
     
     active.erase(
@@ -196,6 +194,30 @@ bool Inception::restartingActiveAgent() {
         << "Found majority of agents in agreement over active pool. "
            "Finishing startup sequence.";
       return true;
+    }
+
+    auto gp = myConfig.gossipPeers();
+    std::vector<std::string> informed;
+    
+    for (auto& p : gp) {
+      auto comres = arangodb::ClusterComm::instance()->syncRequest(
+        clientId, 1, p, rest::RequestType::POST, path, greetstr,
+        std::unordered_map<std::string, std::string>(), 2.0);
+      if (comres->status == CL_COMM_SENT) {
+        auto const  theirConfigVP = comres->result->getBodyVelocyPack();
+        auto const& theirConfig   = theirConfigVP->slice();
+        auto const& tcc           = theirConfig.get("configuration");
+        auto const& theirId       = tcc.get("id").copyString();
+        
+        _agent->updatePeerEndpoint(theirId, p);
+        informed.push_back(p);
+      }
+    }
+    
+    auto pool = _agent->config().pool();    
+    for (const auto& i : informed) {
+      active.erase(
+        std::remove(active.begin(), active.end(), i), active.end());
     }
     
     for (auto& p : pool) {
@@ -213,8 +235,8 @@ bool Inception::restartingActiveAgent() {
             auto const& theirConfig   = theirConfigVP->slice();
             auto const& theirLeaderId = theirConfig.get("leaderId").copyString();
             auto const& tcc           = theirConfig.get("configuration");
-            auto const& theirId       = tcc.get("id").copyString();
-
+            auto const& theirId       = tcc.get("id").copyString();            
+            
             // Found RAFT with leader
             if (!theirLeaderId.empty()) {
               LOG_TOPIC(INFO, Logger::AGENCY) <<
@@ -236,7 +258,7 @@ bool Inception::restartingActiveAgent() {
                   continue;
                 }
               }
-
+              
               auto agency = std::make_shared<Builder>();
               agency->openObject();
               agency->add("term", theirConfig.get("term"));
@@ -253,7 +275,7 @@ bool Inception::restartingActiveAgent() {
             auto const theirActive = tcc.get("active").toJson();
             auto const myActive = myConfig.activeToBuilder()->toJson();
             auto i = std::find(active.begin(),active.end(),p.first);
-
+            
             if (i != active.end()) {
               if (theirActive != myActive) {
                 LOG_TOPIC(FATAL, Logger::AGENCY)
@@ -331,7 +353,7 @@ void Inception::reportIn(query_t const& query) {
           slice.get("stdev").getNumber<double>(),
           slice.get("max").getNumber<double>(),
           slice.get("min").getNumber<double>()} ));
-  
+
 }
 
 void Inception::reportVersionForEp(std::string const& endpoint, size_t version) {
@@ -352,7 +374,7 @@ bool Inception::estimateRAFTInterval() {
   auto config = _agent->config();
 
   auto myid = _agent->id();
-  auto to = duration<double,std::milli>(10.0); // 
+  auto to = duration<double,std::milli>(100.0); // 
 
   for (size_t i = 0; i < nrep; ++i) {
     for (auto const& peer : config.pool()) {
@@ -473,12 +495,12 @@ bool Inception::estimateRAFTInterval() {
 
       double precision = 1.0e-2;
       mn = precision *
-        std::ceil((1. / precision)*(.3 + precision * (maxmean + 3.*maxstdev)));
+        std::ceil((1. / precision)*(1.0 + precision * (maxmean + 3.*maxstdev)));
       if (config.waitForSync()) {
         mn *= 4.;
       }
-      if (mn > 2.0) {
-        mn = 2.0;
+      if (mn > 5.0) {
+        mn = 5.0;
       }
       mx = 5. * mn;
       
