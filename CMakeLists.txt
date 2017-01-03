@@ -502,37 +502,51 @@ endif ()
 ################################################################################
 ## JEMALLOC
 ################################################################################
-
-set(DEFAULT_LIBRARY_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
-set(CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_STATIC_LIBRARY_SUFFIX})
-find_package(jemalloc)
-set(JEMALLOC_DEFAULT_VALUE ${JEMALLOC_FOUND})
-
 if (WINDOWS OR SOLARIS OR USE_TCMALLOC)
   set(JEMALLOC_DEFAULT_VALUE OFF)
 endif ()
-
 option(USE_JEMALLOC
   "use JEMALLOC if the library is available"
   ${JEMALLOC_DEFAULT_VALUE}
 )
 
-set(FORCE_JEMALLOC_LIB "" CACHE STRING "force this library command to link jemalloc")
+# try to detect a static libjemalloc.a:
+set(_DEFAULT_LIBRARY_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
+set(CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_STATIC_LIBRARY_SUFFIX})
+find_package(jemalloc)
+set(CMAKE_FIND_LIBRARY_SUFFIXES ${_DEFAULT_LIBRARY_SUFFIXES})
 
-message(STATUS "jemalloc ${JEMALLOC_FOUND}")
-if (USE_JEMALLOC)
-  if (NOT JEMALLOC_FOUND)
-    message(FATAL_ERROR "jemalloc build was requested but jemalloc not found")
+# check whether we can use the static jemalloc on the system (if):
+if (JEMALLOC_FOUND)
+  set(HAS_PROPER_STATIC_JEMALLOC TRUE)
+  set(SOURCE "#include <stdlib.h>
+#include <jemalloc/jemalloc.h>
+int main() {
+malloc_stats_print(NULL, NULL, NULL);
+return 0; }"
+    )
+  set(TSTSRC "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmp/jemalloc.cxx")
+  file(WRITE ${TSTSRC} "${SOURCE}\n")
+
+  try_compile(HAS_PROPER_STATIC_JEMALLOC
+    ${CMAKE_BINARY_DIR}
+    ${TSTSRC}
+    LINK_LIBRARIES "jemalloc.a" "pthread"
+    )
+  if (USE_JEMALLOC AND NOT HAS_PROPER_STATIC_JEMALLOC)
+    message(FATAL_ERROR "the static system jemalloc isn't suitable! Recompile with the current compiler or disable using `-DCMAKE_CXX_FLAGS=-no-pie -DCMAKE_C_FLAGS=-no-pie`")
+  elseif (NOT USE_JEMALLOC AND NOT HAS_PROPER_STATIC_JEMALLOC)
+    # the user didn't force the use, so if its broken, ignore its existance:
+    set(JEMALLOC_FOUND FALSE)
   endif ()
+endif()
+
+if (USE_JEMALLOC AND NOT JEMALLOC_FOUND)
+  message(FATAL_ERROR "jemalloc build was requested but jemalloc not found")
+elseif (USE_JEMALLOC AND JEMALLOC_FOUND)
   add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
-
-  if (FORCE_JEMALLOC_LIB STREQUAL "")
-    set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_jemalloc_LIBRARY})
-  else ()
-    set(SYS_LIBS ${SYS_LIBS} ${FORCE_JEMALLOC_LIB})
-  endif ()
+  set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_jemalloc_LIBRARY})
 endif ()
-set(CMAKE_FIND_LIBRARY_SUFFIXES ${DEFAULT_LIBRARY_SUFFIXES})
 
 ################################################################################
 ## TCMALLOC
