@@ -9,6 +9,8 @@ v3.1.8 (XXXX-XX-XX)
 
 * agency leadership accepts updatet endpoints to given uuid
 
+* unified endpoints replace localhost with 127.0.0.1
+
 v3.1.7 (2016-12-29)
 -------------------
 
