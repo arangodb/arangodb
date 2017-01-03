@@ -34,28 +34,32 @@ AggregatorHandler::~AggregatorHandler() {
   _values.clear();
 }
 
-void AggregatorHandler::aggregate(std::string const& name,
-                                  const void* valuePtr) {
+Aggregator* AggregatorHandler::_create(std::string const& name) {
   auto it = _values.find(name);
   if (it != _values.end()) {
-    it->second->aggregate(valuePtr);
+    return it->second;
   } else {
-    std::unique_ptr<Aggregator> agg(_create->aggregator(name));
+    std::unique_ptr<Aggregator> agg(_algorithm->aggregator(name));
     if (agg) {
-      agg->aggregate(valuePtr);
       _values[name] = agg.get();
-      agg.release();
+      return agg.release();
     }
+  }
+  return nullptr;
+}
+
+void AggregatorHandler::aggregate(std::string const& name,
+                                  const void* valuePtr) {
+  Aggregator *agg = _create(name);
+  if (agg) {
+    agg->aggregate(valuePtr);
   }
 }
 
 const void* AggregatorHandler::getAggregatedValue(
-    std::string const& name) const {
-  auto const& it = _values.find(name);
-  if (it != _values.end()) {
-    return it->second->getValue();
-  }
-  return nullptr;
+    std::string const& name) {
+  Aggregator *agg =  _create(name);
+  return agg != nullptr ? agg->getValue() : nullptr;
 }
 
 void AggregatorHandler::resetValues() {
@@ -69,16 +73,9 @@ void AggregatorHandler::resetValues() {
 void AggregatorHandler::aggregateValues(AggregatorHandler const& workerValues) {
   for (auto const& pair : workerValues._values) {
     std::string const& name = pair.first;
-    auto my = _values.find(name);
-    if (my != _values.end()) {
-      my->second->aggregate(pair.second->getValue());
-    } else {
-      std::unique_ptr<Aggregator> agg(_create->aggregator(name));
-      if (agg) {
-        agg->aggregate(pair.second->getValue());
-        _values[name] = agg.get();
-        agg.release();
-      }
+    Aggregator *agg = _create(name);
+    if (agg) {
+      agg->aggregate(pair.second->getValue());
     }
   }
 }
@@ -86,16 +83,9 @@ void AggregatorHandler::aggregateValues(AggregatorHandler const& workerValues) {
 void AggregatorHandler::aggregateValues(VPackSlice workerValues) {
   for (auto const& keyValue : VPackObjectIterator(workerValues)) {
     std::string name = keyValue.key.copyString();
-    auto const& it = _values.find(name);
-    if (it != _values.end()) {
-      it->second->aggregate(keyValue.value);
-    } else {
-      std::unique_ptr<Aggregator> agg(_create->aggregator(name));
-      if (agg) {
-        agg->aggregate(keyValue.value);
-        _values[name] = agg.get();
-        agg.release();
-      }
+    Aggregator *agg = _create(name);
+    if (agg) {
+      agg->aggregate(keyValue.value);
     }
   }
 }

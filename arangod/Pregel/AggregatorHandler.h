@@ -36,14 +36,15 @@ struct IAlgorithm;
 class Aggregator;
 
 class AggregatorHandler {
-  const IAlgorithm* _create;
+  const IAlgorithm* _algorithm;
   std::map<std::string, Aggregator*> _values;
+  Aggregator* _create(std::string const& name);
 
  public:
-  AggregatorHandler(const IAlgorithm* c) : _create(c) {}
+  AggregatorHandler(const IAlgorithm* c) : _algorithm(c) {}
   ~AggregatorHandler();
   void aggregate(std::string const& name, const void* valuePtr);
-  const void* getAggregatedValue(std::string const& name) const;
+  const void* getAggregatedValue(std::string const& name);
   void resetValues();
   void aggregateValues(AggregatorHandler const& workerValues);
   void aggregateValues(VPackSlice workerValues);

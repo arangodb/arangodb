@@ -53,9 +53,8 @@ Conductor::Conductor(
       _executionNumber(executionNumber),
       _vertexCollections(vertexCollections),
       _edgeCollections(edgeCollections) {
-  bool isCoordinator = ServerState::instance()->isCoordinator();
-  TRI_ASSERT(isCoordinator);
-  LOG(INFO) << "constructed conductor";
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
+  LOG(INFO) << "Constructed conductor";
 }
 
 Conductor::~Conductor() { this->cancel(); }
@@ -85,6 +84,7 @@ void Conductor::start(std::string const& algoName, VPackSlice userConfig) {
   _lazyLoading = _algorithm->supportsLazyLoading();
   _lazyLoading = _lazyLoading && (lazy.isNone() || lazy.getBoolean());
 
+  LOG(INFO) << "Telling workers to load the data";
   int res = _initializeWorkers(Utils::startExecutionPath, VPackSlice());
   if (res != TRI_ERROR_NO_ERROR) {
     _state = ExecutionState::CANCELED;

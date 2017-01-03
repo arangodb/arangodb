@@ -47,7 +47,7 @@ class VertexContext {
   uint64_t _lss = 0;
   WorkerContext* _context;
   GraphStore<V, E>* _graphStore;
-  const AggregatorHandler* _conductorAggregators;
+  AggregatorHandler* _conductorAggregators;
   AggregatorHandler* _workerAggregators;
   VertexEntry* _vertexEntry;
   WorkerConfig* _workerConfig;

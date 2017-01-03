@@ -37,7 +37,7 @@ class WorkerContext {
   friend class Worker;
 
   uint64_t _vertexCount, _edgeCount;
-  const AggregatorHandler* _conductorAggregators;
+  AggregatorHandler* _conductorAggregators;
   AggregatorHandler* _workerAggregators;
 
  protected:

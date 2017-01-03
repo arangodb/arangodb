@@ -45,9 +45,10 @@ struct ShortestPathComp : public VertexComputation<int64_t, int64_t, int64_t> {
         current = *msg;
       };
     }
-
+    
+    bool isSource = current == 0 && localSuperstep() == 0;
     int64_t* state = mutableVertexData();
-    if (current < *state && (max != nullptr || current < *max)) {
+    if ((current < *state && current < *max) || isSource) {
       *state = current;  // update state
 
       if (this->pregelId() == _target) {
@@ -112,9 +113,13 @@ struct arangodb::pregel::algos::SPGraphFormat
 
 ShortestPathAlgorithm::ShortestPathAlgorithm(VPackSlice userParams)
     : Algorithm("ShortestPath") {
-  std::string source = userParams.get("source").copyString();
-  std::string target = userParams.get("target").copyString();
-  _format = new SPGraphFormat(source, target);
+  VPackSlice val1 = userParams.get("source");
+  VPackSlice val2 = userParams.get("target");
+  if (val1.isNone() || val2.isNone()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "You must specify source and target");
+  }
+  _format = new SPGraphFormat(val1.copyString(), val2.copyString());
 }
 
 std::vector<std::string> ShortestPathAlgorithm::initialActiveSet() {
@@ -139,7 +144,7 @@ ShortestPathAlgorithm::createComputation(WorkerConfig const* _config) const {
 }
 
 Aggregator* ShortestPathAlgorithm::aggregator(std::string const& name) const {
-  if (name == spUpperPathBound) {
+  if (name == spUpperPathBound) {// persistent min operator
     return new MinAggregator<int64_t>(INT64_MAX, true);
   }
   return nullptr;

@@ -39,7 +39,7 @@ struct SSSPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
       };
     }
     int64_t* state = mutableVertexData();
-    if (tmp < *state) {
+    if (tmp < *state || (tmp == 0 && localSuperstep() == 0)) {
       *state = tmp;  // update state
 
       RangeIterator<Edge<int64_t>> edges = getEdges();

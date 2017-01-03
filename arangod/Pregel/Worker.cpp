@@ -570,6 +570,8 @@ void Worker<V, E, M>::_continueAsync() {
 
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_callConductor(std::string path, VPackSlice message) {
+  LOG(INFO) << "Calling the conductor";
+  
   ClusterComm* cc = ClusterComm::instance();
   std::string baseUrl = Utils::baseUrl(_config.database());
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
