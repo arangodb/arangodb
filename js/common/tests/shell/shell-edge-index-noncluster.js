@@ -104,9 +104,11 @@ function EdgeIndexBucketsSuite () {
 
       internal.wal.flush(true, true);
       while (db._collection(en2).status() !== ArangoCollection.STATUS_UNLOADED) {
+        db._collection(en2).unload();
         wait(0.5);
       }
       while (db._collection(en3).status() !== ArangoCollection.STATUS_UNLOADED) {
+        db._collection(en3).unload();
         wait(0.5);
       }
 
@@ -158,9 +160,11 @@ function EdgeIndexBucketsSuite () {
 
       internal.wal.flush(true, true);
       while (db._collection(en2).status() !== ArangoCollection.STATUS_UNLOADED) {
+        db._collection(en2).unload();
         wait(0.5);
       }
       while (db._collection(en3).status() !== ArangoCollection.STATUS_UNLOADED) {
+        db._collection(en3).unload();
         wait(0.5);
       }
 

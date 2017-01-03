@@ -891,6 +891,7 @@ function CompactionSuite () {
       c1 = null;
 
       while (internal.db._collection(cn).status() !== ArangoCollection.STATUS_UNLOADED) {
+        db._collection(cn).unload();
         internal.wait(1, false);
       }
 
@@ -964,6 +965,7 @@ function CompactionSuite () {
       c1 = null;
 
       while (internal.db._collection(cn).status() !== ArangoCollection.STATUS_UNLOADED) {
+        db._collection(cn).unload();
         internal.wait(1, false);
       }
 
