@@ -164,7 +164,6 @@ bool Inception::restartingActiveAgent() {
   auto const  path      = pubApiPrefix + "config";
   auto const  myConfig  = _agent->config();
   auto const  startTime = system_clock::now();
-  auto        pool      = myConfig.pool();
   auto        active    = myConfig.active();
   auto const& clientId  = myConfig.id();
   auto const& clientEp  = myConfig.endpoint();
@@ -178,14 +177,13 @@ bool Inception::restartingActiveAgent() {
   auto const& greetstr = greeting.toJson();
 
   seconds const timeout(3600);
-  
-  CONDITION_LOCKER(guard, _cv);
-  
   long waitInterval(500000);  
   
+  CONDITION_LOCKER(guard, _cv);
+
   active.erase(
     std::remove(active.begin(), active.end(), myConfig.id()), active.end());
-  
+
   while (!this->isStopping() && !_agent->isStopping()) {
     
     active.erase(
@@ -196,6 +194,30 @@ bool Inception::restartingActiveAgent() {
         << "Found majority of agents in agreement over active pool. "
            "Finishing startup sequence.";
       return true;
+    }
+
+    auto gp = myConfig.gossipPeers();
+    std::vector<std::string> informed;
+    
+    for (auto& p : gp) {
+      auto comres = arangodb::ClusterComm::instance()->syncRequest(
+        clientId, 1, p, rest::RequestType::POST, path, greetstr,
+        std::unordered_map<std::string, std::string>(), 2.0);
+      if (comres->status == CL_COMM_SENT) {
+        auto const  theirConfigVP = comres->result->getBodyVelocyPack();
+        auto const& theirConfig   = theirConfigVP->slice();
+        auto const& tcc           = theirConfig.get("configuration");
+        auto const& theirId       = tcc.get("id").copyString();
+        
+        _agent->updatePeerEndpoint(theirId, p);
+        informed.push_back(p);
+      }
+    }
+    
+    auto pool = _agent->config().pool();    
+    for (const auto& i : informed) {
+      active.erase(
+        std::remove(active.begin(), active.end(), i), active.end());
     }
     
     for (auto& p : pool) {

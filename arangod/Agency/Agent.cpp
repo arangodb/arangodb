@@ -954,6 +954,7 @@ void Agent::notifyInactive() const {
 
 }
 
+
 void Agent::updatePeerEndpoint(query_t const& message) {
 
   VPackSlice slice = message->slice();
@@ -981,7 +982,13 @@ void Agent::updatePeerEndpoint(query_t const& message) {
       std::string("Cannot deal with UUID: ") + e.what());
   }
 
-  if (_config.updateEndpoint(uuid, endpoint)) {
+  updatePeerEndpoint(uuid, endpoint);
+  
+}
+
+void Agent::updatePeerEndpoint(std::string const& id, std::string const& ep) {
+  
+  if (_config.updateEndpoint(id, ep)) {
     if (!challengeLeadership()) {
       persistConfiguration(term());
       notifyInactive();
@@ -989,7 +996,6 @@ void Agent::updatePeerEndpoint(query_t const& message) {
   }
   
 }
-
 
 void Agent::notify(query_t const& message) {
   VPackSlice slice = message->slice();

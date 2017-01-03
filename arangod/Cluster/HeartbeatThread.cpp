@@ -364,7 +364,8 @@ void HeartbeatThread::runCoordinator() {
         break;
       }
 
-      AgencyReadTransaction trx(std::vector<std::string>(
+      AgencyReadTransaction trx
+        (std::vector<std::string>(
           {AgencyCommManager::path("Current/Version"),
            AgencyCommManager::path("Current/Foxxmaster"),
            AgencyCommManager::path("Current/FoxxmasterQueueupdate"),
@@ -372,7 +373,7 @@ void HeartbeatThread::runCoordinator() {
            AgencyCommManager::path("Shutdown"),
            AgencyCommManager::path("Sync/Commands", _myId),
            AgencyCommManager::path("Sync/UserVersion"),
-              AgencyCommManager::path("Target/FailedServers"), "/.agency"}));
+           AgencyCommManager::path("Target/FailedServers"), "/.agency"}));
       AgencyCommResult result = _agency.sendTransactionWithFailover(trx, 1.0);
 
       if (!result.successful()) {

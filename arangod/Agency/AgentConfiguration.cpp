@@ -484,20 +484,28 @@ void config_t::override(VPackSlice const& conf) {
 
 /// @brief vpack representation
 query_t config_t::toBuilder() const {
+
   query_t ret = std::make_shared<arangodb::velocypack::Builder>();
-  ret->openObject();
   {
+    VPackObjectBuilder b(ret.get());
     READ_LOCKER(readLocker, _lock);
-    ret->add(poolStr, VPackValue(VPackValueType::Object));
-    for (auto const& i : _pool) {
-      ret->add(i.first, VPackValue(i.second));
+
+    ret->add(VPackValue(poolStr));
+    {
+      VPackObjectBuilder bb(ret.get());
+      for (auto const& i : _pool) {
+        ret->add(i.first, VPackValue(i.second));
+      }
     }
-    ret->close();
-    ret->add(activeStr, VPackValue(VPackValueType::Array));
-    for (auto const& i : _active) {
-      ret->add(VPackValue(i));
+
+    ret->add(VPackValue(activeStr));
+    {
+      VPackArrayBuilder bb(ret.get());
+      for (auto const& i : _active) {
+        ret->add(VPackValue(i));
+      }
     }
-    ret->close();
+
     ret->add(idStr, VPackValue(_id));
     ret->add(agencySizeStr, VPackValue(_agencySize));
     ret->add(poolSizeStr, VPackValue(_poolSize));
@@ -511,7 +519,7 @@ query_t config_t::toBuilder() const {
     ret->add(versionStr, VPackValue(_version));
     ret->add(startupStr, VPackValue(_startup));
   }
-  ret->close();
+
   return ret;
 }
 

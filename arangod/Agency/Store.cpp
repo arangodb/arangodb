@@ -434,11 +434,10 @@ std::vector<bool> Store::read(query_t const& queries, query_t& result) const {
   return success;
 }
 
-bool showHidden = false;
-
 /// Read single query into ret
 bool Store::read(VPackSlice const& query, Builder& ret) const {
   bool success = true;
+  bool showHidden = false;
 
   // Collect all paths
   std::list<std::string> query_strs;
