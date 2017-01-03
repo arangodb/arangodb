@@ -134,7 +134,7 @@ if [ "$GOSSIP_MODE" = "0" ]; then
    GOSSIP_PEERS=" --agency.endpoint $TRANSPORT://localhost:$BASE"
 fi
 
-rm -rf agency
+#rm -rf agency
 mkdir -p agency
 PIDS=""
 

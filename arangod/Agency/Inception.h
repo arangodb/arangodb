@@ -69,15 +69,9 @@ public:
 
  private:
 
-  /// @brief Find active agency from persisted 
-  bool activeAgencyFromPersistence();
-
   /// @brief We are a restarting active RAFT agent
   bool restartingActiveAgent();
   
-  /// @brief Find active agency from command line
-  bool activeAgencyFromCommandLine();
-
   /// @brief Try to estimate good RAFT min/max timeouts
   bool estimateRAFTInterval();
 
