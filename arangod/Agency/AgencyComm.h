@@ -438,6 +438,7 @@ class AgencyCommManager {
                        std::string& url);
 
   void addEndpoint(std::string const&);
+  void removeEndpoint(std::string const&);
   std::string endpointsString() const;
   std::vector<std::string> endpoints() const;
 

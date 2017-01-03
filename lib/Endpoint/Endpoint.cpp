@@ -78,6 +78,9 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
 
   std::string prefix = "http+";
   std::string copy = StringUtils::tolower(specification);
+  std::string const localName("localhost");
+  std::string const localIP("127.0.0.1");
+
   StringUtils::trimInPlace(copy);
 
   if (specification.back() == '/') {
@@ -149,6 +152,12 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
     return illegal;
   }
 
+  // Replace localhost with 127.0.0.1
+  found = copy.find(localName);
+  if (found != std::string::npos) {
+    copy.replace(found, localName.length(), localIP);
+  }
+  
   // ipv4
   found = temp.find(':');
 

@@ -703,13 +703,23 @@ void Agent::reportActivated(
     myterm = _constituent.term();
   }
 
+  persistConfiguration(myterm);
+
+  // Notify inactive pool
+  notifyInactive();
+
+}
+
+
+void Agent::persistConfiguration(term_t t) {
+
   // Agency configuration
   auto agency = std::make_shared<Builder>();
   agency->openArray();
   agency->openArray();
   agency->openObject();
   agency->add(".agency", VPackValue(VPackValueType::Object));
-  agency->add("term", VPackValue(myterm));
+  agency->add("term", VPackValue(t));
   agency->add("id", VPackValue(id()));
   agency->add("active", _config.activeToBuilder()->slice());
   agency->add("pool", _config.poolToBuilder()->slice());
@@ -717,10 +727,11 @@ void Agent::reportActivated(
   agency->close();
   agency->close();
   agency->close();
-  write(agency);
 
-  // Notify inactive pool
-  notifyInactive();
+  // In case we've lost leadership, no harm will arise as the failed write
+  // prevents bogus agency configuration to be replicated among agents. ***
+  
+  write(agency); 
 
 }
 
@@ -833,21 +844,9 @@ void Agent::lead() {
     MUTEX_LOCKER(mutexLocker, _ioLock);
     myterm = _constituent.term();
   }
-  auto agency = std::make_shared<Builder>();
-  agency->openArray();
-  agency->openArray();
-  agency->openObject();
-  agency->add(".agency", VPackValue(VPackValueType::Object));
-  agency->add("term", VPackValue(myterm));
-  agency->add("id", VPackValue(id()));
-  agency->add("active", _config.activeToBuilder()->slice());
-  agency->add("pool", _config.poolToBuilder()->slice());
-  agency->close();
-  agency->close();
-  agency->close();
-  agency->close();
-  write(agency);
 
+  persistConfiguration(myterm);
+    
   // Notify inactive pool
   notifyInactive();
 
@@ -886,6 +885,45 @@ void Agent::notifyInactive() const {
 
   }
 }
+
+
+// Update peer endpoint
+void Agent::updatePeerEndpoint(query_t const& message) {
+
+  VPackSlice slice = message->slice();
+
+  if (!slice.isObject() || slice.length() == 0) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_AGENCY_INFORM_MUST_BE_OBJECT,
+      std::string("Inproper greeting: ") + slice.toJson());
+  }
+
+  std::string uuid, endpoint;
+  try {
+    uuid = slice.keyAt(0).copyString();
+  } catch (std::exception const& e) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_AGENCY_INFORM_MUST_BE_OBJECT,
+      std::string("Cannot deal with UUID: ") + e.what());
+  }
+
+  try {
+    endpoint = slice.valueAt(0).copyString();
+  } catch (std::exception const& e) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_AGENCY_INFORM_MUST_BE_OBJECT,
+      std::string("Cannot deal with UUID: ") + e.what());
+  }
+
+  if (_config.updateEndpoint(uuid, endpoint)) {
+    if (!challengeLeadership()) {
+      persistConfiguration(term());
+      notifyInactive();
+    }
+  }
+  
+}
+
 
 void Agent::notify(query_t const& message) {
   VPackSlice slice = message->slice();

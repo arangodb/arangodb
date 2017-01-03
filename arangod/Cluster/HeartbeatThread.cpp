@@ -194,13 +194,23 @@ void HeartbeatThread::runDBServer() {
           std::vector<std::string>(
             {AgencyCommManager::path("Shutdown"),
              AgencyCommManager::path("Current/Version"),
-             AgencyCommManager::path("Sync/Commands/" + _myId)}));
+             AgencyCommManager::path("Sync/Commands/" + _myId), "/.agency"}));
 
         AgencyCommResult result = _agency.sendTransactionWithFailover(trx,1.0);
         if (!result.successful()) {
           LOG_TOPIC(WARN, Logger::HEARTBEAT)
-              << "Heartbeat: Could not read from agency!";
+            << "Heartbeat: Could not read from agency!";
         } else {
+
+          VPackSlice agentPool =
+            result.slice()[0].get(
+              std::vector<std::string>({".agency","pool"}));
+          if (agentPool.isObject()) {
+            _agency.updateEndpoints(agentPool);
+          } else {
+            LOG(DEBUG) << "Cannot find an agency persisted in RAFT 8|";
+          }
+
           VPackSlice shutdownSlice = result.slice()[0].get(
               std::vector<std::string>({AgencyCommManager::path(), "Shutdown"}));
 
@@ -347,14 +357,24 @@ void HeartbeatThread::runCoordinator() {
         AgencyCommManager::path("Shutdown"),
         AgencyCommManager::path("Sync/Commands/" + _myId),
         AgencyCommManager::path("Sync/UserVersion"),
-        AgencyCommManager::path("Target/FailedServers")
-      }));
+        AgencyCommManager::path("Target/FailedServers"), "/.agency"}));
+      
       AgencyCommResult result = _agency.sendTransactionWithFailover(trx);
 
       if (!result.successful()) {
         LOG_TOPIC(WARN, Logger::HEARTBEAT)
-            << "Heartbeat: Could not read from agency!";
+          << "Heartbeat: Could not read from agency!";
       } else {
+
+        VPackSlice agentPool =
+          result.slice()[0].get(
+            std::vector<std::string>({".agency","pool"}));
+        if (agentPool.isObject()) {
+          _agency.updateEndpoints(agentPool);
+        } else {
+          LOG(DEBUG) << "Cannot find an agency persisted in RAFT 8|";
+        }
+
         VPackSlice shutdownSlice = result.slice()[0].get(
             std::vector<std::string>({AgencyCommManager::path(), "Shutdown"}));
 

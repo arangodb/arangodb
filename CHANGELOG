@@ -5,6 +5,9 @@ v3.1.8 (XXXX-XX-XX)
 
 * fixed issue #2234
 
+* agents announce new endpoints in inception phase to leader
+
+* agency leadership accepts updatet endpoints to given uuid
 
 v3.1.7 (2016-12-29)
 -------------------

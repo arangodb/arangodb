@@ -341,12 +341,29 @@ query_t config_t::poolToBuilder() const {
   return ret;
 }
 
+
+bool config_t::updateEndpoint(std::string const& id, std::string const& ep) {
+  WRITE_LOCKER(readLocker, _lock);
+  if (_pool[id] != ep) {
+    _pool[id] = ep;
+    ++_version;
+    return true;
+  }
+  return false;
+}
+
+
 void config_t::update(query_t const& message) {
   VPackSlice slice = message->slice();
   std::map<std::string, std::string> pool;
   bool changed = false;
   for (auto const& p : VPackObjectIterator(slice.get(poolStr))) {
-    pool[p.key.copyString()] = p.value.copyString();
+    auto const& id = p.key.copyString();
+    if (id != _id) {
+      pool[id] = p.value.copyString();
+    } else {
+      pool[id] = _endpoint;
+    }
   }
   std::vector<std::string> active;
   for (auto const& a : VPackArrayIterator(slice.get(activeStr))) {
@@ -522,7 +539,6 @@ bool config_t::merge(VPackSlice const& conf) {
   WRITE_LOCKER(writeLocker, _lock); // All must happen under the lock or else ...
 
   _id = conf.get(idStr).copyString();  // I get my id
-  _pool[_id] = _endpoint;              // Register my endpoint with it
   _startup = "persistence";
 
   std::stringstream ss;
@@ -562,7 +578,12 @@ bool config_t::merge(VPackSlice const& conf) {
   if (conf.hasKey(poolStr)) {  // Persistence only
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Found agent pool in persistence:";
     for (auto const& peer : VPackObjectIterator(conf.get(poolStr))) {
-      _pool[peer.key.copyString()] = peer.value.copyString();
+      auto const& id = peer.key.copyString();
+      if (id != _id) {
+        _pool[id] = peer.value.copyString();
+      } else {
+        _pool[id] = _endpoint;
+      }
     }
     ss << conf.get(poolStr).toJson() << " (persisted)";
   } else {
