@@ -212,6 +212,7 @@ bool Inception::restartingActiveAgent() {
             auto const  theirConfigVP = comres->result->getBodyVelocyPack();
             auto const& theirConfig   = theirConfigVP->slice();
             auto const& theirLeaderId = theirConfig.get("leaderId").copyString();
+            auto const& theirId       = theirConfig.get("id").copyString();
             auto const& tcc           = theirConfig.get("configuration");
             
             // Known leader. We are done.
@@ -219,14 +220,16 @@ bool Inception::restartingActiveAgent() {
               LOG_TOPIC(INFO, Logger::AGENCY) <<
                 "Found active RAFTing agency lead by " << theirLeaderId <<
                 ". Finishing startup sequence.";
-
+              
               auto const theirLeaderEp =
                 tcc.get(
                   std::vector<std::string>({"pool", theirLeaderId})).copyString();
 
-              comres = arangodb::ClusterComm::instance()->syncRequest(
-                clientId, 1, theirLeaderEp, rest::RequestType::POST, path,
-                greetstr, std::unordered_map<std::string, std::string>(), 2.0);
+              if (theirLeaderId != theirId) {
+                comres = arangodb::ClusterComm::instance()->syncRequest(
+                  clientId, 1, theirLeaderEp, rest::RequestType::POST, path,
+                  greetstr, std::unordered_map<std::string, std::string>(), 2.0);
+              }
               
               auto agency = std::make_shared<Builder>();
               agency->openObject();
@@ -244,7 +247,7 @@ bool Inception::restartingActiveAgent() {
             auto const theirActive = tcc.get("active").toJson();
             auto const myActive = myConfig.activeToBuilder()->toJson();
             auto i = std::find(active.begin(),active.end(),p.first);
-
+            
             if (i != active.end()) {
               if (theirActive != myActive) {
                 LOG_TOPIC(FATAL, Logger::AGENCY)
