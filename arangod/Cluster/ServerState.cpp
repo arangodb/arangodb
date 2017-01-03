@@ -1015,7 +1015,6 @@ bool ServerState::storeRole(RoleEnum role) {
     std::unique_ptr<AgencyTransaction> trx;
     bool fatalError = true;
     if (role == ServerState::ROLE_COORDINATOR) {
-      VPackBuilder builder;
       try {
         builder.add(VPackValue("none"));
       } catch (...) {
@@ -1057,14 +1056,16 @@ bool ServerState::storeRole(RoleEnum role) {
     }
 
     if (trx) {
-      AgencyComm comm;
-      AgencyCommResult result = comm.sendTransactionWithFailover(*trx.get(), 0.0);
-      if (!result.successful()) {
-        if (fatalError) {
-          LOG(FATAL) << "unable to register server in agency";
-          FATAL_ERROR_EXIT();
-        } else {
-          return false;
+      if (AgencyCommManager::MANAGER) {
+        AgencyComm comm;
+        AgencyCommResult result = comm.sendTransactionWithFailover(*trx.get(), 0.0);
+        if (!result.successful()) {
+          if (fatalError) {
+            LOG(FATAL) << "unable to register server in agency";
+            FATAL_ERROR_EXIT();
+          } else {
+            return false;
+          }
         }
       }
     }
