@@ -22,8 +22,8 @@
 
 #include "AddFollower.h"
 
-#include "Agent.h"
-#include "Job.h"
+#include "Agency/Agent.h"
+#include "Agency/Job.h"
 
 using namespace arangodb::consensus;
 
@@ -32,7 +32,34 @@ AddFollower::AddFollower(Node const& snapshot, Agent* agent,
                          std::string const& prefix, std::string const& database,
                          std::string const& collection,
                          std::string const& shard,
-                         std::string const& newFollower)
+                         std::initializer_list<std::string> const& newFollower)
+    : Job(snapshot, agent, jobId, creator, prefix),
+      _database(database),
+      _collection(collection),
+      _shard(shard),
+      _newFollower(newFollower) {
+  try {
+    JOB_STATUS js = status();
+
+    if (js == TODO) {
+      start();
+    } else if (js == NOTFOUND) {
+      if (create()) {
+        start();
+      }
+    }
+  } catch (std::exception const& e) {
+    LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << __FILE__ << __LINE__;
+    finish("Shards/" + _shard, false, e.what());
+  }
+}
+
+AddFollower::AddFollower(Node const& snapshot, Agent* agent,
+                         std::string const& jobId, std::string const& creator,
+                         std::string const& prefix, std::string const& database,
+                         std::string const& collection,
+                         std::string const& shard,
+                         std::vector<std::string> const& newFollower)
     : Job(snapshot, agent, jobId, creator, prefix),
       _database(database),
       _collection(collection),
@@ -73,6 +100,30 @@ bool AddFollower::create() {
   TRI_ASSERT(current[0].isString());
 #endif
 
+  std::string planPath =
+    planColPrefix + _database + "/" + _collection + "/shards";
+  
+  auto const& myClones = clones(_snapshot, _database, _collection);
+  if (!myClones.empty()) {
+    
+    size_t sub = 0;
+    auto myshards = _snapshot(planPath).children();
+    auto mpos = std::distance(myshards.begin(), myshards.find(_shard));
+    
+    // Deal with my clones
+    for (auto const& collection : myClones) {
+      auto othershards = _snapshot(
+        planColPrefix + _database + "/" + collection + "/shards").children();
+      auto opos = othershards.begin();
+      std::advance(opos, mpos);
+      auto const& shard = opos->first;
+
+      AddFollower(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
+                  _jobId, _agencyPrefix, _database, collection, shard,
+                  _newFollower);
+    }
+  }
+  
   _jb = std::make_shared<Builder>();
   _jb->openArray();
   _jb->openObject();
@@ -85,7 +136,13 @@ bool AddFollower::create() {
   _jb->add("database", VPackValue(_database));
   _jb->add("collection", VPackValue(_collection));
   _jb->add("shard", VPackValue(_shard));
-  _jb->add("newFollower", VPackValue(_newFollower));
+  _jb->add(VPackValue("newFollower"));
+  {
+    VPackArrayBuilder b(_jb.get());
+    for (auto const& i : _newFollower) {
+      _jb->add(VPackValue(i));
+    }
+  }
   _jb->add("jobId", VPackValue(_jobId));
   _jb->add("timeCreated", VPackValue(now));
 
@@ -118,7 +175,7 @@ bool AddFollower::start() {
 
   for (auto const& srv : VPackArrayIterator(current)) {
     TRI_ASSERT(srv.isString());
-    if (srv.copyString() == _newFollower) {
+    if (srv.copyString() == _newFollower.front()) {
       finish("Shards/" + _shard, false,
              "newFollower must not be already holding the shard.");
       return false;
@@ -126,7 +183,7 @@ bool AddFollower::start() {
   }
   for (auto const& srv : VPackArrayIterator(planned)) {
     TRI_ASSERT(srv.isString());
-    if (srv.copyString() == _newFollower) {
+    if (srv.copyString() == _newFollower.front()) {
       finish("Shards/" + _shard, false,
              "newFollower must not be planned for shard already.");
       return false;
@@ -182,7 +239,9 @@ bool AddFollower::start() {
   for (auto const& srv : VPackArrayIterator(planned)) {
     pending.add(srv);
   }
-  pending.add(VPackValue(_newFollower));
+  for (auto const& i : _newFollower) {
+    pending.add(VPackValue(i));
+  }
   pending.close();
 
   // --- Increment Plan/Version
@@ -213,7 +272,7 @@ bool AddFollower::start() {
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     LOG_TOPIC(INFO, Logger::AGENCY)
-        << "Pending: Addfollower " + _newFollower + " to shard " + _shard;
+      << "Pending: Addfollower " << _newFollower << " to shard " << _shard;
     return true;
   }
 
@@ -229,8 +288,12 @@ JOB_STATUS AddFollower::status() {
     try {
       _database = _snapshot(pos[status] + _jobId + "/database").getString();
       _collection = _snapshot(pos[status] + _jobId + "/collection").getString();
-      _newFollower =
-          _snapshot(pos[status] + _jobId + "/newFollower").getString();
+      for (auto const& i :
+             VPackArrayIterator(
+               _snapshot(pos[status] + _jobId + "/newFollower").getArray())) {
+        _newFollower.push_back(i.copyString());
+      }
+      _snapshot(pos[status] + _jobId + "/newFollower").getArray();
       _shard = _snapshot(pos[status] + _jobId + "/shard").getString();
     } catch (std::exception const& e) {
       std::stringstream err;
@@ -247,7 +310,7 @@ JOB_STATUS AddFollower::status() {
 
     Slice current = _snapshot(curPath).slice();
     for (auto const& srv : VPackArrayIterator(current)) {
-      if (srv.copyString() == _newFollower) {
+      if (srv.copyString() == _newFollower.front()) {
         if (finish("Shards/" + _shard)) {
           return FINISHED;
         }

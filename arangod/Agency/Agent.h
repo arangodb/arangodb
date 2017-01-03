@@ -81,7 +81,10 @@ class Agent : public arangodb::Thread {
   bool leading() const;
 
   /// @brief Pick up leadership tasks
-  bool lead();
+  void lead();
+
+  /// @brief Prepare leadership
+  void prepareLead();
 
   /// @brief Load persistent state
   bool load();
@@ -180,14 +183,26 @@ class Agent : public arangodb::Thread {
 
   /// @brief Inception thread still done?
   bool ready() const;
+
+  /// @brief Set readyness for RAFT
   void ready(bool b);
 
+  /// @brief Reset RAFT timeout intervals
   void resetRAFTTimes(double, double);
+
+  /// @brief Update a peers endpoint in my configuration
+  void updatePeerEndpoint(query_t const& message);
+
+  /// @brief Update a peers endpoint in my configuration
+  void updatePeerEndpoint(std::string const&, std::string const&);
 
   /// @brief State reads persisted state and prepares the agent
   friend class State;
 
  private:
+
+  /// @brief persist agency configuration in RAFT
+  void persistConfiguration(term_t t);
 
   /// @brief Update my configuration as passive agent
   void updateConfiguration();

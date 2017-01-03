@@ -78,6 +78,9 @@ SET(ARANGOD_SOURCES
   Actions/actions.cpp
   Agency/ActivationCallback.cpp
   Agency/AddFollower.cpp
+  Agency/AgencyCallback.cpp
+  Agency/AgencyCallbackRegistry.cpp
+  Agency/AgencyComm.cpp
   Agency/AgencyFeature.cpp
   Agency/Agent.cpp
   Agency/AgentActivator.cpp
@@ -85,6 +88,7 @@ SET(ARANGOD_SOURCES
   Agency/AgentConfiguration.cpp
   Agency/Constituent.cpp
   Agency/CleanOutServer.cpp
+  Agency/FailedFollower.cpp
   Agency/FailedLeader.cpp
   Agency/FailedServer.cpp
   Agency/GossipCallback.cpp
@@ -171,9 +175,6 @@ SET(ARANGOD_SOURCES
   Aql/VariableGenerator.cpp
   Aql/grammar.cpp
   Aql/tokens.cpp
-  Cluster/AgencyCallback.cpp
-  Cluster/AgencyCallbackRegistry.cpp
-  Cluster/AgencyComm.cpp
   Cluster/ClusterComm.cpp
   Cluster/ClusterEdgeCursor.cpp
   Cluster/ClusterFeature.cpp

@@ -312,7 +312,7 @@ void Agent::sendAppendEntriesRPC() {
   
   for (auto const& followerId : _config.active()) {
 
-    if (followerId != myid) {
+    if (followerId != myid && leading()) {
 
       term_t t(0);
 
@@ -370,6 +370,11 @@ void Agent::sendAppendEntriesRPC() {
           << highest << " to follower " << followerId;
       }
 
+      // Really leading?
+      if (challengeLeadership()) {
+        _constituent.candidate();
+      }
+      
       // Send request
       auto headerFields =
         std::make_unique<std::unordered_map<std::string, std::string>>();
@@ -644,10 +649,12 @@ void Agent::run() {
 
     // Leader working only
     if (leading()) {
-      _appendCV.wait(1000);
 
       // Append entries to followers
       sendAppendEntriesRPC();
+
+      // Don't panic
+      _appendCV.wait(1000);
 
       // Detect faulty agent and replace
       // if possible and only if not already activating
@@ -696,13 +703,23 @@ void Agent::reportActivated(
     myterm = _constituent.term();
   }
 
+  persistConfiguration(myterm);
+
+  // Notify inactive pool
+  notifyInactive();
+
+}
+
+
+void Agent::persistConfiguration(term_t t) {
+
   // Agency configuration
   auto agency = std::make_shared<Builder>();
   agency->openArray();
   agency->openArray();
   agency->openObject();
   agency->add(".agency", VPackValue(VPackValueType::Object));
-  agency->add("term", VPackValue(myterm));
+  agency->add("term", VPackValue(t));
   agency->add("id", VPackValue(id()));
   agency->add("active", _config.activeToBuilder()->slice());
   agency->add("pool", _config.poolToBuilder()->slice());
@@ -710,10 +727,11 @@ void Agent::reportActivated(
   agency->close();
   agency->close();
   agency->close();
-  write(agency);
 
-  // Notify inactive pool
-  notifyInactive();
+  // In case we've lost leadership, no harm will arise as the failed write
+  // prevents bogus agency configuration to be replicated among agents. ***
+  
+  write(agency); 
 
 }
 
@@ -796,10 +814,23 @@ void Agent::beginShutdown() {
   }
 }
 
-/// Becoming leader
-bool Agent::lead() {
+void Agent::prepareLead() {
+
   // Key value stores
   rebuildDBs();
+  
+  // Reset last acknowledged
+  {
+    MUTEX_LOCKER(mutexLocker, _ioLock);
+    for (auto const& i : _config.active()) {
+      _lastAcked[i] = system_clock::now();
+    }
+  }
+
+}
+
+/// Becoming leader
+void Agent::lead() {
 
   // Wake up run
   {
@@ -807,72 +838,96 @@ bool Agent::lead() {
     guard.broadcast();
   }
 
+  // Agency configuration
   term_t myterm;
-  // Reset last acknowledged
   {
     MUTEX_LOCKER(mutexLocker, _ioLock);
-    for (auto const& i : _config.active()) {
-      _lastAcked[i] = system_clock::now();
-    }
     myterm = _constituent.term();
   }
 
-  // Agency configuration
-  auto agency = std::make_shared<Builder>();
-  agency->openArray();
-  agency->openArray();
-  agency->openObject();
-  agency->add(".agency", VPackValue(VPackValueType::Object));
-  agency->add("term", VPackValue(myterm));
-  agency->add("id", VPackValue(id()));
-  agency->add("active", _config.activeToBuilder()->slice());
-  agency->add("pool", _config.poolToBuilder()->slice());
-  agency->close();
-  agency->close();
-  agency->close();
-  agency->close();
-  write(agency);
-
-  // Wake up supervision
-  _supervision.wakeUp();
-
+  persistConfiguration(myterm);
+    
   // Notify inactive pool
   notifyInactive();
 
-  return true;
 }
 
 // Notify inactive pool members of configuration change()
 void Agent::notifyInactive() const {
-  if (_config.poolSize() > _config.size()) {
 
-    std::map<std::string, std::string> pool = _config.pool();
-    std::string path = "/_api/agency_priv/inform";
+  std::map<std::string, std::string> pool = _config.pool();
+  std::string path = "/_api/agency_priv/inform";
+  
+  Builder out;
+  out.openObject();
+  out.add("term", VPackValue(term()));
+  out.add("id", VPackValue(id()));
+  out.add("active", _config.activeToBuilder()->slice());
+  out.add("pool", _config.poolToBuilder()->slice());
+  out.add("min ping", VPackValue(_config.minPing()));
+  out.add("max ping", VPackValue(_config.maxPing()));
+  out.close();
 
-    Builder out;
-    out.openObject();
-    out.add("term", VPackValue(term()));
-    out.add("id", VPackValue(id()));
-    out.add("active", _config.activeToBuilder()->slice());
-    out.add("pool", _config.poolToBuilder()->slice());
-    out.close();
+  for (auto const& p : pool) {
 
-    for (auto const& p : pool) {
-
-      if (p.first != id()) {
-        auto headerFields =
-          std::make_unique<std::unordered_map<std::string, std::string>>();
-
-        arangodb::ClusterComm::instance()->asyncRequest(
-          "1", 1, p.second, arangodb::rest::RequestType::POST,
-          path, std::make_shared<std::string>(out.toJson()), headerFields,
-          nullptr, 1.0, true);
-      }
-
+    if (p.first != id()) {
+      auto headerFields =
+        std::make_unique<std::unordered_map<std::string, std::string>>();
+      
+      arangodb::ClusterComm::instance()->asyncRequest(
+        "1", 1, p.second, arangodb::rest::RequestType::POST,
+        path, std::make_shared<std::string>(out.toJson()), headerFields,
+        nullptr, 1.0, true);
     }
+    
+  }
 
+}
+
+
+// Update peer endpoint
+void Agent::updatePeerEndpoint(query_t const& message) {
+
+  VPackSlice slice = message->slice();
+
+  if (!slice.isObject() || slice.length() == 0) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_AGENCY_INFORM_MUST_BE_OBJECT,
+      std::string("Inproper greeting: ") + slice.toJson());
+  }
+
+  std::string uuid, endpoint;
+  try {
+    uuid = slice.keyAt(0).copyString();
+  } catch (std::exception const& e) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_AGENCY_INFORM_MUST_BE_OBJECT,
+      std::string("Cannot deal with UUID: ") + e.what());
+  }
+
+  try {
+    endpoint = slice.valueAt(0).copyString();
+  } catch (std::exception const& e) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_AGENCY_INFORM_MUST_BE_OBJECT,
+      std::string("Cannot deal with UUID: ") + e.what());
+  }
+
+  updatePeerEndpoint(uuid, endpoint);
+  
+}
+
+
+void Agent::updatePeerEndpoint(std::string const& id, std::string const& ep) {
+  if (_config.updateEndpoint(id, ep)) {
+    if (!challengeLeadership()) {
+      persistConfiguration(term());
+      notifyInactive();
+    }
   }
 }
+
+
 
 void Agent::notify(query_t const& message) {
   VPackSlice slice = message->slice();
@@ -897,6 +952,12 @@ void Agent::notify(query_t const& message) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_ACTIVE);
   }
   if (!slice.hasKey("pool") || !slice.get("pool").isObject()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL);
+  }
+  if (!slice.hasKey("min ping") || !slice.get("min ping").isNumber()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL);
+  }
+  if (!slice.hasKey("max ping") || !slice.get("max ping").isNumber()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL);
   }
 
@@ -1017,47 +1078,52 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   }
 
   query_t out = std::make_shared<Builder>();
-  out->openObject();
-  if (!isCallback) {
+  {  
+    VPackObjectBuilder b(out.get());
+    
     std::vector<std::string> gossipPeers = _config.gossipPeers();
     if (!gossipPeers.empty()) {
       try {
         _config.eraseFromGossipPeers(endpoint);
       } catch (std::exception const& e) {
-        LOG_TOPIC(ERR, Logger::AGENCY) << __FILE__ << ":" << __LINE__ << " "
-                                       << e.what();
+        LOG_TOPIC(ERR, Logger::AGENCY)
+          << __FILE__ << ":" << __LINE__ << " " << e.what();
       }
     }
-
+    
     size_t counter = 0;
     for (auto const& i : incoming) {
-      if (++counter >
-          _config.poolSize()) {  /// more data than pool size: fatal!
+      
+      /// more data than pool size: fatal!
+      if (++counter > _config.poolSize()) {
         LOG_TOPIC(FATAL, Logger::AGENCY)
-            << "Too many peers for poolsize: " << counter << ">"
-            << _config.poolSize();
+          << "Too many peers in pool: " << counter << ">" << _config.poolSize();
         FATAL_ERROR_EXIT();
       }
-
+      
+      /// disagreement over pool membership: fatal!
       if (!_config.addToPool(i)) {
         LOG_TOPIC(FATAL, Logger::AGENCY) << "Discrepancy in agent pool!";
         FATAL_ERROR_EXIT();
       }
+      
     }
-
-    // bool send = false;
-    std::map<std::string, std::string> pool = _config.pool();
-
-    out->add("endpoint", VPackValue(_config.endpoint()));
-    out->add("id", VPackValue(_config.id()));
-    out->add("pool", VPackValue(VPackValueType::Object));
-    for (auto const& i : pool) {
-      out->add(i.first, VPackValue(i.second));
+    
+    if (!isCallback) { // no gain in callback to a callback.
+      std::map<std::string, std::string> pool = _config.pool();
+      
+      out->add("endpoint", VPackValue(_config.endpoint()));
+      out->add("id", VPackValue(_config.id()));
+      out->add(VPackValue("pool"));
+      {
+        VPackObjectBuilder bb(out.get());
+        for (auto const& i : pool) {
+          out->add(i.first, VPackValue(i.second));
+        }
+      }
     }
-    out->close();
   }
-  out->close();
-
+  
   LOG_TOPIC(TRACE, Logger::AGENCY) << "Answering with gossip "
                                    << out->slice().toJson();
   return out;

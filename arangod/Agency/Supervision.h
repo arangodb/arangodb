@@ -105,9 +105,6 @@ class Supervision : public arangodb::Thread {
   /// @brief Begin thread shutdown
   void beginShutdown() override final;
 
-  /// @brief Wake up to task
-  void wakeUp();
-
   /// @brief Upgrade agency
   void upgradeAgency();
 
@@ -116,6 +113,9 @@ class Supervision : public arangodb::Thread {
   static constexpr const char* HEALTH_STATUS_FAILED = "FAILED";
 
  private:
+
+  /// @brief Check for inconsistencies in replication factor vs dbs entries
+  void enforceReplication();
 
   /// @brief Update agency prefix from agency itself
   bool updateAgencyPrefix(size_t nTries = 10, int intervalSec = 1);

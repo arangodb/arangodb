@@ -50,19 +50,19 @@ RevisionCacheFeature::RevisionCacheFeature(ApplicationServer* server)
   requiresElevatedPrivileges(false);
   startsAfter("WorkMonitor");
 
-
-  if (TRI_PhysicalMemory != 0) {
+  if (TRI_PhysicalMemory >= 2147483648ULL) { // 2 GB
     // reset target size to a fraction of the available memory
-    _targetSize = static_cast<decltype(_targetSize)>(TRI_PhysicalMemory * 0.75);
+    _targetSize = TRI_PhysicalMemory - 1073741824ULL; // 1 GB
+    _targetSize *= 0.4; // 40 % or RAM
   }
 }
 
 void RevisionCacheFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("database", "Configure the database");
   
-  options->addOption("--database.revision-cache-chunk-size", "chunk size for the document revision cache",
+  options->addOption("--database.revision-cache-chunk-size", "chunk size (in bytes) for the document revisions cache",
                      new UInt32Parameter(&_chunkSize));
-  options->addOption("--database.revision-cache-target-size", "total target size for the document revision cache",
+  options->addOption("--database.revision-cache-target-size", "total target size (in bytes) for the document revisions cache",
                      new UInt64Parameter(&_targetSize));
 }
 

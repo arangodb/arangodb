@@ -217,6 +217,9 @@ class Node {
   /// @brief Get string value (throws if type NODE or if conversion fails)
   std::string getString() const;
 
+  /// @brief Get array value
+  Slice getArray() const;
+
  protected:
   /// @brief Add time to live entry
   virtual bool addTimeToLive(long millis);

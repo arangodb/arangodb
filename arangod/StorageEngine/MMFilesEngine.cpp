@@ -1382,6 +1382,68 @@ LogicalCollection* MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase, std
   VPackBuilder b2 = VPackCollection::merge(slice, patch.slice(), false);
   slice = b2.slice();
 
+  // handle indexes
+  std::unordered_set<uint64_t> foundIds;
+  VPackBuilder indexesPatch;
+  indexesPatch.openObject();
+  indexesPatch.add("indexes", VPackValue(VPackValueType::Array));
+
+  // merge indexes into the collection structure
+  VPackSlice indexes = slice.get("indexes");
+  if (indexes.isArray()) {
+    // simply copy over existing index definitions
+    for (auto const& it : VPackArrayIterator(indexes)) {
+      indexesPatch.add(it);
+      VPackSlice id = it.get("id");
+      if (id.isString()) {
+        foundIds.emplace(basics::StringUtils::uint64(id.copyString()));
+      }
+    }
+  }
+
+  // check files within the directory and find index definitions
+  std::vector<std::string> files = TRI_FilesDirectory(path.c_str());
+
+  for (auto const& file : files) {
+    std::vector<std::string> parts = StringUtils::split(file, '.');
+    
+    if (parts.size() < 2 || parts.size() > 3 || parts[0].empty()) {
+      continue;
+    }
+    
+    std::vector<std::string> next = StringUtils::split(parts[0], "-");
+    if (next.size() < 2) {
+      continue;
+    }
+
+    if (next[0] == "index" && parts[1] == "json") {
+      std::string filename =
+        arangodb::basics::FileUtils::buildFilename(path, file);
+      std::shared_ptr<VPackBuilder> content =
+        arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
+      VPackSlice indexSlice = content->slice();
+      if (!indexSlice.isObject()) {
+        // invalid index definition
+        continue;
+      }
+
+      VPackSlice id = indexSlice.get("id");
+      if (id.isString()) {
+        auto idxId = basics::StringUtils::uint64(id.copyString());
+        if (foundIds.find(idxId) == foundIds.end()) {
+          foundIds.emplace(idxId);
+          indexesPatch.add(indexSlice);
+        }
+      }
+    }
+  }
+
+  indexesPatch.close();
+  indexesPatch.close();
+
+  VPackBuilder b3 = VPackCollection::merge(slice, indexesPatch.slice(), false);
+  slice = b3.slice();
+  
   return new LogicalCollection(vocbase, slice, true);
 }
 
@@ -1702,6 +1764,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
   std::vector<TRI_datafile_t*> journals;
   std::vector<TRI_datafile_t*> sealed;
   bool stop = false;
+  int result = TRI_ERROR_NO_ERROR;
 
   TRI_ASSERT(collection->cid() != 0);
 
@@ -1786,6 +1849,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
             LOG_TOPIC(ERR, Logger::DATAFILES)
                 << "unable to rename compaction file '" << filename << "' to '"
                 << newName << "'";
+            result = res;
             stop = true;
             break;
           }
@@ -1795,6 +1859,8 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
         filename = newName;
       }
 
+      TRI_set_errno(TRI_ERROR_NO_ERROR);
+
       std::unique_ptr<TRI_datafile_t> df(TRI_datafile_t::open(filename, ignoreErrors));
 
       if (df == nullptr) {
@@ -1802,6 +1868,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
                                           << filename
                                           << "': " << TRI_last_error();
 
+        result = TRI_errno();
         stop = true;
         break;
       }
@@ -1822,7 +1889,8 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
         LOG(ERR) << "collection header mismatch in file '" << filename
                  << "', expected TRI_DF_MARKER_COL_HEADER, found "
                  << cm->base.getType();
-
+        
+        result = TRI_ERROR_ARANGO_CORRUPTED_DATAFILE;
         stop = true;
         break;
       }
@@ -1831,6 +1899,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
         LOG(ERR) << "collection identifier mismatch, expected "
                  << collection->cid() << ", found " << cm->_cid;
 
+        result = TRI_ERROR_ARANGO_CORRUPTED_DATAFILE;
         stop = true;
         break;
       }
@@ -1862,6 +1931,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
           LOG_TOPIC(ERR, Logger::DATAFILES)
               << "datafile '" << filename
               << "' is not sealed, this should never happen";
+          result = TRI_ERROR_ARANGO_CORRUPTED_DATAFILE;
           stop = true;
           break;
         } else {
@@ -1890,6 +1960,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
         datafiles.emplace_back(datafile);
         LOG(DEBUG) << "renamed sealed journal to '" << filename << "'";
       } else {
+        result = res;
         stop = true;
         LOG(ERR) << "cannot rename sealed log-file to " << filename
                  << ", this should not happen: " << TRI_errno_string(res);
@@ -1905,6 +1976,9 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase, LogicalCollection* col
       delete datafile;
     }
 
+    if (result != TRI_ERROR_NO_ERROR) {
+      return result;
+    }
     return TRI_ERROR_INTERNAL;
   }
 

@@ -28,7 +28,7 @@
 #include <boost/asio/ip/tcp.hpp>
 
 namespace arangodb {
-class SocketTcp: public Socket {
+class SocketTcp final : public Socket {
   public:
     SocketTcp(boost::asio::io_service& ioService,
            boost::asio::ssl::context&& context, bool encrypted)
@@ -61,7 +61,7 @@ class SocketTcp: public Socket {
 
     // mop: these functions actually only access the underlying socket. The _sslSocket is
     // actually just an additional layer around the socket. These low level functions
-    // aceess the _socket only and it is ok that they are not implemented for _sslSocket in
+    // access the _socket only and it is ok that they are not implemented for _sslSocket in
     // the children
     void shutdownReceive() override;
     void shutdownReceive(boost::system::error_code& ec) override;

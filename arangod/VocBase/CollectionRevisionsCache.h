@@ -53,6 +53,9 @@ class CollectionRevisionsCache {
   void clear();
 
   void sizeHint(int64_t hint);
+  size_t size();
+  size_t memoryUsage();
+  size_t chunksMemoryUsage();
 
   bool allowInvalidation() const {
     return _allowInvalidation.load();

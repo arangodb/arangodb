@@ -1,5 +1,6 @@
 // Try to set the version number early, jQuery not available yet
 document.addEventListener("DOMContentLoaded", function(event) {
+  if (!gitbook.state.root) return;
   var bookVersion = gitbook.state.root.match(/\/(\d\.\d(\.\d)?|devel)\//);
   var switcher = document.getElementsByClassName("arangodb-version-switcher")[0];
   if (bookVersion) {
@@ -15,25 +16,81 @@ window.localStorage.removeItem(":keyword");
 $(document).ready(function() {
 
 function appendHeader() {
-/*
+
   var div = document.createElement('div');
-  div.innerHTML = '<header id="header" class="header absolute"><div class="wrap"><div class="clearfix" style="width:100%;"><div id="logo"><a href="https://docs.arangodb.com/"><img src="https://docs.arangodb.com/assets/arangodb_logo.png"></a></div><div class="arangodb_version">VERSION_NUMBER</div><div class="google-search"><gcse:searchbox-only></div><ul id="navmenu"><li><a href="https://tst.arangodb.com/simran/all-in-one/">Docs</a></li><li><a href="https://docs.arangodb.com/cookbook">Cookbook</a></li><li class="socialIcons"><a href="https://github.com/ArangoDB/ArangoDB/issues" target="blank" name="github"><i title="GitHub" class="fa fa-github"></i></a></li><li class="socialIcons"><a href="http://stackoverflow.com/questions/tagged/arangodb" target="blank" name="stackoverflow"><i title="Stackoverflow" class="fa fa-stack-overflow"></i></a></li><li class="socialIcons socialIcons-googlegroups"><a href="https://groups.google.com/forum/#!forum/arangodb" target="blank" name="google groups"><img title="Google Groups" alt="Google Groups" src="https://docs.arangodb.com/assets/googlegroupsIcon.png" style="height:14px"></img></a></li></ul></div></div></header>';
+  div.innerHTML = '<div class="arangodb-header">\n' +
+    '  <div class="arangodb-logo">\n' +
+    '    <a href="https://arangodb.com/">\n' +
+    '      <img src="https://docs.arangodb.com/assets/arangodb_logo_2016.png">\n' +
+    '    </a>\n' +
+    '  </div>\n' +
+    '  <div class="arangodb-logo-small">\n' +
+    '    <a href="https://arangodb.com/">\n' +
+    '      <img src="https://docs.arangodb.com/assets/arangodb_logo_small_2016.png">\n' +
+    '    </a>\n' +
+    '  </div>\n' +
+    '  <select class="arangodb-version-switcher">\n' +
+    '    <option value="devel">devel</option>\n' +
+    '    <option value="3.1">v3.1</option>\n' +
+    '    <option value="3.0">v3.0</option>\n' +
+    '    <option value="2.8">v2.8</option>\n' +
+    '  </select>\n' +
+    '  <div class="google-search">\n' +
+    '    <gcse:searchbox-only></gcse:searchbox-only>\n' +
+    '  </div>\n' +
+    '  <ul class="arangodb-navmenu">\n' +
+    '    <li class="active-tab">\n' +
+    '      <a href="#" data-book="Manual">Manual</a>\n' +
+    '    </li>\n' +
+    '    <li>\n' +
+    '      <a href="#" data-book="AQL">AQL</a>\n' +
+    '    </li>\n' +
+    '    <li>\n' +
+    '      <a href="#" data-book="HTTP">HTTP</a>\n' +
+    '    </li>\n' +
+    '    <li>\n' +
+    '      <a href="#" data-book="cookbook">Cookbook</a>\n' +
+    '    </li>\n' +
+    '    <li class="downloadIcon" title="Download">\n' +
+    '      <a href="https://www.arangodb.com/download-arangodb-docs" target="_blank">\n' +
+    '        <i class="fa fa-download"></i>\n' +
+    '      </a>\n' +
+    '    </li>\n' +
+    '    <li class="socialIcons" title="GitHub">\n' +
+    '      <a href="https://github.com/ArangoDB/ArangoDB/issues" target="_blank">\n' +
+    '        <i class="fa fa-github"></i>\n' +
+    '      </a>\n' +
+    '    </li>\n' +
+    '    <li class="socialIcons" title="StackOverflow">\n' +
+    '      <a href="http://stackoverflow.com/questions/tagged/arangodb" target="_blank">\n' +
+    '        <i class="fa fa-stack-overflow"></i>\n' +
+    '      </a>\n' +
+    '    </li>\n' +
+    '    <li class="socialIcons socialIcons-googlegroups" title="Google Groups">\n' +
+    '      <a href="https://groups.google.com/forum/#!forum/arangodb" target="_blank">\n' +
+    '        <img alt="Google Groups" src="https://docs.arangodb.com/assets/googlegroupsIcon.png" />\n' +
+    '      </a>\n' +
+    '    </li>\n' +
+    '    <li class="socialIcons" title="Slack">\n' +
+    '      <a href="https://slack.arangodb.com" target="_blank">\n' +
+    '        <i class="fa fa-slack"></i>\n' +
+    '      </a>\n' +
+    '    </li>\n' +
+    '  </ul>\n' +
+    '</div>\n';
 
     $('.book').before(div.innerHTML);
-*/
+
   };
 
 
   function rerenderNavbar() {
-    $('.arangodb-header').remove();
+    $('#header').remove();
     appendHeader();
-    renderGoogleSearch();
   };
 
-  function renderGoogleSearch() {
-  };
   //render header
-  //rerenderNavbar();
+  rerenderNavbar();
   function addGoogleSrc() {
     var cx = '010085642145132923492:eylabygadru';
     var gcse = document.createElement('script');
@@ -68,7 +125,7 @@ function appendHeader() {
     if (urlSplit.length == 6) {
       urlSplit.pop(); // ""
       var currentBook = urlSplit.pop(); // e.g. "Manual"
-      urlSplit.pop() // e.g. "3.0"
+      var version = urlSplit.pop() // e.g. "3.0"
       window.location.href = urlSplit.join("/") + "/" + e.target.value + "/" + currentBook + "/";
     } else {
       window.location.href = "https://docs.arangodb.com/" + e.target.value;

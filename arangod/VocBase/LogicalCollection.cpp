@@ -23,6 +23,7 @@
 
 #include "LogicalCollection.h"
 
+#include "Aql/QueryCache.h"
 #include "Basics/Barrier.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
@@ -31,7 +32,7 @@
 #include "Basics/ThreadPool.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Aql/QueryCache.h"
+#include "Basics/process-utils.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
@@ -513,6 +514,10 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       }
     }
   }
+  
+  if (_indexes.empty()) {
+    createInitialIndexes();
+  }
 
   auto indexesSlice = info.get("indexes");
   if (indexesSlice.isArray()) {
@@ -527,6 +532,11 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
 
       auto idx = PrepareIndexFromSlice(v, false, this, true);
 
+      if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX || 
+          idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
+        continue;
+      }
+
       if (isCluster) {
         addIndexCoordinator(idx, false);
       } else {
@@ -534,10 +544,15 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       }
     }
   }
-
-  if (_indexes.empty()) {
-    createInitialIndexes();
+  
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+    LOG(ERR) << "got invalid indexes for collection '" << _name << "'";
+    for (auto const& it : _indexes) {
+      LOG(ERR) << "- " << it.get();
+    }
   }
+#endif
 
   if (!ServerState::instance()->isCoordinator() && isPhysical) {
     // If we are not in the coordinator we need a path
@@ -851,6 +866,16 @@ LogicalCollection::getIndexes() const {
 // or it's indexes are freed the pointer returned will get invalidated.
 arangodb::PrimaryIndex* LogicalCollection::primaryIndex() const {
   TRI_ASSERT(!_indexes.empty());
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+    LOG(ERR) << "got invalid indexes for collection '" << _name << "'";
+    for (auto const& it : _indexes) {
+      LOG(ERR) << "- " << it.get();
+    }
+  }
+#endif
+
   TRI_ASSERT(_indexes[0]->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
   // the primary index must be the index at position #0
   return static_cast<arangodb::PrimaryIndex*>(_indexes[0].get());
@@ -1193,7 +1218,7 @@ std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() {
     }
   } else {
     builder->openObject();
-
+   
     // add index information
     size_t sizeIndexes = getPhysical()->memory();
     size_t numIndexes = 0;
@@ -1201,7 +1226,7 @@ std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() {
       sizeIndexes += static_cast<size_t>(idx->memory());
       ++numIndexes;
     }
-
+    
     builder->add("indexes", VPackValue(VPackValueType::Object));
     builder->add("count", VPackValue(numIndexes));
     builder->add("size", VPackValue(sizeIndexes));
@@ -1225,6 +1250,9 @@ std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() {
     }
 
     if (lastCompactionStatus != nullptr) {
+      if (lastCompactionStamp == 0.0) {
+        lastCompactionStamp = TRI_microtime();
+      }
       struct tm tb;
       time_t tt = static_cast<time_t>(lastCompactionStamp);
       TRI_gmtime(tt, &tb);
@@ -1235,6 +1263,13 @@ std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() {
     builder->add("message", VPackValue(lastCompactionStatus));
     builder->add("time", VPackValue(&lastCompactionStampString[0]));
     builder->close(); // compactionStatus
+    
+    if (_revisionsCache) { 
+      builder->add("readCache", VPackValue(VPackValueType::Object));
+      builder->add("count", VPackValue(_revisionsCache->size()));
+      builder->add("size", VPackValue(_revisionsCache->memoryUsage()));
+      builder->close(); // readCache
+    }
 
     // add engine-specific figures
     getPhysical()->figures(builder);
@@ -1361,7 +1396,7 @@ int LogicalCollection::openWorker(bool ignoreErrors) {
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG(DEBUG) << "cannot open '" << _path << "', check failed";
-      return TRI_ERROR_INTERNAL;
+      return res;
     }
 
     LOG_TOPIC(TRACE, Logger::PERFORMANCE)
@@ -3086,11 +3121,10 @@ int LogicalCollection::updateDocument(
   res = insertSecondaryIndexes(trx, newRevisionId, newDoc, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    removeRevision(newRevisionId, false);
-
     // rollback
     deleteSecondaryIndexes(trx, newRevisionId, newDoc, true);
     insertSecondaryIndexes(trx, oldRevisionId, oldDoc, true);
+    removeRevision(newRevisionId, false);
 
     return res;
   }
@@ -3204,7 +3238,7 @@ int LogicalCollection::insertSecondaryIndexes(
       }
     }
   }
-
+    
   return result;
 }
 
@@ -3240,7 +3274,7 @@ int LogicalCollection::deleteSecondaryIndexes(
       result = res;
     }
   }
-
+  
   return result;
 }
 

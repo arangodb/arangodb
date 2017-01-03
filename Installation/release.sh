@@ -3,7 +3,7 @@ set -ex
 
 SCRIPT_DIR=`dirname $0`
 SRC_DIR="${SCRIPT_DIR}/../"
-ENTERPRISE_SRC_DIR=${SRC_DIR}/enterprise
+ENTERPRISE_SRC_DIR=${SRC_DIR}enterprise
 
 FORCE_TAG=0
 TAG=1
@@ -78,8 +78,9 @@ while [ "$#" -gt 0 ];  do
     esac
 done
 
-if [ -d ${ENTERPRISE_SRC_DIR} ];  then
+if [ ! -d ${ENTERPRISE_SRC_DIR} ];  then
     echo "enterprise directory missing"
+    exit 1
 fi
 
 if echo ${VERSION} | grep -q -- '-'; then
@@ -113,7 +114,7 @@ else
     fi
     echo "I'm on Branch: ${GITARGS}"
 fi
-(cd enterprise; git checkout master; git fetch --tags; git pull --all; git checkout ${GITARGS} )
+(cd enterprise; git checkout master; git fetch --tags; git pull --all; git checkout ${GITARGS}; git pull )
 
 
 
@@ -210,6 +211,7 @@ if [ "$TAG" == "1" ];  then
 
     git commit -m "release version $VERSION" -a
     git push
+    git fetch --tags
 
     if test "${FORCE_TAG}" == 0; then
         git tag "v$VERSION"
@@ -220,8 +222,9 @@ if [ "$TAG" == "1" ];  then
     fi        
 
     cd ${ENTERPRISE_SRC_DIR}
-    git commit -m "release version $VERSION enterprise" -a
+    git commit --allow-empty -m "release version $VERSION enterprise" -a
     git push
+    git fetch --tags
 
     if test "${FORCE_TAG}" == 0; then
         git tag "v$VERSION"

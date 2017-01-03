@@ -218,9 +218,11 @@ start() {
     ${BUILD}/bin/arangod \
        -c none \
        --database.directory cluster/data$PORT \
-       --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
+       --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4001 \
+       --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4002 \
+       --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4003 \
        --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
-       --server.endpoint $TRANSPORT://127.0.0.1:$PORT \
+       --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
        --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
        --cluster.my-role $ROLE \
        --log.file cluster/$PORT.log \
@@ -249,9 +251,11 @@ startTerminal() {
     $XTERM $XTERMOPTIONS -e ${BUILD}/bin/arangod \
         -c none \
         --database.directory cluster/data$PORT \
-        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
+        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4001 \
+        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4002 \
+        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4003 \ \
         --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
-        --server.endpoint $TRANSPORT://127.0.0.1:$PORT \
+        --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
         --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
         --cluster.my-role $ROLE \
         --log.file cluster/$PORT.log \
@@ -279,9 +283,11 @@ startDebugger() {
     ${BUILD}/bin/arangod \
       -c none \
       --database.directory cluster/data$PORT \
-      --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
+      --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4001 \
+      --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4002 \
+      --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4003 \ \
       --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
-      --server.endpoint $TRANSPORT://127.0.0.1:$PORT \
+      --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
       --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
       --cluster.my-role $ROLE \
       --log.file cluster/$PORT.log \
@@ -309,9 +315,11 @@ startRR() {
     $XTERM $XTERMOPTIONS -e rr ${BUILD}/bin/arangod \
         -c none \
         --database.directory cluster/data$PORT \
-        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
+        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4001 \
+        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4002 \
+        --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4003 \ \
         --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
-        --server.endpoint $TRANSPORT://127.0.0.1:$PORT \
+        --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
         --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
         --cluster.my-role $ROLE \
         --log.file cluster/$PORT.log \
@@ -395,9 +403,11 @@ if [ "$SECONDARIES" == "1" ] ; then
         ${BUILD}/bin/arangod \
             -c none \
             --database.directory cluster/data$PORT \
-            --cluster.agency-endpoint $TRANSPORT://127.0.0.1:$BASE \
+            --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4001 \
+            --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4002 \
+            --cluster.agency-endpoint $TRANSPORT://127.0.0.1:4003 \ \
             --cluster.my-address $TRANSPORT://127.0.0.1:$PORT \
-            --server.endpoint $TRANSPORT://127.0.0.1:$PORT \
+            --server.endpoint $TRANSPORT://0.0.0.0:$PORT \
             --cluster.my-id $CLUSTER_ID \
             --log.file cluster/$PORT.log \
             --server.statistics true \

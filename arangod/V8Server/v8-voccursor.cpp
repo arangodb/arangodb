@@ -100,9 +100,10 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::move(result), static_cast<size_t>(batchSize), nullptr, ttl, true);
 
     TRI_ASSERT(cursor != nullptr);
+    auto id = cursor->id(); // need to fetch id before release() as release() will delete the cursor
     cursors->release(cursor);
 
-    auto result = V8TickId(isolate, cursor->id());
+    auto result = V8TickId(isolate, id);
     TRI_V8_RETURN(result);
   } catch (...) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
@@ -137,7 +138,7 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_ASSERT(cursors != nullptr);
 
   bool busy;
-  auto cursor = cursors->find(cursorId, busy);
+  auto cursor = cursors->find(cursorId, Cursor::CURSOR_VPACK, busy);
 
   if (cursor == nullptr) {
     if (busy) {

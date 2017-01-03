@@ -3,7 +3,7 @@ OAuth 2.0
 
 `const createOAuth2Client = require('@arangodb/foxx/oauth2');`
 
-The OAuth2 module provides abstractions over OAuth2 providers like Facebook, GitHub and Google.
+The OAuth2 module provides abstractions over OAuth 2.0 providers like Facebook, GitHub and Google.
 
 **Examples**
 
@@ -34,7 +34,7 @@ router.post('/auth', function (req, res) {
   // Set CSRF cookie for five minutes
   res.cookie('oauth2_csrf_token', csrfToken, {ttl: 60 * 5});
   // Redirect to the provider's authorization URL
-  res.redirect(303, oauth2.getAuthUrl(url));
+  res.redirect(303, oauth2.getAuthUrl(redirect_uri));
 });
 
 router.get('/auth', function (req, res) {
@@ -67,7 +67,7 @@ router.get('/auth', function (req, res) {
   // (this requires the users collection)
   let user = users.firstExample({facebookId});
   if (user) {
-    // Update the access_token if it has changed
+    // Update the facebookToken if it has changed
     if (user.facebookToken !== facebookToken) {
       users.update(user, {facebookToken});
     }
@@ -76,14 +76,14 @@ router.get('/auth', function (req, res) {
     user = {
       username: `fb:${facebookId}`,
       facebookId,
-      access_token
+      facebookToken
     }
     const meta = users.save(user);
     Object.assign(user, meta);
   }
   // Log the user in (this requires the session middleware)
   req.session.uid = user._key;
-  req.session.access_token = authData.access_token;
+  req.session.facebookToken = authData.facebookToken;
   req.sessionStorage.save(req.session);
   // Redirect to the default route
   res.redirect(303, req.makeAbsolute('/'));
@@ -93,12 +93,12 @@ router.get('/auth', function (req, res) {
 .queryParam('code', joi.string().optional());
 ```
 
-Creating an OAuth2 client
+Creating an OAuth 2.0 client
 -------------------------
 
 `createOAuth2Client(options): OAuth2Client`
 
-Creates an OAuth2 client.
+Creates an OAuth 2.0 client.
 
 **Arguments**
 
@@ -130,11 +130,11 @@ Creates an OAuth2 client.
 
     The application's *Client Secret* (or *App Secret*) for the provider.
 
-Returns an OAuth2 client for the given provider.
+Returns an OAuth 2.0 client for the given provider.
 
-### Setting up OAuth2 for Facebook
+### Setting up OAuth 2.0 for Facebook
 
-If you want to use Facebook as the OAuth2 provider, use the following options:
+If you want to use Facebook as the OAuth 2.0 provider, use the following options:
 
 * *authEndpoint*: `https://www.facebook.com/dialog/oauth`
 * *tokenEndpoint*: `https://graph.facebook.com/oauth/access_token`
@@ -150,9 +150,9 @@ You also need to obtain a client ID and client secret from Facebook:
 6. Click on *Settings*, then *Advanced* and enter one or more *Valid OAuth redirect URIs*. At least one of them must match your *redirect_uri* later. Don't forget to save your changes.
 7. Set the option *clientId* to the *App ID* and the option *clientSecret* to the *App Secret*.
 
-### Setting up OAuth2 for GitHub
+### Setting up OAuth 2.0 for GitHub
 
-If you want to use GitHub as the OAuth2 provider, use the following options:
+If you want to use GitHub as the OAuth 2.0 provider, use the following options:
 
 * *authEndpoint*: `https://github.com/login/oauth/authorize?scope=user`
 * *tokenEndpoint*: `https://github.com/login/oauth/access_token`
@@ -167,9 +167,9 @@ You also need to obtain a client ID and client secret from GitHub:
 5. Open the application page, then note down the *Client ID* and *Client Secret*.
 6. Set the option *clientId* to the *Client ID* and the option *clientSecret* to the *Client Secret*.
 
-### Setting up OAuth2 for Google
+### Setting up OAuth 2.0 for Google
 
-If you want to use Google as the OAuth2 provider, use the following options:
+If you want to use Google as the OAuth 2.0 provider, use the following options:
 
 * *authEndpoint*: `https://accounts.google.com/o/oauth2/auth?access_type=offline&scope=profile`
 * *tokenEndpoint*: `https://accounts.google.com/o/oauth2/token`
@@ -197,7 +197,7 @@ Generates the authorization URL for the authorization endpoint.
 
 * **redirect_uri**: `string`
 
-  The fully-qualified URL of your application's OAuth2 callback.
+  The fully-qualified URL of your application's OAuth 2.0 callback.
 
 * **args**: (optional)
 
@@ -251,13 +251,13 @@ Performs a *GET* response to the *activeUserEndpoint*.
 
 Throws an exception if the remote server responds with an empty response body.
 
-Also throws an exception if the *activeUserEndpoint* is not configured.
+Returns `null` if the *activeUserEndpoint* is not configured.
 
 **Arguments**
 
 * **access_token**: `string`
 
-  An OAuth2 access token as returned by *exchangeGrantToken*.
+  An OAuth 2.0 access token as returned by *exchangeGrantToken*.
 
 Returns the parsed response object.
 

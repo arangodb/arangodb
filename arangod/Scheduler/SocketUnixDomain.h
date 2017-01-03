@@ -30,7 +30,7 @@
 using namespace arangodb::basics;
 
 namespace arangodb {
-class SocketUnixDomain: public Socket {
+class SocketUnixDomain final : public Socket {
   public:
     SocketUnixDomain(boost::asio::io_service& ioService, boost::asio::ssl::context&& context)
         : Socket(ioService, std::move(context), false),

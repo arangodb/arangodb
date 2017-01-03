@@ -1188,7 +1188,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
                   TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
   } else {
     VPackSlice colls = result.slice()[0].get(std::vector<std::string>(
-        {_agency.prefix(), "Plan", "Collections", dbName}));
+        {AgencyCommManager::path(), "Plan", "Collections", dbName}));
     if (!colls.isObject()) {
       generateError(rest::ResponseCode::SERVER_ERROR,
                     TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);

@@ -112,6 +112,8 @@ union RevisionCacheValue {
   RevisionCacheValue& operator=(RevisionCacheValue const& other) = delete;
   RevisionCacheValue& operator=(RevisionCacheValue&& other) = delete;
 };
+
+static_assert(sizeof(RevisionCacheValue) == 16, "invalid size for RevisionCacheValue");
   
 struct RevisionCacheEntry {
   TRI_voc_rid_t revisionId;
@@ -180,10 +182,14 @@ struct RevisionCacheEntry {
 
 };
 
+static_assert(sizeof(RevisionCacheEntry) == 24, "invalid size for RevisionCacheEntry");
+
 class ReadCache {
  public: 
   ReadCache(RevisionCacheChunkAllocator* allocator, CollectionRevisionsCache* collectionCache);
   ~ReadCache();
+
+  size_t chunksMemoryUsage();
 
   // clear all chunks currently in use. this is a fast-path deletion without checks
   void clear();

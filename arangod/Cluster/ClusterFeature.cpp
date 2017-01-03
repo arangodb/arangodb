@@ -67,7 +67,7 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
 
 ClusterFeature::~ClusterFeature() {
   if (_enableCluster) {
-    AgencyComm::cleanup();
+    ClusterComm::cleanup();
   }
 
   // delete connection manager instance
@@ -82,7 +82,7 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "agency endpoint to connect to",
                      new VectorParameter<StringParameter>(&_agencyEndpoints));
 
-  options->addOption("--cluster.agency-prefix", "agency prefix",
+  options->addOption("--cluster.AgencyCommManager::path", "AgencyCommManager::path",
                      new StringParameter(&_agencyPrefix));
 
   options->addOption("--cluster.my-local-info", "this server's local info",
@@ -151,12 +151,12 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     _agencyPrefix = "arango";
   }
 
-  // validate --cluster.agency-prefix
+  // validate --cluster.AgencyCommManager::path
   size_t found = _agencyPrefix.find_first_not_of(
       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/");
 
   if (found != std::string::npos || _agencyPrefix.empty()) {
-    LOG(FATAL) << "invalid value specified for --cluster.agency-prefix";
+    LOG(FATAL) << "invalid value specified for --cluster.AgencyCommManager::path";
     FATAL_ERROR_EXIT();
   }
 
@@ -242,7 +242,7 @@ void ClusterFeature::prepare() {
   ServerState::instance()->setClusterEnabled();
 
   // register the prefix with the communicator
-  AgencyComm::setPrefix(_agencyPrefix);
+  AgencyCommManager::initialize(_agencyPrefix);
 
   for (size_t i = 0; i < _agencyEndpoints.size(); ++i) {
     std::string const unified = Endpoint::unifiedForm(_agencyEndpoints[i]);
@@ -253,7 +253,7 @@ void ClusterFeature::prepare() {
       FATAL_ERROR_EXIT();
     }
 
-    AgencyComm::addEndpoint(unified);
+    AgencyCommManager::MANAGER->addEndpoint(unified);
   }
 
   // Now either _myId is set properly or _myId is empty and _myLocalInfo and
@@ -266,10 +266,12 @@ void ClusterFeature::prepare() {
   ClusterComm::instance()->enableConnectionErrorLogging(false);
 
   // perform an initial connect to the agency
-  std::string const endpoints = AgencyComm::getEndpointsString();
+  std::string const endpoints = AgencyCommManager::MANAGER->endpointsString();
 
-  if (!AgencyComm::initialize()) {
-    LOG(FATAL) << "Could not connect to agency endpoints (" << endpoints << ")";
+  // perform an initial connect to the agency
+  if (!AgencyCommManager::MANAGER->start()) {
+    LOG(FATAL) << "Could not connect to any agency endpoints ("
+               << AgencyCommManager::MANAGER->endpointsString() << ")";
     FATAL_ERROR_EXIT();
   }
 
@@ -334,7 +336,8 @@ void ClusterFeature::prepare() {
       LOG(INFO) << "Waiting for DBservers to show up...";
       ci->loadCurrentDBServers();
       std::vector<ServerID> DBServers = ci->getCurrentDBServers();
-      if (DBServers.size() > 1 || TRI_microtime() - start > 3600.0) {
+      if (DBServers.size() >= 1 &&
+          (DBServers.size() > 1 || TRI_microtime() - start > 15.0)) {
         LOG(INFO) << "Found " << DBServers.size() << " DBservers.";
         break;
       }
@@ -376,11 +379,11 @@ void ClusterFeature::start() {
   AgencyComm comm;
   comm.sendServerState(0.0);
 
-  std::string const version = comm.getVersion();
+  std::string const version = comm.version();
 
   ServerState::instance()->setInitialized();
 
-  std::string const endpoints = AgencyComm::getEndpointsString();
+  std::string const endpoints = AgencyCommManager::MANAGER->endpointsString();
 
   ServerState::RoleEnum role = ServerState::instance()->getRole();
 
@@ -395,7 +398,7 @@ void ClusterFeature::start() {
     if (result.successful()) {
       velocypack::Slice HeartbeatIntervalMs =
           result.slice()[0].get(std::vector<std::string>(
-              {AgencyComm::prefix(), "Sync", "HeartbeatIntervalMs"}));
+              {AgencyCommManager::path(), "Sync", "HeartbeatIntervalMs"}));
 
       if (HeartbeatIntervalMs.isInteger()) {
         try {
@@ -534,7 +537,6 @@ void ClusterFeature::unprepare() {
     usleep(50000);
   }
   
-  AgencyComm::cleanup();
   ClusterComm::cleanup();
 }
 

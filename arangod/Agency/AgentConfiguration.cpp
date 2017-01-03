@@ -40,7 +40,7 @@ config_t::config_t()
       _compactionStepSize(1000),
       _supervisionGracePeriod(15.0),
       _cmdLineTimings(false),
-      _version(1),
+      _version(0),
       _startup("origin"),
       _lock()
       {}
@@ -60,7 +60,7 @@ config_t::config_t(size_t as, size_t ps, double minp, double maxp,
       _compactionStepSize(c),
       _supervisionGracePeriod(p),
       _cmdLineTimings(t),
-      _version(1),
+      _version(0),
       _startup("origin"),     
       _lock() {}
 
@@ -341,17 +341,36 @@ query_t config_t::poolToBuilder() const {
   return ret;
 }
 
+
+bool config_t::updateEndpoint(std::string const& id, std::string const& ep) {
+  WRITE_LOCKER(readLocker, _lock);
+  if (_pool[id] != ep) {
+    _pool[id] = ep;
+    ++_version;
+    return true;
+  }
+  return false;
+}
+
+
 void config_t::update(query_t const& message) {
   VPackSlice slice = message->slice();
   std::map<std::string, std::string> pool;
   bool changed = false;
-  for (auto const& p : VPackObjectIterator(slice.get("pool"))) {
-    pool[p.key.copyString()] = p.value.copyString();
+  for (auto const& p : VPackObjectIterator(slice.get(poolStr))) {
+    auto const& id = p.key.copyString();
+    if (id != _id) {
+      pool[id] = p.value.copyString();
+    } else {
+      pool[id] = _endpoint;
+    }
   }
   std::vector<std::string> active;
-  for (auto const& a : VPackArrayIterator(slice.get("active"))) {
+  for (auto const& a : VPackArrayIterator(slice.get(activeStr))) {
     active.push_back(a.copyString());
   }
+  double minPing = slice.get(minPingStr).getNumber<double>();
+  double maxPing = slice.get(maxPingStr).getNumber<double>();
   WRITE_LOCKER(writeLocker, _lock);
   if (pool != _pool) {
     _pool = pool;
@@ -359,6 +378,14 @@ void config_t::update(query_t const& message) {
   }
   if (active != _active) {
     _active = active;
+    changed=true;
+  }
+  if (minPing != _minPing) {
+    _minPing = minPing;
+    changed=true;
+  }
+  if (maxPing != _maxPing) {
+    _maxPing = maxPing;
     changed=true;
   }
   if (changed) {
@@ -385,14 +412,14 @@ void config_t::override(VPackSlice const& conf) {
   }
 
   if (conf.hasKey(minPingStr) && conf.get(minPingStr).isDouble()) {
-    _minPing = conf.get(minPingStr).getDouble();
+    _minPing = conf.get(minPingStr).getNumber<double>();
   } else {
     LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override " << minPingStr
                                    << " from " << conf.toJson();
   }
 
   if (conf.hasKey(maxPingStr) && conf.get(maxPingStr).isDouble()) {
-    _maxPing = conf.get(maxPingStr).getDouble();
+    _maxPing = conf.get(maxPingStr).getNumber<double>();
   } else {
     LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override " << maxPingStr
                                    << " from " << conf.toJson();
@@ -436,7 +463,7 @@ void config_t::override(VPackSlice const& conf) {
 
   if (conf.hasKey(supervisionFrequencyStr) &&
       conf.get(supervisionFrequencyStr).isDouble()) {
-    _supervisionFrequency = conf.get(supervisionFrequencyStr).getDouble();
+    _supervisionFrequency = conf.get(supervisionFrequencyStr).getNumber<double>();
   } else {
     LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override "
                                    << supervisionFrequencyStr << " from "
@@ -512,7 +539,6 @@ bool config_t::merge(VPackSlice const& conf) {
   WRITE_LOCKER(writeLocker, _lock); // All must happen under the lock or else ...
 
   _id = conf.get(idStr).copyString();  // I get my id
-  _pool[_id] = _endpoint;              // Register my endpoint with it
   _startup = "persistence";
 
   std::stringstream ss;
@@ -552,7 +578,12 @@ bool config_t::merge(VPackSlice const& conf) {
   if (conf.hasKey(poolStr)) {  // Persistence only
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Found agent pool in persistence:";
     for (auto const& peer : VPackObjectIterator(conf.get(poolStr))) {
-      _pool[peer.key.copyString()] = peer.value.copyString();
+      auto const& id = peer.key.copyString();
+      if (id != _id) {
+        _pool[id] = peer.value.copyString();
+      } else {
+        _pool[id] = _endpoint;
+      }
     }
     ss << conf.get(poolStr).toJson() << " (persisted)";
   } else {
@@ -579,7 +610,7 @@ bool config_t::merge(VPackSlice const& conf) {
   ss << "Min RAFT interval: ";
   if (_minPing == 0) {  // Command line beats persistence
     if (conf.hasKey(minPingStr)) {
-      _minPing = conf.get(minPingStr).getDouble();
+      _minPing = conf.get(minPingStr).getNumber<double>();
       ss << _minPing << " (persisted)";
     } else {
       _minPing = 0.5;
@@ -595,7 +626,7 @@ bool config_t::merge(VPackSlice const& conf) {
   ss << "Max RAFT interval: ";
   if (_maxPing == 0) {  // Command line beats persistence
     if (conf.hasKey(maxPingStr)) {
-      _maxPing = conf.get(maxPingStr).getDouble();
+      _maxPing = conf.get(maxPingStr).getNumber<double>();
       ss << _maxPing << " (persisted)";
     } else {
       _maxPing = 2.5;
@@ -627,7 +658,7 @@ bool config_t::merge(VPackSlice const& conf) {
   ss << "Supervision interval [s]: ";
   if (_supervisionFrequency == 0) {  // Command line beats persistence
     if (conf.hasKey(supervisionFrequencyStr)) {
-      _supervisionFrequency = conf.get(supervisionFrequencyStr).getDouble();
+      _supervisionFrequency = conf.get(supervisionFrequencyStr).getNumber<double>();
       ss << _supervisionFrequency << " (persisted)";
     } else {
       _supervisionFrequency = 2.5;

@@ -36,21 +36,24 @@ void AcceptorTcp::open() {
 
   boost::asio::ip::tcp::endpoint asioEndpoint;
   std::unique_ptr<boost::asio::ip::tcp::resolver::query> query;
+
   if (_endpoint->domain() == AF_INET6) {
-    query.reset(new boost::asio::ip::tcp::resolver::query(boost::asio::ip::tcp::v6(), hostname, std::to_string(portNumber)));
+    query.reset(new boost::asio::ip::tcp::resolver::query(
+        boost::asio::ip::tcp::v6(), hostname, std::to_string(portNumber)));
   } else if (_endpoint->domain() == AF_INET) {
-    query.reset(new boost::asio::ip::tcp::resolver::query(boost::asio::ip::tcp::v4(), hostname, std::to_string(portNumber)));
+    query.reset(new boost::asio::ip::tcp::resolver::query(
+        boost::asio::ip::tcp::v4(), hostname, std::to_string(portNumber)));
   } else {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_IP_ADDRESS_INVALID);
   }
+
   boost::asio::ip::tcp::resolver::iterator iter = resolver.resolve(*query);
 
   asioEndpoint = iter->endpoint();
   _acceptor.open(asioEndpoint.protocol());
 
-  _acceptor.set_option(
-      boost::asio::ip::tcp::acceptor::reuse_address(
-        ((EndpointIp*)_endpoint)->reuseAddress()));
+  _acceptor.set_option(boost::asio::ip::tcp::acceptor::reuse_address(
+      ((EndpointIp*)_endpoint)->reuseAddress()));
 
   _acceptor.bind(asioEndpoint);
   _acceptor.listen();
@@ -64,7 +67,8 @@ void AcceptorTcp::asyncAccept(AcceptHandler const& handler) {
 
 void AcceptorTcp::createPeer() {
   if (_endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-    _peer.reset(new SocketTcp(_ioService, SslServerFeature::SSL->createSslContext(), true));
+    _peer.reset(new SocketTcp(_ioService,
+                              SslServerFeature::SSL->createSslContext(), true));
   } else {
     _peer.reset(new SocketTcp(
         _ioService,

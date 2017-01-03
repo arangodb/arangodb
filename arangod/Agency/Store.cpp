@@ -233,6 +233,9 @@ std::vector<bool> Store::apply(
           std::string oper = j.value.get("op").copyString();
           if (!(oper == "observe" || oper == "unobserve")) {
             std::string uri = j.key.copyString();
+            if (!uri.empty() && uri.at(0)!='/') {
+              uri = std::string("/") + uri;
+            }
             while (true) {
               // TODO: Check if not a special lock will help
               {
@@ -392,12 +395,15 @@ std::vector<bool> Store::read(query_t const& queries, query_t& result) const {
 /// Read single query into ret
 bool Store::read(VPackSlice const& query, Builder& ret) const {
   bool success = true;
+  bool showHidden = false;
 
   // Collect all paths
   std::list<std::string> query_strs;
   if (query.isArray()) {
     for (auto const& sub_query : VPackArrayIterator(query)) {
-      query_strs.push_back(sub_query.copyString());
+      std::string subqstr = sub_query.copyString();
+      query_strs.push_back(subqstr);
+      showHidden |= (subqstr.find("/.") != std::string::npos);
     }
   } else {
     return false;
@@ -434,7 +440,7 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
   }
 
   // Into result builder
-  copy.toBuilder(ret);
+  copy.toBuilder(ret, showHidden);
 
   return success;
 }

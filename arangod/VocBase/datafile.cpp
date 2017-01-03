@@ -1363,35 +1363,37 @@ bool TRI_datafile_t::check(bool ignoreFailures) {
           }
         }
 
-        if (ignoreFailures) {
-          return fix(currentSize);
+        if (!ignoreFailures) {
+          _lastError = TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
+          _currentSize = currentSize;
+          _next = _data + _currentSize;
+          _state = TRI_DF_STATE_OPEN_ERROR;
+
+          LOG(WARN) << "crc mismatch found in datafile '" << getName() << "' of size "
+                    << _maximalSize << ", at position " << currentSize;
+
+          LOG(WARN) << "crc mismatch found inside marker of type '" << TRI_NameMarkerDatafile(marker) 
+                    << "' and size " << size
+                    << ". expected crc: " << CalculateCrcValue(marker) << ", actual crc: " << marker->getCrc();
+
+          if (lastGood != nullptr) {
+            LOG(INFO) << "last good marker found at: " << hexValue(static_cast<uint64_t>(static_cast<uintptr_t>(lastGood - _data)));
+          }
+          printMarker(marker, size, _data, end); 
+
+          if (nextMarkerOk) {
+            LOG(INFO) << "data directly following this marker looks ok so repairing the marker manually may recover it...";
+            LOG(INFO) << "to truncate the file at this marker, please restart the server with the parameter '--wal.ignore-logfile-errors true' if the error happening during WAL recovery, or with parameter '--database.ignore-datafile-errors true' if it happened after WAL recovery";
+          } else {
+            LOG(WARN) << "data directly following this marker cannot be analyzed";
+          }
+
+          return false;
         }
-         
-        _lastError = TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
-        _currentSize = currentSize;
-        _next = _data + _currentSize;
-        _state = TRI_DF_STATE_OPEN_ERROR;
-
-        LOG(WARN) << "crc mismatch found in datafile '" << getName() << "' of size "
-                  << _maximalSize << ", at position " << currentSize;
-
-        LOG(WARN) << "crc mismatch found inside marker of type '" << TRI_NameMarkerDatafile(marker) 
-                  << "' and size " << size
-                  << ". expected crc: " << CalculateCrcValue(marker) << ", actual crc: " << marker->getCrc();
-
-        if (lastGood != nullptr) {
-          LOG(INFO) << "last good marker found at: " << hexValue(static_cast<uint64_t>(static_cast<uintptr_t>(lastGood - _data)));
-        }
-        printMarker(marker, size, _data, end); 
-
-        if (nextMarkerOk) {
-          LOG(INFO) << "data directly following this marker looks ok so repairing the marker may recover it";
-          LOG(INFO) << "please restart the server with the parameter '--wal.ignore-logfile-errors true' to repair the marker";
-        } else {
-          LOG(WARN) << "data directly following this marker cannot be analyzed";
-        }
-
-        return false;
+       
+        // ignore failures...   
+        // truncate
+        return fix(currentSize);
       }
     }
 
@@ -1763,7 +1765,10 @@ TRI_datafile_t* TRI_datafile_t::open(std::string const& filename, bool ignoreFai
   // change to read-write if no footer has been found
   if (!datafile->_isSealed) {
     datafile->_state = TRI_DF_STATE_WRITE;
-    TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ | PROT_WRITE, datafile->_fd);
+    if (TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ | PROT_WRITE, datafile->_fd) != TRI_ERROR_NO_ERROR) {
+      LOG(ERR) << "unable to change file protection for datafile '" << datafile->getName() << "'. please check file permissions and mount options.";
+      return nullptr;
+    }
   }
 
   // Advise on sequential use:
