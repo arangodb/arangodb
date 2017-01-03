@@ -40,7 +40,7 @@ void AgentCallback::shutdown() { _agent = 0; }
 bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
   if (res->status == CL_COMM_SENT) {
     if (_agent) {
-      _agent->reportIn(_slaveID, _last, res->result->getBodyVelocyPack());
+      _agent->reportIn(_slaveID, _last);
     }
     LOG_TOPIC(DEBUG, Logger::AGENCY) 
       << "Got good callback from AppendEntriesRPC: "

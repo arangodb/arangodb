@@ -134,7 +134,7 @@ class Agent : public arangodb::Thread {
   void beginShutdown() override final;
 
   /// @brief Report appended entries from AgentCallback
-  void reportIn(std::string const& id, index_t idx, query_t const& in = nullptr);
+  void reportIn(std::string const& id, index_t idx);
 
   /// @brief Wait for slaves to confirm appended entries
   bool waitFor(index_t last_entry, double timeout = 2.0);

@@ -194,7 +194,7 @@ bool Agent::waitFor(index_t index, double timeout) {
 }
 
 //  AgentCallback reports id of follower and its highest processed index
-void Agent::reportIn(std::string const& peerId, index_t index, query_t const& in) {
+void Agent::reportIn(std::string const& peerId, index_t index) {
 
   {
     // Enforce _lastCommitIndex, _readDB and compaction to progress atomically
