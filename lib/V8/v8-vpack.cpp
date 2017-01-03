@@ -409,7 +409,9 @@ static int V8ToVPack(BuilderContext& context,
           v8::Handle<v8::Function> toJson =
               v8::Handle<v8::Function>::Cast(func);
 
-          v8::Handle<v8::Value> args[] = {};
+          // assign a dummy entry to the args array even if we don't need it.
+          // this prevents "error C2466: cannot allocate an array of constant size 0" in MSVC
+          v8::Handle<v8::Value> args[] = { v8::Null(context.isolate) };
           v8::Handle<v8::Value> converted = toJson->Call(o, 0, args);
 
           if (!converted.IsEmpty()) {
