@@ -215,7 +215,7 @@ bool Inception::restartingActiveAgent() {
             auto const& theirId       = theirConfig.get("id").copyString();
             auto const& tcc           = theirConfig.get("configuration");
             
-            // Known leader. We are done.
+            // Found RAFT with leader
             if (!theirLeaderId.empty()) {
               LOG_TOPIC(INFO, Logger::AGENCY) <<
                 "Found active RAFTing agency lead by " << theirLeaderId <<
@@ -225,10 +225,16 @@ bool Inception::restartingActiveAgent() {
                 tcc.get(
                   std::vector<std::string>({"pool", theirLeaderId})).copyString();
 
-              if (theirLeaderId != theirId) {
+              // Contact leader to update endpoint
+              if (theirLeaderId != theirId) { 
                 comres = arangodb::ClusterComm::instance()->syncRequest(
                   clientId, 1, theirLeaderEp, rest::RequestType::POST, path,
                   greetstr, std::unordered_map<std::string, std::string>(), 2.0);
+                // Failed to contact leader move on until we do. This way at
+                // least we inform everybody individually of the news.
+                if (comres->status != CL_COMM_SENT) {
+                  continue;
+                }
               }
               
               auto agency = std::make_shared<Builder>();
