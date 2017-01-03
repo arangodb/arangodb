@@ -338,8 +338,7 @@ LogicalCollection::LogicalCollection(
       _revisionError(false) {
   _keyGenerator.reset(KeyGenerator::factory(other.keyOptions()));
   
-  // TODO Only DBServer? Is this correct?
-  if (ServerState::instance()->isDBServer()) {
+  if (ServerState::instance()->isDBServer() || !ServerState::instance()->isRunningInCluster()) {
     _followers.reset(new FollowerInfo(this));
   }
 
@@ -593,8 +592,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
     _physical->updateCount(count);
   }
 
-  // TODO Only DBServer? Is this correct?
-  if (ServerState::instance()->isDBServer()) {
+  if (ServerState::instance()->isDBServer() || !ServerState::instance()->isRunningInCluster()) {
     _followers.reset(new FollowerInfo(this));
   }
   
