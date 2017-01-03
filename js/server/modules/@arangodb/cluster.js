@@ -493,7 +493,7 @@ function createLocalCollections (
     envelope[agencyCols + database + '/' + collInfo.planId + '/' + shard] = payload;
 
     global.ArangoAgency.set('Current/Collections/' + database + '/' +
-                            collInfo.planId + '/' + shard, payload)
+                            collInfo.planId + '/' + shard, payload);
     global.ArangoAgency.write([[inccv]]);
     
     console.debug('creating Current/Collections/' + database + '/' +

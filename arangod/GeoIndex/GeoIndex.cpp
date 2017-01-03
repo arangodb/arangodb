@@ -654,10 +654,13 @@ void GeoMkDetail(GeoIx* gix, GeoDetailedPoint* gd, GeoCoordinate* c) {
   gd->gc = c;
   /* The GeoString computation takes about 0.17 microseconds  */
   gd->gs = GeoMkHilbert(c);
+  double const lat = c->latitude * M_PI / 180.0;
+  double const lon = c->longitude * M_PI / 180.0;
+  double const latCos = cos(lat);
   /* This part takes about 0.32 microseconds  */
-  gd->z = sin(c->latitude * M_PI / 180.0);
-  gd->x = cos(c->latitude * M_PI / 180.0) * cos(c->longitude * M_PI / 180.0);
-  gd->y = cos(c->latitude * M_PI / 180.0) * sin(c->longitude * M_PI / 180.0);
+  gd->z = sin(lat);
+  gd->x = latCos * cos(lon);
+  gd->y = latCos * sin(lon);
   /* And this bit takes about 0.45 microseconds  */
   for (int i = 0; i < GeoIndexFIXEDPOINTS; i++) {
     double xx1 = (gix->fixed.x)[i];
@@ -927,7 +930,7 @@ int GeoResultsGrow(GeoResults* gr) {
 /* distances that could be calculated by a separate    */
 /* call to GeoIndex_distance because of rounding errors*/
 /* =================================================== */
-GeoCoordinates* GeoAnswers(GeoIx* gix, GeoResults* gr) {
+GeoCoordinates* GeoAnswers(GeoIx* gix, GeoResults* gr, bool withDistances) {
   GeoCoordinates* ans;
   GeoCoordinate* gc;
   int i, j;
@@ -967,11 +970,14 @@ GeoCoordinates* GeoAnswers(GeoIx* gix, GeoResults* gr) {
     ans->coordinates[j].latitude = (gix->gc)[slot].latitude;
     ans->coordinates[j].longitude = (gix->gc)[slot].longitude;
     ans->coordinates[j].data = (gix->gc)[slot].data;
-    mole = sqrt(gr->snmd[i]);
-    if (mole > 2.0) mole = 2.0; /* make sure arcsin succeeds! */
-    gr->snmd[j] = 2.0 * EARTHRADIAN * asin(mole / 2.0);
+    if (withDistances) {
+      mole = sqrt(gr->snmd[i]);
+      if (mole > 2.0) mole = 2.0; /* make sure arcsin succeeds! */
+      gr->snmd[j] = 2.0 * EARTHRADIAN * asin(mole / 2.0);
+    }
     j++;
   }
+  // note that these are uncalculated if withDistances is false!
   ans->distances = gr->snmd;
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, gr->slot);
@@ -1094,7 +1100,7 @@ GeoCoordinates* GeoIndex_PointsWithinRadius(GeoIdx* gi, GeoCoordinate* c,
       gk.potid[gk.stacksize++] = gp->RorPoints;
     }
   }
-  answer = GeoAnswers(gix, gres);
+  answer = GeoAnswers(gix, gres, true);
   return answer; /* note - this may be NULL  */
 }
 /* =================================================== */
@@ -1159,7 +1165,7 @@ GeoCoordinates* GeoIndex_NearestCountPoints(GeoIdx* gi, GeoCoordinate* c,
       }
     }
   }
-  answer = GeoAnswers(gix, gr);
+  answer = GeoAnswers(gix, gr, true);
   return answer; /* note - this may be NULL  */
 }
 /* =================================================== */
@@ -2060,7 +2066,7 @@ GeoCursor* GeoIndex_NewCursor(GeoIdx* gi, GeoCoordinate* c) {
   return (GeoCursor*)gcr;
 }
 
-GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count) {
+GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count, bool withDistances) {
   int i, j, r;
   GeoCoordinate* ct;
   GeoResults* gr;
@@ -2137,7 +2143,7 @@ GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count) {
       }
     }
   }
-  gcts = GeoAnswers(gcr->Ix, gr);
+  gcts = GeoAnswers(gcr->Ix, gr, withDistances);
   return gcts;
 }
 
