@@ -280,16 +280,18 @@ ArangoCollection.prototype.name = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.status = function () {
-  var result;
-
-  if (this._status === null) {
+  if (this._status === null || 
+      this._status === ArangoCollection.STATUS_UNLOADING || 
+      this._status === ArangoCollection.STATUS_UNLOADED) {
+    this._status = null;
     this.refresh();
   }
 
   // save original status
-  result = this._status;
+  var result = this._status;
 
-  if (this._status === ArangoCollection.STATUS_UNLOADING) {
+  if (this._status === ArangoCollection.STATUS_UNLOADING ||
+      this._status === ArangoCollection.STATUS_UNLOADED) {
     // if collection is currently unloading, we must not cache this info
     this._status = null;
   }
@@ -494,11 +496,11 @@ ArangoCollection.prototype.load = function (count) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.unload = function () {
+  this._status = null;
   var requestResult = this._database._connection.PUT(this._baseurl('unload'), '');
+  this._status = null;
 
   arangosh.checkRequestResult(requestResult);
-
-  this._status = null;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
