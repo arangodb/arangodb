@@ -37,20 +37,14 @@
 
 using namespace arangodb::consensus;
 
-
-// @brief Default ctor
 Inception::Inception() : Thread("Inception"), _agent(nullptr) {}
 
-
-// @brief Construct with agent
 Inception::Inception(Agent* agent) : Thread("Inception"), _agent(agent) {}
 
-
-// @brief Shutdown if not already
+// Shutdown if not already
 Inception::~Inception() { shutdown(); }
 
-
-/// @brief Gossip to others
+/// Gossip to others
 /// - Get snapshot of gossip peers and agent pool
 /// - Create outgoing gossip.
 /// - Send to all peers
@@ -152,12 +146,6 @@ void Inception::gossip() {
 
     // don't panic just yet
     _cv.wait(waitInterval);
-<<<<<<< HEAD
-    if (waitInterval < 2500000) {
-      waitInterval *= 2;
-    }
-  }
-=======
     if (waitInterval < 2500000) { // 2.5s
       waitInterval *= 2;
     }
@@ -190,19 +178,13 @@ bool Inception::restartingActiveAgent() {
 
   seconds const timeout(3600);
   long waitInterval(500000);  
->>>>>>> d9f016031a3cf25df59996bdaff9f1044c445e1f
   
   CONDITION_LOCKER(guard, _cv);
 
   active.erase(
     std::remove(active.begin(), active.end(), myConfig.id()), active.end());
 
-<<<<<<< HEAD
-  // Can only be done responsibly, if we are complete
-  if (myConfig.poolComplete()) {
-=======
   while (!this->isStopping() && !_agent->isStopping()) {
->>>>>>> d9f016031a3cf25df59996bdaff9f1044c445e1f
     
     active.erase(
       std::remove(active.begin(), active.end(), ""), active.end());
@@ -329,21 +311,12 @@ bool Inception::restartingActiveAgent() {
         LOG_TOPIC(ERR, Logger::AGENCY)
           << "Failed to find complete pool of agents. Giving up!";
       }
-<<<<<<< HEAD
-      
-      _cv.wait(waitInterval);
-      if (waitInterval < 2500000) {
-        waitInterval *= 2;
-      }
-
-=======
       break;
     }
     
     _cv.wait(waitInterval);
     if (waitInterval < 2500000) { // 2.5s
       waitInterval *= 2;
->>>>>>> d9f016031a3cf25df59996bdaff9f1044c445e1f
     }
     
   }
@@ -552,8 +525,6 @@ bool Inception::estimateRAFTInterval() {
 
 // @brief Thread main
 void Inception::run() {
-
-  // We wait for rest handler and vocbase before any further step
   while (arangodb::rest::RestHandlerFactory::isMaintenance() &&
          !this->isStopping() && !_agent->isStopping()) {
     usleep(1000000);
@@ -562,35 +533,6 @@ void Inception::run() {
          " start gossip protocol...";
   }
 
-<<<<<<< HEAD
-  auto config = _agent->config();
-
-  // Persisted pool
-  if (config.poolComplete()) {
-
-    if (restartingActiveAgent()) {
-      _agent->ready(true);
-    }
-    
-  } else { // Fresh start
-
-    gossip();
-
-    config = _agent->config();
-    if (!config.poolComplete()) {
-      LOG_TOPIC(FATAL, Logger::AGENCY)
-        << "Failed to build environment for RAFT algorithm. Bailing out!";
-      FATAL_ERROR_EXIT();
-    }
-    
-    if (!config.cmdLineTimings()) {
-      estimateRAFTInterval();
-    }
-    
-    _agent->ready(true);
-    
-  }
-=======
   config_t config = _agent->config();
   
   // Are we starting from persisted pool?
@@ -626,7 +568,6 @@ void Inception::run() {
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Activating agent.";
   _agent->ready(true);
->>>>>>> d9f016031a3cf25df59996bdaff9f1044c445e1f
 
 }
 

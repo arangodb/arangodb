@@ -66,10 +66,6 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
 }
 
 ClusterFeature::~ClusterFeature() {
-  if (_enableCluster) {
-    ClusterComm::cleanup();
-  }
-
   // delete connection manager instance
   auto cm = httpclient::ConnectionManager::instance();
   delete cm;
