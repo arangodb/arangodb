@@ -419,6 +419,8 @@ inline RestStatus RestAgencyHandler::handleRead() {
 }
 
 RestStatus RestAgencyHandler::handleConfig() {
+
+  // Update endpoint of peer
   if (_request->requestType() == rest::RequestType::POST) {
     try {
       arangodb::velocypack::Options options;
@@ -429,15 +431,20 @@ RestStatus RestAgencyHandler::handleConfig() {
       return RestStatus::DONE;
     }
   }
+
+  // Respond with configuration
   Builder body;
-  body.add(VPackValue(VPackValueType::Object));
-  body.add("term", Value(_agent->term()));
-  body.add("leaderId", Value(_agent->leaderID()));
-  body.add("lastCommitted", Value(_agent->lastCommitted()));
-  body.add("lastAcked", _agent->lastAckedAgo()->slice());
-  body.add("configuration", _agent->config().toBuilder()->slice());
-  body.close();
+  {
+    VPackObjectBuilder b(&body);
+    body.add("term", Value(_agent->term()));
+    body.add("leaderId", Value(_agent->leaderID()));
+    body.add("lastCommitted", Value(_agent->lastCommitted()));
+    body.add("lastAcked", _agent->lastAckedAgo()->slice());
+    body.add("configuration", _agent->config().toBuilder()->slice());
+  }
+  
   generateResult(rest::ResponseCode::OK, body.slice());
+  
   return RestStatus::DONE;
 }
 
