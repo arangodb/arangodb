@@ -267,7 +267,7 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// @brief read transaction to the agency
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_InterfaceAgency(std::string const& interface,
+static void JS_APIAgency(std::string const& interface,
                                v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
@@ -314,13 +314,13 @@ static void JS_InterfaceAgency(std::string const& interface,
 
 }
 static void JS_ReadAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  JS_InterfaceAgency("read", args);
+  JS_APIAgency("read", args);
 }
 static void JS_WriteAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  JS_InterfaceAgency("write", args);
+  JS_APIAgency("write", args);
 }
 static void JS_TransactAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  JS_InterfaceAgency("transact", args);
+  JS_APIAgency("transact", args);
 }
 
 
