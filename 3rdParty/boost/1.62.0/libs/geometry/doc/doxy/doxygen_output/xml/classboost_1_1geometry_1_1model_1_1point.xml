@@ -1,0 +1,268 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1model_1_1point" kind="class" prot="public">
+    <compoundname>boost::geometry::model::point</compoundname>
+    <includes local="no">point.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename</type>
+        <declname>CoordinateType</declname>
+        <defname>CoordinateType</defname>
+      </param>
+      <param>
+        <type>std::size_t</type>
+        <declname>DimensionCount</declname>
+        <defname>DimensionCount</defname>
+      </param>
+      <param>
+        <type>typename</type>
+        <declname>CoordinateSystem</declname>
+        <defname>CoordinateSystem</defname>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="private-type">
+      <memberdef kind="enum" id="classboost_1_1geometry_1_1model_1_1point_1a5d87761f616023af847926d4d3b1509b" prot="private" static="no">
+        <name>@0</name>
+        <enumvalue id="classboost_1_1geometry_1_1model_1_1point_1a5d87761f616023af847926d4d3b1509ba3eed41f2b1a884a51fc0818f62a19781" prot="private">
+          <name>cs_check</name>
+          <initializer>= sizeof(CoordinateSystem)</initializer>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+          </detaileddescription>
+        </enumvalue>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/point.hpp" line="117" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/point.hpp" bodystart="117" bodyend="117"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1model_1_1point_1afb10d8b769a47d3d64adfedf85bcdb2a" prot="private" static="no" mutable="no">
+        <type>CoordinateType</type>
+        <definition>CoordinateType boost::geometry::model::point&lt; CoordinateType, DimensionCount, CoordinateSystem &gt;::m_values[DimensionCount]</definition>
+        <argsstring>[DimensionCount]</argsstring>
+        <name>m_values</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/point.hpp" line="213" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/point.hpp" bodystart="213" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1point_1ad437571e4f1cdc271385701fb3447b10" prot="private" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::point&lt; CoordinateType, DimensionCount, CoordinateSystem &gt;::BOOST_MPL_ASSERT_MSG</definition>
+        <argsstring>((DimensionCount &gt;=1), DIMENSION_GREATER_THAN_ZERO_EXPECTED,(boost::mpl::int_&lt; DimensionCount &gt;))</argsstring>
+        <name>BOOST_MPL_ASSERT_MSG</name>
+        <param>
+          <type>(DimensionCount &gt;=1)</type>
+        </param>
+        <param>
+          <type>DIMENSION_GREATER_THAN_ZERO_EXPECTED</type>
+        </param>
+        <param>
+          <type>(boost::mpl::int_&lt; DimensionCount &gt;)</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/point.hpp" line="110" column="1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1point_1a5042d74b21e525743168c56563ddf015" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>std::size_t</type>
+            <declname>K</declname>
+            <defname>K</defname>
+          </param>
+        </templateparamlist>
+        <type>CoordinateType const &amp;</type>
+        <definition>CoordinateType const&amp; boost::geometry::model::point&lt; CoordinateType, DimensionCount, CoordinateSystem &gt;::get</definition>
+        <argsstring>() const </argsstring>
+        <name>get</name>
+        <briefdescription>
+<para>Get a coordinate. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>K</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>coordinate to get </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>the coordinate </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/point.hpp" line="187" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/point.hpp" bodystart="187" bodyend="195"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1point_1a768fcbb0028e80ee4579a47f5d058370" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::point&lt; CoordinateType, DimensionCount, CoordinateSystem &gt;::point</definition>
+        <argsstring>()=default</argsstring>
+        <name>point</name>
+        <briefdescription>
+<para>Default constructor, no initialization. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/point.hpp" line="124" column="1"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1point_1a0236fd6973659285b15292d9370e9136" prot="public" static="no" const="no" explicit="yes" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::point&lt; CoordinateType, DimensionCount, CoordinateSystem &gt;::point</definition>
+        <argsstring>(CoordinateType const &amp;v0)</argsstring>
+        <name>point</name>
+        <param>
+          <type>CoordinateType const &amp;</type>
+          <declname>v0</declname>
+        </param>
+        <briefdescription>
+<para>Constructor to set one value. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/point.hpp" line="144" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/point.hpp" bodystart="144" bodyend="154"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1point_1abe00d79aa3ed9be100f1a34b7d09249b" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::point&lt; CoordinateType, DimensionCount, CoordinateSystem &gt;::point</definition>
+        <argsstring>(CoordinateType const &amp;v0, CoordinateType const &amp;v1)</argsstring>
+        <name>point</name>
+        <param>
+          <type>CoordinateType const &amp;</type>
+          <declname>v0</declname>
+        </param>
+        <param>
+          <type>CoordinateType const &amp;</type>
+          <declname>v1</declname>
+        </param>
+        <briefdescription>
+<para>Constructor to set two values. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/point.hpp" line="157" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/point.hpp" bodystart="157" bodyend="167"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1point_1a2d74ab12275dd09e47b50ab941f71e58" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::model::point&lt; CoordinateType, DimensionCount, CoordinateSystem &gt;::point</definition>
+        <argsstring>(CoordinateType const &amp;v0, CoordinateType const &amp;v1, CoordinateType const &amp;v2)</argsstring>
+        <name>point</name>
+        <param>
+          <type>CoordinateType const &amp;</type>
+          <declname>v0</declname>
+        </param>
+        <param>
+          <type>CoordinateType const &amp;</type>
+          <declname>v1</declname>
+        </param>
+        <param>
+          <type>CoordinateType const &amp;</type>
+          <declname>v2</declname>
+        </param>
+        <briefdescription>
+<para>Constructor to set three values. </para>        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/point.hpp" line="170" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/point.hpp" bodystart="170" bodyend="181"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1model_1_1point_1adc88778b0d7c9e70aeeed0981c003a67" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>std::size_t</type>
+            <declname>K</declname>
+            <defname>K</defname>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::model::point&lt; CoordinateType, DimensionCount, CoordinateSystem &gt;::set</definition>
+        <argsstring>(CoordinateType const &amp;value)</argsstring>
+        <name>set</name>
+        <param>
+          <type>CoordinateType const &amp;</type>
+          <declname>value</declname>
+        </param>
+        <briefdescription>
+<para>Set a coordinate. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>K</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>coordinate to set </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>value</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>value to set </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/point.hpp" line="201" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/point.hpp" bodystart="201" bodyend="209"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Basic point class, having coordinates defined in a neutral way. </para>    </briefdescription>
+    <detaileddescription>
+<para>Defines a neutral point class, fulfilling the Point Concept. Library users can use this point class, or use their own point classes. This point class is used in most of the samples and tests of Boost.Geometry This point class is used occasionally within the library, where a temporary point class is necessary.</para><para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>CoordinateType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>numerical type (int, double, ttmath, ...) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>DimensionCount</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>number of coordinates, usually 2 or 3 </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CoordinateSystem</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>coordinate system, for example <ref refid="structboost_1_1geometry_1_1cs_1_1cartesian" kindref="compound">cs::cartesian</ref></para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>[include reference/geometries/point.qbk]</qbk>   <qbk.before.synopsis> [heading Model of]</qbk.before.synopsis>   <qbk.before.synopsis> [link geometry.reference.concepts.concept_point Point Concept]</qbk.before.synopsis>  </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/point.hpp" line="109" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/point.hpp" bodystart="108" bodyend="219"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1model_1_1point_1ad437571e4f1cdc271385701fb3447b10" prot="private" virt="non-virtual"><scope>boost::geometry::model::point</scope><name>BOOST_MPL_ASSERT_MSG</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1point_1a5d87761f616023af847926d4d3b1509ba3eed41f2b1a884a51fc0818f62a19781" prot="private" virt="non-virtual"><scope>boost::geometry::model::point</scope><name>cs_check</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1point_1a5042d74b21e525743168c56563ddf015" prot="public" virt="non-virtual"><scope>boost::geometry::model::point</scope><name>get</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1point_1afb10d8b769a47d3d64adfedf85bcdb2a" prot="private" virt="non-virtual"><scope>boost::geometry::model::point</scope><name>m_values</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1point_1a768fcbb0028e80ee4579a47f5d058370" prot="public" virt="non-virtual"><scope>boost::geometry::model::point</scope><name>point</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1point_1a0236fd6973659285b15292d9370e9136" prot="public" virt="non-virtual"><scope>boost::geometry::model::point</scope><name>point</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1point_1abe00d79aa3ed9be100f1a34b7d09249b" prot="public" virt="non-virtual"><scope>boost::geometry::model::point</scope><name>point</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1point_1a2d74ab12275dd09e47b50ab941f71e58" prot="public" virt="non-virtual"><scope>boost::geometry::model::point</scope><name>point</name></member>
+      <member refid="classboost_1_1geometry_1_1model_1_1point_1adc88778b0d7c9e70aeeed0981c003a67" prot="public" virt="non-virtual"><scope>boost::geometry::model::point</scope><name>set</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

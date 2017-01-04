@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1compress__variant" kind="struct" prot="public">
+    <compoundname>boost::geometry::compress_variant</compoundname>
+    <basecompoundref refid="structboost_1_1geometry_1_1detail_1_1variant__or__single" prot="public" virt="non-virtual">boost::geometry::detail::variant_or_single&lt; detail::unique_types&lt; Variant &gt;::type &gt;</basecompoundref>
+    <includes local="no">compress_variant.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Variant</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+<para>Meta-function that takes a boost::variant type and tries to minimize it by doing the following: </para>    </briefdescription>
+    <detaileddescription>
+<para><itemizedlist>
+<listitem><para>if there&apos;s any duplicate types, remove them</para></listitem><listitem><para>if the result is a variant of one type, turn it into just that type</para></listitem></itemizedlist>
+</para><para><simplesect kind="par"><title>Example</title><para><programlisting><codeline><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/>variant&lt;int,<sp/>float,<sp/>int,<sp/>long&gt;<sp/>variant_type;</highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/>compress_variant&lt;variant_type&gt;::type<sp/>compressed;</highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/>boost::mpl::vector&lt;int,<sp/>float,<sp/>long&gt;<sp/>result_types;</highlight></codeline>
+<codeline><highlight class="normal">BOOST_MPL_ASSERT((<sp/>boost::mpl::equal&lt;compressed::types,<sp/>result_types&gt;<sp/>));</highlight></codeline>
+<codeline><highlight class="normal"></highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/>variant&lt;int,<sp/>int,<sp/>int&gt;<sp/>one_type_variant_type;</highlight></codeline>
+<codeline><highlight class="normal"></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/>compress_variant&lt;one_type_variant_type&gt;::type<sp/>single_type;</highlight></codeline>
+<codeline><highlight class="normal">BOOST_MPL_ASSERT((<sp/>boost::equals&lt;single_type,<sp/>int&gt;<sp/>));</highlight></codeline>
+</programlisting> </para></simplesect>
+</para>    </detaileddescription>
+    <inheritancegraph>
+      <node id="79">
+        <label>boost::geometry::detail::variant_or_single&lt; detail::unique_types&lt; Variant &gt;::type &gt;</label>
+        <link refid="structboost_1_1geometry_1_1detail_1_1variant__or__single"/>
+        <childnode refid="80" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="80">
+        <label>boost::mpl::if_&lt; boost::mpl::equal_to&lt; boost::mpl::size&lt; detail::unique_types&lt; Variant &gt;::type  &gt;, boost::mpl::int_&lt; 1 &gt; &gt;, boost::mpl::front&lt; detail::unique_types&lt; Variant &gt;::type  &gt;::type, make_variant_over&lt; detail::unique_types&lt; Variant &gt;::type  &gt;::type &gt;</label>
+      </node>
+      <node id="78">
+        <label>boost::geometry::compress_variant&lt; Variant &gt;</label>
+        <link refid="structboost_1_1geometry_1_1compress__variant"/>
+        <childnode refid="79" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="82">
+        <label>boost::geometry::detail::variant_or_single&lt; detail::unique_types&lt; Variant &gt;::type &gt;</label>
+        <link refid="structboost_1_1geometry_1_1detail_1_1variant__or__single"/>
+        <childnode refid="83" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="83">
+        <label>boost::mpl::if_&lt; boost::mpl::equal_to&lt; boost::mpl::size&lt; detail::unique_types&lt; Variant &gt;::type  &gt;, boost::mpl::int_&lt; 1 &gt; &gt;, boost::mpl::front&lt; detail::unique_types&lt; Variant &gt;::type  &gt;::type, make_variant_over&lt; detail::unique_types&lt; Variant &gt;::type  &gt;::type &gt;</label>
+      </node>
+      <node id="81">
+        <label>boost::geometry::compress_variant&lt; Variant &gt;</label>
+        <link refid="structboost_1_1geometry_1_1compress__variant"/>
+        <childnode refid="82" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/util/compress_variant.hpp" line="100" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/util/compress_variant.hpp" bodystart="96" bodyend="100"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

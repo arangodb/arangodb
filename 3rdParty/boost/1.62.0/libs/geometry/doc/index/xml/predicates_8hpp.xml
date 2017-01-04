@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="predicates_8hpp" kind="file">
+    <compoundname>predicates.hpp</compoundname>
+    <includes local="no">utility</includes>
+    <includes local="no">boost/tuple/tuple.hpp</includes>
+    <includes local="no">boost/mpl/assert.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/predicates.hpp</includes>
+    <includes local="no">boost/geometry/index/detail/tuples.hpp</includes>
+    <includedby refid="rtree_8hpp" local="no">/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp</includedby>
+    <incdepgraph>
+      <node id="30">
+        <label>boost/tuple/tuple.hpp</label>
+      </node>
+      <node id="28">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/index/predicates.hpp</label>
+        <link refid="predicates.hpp"/>
+        <childnode refid="29" relation="include">
+        </childnode>
+        <childnode refid="30" relation="include">
+        </childnode>
+        <childnode refid="31" relation="include">
+        </childnode>
+        <childnode refid="32" relation="include">
+        </childnode>
+        <childnode refid="33" relation="include">
+        </childnode>
+      </node>
+      <node id="31">
+        <label>boost/mpl/assert.hpp</label>
+      </node>
+      <node id="33">
+        <label>boost/geometry/index/detail/tuples.hpp</label>
+      </node>
+      <node id="29">
+        <label>utility</label>
+      </node>
+      <node id="32">
+        <label>boost/geometry/index/detail/predicates.hpp</label>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="34">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/index/predicates.hpp</label>
+        <link refid="predicates.hpp"/>
+        <childnode refid="35" relation="include">
+        </childnode>
+      </node>
+      <node id="35">
+        <label>/home/travis/build/boostorg/boost/boost/geometry/index/rtree.hpp</label>
+        <link refid="rtree_8hpp_source"/>
+      </node>
+    </invincdepgraph>
+    <innernamespace refid="namespaceboost">boost</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry">boost::geometry</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1index">boost::geometry::index</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1index_1_1detail">boost::geometry::index::detail</innernamespace>
+    <innernamespace refid="namespaceboost_1_1geometry_1_1index_1_1detail_1_1predicates">boost::geometry::index::detail::predicates</innernamespace>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/index/predicates.hpp"/>
+  </compounddef>
+</doxygen>

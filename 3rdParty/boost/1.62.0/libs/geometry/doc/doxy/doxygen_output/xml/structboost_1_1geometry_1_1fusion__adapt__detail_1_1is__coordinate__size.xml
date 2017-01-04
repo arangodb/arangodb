@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1fusion__adapt__detail_1_1is__coordinate__size" kind="struct" prot="public">
+    <compoundname>boost::geometry::fusion_adapt_detail::is_coordinate_size</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">boost::mpl::bool_&lt; boost::fusion::result_of::size&lt; Sequence &gt;::value==2||boost::fusion::result_of::size&lt; Sequence &gt;::value==3 &gt;</basecompoundref>
+    <includes local="no">boost_fusion.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>class Sequence</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="397">
+        <label>boost::mpl::bool_&lt; boost::fusion::result_of::size&lt; Sequence &gt;::value==2||boost::fusion::result_of::size&lt; Sequence &gt;::value==3 &gt;</label>
+      </node>
+      <node id="396">
+        <label>boost::geometry::fusion_adapt_detail::is_coordinate_size&lt; Sequence &gt;</label>
+        <link refid="structboost_1_1geometry_1_1fusion__adapt__detail_1_1is__coordinate__size"/>
+        <childnode refid="397" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="399">
+        <label>boost::mpl::bool_&lt; boost::fusion::result_of::size&lt; Sequence &gt;::value==2||boost::fusion::result_of::size&lt; Sequence &gt;::value==3 &gt;</label>
+      </node>
+      <node id="398">
+        <label>boost::geometry::fusion_adapt_detail::is_coordinate_size&lt; Sequence &gt;</label>
+        <link refid="structboost_1_1geometry_1_1fusion__adapt__detail_1_1is__coordinate__size"/>
+        <childnode refid="399" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/adapted/boost_fusion.hpp" line="70" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/adapted/boost_fusion.hpp" bodystart="68" bodyend="70"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

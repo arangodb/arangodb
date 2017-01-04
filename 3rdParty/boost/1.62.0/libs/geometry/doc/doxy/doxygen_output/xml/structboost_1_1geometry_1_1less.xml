@@ -1,0 +1,118 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1less" kind="struct" prot="public">
+    <compoundname>boost::geometry::less</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">dispatch::compare_geometries&lt; 1, Point, Strategy, Dimension &gt;</basecompoundref>
+    <includes local="no">compare.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Point</type>
+      </param>
+      <param>
+        <type>int</type>
+        <declname>Dimension</declname>
+        <defname>Dimension</defname>
+        <defval>-1</defval>
+      </param>
+      <param>
+        <type>typename Strategy</type>
+        <defval><ref refid="structboost_1_1geometry_1_1strategy_1_1compare_1_1default__strategy" kindref="compound">strategy::compare::default_strategy</ref></defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1less_1a0e8afa849f58539a34983c97f40bc5d4" prot="public" static="no">
+        <type>Point</type>
+        <definition>typedef Point boost::geometry::less&lt; Point, Dimension, Strategy &gt;::first_argument_type</definition>
+        <argsstring></argsstring>
+        <name>first_argument_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/compare.hpp" line="184" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/compare.hpp" bodystart="184" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1less_1a13f145f4a23f60d2f820d1b4fefb9eb7" prot="public" static="no">
+        <type>bool</type>
+        <definition>typedef bool boost::geometry::less&lt; Point, Dimension, Strategy &gt;::result_type</definition>
+        <argsstring></argsstring>
+        <name>result_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/compare.hpp" line="186" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/compare.hpp" bodystart="186" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1less_1a5da96dc71f58dbb244f8a51caae393d2" prot="public" static="no">
+        <type>Point</type>
+        <definition>typedef Point boost::geometry::less&lt; Point, Dimension, Strategy &gt;::second_argument_type</definition>
+        <argsstring></argsstring>
+        <name>second_argument_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/compare.hpp" line="185" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/compare.hpp" bodystart="185" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Less functor, to sort points in ascending order. </para>    </briefdescription>
+    <detaileddescription>
+<para>This functor compares points and orders them on x, then on y, then on z coordinate. <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the geometry </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Dimension</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the dimension to sort on, defaults to -1, indicating ALL dimensions. That&apos;s to say, first on x, on equal x-es then on y, etc. If a dimension is specified, only that dimension is considered </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Strategy</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>underlying coordinate comparing functor, defaults to the default comparison strategies related to the point coordinate system. If specified, the specified strategy is used. This can e.g. be std::less&lt;double&gt;. </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>    </detaileddescription>
+    <inheritancegraph>
+      <node id="478">
+        <label>dispatch::compare_geometries&lt; 1, Point, Strategy, Dimension &gt;</label>
+      </node>
+      <node id="477">
+        <label>boost::geometry::less&lt; Point, Dimension, Strategy &gt;</label>
+        <link refid="structboost_1_1geometry_1_1less"/>
+        <childnode refid="478" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="480">
+        <label>dispatch::compare_geometries&lt; 1, Point, Strategy, Dimension &gt;</label>
+      </node>
+      <node id="479">
+        <label>boost::geometry::less&lt; Point, Dimension, Strategy &gt;</label>
+        <link refid="structboost_1_1geometry_1_1less"/>
+        <childnode refid="480" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/policies/compare.hpp" line="183" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/policies/compare.hpp" bodystart="175" bodyend="187"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1less_1a0e8afa849f58539a34983c97f40bc5d4" prot="public" virt="non-virtual"><scope>boost::geometry::less</scope><name>first_argument_type</name></member>
+      <member refid="structboost_1_1geometry_1_1less_1a13f145f4a23f60d2f820d1b4fefb9eb7" prot="public" virt="non-virtual"><scope>boost::geometry::less</scope><name>result_type</name></member>
+      <member refid="structboost_1_1geometry_1_1less_1a5da96dc71f58dbb244f8a51caae393d2" prot="public" virt="non-virtual"><scope>boost::geometry::less</scope><name>second_argument_type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

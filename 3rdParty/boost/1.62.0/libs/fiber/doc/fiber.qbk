@@ -1,0 +1,724 @@
+[/
+  (C) Copyright 2007-8 Anthony Williams.
+  (C) Copyright 2011-12 Vicente J. Botet Escriba.
+  (C) Copyright 2013 Oliver Kowalke.
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:fiber_mgmt Fiber management]
+
+[heading Synopsis]
+
+        #include <boost/fiber/all.hpp>
+
+        namespace boost {
+        namespace fibers {
+
+        class fiber;
+        bool operator<( fiber const& l, fiber const& r) noexcept;
+        void swap( fiber & l, fiber & r) noexcept;
+
+        template< typename SchedAlgo, typename ... Args >
+        void use_scheduling_algorithm( Args && ... args);
+        bool has_ready_fibers();
+
+        namespace algo {
+
+        struct algorithm;
+        template< typename PROPS >
+        struct algorithm_with_properties;
+        class round_robin;
+        class shared_round_robin;
+
+        }
+
+        namespace this_fiber {
+
+        fibers::id get_id() noexcept;
+        void yield();
+        template< typename Clock, typename Duration >
+        void sleep_until( std::chrono::time_point< Clock, Duration > const& abs_time)
+        template< typename Rep, typename Period >
+        void sleep_for( std::chrono::duration< Rep, Period > const& rel_time); 
+        template< typename PROPS >
+        PROPS & properties();
+
+        }}
+
+
+[heading Tutorial]
+
+Each __fiber__ represents a micro-thread which will be launched and managed
+cooperatively by a scheduler. Objects of type __fiber__ are move-only.
+
+        boost::fibers::fiber f1; // not-a-fiber
+
+        void f() {
+            boost::fibers::fiber f2( some_fn);
+
+            f1 = std::move( f2); // f2 moved to f1
+        }
+
+
+[heading Launching]
+
+A new fiber is launched by passing an object of a callable type that can be
+invoked with no parameters.
+If the object must not be copied or moved, then ['std::ref] can be used to
+pass in a reference to the function object. In this case, the user must ensure
+that the referenced object outlives the newly-created fiber.
+
+        struct callable {
+            void operator()();
+        };
+
+        boost::fibers::fiber copies_are_safe() {
+            callable x;
+            return boost::fibers::fiber( x);
+        } // x is destroyed, but the newly-created fiber has a copy, so this is OK
+
+        boost::fibers::fiber oops() {
+            callable x;
+            return boost::fibers::fiber( std::ref( x) );
+        } // x is destroyed, but the newly-created fiber still has a reference
+          // this leads to undefined behaviour
+
+The spawned __fiber__ does not immediately start running. It is enqueued in
+the list of ready-to-run fibers, and will run when the scheduler gets around
+to it.
+
+
+[#exceptions]
+[heading Exceptions]
+
+An exception escaping from the function or callable object passed to the __fiber__
+constructor calls `std::terminate()`.
+If you need to know which exception was thrown, use __future__ or
+__packaged_task__.
+
+
+[heading Detaching]
+
+A __fiber__ can be detached by explicitly invoking the __detach__ member
+function. After __detach__ is called on a fiber object, that object represents
+__not_a_fiber__. The fiber object may then safely be destroyed.
+
+        boost::fibers::fiber( some_fn).detach();
+
+__boost_fiber__ provides a number of ways to wait for a running fiber to
+complete. You can coordinate even with a detached fiber using a [class_link
+mutex], or [class_link condition_variable], or any of the other [link
+synchronization synchronization objects] provided by the library.
+
+If a detached fiber is still running when the thread[s] main fiber terminates,
+the thread will not shut down.
+
+[heading Joining]
+
+In order to wait for a fiber to finish, the __join__ member function of the
+__fiber__ object can be used. __join__ will block until the __fiber__ object
+has completed.
+
+        void some_fn() {
+            ...
+        }
+
+        boost::fibers::fiber f( some_fn);
+        ...
+        f.join();
+
+If the fiber has already completed, then __join__ returns immediately and
+the joined __fiber__ object becomes __not_a_fiber__.
+
+
+[heading Destruction]
+
+When a __fiber__ object representing a valid execution context (the fiber is
+__joinable__) is destroyed, the program terminates. If you intend the fiber to
+outlive the __fiber__ object that launched it, use the __detach__ method.
+
+        {
+            boost::fibers::fiber f( some_fn);
+        } // std::terminate() will be called
+
+        {
+            boost::fibers::fiber f(some_fn);
+            f.detach();
+        } // okay, program continues
+
+
+[#class_fiber_id]
+[heading Fiber IDs]
+
+Objects of class __fiber_id__ can be used to identify fibers. Each running
+__fiber__ has a unique __fiber_id__ obtainable from the corresponding __fiber__
+by calling the __get_id__ member function.
+Objects of class __fiber_id__ can be copied, and used as keys in associative
+containers: the full range of comparison operators is provided.
+They can also be written to an output stream using the stream insertion
+operator, though the output format is unspecified.
+
+Each instance of __fiber_id__ either refers to some fiber, or __not_a_fiber__.
+Instances that refer to __not_a_fiber__ compare equal to each other, but
+not equal to any instances that refer to an actual fiber. The comparison
+operators on __fiber_id__ yield a total order for every non-equal __fiber_id__.
+
+[#class_launch]
+[heading Enumeration `launch`]
+
+`launch` specifies whether control passes immediately into a
+newly-launched fiber.
+
+        enum class launch {
+            dispatch,
+            post
+        };
+
+[heading `dispatch`]
+[variablelist
+[[Effects:] [A fiber launched with `launch == dispatch` is entered
+immediately. In other words, launching a fiber with `dispatch` suspends the
+caller (the previously-running fiber) until the fiber scheduler has a chance
+to resume it later.]]
+]
+
+[heading `post`]
+[variablelist
+[[Effects:] [A fiber launched with `launch == post` is passed to the
+fiber scheduler as ready, but it is not yet entered. The caller (the
+previously-running fiber) continues executing. The newly-launched fiber will
+be entered when the fiber scheduler has a chance to resume it later.]]
+[[Note:] [If `launch` is not explicitly specified, `post` is the default.]]
+] 
+
+
+[#class_fiber]
+[section:fiber Class `fiber`]
+
+        #include <boost/fiber/fiber.hpp>
+
+        namespace boost {
+        namespace fibers {
+
+        class fiber {
+        public:
+            class id;
+
+            constexpr fiber() noexcept;
+
+            template< typename Fn, typename ... Args >
+            fiber( Fn &&, Args && ...);
+
+            template< typename Fn, typename ... Args >
+            fiber( ``[link class_launch `launch`]``, Fn &&, Args && ...);
+
+            template< typename __StackAllocator__, typename Fn, typename ... Args >
+            fiber( __allocator_arg_t__, StackAllocator, Fn &&, Args && ...);
+
+            template< typename __StackAllocator__, typename Fn, typename ... Args >
+            fiber( ``[link class_launch `launch`]``, __allocator_arg_t__, StackAllocator, Fn &&, Args && ...);
+
+            ~fiber();
+
+            fiber( fiber const&) = delete;
+
+            fiber & operator=( fiber const&) = delete;
+
+            fiber( fiber &&) noexcept;
+
+            fiber & operator=( fiber &&) noexcept;
+
+            void swap( fiber &) noexcept;
+
+            bool joinable() const noexcept;
+
+            id get_id() const noexcept;
+
+            void detach();
+
+            void join();
+
+            template< typename PROPS >
+            PROPS & properties();
+        };
+
+        bool operator<( fiber const&, fiber const&) noexcept;
+
+        void swap( fiber &, fiber &) noexcept;
+
+        template< typename SchedAlgo, typename ... Args >
+        void use_scheduling_algorithm( Args && ...) noexcept;
+
+        bool has_ready_fibers() noexcept;
+
+        }}
+
+
+[heading Default constructor]
+
+        constexpr fiber() noexcept;
+
+[variablelist
+[[Effects:] [Constructs a __fiber__ instance that refers to __not_a_fiber__.]]
+[[Postconditions:] [`this->get_id() == fiber::id()`]]
+[[Throws:] [Nothing]]
+]
+
+[#fiber_fiber]
+[heading Constructor]
+
+        template< typename Fn, typename ... Args >
+        fiber( Fn && fn, Args && ... args);
+
+        template< typename Fn, typename ... Args >
+        fiber( ``[link class_launch `launch`]`` policy, Fn && fn, Args && ... args);
+
+        template< typename __StackAllocator__, typename Fn, typename ... Args >
+        fiber( __allocator_arg_t__, StackAllocator salloc, Fn && fn, Args && ... args);
+
+        template< typename __StackAllocator__, typename Fn, typename ... Args >
+        fiber( ``[link class_launch `launch`]`` policy, __allocator_arg_t__, StackAllocator salloc,
+               Fn && fn, Args && ... args);
+
+[variablelist
+[[Preconditions:] [`Fn` must be copyable or movable.]]
+[[Effects:] [`fn` is copied or moved into internal storage for access by the
+new fiber. If [class_link launch] is specified (or defaulted) to
+`post`, the new fiber is marked ["ready] and will be entered at the next
+opportunity. If `launch` is specified as `dispatch`, the calling fiber
+is suspended and the new fiber is entered immediately.]]
+[[Postconditions:] [`*this` refers to the newly created fiber of execution.]]
+[[Throws:] [__fiber_error__ if an error occurs.]]
+[[Note:] [__StackAllocator__ is required to allocate a stack for the internal
+__econtext__. If `StackAllocator` is not explicitly passed, the default stack
+allocator depends on `BOOST_USE_SEGMENTED_STACKS`: if defined, you will get a
+__segmented_stack__, else a __fixedsize_stack__.]]
+[[See also:] [__allocator_arg_t__, [link stack Stack allocation]]]
+]
+
+[heading Move constructor]
+
+        fiber( fiber && other) noexcept;
+
+[variablelist
+[[Effects:] [Transfers ownership of the fiber managed by `other` to the newly
+constructed __fiber__ instance.]]
+[[Postconditions:] [`other.get_id() == fiber::id()` and `get_id()` returns the
+value of `other.get_id()` prior to the construction]]
+[[Throws:] [Nothing]]
+]
+
+[heading Move assignment operator]
+
+        fiber & operator=( fiber && other) noexcept;
+
+[variablelist
+[[Effects:] [Transfers ownership of the fiber managed by `other` (if any) to
+`*this`.]]
+[[Postconditions:] [`other->get_id() == fiber::id()` and `get_id()` returns the
+value of `other.get_id()` prior to the assignment.]]
+[[Throws:] [Nothing]]
+]
+
+[heading Destructor]
+
+        ~fiber();
+
+[variablelist
+[[Effects:] [If the fiber is __joinable__, calls std::terminate. Destroys
+`*this`.]]
+[[Note:] [The programmer must ensure that the destructor is never executed while
+the fiber is still __joinable__. Even if you know that the fiber has completed,
+you must still call either __join__ or  __detach__ before destroying the `fiber`
+object.]]
+]
+
+[member_heading fiber..joinable]
+
+        bool joinable() const noexcept;
+
+[variablelist
+[[Returns:] [`true` if `*this` refers to a fiber of execution, which may or
+may not have completed; otherwise `false`.]]
+[[Throws:] [Nothing]]
+]
+
+[member_heading fiber..join]
+
+        void join();
+
+[variablelist
+[[Preconditions:] [the fiber is __joinable__.]]
+[[Effects:] [Waits for the referenced fiber of execution to complete.]]
+[[Postconditions:] [The fiber of execution referenced on entry has completed.
+`*this` no longer refers to any fiber of execution.]]
+[[Throws:] [`fiber_error`]]
+[[Error Conditions:] [
+[*resource_deadlock_would_occur]: if `this->get_id() == boost::this_fiber::get_id()`.
+[*invalid_argument]: if the fiber is not __joinable__.]]
+]
+
+[member_heading fiber..detach]
+
+        void detach();
+
+[variablelist
+[[Preconditions:] [the fiber is __joinable__.]]
+[[Effects:] [The fiber of execution becomes detached, and no longer has an
+associated __fiber__ object.]]
+[[Postconditions:] [`*this` no longer refers to any fiber of execution.]]
+[[Throws:] [`fiber_error`]]
+[[Error Conditions:] [
+[*invalid_argument]: if the fiber is not __joinable__.]]
+]
+
+[member_heading fiber..get_id]
+
+        fiber::id get_id() const noexcept;
+
+[variablelist
+[[Returns:] [If `*this` refers to a fiber of execution, an instance of
+__fiber_id__ that represents that fiber. Otherwise returns a
+default-constructed __fiber_id__.]]
+[[Throws:] [Nothing]]
+[[See also:] [[ns_function_link this_fiber..get_id]]]
+]
+
+[template_member_heading fiber..properties]
+
+        template< typename PROPS >
+        PROPS & properties();
+
+[variablelist
+[[Preconditions:] [`*this` refers to a fiber of execution. [function_link
+use_scheduling_algorithm] has been called from this thread with a subclass of
+[template_link algorithm_with_properties] with the same template
+argument `PROPS`.]]
+[[Returns:] [a reference to the scheduler properties instance for `*this`.]]
+[[Throws:] [`std::bad_cast` if `use_scheduling_algorithm()` was called with a
+`algorithm_with_properties` subclass with some other template parameter
+than `PROPS`.]]
+[[Note:] [[template_link algorithm_with_properties] provides a way for a
+user-coded scheduler to associate extended properties, such as priority, with
+a fiber instance. This method allows access to those user-provided properties.]]
+[[See also:] [[link custom Customization]]]
+]
+
+[member_heading fiber..swap]
+
+        void swap( fiber & other) noexcept;
+
+[variablelist
+[[Effects:] [Exchanges the fiber of execution associated with `*this` and
+`other`, so `*this` becomes associated with the fiber formerly associated with
+`other`, and vice-versa.]]
+[[Postconditions:] [`this->get_id()` returns the same value as `other.get_id()`
+prior to the call. `other.get_id()` returns the same value as `this->get_id()`
+prior to the call.]]
+[[Throws:] [Nothing]]
+]
+
+[function_heading_for swap..fiber]
+
+    void swap( fiber & l, fiber & r) noexcept;
+
+[variablelist
+[[Effects:] [Same as `l.swap( r)`.]]
+[[Throws:] [Nothing]]
+]
+
+[function_heading operator<]
+
+        bool operator<( fiber const& l, fiber const& r) noexcept;
+
+[variablelist
+[[Returns:] [`true` if `l.get_id() < r.get_id()` is `true`, false otherwise.]]
+[[Throws:] [Nothing.]]
+]
+
+[function_heading use_scheduling_algorithm]
+
+    template< typename SchedAlgo, typename ... Args >
+    void use_scheduling_algorithm( Args && ... args) noexcept;
+
+[variablelist
+[[Effects:] [Directs __boost_fiber__ to use `SchedAlgo`, which must be a
+concrete subclass of __algo__, as the scheduling algorithm for all fibers in
+the current thread. Pass any required `SchedAlgo` constructor arguments as
+`args`.]]
+[[Note:] [If you want a given thread to use a non-default scheduling
+algorithm, make that thread call `use_scheduling_algorithm()` before any other
+__boost_fiber__ entry point. If no scheduler has been set for the current
+thread by the time __boost_fiber__ needs to use it, the library will
+create a default [class_link round_robin] instance for this thread.]]
+[[Throws:] [Nothing]]
+[[See also:] [[link scheduling Scheduling], [link custom Customization]]]
+]
+
+[function_heading has_ready_fibers]
+
+    bool has_ready_fibers() noexcept;
+
+[variablelist
+[[Returns:] [`true` if scheduler has fibers ready to run.]]
+[[Throws:] [Nothing]]
+[[Note:] [Can be used for work-stealing to find an idle scheduler.]]
+]
+
+[endsect] [/ section Class fiber]
+
+
+[#class_id]
+[section:id Class fiber::id]
+
+        #include <boost/fiber/fiber.hpp>
+
+        namespace boost {
+        namespace fibers {
+
+        class id {
+        public:
+            constexpr id() noexcept;
+
+            bool operator==( id const&) const noexcept;
+
+            bool operator!=( id const&) const noexcept;
+            
+            bool operator<( id const&) const noexcept;
+            
+            bool operator>( id const&) const noexcept;
+            
+            bool operator<=( id const&) const noexcept;
+            
+            bool operator>=( id const&) const noexcept;
+
+            template< typename charT, class traitsT >
+            friend std::basic_ostream< charT, traitsT > &
+            operator<<( std::basic_ostream< charT, traitsT > &, id const&);
+        };
+
+        }}
+
+[heading Constructor]
+
+        constexpr id() noexcept;
+
+[variablelist
+[[Effects:] [Represents an instance of __not_a_fiber__.]]
+[[Throws:] [Nothing.]]
+]
+
+[operator_heading id..operator_equal..operator==]
+
+        bool operator==( id const& other) const noexcept;
+
+[variablelist
+[[Returns:] [`true` if `*this` and `other` represent the same fiber,
+or both represent __not_a_fiber__, `false` otherwise.]]
+[[Throws:] [Nothing.]]
+]
+
+[operator_heading id..operator_not_equal..operator!=]
+
+        bool operator!=( id const& other) const noexcept;
+
+[variablelist
+[[Returns:] [[`! (other == * this)]]]
+[[Throws:] [Nothing.]]
+]
+
+[operator_heading id..operator_less..operator<]
+
+        bool operator<( id const& other) const noexcept;
+
+[variablelist
+[[Returns:] [`true` if `*this != other` is true and the
+implementation-defined total order of `fiber::id` values places `*this` before
+`other`, false otherwise.]]
+[[Throws:] [Nothing.]]
+]
+
+[operator_heading id..operator_greater..operator>]
+
+        bool operator>( id const& other) const noexcept;
+
+[variablelist
+[[Returns:] [`other < * this`]]
+[[Throws:] [Nothing.]]
+]
+
+[operator_heading id..operator_less_equal..operator<=]
+
+        bool operator<=( id const& other) const noexcept;
+
+[variablelist
+[[Returns:] [`! (other < * this)`]]
+[[Throws:] [Nothing.]]
+]
+
+[operator_heading id..operator_greater_equal..operator>=]
+
+        bool operator>=( id const& other) const noexcept;
+
+[variablelist
+[[Returns:] [`! (* this < other)`]]
+[[Throws:] [Nothing.]]
+]
+
+[heading operator<<]
+
+        template< typename charT, class traitsT >
+        std::basic_ostream< charT, traitsT > &
+        operator<<( std::basic_ostream< charT, traitsT > & os, id const& other);
+
+[variablelist
+[[Efects:] [Writes the representation of `other` to stream `os`. The
+representation is unspecified.]]
+[[Returns:] [`os`]]
+]
+
+
+[endsect] [/ section Class fiber::id]
+
+
+[section:this_fiber Namespace this_fiber]
+
+In general, `this_fiber` operations may be called from the ["main] fiber
+[mdash] the fiber on which function `main()` is entered [mdash] as well as
+from an explicitly-launched thread[s] thread-function. That is, in many
+respects the main fiber on each thread can be treated like an
+explicitly-launched fiber.
+
+
+        namespace boost {
+        namespace this_fiber {
+
+        fibers::fiber::id get_id() noexcept;
+        void yield() noexcept;
+        template< typename Clock, typename Duration >
+        void sleep_until( std::chrono::time_point< Clock, Duration > const&);
+        template< typename Rep, typename Period >
+        void sleep_for( std::chrono::duration< Rep, Period > const&);
+        template< typename PROPS >
+        PROPS & properties();
+
+        }}
+
+[ns_function_heading this_fiber..get_id]
+
+        #include <boost/fiber/operations.hpp>
+
+        namespace boost {
+        namespace fibers {
+
+        fiber::id get_id() noexcept;
+
+        }}
+
+[variablelist
+[[Returns:] [An instance of __fiber_id__ that represents the currently
+executing fiber.]]
+[[Throws:] [Nothing.]]
+]
+
+[ns_function_heading this_fiber..sleep_until]
+
+        #include <boost/fiber/operations.hpp>
+
+        namespace boost {
+        namespace fibers {
+
+        template< typename Clock, typename Duration >
+        void sleep_until( std::chrono::time_point< Clock, Duration > const& abs_time);
+
+        }}
+
+[variablelist
+[[Effects:] [Suspends the current fiber until the time point specified by
+`abs_time` has been reached.]]
+[[Throws:] [timeout-related exceptions.]]
+[[Note:] [The current fiber will not resume before `abs_time`, but there are no
+guarantees about how soon after `abs_time` it might resume.]]
+[[Note:] [["timeout-related exceptions] are as defined in the C++ Standard,
+section [*30.2.4 Timing specifications \[thread.req.timing\]]: ["A function
+that takes an argument which specifies a timeout will throw if, during its
+execution, a clock, time point, or time duration throws an exception. Such
+exceptions are referred to as ['timeout-related exceptions.]]]]
+]
+
+[ns_function_heading this_fiber..sleep_for]
+
+        #include <boost/fiber/operations.hpp>
+
+        namespace boost {
+        namespace fibers {
+
+        template< class Rep, class Period >
+        void sleep_for( std::chrono::duration< Rep, Period > const& rel_time);
+
+        }}
+
+[variablelist
+[[Effects:] [Suspends the current fiber until the time duration specified by
+`rel_time` has elapsed.]]
+[[Throws:] [timeout-related exceptions.]]
+[[Note:][The current fiber will not resume before `rel_time` has elapsed, but
+there are no guarantees about how soon after that it might resume.]]
+]
+
+[ns_function_heading this_fiber..yield]
+
+        #include <boost/fiber/operations.hpp>
+
+        namespace boost {
+        namespace fibers {
+
+        void yield() noexcept;
+
+        }}
+
+[variablelist
+[[Effects:] [Reliquishes execution control, allowing other fibers to run.]]
+[[Throws:] [Nothing.]]
+[[Note:] [A fiber that calls
+`yield()` is not suspended: it is immediately passed to the scheduler as ready
+to run.]]
+]
+
+[ns_function_heading this_fiber..properties]
+
+        #include <boost/fiber/operations.hpp>
+
+        namespace boost {
+        namespace fibers {
+
+        template< typename PROPS >
+        PROPS & properties();
+
+        }}
+
+[variablelist
+[[Preconditions:] [[function_link use_scheduling_algorithm] has been called
+from this thread with a subclass of [template_link
+algorithm_with_properties] with the same template argument `PROPS`.]]
+[[Returns:] [a reference to the scheduler properties instance for the
+currently running fiber.]]
+[[Throws:] [`std::bad_cast` if `use_scheduling_algorithm()` was called with an
+`algorithm_with_properties` subclass with some other template parameter
+than `PROPS`.]]
+[[Note:] [[template_link algorithm_with_properties] provides a way for a
+user-coded scheduler to associate extended properties, such as priority, with
+a fiber instance. This function allows access to those user-provided
+properties.]]
+[[Note:] [The first time this function is called from the main fiber of a
+thread, it may internally yield, permitting other fibers to run.]]
+[[See also:] [[link custom Customization]]]
+]
+
+
+[endsect] [/ section Namespace this_fiber]
+
+
+[endsect] [/ section Fiber Management]

@@ -1,0 +1,52 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1linestring__tag" kind="struct" prot="public">
+    <compoundname>boost::geometry::linestring_tag</compoundname>
+    <basecompoundref refid="structboost_1_1geometry_1_1single__tag" prot="public" virt="non-virtual">boost::geometry::single_tag</basecompoundref>
+    <basecompoundref refid="structboost_1_1geometry_1_1linear__tag" prot="public" virt="non-virtual">boost::geometry::linear_tag</basecompoundref>
+    <includes local="no">tags.hpp</includes>
+    <briefdescription>
+<para>OGC Linestring identifying tag. </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="488">
+        <label>boost::geometry::linear_tag</label>
+        <link refid="structboost_1_1geometry_1_1linear__tag"/>
+      </node>
+      <node id="487">
+        <label>boost::geometry::single_tag</label>
+        <link refid="structboost_1_1geometry_1_1single__tag"/>
+      </node>
+      <node id="486">
+        <label>boost::geometry::linestring_tag</label>
+        <link refid="structboost_1_1geometry_1_1linestring__tag"/>
+        <childnode refid="487" relation="public-inheritance">
+        </childnode>
+        <childnode refid="488" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="491">
+        <label>boost::geometry::linear_tag</label>
+        <link refid="structboost_1_1geometry_1_1linear__tag"/>
+      </node>
+      <node id="490">
+        <label>boost::geometry::single_tag</label>
+        <link refid="structboost_1_1geometry_1_1single__tag"/>
+      </node>
+      <node id="489">
+        <label>boost::geometry::linestring_tag</label>
+        <link refid="structboost_1_1geometry_1_1linestring__tag"/>
+        <childnode refid="490" relation="public-inheritance">
+        </childnode>
+        <childnode refid="491" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/tags.hpp" line="89" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/tags.hpp" bodystart="89" bodyend="89"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

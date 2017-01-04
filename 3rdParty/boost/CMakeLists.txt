@@ -1,8 +1,8 @@
 project(boost)
 
-set(boost_version "1.61.0")
+#the boost version must also be adjusted in the top-level CMakeLists.txt file
+set(boost_version "1.62.0")
 set(boost_src "${CMAKE_CURRENT_SOURCE_DIR}/${boost_version}")
-add_definitions(-DARANGODB_BOOST_VERSION=\"${boost_version}\")
 
 #find_package(Boost 1.61.0 EXACT COMPONENTS system)
 #if(Boost_FOUND)

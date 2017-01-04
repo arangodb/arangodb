@@ -1,0 +1,52 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1within_1_1point__in__box" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::within::point_in_box</compoundname>
+    <includes local="no">point_in_box.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Point</type>
+      </param>
+      <param>
+        <type>typename Box</type>
+      </param>
+      <param>
+        <type>template&lt; typename, std::size_t, typename &gt; class</type>
+        <declname>SubStrategy</declname>
+        <defname>SubStrategy</defname>
+        <defval><ref refid="structboost_1_1geometry_1_1strategy_1_1within_1_1within__range" kindref="compound">within_range</ref></defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1within_1_1point__in__box_1ae4ef19f70a0f4a19bfa1c5eef4d67998" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>static bool boost::geometry::strategy::within::point_in_box&lt; Point, Box, SubStrategy &gt;::apply</definition>
+        <argsstring>(Point const &amp;point, Box const &amp;box)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>point</declname>
+        </param>
+        <param>
+          <type>Box const &amp;</type>
+          <declname>box</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_box.hpp" line="182" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_box.hpp" bodystart="182" bodyend="190"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_box.hpp" line="181" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_box.hpp" bodystart="180" bodyend="191"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1within_1_1point__in__box_1ae4ef19f70a0f4a19bfa1c5eef4d67998" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::point_in_box</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

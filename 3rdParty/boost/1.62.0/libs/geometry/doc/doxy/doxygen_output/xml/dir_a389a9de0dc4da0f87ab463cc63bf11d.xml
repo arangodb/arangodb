@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="dir_a389a9de0dc4da0f87ab463cc63bf11d" kind="dir">
+    <compoundname>/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals</compoundname>
+    <innerfile refid="collect__vectors_8hpp">collect_vectors.hpp</innerfile>
+    <innerfile refid="equals_2point__point_8hpp">point_point.hpp</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/equals/"/>
+  </compounddef>
+</doxygen>

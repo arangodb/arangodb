@@ -1,0 +1,166 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1within_1_1franklin" kind="class" prot="public">
+    <compoundname>boost::geometry::strategy::within::franklin</compoundname>
+    <includes local="no">point_in_poly_franklin.hpp</includes>
+    <innerclass refid="classboost_1_1geometry_1_1strategy_1_1within_1_1franklin_1_1crossings" prot="private">boost::geometry::strategy::within::franklin::crossings</innerclass>
+    <templateparamlist>
+      <param>
+        <type>typename Point</type>
+      </param>
+      <param>
+        <type>typename PointOfSegment</type>
+        <defval>Point</defval>
+      </param>
+      <param>
+        <type>typename CalculationType</type>
+        <defval>void</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="private-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1within_1_1franklin_1a4692f79ed510a2fae97abcf902a2f898" prot="private" static="no">
+        <type><ref refid="structboost_1_1geometry_1_1select__calculation__type" kindref="compound">select_calculation_type</ref>&lt; Point, PointOfSegment, CalculationType &gt;::type</type>
+        <definition>typedef select_calculation_type&lt; Point, PointOfSegment, CalculationType &gt;::type boost::geometry::strategy::within::franklin&lt; Point, PointOfSegment, CalculationType &gt;::calculation_type</definition>
+        <argsstring></argsstring>
+        <name>calculation_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_franklin.hpp" line="59" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_franklin.hpp" bodystart="59" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1within_1_1franklin_1ab3778aae66ceb919e9b39cce17c411d6" prot="public" static="no">
+        <type>Point</type>
+        <definition>typedef Point boost::geometry::strategy::within::franklin&lt; Point, PointOfSegment, CalculationType &gt;::point_type</definition>
+        <argsstring></argsstring>
+        <name>point_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_franklin.hpp" line="76" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_franklin.hpp" bodystart="76" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1within_1_1franklin_1a1c142d3c98e6227c4a2734bc9df73616" prot="public" static="no">
+        <type>PointOfSegment</type>
+        <definition>typedef PointOfSegment boost::geometry::strategy::within::franklin&lt; Point, PointOfSegment, CalculationType &gt;::segment_point_type</definition>
+        <argsstring></argsstring>
+        <name>segment_point_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_franklin.hpp" line="77" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_franklin.hpp" bodystart="77" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="classboost_1_1geometry_1_1strategy_1_1within_1_1franklin_1af57c790e2a1c52955eb97aaa18633940" prot="public" static="no">
+        <type>crossings</type>
+        <definition>typedef crossings boost::geometry::strategy::within::franklin&lt; Point, PointOfSegment, CalculationType &gt;::state_type</definition>
+        <argsstring></argsstring>
+        <name>state_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_franklin.hpp" line="78" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_franklin.hpp" bodystart="78" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1within_1_1franklin_1a42ec337a471b1d4519498058e2aa0907" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>static bool boost::geometry::strategy::within::franklin&lt; Point, PointOfSegment, CalculationType &gt;::apply</definition>
+        <argsstring>(Point const &amp;point, PointOfSegment const &amp;seg1, PointOfSegment const &amp;seg2, crossings &amp;state)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>point</declname>
+        </param>
+        <param>
+          <type>PointOfSegment const &amp;</type>
+          <declname>seg1</declname>
+        </param>
+        <param>
+          <type>PointOfSegment const &amp;</type>
+          <declname>seg2</declname>
+        </param>
+        <param>
+          <type>crossings &amp;</type>
+          <declname>state</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_franklin.hpp" line="80" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_franklin.hpp" bodystart="80" bodyend="99"/>
+      </memberdef>
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1within_1_1franklin_1a08ea36f185df3ad5692c8f245dbe0ac0" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>int</type>
+        <definition>static int boost::geometry::strategy::within::franklin&lt; Point, PointOfSegment, CalculationType &gt;::result</definition>
+        <argsstring>(crossings const &amp;state)</argsstring>
+        <name>result</name>
+        <param>
+          <type>crossings const &amp;</type>
+          <declname>state</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_franklin.hpp" line="101" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_franklin.hpp" bodystart="101" bodyend="104"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Within detection using cross counting. </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Point</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Point Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>PointOfSegment</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>segment point type </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>CalculationType</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>numeric type for calculation (e.g. high precision); if [*void] then it is extracted automatically from the coordinate type and (if necessary) promoted to floating point </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="author"><para>adapted from Randolph Franklin algorithm </para><simplesectsep/><para>Barend and Maarten, 1995 </para><simplesectsep/><para>Revised for templatized library, Barend Gehrels, 2007 </para></simplesect>
+<simplesect kind="return"><para>true if point is in ring, works for closed rings in both directions </para></simplesect>
+<simplesect kind="note"><para>Does NOT work correctly for point ON border</para></simplesect>
+ <qbk>
+[heading See also]
+[link geometry.reference.algorithms.within.within_3_with_strategy within (with strategy)]
+</qbk>  </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_franklin.hpp" line="53" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/point_in_poly_franklin.hpp" bodystart="52" bodyend="105"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1within_1_1franklin_1a42ec337a471b1d4519498058e2aa0907" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::franklin</scope><name>apply</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1within_1_1franklin_1a4692f79ed510a2fae97abcf902a2f898" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::within::franklin</scope><name>calculation_type</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1within_1_1franklin_1ab3778aae66ceb919e9b39cce17c411d6" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::franklin</scope><name>point_type</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1within_1_1franklin_1a08ea36f185df3ad5692c8f245dbe0ac0" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::franklin</scope><name>result</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1within_1_1franklin_1a1c142d3c98e6227c4a2734bc9df73616" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::franklin</scope><name>segment_point_type</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1within_1_1franklin_1af57c790e2a1c52955eb97aaa18633940" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::within::franklin</scope><name>state_type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

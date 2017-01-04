@@ -1,0 +1,148 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1end__round" kind="class" prot="public">
+    <compoundname>boost::geometry::strategy::buffer::end_round</compoundname>
+    <includes local="no">buffer_end_round.hpp</includes>
+      <sectiondef kind="private-attrib">
+      <memberdef kind="variable" id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1end__round_1a9d52af46317739c49cfa6589238a2562" prot="private" static="no" mutable="no">
+        <type>std::size_t</type>
+        <definition>std::size_t boost::geometry::strategy::buffer::end_round::m_points_per_circle</definition>
+        <argsstring></argsstring>
+        <name>m_points_per_circle</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_end_round.hpp" line="56" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_end_round.hpp" bodystart="56" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1end__round_1a3fbc54a27a9aab0480389d7d2b443db3" prot="private" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Point</type>
+          </param>
+          <param>
+            <type>typename PromotedType</type>
+          </param>
+          <param>
+            <type>typename DistanceType</type>
+          </param>
+          <param>
+            <type>typename RangeOut</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::strategy::buffer::end_round::generate_points</definition>
+        <argsstring>(Point const &amp;point, PromotedType alpha, DistanceType const &amp;buffer_distance, RangeOut &amp;range_out) const </argsstring>
+        <name>generate_points</name>
+        <param>
+          <type>Point const &amp;</type>
+          <declname>point</declname>
+        </param>
+        <param>
+          <type>PromotedType</type>
+          <declname>alpha</declname>
+        </param>
+        <param>
+          <type>DistanceType const &amp;</type>
+          <declname>buffer_distance</declname>
+        </param>
+        <param>
+          <type>RangeOut &amp;</type>
+          <declname>range_out</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_end_round.hpp" line="65" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_end_round.hpp" bodystart="65" bodyend="87"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="private-static-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1end__round_1a140a625a522807b6f987ee7c033ad260" prot="private" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename T</type>
+          </param>
+          <param>
+            <type>typename P1</type>
+          </param>
+          <param>
+            <type>typename P2</type>
+          </param>
+        </templateparamlist>
+        <type>T</type>
+        <definition>static T boost::geometry::strategy::buffer::end_round::calculate_angle</definition>
+        <argsstring>(P1 const &amp;from_point, P2 const &amp;to_point)</argsstring>
+        <name>calculate_angle</name>
+        <param>
+          <type>P1 const &amp;</type>
+          <declname>from_point</declname>
+        </param>
+        <param>
+          <type>P2 const &amp;</type>
+          <declname>to_point</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_end_round.hpp" line="90" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_end_round.hpp" bodystart="90" bodyend="96"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1buffer_1_1end__round_1ac4bdea9b9b174ac7d556a5574ee45744" prot="public" static="no" const="no" explicit="yes" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::strategy::buffer::end_round::end_round</definition>
+        <argsstring>(std::size_t points_per_circle=90)</argsstring>
+        <name>end_round</name>
+        <param>
+          <type>std::size_t</type>
+          <declname>points_per_circle</declname>
+          <defval>90</defval>
+        </param>
+        <briefdescription>
+<para>Constructs the strategy. </para>        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>points_per_circle</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>points which would be used for a full circle (if points_per_circle is smaller than 4, it is internally set to 4) </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_end_round.hpp" line="103" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_end_round.hpp" bodystart="103" bodyend="105"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Let the buffer create rounded ends. </para>    </briefdescription>
+    <detaileddescription>
+<para>This strategy can be used as EndStrategy for the buffer algorithm. It creates a rounded end for each linestring-end. It can be applied for (multi)linestrings. Also it is applicable for spikes in (multi)polygons. This strategy is only applicable for Cartesian coordinate systems.</para><para> <qbk>
+[heading Example]
+[buffer_end_round]
+[heading Output]
+[$img/strategies/buffer_end_round.png]
+[heading See also]
+\* [link geometry.reference.algorithms.buffer.buffer_7_with_strategies buffer (with strategies)]
+\* [link geometry.reference.strategies.strategy_buffer_end_flat end_flat]
+</qbk>  </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_end_round.hpp" line="54" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/cartesian/buffer_end_round.hpp" bodystart="53" bodyend="171"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1end__round_1a140a625a522807b6f987ee7c033ad260" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::buffer::end_round</scope><name>calculate_angle</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1end__round_1ac4bdea9b9b174ac7d556a5574ee45744" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::buffer::end_round</scope><name>end_round</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1end__round_1a3fbc54a27a9aab0480389d7d2b443db3" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::buffer::end_round</scope><name>generate_points</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1buffer_1_1end__round_1a9d52af46317739c49cfa6589238a2562" prot="private" virt="non-virtual"><scope>boost::geometry::strategy::buffer::end_round</scope><name>m_points_per_circle</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

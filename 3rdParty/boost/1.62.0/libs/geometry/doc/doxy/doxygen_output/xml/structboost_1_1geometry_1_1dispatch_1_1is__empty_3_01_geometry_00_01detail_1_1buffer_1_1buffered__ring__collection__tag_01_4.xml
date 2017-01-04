@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1dispatch_1_1is__empty_3_01_geometry_00_01detail_1_1buffer_1_1buffered__ring__collection__tag_01_4" kind="struct" prot="public">
+    <compoundname>boost::geometry::dispatch::is_empty&lt; Geometry, detail::buffer::buffered_ring_collection_tag &gt;</compoundname>
+    <basecompoundref prot="public" virt="non-virtual">detail::is_empty::multi_is_empty&lt; detail::is_empty::range_is_empty &gt;</basecompoundref>
+    <includes local="no">buffered_ring.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+    </templateparamlist>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="327">
+        <label>detail::is_empty::multi_is_empty&lt; detail::is_empty::range_is_empty &gt;</label>
+      </node>
+      <node id="326">
+        <label>boost::geometry::dispatch::is_empty&lt; Geometry, detail::buffer::buffered_ring_collection_tag &gt;</label>
+        <link refid="structboost_1_1geometry_1_1dispatch_1_1is__empty_3_01_geometry_00_01detail_1_1buffer_1_1buffered__ring__collection__tag_01_4"/>
+        <childnode refid="327" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="329">
+        <label>detail::is_empty::multi_is_empty&lt; detail::is_empty::range_is_empty &gt;</label>
+      </node>
+      <node id="328">
+        <label>boost::geometry::dispatch::is_empty&lt; Geometry, detail::buffer::buffered_ring_collection_tag &gt;</label>
+        <link refid="structboost_1_1geometry_1_1dispatch_1_1is__empty_3_01_geometry_00_01detail_1_1buffer_1_1buffered__ring__collection__tag_01_4"/>
+        <childnode refid="329" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp" line="243" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/buffer/buffered_ring.hpp" bodystart="241" bodyend="243"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

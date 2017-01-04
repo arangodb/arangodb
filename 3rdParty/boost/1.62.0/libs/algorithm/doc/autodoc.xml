@@ -1,0 +1,4137 @@
+<?xml version="1.0" standalone="yes"?>
+<library-reference><header name="boost/algorithm/algorithm.hpp">
+<para>Misc Algorithms. </para><para><para>Marshall Clow </para>
+</para><namespace name="boost">
+<namespace name="algorithm">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="identity_operation"><type>T</type><template>
+          <template-type-parameter name="T"/>
+        </template><parameter name=""><paramtype>std::multiplies&lt; T &gt;</paramtype></parameter></function>
+<function name="identity_operation"><type>T</type><template>
+          <template-type-parameter name="T"/>
+        </template><parameter name=""><paramtype>std::plus&lt; T &gt;</paramtype></parameter></function>
+<function name="power"><type>boost::enable_if&lt; boost::is_integral&lt; Integer &gt;, T &gt;::type</type><template>
+          <template-type-parameter name="T"/>
+          <template-type-parameter name="Integer"/>
+        </template><parameter name="x"><paramtype>T</paramtype><description><para>The value to be exponentiated </para></description></parameter><parameter name="n"><paramtype>Integer</paramtype><description><para>The exponent (must be &gt;= 0) </para></description></parameter><description><para>
+
+</para></description><returns><para>the value "x" raised to the power "n"</para></returns></function>
+<function name="power"><type>boost::enable_if&lt; boost::is_integral&lt; Integer &gt;, T &gt;::type</type><template>
+          <template-type-parameter name="T"/>
+          <template-type-parameter name="Integer"/>
+          <template-type-parameter name="Operation"/>
+        </template><parameter name="x"><paramtype>T</paramtype><description><para>The value to be exponentiated </para></description></parameter><parameter name="n"><paramtype>Integer</paramtype><description><para>The exponent (must be &gt;= 0) </para></description></parameter><parameter name="op"><paramtype>Operation</paramtype><description><para>The operation used </para></description></parameter><description><para>
+
+</para></description><returns><para>the value "x" raised to the power "n" using the operation "op".</para></returns></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</header>
+<header name="boost/algorithm/clamp.hpp">
+<para>Clamp algorithm. </para><para><para>Marshall Clow</para>
+Suggested by olafvdspek in <ulink url="https://svn.boost.org/trac/boost/ticket/3215">https://svn.boost.org/trac/boost/ticket/3215</ulink> </para><namespace name="boost">
+<namespace name="algorithm">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="clamp"><type>T const &amp;</type><template>
+          <template-type-parameter name="T"/>
+          <template-type-parameter name="Pred"/>
+        </template><parameter name="val"><paramtype>T const &amp;</paramtype><description><para>The value to be clamped </para></description></parameter><parameter name="lo"><paramtype>typename boost::mpl::identity&lt; T &gt;::type const &amp;</paramtype><description><para>The lower bound of the range to be clamped to </para></description></parameter><parameter name="hi"><paramtype>typename boost::mpl::identity&lt; T &gt;::type const &amp;</paramtype><description><para>The upper bound of the range to be clamped to </para></description></parameter><parameter name="p"><paramtype>Pred</paramtype><description><para>A predicate to use to compare the values. p ( a, b ) returns a boolean. </para></description></parameter><description><para>
+
+</para></description><returns><para>the value "val" brought into the range [ lo, hi ] using the comparison predicate p. If p ( val, lo ) return lo. If p ( hi, val ) return hi. Otherwise, return the original value.</para></returns></function>
+<function name="clamp"><type>T const &amp;</type><template>
+          <template-type-parameter name="T"/>
+        </template><parameter name="val"><paramtype>const T &amp;</paramtype><description><para>The value to be clamped </para></description></parameter><parameter name="lo"><paramtype>typename boost::mpl::identity&lt; T &gt;::type const &amp;</paramtype><description><para>The lower bound of the range to be clamped to </para></description></parameter><parameter name="hi"><paramtype>typename boost::mpl::identity&lt; T &gt;::type const &amp;</paramtype><description><para>The upper bound of the range to be clamped to </para></description></parameter><description><para>
+
+</para></description><returns><para>the value "val" brought into the range [ lo, hi ]. If the value is less than lo, return lo. If the value is greater than "hi", return hi. Otherwise, return the original value.</para></returns></function>
+<function name="clamp_range"><type>OutputIterator</type><template>
+          <template-type-parameter name="InputIterator"/>
+          <template-type-parameter name="OutputIterator"/>
+        </template><parameter name="first"><paramtype>InputIterator</paramtype></parameter><parameter name="last"><paramtype>InputIterator</paramtype></parameter><parameter name="out"><paramtype>OutputIterator</paramtype></parameter><parameter name="lo"><paramtype>typename std::iterator_traits&lt; InputIterator &gt;::value_type const &amp;</paramtype></parameter><parameter name="hi"><paramtype>typename std::iterator_traits&lt; InputIterator &gt;::value_type const &amp;</paramtype></parameter></function>
+<function name="clamp_range"><type>boost::disable_if_c&lt; boost::is_same&lt; Range, OutputIterator &gt;::value, OutputIterator &gt;::type</type><template>
+          <template-type-parameter name="Range"/>
+          <template-type-parameter name="OutputIterator"/>
+        </template><parameter name="r"><paramtype>const Range &amp;</paramtype><description><para>The range of values to be clamped </para></description></parameter><parameter name="out"><paramtype>OutputIterator</paramtype><description><para>An output iterator to write the clamped values into </para></description></parameter><parameter name="lo"><paramtype>typename std::iterator_traits&lt; typename boost::range_iterator&lt; const Range &gt;::type &gt;::value_type const &amp;</paramtype><description><para>The lower bound of the range to be clamped to </para></description></parameter><parameter name="hi"><paramtype>typename std::iterator_traits&lt; typename boost::range_iterator&lt; const Range &gt;::type &gt;::value_type const &amp;</paramtype><description><para>The upper bound of the range to be clamped to </para></description></parameter><description><para>
+
+</para></description><returns><para>clamp the sequence of values [first, last) into [ lo, hi ]</para></returns></function>
+<function name="clamp_range"><type>OutputIterator</type><template>
+          <template-type-parameter name="InputIterator"/>
+          <template-type-parameter name="OutputIterator"/>
+          <template-type-parameter name="Pred"/>
+        </template><parameter name="first"><paramtype>InputIterator</paramtype></parameter><parameter name="last"><paramtype>InputIterator</paramtype></parameter><parameter name="out"><paramtype>OutputIterator</paramtype></parameter><parameter name="lo"><paramtype>typename std::iterator_traits&lt; InputIterator &gt;::value_type const &amp;</paramtype></parameter><parameter name="hi"><paramtype>typename std::iterator_traits&lt; InputIterator &gt;::value_type const &amp;</paramtype></parameter><parameter name="p"><paramtype>Pred</paramtype></parameter></function>
+<function name="clamp_range"><type>boost::disable_if_c&lt; boost::is_same&lt; Range, OutputIterator &gt;::value, OutputIterator &gt;::type</type><template>
+          <template-type-parameter name="Range"/>
+          <template-type-parameter name="OutputIterator"/>
+          <template-type-parameter name="Pred"/>
+        </template><parameter name="r"><paramtype>const Range &amp;</paramtype><description><para>The range of values to be clamped </para></description></parameter><parameter name="out"><paramtype>OutputIterator</paramtype><description><para>An output iterator to write the clamped values into </para></description></parameter><parameter name="lo"><paramtype>typename std::iterator_traits&lt; typename boost::range_iterator&lt; const Range &gt;::type &gt;::value_type const &amp;</paramtype><description><para>The lower bound of the range to be clamped to </para></description></parameter><parameter name="hi"><paramtype>typename std::iterator_traits&lt; typename boost::range_iterator&lt; const Range &gt;::type &gt;::value_type const &amp;</paramtype><description><para>The upper bound of the range to be clamped to </para></description></parameter><parameter name="p"><paramtype>Pred</paramtype><description><para>A predicate to use to compare the values. p ( a, b ) returns a boolean. </para></description></parameter><description><para>
+
+</para></description><returns><para>clamp the sequence of values [first, last) into [ lo, hi ] using the comparison predicate p.</para></returns></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</header>
+<header name="boost/algorithm/cxx11/all_of.hpp">
+<para>Test ranges to see if all elements match a value or predicate. </para><para><para>Marshall Clow </para>
+</para><namespace name="boost">
+<namespace name="algorithm">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="all_of"><type>bool</type><template>
+          <template-type-parameter name="InputIterator"/>
+          <template-type-parameter name="Predicate"/>
+        </template><parameter name="first"><paramtype>InputIterator</paramtype><description><para>The start of the input sequence </para></description></parameter><parameter name="last"><paramtype>InputIterator</paramtype><description><para>One past the end of the input sequence </para></description></parameter><parameter name="p"><paramtype>Predicate</paramtype><description><para>A predicate for testing the elements of the sequence</para></description></parameter><description><para>
+<note><para>returns true on an empty range</para></note>
+
+<note><para>This function is part of the C++2011 standard library. </para></note>
+</para></description><returns><para>true if all elements in [first, last) satisfy the predicate 'p' </para></returns></function>
+<function name="all_of"><type>bool</type><template>
+          <template-type-parameter name="Range"/>
+          <template-type-parameter name="Predicate"/>
+        </template><parameter name="r"><paramtype>const Range &amp;</paramtype><description><para>The input range </para></description></parameter><parameter name="p"><paramtype>Predicate</paramtype><description><para>A predicate for testing the elements of the range </para></description></parameter><description><para>
+<note><para>returns true on an empty range</para></note>
+
+</para></description><returns><para>true if all elements in the range satisfy the predicate 'p' </para></returns></function>
+<function name="all_of_equal"><type>bool</type><template>
+          <template-type-parameter name="InputIterator"/>
+          <template-type-parameter name="T"/>
+        </template><parameter name="first"><paramtype>InputIterator</paramtype><description><para>The start of the input sequence </para></description></parameter><parameter name="last"><paramtype>InputIterator</paramtype><description><para>One past the end of the input sequence </para></description></parameter><parameter name="val"><paramtype>const T &amp;</paramtype><description><para>A value to compare against </para></description></parameter><description><para>
+<note><para>returns true on an empty range</para></note>
+
+</para></description><returns><para>true if all elements in [first, last) are equal to 'val' </para></returns></function>
+<function name="all_of_equal"><type>bool</type><template>
+          <template-type-parameter name="Range"/>
+          <template-type-parameter name="T"/>
+        </template><parameter name="r"><paramtype>const Range &amp;</paramtype><description><para>The input range </para></description></parameter><parameter name="val"><paramtype>const T &amp;</paramtype><description><para>A value to compare against </para></description></parameter><description><para>
+<note><para>returns true on an empty range</para></note>
+
+</para></description><returns><para>true if all elements in the range are equal to 'val' </para></returns></function>
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</header>
+<header name="boost/algorithm/cxx11/any_of.hpp">
+<para>Test ranges to see if any elements match a value or predicate. </para><para><para>Marshall Clow </para>
+</para><namespace name="boost">
+<namespace name="algorithm">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="any_of"><type>bool</type><template>
+          <template-type-parameter name="InputIterator"/>
+          <template-type-parameter name="Predicate"/>
+        </template><parameter name="first"><paramtype>InputIterator</paramtype><description><para>The start of the input sequence </para></description></parameter><parameter name="last"><paramtype>InputIterator</paramtype><description><para>One past the end of the input sequence </para></description></parameter><parameter name="p"><paramtype>Predicate</paramtype><description><para>A predicate for testing the elements of the sequence </para></description></parameter><description><para>
+<note><para>returns false on an empty range</para></note>
+
+</para></description><returns><para>true if any of the elements in [first, last) satisfy the predicate </para></returns></function>
+<function name="any_of"><type>bool</type><template>
+          <template-type-parameter name="Range"/>
+          <template-type-parameter name="Predicate"/>
+        </template><parameter name="r"><paramtype>const Range &amp;</paramtype><description><para>The input range </para></description></parameter><parameter name="p"><paramtype>Predicate</paramtype><description><para>A predicate for testing the elements of the range </para></description></parameter><description><para>
+<note><para>returns false on an empty range</para></note>
+
+</para></description><returns><para>true if any elements in the range satisfy the predicate 'p' </para></returns></function>
+<function name="any_of_equal"><type>bool</type><template>
+          <template-type-parameter name="InputIterator"/>
+          <template-type-parameter name="V"/>
+        </template><parameter name="first"><paramtype>InputIterator</paramtype><description><para>The start of the input sequence </para></description></parameter><parameter name="last"><paramtype>InputIterator</paramtype><description><para>One past the end of the input sequence </para></description></parameter><parameter name="val"><paramtype>const V &amp;</paramtype><description><para>A value to compare against </para></description></parameter><description><para>
+<note><para>returns false on an empty range</para></note>
+
+</para></description><returns><para>true if any of the elements in [first, last) are equal to 'val' </para></returns></function>
+<function name="any_of_equal"><type>bool</type><template>
+          <template-type-parameter name="Range"/>
+          <template-type-parameter name="V"/>
+        </template><parameter name="r"><paramtype>const Range &amp;</paramtype><description><para>The input range </para></description></parameter><parameter name="val"><paramtype>const V &amp;</paramtype><description><para>A value to compare against </para></description></parameter><description><para>
+<note><para>returns false on an empty range</para></note>
+
+</para></description><returns><para>true if any of the elements in the range are equal to 'val' </para></returns></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</header>
+<header name="boost/algorithm/cxx11/copy_if.hpp">
+<para>Copy a subset of a sequence to a new sequence. </para><para><para>Marshall Clow </para>
+</para><namespace name="boost">
+<namespace name="algorithm">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="copy_if"><type>OutputIterator</type><template>
+          <template-type-parameter name="InputIterator"/>
+          <template-type-parameter name="OutputIterator"/>
+          <template-type-parameter name="Predicate"/>
+        </template><parameter name="first"><paramtype>InputIterator</paramtype><description><para>The start of the input sequence </para></description></parameter><parameter name="last"><paramtype>InputIterator</paramtype><description><para>One past the end of the input sequence </para></description></parameter><parameter name="result"><paramtype>OutputIterator</paramtype><description><para>An output iterator to write the results into </para></description></parameter><parameter name="p"><paramtype>Predicate</paramtype><description><para>A predicate for testing the elements of the range </para></description></parameter><purpose>Copies all the elements from the input range that satisfy the predicate to the output range. </purpose><description><para>
+
+<note><para>This function is part of the C++2011 standard library. </para></note>
+</para></description><returns><para>The updated output iterator</para></returns></function>
+<function name="copy_if"><type>OutputIterator</type><template>
+          <template-type-parameter name="Range"/>
+          <template-type-parameter name="OutputIterator"/>
+          <template-type-parameter name="Predicate"/>
+        </template><parameter name="r"><paramtype>const Range &amp;</paramtype><description><para>The input range </para></description></parameter><parameter name="result"><paramtype>OutputIterator</paramtype><description><para>An output iterator to write the results into </para></description></parameter><parameter name="p"><paramtype>Predicate</paramtype><description><para>A predicate for testing the elements of the range </para></description></parameter><purpose>Copies all the elements from the input range that satisfy the predicate to the output range. </purpose><description><para>
+
+</para></description><returns><para>The updated output iterator</para></returns></function>
+<function name="copy_while"><type>std::pair&lt; InputIterator, OutputIterator &gt;</type><template>
+          <template-type-parameter name="InputIterator"/>
+          <template-type-parameter name="OutputIterator"/>
+          <template-type-parameter name="Predicate"/>
+        </template><parameter name="first"><paramtype>InputIterator</paramtype><description><para>The start of the input sequence </para></description></parameter><parameter name="last"><paramtype>InputIterator</paramtype><description><para>One past the end of the input sequence </para></description></parameter><parameter name="result"><paramtype>OutputIterator</paramtype><description><para>An output iterator to write the results into </para></description></parameter><parameter name="p"><paramtype>Predicate</paramtype><description><para>A predicate for testing the elements of the range </para></description></parameter><purpose>Copies all the elements at the start of the input range that satisfy the predicate to the output range. </purpose><description><para>
+
+</para></description><returns><para>The updated input and output iterators</para></returns></function>
+<function name="copy_while"><type>std::pair&lt; typename boost::range_iterator&lt; const Range &gt;::type, OutputIterator &gt;</type><template>
+          <template-type-parameter name="Range"/>
+          <template-type-parameter name="OutputIterator"/>
+          <template-type-parameter name="Predicate"/>
+        </template><parameter name="r"><paramtype>const Range &amp;</paramtype><description><para>The input range </para></description></parameter><parameter name="result"><paramtype>OutputIterator</paramtype><description><para>An output iterator to write the results into </para></description></parameter><parameter name="p"><paramtype>Predicate</paramtype><description><para>A predicate for testing the elements of the range </para></description></parameter><purpose>Copies all the elements at the start of the input range that satisfy the predicate to the output range. </purpose><description><para>
+
+</para></description><returns><para>The updated input and output iterators</para></returns></function>
+<function name="copy_until"><type>std::pair&lt; InputIterator, OutputIterator &gt;</type><template>
+          <template-type-parameter name="InputIterator"/>
+          <template-type-parameter name="OutputIterator"/>
+          <template-type-parameter name="Predicate"/>
+        </template><parameter name="first"><paramtype>InputIterator</paramtype><description><para>The start of the input sequence </para></description></parameter><parameter name="last"><paramtype>InputIterator</paramtype><description><para>One past the end of the input sequence </para></description></parameter><parameter name="result"><paramtype>OutputIterator</paramtype><description><para>An output iterator to write the results into </para></description></parameter><parameter name="p"><paramtype>Predicate</paramtype><description><para>A predicate for testing the elements of the range </para></description></parameter><purpose>Copies all the elements at the start of the input range that do not satisfy the predicate to the output range. </purpose><description><para>
+
+</para></description><returns><para>The updated output iterator</para></returns></function>
+<function name="copy_until"><type>std::pair&lt; typename boost::range_iterator&lt; const Range &gt;::type, OutputIterator &gt;</type><template>
+          <template-type-parameter name="Range"/>
+          <template-type-parameter name="OutputIterator"/>
+          <template-type-parameter name="Predicate"/>
+        </template><parameter name="r"><paramtype>const Range &amp;</paramtype><description><para>The input range </para></description></parameter><parameter name="result"><paramtype>OutputIterator</paramtype><description><para>An output iterator to write the results into </para></description></parameter><parameter name="p"><paramtype>Predicate</paramtype><description><para>A predicate for testing the elements of the range </para></description></parameter><purpose>Copies all the elements at the start of the input range that do not satisfy the predicate to the output range. </purpose><description><para>
+
+</para></description><returns><para>The updated output iterator</para></returns></function>
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</header>
+<header name="boost/algorithm/cxx11/copy_n.hpp">
+<para>Copy n items from one sequence to another. </para><para><para>Marshall Clow </para>
+</para><namespace name="boost">
+<namespace name="algorithm">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="copy_n"><type>OutputIterator</type><template>
+          <template-type-parameter name="InputIterator"/>
+          <template-type-parameter name="Size"/>
+          <template-type-parameter name="OutputIterator"/>
+        </template><parameter name="first"><paramtype>InputIterator</paramtype><description><para>The start of the input sequence </para></description></parameter><parameter name="n"><paramtype>Size</paramtype><description><para>The number of elements to copy </para></description></parameter><parameter name="result"><paramtype>OutputIterator</paramtype><description><para>An output iterator to write the results into </para></description></parameter><purpose>Copies exactly n (n &gt; 0) elements from the range starting at first to the range starting at result. </purpose><description><para>
+
+<note><para>This function is part of the C++2011 standard library. </para></note>
+</para></description><returns><para>The updated output iterator</para></returns></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</header>
+<header name="boost/algorithm/cxx11/find_if_not.hpp">
+<para>Find the first element in a sequence that does not satisfy a predicate. </para><para><para>Marshall Clow </para>
+</para><namespace name="boost">
+<namespace name="algorithm">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="find_if_not"><type>InputIterator</type><template>
+          <template-type-parameter name="InputIterator"/>
+          <template-type-parameter name="Predicate"/>
+        </template><parameter name="first"><paramtype>InputIterator</paramtype><description><para>The start of the input sequence </para></description></parameter><parameter name="last"><paramtype>InputIterator</paramtype><description><para>One past the end of the input sequence </para></description></parameter><parameter name="p"><paramtype>Predicate</paramtype><description><para>A predicate for testing the elements of the range </para></description></parameter><purpose>Finds the first element in the sequence that does not satisfy the predicate. </purpose><description><para>
+
+<note><para>This function is part of the C++2011 standard library. </para></note>
+</para></description><returns><para>The iterator pointing to the desired element.</para></returns></function>
+<function name="find_if_not"><type>boost::range_iterator&lt; const Range &gt;::type</type><template>
+          <template-type-parameter name="Range"/>
+          <template-type-parameter name="Predicate"/>
+        </template><parameter name="r"><paramtype>const Range &amp;</paramtype><description><para>The input range </para></description></parameter><parameter name="p"><paramtype>Predicate</paramtype><description><para>A predicate for testing the elements of the range </para></description></parameter><purpose>Finds the first element in the sequence that does not satisfy the predicate. </purpose><description><para>
+
+</para></description><returns><para>The iterator pointing to the desired element.</para></returns></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</header>
+<header name="boost/algorithm/cxx11/iota.hpp">
+<para>Generate an increasing series. </para><para><para>Marshall Clow </para>
+</para><namespace name="boost">
+<namespace name="algorithm">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="iota"><type>void</type><template>
+          <template-type-parameter name="ForwardIterator"/>
+          <template-type-parameter name="T"/>
+        </template><parameter name="first"><paramtype>ForwardIterator</paramtype><description><para>The start of the input sequence </para></description></parameter><parameter name="last"><paramtype>ForwardIterator</paramtype><description><para>One past the end of the input sequence </para></description></parameter><parameter name="value"><paramtype>T</paramtype><description><para>The initial value of the sequence to be generated </para></description></parameter><purpose>Generates an increasing sequence of values, and stores them in [first, last) </purpose><description><para>
+<note><para>This function is part of the C++2011 standard library. </para></note>
+</para></description></function>
+<function name="iota"><type>void</type><template>
+          <template-type-parameter name="Range"/>
+          <template-type-parameter name="T"/>
+        </template><parameter name="r"><paramtype>Range &amp;</paramtype><description><para>The input range </para></description></parameter><parameter name="value"><paramtype>T</paramtype><description><para>The initial value of the sequence to be generated </para></description></parameter><purpose>Generates an increasing sequence of values, and stores them in the input Range. </purpose><description><para>
+</para></description></function>
+<function name="iota_n"><type>OutputIterator</type><template>
+          <template-type-parameter name="OutputIterator"/>
+          <template-type-parameter name="T"/>
+        </template><parameter name="out"><paramtype>OutputIterator</paramtype><description><para>An output iterator to write the results into </para></description></parameter><parameter name="value"><paramtype>T</paramtype><description><para>The initial value of the sequence to be generated </para></description></parameter><parameter name="n"><paramtype>std::size_t</paramtype><description><para>The number of items to write </para></description></parameter><purpose>Generates an increasing sequence of values, and stores them in the input Range. </purpose><description><para>
+</para></description></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</header>
+<header name="boost/algorithm/cxx11/is_partitioned.hpp">
+<para>Tell if a sequence is partitioned. </para><para><para>Marshall Clow </para>
+</para><namespace name="boost">
+<namespace name="algorithm">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="is_partitioned"><type>bool</type><template>
+          <template-type-parameter name="InputIterator"/>
+          <template-type-parameter name="UnaryPredicate"/>
+        </template><parameter name="first"><paramtype>InputIterator</paramtype><description><para>The start of the input sequence </para></description></parameter><parameter name="last"><paramtype>InputIterator</paramtype><description><para>One past the end of the input sequence </para></description></parameter><parameter name="p"><paramtype>UnaryPredicate</paramtype><description><para>The predicate to test the values with </para></description></parameter><purpose>Tests to see if a sequence is partitioned according to a predicate. </purpose><description><para>
+<note><para>This function is part of the C++2011 standard library. </para></note>
+</para></description></function>
+<function name="is_partitioned"><type>bool</type><template>
+          <template-type-parameter name="Range"/>
+          <template-type-parameter name="UnaryPredicate"/>
+        </template><parameter name="r"><paramtype>const Range &amp;</paramtype><description><para>The input range </para></description></parameter><parameter name="p"><paramtype>UnaryPredicate</paramtype><description><para>The predicate to test the values with </para></description></parameter><purpose>Generates an increasing sequence of values, and stores them in the input Range. </purpose><description><para>
+</para></description></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</header>
+<header name="boost/algorithm/cxx11/is_permutation.hpp">
+<namespace name="boost">
+<namespace name="algorithm">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="is_permutation"><type>bool</type><template>
+          <template-type-parameter name="ForwardIterator1"/>
+          <template-type-parameter name="ForwardIterator2"/>
+          <template-type-parameter name="BinaryPredicate"/>
+        </template><parameter name="first1"><paramtype>ForwardIterator1</paramtype><description><para>The start of the input sequence </para></description></parameter><parameter name="last1"><paramtype>ForwardIterator1</paramtype><description><para>One past the end of the input sequence </para></description></parameter><parameter name="first2"><paramtype>ForwardIterator2</paramtype><description><para>The start of the second sequence </para></description></parameter><parameter name="p"><paramtype>BinaryPredicate</paramtype><description><para>The predicate to compare elements with</para></description></parameter><purpose>Tests to see if the sequence [first,last) is a permutation of the sequence starting at first2. </purpose><description><para>
+<note><para>This function is part of the C++2011 standard library. </para></note>
+</para></description></function>
+<function name="is_permutation"><type>bool</type><template>
+          <template-type-parameter name="ForwardIterator1"/>
+          <template-type-parameter name="ForwardIterator2"/>
+        </template><parameter name="first1"><paramtype>ForwardIterator1</paramtype><description><para>The start of the input sequence </para></description></parameter><parameter name="last1"><paramtype>ForwardIterator1</paramtype></parameter><parameter name="first2"><paramtype>ForwardIterator2</paramtype><description><para>The start of the second sequence </para></description></parameter><purpose>Tests to see if the sequence [first,last) is a permutation of the sequence starting at first2. </purpose><description><para>
+<note><para>This function is part of the C++2011 standard library. </para></note>
+</para></description></function>
+<function name="is_permutation"><type>bool</type><template>
+          <template-type-parameter name="Range"/>
+          <template-type-parameter name="ForwardIterator"/>
+        </template><parameter name="r"><paramtype>const Range &amp;</paramtype><description><para>The input range </para></description></parameter><parameter name="first2"><paramtype>ForwardIterator</paramtype><description><para>The start of the second sequence </para></description></parameter><purpose>Tests to see if the sequence [first,last) is a permutation of the sequence starting at first2. </purpose><description><para>
+</para></description></function>
+<function name="is_permutation"><type>boost::disable_if_c&lt; boost::is_same&lt; Range, ForwardIterator &gt;::value, bool &gt;::type</type><template>
+          <template-type-parameter name="Range"/>
+          <template-type-parameter name="ForwardIterator"/>
+          <template-type-parameter name="BinaryPredicate"/>
+        </template><parameter name="r"><paramtype>const Range &amp;</paramtype><description><para>The input range </para></description></parameter><parameter name="first2"><paramtype>ForwardIterator</paramtype><description><para>The start of the second sequence </para></description></parameter><parameter name="pred"><paramtype>BinaryPredicate</paramtype><description><para>The predicate to compare elements with </para></description></parameter><purpose>Tests to see if the sequence [first,last) is a permutation of the sequence starting at first2. </purpose><description><para>
+</para></description></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</header>
+<header name="boost/algorithm/cxx14/is_permutation.hpp">
+<namespace name="boost">
+<namespace name="algorithm">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="is_permutation"><type>bool</type><template>
+          <template-type-parameter name="ForwardIterator1"/>
+          <template-type-parameter name="ForwardIterator2"/>
+        </template><parameter name="first1"><paramtype>ForwardIterator1</paramtype><description><para>The start of the input sequence </para></description></parameter><parameter name="last1"><paramtype>ForwardIterator1</paramtype><description><para>One past the end of the second sequence </para></description></parameter><parameter name="first2"><paramtype>ForwardIterator2</paramtype><description><para>The start of the second sequence </para></description></parameter><parameter name="last2"><paramtype>ForwardIterator2</paramtype><description><para>One past the end of the input sequence </para></description></parameter><purpose>Tests to see if the sequence [first,last) is a permutation of the sequence starting at first2. </purpose><description><para>
+<note><para>This function is part of the C++2014 standard library. </para></note>
+</para></description></function>
+<function name="is_permutation"><type>bool</type><template>
+          <template-type-parameter name="ForwardIterator1"/>
+          <template-type-parameter name="ForwardIterator2"/>
+          <template-type-parameter name="BinaryPredicate"/>
+        </template><parameter name="first1"><paramtype>ForwardIterator1</paramtype><description><para>The start of the input sequence </para></description></parameter><parameter name="last1"><paramtype>ForwardIterator1</paramtype><description><para>One past the end of the input sequence </para></description></parameter><parameter name="first2"><paramtype>ForwardIterator2</paramtype><description><para>The start of the second sequence </para></description></parameter><parameter name="last2"><paramtype>ForwardIterator2</paramtype><description><para>One past the end of the second sequence </para></description></parameter><parameter name="pred"><paramtype>BinaryPredicate</paramtype><description><para>The predicate to compare elements with</para></description></parameter><purpose>Tests to see if the sequence [first,last) is a permutation of the sequence starting at first2. </purpose><description><para>
+<note><para>This function is part of the C++2014 standard library. </para></note>
+</para></description></function>
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</header>
+<header name="boost/algorithm/cxx11/is_sorted.hpp">
+<namespace name="boost">
+<namespace name="algorithm">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="is_sorted_until"><type>ForwardIterator</type><template>
+          <template-type-parameter name="ForwardIterator"/>
+          <template-type-parameter name="Pred"/>
+        </template><parameter name="first"><paramtype>ForwardIterator</paramtype><description><para>The start of the sequence to be tested. </para></description></parameter><parameter name="last"><paramtype>ForwardIterator</paramtype><description><para>One past the end of the sequence </para></description></parameter><parameter name="p"><paramtype>Pred</paramtype><description><para>A binary predicate that returns true if two elements are ordered. </para></description></parameter><description><para>
+
+</para></description><returns><para>the point in the sequence [first, last) where the elements are unordered (according to the comparison predicate 'p').</para></returns></function>
+<function name="is_sorted_until"><type>ForwardIterator</type><template>
+          <template-type-parameter name="ForwardIterator"/>
+        </template><parameter name="first"><paramtype>ForwardIterator</paramtype><description><para>The start of the sequence to be tested. </para></description></parameter><parameter name="last"><paramtype>ForwardIterator</paramtype><description><para>One past the end of the sequence </para></description></parameter><description><para>
+
+</para></description><returns><para>the point in the sequence [first, last) where the elements are unordered</para></returns></function>
+<function name="is_sorted"><type>bool</type><template>
+          <template-type-parameter name="ForwardIterator"/>
+          <template-type-parameter name="Pred"/>
+        </template><parameter name="first"><paramtype>ForwardIterator</paramtype><description><para>The start of the sequence to be tested. </para></description></parameter><parameter name="last"><paramtype>ForwardIterator</paramtype><description><para>One past the end of the sequence </para></description></parameter><parameter name="p"><paramtype>Pred</paramtype><description><para>A binary predicate that returns true if two elements are ordered. </para></description></parameter><description><para>
+
+</para></description><returns><para>whether or not the entire sequence is sorted</para></returns></function>
+<function name="is_sorted"><type>bool</type><template>
+          <template-type-parameter name="ForwardIterator"/>
+        </template><parameter name="first"><paramtype>ForwardIterator</paramtype><description><para>The start of the sequence to be tested. </para></description></parameter><parameter name="last"><paramtype>ForwardIterator</paramtype><description><para>One past the end of the sequence </para></description></parameter><description><para>
+
+</para></description><returns><para>whether or not the entire sequence is sorted</para></returns></function>
+<function name="is_sorted_until"><type>boost::lazy_disable_if_c&lt; boost::is_same&lt; R, Pred &gt;::value, typename boost::range_iterator&lt; const R &gt; &gt;::type</type><template>
+          <template-type-parameter name="R"/>
+          <template-type-parameter name="Pred"/>
+        </template><parameter name="range"><paramtype>const R &amp;</paramtype><description><para>The range to be tested. </para></description></parameter><parameter name="p"><paramtype>Pred</paramtype><description><para>A binary predicate that returns true if two elements are ordered. </para></description></parameter><description><para>– Range based versions of the C++11 functions 
+
+</para></description><returns><para>the point in the range R where the elements are unordered (according to the comparison predicate 'p').</para></returns></function>
+<function name="is_sorted_until"><type>boost::range_iterator&lt; const R &gt;::type</type><template>
+          <template-type-parameter name="R"/>
+        </template><parameter name="range"><paramtype>const R &amp;</paramtype><description><para>The range to be tested. </para></description></parameter><description><para>
+
+</para></description><returns><para>the point in the range R where the elements are unordered</para></returns></function>
+<function name="is_sorted"><type>boost::lazy_disable_if_c&lt; boost::is_same&lt; R, Pred &gt;::value, boost::mpl::identity&lt; bool &gt; &gt;::type</type><template>
+          <template-type-parameter name="R"/>
+          <template-type-parameter name="Pred"/>
+        </template><parameter name="range"><paramtype>const R &amp;</paramtype><description><para>The range to be tested. </para></description></parameter><parameter name="p"><paramtype>Pred</paramtype><description><para>A binary predicate that returns true if two elements are ordered. </para></description></parameter><description><para>
+
+</para></description><returns><para>whether or not the entire range R is sorted (according to the comparison predicate 'p').</para></returns></function>
+<function name="is_sorted"><type>bool</type><template>
+          <template-type-parameter name="R"/>
+        </template><parameter name="range"><paramtype>const R &amp;</paramtype><description><para>The range to be tested. </para></description></parameter><description><para>
+
+</para></description><returns><para>whether or not the entire range R is sorted</para></returns></function>
+<function name="is_increasing"><type>bool</type><template>
+          <template-type-parameter name="ForwardIterator"/>
+        </template><parameter name="first"><paramtype>ForwardIterator</paramtype><description><para>The start of the sequence to be tested. </para></description></parameter><parameter name="last"><paramtype>ForwardIterator</paramtype><description><para>One past the end of the sequence</para></description></parameter><description><para>– Range based versions of the C++11 functions 
+
+<note><para>This function will return true for sequences that contain items that compare equal. If that is not what you intended, you should use is_strictly_increasing instead. </para></note>
+</para></description><returns><para>true if the entire sequence is increasing; i.e, each item is greater than or equal to the previous one.</para></returns></function>
+<function name="is_increasing"><type>bool</type><template>
+          <template-type-parameter name="R"/>
+        </template><parameter name="range"><paramtype>const R &amp;</paramtype><description><para>The range to be tested.</para></description></parameter><description><para>
+
+<note><para>This function will return true for sequences that contain items that compare equal. If that is not what you intended, you should use is_strictly_increasing instead. </para></note>
+</para></description><returns><para>true if the entire sequence is increasing; i.e, each item is greater than or equal to the previous one.</para></returns></function>
+<function name="is_decreasing"><type>bool</type><template>
+          <template-type-parameter name="ForwardIterator"/>
+        </template><parameter name="first"><paramtype>ForwardIterator</paramtype><description><para>The start of the sequence to be tested. </para></description></parameter><parameter name="last"><paramtype>ForwardIterator</paramtype><description><para>One past the end of the sequence</para></description></parameter><description><para>
+
+<note><para>This function will return true for sequences that contain items that compare equal. If that is not what you intended, you should use is_strictly_decreasing instead. </para></note>
+</para></description><returns><para>true if the entire sequence is decreasing; i.e, each item is less than or equal to the previous one.</para></returns></function>
+<function name="is_decreasing"><type>bool</type><template>
+          <template-type-parameter name="R"/>
+        </template><parameter name="range"><paramtype>const R &amp;</paramtype><description><para>The range to be tested.</para></description></parameter><description><para>
+
+<note><para>This function will return true for sequences that contain items that compare equal. If that is not what you intended, you should use is_strictly_decreasing instead. </para></note>
+</para></description><returns><para>true if the entire sequence is decreasing; i.e, each item is less than or equal to the previous one.</para></returns></function>
+<function name="is_strictly_increasing"><type>bool</type><template>
+          <template-type-parameter name="ForwardIterator"/>
+        </template><parameter name="first"><paramtype>ForwardIterator</paramtype><description><para>The start of the sequence to be tested. </para></description></parameter><parameter name="last"><paramtype>ForwardIterator</paramtype><description><para>One past the end of the sequence</para></description></parameter><description><para>
+
+<note><para>This function will return false for sequences that contain items that compare equal. If that is not what you intended, you should use is_increasing instead. </para></note>
+</para></description><returns><para>true if the entire sequence is strictly increasing; i.e, each item is greater than the previous one</para></returns></function>
+<function name="is_strictly_increasing"><type>bool</type><template>
+          <template-type-parameter name="R"/>
+        </template><parameter name="range"><paramtype>const R &amp;</paramtype><description><para>The range to be tested.</para></description></parameter><description><para>
+
+<note><para>This function will return false for sequences that contain items that compare equal. If that is not what you intended, you should use is_increasing instead. </para></note>
+</para></description><returns><para>true if the entire sequence is strictly increasing; i.e, each item is greater than the previous one</para></returns></function>
+<function name="is_strictly_decreasing"><type>bool</type><template>
+          <template-type-parameter name="ForwardIterator"/>
+        </template><parameter name="first"><paramtype>ForwardIterator</paramtype><description><para>The start of the sequence to be tested. </para></description></parameter><parameter name="last"><paramtype>ForwardIterator</paramtype><description><para>One past the end of the sequence</para></description></parameter><description><para>
+
+<note><para>This function will return false for sequences that contain items that compare equal. If that is not what you intended, you should use is_decreasing instead. </para></note>
+</para></description><returns><para>true if the entire sequence is strictly decreasing; i.e, each item is less than the previous one</para></returns></function>
+<function name="is_strictly_decreasing"><type>bool</type><template>
+          <template-type-parameter name="R"/>
+        </template><parameter name="range"><paramtype>const R &amp;</paramtype><description><para>The range to be tested.</para></description></parameter><description><para>
+
+<note><para>This function will return false for sequences that contain items that compare equal. If that is not what you intended, you should use is_decreasing instead. </para></note>
+</para></description><returns><para>true if the entire sequence is strictly decreasing; i.e, each item is less than the previous one</para></returns></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</header>
+<header name="boost/algorithm/cxx11/none_of.hpp">
+<para>Test ranges to see if no elements match a value or predicate. </para><para><para>Marshall Clow </para>
+</para><namespace name="boost">
+<namespace name="algorithm">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="none_of"><type>bool</type><template>
+          <template-type-parameter name="InputIterator"/>
+          <template-type-parameter name="Predicate"/>
+        </template><parameter name="first"><paramtype>InputIterator</paramtype><description><para>The start of the input sequence </para></description></parameter><parameter name="last"><paramtype>InputIterator</paramtype><description><para>One past the end of the input sequence </para></description></parameter><parameter name="p"><paramtype>Predicate</paramtype><description><para>A predicate for testing the elements of the sequence </para></description></parameter><description><para>
+<note><para>returns true on an empty range</para></note>
+
+</para></description><returns><para>true if none of the elements in [first, last) satisfy the predicate 'p' </para></returns></function>
+<function name="none_of"><type>bool</type><template>
+          <template-type-parameter name="Range"/>
+          <template-type-parameter name="Predicate"/>
+        </template><parameter name="r"><paramtype>const Range &amp;</paramtype><description><para>The input range </para></description></parameter><parameter name="p"><paramtype>Predicate</paramtype><description><para>A predicate for testing the elements of the range </para></description></parameter><description><para>
+<note><para>returns true on an empty range</para></note>
+
+</para></description><returns><para>true if none of the elements in the range satisfy the predicate 'p' </para></returns></function>
+<function name="none_of_equal"><type>bool</type><template>
+          <template-type-parameter name="InputIterator"/>
+          <template-type-parameter name="V"/>
+        </template><parameter name="first"><paramtype>InputIterator</paramtype><description><para>The start of the input sequence </para></description></parameter><parameter name="last"><paramtype>InputIterator</paramtype><description><para>One past the end of the input sequence </para></description></parameter><parameter name="val"><paramtype>const V &amp;</paramtype><description><para>A value to compare against </para></description></parameter><description><para>
+<note><para>returns true on an empty range</para></note>
+
+</para></description><returns><para>true if none of the elements in [first, last) are equal to 'val' </para></returns></function>
+<function name="none_of_equal"><type>bool</type><template>
+          <template-type-parameter name="Range"/>
+          <template-type-parameter name="V"/>
+        </template><parameter name="r"><paramtype>const Range &amp;</paramtype><description><para>The input range </para></description></parameter><parameter name="val"><paramtype>const V &amp;</paramtype><description><para>A value to compare against </para></description></parameter><description><para>
+<note><para>returns true on an empty range</para></note>
+
+</para></description><returns><para>true if none of the elements in the range are equal to 'val' </para></returns></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</header>
+<header name="boost/algorithm/cxx11/one_of.hpp">
+<para>Test ranges to see if only one element matches a value or predicate. </para><para><para>Marshall Clow </para>
+</para><namespace name="boost">
+<namespace name="algorithm">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="one_of"><type>bool</type><template>
+          <template-type-parameter name="InputIterator"/>
+          <template-type-parameter name="Predicate"/>
+        </template><parameter name="first"><paramtype>InputIterator</paramtype><description><para>The start of the input sequence </para></description></parameter><parameter name="last"><paramtype>InputIterator</paramtype><description><para>One past the end of the input sequence </para></description></parameter><parameter name="p"><paramtype>Predicate</paramtype><description><para>A predicate for testing the elements of the sequence </para></description></parameter><description><para>
+
+</para></description><returns><para>true if the predicate 'p' is true for exactly one item in [first, last).</para></returns></function>
+<function name="one_of"><type>bool</type><template>
+          <template-type-parameter name="Range"/>
+          <template-type-parameter name="Predicate"/>
+        </template><parameter name="r"><paramtype>const Range &amp;</paramtype><description><para>The input range </para></description></parameter><parameter name="p"><paramtype>Predicate</paramtype><description><para>A predicate for testing the elements of the range </para></description></parameter><description><para>
+
+</para></description><returns><para>true if the predicate 'p' is true for exactly one item in the range.</para></returns></function>
+<function name="one_of_equal"><type>bool</type><template>
+          <template-type-parameter name="InputIterator"/>
+          <template-type-parameter name="V"/>
+        </template><parameter name="first"><paramtype>InputIterator</paramtype><description><para>The start of the input sequence </para></description></parameter><parameter name="last"><paramtype>InputIterator</paramtype><description><para>One past the end of the input sequence </para></description></parameter><parameter name="val"><paramtype>const V &amp;</paramtype><description><para>A value to compare against </para></description></parameter><description><para>
+
+</para></description><returns><para>true if the value 'val' exists only once in [first, last).</para></returns></function>
+<function name="one_of_equal"><type>bool</type><template>
+          <template-type-parameter name="Range"/>
+          <template-type-parameter name="V"/>
+        </template><parameter name="r"><paramtype>const Range &amp;</paramtype><description><para>The input range </para></description></parameter><parameter name="val"><paramtype>const V &amp;</paramtype><description><para>A value to compare against </para></description></parameter><description><para>
+
+</para></description><returns><para>true if the value 'val' exists only once in the range.</para></returns></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</header>
+<header name="boost/algorithm/cxx11/partition_copy.hpp">
+<para>Copy a subset of a sequence to a new sequence. </para><para><para>Marshall Clow </para>
+</para><namespace name="boost">
+<namespace name="algorithm">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="partition_copy"><type>std::pair&lt; OutputIterator1, OutputIterator2 &gt;</type><template>
+          <template-type-parameter name="InputIterator"/>
+          <template-type-parameter name="OutputIterator1"/>
+          <template-type-parameter name="OutputIterator2"/>
+          <template-type-parameter name="UnaryPredicate"/>
+        </template><parameter name="first"><paramtype>InputIterator</paramtype><description><para>The start of the input sequence </para></description></parameter><parameter name="last"><paramtype>InputIterator</paramtype><description><para>One past the end of the input sequence </para></description></parameter><parameter name="out_true"><paramtype>OutputIterator1</paramtype><description><para>An output iterator to write the elements that satisfy the predicate into </para></description></parameter><parameter name="out_false"><paramtype>OutputIterator2</paramtype><description><para>An output iterator to write the elements that do not satisfy the predicate into </para></description></parameter><parameter name="p"><paramtype>UnaryPredicate</paramtype><description><para>A predicate for dividing the elements of the input sequence.</para></description></parameter><purpose>Copies the elements that satisfy the predicate p from the range [first, last) to the range beginning at d_first_true, and copies the elements that do not satisfy p to the range beginning at d_first_false. </purpose><description><para>
+<note><para>This function is part of the C++2011 standard library. </para></note>
+</para></description></function>
+<function name="partition_copy"><type>std::pair&lt; OutputIterator1, OutputIterator2 &gt;</type><template>
+          <template-type-parameter name="Range"/>
+          <template-type-parameter name="OutputIterator1"/>
+          <template-type-parameter name="OutputIterator2"/>
+          <template-type-parameter name="UnaryPredicate"/>
+        </template><parameter name="r"><paramtype>const Range &amp;</paramtype><description><para>The input range </para></description></parameter><parameter name="out_true"><paramtype>OutputIterator1</paramtype><description><para>An output iterator to write the elements that satisfy the predicate into </para></description></parameter><parameter name="out_false"><paramtype>OutputIterator2</paramtype><description><para>An output iterator to write the elements that do not satisfy the predicate into </para></description></parameter><parameter name="p"><paramtype>UnaryPredicate</paramtype><description><para>A predicate for dividing the elements of the input sequence. </para></description></parameter><description><para>
+</para></description></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</header>
+<header name="boost/algorithm/cxx11/partition_point.hpp">
+<para>Find the partition point in a sequence. </para><para><para>Marshall Clow </para>
+</para><namespace name="boost">
+<namespace name="algorithm">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="partition_point"><type>ForwardIterator</type><template>
+          <template-type-parameter name="ForwardIterator"/>
+          <template-type-parameter name="Predicate"/>
+        </template><parameter name="first"><paramtype>ForwardIterator</paramtype><description><para>The start of the input sequence </para></description></parameter><parameter name="last"><paramtype>ForwardIterator</paramtype><description><para>One past the end of the input sequence </para></description></parameter><parameter name="p"><paramtype>Predicate</paramtype><description><para>The predicate to test the values with </para></description></parameter><purpose>Given a partitioned range, returns the partition point, i.e, the first element that does not satisfy p. </purpose><description><para>
+<note><para>This function is part of the C++2011 standard library. </para></note>
+</para></description></function>
+<function name="partition_point"><type>boost::range_iterator&lt; Range &gt;::type</type><template>
+          <template-type-parameter name="Range"/>
+          <template-type-parameter name="Predicate"/>
+        </template><parameter name="r"><paramtype>Range &amp;</paramtype><description><para>The input range </para></description></parameter><parameter name="p"><paramtype>Predicate</paramtype><description><para>The predicate to test the values with </para></description></parameter><purpose>Given a partitioned range, returns the partition point. </purpose><description><para>
+</para></description></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</header>
+<header name="boost/algorithm/cxx14/equal.hpp">
+<para>Test ranges to if they are equal. </para><para><para>Marshall Clow </para>
+</para><namespace name="boost">
+<namespace name="algorithm">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="equal"><type>bool</type><template>
+          <template-type-parameter name="InputIterator1"/>
+          <template-type-parameter name="InputIterator2"/>
+          <template-type-parameter name="BinaryPredicate"/>
+        </template><parameter name="first1"><paramtype>InputIterator1</paramtype><description><para>The start of the first range. </para></description></parameter><parameter name="last1"><paramtype>InputIterator1</paramtype><description><para>One past the end of the first range. </para></description></parameter><parameter name="first2"><paramtype>InputIterator2</paramtype><description><para>The start of the second range. </para></description></parameter><parameter name="last2"><paramtype>InputIterator2</paramtype><description><para>One past the end of the second range. </para></description></parameter><parameter name="pred"><paramtype>BinaryPredicate</paramtype><description><para>A predicate for comparing the elements of the ranges </para></description></parameter><description><para>
+
+</para></description><returns><para>true if all elements in the two ranges are equal</para></returns></function>
+<function name="equal"><type>bool</type><template>
+          <template-type-parameter name="InputIterator1"/>
+          <template-type-parameter name="InputIterator2"/>
+        </template><parameter name="first1"><paramtype>InputIterator1</paramtype><description><para>The start of the first range. </para></description></parameter><parameter name="last1"><paramtype>InputIterator1</paramtype><description><para>One past the end of the first range. </para></description></parameter><parameter name="first2"><paramtype>InputIterator2</paramtype><description><para>The start of the second range. </para></description></parameter><parameter name="last2"><paramtype>InputIterator2</paramtype><description><para>One past the end of the second range. </para></description></parameter><description><para>
+
+</para></description><returns><para>true if all elements in the two ranges are equal</para></returns></function>
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</header>
+<header name="boost/algorithm/cxx14/mismatch.hpp">
+<para>Find the first mismatched element in a sequence. </para><para><para>Marshall Clow </para>
+</para><namespace name="boost">
+<namespace name="algorithm">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="mismatch"><type>std::pair&lt; InputIterator1, InputIterator2 &gt;</type><template>
+          <template-type-parameter name="InputIterator1"/>
+          <template-type-parameter name="InputIterator2"/>
+          <template-type-parameter name="BinaryPredicate"/>
+        </template><parameter name="first1"><paramtype>InputIterator1</paramtype><description><para>The start of the first range. </para></description></parameter><parameter name="last1"><paramtype>InputIterator1</paramtype><description><para>One past the end of the first range. </para></description></parameter><parameter name="first2"><paramtype>InputIterator2</paramtype><description><para>The start of the second range. </para></description></parameter><parameter name="last2"><paramtype>InputIterator2</paramtype><description><para>One past the end of the second range. </para></description></parameter><parameter name="pred"><paramtype>BinaryPredicate</paramtype><description><para>A predicate for comparing the elements of the ranges </para></description></parameter><description><para>
+
+</para></description><returns><para>a pair of iterators pointing to the first elements in the sequence that do not match</para></returns></function>
+<function name="mismatch"><type>std::pair&lt; InputIterator1, InputIterator2 &gt;</type><template>
+          <template-type-parameter name="InputIterator1"/>
+          <template-type-parameter name="InputIterator2"/>
+        </template><parameter name="first1"><paramtype>InputIterator1</paramtype><description><para>The start of the first range. </para></description></parameter><parameter name="last1"><paramtype>InputIterator1</paramtype><description><para>One past the end of the first range. </para></description></parameter><parameter name="first2"><paramtype>InputIterator2</paramtype><description><para>The start of the second range. </para></description></parameter><parameter name="last2"><paramtype>InputIterator2</paramtype><description><para>One past the end of the second range. </para></description></parameter><description><para>
+
+</para></description><returns><para>a pair of iterators pointing to the first elements in the sequence that do not match</para></returns></function>
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</header>
+<header name="boost/algorithm/gather.hpp">
+<namespace name="boost">
+<namespace name="algorithm">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="gather"><type>std::pair&lt; BidirectionalIterator, BidirectionalIterator &gt;</type><template>
+          <template-type-parameter name="BidirectionalIterator"/>
+          <template-type-parameter name="Pred"/>
+        </template><parameter name="first"><paramtype>BidirectionalIterator</paramtype></parameter><parameter name="last"><paramtype>BidirectionalIterator</paramtype></parameter><parameter name="pivot"><paramtype>BidirectionalIterator</paramtype></parameter><parameter name="pred"><paramtype>Pred</paramtype></parameter><purpose>iterator-based gather implementation </purpose></function>
+<function name="gather"><type>std::pair&lt; typename boost::range_iterator&lt; const BidirectionalRange &gt;::type, typename boost::range_iterator&lt; const BidirectionalRange &gt;::type &gt;</type><template>
+          <template-type-parameter name="BidirectionalRange"/>
+          <template-type-parameter name="Pred"/>
+        </template><parameter name="range"><paramtype>const BidirectionalRange &amp;</paramtype></parameter><parameter name="pivot"><paramtype>typename boost::range_iterator&lt; const BidirectionalRange &gt;::type</paramtype></parameter><parameter name="pred"><paramtype>Pred</paramtype></parameter><purpose>range-based gather implementation </purpose></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</header>
+<header name="boost/algorithm/hex.hpp">
+<para>Convert sequence of integral types into a sequence of hexadecimal characters and back. Based on the MySQL functions HEX and UNHEX. </para><para><para>Marshall Clow </para>
+</para><namespace name="boost">
+<namespace name="algorithm">
+<struct name="hex_decode_error"><inherit access="public">exception</inherit><inherit access="public">exception</inherit><purpose>Base exception class for all hex decoding errors. </purpose></struct><struct name="not_enough_input"><inherit access="public">boost::algorithm::hex_decode_error</inherit><purpose>Thrown when the input sequence unexpectedly ends. </purpose></struct><struct name="non_hex_input"><inherit access="public">boost::algorithm::hex_decode_error</inherit><purpose>Thrown when a non-hex value (0-9, A-F) encountered when decoding. Contains the offending character. </purpose></struct><typedef name="bad_char"><type>boost::error_info&lt; struct bad_char_, char &gt;</type></typedef>
+
+
+
+
+<function name="hex"><type><emphasis>unspecified</emphasis></type><template>
+          <template-type-parameter name="InputIterator"/>
+          <template-type-parameter name="OutputIterator"/>
+        </template><parameter name="first"><paramtype>InputIterator</paramtype><description><para>The start of the input sequence </para></description></parameter><parameter name="last"><paramtype>InputIterator</paramtype><description><para>One past the end of the input sequence </para></description></parameter><parameter name="out"><paramtype>OutputIterator</paramtype><description><para>An output iterator to the results into </para></description></parameter><purpose>Converts a sequence of integral types into a hexadecimal sequence of characters. </purpose><description><para>
+
+<note><para>Based on the MySQL function of the same name </para></note>
+</para></description><returns><para>The updated output iterator </para></returns></function>
+<function name="hex_lower"><type><emphasis>unspecified</emphasis></type><template>
+          <template-type-parameter name="InputIterator"/>
+          <template-type-parameter name="OutputIterator"/>
+        </template><parameter name="first"><paramtype>InputIterator</paramtype><description><para>The start of the input sequence </para></description></parameter><parameter name="last"><paramtype>InputIterator</paramtype><description><para>One past the end of the input sequence </para></description></parameter><parameter name="out"><paramtype>OutputIterator</paramtype><description><para>An output iterator to the results into </para></description></parameter><purpose>Converts a sequence of integral types into a lower case hexadecimal sequence of characters. </purpose><description><para>
+
+<note><para>Based on the MySQL function of the same name </para></note>
+</para></description><returns><para>The updated output iterator </para></returns></function>
+<function name="hex"><type>boost::enable_if&lt; boost::is_integral&lt; T &gt;, OutputIterator &gt;::type</type><template>
+          <template-type-parameter name="T"/>
+          <template-type-parameter name="OutputIterator"/>
+        </template><parameter name="ptr"><paramtype>const T *</paramtype><description><para>A pointer to a 0-terminated sequence of data. </para></description></parameter><parameter name="out"><paramtype>OutputIterator</paramtype><description><para>An output iterator to the results into </para></description></parameter><purpose>Converts a sequence of integral types into a hexadecimal sequence of characters. </purpose><description><para>
+
+<note><para>Based on the MySQL function of the same name </para></note>
+</para></description><returns><para>The updated output iterator </para></returns></function>
+<function name="hex_lower"><type>boost::enable_if&lt; boost::is_integral&lt; T &gt;, OutputIterator &gt;::type</type><template>
+          <template-type-parameter name="T"/>
+          <template-type-parameter name="OutputIterator"/>
+        </template><parameter name="ptr"><paramtype>const T *</paramtype><description><para>A pointer to a 0-terminated sequence of data. </para></description></parameter><parameter name="out"><paramtype>OutputIterator</paramtype><description><para>An output iterator to the results into </para></description></parameter><purpose>Converts a sequence of integral types into a lower case hexadecimal sequence of characters. </purpose><description><para>
+
+<note><para>Based on the MySQL function of the same name </para></note>
+</para></description><returns><para>The updated output iterator </para></returns></function>
+<function name="hex"><type><emphasis>unspecified</emphasis></type><template>
+          <template-type-parameter name="Range"/>
+          <template-type-parameter name="OutputIterator"/>
+        </template><parameter name="r"><paramtype>const Range &amp;</paramtype><description><para>The input range </para></description></parameter><parameter name="out"><paramtype>OutputIterator</paramtype><description><para>An output iterator to the results into </para></description></parameter><purpose>Converts a sequence of integral types into a hexadecimal sequence of characters. </purpose><description><para>
+
+<note><para>Based on the MySQL function of the same name </para></note>
+</para></description><returns><para>The updated output iterator </para></returns></function>
+<function name="hex_lower"><type><emphasis>unspecified</emphasis></type><template>
+          <template-type-parameter name="Range"/>
+          <template-type-parameter name="OutputIterator"/>
+        </template><parameter name="r"><paramtype>const Range &amp;</paramtype><description><para>The input range </para></description></parameter><parameter name="out"><paramtype>OutputIterator</paramtype><description><para>An output iterator to the results into </para></description></parameter><purpose>Converts a sequence of integral types into a lower case hexadecimal sequence of characters. </purpose><description><para>
+
+<note><para>Based on the MySQL function of the same name </para></note>
+</para></description><returns><para>The updated output iterator </para></returns></function>
+<function name="unhex"><type>OutputIterator</type><template>
+          <template-type-parameter name="InputIterator"/>
+          <template-type-parameter name="OutputIterator"/>
+        </template><parameter name="first"><paramtype>InputIterator</paramtype><description><para>The start of the input sequence </para></description></parameter><parameter name="last"><paramtype>InputIterator</paramtype><description><para>One past the end of the input sequence </para></description></parameter><parameter name="out"><paramtype>OutputIterator</paramtype><description><para>An output iterator to the results into </para></description></parameter><purpose>Converts a sequence of hexadecimal characters into a sequence of integers. </purpose><description><para>
+
+<note><para>Based on the MySQL function of the same name </para></note>
+</para></description><returns><para>The updated output iterator </para></returns></function>
+<function name="unhex"><type>OutputIterator</type><template>
+          <template-type-parameter name="T"/>
+          <template-type-parameter name="OutputIterator"/>
+        </template><parameter name="ptr"><paramtype>const T *</paramtype><description><para>A pointer to a null-terminated input sequence. </para></description></parameter><parameter name="out"><paramtype>OutputIterator</paramtype><description><para>An output iterator to the results into </para></description></parameter><purpose>Converts a sequence of hexadecimal characters into a sequence of integers. </purpose><description><para>
+
+<note><para>Based on the MySQL function of the same name </para></note>
+</para></description><returns><para>The updated output iterator </para></returns></function>
+<function name="unhex"><type>OutputIterator</type><template>
+          <template-type-parameter name="Range"/>
+          <template-type-parameter name="OutputIterator"/>
+        </template><parameter name="r"><paramtype>const Range &amp;</paramtype><description><para>The input range </para></description></parameter><parameter name="out"><paramtype>OutputIterator</paramtype><description><para>An output iterator to the results into </para></description></parameter><purpose>Converts a sequence of hexadecimal characters into a sequence of integers. </purpose><description><para>
+
+<note><para>Based on the MySQL function of the same name </para></note>
+</para></description><returns><para>The updated output iterator </para></returns></function>
+<function name="hex"><type>String</type><template>
+          <template-type-parameter name="String"/>
+        </template><parameter name="input"><paramtype>const String &amp;</paramtype><description><para>A container to be converted </para></description></parameter><purpose>Converts a sequence of integral types into a hexadecimal sequence of characters. </purpose><description><para>
+
+</para></description><returns><para>A container with the encoded text </para></returns></function>
+<function name="hex_lower"><type>String</type><template>
+          <template-type-parameter name="String"/>
+        </template><parameter name="input"><paramtype>const String &amp;</paramtype><description><para>A container to be converted </para></description></parameter><purpose>Converts a sequence of integral types into a lower case hexadecimal sequence of characters. </purpose><description><para>
+
+</para></description><returns><para>A container with the encoded text </para></returns></function>
+<function name="unhex"><type>String</type><template>
+          <template-type-parameter name="String"/>
+        </template><parameter name="input"><paramtype>const String &amp;</paramtype><description><para>A container to be converted </para></description></parameter><purpose>Converts a sequence of hexadecimal characters into a sequence of characters. </purpose><description><para>
+
+</para></description><returns><para>A container with the decoded text </para></returns></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</header>
+<header name="boost/algorithm/is_palindrome.hpp">
+<para>Checks the input sequence on palindrome. </para><para><para>Alexander Zaitsev </para>
+</para><namespace name="boost">
+<namespace name="algorithm">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="is_palindrome"><type>bool</type><template>
+          <template-type-parameter name="BidirectionalIterator"/>
+          <template-type-parameter name="Predicate"/>
+        </template><parameter name="begin"><paramtype>BidirectionalIterator</paramtype><description><para>The start of the input sequence </para></description></parameter><parameter name="end"><paramtype>BidirectionalIterator</paramtype><description><para>One past the end of the input sequence </para></description></parameter><parameter name="p"><paramtype>Predicate</paramtype><description><para>A predicate used to compare the values.</para></description></parameter><description><para>
+
+<note><para>This function will return true for empty sequences and for palindromes. For other sequences function will return false. Complexity: O(N). </para></note>
+</para></description><returns><para>true if the entire sequence is palindrome</para></returns></function>
+<function name="is_palindrome"><type>bool</type><template>
+          <template-type-parameter name="BidirectionalIterator"/>
+        </template><parameter name="begin"><paramtype>BidirectionalIterator</paramtype><description><para>The start of the input sequence </para></description></parameter><parameter name="end"><paramtype>BidirectionalIterator</paramtype><description><para>One past the end of the input sequence</para></description></parameter><description><para>
+
+<note><para>This function will return true for empty sequences and for palindromes. For other sequences function will return false. Complexity: O(N). </para></note>
+</para></description><returns><para>true if the entire sequence is palindrome</para></returns></function>
+<function name="is_palindrome"><type>bool</type><template>
+          <template-type-parameter name="R"/>
+        </template><parameter name="range"><paramtype>const R &amp;</paramtype><description><para>The range to be tested.</para></description></parameter><description><para>
+
+<note><para>This function will return true for empty sequences and for palindromes. For other sequences function will return false. Complexity: O(N). </para></note>
+</para></description><returns><para>true if the entire sequence is palindrome</para></returns></function>
+<function name="is_palindrome"><type>bool</type><template>
+          <template-type-parameter name="R"/>
+          <template-type-parameter name="Predicate"/>
+        </template><parameter name="range"><paramtype>const R &amp;</paramtype><description><para>The range to be tested. </para></description></parameter><parameter name="p"><paramtype>Predicate</paramtype><description><para>A predicate used to compare the values.</para></description></parameter><description><para>
+
+<note><para>This function will return true for empty sequences and for palindromes. For other sequences function will return false. Complexity: O(N). </para></note>
+</para></description><returns><para>true if the entire sequence is palindrome</para></returns></function>
+<function name="is_palindrome"><type>bool</type><parameter name="str"><paramtype>const char *</paramtype><description><para>C-string to be tested.</para></description></parameter><description><para>
+
+<note><para>This function will return true for empty sequences and for palindromes. For other sequences function will return false. Complexity: O(N). </para></note>
+</para></description><returns><para>true if the entire sequence is palindrome</para></returns></function>
+<function name="is_palindrome"><type>bool</type><template>
+          <template-type-parameter name="Predicate"/>
+        </template><parameter name="str"><paramtype>const char *</paramtype><description><para>C-string to be tested. </para></description></parameter><parameter name="p"><paramtype>Predicate</paramtype><description><para>A predicate used to compare the values.</para></description></parameter><description><para>
+
+<note><para>This function will return true for empty sequences and for palindromes. For other sequences function will return false. Complexity: O(N). </para></note>
+</para></description><returns><para>true if the entire sequence is palindrome</para></returns></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</header>
+<header name="boost/algorithm/minmax.hpp">
+<namespace name="boost">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="minmax"><type>tuple&lt; T const &amp;, T const &amp; &gt;</type><template>
+          <template-type-parameter name="T"/>
+        </template><parameter name="a"><paramtype>T const &amp;</paramtype></parameter><parameter name="b"><paramtype>T const &amp;</paramtype></parameter></function>
+<function name="minmax"><type>tuple&lt; T const &amp;, T const &amp; &gt;</type><template>
+          <template-type-parameter name="T"/>
+          <template-type-parameter name="BinaryPredicate"/>
+        </template><parameter name="a"><paramtype>T const &amp;</paramtype></parameter><parameter name="b"><paramtype>T const &amp;</paramtype></parameter><parameter name="comp"><paramtype>BinaryPredicate</paramtype></parameter></function>
+</namespace>
+</header>
+<header name="boost/algorithm/minmax_element.hpp">
+<namespace name="boost">
+<function name="minmax_element"><type>std::pair&lt; ForwardIter, ForwardIter &gt;</type><template>
+          <template-type-parameter name="ForwardIter"/>
+        </template><parameter name="first"><paramtype>ForwardIter</paramtype></parameter><parameter name="last"><paramtype>ForwardIter</paramtype></parameter></function>
+<function name="minmax_element"><type>std::pair&lt; ForwardIter, ForwardIter &gt;</type><template>
+          <template-type-parameter name="ForwardIter"/>
+          <template-type-parameter name="BinaryPredicate"/>
+        </template><parameter name="first"><paramtype>ForwardIter</paramtype></parameter><parameter name="last"><paramtype>ForwardIter</paramtype></parameter><parameter name="comp"><paramtype>BinaryPredicate</paramtype></parameter></function>
+<function name="first_min_element"><type>ForwardIter</type><template>
+          <template-type-parameter name="ForwardIter"/>
+        </template><parameter name="first"><paramtype>ForwardIter</paramtype></parameter><parameter name="last"><paramtype>ForwardIter</paramtype></parameter></function>
+<function name="first_min_element"><type>ForwardIter</type><template>
+          <template-type-parameter name="ForwardIter"/>
+          <template-type-parameter name="BinaryPredicate"/>
+        </template><parameter name="first"><paramtype>ForwardIter</paramtype></parameter><parameter name="last"><paramtype>ForwardIter</paramtype></parameter><parameter name="comp"><paramtype>BinaryPredicate</paramtype></parameter></function>
+<function name="last_min_element"><type>ForwardIter</type><template>
+          <template-type-parameter name="ForwardIter"/>
+        </template><parameter name="first"><paramtype>ForwardIter</paramtype></parameter><parameter name="last"><paramtype>ForwardIter</paramtype></parameter></function>
+<function name="last_min_element"><type>ForwardIter</type><template>
+          <template-type-parameter name="ForwardIter"/>
+          <template-type-parameter name="BinaryPredicate"/>
+        </template><parameter name="first"><paramtype>ForwardIter</paramtype></parameter><parameter name="last"><paramtype>ForwardIter</paramtype></parameter><parameter name="comp"><paramtype>BinaryPredicate</paramtype></parameter></function>
+<function name="first_max_element"><type>ForwardIter</type><template>
+          <template-type-parameter name="ForwardIter"/>
+        </template><parameter name="first"><paramtype>ForwardIter</paramtype></parameter><parameter name="last"><paramtype>ForwardIter</paramtype></parameter></function>
+<function name="first_max_element"><type>ForwardIter</type><template>
+          <template-type-parameter name="ForwardIter"/>
+          <template-type-parameter name="BinaryPredicate"/>
+        </template><parameter name="first"><paramtype>ForwardIter</paramtype></parameter><parameter name="last"><paramtype>ForwardIter</paramtype></parameter><parameter name="comp"><paramtype>BinaryPredicate</paramtype></parameter></function>
+<function name="last_max_element"><type>ForwardIter</type><template>
+          <template-type-parameter name="ForwardIter"/>
+        </template><parameter name="first"><paramtype>ForwardIter</paramtype></parameter><parameter name="last"><paramtype>ForwardIter</paramtype></parameter></function>
+<function name="last_max_element"><type>ForwardIter</type><template>
+          <template-type-parameter name="ForwardIter"/>
+          <template-type-parameter name="BinaryPredicate"/>
+        </template><parameter name="first"><paramtype>ForwardIter</paramtype></parameter><parameter name="last"><paramtype>ForwardIter</paramtype></parameter><parameter name="comp"><paramtype>BinaryPredicate</paramtype></parameter></function>
+<function name="first_min_first_max_element"><type>std::pair&lt; ForwardIter, ForwardIter &gt;</type><template>
+          <template-type-parameter name="ForwardIter"/>
+        </template><parameter name="first"><paramtype>ForwardIter</paramtype></parameter><parameter name="last"><paramtype>ForwardIter</paramtype></parameter></function>
+<function name="first_min_first_max_element"><type>std::pair&lt; ForwardIter, ForwardIter &gt;</type><template>
+          <template-type-parameter name="ForwardIter"/>
+          <template-type-parameter name="BinaryPredicate"/>
+        </template><parameter name="first"><paramtype>ForwardIter</paramtype></parameter><parameter name="last"><paramtype>ForwardIter</paramtype></parameter><parameter name="comp"><paramtype>BinaryPredicate</paramtype></parameter></function>
+<function name="first_min_last_max_element"><type>std::pair&lt; ForwardIter, ForwardIter &gt;</type><template>
+          <template-type-parameter name="ForwardIter"/>
+        </template><parameter name="first"><paramtype>ForwardIter</paramtype></parameter><parameter name="last"><paramtype>ForwardIter</paramtype></parameter></function>
+<function name="first_min_last_max_element"><type>std::pair&lt; ForwardIter, ForwardIter &gt;</type><template>
+          <template-type-parameter name="ForwardIter"/>
+          <template-type-parameter name="BinaryPredicate"/>
+        </template><parameter name="first"><paramtype>ForwardIter</paramtype></parameter><parameter name="last"><paramtype>ForwardIter</paramtype></parameter><parameter name="comp"><paramtype>BinaryPredicate</paramtype></parameter></function>
+<function name="last_min_first_max_element"><type>std::pair&lt; ForwardIter, ForwardIter &gt;</type><template>
+          <template-type-parameter name="ForwardIter"/>
+        </template><parameter name="first"><paramtype>ForwardIter</paramtype></parameter><parameter name="last"><paramtype>ForwardIter</paramtype></parameter></function>
+<function name="last_min_first_max_element"><type>std::pair&lt; ForwardIter, ForwardIter &gt;</type><template>
+          <template-type-parameter name="ForwardIter"/>
+          <template-type-parameter name="BinaryPredicate"/>
+        </template><parameter name="first"><paramtype>ForwardIter</paramtype></parameter><parameter name="last"><paramtype>ForwardIter</paramtype></parameter><parameter name="comp"><paramtype>BinaryPredicate</paramtype></parameter></function>
+<function name="last_min_last_max_element"><type>std::pair&lt; ForwardIter, ForwardIter &gt;</type><template>
+          <template-type-parameter name="ForwardIter"/>
+        </template><parameter name="first"><paramtype>ForwardIter</paramtype></parameter><parameter name="last"><paramtype>ForwardIter</paramtype></parameter></function>
+<function name="last_min_last_max_element"><type>std::pair&lt; ForwardIter, ForwardIter &gt;</type><template>
+          <template-type-parameter name="ForwardIter"/>
+          <template-type-parameter name="BinaryPredicate"/>
+        </template><parameter name="first"><paramtype>ForwardIter</paramtype></parameter><parameter name="last"><paramtype>ForwardIter</paramtype></parameter><parameter name="comp"><paramtype>BinaryPredicate</paramtype></parameter></function>
+
+
+</namespace>
+</header>
+<header name="boost/algorithm/searching/boyer_moore.hpp">
+<namespace name="boost">
+<namespace name="algorithm">
+<class name="boyer_moore"><template>
+      <template-type-parameter name="patIter"/>
+      <template-type-parameter name="traits"><default>detail::BM_traits&lt;patIter&gt;</default></template-type-parameter>
+    </template><method-group name="public member functions">
+<method name="operator()" cv="const"><type>std::pair&lt; corpusIter, corpusIter &gt;</type><template>
+          <template-type-parameter name="corpusIter"/>
+        </template><parameter name="corpus_first"><paramtype>corpusIter</paramtype></parameter><parameter name="corpus_last"><paramtype>corpusIter</paramtype></parameter></method>
+<method name="operator()" cv="const"><type>std::pair&lt; typename boost::range_iterator&lt; Range &gt;::type, typename boost::range_iterator&lt; Range &gt;::type &gt;</type><template>
+          <template-type-parameter name="Range"/>
+        </template><parameter name="r"><paramtype>Range &amp;</paramtype></parameter></method>
+</method-group>
+<constructor><parameter name="first"><paramtype>patIter</paramtype></parameter><parameter name="last"><paramtype>patIter</paramtype></parameter></constructor>
+<destructor/>
+</class>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="boyer_moore_search"><type>std::pair&lt; corpusIter, corpusIter &gt;</type><template>
+          <template-type-parameter name="patIter"/>
+          <template-type-parameter name="corpusIter"/>
+        </template><parameter name="corpus_first"><paramtype>corpusIter</paramtype><description><para>The start of the data to search (Random Access Iterator) </para></description></parameter><parameter name="corpus_last"><paramtype>corpusIter</paramtype><description><para>One past the end of the data to search </para></description></parameter><parameter name="pat_first"><paramtype>patIter</paramtype><description><para>The start of the pattern to search for (Random Access Iterator) </para></description></parameter><parameter name="pat_last"><paramtype>patIter</paramtype><description><para>One past the end of the data to search for </para></description></parameter><purpose>Searches the corpus for the pattern. </purpose><description><para>
+</para></description></function>
+<function name="boyer_moore_search"><type>std::pair&lt; corpusIter, corpusIter &gt;</type><template>
+          <template-type-parameter name="PatternRange"/>
+          <template-type-parameter name="corpusIter"/>
+        </template><parameter name="corpus_first"><paramtype>corpusIter</paramtype></parameter><parameter name="corpus_last"><paramtype>corpusIter</paramtype></parameter><parameter name="pattern"><paramtype>const PatternRange &amp;</paramtype></parameter></function>
+<function name="boyer_moore_search"><type>boost::disable_if_c&lt; boost::is_same&lt; CorpusRange, patIter &gt;::value, std::pair&lt; typename boost::range_iterator&lt; CorpusRange &gt;::type, typename boost::range_iterator&lt; CorpusRange &gt;::type &gt; &gt;::type</type><template>
+          <template-type-parameter name="patIter"/>
+          <template-type-parameter name="CorpusRange"/>
+        </template><parameter name="corpus"><paramtype>CorpusRange &amp;</paramtype></parameter><parameter name="pat_first"><paramtype>patIter</paramtype></parameter><parameter name="pat_last"><paramtype>patIter</paramtype></parameter></function>
+<function name="boyer_moore_search"><type>std::pair&lt; typename boost::range_iterator&lt; CorpusRange &gt;::type, typename boost::range_iterator&lt; CorpusRange &gt;::type &gt;</type><template>
+          <template-type-parameter name="PatternRange"/>
+          <template-type-parameter name="CorpusRange"/>
+        </template><parameter name="corpus"><paramtype>CorpusRange &amp;</paramtype></parameter><parameter name="pattern"><paramtype>const PatternRange &amp;</paramtype></parameter></function>
+<function name="make_boyer_moore"><type><classname>boost::algorithm::boyer_moore</classname>&lt; typename boost::range_iterator&lt; const Range &gt;::type &gt;</type><template>
+          <template-type-parameter name="Range"/>
+        </template><parameter name="r"><paramtype>const Range &amp;</paramtype></parameter></function>
+<function name="make_boyer_moore"><type><classname>boost::algorithm::boyer_moore</classname>&lt; typename boost::range_iterator&lt; Range &gt;::type &gt;</type><template>
+          <template-type-parameter name="Range"/>
+        </template><parameter name="r"><paramtype>Range &amp;</paramtype></parameter></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</header>
+<header name="boost/algorithm/searching/boyer_moore_horspool.hpp">
+<namespace name="boost">
+<namespace name="algorithm">
+<class name="boyer_moore_horspool"><template>
+      <template-type-parameter name="patIter"/>
+      <template-type-parameter name="traits"><default>detail::BM_traits&lt;patIter&gt;</default></template-type-parameter>
+    </template><method-group name="public member functions">
+<method name="operator()" cv="const"><type>std::pair&lt; corpusIter, corpusIter &gt;</type><template>
+          <template-type-parameter name="corpusIter"/>
+        </template><parameter name="corpus_first"><paramtype>corpusIter</paramtype></parameter><parameter name="corpus_last"><paramtype>corpusIter</paramtype></parameter></method>
+<method name="operator()" cv="const"><type>std::pair&lt; typename boost::range_iterator&lt; Range &gt;::type, typename boost::range_iterator&lt; Range &gt;::type &gt;</type><template>
+          <template-type-parameter name="Range"/>
+        </template><parameter name="r"><paramtype>Range &amp;</paramtype></parameter></method>
+</method-group>
+<constructor><parameter name="first"><paramtype>patIter</paramtype></parameter><parameter name="last"><paramtype>patIter</paramtype></parameter></constructor>
+<destructor/>
+</class>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="boyer_moore_horspool_search"><type>std::pair&lt; corpusIter, corpusIter &gt;</type><template>
+          <template-type-parameter name="patIter"/>
+          <template-type-parameter name="corpusIter"/>
+        </template><parameter name="corpus_first"><paramtype>corpusIter</paramtype><description><para>The start of the data to search (Random Access Iterator) </para></description></parameter><parameter name="corpus_last"><paramtype>corpusIter</paramtype><description><para>One past the end of the data to search </para></description></parameter><parameter name="pat_first"><paramtype>patIter</paramtype><description><para>The start of the pattern to search for (Random Access Iterator) </para></description></parameter><parameter name="pat_last"><paramtype>patIter</paramtype><description><para>One past the end of the data to search for </para></description></parameter><purpose>Searches the corpus for the pattern. </purpose><description><para>
+</para></description></function>
+<function name="boyer_moore_horspool_search"><type>std::pair&lt; corpusIter, corpusIter &gt;</type><template>
+          <template-type-parameter name="PatternRange"/>
+          <template-type-parameter name="corpusIter"/>
+        </template><parameter name="corpus_first"><paramtype>corpusIter</paramtype></parameter><parameter name="corpus_last"><paramtype>corpusIter</paramtype></parameter><parameter name="pattern"><paramtype>const PatternRange &amp;</paramtype></parameter></function>
+<function name="boyer_moore_horspool_search"><type>boost::disable_if_c&lt; boost::is_same&lt; CorpusRange, patIter &gt;::value, std::pair&lt; typename boost::range_iterator&lt; CorpusRange &gt;::type, typename boost::range_iterator&lt; CorpusRange &gt;::type &gt; &gt;::type</type><template>
+          <template-type-parameter name="patIter"/>
+          <template-type-parameter name="CorpusRange"/>
+        </template><parameter name="corpus"><paramtype>CorpusRange &amp;</paramtype></parameter><parameter name="pat_first"><paramtype>patIter</paramtype></parameter><parameter name="pat_last"><paramtype>patIter</paramtype></parameter></function>
+<function name="boyer_moore_horspool_search"><type>std::pair&lt; typename boost::range_iterator&lt; CorpusRange &gt;::type, typename boost::range_iterator&lt; CorpusRange &gt;::type &gt;</type><template>
+          <template-type-parameter name="PatternRange"/>
+          <template-type-parameter name="CorpusRange"/>
+        </template><parameter name="corpus"><paramtype>CorpusRange &amp;</paramtype></parameter><parameter name="pattern"><paramtype>const PatternRange &amp;</paramtype></parameter></function>
+<function name="make_boyer_moore_horspool"><type><classname>boost::algorithm::boyer_moore_horspool</classname>&lt; typename boost::range_iterator&lt; const Range &gt;::type &gt;</type><template>
+          <template-type-parameter name="Range"/>
+        </template><parameter name="r"><paramtype>const Range &amp;</paramtype></parameter></function>
+<function name="make_boyer_moore_horspool"><type><classname>boost::algorithm::boyer_moore_horspool</classname>&lt; typename boost::range_iterator&lt; Range &gt;::type &gt;</type><template>
+          <template-type-parameter name="Range"/>
+        </template><parameter name="r"><paramtype>Range &amp;</paramtype></parameter></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</header>
+<header name="boost/algorithm/searching/knuth_morris_pratt.hpp">
+<namespace name="boost">
+<namespace name="algorithm">
+<class name="knuth_morris_pratt"><template>
+      <template-type-parameter name="patIter"/>
+    </template><method-group name="public member functions">
+<method name="operator()" cv="const"><type>std::pair&lt; corpusIter, corpusIter &gt;</type><template>
+          <template-type-parameter name="corpusIter"/>
+        </template><parameter name="corpus_first"><paramtype>corpusIter</paramtype></parameter><parameter name="corpus_last"><paramtype>corpusIter</paramtype></parameter></method>
+<method name="operator()" cv="const"><type>std::pair&lt; typename boost::range_iterator&lt; Range &gt;::type, typename boost::range_iterator&lt; Range &gt;::type &gt;</type><template>
+          <template-type-parameter name="Range"/>
+        </template><parameter name="r"><paramtype>Range &amp;</paramtype></parameter></method>
+</method-group>
+<constructor><parameter name="first"><paramtype>patIter</paramtype></parameter><parameter name="last"><paramtype>patIter</paramtype></parameter></constructor>
+<destructor/>
+</class>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="knuth_morris_pratt_search"><type>std::pair&lt; corpusIter, corpusIter &gt;</type><template>
+          <template-type-parameter name="patIter"/>
+          <template-type-parameter name="corpusIter"/>
+        </template><parameter name="corpus_first"><paramtype>corpusIter</paramtype><description><para>The start of the data to search (Random Access Iterator) </para></description></parameter><parameter name="corpus_last"><paramtype>corpusIter</paramtype><description><para>One past the end of the data to search </para></description></parameter><parameter name="pat_first"><paramtype>patIter</paramtype><description><para>The start of the pattern to search for (Random Access Iterator) </para></description></parameter><parameter name="pat_last"><paramtype>patIter</paramtype><description><para>One past the end of the data to search for </para></description></parameter><purpose>Searches the corpus for the pattern. </purpose><description><para>
+</para></description></function>
+<function name="knuth_morris_pratt_search"><type>std::pair&lt; corpusIter, corpusIter &gt;</type><template>
+          <template-type-parameter name="PatternRange"/>
+          <template-type-parameter name="corpusIter"/>
+        </template><parameter name="corpus_first"><paramtype>corpusIter</paramtype></parameter><parameter name="corpus_last"><paramtype>corpusIter</paramtype></parameter><parameter name="pattern"><paramtype>const PatternRange &amp;</paramtype></parameter></function>
+<function name="knuth_morris_pratt_search"><type>boost::disable_if_c&lt; boost::is_same&lt; CorpusRange, patIter &gt;::value, std::pair&lt; typename boost::range_iterator&lt; CorpusRange &gt;::type, typename boost::range_iterator&lt; CorpusRange &gt;::type &gt; &gt;::type</type><template>
+          <template-type-parameter name="patIter"/>
+          <template-type-parameter name="CorpusRange"/>
+        </template><parameter name="corpus"><paramtype>CorpusRange &amp;</paramtype></parameter><parameter name="pat_first"><paramtype>patIter</paramtype></parameter><parameter name="pat_last"><paramtype>patIter</paramtype></parameter></function>
+<function name="knuth_morris_pratt_search"><type>std::pair&lt; typename boost::range_iterator&lt; CorpusRange &gt;::type, typename boost::range_iterator&lt; CorpusRange &gt;::type &gt;</type><template>
+          <template-type-parameter name="PatternRange"/>
+          <template-type-parameter name="CorpusRange"/>
+        </template><parameter name="corpus"><paramtype>CorpusRange &amp;</paramtype></parameter><parameter name="pattern"><paramtype>const PatternRange &amp;</paramtype></parameter></function>
+<function name="make_knuth_morris_pratt"><type><classname>boost::algorithm::knuth_morris_pratt</classname>&lt; typename boost::range_iterator&lt; const Range &gt;::type &gt;</type><template>
+          <template-type-parameter name="Range"/>
+        </template><parameter name="r"><paramtype>const Range &amp;</paramtype></parameter></function>
+<function name="make_knuth_morris_pratt"><type><classname>boost::algorithm::knuth_morris_pratt</classname>&lt; typename boost::range_iterator&lt; Range &gt;::type &gt;</type><template>
+          <template-type-parameter name="Range"/>
+        </template><parameter name="r"><paramtype>Range &amp;</paramtype></parameter></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</header>
+<header name="boost/algorithm/sort_subrange.hpp">
+<para>Sort a subrange. </para><para><para>Marshall Clow</para>
+Suggested by Sean Parent in his CppCon 2015 keynote </para><namespace name="boost">
+<namespace name="algorithm">
+<function name="sort_subrange"><type>void</type><template>
+          <template-type-parameter name="Iterator"/>
+          <template-type-parameter name="Pred"/>
+        </template><parameter name="first"><paramtype>Iterator</paramtype></parameter><parameter name="last"><paramtype>Iterator</paramtype></parameter><parameter name="sub_first"><paramtype>Iterator</paramtype></parameter><parameter name="sub_last"><paramtype>Iterator</paramtype></parameter><parameter name="p"><paramtype>Pred</paramtype></parameter></function>
+<function name="sort_subrange"><type>void</type><template>
+          <template-type-parameter name="Iterator"/>
+        </template><parameter name="first"><paramtype>Iterator</paramtype></parameter><parameter name="last"><paramtype>Iterator</paramtype></parameter><parameter name="sub_first"><paramtype>Iterator</paramtype></parameter><parameter name="sub_last"><paramtype>Iterator</paramtype></parameter></function>
+<function name="partition_subrange"><type>void</type><template>
+          <template-type-parameter name="Iterator"/>
+          <template-type-parameter name="Pred"/>
+        </template><parameter name="first"><paramtype>Iterator</paramtype></parameter><parameter name="last"><paramtype>Iterator</paramtype></parameter><parameter name="sub_first"><paramtype>Iterator</paramtype></parameter><parameter name="sub_last"><paramtype>Iterator</paramtype></parameter><parameter name="p"><paramtype>Pred</paramtype></parameter></function>
+<function name="partition_subrange"><type>void</type><template>
+          <template-type-parameter name="Iterator"/>
+        </template><parameter name="first"><paramtype>Iterator</paramtype></parameter><parameter name="last"><paramtype>Iterator</paramtype></parameter><parameter name="sub_first"><paramtype>Iterator</paramtype></parameter><parameter name="sub_last"><paramtype>Iterator</paramtype></parameter></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</header>
+<header name="boost/algorithm/string.hpp">
+<para>Cumulative include for string_algo library </para></header>
+<header name="boost/algorithm/string_regex.hpp">
+<para>Cumulative include for string_algo library. In addition to string.hpp contains also regex-related stuff. </para></header>
+</library-reference>

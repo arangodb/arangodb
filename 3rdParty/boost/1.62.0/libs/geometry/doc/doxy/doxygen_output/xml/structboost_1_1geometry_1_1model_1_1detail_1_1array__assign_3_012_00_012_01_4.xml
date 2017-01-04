@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1model_1_1detail_1_1array__assign_3_012_00_012_01_4" kind="struct" prot="public">
+    <compoundname>boost::geometry::model::detail::array_assign&lt; 2, 2 &gt;</compoundname>
+    <includes local="no">point.hpp</includes>
+    <templateparamlist>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1model_1_1detail_1_1array__assign_3_012_00_012_01_4_1a6328a6fc5f2caf0b8410431e24889bab" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename T</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>static void boost::geometry::model::detail::array_assign&lt; 2, 2 &gt;::apply</definition>
+        <argsstring>(T[], T const &amp;)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>T</type>
+          <array>[]</array>
+        </param>
+        <param>
+          <type>T const &amp;</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/point.hpp" line="69" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/point.hpp" bodystart="69" bodyend="69"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/geometries/point.hpp" line="68" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/geometries/point.hpp" bodystart="67" bodyend="70"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1model_1_1detail_1_1array__assign_3_012_00_012_01_4_1a6328a6fc5f2caf0b8410431e24889bab" prot="public" virt="non-virtual"><scope>boost::geometry::model::detail::array_assign&lt; 2, 2 &gt;</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

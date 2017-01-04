@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1coordinate__type" kind="struct" prot="public">
+    <compoundname>boost::geometry::coordinate_type</compoundname>
+    <includes local="no">coordinate_type.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename</type>
+        <declname>Geometry</declname>
+        <defname>Geometry</defname>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1coordinate__type_1a426b2210908d022e151055d1fed4ac75" prot="public" static="no">
+        <type>core_dispatch::coordinate_type&lt; typename <ref refid="structboost_1_1geometry_1_1tag" kindref="compound">tag</ref>&lt; Geometry &gt;::<ref refid="structboost_1_1geometry_1_1coordinate__type_1a426b2210908d022e151055d1fed4ac75" kindref="member">type</ref>, typename <ref refid="structboost_1_1geometry_1_1util_1_1bare__type" kindref="compound">geometry::util::bare_type</ref>&lt; Geometry &gt;::<ref refid="structboost_1_1geometry_1_1coordinate__type_1a426b2210908d022e151055d1fed4ac75" kindref="member">type</ref> &gt;::<ref refid="structboost_1_1geometry_1_1coordinate__type_1a426b2210908d022e151055d1fed4ac75" kindref="member">type</ref></type>
+        <definition>typedef core_dispatch::coordinate_type&lt; typename tag&lt;Geometry&gt;::type, typename geometry::util::bare_type&lt;Geometry&gt;::type &gt;::type boost::geometry::coordinate_type&lt; Geometry &gt;::type</definition>
+        <argsstring></argsstring>
+        <name>type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/core/coordinate_type.hpp" line="92" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/coordinate_type.hpp" bodystart="92" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Metafunction defining [*type] as the coordinate type (int, float, double, etc) of the point type making up the specified geometry type. </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>[include reference/core/coordinate_type.qbk]</qbk>  </para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/coordinate_type.hpp" line="87" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/coordinate_type.hpp" bodystart="86" bodyend="93"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1coordinate__type_1a426b2210908d022e151055d1fed4ac75" prot="public" virt="non-virtual"><scope>boost::geometry::coordinate_type</scope><name>type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

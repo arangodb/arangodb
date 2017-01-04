@@ -1,4 +1,0 @@
-
-use-project /library-example/foo : util/foo ;
-
-build-project app ;

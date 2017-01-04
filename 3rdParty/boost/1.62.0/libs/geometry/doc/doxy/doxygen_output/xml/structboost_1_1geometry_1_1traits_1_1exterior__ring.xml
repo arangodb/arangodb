@@ -1,0 +1,58 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1traits_1_1exterior__ring" kind="struct" prot="public">
+    <compoundname>boost::geometry::traits::exterior_ring</compoundname>
+    <includes local="no">exterior_ring.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Polygon</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1traits_1_1exterior__ring_1a12ad023ad5e5c8456534796b9001b4d9" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::traits::exterior_ring&lt; Polygon &gt;::BOOST_MPL_ASSERT_MSG</definition>
+        <argsstring>(false, NOT_IMPLEMENTED_FOR_THIS_POLYGON_TYPE,(types&lt; Polygon &gt;))</argsstring>
+        <name>BOOST_MPL_ASSERT_MSG</name>
+        <param>
+          <type>false</type>
+        </param>
+        <param>
+          <type>NOT_IMPLEMENTED_FOR_THIS_POLYGON_TYPE</type>
+        </param>
+        <param>
+          <type>(types&lt; Polygon &gt;)</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/core/exterior_ring.hpp" line="51" column="1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Traits class defining access to <ref refid="structboost_1_1geometry_1_1traits_1_1exterior__ring" kindref="compound">exterior_ring</ref> of a polygon. </para>    </briefdescription>
+    <detaileddescription>
+<para>Should define const and non const access</para><para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Polygon</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the polygon type </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="par"><title>Geometries:</title><para><itemizedlist>
+<listitem><para>polygon </para></listitem></itemizedlist>
+</para></simplesect>
+<simplesect kind="par"><title>Specializations should provide:</title><para><itemizedlist>
+<listitem><para>static inline RING&amp; get(POLY&amp; )</para></listitem><listitem><para>static inline RING const&amp; get(POLY const&amp; ) </para></listitem></itemizedlist>
+</para></simplesect>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/exterior_ring.hpp" line="50" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/exterior_ring.hpp" bodystart="49" bodyend="56"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1traits_1_1exterior__ring_1a12ad023ad5e5c8456534796b9001b4d9" prot="public" virt="non-virtual"><scope>boost::geometry::traits::exterior_ring</scope><name>BOOST_MPL_ASSERT_MSG</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

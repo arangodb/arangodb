@@ -1,0 +1,31 @@
+[/
+    Boost.Optional
+
+    Copyright (c) 2003-2007 Fernando Luis Cacciola Carballal
+    Copyright (c) 2015 Andrzej Krzemienski
+
+    Distributed under the Boost Software License, Version 1.0.
+    (See accompanying file LICENSE_1_0.txt or copy at
+    http://www.boost.org/LICENSE_1_0.txt)
+]
+
+[section Header <boost/none.hpp>]
+
+[section Synopsis]
+```
+namespace boost {
+
+class none_t {/* see below */};
+
+const none_t none (/* see below */); 
+    
+} // namespace boost
+```
+
+Class `none_t` is meant to serve as a tag for selecting appropriate overloads of from `optional`'s interface. It is an empty, trivially copyable class with disabled default constructor.
+
+Constant `none` is used to indicate an optional object that does not contain a value in initialization, assignment and relational operations of `optional`.
+
+[endsect]
+
+[endsect]

@@ -1,0 +1,52 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1box__tag" kind="struct" prot="public">
+    <compoundname>boost::geometry::box_tag</compoundname>
+    <basecompoundref refid="structboost_1_1geometry_1_1single__tag" prot="public" virt="non-virtual">boost::geometry::single_tag</basecompoundref>
+    <basecompoundref refid="structboost_1_1geometry_1_1areal__tag" prot="public" virt="non-virtual">boost::geometry::areal_tag</basecompoundref>
+    <includes local="no">tags.hpp</includes>
+    <briefdescription>
+<para>Convenience 2D or 3D box (mbr / aabb) identifying tag. </para>    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="11">
+        <label>boost::geometry::areal_tag</label>
+        <link refid="structboost_1_1geometry_1_1areal__tag"/>
+      </node>
+      <node id="10">
+        <label>boost::geometry::single_tag</label>
+        <link refid="structboost_1_1geometry_1_1single__tag"/>
+      </node>
+      <node id="9">
+        <label>boost::geometry::box_tag</label>
+        <link refid="structboost_1_1geometry_1_1box__tag"/>
+        <childnode refid="10" relation="public-inheritance">
+        </childnode>
+        <childnode refid="11" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="14">
+        <label>boost::geometry::areal_tag</label>
+        <link refid="structboost_1_1geometry_1_1areal__tag"/>
+      </node>
+      <node id="13">
+        <label>boost::geometry::single_tag</label>
+        <link refid="structboost_1_1geometry_1_1single__tag"/>
+      </node>
+      <node id="12">
+        <label>boost::geometry::box_tag</label>
+        <link refid="structboost_1_1geometry_1_1box__tag"/>
+        <childnode refid="13" relation="public-inheritance">
+        </childnode>
+        <childnode refid="14" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/core/tags.hpp" line="98" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/core/tags.hpp" bodystart="98" bodyend="98"/>
+    <listofallmembers>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

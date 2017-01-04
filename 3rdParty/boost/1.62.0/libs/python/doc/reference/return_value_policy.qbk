@@ -1,0 +1,59 @@
+[section boost/python/return_value_policy.hpp]
+[section Introduction]
+return_value_policy instantiations are simply models of [link concepts.callpolicies `CallPolicies`] which are composed of a [link concepts.resultconverter.resultconvertergenerator_concept `ResultConverterGenerator`] and optional `Base` [link concepts.callpolicies `CallPolicies`]. 
+[endsect]
+[section Class template `return_value_policy`]
+[table
+[[Parameter][Requirements][Default]]
+ [[ResultConverterGenerator][A model of [link concepts.resultconverter.resultconvertergenerator_concept `ResultConverterGenerator`]][]]
+[[Base][A model of [link concepts.callpolicies `CallPolicies`]][default_call_policies]]
+ ]
+``
+namespace boost { namespace python
+{
+  template <class ResultConverterGenerator, class Base = default_call_policies>
+  struct return_value_policy : Base
+  {
+      typedef ResultConverterGenerator result_converter;
+  };
+}}
+``
+[endsect]
+[section Example]
+C++ module definition:
+``
+#include <boost/python/module.hpp>
+#include <boost/python/class.hpp>
+#include <boost/python/copy_const_reference.hpp>
+#include <boost/python/return_value_policy.hpp>
+
+// classes to wrap
+struct Bar { int x; }
+
+struct Foo {
+   Foo(int x) : { b.x = x; }
+   Bar const& get_bar() const { return b; }
+ private:
+   Bar b;
+};
+
+// Wrapper code
+using namespace boost::python;
+BOOST_PYTHON_MODULE(my_module)
+{
+   class_<Bar>("Bar");
+
+   class_<Foo>("Foo", init<int>())
+      .def("get_bar", &Foo::get_bar
+          , return_value_policy<copy_const_reference>())
+      ;
+}
+``
+Python code:
+``
+>>> from my_module import *
+>>> f = Foo(3)         # create a Foo object
+>>> b = f.get_bar()    # make a copy of the internal Bar object
+``
+[endsect]
+[endsect]

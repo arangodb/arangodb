@@ -1,0 +1,222 @@
+# Copyright (c) 2002 Douglas Gregor <doug.gregor -at- gmail.com>
+# Copyright (c) 2016 Rene Rivera
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+project boost/doc
+    : requirements
+    <xsl:param>boost.libraries=../../libs/libraries.htm
+    <format>html:<xsl:param>chunker.output.doctype-public="-//W3C//DTD HTML 4.01 Transitional//EN"
+    <format>html:<xsl:param>chunker.output.doctype-system="http://www.w3.org/TR/html4/loose.dtd"
+    ;
+
+import boostbook : boostbook ;
+import project ;
+import targets ;
+import print ;
+import type ;
+import generators ;
+import sequence ;
+import path ;
+
+path-constant BOOST_DOC : . ;
+
+local BOOST_DOC_LIBS =
+    ../libs/accumulators/doc//accumulators
+    ../libs/algorithm/string/doc/string_algo.xml
+    ../libs/align/doc//align
+    ../libs/any/doc/any.xml
+    ../libs/array/doc/array.xml
+    ../libs/atomic/doc//atomic
+    ../libs/chrono/doc//chrono
+    ../libs/circular_buffer/doc//standalone/<format>docbook
+    ../libs/container/doc//standalone/<format>docbook
+    #../libs/crc/doc//crc
+    ../libs/date_time/xmldoc/date_time.xml
+    ../libs/dll/doc//dll-doc/<format>docbook
+    ../libs/foreach/doc//foreach
+    ../libs/function/doc/function.xml
+    ../libs/functional/hash/doc//hash
+    ../libs/heap/doc//heap
+    ../libs/interprocess/doc//standalone/<format>docbook
+    ../libs/intrusive/doc//standalone/<format>docbook
+    ../libs/lambda/doc/lambda.xml
+    ../libs/lexical_cast/doc//lexical_cast
+    ../libs/lockfree/doc//lockfree
+    ../libs/logic/doc//tribool/<format>docbook
+    ../libs/metaparse/doc//metaparse
+    ../libs/move/doc//move
+    ../libs/multi_array/doc/xml/bbref.xml
+    ../libs/mpi/doc//mpi
+    ../libs/predef/doc//boostdoc
+    ../libs/program_options/doc/program_options.xml
+    ../libs/property_tree/doc//property_tree
+    ../libs/proto/doc//proto
+    #../libs/proto/doc//protodoc.xml
+    ../libs/random/doc//random
+    ../libs/ratio/doc//ratio
+    ../libs/signals/doc/signals.xml
+    ../libs/signals2/doc/signals.xml
+    #../libs/spirit/doc//spirit
+    ../libs/static_assert/doc//static_assert
+    ../libs/thread/doc//thread
+    ../libs/tr1/doc//tr1
+    ../libs/type_erasure/doc//type_erasure
+    ../libs/type_index/doc//type_index
+    #../libs/type_traits/doc//type_traits
+    ../libs/typeof/doc//typeof
+    ../libs/units/doc//units
+    ../libs/variant/doc/variant.xml
+    ../libs/unordered/doc//unordered
+    ../libs/xpressive/doc//xpressive
+    ;
+
+if "--release-build" in [ modules.peek : ARGV ]
+{
+    import project ;
+    import path ;
+    local lib-docs = [ path.glob [ path.glob $(BOOST_DOC)/../libs : */doc ]
+        : [ modules.peek project : JAMFILE ] ] ;
+    for local lib-doc in $(lib-docs:D)
+    {
+        local lib-doc-project = [ path.relative-to $(BOOST_DOC) $(lib-doc) ] ;
+        local boost-doc-lib = [ MATCH "^($(lib-doc-project))" : $(BOOST_DOC_LIBS) ] ;
+        if ! $(boost-doc-lib)
+        {
+            build-project $(lib-doc-project) ;
+        }
+    }
+}
+
+#
+# Note that when refering to libraries that use auto-index we must process all the way to
+# docbook before including here.  We must also ensure that auto-index uses it's own index
+# generation, otherwise we get one big index that's repeated in each library.  Xslt's index
+# generation is also so slow that it's impractical for a build this large (takes ~ 9 hrs
+# to build with just 3 indexed libraries).  Hence we refer to these libraries as for example:
+#
+# ../libs/interprocess/doc//standalone/<format>docbook
+#
+# Within each library that uses this, make sure that the boostbook target contains
+#
+# <format>docbook:<auto-index-internal>on
+#
+# And if boost.root is set, restrict it to local html builds using:
+#
+# <format>html:<xsl:param>boost.root=../../../..
+# <format>html:<xsl:param>boost.libraries=../../../../libs/libraries.htm
+#
+# Finally, in boost.xml we xi:include interproces.auto_index.docbook which is the final
+# post-index generation docbook, rather than interprocess.xml which is the pre-indexed boostbook.
+#
+
+local rule component-order ( x y )
+{
+    local a = [ MATCH "(/libs/[^/]+)" "(/tools/[^/]+)" : $(x:G) $(x:G=) ] ;
+    local b = [ MATCH "(/libs/[^/]+)" "(/tools/[^/]+)" : $(y:G) $(y:G=) ] ;
+    if $(a[1]) < $(b[1])
+    {
+        return true ;
+    }
+    else if $(a[1]) = $(b[1]) && $(x) < $(y)
+    {
+        return true ;
+    }
+}
+
+rule xinclude-generator ( target : sources * : properties * )
+{
+    print.output $(target) ;
+    local includes ;
+    sources = [ sequence.insertion-sort $(sources) : component-order ] ;
+    locate = [ path.root [ on $(target) return $(LOCATE) ] [ path.pwd ] ] ;
+    for local xml in $(sources)
+    {
+        local dir ;
+        dir ?= [ on $(xml) return $(LOCATE) ] ;
+        dir ?= [ on $(xml) return $(SEARCH) ] ;
+        dir ?= "" ;
+        dir = [ path.root $(dir[1]) [ path.pwd ] ] ;
+        dir = [ path.relative-to $(locate) $(dir) ] ;
+        includes += "<xi:include href=\"$(dir[1])/$(xml:G=)\"/>" ;
+    }
+    print.text
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>"
+        "<xml xmlns:xi=\"http://www.w3.org/2003/XInclude\">"
+        $(includes)
+        "</xml>"
+        ;
+}
+type.register XINCLUDE_XML : xinclude : XML ;
+generators.register-composing $(__name__).xinclude-generator : XML : XINCLUDE_XML ;
+
+rule xinclude ( name : sources * : requirements * : default-build * : usage-requirements *  )
+{
+    targets.create-typed-target XINCLUDE_XML
+        : [ project.current ]
+        : $(name)
+        : $(sources)
+        : $(requirements)
+        : $(default-build)
+        : $(usage-requirements)
+        ;
+}
+
+xinclude libraries :
+    $(BOOST_DOC_LIBS)
+    ;
+explicit libraries ;
+
+xinclude tools :
+    ../tools/build/doc//jam_docs
+    ../tools/quickbook/doc//quickbook
+    ../tools/boostbook/doc/boostbook.xml
+    ../tools/build/doc/src/userman.xml
+    ;
+explicit tools ;
+
+boostbook doc
+    :
+    src/boost.xml
+    :
+    <dependency>libraries
+    <implicit-dependency>libraries
+    <dependency>tools
+    <implicit-dependency>tools
+    
+    ## Build the various generated docs (Doxygen and QuickBook)...
+    ## TODO: These should all eventually be moved to the respective library doc targets.
+
+    <dependency>../libs/accumulators/doc//accdoc.xml
+    <dependency>../libs/accumulators/doc//statsdoc.xml
+    <dependency>../libs/accumulators/doc//opdoc.xml
+    #<dependency>../libs/crc/doc//autodoc.xml
+    <dependency>../libs/program_options/doc//autodoc.xml
+    <dependency>../libs/algorithm/string/doc//autodoc.xml
+    <dependency>../libs/mpi/doc//mpi_autodoc.xml
+    <dependency>../libs/property_tree/doc//autodoc.xml
+    <dependency>../libs/xpressive/doc//autodoc.xml
+    <dependency>../libs/date_time/xmldoc//date_time_autodoc.xml
+    <dependency>../libs/date_time/xmldoc//gregorian_autodoc.xml
+    <dependency>../libs/date_time/xmldoc//posix_time_autodoc.xml
+    <dependency>../libs/date_time/xmldoc//local_time_autodoc.xml
+    <dependency>../libs/move/doc//autodoc.xml
+    <dependency>../libs/signals2/doc//hello_world_def_code_snippet.xml
+    <dependency>../libs/heap/doc//autodoc.xml
+    <dependency>../libs/lockfree/doc//autodoc.xml
+
+    ## Add path references to generated docs...
+
+    <implicit-dependency>../libs/signals2/doc//hello_world_def_code_snippet.xml
+
+    <dependency>images
+    <dependency>callouts
+    <xsl:path>$(BOOST_DOC)
+    ;
+
+install images : [ glob src/images/*.png ] : <location>html/images ;
+explicit images ;
+install callouts : [ glob src/images/callouts/*.png ] : <location>html/images/callouts ;
+explicit callouts ;

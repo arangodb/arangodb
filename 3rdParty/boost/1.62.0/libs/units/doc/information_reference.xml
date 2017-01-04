@@ -1,0 +1,82 @@
+<?xml version="1.0" standalone="yes"?>
+<library-reference id="information_system_reference"><title>Information System Reference</title><header name="boost/units/systems/information.hpp">
+</header>
+<header name="boost/units/systems/information/bit.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="information">
+<namespace name="hu">
+<namespace name="bit">
+<typedef name="info"><type>unit&lt; information_dimension, make_system&lt; bit_base_unit &gt;::type &gt;</type></typedef>
+</namespace>
+</namespace>
+<data-member name="bit" specifiers="static"><type>const hu::bit::info</type></data-member>
+<data-member name="bits" specifiers="static"><type>const hu::bit::info</type></data-member>
+</namespace>
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/information/byte.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="information">
+<namespace name="hu">
+<namespace name="byte">
+<typedef name="info"><type>unit&lt; information_dimension, system &gt;</type></typedef>
+</namespace>
+</namespace>
+<typedef name="system"><type>make_system&lt; byte_base_unit &gt;::type</type></typedef>
+<typedef name="dimensionless"><type>unit&lt; dimensionless_type, system &gt;</type></typedef>
+<typedef name="info"><type>hu::byte::info</type></typedef>
+<data-member name="byte" specifiers="static"><type>const hu::byte::info</type></data-member>
+<data-member name="bytes" specifiers="static"><type>const hu::byte::info</type></data-member>
+</namespace>
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/information/hartley.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="information">
+<namespace name="hu">
+<namespace name="hartley">
+<typedef name="info"><type>unit&lt; information_dimension, make_system&lt; hartley_base_unit &gt;::type &gt;</type></typedef>
+</namespace>
+</namespace>
+<data-member name="hartley" specifiers="static"><type>const hu::hartley::info</type></data-member>
+<data-member name="hartleys" specifiers="static"><type>const hu::hartley::info</type></data-member>
+</namespace>
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/information/nat.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="information">
+<namespace name="hu">
+<namespace name="nat">
+<typedef name="info"><type>unit&lt; information_dimension, make_system&lt; nat_base_unit &gt;::type &gt;</type></typedef>
+</namespace>
+</namespace>
+<data-member name="nat" specifiers="static"><type>const hu::nat::info</type></data-member>
+<data-member name="nats" specifiers="static"><type>const hu::nat::info</type></data-member>
+</namespace>
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/systems/information/shannon.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="information">
+<namespace name="hu">
+<namespace name="shannon">
+<typedef name="info"><type>unit&lt; information_dimension, make_system&lt; shannon_base_unit &gt;::type &gt;</type></typedef>
+</namespace>
+</namespace>
+<data-member name="shannon" specifiers="static"><type>const hu::shannon::info</type></data-member>
+<data-member name="shannons" specifiers="static"><type>const hu::shannon::info</type></data-member>
+</namespace>
+</namespace>
+</namespace>
+</header>
+</library-reference>

@@ -1,0 +1,351 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="group__buffer" kind="group">
+    <compoundname>buffer</compoundname>
+    <title>buffer: calculate buffer of a geometry</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__buffer_1ga60bc23b4b5d3b572cf221714dae9a52a" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Input</type>
+          </param>
+          <param>
+            <type>typename Output</type>
+          </param>
+          <param>
+            <type>typename Distance</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::buffer</definition>
+        <argsstring>(Input const &amp;geometry_in, Output &amp;geometry_out, Distance const &amp;distance, Distance const &amp;chord_length=-1)</argsstring>
+        <name>buffer</name>
+        <param>
+          <type>Input const &amp;</type>
+          <declname>geometry_in</declname>
+        </param>
+        <param>
+          <type>Output &amp;</type>
+          <declname>geometry_out</declname>
+        </param>
+        <param>
+          <type>Distance const &amp;</type>
+          <declname>distance</declname>
+        </param>
+        <param>
+          <type>Distance const &amp;</type>
+          <declname>chord_length</declname>
+          <defval>-1</defval>
+        </param>
+        <briefdescription>
+<para>Calculates the buffer of a geometry. </para>        </briefdescription>
+        <detaileddescription>
+<para>The free function buffer calculates the buffer (a polygon being the spatial point set collection within a specified maximum distance from a geometry) of a geometry. <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Input</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Output</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Distance</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>numerical type (int, double, ttmath, ...) </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry_in</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>geometry_out</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>distance</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The distance to be used for the buffer </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>chord_length</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>(optional) The length of the chord&apos;s in the generated arcs around points or bends</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk>[include reference/algorithms/buffer.qbk]</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/buffer.hpp" line="182" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/buffer.hpp" bodystart="182" bodyend="189"/>
+      </memberdef>
+      <memberdef kind="function" id="group__buffer_1gaf56bd07bd0dc7a7e4812223f23ddae7c" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename GeometryIn</type>
+          </param>
+          <param>
+            <type>typename MultiPolygon</type>
+          </param>
+          <param>
+            <type>typename DistanceStrategy</type>
+          </param>
+          <param>
+            <type>typename SideStrategy</type>
+          </param>
+          <param>
+            <type>typename JoinStrategy</type>
+          </param>
+          <param>
+            <type>typename EndStrategy</type>
+          </param>
+          <param>
+            <type>typename PointStrategy</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::buffer</definition>
+        <argsstring>(GeometryIn const &amp;geometry_in, MultiPolygon &amp;geometry_out, DistanceStrategy const &amp;distance_strategy, SideStrategy const &amp;side_strategy, JoinStrategy const &amp;join_strategy, EndStrategy const &amp;end_strategy, PointStrategy const &amp;point_strategy)</argsstring>
+        <name>buffer</name>
+        <param>
+          <type>GeometryIn const &amp;</type>
+          <declname>geometry_in</declname>
+        </param>
+        <param>
+          <type>MultiPolygon &amp;</type>
+          <declname>geometry_out</declname>
+        </param>
+        <param>
+          <type>DistanceStrategy const &amp;</type>
+          <declname>distance_strategy</declname>
+        </param>
+        <param>
+          <type>SideStrategy const &amp;</type>
+          <declname>side_strategy</declname>
+        </param>
+        <param>
+          <type>JoinStrategy const &amp;</type>
+          <declname>join_strategy</declname>
+        </param>
+        <param>
+          <type>EndStrategy const &amp;</type>
+          <declname>end_strategy</declname>
+        </param>
+        <param>
+          <type>PointStrategy const &amp;</type>
+          <declname>point_strategy</declname>
+        </param>
+        <briefdescription>
+<para>Calculates the buffer of a geometry. </para>        </briefdescription>
+        <detaileddescription>
+<para>The free function buffer calculates the buffer (a polygon being the spatial point set collection within a specified maximum distance from a geometry) of a geometry. <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>GeometryIn</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>MultiPolygon</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A type fulfilling the MultiPolygon Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>DistanceStrategy</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A strategy defining distance (or radius) </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>SideStrategy</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A strategy defining creation along sides </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>JoinStrategy</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A strategy defining creation around convex corners </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>EndStrategy</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A strategy defining creation at linestring ends </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>PointStrategy</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A strategy defining creation around points </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry_in</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>geometry_out</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>output multi polygon (or std:: collection of polygons), will contain a buffered version of the input geometry </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>distance_strategy</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The distance strategy to be used </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>side_strategy</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The side strategy to be used </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>join_strategy</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The join strategy to be used </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>end_strategy</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The end strategy to be used </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>point_strategy</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The point strategy to be used</para></parameterdescription>
+</parameteritem>
+</parameterlist>
+ <qbk.distinguish>with strategies</qbk.distinguish>   <qbk>[include reference/algorithms/buffer_with_strategies.qbk]</qbk>  </para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/buffer.hpp" line="250" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/buffer.hpp" bodystart="250" bodyend="287"/>
+      </memberdef>
+      <memberdef kind="function" id="group__buffer_1ga8f897ad6face43210c41f8afedf526bb" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Output</type>
+          </param>
+          <param>
+            <type>typename Input</type>
+          </param>
+          <param>
+            <type>typename Distance</type>
+          </param>
+        </templateparamlist>
+        <type>Output</type>
+        <definition>Output boost::geometry::return_buffer</definition>
+        <argsstring>(Input const &amp;geometry, Distance const &amp;distance, Distance const &amp;chord_length=-1)</argsstring>
+        <name>return_buffer</name>
+        <param>
+          <type>Input const &amp;</type>
+          <declname>geometry</declname>
+        </param>
+        <param>
+          <type>Distance const &amp;</type>
+          <declname>distance</declname>
+        </param>
+        <param>
+          <type>Distance const &amp;</type>
+          <declname>chord_length</declname>
+          <defval>-1</defval>
+        </param>
+        <briefdescription>
+<para>Calculates the buffer of a geometry. </para>        </briefdescription>
+        <detaileddescription>
+<para>The free function return_buffer calculates the buffer (a polygon being the spatial point set collection within a specified maximum distance from a geometry) of a geometry. This version with the return_ prefix returns the buffer, and a template parameter must therefore be specified in the call.. <parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>Input</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Output</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Any type fulfilling a Geometry Concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>Distance</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>numerical type (int, double, ttmath, ...) </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>geometry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>A model of the specified concept </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>distance</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>The distance to be used for the buffer </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>chord_length</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>(optional) The length of the chord&apos;s in the generated arcs around points or bends (RESERVED, NOT YET USED) </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>The calculated buffer </para></simplesect>
+</para>        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/buffer.hpp" line="205" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/buffer.hpp" bodystart="205" bodyend="215"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

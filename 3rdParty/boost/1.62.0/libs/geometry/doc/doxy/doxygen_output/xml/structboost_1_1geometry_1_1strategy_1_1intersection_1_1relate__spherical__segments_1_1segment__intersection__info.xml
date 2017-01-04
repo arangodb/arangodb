@@ -1,0 +1,240 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1_1segment__intersection__info" kind="struct" prot="public">
+    <compoundname>boost::geometry::strategy::intersection::relate_spherical_segments::segment_intersection_info</compoundname>
+    <includes local="no">intersection.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename CoordinateType</type>
+      </param>
+      <param>
+        <type>typename SegmentRatio</type>
+      </param>
+      <param>
+        <type>typename Vector3d</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1_1segment__intersection__info_1a3b378c68fbffc578e158e80c0504f095" prot="public" static="no">
+        <type><ref refid="structboost_1_1geometry_1_1select__most__precise" kindref="compound">select_most_precise</ref>&lt; CoordinateType, double &gt;::type</type>
+        <definition>typedef select_most_precise&lt; CoordinateType, double &gt;::type boost::geometry::strategy::intersection::relate_spherical_segments&lt; Policy, CalculationType &gt;::segment_intersection_info&lt; CoordinateType, SegmentRatio, Vector3d &gt;::promoted_type</definition>
+        <argsstring></argsstring>
+        <name>promoted_type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" line="84" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" bodystart="84" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1_1segment__intersection__info_1a7ecff22ff3da3eebe7d2beaa14b84b37" prot="public" static="no" mutable="no">
+        <type>Vector3d</type>
+        <definition>Vector3d boost::geometry::strategy::intersection::relate_spherical_segments&lt; Policy, CalculationType &gt;::segment_intersection_info&lt; CoordinateType, SegmentRatio, Vector3d &gt;::intersection_point</definition>
+        <argsstring></argsstring>
+        <name>intersection_point</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" line="133" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" bodystart="133" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1_1segment__intersection__info_1af6af1f3b489dddb045247cb24917cefb" prot="public" static="no" mutable="no">
+        <type><ref refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1a8f1ec4833942cf9f261d6c4cb2f49a16" kindref="member">intersection_point_flag</ref></type>
+        <definition>intersection_point_flag boost::geometry::strategy::intersection::relate_spherical_segments&lt; Policy, CalculationType &gt;::segment_intersection_info&lt; CoordinateType, SegmentRatio, Vector3d &gt;::ip_flag</definition>
+        <argsstring></argsstring>
+        <name>ip_flag</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" line="136" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" bodystart="136" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1_1segment__intersection__info_1a4ffd058285cf940ed636d70414d4844b" prot="public" static="no" mutable="no">
+        <type>SegmentRatio</type>
+        <definition>SegmentRatio boost::geometry::strategy::intersection::relate_spherical_segments&lt; Policy, CalculationType &gt;::segment_intersection_info&lt; CoordinateType, SegmentRatio, Vector3d &gt;::robust_ra</definition>
+        <argsstring></argsstring>
+        <name>robust_ra</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" line="134" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" bodystart="134" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1_1segment__intersection__info_1a823e2301405aea46fb0e2a9ac10d1f9c" prot="public" static="no" mutable="no">
+        <type>SegmentRatio</type>
+        <definition>SegmentRatio boost::geometry::strategy::intersection::relate_spherical_segments&lt; Policy, CalculationType &gt;::segment_intersection_info&lt; CoordinateType, SegmentRatio, Vector3d &gt;::robust_rb</definition>
+        <argsstring></argsstring>
+        <name>robust_rb</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" line="135" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" bodystart="135" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1_1segment__intersection__info_1a3588b501512f7695651f763136836e77" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Point</type>
+          </param>
+          <param>
+            <type>typename Segment1</type>
+          </param>
+          <param>
+            <type>typename Segment2</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::strategy::intersection::relate_spherical_segments&lt; Policy, CalculationType &gt;::segment_intersection_info&lt; CoordinateType, SegmentRatio, Vector3d &gt;::assign</definition>
+        <argsstring>(Point &amp;point, Segment1 const &amp;a, Segment2 const &amp;b) const </argsstring>
+        <name>assign</name>
+        <param>
+          <type>Point &amp;</type>
+          <declname>point</declname>
+        </param>
+        <param>
+          <type>Segment1 const &amp;</type>
+          <declname>a</declname>
+        </param>
+        <param>
+          <type>Segment2 const &amp;</type>
+          <declname>b</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" line="108" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" bodystart="108" bodyend="131"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1_1segment__intersection__info_1a54199c753262f223a35b95b70fed3751" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Point</type>
+          </param>
+          <param>
+            <type>typename Segment1</type>
+          </param>
+          <param>
+            <type>typename Segment2</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::strategy::intersection::relate_spherical_segments&lt; Policy, CalculationType &gt;::segment_intersection_info&lt; CoordinateType, SegmentRatio, Vector3d &gt;::assign_a</definition>
+        <argsstring>(Point &amp;point, Segment1 const &amp;a, Segment2 const &amp;b) const </argsstring>
+        <name>assign_a</name>
+        <param>
+          <type>Point &amp;</type>
+          <declname>point</declname>
+        </param>
+        <param>
+          <type>Segment1 const &amp;</type>
+          <declname>a</declname>
+        </param>
+        <param>
+          <type>Segment2 const &amp;</type>
+          <declname>b</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" line="97" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" bodystart="97" bodyend="100"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1_1segment__intersection__info_1a5c07d8f1aec3a047729fcdbd89b15fed" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>typename Point</type>
+          </param>
+          <param>
+            <type>typename Segment1</type>
+          </param>
+          <param>
+            <type>typename Segment2</type>
+          </param>
+        </templateparamlist>
+        <type>void</type>
+        <definition>void boost::geometry::strategy::intersection::relate_spherical_segments&lt; Policy, CalculationType &gt;::segment_intersection_info&lt; CoordinateType, SegmentRatio, Vector3d &gt;::assign_b</definition>
+        <argsstring>(Point &amp;point, Segment1 const &amp;a, Segment2 const &amp;b) const </argsstring>
+        <name>assign_b</name>
+        <param>
+          <type>Point &amp;</type>
+          <declname>point</declname>
+        </param>
+        <param>
+          <type>Segment1 const &amp;</type>
+          <declname>a</declname>
+        </param>
+        <param>
+          <type>Segment2 const &amp;</type>
+          <declname>b</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" line="102" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" bodystart="102" bodyend="105"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1_1segment__intersection__info_1a0e461bd55aafbcb90a975ebae3dbb62e" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1_1segment__intersection__info_1a3b378c68fbffc578e158e80c0504f095" kindref="member">promoted_type</ref></type>
+        <definition>promoted_type boost::geometry::strategy::intersection::relate_spherical_segments&lt; Policy, CalculationType &gt;::segment_intersection_info&lt; CoordinateType, SegmentRatio, Vector3d &gt;::comparable_length_a</definition>
+        <argsstring>() const </argsstring>
+        <name>comparable_length_a</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" line="86" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" bodystart="86" bodyend="89"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1_1segment__intersection__info_1abec522fd701d633e61c61392fabc7d16" prot="public" static="no" const="yes" explicit="no" inline="yes" virt="non-virtual">
+        <type><ref refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1_1segment__intersection__info_1a3b378c68fbffc578e158e80c0504f095" kindref="member">promoted_type</ref></type>
+        <definition>promoted_type boost::geometry::strategy::intersection::relate_spherical_segments&lt; Policy, CalculationType &gt;::segment_intersection_info&lt; CoordinateType, SegmentRatio, Vector3d &gt;::comparable_length_b</definition>
+        <argsstring>() const </argsstring>
+        <name>comparable_length_b</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" line="91" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" bodystart="91" bodyend="94"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" line="80" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/spherical/intersection.hpp" bodystart="79" bodyend="137"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1_1segment__intersection__info_1a3588b501512f7695651f763136836e77" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments::segment_intersection_info</scope><name>assign</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1_1segment__intersection__info_1a54199c753262f223a35b95b70fed3751" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments::segment_intersection_info</scope><name>assign_a</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1_1segment__intersection__info_1a5c07d8f1aec3a047729fcdbd89b15fed" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments::segment_intersection_info</scope><name>assign_b</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1_1segment__intersection__info_1a0e461bd55aafbcb90a975ebae3dbb62e" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments::segment_intersection_info</scope><name>comparable_length_a</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1_1segment__intersection__info_1abec522fd701d633e61c61392fabc7d16" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments::segment_intersection_info</scope><name>comparable_length_b</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1_1segment__intersection__info_1a7ecff22ff3da3eebe7d2beaa14b84b37" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments::segment_intersection_info</scope><name>intersection_point</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1_1segment__intersection__info_1af6af1f3b489dddb045247cb24917cefb" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments::segment_intersection_info</scope><name>ip_flag</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1_1segment__intersection__info_1a3b378c68fbffc578e158e80c0504f095" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments::segment_intersection_info</scope><name>promoted_type</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1_1segment__intersection__info_1a4ffd058285cf940ed636d70414d4844b" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments::segment_intersection_info</scope><name>robust_ra</name></member>
+      <member refid="structboost_1_1geometry_1_1strategy_1_1intersection_1_1relate__spherical__segments_1_1segment__intersection__info_1a823e2301405aea46fb0e2a9ac10d1f9c" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::intersection::relate_spherical_segments::segment_intersection_info</scope><name>robust_rb</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

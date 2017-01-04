@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1nyi_1_1not__implemented__error" kind="struct" prot="public">
+    <compoundname>boost::geometry::nyi::not_implemented_error</compoundname>
+    <includes local="no">not_implemented.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename</type>
+        <declname>Term1</declname>
+        <defname>Term1</defname>
+      </param>
+      <param>
+        <type>typename</type>
+        <declname>Term2</declname>
+        <defname>Term2</defname>
+      </param>
+      <param>
+        <type>typename</type>
+        <declname>Term3</declname>
+        <defname>Term3</defname>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1nyi_1_1not__implemented__error_1a4ee7dfcea347c7fbadca0d1e19ed14fd" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::nyi::not_implemented_error&lt; Term1, Term2, Term3 &gt;::BOOST_MPL_ASSERT_MSG</definition>
+        <argsstring>(BOOST_GEOMETRY_IMPLEMENTATION_STATUS_BUILD, THIS_OPERATION_IS_NOT_OR_NOT_YET_IMPLEMENTED,(types&lt; Term1, Term2, Term3 &gt;))</argsstring>
+        <name>BOOST_MPL_ASSERT_MSG</name>
+        <param>
+          <type><ref refid="not__implemented_8hpp_1a0279121975bb0ea3ed4ccca331a9ad2a" kindref="member">BOOST_GEOMETRY_IMPLEMENTATION_STATUS_BUILD</ref></type>
+        </param>
+        <param>
+          <type>THIS_OPERATION_IS_NOT_OR_NOT_YET_IMPLEMENTED</type>
+        </param>
+        <param>
+          <type>(types&lt; Term1, Term2, Term3 &gt;)</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" line="69" column="1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" line="63" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" bodystart="62" bodyend="77"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1nyi_1_1not__implemented__error_1a4ee7dfcea347c7fbadca0d1e19ed14fd" prot="public" virt="non-virtual"><scope>boost::geometry::nyi::not_implemented_error</scope><name>BOOST_MPL_ASSERT_MSG</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,104 @@
+[#in_range]
+[section in_range]
+
+[h1 Synopsis]
+
+  namespace util
+  {
+    template <class LowerBound, class UpperBound, class Item>
+    struct in_range;
+  }
+
+This is a [link metafunction template metafunction] supporting
+[link currying currying].
+
+[table Arguments
+  [[Name]         [Type]]
+  [[`LowerBound`] [[link boxed_value boxed integral value]]]
+  [[`UpperBound`] [[link boxed_value boxed integral value]]]
+  [[`Item`]       [[link boxed_value boxed integral value]]]
+]
+
+[h1 Description]
+
+It returns a boxed boolean value. The value is `true` when `Item` is in the
+range `[LowerBound..UpperBound]` and `false` otherwise. `boost::mpl::less_equal`
+is used for comparison.
+
+[h1 Header]
+
+  #include <boost/metaparse/util/in_range.hpp>
+
+[h1 Expression semantics]
+
+For any `L`, `U` and `T` classes the following are equivalent:
+
+  in_range<L, U>::apply<T>::type::value
+  
+  boost::mpl::less_equal<L, T>::type::value
+    && boost::mpl::less_equal<T, U>::type::value
+
+[h1 Example]
+
+  #include <boost/metaparse/util/in_range.hpp>
+  
+  #include <boost/mpl/int.hpp>
+  
+  using namespace boost::metaparse;
+  
+  static_assert(
+    !util::in_range<
+      boost::mpl::int_<11>,
+      boost::mpl::int_<13>,
+      boost::mpl::int_<10>
+    >::type::value,
+    "A value below the lower bound should not be in the range"
+  );
+  
+  static_assert(
+    !util::in_range<
+      boost::mpl::int_<11>,
+      boost::mpl::int_<13>,
+      boost::mpl::int_<14>
+    >::type::value,
+    "A value above the upper bound should not be in the range"
+  );
+  
+  static_assert(
+    util::in_range<
+      boost::mpl::int_<11>,
+      boost::mpl::int_<13>,
+      boost::mpl::int_<11>
+    >::type::value,
+    "The lower bound should be in the range"
+  );
+  
+  static_assert(
+    util::in_range<
+      boost::mpl::int_<11>,
+      boost::mpl::int_<13>,
+      boost::mpl::int_<13>
+    >::type::value,
+    "The upper bound should be in the range"
+  );
+  
+  static_assert(
+    util::in_range<
+      boost::mpl::int_<11>,
+      boost::mpl::int_<13>,
+      boost::mpl::int_<12>
+    >::type::value,
+    "A value between the bounds should be in the range"
+  );
+  
+  static_assert(
+    util::in_range<>
+      ::apply<boost::mpl::int_<11>>::type
+      ::apply<boost::mpl::int_<13>>::type
+      ::apply<boost::mpl::int_<12>>::type
+      ::type::value,
+    "It should support currying"
+  );
+
+[endsect]
+

@@ -1,0 +1,79 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="classboost_1_1geometry_1_1strategy_1_1transform_1_1translate__transformer_3_01_calculation_type_00_013_00_013_01_4" kind="class" prot="public">
+    <compoundname>boost::geometry::strategy::transform::translate_transformer&lt; CalculationType, 3, 3 &gt;</compoundname>
+    <basecompoundref refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1ublas__transformer_3_01_calculation_type_00_013_00_013_01_4" prot="public" virt="non-virtual">boost::geometry::strategy::transform::ublas_transformer&lt; CalculationType, 3, 3 &gt;</basecompoundref>
+    <includes local="no">matrix_transformers.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename CalculationType</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classboost_1_1geometry_1_1strategy_1_1transform_1_1translate__transformer_3_01_calculation_type_00_013_00_013_01_4_1ad5220c7d064a6a7765fe4abbb5e1d345" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::strategy::transform::translate_transformer&lt; CalculationType, 3, 3 &gt;::translate_transformer</definition>
+        <argsstring>(CalculationType const &amp;translate_x, CalculationType const &amp;translate_y, CalculationType const &amp;translate_z)</argsstring>
+        <name>translate_transformer</name>
+        <param>
+          <type>CalculationType const &amp;</type>
+          <declname>translate_x</declname>
+        </param>
+        <param>
+          <type>CalculationType const &amp;</type>
+          <declname>translate_y</declname>
+        </param>
+        <param>
+          <type>CalculationType const &amp;</type>
+          <declname>translate_z</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/transform/matrix_transformers.hpp" line="245" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/transform/matrix_transformers.hpp" bodystart="245" bodyend="253"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="1579">
+        <label>boost::geometry::strategy::transform::ublas_transformer&lt; CalculationType, 3, 3 &gt;</label>
+        <link refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1ublas__transformer_3_01_calculation_type_00_013_00_013_01_4"/>
+      </node>
+      <node id="1578">
+        <label>boost::geometry::strategy::transform::translate_transformer&lt; CalculationType, 3, 3 &gt;</label>
+        <link refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1translate__transformer_3_01_calculation_type_00_013_00_013_01_4"/>
+        <childnode refid="1579" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="1581">
+        <label>boost::geometry::strategy::transform::ublas_transformer&lt; CalculationType, 3, 3 &gt;</label>
+        <link refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1ublas__transformer_3_01_calculation_type_00_013_00_013_01_4"/>
+      </node>
+      <node id="1580">
+        <label>boost::geometry::strategy::transform::translate_transformer&lt; CalculationType, 3, 3 &gt;</label>
+        <link refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1translate__transformer_3_01_calculation_type_00_013_00_013_01_4"/>
+        <childnode refid="1581" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/strategies/transform/matrix_transformers.hpp" line="243" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/strategies/transform/matrix_transformers.hpp" bodystart="242" bodyend="255"/>
+    <listofallmembers>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1ublas__transformer_3_01_calculation_type_00_013_00_013_01_4_1a9e5b6d058a2d4ba317edd1f16ba05d32" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::transform::translate_transformer&lt; CalculationType, 3, 3 &gt;</scope><name>apply</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1ublas__transformer_3_01_calculation_type_00_013_00_013_01_4_1a503a27f7651ec8a4cb0ff0a0ad0e7b38" prot="protected" virt="non-virtual"><scope>boost::geometry::strategy::transform::translate_transformer&lt; CalculationType, 3, 3 &gt;</scope><name>ct</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1ublas__transformer_3_01_calculation_type_00_013_00_013_01_4_1aed1c6ba016e868c5f5d3e3bc6221db1c" prot="protected" virt="non-virtual"><scope>boost::geometry::strategy::transform::translate_transformer&lt; CalculationType, 3, 3 &gt;</scope><name>m_matrix</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1ublas__transformer_3_01_calculation_type_00_013_00_013_01_4_1a2759bb4a048c234ba1c383a7dc7d9039" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::transform::translate_transformer&lt; CalculationType, 3, 3 &gt;</scope><name>matrix</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1ublas__transformer_3_01_calculation_type_00_013_00_013_01_4_1ab48e06ca1110d0063905a78458b01fe9" prot="protected" virt="non-virtual"><scope>boost::geometry::strategy::transform::translate_transformer&lt; CalculationType, 3, 3 &gt;</scope><name>matrix_type</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1translate__transformer_3_01_calculation_type_00_013_00_013_01_4_1ad5220c7d064a6a7765fe4abbb5e1d345" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::transform::translate_transformer&lt; CalculationType, 3, 3 &gt;</scope><name>translate_transformer</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1ublas__transformer_3_01_calculation_type_00_013_00_013_01_4_1a96f6d09aadf6482942a45e2731161358" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::transform::translate_transformer&lt; CalculationType, 3, 3 &gt;</scope><name>ublas_transformer</name></member>
+      <member refid="classboost_1_1geometry_1_1strategy_1_1transform_1_1ublas__transformer_3_01_calculation_type_00_013_00_013_01_4_1a90f3fc5f749016841cecb48f975c6a3f" prot="public" virt="non-virtual"><scope>boost::geometry::strategy::transform::translate_transformer&lt; CalculationType, 3, 3 &gt;</scope><name>ublas_transformer</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

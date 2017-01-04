@@ -1,0 +1,92 @@
+
+#          Copyright Oliver Kowalke 2009.
+# Distributed under the Boost Software License, Version 1.0.
+#    (See accompanying file LICENSE_1_0.txt or copy at
+#          http://www.boost.org/LICENSE_1_0.txt)
+
+# For more information, see http://www.boost.org/
+
+import common ;
+import feature ;
+import indirect ;
+import modules ;
+import os ;
+import toolset ;
+
+project boost/fiber/performance/fiber
+    : requirements
+      <library>/boost/fiber//boost_fiber
+      <toolset>gcc,<segmented-stacks>on:<cxxflags>-fsplit-stack
+      <toolset>gcc,<segmented-stacks>on:<cxxflags>-DBOOST_USE_SEGMENTED_STACKS
+      <toolset>clang,<segmented-stacks>on:<cxxflags>-fsplit-stack
+      <toolset>clang,<segmented-stacks>on:<cxxflags>-DBOOST_USE_SEGMENTED_STACKS
+      <link>static
+      <threading>multi
+      <cxxflags>-DBOOST_DISABLE_ASSERTS
+      <optimization>speed
+      <variant>release
+    ;
+
+alias pbind
+   : bind/bind_processor_aix.cpp
+   : <target-os>aix
+   ;
+
+alias pbind
+   : bind/bind_processor_freebsd.cpp
+   : <target-os>freebsd
+   ;
+
+alias pbind
+   : bind/bind_processor_hpux.cpp
+   : <target-os>hpux
+   ;
+
+alias pbind
+   : bind/bind_processor_linux.cpp
+   : <target-os>linux
+   ;
+
+alias pbind
+   : bind/bind_processor_solaris.cpp
+   : <target-os>solaris
+   ;
+
+alias pbind
+   : bind/bind_processor_windows.cpp
+   : <target-os>windows
+   ;
+
+explicit pbind ;
+
+exe skynet :
+    pbind
+    skynet.cpp ;
+
+exe skynet_shared :
+    pbind
+    skynet_shared.cpp ;
+
+exe overhead_create
+   : overhead_create.cpp
+   ;
+
+exe overhead_join
+  : overhead_join.cpp
+  ;
+
+exe overhead_detach
+ : overhead_detach.cpp
+ ;
+
+exe overhead_yield
+  : overhead_yield.cpp
+  ;
+
+exe overhead_future
+  : overhead_future.cpp
+  ;
+
+#exe scale_join
+#   : scale_join.cpp
+#   ;

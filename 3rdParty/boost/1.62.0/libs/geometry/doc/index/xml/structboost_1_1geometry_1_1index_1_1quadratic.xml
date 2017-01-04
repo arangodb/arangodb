@@ -1,0 +1,129 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1index_1_1quadratic" kind="struct" prot="public">
+    <compoundname>boost::geometry::index::quadratic</compoundname>
+    <includes refid="parameters_8hpp" local="no">parameters.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>size_t</type>
+        <declname>MaxElements</declname>
+        <defname>MaxElements</defname>
+      </param>
+      <param>
+        <type>size_t</type>
+        <declname>MinElements</declname>
+        <defname>MinElements</defname>
+        <defval>detail::default_min_elements_s&lt;MaxElements&gt;::value</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-attrib">
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1index_1_1quadratic_1adb91881a291dbbb125a2e295e22c8094" prot="public" static="yes" mutable="no">
+        <type>const size_t</type>
+        <definition>const size_t boost::geometry::index::quadratic&lt; MaxElements, MinElements &gt;::max_elements</definition>
+        <argsstring></argsstring>
+        <name>max_elements</name>
+        <initializer>= MaxElements</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="99" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="99" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structboost_1_1geometry_1_1index_1_1quadratic_1a6e65a539f0d3e302fee68059370c40d2" prot="public" static="yes" mutable="no">
+        <type>const size_t</type>
+        <definition>const size_t boost::geometry::index::quadratic&lt; MaxElements, MinElements &gt;::min_elements</definition>
+        <argsstring></argsstring>
+        <name>min_elements</name>
+        <initializer>= MinElements</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="100" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="100" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1index_1_1quadratic_1ab2bbeeae7f53bc4401910bef0622a229" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>boost::geometry::index::quadratic&lt; MaxElements, MinElements &gt;::BOOST_MPL_ASSERT_MSG</definition>
+        <argsstring>((0&lt; MinElements &amp;&amp;2 *MinElements&lt;=MaxElements+1), INVALID_STATIC_MIN_MAX_PARAMETERS,(quadratic))</argsstring>
+        <name>BOOST_MPL_ASSERT_MSG</name>
+        <param>
+          <type>(0&lt; MinElements &amp;&amp;2 *MinElements&lt;=MaxElements+1)</type>
+        </param>
+        <param>
+          <type>INVALID_STATIC_MIN_MAX_PARAMETERS</type>
+        </param>
+        <param>
+          <type>(<ref refid="structboost_1_1geometry_1_1index_1_1quadratic" kindref="compound">quadratic</ref>)</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="96" column="1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1index_1_1quadratic_1a3147d00376f0763b9591cbcd877699bd" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>size_t</type>
+        <definition>static size_t boost::geometry::index::quadratic&lt; MaxElements, MinElements &gt;::get_max_elements</definition>
+        <argsstring>()</argsstring>
+        <name>get_max_elements</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="102" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="102" bodyend="102"/>
+      </memberdef>
+      <memberdef kind="function" id="structboost_1_1geometry_1_1index_1_1quadratic_1aa7064e08f5793d46b78389f39110217f" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>size_t</type>
+        <definition>static size_t boost::geometry::index::quadratic&lt; MaxElements, MinElements &gt;::get_min_elements</definition>
+        <argsstring>()</argsstring>
+        <name>get_min_elements</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="103" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="103" bodyend="103"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+<para>Quadratic r-tree creation algorithm parameters. </para>    </briefdescription>
+    <detaileddescription>
+<para><parameterlist kind="templateparam"><parameteritem>
+<parameternamelist>
+<parametername>MaxElements</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Maximum number of elements in nodes. </para></parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>MinElements</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Minimum number of elements in nodes. Default: 0.3*Max. </para></parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" line="95" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/parameters.hpp" bodystart="94" bodyend="104"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1index_1_1quadratic_1ab2bbeeae7f53bc4401910bef0622a229" prot="public" virt="non-virtual"><scope>boost::geometry::index::quadratic</scope><name>BOOST_MPL_ASSERT_MSG</name></member>
+      <member refid="structboost_1_1geometry_1_1index_1_1quadratic_1a3147d00376f0763b9591cbcd877699bd" prot="public" virt="non-virtual"><scope>boost::geometry::index::quadratic</scope><name>get_max_elements</name></member>
+      <member refid="structboost_1_1geometry_1_1index_1_1quadratic_1aa7064e08f5793d46b78389f39110217f" prot="public" virt="non-virtual"><scope>boost::geometry::index::quadratic</scope><name>get_min_elements</name></member>
+      <member refid="structboost_1_1geometry_1_1index_1_1quadratic_1adb91881a291dbbb125a2e295e22c8094" prot="public" virt="non-virtual"><scope>boost::geometry::index::quadratic</scope><name>max_elements</name></member>
+      <member refid="structboost_1_1geometry_1_1index_1_1quadratic_1a6e65a539f0d3e302fee68059370c40d2" prot="public" virt="non-virtual"><scope>boost::geometry::index::quadratic</scope><name>min_elements</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

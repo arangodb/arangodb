@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1index_1_1detail_1_1equals" kind="struct" prot="public">
+    <compoundname>boost::geometry::index::detail::equals</compoundname>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry</type>
+      </param>
+      <param>
+        <type>typename Tag</type>
+        <defval>typename geometry::tag&lt;Geometry&gt;::type</defval>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1index_1_1detail_1_1equals_1a9616facd7b5651d1895f3f27404c3897" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>static bool boost::geometry::index::detail::equals&lt; Geometry, Tag &gt;::apply</definition>
+        <argsstring>(Geometry const &amp;g1, Geometry const &amp;g2)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>g1</declname>
+        </param>
+        <param>
+          <type>Geometry const &amp;</type>
+          <declname>g2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/index/equal_to.hpp" line="21" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/equal_to.hpp" bodystart="21" bodyend="24"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/index/equal_to.hpp" line="20" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/index/equal_to.hpp" bodystart="19" bodyend="25"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1index_1_1detail_1_1equals_1a9616facd7b5651d1895f3f27404c3897" prot="public" virt="non-virtual"><scope>boost::geometry::index::detail::equals</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

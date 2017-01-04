@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1nyi_1_1tag__to__term_3_01point__tag_01_4" kind="struct" prot="public">
+    <compoundname>boost::geometry::nyi::tag_to_term&lt; point_tag &gt;</compoundname>
+    <includes local="no">not_implemented.hpp</includes>
+    <templateparamlist>
+    </templateparamlist>
+      <sectiondef kind="public-type">
+      <memberdef kind="typedef" id="structboost_1_1geometry_1_1nyi_1_1tag__to__term_3_01point__tag_01_4_1a631f8dbb5e46eee61c3b81ec9996a9af" prot="public" static="no">
+        <type><ref refid="structboost_1_1geometry_1_1info_1_1_p_o_i_n_t" kindref="compound">info::POINT</ref></type>
+        <definition>typedef info::POINT boost::geometry::nyi::tag_to_term&lt; point_tag &gt;::type</definition>
+        <argsstring></argsstring>
+        <name>type</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" line="86" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" bodystart="86" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" line="86" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/not_implemented.hpp" bodystart="86" bodyend="86"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1nyi_1_1tag__to__term_3_01point__tag_01_4_1a631f8dbb5e46eee61c3b81ec9996a9af" prot="public" virt="non-virtual"><scope>boost::geometry::nyi::tag_to_term&lt; point_tag &gt;</scope><name>type</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

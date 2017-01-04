@@ -1,0 +1,47 @@
+[/
+ / Copyright (c) 2003 Boost.Test contributors 
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:test_module_runner_overview Test module runner]
+
+A ['test module runner] is an ['orchestrator] or a ['driver] that, given the test tree, ensures the test tree is initialized, tests are executed and necessary reports generated. It performs the following operations:
+
+* initialize the test module using the supplied [link boost_test.adv_scenarios.test_module_init_overview ['initialization function]];
+* select output media for the test log and the test results report;
+* execute test cases as specified by run-time parameters;
+* produce the test results report; 
+* generate the appropriate return code.
+
+The __UTF__ comes with the default test runner. There is no need to call it explicitly. The default generated test module's [link boost_test.adv_scenarios.entry_point_overview entry point] invokes the default test runner. The default test runner is declared with the following signature:
+
+```
+namespace boost { namespace unit_test {
+
+  typedef bool (*init_unit_test_func)();
+
+  int unit_test_main( init_unit_test_func init_func, int argc, char* argv[] );
+
+} }
+```
+
+The test runner may return one of the following values:
+
+[table
+[[Value][Meaning]]
+[[`boost::exit_success`][
+* No errors occurred during testing, or
+* the success result was forced with command-line argument `--[link boost_test.utf_reference.rt_param_reference.result_code `result_code`]=no`.]]
+[[`boost::exit_test_failure`][
+* Non-fatal errors detected and no uncaught exceptions were thrown during testing, or
+* the initialization of the __UTF__ failed. ]]
+[[`boost::exit_exception_failure`][
+* Fatal errors were detected, or
+* uncaught exceptions thrown during testing. ]]
+]
+
+An advanced test runner may provide additional features, including interactive GUI interfaces, test coverage and profiling support. 
+
+[endsect] [/section:test_module_runner_overview]

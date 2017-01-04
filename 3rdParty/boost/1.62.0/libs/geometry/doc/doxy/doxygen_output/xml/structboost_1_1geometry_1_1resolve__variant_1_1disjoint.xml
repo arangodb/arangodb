@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.6">
+  <compounddef id="structboost_1_1geometry_1_1resolve__variant_1_1disjoint" kind="struct" prot="public">
+    <compoundname>boost::geometry::resolve_variant::disjoint</compoundname>
+    <includes local="no">interface.hpp</includes>
+    <templateparamlist>
+      <param>
+        <type>typename Geometry1</type>
+      </param>
+      <param>
+        <type>typename Geometry2</type>
+      </param>
+    </templateparamlist>
+      <sectiondef kind="public-static-func">
+      <memberdef kind="function" id="structboost_1_1geometry_1_1resolve__variant_1_1disjoint_1a0a3cf4e0bf1278473bda968e9348bda7" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>bool</type>
+        <definition>static bool boost::geometry::resolve_variant::disjoint&lt; Geometry1, Geometry2 &gt;::apply</definition>
+        <argsstring>(Geometry1 const &amp;geometry1, Geometry2 const &amp;geometry2)</argsstring>
+        <name>apply</name>
+        <param>
+          <type>Geometry1 const &amp;</type>
+          <declname>geometry1</declname>
+        </param>
+        <param>
+          <type>Geometry2 const &amp;</type>
+          <declname>geometry2</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/disjoint/interface.hpp" line="74" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/disjoint/interface.hpp" bodystart="74" bodyend="83"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/disjoint/interface.hpp" line="73" column="1" bodyfile="/home/travis/build/boostorg/boost/boost/geometry/algorithms/detail/disjoint/interface.hpp" bodystart="72" bodyend="84"/>
+    <listofallmembers>
+      <member refid="structboost_1_1geometry_1_1resolve__variant_1_1disjoint_1a0a3cf4e0bf1278473bda968e9348bda7" prot="public" virt="non-virtual"><scope>boost::geometry::resolve_variant::disjoint</scope><name>apply</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>
