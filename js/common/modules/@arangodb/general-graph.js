@@ -1963,6 +1963,7 @@ exports._create = function (graphName, edgeDefinitions, orphanCollections, optio
     throw err;
   }
 
+  db._flushCache();
   let collections = findOrCreateCollectionsByEdgeDefinitions(edgeDefinitions, false);
   orphanCollections.forEach(
     (oC) => {
@@ -2048,6 +2049,8 @@ exports._drop = function (graphId, dropCollections) {
   }
 
   gdb.remove(graphId);
+  db._flushCache();
+
   return true;
 };
 
