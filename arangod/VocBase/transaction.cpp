@@ -1078,11 +1078,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     copy.release();
   }
    
-  { 
-    VPackSlice s(static_cast<uint8_t*>(marker->vpack()));
-    TRI_voc_rid_t rid = Transaction::extractRevFromDocument(s);
-    collection->setRevision(rid, false);
-  }
+  collection->setRevision(revisionId, false);
 
   TRI_IF_FAILURE("TransactionOperationAtEnd") { return TRI_ERROR_DEBUG; }
 
