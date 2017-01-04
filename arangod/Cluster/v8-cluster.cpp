@@ -267,8 +267,8 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// @brief read transaction to the agency
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_APIAgency(std::string const& interface,
-                               v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_APIAgency(std::string const& method,
+                         v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
@@ -288,7 +288,7 @@ static void JS_APIAgency(std::string const& interface,
     comm.sendWithFailover(
       arangodb::rest::RequestType::POST,
       AgencyCommManager::CONNECTION_OPTIONS._requestTimeout,
-      std::string("/_api/agency/") + interface, builder.toJson());
+      std::string("/_api/agency/") + method, builder.toJson());
 
   if (!result.successful()) {
     THROW_AGENCY_EXCEPTION(result);
