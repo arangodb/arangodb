@@ -101,7 +101,7 @@ GeoCoordinates* GeoIndex_PointsWithinRadius(GeoIdx* gi, GeoCoordinate* c,
 GeoCoordinates* GeoIndex_NearestCountPoints(GeoIdx* gi, GeoCoordinate* c,
                                             int count);
 GeoCursor* GeoIndex_NewCursor(GeoIdx* gi, GeoCoordinate* c);
-GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count, bool withDistances = true);
+GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count, bool returnDistances = true, double maxDistance = -1.0);
 void GeoIndex_CursorFree(GeoCursor* gc);
 void GeoIndex_CoordinatesFree(GeoCoordinates* clist);
 #ifdef TRI_GEO_DEBUG
