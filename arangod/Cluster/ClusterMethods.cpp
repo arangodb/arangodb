@@ -502,6 +502,9 @@ bool shardKeysChanged(std::string const& dbname, std::string const& collname,
     // expecting two objects. everything else is an error
     return true;
   }
+#ifdef DEBUG_SYNC_REPLICATION
+  return false;
+#endif
 
   ClusterInfo* ci = ClusterInfo::instance();
   std::shared_ptr<LogicalCollection> c = ci->getCollection(dbname, collname);

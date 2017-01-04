@@ -2071,6 +2071,11 @@ void ClusterInfo::loadServers() {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ClusterInfo::getServerEndpoint(ServerID const& serverID) {
+#ifdef DEBUG_SYNC_REPLICATION
+  if (serverID == "debug-follower") {
+    return "tcp://127.0.0.1:3000";
+  }
+#endif
   int tries = 0;
 
   if (!_serversProt.isValid) {

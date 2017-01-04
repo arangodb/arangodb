@@ -104,6 +104,11 @@ void FollowerInfo::add(ServerID const& sid) {
   auto v = std::make_shared<std::vector<ServerID>>(*_followers);
   v->push_back(sid);  // add a single entry
   _followers = v;     // will cast to std::vector<ServerID> const
+#ifdef DEBUG_SYNC_REPLICATION
+  if (!AgencyCommManager::MANAGER) {
+    return;
+  }
+#endif
   // Now tell the agency, path is
   //   Current/Collections/<dbName>/<collectionID>/<shardID>
   std::string path = "Current/Collections/";
@@ -183,6 +188,11 @@ void FollowerInfo::remove(ServerID const& sid) {
     }
   }
   _followers = v;  // will cast to std::vector<ServerID> const
+#ifdef DEBUG_SYNC_REPLICATION
+  if (!AgencyCommManager::MANAGER) {
+    return;
+  }
+#endif
   // Now tell the agency, path is
   //   Current/Collections/<dbName>/<collectionID>/<shardID>
   std::string path = "Current/Collections/";

@@ -209,6 +209,9 @@ void ClusterFeature::prepare() {
 
   // return if cluster is disabled
   if (!_enableCluster) {
+#ifdef DEBUG_SYNC_REPLICATION
+    ClusterComm::initialize();
+#endif
     return;
   }
 

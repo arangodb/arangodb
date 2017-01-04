@@ -62,6 +62,11 @@ if (USE_ENTERPRISE)
   add_subdirectory(enterprise)
 endif ()
 
+option(DEBUG_SYNC_REPLICATION OFF "Enable debug code to enable synchronous replication debugging")
+if (DEBUG_SYNC_REPLICATION)
+  add_definitions("-DDEBUG_SYNC_REPLICATION=1")
+endif ()
+
 ################################################################################
 ## ARANGODB
 ################################################################################
