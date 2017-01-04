@@ -146,7 +146,8 @@ describe ArangoDB do
         doc = ArangoDB.log_put("#{prefix}-return-single", "/_admin/wal/flush", :body => "{\"waitForSync\":true,\"waitForCollector\":true}")
 
         cmd = api + "?collection=#{@cid}"
-        doc = ArangoDB.log_post("#{prefix}-return-single", cmd, :body => "")
+        body = "{ \"flush\" : true }"
+        doc = ArangoDB.log_post("#{prefix}-return-single", cmd, :body => body)
         
         doc.code.should eq(201)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
