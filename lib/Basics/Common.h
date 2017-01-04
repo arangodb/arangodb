@@ -31,6 +31,11 @@
 #include <stdlib.h>
 #include <crtdbg.h>
 
+// disable definition of macros MIN and MAX (TODO: test side-effects)
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
 #endif
 
 #define TRI_WITHIN_COMMON 1
@@ -212,13 +217,13 @@ static inline uint32_t TRI_64To32(uint64_t x) {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
-#define TRI_ASSERT(expr)    \
-  do {                      \
-    if (!(expr)) {          \
+#define TRI_ASSERT(expr)                             \
+  do {                                               \
+    if (!(TRI_LIKELY(expr))) {                       \
       TRI_FlushDebugging(__FILE__, __LINE__, #expr); \
-      TRI_PrintBacktrace(); \
-      std::abort();         \
-    }                       \
+      TRI_PrintBacktrace();                          \
+      std::abort();                                  \
+    }                                                \
   } while (0)
 
 #else
@@ -284,15 +289,6 @@ struct TRI_AutoOutOfScope {
   T& m_destructor;
 };
 
-#if defined(_MSC_VER)
-#define TRI_UNREACHABLE __assume(false)
-#elif defined(__GNUC__) || defined(__GNUG__)
-#define TRI_UNREACHABLE __builtin_unreachable()
-#elif defined(__clang__)
-#define TRI_UNREACHABLE __builtin_unreachable()
-#else
-#define TRI_UNREACHABLE TRI_ASSERT(false); std::abort()
-#endif
 
 #define TRI_DEFER_INTERNAL(Destructor, funcname, objname) \
   auto funcname = [&]() { Destructor; };                  \
