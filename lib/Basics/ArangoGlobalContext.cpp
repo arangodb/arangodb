@@ -279,7 +279,7 @@ void ArangoGlobalContext::createMiniDumpFilename() {
 }
 
 void ArangoGlobalContext::normalizePath(std::vector<std::string>& paths,
-                                        const char* whichPath, bool fatal) {
+                                        char const* whichPath, bool fatal) {
   for (auto& path : paths) {
     normalizePath(path, whichPath, fatal);
   }
@@ -290,14 +290,13 @@ void ArangoGlobalContext::normalizePath(std::string& path,
   StringUtils::rTrimInPlace(path, TRI_DIR_SEPARATOR_STR);
 
   if (!arangodb::basics::FileUtils::exists(path)) {
-    std::string directory;
-    directory = arangodb::basics::FileUtils::buildFilename(_runRoot, path);
+    std::string directory = arangodb::basics::FileUtils::buildFilename(_runRoot, path);
     if (!arangodb::basics::FileUtils::exists(directory)) {
       if (!fatal) {
         return;
       }
       LOG(ERR) << "failed to locate " << whichPath
-               << " directory, its neither available in  '" << path
+               << " directory, its neither available in '" << path
                << "' nor in '" << directory << "'";
       FATAL_ERROR_EXIT();
     }

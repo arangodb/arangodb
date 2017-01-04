@@ -37,9 +37,9 @@ class ArangoGlobalContext {
  public:
   std::string binaryName() { return _binaryName; }
   std::string runRoot() { return _runRoot; }
-  void normalizePath(std::vector<std::string>& path, const char* whichPath,
+  void normalizePath(std::vector<std::string>& path, char const* whichPath,
                      bool fatal);
-  void normalizePath(std::string& path, const char* whichPath, bool fatal);
+  void normalizePath(std::string& path, char const* whichPath, bool fatal);
   int exit(int ret);
   void installHup();
   void installSegv();
