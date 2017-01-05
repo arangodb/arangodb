@@ -51,9 +51,9 @@ module.exports = function jwtStorage (cfg) {
     forClient(session) {
       const token = {
         uid: session.uid,
-        iat: session.created,
+        iat: Math.floor(session.created / 1000),
         payload: session.data,
-        exp: Date.now() + ttl
+        exp: Math.floor((Date.now() + ttl) / 1000)
       };
       return crypto.jwtEncode(cfg.secret, token, algorithm);
     },
