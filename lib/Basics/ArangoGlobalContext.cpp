@@ -111,7 +111,7 @@ LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS* e) {
 ArangoGlobalContext* ArangoGlobalContext::CONTEXT = nullptr;
 
 ArangoGlobalContext::ArangoGlobalContext(int argc, char* argv[],
-                                         const char* InstallDirectory)
+                                         char const* InstallDirectory)
     : _binaryName(TRI_BinaryName(argv[0])),
       _runRoot(
           TRI_GetInstallRoot(TRI_LocateBinaryPath(argv[0]), InstallDirectory)),
@@ -286,7 +286,7 @@ void ArangoGlobalContext::normalizePath(std::vector<std::string>& paths,
 }
 
 void ArangoGlobalContext::normalizePath(std::string& path,
-                                        const char* whichPath, bool fatal) {
+                                        char const* whichPath, bool fatal) {
   StringUtils::rTrimInPlace(path, TRI_DIR_SEPARATOR_STR);
 
   if (!arangodb::basics::FileUtils::exists(path)) {
@@ -295,9 +295,9 @@ void ArangoGlobalContext::normalizePath(std::string& path,
       if (!fatal) {
         return;
       }
-      LOG(ERR) << "failed to locate " << whichPath
-               << " directory, its neither available in '" << path
-               << "' nor in '" << directory << "'";
+      LOG(FATAL) << "failed to locate " << whichPath
+                 << " directory, its neither available in '" << path
+                 << "' nor in '" << directory << "'";
       FATAL_ERROR_EXIT();
     }
     arangodb::basics::FileUtils::normalizePath(directory);

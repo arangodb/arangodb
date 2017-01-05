@@ -59,7 +59,7 @@ class VocbaseContext : public arangodb::RequestContext {
   /// @brief checks the authentication (basic)
   //////////////////////////////////////////////////////////////////////////////
 
-  rest::ResponseCode basicAuthentication(const char*);
+  rest::ResponseCode basicAuthentication(char const*);
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief checks the authentication (jwt)

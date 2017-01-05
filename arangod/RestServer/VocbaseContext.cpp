@@ -192,7 +192,7 @@ rest::ResponseCode VocbaseContext::authenticateRequest(bool* forceOpen) {
 /// @brief checks the authentication via basic
 ////////////////////////////////////////////////////////////////////////////////
 
-rest::ResponseCode VocbaseContext::basicAuthentication(const char* auth) {
+rest::ResponseCode VocbaseContext::basicAuthentication(char const* auth) {
   AuthResult result = _authentication->authInfo()->checkAuthentication(
       AuthInfo::AuthType::BASIC, auth);
 

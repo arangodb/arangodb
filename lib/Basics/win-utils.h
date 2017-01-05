@@ -95,7 +95,7 @@ void TRI_usleep(unsigned long);
 /// @brief fixes the ICU_DATA environment path
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FixIcuDataEnv(const char* binaryPath);
+void TRI_FixIcuDataEnv(char const* binaryPath);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a Windows error to a *nix system error
