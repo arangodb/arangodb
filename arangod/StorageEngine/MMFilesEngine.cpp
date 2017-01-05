@@ -729,11 +729,26 @@ void MMFilesEngine::dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalColl
       }
 
       // perform the rename
-      std::string systemError;
-      int res = TRI_RenameFile(collection->path().c_str(), newFilename.c_str(), nullptr, &systemError);
-
       LOG(TRACE) << "renaming collection directory from '"
                  << collection->path() << "' to '" << newFilename << "'";
+
+      std::string systemError;
+      int res = TRI_ERROR_INTERNAL;
+      int tries = 0;
+      while (res != TRI_ERROR_NO_ERROR && ++tries < 30) {
+        res = TRI_RenameFile(collection->path().c_str(), newFilename.c_str(), nullptr, &systemError);
+        
+        // don't give up instantly if initial renaming fails
+        if (res != TRI_ERROR_NO_ERROR && tries == 1) {
+          LOG(WARN) << "waiting for rename of dropped collection '" << name
+                   << "' from '" << collection->path() << "' to '"
+                     << newFilename << "': " << TRI_errno_string(res) << systemError
+                   << ", source exists: " << TRI_IsDirectory(collection->path().c_str()) 
+                   << ", dest exists: " << TRI_IsDirectory(newFilename.c_str()) 
+                   << ", status: " << collection->statusString();
+        }
+        usleep(10000);
+      }
 
       if (res != TRI_ERROR_NO_ERROR) {
         if (!systemError.empty()) {
