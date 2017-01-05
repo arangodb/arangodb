@@ -11,6 +11,8 @@ v3.1.8 (XXXX-XX-XX)
 
 * unified endpoints replace localhost with 127.0.0.1
 
+* fix several problems within an authenticated cluster
+
 v3.1.7 (2016-12-29)
 -------------------
 
