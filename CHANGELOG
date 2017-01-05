@@ -1,6 +1,8 @@
 devel
 -----
 
+* upgraded Boost version to 1.62.0
+
 * added optional detail flag for db.<collection>.count()
   setting the flag to `true` will make the count operation returned the per-shard
   counts for the collection:
