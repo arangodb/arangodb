@@ -203,9 +203,7 @@ rest::ResponseCode VocbaseContext::basicAuthentication(char const* auth) {
     return rest::ResponseCode::UNAUTHORIZED;
   }
 
-  if (!result._username.empty()) {
-    _request->setUser(std::move(result._username));
-  }
+  _request->setUser(std::move(result._username));
 
   // we have a user name, verify 'mustChange'
   if (result._mustChange) {
@@ -236,10 +234,7 @@ rest::ResponseCode VocbaseContext::jwtAuthentication(std::string const& auth) {
     return rest::ResponseCode::UNAUTHORIZED;
   }
 
-  // we have a user name, verify 'mustChange'
-  if (!result._username.empty()) {
-    _request->setUser(std::move(result._username));
-  }
+  _request->setUser(std::move(result._username));
   events::Authenticated(_request, rest::AuthenticationMethod::JWT);
 
   return rest::ResponseCode::OK;
