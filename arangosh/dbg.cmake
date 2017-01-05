@@ -12,6 +12,7 @@ if (NOT MSVC AND CMAKE_STRIP)
   execute_process(COMMAND ${CMAKE_OBJCOPY} --only-keep-debug ${FILE} ${STRIP_FILE})
   set(FILE ${STRIP_FILE})
 endif()
+
 install(
   PROGRAMS ${FILE}
   DESTINATION ${CMAKE_INSTALL_DEBINFO_DIR}/${CMAKE_INSTALL_BINDIR})
